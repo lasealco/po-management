@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 
 type OrderStatus = {
@@ -90,6 +91,20 @@ export function OrdersBoard({ initialData }: { initialData: OrdersResponse }) {
         <p className="mt-2 text-zinc-600">
           Tenant: <span className="font-medium">{data.tenant.name}</span> ({orderCount} orders)
         </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Link
+            href="/suppliers/new"
+            className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+          >
+            New supplier
+          </Link>
+          <Link
+            href="/products/new"
+            className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+          >
+            New product
+          </Link>
+        </div>
       </header>
 
       {errorMessage ? (
