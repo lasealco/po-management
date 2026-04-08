@@ -1,124 +1,273 @@
 generator client {
   provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
 }
 
-enum UserRole {
-  ADMIN
-  REQUESTER
-  APPROVER
-  PROCUREMENT
-}
+model Tenant {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-enum POStatus {
-  DRAFT
-  PENDING_APPROVAL
-  APPROVED
-  REJECTED
-  SENT_TO_SUPPLIER
-  PARTIALLY_RECEIVED
-  RECEIVED
-  CANCELLED
-}
-
-enum ApprovalStatus {
-  PENDING
-  APPROVED
-  REJECTED
+  users     User[]
+  roles     Role[]
+  suppliers Supplier[]
+  products  Product[]
+  orders    PurchaseOrder[]
+  workflows Workflow[]
 }
 
 model User {
-  id              String      @id @default(cuid())
-  email           String      @unique
-  name            String
-  role            UserRole    @default(REQUESTER)
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  id        String   @id @default(cuid())
+  tenantId  String
+  email     String
+  name      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  purchaseOrders  PurchaseOrder[] @relation("PORequester")
-  approvals       Approval[]
+  tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userRoles           UserRole[]
+  orderChats          OrderChatMessage[]
+  purchaseOrders      PurchaseOrder[]
+  orderTransitionLogs OrderTransitionLog[]
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+}
+
+model Role {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  isSystem  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  users       UserRole[]
+  permissions RolePermission[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+}
+
+model UserRole {
+  id     String @id @default(cuid())
+  userId String
+  roleId String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+}
+
+model RolePermission {
+  id               String  @id @default(cuid())
+  roleId           String
+  resource         String
+  action           String
+  effect           String
+  workflowStatusId String?
+
+  role           Role            @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  workflowStatus WorkflowStatus? @relation(fields: [workflowStatusId], references: [id], onDelete: SetNull)
+
+  @@unique([roleId, resource, action, workflowStatusId])
+  @@index([roleId])
+  @@index([workflowStatusId])
 }
 
 model Supplier {
-  id              String      @id @default(cuid())
-  name            String
-  email           String?
-  phone           String?
-  address         String?
-  taxId           String?
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  id        String   @id @default(cuid())
+  tenantId  String
+  code      String?
+  name      String
+  email     String?
+  phone     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  purchaseOrders  PurchaseOrder[]
+  tenant Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  orders PurchaseOrder[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  tenantId    String
+  sku         String?
+  name        String
+  description String?
+  unit        String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant     Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  orderItems PurchaseOrderItem[]
+
+  @@unique([tenantId, sku])
+  @@index([tenantId])
+}
+
+model Workflow {
+  id               String   @id @default(cuid())
+  tenantId         String
+  name             String
+  code             String
+  isDefault        Boolean  @default(false)
+  supplierPortalOn Boolean  @default(false)
+  allowSplitOrders Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  tenant      Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  statuses    WorkflowStatus[]
+  transitions WorkflowTransition[]
+  actions     WorkflowAction[]
+  orders      PurchaseOrder[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+}
+
+model WorkflowStatus {
+  id         String   @id @default(cuid())
+  workflowId String
+  code       String
+  label      String
+  category   String?
+  isStart    Boolean  @default(false)
+  isEnd      Boolean  @default(false)
+  sortOrder  Int
+  createdAt  DateTime @default(now())
+
+  workflow        Workflow             @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  fromTransitions WorkflowTransition[] @relation("FromStatus")
+  toTransitions   WorkflowTransition[] @relation("ToStatus")
+  orders          PurchaseOrder[]
+  permissions     RolePermission[]
+
+  @@unique([workflowId, code])
+  @@index([workflowId, sortOrder])
+}
+
+model WorkflowTransition {
+  id              String  @id @default(cuid())
+  workflowId      String
+  fromStatusId    String
+  toStatusId      String
+  actionCode      String
+  label           String
+  requiresComment Boolean @default(false)
+
+  workflow   Workflow       @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  fromStatus WorkflowStatus @relation("FromStatus", fields: [fromStatusId], references: [id], onDelete: Cascade)
+  toStatus   WorkflowStatus @relation("ToStatus", fields: [toStatusId], references: [id], onDelete: Cascade)
+
+  @@unique([workflowId, fromStatusId, toStatusId, actionCode])
+  @@index([workflowId, fromStatusId])
+}
+
+model WorkflowAction {
+  id         String  @id @default(cuid())
+  workflowId String
+  code       String
+  label      String
+  isEnabled  Boolean @default(true)
+
+  workflow Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@unique([workflowId, code])
+  @@index([workflowId])
 }
 
 model PurchaseOrder {
-  id              String      @id @default(cuid())
-  poNumber        String      @unique
-  title           String
-  description     String?
-  status          POStatus    @default(DRAFT)
+  id            String   @id @default(cuid())
+  tenantId      String
+  workflowId    String
+  orderNumber   String
+  title         String?
+  requesterId   String
+  supplierId    String?
+  statusId      String
+  currency      String   @default("USD")
+  subtotal      Decimal  @db.Decimal(14, 2)
+  taxAmount     Decimal  @db.Decimal(14, 2)
+  totalAmount   Decimal  @db.Decimal(14, 2)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  splitParentId String?
 
-  requesterId     String
-  supplierId      String
+  tenant        Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  workflow      Workflow             @relation(fields: [workflowId], references: [id], onDelete: Restrict)
+  requester     User                 @relation(fields: [requesterId], references: [id], onDelete: Restrict)
+  supplier      Supplier?            @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  status        WorkflowStatus       @relation(fields: [statusId], references: [id], onDelete: Restrict)
+  items         PurchaseOrderItem[]
+  transitions   OrderTransitionLog[]
+  chats         OrderChatMessage[]
+  splitChildren PurchaseOrder[]      @relation("OrderSplitParent")
+  splitParent   PurchaseOrder?       @relation("OrderSplitParent", fields: [splitParentId], references: [id])
 
-  subtotal        Decimal     @db.Decimal(12, 2)
-  taxAmount       Decimal     @db.Decimal(12, 2)
-  totalAmount     Decimal     @db.Decimal(12, 2)
-  currency        String      @default("USD")
-
-  issueDate       DateTime?
-  expectedDate    DateTime?
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-
-  requester       User        @relation("PORequester", fields: [requesterId], references: [id], onDelete: Restrict)
-  supplier        Supplier    @relation(fields: [supplierId], references: [id], onDelete: Restrict)
-  items           POItem[]
-  approvals       Approval[]
-
-  @@index([requesterId])
-  @@index([supplierId])
-  @@index([status])
+  @@unique([tenantId, orderNumber])
+  @@index([tenantId, createdAt])
+  @@index([tenantId, statusId])
+  @@index([workflowId])
 }
 
-model POItem {
-  id              String      @id @default(cuid())
-  purchaseOrderId String
-  lineNumber      Int
-  sku             String?
-  description     String
-  quantity        Decimal     @db.Decimal(12, 2)
-  unitPrice       Decimal     @db.Decimal(12, 2)
-  lineTotal       Decimal     @db.Decimal(12, 2)
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+model PurchaseOrderItem {
+  id          String  @id @default(cuid())
+  orderId     String
+  lineNo      Int
+  productId   String?
+  description String
+  quantity    Decimal @db.Decimal(14, 3)
+  unitPrice   Decimal @db.Decimal(14, 4)
+  lineTotal   Decimal @db.Decimal(14, 2)
 
-  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  order   PurchaseOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product?      @relation(fields: [productId], references: [id], onDelete: SetNull)
 
-  @@unique([purchaseOrderId, lineNumber])
-  @@index([purchaseOrderId])
+  @@unique([orderId, lineNo])
+  @@index([orderId])
 }
 
-model Approval {
-  id              String        @id @default(cuid())
-  purchaseOrderId String
-  approverId      String
-  stepOrder       Int
-  status          ApprovalStatus @default(PENDING)
-  comment         String?
-  decidedAt       DateTime?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+model OrderTransitionLog {
+  id           String   @id @default(cuid())
+  orderId      String
+  fromStatusId String?
+  toStatusId   String
+  actionCode   String
+  actorUserId  String
+  comment      String?
+  createdAt    DateTime @default(now())
 
-  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
-  approver        User          @relation(fields: [approverId], references: [id], onDelete: Restrict)
+  order PurchaseOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  actor User          @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
 
-  @@unique([purchaseOrderId, approverId])
-  @@index([purchaseOrderId, stepOrder])
-  @@index([approverId])
+  @@index([orderId, createdAt])
+}
+
+model OrderChatMessage {
+  id           String   @id @default(cuid())
+  orderId      String
+  authorUserId String
+  body         String
+  isInternal   Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  order  PurchaseOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  author User          @relation(fields: [authorUserId], references: [id], onDelete: Restrict)
+
+  @@index([orderId, createdAt])
 }
