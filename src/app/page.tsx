@@ -2,6 +2,7 @@ import { OrdersBoard } from "@/components/orders-board";
 import { prisma } from "@/lib/prisma";
 
 const DEFAULT_TENANT_SLUG = "demo-company";
+export const dynamic = "force-dynamic";
 
 export default async function Home() {
   const tenant = await prisma.tenant.findUnique({
