@@ -1,0 +1,124 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  ADMIN
+  REQUESTER
+  APPROVER
+  PROCUREMENT
+}
+
+enum POStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  SENT_TO_SUPPLIER
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CANCELLED
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id              String      @id @default(cuid())
+  email           String      @unique
+  name            String
+  role            UserRole    @default(REQUESTER)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  purchaseOrders  PurchaseOrder[] @relation("PORequester")
+  approvals       Approval[]
+}
+
+model Supplier {
+  id              String      @id @default(cuid())
+  name            String
+  email           String?
+  phone           String?
+  address         String?
+  taxId           String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  purchaseOrders  PurchaseOrder[]
+}
+
+model PurchaseOrder {
+  id              String      @id @default(cuid())
+  poNumber        String      @unique
+  title           String
+  description     String?
+  status          POStatus    @default(DRAFT)
+
+  requesterId     String
+  supplierId      String
+
+  subtotal        Decimal     @db.Decimal(12, 2)
+  taxAmount       Decimal     @db.Decimal(12, 2)
+  totalAmount     Decimal     @db.Decimal(12, 2)
+  currency        String      @default("USD")
+
+  issueDate       DateTime?
+  expectedDate    DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  requester       User        @relation("PORequester", fields: [requesterId], references: [id], onDelete: Restrict)
+  supplier        Supplier    @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  items           POItem[]
+  approvals       Approval[]
+
+  @@index([requesterId])
+  @@index([supplierId])
+  @@index([status])
+}
+
+model POItem {
+  id              String      @id @default(cuid())
+  purchaseOrderId String
+  lineNumber      Int
+  sku             String?
+  description     String
+  quantity        Decimal     @db.Decimal(12, 2)
+  unitPrice       Decimal     @db.Decimal(12, 2)
+  lineTotal       Decimal     @db.Decimal(12, 2)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+
+  @@unique([purchaseOrderId, lineNumber])
+  @@index([purchaseOrderId])
+}
+
+model Approval {
+  id              String        @id @default(cuid())
+  purchaseOrderId String
+  approverId      String
+  stepOrder       Int
+  status          ApprovalStatus @default(PENDING)
+  comment         String?
+  decidedAt       DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  approver        User          @relation(fields: [approverId], references: [id], onDelete: Restrict)
+
+  @@unique([purchaseOrderId, approverId])
+  @@index([purchaseOrderId, stepOrder])
+  @@index([approverId])
+}
