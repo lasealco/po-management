@@ -56,6 +56,9 @@ export async function GET(
           defaultIncoterm: true,
         },
       },
+      splitParent: {
+        select: { id: true, orderNumber: true },
+      },
       requester: true,
       workflow: {
         include: {
@@ -204,6 +207,12 @@ export async function GET(
       supplier: order.supplier,
       requester: order.requester,
       splitParentId: order.splitParentId,
+      splitParent: order.splitParent
+        ? {
+            id: order.splitParent.id,
+            orderNumber: order.splitParent.orderNumber,
+          }
+        : null,
       splitIndex: order.splitIndex,
     },
     items: order.items.map((item) => ({

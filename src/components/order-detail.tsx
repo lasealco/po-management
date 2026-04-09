@@ -45,6 +45,7 @@ type OrderDetailResponse = {
     } | null;
     requester: { id: string; name: string; email: string };
     splitParentId: string | null;
+    splitParent: { id: string; orderNumber: string } | null;
     splitIndex: number | null;
   };
   items: Array<{
@@ -463,7 +464,7 @@ export function OrderDetail({
 
       <section className="mb-8 rounded-lg border border-zinc-200 bg-white p-4 text-sm">
         <p className="font-medium text-zinc-900">Summary</p>
-        <div className="mt-3 grid gap-2 text-zinc-600 sm:grid-cols-2">
+        <div className="mt-3 grid gap-2 text-zinc-700 sm:grid-cols-2">
           <p>
             Workflow:{" "}
             <span className="font-medium text-zinc-800">
@@ -504,11 +505,22 @@ export function OrderDetail({
             Total {data.order.currency} {data.order.totalAmount}
           </span>
         </p>
+        {data.order.splitParent ? (
+          <p className="mt-3 text-sm text-zinc-800">
+            Parent order:{" "}
+            <Link
+              href={`/orders/${data.order.splitParent.id}`}
+              className="font-medium text-amber-800 underline-offset-2 hover:underline"
+            >
+              {data.order.splitParent.orderNumber}
+            </Link>
+          </p>
+        ) : null}
       </section>
 
       <section className="mb-8 rounded-lg border border-zinc-200 bg-white p-4 text-sm">
         <h2 className="text-lg font-medium text-zinc-900">Order details</h2>
-        <p className="mt-1 text-xs text-zinc-500">
+        <p className="mt-1 text-xs text-zinc-700">
           References, commercial terms, ship-to, and notes. Line totals are not
           edited here.
         </p>
@@ -603,7 +615,7 @@ export function OrderDetail({
           <div className="mt-4 space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="flex flex-col text-sm">
-                <span className="font-medium text-zinc-700">Buyer reference</span>
+                <span className="font-medium text-zinc-800">Buyer reference</span>
                 <input
                   value={buyerReference}
                   onChange={(e) => setBuyerReference(e.target.value)}
@@ -611,7 +623,7 @@ export function OrderDetail({
                 />
               </label>
               <label className="flex flex-col text-sm">
-                <span className="font-medium text-zinc-700">
+                <span className="font-medium text-zinc-800">
                   Supplier reference
                 </span>
                 <input
@@ -621,7 +633,7 @@ export function OrderDetail({
                 />
               </label>
               <label className="flex flex-col text-sm">
-                <span className="font-medium text-zinc-700">
+                <span className="font-medium text-zinc-800">
                   Payment terms (days)
                 </span>
                 <input
@@ -633,7 +645,7 @@ export function OrderDetail({
                 />
               </label>
               <label className="flex flex-col text-sm">
-                <span className="font-medium text-zinc-700">Terms label</span>
+                <span className="font-medium text-zinc-800">Terms label</span>
                 <input
                   value={paymentTermsLabel}
                   onChange={(e) => setPaymentTermsLabel(e.target.value)}
@@ -642,7 +654,7 @@ export function OrderDetail({
                 />
               </label>
               <label className="flex flex-col text-sm">
-                <span className="font-medium text-zinc-700">Incoterm</span>
+                <span className="font-medium text-zinc-800">Incoterm</span>
                 <input
                   value={incoterm}
                   onChange={(e) => setIncoterm(e.target.value)}
@@ -651,7 +663,7 @@ export function OrderDetail({
                 />
               </label>
               <label className="flex flex-col text-sm">
-                <span className="font-medium text-zinc-700">
+                <span className="font-medium text-zinc-800">
                   Requested delivery
                 </span>
                 <input
@@ -728,7 +740,7 @@ export function OrderDetail({
               </div>
             </div>
             <label className="flex flex-col text-sm">
-              <span className="font-medium text-zinc-700">Notes to supplier</span>
+              <span className="font-medium text-zinc-800">Notes to supplier</span>
               <textarea
                 value={notesToSupplier}
                 onChange={(e) => setNotesToSupplier(e.target.value)}
@@ -737,7 +749,7 @@ export function OrderDetail({
               />
             </label>
             <label className="flex flex-col text-sm">
-              <span className="font-medium text-zinc-700">Internal notes</span>
+              <span className="font-medium text-zinc-800">Internal notes</span>
               <textarea
                 value={internalNotes}
                 onChange={(e) => setInternalNotes(e.target.value)}
@@ -761,7 +773,7 @@ export function OrderDetail({
         <h2 className="mb-3 text-lg font-medium text-zinc-900">Lines</h2>
         <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white">
           <table className="min-w-full divide-y divide-zinc-100 text-sm">
-            <thead className="bg-zinc-50 text-left text-xs uppercase text-zinc-500">
+            <thead className="bg-zinc-50 text-left text-xs uppercase text-zinc-700">
               <tr>
                 <th className="px-3 py-2">#</th>
                 <th className="px-3 py-2">SKU / code</th>
@@ -802,9 +814,9 @@ export function OrderDetail({
                     );
                   return (
                     <tr key={item.id}>
-                      <td className="px-3 py-2">{item.lineNo}</td>
+                      <td className="px-3 py-2 text-zinc-800">{item.lineNo}</td>
                       <td className="px-3 py-2">{skuCell}</td>
-                      <td className="px-3 py-2">
+                      <td className="px-3 py-2 text-zinc-900">
                         {item.description}
                         {item.product?.name &&
                         item.product.name !== item.description ? (
@@ -813,9 +825,9 @@ export function OrderDetail({
                           </span>
                         ) : null}
                       </td>
-                      <td className="px-3 py-2">{item.quantity}</td>
-                      <td className="px-3 py-2">{item.unitPrice}</td>
-                      <td className="px-3 py-2">{item.lineTotal}</td>
+                      <td className="px-3 py-2 font-medium text-zinc-800">{item.quantity}</td>
+                      <td className="px-3 py-2 font-medium text-zinc-800">{item.unitPrice}</td>
+                      <td className="px-3 py-2 font-medium text-zinc-900">{item.lineTotal}</td>
                     </tr>
                   );
                 })
