@@ -62,14 +62,14 @@ export default async function ProductEditPage({
 
   return (
     <div className="min-h-screen bg-zinc-50">
-      <main className="mx-auto max-w-7xl px-6 py-10">
+      <main className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-6">
         <Link
           href="/products"
           className="text-sm text-zinc-600 hover:text-zinc-900"
         >
           ← Product catalog
         </Link>
-        <div className="mt-4">
+        <div className="mt-2">
           <ProductEditClient
             productId={product.id}
             initial={initial}
