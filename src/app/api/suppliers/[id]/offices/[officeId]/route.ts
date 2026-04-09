@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
 
@@ -13,6 +14,9 @@ export async function PATCH(
   request: Request,
   context: { params: Promise<{ id: string; officeId: string }> },
 ) {
+  const gate = await requireApiGrant("org.suppliers", "edit");
+  if (gate) return gate;
+
   const { id: supplierId, officeId } = await context.params;
 
   let body: unknown;
@@ -96,6 +100,9 @@ export async function DELETE(
   _request: Request,
   context: { params: Promise<{ id: string; officeId: string }> },
 ) {
+  const gate = await requireApiGrant("org.suppliers", "edit");
+  if (gate) return gate;
+
   const { id: supplierId, officeId } = await context.params;
   const tenant = await getDemoTenant();
   if (!tenant) {

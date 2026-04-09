@@ -1,16 +1,44 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+
+export type SupplierContactRow = {
+  id: string;
+  name: string;
+  title: string | null;
+  role: string | null;
+  email: string | null;
+  phone: string | null;
+  notes: string | null;
+  isPrimary: boolean;
+};
 
 export type SupplierDetailSnapshot = {
   id: string;
+  updatedAt: string;
   name: string;
   code: string | null;
   email: string | null;
   phone: string | null;
   isActive: boolean;
+  legalName: string | null;
+  taxId: string | null;
+  website: string | null;
+  registeredAddressLine1: string | null;
+  registeredAddressLine2: string | null;
+  registeredCity: string | null;
+  registeredRegion: string | null;
+  registeredPostalCode: string | null;
+  registeredCountryCode: string | null;
+  paymentTermsDays: number | null;
+  paymentTermsLabel: string | null;
+  creditLimit: string | null;
+  creditCurrency: string | null;
+  defaultIncoterm: string | null;
+  internalNotes: string | null;
+  contacts: SupplierContactRow[];
   offices: Array<{
     id: string;
     name: string;
@@ -22,27 +50,115 @@ export type SupplierDetailSnapshot = {
   orderCount: number;
 };
 
+const CONTACT_ROLES = [
+  "Sales",
+  "Accounts payable",
+  "Operations",
+  "Quality",
+  "Other",
+] as const;
+
 export function SupplierDetailClient({
   initial,
+  canEdit = true,
 }: {
   initial: SupplierDetailSnapshot;
+  canEdit?: boolean;
 }) {
   const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
   const [name, setName] = useState(initial.name);
   const [code, setCode] = useState(initial.code ?? "");
   const [email, setEmail] = useState(initial.email ?? "");
   const [phone, setPhone] = useState(initial.phone ?? "");
   const [isActive, setIsActive] = useState(initial.isActive);
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [legalName, setLegalName] = useState(initial.legalName ?? "");
+  const [taxId, setTaxId] = useState(initial.taxId ?? "");
+  const [website, setWebsite] = useState(initial.website ?? "");
+  const [regLine1, setRegLine1] = useState(
+    initial.registeredAddressLine1 ?? "",
+  );
+  const [regLine2, setRegLine2] = useState(
+    initial.registeredAddressLine2 ?? "",
+  );
+  const [regCity, setRegCity] = useState(initial.registeredCity ?? "");
+  const [regRegion, setRegRegion] = useState(initial.registeredRegion ?? "");
+  const [regPostal, setRegPostal] = useState(
+    initial.registeredPostalCode ?? "",
+  );
+  const [regCountry, setRegCountry] = useState(
+    initial.registeredCountryCode ?? "",
+  );
+  const [payDays, setPayDays] = useState(
+    initial.paymentTermsDays != null ? String(initial.paymentTermsDays) : "",
+  );
+  const [payLabel, setPayLabel] = useState(initial.paymentTermsLabel ?? "");
+  const [creditLimit, setCreditLimit] = useState(initial.creditLimit ?? "");
+  const [creditCurrency, setCreditCurrency] = useState(
+    initial.creditCurrency ?? "",
+  );
+  const [incoterm, setIncoterm] = useState(initial.defaultIncoterm ?? "");
+  const [internalNotes, setInternalNotes] = useState(
+    initial.internalNotes ?? "",
+  );
+
+  useEffect(() => {
+    setName(initial.name);
+    setCode(initial.code ?? "");
+    setEmail(initial.email ?? "");
+    setPhone(initial.phone ?? "");
+    setIsActive(initial.isActive);
+    setLegalName(initial.legalName ?? "");
+    setTaxId(initial.taxId ?? "");
+    setWebsite(initial.website ?? "");
+    setRegLine1(initial.registeredAddressLine1 ?? "");
+    setRegLine2(initial.registeredAddressLine2 ?? "");
+    setRegCity(initial.registeredCity ?? "");
+    setRegRegion(initial.registeredRegion ?? "");
+    setRegPostal(initial.registeredPostalCode ?? "");
+    setRegCountry(initial.registeredCountryCode ?? "");
+    setPayDays(
+      initial.paymentTermsDays != null ? String(initial.paymentTermsDays) : "",
+    );
+    setPayLabel(initial.paymentTermsLabel ?? "");
+    setCreditLimit(initial.creditLimit ?? "");
+    setCreditCurrency(initial.creditCurrency ?? "");
+    setIncoterm(initial.defaultIncoterm ?? "");
+    setInternalNotes(initial.internalNotes ?? "");
+  }, [initial.updatedAt]);
 
   const [officeName, setOfficeName] = useState("");
   const [officeCity, setOfficeCity] = useState("");
   const [officeCountry, setOfficeCountry] = useState("");
 
-  async function saveSupplier() {
+  const [cName, setCName] = useState("");
+  const [cTitle, setCTitle] = useState("");
+  const [cRole, setCRole] = useState<string>("Sales");
+  const [cEmail, setCEmail] = useState("");
+  const [cPhone, setCPhone] = useState("");
+  const [cNotes, setCNotes] = useState("");
+  const [cPrimary, setCPrimary] = useState(false);
+
+  const [editingContactId, setEditingContactId] = useState<string | null>(null);
+  const [editC, setEditC] = useState<Partial<SupplierContactRow>>({});
+
+  async function saveSupplierProfile() {
     setError(null);
     setBusy(true);
+    const paymentTermsDaysParsed =
+      payDays.trim() === "" ? null : Number.parseInt(payDays.trim(), 10);
+    if (
+      payDays.trim() !== "" &&
+      (Number.isNaN(paymentTermsDaysParsed) ||
+        paymentTermsDaysParsed! < 0 ||
+        paymentTermsDaysParsed! > 3650)
+    ) {
+      setBusy(false);
+      setError("Payment terms (days) must be a whole number from 0 to 3650.");
+      return;
+    }
     const res = await fetch(`/api/suppliers/${initial.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -52,6 +168,21 @@ export function SupplierDetailClient({
         email: email || null,
         phone: phone || null,
         isActive,
+        legalName: legalName || null,
+        taxId: taxId || null,
+        website: website || null,
+        registeredAddressLine1: regLine1 || null,
+        registeredAddressLine2: regLine2 || null,
+        registeredCity: regCity || null,
+        registeredRegion: regRegion || null,
+        registeredPostalCode: regPostal || null,
+        registeredCountryCode: regCountry.trim().toUpperCase() || null,
+        paymentTermsDays: paymentTermsDaysParsed,
+        paymentTermsLabel: payLabel || null,
+        creditLimit: creditLimit.trim() === "" ? null : creditLimit.trim(),
+        creditCurrency: creditCurrency.trim().toUpperCase() || null,
+        defaultIncoterm: incoterm || null,
+        internalNotes: internalNotes || null,
       }),
     });
     const payload = (await res.json()) as { error?: string };
@@ -92,7 +223,11 @@ export function SupplierDetailClient({
   }
 
   async function removeOffice(officeId: string) {
-    if (!window.confirm("Delete this office? Products referencing it will clear the office link.")) {
+    if (
+      !window.confirm(
+        "Delete this office? Products referencing it will clear the office link.",
+      )
+    ) {
       return;
     }
     setBusy(true);
@@ -110,16 +245,120 @@ export function SupplierDetailClient({
     router.refresh();
   }
 
+  async function addContact(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (!cName.trim()) return;
+    setBusy(true);
+    const res = await fetch(`/api/suppliers/${initial.id}/contacts`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: cName.trim(),
+        title: cTitle.trim() || null,
+        role: cRole || null,
+        email: cEmail.trim() || null,
+        phone: cPhone.trim() || null,
+        notes: cNotes.trim() || null,
+        isPrimary: cPrimary,
+      }),
+    });
+    const payload = (await res.json()) as { error?: string };
+    if (!res.ok) {
+      setBusy(false);
+      setError(payload.error ?? "Could not add contact.");
+      return;
+    }
+    setCName("");
+    setCTitle("");
+    setCRole("Sales");
+    setCEmail("");
+    setCPhone("");
+    setCNotes("");
+    setCPrimary(false);
+    setBusy(false);
+    router.refresh();
+  }
+
+  async function saveContact(contactId: string) {
+    const nm = (editC.name ?? "").trim();
+    if (!nm) {
+      setError("Contact name is required.");
+      return;
+    }
+    setError(null);
+    setBusy(true);
+    const res = await fetch(
+      `/api/suppliers/${initial.id}/contacts/${contactId}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: nm,
+          title: (editC.title ?? "").trim() || null,
+          role: (editC.role ?? "").trim() || null,
+          email: (editC.email ?? "").trim() || null,
+          phone: (editC.phone ?? "").trim() || null,
+          notes: (editC.notes ?? "").trim() || null,
+          isPrimary: Boolean(editC.isPrimary),
+        }),
+      },
+    );
+    const payload = (await res.json()) as { error?: string };
+    if (!res.ok) {
+      setBusy(false);
+      setError(payload.error ?? "Update failed.");
+      return;
+    }
+    setEditingContactId(null);
+    setEditC({});
+    setBusy(false);
+    router.refresh();
+  }
+
+  async function removeContact(contactId: string) {
+    if (!window.confirm("Remove this contact?")) return;
+    setBusy(true);
+    const res = await fetch(
+      `/api/suppliers/${initial.id}/contacts/${contactId}`,
+      { method: "DELETE" },
+    );
+    if (!res.ok) {
+      const payload = (await res.json()) as { error?: string };
+      setBusy(false);
+      setError(payload.error ?? "Delete failed.");
+      return;
+    }
+    setBusy(false);
+    router.refresh();
+  }
+
   const f =
     "mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900";
+  const label = "font-medium text-zinc-700";
+
+  function formatTerms() {
+    const parts = [];
+    if (initial.paymentTermsLabel)
+      parts.push(initial.paymentTermsLabel);
+    else if (initial.paymentTermsDays != null)
+      parts.push(`Net ${initial.paymentTermsDays}`);
+    if (initial.defaultIncoterm) parts.push(initial.defaultIncoterm);
+    return parts.length ? parts.join(" · ") : "—";
+  }
 
   return (
     <div className="space-y-10">
       <div>
-        <Link href="/suppliers" className="text-sm text-zinc-600 hover:text-zinc-900">
+        <Link
+          href="/suppliers"
+          className="text-sm text-zinc-600 hover:text-zinc-900"
+        >
           ← Suppliers
         </Link>
-        <h1 className="mt-2 text-2xl font-semibold text-zinc-900">Manage supplier</h1>
+        <h1 className="mt-2 text-2xl font-semibold text-zinc-900">
+          {canEdit ? "Manage supplier" : "Supplier"}
+        </h1>
         <p className="mt-1 text-sm text-zinc-600">
           {initial.productLinkCount} catalog product link
           {initial.productLinkCount === 1 ? "" : "s"} · {initial.orderCount}{" "}
@@ -136,46 +375,534 @@ export function SupplierDetailClient({
 
       <section className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
         <h2 className="text-sm font-semibold text-zinc-900">Company</h2>
+        <p className="mt-1 text-xs text-zinc-500">
+          Trade name, identifiers, and main company channels.
+          {canEdit ? " Saved with the button under Commercial & credit." : ""}
+        </p>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <label className="flex flex-col text-sm">
-            <span className="font-medium text-zinc-700">Name</span>
-            <input value={name} onChange={(e) => setName(e.target.value)} className={f} />
-          </label>
-          <label className="flex flex-col text-sm">
-            <span className="font-medium text-zinc-700">Code</span>
-            <input value={code} onChange={(e) => setCode(e.target.value)} className={f} />
-          </label>
-          <label className="flex flex-col text-sm">
-            <span className="font-medium text-zinc-700">Email</span>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className={f}
-            />
-          </label>
-          <label className="flex flex-col text-sm">
-            <span className="font-medium text-zinc-700">Phone</span>
-            <input value={phone} onChange={(e) => setPhone(e.target.value)} className={f} />
-          </label>
-          <label className="flex items-center gap-2 text-sm sm:col-span-2">
-            <input
-              type="checkbox"
-              checked={isActive}
-              onChange={(e) => setIsActive(e.target.checked)}
-              className="rounded border-zinc-300"
-            />
-            Active supplier
-          </label>
+          {canEdit ? (
+            <>
+              <label className="flex flex-col text-sm">
+                <span className={label}>Name *</span>
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className={f}
+                />
+              </label>
+              <label className="flex flex-col text-sm">
+                <span className={label}>Code</span>
+                <input value={code} onChange={(e) => setCode(e.target.value)} className={f} />
+              </label>
+              <label className="flex flex-col text-sm sm:col-span-2">
+                <span className={label}>Legal name</span>
+                <input
+                  value={legalName}
+                  onChange={(e) => setLegalName(e.target.value)}
+                  className={f}
+                  placeholder="Registered entity name if different"
+                />
+              </label>
+              <label className="flex flex-col text-sm">
+                <span className={label}>Tax / VAT ID</span>
+                <input value={taxId} onChange={(e) => setTaxId(e.target.value)} className={f} />
+              </label>
+              <label className="flex flex-col text-sm">
+                <span className={label}>Website</span>
+                <input
+                  value={website}
+                  onChange={(e) => setWebsite(e.target.value)}
+                  className={f}
+                  placeholder="https://"
+                />
+              </label>
+              <label className="flex flex-col text-sm">
+                <span className={label}>Email</span>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className={f}
+                />
+              </label>
+              <label className="flex flex-col text-sm">
+                <span className={label}>Phone</span>
+                <input value={phone} onChange={(e) => setPhone(e.target.value)} className={f} />
+              </label>
+              <label className="flex items-center gap-2 text-sm sm:col-span-2">
+                <input
+                  type="checkbox"
+                  checked={isActive}
+                  onChange={(e) => setIsActive(e.target.checked)}
+                  className="rounded border-zinc-300"
+                />
+                Active supplier
+              </label>
+            </>
+          ) : (
+            <>
+              <div className="text-sm">
+                <span className={label}>Name</span>
+                <p className="mt-1 text-zinc-900">{name}</p>
+              </div>
+              <div className="text-sm">
+                <span className={label}>Code</span>
+                <p className="mt-1 text-zinc-900">{code || "—"}</p>
+              </div>
+              <div className="text-sm sm:col-span-2">
+                <span className={label}>Legal name</span>
+                <p className="mt-1 text-zinc-900">{legalName || "—"}</p>
+              </div>
+              <div className="text-sm">
+                <span className={label}>Tax / VAT ID</span>
+                <p className="mt-1 text-zinc-900">{taxId || "—"}</p>
+              </div>
+              <div className="text-sm">
+                <span className={label}>Website</span>
+                <p className="mt-1 text-zinc-900">
+                  {website ? (
+                    <a
+                      href={website.startsWith("http") ? website : `https://${website}`}
+                      className="text-amber-800 underline"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {website}
+                    </a>
+                  ) : (
+                    "—"
+                  )}
+                </p>
+              </div>
+              <div className="text-sm">
+                <span className={label}>Email</span>
+                <p className="mt-1 text-zinc-900">{email || "—"}</p>
+              </div>
+              <div className="text-sm">
+                <span className={label}>Phone</span>
+                <p className="mt-1 text-zinc-900">{phone || "—"}</p>
+              </div>
+              <div className="text-sm sm:col-span-2">
+                <span className={label}>Status</span>
+                <p className="mt-1 text-zinc-900">
+                  {isActive ? "Active supplier" : "Inactive"}
+                </p>
+              </div>
+            </>
+          )}
         </div>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => void saveSupplier()}
-          className="mt-4 rounded-md bg-zinc-900 px-4 py-2 text-sm text-white disabled:opacity-50"
-        >
-          {busy ? "Saving…" : "Save supplier"}
-        </button>
+      </section>
+
+      <section className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
+        <h2 className="text-sm font-semibold text-zinc-900">
+          Registered address
+        </h2>
+        <p className="mt-1 text-xs text-zinc-500">
+          Legal / invoicing address (ship-from sites live under offices).
+          {canEdit ? " Saved with the button under Commercial & credit." : ""}
+        </p>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          {canEdit ? (
+            <>
+              <label className="flex flex-col text-sm sm:col-span-2">
+                <span className={label}>Address line 1</span>
+                <input value={regLine1} onChange={(e) => setRegLine1(e.target.value)} className={f} />
+              </label>
+              <label className="flex flex-col text-sm sm:col-span-2">
+                <span className={label}>Address line 2</span>
+                <input value={regLine2} onChange={(e) => setRegLine2(e.target.value)} className={f} />
+              </label>
+              <label className="flex flex-col text-sm">
+                <span className={label}>City</span>
+                <input value={regCity} onChange={(e) => setRegCity(e.target.value)} className={f} />
+              </label>
+              <label className="flex flex-col text-sm">
+                <span className={label}>Region / state</span>
+                <input value={regRegion} onChange={(e) => setRegRegion(e.target.value)} className={f} />
+              </label>
+              <label className="flex flex-col text-sm">
+                <span className={label}>Postal code</span>
+                <input value={regPostal} onChange={(e) => setRegPostal(e.target.value)} className={f} />
+              </label>
+              <label className="flex flex-col text-sm">
+                <span className={label}>Country (ISO)</span>
+                <input
+                  value={regCountry}
+                  onChange={(e) => setRegCountry(e.target.value.toUpperCase())}
+                  className={f}
+                  maxLength={2}
+                  placeholder="US"
+                />
+              </label>
+            </>
+          ) : (
+            <div className="text-sm sm:col-span-2">
+              <p className="whitespace-pre-line text-zinc-900">
+                {[
+                  regLine1,
+                  regLine2,
+                  [regCity, regRegion, regPostal].filter(Boolean).join(", "),
+                  regCountry,
+                ]
+                  .filter(Boolean)
+                  .join("\n") || "—"}
+              </p>
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
+        <h2 className="text-sm font-semibold text-zinc-900">
+          Commercial &amp; credit
+        </h2>
+        <p className="mt-1 text-xs text-zinc-500">
+          Payment terms, credit limit, default Incoterm, and internal notes.
+        </p>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          {canEdit ? (
+            <>
+              <label className="flex flex-col text-sm">
+                <span className={label}>Payment terms (days)</span>
+                <input
+                  value={payDays}
+                  onChange={(e) => setPayDays(e.target.value)}
+                  className={f}
+                  placeholder="30"
+                  inputMode="numeric"
+                />
+              </label>
+              <label className="flex flex-col text-sm">
+                <span className={label}>Terms label</span>
+                <input
+                  value={payLabel}
+                  onChange={(e) => setPayLabel(e.target.value)}
+                  className={f}
+                  placeholder="Net 30, 2/10 Net 30…"
+                />
+              </label>
+              <label className="flex flex-col text-sm">
+                <span className={label}>Credit limit</span>
+                <input
+                  value={creditLimit}
+                  onChange={(e) => setCreditLimit(e.target.value)}
+                  className={f}
+                  placeholder="250000"
+                />
+              </label>
+              <label className="flex flex-col text-sm">
+                <span className={label}>Credit currency (ISO)</span>
+                <input
+                  value={creditCurrency}
+                  onChange={(e) =>
+                    setCreditCurrency(e.target.value.toUpperCase().slice(0, 3))
+                  }
+                  className={f}
+                  placeholder="USD"
+                  maxLength={3}
+                />
+              </label>
+              <label className="flex flex-col text-sm">
+                <span className={label}>Default Incoterm</span>
+                <input
+                  value={incoterm}
+                  onChange={(e) => setIncoterm(e.target.value)}
+                  className={f}
+                  placeholder="FOB, DDP, EXW…"
+                />
+              </label>
+              <label className="flex flex-col text-sm sm:col-span-2">
+                <span className={label}>Internal notes</span>
+                <textarea
+                  value={internalNotes}
+                  onChange={(e) => setInternalNotes(e.target.value)}
+                  rows={4}
+                  className={f}
+                  placeholder="Buyer-only notes (not shared with supplier portal)."
+                />
+              </label>
+            </>
+          ) : (
+            <>
+              <div className="text-sm">
+                <span className={label}>Payment terms</span>
+                <p className="mt-1 text-zinc-900">{formatTerms()}</p>
+              </div>
+              <div className="text-sm">
+                <span className={label}>Credit limit</span>
+                <p className="mt-1 text-zinc-900">
+                  {initial.creditLimit
+                    ? `${initial.creditCurrency ?? ""} ${initial.creditLimit}`.trim()
+                    : "—"}
+                </p>
+              </div>
+              <div className="text-sm">
+                <span className={label}>Default Incoterm</span>
+                <p className="mt-1 text-zinc-900">{incoterm || "—"}</p>
+              </div>
+              <div className="text-sm sm:col-span-2">
+                <span className={label}>Internal notes</span>
+                <p className="mt-1 whitespace-pre-wrap text-zinc-900">
+                  {internalNotes || "—"}
+                </p>
+              </div>
+            </>
+          )}
+        </div>
+        {canEdit ? (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void saveSupplierProfile()}
+            className="mt-6 rounded-md bg-zinc-900 px-4 py-2 text-sm text-white disabled:opacity-50"
+          >
+            {busy ? "Saving…" : "Save company & commercial details"}
+          </button>
+        ) : null}
+      </section>
+
+      <section className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
+        <h2 className="text-sm font-semibold text-zinc-900">Contacts</h2>
+        <p className="mt-1 text-xs text-zinc-500">
+          People for orders, AP, and operations (separate from the main company phone/email).
+        </p>
+        <ul className="mt-4 divide-y divide-zinc-100 border border-zinc-100 rounded-md">
+          {initial.contacts.length === 0 ? (
+            <li className="px-4 py-6 text-sm text-zinc-500">No contacts yet.</li>
+          ) : (
+            initial.contacts.map((c) => (
+              <li key={c.id} className="px-4 py-4 text-sm">
+                {editingContactId === c.id && canEdit ? (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="flex flex-col text-sm sm:col-span-2">
+                      <span className={label}>Name</span>
+                      <input
+                        value={editC.name ?? ""}
+                        onChange={(e) =>
+                          setEditC((p) => ({ ...p, name: e.target.value }))
+                        }
+                        className={f}
+                      />
+                    </label>
+                    <label className="flex flex-col text-sm">
+                      <span className={label}>Title</span>
+                      <input
+                        value={editC.title ?? ""}
+                        onChange={(e) =>
+                          setEditC((p) => ({ ...p, title: e.target.value }))
+                        }
+                        className={f}
+                      />
+                    </label>
+                    <label className="flex flex-col text-sm">
+                      <span className={label}>Role</span>
+                      <input
+                        value={editC.role ?? ""}
+                        onChange={(e) =>
+                          setEditC((p) => ({ ...p, role: e.target.value }))
+                        }
+                        className={f}
+                        placeholder="Sales, Accounts payable…"
+                        list={`contact-roles-${c.id}`}
+                      />
+                      <datalist id={`contact-roles-${c.id}`}>
+                        {CONTACT_ROLES.map((r) => (
+                          <option key={r} value={r} />
+                        ))}
+                      </datalist>
+                    </label>
+                    <label className="flex flex-col text-sm">
+                      <span className={label}>Email</span>
+                      <input
+                        value={editC.email ?? ""}
+                        onChange={(e) =>
+                          setEditC((p) => ({ ...p, email: e.target.value }))
+                        }
+                        className={f}
+                      />
+                    </label>
+                    <label className="flex flex-col text-sm">
+                      <span className={label}>Phone</span>
+                      <input
+                        value={editC.phone ?? ""}
+                        onChange={(e) =>
+                          setEditC((p) => ({ ...p, phone: e.target.value }))
+                        }
+                        className={f}
+                      />
+                    </label>
+                    <label className="flex flex-col text-sm sm:col-span-2">
+                      <span className={label}>Notes</span>
+                      <textarea
+                        value={editC.notes ?? ""}
+                        onChange={(e) =>
+                          setEditC((p) => ({ ...p, notes: e.target.value }))
+                        }
+                        rows={2}
+                        className={f}
+                      />
+                    </label>
+                    <label className="flex items-center gap-2 text-sm sm:col-span-2">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(editC.isPrimary)}
+                        onChange={(e) =>
+                          setEditC((p) => ({
+                            ...p,
+                            isPrimary: e.target.checked,
+                          }))
+                        }
+                        className="rounded border-zinc-300"
+                      />
+                      Primary contact
+                    </label>
+                    <div className="flex flex-wrap gap-2 sm:col-span-2">
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void saveContact(c.id)}
+                        className="rounded-md bg-zinc-900 px-3 py-2 text-sm text-white disabled:opacity-50"
+                      >
+                        Save contact
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => {
+                          setEditingContactId(null);
+                          setEditC({});
+                        }}
+                        className="rounded-md border border-zinc-300 px-3 py-2 text-sm"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="font-medium text-zinc-900">
+                        {c.name}
+                        {c.isPrimary ? (
+                          <span className="ml-2 rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900">
+                            Primary
+                          </span>
+                        ) : null}
+                      </p>
+                      <p className="text-zinc-600">
+                        {[c.title, c.role].filter(Boolean).join(" · ") || "—"}
+                      </p>
+                      <p className="text-zinc-600">
+                        {[c.email, c.phone].filter(Boolean).join(" · ") || "—"}
+                      </p>
+                      {c.notes ? (
+                        <p className="mt-1 text-xs text-zinc-500">{c.notes}</p>
+                      ) : null}
+                    </div>
+                    {canEdit ? (
+                      <div className="flex gap-3">
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => {
+                            setEditingContactId(c.id);
+                            setEditC({ ...c });
+                          }}
+                          className="text-sm text-amber-800 hover:underline"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => void removeContact(c.id)}
+                          className="text-sm text-red-700 hover:underline"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+              </li>
+            ))
+          )}
+        </ul>
+
+        {canEdit ? (
+          <form
+            onSubmit={addContact}
+            className="mt-6 space-y-3 rounded-md border border-dashed border-zinc-300 p-4"
+          >
+            <p className="text-sm font-medium text-zinc-800">Add contact</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="flex flex-col text-sm sm:col-span-2">
+                <span>Name *</span>
+                <input
+                  value={cName}
+                  onChange={(e) => setCName(e.target.value)}
+                  className={f}
+                />
+              </label>
+              <label className="flex flex-col text-sm">
+                <span>Title</span>
+                <input value={cTitle} onChange={(e) => setCTitle(e.target.value)} className={f} />
+              </label>
+              <label className="flex flex-col text-sm">
+                <span>Role</span>
+                <select
+                  value={cRole}
+                  onChange={(e) => setCRole(e.target.value)}
+                  className={f}
+                >
+                  {CONTACT_ROLES.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col text-sm">
+                <span>Email</span>
+                <input
+                  type="email"
+                  value={cEmail}
+                  onChange={(e) => setCEmail(e.target.value)}
+                  className={f}
+                />
+              </label>
+              <label className="flex flex-col text-sm">
+                <span>Phone</span>
+                <input value={cPhone} onChange={(e) => setCPhone(e.target.value)} className={f} />
+              </label>
+              <label className="flex flex-col text-sm sm:col-span-2">
+                <span>Notes</span>
+                <textarea
+                  value={cNotes}
+                  onChange={(e) => setCNotes(e.target.value)}
+                  rows={2}
+                  className={f}
+                />
+              </label>
+              <label className="flex items-center gap-2 text-sm sm:col-span-2">
+                <input
+                  type="checkbox"
+                  checked={cPrimary}
+                  onChange={(e) => setCPrimary(e.target.checked)}
+                  className="rounded border-zinc-300"
+                />
+                Primary contact
+              </label>
+            </div>
+            <button
+              type="submit"
+              disabled={busy}
+              className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm disabled:opacity-50"
+            >
+              Add contact
+            </button>
+          </form>
+        ) : null}
       </section>
 
       <section className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
@@ -195,47 +922,62 @@ export function SupplierDetailClient({
                     {[o.city, o.countryCode].filter(Boolean).join(", ") || "—"}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void removeOffice(o.id)}
-                  className="text-red-700 hover:underline disabled:opacity-50"
-                >
-                  Delete
-                </button>
+                {canEdit ? (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void removeOffice(o.id)}
+                    className="text-red-700 hover:underline disabled:opacity-50"
+                  >
+                    Delete
+                  </button>
+                ) : null}
               </li>
             ))
           )}
         </ul>
 
-        <form onSubmit={addOffice} className="mt-6 space-y-3 rounded-md border border-dashed border-zinc-300 p-4">
-          <p className="text-sm font-medium text-zinc-800">Add office</p>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <label className="flex flex-col text-sm sm:col-span-1">
-              <span>Name *</span>
-              <input
-                value={officeName}
-                onChange={(e) => setOfficeName(e.target.value)}
-                className={f}
-              />
-            </label>
-            <label className="flex flex-col text-sm">
-              <span>City</span>
-              <input value={officeCity} onChange={(e) => setOfficeCity(e.target.value)} className={f} />
-            </label>
-            <label className="flex flex-col text-sm">
-              <span>Country</span>
-              <input value={officeCountry} onChange={(e) => setOfficeCountry(e.target.value)} className={f} />
-            </label>
-          </div>
-          <button
-            type="submit"
-            disabled={busy}
-            className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm disabled:opacity-50"
+        {canEdit ? (
+          <form
+            onSubmit={addOffice}
+            className="mt-6 space-y-3 rounded-md border border-dashed border-zinc-300 p-4"
           >
-            Add office
-          </button>
-        </form>
+            <p className="text-sm font-medium text-zinc-800">Add office</p>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <label className="flex flex-col text-sm sm:col-span-1">
+                <span>Name *</span>
+                <input
+                  value={officeName}
+                  onChange={(e) => setOfficeName(e.target.value)}
+                  className={f}
+                />
+              </label>
+              <label className="flex flex-col text-sm">
+                <span>City</span>
+                <input
+                  value={officeCity}
+                  onChange={(e) => setOfficeCity(e.target.value)}
+                  className={f}
+                />
+              </label>
+              <label className="flex flex-col text-sm">
+                <span>Country</span>
+                <input
+                  value={officeCountry}
+                  onChange={(e) => setOfficeCountry(e.target.value)}
+                  className={f}
+                />
+              </label>
+            </div>
+            <button
+              type="submit"
+              disabled={busy}
+              className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm disabled:opacity-50"
+            >
+              Add office
+            </button>
+          </form>
+        ) : null}
       </section>
     </div>
   );

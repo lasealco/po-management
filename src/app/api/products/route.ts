@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
+import { requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { assertProductRelationsValid } from "@/lib/product-mutation";
 import { parseProductCreateBody } from "@/lib/parse-product-create";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(request: Request) {
+  const gate = await requireApiGrant("org.products", "edit");
+  if (gate) return gate;
+
   let body: unknown;
   try {
     body = await request.json();

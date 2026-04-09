@@ -1,19 +1,46 @@
 import Link from "next/link";
+import { AccessDenied } from "@/components/access-denied";
 import { SupplierCreateForm } from "@/components/supplier-create-form";
-import { getDemoTenant } from "@/lib/demo-tenant";
+import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
 export default async function SuppliersPage() {
-  const tenant = await getDemoTenant();
-  if (!tenant) {
+  const access = await getViewerGrantSet();
+
+  if (!access) {
     return (
       <div className="min-h-screen bg-zinc-50 px-6 py-16">
         <p className="text-zinc-600">Demo tenant not found. Run db:seed.</p>
       </div>
     );
   }
+
+  if (!access.user) {
+    return (
+      <div className="min-h-screen bg-zinc-50 px-6 py-16">
+        <AccessDenied
+          title="Suppliers"
+          message="Choose a demo user in the header."
+        />
+      </div>
+    );
+  }
+
+  if (!viewerHas(access.grantSet, "org.suppliers", "view")) {
+    return (
+      <div className="min-h-screen bg-zinc-50 px-6 py-16">
+        <AccessDenied
+          title="Suppliers"
+          message="You do not have permission to view suppliers (org.suppliers → view)."
+        />
+      </div>
+    );
+  }
+
+  const { tenant } = access;
+  const canEdit = viewerHas(access.grantSet, "org.suppliers", "edit");
 
   const suppliers = await prisma.supplier.findMany({
     where: { tenantId: tenant.id },
@@ -38,6 +65,7 @@ export default async function SuppliersPage() {
                 <th className="px-4 py-3">Name</th>
                 <th className="px-4 py-3">Code</th>
                 <th className="px-4 py-3">Contact</th>
+                <th className="px-4 py-3">Terms</th>
                 <th className="px-4 py-3 text-center">Offices</th>
                 <th className="px-4 py-3 text-center">Products</th>
                 <th className="px-4 py-3 text-center">POs</th>
@@ -54,6 +82,12 @@ export default async function SuppliersPage() {
                   </td>
                   <td className="px-4 py-3 text-zinc-600">
                     {[s.email, s.phone].filter(Boolean).join(" · ") || "—"}
+                  </td>
+                  <td className="px-4 py-3 text-zinc-600">
+                    {s.paymentTermsLabel ??
+                      (s.paymentTermsDays != null
+                        ? `Net ${s.paymentTermsDays}`
+                        : "—")}
                   </td>
                   <td className="px-4 py-3 text-center tabular-nums">
                     {s._count.offices}
@@ -80,7 +114,7 @@ export default async function SuppliersPage() {
                       href={`/suppliers/${s.id}`}
                       className="font-medium text-amber-800 underline-offset-2 hover:underline"
                     >
-                      Manage
+                      {canEdit ? "Manage" : "View"}
                     </Link>
                   </td>
                 </tr>
@@ -89,9 +123,11 @@ export default async function SuppliersPage() {
           </table>
         </section>
 
-        <section className="mt-10 border-t border-zinc-200 pt-10">
-          <SupplierCreateForm />
-        </section>
+        {canEdit ? (
+          <section className="mt-10 border-t border-zinc-200 pt-10">
+            <SupplierCreateForm />
+          </section>
+        ) : null}
       </main>
     </div>
   );

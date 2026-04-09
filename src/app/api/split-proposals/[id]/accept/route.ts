@@ -1,12 +1,22 @@
 import { NextResponse } from "next/server";
+import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
-
-const DEMO_BUYER_EMAIL = "buyer@demo-company.com";
 
 export async function POST(
   _request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
+  const gate = await requireApiGrant("org.orders", "transition");
+  if (gate) return gate;
+
+  const actorId = await getActorUserId();
+  if (!actorId) {
+    return NextResponse.json(
+      { error: "Could not resolve demo actor." },
+      { status: 403 },
+    );
+  }
+
   const { id: proposalId } = await context.params;
 
   const proposal = await prisma.splitProposal.findUnique({
@@ -22,17 +32,6 @@ export async function POST(
   }
 
   const parent = proposal.parentOrder;
-
-  const buyer = await prisma.user.findFirst({
-    where: { tenantId: parent.tenantId, email: DEMO_BUYER_EMAIL },
-    select: { id: true },
-  });
-  if (!buyer) {
-    return NextResponse.json(
-      { error: "Buyer demo user missing. Run db:seed." },
-      { status: 500 },
-    );
-  }
 
   const acceptTransition = await prisma.workflowTransition.findFirst({
     where: {
@@ -70,7 +69,7 @@ export async function POST(
         fromStatusId: parent.statusId,
         toStatusId: acceptTransition.toStatusId,
         actionCode: "buyer_accept_split",
-        actorUserId: buyer.id,
+        actorUserId: actorId,
       },
     });
 

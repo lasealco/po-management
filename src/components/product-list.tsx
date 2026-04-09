@@ -12,6 +12,8 @@ type ProductRow = {
   category: { name: string } | null;
   division: { name: string } | null;
   supplierCount: number;
+  /** Purchase order line rows referencing this product. */
+  orderLineCount: number;
 };
 
 function truncate(text: string | null, max: number) {
@@ -20,7 +22,13 @@ function truncate(text: string | null, max: number) {
   return `${text.slice(0, max - 1)}…`;
 }
 
-export function ProductList({ products }: { products: ProductRow[] }) {
+export function ProductList({
+  products,
+  canEdit = true,
+}: {
+  products: ProductRow[];
+  canEdit?: boolean;
+}) {
   if (products.length === 0) {
     return (
       <div className="rounded-lg border border-dashed border-zinc-300 bg-white px-6 py-12 text-center text-sm text-zinc-600">
@@ -42,6 +50,7 @@ export function ProductList({ products }: { products: ProductRow[] }) {
             <th className="px-4 py-3">Description</th>
             <th className="px-4 py-3">Unit</th>
             <th className="px-4 py-3">Suppliers</th>
+            <th className="px-4 py-3 text-center">PO lines</th>
             <th className="px-4 py-3">Status</th>
             <th className="px-4 py-3">Updated</th>
             <th className="px-4 py-3"> </th>
@@ -72,6 +81,9 @@ export function ProductList({ products }: { products: ProductRow[] }) {
               <td className="whitespace-nowrap px-4 py-3 text-center tabular-nums text-zinc-700">
                 {p.supplierCount}
               </td>
+              <td className="whitespace-nowrap px-4 py-3 text-center tabular-nums text-zinc-700">
+                {p.orderLineCount}
+              </td>
               <td className="px-4 py-3">
                 <span
                   className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
@@ -94,7 +106,7 @@ export function ProductList({ products }: { products: ProductRow[] }) {
                   href={`/products/${p.id}`}
                   className="text-sm font-medium text-amber-800 underline-offset-2 hover:underline"
                 >
-                  Edit
+                  {canEdit ? "Edit" : "View"}
                 </Link>
               </td>
             </tr>

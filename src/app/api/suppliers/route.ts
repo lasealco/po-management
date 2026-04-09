@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
+import { requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
+  const gate = await requireApiGrant("org.suppliers", "view");
+  if (gate) return gate;
+
   const tenant = await getDemoTenant();
   if (!tenant) {
     return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
@@ -20,6 +24,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const gate = await requireApiGrant("org.suppliers", "edit");
+  if (gate) return gate;
+
   let body: unknown;
   try {
     body = await request.json();

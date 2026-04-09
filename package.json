@@ -2,6 +2,9 @@
   "name": "po-management",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "22.x"
+  },
   "prisma": {
     "seed": "node prisma/seed.mjs"
   },
@@ -13,7 +16,7 @@
     "postinstall": "prisma generate",
     "db:migrate": "cross-env PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK=1 prisma migrate deploy",
     "db:migrate:deploy": "npm run db:migrate",
-    "vercel-build": "prisma generate && npm run db:migrate && next build",
+    "vercel-build": "node scripts/vercel-build.cjs",
     "db:seed": "node prisma/seed.mjs"
   },
   "dependencies": {

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireApiGrant } from "@/lib/authz";
 import {
   GLOBAL_PERMISSION_CATALOG,
   isValidGlobalPermission,
@@ -10,6 +11,9 @@ export async function GET(
   _request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
+  const gate = await requireApiGrant("org.settings", "view");
+  if (gate) return gate;
+
   const { id: roleId } = await context.params;
 
   const tenant = await getDemoTenant();
@@ -56,6 +60,9 @@ export async function PUT(
   request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
+  const gate = await requireApiGrant("org.settings", "edit");
+  if (gate) return gate;
+
   const { id: roleId } = await context.params;
 
   let body: unknown;

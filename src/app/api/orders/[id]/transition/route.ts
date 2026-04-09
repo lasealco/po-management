@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
-
-const DEMO_ACTOR_EMAIL = "buyer@demo-company.com";
 
 type TransitionBody = {
   actionCode?: string;
@@ -12,6 +11,9 @@ export async function POST(
   request: NextRequest,
   context: { params: Promise<{ id: string }> },
 ) {
+  const gate = await requireApiGrant("org.orders", "transition");
+  if (gate) return gate;
+
   const { id: orderId } = await context.params;
   const body = (await request.json()) as TransitionBody;
 
@@ -73,21 +75,11 @@ export async function POST(
     );
   }
 
-  const actor = await prisma.user.findFirst({
-    where: {
-      tenantId: order.tenantId,
-      email: DEMO_ACTOR_EMAIL,
-    },
-    select: { id: true },
-  });
-
-  if (!actor) {
+  const actorId = await getActorUserId();
+  if (!actorId) {
     return NextResponse.json(
-      {
-        error:
-          "Demo actor user not found. Run `npm run db:seed` to initialize demo data.",
-      },
-      { status: 500 },
+      { error: "Could not resolve demo actor for this tenant." },
+      { status: 403 },
     );
   }
 
@@ -108,7 +100,7 @@ export async function POST(
         fromStatusId: order.statusId,
         toStatusId: selectedTransition.toStatusId,
         actionCode: selectedTransition.actionCode,
-        actorUserId: actor.id,
+        actorUserId: actorId,
         comment: body.comment?.trim(),
       },
     });

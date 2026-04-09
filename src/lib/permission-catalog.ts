@@ -22,6 +22,13 @@ export const GLOBAL_PERMISSION_CATALOG = [
     description: "Create and resolve split proposals.",
   },
   {
+    resource: "org.orders",
+    action: "edit",
+    label: "Edit order details",
+    description:
+      "Update PO references, commercial terms, ship-to, and notes (not line totals).",
+  },
+  {
     resource: "org.products",
     action: "view",
     label: "View products",

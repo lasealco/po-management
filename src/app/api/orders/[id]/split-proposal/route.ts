@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { allocateTotals } from "@/lib/split";
-
-const DEMO_SUPPLIER_EMAIL = "supplier@demo-company.com";
 
 type AllocationInput = {
   childIndex: number;
@@ -24,6 +23,9 @@ export async function POST(
   request: NextRequest,
   context: { params: Promise<{ id: string }> },
 ) {
+  const gate = await requireApiGrant("org.orders", "split");
+  if (gate) return gate;
+
   const { id: orderId } = await context.params;
   const body = (await request.json()) as Body;
 
@@ -181,17 +183,11 @@ export async function POST(
     );
   }
 
-  const supplierActor = await prisma.user.findFirst({
-    where: { tenantId: order.tenantId, email: DEMO_SUPPLIER_EMAIL },
-    select: { id: true },
-  });
-  if (!supplierActor) {
+  const actorId = await getActorUserId();
+  if (!actorId) {
     return NextResponse.json(
-      {
-        error:
-          "Supplier demo user missing. Run db:seed (supplier@demo-company.com).",
-      },
-      { status: 500 },
+      { error: "Could not resolve demo actor for this tenant." },
+      { status: 403 },
     );
   }
 
@@ -211,7 +207,7 @@ export async function POST(
     const proposal = await tx.splitProposal.create({
       data: {
         parentOrderId: order.id,
-        proposedByUserId: supplierActor.id,
+        proposedByUserId: actorId,
         comment: body.comment?.trim() || null,
         lines: {
           create: body.lines.flatMap((row) =>
@@ -237,7 +233,7 @@ export async function POST(
         fromStatusId: order.statusId,
         toStatusId: transition.toStatusId,
         actionCode: "propose_split",
-        actorUserId: supplierActor.id,
+        actorUserId: actorId,
         comment: body.comment?.trim() || null,
       },
     });

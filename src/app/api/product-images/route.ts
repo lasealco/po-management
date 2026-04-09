@@ -4,6 +4,8 @@ import { join } from "path";
 import { put } from "@vercel/blob";
 import { NextResponse } from "next/server";
 
+import { requireApiGrant } from "@/lib/authz";
+
 export const runtime = "nodejs";
 
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -22,6 +24,9 @@ const MIME_EXT: Record<string, string> = {
 };
 
 export async function POST(request: Request) {
+  const gate = await requireApiGrant("org.products", "edit");
+  if (gate) return gate;
+
   let form: FormData;
   try {
     form = await request.formData();

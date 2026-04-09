@@ -1,28 +1,51 @@
+import { AccessDenied } from "@/components/access-denied";
 import { OrdersBoard } from "@/components/orders-board";
+import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { visibleOnBoard } from "@/lib/workflow-actions";
 
-const DEFAULT_TENANT_SLUG = "demo-company";
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const tenant = await prisma.tenant.findUnique({
-    where: { slug: DEFAULT_TENANT_SLUG },
-    select: { id: true, name: true, slug: true },
-  });
+  const access = await getViewerGrantSet();
 
-  if (!tenant) {
+  if (!access) {
     return (
       <main className="mx-auto w-full max-w-3xl px-6 py-16">
         <h1 className="text-3xl font-semibold text-zinc-900">
           PO Workflow Playground
         </h1>
         <p className="mt-4 text-zinc-600">
-          Demo data not found. Run <code>npm run db:seed</code> locally, then deploy.
+          Demo data not found. Run <code>npm run db:seed</code> locally, then
+          deploy.
         </p>
       </main>
     );
   }
+
+  if (!access.user) {
+    return (
+      <div className="min-h-screen bg-zinc-50">
+        <AccessDenied
+          title="Orders"
+          message="Choose an active demo user in the header bar to view the board."
+        />
+      </div>
+    );
+  }
+
+  if (!viewerHas(access.grantSet, "org.orders", "view")) {
+    return (
+      <div className="min-h-screen bg-zinc-50">
+        <AccessDenied
+          title="Orders"
+          message="You do not have permission to view purchase orders (org.orders → view)."
+        />
+      </div>
+    );
+  }
+
+  const { tenant } = access;
 
   const orders = await prisma.purchaseOrder.findMany({
     where: { tenantId: tenant.id, splitParentId: null },
@@ -57,6 +80,8 @@ export default async function Home() {
       id: order.id,
       orderNumber: order.orderNumber,
       title: order.title,
+      buyerReference: order.buyerReference,
+      requestedDeliveryDate: order.requestedDeliveryDate?.toISOString() ?? null,
       totalAmount: order.totalAmount.toString(),
       currency: order.currency,
       status: order.status,
@@ -82,9 +107,18 @@ export default async function Home() {
     })),
   };
 
+  const canTransitionOrders = viewerHas(
+    access.grantSet,
+    "org.orders",
+    "transition",
+  );
+
   return (
     <div className="min-h-screen bg-zinc-50">
-      <OrdersBoard initialData={initialData} />
+      <OrdersBoard
+        initialData={initialData}
+        canTransitionOrders={canTransitionOrders}
+      />
     </div>
   );
 }

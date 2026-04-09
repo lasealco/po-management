@@ -4,14 +4,29 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const links = [
-  { href: "/", label: "Orders" },
-  { href: "/products", label: "Products" },
-  { href: "/settings", label: "Settings" },
-  { href: "/suppliers", label: "Suppliers" },
+  { href: "/", key: "orders" as const, label: "Orders" },
+  { href: "/products", key: "products" as const, label: "Products" },
+  { href: "/settings", key: "settings" as const, label: "Settings" },
+  { href: "/suppliers", key: "suppliers" as const, label: "Suppliers" },
 ] as const;
 
-export function AppNav() {
+export type AppNavLinkVisibility = {
+  orders: boolean;
+  products: boolean;
+  settings: boolean;
+  suppliers: boolean;
+};
+
+export function AppNav({
+  linkVisibility,
+}: {
+  /** When set (logged-in demo user), only show links for granted resources. */
+  linkVisibility?: AppNavLinkVisibility;
+}) {
   const pathname = usePathname();
+  const visible = linkVisibility
+    ? links.filter((l) => linkVisibility[l.key])
+    : [...links];
 
   return (
     <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
@@ -23,7 +38,7 @@ export function AppNav() {
           PO Management
         </Link>
         <nav className="flex gap-6" aria-label="Main">
-          {links.map(({ href, label }) => {
+          {visible.map(({ href, label }) => {
             const active =
               href === "/"
                 ? pathname === "/" || pathname.startsWith("/orders")

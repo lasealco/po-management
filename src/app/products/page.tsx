@@ -1,14 +1,15 @@
 import Link from "next/link";
+import { AccessDenied } from "@/components/access-denied";
 import { ProductList } from "@/components/product-list";
-import { getDemoTenant } from "@/lib/demo-tenant";
+import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProductCatalogPage() {
-  const tenant = await getDemoTenant();
+  const access = await getViewerGrantSet();
 
-  if (!tenant) {
+  if (!access) {
     return (
       <div className="min-h-screen bg-zinc-50">
         <main className="mx-auto max-w-3xl px-6 py-16">
@@ -21,6 +22,31 @@ export default async function ProductCatalogPage() {
       </div>
     );
   }
+
+  if (!access.user) {
+    return (
+      <div className="min-h-screen bg-zinc-50 px-6 py-16">
+        <AccessDenied
+          title="Products"
+          message="Choose a demo user in the header to view the product catalog."
+        />
+      </div>
+    );
+  }
+
+  if (!viewerHas(access.grantSet, "org.products", "view")) {
+    return (
+      <div className="min-h-screen bg-zinc-50 px-6 py-16">
+        <AccessDenied
+          title="Products"
+          message="You do not have permission to view products (org.products → view)."
+        />
+      </div>
+    );
+  }
+
+  const { tenant } = access;
+  const canEdit = viewerHas(access.grantSet, "org.products", "edit");
 
   const products = await prisma.product.findMany({
     where: { tenantId: tenant.id },
@@ -36,7 +62,7 @@ export default async function ProductCatalogPage() {
       updatedAt: true,
       category: { select: { name: true } },
       division: { select: { name: true } },
-      _count: { select: { productSuppliers: true } },
+      _count: { select: { productSuppliers: true, orderItems: true } },
     },
   });
 
@@ -52,6 +78,7 @@ export default async function ProductCatalogPage() {
     category: p.category,
     division: p.division,
     supplierCount: p._count.productSuppliers,
+    orderLineCount: p._count.orderItems,
   }));
 
   return (
@@ -75,15 +102,17 @@ export default async function ProductCatalogPage() {
               .
             </p>
           </div>
-          <Link
-            href="/products/new"
-            className="inline-flex w-fit items-center justify-center rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
-          >
-            Add product
-          </Link>
+          {canEdit ? (
+            <Link
+              href="/products/new"
+              className="inline-flex w-fit items-center justify-center rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+            >
+              Add product
+            </Link>
+          ) : null}
         </header>
 
-        <ProductList products={productRows} />
+        <ProductList products={productRows} canEdit={canEdit} />
       </main>
     </div>
   );

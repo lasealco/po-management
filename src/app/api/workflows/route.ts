@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
+import { requireApiGrant } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 
 const DEFAULT_TENANT_SLUG = "demo-company";
 
 export async function GET() {
+  const gate = await requireApiGrant("org.settings", "view");
+  if (gate) return gate;
+
   const tenant = await prisma.tenant.findUnique({
     where: { slug: DEFAULT_TENANT_SLUG },
     select: { id: true, name: true, slug: true },

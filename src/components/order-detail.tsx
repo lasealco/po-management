@@ -12,6 +12,23 @@ type OrderDetailResponse = {
     subtotal: string;
     taxAmount: string;
     totalAmount: string;
+    createdAt: string;
+    updatedAt: string;
+    buyerReference: string | null;
+    supplierReference: string | null;
+    paymentTermsDays: number | null;
+    paymentTermsLabel: string | null;
+    incoterm: string | null;
+    requestedDeliveryDate: string | null;
+    shipToName: string | null;
+    shipToLine1: string | null;
+    shipToLine2: string | null;
+    shipToCity: string | null;
+    shipToRegion: string | null;
+    shipToPostalCode: string | null;
+    shipToCountryCode: string | null;
+    internalNotes: string | null;
+    notesToSupplier: string | null;
     status: { code: string; label: string };
     workflow: {
       id: string;
@@ -19,7 +36,13 @@ type OrderDetailResponse = {
       allowSplitOrders: boolean;
       supplierPortalOn: boolean;
     };
-    supplier: { id: string; name: string } | null;
+    supplier: {
+      id: string;
+      name: string;
+      paymentTermsDays: number | null;
+      paymentTermsLabel: string | null;
+      defaultIncoterm: string | null;
+    } | null;
     requester: { id: string; name: string; email: string };
     splitParentId: string | null;
     splitIndex: number | null;
@@ -31,6 +54,12 @@ type OrderDetailResponse = {
     quantity: string;
     unitPrice: string;
     lineTotal: string;
+    productId: string | null;
+    product: {
+      sku: string | null;
+      productCode: string | null;
+      name: string;
+    } | null;
   }>;
   splitChildren: Array<{
     id: string;
@@ -58,11 +87,49 @@ type OrderDetailResponse = {
     requiresComment: boolean;
     toStatus: { code: string; label: string };
   }>;
+  activity: Array<{
+    id: string;
+    createdAt: string;
+    actionCode: string;
+    comment: string | null;
+    actor: { name: string; email: string };
+    fromStatus: { code: string; label: string } | null;
+    toStatus: { code: string; label: string };
+  }>;
+  messages: Array<{
+    id: string;
+    createdAt: string;
+    body: string;
+    isInternal: boolean;
+    author: { name: string; email: string };
+  }>;
+  messageCapabilities: {
+    canPost: boolean;
+    canPostInternal: boolean;
+  };
 };
 
 const todayIsoDate = () => new Date().toISOString().slice(0, 10);
 
-export function OrderDetail({ orderId }: { orderId: string }) {
+function deliveryDateInputValue(iso: string | null) {
+  if (!iso) return "";
+  return iso.slice(0, 10);
+}
+
+export function OrderDetail({
+  orderId,
+  canTransition = true,
+  canSplit = true,
+  canEditHeader = false,
+  canViewProducts = false,
+}: {
+  orderId: string;
+  canTransition?: boolean;
+  canSplit?: boolean;
+  canEditHeader?: boolean;
+  /** When true and line has productId, SKU/code links to the catalog detail page. */
+  canViewProducts?: boolean;
+}) {
   const [data, setData] = useState<OrderDetailResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -71,10 +138,31 @@ export function OrderDetail({ orderId }: { orderId: string }) {
     Record<string, Record<number, { quantity: string; plannedShipDate: string }>>
   >({});
 
+  const [buyerReference, setBuyerReference] = useState("");
+  const [supplierReference, setSupplierReference] = useState("");
+  const [paymentTermsDays, setPaymentTermsDays] = useState("");
+  const [paymentTermsLabel, setPaymentTermsLabel] = useState("");
+  const [incoterm, setIncoterm] = useState("");
+  const [requestedDeliveryDate, setRequestedDeliveryDate] = useState("");
+  const [shipToName, setShipToName] = useState("");
+  const [shipToLine1, setShipToLine1] = useState("");
+  const [shipToLine2, setShipToLine2] = useState("");
+  const [shipToCity, setShipToCity] = useState("");
+  const [shipToRegion, setShipToRegion] = useState("");
+  const [shipToPostalCode, setShipToPostalCode] = useState("");
+  const [shipToCountryCode, setShipToCountryCode] = useState("");
+  const [internalNotes, setInternalNotes] = useState("");
+  const [notesToSupplier, setNotesToSupplier] = useState("");
+
+  const [newMessageBody, setNewMessageBody] = useState("");
+  const [newMessageInternal, setNewMessageInternal] = useState(false);
+
   const load = useCallback(async () => {
     setError(null);
     const response = await fetch(`/api/orders/${orderId}`, { cache: "no-store" });
-    const payload = (await response.json()) as OrderDetailResponse & { error?: string };
+    const payload = (await response.json()) as OrderDetailResponse & {
+      error?: string;
+    };
     if (!response.ok) {
       setError(payload.error ?? "Failed to load order.");
       setData(null);
@@ -86,6 +174,28 @@ export function OrderDetail({ orderId }: { orderId: string }) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!data) return;
+    const o = data.order;
+    setBuyerReference(o.buyerReference ?? "");
+    setSupplierReference(o.supplierReference ?? "");
+    setPaymentTermsDays(
+      o.paymentTermsDays != null ? String(o.paymentTermsDays) : "",
+    );
+    setPaymentTermsLabel(o.paymentTermsLabel ?? "");
+    setIncoterm(o.incoterm ?? "");
+    setRequestedDeliveryDate(deliveryDateInputValue(o.requestedDeliveryDate));
+    setShipToName(o.shipToName ?? "");
+    setShipToLine1(o.shipToLine1 ?? "");
+    setShipToLine2(o.shipToLine2 ?? "");
+    setShipToCity(o.shipToCity ?? "");
+    setShipToRegion(o.shipToRegion ?? "");
+    setShipToPostalCode(o.shipToPostalCode ?? "");
+    setShipToCountryCode(o.shipToCountryCode ?? "");
+    setInternalNotes(o.internalNotes ?? "");
+    setNotesToSupplier(o.notesToSupplier ?? "");
+  }, [data?.order.updatedAt]);
 
   useEffect(() => {
     if (!data?.items.length) return;
@@ -111,14 +221,86 @@ export function OrderDetail({ orderId }: { orderId: string }) {
   }, [data?.items, childCount]);
 
   const canProposeSplit = useMemo(() => {
-    if (!data) return false;
+    if (!data || !canSplit) return false;
     return (
       data.order.status.code === "SENT" &&
       data.order.workflow.allowSplitOrders &&
       !data.pendingProposal &&
       !data.order.splitParentId
     );
-  }, [data]);
+  }, [data, canSplit]);
+
+  async function postMessage() {
+    if (!data || !newMessageBody.trim()) return;
+    setBusy(true);
+    setError(null);
+    const res = await fetch(`/api/orders/${data.order.id}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        body: newMessageBody.trim(),
+        isInternal:
+          data.messageCapabilities.canPostInternal && newMessageInternal,
+      }),
+    });
+    const payload = (await res.json()) as { error?: string };
+    if (!res.ok) {
+      setError(payload.error ?? "Could not post message.");
+      setBusy(false);
+      return;
+    }
+    setNewMessageBody("");
+    setNewMessageInternal(false);
+    await load();
+    setBusy(false);
+  }
+
+  async function saveOrderHeader() {
+    if (!data) return;
+    setBusy(true);
+    setError(null);
+    const days =
+      paymentTermsDays.trim() === ""
+        ? null
+        : Number.parseInt(paymentTermsDays.trim(), 10);
+    if (
+      paymentTermsDays.trim() !== "" &&
+      (Number.isNaN(days) || days! < 0 || days! > 3650)
+    ) {
+      setError("Payment terms (days) must be 0–3650 or empty.");
+      setBusy(false);
+      return;
+    }
+    const res = await fetch(`/api/orders/${data.order.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        buyerReference: buyerReference || null,
+        supplierReference: supplierReference || null,
+        paymentTermsDays: days,
+        paymentTermsLabel: paymentTermsLabel || null,
+        incoterm: incoterm || null,
+        requestedDeliveryDate: requestedDeliveryDate.trim() || null,
+        shipToName: shipToName || null,
+        shipToLine1: shipToLine1 || null,
+        shipToLine2: shipToLine2 || null,
+        shipToCity: shipToCity || null,
+        shipToRegion: shipToRegion || null,
+        shipToPostalCode: shipToPostalCode || null,
+        shipToCountryCode: shipToCountryCode.trim().toUpperCase() || null,
+        internalNotes: internalNotes || null,
+        notesToSupplier: notesToSupplier || null,
+      }),
+    });
+    const payload = (await res.json()) as OrderDetailResponse & { error?: string };
+    if (!res.ok) {
+      setError(payload.error ?? "Save failed.");
+      setBusy(false);
+      return;
+    }
+    setData(payload);
+    setBusy(false);
+  }
 
   async function runTransition(actionCode: string) {
     if (!data) return;
@@ -239,6 +421,10 @@ export function OrderDetail({ orderId }: { orderId: string }) {
 
   if (!data) return null;
 
+  const f =
+    "mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900";
+  const sup = data.order.supplier;
+
   return (
     <main className="mx-auto max-w-4xl px-6 py-10">
       <div className="mb-6 flex items-center justify-between gap-4">
@@ -264,14 +450,296 @@ export function OrderDetail({ orderId }: { orderId: string }) {
 
       <section className="mb-8 rounded-lg border border-zinc-200 bg-white p-4 text-sm">
         <p className="font-medium text-zinc-900">Summary</p>
-        <p className="mt-2 text-zinc-600">
-          Workflow: {data.order.workflow.name} · Supplier:{" "}
-          {data.order.supplier?.name ?? "—"} · Requester:{" "}
-          {data.order.requester.name}
+        <div className="mt-3 grid gap-2 text-zinc-600 sm:grid-cols-2">
+          <p>
+            Workflow:{" "}
+            <span className="font-medium text-zinc-800">
+              {data.order.workflow.name}
+            </span>
+          </p>
+          <p>
+            Supplier:{" "}
+            <span className="font-medium text-zinc-800">
+              {sup?.name ?? "—"}
+            </span>
+          </p>
+          <p>
+            Requester:{" "}
+            <span className="font-medium text-zinc-800">
+              {data.order.requester.name}
+            </span>
+          </p>
+          <p>
+            Created:{" "}
+            <span className="font-medium text-zinc-800">
+              {new Date(data.order.createdAt).toLocaleString()}
+            </span>
+          </p>
+        </div>
+        {sup ? (
+          <p className="mt-3 text-xs text-zinc-500">
+            Supplier profile terms:{" "}
+            {sup.paymentTermsLabel ??
+              (sup.paymentTermsDays != null ? `Net ${sup.paymentTermsDays}` : "—")}
+            {sup.defaultIncoterm ? ` · Incoterm ${sup.defaultIncoterm}` : ""}
+          </p>
+        ) : null}
+        <p className="mt-3 text-zinc-800">
+          Subtotal {data.order.currency} {data.order.subtotal} · Tax{" "}
+          {data.order.taxAmount} ·{" "}
+          <span className="font-semibold">
+            Total {data.order.currency} {data.order.totalAmount}
+          </span>
         </p>
-        <p className="mt-2 text-zinc-800">
-          {data.order.currency} {data.order.totalAmount}
+      </section>
+
+      <section className="mb-8 rounded-lg border border-zinc-200 bg-white p-4 text-sm">
+        <h2 className="text-lg font-medium text-zinc-900">Order details</h2>
+        <p className="mt-1 text-xs text-zinc-500">
+          References, commercial terms, ship-to, and notes. Line totals are not
+          edited here.
         </p>
+        {canEditHeader ? (
+          <p className="mt-1 text-xs text-amber-800">
+            Saved with the button at the bottom of this section.
+          </p>
+        ) : null}
+
+        {!canEditHeader ? (
+          <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div>
+              <dt className="text-xs font-medium uppercase text-zinc-500">
+                Buyer reference
+              </dt>
+              <dd className="text-zinc-900">{data.order.buyerReference ?? "—"}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium uppercase text-zinc-500">
+                Supplier reference
+              </dt>
+              <dd className="text-zinc-900">
+                {data.order.supplierReference ?? "—"}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium uppercase text-zinc-500">
+                Terms
+              </dt>
+              <dd className="text-zinc-900">
+                {data.order.paymentTermsLabel ??
+                  (data.order.paymentTermsDays != null
+                    ? `Net ${data.order.paymentTermsDays}`
+                    : "—")}
+                {data.order.incoterm ? ` · ${data.order.incoterm}` : ""}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium uppercase text-zinc-500">
+                Requested delivery
+              </dt>
+              <dd className="text-zinc-900">
+                {data.order.requestedDeliveryDate
+                  ? new Date(
+                      data.order.requestedDeliveryDate,
+                    ).toLocaleDateString()
+                  : "—"}
+              </dd>
+            </div>
+            <div className="sm:col-span-2">
+              <dt className="text-xs font-medium uppercase text-zinc-500">
+                Ship to
+              </dt>
+              <dd className="whitespace-pre-line text-zinc-900">
+                {[
+                  data.order.shipToName,
+                  data.order.shipToLine1,
+                  data.order.shipToLine2,
+                  [
+                    data.order.shipToCity,
+                    data.order.shipToRegion,
+                    data.order.shipToPostalCode,
+                  ]
+                    .filter(Boolean)
+                    .join(", "),
+                  data.order.shipToCountryCode,
+                ]
+                  .filter(Boolean)
+                  .join("\n") || "—"}
+              </dd>
+            </div>
+            <div className="sm:col-span-2">
+              <dt className="text-xs font-medium uppercase text-zinc-500">
+                Notes to supplier
+              </dt>
+              <dd className="whitespace-pre-wrap text-zinc-900">
+                {data.order.notesToSupplier ?? "—"}
+              </dd>
+            </div>
+            <div className="sm:col-span-2">
+              <dt className="text-xs font-medium uppercase text-zinc-500">
+                Internal notes
+              </dt>
+              <dd className="whitespace-pre-wrap text-zinc-900">
+                {data.order.internalNotes ?? "—"}
+              </dd>
+            </div>
+          </dl>
+        ) : (
+          <div className="mt-4 space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="flex flex-col text-sm">
+                <span className="font-medium text-zinc-700">Buyer reference</span>
+                <input
+                  value={buyerReference}
+                  onChange={(e) => setBuyerReference(e.target.value)}
+                  className={f}
+                />
+              </label>
+              <label className="flex flex-col text-sm">
+                <span className="font-medium text-zinc-700">
+                  Supplier reference
+                </span>
+                <input
+                  value={supplierReference}
+                  onChange={(e) => setSupplierReference(e.target.value)}
+                  className={f}
+                />
+              </label>
+              <label className="flex flex-col text-sm">
+                <span className="font-medium text-zinc-700">
+                  Payment terms (days)
+                </span>
+                <input
+                  value={paymentTermsDays}
+                  onChange={(e) => setPaymentTermsDays(e.target.value)}
+                  className={f}
+                  inputMode="numeric"
+                  placeholder="30"
+                />
+              </label>
+              <label className="flex flex-col text-sm">
+                <span className="font-medium text-zinc-700">Terms label</span>
+                <input
+                  value={paymentTermsLabel}
+                  onChange={(e) => setPaymentTermsLabel(e.target.value)}
+                  className={f}
+                  placeholder="Net 30"
+                />
+              </label>
+              <label className="flex flex-col text-sm">
+                <span className="font-medium text-zinc-700">Incoterm</span>
+                <input
+                  value={incoterm}
+                  onChange={(e) => setIncoterm(e.target.value)}
+                  className={f}
+                  placeholder="FOB, DDP…"
+                />
+              </label>
+              <label className="flex flex-col text-sm">
+                <span className="font-medium text-zinc-700">
+                  Requested delivery
+                </span>
+                <input
+                  type="date"
+                  value={requestedDeliveryDate}
+                  onChange={(e) => setRequestedDeliveryDate(e.target.value)}
+                  className={f}
+                />
+              </label>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-zinc-900">Ship to</p>
+              <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                <label className="flex flex-col text-sm sm:col-span-2">
+                  <span>Name / attention</span>
+                  <input
+                    value={shipToName}
+                    onChange={(e) => setShipToName(e.target.value)}
+                    className={f}
+                  />
+                </label>
+                <label className="flex flex-col text-sm sm:col-span-2">
+                  <span>Address line 1</span>
+                  <input
+                    value={shipToLine1}
+                    onChange={(e) => setShipToLine1(e.target.value)}
+                    className={f}
+                  />
+                </label>
+                <label className="flex flex-col text-sm sm:col-span-2">
+                  <span>Address line 2</span>
+                  <input
+                    value={shipToLine2}
+                    onChange={(e) => setShipToLine2(e.target.value)}
+                    className={f}
+                  />
+                </label>
+                <label className="flex flex-col text-sm">
+                  <span>City</span>
+                  <input
+                    value={shipToCity}
+                    onChange={(e) => setShipToCity(e.target.value)}
+                    className={f}
+                  />
+                </label>
+                <label className="flex flex-col text-sm">
+                  <span>Region</span>
+                  <input
+                    value={shipToRegion}
+                    onChange={(e) => setShipToRegion(e.target.value)}
+                    className={f}
+                  />
+                </label>
+                <label className="flex flex-col text-sm">
+                  <span>Postal code</span>
+                  <input
+                    value={shipToPostalCode}
+                    onChange={(e) => setShipToPostalCode(e.target.value)}
+                    className={f}
+                  />
+                </label>
+                <label className="flex flex-col text-sm">
+                  <span>Country (ISO)</span>
+                  <input
+                    value={shipToCountryCode}
+                    onChange={(e) =>
+                      setShipToCountryCode(e.target.value.toUpperCase())
+                    }
+                    className={f}
+                    maxLength={2}
+                    placeholder="US"
+                  />
+                </label>
+              </div>
+            </div>
+            <label className="flex flex-col text-sm">
+              <span className="font-medium text-zinc-700">Notes to supplier</span>
+              <textarea
+                value={notesToSupplier}
+                onChange={(e) => setNotesToSupplier(e.target.value)}
+                rows={3}
+                className={f}
+              />
+            </label>
+            <label className="flex flex-col text-sm">
+              <span className="font-medium text-zinc-700">Internal notes</span>
+              <textarea
+                value={internalNotes}
+                onChange={(e) => setInternalNotes(e.target.value)}
+                rows={3}
+                className={f}
+              />
+            </label>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void saveOrderHeader()}
+              className="rounded-md bg-zinc-900 px-4 py-2 text-sm text-white disabled:opacity-50"
+            >
+              {busy ? "Saving…" : "Save order details"}
+            </button>
+          </div>
+        )}
       </section>
 
       <section className="mb-8">
@@ -281,6 +749,7 @@ export function OrderDetail({ orderId }: { orderId: string }) {
             <thead className="bg-zinc-50 text-left text-xs uppercase text-zinc-500">
               <tr>
                 <th className="px-3 py-2">#</th>
+                <th className="px-3 py-2">SKU / code</th>
                 <th className="px-3 py-2">Description</th>
                 <th className="px-3 py-2">Qty</th>
                 <th className="px-3 py-2">Unit</th>
@@ -291,7 +760,7 @@ export function OrderDetail({ orderId }: { orderId: string }) {
               {data.items.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={6}
                     className="px-3 py-8 text-center text-sm text-zinc-500"
                   >
                     No line items on this order. If this is production demo data,
@@ -300,19 +769,120 @@ export function OrderDetail({ orderId }: { orderId: string }) {
                   </td>
                 </tr>
               ) : (
-                data.items.map((item) => (
-                  <tr key={item.id}>
-                    <td className="px-3 py-2">{item.lineNo}</td>
-                    <td className="px-3 py-2">{item.description}</td>
-                    <td className="px-3 py-2">{item.quantity}</td>
-                    <td className="px-3 py-2">{item.unitPrice}</td>
-                    <td className="px-3 py-2">{item.lineTotal}</td>
-                  </tr>
-                ))
+                data.items.map((item) => {
+                  const skuDisplay =
+                    item.product?.sku || item.product?.productCode || "—";
+                  const skuCell =
+                    canViewProducts && item.productId ? (
+                      <Link
+                        href={`/products/${item.productId}`}
+                        className="font-mono text-xs text-amber-800 underline-offset-2 hover:underline"
+                      >
+                        {skuDisplay}
+                      </Link>
+                    ) : (
+                      <span className="font-mono text-xs text-zinc-600">
+                        {skuDisplay}
+                      </span>
+                    );
+                  return (
+                    <tr key={item.id}>
+                      <td className="px-3 py-2">{item.lineNo}</td>
+                      <td className="px-3 py-2">{skuCell}</td>
+                      <td className="px-3 py-2">
+                        {item.description}
+                        {item.product?.name &&
+                        item.product.name !== item.description ? (
+                          <span className="mt-0.5 block text-xs text-zinc-500">
+                            Product: {item.product.name}
+                          </span>
+                        ) : null}
+                      </td>
+                      <td className="px-3 py-2">{item.quantity}</td>
+                      <td className="px-3 py-2">{item.unitPrice}</td>
+                      <td className="px-3 py-2">{item.lineTotal}</td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
+      </section>
+
+      <section className="mb-8 rounded-lg border border-zinc-200 bg-white p-4">
+        <h2 className="text-lg font-medium text-zinc-900">Messages</h2>
+        <p className="mt-1 text-xs text-zinc-500">
+          Shared thread with the supplier (and internal notes for buyers with
+          edit permission). Internal messages are hidden from supplier-portal
+          users.
+        </p>
+        <ul className="mt-4 space-y-3 text-sm">
+          {data.messages.length === 0 ? (
+            <li className="text-zinc-500">No messages yet.</li>
+          ) : (
+            data.messages.map((m) => (
+              <li
+                key={m.id}
+                className="rounded-md border border-zinc-100 bg-zinc-50/80 px-3 py-2"
+              >
+                <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+                  <span className="font-medium text-zinc-700">
+                    {m.author.name}
+                  </span>
+                  <span>{m.author.email}</span>
+                  <span>·</span>
+                  <span>{new Date(m.createdAt).toLocaleString()}</span>
+                  {m.isInternal ? (
+                    <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-amber-900">
+                      Internal
+                    </span>
+                  ) : (
+                    <span className="rounded bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-sky-900">
+                      Shared
+                    </span>
+                  )}
+                </div>
+                <p className="mt-2 whitespace-pre-wrap text-zinc-800">
+                  {m.body}
+                </p>
+              </li>
+            ))
+          )}
+        </ul>
+        {data.messageCapabilities.canPost ? (
+          <div className="mt-4 border-t border-zinc-100 pt-4">
+            <label className="flex flex-col text-sm">
+              <span className="font-medium text-zinc-700">Add message</span>
+              <textarea
+                value={newMessageBody}
+                onChange={(e) => setNewMessageBody(e.target.value)}
+                rows={3}
+                className={f}
+                placeholder="Question, confirmation, or handoff…"
+              />
+            </label>
+            {data.messageCapabilities.canPostInternal ? (
+              <label className="mt-3 flex items-center gap-2 text-sm text-zinc-700">
+                <input
+                  type="checkbox"
+                  checked={newMessageInternal}
+                  onChange={(e) => setNewMessageInternal(e.target.checked)}
+                  className="rounded border-zinc-300"
+                />
+                Internal (buyer-only, not visible to supplier portal)
+              </label>
+            ) : null}
+            <button
+              type="button"
+              disabled={busy || !newMessageBody.trim()}
+              onClick={() => void postMessage()}
+              className="mt-3 rounded-md bg-zinc-900 px-4 py-2 text-sm text-white disabled:opacity-50"
+            >
+              {busy ? "Posting…" : "Post message"}
+            </button>
+          </div>
+        ) : null}
       </section>
 
       {data.splitChildren.length > 0 ? (
@@ -351,24 +921,31 @@ export function OrderDetail({ orderId }: { orderId: string }) {
               </li>
             ))}
           </ul>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => acceptSplit(data.pendingProposal!.id)}
-              className="rounded-md bg-zinc-900 px-3 py-2 text-sm text-white disabled:opacity-50"
-            >
-              Accept split
-            </button>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => rejectSplit(data.pendingProposal!.id)}
-              className="rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-800 disabled:opacity-50"
-            >
-              Reject split
-            </button>
-          </div>
+          {canTransition ? (
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => acceptSplit(data.pendingProposal!.id)}
+                className="rounded-md bg-zinc-900 px-3 py-2 text-sm text-white disabled:opacity-50"
+              >
+                Accept split
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => rejectSplit(data.pendingProposal!.id)}
+                className="rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-800 disabled:opacity-50"
+              >
+                Reject split
+              </button>
+            </div>
+          ) : (
+            <p className="mt-4 text-sm text-zinc-600">
+              You do not have permission to accept or reject split proposals
+              (org.orders → transition).
+            </p>
+          )}
         </section>
       ) : null}
 
@@ -475,6 +1052,38 @@ export function OrderDetail({ orderId }: { orderId: string }) {
         </section>
       ) : null}
 
+      {data.activity.length > 0 ? (
+        <section className="mb-8 rounded-lg border border-zinc-200 bg-white p-4">
+          <h2 className="text-lg font-medium text-zinc-900">Activity</h2>
+          <p className="mt-1 text-xs text-zinc-500">
+            Recent status changes and workflow actions.
+          </p>
+          <ul className="mt-4 space-y-3 border-l border-zinc-200 pl-4 text-sm">
+            {data.activity.map((row) => (
+              <li key={row.id} className="relative">
+                <span className="absolute -left-[21px] top-1.5 h-2 w-2 rounded-full bg-zinc-400" />
+                <p className="font-medium text-zinc-900">
+                  {row.fromStatus ? (
+                    <>
+                      {row.fromStatus.label} → {row.toStatus.label}
+                    </>
+                  ) : (
+                    row.toStatus.label
+                  )}
+                </p>
+                <p className="text-xs text-zinc-500">
+                  {new Date(row.createdAt).toLocaleString()} · {row.actor.name} ·{" "}
+                  <code className="rounded bg-zinc-100 px-1">{row.actionCode}</code>
+                </p>
+                {row.comment ? (
+                  <p className="mt-1 text-zinc-600">{row.comment}</p>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
       <section className="rounded-lg border border-zinc-200 bg-white p-4">
         <h2 className="text-lg font-medium text-zinc-900">Actions</h2>
         {(() => {
@@ -484,6 +1093,14 @@ export function OrderDetail({ orderId }: { orderId: string }) {
               action.actionCode !== "buyer_accept_split" &&
               action.actionCode !== "buyer_reject_proposal",
           );
+          if (!canTransition) {
+            return (
+              <p className="mt-3 text-sm text-zinc-600">
+                You do not have permission to run workflow actions (org.orders
+                → transition).
+              </p>
+            );
+          }
           if (actions.length === 0) {
             return (
               <p className="mt-3 text-sm text-zinc-500">

@@ -1,15 +1,14 @@
 import { NextResponse } from "next/server";
+import { requireApiGrant } from "@/lib/authz";
+import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
 import { visibleOnBoard } from "@/lib/workflow-actions";
 
-const DEFAULT_TENANT_SLUG = "demo-company";
-
 export async function GET() {
-  const tenant = await prisma.tenant.findUnique({
-    where: { slug: DEFAULT_TENANT_SLUG },
-    select: { id: true, name: true, slug: true },
-  });
+  const gate = await requireApiGrant("org.orders", "view");
+  if (gate) return gate;
 
+  const tenant = await getDemoTenant();
   if (!tenant) {
     return NextResponse.json(
       {
@@ -72,6 +71,8 @@ export async function GET() {
       id: order.id,
       orderNumber: order.orderNumber,
       title: order.title,
+      buyerReference: order.buyerReference,
+      requestedDeliveryDate: order.requestedDeliveryDate?.toISOString() ?? null,
       totalAmount: order.totalAmount.toString(),
       currency: order.currency,
       status: order.status,

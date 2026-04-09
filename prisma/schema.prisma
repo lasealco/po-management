@@ -20,6 +20,7 @@ model Tenant {
   productCategories ProductCategory[]
   productDivisions  ProductDivision[]
   supplierOffices   SupplierOffice[]
+  supplierContacts  SupplierContact[]
   orders            PurchaseOrder[]
   workflows         Workflow[]
 }
@@ -95,16 +96,62 @@ model Supplier {
   email     String?
   phone     String?
   isActive  Boolean  @default(true)
+
+  /// Legal / registered business name if different from trade name.
+  legalName String?
+  /// VAT, EIN, company registration, etc.
+  taxId     String?
+  website   String?
+
+  registeredAddressLine1 String?
+  registeredAddressLine2 String?
+  registeredCity         String?
+  registeredRegion       String?
+  registeredPostalCode   String?
+  registeredCountryCode  String? @db.VarChar(2)
+
+  /// e.g. 30 for Net 30; use with paymentTermsLabel.
+  paymentTermsDays   Int?
+  paymentTermsLabel  String?
+  creditLimit        Decimal? @db.Decimal(14, 2)
+  creditCurrency     String?  @db.VarChar(3)
+  defaultIncoterm    String?
+  internalNotes      String?  @db.Text
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   tenant           Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   orders           PurchaseOrder[]
   offices          SupplierOffice[]
+  contacts         SupplierContact[]
   productSuppliers ProductSupplier[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
+}
+
+/// People at the supplier (sales, AP, operations).
+model SupplierContact {
+  id         String   @id @default(cuid())
+  tenantId   String
+  supplierId String
+  name       String
+  title      String?
+  /// e.g. Sales, Accounts payable, Quality
+  role       String?
+  email      String?
+  phone      String?
+  notes      String?
+  isPrimary  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([supplierId])
 }
 
 /// Buyer-facing catalog category (Settings → category management).
@@ -350,6 +397,26 @@ model PurchaseOrder {
   splitParentId String?
   splitIndex    Int?
   splitProposalId String?
+
+  /// Buyer / internal reference (e.g. requisition #).
+  buyerReference    String?
+  /// Supplier acknowledgment or their order #.
+  supplierReference String?
+  paymentTermsDays   Int?
+  paymentTermsLabel  String?
+  incoterm           String?
+  requestedDeliveryDate DateTime?
+
+  shipToName         String?
+  shipToLine1        String?
+  shipToLine2        String?
+  shipToCity         String?
+  shipToRegion       String?
+  shipToPostalCode   String?
+  shipToCountryCode  String? @db.VarChar(2)
+
+  internalNotes   String? @db.Text
+  notesToSupplier String? @db.Text
 
   tenant        Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   workflow      Workflow             @relation(fields: [workflowId], references: [id], onDelete: Restrict)

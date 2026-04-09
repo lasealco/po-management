@@ -20,6 +20,8 @@ type OrderRow = {
   id: string;
   orderNumber: string;
   title: string | null;
+  buyerReference: string | null;
+  requestedDeliveryDate: string | null;
   totalAmount: string;
   currency: string;
   status: OrderStatus;
@@ -35,7 +37,14 @@ type OrdersResponse = {
   orders: OrderRow[];
 };
 
-export function OrdersBoard({ initialData }: { initialData: OrdersResponse }) {
+export function OrdersBoard({
+  initialData,
+  canTransitionOrders = true,
+}: {
+  initialData: OrdersResponse;
+  /** When false, workflow action buttons are hidden (org.orders → transition). */
+  canTransitionOrders?: boolean;
+}) {
   const [data, setData] = useState(initialData);
   const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -104,6 +113,8 @@ export function OrdersBoard({ initialData }: { initialData: OrdersResponse }) {
           <thead className="bg-zinc-50">
             <tr className="text-left text-xs uppercase tracking-wide text-zinc-500">
               <th className="px-4 py-3">Order</th>
+              <th className="px-4 py-3">Ref</th>
+              <th className="px-4 py-3">Due</th>
               <th className="px-4 py-3">Supplier</th>
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Total</th>
@@ -119,6 +130,14 @@ export function OrdersBoard({ initialData }: { initialData: OrdersResponse }) {
                   <p className="font-medium text-zinc-900">{order.orderNumber}</p>
                   <p className="text-zinc-600">{order.title || "Untitled PO"}</p>
                 </td>
+                <td className="px-4 py-4 text-zinc-600">
+                  {order.buyerReference ?? "—"}
+                </td>
+                <td className="px-4 py-4 text-zinc-600">
+                  {order.requestedDeliveryDate
+                    ? new Date(order.requestedDeliveryDate).toLocaleDateString()
+                    : "—"}
+                </td>
                 <td className="px-4 py-4 text-zinc-700">
                   {order.supplier?.name ?? "No supplier"}
                 </td>
@@ -133,7 +152,9 @@ export function OrdersBoard({ initialData }: { initialData: OrdersResponse }) {
                 <td className="px-4 py-4 text-zinc-700">{order.workflow.name}</td>
                 <td className="px-4 py-4">
                   <div className="flex flex-wrap gap-2">
-                    {order.allowedActions.length === 0 ? (
+                    {!canTransitionOrders ? (
+                      <span className="text-xs text-zinc-500">View only</span>
+                    ) : order.allowedActions.length === 0 ? (
                       <span className="text-xs text-zinc-400">No actions</span>
                     ) : (
                       order.allowedActions.map((action) => (

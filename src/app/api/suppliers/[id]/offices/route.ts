@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
 
@@ -6,6 +7,9 @@ export async function POST(
   request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
+  const gate = await requireApiGrant("org.suppliers", "edit");
+  if (gate) return gate;
+
   const { id: supplierId } = await context.params;
 
   let body: unknown;

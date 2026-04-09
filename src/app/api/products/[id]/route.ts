@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
+import { requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { assertProductRelationsValid } from "@/lib/product-mutation";
 import { parseProductCreateBody } from "@/lib/parse-product-create";
@@ -9,6 +10,9 @@ export async function PATCH(
   request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
+  const gate = await requireApiGrant("org.products", "edit");
+  if (gate) return gate;
+
   const { id } = await context.params;
 
   let body: unknown;
@@ -170,6 +174,9 @@ export async function DELETE(
   _request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
+  const gate = await requireApiGrant("org.products", "edit");
+  if (gate) return gate;
+
   const { id } = await context.params;
   const tenant = await getDemoTenant();
   if (!tenant) {

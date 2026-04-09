@@ -1,0 +1,16 @@
+-- AlterTable
+ALTER TABLE "PurchaseOrder" ADD COLUMN "buyerReference" TEXT,
+ADD COLUMN "supplierReference" TEXT,
+ADD COLUMN "paymentTermsDays" INTEGER,
+ADD COLUMN "paymentTermsLabel" TEXT,
+ADD COLUMN "incoterm" TEXT,
+ADD COLUMN "requestedDeliveryDate" TIMESTAMP(3),
+ADD COLUMN "shipToName" TEXT,
+ADD COLUMN "shipToLine1" TEXT,
+ADD COLUMN "shipToLine2" TEXT,
+ADD COLUMN "shipToCity" TEXT,
+ADD COLUMN "shipToRegion" TEXT,
+ADD COLUMN "shipToPostalCode" TEXT,
+ADD COLUMN "shipToCountryCode" VARCHAR(2),
+ADD COLUMN "internalNotes" TEXT,
+ADD COLUMN "notesToSupplier" TEXT;

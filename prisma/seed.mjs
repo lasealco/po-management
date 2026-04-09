@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 
@@ -103,6 +103,7 @@ async function seed() {
 
   const buyerGrants = [
     ["org.orders", "view"],
+    ["org.orders", "edit"],
     ["org.orders", "transition"],
     ["org.orders", "split"],
     ["org.products", "view"],
@@ -118,6 +119,7 @@ async function seed() {
   const supplierGrants = [
     ["org.orders", "view"],
     ["org.orders", "transition"],
+    ["org.orders", "split"],
     ["org.products", "view"],
     ["org.suppliers", "view"],
   ];
@@ -128,16 +130,81 @@ async function seed() {
 
   const supplier = await prisma.supplier.upsert({
     where: { tenantId_code: { tenantId: tenant.id, code: "SUP-001" } },
-    update: { name: "Acme Industrial Supplies", isActive: true },
+    update: {
+      name: "Acme Industrial Supplies",
+      isActive: true,
+      phone: "+1 312-555-0100",
+      legalName: "Acme Industrial Supplies LLC",
+      taxId: "US-EIN-12-3456789",
+      website: "https://acme-industrial.example",
+      registeredAddressLine1: "100 Industrial Way",
+      registeredAddressLine2: "Suite 200",
+      registeredCity: "Chicago",
+      registeredRegion: "IL",
+      registeredPostalCode: "60601",
+      registeredCountryCode: "US",
+      paymentTermsDays: 30,
+      paymentTermsLabel: "Net 30",
+      creditLimit: new Prisma.Decimal("250000.00"),
+      creditCurrency: "USD",
+      defaultIncoterm: "FOB",
+      internalNotes:
+        "Preferred packaging vendor; annual contract review in Q4. AP: use remit address on invoice.",
+    },
     create: {
       tenantId: tenant.id,
       code: "SUP-001",
       name: "Acme Industrial Supplies",
       email: "orders@acme.example",
+      phone: "+1 312-555-0100",
+      legalName: "Acme Industrial Supplies LLC",
+      taxId: "US-EIN-12-3456789",
+      website: "https://acme-industrial.example",
+      registeredAddressLine1: "100 Industrial Way",
+      registeredAddressLine2: "Suite 200",
+      registeredCity: "Chicago",
+      registeredRegion: "IL",
+      registeredPostalCode: "60601",
+      registeredCountryCode: "US",
+      paymentTermsDays: 30,
+      paymentTermsLabel: "Net 30",
+      creditLimit: new Prisma.Decimal("250000.00"),
+      creditCurrency: "USD",
+      defaultIncoterm: "FOB",
+      internalNotes:
+        "Preferred packaging vendor; annual contract review in Q4. AP: use remit address on invoice.",
     },
   });
 
-  await prisma.productCategory.upsert({
+  await prisma.supplierContact.deleteMany({ where: { supplierId: supplier.id } });
+  await prisma.supplierContact.createMany({
+    data: [
+      {
+        tenantId: tenant.id,
+        supplierId: supplier.id,
+        name: "Jordan Lee",
+        title: "Account Manager",
+        role: "Sales",
+        email: "jordan.lee@acme.example",
+        phone: "+1 312-555-0142",
+        notes: "Primary for PO questions and expedites.",
+        isPrimary: true,
+      },
+      {
+        tenantId: tenant.id,
+        supplierId: supplier.id,
+        name: "Sam Rivera",
+        title: "AP Specialist",
+        role: "Accounts payable",
+        email: "ap@acme.example",
+        phone: "+1 312-555-0199",
+        notes: "Invoice submissions and payment status.",
+        isPrimary: false,
+      },
+    ],
+  });
+
+  const catPackaging = await prisma.productCategory.upsert({
     where: {
       tenantId_name: { tenantId: tenant.id, name: "Packaging Supplies" },
     },
@@ -149,7 +216,7 @@ async function seed() {
       sortOrder: 10,
     },
   });
-  await prisma.productCategory.upsert({
+  const catOffice = await prisma.productCategory.upsert({
     where: {
       tenantId_name: { tenantId: tenant.id, name: "Office Consumables" },
     },
@@ -162,7 +229,7 @@ async function seed() {
     },
   });
 
-  await prisma.productDivision.upsert({
+  const divOperations = await prisma.productDivision.upsert({
     where: {
       tenantId_name: { tenantId: tenant.id, name: "Operations" },
     },
@@ -174,7 +241,7 @@ async function seed() {
       sortOrder: 10,
     },
   });
-  await prisma.productDivision.upsert({
+  const divProcurement = await prisma.productDivision.upsert({
     where: {
       tenantId_name: { tenantId: tenant.id, name: "Procurement" },
     },
@@ -187,7 +254,7 @@ async function seed() {
     },
   });
 
-  await prisma.supplierOffice.upsert({
+  const hqOffice = await prisma.supplierOffice.upsert({
     where: { supplierId_name: { supplierId: supplier.id, name: "Headquarters" } },
     update: {
       addressLine1: "100 Industrial Way",
@@ -203,6 +270,105 @@ async function seed() {
       countryCode: "US",
     },
   });
+
+  const prodPaper = await prisma.product.upsert({
+    where: { tenantId_sku: { tenantId: tenant.id, sku: "OFF-PAPER-A4-500" } },
+    update: {
+      name: "Premium printer paper (A4, 500 sheets)",
+      productCode: "PAPER-A4-500",
+      unit: "ream",
+      categoryId: catOffice.id,
+      divisionId: divOperations.id,
+      supplierOfficeId: hqOffice.id,
+    },
+    create: {
+      tenantId: tenant.id,
+      sku: "OFF-PAPER-A4-500",
+      productCode: "PAPER-A4-500",
+      name: "Premium printer paper (A4, 500 sheets)",
+      description: "Office consumable — A4 white",
+      unit: "ream",
+      categoryId: catOffice.id,
+      divisionId: divOperations.id,
+      supplierOfficeId: hqOffice.id,
+    },
+  });
+  const prodToner = await prisma.product.upsert({
+    where: { tenantId_sku: { tenantId: tenant.id, sku: "OFF-TONER-GEN-1" } },
+    update: {
+      name: "Toner cartridges (generic)",
+      productCode: "TONER-GEN",
+      unit: "ea",
+      categoryId: catOffice.id,
+      divisionId: divOperations.id,
+      supplierOfficeId: hqOffice.id,
+    },
+    create: {
+      tenantId: tenant.id,
+      sku: "OFF-TONER-GEN-1",
+      productCode: "TONER-GEN",
+      name: "Toner cartridges (generic)",
+      description: "Office consumable",
+      unit: "ea",
+      categoryId: catOffice.id,
+      divisionId: divOperations.id,
+      supplierOfficeId: hqOffice.id,
+    },
+  });
+  const prodCorrugated = await prisma.product.upsert({
+    where: { tenantId_sku: { tenantId: tenant.id, sku: "PKG-CORR-ROLL" } },
+    update: {
+      name: "Corrugated rolls",
+      productCode: "CORR-ROLL",
+      unit: "roll",
+      categoryId: catPackaging.id,
+      divisionId: divProcurement.id,
+      supplierOfficeId: hqOffice.id,
+    },
+    create: {
+      tenantId: tenant.id,
+      sku: "PKG-CORR-ROLL",
+      productCode: "CORR-ROLL",
+      name: "Corrugated rolls",
+      description: "Packaging material",
+      unit: "roll",
+      categoryId: catPackaging.id,
+      divisionId: divProcurement.id,
+      supplierOfficeId: hqOffice.id,
+    },
+  });
+  const prodPallet = await prisma.product.upsert({
+    where: { tenantId_sku: { tenantId: tenant.id, sku: "PKG-PALLET-48" } },
+    update: {
+      name: "Standard shipping pallets (48x40)",
+      productCode: "PALLET-4840",
+      unit: "ea",
+      categoryId: catPackaging.id,
+      divisionId: divProcurement.id,
+      supplierOfficeId: hqOffice.id,
+    },
+    create: {
+      tenantId: tenant.id,
+      sku: "PKG-PALLET-48",
+      productCode: "PALLET-4840",
+      name: "Standard shipping pallets (48x40)",
+      description: "Packaging / logistics",
+      unit: "ea",
+      categoryId: catPackaging.id,
+      divisionId: divProcurement.id,
+      supplierOfficeId: hqOffice.id,
+    },
+  });
+
+  for (const p of [prodPaper, prodToner, prodCorrugated, prodPallet]) {
+    await prisma.productSupplier.upsert({
+      where: {
+        productId_supplierId: { productId: p.id, supplierId: supplier.id },
+      },
+      update: {},
+      create: { productId: p.id, supplierId: supplier.id },
+    });
+  }
 
   const simpleWorkflow = await prisma.workflow.upsert({
     where: { tenantId_code: { tenantId: tenant.id, code: "SIMPLE_INTERNAL" } },
@@ -458,6 +624,19 @@ async function seed() {
       subtotal: "1250.00",
       taxAmount: "125.00",
       totalAmount: "1375.00",
+      buyerReference: "REQ-2026-0042",
+      paymentTermsDays: 30,
+      paymentTermsLabel: "Net 30",
+      incoterm: "DDP",
+      requestedDeliveryDate: new Date("2026-04-30T12:00:00.000Z"),
+      shipToName: "Demo Company — Chicago HQ",
+      shipToLine1: "200 Commerce Drive",
+      shipToCity: "Chicago",
+      shipToRegion: "IL",
+      shipToPostalCode: "60654",
+      shipToCountryCode: "US",
+      internalNotes: "Budget owner: Operations. Split ship OK if backordered.",
+      notesToSupplier: "Deliver to receiving dock B; call 30 min before arrival.",
     },
     {
       orderNumber: "PO-1002",
@@ -469,6 +648,21 @@ async function seed() {
       subtotal: "5000.00",
       taxAmount: "500.00",
       totalAmount: "5500.00",
+      buyerReference: "CAPEX-PKG-18",
+      supplierReference: "ACME-SO-77821",
+      paymentTermsDays: 30,
+      paymentTermsLabel: "Net 30",
+      incoterm: "FOB",
+      requestedDeliveryDate: new Date("2026-05-15T12:00:00.000Z"),
+      shipToName: "Demo Company — Warehouse North",
+      shipToLine1: "1 Logistics Way",
+      shipToLine2: "Gate 3",
+      shipToCity: "Milwaukee",
+      shipToRegion: "WI",
+      shipToPostalCode: "53202",
+      shipToCountryCode: "US",
+      internalNotes: "Q2 packaging stock-up; confirm pallet count before ship.",
+      notesToSupplier: "FOB Chicago; use our carrier account # on BOL.",
     },
   ];
 
@@ -484,6 +678,21 @@ async function seed() {
         subtotal: order.subtotal,
         taxAmount: order.taxAmount,
         totalAmount: order.totalAmount,
+        buyerReference: order.buyerReference ?? null,
+        supplierReference: order.supplierReference ?? null,
+        paymentTermsDays: order.paymentTermsDays ?? null,
+        paymentTermsLabel: order.paymentTermsLabel ?? null,
+        incoterm: order.incoterm ?? null,
+        requestedDeliveryDate: order.requestedDeliveryDate ?? null,
+        shipToName: order.shipToName ?? null,
+        shipToLine1: order.shipToLine1 ?? null,
+        shipToLine2: order.shipToLine2 ?? null,
+        shipToCity: order.shipToCity ?? null,
+        shipToRegion: order.shipToRegion ?? null,
+        shipToPostalCode: order.shipToPostalCode ?? null,
+        shipToCountryCode: order.shipToCountryCode ?? null,
+        internalNotes: order.internalNotes ?? null,
+        notesToSupplier: order.notesToSupplier ?? null,
       },
       create: {
         tenantId: tenant.id,
@@ -496,6 +705,21 @@ async function seed() {
         subtotal: order.subtotal,
         taxAmount: order.taxAmount,
         totalAmount: order.totalAmount,
+        buyerReference: order.buyerReference ?? null,
+        supplierReference: order.supplierReference ?? null,
+        paymentTermsDays: order.paymentTermsDays ?? null,
+        paymentTermsLabel: order.paymentTermsLabel ?? null,
+        incoterm: order.incoterm ?? null,
+        requestedDeliveryDate: order.requestedDeliveryDate ?? null,
+        shipToName: order.shipToName ?? null,
+        shipToLine1: order.shipToLine1 ?? null,
+        shipToLine2: order.shipToLine2 ?? null,
+        shipToCity: order.shipToCity ?? null,
+        shipToRegion: order.shipToRegion ?? null,
+        shipToPostalCode: order.shipToPostalCode ?? null,
+        shipToCountryCode: order.shipToCountryCode ?? null,
+        internalNotes: order.internalNotes ?? null,
+        notesToSupplier: order.notesToSupplier ?? null,
       },
     });
   }
@@ -513,6 +737,7 @@ async function seed() {
     await prisma.purchaseOrderItem.upsert({
       where: { orderId_lineNo: { orderId: po1001.id, lineNo: 1 } },
       update: {
+        productId: prodPaper.id,
         description: "Printer paper (A4)",
         quantity: "100",
         unitPrice: "10.0000",
@@ -521,6 +746,7 @@ async function seed() {
       create: {
         orderId: po1001.id,
         lineNo: 1,
+        productId: prodPaper.id,
         description: "Printer paper (A4)",
         quantity: "100",
         unitPrice: "10.0000",
@@ -530,6 +756,7 @@ async function seed() {
     await prisma.purchaseOrderItem.upsert({
       where: { orderId_lineNo: { orderId: po1001.id, lineNo: 2 } },
       update: {
+        productId: prodToner.id,
         description: "Toner cartridges",
         quantity: "25",
         unitPrice: "10.0000",
@@ -538,6 +765,7 @@ async function seed() {
       create: {
         orderId: po1001.id,
         lineNo: 2,
+        productId: prodToner.id,
         description: "Toner cartridges",
         quantity: "25",
         unitPrice: "10.0000",
@@ -550,6 +778,7 @@ async function seed() {
     await prisma.purchaseOrderItem.upsert({
       where: { orderId_lineNo: { orderId: po1002.id, lineNo: 1 } },
       update: {
+        productId: prodCorrugated.id,
         description: "Corrugated rolls",
         quantity: "100",
         unitPrice: "25.0000",
@@ -558,6 +787,7 @@ async function seed() {
       create: {
         orderId: po1002.id,
         lineNo: 1,
+        productId: prodCorrugated.id,
         description: "Corrugated rolls",
         quantity: "100",
         unitPrice: "25.0000",
@@ -567,6 +797,7 @@ async function seed() {
     await prisma.purchaseOrderItem.upsert({
       where: { orderId_lineNo: { orderId: po1002.id, lineNo: 2 } },
       update: {
+        productId: prodPallet.id,
         description: "Pallets",
         quantity: "50",
         unitPrice: "50.0000",
@@ -575,11 +806,30 @@ async function seed() {
       create: {
         orderId: po1002.id,
         lineNo: 2,
+        productId: prodPallet.id,
         description: "Pallets",
         quantity: "50",
         unitPrice: "50.0000",
         lineTotal: "2500.00",
       },
+    });
+
+    await prisma.orderChatMessage.deleteMany({ where: { orderId: po1002.id } });
+    await prisma.orderChatMessage.createMany({
+      data: [
+        {
+          orderId: po1002.id,
+          authorUserId: buyer.id,
+          body: "Please confirm corrugated spec matches last year's order.",
+          isInternal: false,
+        },
+        {
+          orderId: po1002.id,
+          authorUserId: approver.id,
+          body: "Internal: pricing approved under the annual frame agreement.",
+          isInternal: true,
+        },
+      ],
     });
   }
 }

@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
+import { requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
 
 const MAX_NAME = 120;
 
 export async function PATCH(request: Request) {
+  const gate = await requireApiGrant("org.settings", "edit");
+  if (gate) return gate;
+
   let body: unknown;
   try {
     body = await request.json();
