@@ -46,7 +46,7 @@ export function ProductCreateForm() {
   }
 
   return (
-    <section className="mx-auto w-full max-w-6xl px-6 pt-10">
+    <section className="w-full max-w-xl">
       <h2 className="text-lg font-semibold text-zinc-900">Add product</h2>
       <p className="mt-1 text-sm text-zinc-600">
         Creates a catalog row for the demo tenant.

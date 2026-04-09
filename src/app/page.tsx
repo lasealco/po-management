@@ -1,5 +1,4 @@
 import { OrdersBoard } from "@/components/orders-board";
-import { ProductCreateForm } from "@/components/product-create-form";
 import { prisma } from "@/lib/prisma";
 import { visibleOnBoard } from "@/lib/workflow-actions";
 
@@ -85,7 +84,6 @@ export default async function Home() {
 
   return (
     <div className="min-h-screen bg-zinc-50">
-      <ProductCreateForm />
       <OrdersBoard initialData={initialData} />
     </div>
   );
