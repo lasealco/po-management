@@ -73,6 +73,36 @@ export async function GET() {
     orderBy: { createdAt: "desc" },
   });
 
+  const latestSharedByOrder = new Map<
+    string,
+    {
+      createdAt: Date;
+      authorRoleNames: string[];
+    }
+  >();
+  if (orders.length > 0) {
+    const shared = await prisma.orderChatMessage.findMany({
+      where: { orderId: { in: orders.map((o) => o.id) }, isInternal: false },
+      orderBy: { createdAt: "desc" },
+      include: {
+        author: {
+          select: {
+            userRoles: {
+              select: { role: { select: { name: true } } },
+            },
+          },
+        },
+      },
+    });
+    for (const row of shared) {
+      if (latestSharedByOrder.has(row.orderId)) continue;
+      latestSharedByOrder.set(row.orderId, {
+        createdAt: row.createdAt,
+        authorRoleNames: row.author.userRoles.map((ur) => ur.role.name),
+      });
+    }
+  }
+
   const data = orders.map((order) => {
     const allowedActions = order.workflow.transitions
       .filter(
@@ -96,6 +126,25 @@ export async function GET() {
         toStatus: transition.toStatus,
       }));
 
+    const latestShared = latestSharedByOrder.get(order.id);
+    const fromSupplier = Boolean(
+      latestShared?.authorRoleNames.includes("Supplier portal"),
+    );
+    const awaitingReplyFrom = latestShared
+      ? fromSupplier
+        ? "buyer"
+        : "supplier"
+      : null;
+    const daysSinceLastShared = latestShared
+      ? Math.max(
+          0,
+          Math.floor(
+            (Date.now() - latestShared.createdAt.getTime()) /
+              (1000 * 60 * 60 * 24),
+          ),
+        )
+      : null;
+
     return {
       id: order.id,
       orderNumber: order.orderNumber,
@@ -112,9 +161,18 @@ export async function GET() {
         name: order.workflow.name,
       },
       allowedActions,
+      conversationSla: {
+        awaitingReplyFrom,
+        daysSinceLastShared,
+        lastSharedAt: latestShared?.createdAt.toISOString() ?? null,
+      },
       createdAt: order.createdAt,
     };
   });
 
-  return NextResponse.json({ tenant, orders: data });
+  return NextResponse.json({
+    viewerMode: isSupplierPortalUser ? "supplier" : "buyer",
+    tenant,
+    orders: data,
+  });
 }

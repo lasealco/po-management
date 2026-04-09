@@ -29,10 +29,16 @@ type OrderRow = {
   requester: { id: string; name: string; email: string };
   workflow: { id: string; name: string };
   allowedActions: OrderAction[];
+  conversationSla: {
+    awaitingReplyFrom: "buyer" | "supplier" | null;
+    daysSinceLastShared: number | null;
+    lastSharedAt: string | null;
+  };
   createdAt: string;
 };
 
 type OrdersResponse = {
+  viewerMode: "buyer" | "supplier";
   tenant: { id: string; name: string; slug: string };
   orders: OrderRow[];
 };
@@ -40,6 +46,7 @@ type OrdersResponse = {
 type QueueFilter =
   | "all"
   | "needs_my_action"
+  | "waiting_on_me"
   | "awaiting_supplier"
   | "overdue"
   | "split_pending_buyer";
@@ -64,22 +71,37 @@ export function OrdersBoard({
     let awaitingSupplier = 0;
     let splitPendingBuyer = 0;
     let needsMyAction = 0;
+    let waitingOnMe = 0;
     let overdue = 0;
     const now = Date.now();
     for (const order of data.orders) {
       if (order.status.code === "SENT") awaitingSupplier += 1;
       if (order.status.code === "SPLIT_PENDING_BUYER") splitPendingBuyer += 1;
       if (order.allowedActions.length > 0) needsMyAction += 1;
+      if (order.conversationSla.awaitingReplyFrom === data.viewerMode) {
+        waitingOnMe += 1;
+      }
       if (order.requestedDeliveryDate) {
         const dueMs = new Date(order.requestedDeliveryDate).getTime();
         if (!Number.isNaN(dueMs) && dueMs < now) overdue += 1;
       }
     }
-    return { awaitingSupplier, splitPendingBuyer, needsMyAction, overdue };
-  }, [data.orders]);
+    return {
+      awaitingSupplier,
+      splitPendingBuyer,
+      needsMyAction,
+      waitingOnMe,
+      overdue,
+    };
+  }, [data.orders, data.viewerMode]);
   const filteredOrders = useMemo(() => {
     if (queueFilter === "needs_my_action") {
       return data.orders.filter((o) => o.allowedActions.length > 0);
+    }
+    if (queueFilter === "waiting_on_me") {
+      return data.orders.filter(
+        (o) => o.conversationSla.awaitingReplyFrom === data.viewerMode,
+      );
     }
     if (queueFilter === "awaiting_supplier") {
       return data.orders.filter((o) => o.status.code === "SENT");
@@ -151,6 +173,9 @@ export function OrdersBoard({
           <span className="rounded-full bg-emerald-100 px-2.5 py-1 font-medium text-emerald-900">
             Needs my action: {queueSummary.needsMyAction}
           </span>
+          <span className="rounded-full bg-violet-100 px-2.5 py-1 font-medium text-violet-900">
+            Waiting on me: {queueSummary.waitingOnMe}
+          </span>
           <span className="rounded-full bg-sky-100 px-2.5 py-1 font-medium text-sky-900">
             Awaiting supplier response: {queueSummary.awaitingSupplier}
           </span>
@@ -183,6 +208,17 @@ export function OrdersBoard({
             }`}
           >
             Needs My Action ({queueSummary.needsMyAction})
+          </button>
+          <button
+            type="button"
+            onClick={() => setQueueFilter("waiting_on_me")}
+            className={`rounded-md border px-2.5 py-1 text-xs font-medium ${
+              queueFilter === "waiting_on_me"
+                ? "border-violet-700 bg-violet-700 text-white"
+                : "border-violet-200 bg-violet-50 text-violet-900 hover:bg-violet-100"
+            }`}
+          >
+            Waiting on Me ({queueSummary.waitingOnMe})
           </button>
           <button
             type="button"
@@ -239,6 +275,7 @@ export function OrdersBoard({
               <th className="px-4 py-3">Total</th>
               <th className="px-4 py-3">Workflow</th>
               <th className="px-4 py-3">Queue</th>
+              <th className="px-4 py-3">Comms SLA</th>
               <th className="px-4 py-3">Allowed Actions</th>
               <th className="px-4 py-3">Detail</th>
             </tr>
@@ -313,6 +350,28 @@ export function OrdersBoard({
                     ) : null}
                   </div>
                 </td>
+                <td className="px-4 py-4 text-xs">
+                  {order.conversationSla.awaitingReplyFrom ? (
+                    <div className="space-y-1">
+                      <div
+                        className={`inline-flex rounded-full px-2 py-0.5 font-medium ${
+                          order.conversationSla.awaitingReplyFrom === data.viewerMode
+                            ? "bg-violet-100 text-violet-900"
+                            : "bg-zinc-100 text-zinc-700"
+                        }`}
+                      >
+                        Waiting on {order.conversationSla.awaitingReplyFrom}
+                      </div>
+                      {order.conversationSla.daysSinceLastShared != null ? (
+                        <div className="text-zinc-500">
+                          Last shared msg {order.conversationSla.daysSinceLastShared}d ago
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <span className="text-zinc-400">No shared messages yet</span>
+                  )}
+                </td>
                 <td className="px-4 py-4">
                   <div className="flex flex-wrap gap-2">
                     {!canTransitionOrders ? (
@@ -347,7 +406,7 @@ export function OrdersBoard({
             {filteredOrders.length === 0 ? (
               <tr>
                 <td
-                  colSpan={11}
+                  colSpan={12}
                   className="px-4 py-10 text-center text-sm text-zinc-500"
                 >
                   No orders in this queue.
