@@ -5,7 +5,12 @@ import { assertProductRelationsValid } from "@/lib/product-mutation";
 import { parseProductCreateBody } from "@/lib/parse-product-create";
 import { prisma } from "@/lib/prisma";
 
-export async function POST(request: Request) {
+export async function PATCH(
+  request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  const { id } = await context.params;
+
   let body: unknown;
   try {
     body = await request.json();
@@ -44,6 +49,14 @@ export async function POST(request: Request) {
     );
   }
 
+  const existing = await prisma.product.findFirst({
+    where: { id, tenantId: tenant.id },
+    select: { id: true },
+  });
+  if (!existing) {
+    return NextResponse.json({ error: "Product not found." }, { status: 404 });
+  }
+
   try {
     await assertProductRelationsValid(prisma, tenant.id, d, supplierIds);
   } catch (e) {
@@ -71,9 +84,9 @@ export async function POST(request: Request) {
 
   try {
     const product = await prisma.$transaction(async (tx) => {
-      const p = await tx.product.create({
+      const p = await tx.product.update({
+        where: { id },
         data: {
-          tenantId: tenant.id,
           productCode: d.productCode,
           sku: d.sku,
           name: d.name,
@@ -107,20 +120,21 @@ export async function POST(request: Request) {
         select: { id: true, name: true, productCode: true },
       });
 
+      await tx.productSupplier.deleteMany({ where: { productId: id } });
       if (supplierIds.length) {
         await tx.productSupplier.createMany({
           data: supplierIds.map((supplierId) => ({
-            productId: p.id,
+            productId: id,
             supplierId,
           })),
-          skipDuplicates: true,
         });
       }
 
+      await tx.productDocument.deleteMany({ where: { productId: id } });
       if (d.documents.length) {
         await tx.productDocument.createMany({
           data: d.documents.map((doc) => ({
-            productId: p.id,
+            productId: id,
             kind: doc.kind,
             fileName: doc.fileName,
             url: doc.url,
@@ -150,4 +164,37 @@ export async function POST(request: Request) {
     }
     throw e;
   }
+}
+
+export async function DELETE(
+  _request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  const { id } = await context.params;
+  const tenant = await getDemoTenant();
+  if (!tenant) {
+    return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  }
+
+  const product = await prisma.product.findFirst({
+    where: { id, tenantId: tenant.id },
+    include: {
+      _count: { select: { orderItems: true } },
+    },
+  });
+
+  if (!product) {
+    return NextResponse.json({ error: "Product not found." }, { status: 404 });
+  }
+
+  if (product._count.orderItems > 0) {
+    await prisma.product.update({
+      where: { id },
+      data: { isActive: false },
+    });
+    return NextResponse.json({ ok: true, deactivated: true });
+  }
+
+  await prisma.product.delete({ where: { id } });
+  return NextResponse.json({ ok: true, deleted: true });
 }

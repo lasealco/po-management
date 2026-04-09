@@ -3,17 +3,21 @@
 import { useRouter } from "next/navigation";
 import {
   ProductCatalogForm,
+  type ProductFormInitial,
   type ProductFormOptions,
 } from "@/components/product-catalog-form";
 
-export type { ProductFormOptions };
-
-export function ProductCreatePanel(options: ProductFormOptions) {
+export function ProductEditClient(
+  props: ProductFormOptions & {
+    productId: string;
+    initial: ProductFormInitial;
+  },
+) {
   const router = useRouter();
   return (
     <ProductCatalogForm
-      mode="create"
-      {...options}
+      {...props}
+      mode="edit"
       onSuccess={() => router.refresh()}
     />
   );

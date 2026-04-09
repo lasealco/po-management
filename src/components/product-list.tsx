@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 type ProductRow = {
   id: string;
   productCode: string | null;
@@ -42,6 +44,7 @@ export function ProductList({ products }: { products: ProductRow[] }) {
             <th className="px-4 py-3">Suppliers</th>
             <th className="px-4 py-3">Status</th>
             <th className="px-4 py-3">Updated</th>
+            <th className="px-4 py-3"> </th>
           </tr>
         </thead>
         <tbody className="divide-y divide-zinc-100">
@@ -85,6 +88,14 @@ export function ProductList({ products }: { products: ProductRow[] }) {
                   dateStyle: "medium",
                   timeStyle: "short",
                 })}
+              </td>
+              <td className="whitespace-nowrap px-4 py-3">
+                <Link
+                  href={`/products/${p.id}`}
+                  className="text-sm font-medium text-amber-800 underline-offset-2 hover:underline"
+                >
+                  Edit
+                </Link>
               </td>
             </tr>
           ))}

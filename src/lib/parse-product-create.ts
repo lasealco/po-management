@@ -40,6 +40,7 @@ export type ParsedProductCreate = {
   supplierOfficeId: string | null;
   supplierIds: string[];
   documents: ProductDocumentInput[];
+  isActive: boolean;
 };
 
 function str(v: unknown): string | undefined {
@@ -105,6 +106,8 @@ export function parseProductCreateBody(
     ean = e.length ? e : null;
   }
 
+  const isActive = o.isActive === undefined ? true : bool(o.isActive);
+
   const documents: ProductDocumentInput[] = [];
   if (o.documents !== undefined && o.documents !== null) {
     if (!Array.isArray(o.documents)) {
@@ -168,6 +171,7 @@ export function parseProductCreateBody(
     supplierOfficeId: optStr(o.supplierOfficeId),
     supplierIds: strIds(o.supplierIds),
     documents,
+    isActive,
   };
 
   if (data.isDangerousGoods) {

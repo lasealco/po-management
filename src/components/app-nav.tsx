@@ -6,6 +6,8 @@ import { usePathname } from "next/navigation";
 const links = [
   { href: "/", label: "Orders" },
   { href: "/products", label: "Products" },
+  { href: "/catalog", label: "Catalog" },
+  { href: "/suppliers", label: "Suppliers" },
 ] as const;
 
 export function AppNav() {
@@ -13,7 +15,7 @@ export function AppNav() {
 
   return (
     <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
-      <div className="mx-auto flex max-w-6xl items-center gap-8 px-6 py-3">
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-8 gap-y-2 px-6 py-3">
         <Link
           href="/"
           className="text-sm font-semibold tracking-tight text-zinc-900"
