@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 const MAX_DESC = 2000;
 const MAX_EAN = 32;
@@ -126,19 +126,6 @@ export function ProductCatalogForm({
     supplierMapFromIds(i?.linkedSupplierIds ?? []),
   );
   const [isActive, setIsActive] = useState(i?.isActive ?? true);
-  const [openDangerous, setOpenDangerous] = useState(
-    () => i?.isDangerousGoods ?? false,
-  );
-  const [openTemperature, setOpenTemperature] = useState(
-    () => i?.isTemperatureControlled ?? false,
-  );
-
-  useEffect(() => {
-    if (isDangerousGoods) setOpenDangerous(true);
-  }, [isDangerousGoods]);
-  useEffect(() => {
-    if (isTemperatureControlled) setOpenTemperature(true);
-  }, [isTemperatureControlled]);
 
   const router = useRouter();
 
@@ -302,8 +289,8 @@ export function ProductCatalogForm({
         {mode === "create" ? "Create product" : "Edit product"}
       </h2>
       <p className="mt-0.5 max-w-3xl text-xs leading-snug text-zinc-600">
-        File fields use URLs until storage is wired. Expand DG / temperature if
-        needed.
+        File fields use URLs until storage is wired. Dangerous goods and
+        temperature details appear after you check those options.
       </p>
 
       {errorMessage ? (
@@ -452,23 +439,22 @@ export function ProductCatalogForm({
                 placeholder="https://…"
               />
             </label>
+            <label className="flex items-center gap-2 text-sm sm:col-span-2">
+              <input
+                type="checkbox"
+                checked={isForReexport}
+                onChange={(e) => setIsForReexport(e.target.checked)}
+                className="rounded border-zinc-300"
+              />
+              <span className="text-zinc-800">Product is for re-export</span>
+            </label>
           </div>
         </fieldset>
 
-        <details
-          className="rounded border border-zinc-200 bg-zinc-50/60 [&_summary]:list-none [&_summary::-webkit-details-marker]:hidden"
-          open={openDangerous}
-          onToggle={(e) =>
-            setOpenDangerous((e.target as HTMLDetailsElement).open)
-          }
-        >
-          <summary className="cursor-pointer px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-600 hover:bg-zinc-100/80">
+        <fieldset className="space-y-2 border-t border-zinc-100 pt-2">
+          <legend className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
             Dangerous goods
-            <span className="ml-1.5 font-normal normal-case text-zinc-500">
-              (expand)
-            </span>
-          </summary>
-          <div className="space-y-2 border-t border-zinc-200 bg-white px-2 pb-2 pt-1.5">
+          </legend>
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
@@ -551,23 +537,12 @@ export function ProductCatalogForm({
               </label>
             </div>
           ) : null}
-          </div>
-        </details>
+        </fieldset>
 
-        <details
-          className="rounded border border-zinc-200 bg-zinc-50/60 [&_summary]:list-none [&_summary::-webkit-details-marker]:hidden"
-          open={openTemperature}
-          onToggle={(e) =>
-            setOpenTemperature((e.target as HTMLDetailsElement).open)
-          }
-        >
-          <summary className="cursor-pointer px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-600 hover:bg-zinc-100/80">
+        <fieldset className="space-y-2 border-t border-zinc-100 pt-2">
+          <legend className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
             Temperature &amp; storage
-            <span className="ml-1.5 font-normal normal-case text-zinc-500">
-              (expand)
-            </span>
-          </summary>
-          <div className="space-y-2 border-t border-zinc-200 bg-white px-2 pb-2 pt-1.5">
+          </legend>
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
@@ -637,17 +612,7 @@ export function ProductCatalogForm({
               </label>
             </div>
           ) : null}
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={isForReexport}
-              onChange={(e) => setIsForReexport(e.target.checked)}
-              className="rounded border-zinc-300"
-            />
-            <span className="text-zinc-800">Product is for re-export</span>
-          </label>
-          </div>
-        </details>
+        </fieldset>
 
         <fieldset className="space-y-2 border-t border-zinc-100 pt-2">
           <legend className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
