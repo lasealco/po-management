@@ -37,17 +37,22 @@ type OrdersResponse = {
   orders: OrderRow[];
 };
 
+type QueueFilter = "all" | "awaiting_supplier" | "split_pending_buyer";
+
 export function OrdersBoard({
   initialData,
   canTransitionOrders = true,
+  defaultQueueFilter = "all",
 }: {
   initialData: OrdersResponse;
   /** When false, workflow action buttons are hidden (org.orders → transition). */
   canTransitionOrders?: boolean;
+  defaultQueueFilter?: QueueFilter;
 }) {
   const [data, setData] = useState(initialData);
   const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [queueFilter, setQueueFilter] = useState<QueueFilter>(defaultQueueFilter);
 
   const orderCount = useMemo(() => data.orders.length, [data.orders.length]);
   const queueSummary = useMemo(() => {
@@ -59,6 +64,15 @@ export function OrdersBoard({
     }
     return { awaitingSupplier, splitPendingBuyer };
   }, [data.orders]);
+  const filteredOrders = useMemo(() => {
+    if (queueFilter === "awaiting_supplier") {
+      return data.orders.filter((o) => o.status.code === "SENT");
+    }
+    if (queueFilter === "split_pending_buyer") {
+      return data.orders.filter((o) => o.status.code === "SPLIT_PENDING_BUYER");
+    }
+    return data.orders;
+  }, [data.orders, queueFilter]);
 
   async function applyAction(order: OrderRow, action: OrderAction) {
     setBusyOrderId(order.id);
@@ -117,6 +131,41 @@ export function OrdersBoard({
             Split pending buyer decision: {queueSummary.splitPendingBuyer}
           </span>
         </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setQueueFilter("all")}
+            className={`rounded-md border px-2.5 py-1 text-xs font-medium ${
+              queueFilter === "all"
+                ? "border-zinc-900 bg-zinc-900 text-white"
+                : "border-zinc-300 text-zinc-700 hover:bg-zinc-50"
+            }`}
+          >
+            All ({orderCount})
+          </button>
+          <button
+            type="button"
+            onClick={() => setQueueFilter("awaiting_supplier")}
+            className={`rounded-md border px-2.5 py-1 text-xs font-medium ${
+              queueFilter === "awaiting_supplier"
+                ? "border-sky-700 bg-sky-700 text-white"
+                : "border-sky-200 bg-sky-50 text-sky-900 hover:bg-sky-100"
+            }`}
+          >
+            Awaiting Supplier ({queueSummary.awaitingSupplier})
+          </button>
+          <button
+            type="button"
+            onClick={() => setQueueFilter("split_pending_buyer")}
+            className={`rounded-md border px-2.5 py-1 text-xs font-medium ${
+              queueFilter === "split_pending_buyer"
+                ? "border-amber-700 bg-amber-700 text-white"
+                : "border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100"
+            }`}
+          >
+            Split Pending ({queueSummary.splitPendingBuyer})
+          </button>
+        </div>
       </header>
 
       {errorMessage ? (
@@ -142,7 +191,7 @@ export function OrdersBoard({
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100 text-sm">
-            {data.orders.map((order) => (
+            {filteredOrders.map((order) => (
               <tr key={order.id}>
                 <td className="px-4 py-4">
                   <p className="font-medium text-zinc-900">{order.orderNumber}</p>
@@ -217,6 +266,16 @@ export function OrdersBoard({
                 </td>
               </tr>
             ))}
+            {filteredOrders.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={10}
+                  className="px-4 py-10 text-center text-sm text-zinc-500"
+                >
+                  No orders in this queue.
+                </td>
+              </tr>
+            ) : null}
           </tbody>
         </table>
       </div>
