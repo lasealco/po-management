@@ -121,7 +121,6 @@ async function seed() {
     ["org.orders", "transition"],
     ["org.orders", "split"],
     ["org.products", "view"],
-    ["org.suppliers", "view"],
   ];
 
   await replaceGlobalRolePermissions(roleBuyer.id, buyerGrants);
@@ -429,15 +428,28 @@ async function seed() {
     },
   });
 
+  const supplierDraft = await prisma.workflowStatus.upsert({
+    where: { workflowId_code: { workflowId: supplierWorkflow.id, code: "DRAFT" } },
+    update: { label: "Draft", sortOrder: 5, isStart: true, isEnd: false },
+    create: {
+      workflowId: supplierWorkflow.id,
+      code: "DRAFT",
+      label: "Draft",
+      sortOrder: 5,
+      isStart: true,
+      isEnd: false,
+    },
+  });
+
   const supplierSent = await prisma.workflowStatus.upsert({
     where: { workflowId_code: { workflowId: supplierWorkflow.id, code: "SENT" } },
-    update: { label: "Sent to Supplier", sortOrder: 10, isStart: true, isEnd: false },
+    update: { label: "Sent to Supplier", sortOrder: 10, isStart: false, isEnd: false },
     create: {
       workflowId: supplierWorkflow.id,
       code: "SENT",
       label: "Sent to Supplier",
       sortOrder: 10,
-      isStart: true,
+      isStart: false,
     },
   });
   const supplierConfirmed = await prisma.workflowStatus.upsert({
@@ -536,6 +548,14 @@ async function seed() {
       toStatusId: simpleClosed.id,
       actionCode: "close",
       label: "Close",
+      requiresComment: false,
+    },
+    {
+      workflowId: supplierWorkflow.id,
+      fromStatusId: supplierDraft.id,
+      toStatusId: supplierSent.id,
+      actionCode: "send_to_supplier",
+      label: "Send to supplier",
       requiresComment: false,
     },
     {
@@ -664,6 +684,55 @@ async function seed() {
       internalNotes: "Q2 packaging stock-up; confirm pallet count before ship.",
       notesToSupplier: "FOB Chicago; use our carrier account # on BOL.",
     },
+    {
+      orderNumber: "PO-1003",
+      title: "Contract Components (split proposal demo)",
+      workflowId: supplierWorkflow.id,
+      statusId: supplierSplitPending.id,
+      requesterId: buyer.id,
+      supplierId: supplier.id,
+      subtotal: "3600.00",
+      taxAmount: "360.00",
+      totalAmount: "3960.00",
+      buyerReference: "OPS-SPLIT-03",
+      supplierReference: "ACME-SPLIT-991",
+      paymentTermsDays: 30,
+      paymentTermsLabel: "Net 30",
+      incoterm: "FOB",
+      requestedDeliveryDate: new Date("2026-05-20T12:00:00.000Z"),
+      shipToName: "Demo Company — Assembly Plant",
+      shipToLine1: "44 Manufacturing Ave",
+      shipToCity: "Detroit",
+      shipToRegion: "MI",
+      shipToPostalCode: "48201",
+      shipToCountryCode: "US",
+      internalNotes: "Demonstrates pending split review for buyer.",
+      notesToSupplier: "Propose split if partial shipments are required.",
+    },
+    {
+      orderNumber: "PO-1004",
+      title: "Hardware Fasteners (send demo)",
+      workflowId: supplierWorkflow.id,
+      statusId: supplierDraft.id,
+      requesterId: buyer.id,
+      supplierId: supplier.id,
+      subtotal: "1800.00",
+      taxAmount: "180.00",
+      totalAmount: "1980.00",
+      buyerReference: "MRO-FAST-17",
+      paymentTermsDays: 30,
+      paymentTermsLabel: "Net 30",
+      incoterm: "EXW",
+      requestedDeliveryDate: new Date("2026-05-10T12:00:00.000Z"),
+      shipToName: "Demo Company — MRO Cage",
+      shipToLine1: "200 Commerce Drive",
+      shipToCity: "Chicago",
+      shipToRegion: "IL",
+      shipToPostalCode: "60654",
+      shipToCountryCode: "US",
+      internalNotes: "Use this order to demo Send to supplier action.",
+      notesToSupplier: "Please acknowledge within 24h of receiving PO.",
+    },
   ];
 
   for (const order of demoOrders) {
@@ -730,6 +799,14 @@ async function seed() {
   });
   const po1002 = await prisma.purchaseOrder.findFirst({
     where: { tenantId: tenant.id, orderNumber: "PO-1002" },
+    select: { id: true },
+  });
+  const po1003 = await prisma.purchaseOrder.findFirst({
+    where: { tenantId: tenant.id, orderNumber: "PO-1003" },
+    select: { id: true },
+  });
+  const po1004 = await prisma.purchaseOrder.findFirst({
+    where: { tenantId: tenant.id, orderNumber: "PO-1004" },
     select: { id: true },
   });
 
@@ -830,6 +907,191 @@ async function seed() {
           isInternal: true,
         },
       ],
+    });
+  }
+
+  if (po1003) {
+    await prisma.purchaseOrderItem.upsert({
+      where: { orderId_lineNo: { orderId: po1003.id, lineNo: 1 } },
+      update: {
+        productId: prodCorrugated.id,
+        description: "Corrugated rolls",
+        quantity: "80",
+        unitPrice: "30.0000",
+        lineTotal: "2400.00",
+      },
+      create: {
+        orderId: po1003.id,
+        lineNo: 1,
+        productId: prodCorrugated.id,
+        description: "Corrugated rolls",
+        quantity: "80",
+        unitPrice: "30.0000",
+        lineTotal: "2400.00",
+      },
+    });
+    await prisma.purchaseOrderItem.upsert({
+      where: { orderId_lineNo: { orderId: po1003.id, lineNo: 2 } },
+      update: {
+        productId: prodPallet.id,
+        description: "Pallets",
+        quantity: "24",
+        unitPrice: "50.0000",
+        lineTotal: "1200.00",
+      },
+      create: {
+        orderId: po1003.id,
+        lineNo: 2,
+        productId: prodPallet.id,
+        description: "Pallets",
+        quantity: "24",
+        unitPrice: "50.0000",
+        lineTotal: "1200.00",
+      },
+    });
+
+    await prisma.splitProposal.deleteMany({ where: { parentOrderId: po1003.id } });
+    const proposal = await prisma.splitProposal.create({
+      data: {
+        parentOrderId: po1003.id,
+        proposedByUserId: supplierUser.id,
+        status: "PENDING",
+        comment: "Can ship in two waves due to pallet lead time.",
+      },
+    });
+    const po1003Line1 = await prisma.purchaseOrderItem.findUnique({
+      where: { orderId_lineNo: { orderId: po1003.id, lineNo: 1 } },
+      select: { id: true },
+    });
+    const po1003Line2 = await prisma.purchaseOrderItem.findUnique({
+      where: { orderId_lineNo: { orderId: po1003.id, lineNo: 2 } },
+      select: { id: true },
+    });
+    if (po1003Line1 && po1003Line2) {
+      await prisma.splitProposalLine.createMany({
+        data: [
+          {
+            proposalId: proposal.id,
+            sourceLineId: po1003Line1.id,
+            quantity: "50",
+            childIndex: 1,
+            plannedShipDate: new Date("2026-05-14T12:00:00.000Z"),
+          },
+          {
+            proposalId: proposal.id,
+            sourceLineId: po1003Line1.id,
+            quantity: "30",
+            childIndex: 2,
+            plannedShipDate: new Date("2026-05-28T12:00:00.000Z"),
+          },
+          {
+            proposalId: proposal.id,
+            sourceLineId: po1003Line2.id,
+            quantity: "12",
+            childIndex: 1,
+            plannedShipDate: new Date("2026-05-14T12:00:00.000Z"),
+          },
+          {
+            proposalId: proposal.id,
+            sourceLineId: po1003Line2.id,
+            quantity: "12",
+            childIndex: 2,
+            plannedShipDate: new Date("2026-05-28T12:00:00.000Z"),
+          },
+        ],
+      });
+    }
+
+    await prisma.orderTransitionLog.deleteMany({ where: { orderId: po1003.id } });
+    await prisma.orderTransitionLog.createMany({
+      data: [
+        {
+          orderId: po1003.id,
+          fromStatusId: supplierDraft.id,
+          toStatusId: supplierSent.id,
+          actionCode: "send_to_supplier",
+          actorUserId: buyer.id,
+          comment: "Sent to supplier portal.",
+        },
+        {
+          orderId: po1003.id,
+          fromStatusId: supplierSent.id,
+          toStatusId: supplierSplitPending.id,
+          actionCode: "propose_split",
+          actorUserId: supplierUser.id,
+          comment: "Requesting two partial shipments.",
+        },
+      ],
+    });
+
+    await prisma.orderChatMessage.deleteMany({ where: { orderId: po1003.id } });
+    await prisma.orderChatMessage.createMany({
+      data: [
+        {
+          orderId: po1003.id,
+          authorUserId: buyer.id,
+          body: "Can you split this across two ship windows if needed?",
+          isInternal: false,
+        },
+        {
+          orderId: po1003.id,
+          authorUserId: supplierUser.id,
+          body: "Yes — proposed split submitted with dates.",
+          isInternal: false,
+        },
+      ],
+    });
+  }
+
+  if (po1004) {
+    await prisma.purchaseOrderItem.upsert({
+      where: { orderId_lineNo: { orderId: po1004.id, lineNo: 1 } },
+      update: {
+        productId: prodPallet.id,
+        description: "Fastener kit A",
+        quantity: "300",
+        unitPrice: "4.0000",
+        lineTotal: "1200.00",
+      },
+      create: {
+        orderId: po1004.id,
+        lineNo: 1,
+        productId: prodPallet.id,
+        description: "Fastener kit A",
+        quantity: "300",
+        unitPrice: "4.0000",
+        lineTotal: "1200.00",
+      },
+    });
+    await prisma.purchaseOrderItem.upsert({
+      where: { orderId_lineNo: { orderId: po1004.id, lineNo: 2 } },
+      update: {
+        productId: prodCorrugated.id,
+        description: "Fastener kit B",
+        quantity: "120",
+        unitPrice: "5.0000",
+        lineTotal: "600.00",
+      },
+      create: {
+        orderId: po1004.id,
+        lineNo: 2,
+        productId: prodCorrugated.id,
+        description: "Fastener kit B",
+        quantity: "120",
+        unitPrice: "5.0000",
+        lineTotal: "600.00",
+      },
+    });
+
+    await prisma.orderTransitionLog.deleteMany({ where: { orderId: po1004.id } });
+    await prisma.orderChatMessage.deleteMany({ where: { orderId: po1004.id } });
+    await prisma.orderChatMessage.create({
+      data: {
+        orderId: po1004.id,
+        authorUserId: buyer.id,
+        body: "Draft ready. Will send once final count is validated.",
+        isInternal: false,
+      },
     });
   }
 }
