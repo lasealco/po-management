@@ -21,6 +21,11 @@ function run(label, command, args) {
         "[vercel-build] Hint: For Neon/Supabase/Vercel Postgres, set DIRECT_URL or DATABASE_URL_UNPOOLED\n" +
           "to a non-pooler connection for migrate; keep DATABASE_URL pooled for the app.\n",
       );
+      console.error(
+        "[vercel-build] If you see P3009 / failed 20260409140000_supplier_extended_details: locally run\n" +
+          "  DATABASE_URL_UNPOOLED=... npm run db:repair:supplier-migration\n" +
+          "then redeploy (see scripts/repair-failed-supplier-migration.cjs).\n",
+      );
     }
     process.exit(result.status);
   }

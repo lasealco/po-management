@@ -16,6 +16,7 @@
     "postinstall": "prisma generate",
     "db:migrate": "cross-env PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK=1 prisma migrate deploy",
     "db:migrate:deploy": "npm run db:migrate",
+    "db:repair:supplier-migration": "node scripts/repair-failed-supplier-migration.cjs",
     "vercel-build": "node scripts/vercel-build.cjs",
     "db:seed": "node prisma/seed.mjs"
   },
