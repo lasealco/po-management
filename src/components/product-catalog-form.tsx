@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const MAX_DESC = 2000;
 const MAX_EAN = 32;
@@ -126,6 +126,19 @@ export function ProductCatalogForm({
     supplierMapFromIds(i?.linkedSupplierIds ?? []),
   );
   const [isActive, setIsActive] = useState(i?.isActive ?? true);
+  const [openDangerous, setOpenDangerous] = useState(
+    () => i?.isDangerousGoods ?? false,
+  );
+  const [openTemperature, setOpenTemperature] = useState(
+    () => i?.isTemperatureControlled ?? false,
+  );
+
+  useEffect(() => {
+    if (isDangerousGoods) setOpenDangerous(true);
+  }, [isDangerousGoods]);
+  useEffect(() => {
+    if (isTemperatureControlled) setOpenTemperature(true);
+  }, [isTemperatureControlled]);
 
   const router = useRouter();
 
@@ -278,41 +291,40 @@ export function ProductCatalogForm({
   }
 
   const field =
-    "mt-1 rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900 w-full";
-  const label = "flex flex-col gap-1 text-sm";
+    "mt-0.5 rounded-md border border-zinc-300 px-2.5 py-1.5 text-sm text-zinc-900 w-full leading-normal";
+  const label = "flex flex-col gap-0.5 text-sm";
 
   return (
     <section className="w-full max-w-4xl">
       <h2 className="text-lg font-semibold text-zinc-900">
         {mode === "create" ? "Create product" : "Edit product"}
       </h2>
-      <p className="mt-1 text-sm text-zinc-600">
-        Catalog fields match the legacy app: classification, DG, temperature,
-        supplier links, and offices. Attach files via URL until blob storage is
-        wired.
+      <p className="mt-0.5 text-xs leading-snug text-zinc-600">
+        Uses URL fields for files until storage is connected. Expand DG /
+        temperature when needed.
       </p>
 
       {errorMessage ? (
-        <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {errorMessage}
         </div>
       ) : null}
 
       {successMessage ? (
-        <div className="mt-4 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+        <div className="mt-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
           {successMessage}
         </div>
       ) : null}
 
       <form
         onSubmit={onSubmit}
-        className="mt-6 space-y-8 rounded-lg border border-zinc-200 bg-white p-6 shadow-sm"
+        className="mt-4 space-y-4 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm"
       >
-        <fieldset className="space-y-4">
-          <legend className="text-sm font-semibold text-zinc-900">
+        <fieldset className="space-y-3">
+          <legend className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
             Basic identification
           </legend>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2">
             <label className={label}>
               <span className="font-medium text-zinc-700">Product code *</span>
               <input
@@ -340,8 +352,8 @@ export function ProductCatalogForm({
                 value={description}
                 maxLength={MAX_DESC}
                 onChange={(e) => setDescription(e.target.value)}
-                rows={3}
-                className={field}
+                rows={2}
+                className={`${field} min-h-[2.75rem]`}
               />
             </label>
             <label className={label}>
@@ -364,11 +376,11 @@ export function ProductCatalogForm({
           </div>
         </fieldset>
 
-        <fieldset className="space-y-4">
-          <legend className="text-sm font-semibold text-zinc-900">
+        <fieldset className="space-y-3 border-t border-zinc-100 pt-3">
+          <legend className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
             Classification
           </legend>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2">
             <label className={label}>
               <span className="font-medium text-zinc-700">Category</span>
               <select
@@ -423,8 +435,8 @@ export function ProductCatalogForm({
               <textarea
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
-                rows={2}
-                className={field}
+                rows={1}
+                className={`${field} min-h-[2.25rem]`}
               />
             </label>
             <label className={`${label} sm:col-span-2`}>
@@ -441,10 +453,20 @@ export function ProductCatalogForm({
           </div>
         </fieldset>
 
-        <fieldset className="space-y-4">
-          <legend className="text-sm font-semibold text-zinc-900">
+        <details
+          className="rounded-md border border-zinc-200 bg-zinc-50/60 [&_summary]:list-none [&_summary::-webkit-details-marker]:hidden"
+          open={openDangerous}
+          onToggle={(e) =>
+            setOpenDangerous((e.target as HTMLDetailsElement).open)
+          }
+        >
+          <summary className="cursor-pointer px-3 py-2 text-xs font-semibold uppercase tracking-wide text-zinc-600 hover:bg-zinc-100/80">
             Dangerous goods
-          </legend>
+            <span className="ml-2 font-normal normal-case text-zinc-500">
+              (click to expand)
+            </span>
+          </summary>
+          <div className="space-y-3 border-t border-zinc-200 bg-white px-3 pb-3 pt-2">
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
@@ -455,7 +477,7 @@ export function ProductCatalogForm({
             <span className="text-zinc-800">Dangerous goods</span>
           </label>
           {isDangerousGoods ? (
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-2">
               <label className={label}>
                 <span className="font-medium text-zinc-700">Class</span>
                 <input
@@ -527,12 +549,23 @@ export function ProductCatalogForm({
               </label>
             </div>
           ) : null}
-        </fieldset>
+          </div>
+        </details>
 
-        <fieldset className="space-y-4">
-          <legend className="text-sm font-semibold text-zinc-900">
+        <details
+          className="rounded-md border border-zinc-200 bg-zinc-50/60 [&_summary]:list-none [&_summary::-webkit-details-marker]:hidden"
+          open={openTemperature}
+          onToggle={(e) =>
+            setOpenTemperature((e.target as HTMLDetailsElement).open)
+          }
+        >
+          <summary className="cursor-pointer px-3 py-2 text-xs font-semibold uppercase tracking-wide text-zinc-600 hover:bg-zinc-100/80">
             Temperature &amp; storage
-          </legend>
+            <span className="ml-2 font-normal normal-case text-zinc-500">
+              (click to expand)
+            </span>
+          </summary>
+          <div className="space-y-3 border-t border-zinc-200 bg-white px-3 pb-3 pt-2">
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
@@ -543,7 +576,7 @@ export function ProductCatalogForm({
             <span className="text-zinc-800">Temperature-controlled</span>
           </label>
           {isTemperatureControlled ? (
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-2">
               <label className={label}>
                 <span className="font-medium text-zinc-700">
                   Temperature range *
@@ -585,8 +618,8 @@ export function ProductCatalogForm({
                 <textarea
                   value={packagingNotes}
                   onChange={(e) => setPackagingNotes(e.target.value)}
-                  rows={2}
-                  className={field}
+                  rows={1}
+                  className={`${field} min-h-[2.25rem]`}
                 />
               </label>
               <label className={`${label} sm:col-span-2`}>
@@ -597,7 +630,7 @@ export function ProductCatalogForm({
                   value={storageDescription}
                   onChange={(e) => setStorageDescription(e.target.value)}
                   rows={2}
-                  className={field}
+                  className={`${field} min-h-[2.75rem]`}
                 />
               </label>
             </div>
@@ -611,10 +644,11 @@ export function ProductCatalogForm({
             />
             <span className="text-zinc-800">Product is for re-export</span>
           </label>
-        </fieldset>
+          </div>
+        </details>
 
-        <fieldset className="space-y-4">
-          <legend className="text-sm font-semibold text-zinc-900">
+        <fieldset className="space-y-3 border-t border-zinc-100 pt-3">
+          <legend className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
             Suppliers
           </legend>
           <label className={label}>
@@ -636,7 +670,7 @@ export function ProductCatalogForm({
             <p className="text-sm font-medium text-zinc-700">
               Linked suppliers
             </p>
-            <ul className="mt-2 flex flex-col gap-2 rounded-md border border-zinc-100 bg-zinc-50 p-3">
+            <ul className="mt-1.5 max-h-36 overflow-y-auto flex flex-col gap-1.5 rounded-md border border-zinc-100 bg-zinc-50 p-2 text-sm">
               {suppliers.length === 0 ? (
                 <li className="text-sm text-zinc-500">No suppliers in tenant.</li>
               ) : (
@@ -661,8 +695,8 @@ export function ProductCatalogForm({
         </fieldset>
 
         {mode === "edit" ? (
-          <fieldset className="space-y-3">
-            <legend className="text-sm font-semibold text-zinc-900">
+          <fieldset className="space-y-2 border-t border-zinc-100 pt-3">
+            <legend className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
               Catalog status
             </legend>
             <label className="flex items-center gap-2 text-sm">
@@ -677,11 +711,11 @@ export function ProductCatalogForm({
           </fieldset>
         ) : null}
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 border-t border-zinc-100 pt-3">
           <button
             type="submit"
             disabled={busy}
-            className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+            className="rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60"
           >
             {busy ? "Saving…" : mode === "create" ? "Create product" : "Save changes"}
           </button>
@@ -690,7 +724,7 @@ export function ProductCatalogForm({
               type="button"
               disabled={busy}
               onClick={() => void onRemove()}
-              className="rounded-md border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 disabled:opacity-60"
+              className="rounded-md border border-red-300 bg-white px-3 py-1.5 text-sm font-medium text-red-700 disabled:opacity-60"
             >
               Deactivate or delete…
             </button>
