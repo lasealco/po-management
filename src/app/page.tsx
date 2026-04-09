@@ -50,6 +50,9 @@ export default async function Home() {
     access.user.id,
     "Supplier portal",
   );
+  const viewerMode: "supplier" | "buyer" = isSupplierPortalUser
+    ? "supplier"
+    : "buyer";
   const supplierOnlyActionCodes = new Set([
     "confirm",
     "decline",
@@ -125,7 +128,7 @@ export default async function Home() {
   }
 
   const initialData = {
-    viewerMode: isSupplierPortalUser ? "supplier" : "buyer",
+    viewerMode,
     tenant,
     orders: orders.map((order) => ({
       ...(function () {
