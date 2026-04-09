@@ -288,15 +288,28 @@ export function OrderDetail({ orderId }: { orderId: string }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100">
-              {data.items.map((item) => (
-                <tr key={item.id}>
-                  <td className="px-3 py-2">{item.lineNo}</td>
-                  <td className="px-3 py-2">{item.description}</td>
-                  <td className="px-3 py-2">{item.quantity}</td>
-                  <td className="px-3 py-2">{item.unitPrice}</td>
-                  <td className="px-3 py-2">{item.lineTotal}</td>
+              {data.items.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={5}
+                    className="px-3 py-8 text-center text-sm text-zinc-500"
+                  >
+                    No line items on this order. If this is production demo data,
+                    run <code className="rounded bg-zinc-100 px-1">npm run db:seed</code>{" "}
+                    against the same database so demo lines are created.
+                  </td>
                 </tr>
-              ))}
+              ) : (
+                data.items.map((item) => (
+                  <tr key={item.id}>
+                    <td className="px-3 py-2">{item.lineNo}</td>
+                    <td className="px-3 py-2">{item.description}</td>
+                    <td className="px-3 py-2">{item.quantity}</td>
+                    <td className="px-3 py-2">{item.unitPrice}</td>
+                    <td className="px-3 py-2">{item.lineTotal}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -464,26 +477,39 @@ export function OrderDetail({ orderId }: { orderId: string }) {
 
       <section className="rounded-lg border border-zinc-200 bg-white p-4">
         <h2 className="text-lg font-medium text-zinc-900">Actions</h2>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {data.allowedActions
-            .filter(
-              (action) =>
-                action.actionCode !== "propose_split" &&
-                action.actionCode !== "buyer_accept_split" &&
-                action.actionCode !== "buyer_reject_proposal",
-            )
-            .map((action) => (
-              <button
-                key={action.actionCode}
-                type="button"
-                disabled={busy}
-                onClick={() => void runTransition(action.actionCode)}
-                className="rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-800 disabled:opacity-50"
-              >
-                {action.label}
-              </button>
-            ))}
-        </div>
+        {(() => {
+          const actions = data.allowedActions.filter(
+            (action) =>
+              action.actionCode !== "propose_split" &&
+              action.actionCode !== "buyer_accept_split" &&
+              action.actionCode !== "buyer_reject_proposal",
+          );
+          if (actions.length === 0) {
+            return (
+              <p className="mt-3 text-sm text-zinc-500">
+                No workflow actions from the current status. For supplier
+                orders after seeding, &ldquo;Confirmed&rdquo; includes{" "}
+                <span className="font-medium text-zinc-700">Mark fulfilled</span>
+                .
+              </p>
+            );
+          }
+          return (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {actions.map((action) => (
+                <button
+                  key={action.actionCode}
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void runTransition(action.actionCode)}
+                  className="rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-800 disabled:opacity-50"
+                >
+                  {action.label}
+                </button>
+              ))}
+            </div>
+          );
+        })()}
       </section>
     </main>
   );

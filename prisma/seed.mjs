@@ -147,6 +147,17 @@ async function seed() {
       sortOrder: 20,
     },
   });
+  const supplierFulfilled = await prisma.workflowStatus.upsert({
+    where: { workflowId_code: { workflowId: supplierWorkflow.id, code: "FULFILLED" } },
+    update: { label: "Fulfilled", sortOrder: 21, isEnd: true },
+    create: {
+      workflowId: supplierWorkflow.id,
+      code: "FULFILLED",
+      label: "Fulfilled",
+      sortOrder: 21,
+      isEnd: true,
+    },
+  });
   const supplierSplitPending = await prisma.workflowStatus.upsert({
     where: {
       workflowId_code: { workflowId: supplierWorkflow.id, code: "SPLIT_PENDING_BUYER" },
@@ -250,6 +261,14 @@ async function seed() {
     },
     {
       workflowId: supplierWorkflow.id,
+      fromStatusId: supplierConfirmed.id,
+      toStatusId: supplierFulfilled.id,
+      actionCode: "mark_fulfilled",
+      label: "Mark fulfilled",
+      requiresComment: false,
+    },
+    {
+      workflowId: supplierWorkflow.id,
       fromStatusId: supplierSplitPending.id,
       toStatusId: supplierSent.id,
       actionCode: "buyer_reject_proposal",
@@ -344,30 +363,86 @@ async function seed() {
     });
   }
 
+  const po1001 = await prisma.purchaseOrder.findFirst({
+    where: { tenantId: tenant.id, orderNumber: "PO-1001" },
+    select: { id: true },
+  });
   const po1002 = await prisma.purchaseOrder.findFirst({
     where: { tenantId: tenant.id, orderNumber: "PO-1002" },
-    include: { items: true },
+    select: { id: true },
   });
-  if (po1002 && po1002.items.length === 0) {
-    await prisma.purchaseOrderItem.createMany({
-      data: [
-        {
-          orderId: po1002.id,
-          lineNo: 1,
-          description: "Corrugated rolls",
-          quantity: "100",
-          unitPrice: "25.0000",
-          lineTotal: "2500.00",
-        },
-        {
-          orderId: po1002.id,
-          lineNo: 2,
-          description: "Pallets",
-          quantity: "50",
-          unitPrice: "50.0000",
-          lineTotal: "2500.00",
-        },
-      ],
+
+  if (po1001) {
+    await prisma.purchaseOrderItem.upsert({
+      where: { orderId_lineNo: { orderId: po1001.id, lineNo: 1 } },
+      update: {
+        description: "Printer paper (A4)",
+        quantity: "100",
+        unitPrice: "10.0000",
+        lineTotal: "1000.00",
+      },
+      create: {
+        orderId: po1001.id,
+        lineNo: 1,
+        description: "Printer paper (A4)",
+        quantity: "100",
+        unitPrice: "10.0000",
+        lineTotal: "1000.00",
+      },
+    });
+    await prisma.purchaseOrderItem.upsert({
+      where: { orderId_lineNo: { orderId: po1001.id, lineNo: 2 } },
+      update: {
+        description: "Toner cartridges",
+        quantity: "25",
+        unitPrice: "10.0000",
+        lineTotal: "250.00",
+      },
+      create: {
+        orderId: po1001.id,
+        lineNo: 2,
+        description: "Toner cartridges",
+        quantity: "25",
+        unitPrice: "10.0000",
+        lineTotal: "250.00",
+      },
+    });
+  }
+
+  if (po1002) {
+    await prisma.purchaseOrderItem.upsert({
+      where: { orderId_lineNo: { orderId: po1002.id, lineNo: 1 } },
+      update: {
+        description: "Corrugated rolls",
+        quantity: "100",
+        unitPrice: "25.0000",
+        lineTotal: "2500.00",
+      },
+      create: {
+        orderId: po1002.id,
+        lineNo: 1,
+        description: "Corrugated rolls",
+        quantity: "100",
+        unitPrice: "25.0000",
+        lineTotal: "2500.00",
+      },
+    });
+    await prisma.purchaseOrderItem.upsert({
+      where: { orderId_lineNo: { orderId: po1002.id, lineNo: 2 } },
+      update: {
+        description: "Pallets",
+        quantity: "50",
+        unitPrice: "50.0000",
+        lineTotal: "2500.00",
+      },
+      create: {
+        orderId: po1002.id,
+        lineNo: 2,
+        description: "Pallets",
+        quantity: "50",
+        unitPrice: "50.0000",
+        lineTotal: "2500.00",
+      },
     });
   }
 }
