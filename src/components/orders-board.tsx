@@ -37,7 +37,11 @@ type OrdersResponse = {
   orders: OrderRow[];
 };
 
-type QueueFilter = "all" | "awaiting_supplier" | "split_pending_buyer";
+type QueueFilter =
+  | "all"
+  | "needs_my_action"
+  | "awaiting_supplier"
+  | "split_pending_buyer";
 
 export function OrdersBoard({
   initialData,
@@ -58,13 +62,18 @@ export function OrdersBoard({
   const queueSummary = useMemo(() => {
     let awaitingSupplier = 0;
     let splitPendingBuyer = 0;
+    let needsMyAction = 0;
     for (const order of data.orders) {
       if (order.status.code === "SENT") awaitingSupplier += 1;
       if (order.status.code === "SPLIT_PENDING_BUYER") splitPendingBuyer += 1;
+      if (order.allowedActions.length > 0) needsMyAction += 1;
     }
-    return { awaitingSupplier, splitPendingBuyer };
+    return { awaitingSupplier, splitPendingBuyer, needsMyAction };
   }, [data.orders]);
   const filteredOrders = useMemo(() => {
+    if (queueFilter === "needs_my_action") {
+      return data.orders.filter((o) => o.allowedActions.length > 0);
+    }
     if (queueFilter === "awaiting_supplier") {
       return data.orders.filter((o) => o.status.code === "SENT");
     }
@@ -124,6 +133,9 @@ export function OrdersBoard({
           Tenant: <span className="font-medium">{data.tenant.name}</span> ({orderCount} orders)
         </p>
         <div className="mt-4 flex flex-wrap gap-2 text-xs">
+          <span className="rounded-full bg-emerald-100 px-2.5 py-1 font-medium text-emerald-900">
+            Needs my action: {queueSummary.needsMyAction}
+          </span>
           <span className="rounded-full bg-sky-100 px-2.5 py-1 font-medium text-sky-900">
             Awaiting supplier response: {queueSummary.awaitingSupplier}
           </span>
@@ -142,6 +154,17 @@ export function OrdersBoard({
             }`}
           >
             All ({orderCount})
+          </button>
+          <button
+            type="button"
+            onClick={() => setQueueFilter("needs_my_action")}
+            className={`rounded-md border px-2.5 py-1 text-xs font-medium ${
+              queueFilter === "needs_my_action"
+                ? "border-emerald-700 bg-emerald-700 text-white"
+                : "border-emerald-200 bg-emerald-50 text-emerald-900 hover:bg-emerald-100"
+            }`}
+          >
+            Needs My Action ({queueSummary.needsMyAction})
           </button>
           <button
             type="button"
