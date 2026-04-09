@@ -14,23 +14,30 @@ export default async function SettingsUsersPage() {
     );
   }
 
-  const users = await prisma.user.findMany({
-    where: { tenantId: tenant.id },
-    orderBy: [{ isActive: "desc" }, { email: "asc" }],
-    select: {
-      id: true,
-      email: true,
-      name: true,
-      isActive: true,
-      userRoles: {
-        select: {
-          role: {
-            select: { id: true, name: true, isSystem: true },
+  const [users, roleCatalog] = await Promise.all([
+    prisma.user.findMany({
+      where: { tenantId: tenant.id },
+      orderBy: [{ isActive: "desc" }, { email: "asc" }],
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        isActive: true,
+        userRoles: {
+          select: {
+            role: {
+              select: { id: true, name: true, isSystem: true },
+            },
           },
         },
       },
-    },
-  });
+    }),
+    prisma.role.findMany({
+      where: { tenantId: tenant.id },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, isSystem: true },
+    }),
+  ]);
 
   const rows = users.map((u) => ({
     id: u.id,
@@ -48,7 +55,7 @@ export default async function SettingsUsersPage() {
         reversible.
       </p>
       <div className="mt-8">
-        <SettingsUsersClient users={rows} />
+        <SettingsUsersClient users={rows} roleCatalog={roleCatalog} />
       </div>
     </div>
   );

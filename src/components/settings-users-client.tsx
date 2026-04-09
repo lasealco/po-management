@@ -11,23 +11,70 @@ export type SettingsUserRow = {
   roles: { id: string; name: string; isSystem: boolean }[];
 };
 
-export function SettingsUsersClient({ users }: { users: SettingsUserRow[] }) {
+export type RoleCatalogEntry = { id: string; name: string; isSystem: boolean };
+
+function roleIdsSignature(ids: string[]) {
+  return [...ids].sort().join("\0");
+}
+
+export function SettingsUsersClient({
+  users,
+  roleCatalog,
+}: {
+  users: SettingsUserRow[];
+  roleCatalog: RoleCatalogEntry[];
+}) {
   const router = useRouter();
   const [rows, setRows] = useState(() =>
     users.map((u) => ({ ...u, roles: u.roles.map((r) => ({ ...r })) })),
   );
-  const [baseline, setBaseline] = useState<Record<string, { name: string; isActive: boolean }>>(
-    () =>
-      Object.fromEntries(
-        users.map((u) => [u.id, { name: u.name, isActive: u.isActive }]),
-      ),
+  const [baseline, setBaseline] = useState(() =>
+    Object.fromEntries(
+      users.map((u) => [
+        u.id,
+        {
+          name: u.name,
+          isActive: u.isActive,
+          roleKey: roleIdsSignature(u.roles.map((r) => r.id)),
+        },
+      ]),
+    ),
   );
   const [savingId, setSavingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  function updateRow(id: string, patch: Partial<Pick<SettingsUserRow, "name" | "isActive">>) {
+  function updateRow(
+    id: string,
+    patch: Partial<Pick<SettingsUserRow, "name" | "isActive" | "roles">>,
+  ) {
     setRows((prev) =>
       prev.map((u) => (u.id === id ? { ...u, ...patch } : u)),
+    );
+    setError(null);
+  }
+
+  function toggleUserRole(userId: string, roleId: string, checked: boolean) {
+    setRows((prev) =>
+      prev.map((u) => {
+        if (u.id !== userId) return u;
+        const set = new Set(u.roles.map((r) => r.id));
+        if (checked) {
+          const meta = roleCatalog.find((r) => r.id === roleId);
+          if (!meta) return u;
+          if (set.has(roleId)) return u;
+          return {
+            ...u,
+            roles: [
+              ...u.roles,
+              { id: roleId, name: meta.name, isSystem: meta.isSystem },
+            ],
+          };
+        }
+        return {
+          ...u,
+          roles: u.roles.filter((r) => r.id !== roleId),
+        };
+      }),
     );
     setError(null);
   }
@@ -38,9 +85,16 @@ export function SettingsUsersClient({ users }: { users: SettingsUserRow[] }) {
     const b = baseline[id];
     if (!b) return;
 
-    const payload: { name?: string; isActive?: boolean } = {};
+    const roleKey = roleIdsSignature(u.roles.map((r) => r.id));
+    const payload: {
+      name?: string;
+      isActive?: boolean;
+      roleIds?: string[];
+    } = {};
     if (u.name.trim() !== b.name) payload.name = u.name.trim();
     if (u.isActive !== b.isActive) payload.isActive = u.isActive;
+    if (roleKey !== b.roleKey) payload.roleIds = u.roles.map((r) => r.id);
+
     if (Object.keys(payload).length === 0) return;
 
     setSavingId(id);
@@ -65,9 +119,14 @@ export function SettingsUsersClient({ users }: { users: SettingsUserRow[] }) {
       return;
     }
     if (data.user) {
+      const roles = data.user.roles ?? [];
       setBaseline((prev) => ({
         ...prev,
-        [id]: { name: data.user!.name, isActive: data.user!.isActive },
+        [id]: {
+          name: data.user!.name,
+          isActive: data.user!.isActive,
+          roleKey: roleIdsSignature(roles.map((r) => r.id)),
+        },
       }));
       setRows((prev) =>
         prev.map((r) =>
@@ -76,7 +135,7 @@ export function SettingsUsersClient({ users }: { users: SettingsUserRow[] }) {
                 ...r,
                 name: data.user!.name,
                 isActive: data.user!.isActive,
-                roles: data.user!.roles ?? r.roles,
+                roles,
               }
             : r,
         ),
@@ -93,7 +152,7 @@ export function SettingsUsersClient({ users }: { users: SettingsUserRow[] }) {
         </p>
       ) : null}
       <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm">
-        <table className="w-full min-w-[640px] text-left text-sm">
+        <table className="w-full min-w-[720px] text-left text-sm">
           <thead className="border-b border-zinc-200 bg-zinc-50 text-xs font-semibold uppercase tracking-wide text-zinc-500">
             <tr>
               <th className="px-3 py-2 font-medium">Email</th>
@@ -106,11 +165,15 @@ export function SettingsUsersClient({ users }: { users: SettingsUserRow[] }) {
           <tbody className="divide-y divide-zinc-100">
             {rows.map((u) => {
               const b = baseline[u.id];
+              const roleKeyNow = roleIdsSignature(u.roles.map((r) => r.id));
               const dirty =
                 !!b &&
-                (u.name.trim() !== b.name || u.isActive !== b.isActive);
+                (u.name.trim() !== b.name ||
+                  u.isActive !== b.isActive ||
+                  roleKeyNow !== b.roleKey);
+              const assigned = new Set(u.roles.map((r) => r.id));
               return (
-                <tr key={u.id} className="text-zinc-800">
+                <tr key={u.id} className="text-zinc-800 align-top">
                   <td className="px-3 py-2 font-mono text-xs text-zinc-600">
                     {u.email}
                   </td>
@@ -123,20 +186,27 @@ export function SettingsUsersClient({ users }: { users: SettingsUserRow[] }) {
                     />
                   </td>
                   <td className="px-3 py-2">
-                    <ul className="flex flex-wrap gap-1">
-                      {u.roles.length === 0 ? (
-                        <li className="text-xs text-zinc-400">—</li>
-                      ) : (
-                        u.roles.map((r) => (
-                          <li
-                            key={r.id}
-                            className="rounded bg-zinc-100 px-1.5 py-0.5 text-xs text-zinc-700"
-                          >
-                            {r.name}
+                    {roleCatalog.length === 0 ? (
+                      <span className="text-xs text-zinc-400">No roles yet</span>
+                    ) : (
+                      <ul className="flex min-w-[12rem] flex-col gap-1.5">
+                        {roleCatalog.map((r) => (
+                          <li key={r.id}>
+                            <label className="flex cursor-pointer items-center gap-2 text-xs text-zinc-800">
+                              <input
+                                type="checkbox"
+                                checked={assigned.has(r.id)}
+                                onChange={(e) =>
+                                  toggleUserRole(u.id, r.id, e.target.checked)
+                                }
+                                className="rounded border-zinc-300"
+                              />
+                              {r.name}
+                            </label>
                           </li>
-                        ))
-                      )}
-                    </ul>
+                        ))}
+                      </ul>
+                    )}
                   </td>
                   <td className="px-3 py-2">
                     <input
@@ -165,8 +235,8 @@ export function SettingsUsersClient({ users }: { users: SettingsUserRow[] }) {
         </table>
       </div>
       <p className="text-xs text-zinc-500">
-        Role membership is read-only here for now; use seed data or a future
-        assignment UI. Email and sign-in are not managed in this demo.
+        Email and sign-in are not managed in this demo. Use{" "}
+        <strong>Save</strong> after changing name, roles, or active status.
       </p>
     </div>
   );

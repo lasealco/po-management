@@ -4,6 +4,12 @@ import { prisma } from "@/lib/prisma";
 
 const MAX_NAME = 120;
 
+function strIds(v: unknown): string[] | null {
+  if (!Array.isArray(v)) return null;
+  if (!v.every((x) => typeof x === "string" && x.length > 0)) return null;
+  return [...new Set(v)];
+}
+
 export async function PATCH(
   request: Request,
   context: { params: Promise<{ id: string }> },
@@ -24,10 +30,26 @@ export async function PATCH(
   const o = body as Record<string, unknown>;
   const nameRaw = o.name;
   const activeRaw = o.isActive;
+  const roleIdsParsed = strIds(o.roleIds);
 
-  if (nameRaw === undefined && activeRaw === undefined) {
+  let roleIds: string[] | undefined;
+  if (o.roleIds !== undefined) {
+    if (roleIdsParsed === null) {
+      return NextResponse.json(
+        { error: "roleIds must be an array of non-empty strings." },
+        { status: 400 },
+      );
+    }
+    roleIds = roleIdsParsed;
+  }
+
+  if (
+    nameRaw === undefined &&
+    activeRaw === undefined &&
+    roleIds === undefined
+  ) {
     return NextResponse.json(
-      { error: "Provide name and/or isActive." },
+      { error: "Provide name, isActive, and/or roleIds." },
       { status: 400 },
     );
   }
@@ -84,12 +106,41 @@ export async function PATCH(
     return NextResponse.json({ error: "User not found." }, { status: 404 });
   }
 
-  const user = await prisma.user.update({
-    where: { id },
-    data: {
-      ...(name !== undefined ? { name } : {}),
-      ...(isActive !== undefined ? { isActive } : {}),
-    },
+  if (roleIds !== undefined && roleIds.length > 0) {
+    const found = await prisma.role.findMany({
+      where: { tenantId: tenant.id, id: { in: roleIds } },
+      select: { id: true },
+    });
+    if (found.length !== roleIds.length) {
+      return NextResponse.json(
+        { error: "One or more roles are invalid for this tenant." },
+        { status: 400 },
+      );
+    }
+  }
+
+  await prisma.$transaction(async (tx) => {
+    if (name !== undefined || isActive !== undefined) {
+      await tx.user.update({
+        where: { id },
+        data: {
+          ...(name !== undefined ? { name } : {}),
+          ...(isActive !== undefined ? { isActive } : {}),
+        },
+      });
+    }
+    if (roleIds !== undefined) {
+      await tx.userRole.deleteMany({ where: { userId: id } });
+      if (roleIds.length > 0) {
+        await tx.userRole.createMany({
+          data: roleIds.map((roleId) => ({ userId: id, roleId })),
+        });
+      }
+    }
+  });
+
+  const user = await prisma.user.findFirst({
+    where: { id, tenantId: tenant.id },
     select: {
       id: true,
       email: true,
@@ -100,6 +151,10 @@ export async function PATCH(
       },
     },
   });
+
+  if (!user) {
+    return NextResponse.json({ error: "User not found." }, { status: 404 });
+  }
 
   const { userRoles, ...rest } = user;
   return NextResponse.json({
