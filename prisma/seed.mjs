@@ -939,6 +939,48 @@ async function seed() {
         },
       ],
     });
+
+    await prisma.shipment.deleteMany({ where: { orderId: po1002.id } });
+    const seededShipment = await prisma.shipment.create({
+      data: {
+        orderId: po1002.id,
+        shipmentNo: "ASN-PO1002-1",
+        shippedAt: new Date("2026-05-10T12:00:00.000Z"),
+        carrier: "Demo Freight",
+        trackingNo: "DF-77821-1",
+        notes: "Partial shipment for urgent demand.",
+        createdById: supplierUser.id,
+      },
+      select: { id: true },
+    });
+    const po1002Line1 = await prisma.purchaseOrderItem.findUnique({
+      where: { orderId_lineNo: { orderId: po1002.id, lineNo: 1 } },
+      select: { id: true },
+    });
+    const po1002Line2 = await prisma.purchaseOrderItem.findUnique({
+      where: { orderId_lineNo: { orderId: po1002.id, lineNo: 2 } },
+      select: { id: true },
+    });
+    if (po1002Line1 && po1002Line2) {
+      await prisma.shipmentItem.createMany({
+        data: [
+          {
+            shipmentId: seededShipment.id,
+            orderItemId: po1002Line1.id,
+            quantityShipped: "40",
+            quantityReceived: "0",
+            plannedShipDate: new Date("2026-05-10T12:00:00.000Z"),
+          },
+          {
+            shipmentId: seededShipment.id,
+            orderItemId: po1002Line2.id,
+            quantityShipped: "20",
+            quantityReceived: "0",
+            plannedShipDate: new Date("2026-05-10T12:00:00.000Z"),
+          },
+        ],
+      });
+    }
   }
 
   if (po1003) {

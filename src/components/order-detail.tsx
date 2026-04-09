@@ -70,6 +70,26 @@ type OrderDetailResponse = {
     status: { code: string; label: string };
     totalAmount: string;
   }>;
+  shipments: Array<{
+    id: string;
+    shipmentNo: string | null;
+    status: "SHIPPED" | "RECEIVED";
+    shippedAt: string;
+    receivedAt: string | null;
+    carrier: string | null;
+    trackingNo: string | null;
+    notes: string | null;
+    createdBy: { name: string; email: string };
+    items: Array<{
+      id: string;
+      orderItemId: string;
+      lineNo: number;
+      description: string;
+      quantityShipped: string;
+      quantityReceived: string;
+      plannedShipDate: string | null;
+    }>;
+  }>;
   pendingProposal: null | {
     id: string;
     status: string;
@@ -111,6 +131,10 @@ type OrderDetailResponse = {
   };
   splitCapabilities: {
     canPropose: boolean;
+  };
+  shipmentCapabilities: {
+    canCreate: boolean;
+    canReceive: boolean;
   };
 };
 
@@ -164,6 +188,12 @@ export function OrderDetail({
 
   const [newMessageBody, setNewMessageBody] = useState("");
   const [newMessageInternal, setNewMessageInternal] = useState(false);
+  const [asnShipmentNo, setAsnShipmentNo] = useState("");
+  const [asnCarrier, setAsnCarrier] = useState("");
+  const [asnTrackingNo, setAsnTrackingNo] = useState("");
+  const [asnShippedDate, setAsnShippedDate] = useState(todayIsoDate());
+  const [asnNotes, setAsnNotes] = useState("");
+  const [asnQtyByItemId, setAsnQtyByItemId] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     setError(null);
@@ -203,6 +233,13 @@ export function OrderDetail({
     setShipToCountryCode(o.shipToCountryCode ?? "");
     setInternalNotes(o.internalNotes ?? "");
     setNotesToSupplier(o.notesToSupplier ?? "");
+    setAsnQtyByItemId((prev) => {
+      const next: Record<string, string> = { ...prev };
+      for (const item of data.items) {
+        if (!(item.id in next)) next[item.id] = "";
+      }
+      return next;
+    });
   }, [data?.order.updatedAt]);
 
   useEffect(() => {
@@ -392,6 +429,67 @@ export function OrderDetail({
     const payload = (await response.json()) as { error?: string };
     if (!response.ok) {
       setError(payload.error ?? "Accept failed.");
+      setBusy(false);
+      return;
+    }
+    await load();
+    setBusy(false);
+  }
+
+  async function createShipment() {
+    if (!data || !data.shipmentCapabilities.canCreate) return;
+    const lines = data.items
+      .map((item) => ({
+        orderItemId: item.id,
+        quantityShipped: (asnQtyByItemId[item.id] ?? "").trim(),
+      }))
+      .filter((line) => line.quantityShipped !== "");
+    if (lines.length === 0) {
+      setError("Enter at least one shipped quantity for ASN.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    const res = await fetch(`/api/orders/${data.order.id}/shipments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        shipmentNo: asnShipmentNo || null,
+        carrier: asnCarrier || null,
+        trackingNo: asnTrackingNo || null,
+        shippedAt: asnShippedDate || null,
+        notes: asnNotes || null,
+        lines,
+      }),
+    });
+    const payload = (await res.json()) as { error?: string };
+    if (!res.ok) {
+      setError(payload.error ?? "Could not create ASN.");
+      setBusy(false);
+      return;
+    }
+    setAsnShipmentNo("");
+    setAsnCarrier("");
+    setAsnTrackingNo("");
+    setAsnShippedDate(todayIsoDate());
+    setAsnNotes("");
+    setAsnQtyByItemId({});
+    await load();
+    setBusy(false);
+  }
+
+  async function receiveShipment(shipmentId: string) {
+    if (!data || !data.shipmentCapabilities.canReceive) return;
+    setBusy(true);
+    setError(null);
+    const res = await fetch(`/api/shipments/${shipmentId}/receive`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    const payload = (await res.json()) as { error?: string };
+    if (!res.ok) {
+      setError(payload.error ?? "Could not receive shipment.");
       setBusy(false);
       return;
     }
@@ -847,6 +945,159 @@ export function OrderDetail({
             </tbody>
           </table>
         </div>
+      </section>
+
+      <section className="mb-8 rounded-lg border border-zinc-200 bg-white p-4">
+        <h2 className="text-lg font-medium text-zinc-900">ASNs / Shipments</h2>
+        <p className="mt-1 text-xs text-zinc-600">
+          Supplier creates ASNs with shipped quantities. Buyer records receipt.
+        </p>
+
+        <ul className="mt-4 space-y-3 text-sm">
+          {data.shipments.length === 0 ? (
+            <li className="text-zinc-500">No shipments yet.</li>
+          ) : (
+            data.shipments.map((shipment) => {
+              const remaining = shipment.items.reduce(
+                (sum, row) =>
+                  sum + (Number(row.quantityShipped) - Number(row.quantityReceived)),
+                0,
+              );
+              return (
+                <li
+                  key={shipment.id}
+                  className="rounded-md border border-zinc-100 bg-zinc-50/80 p-3"
+                >
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-600">
+                    <span className="font-medium text-zinc-900">
+                      {shipment.shipmentNo || shipment.id.slice(0, 8)}
+                    </span>
+                    <span
+                      className={`rounded px-1.5 py-0.5 font-semibold ${
+                        shipment.status === "RECEIVED"
+                          ? "bg-emerald-100 text-emerald-800"
+                          : "bg-sky-100 text-sky-800"
+                      }`}
+                    >
+                      {shipment.status}
+                    </span>
+                    <span>Shipped {new Date(shipment.shippedAt).toLocaleDateString()}</span>
+                    {shipment.carrier ? <span>· {shipment.carrier}</span> : null}
+                    {shipment.trackingNo ? <span>· {shipment.trackingNo}</span> : null}
+                    {shipment.receivedAt ? (
+                      <span>
+                        · Received {new Date(shipment.receivedAt).toLocaleDateString()}
+                      </span>
+                    ) : null}
+                  </div>
+                  <ul className="mt-2 space-y-1 text-xs text-zinc-700">
+                    {shipment.items.map((row) => (
+                      <li key={row.id}>
+                        L{row.lineNo} {row.description}: shipped {row.quantityShipped}, received{" "}
+                        {row.quantityReceived}
+                        {row.plannedShipDate ? (
+                          <> · planned {new Date(row.plannedShipDate).toLocaleDateString()}</>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                  {shipment.notes ? (
+                    <p className="mt-2 text-xs text-zinc-700">{shipment.notes}</p>
+                  ) : null}
+                  {data.shipmentCapabilities.canReceive && remaining > 0 ? (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => void receiveShipment(shipment.id)}
+                      className="mt-3 rounded-md border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-800 disabled:opacity-50"
+                    >
+                      Receive all remaining
+                    </button>
+                  ) : null}
+                </li>
+              );
+            })
+          )}
+        </ul>
+
+        {data.shipmentCapabilities.canCreate ? (
+          <div className="mt-5 border-t border-zinc-100 pt-4">
+            <p className="text-sm font-medium text-zinc-900">Create ASN</p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <label className="flex flex-col text-sm">
+                <span className="text-zinc-700">Shipment no</span>
+                <input
+                  value={asnShipmentNo}
+                  onChange={(e) => setAsnShipmentNo(e.target.value)}
+                  className={f}
+                />
+              </label>
+              <label className="flex flex-col text-sm">
+                <span className="text-zinc-700">Shipped date</span>
+                <input
+                  type="date"
+                  value={asnShippedDate}
+                  onChange={(e) => setAsnShippedDate(e.target.value)}
+                  className={f}
+                />
+              </label>
+              <label className="flex flex-col text-sm">
+                <span className="text-zinc-700">Carrier</span>
+                <input
+                  value={asnCarrier}
+                  onChange={(e) => setAsnCarrier(e.target.value)}
+                  className={f}
+                />
+              </label>
+              <label className="flex flex-col text-sm">
+                <span className="text-zinc-700">Tracking</span>
+                <input
+                  value={asnTrackingNo}
+                  onChange={(e) => setAsnTrackingNo(e.target.value)}
+                  className={f}
+                />
+              </label>
+            </div>
+            <label className="mt-3 flex flex-col text-sm">
+              <span className="text-zinc-700">Notes</span>
+              <textarea
+                value={asnNotes}
+                onChange={(e) => setAsnNotes(e.target.value)}
+                rows={2}
+                className={f}
+              />
+            </label>
+            <div className="mt-3 grid gap-2">
+              {data.items.map((item) => (
+                <label key={item.id} className="flex items-center gap-2 text-sm">
+                  <span className="min-w-48 text-zinc-700">
+                    L{item.lineNo} {item.description}
+                  </span>
+                  <input
+                    inputMode="decimal"
+                    placeholder="Qty shipped"
+                    value={asnQtyByItemId[item.id] ?? ""}
+                    onChange={(e) =>
+                      setAsnQtyByItemId((prev) => ({
+                        ...prev,
+                        [item.id]: e.target.value,
+                      }))
+                    }
+                    className="w-32 rounded border border-zinc-300 px-2 py-1 text-sm text-zinc-900"
+                  />
+                </label>
+              ))}
+            </div>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void createShipment()}
+              className="mt-3 rounded-md bg-zinc-900 px-4 py-2 text-sm text-white disabled:opacity-50"
+            >
+              {busy ? "Saving…" : "Create ASN"}
+            </button>
+          </div>
+        ) : null}
       </section>
 
       <section className="mb-8 rounded-lg border border-zinc-200 bg-white p-4">

@@ -425,6 +425,7 @@ model PurchaseOrder {
   status        WorkflowStatus       @relation(fields: [statusId], references: [id], onDelete: Restrict)
   splitProposal SplitProposal?       @relation("SplitProposalDraftOrders", fields: [splitProposalId], references: [id], onDelete: SetNull)
   items         PurchaseOrderItem[]
+  shipments     Shipment[]
   transitions   OrderTransitionLog[]
   chats         OrderChatMessage[]
   splitChildren PurchaseOrder[]      @relation("OrderSplitParent")
@@ -452,9 +453,53 @@ model PurchaseOrderItem {
   order              PurchaseOrder      @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product            Product?           @relation(fields: [productId], references: [id], onDelete: SetNull)
   splitProposalLines SplitProposalLine[]
+  shipmentItems      ShipmentItem[]
 
   @@unique([orderId, lineNo])
   @@index([orderId])
+}
+
+enum ShipmentStatus {
+  SHIPPED
+  RECEIVED
+}
+
+model Shipment {
+  id           String         @id @default(cuid())
+  orderId      String
+  shipmentNo   String?
+  status       ShipmentStatus @default(SHIPPED)
+  shippedAt    DateTime
+  receivedAt   DateTime?
+  carrier      String?
+  trackingNo   String?
+  notes        String?
+  createdById  String
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  order     PurchaseOrder  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  createdBy User           @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  items     ShipmentItem[]
+
+  @@index([orderId, createdAt])
+  @@index([status])
+}
+
+model ShipmentItem {
+  id               String   @id @default(cuid())
+  shipmentId       String
+  orderItemId      String
+  quantityShipped  Decimal  @db.Decimal(14, 3)
+  quantityReceived Decimal  @default(0) @db.Decimal(14, 3)
+  plannedShipDate  DateTime?
+
+  shipment  Shipment          @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  orderItem  PurchaseOrderItem @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
+
+  @@index([shipmentId])
+  @@index([orderItemId])
+  @@unique([shipmentId, orderItemId])
 }
 
 enum SplitProposalStatus {

@@ -108,6 +108,16 @@ export async function GET(
         orderBy: { splitIndex: "asc" },
         include: { status: true },
       },
+      shipments: {
+        orderBy: { createdAt: "desc" },
+        include: {
+          createdBy: { select: { name: true, email: true } },
+          items: {
+            include: { orderItem: { select: { id: true, lineNo: true, description: true } } },
+            orderBy: { orderItem: { lineNo: "asc" } },
+          },
+        },
+      },
       splitProposalsAsParent: {
         where: { status: "PENDING" },
         include: {
@@ -185,6 +195,11 @@ export async function GET(
     actorId !== null &&
     (await userHasGlobalGrant(actorId, "org.orders", "edit"));
   const canSeeInternalFields = canSeeInternalMessages;
+  const canReceiveShipments = canSeeInternalMessages && !isSupplierPortalUser;
+  const canCreateShipments =
+    isSupplierPortalUser &&
+    order.workflow.supplierPortalOn &&
+    (order.status.code === "SENT" || order.status.code === "CONFIRMED");
   const effective = {
     buyerReference: preferText(
       order.buyerReference,
@@ -327,6 +342,26 @@ export async function GET(
       status: child.status,
       totalAmount: child.totalAmount.toString(),
     })),
+    shipments: order.shipments.map((shipment) => ({
+      id: shipment.id,
+      shipmentNo: shipment.shipmentNo,
+      status: shipment.status,
+      shippedAt: shipment.shippedAt.toISOString(),
+      receivedAt: shipment.receivedAt?.toISOString() ?? null,
+      carrier: shipment.carrier,
+      trackingNo: shipment.trackingNo,
+      notes: shipment.notes,
+      createdBy: shipment.createdBy,
+      items: shipment.items.map((item) => ({
+        id: item.id,
+        orderItemId: item.orderItemId,
+        lineNo: item.orderItem.lineNo,
+        description: item.orderItem.description,
+        quantityShipped: item.quantityShipped.toString(),
+        quantityReceived: item.quantityReceived.toString(),
+        plannedShipDate: item.plannedShipDate?.toISOString() ?? null,
+      })),
+    })),
     pendingProposal: pendingProposal
       ? {
           id: pendingProposal.id,
@@ -371,6 +406,10 @@ export async function GET(
     },
     splitCapabilities: {
       canPropose: isSupplierPortalUser,
+    },
+    shipmentCapabilities: {
+      canCreate: canCreateShipments,
+      canReceive: canReceiveShipments,
     },
   });
 }
