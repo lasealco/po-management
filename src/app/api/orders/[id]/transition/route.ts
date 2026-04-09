@@ -88,6 +88,12 @@ export async function POST(
   }
 
   const isSupplierPortalUser = await userHasRoleNamed(actorId, "Supplier portal");
+  if (isSupplierPortalUser && !order.workflow.supplierPortalOn) {
+    return NextResponse.json(
+      { error: "Supplier users can only act on supplier-portal orders." },
+      { status: 403 },
+    );
+  }
   const supplierOnlyActions = new Set([
     "confirm",
     "decline",

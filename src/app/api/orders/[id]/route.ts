@@ -119,6 +119,9 @@ export async function GET(
   const actorId = await getActorUserId();
   const isSupplierPortalUser =
     actorId !== null && (await userHasRoleNamed(actorId, "Supplier portal"));
+  if (isSupplierPortalUser && !order.workflow.supplierPortalOn) {
+    return NextResponse.json({ error: "Order not found" }, { status: 404 });
+  }
 
   const supplierOnlyActions = new Set([
     "confirm",

@@ -197,6 +197,12 @@ export async function POST(
       { status: 403 },
     );
   }
+  if (!order.workflow.supplierPortalOn) {
+    return NextResponse.json(
+      { error: "Split proposals are only available on supplier-portal workflows." },
+      { status: 403 },
+    );
+  }
 
   const pendingChildStatus = await prisma.workflowStatus.findFirst({
     where: { workflowId: order.workflowId, code: "PENDING_BUYER_APPROVAL" },

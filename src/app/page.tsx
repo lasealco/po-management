@@ -1,6 +1,6 @@
 import { AccessDenied } from "@/components/access-denied";
 import { OrdersBoard } from "@/components/orders-board";
-import { getViewerGrantSet, viewerHas } from "@/lib/authz";
+import { getViewerGrantSet, userHasRoleNamed, viewerHas } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { visibleOnBoard } from "@/lib/workflow-actions";
 
@@ -46,9 +46,29 @@ export default async function Home() {
   }
 
   const { tenant } = access;
+  const isSupplierPortalUser = await userHasRoleNamed(
+    access.user.id,
+    "Supplier portal",
+  );
+  const supplierOnlyActionCodes = new Set([
+    "confirm",
+    "decline",
+    "propose_split",
+    "mark_fulfilled",
+  ]);
+  const buyerOnlyActionCodes = new Set([
+    "send_to_supplier",
+    "buyer_accept_split",
+    "buyer_reject_proposal",
+    "buyer_cancel",
+  ]);
 
   const orders = await prisma.purchaseOrder.findMany({
-    where: { tenantId: tenant.id, splitParentId: null },
+    where: {
+      tenantId: tenant.id,
+      splitParentId: null,
+      ...(isSupplierPortalUser ? { workflow: { supplierPortalOn: true } } : {}),
+    },
     include: {
       status: { select: { id: true, code: true, label: true } },
       supplier: { select: { id: true, name: true } },
@@ -97,6 +117,15 @@ export default async function Home() {
             transition.fromStatusId === order.statusId &&
             visibleOnBoard(transition.actionCode),
         )
+        .filter((transition) => {
+          if (supplierOnlyActionCodes.has(transition.actionCode)) {
+            return isSupplierPortalUser;
+          }
+          if (buyerOnlyActionCodes.has(transition.actionCode)) {
+            return !isSupplierPortalUser;
+          }
+          return true;
+        })
         .map((transition) => ({
           actionCode: transition.actionCode,
           label: transition.label,

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireApiGrant } from "@/lib/authz";
+import { getActorUserId, requireApiGrant, userHasRoleNamed } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
 import { visibleOnBoard } from "@/lib/workflow-actions";
@@ -19,8 +19,28 @@ export async function GET() {
     );
   }
 
+  const actorId = await getActorUserId();
+  const isSupplierPortalUser =
+    actorId !== null && (await userHasRoleNamed(actorId, "Supplier portal"));
+  const supplierOnlyActionCodes = new Set([
+    "confirm",
+    "decline",
+    "propose_split",
+    "mark_fulfilled",
+  ]);
+  const buyerOnlyActionCodes = new Set([
+    "send_to_supplier",
+    "buyer_accept_split",
+    "buyer_reject_proposal",
+    "buyer_cancel",
+  ]);
+
   const orders = await prisma.purchaseOrder.findMany({
-    where: { tenantId: tenant.id, splitParentId: null },
+    where: {
+      tenantId: tenant.id,
+      splitParentId: null,
+      ...(isSupplierPortalUser ? { workflow: { supplierPortalOn: true } } : {}),
+    },
     include: {
       status: {
         select: { id: true, code: true, label: true },
@@ -60,6 +80,15 @@ export async function GET() {
           transition.fromStatusId === order.statusId &&
           visibleOnBoard(transition.actionCode),
       )
+      .filter((transition) => {
+        if (supplierOnlyActionCodes.has(transition.actionCode)) {
+          return isSupplierPortalUser;
+        }
+        if (buyerOnlyActionCodes.has(transition.actionCode)) {
+          return !isSupplierPortalUser;
+        }
+        return true;
+      })
       .map((transition) => ({
         actionCode: transition.actionCode,
         label: transition.label,
