@@ -8,8 +8,8 @@
  *   npm run db:repair:supplier-migration
  *   npm run db:repair:supplier-migration -- --dry-run
  *
- * Then: npx prisma migrate deploy
- * Or push to Vercel so vercel-build runs migrate again.
+ * Then: npx prisma migrate deploy — or on Vercel set PRISMA_REPAIR_SUPPLIER_MIGRATION=1 for one build
+ * (see scripts/vercel-build.cjs), then remove it after a successful deploy.
  */
 const { spawnSync } = require("node:child_process");
 const fs = require("node:fs");
