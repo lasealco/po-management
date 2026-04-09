@@ -130,6 +130,7 @@ export async function GET(
   const canSeeInternalMessages =
     actorId !== null &&
     (await userHasGlobalGrant(actorId, "org.orders", "edit"));
+  const canSeeInternalFields = canSeeInternalMessages;
 
   const messages = await prisma.orderChatMessage.findMany({
     where: {
@@ -167,7 +168,7 @@ export async function GET(
       shipToRegion: order.shipToRegion,
       shipToPostalCode: order.shipToPostalCode,
       shipToCountryCode: order.shipToCountryCode,
-      internalNotes: order.internalNotes,
+      internalNotes: canSeeInternalFields ? order.internalNotes : null,
       notesToSupplier: order.notesToSupplier,
       status: order.status,
       workflow: {

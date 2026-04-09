@@ -6,7 +6,7 @@ export async function POST(
   _request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
-  const gate = await requireApiGrant("org.orders", "transition");
+  const gate = await requireApiGrant("org.orders", "edit");
   if (gate) return gate;
 
   const actorId = await getActorUserId();

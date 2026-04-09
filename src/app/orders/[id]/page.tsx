@@ -51,6 +51,7 @@ export default async function OrderPage({
         canSplit={canSplit}
         canEditHeader={canEditHeader}
         canViewProducts={canViewProducts}
+        canViewInternalNotes={canEditHeader}
       />
     </div>
   );

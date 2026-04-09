@@ -122,6 +122,7 @@ export function OrderDetail({
   canSplit = true,
   canEditHeader = false,
   canViewProducts = false,
+  canViewInternalNotes = false,
 }: {
   orderId: string;
   canTransition?: boolean;
@@ -129,6 +130,8 @@ export function OrderDetail({
   canEditHeader?: boolean;
   /** When true and line has productId, SKU/code links to the catalog detail page. */
   canViewProducts?: boolean;
+  /** Buyer/internal only. */
+  canViewInternalNotes?: boolean;
 }) {
   const [data, setData] = useState<OrderDetailResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -222,13 +225,20 @@ export function OrderDetail({
 
   const canProposeSplit = useMemo(() => {
     if (!data || !canSplit) return false;
-    return (
-      data.order.status.code === "SENT" &&
-      data.order.workflow.allowSplitOrders &&
-      !data.pendingProposal &&
-      !data.order.splitParentId
+    const hasProposeTransition = data.allowedActions.some(
+      (a) => a.actionCode === "propose_split",
     );
+    return hasProposeTransition && !data.pendingProposal && !data.order.splitParentId;
   }, [data, canSplit]);
+
+  const canResolveSplitProposal = useMemo(() => {
+    if (!data || !canTransition) return false;
+    const actionCodes = new Set(data.allowedActions.map((a) => a.actionCode));
+    return (
+      actionCodes.has("buyer_accept_split") ||
+      actionCodes.has("buyer_reject_proposal")
+    );
+  }, [data, canTransition]);
 
   async function postMessage() {
     if (!data || !newMessageBody.trim()) return;
@@ -575,14 +585,16 @@ export function OrderDetail({
                 {data.order.notesToSupplier ?? "—"}
               </dd>
             </div>
-            <div className="sm:col-span-2">
-              <dt className="text-xs font-medium uppercase text-zinc-500">
-                Internal notes
-              </dt>
-              <dd className="whitespace-pre-wrap text-zinc-900">
-                {data.order.internalNotes ?? "—"}
-              </dd>
-            </div>
+            {canViewInternalNotes ? (
+              <div className="sm:col-span-2">
+                <dt className="text-xs font-medium uppercase text-zinc-500">
+                  Internal notes
+                </dt>
+                <dd className="whitespace-pre-wrap text-zinc-900">
+                  {data.order.internalNotes ?? "—"}
+                </dd>
+              </div>
+            ) : null}
           </dl>
         ) : (
           <div className="mt-4 space-y-4">
@@ -921,7 +933,7 @@ export function OrderDetail({
               </li>
             ))}
           </ul>
-          {canTransition ? (
+          {canResolveSplitProposal ? (
             <div className="mt-4 flex flex-wrap gap-2">
               <button
                 type="button"
@@ -942,8 +954,7 @@ export function OrderDetail({
             </div>
           ) : (
             <p className="mt-4 text-sm text-zinc-600">
-              You do not have permission to accept or reject split proposals
-              (org.orders → transition).
+              Buyer review required: this user cannot accept/reject split proposals.
             </p>
           )}
         </section>
