@@ -23,6 +23,15 @@ function parseRequestedDeliveryDate(
   return d;
 }
 
+function preferText(
+  childValue: string | null | undefined,
+  parentValue: string | null | undefined,
+) {
+  if (typeof childValue === "string" && childValue.trim()) return childValue;
+  if (typeof parentValue === "string" && parentValue.trim()) return parentValue;
+  return null;
+}
+
 export async function GET(
   _request: Request,
   context: { params: Promise<{ id: string }> },
@@ -177,42 +186,63 @@ export async function GET(
     (await userHasGlobalGrant(actorId, "org.orders", "edit"));
   const canSeeInternalFields = canSeeInternalMessages;
   const effective = {
-    buyerReference: order.buyerReference ?? order.splitParent?.buyerReference ?? null,
-    supplierReference:
-      order.supplierReference ?? order.splitParent?.supplierReference ?? null,
+    buyerReference: preferText(
+      order.buyerReference,
+      order.splitParent?.buyerReference,
+    ),
+    supplierReference: preferText(
+      order.supplierReference,
+      order.splitParent?.supplierReference,
+    ),
     paymentTermsDays:
       order.paymentTermsDays ?? order.splitParent?.paymentTermsDays ?? null,
-    paymentTermsLabel:
-      order.paymentTermsLabel ?? order.splitParent?.paymentTermsLabel ?? null,
-    incoterm: order.incoterm ?? order.splitParent?.incoterm ?? null,
+    paymentTermsLabel: preferText(
+      order.paymentTermsLabel,
+      order.splitParent?.paymentTermsLabel,
+    ),
+    incoterm: preferText(order.incoterm, order.splitParent?.incoterm),
     requestedDeliveryDate:
       order.requestedDeliveryDate ?? order.splitParent?.requestedDeliveryDate ?? null,
-    shipToName: order.shipToName ?? order.splitParent?.shipToName ?? null,
-    shipToLine1: order.shipToLine1 ?? order.splitParent?.shipToLine1 ?? null,
-    shipToLine2: order.shipToLine2 ?? order.splitParent?.shipToLine2 ?? null,
-    shipToCity: order.shipToCity ?? order.splitParent?.shipToCity ?? null,
-    shipToRegion: order.shipToRegion ?? order.splitParent?.shipToRegion ?? null,
-    shipToPostalCode:
-      order.shipToPostalCode ?? order.splitParent?.shipToPostalCode ?? null,
-    shipToCountryCode:
-      order.shipToCountryCode ?? order.splitParent?.shipToCountryCode ?? null,
-    internalNotes: order.internalNotes ?? order.splitParent?.internalNotes ?? null,
-    notesToSupplier:
-      order.notesToSupplier ?? order.splitParent?.notesToSupplier ?? null,
+    shipToName: preferText(order.shipToName, order.splitParent?.shipToName),
+    shipToLine1: preferText(order.shipToLine1, order.splitParent?.shipToLine1),
+    shipToLine2: preferText(order.shipToLine2, order.splitParent?.shipToLine2),
+    shipToCity: preferText(order.shipToCity, order.splitParent?.shipToCity),
+    shipToRegion: preferText(order.shipToRegion, order.splitParent?.shipToRegion),
+    shipToPostalCode: preferText(
+      order.shipToPostalCode,
+      order.splitParent?.shipToPostalCode,
+    ),
+    shipToCountryCode: preferText(
+      order.shipToCountryCode,
+      order.splitParent?.shipToCountryCode,
+    ),
+    internalNotes: preferText(order.internalNotes, order.splitParent?.internalNotes),
+    notesToSupplier: preferText(
+      order.notesToSupplier,
+      order.splitParent?.notesToSupplier,
+    ),
   };
 
   let childPlannedShipDates: string[] = [];
-  if (order.splitProposalId && order.splitIndex != null) {
+  if (order.splitIndex != null) {
     const splitLines = await prisma.splitProposalLine.findMany({
       where: {
-        proposalId: order.splitProposalId,
         childIndex: order.splitIndex,
+        proposal: {
+          parentOrderId: order.splitParentId ?? order.id,
+          ...(order.splitProposalId ? { id: order.splitProposalId } : {}),
+        },
       },
       orderBy: { plannedShipDate: "asc" },
-      select: { plannedShipDate: true },
+      select: { plannedShipDate: true, proposalId: true },
+      take: 200,
     });
+    const firstProposal = splitLines[0]?.proposalId;
+    const sameProposal = firstProposal
+      ? splitLines.filter((line) => line.proposalId === firstProposal)
+      : splitLines;
     const unique = new Set(
-      splitLines.map((line) => line.plannedShipDate.toISOString().slice(0, 10)),
+      sameProposal.map((line) => line.plannedShipDate.toISOString().slice(0, 10)),
     );
     childPlannedShipDates = [...unique];
   }
