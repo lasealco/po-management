@@ -6,7 +6,11 @@ type ProductPayload =
   | { error: string }
   | { product: { id: string; name: string; sku: string | null } };
 
-export function ProductCreateForm() {
+export function ProductCreateForm({
+  onSuccess,
+}: {
+  onSuccess?: () => void;
+} = {}) {
   const [sku, setSku] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -43,6 +47,7 @@ export function ProductCreateForm() {
     setDescription("");
     setUnit("");
     setBusy(false);
+    onSuccess?.();
   }
 
   return (
