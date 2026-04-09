@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 const links = [
   { href: "/", label: "Orders" },
   { href: "/products", label: "Products" },
-  { href: "/catalog", label: "Catalog" },
+  { href: "/settings", label: "Settings" },
   { href: "/suppliers", label: "Suppliers" },
 ] as const;
 
@@ -27,7 +27,9 @@ export function AppNav() {
             const active =
               href === "/"
                 ? pathname === "/" || pathname.startsWith("/orders")
-                : pathname === href || pathname.startsWith(`${href}/`);
+                : href === "/settings"
+                  ? pathname.startsWith("/settings")
+                  : pathname === href || pathname.startsWith(`${href}/`);
             return (
               <Link
                 key={href}

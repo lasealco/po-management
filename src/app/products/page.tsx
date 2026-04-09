@@ -69,7 +69,7 @@ export default async function ProductCatalogPage() {
             </p>
             <p className="mt-1 text-sm text-zinc-500">
               Categories and divisions:{" "}
-              <Link href="/catalog" className="text-amber-900 underline-offset-2 hover:underline">
+              <Link href="/settings/catalog" className="text-amber-900 underline-offset-2 hover:underline">
                 Catalog setup
               </Link>
               .
