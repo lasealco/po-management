@@ -136,7 +136,7 @@ export default async function Home() {
         const fromSupplier = Boolean(
           latestShared?.authorRoleNames.includes("Supplier portal"),
         );
-        const awaitingReplyFrom = latestShared
+        const awaitingReplyFrom: "buyer" | "supplier" | null = latestShared
           ? fromSupplier
             ? "buyer"
             : "supplier"
