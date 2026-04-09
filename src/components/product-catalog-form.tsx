@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 const MAX_DESC = 2000;
 const MAX_EAN = 32;
@@ -82,7 +82,6 @@ export function ProductCatalogForm({
   const [categoryId, setCategoryId] = useState(i?.categoryId ?? "");
   const [divisionId, setDivisionId] = useState(i?.divisionId ?? "");
   const [ean, setEan] = useState(i?.ean ?? "");
-  const [customerName, setCustomerName] = useState(i?.customerName ?? "");
   const [primaryImageUrl, setPrimaryImageUrl] = useState(
     i?.primaryImageUrl ?? "",
   );
@@ -132,6 +131,9 @@ export function ProductCatalogForm({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [imageBusy, setImageBusy] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   function toggleSupplier(id: string, checked: boolean) {
     setSupplierIds((prev) => ({ ...prev, [id]: checked }));
@@ -156,7 +158,7 @@ export function ProductCatalogForm({
       categoryId: categoryId || null,
       divisionId: divisionId || null,
       ean: ean || null,
-      customerName: customerName || null,
+      customerName: i?.customerName?.trim() || null,
       primaryImageUrl: primaryImageUrl || null,
       hsCode: hsCode || null,
       isDangerousGoods,
@@ -224,7 +226,6 @@ export function ProductCatalogForm({
       setCategoryId("");
       setDivisionId("");
       setEan("");
-      setCustomerName("");
       setPrimaryImageUrl("");
       setHsCode("");
       setIsDangerousGoods(false);
@@ -277,6 +278,29 @@ export function ProductCatalogForm({
     router.refresh();
   }
 
+  async function uploadPrimaryImage(file: File) {
+    setImageError(null);
+    setImageBusy(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/product-images", {
+        method: "POST",
+        body: fd,
+      });
+      const payload = (await res.json()) as { url?: string; error?: string };
+      if (!res.ok) {
+        setImageError(payload.error ?? "Upload failed.");
+        return;
+      }
+      if (payload.url) setPrimaryImageUrl(payload.url);
+    } catch {
+      setImageError("Upload failed.");
+    } finally {
+      setImageBusy(false);
+    }
+  }
+
   const field =
     "mt-0 h-8 rounded border border-zinc-300 px-2 py-0 text-sm text-zinc-900 w-full leading-snug box-border";
   const area =
@@ -289,8 +313,9 @@ export function ProductCatalogForm({
         {mode === "create" ? "Create product" : "Edit product"}
       </h2>
       <p className="mt-0.5 max-w-3xl text-xs leading-snug text-zinc-600">
-        File fields use URLs until storage is wired. Dangerous goods and
-        temperature details appear after you check those options.
+        Primary image: upload or paste a URL. Other file fields still use URLs.
+        Dangerous goods and temperature extras appear when you check those
+        options.
       </p>
 
       {errorMessage ? (
@@ -419,26 +444,84 @@ export function ProductCatalogForm({
                 className={field}
               />
             </label>
-            <label className={label}>
-              <span className="font-medium text-zinc-700">Customer name</span>
-              <textarea
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                rows={1}
-                className={`${area} min-h-[2rem]`}
-              />
-            </label>
-            <label className={label}>
-              <span className="font-medium text-zinc-700">
-                Primary image URL
-              </span>
+            <div className={`${label} sm:col-span-2`}>
+              <span className="font-medium text-zinc-700">Primary image</span>
               <input
-                value={primaryImageUrl}
-                onChange={(e) => setPrimaryImageUrl(e.target.value)}
-                className={field}
-                placeholder="https://…"
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                className="sr-only"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  e.target.value = "";
+                  if (f) void uploadPrimaryImage(f);
+                }}
               />
-            </label>
+              <div
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    fileInputRef.current?.click();
+                  }
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const f = e.dataTransfer.files?.[0];
+                  if (f) void uploadPrimaryImage(f);
+                }}
+                className="flex min-h-[4.5rem] cursor-pointer flex-col items-center justify-center gap-1 rounded border border-dashed border-zinc-300 bg-zinc-50/80 px-3 py-2 text-center text-xs text-zinc-600 hover:border-zinc-400 hover:bg-zinc-50"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {imageBusy ? (
+                  <span>Uploading…</span>
+                ) : (
+                  <>
+                    <span>Drop an image here or click to choose</span>
+                    <span className="text-zinc-500">
+                      JPEG, PNG, WebP, GIF · max 5 MB
+                    </span>
+                  </>
+                )}
+              </div>
+              {imageError ? (
+                <p className="mt-1 text-xs text-red-600">{imageError}</p>
+              ) : null}
+              {primaryImageUrl ? (
+                <div className="mt-2 flex items-center gap-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={primaryImageUrl}
+                    alt=""
+                    className="h-14 w-14 rounded border border-zinc-200 object-cover"
+                  />
+                  <button
+                    type="button"
+                    className="text-xs font-medium text-zinc-600 underline hover:text-zinc-900"
+                    onClick={() => setPrimaryImageUrl("")}
+                  >
+                    Remove image
+                  </button>
+                </div>
+              ) : null}
+              <label className="mt-2 flex flex-col gap-0">
+                <span className="text-xs font-normal text-zinc-500">
+                  Or paste image URL
+                </span>
+                <input
+                  value={primaryImageUrl}
+                  onChange={(e) => setPrimaryImageUrl(e.target.value)}
+                  className={field}
+                  placeholder="https://…"
+                />
+              </label>
+            </div>
             <label className="flex items-center gap-2 text-sm sm:col-span-2">
               <input
                 type="checkbox"

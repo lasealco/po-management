@@ -17,6 +17,9 @@
 /.next/
 /out/
 
+# local product image uploads (dev only; prod uses Vercel Blob)
+public/uploads/
+
 # production
 /build
 
