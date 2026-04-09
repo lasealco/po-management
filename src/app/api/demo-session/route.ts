@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { getDemoActorEmail, PO_DEMO_USER_COOKIE } from "@/lib/demo-actor";
@@ -5,6 +6,17 @@ import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
 
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 90;
+
+function sessionCookieOptions() {
+  const secure = process.env.NODE_ENV === "production";
+  return {
+    path: "/",
+    maxAge: COOKIE_MAX_AGE,
+    sameSite: "lax" as const,
+    httpOnly: true,
+    secure,
+  };
+}
 
 export async function GET() {
   const tenant = await getDemoTenant();
@@ -57,23 +69,16 @@ export async function POST(request: Request) {
     );
   }
 
-  const res = NextResponse.json({ ok: true, email: user.email });
-  res.cookies.set(PO_DEMO_USER_COOKIE, user.email, {
-    path: "/",
-    maxAge: COOKIE_MAX_AGE,
-    sameSite: "lax",
-    httpOnly: true,
-  });
-  return res;
+  const jar = await cookies();
+  jar.set(PO_DEMO_USER_COOKIE, user.email, sessionCookieOptions());
+  return NextResponse.json({ ok: true, email: user.email });
 }
 
 export async function DELETE() {
-  const res = NextResponse.json({ ok: true });
-  res.cookies.set(PO_DEMO_USER_COOKIE, "", {
-    path: "/",
+  const jar = await cookies();
+  jar.set(PO_DEMO_USER_COOKIE, "", {
+    ...sessionCookieOptions(),
     maxAge: 0,
-    sameSite: "lax",
-    httpOnly: true,
   });
-  return res;
+  return NextResponse.json({ ok: true });
 }

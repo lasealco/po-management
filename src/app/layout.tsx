@@ -4,6 +4,9 @@ import { AppNavWithGrants } from "@/components/app-nav-with-grants";
 import { DemoUserSwitcher } from "@/components/demo-user-switcher";
 import "./globals.css";
 
+/** Nav and demo bar read cookies; avoid caching a shell without grants. */
+export const dynamic = "force-dynamic";
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],

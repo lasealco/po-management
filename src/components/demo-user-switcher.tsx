@@ -1,20 +1,19 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 type SessionUser = { email: string; name: string; isActive: boolean };
 
 export function DemoUserSwitcher() {
-  const router = useRouter();
   const [users, setUsers] = useState<SessionUser[]>([]);
   const [current, setCurrent] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await fetch("/api/demo-session");
+    const res = await fetch("/api/demo-session", { credentials: "include" });
     const data = (await res.json()) as {
       users?: SessionUser[];
       current?: string;
@@ -33,15 +32,24 @@ export function DemoUserSwitcher() {
   async function onSelect(email: string) {
     if (!email || email === current) return;
     setSaving(true);
+    setError(null);
     const res = await fetch("/api/demo-session", {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email }),
     });
     setSaving(false);
-    if (!res.ok) return;
+    if (!res.ok) {
+      const data = (await res.json().catch(() => null)) as {
+        error?: string;
+      } | null;
+      setError(data?.error ?? `Switch failed (${res.status})`);
+      return;
+    }
     setCurrent(email);
-    router.refresh();
+    // Full reload so layouts/pages pick up the new httpOnly cookie reliably on Vercel.
+    window.location.reload();
   }
 
   const actives = users.filter((u) => u.isActive);
@@ -69,6 +77,9 @@ export function DemoUserSwitcher() {
             </select>
             {saving ? (
               <span className="text-xs text-amber-800">Switching…</span>
+            ) : null}
+            {error ? (
+              <span className="text-xs font-medium text-red-700">{error}</span>
             ) : null}
           </label>
         )}
