@@ -147,7 +147,7 @@ export default async function Home() {
       <OrdersBoard
         initialData={initialData}
         canTransitionOrders={canTransitionOrders}
-        defaultQueueFilter={isSupplierPortalUser ? "all" : "awaiting_supplier"}
+        defaultQueueFilter="needs_my_action"
       />
     </div>
   );
