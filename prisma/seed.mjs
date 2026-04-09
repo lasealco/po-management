@@ -56,6 +56,36 @@ async function seed() {
     }),
   ]);
 
+  const roleBuyer = await prisma.role.upsert({
+    where: { tenantId_name: { tenantId: tenant.id, name: "Buyer" } },
+    update: {},
+    create: { tenantId: tenant.id, name: "Buyer", isSystem: true },
+  });
+  const roleApprover = await prisma.role.upsert({
+    where: { tenantId_name: { tenantId: tenant.id, name: "Approver" } },
+    update: {},
+    create: { tenantId: tenant.id, name: "Approver", isSystem: true },
+  });
+  const roleSupplierPortal = await prisma.role.upsert({
+    where: {
+      tenantId_name: { tenantId: tenant.id, name: "Supplier portal" },
+    },
+    update: {},
+    create: { tenantId: tenant.id, name: "Supplier portal", isSystem: true },
+  });
+
+  for (const [userId, roleId] of [
+    [buyer.id, roleBuyer.id],
+    [approver.id, roleApprover.id],
+    [supplierUser.id, roleSupplierPortal.id],
+  ]) {
+    await prisma.userRole.upsert({
+      where: { userId_roleId: { userId, roleId } },
+      update: {},
+      create: { userId, roleId },
+    });
+  }
+
   const supplier = await prisma.supplier.upsert({
     where: { tenantId_code: { tenantId: tenant.id, code: "SUP-001" } },
     update: { name: "Acme Industrial Supplies", isActive: true },

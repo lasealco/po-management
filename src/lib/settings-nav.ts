@@ -21,6 +21,21 @@ export const SETTINGS_SECTIONS: readonly SettingsNavSection[] = [
     ],
   },
   {
+    title: "People",
+    links: [
+      {
+        href: "/settings/users",
+        label: "Users",
+        description: "Who can sign in and their status",
+      },
+      {
+        href: "/settings/roles",
+        label: "Roles",
+        description: "Named roles for permissions",
+      },
+    ],
+  },
+  {
     title: "Product catalog",
     links: [
       {
