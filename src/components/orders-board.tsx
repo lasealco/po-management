@@ -72,6 +72,8 @@ export function OrdersBoard({
     let splitPendingBuyer = 0;
     let needsMyAction = 0;
     let waitingOnMe = 0;
+    let waitingOnMeWarn = 0;
+    let waitingOnMeCritical = 0;
     let overdue = 0;
     const now = Date.now();
     for (const order of data.orders) {
@@ -80,6 +82,9 @@ export function OrdersBoard({
       if (order.allowedActions.length > 0) needsMyAction += 1;
       if (order.conversationSla.awaitingReplyFrom === data.viewerMode) {
         waitingOnMe += 1;
+        const days = order.conversationSla.daysSinceLastShared ?? 0;
+        if (days >= 5) waitingOnMeCritical += 1;
+        else if (days >= 2) waitingOnMeWarn += 1;
       }
       if (order.requestedDeliveryDate) {
         const dueMs = new Date(order.requestedDeliveryDate).getTime();
@@ -91,6 +96,8 @@ export function OrdersBoard({
       splitPendingBuyer,
       needsMyAction,
       waitingOnMe,
+      waitingOnMeWarn,
+      waitingOnMeCritical,
       overdue,
     };
   }, [data.orders, data.viewerMode]);
@@ -175,6 +182,12 @@ export function OrdersBoard({
           </span>
           <span className="rounded-full bg-violet-100 px-2.5 py-1 font-medium text-violet-900">
             Waiting on me: {queueSummary.waitingOnMe}
+          </span>
+          <span className="rounded-full bg-amber-100 px-2.5 py-1 font-medium text-amber-900">
+            SLA warning (2+d): {queueSummary.waitingOnMeWarn}
+          </span>
+          <span className="rounded-full bg-rose-100 px-2.5 py-1 font-medium text-rose-900">
+            SLA critical (5+d): {queueSummary.waitingOnMeCritical}
           </span>
           <span className="rounded-full bg-sky-100 px-2.5 py-1 font-medium text-sky-900">
             Awaiting supplier response: {queueSummary.awaitingSupplier}
@@ -353,17 +366,36 @@ export function OrdersBoard({
                 <td className="px-4 py-4 text-xs">
                   {order.conversationSla.awaitingReplyFrom ? (
                     <div className="space-y-1">
-                      <div
-                        className={`inline-flex rounded-full px-2 py-0.5 font-medium ${
-                          order.conversationSla.awaitingReplyFrom === data.viewerMode
-                            ? "bg-violet-100 text-violet-900"
-                            : "bg-zinc-100 text-zinc-700"
-                        }`}
-                      >
-                        Waiting on {order.conversationSla.awaitingReplyFrom}
-                      </div>
+                      {(() => {
+                        const days = order.conversationSla.daysSinceLastShared ?? 0;
+                        const isWaitingOnMe =
+                          order.conversationSla.awaitingReplyFrom === data.viewerMode;
+                        const tone =
+                          isWaitingOnMe && days >= 5
+                            ? "bg-rose-100 text-rose-900"
+                            : isWaitingOnMe && days >= 2
+                              ? "bg-amber-100 text-amber-900"
+                              : isWaitingOnMe
+                                ? "bg-violet-100 text-violet-900"
+                                : "bg-zinc-100 text-zinc-700";
+                        return (
+                          <div className={`inline-flex rounded-full px-2 py-0.5 font-medium ${tone}`}>
+                            Waiting on {order.conversationSla.awaitingReplyFrom}
+                          </div>
+                        );
+                      })()}
                       {order.conversationSla.daysSinceLastShared != null ? (
-                        <div className="text-zinc-500">
+                        <div
+                          className={`${
+                            order.conversationSla.awaitingReplyFrom === data.viewerMode &&
+                            order.conversationSla.daysSinceLastShared >= 5
+                              ? "font-medium text-rose-700"
+                              : order.conversationSla.awaitingReplyFrom === data.viewerMode &&
+                                  order.conversationSla.daysSinceLastShared >= 2
+                                ? "font-medium text-amber-700"
+                                : "text-zinc-500"
+                          }`}
+                        >
                           Last shared msg {order.conversationSla.daysSinceLastShared}d ago
                         </div>
                       ) : null}
