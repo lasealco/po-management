@@ -13,12 +13,15 @@ model Tenant {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users     User[]
-  roles     Role[]
-  suppliers Supplier[]
-  products  Product[]
-  orders    PurchaseOrder[]
-  workflows Workflow[]
+  users             User[]
+  roles             Role[]
+  suppliers         Supplier[]
+  products          Product[]
+  productCategories ProductCategory[]
+  productDivisions  ProductDivision[]
+  supplierOffices   SupplierOffice[]
+  orders            PurchaseOrder[]
+  workflows         Workflow[]
 }
 
 model User {
@@ -95,29 +98,166 @@ model Supplier {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tenant Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  orders PurchaseOrder[]
+  tenant           Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  orders           PurchaseOrder[]
+  offices          SupplierOffice[]
+  productSuppliers ProductSupplier[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
 }
 
-model Product {
+/// Buyer-facing catalog category (Settings → category management).
+model ProductCategory {
   id          String   @id @default(cuid())
   tenantId    String
-  sku         String?
   name        String
+  code        String?
   description String?
-  unit        String?
-  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  tenant     Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  orderItems PurchaseOrderItem[]
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  products Product[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+}
+
+/// Organizational division for reporting and filters.
+model ProductDivision {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  code      String?
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  products Product[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+}
+
+/// Supplier office / site used on the product form (dropdown).
+model SupplierOffice {
+  id           String   @id @default(cuid())
+  tenantId     String
+  supplierId   String
+  name         String
+  addressLine1 String?
+  addressLine2 String?
+  city         String?
+  region       String?
+  postalCode   String?
+  countryCode  String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  supplier Supplier  @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  products Product[]
+
+  @@unique([supplierId, name])
+  @@index([tenantId])
+  @@index([supplierId])
+}
+
+model Product {
+  id          String  @id @default(cuid())
+  tenantId    String
+  /// Shown as “product code” in the legacy UI (e.g. BC-CB40).
+  productCode String?
+  sku         String?
+  name        String
+  description String? @db.VarChar(2000)
+  unit        String?
+
+  categoryId String?
+  category   ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  divisionId String?
+  division   ProductDivision? @relation(fields: [divisionId], references: [id], onDelete: SetNull)
+
+  ean           String? @db.VarChar(32)
+  customerName  String? @db.Text
+  /// Legacy “product image” until blob storage is wired; can be a CDN URL.
+  primaryImageUrl String?
+  hsCode        String?
+
+  isDangerousGoods    Boolean @default(false)
+  dangerousGoodsClass String?
+  unNumber            String?
+  properShippingName  String?
+  packingGroup        String?
+  flashPoint          Decimal? @db.Decimal(10, 2)
+  flashPointUnit      String?
+  msdsUrl             String?
+
+  isTemperatureControlled Boolean @default(false)
+  temperatureRangeText    String?
+  temperatureUnit       String?
+  coolingType           String?
+  packagingNotes        String? @db.Text
+  humidityRequirements  String?
+  storageDescription    String? @db.Text
+  isForReexport         Boolean @default(false)
+
+  supplierOfficeId String?
+  supplierOffice   SupplierOffice? @relation(fields: [supplierOfficeId], references: [id], onDelete: SetNull)
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant         Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  orderItems     PurchaseOrderItem[]
+  documents      ProductDocument[]
+  productSuppliers ProductSupplier[]
 
   @@unique([tenantId, sku])
+  @@unique([tenantId, productCode])
   @@index([tenantId])
+  @@index([categoryId])
+  @@index([divisionId])
+}
+
+/// Which suppliers can supply this SKU (legacy “Suppliers: N” column).
+model ProductSupplier {
+  productId  String
+  supplierId String
+  createdAt  DateTime @default(now())
+
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@id([productId, supplierId])
+  @@index([supplierId])
+}
+
+enum ProductDocumentKind {
+  PRIMARY_IMAGE
+  MSDS
+  OTHER
+}
+
+/// File metadata; `url` holds a storage URL (S3, Vercel Blob, etc.) when uploads exist.
+model ProductDocument {
+  id        String              @id @default(cuid())
+  productId String
+  kind      ProductDocumentKind @default(OTHER)
+  fileName  String
+  url       String
+  mimeType  String?
+  sizeBytes Int?
+  createdAt DateTime            @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
 }
 
 model Workflow {

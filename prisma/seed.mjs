@@ -67,6 +67,73 @@ async function seed() {
     },
   });
 
+  await prisma.productCategory.upsert({
+    where: {
+      tenantId_name: { tenantId: tenant.id, name: "Packaging Supplies" },
+    },
+    update: { code: "PACK", sortOrder: 10 },
+    create: {
+      tenantId: tenant.id,
+      name: "Packaging Supplies",
+      code: "PACK",
+      sortOrder: 10,
+    },
+  });
+  await prisma.productCategory.upsert({
+    where: {
+      tenantId_name: { tenantId: tenant.id, name: "Office Consumables" },
+    },
+    update: { code: "OFFC", sortOrder: 20 },
+    create: {
+      tenantId: tenant.id,
+      name: "Office Consumables",
+      code: "OFFC",
+      sortOrder: 20,
+    },
+  });
+
+  await prisma.productDivision.upsert({
+    where: {
+      tenantId_name: { tenantId: tenant.id, name: "Operations" },
+    },
+    update: { code: "OPS", sortOrder: 10 },
+    create: {
+      tenantId: tenant.id,
+      name: "Operations",
+      code: "OPS",
+      sortOrder: 10,
+    },
+  });
+  await prisma.productDivision.upsert({
+    where: {
+      tenantId_name: { tenantId: tenant.id, name: "Procurement" },
+    },
+    update: { code: "PROC", sortOrder: 20 },
+    create: {
+      tenantId: tenant.id,
+      name: "Procurement",
+      code: "PROC",
+      sortOrder: 20,
+    },
+  });
+
+  await prisma.supplierOffice.upsert({
+    where: { supplierId_name: { supplierId: supplier.id, name: "Headquarters" } },
+    update: {
+      addressLine1: "100 Industrial Way",
+      city: "Chicago",
+      countryCode: "US",
+    },
+    create: {
+      tenantId: tenant.id,
+      supplierId: supplier.id,
+      name: "Headquarters",
+      addressLine1: "100 Industrial Way",
+      city: "Chicago",
+      countryCode: "US",
+    },
+  });
+
   const simpleWorkflow = await prisma.workflow.upsert({
     where: { tenantId_code: { tenantId: tenant.id, code: "SIMPLE_INTERNAL" } },
     update: { name: "Simple Internal", isDefault: true },
