@@ -1,6 +1,7 @@
 /**
- * Vercel build: prisma generate → P3009 repair if needed → migrate → next build.
+ * Vercel build: prisma generate → P3009 repair if needed → migrate → optional seed → next build.
  * Set SKIP_DB_MIGRATE=1 if you run migrations elsewhere.
+ * Set RUN_DB_SEED=1 for a one-time seed from Vercel (useful when local network cannot reach Neon).
  */
 const { spawnSync } = require("node:child_process");
 
@@ -46,6 +47,13 @@ if (process.env.SKIP_DB_MIGRATE === "1") {
     ["scripts/repair-failed-supplier-migration.cjs"],
   );
   run("prisma migrate deploy", "npm", ["run", "db:migrate"]);
+}
+
+if (process.env.RUN_DB_SEED === "1") {
+  console.log(
+    "\n[vercel-build] RUN_DB_SEED=1 — running db seed (remove after successful deploy)\n",
+  );
+  run("db seed", "npm", ["run", "db:seed"]);
 }
 
 run("next build", "npm", ["run", "build"]);
