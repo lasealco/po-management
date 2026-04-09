@@ -12,6 +12,8 @@
     "lint": "eslint",
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate deploy",
+    "db:migrate:deploy": "cross-env PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK=1 prisma migrate deploy",
+    "vercel-build": "prisma generate && npm run db:migrate:deploy && next build",
     "db:seed": "node prisma/seed.mjs"
   },
   "dependencies": {
@@ -30,6 +32,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
+    "cross-env": "^7.0.3",
     "eslint-config-next": "16.2.2",
     "tailwindcss": "^4",
     "typescript": "^5"

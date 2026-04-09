@@ -9,6 +9,12 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    url: process.env["DATABASE_URL"],
+    // Migrate needs a session-capable Postgres connection. Poolers (PgBouncer, Neon
+    // pooler, Supabase 6543) often break `pg_advisory_lock`. Prefer an unpooled URL
+    // here; the app still uses `DATABASE_URL` in `src/lib/prisma.ts`.
+    url:
+      process.env["DATABASE_URL_UNPOOLED"] ??
+      process.env["DIRECT_URL"] ??
+      process.env["DATABASE_URL"],
   },
 });
