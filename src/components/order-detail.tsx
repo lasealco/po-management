@@ -47,6 +47,7 @@ type OrderDetailResponse = {
     splitParentId: string | null;
     splitParent: { id: string; orderNumber: string } | null;
     splitIndex: number | null;
+    plannedShipDates: string[];
   };
   items: Array<{
     id: string;
@@ -514,6 +515,17 @@ export function OrderDetail({
             >
               {data.order.splitParent.orderNumber}
             </Link>
+          </p>
+        ) : null}
+        {data.order.plannedShipDates.length > 0 ? (
+          <p className="mt-2 text-sm text-zinc-800">
+            Supplier planned ship date
+            {data.order.plannedShipDates.length > 1 ? "s" : ""}:{" "}
+            <span className="font-medium">
+              {data.order.plannedShipDates
+                .map((d) => new Date(`${d}T12:00:00.000Z`).toLocaleDateString())
+                .join(", ")}
+            </span>
           </p>
         ) : null}
       </section>

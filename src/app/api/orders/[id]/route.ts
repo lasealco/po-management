@@ -57,7 +57,25 @@ export async function GET(
         },
       },
       splitParent: {
-        select: { id: true, orderNumber: true },
+        select: {
+          id: true,
+          orderNumber: true,
+          buyerReference: true,
+          supplierReference: true,
+          paymentTermsDays: true,
+          paymentTermsLabel: true,
+          incoterm: true,
+          requestedDeliveryDate: true,
+          shipToName: true,
+          shipToLine1: true,
+          shipToLine2: true,
+          shipToCity: true,
+          shipToRegion: true,
+          shipToPostalCode: true,
+          shipToCountryCode: true,
+          internalNotes: true,
+          notesToSupplier: true,
+        },
       },
       requester: true,
       workflow: {
@@ -158,6 +176,46 @@ export async function GET(
     actorId !== null &&
     (await userHasGlobalGrant(actorId, "org.orders", "edit"));
   const canSeeInternalFields = canSeeInternalMessages;
+  const effective = {
+    buyerReference: order.buyerReference ?? order.splitParent?.buyerReference ?? null,
+    supplierReference:
+      order.supplierReference ?? order.splitParent?.supplierReference ?? null,
+    paymentTermsDays:
+      order.paymentTermsDays ?? order.splitParent?.paymentTermsDays ?? null,
+    paymentTermsLabel:
+      order.paymentTermsLabel ?? order.splitParent?.paymentTermsLabel ?? null,
+    incoterm: order.incoterm ?? order.splitParent?.incoterm ?? null,
+    requestedDeliveryDate:
+      order.requestedDeliveryDate ?? order.splitParent?.requestedDeliveryDate ?? null,
+    shipToName: order.shipToName ?? order.splitParent?.shipToName ?? null,
+    shipToLine1: order.shipToLine1 ?? order.splitParent?.shipToLine1 ?? null,
+    shipToLine2: order.shipToLine2 ?? order.splitParent?.shipToLine2 ?? null,
+    shipToCity: order.shipToCity ?? order.splitParent?.shipToCity ?? null,
+    shipToRegion: order.shipToRegion ?? order.splitParent?.shipToRegion ?? null,
+    shipToPostalCode:
+      order.shipToPostalCode ?? order.splitParent?.shipToPostalCode ?? null,
+    shipToCountryCode:
+      order.shipToCountryCode ?? order.splitParent?.shipToCountryCode ?? null,
+    internalNotes: order.internalNotes ?? order.splitParent?.internalNotes ?? null,
+    notesToSupplier:
+      order.notesToSupplier ?? order.splitParent?.notesToSupplier ?? null,
+  };
+
+  let childPlannedShipDates: string[] = [];
+  if (order.splitProposalId && order.splitIndex != null) {
+    const splitLines = await prisma.splitProposalLine.findMany({
+      where: {
+        proposalId: order.splitProposalId,
+        childIndex: order.splitIndex,
+      },
+      orderBy: { plannedShipDate: "asc" },
+      select: { plannedShipDate: true },
+    });
+    const unique = new Set(
+      splitLines.map((line) => line.plannedShipDate.toISOString().slice(0, 10)),
+    );
+    childPlannedShipDates = [...unique];
+  }
 
   const messages = await prisma.orderChatMessage.findMany({
     where: {
@@ -182,21 +240,21 @@ export async function GET(
       totalAmount: order.totalAmount.toString(),
       createdAt: order.createdAt.toISOString(),
       updatedAt: order.updatedAt.toISOString(),
-      buyerReference: order.buyerReference,
-      supplierReference: order.supplierReference,
-      paymentTermsDays: order.paymentTermsDays,
-      paymentTermsLabel: order.paymentTermsLabel,
-      incoterm: order.incoterm,
-      requestedDeliveryDate: order.requestedDeliveryDate?.toISOString() ?? null,
-      shipToName: order.shipToName,
-      shipToLine1: order.shipToLine1,
-      shipToLine2: order.shipToLine2,
-      shipToCity: order.shipToCity,
-      shipToRegion: order.shipToRegion,
-      shipToPostalCode: order.shipToPostalCode,
-      shipToCountryCode: order.shipToCountryCode,
-      internalNotes: canSeeInternalFields ? order.internalNotes : null,
-      notesToSupplier: order.notesToSupplier,
+      buyerReference: effective.buyerReference,
+      supplierReference: effective.supplierReference,
+      paymentTermsDays: effective.paymentTermsDays,
+      paymentTermsLabel: effective.paymentTermsLabel,
+      incoterm: effective.incoterm,
+      requestedDeliveryDate: effective.requestedDeliveryDate?.toISOString() ?? null,
+      shipToName: effective.shipToName,
+      shipToLine1: effective.shipToLine1,
+      shipToLine2: effective.shipToLine2,
+      shipToCity: effective.shipToCity,
+      shipToRegion: effective.shipToRegion,
+      shipToPostalCode: effective.shipToPostalCode,
+      shipToCountryCode: effective.shipToCountryCode,
+      internalNotes: canSeeInternalFields ? effective.internalNotes : null,
+      notesToSupplier: effective.notesToSupplier,
       status: order.status,
       workflow: {
         id: order.workflow.id,
@@ -214,6 +272,7 @@ export async function GET(
           }
         : null,
       splitIndex: order.splitIndex,
+      plannedShipDates: childPlannedShipDates,
     },
     items: order.items.map((item) => ({
       id: item.id,
