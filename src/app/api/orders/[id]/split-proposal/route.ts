@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getActorUserId, requireApiGrant } from "@/lib/authz";
+import { getActorUserId, requireApiGrant, userHasRoleNamed } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { allocateTotals } from "@/lib/split";
 
@@ -187,6 +187,13 @@ export async function POST(
   if (!actorId) {
     return NextResponse.json(
       { error: "Could not resolve demo actor for this tenant." },
+      { status: 403 },
+    );
+  }
+  const isSupplierPortalUser = await userHasRoleNamed(actorId, "Supplier portal");
+  if (!isSupplierPortalUser) {
+    return NextResponse.json(
+      { error: "Only supplier users can propose split allocations." },
       { status: 403 },
     );
   }

@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getActorUserId, requireApiGrant } from "@/lib/authz";
+import {
+  getActorUserId,
+  requireApiGrant,
+  userHasRoleNamed,
+} from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 
 type TransitionBody = {
@@ -79,6 +83,40 @@ export async function POST(
   if (!actorId) {
     return NextResponse.json(
       { error: "Could not resolve demo actor for this tenant." },
+      { status: 403 },
+    );
+  }
+
+  const isSupplierPortalUser = await userHasRoleNamed(actorId, "Supplier portal");
+  const supplierOnlyActions = new Set([
+    "confirm",
+    "decline",
+    "propose_split",
+    "mark_fulfilled",
+  ]);
+  const buyerOnlyActions = new Set([
+    "send_to_supplier",
+    "buyer_accept_split",
+    "buyer_reject_proposal",
+    "buyer_cancel",
+  ]);
+
+  if (
+    supplierOnlyActions.has(selectedTransition.actionCode) &&
+    !isSupplierPortalUser
+  ) {
+    return NextResponse.json(
+      {
+        error: `Action '${selectedTransition.actionCode}' is supplier-only.`,
+      },
+      { status: 403 },
+    );
+  }
+  if (buyerOnlyActions.has(selectedTransition.actionCode) && isSupplierPortalUser) {
+    return NextResponse.json(
+      {
+        error: `Action '${selectedTransition.actionCode}' is buyer-only.`,
+      },
       { status: 403 },
     );
   }

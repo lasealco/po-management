@@ -25,6 +25,17 @@ export async function userHasGlobalGrant(
   return set.has(`${resource}\0${action}`);
 }
 
+export async function userHasRoleNamed(userId: string, roleName: string) {
+  const row = await prisma.userRole.findFirst({
+    where: {
+      userId,
+      role: { name: roleName },
+    },
+    select: { id: true },
+  });
+  return Boolean(row);
+}
+
 const grantKey = (resource: string, action: string) =>
   `${resource}\0${action}`;
 
