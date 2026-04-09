@@ -55,6 +55,38 @@ function dsn() {
   );
 }
 
+/**
+ * P3008: resolve --applied when Prisma already considers the migration applied.
+ * Treat as success so Vercel build can continue.
+ */
+function runMigrateResolve(flag, prismaEnv) {
+  const r = spawnSync(
+    "npx",
+    ["prisma", "migrate", "resolve", flag, MIGRATION],
+    {
+      env: prismaEnv,
+      shell: true,
+      encoding: "utf8",
+      maxBuffer: 10 * 1024 * 1024,
+    },
+  );
+  const out = `${r.stdout || ""}\n${r.stderr || ""}`.trim();
+  if (r.status === 0) {
+    if (out) console.log(out);
+    return 0;
+  }
+  const p3008 =
+    /\bP3008\b/.test(out) || /already recorded as applied/i.test(out);
+  if (flag === "--applied" && p3008) {
+    console.log(
+      "[repair] Migration already recorded as applied (P3008) — continuing.\n",
+    );
+    return 0;
+  }
+  if (out) console.error(out);
+  return r.status ?? 1;
+}
+
 /** SQL after Supplier ALTER — SupplierContact table, indexes, FKs. */
 function tailStatementsFromMigrationFile() {
   const sqlPath = path.join(MIGRATION_DIR, "migration.sql");
@@ -151,17 +183,23 @@ async function main() {
   };
 
   if (supplierExtended && contactTable) {
+    const { rows: again } = await client.query(
+      `SELECT finished_at FROM "_prisma_migrations" WHERE migration_name = $1`,
+      [MIGRATION],
+    );
+    if (again[0]?.finished_at) {
+      console.log(
+        `\n[repair] ${MIGRATION} row now has finished_at — no resolve needed.\n`,
+      );
+      await client.end();
+      return;
+    }
     console.log(
       "\n→ DDL matches a full migration. Marking as applied (prisma migrate resolve --applied).\n",
     );
     await client.end();
     if (dry) return;
-    const r = spawnSync(
-      "npx",
-      ["prisma", "migrate", "resolve", "--applied", MIGRATION],
-      { stdio: "inherit", env: prismaEnv, shell: true },
-    );
-    process.exit(r.status ?? 1);
+    process.exit(runMigrateResolve("--applied", prismaEnv));
   }
 
   if (!supplierExtended && !contactTable) {
@@ -207,12 +245,7 @@ async function main() {
   await client.end();
 
   console.log("\n→ Marking migration applied (prisma migrate resolve --applied).\n");
-  const r = spawnSync(
-    "npx",
-    ["prisma", "migrate", "resolve", "--applied", MIGRATION],
-    { stdio: "inherit", env: prismaEnv, shell: true },
-  );
-  process.exit(r.status ?? 1);
+  process.exit(runMigrateResolve("--applied", prismaEnv));
 }
 
 main().catch((e) => {
