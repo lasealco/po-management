@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
 
@@ -35,8 +37,14 @@ export default async function SettingsRolesPage() {
     <div>
       <h2 className="text-2xl font-semibold text-zinc-900">Roles</h2>
       <p className="mt-1 text-sm text-zinc-600">
-        Named roles attach permissions (workflow actions, resources). Editing
-        rules here is not wired yet.
+        Roles group users.{" "}
+        <Link
+          href="/settings/permissions"
+          className="font-medium text-zinc-900 underline-offset-2 hover:underline"
+        >
+          Edit what each role can do
+        </Link>
+        .
       </p>
 
       <div className="mt-8 overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm">

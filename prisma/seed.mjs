@@ -86,6 +86,46 @@ async function seed() {
     });
   }
 
+  async function replaceGlobalRolePermissions(roleId, pairs) {
+    await prisma.rolePermission.deleteMany({
+      where: { roleId, workflowStatusId: null },
+    });
+    if (pairs.length === 0) return;
+    await prisma.rolePermission.createMany({
+      data: pairs.map(([resource, action]) => ({
+        roleId,
+        resource,
+        action,
+        effect: "allow",
+      })),
+    });
+  }
+
+  const buyerGrants = [
+    ["org.orders", "view"],
+    ["org.orders", "transition"],
+    ["org.orders", "split"],
+    ["org.products", "view"],
+    ["org.products", "edit"],
+    ["org.suppliers", "view"],
+    ["org.settings", "view"],
+  ];
+  const approverGrants = [
+    ...buyerGrants,
+    ["org.suppliers", "edit"],
+    ["org.settings", "edit"],
+  ];
+  const supplierGrants = [
+    ["org.orders", "view"],
+    ["org.orders", "transition"],
+    ["org.products", "view"],
+    ["org.suppliers", "view"],
+  ];
+
+  await replaceGlobalRolePermissions(roleBuyer.id, buyerGrants);
+  await replaceGlobalRolePermissions(roleApprover.id, approverGrants);
+  await replaceGlobalRolePermissions(roleSupplierPortal.id, supplierGrants);
+
   const supplier = await prisma.supplier.upsert({
     where: { tenantId_code: { tenantId: tenant.id, code: "SUP-001" } },
     update: { name: "Acme Industrial Supplies", isActive: true },

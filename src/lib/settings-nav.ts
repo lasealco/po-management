@@ -33,6 +33,11 @@ export const SETTINGS_SECTIONS: readonly SettingsNavSection[] = [
         label: "Roles",
         description: "Named roles for permissions",
       },
+      {
+        href: "/settings/permissions",
+        label: "Permissions",
+        description: "What each role may do",
+      },
     ],
   },
   {
