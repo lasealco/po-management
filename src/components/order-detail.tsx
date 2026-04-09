@@ -908,7 +908,12 @@ export function OrderDetail({
           <ul className="space-y-2 rounded-lg border border-zinc-200 bg-white p-4 text-sm">
             {data.splitChildren.map((child) => (
               <li key={child.id} className="flex justify-between gap-4">
-                <span className="font-medium">{child.orderNumber}</span>
+                <Link
+                  href={`/orders/${child.id}`}
+                  className="font-medium text-amber-800 underline-offset-2 hover:underline"
+                >
+                  {child.orderNumber}
+                </Link>
                 <span className="text-zinc-600">{child.status.label}</span>
                 <span>
                   {data.order.currency} {child.totalAmount}
@@ -920,19 +925,22 @@ export function OrderDetail({
       ) : null}
 
       {data.pendingProposal ? (
-        <section className="mb-8 rounded-lg border border-amber-200 bg-amber-50 p-4">
+        <section className="mb-8 rounded-lg border border-amber-300 bg-amber-50 p-4">
           <h2 className="text-lg font-medium text-zinc-900">
             Pending split proposal
           </h2>
-          <p className="mt-1 text-sm text-zinc-600">
+          <p className="mt-1 text-sm text-zinc-800">
             Buyer must accept or reject. Allocations:
           </p>
-          <ul className="mt-3 space-y-1 text-sm">
+          <ul className="mt-3 space-y-1 text-sm text-zinc-900">
             {data.pendingProposal.lines.map((line) => (
               <li key={line.id}>
-                {line.sourceDescription}: qty {line.quantity} → child{" "}
-                {line.childIndex} · ship{" "}
-                {new Date(line.plannedShipDate).toLocaleDateString()}
+                <span className="font-medium">{line.sourceDescription}</span>: qty{" "}
+                <span className="font-medium">{line.quantity}</span> to{" "}
+                <span className="font-medium">child {line.childIndex}</span> · ship{" "}
+                <span className="font-medium">
+                  {new Date(line.plannedShipDate).toLocaleDateString()}
+                </span>
               </li>
             ))}
           </ul>
