@@ -8,8 +8,7 @@
  *   npm run db:repair:supplier-migration
  *   npm run db:repair:supplier-migration -- --dry-run
  *
- * Then: npx prisma migrate deploy — or on Vercel set PRISMA_REPAIR_SUPPLIER_MIGRATION=1 for one build
- * (see scripts/vercel-build.cjs), then remove it after a successful deploy.
+ * vercel-build runs this before prisma migrate deploy when SKIP_DB_MIGRATE is unset.
  */
 const { spawnSync } = require("node:child_process");
 const fs = require("node:fs");
@@ -90,6 +89,32 @@ async function main() {
   const client = new pg.Client({ connectionString });
   await client.connect();
 
+  const { rows: mig } = await client.query(
+    `SELECT migration_name, finished_at, started_at
+     FROM "_prisma_migrations"
+     WHERE migration_name = $1`,
+    [MIGRATION],
+  );
+  const row = mig[0];
+
+  if (!row) {
+    console.log(
+      `[repair] No _prisma_migrations row for ${MIGRATION} — not in a failed/stuck state. OK.`,
+    );
+    await client.end();
+    return;
+  }
+
+  if (row.finished_at) {
+    console.log(`[repair] ${MIGRATION} already finished — OK.`);
+    await client.end();
+    return;
+  }
+
+  console.log(
+    `[repair] Stuck migration detected (finished_at null) — fixing ${MIGRATION}…`,
+  );
+
   const { rows: col } = await client.query(
     `SELECT 1 FROM information_schema.columns
      WHERE table_schema = 'public' AND table_name = 'Supplier' AND column_name = 'legalName'`,
@@ -102,33 +127,14 @@ async function main() {
   );
   const contactTable = tab.length > 0;
 
-  const { rows: mig } = await client.query(
-    `SELECT migration_name, finished_at, rolled_back_at, started_at
-     FROM "_prisma_migrations"
-     WHERE migration_name = $1`,
-    [MIGRATION],
-  );
-  const row = mig[0];
-
   console.log("Database check:", {
     supplierExtended,
     contactTable,
-    migration: row
-      ? {
-          finished_at: row.finished_at,
-          rolled_back_at: row.rolled_back_at,
-          started_at: row.started_at,
-        }
-      : null,
+    migration: {
+      finished_at: row.finished_at,
+      started_at: row.started_at,
+    },
   });
-
-  if (row?.finished_at && !row?.rolled_back_at) {
-    console.log(
-      "\nThis migration is already marked applied. Run:\n  npx prisma migrate deploy\n",
-    );
-    await client.end();
-    return;
-  }
 
   if (!supplierExtended && contactTable) {
     console.error(
