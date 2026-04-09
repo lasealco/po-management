@@ -1,5 +1,7 @@
 import { OrdersBoard } from "@/components/orders-board";
+import { ProductCreateForm } from "@/components/product-create-form";
 import { prisma } from "@/lib/prisma";
+import { visibleOnBoard } from "@/lib/workflow-actions";
 
 const DEFAULT_TENANT_SLUG = "demo-company";
 export const dynamic = "force-dynamic";
@@ -24,7 +26,7 @@ export default async function Home() {
   }
 
   const orders = await prisma.purchaseOrder.findMany({
-    where: { tenantId: tenant.id },
+    where: { tenantId: tenant.id, splitParentId: null },
     include: {
       status: { select: { id: true, code: true, label: true } },
       supplier: { select: { id: true, name: true } },
@@ -66,7 +68,11 @@ export default async function Home() {
         name: order.workflow.name,
       },
       allowedActions: order.workflow.transitions
-        .filter((transition) => transition.fromStatusId === order.statusId)
+        .filter(
+          (transition) =>
+            transition.fromStatusId === order.statusId &&
+            visibleOnBoard(transition.actionCode),
+        )
         .map((transition) => ({
           actionCode: transition.actionCode,
           label: transition.label,
@@ -79,6 +85,7 @@ export default async function Home() {
 
   return (
     <div className="min-h-screen bg-zinc-50">
+      <ProductCreateForm />
       <OrdersBoard initialData={initialData} />
     </div>
   );

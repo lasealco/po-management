@@ -35,6 +35,7 @@ model User {
   orderChats          OrderChatMessage[]
   purchaseOrders      PurchaseOrder[]
   orderTransitionLogs OrderTransitionLog[]
+  splitProposals      SplitProposal[]
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -207,22 +208,28 @@ model PurchaseOrder {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   splitParentId String?
+  splitIndex    Int?
+  splitProposalId String?
 
   tenant        Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   workflow      Workflow             @relation(fields: [workflowId], references: [id], onDelete: Restrict)
   requester     User                 @relation(fields: [requesterId], references: [id], onDelete: Restrict)
   supplier      Supplier?            @relation(fields: [supplierId], references: [id], onDelete: SetNull)
   status        WorkflowStatus       @relation(fields: [statusId], references: [id], onDelete: Restrict)
+  splitProposal SplitProposal?       @relation("SplitProposalDraftOrders", fields: [splitProposalId], references: [id], onDelete: SetNull)
   items         PurchaseOrderItem[]
   transitions   OrderTransitionLog[]
   chats         OrderChatMessage[]
   splitChildren PurchaseOrder[]      @relation("OrderSplitParent")
   splitParent   PurchaseOrder?       @relation("OrderSplitParent", fields: [splitParentId], references: [id])
+  splitProposalsAsParent SplitProposal[] @relation("SplitProposalParent")
 
   @@unique([tenantId, orderNumber])
   @@index([tenantId, createdAt])
   @@index([tenantId, statusId])
   @@index([workflowId])
+  @@index([splitParentId])
+  @@index([splitProposalId])
 }
 
 model PurchaseOrderItem {
@@ -235,11 +242,52 @@ model PurchaseOrderItem {
   unitPrice   Decimal @db.Decimal(14, 4)
   lineTotal   Decimal @db.Decimal(14, 2)
 
-  order   PurchaseOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product Product?      @relation(fields: [productId], references: [id], onDelete: SetNull)
+  order              PurchaseOrder      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product            Product?           @relation(fields: [productId], references: [id], onDelete: SetNull)
+  splitProposalLines SplitProposalLine[]
 
   @@unique([orderId, lineNo])
   @@index([orderId])
+}
+
+enum SplitProposalStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+model SplitProposal {
+  id               String              @id @default(cuid())
+  parentOrderId    String
+  status           SplitProposalStatus @default(PENDING)
+  version          Int                 @default(1)
+  proposedByUserId String
+  comment          String?
+  createdAt        DateTime            @default(now())
+  resolvedAt       DateTime?
+
+  parentOrder    PurchaseOrder       @relation("SplitProposalParent", fields: [parentOrderId], references: [id], onDelete: Cascade)
+  proposedBy     User                @relation(fields: [proposedByUserId], references: [id], onDelete: Restrict)
+  lines          SplitProposalLine[]
+  draftChildOrders PurchaseOrder[]   @relation("SplitProposalDraftOrders")
+
+  @@index([parentOrderId])
+  @@index([status])
+}
+
+model SplitProposalLine {
+  id              String   @id @default(cuid())
+  proposalId      String
+  sourceLineId    String
+  quantity        Decimal  @db.Decimal(14, 3)
+  plannedShipDate DateTime
+  childIndex      Int
+
+  proposal   SplitProposal      @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  sourceLine PurchaseOrderItem  @relation(fields: [sourceLineId], references: [id], onDelete: Cascade)
+
+  @@index([proposalId])
+  @@index([sourceLineId])
 }
 
 model OrderTransitionLog {

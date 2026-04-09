@@ -22,6 +22,16 @@ export async function POST(
     );
   }
 
+  if (body.actionCode === "propose_split") {
+    return NextResponse.json(
+      {
+        error:
+          "Use POST /api/orders/:id/split-proposal with line allocations instead.",
+      },
+      { status: 400 },
+    );
+  }
+
   const order = await prisma.purchaseOrder.findUnique({
     where: { id: orderId },
     include: {

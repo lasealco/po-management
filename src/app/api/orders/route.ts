@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { visibleOnBoard } from "@/lib/workflow-actions";
 
 const DEFAULT_TENANT_SLUG = "demo-company";
 
@@ -20,7 +21,7 @@ export async function GET() {
   }
 
   const orders = await prisma.purchaseOrder.findMany({
-    where: { tenantId: tenant.id },
+    where: { tenantId: tenant.id, splitParentId: null },
     include: {
       status: {
         select: { id: true, code: true, label: true },
@@ -55,7 +56,11 @@ export async function GET() {
 
   const data = orders.map((order) => {
     const allowedActions = order.workflow.transitions
-      .filter((transition) => transition.fromStatusId === order.statusId)
+      .filter(
+        (transition) =>
+          transition.fromStatusId === order.statusId &&
+          visibleOnBoard(transition.actionCode),
+      )
       .map((transition) => ({
         actionCode: transition.actionCode,
         label: transition.label,

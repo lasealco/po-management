@@ -20,7 +20,7 @@ async function seed() {
     },
   });
 
-  const [buyer, approver] = await Promise.all([
+  const [buyer, approver, supplierUser] = await Promise.all([
     prisma.user.upsert({
       where: {
         tenantId_email: { tenantId: tenant.id, email: "buyer@demo-company.com" },
@@ -41,6 +41,17 @@ async function seed() {
         tenantId: tenant.id,
         email: "approver@demo-company.com",
         name: "Approver User",
+      },
+    }),
+    prisma.user.upsert({
+      where: {
+        tenantId_email: { tenantId: tenant.id, email: "supplier@demo-company.com" },
+      },
+      update: { name: "Supplier Portal User", isActive: true },
+      create: {
+        tenantId: tenant.id,
+        email: "supplier@demo-company.com",
+        name: "Supplier Portal User",
       },
     }),
   ]);
@@ -136,14 +147,52 @@ async function seed() {
       sortOrder: 20,
     },
   });
-  const supplierSplit = await prisma.workflowStatus.upsert({
-    where: { workflowId_code: { workflowId: supplierWorkflow.id, code: "SPLIT" } },
-    update: { label: "Split", sortOrder: 30, isEnd: false },
+  const supplierSplitPending = await prisma.workflowStatus.upsert({
+    where: {
+      workflowId_code: { workflowId: supplierWorkflow.id, code: "SPLIT_PENDING_BUYER" },
+    },
+    update: { label: "Split pending buyer", sortOrder: 25, isEnd: false },
     create: {
       workflowId: supplierWorkflow.id,
-      code: "SPLIT",
-      label: "Split",
+      code: "SPLIT_PENDING_BUYER",
+      label: "Split pending buyer",
+      sortOrder: 25,
+    },
+  });
+  const supplierParentSplitComplete = await prisma.workflowStatus.upsert({
+    where: {
+      workflowId_code: { workflowId: supplierWorkflow.id, code: "PARENT_SPLIT_COMPLETE" },
+    },
+    update: { label: "Fulfilled via split children", sortOrder: 28, isEnd: true },
+    create: {
+      workflowId: supplierWorkflow.id,
+      code: "PARENT_SPLIT_COMPLETE",
+      label: "Fulfilled via split children",
+      sortOrder: 28,
+      isEnd: true,
+    },
+  });
+  const supplierPendingChild = await prisma.workflowStatus.upsert({
+    where: {
+      workflowId_code: { workflowId: supplierWorkflow.id, code: "PENDING_BUYER_APPROVAL" },
+    },
+    update: { label: "Pending buyer approval (split)", sortOrder: 30, isEnd: false },
+    create: {
+      workflowId: supplierWorkflow.id,
+      code: "PENDING_BUYER_APPROVAL",
+      label: "Pending buyer approval (split)",
       sortOrder: 30,
+    },
+  });
+  const supplierCancelled = await prisma.workflowStatus.upsert({
+    where: { workflowId_code: { workflowId: supplierWorkflow.id, code: "CANCELLED" } },
+    update: { label: "Cancelled", sortOrder: 35, isEnd: true },
+    create: {
+      workflowId: supplierWorkflow.id,
+      code: "CANCELLED",
+      label: "Cancelled",
+      sortOrder: 35,
+      isEnd: true,
     },
   });
   const supplierDeclined = await prisma.workflowStatus.upsert({
@@ -186,10 +235,10 @@ async function seed() {
     {
       workflowId: supplierWorkflow.id,
       fromStatusId: supplierSent.id,
-      toStatusId: supplierSplit.id,
-      actionCode: "split",
-      label: "Split",
-      requiresComment: true,
+      toStatusId: supplierSplitPending.id,
+      actionCode: "propose_split",
+      label: "Propose split (detail)",
+      requiresComment: false,
     },
     {
       workflowId: supplierWorkflow.id,
@@ -198,6 +247,22 @@ async function seed() {
       actionCode: "decline",
       label: "Decline",
       requiresComment: true,
+    },
+    {
+      workflowId: supplierWorkflow.id,
+      fromStatusId: supplierSplitPending.id,
+      toStatusId: supplierSent.id,
+      actionCode: "buyer_reject_proposal",
+      label: "Reject split (buyer)",
+      requiresComment: false,
+    },
+    {
+      workflowId: supplierWorkflow.id,
+      fromStatusId: supplierSplitPending.id,
+      toStatusId: supplierParentSplitComplete.id,
+      actionCode: "buyer_accept_split",
+      label: "Accept split (buyer)",
+      requiresComment: false,
     },
   ];
 
@@ -218,6 +283,13 @@ async function seed() {
       create: transition,
     });
   }
+
+  await prisma.workflowTransition.deleteMany({
+    where: {
+      workflowId: supplierWorkflow.id,
+      actionCode: "split",
+    },
+  });
 
   const demoOrders = [
     {
@@ -269,6 +341,33 @@ async function seed() {
         taxAmount: order.taxAmount,
         totalAmount: order.totalAmount,
       },
+    });
+  }
+
+  const po1002 = await prisma.purchaseOrder.findFirst({
+    where: { tenantId: tenant.id, orderNumber: "PO-1002" },
+    include: { items: true },
+  });
+  if (po1002 && po1002.items.length === 0) {
+    await prisma.purchaseOrderItem.createMany({
+      data: [
+        {
+          orderId: po1002.id,
+          lineNo: 1,
+          description: "Corrugated rolls",
+          quantity: "100",
+          unitPrice: "25.0000",
+          lineTotal: "2500.00",
+        },
+        {
+          orderId: po1002.id,
+          lineNo: 2,
+          description: "Pallets",
+          quantity: "50",
+          unitPrice: "50.0000",
+          lineTotal: "2500.00",
+        },
+      ],
     });
   }
 }

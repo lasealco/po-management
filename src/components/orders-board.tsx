@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 
 type OrderStatus = {
@@ -108,6 +109,7 @@ export function OrdersBoard({ initialData }: { initialData: OrdersResponse }) {
               <th className="px-4 py-3">Total</th>
               <th className="px-4 py-3">Workflow</th>
               <th className="px-4 py-3">Allowed Actions</th>
+              <th className="px-4 py-3">Detail</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100 text-sm">
@@ -147,6 +149,14 @@ export function OrdersBoard({ initialData }: { initialData: OrdersResponse }) {
                       ))
                     )}
                   </div>
+                </td>
+                <td className="px-4 py-4">
+                  <Link
+                    href={`/orders/${order.id}`}
+                    className="text-sm font-medium text-zinc-800 underline"
+                  >
+                    Open
+                  </Link>
                 </td>
               </tr>
             ))}
