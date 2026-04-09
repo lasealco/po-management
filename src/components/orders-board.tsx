@@ -41,6 +41,7 @@ type QueueFilter =
   | "all"
   | "needs_my_action"
   | "awaiting_supplier"
+  | "overdue"
   | "split_pending_buyer";
 
 export function OrdersBoard({
@@ -63,12 +64,18 @@ export function OrdersBoard({
     let awaitingSupplier = 0;
     let splitPendingBuyer = 0;
     let needsMyAction = 0;
+    let overdue = 0;
+    const now = Date.now();
     for (const order of data.orders) {
       if (order.status.code === "SENT") awaitingSupplier += 1;
       if (order.status.code === "SPLIT_PENDING_BUYER") splitPendingBuyer += 1;
       if (order.allowedActions.length > 0) needsMyAction += 1;
+      if (order.requestedDeliveryDate) {
+        const dueMs = new Date(order.requestedDeliveryDate).getTime();
+        if (!Number.isNaN(dueMs) && dueMs < now) overdue += 1;
+      }
     }
-    return { awaitingSupplier, splitPendingBuyer, needsMyAction };
+    return { awaitingSupplier, splitPendingBuyer, needsMyAction, overdue };
   }, [data.orders]);
   const filteredOrders = useMemo(() => {
     if (queueFilter === "needs_my_action") {
@@ -76,6 +83,14 @@ export function OrdersBoard({
     }
     if (queueFilter === "awaiting_supplier") {
       return data.orders.filter((o) => o.status.code === "SENT");
+    }
+    if (queueFilter === "overdue") {
+      const now = Date.now();
+      return data.orders.filter((o) => {
+        if (!o.requestedDeliveryDate) return false;
+        const dueMs = new Date(o.requestedDeliveryDate).getTime();
+        return !Number.isNaN(dueMs) && dueMs < now;
+      });
     }
     if (queueFilter === "split_pending_buyer") {
       return data.orders.filter((o) => o.status.code === "SPLIT_PENDING_BUYER");
@@ -142,6 +157,9 @@ export function OrdersBoard({
           <span className="rounded-full bg-amber-100 px-2.5 py-1 font-medium text-amber-900">
             Split pending buyer decision: {queueSummary.splitPendingBuyer}
           </span>
+          <span className="rounded-full bg-rose-100 px-2.5 py-1 font-medium text-rose-900">
+            Overdue: {queueSummary.overdue}
+          </span>
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
           <button
@@ -188,6 +206,17 @@ export function OrdersBoard({
           >
             Split Pending ({queueSummary.splitPendingBuyer})
           </button>
+          <button
+            type="button"
+            onClick={() => setQueueFilter("overdue")}
+            className={`rounded-md border px-2.5 py-1 text-xs font-medium ${
+              queueFilter === "overdue"
+                ? "border-rose-700 bg-rose-700 text-white"
+                : "border-rose-200 bg-rose-50 text-rose-900 hover:bg-rose-100"
+            }`}
+          >
+            Overdue ({queueSummary.overdue})
+          </button>
         </div>
       </header>
 
@@ -204,6 +233,7 @@ export function OrdersBoard({
               <th className="px-4 py-3">Order</th>
               <th className="px-4 py-3">Ref</th>
               <th className="px-4 py-3">Due</th>
+              <th className="px-4 py-3">Aging</th>
               <th className="px-4 py-3">Supplier</th>
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Total</th>
@@ -224,9 +254,34 @@ export function OrdersBoard({
                   {order.buyerReference ?? "—"}
                 </td>
                 <td className="px-4 py-4 text-zinc-600">
-                  {order.requestedDeliveryDate
-                    ? new Date(order.requestedDeliveryDate).toLocaleDateString()
-                    : "—"}
+                  {(() => {
+                    if (!order.requestedDeliveryDate) return "—";
+                    const due = new Date(order.requestedDeliveryDate);
+                    const dueMs = due.getTime();
+                    const overdue =
+                      !Number.isNaN(dueMs) && dueMs < Date.now();
+                    return (
+                      <span
+                        className={
+                          overdue
+                            ? "font-medium text-rose-700"
+                            : "text-zinc-600"
+                        }
+                      >
+                        {due.toLocaleDateString()}
+                      </span>
+                    );
+                  })()}
+                </td>
+                <td className="px-4 py-4 text-zinc-600">
+                  {Math.max(
+                    0,
+                    Math.floor(
+                      (Date.now() - new Date(order.createdAt).getTime()) /
+                        (1000 * 60 * 60 * 24),
+                    ),
+                  )}{" "}
+                  d
                 </td>
                 <td className="px-4 py-4 text-zinc-700">
                   {order.supplier?.name ?? "No supplier"}
@@ -292,7 +347,7 @@ export function OrdersBoard({
             {filteredOrders.length === 0 ? (
               <tr>
                 <td
-                  colSpan={10}
+                  colSpan={11}
                   className="px-4 py-10 text-center text-sm text-zinc-500"
                 >
                   No orders in this queue.
