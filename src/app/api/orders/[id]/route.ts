@@ -4,6 +4,7 @@ import {
   getActorUserId,
   requireApiGrant,
   userHasGlobalGrant,
+  userHasRoleNamed,
 } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { optionalStringField } from "@/lib/supplier-patch";
@@ -115,8 +116,29 @@ export async function GET(
       : [];
   const statusById = new Map(statusRows.map((s) => [s.id, s]));
 
+  const actorId = await getActorUserId();
+  const isSupplierPortalUser =
+    actorId !== null && (await userHasRoleNamed(actorId, "Supplier portal"));
+
+  const supplierOnlyActions = new Set([
+    "confirm",
+    "decline",
+    "propose_split",
+    "mark_fulfilled",
+  ]);
+  const buyerOnlyActions = new Set([
+    "send_to_supplier",
+    "buyer_accept_split",
+    "buyer_reject_proposal",
+    "buyer_cancel",
+  ]);
   const allowedActions = order.workflow.transitions
     .filter((t) => t.fromStatusId === order.statusId)
+    .filter((t) => {
+      if (supplierOnlyActions.has(t.actionCode)) return isSupplierPortalUser;
+      if (buyerOnlyActions.has(t.actionCode)) return !isSupplierPortalUser;
+      return true;
+    })
     .map((t) => ({
       actionCode: t.actionCode,
       label: t.label,
@@ -126,7 +148,6 @@ export async function GET(
 
   const pendingProposal = order.splitProposalsAsParent[0] ?? null;
 
-  const actorId = await getActorUserId();
   const canSeeInternalMessages =
     actorId !== null &&
     (await userHasGlobalGrant(actorId, "org.orders", "edit"));
@@ -246,6 +267,9 @@ export async function GET(
     messageCapabilities: {
       canPost: actorId !== null,
       canPostInternal: canSeeInternalMessages,
+    },
+    splitCapabilities: {
+      canPropose: isSupplierPortalUser,
     },
   });
 }

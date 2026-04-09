@@ -107,6 +107,9 @@ type OrderDetailResponse = {
     canPost: boolean;
     canPostInternal: boolean;
   };
+  splitCapabilities: {
+    canPropose: boolean;
+  };
 };
 
 const todayIsoDate = () => new Date().toISOString().slice(0, 10);
@@ -224,7 +227,7 @@ export function OrderDetail({
   }, [data?.items, childCount]);
 
   const canProposeSplit = useMemo(() => {
-    if (!data || !canSplit) return false;
+    if (!data || !canSplit || !data.splitCapabilities.canPropose) return false;
     const hasProposeTransition = data.allowedActions.some(
       (a) => a.actionCode === "propose_split",
     );
