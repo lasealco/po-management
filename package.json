@@ -11,9 +11,9 @@
     "start": "next start",
     "lint": "eslint",
     "postinstall": "prisma generate",
-    "db:migrate": "prisma migrate deploy",
-    "db:migrate:deploy": "cross-env PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK=1 prisma migrate deploy",
-    "vercel-build": "prisma generate && npm run db:migrate:deploy && next build",
+    "db:migrate": "cross-env PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK=1 prisma migrate deploy",
+    "db:migrate:deploy": "npm run db:migrate",
+    "vercel-build": "prisma generate && npm run db:migrate && next build",
     "db:seed": "node prisma/seed.mjs"
   },
   "dependencies": {
