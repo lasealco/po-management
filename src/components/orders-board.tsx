@@ -50,6 +50,7 @@ type QueueFilter =
   | "awaiting_supplier"
   | "overdue"
   | "split_pending_buyer";
+type SortMode = "priority" | "newest";
 
 export function OrdersBoard({
   initialData,
@@ -65,6 +66,7 @@ export function OrdersBoard({
   const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [queueFilter, setQueueFilter] = useState<QueueFilter>(defaultQueueFilter);
+  const [sortMode, setSortMode] = useState<SortMode>("priority");
 
   const orderCount = useMemo(() => data.orders.length, [data.orders.length]);
   const queueSummary = useMemo(() => {
@@ -126,6 +128,33 @@ export function OrdersBoard({
     }
     return data.orders;
   }, [data.orders, queueFilter]);
+  const displayedOrders = useMemo(() => {
+    if (sortMode === "newest") return filteredOrders;
+    const rows = [...filteredOrders];
+    const now = Date.now();
+    const score = (order: OrderRow) => {
+      let s = 0;
+      const waitingOnMe = order.conversationSla.awaitingReplyFrom === data.viewerMode;
+      const daysSinceMsg = order.conversationSla.daysSinceLastShared ?? 0;
+      if (waitingOnMe && daysSinceMsg >= 5) s += 120;
+      else if (waitingOnMe && daysSinceMsg >= 2) s += 80;
+      else if (waitingOnMe) s += 40;
+      if (order.allowedActions.length > 0) s += 60;
+      if (order.status.code === "SPLIT_PENDING_BUYER") s += 30;
+      if (order.status.code === "SENT") s += 20;
+      if (order.requestedDeliveryDate) {
+        const dueMs = new Date(order.requestedDeliveryDate).getTime();
+        if (!Number.isNaN(dueMs) && dueMs < now) s += 50;
+      }
+      return s;
+    };
+    rows.sort((a, b) => {
+      const diff = score(b) - score(a);
+      if (diff !== 0) return diff;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+    return rows;
+  }, [filteredOrders, sortMode, data.viewerMode]);
 
   async function applyAction(order: OrderRow, action: OrderAction) {
     setBusyOrderId(order.id);
@@ -267,6 +296,31 @@ export function OrdersBoard({
             Overdue ({queueSummary.overdue})
           </button>
         </div>
+        <div className="mt-3 flex items-center gap-2 text-xs">
+          <span className="text-zinc-500">Sort</span>
+          <button
+            type="button"
+            onClick={() => setSortMode("priority")}
+            className={`rounded-md border px-2.5 py-1 font-medium ${
+              sortMode === "priority"
+                ? "border-zinc-900 bg-zinc-900 text-white"
+                : "border-zinc-300 text-zinc-700 hover:bg-zinc-50"
+            }`}
+          >
+            Priority
+          </button>
+          <button
+            type="button"
+            onClick={() => setSortMode("newest")}
+            className={`rounded-md border px-2.5 py-1 font-medium ${
+              sortMode === "newest"
+                ? "border-zinc-900 bg-zinc-900 text-white"
+                : "border-zinc-300 text-zinc-700 hover:bg-zinc-50"
+            }`}
+          >
+            Newest
+          </button>
+        </div>
       </header>
 
       {errorMessage ? (
@@ -294,7 +348,7 @@ export function OrdersBoard({
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100 text-sm">
-            {filteredOrders.map((order) => (
+            {displayedOrders.map((order) => (
               <tr key={order.id}>
                 <td className="px-4 py-4">
                   <p className="font-medium text-zinc-900">{order.orderNumber}</p>
@@ -435,7 +489,7 @@ export function OrdersBoard({
                 </td>
               </tr>
             ))}
-            {filteredOrders.length === 0 ? (
+            {displayedOrders.length === 0 ? (
               <tr>
                 <td
                   colSpan={12}
