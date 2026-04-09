@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ProductEditClient } from "@/components/product-edit-client";
 import type { ProductFormInitial } from "@/components/product-catalog-form";
 import { getDemoTenant } from "@/lib/demo-tenant";
+import { getProductFormOptions } from "@/lib/product-form-options";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -24,35 +25,7 @@ export default async function ProductEditPage({
   });
   if (!product) notFound();
 
-  const [categories, divisions, supplierOffices, suppliers] = await Promise.all(
-    [
-      prisma.productCategory.findMany({
-        where: { tenantId: tenant.id },
-        orderBy: { sortOrder: "asc" },
-        select: { id: true, name: true },
-      }),
-      prisma.productDivision.findMany({
-        where: { tenantId: tenant.id },
-        orderBy: { sortOrder: "asc" },
-        select: { id: true, name: true },
-      }),
-      prisma.supplierOffice.findMany({
-        where: { tenantId: tenant.id, isActive: true },
-        orderBy: { name: "asc" },
-        include: { supplier: { select: { name: true } } },
-      }),
-      prisma.supplier.findMany({
-        where: { tenantId: tenant.id, isActive: true },
-        orderBy: { name: "asc" },
-        select: { id: true, name: true },
-      }),
-    ],
-  );
-
-  const officeOptions = supplierOffices.map((o) => ({
-    id: o.id,
-    label: `${o.supplier.name} — ${o.name}`,
-  }));
+  const opts = await getProductFormOptions(tenant.id);
 
   const initial: ProductFormInitial = {
     productCode: product.productCode ?? "",
@@ -94,16 +67,16 @@ export default async function ProductEditPage({
           href="/products"
           className="text-sm text-zinc-600 hover:text-zinc-900"
         >
-          ← Products
+          ← Product catalog
         </Link>
         <div className="mt-4">
           <ProductEditClient
             productId={product.id}
             initial={initial}
-            categories={categories}
-            divisions={divisions}
-            supplierOffices={officeOptions}
-            suppliers={suppliers}
+            categories={opts.categories}
+            divisions={opts.divisions}
+            supplierOffices={opts.supplierOffices}
+            suppliers={opts.suppliers}
           />
         </div>
       </main>

@@ -8,13 +8,21 @@ import {
 
 export type { ProductFormOptions };
 
-export function ProductCreatePanel(options: ProductFormOptions) {
+export function ProductCreatePanel(
+  options: ProductFormOptions & { afterCreateRedirect?: string },
+) {
   const router = useRouter();
+  const { afterCreateRedirect, ...rest } = options;
   return (
     <ProductCatalogForm
       mode="create"
-      {...options}
-      onSuccess={() => router.refresh()}
+      {...rest}
+      onSuccess={() => {
+        if (afterCreateRedirect) {
+          router.push(afterCreateRedirect);
+        }
+        router.refresh();
+      }}
     />
   );
 }

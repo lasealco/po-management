@@ -1,22 +1,18 @@
-import { ProductCreatePanel } from "@/components/product-create-panel";
+import Link from "next/link";
 import { ProductList } from "@/components/product-list";
+import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
-
-const DEFAULT_TENANT_SLUG = "demo-company";
 
 export const dynamic = "force-dynamic";
 
-export default async function ProductsPage() {
-  const tenant = await prisma.tenant.findUnique({
-    where: { slug: DEFAULT_TENANT_SLUG },
-    select: { id: true, name: true },
-  });
+export default async function ProductCatalogPage() {
+  const tenant = await getDemoTenant();
 
   if (!tenant) {
     return (
       <div className="min-h-screen bg-zinc-50">
         <main className="mx-auto max-w-3xl px-6 py-16">
-          <h1 className="text-3xl font-semibold text-zinc-900">Products</h1>
+          <h1 className="text-3xl font-semibold text-zinc-900">Product catalog</h1>
           <p className="mt-4 text-zinc-600">
             Demo tenant not found. Run <code>npm run db:seed</code> locally,
             then deploy.
@@ -26,51 +22,23 @@ export default async function ProductsPage() {
     );
   }
 
-  const [products, categories, divisions, supplierOffices, suppliers] =
-    await Promise.all([
-      prisma.product.findMany({
-        where: { tenantId: tenant.id },
-        orderBy: { productCode: "asc" },
-        select: {
-          id: true,
-          productCode: true,
-          sku: true,
-          name: true,
-          description: true,
-          unit: true,
-          isActive: true,
-          updatedAt: true,
-          category: { select: { name: true } },
-          division: { select: { name: true } },
-          _count: { select: { productSuppliers: true } },
-        },
-      }),
-      prisma.productCategory.findMany({
-        where: { tenantId: tenant.id },
-        orderBy: { sortOrder: "asc" },
-        select: { id: true, name: true },
-      }),
-      prisma.productDivision.findMany({
-        where: { tenantId: tenant.id },
-        orderBy: { sortOrder: "asc" },
-        select: { id: true, name: true },
-      }),
-      prisma.supplierOffice.findMany({
-        where: { tenantId: tenant.id, isActive: true },
-        orderBy: { name: "asc" },
-        include: { supplier: { select: { name: true } } },
-      }),
-      prisma.supplier.findMany({
-        where: { tenantId: tenant.id, isActive: true },
-        orderBy: { name: "asc" },
-        select: { id: true, name: true },
-      }),
-    ]);
-
-  const officeOptions = supplierOffices.map((o) => ({
-    id: o.id,
-    label: `${o.supplier.name} — ${o.name}`,
-  }));
+  const products = await prisma.product.findMany({
+    where: { tenantId: tenant.id },
+    orderBy: { productCode: "asc" },
+    select: {
+      id: true,
+      productCode: true,
+      sku: true,
+      name: true,
+      description: true,
+      unit: true,
+      isActive: true,
+      updatedAt: true,
+      category: { select: { name: true } },
+      division: { select: { name: true } },
+      _count: { select: { productSuppliers: true } },
+    },
+  });
 
   const productRows = products.map((p) => ({
     id: p.id,
@@ -89,27 +57,33 @@ export default async function ProductsPage() {
   return (
     <div className="min-h-screen bg-zinc-50">
       <main className="mx-auto max-w-7xl px-6 py-10">
-        <header className="mb-8">
-          <h1 className="text-3xl font-semibold text-zinc-900">Products</h1>
-          <p className="mt-2 text-zinc-600">
-            Tenant: <span className="font-medium">{tenant.name}</span> (
-            {products.length} {products.length === 1 ? "product" : "products"})
-          </p>
+        <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-semibold text-zinc-900">
+              Product catalog
+            </h1>
+            <p className="mt-2 text-zinc-600">
+              Tenant: <span className="font-medium">{tenant.name}</span> (
+              {products.length}{" "}
+              {products.length === 1 ? "product" : "products"})
+            </p>
+            <p className="mt-1 text-sm text-zinc-500">
+              Categories and divisions:{" "}
+              <Link href="/catalog" className="text-amber-900 underline-offset-2 hover:underline">
+                Catalog setup
+              </Link>
+              .
+            </p>
+          </div>
+          <Link
+            href="/products/new"
+            className="inline-flex w-fit items-center justify-center rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+          >
+            Add product
+          </Link>
         </header>
 
-        <section className="mb-10">
-          <h2 className="mb-3 text-lg font-medium text-zinc-900">Catalog</h2>
-          <ProductList products={productRows} />
-        </section>
-
-        <section className="border-t border-zinc-200 pt-10">
-          <ProductCreatePanel
-            categories={categories}
-            divisions={divisions}
-            supplierOffices={officeOptions}
-            suppliers={suppliers}
-          />
-        </section>
+        <ProductList products={productRows} />
       </main>
     </div>
   );
