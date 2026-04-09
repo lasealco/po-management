@@ -19,17 +19,41 @@ export type AppNavLinkVisibility = {
 
 export function AppNav({
   linkVisibility,
+  setupIncomplete = false,
 }: {
   /** When set (logged-in demo user), only show links for granted resources. */
   linkVisibility?: AppNavLinkVisibility;
+  /** User exists but has zero role grants (e.g. DB never seeded) — show all links + setup hint. */
+  setupIncomplete?: boolean;
 }) {
   const pathname = usePathname();
-  const visible = linkVisibility
-    ? links.filter((l) => linkVisibility[l.key])
-    : [...links];
+  const visible =
+    setupIncomplete || !linkVisibility
+      ? [...links]
+      : links.filter((l) => linkVisibility[l.key]);
 
   return (
     <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
+      {setupIncomplete ? (
+        <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-sm text-amber-950 sm:text-left">
+          <div className="mx-auto max-w-7xl">
+            <strong className="font-semibold">Demo permissions missing.</strong>{" "}
+            Users exist but this account has no role grants (
+            <code className="rounded bg-amber-200/70 px-1 py-0.5 text-xs">
+              RolePermission
+            </code>
+            ). From your machine run{" "}
+            <code className="rounded bg-amber-200/70 px-1 py-0.5 text-xs">
+              npm run db:seed
+            </code>{" "}
+            with the same{" "}
+            <code className="rounded bg-amber-200/70 px-1 py-0.5 text-xs">
+              DATABASE_URL
+            </code>{" "}
+            as Vercel, then reload.
+          </div>
+        </div>
+      ) : null}
       <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-8 gap-y-2 px-6 py-3">
         <Link
           href="/"

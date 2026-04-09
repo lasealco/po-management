@@ -4,6 +4,7 @@ import { AppNav } from "@/components/app-nav";
 /** Server wrapper: hides main nav items the active demo user cannot access. */
 export async function AppNavWithGrants() {
   const access = await getViewerGrantSet();
+
   const linkVisibility =
     access?.user != null
       ? {
@@ -14,5 +15,20 @@ export async function AppNavWithGrants() {
         }
       : undefined;
 
-  return <AppNav linkVisibility={linkVisibility} />;
+  const setupIncomplete =
+    access?.user != null &&
+    linkVisibility != null &&
+    !(
+      linkVisibility.orders ||
+      linkVisibility.products ||
+      linkVisibility.settings ||
+      linkVisibility.suppliers
+    );
+
+  return (
+    <AppNav
+      linkVisibility={linkVisibility}
+      setupIncomplete={setupIncomplete}
+    />
+  );
 }
