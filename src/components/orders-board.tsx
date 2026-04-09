@@ -50,6 +50,15 @@ export function OrdersBoard({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const orderCount = useMemo(() => data.orders.length, [data.orders.length]);
+  const queueSummary = useMemo(() => {
+    let awaitingSupplier = 0;
+    let splitPendingBuyer = 0;
+    for (const order of data.orders) {
+      if (order.status.code === "SENT") awaitingSupplier += 1;
+      if (order.status.code === "SPLIT_PENDING_BUYER") splitPendingBuyer += 1;
+    }
+    return { awaitingSupplier, splitPendingBuyer };
+  }, [data.orders]);
 
   async function applyAction(order: OrderRow, action: OrderAction) {
     setBusyOrderId(order.id);
@@ -100,6 +109,14 @@ export function OrdersBoard({
         <p className="mt-2 text-zinc-600">
           Tenant: <span className="font-medium">{data.tenant.name}</span> ({orderCount} orders)
         </p>
+        <div className="mt-4 flex flex-wrap gap-2 text-xs">
+          <span className="rounded-full bg-sky-100 px-2.5 py-1 font-medium text-sky-900">
+            Awaiting supplier response: {queueSummary.awaitingSupplier}
+          </span>
+          <span className="rounded-full bg-amber-100 px-2.5 py-1 font-medium text-amber-900">
+            Split pending buyer decision: {queueSummary.splitPendingBuyer}
+          </span>
+        </div>
       </header>
 
       {errorMessage ? (
@@ -119,6 +136,7 @@ export function OrdersBoard({
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Total</th>
               <th className="px-4 py-3">Workflow</th>
+              <th className="px-4 py-3">Queue</th>
               <th className="px-4 py-3">Allowed Actions</th>
               <th className="px-4 py-3">Detail</th>
             </tr>
@@ -150,6 +168,24 @@ export function OrdersBoard({
                   {order.currency} {order.totalAmount}
                 </td>
                 <td className="px-4 py-4 text-zinc-700">{order.workflow.name}</td>
+                <td className="px-4 py-4">
+                  <div className="flex flex-wrap gap-1.5">
+                    {order.status.code === "SENT" ? (
+                      <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-medium text-sky-900">
+                        Awaiting supplier response
+                      </span>
+                    ) : null}
+                    {order.status.code === "SPLIT_PENDING_BUYER" ? (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-900">
+                        Split pending buyer decision
+                      </span>
+                    ) : null}
+                    {order.status.code !== "SENT" &&
+                    order.status.code !== "SPLIT_PENDING_BUYER" ? (
+                      <span className="text-xs text-zinc-400">—</span>
+                    ) : null}
+                  </div>
+                </td>
                 <td className="px-4 py-4">
                   <div className="flex flex-wrap gap-2">
                     {!canTransitionOrders ? (
