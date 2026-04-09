@@ -624,6 +624,14 @@ async function seed() {
     {
       workflowId: supplierWorkflow.id,
       fromStatusId: supplierSplitPending.id,
+      toStatusId: supplierCancelled.id,
+      actionCode: "buyer_cancel",
+      label: "Cancel order",
+      requiresComment: true,
+    },
+    {
+      workflowId: supplierWorkflow.id,
+      fromStatusId: supplierSplitPending.id,
       toStatusId: supplierParentSplitComplete.id,
       actionCode: "buyer_accept_split",
       label: "Accept split (buyer)",

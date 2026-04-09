@@ -67,6 +67,12 @@ export function OrdersBoard({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [queueFilter, setQueueFilter] = useState<QueueFilter>(defaultQueueFilter);
   const [sortMode, setSortMode] = useState<SortMode>("priority");
+  const isNeedsMyActionRow = (order: OrderRow) => {
+    if (order.allowedActions.length > 0) return true;
+    // buyer split decisions are intentionally detail-only actions (hidden on board),
+    // but they should still appear in "Needs My Action" queues.
+    return data.viewerMode === "buyer" && order.status.code === "SPLIT_PENDING_BUYER";
+  };
 
   const orderCount = useMemo(() => data.orders.length, [data.orders.length]);
   const queueSummary = useMemo(() => {
@@ -81,7 +87,7 @@ export function OrdersBoard({
     for (const order of data.orders) {
       if (order.status.code === "SENT") awaitingSupplier += 1;
       if (order.status.code === "SPLIT_PENDING_BUYER") splitPendingBuyer += 1;
-      if (order.allowedActions.length > 0) needsMyAction += 1;
+      if (isNeedsMyActionRow(order)) needsMyAction += 1;
       if (order.conversationSla.awaitingReplyFrom === data.viewerMode) {
         waitingOnMe += 1;
         const days = order.conversationSla.daysSinceLastShared ?? 0;
@@ -105,7 +111,7 @@ export function OrdersBoard({
   }, [data.orders, data.viewerMode]);
   const filteredOrders = useMemo(() => {
     if (queueFilter === "needs_my_action") {
-      return data.orders.filter((o) => o.allowedActions.length > 0);
+      return data.orders.filter((o) => isNeedsMyActionRow(o));
     }
     if (queueFilter === "waiting_on_me") {
       return data.orders.filter(
@@ -139,7 +145,7 @@ export function OrdersBoard({
       if (waitingOnMe && daysSinceMsg >= 5) s += 120;
       else if (waitingOnMe && daysSinceMsg >= 2) s += 80;
       else if (waitingOnMe) s += 40;
-      if (order.allowedActions.length > 0) s += 60;
+      if (isNeedsMyActionRow(order)) s += 60;
       if (order.status.code === "SPLIT_PENDING_BUYER") s += 30;
       if (order.status.code === "SENT") s += 20;
       if (order.requestedDeliveryDate) {
