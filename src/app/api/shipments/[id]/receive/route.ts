@@ -57,12 +57,15 @@ export async function POST(
     }
     lineMap.set(row.shipmentItemId, qty);
   }
+  const hasExplicitLines = lineMap.size > 0;
 
   await prisma.$transaction(async (tx) => {
     for (const item of shipment.items) {
       const remaining = Number(item.quantityShipped) - Number(item.quantityReceived);
       if (remaining <= 0) continue;
-      const delta = lineMap.has(item.id) ? lineMap.get(item.id)! : remaining;
+      const delta = hasExplicitLines
+        ? (lineMap.get(item.id) ?? 0)
+        : remaining;
       const capped = Math.min(remaining, delta);
       if (capped <= 0) continue;
       await tx.shipmentItem.update({

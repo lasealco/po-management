@@ -1,7 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  defaultBoardQueue,
+  type BoardQueueFilter,
+  type BoardSortMode,
+} from "@/lib/orders-board-prefs";
 
 type OrderStatus = {
   id: string;
@@ -28,6 +33,7 @@ type OrderRow = {
   supplier: { id: string; name: string } | null;
   requester: { id: string; name: string; email: string };
   workflow: { id: string; name: string };
+  logisticsStatus: "NONE" | "SHIPPED" | "PARTIALLY_RECEIVED" | "RECEIVED";
   allowedActions: OrderAction[];
   conversationSla: {
     awaitingReplyFrom: "buyer" | "supplier" | null;
@@ -43,30 +49,44 @@ type OrdersResponse = {
   orders: OrderRow[];
 };
 
-type QueueFilter =
-  | "all"
-  | "needs_my_action"
-  | "waiting_on_me"
-  | "awaiting_supplier"
-  | "overdue"
-  | "split_pending_buyer";
-type SortMode = "priority" | "newest";
-
 export function OrdersBoard({
   initialData,
   canTransitionOrders = true,
-  defaultQueueFilter = "all",
+  defaultQueueFilter = defaultBoardQueue(),
+  defaultSortMode = "priority",
+  persistBoardPrefs = false,
 }: {
   initialData: OrdersResponse;
   /** When false, workflow action buttons are hidden (org.orders → transition). */
   canTransitionOrders?: boolean;
-  defaultQueueFilter?: QueueFilter;
+  defaultQueueFilter?: BoardQueueFilter;
+  defaultSortMode?: BoardSortMode;
+  /** Save queue + sort to user preferences (requires org.orders → view). */
+  persistBoardPrefs?: boolean;
 }) {
   const [data, setData] = useState(initialData);
   const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [queueFilter, setQueueFilter] = useState<QueueFilter>(defaultQueueFilter);
-  const [sortMode, setSortMode] = useState<SortMode>("priority");
+  const [queueFilter, setQueueFilter] =
+    useState<BoardQueueFilter>(defaultQueueFilter);
+  const [sortMode, setSortMode] = useState<BoardSortMode>(defaultSortMode);
+  const skipNextBoardPrefsPersist = useRef(true);
+
+  useEffect(() => {
+    if (!persistBoardPrefs) return;
+    if (skipNextBoardPrefsPersist.current) {
+      skipNextBoardPrefsPersist.current = false;
+      return;
+    }
+    const t = window.setTimeout(() => {
+      void fetch("/api/orders/board-prefs", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ queueFilter, sortMode }),
+      });
+    }, 450);
+    return () => window.clearTimeout(t);
+  }, [queueFilter, sortMode, persistBoardPrefs]);
   const isNeedsMyActionRow = (order: OrderRow) => {
     if (order.allowedActions.length > 0) return true;
     // buyer split decisions are intentionally detail-only actions (hidden on board),
@@ -211,6 +231,16 @@ export function OrdersBoard({
         <p className="mt-2 text-zinc-600">
           Tenant: <span className="font-medium">{data.tenant.name}</span> ({orderCount} orders)
         </p>
+        <p className="mt-1 text-xs text-zinc-400">
+          Quick jump:{" "}
+          <kbd className="rounded border border-zinc-200 bg-white px-1 font-mono text-[10px] text-zinc-600">
+            ⌘K
+          </kbd>{" "}
+          /{" "}
+          <kbd className="rounded border border-zinc-200 bg-white px-1 font-mono text-[10px] text-zinc-600">
+            Ctrl K
+          </kbd>
+        </p>
         <div className="mt-4 flex flex-wrap gap-2 text-xs">
           <span className="rounded-full bg-emerald-100 px-2.5 py-1 font-medium text-emerald-900">
             Needs my action: {queueSummary.needsMyAction}
@@ -345,6 +375,7 @@ export function OrdersBoard({
               <th className="px-4 py-3">Aging</th>
               <th className="px-4 py-3">Supplier</th>
               <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3">Logistics</th>
               <th className="px-4 py-3">Total</th>
               <th className="px-4 py-3">Workflow</th>
               <th className="px-4 py-3">Queue</th>
@@ -357,8 +388,12 @@ export function OrdersBoard({
             {displayedOrders.map((order) => (
               <tr key={order.id}>
                 <td className="px-4 py-4">
-                  <p className="font-medium text-zinc-900">{order.orderNumber}</p>
-                  <p className="text-zinc-600">{order.title || "Untitled PO"}</p>
+                  <Link href={`/orders/${order.id}`} className="group block">
+                    <p className="font-medium text-zinc-900 underline-offset-2 group-hover:underline">
+                      {order.orderNumber}
+                    </p>
+                    <p className="text-zinc-600">{order.title || "Untitled PO"}</p>
+                  </Link>
                 </td>
                 <td className="px-4 py-4 text-zinc-600">
                   {order.buyerReference ?? "—"}
@@ -399,6 +434,27 @@ export function OrdersBoard({
                 <td className="px-4 py-4">
                   <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700">
                     {order.status.label}
+                  </span>
+                </td>
+                <td className="px-4 py-4">
+                  <span
+                    className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                      order.logisticsStatus === "RECEIVED"
+                        ? "bg-emerald-100 text-emerald-800"
+                        : order.logisticsStatus === "PARTIALLY_RECEIVED"
+                          ? "bg-amber-100 text-amber-800"
+                          : order.logisticsStatus === "SHIPPED"
+                            ? "bg-sky-100 text-sky-800"
+                            : "bg-zinc-100 text-zinc-600"
+                    }`}
+                  >
+                    {order.logisticsStatus === "NONE"
+                      ? "No ASN"
+                      : order.logisticsStatus === "SHIPPED"
+                        ? "Shipped"
+                        : order.logisticsStatus === "PARTIALLY_RECEIVED"
+                          ? "Partially received"
+                          : "Received"}
                   </span>
                 </td>
                 <td className="px-4 py-4 text-zinc-700">
@@ -498,7 +554,7 @@ export function OrdersBoard({
             {displayedOrders.length === 0 ? (
               <tr>
                 <td
-                  colSpan={12}
+                  colSpan={13}
                   className="px-4 py-10 text-center text-sm text-zinc-500"
                 >
                   No orders in this queue.

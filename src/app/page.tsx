@@ -1,12 +1,28 @@
 import { AccessDenied } from "@/components/access-denied";
+import { HomeQuickActions } from "@/components/home-quick-actions";
 import { OrdersBoard } from "@/components/orders-board";
 import { getViewerGrantSet, userHasRoleNamed, viewerHas } from "@/lib/authz";
+import {
+  defaultBoardQueue,
+  ORDERS_BOARD_PREF_KEY,
+  parseQueueFromSearchParam,
+  readBoardPrefsFromJson,
+  type BoardQueueFilter,
+  type BoardSortMode,
+} from "@/lib/orders-board-prefs";
 import { prisma } from "@/lib/prisma";
 import { visibleOnBoard } from "@/lib/workflow-actions";
 
 export const dynamic = "force-dynamic";
 
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams?: Promise<{ queue?: string | string[] }>;
+}) {
+  const sp = searchParams ? await searchParams : {};
+  const queueFromUrl = parseQueueFromSearchParam(sp.queue);
+
   const access = await getViewerGrantSet();
 
   if (!access) {
@@ -44,6 +60,17 @@ export default async function Home() {
       </div>
     );
   }
+
+  const prefRow = await prisma.userPreference.findUnique({
+    where: {
+      userId_key: { userId: access.user.id, key: ORDERS_BOARD_PREF_KEY },
+    },
+    select: { value: true },
+  });
+  const savedBoard = readBoardPrefsFromJson(prefRow?.value);
+  const initialQueue: BoardQueueFilter =
+    queueFromUrl ?? savedBoard.queueFilter ?? defaultBoardQueue();
+  const initialSort: BoardSortMode = savedBoard.sortMode ?? "priority";
 
   const { tenant } = access;
   const isSupplierPortalUser = await userHasRoleNamed(
@@ -89,6 +116,16 @@ export default async function Home() {
               toStatus: {
                 select: { id: true, code: true, label: true },
               },
+            },
+          },
+        },
+      },
+      shipments: {
+        select: {
+          items: {
+            select: {
+              quantityShipped: true,
+              quantityReceived: true,
             },
           },
         },
@@ -150,12 +187,37 @@ export default async function Home() {
               ),
             )
           : null;
+        const shippedTotal = order.shipments.reduce(
+          (sum, shipment) =>
+            sum +
+            shipment.items.reduce((s, row) => s + Number(row.quantityShipped), 0),
+          0,
+        );
+        const receivedTotal = order.shipments.reduce(
+          (sum, shipment) =>
+            sum +
+            shipment.items.reduce((s, row) => s + Number(row.quantityReceived), 0),
+          0,
+        );
+        const logisticsStatus:
+          | "NONE"
+          | "SHIPPED"
+          | "PARTIALLY_RECEIVED"
+          | "RECEIVED" =
+          shippedTotal <= 0
+            ? "NONE"
+            : receivedTotal <= 0
+              ? "SHIPPED"
+              : receivedTotal < shippedTotal
+                ? "PARTIALLY_RECEIVED"
+                : "RECEIVED";
         return {
           conversationSla: {
             awaitingReplyFrom,
             daysSinceLastShared,
             lastSharedAt: latestShared?.createdAt.toISOString() ?? null,
           },
+          logisticsStatus,
         };
       })(),
       id: order.id,
@@ -202,13 +264,23 @@ export default async function Home() {
     "org.orders",
     "transition",
   );
+  const canManageSuppliers = viewerHas(access.grantSet, "org.suppliers", "edit");
+  const canUseConsolidation = viewerHas(access.grantSet, "org.consolidation", "view");
+  const canManageUsers = viewerHas(access.grantSet, "org.users", "edit");
 
   return (
     <div className="min-h-screen bg-zinc-50">
+      <HomeQuickActions
+        canManageSuppliers={canManageSuppliers}
+        canUseConsolidation={canUseConsolidation}
+        canManageUsers={canManageUsers}
+      />
       <OrdersBoard
         initialData={initialData}
         canTransitionOrders={canTransitionOrders}
-        defaultQueueFilter="needs_my_action"
+        defaultQueueFilter={initialQueue}
+        defaultSortMode={initialSort}
+        persistBoardPrefs
       />
     </div>
   );

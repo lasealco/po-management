@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 type OrderDetailResponse = {
   order: {
@@ -78,6 +79,9 @@ type OrderDetailResponse = {
     receivedAt: string | null;
     carrier: string | null;
     trackingNo: string | null;
+    transportMode: "OCEAN" | "AIR" | "ROAD" | "RAIL" | null;
+    estimatedVolumeCbm: string | null;
+    estimatedWeightKg: string | null;
     notes: string | null;
     createdBy: { name: string; email: string };
     items: Array<{
@@ -191,9 +195,19 @@ export function OrderDetail({
   const [asnShipmentNo, setAsnShipmentNo] = useState("");
   const [asnCarrier, setAsnCarrier] = useState("");
   const [asnTrackingNo, setAsnTrackingNo] = useState("");
+  const [asnTransportMode, setAsnTransportMode] = useState<
+    "OCEAN" | "AIR" | "ROAD" | "RAIL"
+  >("OCEAN");
+  const [asnEstimatedVolumeCbm, setAsnEstimatedVolumeCbm] = useState("");
+  const [asnEstimatedWeightKg, setAsnEstimatedWeightKg] = useState("");
   const [asnShippedDate, setAsnShippedDate] = useState(todayIsoDate());
   const [asnNotes, setAsnNotes] = useState("");
   const [asnQtyByItemId, setAsnQtyByItemId] = useState<Record<string, string>>({});
+  const [receiveQtyByShipmentItemId, setReceiveQtyByShipmentItemId] = useState<
+    Record<string, string>
+  >({});
+
+  const searchParams = useSearchParams();
 
   const load = useCallback(async () => {
     setError(null);
@@ -212,6 +226,41 @@ export function OrderDetail({
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!data) return;
+    const focus = searchParams.get("focus");
+    if (!focus) return;
+    const timer = window.setTimeout(() => {
+      let el: Element | null = null;
+      if (focus === "split") {
+        el = document.querySelector("[data-help-focus='split']");
+      } else if (
+        focus === "workflow" ||
+        focus === "asn" ||
+        focus === "chat"
+      ) {
+        el = document.getElementById(`help-focus-${focus}`);
+      }
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      el.classList.add(
+        "ring-2",
+        "ring-violet-500",
+        "ring-offset-2",
+        "rounded-lg",
+      );
+      window.setTimeout(() => {
+        el?.classList.remove(
+          "ring-2",
+          "ring-violet-500",
+          "ring-offset-2",
+          "rounded-lg",
+        );
+      }, 4200);
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [data?.order.id, searchParams]);
 
   useEffect(() => {
     if (!data) return;
@@ -457,6 +506,9 @@ export function OrderDetail({
         shipmentNo: asnShipmentNo || null,
         carrier: asnCarrier || null,
         trackingNo: asnTrackingNo || null,
+        transportMode: asnTransportMode,
+        estimatedVolumeCbm: asnEstimatedVolumeCbm || null,
+        estimatedWeightKg: asnEstimatedWeightKg || null,
         shippedAt: asnShippedDate || null,
         notes: asnNotes || null,
         lines,
@@ -471,6 +523,8 @@ export function OrderDetail({
     setAsnShipmentNo("");
     setAsnCarrier("");
     setAsnTrackingNo("");
+    setAsnEstimatedVolumeCbm("");
+    setAsnEstimatedWeightKg("");
     setAsnShippedDate(todayIsoDate());
     setAsnNotes("");
     setAsnQtyByItemId({});
@@ -478,20 +532,44 @@ export function OrderDetail({
     setBusy(false);
   }
 
-  async function receiveShipment(shipmentId: string) {
+  async function receiveShipment(
+    shipment: OrderDetailResponse["shipments"][number],
+    mode: "all" | "partial",
+  ) {
     if (!data || !data.shipmentCapabilities.canReceive) return;
     setBusy(true);
     setError(null);
-    const res = await fetch(`/api/shipments/${shipmentId}/receive`, {
+    const lines =
+      mode === "partial"
+        ? shipment.items
+            .map((item) => ({
+              shipmentItemId: item.id,
+              quantityReceived: (receiveQtyByShipmentItemId[item.id] ?? "").trim(),
+            }))
+            .filter((row) => row.quantityReceived !== "")
+        : [];
+    if (mode === "partial" && lines.length === 0) {
+      setError("Enter at least one received quantity.");
+      setBusy(false);
+      return;
+    }
+    const res = await fetch(`/api/shipments/${shipment.id}/receive`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
+      body: JSON.stringify({ lines }),
     });
     const payload = (await res.json()) as { error?: string };
     if (!res.ok) {
       setError(payload.error ?? "Could not receive shipment.");
       setBusy(false);
       return;
+    }
+    if (mode === "partial") {
+      setReceiveQtyByShipmentItemId((prev) => {
+        const next = { ...prev };
+        for (const row of lines) delete next[row.shipmentItemId];
+        return next;
+      });
     }
     await load();
     setBusy(false);
@@ -947,7 +1025,10 @@ export function OrderDetail({
         </div>
       </section>
 
-      <section className="mb-8 rounded-lg border border-zinc-200 bg-white p-4">
+      <section
+        id="help-focus-asn"
+        className="mb-8 scroll-mt-24 rounded-lg border border-zinc-200 bg-white p-4"
+      >
         <h2 className="text-lg font-medium text-zinc-900">ASNs / Shipments</h2>
         <p className="mt-1 text-xs text-zinc-600">
           Supplier creates ASNs with shipped quantities. Buyer records receipt.
@@ -984,6 +1065,13 @@ export function OrderDetail({
                     <span>Shipped {new Date(shipment.shippedAt).toLocaleDateString()}</span>
                     {shipment.carrier ? <span>· {shipment.carrier}</span> : null}
                     {shipment.trackingNo ? <span>· {shipment.trackingNo}</span> : null}
+                    {shipment.transportMode ? <span>· {shipment.transportMode}</span> : null}
+                    {shipment.estimatedVolumeCbm ? (
+                      <span>· {shipment.estimatedVolumeCbm} cbm</span>
+                    ) : null}
+                    {shipment.estimatedWeightKg ? (
+                      <span>· {shipment.estimatedWeightKg} kg</span>
+                    ) : null}
                     {shipment.receivedAt ? (
                       <span>
                         · Received {new Date(shipment.receivedAt).toLocaleDateString()}
@@ -1005,14 +1093,57 @@ export function OrderDetail({
                     <p className="mt-2 text-xs text-zinc-700">{shipment.notes}</p>
                   ) : null}
                   {data.shipmentCapabilities.canReceive && remaining > 0 ? (
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => void receiveShipment(shipment.id)}
-                      className="mt-3 rounded-md border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-800 disabled:opacity-50"
-                    >
-                      Receive all remaining
-                    </button>
+                    <div className="mt-3 space-y-2">
+                      <div className="grid gap-1">
+                        {shipment.items.map((row) => {
+                          const remainingForRow = Math.max(
+                            0,
+                            Number(row.quantityShipped) - Number(row.quantityReceived),
+                          );
+                          if (remainingForRow <= 0) return null;
+                          return (
+                            <label
+                              key={`recv-${row.id}`}
+                              className="flex items-center gap-2 text-xs"
+                            >
+                              <span className="min-w-48 text-zinc-700">
+                                L{row.lineNo} receive (max {remainingForRow})
+                              </span>
+                              <input
+                                inputMode="decimal"
+                                placeholder="Qty"
+                                value={receiveQtyByShipmentItemId[row.id] ?? ""}
+                                onChange={(e) =>
+                                  setReceiveQtyByShipmentItemId((prev) => ({
+                                    ...prev,
+                                    [row.id]: e.target.value,
+                                  }))
+                                }
+                                className="w-24 rounded border border-zinc-300 px-2 py-1 text-xs text-zinc-900"
+                              />
+                            </label>
+                          );
+                        })}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => void receiveShipment(shipment, "partial")}
+                          className="rounded-md border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-800 disabled:opacity-50"
+                        >
+                          Receive entered qty
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => void receiveShipment(shipment, "all")}
+                          className="rounded-md border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-800 disabled:opacity-50"
+                        >
+                          Receive all remaining
+                        </button>
+                      </div>
+                    </div>
                   ) : null}
                 </li>
               );
@@ -1054,6 +1185,41 @@ export function OrderDetail({
                 <input
                   value={asnTrackingNo}
                   onChange={(e) => setAsnTrackingNo(e.target.value)}
+                  className={f}
+                />
+              </label>
+              <label className="flex flex-col text-sm">
+                <span className="text-zinc-700">Transport mode</span>
+                <select
+                  value={asnTransportMode}
+                  onChange={(e) =>
+                    setAsnTransportMode(
+                      e.target.value as "OCEAN" | "AIR" | "ROAD" | "RAIL",
+                    )
+                  }
+                  className={f}
+                >
+                  <option value="OCEAN">Ocean</option>
+                  <option value="AIR">Air</option>
+                  <option value="ROAD">Road</option>
+                  <option value="RAIL">Rail</option>
+                </select>
+              </label>
+              <label className="flex flex-col text-sm">
+                <span className="text-zinc-700">Est. volume (cbm)</span>
+                <input
+                  inputMode="decimal"
+                  value={asnEstimatedVolumeCbm}
+                  onChange={(e) => setAsnEstimatedVolumeCbm(e.target.value)}
+                  className={f}
+                />
+              </label>
+              <label className="flex flex-col text-sm">
+                <span className="text-zinc-700">Est. weight (kg)</span>
+                <input
+                  inputMode="decimal"
+                  value={asnEstimatedWeightKg}
+                  onChange={(e) => setAsnEstimatedWeightKg(e.target.value)}
                   className={f}
                 />
               </label>
@@ -1100,7 +1266,10 @@ export function OrderDetail({
         ) : null}
       </section>
 
-      <section className="mb-8 rounded-lg border border-zinc-200 bg-white p-4">
+      <section
+        id="help-focus-chat"
+        className="mb-8 scroll-mt-24 rounded-lg border border-zinc-200 bg-white p-4"
+      >
         <h2 className="text-lg font-medium text-zinc-900">Messages</h2>
         <p className="mt-1 text-xs text-zinc-500">
           Shared thread with the supplier (and internal notes for buyers with
@@ -1200,7 +1369,10 @@ export function OrderDetail({
       ) : null}
 
       {data.pendingProposal ? (
-        <section className="mb-8 rounded-lg border border-amber-300 bg-amber-50 p-4">
+        <section
+          data-help-focus="split"
+          className="mb-8 scroll-mt-24 rounded-lg border border-amber-300 bg-amber-50 p-4"
+        >
           <h2 className="text-lg font-medium text-zinc-900">
             Pending split proposal
           </h2>
@@ -1247,7 +1419,10 @@ export function OrderDetail({
       ) : null}
 
       {canProposeSplit ? (
-        <section className="mb-8 rounded-lg border border-zinc-200 bg-white p-4">
+        <section
+          data-help-focus="split"
+          className="mb-8 scroll-mt-24 rounded-lg border border-zinc-200 bg-white p-4"
+        >
           <h2 className="text-lg font-medium text-zinc-900">Propose split</h2>
           <p className="mt-1 text-sm text-zinc-600">
             For each line, totals per child must sum exactly to the ordered
@@ -1381,7 +1556,10 @@ export function OrderDetail({
         </section>
       ) : null}
 
-      <section className="rounded-lg border border-zinc-200 bg-white p-4">
+      <section
+        id="help-focus-workflow"
+        className="scroll-mt-24 rounded-lg border border-zinc-200 bg-white p-4"
+      >
         <h2 className="text-lg font-medium text-zinc-900">Actions</h2>
         {(() => {
           const actions = data.allowedActions.filter(

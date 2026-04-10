@@ -233,3 +233,40 @@ export async function PATCH(
     throw e;
   }
 }
+
+export async function DELETE(
+  _request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  const gate = await requireApiGrant("org.suppliers", "edit");
+  if (gate) return gate;
+
+  const { id } = await context.params;
+  const tenant = await getDemoTenant();
+  if (!tenant) {
+    return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  }
+
+  const supplier = await prisma.supplier.findFirst({
+    where: { id, tenantId: tenant.id },
+    select: {
+      id: true,
+      _count: { select: { orders: true } },
+    },
+  });
+  if (!supplier) {
+    return NextResponse.json({ error: "Not found." }, { status: 404 });
+  }
+  if (supplier._count.orders > 0) {
+    return NextResponse.json(
+      {
+        error:
+          "Supplier has purchase orders and cannot be deleted. Set inactive instead.",
+      },
+      { status: 400 },
+    );
+  }
+
+  await prisma.supplier.delete({ where: { id } });
+  return NextResponse.json({ ok: true });
+}

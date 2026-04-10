@@ -14,6 +14,9 @@ type CreateShipmentBody = {
   shippedAt?: string | null;
   carrier?: string | null;
   trackingNo?: string | null;
+  transportMode?: "OCEAN" | "AIR" | "ROAD" | "RAIL" | null;
+  estimatedVolumeCbm?: string | null;
+  estimatedWeightKg?: string | null;
   notes?: string | null;
   lines: ShipmentLineInput[];
 };
@@ -109,6 +112,26 @@ export async function POST(
   if (Number.isNaN(shippedAt.getTime())) {
     return NextResponse.json({ error: "Invalid shippedAt date." }, { status: 400 });
   }
+  const volume =
+    input.estimatedVolumeCbm && input.estimatedVolumeCbm.trim()
+      ? Number(input.estimatedVolumeCbm)
+      : null;
+  const weight =
+    input.estimatedWeightKg && input.estimatedWeightKg.trim()
+      ? Number(input.estimatedWeightKg)
+      : null;
+  if (volume != null && (!Number.isFinite(volume) || volume <= 0)) {
+    return NextResponse.json(
+      { error: "estimatedVolumeCbm must be a positive number." },
+      { status: 400 },
+    );
+  }
+  if (weight != null && (!Number.isFinite(weight) || weight <= 0)) {
+    return NextResponse.json(
+      { error: "estimatedWeightKg must be a positive number." },
+      { status: 400 },
+    );
+  }
 
   const shipment = await prisma.shipment.create({
     data: {
@@ -117,6 +140,9 @@ export async function POST(
       shippedAt,
       carrier: input.carrier?.trim() || null,
       trackingNo: input.trackingNo?.trim() || null,
+      transportMode: input.transportMode ?? null,
+      estimatedVolumeCbm: volume != null ? volume.toString() : null,
+      estimatedWeightKg: weight != null ? weight.toString() : null,
       notes: input.notes?.trim() || null,
       createdById: actorId,
       items: {

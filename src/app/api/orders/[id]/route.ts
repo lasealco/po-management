@@ -350,6 +350,9 @@ export async function GET(
       receivedAt: shipment.receivedAt?.toISOString() ?? null,
       carrier: shipment.carrier,
       trackingNo: shipment.trackingNo,
+      transportMode: shipment.transportMode,
+      estimatedVolumeCbm: shipment.estimatedVolumeCbm?.toString() ?? null,
+      estimatedWeightKg: shipment.estimatedWeightKg?.toString() ?? null,
       notes: shipment.notes,
       createdBy: shipment.createdBy,
       items: shipment.items.map((item) => ({

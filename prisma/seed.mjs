@@ -1,6 +1,7 @@
 import { Prisma, PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
+import { scryptSync } from "node:crypto";
 
 const prisma = new PrismaClient({
   adapter: new PrismaPg(
@@ -11,6 +12,8 @@ const prisma = new PrismaClient({
 });
 
 async function seed() {
+  const seedPasswordHash = (password, identitySalt) =>
+    `${identitySalt.toLowerCase()}:${scryptSync(password, identitySalt.toLowerCase(), 64).toString("hex")}`;
   const tenant = await prisma.tenant.upsert({
     where: { slug: "demo-company" },
     update: { name: "Demo Company" },
@@ -25,33 +28,48 @@ async function seed() {
       where: {
         tenantId_email: { tenantId: tenant.id, email: "buyer@demo-company.com" },
       },
-      update: { name: "Buyer User", isActive: true },
+      update: {
+        name: "Buyer User",
+        isActive: true,
+        passwordHash: seedPasswordHash("demo12345", "buyer@demo-company.com"),
+      },
       create: {
         tenantId: tenant.id,
         email: "buyer@demo-company.com",
         name: "Buyer User",
+        passwordHash: seedPasswordHash("demo12345", "buyer@demo-company.com"),
       },
     }),
     prisma.user.upsert({
       where: {
         tenantId_email: { tenantId: tenant.id, email: "approver@demo-company.com" },
       },
-      update: { name: "Approver User", isActive: true },
+      update: {
+        name: "Approver User",
+        isActive: true,
+        passwordHash: seedPasswordHash("demo12345", "approver@demo-company.com"),
+      },
       create: {
         tenantId: tenant.id,
         email: "approver@demo-company.com",
         name: "Approver User",
+        passwordHash: seedPasswordHash("demo12345", "approver@demo-company.com"),
       },
     }),
     prisma.user.upsert({
       where: {
         tenantId_email: { tenantId: tenant.id, email: "supplier@demo-company.com" },
       },
-      update: { name: "Supplier Portal User", isActive: true },
+      update: {
+        name: "Supplier Portal User",
+        isActive: true,
+        passwordHash: seedPasswordHash("demo12345", "supplier@demo-company.com"),
+      },
       create: {
         tenantId: tenant.id,
         email: "supplier@demo-company.com",
         name: "Supplier Portal User",
+        passwordHash: seedPasswordHash("demo12345", "supplier@demo-company.com"),
       },
     }),
   ]);
@@ -201,6 +219,69 @@ async function seed() {
       },
     ],
   });
+
+  const [cfsShenzhen, cfsRotterdam, whLosAngeles] = await Promise.all([
+    prisma.warehouse.upsert({
+      where: { tenantId_code: { tenantId: tenant.id, code: "CFS-SZX" } },
+      update: {
+        name: "CFS Shenzhen",
+        type: "CFS",
+        city: "Shenzhen",
+        region: "Guangdong",
+        countryCode: "CN",
+        isActive: true,
+      },
+      create: {
+        tenantId: tenant.id,
+        code: "CFS-SZX",
+        name: "CFS Shenzhen",
+        type: "CFS",
+        city: "Shenzhen",
+        region: "Guangdong",
+        countryCode: "CN",
+      },
+    }),
+    prisma.warehouse.upsert({
+      where: { tenantId_code: { tenantId: tenant.id, code: "CFS-RTM" } },
+      update: {
+        name: "CFS Rotterdam",
+        type: "CFS",
+        city: "Rotterdam",
+        region: "ZH",
+        countryCode: "NL",
+        isActive: true,
+      },
+      create: {
+        tenantId: tenant.id,
+        code: "CFS-RTM",
+        name: "CFS Rotterdam",
+        type: "CFS",
+        city: "Rotterdam",
+        region: "ZH",
+        countryCode: "NL",
+      },
+    }),
+    prisma.warehouse.upsert({
+      where: { tenantId_code: { tenantId: tenant.id, code: "WH-LAX" } },
+      update: {
+        name: "Warehouse Los Angeles",
+        type: "WAREHOUSE",
+        city: "Los Angeles",
+        region: "CA",
+        countryCode: "US",
+        isActive: true,
+      },
+      create: {
+        tenantId: tenant.id,
+        code: "WH-LAX",
+        name: "Warehouse Los Angeles",
+        type: "WAREHOUSE",
+        city: "Los Angeles",
+        region: "CA",
+        countryCode: "US",
+      },
+    }),
+  ]);
 
   const catPackaging = await prisma.productCategory.upsert({
     where: {
@@ -948,6 +1029,9 @@ async function seed() {
         shippedAt: new Date("2026-05-10T12:00:00.000Z"),
         carrier: "Demo Freight",
         trackingNo: "DF-77821-1",
+        transportMode: "OCEAN",
+        estimatedVolumeCbm: "18.500",
+        estimatedWeightKg: "6200.000",
         notes: "Partial shipment for urgent demand.",
         createdById: supplierUser.id,
       },
@@ -1167,6 +1251,79 @@ async function seed() {
       },
     });
   }
+
+  const primaryDraftLoad = await prisma.loadPlan.upsert({
+    where: { tenantId_reference: { tenantId: tenant.id, reference: "LOAD-2026-001" } },
+    update: {
+      warehouseId: cfsShenzhen.id,
+      transportMode: "OCEAN",
+      containerSize: "FCL_20",
+      plannedEta: new Date("2026-05-25T00:00:00.000Z"),
+      status: "DRAFT",
+      createdById: buyer.id,
+    },
+    create: {
+      tenantId: tenant.id,
+      reference: "LOAD-2026-001",
+      warehouseId: cfsShenzhen.id,
+      transportMode: "OCEAN",
+      containerSize: "FCL_20",
+      plannedEta: new Date("2026-05-25T00:00:00.000Z"),
+      status: "DRAFT",
+      createdById: buyer.id,
+      notes: "Starter draft load for consolidation demo.",
+    },
+    select: { id: true },
+  });
+  await prisma.loadPlan.upsert({
+    where: { tenantId_reference: { tenantId: tenant.id, reference: "LOAD-2026-002" } },
+    update: {
+      warehouseId: cfsRotterdam.id,
+      transportMode: "OCEAN",
+      containerSize: "FCL_40",
+      plannedEta: new Date("2026-06-02T00:00:00.000Z"),
+      status: "DRAFT",
+      createdById: approver.id,
+    },
+    create: {
+      tenantId: tenant.id,
+      reference: "LOAD-2026-002",
+      warehouseId: cfsRotterdam.id,
+      transportMode: "OCEAN",
+      containerSize: "FCL_40",
+      plannedEta: new Date("2026-06-02T00:00:00.000Z"),
+      status: "DRAFT",
+      createdById: approver.id,
+      notes: "Secondary draft for EU inbound planning.",
+    },
+  });
+  await prisma.loadPlan.upsert({
+    where: { tenantId_reference: { tenantId: tenant.id, reference: "LOAD-2026-003" } },
+    update: {
+      warehouseId: whLosAngeles.id,
+      transportMode: "ROAD",
+      containerSize: "TRUCK_13_6",
+      plannedEta: new Date("2026-06-08T00:00:00.000Z"),
+      status: "DRAFT",
+      createdById: buyer.id,
+    },
+    create: {
+      tenantId: tenant.id,
+      reference: "LOAD-2026-003",
+      warehouseId: whLosAngeles.id,
+      transportMode: "ROAD",
+      containerSize: "TRUCK_13_6",
+      plannedEta: new Date("2026-06-08T00:00:00.000Z"),
+      status: "DRAFT",
+      createdById: buyer.id,
+      notes: "US cross-dock placeholder.",
+    },
+  });
+
+  // Ensure starter load has no stale assignment collisions.
+  await prisma.loadPlanShipment.deleteMany({
+    where: { loadPlan: { tenantId: tenant.id }, loadPlanId: primaryDraftLoad.id },
+  });
 }
 
 seed()

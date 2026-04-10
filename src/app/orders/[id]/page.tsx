@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { AccessDenied } from "@/components/access-denied";
 import { OrderDetail } from "@/components/order-detail";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
@@ -45,14 +46,20 @@ export default async function OrderPage({
 
   return (
     <div className="min-h-screen bg-zinc-50">
-      <OrderDetail
-        orderId={id}
-        canTransition={canTransition}
-        canSplit={canSplit}
-        canEditHeader={canEditHeader}
-        canViewProducts={canViewProducts}
-        canViewInternalNotes={canEditHeader}
-      />
+      <Suspense
+        fallback={
+          <div className="px-6 py-16 text-sm text-zinc-600">Loading order…</div>
+        }
+      >
+        <OrderDetail
+          orderId={id}
+          canTransition={canTransition}
+          canSplit={canSplit}
+          canEditHeader={canEditHeader}
+          canViewProducts={canViewProducts}
+          canViewInternalNotes={canEditHeader}
+        />
+      </Suspense>
     </div>
   );
 }

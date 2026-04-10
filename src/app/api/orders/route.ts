@@ -69,6 +69,16 @@ export async function GET() {
           },
         },
       },
+      shipments: {
+        select: {
+          items: {
+            select: {
+              quantityShipped: true,
+              quantityReceived: true,
+            },
+          },
+        },
+      },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -144,6 +154,26 @@ export async function GET() {
           ),
         )
       : null;
+    const shippedTotal = order.shipments.reduce(
+      (sum, shipment) =>
+        sum +
+        shipment.items.reduce((s, row) => s + Number(row.quantityShipped), 0),
+      0,
+    );
+    const receivedTotal = order.shipments.reduce(
+      (sum, shipment) =>
+        sum +
+        shipment.items.reduce((s, row) => s + Number(row.quantityReceived), 0),
+      0,
+    );
+    const logisticsStatus: "NONE" | "SHIPPED" | "PARTIALLY_RECEIVED" | "RECEIVED" =
+      shippedTotal <= 0
+        ? "NONE"
+        : receivedTotal <= 0
+          ? "SHIPPED"
+          : receivedTotal < shippedTotal
+            ? "PARTIALLY_RECEIVED"
+            : "RECEIVED";
 
     return {
       id: order.id,
@@ -166,6 +196,7 @@ export async function GET() {
         daysSinceLastShared,
         lastSharedAt: latestShared?.createdAt.toISOString() ?? null,
       },
+      logisticsStatus,
       createdAt: order.createdAt,
     };
   });

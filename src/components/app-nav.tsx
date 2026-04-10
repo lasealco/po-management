@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 const links = [
   { href: "/", key: "orders" as const, label: "Orders" },
+  { href: "/consolidation", key: "consolidation" as const, label: "Consolidation" },
   { href: "/products", key: "products" as const, label: "Products" },
   { href: "/settings", key: "settings" as const, label: "Settings" },
   { href: "/suppliers", key: "suppliers" as const, label: "Suppliers" },
@@ -12,6 +13,7 @@ const links = [
 
 export type AppNavLinkVisibility = {
   orders: boolean;
+  consolidation: boolean;
   products: boolean;
   settings: boolean;
   suppliers: boolean;

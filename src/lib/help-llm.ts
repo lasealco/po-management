@@ -1,0 +1,175 @@
+import {
+  sanitizeHelpDoActions,
+  type HelpDoAction,
+} from "@/lib/help-actions";
+import { HELP_PLAYBOOKS, matchPlaybook, type HelpPlaybook } from "@/lib/help-playbooks";
+
+type HelpAction = { label: string; href: string };
+
+export type HelpReply = {
+  answer: string;
+  playbook: HelpPlaybook | null;
+  suggestions: string[];
+  actions: HelpAction[];
+  doActions: HelpDoAction[];
+};
+
+const ROUTE_HINTS: HelpAction[] = [
+  { label: "Open Orders", href: "/" },
+  { label: "Open Consolidation", href: "/consolidation" },
+  { label: "Open Suppliers", href: "/suppliers" },
+  { label: "Open Users", href: "/settings/users" },
+  { label: "Open Warehouses", href: "/settings/warehouses" },
+  { label: "Login", href: "/login" },
+];
+
+function fallbackReply(message: string): HelpReply {
+  const matched = matchPlaybook(message);
+  if (matched) {
+    const firstHref = matched.steps.find((s) => s.href)?.href;
+    const doActions: HelpDoAction[] = [];
+    if (matched.id === "create_order") {
+      doActions.push({
+        type: "open_order",
+        label: "Open demo PO-1004",
+        payload: { orderNumber: "PO-1004", focus: "workflow", guide: matched.id, step: 2 },
+      });
+      doActions.push({
+        type: "open_orders_queue",
+        label: "Show orders needing my action",
+        payload: { queue: "needs_my_action", guide: matched.id, step: 0 },
+      });
+    }
+    if (matched.id === "consolidation") {
+      doActions.push({
+        type: "open_path",
+        label: "Open consolidation planner",
+        payload: { path: "/consolidation", guide: matched.id, step: 0 },
+      });
+    }
+    if (matched.id === "create_supplier") {
+      doActions.push({
+        type: "open_path",
+        label: "Open suppliers",
+        payload: { path: "/suppliers", guide: matched.id, step: 0 },
+      });
+    }
+    if (matched.id === "user_admin") {
+      doActions.push({
+        type: "open_path",
+        label: "Open user settings",
+        payload: { path: "/settings/users", guide: matched.id, step: 0 },
+      });
+    }
+    return {
+      answer: `${matched.title}: ${matched.summary}`,
+      playbook: matched,
+      suggestions: [
+        "Show me the next step",
+        "Navigate me to the first page",
+        "Explain common mistakes",
+      ],
+      actions: firstHref ? [{ label: "Start guide", href: firstHref }] : [],
+      doActions,
+    };
+  }
+  return {
+    answer:
+      "I can guide you through orders, suppliers, consolidation, and user administration. Try asking: 'I want to create an order' or 'How do I build a consolidation load?'",
+    playbook: null,
+    suggestions: HELP_PLAYBOOKS.map((p) => p.title),
+    actions: ROUTE_HINTS.slice(0, 3),
+    doActions: [],
+  };
+}
+
+function safeJsonParse<T>(raw: string): T | null {
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
+  }
+}
+
+export async function buildHelpReply(params: {
+  message: string;
+  currentPath?: string;
+}): Promise<HelpReply> {
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
+  if (!apiKey) return fallbackReply(params.message);
+
+  const matched = matchPlaybook(params.message);
+  const playbookHint = matched
+    ? `Matched playbook: ${matched.title} (${matched.id})`
+    : "No exact playbook matched.";
+
+  const system = [
+    "You are an in-app onboarding assistant for a PO management system.",
+    "Give concise, practical guidance in plain English.",
+    "If user asks 'how do I do X', provide short answer plus actionable next click.",
+    "Prefer existing routes only.",
+    "Return JSON only with keys: answer, suggestions, actions, doActions.",
+    "actions is array of {label, href}. href must start with '/'.",
+    "doActions is optional array of {type, label, payload} for one-click execution (server-validated).",
+    "Allowed doActions types:",
+    "- open_order: payload { orderNumber: string, focus?: 'workflow'|'asn'|'chat'|'split', guide?: playbook id, step?: number }",
+    "- open_orders_queue: payload { queue: 'all'|'needs_my_action'|'waiting_on_me'|'awaiting_supplier'|'overdue'|'split_pending_buyer', guide?, step? }",
+    "- open_path: payload { path: '/'|'/consolidation'|'/suppliers'|'/settings/users'|'/settings/warehouses'|'/login'|'/catalog'|'/products', guide?, step? }",
+    "Use demo PO-1004 only as a known example order number when suggesting open_order.",
+    "Do not invent unavailable pages or arbitrary paths.",
+  ].join(" ");
+
+  const user = JSON.stringify({
+    message: params.message,
+    currentPath: params.currentPath ?? null,
+    availableRoutes: ROUTE_HINTS,
+    playbookHint,
+  });
+
+  try {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: process.env.OPENAI_HELP_MODEL || "gpt-4o-mini",
+        temperature: 0.2,
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: user },
+        ],
+      }),
+    });
+    if (!res.ok) return fallbackReply(params.message);
+    const payload = (await res.json()) as {
+      choices?: Array<{ message?: { content?: string | null } }>;
+    };
+    const text = payload.choices?.[0]?.message?.content?.trim() || "";
+    const parsed = safeJsonParse<{
+      answer?: string;
+      suggestions?: string[];
+      actions?: Array<{ label?: string; href?: string }>;
+      doActions?: unknown;
+    }>(text);
+    if (!parsed?.answer) return fallbackReply(params.message);
+
+    const actions = (parsed.actions ?? [])
+      .filter((a) => a?.label && a?.href && a.href.startsWith("/"))
+      .map((a) => ({ label: a.label!, href: a.href! }))
+      .slice(0, 4);
+    const doActions = sanitizeHelpDoActions(parsed.doActions);
+    return {
+      answer: parsed.answer,
+      playbook: matched ?? null,
+      suggestions: Array.isArray(parsed.suggestions)
+        ? parsed.suggestions.slice(0, 5)
+        : [],
+      actions,
+      doActions,
+    };
+  } catch {
+    return fallbackReply(params.message);
+  }
+}

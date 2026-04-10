@@ -42,6 +42,10 @@ export function SettingsUsersClient({
   );
   const [savingId, setSavingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [createEmail, setCreateEmail] = useState("");
+  const [createName, setCreateName] = useState("");
+  const [createPassword, setCreatePassword] = useState("");
+  const [creating, setCreating] = useState(false);
 
   function updateRow(
     id: string,
@@ -144,8 +148,82 @@ export function SettingsUsersClient({
     router.refresh();
   }
 
+  async function createUser() {
+    setError(null);
+    setCreating(true);
+    const res = await fetch("/api/users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: createEmail,
+        name: createName,
+        password: createPassword,
+      }),
+    });
+    const data = (await res.json().catch(() => null)) as { error?: string } | null;
+    setCreating(false);
+    if (!res.ok) {
+      setError(data?.error ?? "Create user failed.");
+      return;
+    }
+    setCreateEmail("");
+    setCreateName("");
+    setCreatePassword("");
+    router.refresh();
+  }
+
+  async function setPassword(id: string) {
+    const password = window.prompt("Set a new password (min 8 chars):", "");
+    if (!password) return;
+    setSavingId(id);
+    setError(null);
+    const res = await fetch(`/api/users/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password }),
+    });
+    const data = (await res.json().catch(() => null)) as { error?: string } | null;
+    setSavingId(null);
+    if (!res.ok) {
+      setError(data?.error ?? "Password update failed.");
+      return;
+    }
+  }
+
   return (
     <div className="space-y-4">
+      <div className="rounded-lg border border-zinc-200 bg-white p-4">
+        <h3 className="text-sm font-semibold text-zinc-900">Create user</h3>
+        <div className="mt-3 grid gap-2 sm:grid-cols-4">
+          <input
+            value={createEmail}
+            onChange={(e) => setCreateEmail(e.target.value)}
+            placeholder="email@example.com"
+            className="h-9 rounded border border-zinc-300 px-2 text-sm"
+          />
+          <input
+            value={createName}
+            onChange={(e) => setCreateName(e.target.value)}
+            placeholder="Full name"
+            className="h-9 rounded border border-zinc-300 px-2 text-sm"
+          />
+          <input
+            type="password"
+            value={createPassword}
+            onChange={(e) => setCreatePassword(e.target.value)}
+            placeholder="Initial password"
+            className="h-9 rounded border border-zinc-300 px-2 text-sm"
+          />
+          <button
+            type="button"
+            disabled={creating}
+            onClick={() => void createUser()}
+            className="h-9 rounded bg-zinc-900 px-3 text-sm font-medium text-white disabled:opacity-40"
+          >
+            {creating ? "Creating..." : "Create user"}
+          </button>
+        </div>
+      </div>
       {error ? (
         <p className="text-sm text-red-600" role="alert">
           {error}
@@ -219,14 +297,24 @@ export function SettingsUsersClient({
                     />
                   </td>
                   <td className="px-3 py-2 text-right">
-                    <button
-                      type="button"
-                      disabled={!dirty || savingId === u.id}
-                      onClick={() => void saveRow(u.id)}
-                      className="h-8 rounded border border-zinc-900 bg-zinc-900 px-3 text-xs font-medium text-white disabled:opacity-40"
-                    >
-                      {savingId === u.id ? "Saving…" : "Save"}
-                    </button>
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        disabled={savingId === u.id}
+                        onClick={() => void setPassword(u.id)}
+                        className="h-8 rounded border border-zinc-300 bg-white px-3 text-xs font-medium text-zinc-700 disabled:opacity-40"
+                      >
+                        Password
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!dirty || savingId === u.id}
+                        onClick={() => void saveRow(u.id)}
+                        className="h-8 rounded border border-zinc-900 bg-zinc-900 px-3 text-xs font-medium text-white disabled:opacity-40"
+                      >
+                        {savingId === u.id ? "Saving…" : "Save"}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );
@@ -235,7 +323,7 @@ export function SettingsUsersClient({
         </table>
       </div>
       <p className="text-xs text-zinc-500">
-        Email and sign-in are not managed in this demo. Use{" "}
+        Users can be created here and sign in from <code>/login</code>. Use{" "}
         <strong>Save</strong> after changing name, roles, or active status.
       </p>
     </div>

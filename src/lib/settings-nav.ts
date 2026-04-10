@@ -18,6 +18,11 @@ export const SETTINGS_SECTIONS: readonly SettingsNavSection[] = [
         label: "Company profile",
         description: "Display name and tenant identifier",
       },
+      {
+        href: "/settings/warehouses",
+        label: "CFS & Warehouses",
+        description: "Create and manage consolidation locations",
+      },
     ],
   },
   {

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
+import { hashPassword } from "@/lib/password";
 import { prisma } from "@/lib/prisma";
 
 const MAX_NAME = 120;
@@ -35,6 +36,7 @@ export async function PATCH(
   const nameRaw = o.name;
   const activeRaw = o.isActive;
   const roleIdsParsed = strIds(o.roleIds);
+  const passwordRaw = o.password;
 
   let roleIds: string[] | undefined;
   if (o.roleIds !== undefined) {
@@ -50,7 +52,8 @@ export async function PATCH(
   if (
     nameRaw === undefined &&
     activeRaw === undefined &&
-    roleIds === undefined
+    roleIds === undefined &&
+    passwordRaw === undefined
   ) {
     return NextResponse.json(
       { error: "Provide name, isActive, and/or roleIds." },
@@ -90,6 +93,16 @@ export async function PATCH(
     }
     isActive = activeRaw;
   }
+  let passwordHash: string | undefined;
+  if (passwordRaw !== undefined) {
+    if (typeof passwordRaw !== "string" || passwordRaw.length < 8) {
+      return NextResponse.json(
+        { error: "password must be a string with at least 8 characters." },
+        { status: 400 },
+      );
+    }
+    passwordHash = hashPassword(passwordRaw);
+  }
 
   const tenant = await getDemoTenant();
   if (!tenant) {
@@ -124,12 +137,13 @@ export async function PATCH(
   }
 
   await prisma.$transaction(async (tx) => {
-    if (name !== undefined || isActive !== undefined) {
+    if (name !== undefined || isActive !== undefined || passwordHash !== undefined) {
       await tx.user.update({
         where: { id },
         data: {
           ...(name !== undefined ? { name } : {}),
           ...(isActive !== undefined ? { isActive } : {}),
+          ...(passwordHash !== undefined ? { passwordHash } : {}),
         },
       });
     }

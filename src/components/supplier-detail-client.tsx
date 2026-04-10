@@ -245,6 +245,47 @@ export function SupplierDetailClient({
     router.refresh();
   }
 
+  async function removeSupplier() {
+    if (
+      !window.confirm(
+        "Delete this supplier permanently? This is only allowed when it has no purchase orders.",
+      )
+    ) {
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    const res = await fetch(`/api/suppliers/${initial.id}`, { method: "DELETE" });
+    const payload = (await res.json().catch(() => null)) as { error?: string } | null;
+    if (!res.ok) {
+      setBusy(false);
+      setError(payload?.error ?? "Delete failed.");
+      return;
+    }
+    setBusy(false);
+    router.push("/suppliers");
+    router.refresh();
+  }
+
+  async function archiveSupplier() {
+    if (!window.confirm("Archive this supplier (set inactive)?")) return;
+    setBusy(true);
+    setError(null);
+    const res = await fetch(`/api/suppliers/${initial.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isActive: false }),
+    });
+    const payload = (await res.json().catch(() => null)) as { error?: string } | null;
+    if (!res.ok) {
+      setBusy(false);
+      setError(payload?.error ?? "Archive failed.");
+      return;
+    }
+    setBusy(false);
+    router.refresh();
+  }
+
   async function addContact(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -356,9 +397,31 @@ export function SupplierDetailClient({
         >
           ← Suppliers
         </Link>
-        <h1 className="mt-2 text-2xl font-semibold text-zinc-900">
-          {canEdit ? "Manage supplier" : "Supplier"}
-        </h1>
+        <div className="mt-2 flex items-center justify-between gap-3">
+          <h1 className="text-2xl font-semibold text-zinc-900">
+            {canEdit ? "Manage supplier" : "Supplier"}
+          </h1>
+          {canEdit ? (
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void archiveSupplier()}
+                className="rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-800 disabled:opacity-50"
+              >
+                Archive supplier
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void removeSupplier()}
+                className="rounded-md border border-rose-300 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-800 disabled:opacity-50"
+              >
+                Delete supplier
+              </button>
+            </div>
+          ) : null}
+        </div>
         <p className="mt-1 text-sm text-zinc-600">
           {initial.productLinkCount} catalog product link
           {initial.productLinkCount === 1 ? "" : "s"} · {initial.orderCount}{" "}

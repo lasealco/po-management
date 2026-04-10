@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 
 type SessionUser = { email: string; name: string; isActive: boolean };
 
@@ -52,6 +53,11 @@ export function DemoUserSwitcher() {
     window.location.reload();
   }
 
+  async function logout() {
+    await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+    window.location.reload();
+  }
+
   const actives = users.filter((u) => u.isActive);
 
   return (
@@ -84,8 +90,19 @@ export function DemoUserSwitcher() {
           </label>
         )}
         <span className="text-xs text-amber-900/80">
-          Permissions use roles for this user. Not real authentication.
+          Roles drive permissions. You can also use real sign-in at{" "}
+          <Link href="/login" className="underline">
+            /login
+          </Link>
+          .
         </span>
+        <button
+          type="button"
+          onClick={() => void logout()}
+          className="ml-auto rounded border border-amber-300 bg-white px-2 py-1 text-xs text-amber-900"
+        >
+          Logout
+        </button>
       </div>
     </div>
   );
