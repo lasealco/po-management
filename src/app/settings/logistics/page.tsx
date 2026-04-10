@@ -39,6 +39,11 @@ export default async function SettingsLogisticsPage() {
         code: true,
         email: true,
         phone: true,
+        _count: {
+          select: {
+            productSuppliers: true,
+          },
+        },
         offices: {
           orderBy: { name: "asc" },
           select: {

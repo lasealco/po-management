@@ -21,6 +21,9 @@ type ForwarderRow = {
   code: string | null;
   email: string | null;
   phone: string | null;
+  _count: {
+    productSuppliers: number;
+  };
   offices: Array<{
     id: string;
     name: string;
@@ -48,7 +51,9 @@ export function SettingsLogisticsClient({
 }) {
   const router = useRouter();
   const [locations] = useState(initialLocations);
-  const [forwarders] = useState(initialForwarders);
+  const [forwarders] = useState(
+    initialForwarders.filter((row) => row._count.productSuppliers === 0),
+  );
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -57,9 +62,7 @@ export function SettingsLogisticsClient({
   const [newForwarderEmail, setNewForwarderEmail] = useState("");
   const [newForwarderPhone, setNewForwarderPhone] = useState("");
 
-  const [selectedForwarderId, setSelectedForwarderId] = useState(
-    initialForwarders[0]?.id ?? "",
-  );
+  const [selectedForwarderId, setSelectedForwarderId] = useState("");
   const [officeName, setOfficeName] = useState("");
   const [officeCity, setOfficeCity] = useState("");
   const [officeRegion, setOfficeRegion] = useState("");
@@ -168,6 +171,10 @@ export function SettingsLogisticsClient({
         <h3 className="text-base font-semibold text-zinc-900">Forwarders</h3>
         <p className="mt-1 text-xs text-zinc-600">
           Manage forwarder companies and create office/contact records used in order planning.
+        </p>
+        <p className="mt-1 text-xs text-zinc-600">
+          This list excludes suppliers already linked to products to avoid mixing vendor and
+          forwarder master data.
         </p>
         <div className="mt-3 grid gap-2 sm:grid-cols-5">
           <input
@@ -328,7 +335,7 @@ export function SettingsLogisticsClient({
         </p>
         <div className="mt-3 overflow-x-auto rounded-md border border-zinc-100">
           <table className="min-w-full text-sm">
-            <thead className="bg-zinc-50 text-left text-xs uppercase text-zinc-500">
+            <thead className="bg-zinc-100 text-left text-xs uppercase text-zinc-700">
               <tr>
                 <th className="px-3 py-2">Type</th>
                 <th className="px-3 py-2">Code</th>
@@ -336,13 +343,13 @@ export function SettingsLogisticsClient({
                 <th className="px-3 py-2">Address</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-100">
+            <tbody className="divide-y divide-zinc-200 text-zinc-800">
               {locations.map((l) => (
                 <tr key={l.id}>
                   <td className="px-3 py-2">{l.type}</td>
                   <td className="px-3 py-2">{l.code ?? "—"}</td>
                   <td className="px-3 py-2">{l.name}</td>
-                  <td className="px-3 py-2 text-zinc-600">
+                  <td className="px-3 py-2 text-zinc-700">
                     {[l.addressLine1, l.city, l.region, l.countryCode]
                       .filter(Boolean)
                       .join(", ") || "—"}
