@@ -2,6 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+type TransportMode = "OCEAN" | "AIR" | "ROAD" | "RAIL";
+type ContainerSize = "LCL" | "FCL_20" | "FCL_40" | "FCL_40HC" | "TRUCK_13_6" | "AIR_ULD";
+
 type AvailableShipmentRow = {
   shipmentId: string;
   shipmentNo: string;
@@ -10,7 +13,7 @@ type AvailableShipmentRow = {
   supplierName: string;
   carrier: string | null;
   shippedAt: string;
-  transportMode: "OCEAN" | "AIR" | "ROAD" | "RAIL" | null;
+  transportMode: TransportMode | null;
   estimatedVolumeCbm: string;
   estimatedWeightKg: string | null;
   remainingUnits: number;
@@ -28,8 +31,8 @@ type LoadPlanSummary = {
   id: string;
   reference: string;
   status: "DRAFT" | "FINALIZED" | "CANCELLED";
-  transportMode: "OCEAN" | "AIR" | "ROAD" | "RAIL";
-  containerSize: "LCL" | "FCL_20" | "FCL_40" | "FCL_40HC" | "TRUCK_13_6" | "AIR_ULD";
+  transportMode: TransportMode;
+  containerSize: ContainerSize;
   plannedEta: string | null;
   notes: string | null;
   warehouse: WarehouseRow;
@@ -47,7 +50,7 @@ type FilterPreset = {
 };
 
 const CONTAINER_CAPACITY_CBM: Record<
-  "LCL" | "FCL_20" | "FCL_40" | "FCL_40HC" | "TRUCK_13_6" | "AIR_ULD",
+  ContainerSize,
   number
 > = {
   LCL: 15,
@@ -59,7 +62,7 @@ const CONTAINER_CAPACITY_CBM: Record<
 };
 
 const CONTAINER_CAPACITY_KG: Record<
-  "LCL" | "FCL_20" | "FCL_40" | "FCL_40HC" | "TRUCK_13_6" | "AIR_ULD",
+  ContainerSize,
   number
 > = {
   LCL: 12_000,
@@ -70,26 +73,113 @@ const CONTAINER_CAPACITY_KG: Record<
   AIR_ULD: 6_500,
 };
 
-const WEIGHT_WARNING_PCT_BY_MODE: Record<"OCEAN" | "AIR" | "ROAD" | "RAIL", number> = {
+const WEIGHT_WARNING_PCT_BY_MODE: Record<TransportMode, number> = {
   OCEAN: 95,
   AIR: 85,
   ROAD: 92,
   RAIL: 94,
 };
 
-const MODE_WEIGHT_PENALTY_BY_MODE: Record<"OCEAN" | "AIR" | "ROAD" | "RAIL", number> = {
+const MODE_WEIGHT_PENALTY_BY_MODE: Record<TransportMode, number> = {
   OCEAN: 140,
   AIR: 190,
   ROAD: 165,
   RAIL: 150,
 };
 
-const MODE_VOLUME_PENALTY_BY_MODE: Record<"OCEAN" | "AIR" | "ROAD" | "RAIL", number> = {
+const MODE_VOLUME_PENALTY_BY_MODE: Record<TransportMode, number> = {
   OCEAN: 120,
   AIR: 95,
   ROAD: 130,
   RAIL: 120,
 };
+
+type OptimizedBin = {
+  size: ContainerSize;
+  shipments: AvailableShipmentRow[];
+  usedVolume: number;
+  usedWeight: number;
+};
+
+type OptimizationResult = {
+  bins: OptimizedBin[];
+  unassigned: AvailableShipmentRow[];
+};
+
+function sizeOptionsForMode(mode: TransportMode): ContainerSize[] {
+  if (mode === "AIR") return ["AIR_ULD"];
+  if (mode === "ROAD") return ["TRUCK_13_6"];
+  if (mode === "RAIL") return ["TRUCK_13_6", "FCL_40", "FCL_20"];
+  return ["FCL_40HC", "FCL_40", "FCL_20", "LCL"];
+}
+
+function shipmentWeight(row: AvailableShipmentRow): number {
+  return Number(row.estimatedWeightKg ?? row.remainingUnits * 18);
+}
+
+function optimizeContainers(
+  rows: AvailableShipmentRow[],
+  mode: TransportMode,
+): OptimizationResult {
+  const candidates = sizeOptionsForMode(mode);
+  const bins: OptimizedBin[] = [];
+  const unassigned: AvailableShipmentRow[] = [];
+  const sorted = [...rows].sort((a, b) => {
+    const av = Number(a.estimatedVolumeCbm);
+    const bv = Number(b.estimatedVolumeCbm);
+    const aw = shipmentWeight(a);
+    const bw = shipmentWeight(b);
+    return Math.max(bv / 67, bw / 30_000) - Math.max(av / 67, aw / 30_000);
+  });
+
+  for (const row of sorted) {
+    const vol = Number(row.estimatedVolumeCbm);
+    const wt = shipmentWeight(row);
+    let bestBinIdx = -1;
+    let bestResidual = Number.POSITIVE_INFINITY;
+
+    for (let i = 0; i < bins.length; i += 1) {
+      const b = bins[i];
+      const vCap = CONTAINER_CAPACITY_CBM[b.size];
+      const wCap = CONTAINER_CAPACITY_KG[b.size];
+      if (b.usedVolume + vol > vCap || b.usedWeight + wt > wCap) continue;
+      const residual =
+        (vCap - (b.usedVolume + vol)) / vCap + (wCap - (b.usedWeight + wt)) / wCap;
+      if (residual < bestResidual) {
+        bestResidual = residual;
+        bestBinIdx = i;
+      }
+    }
+
+    if (bestBinIdx >= 0) {
+      const b = bins[bestBinIdx];
+      b.shipments.push(row);
+      b.usedVolume += vol;
+      b.usedWeight += wt;
+      continue;
+    }
+
+    let bestNewSize: ContainerSize | null = null;
+    let bestNewWaste = Number.POSITIVE_INFINITY;
+    for (const size of candidates) {
+      const vCap = CONTAINER_CAPACITY_CBM[size];
+      const wCap = CONTAINER_CAPACITY_KG[size];
+      if (vol > vCap || wt > wCap) continue;
+      const waste = (vCap - vol) / vCap + (wCap - wt) / wCap;
+      if (waste < bestNewWaste) {
+        bestNewWaste = waste;
+        bestNewSize = size;
+      }
+    }
+    if (!bestNewSize) {
+      unassigned.push(row);
+      continue;
+    }
+    bins.push({ size: bestNewSize, shipments: [row], usedVolume: vol, usedWeight: wt });
+  }
+
+  return { bins, unassigned };
+}
 
 export function ConsolidationPlanner({
   initialAvailable,
@@ -100,6 +190,7 @@ export function ConsolidationPlanner({
   initialWarehouses: WarehouseRow[];
   initialLoadPlans: LoadPlanSummary[];
 }) {
+  const [planningMode, setPlanningMode] = useState<"container" | "demand">("container");
   const [available, setAvailable] = useState(initialAvailable);
   const [warehouses, setWarehouses] = useState(initialWarehouses);
   const [loadPlans, setLoadPlans] = useState(initialLoadPlans);
@@ -109,12 +200,12 @@ export function ConsolidationPlanner({
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>(
     initialLoadPlans[0]?.warehouse.id ?? initialWarehouses[0]?.id ?? "",
   );
-  const [transportMode, setTransportMode] = useState<
-    "OCEAN" | "AIR" | "ROAD" | "RAIL"
-  >(initialLoadPlans[0]?.transportMode ?? "OCEAN");
-  const [containerSize, setContainerSize] = useState<
-    "LCL" | "FCL_20" | "FCL_40" | "FCL_40HC" | "TRUCK_13_6" | "AIR_ULD"
-  >(initialLoadPlans[0]?.containerSize ?? "LCL");
+  const [transportMode, setTransportMode] = useState<TransportMode>(
+    initialLoadPlans[0]?.transportMode ?? "OCEAN",
+  );
+  const [containerSize, setContainerSize] = useState<ContainerSize>(
+    initialLoadPlans[0]?.containerSize ?? "LCL",
+  );
   const [etaDate, setEtaDate] = useState<string>(
     initialLoadPlans[0]?.plannedEta?.slice(0, 10) ?? "",
   );
@@ -127,6 +218,8 @@ export function ConsolidationPlanner({
   const [presets, setPresets] = useState<FilterPreset[]>([]);
   const [selectedPresetId, setSelectedPresetId] = useState("none");
   const [inLoad, setInLoad] = useState<AvailableShipmentRow[]>([]);
+  const [selectedDemandIds, setSelectedDemandIds] = useState<string[]>([]);
+  const [optimizedPlan, setOptimizedPlan] = useState<OptimizationResult | null>(null);
   const [playbackIndex, setPlaybackIndex] = useState(-1);
   const [autoPlay, setAutoPlay] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -250,6 +343,10 @@ export function ConsolidationPlanner({
       };
     });
   }, [containerCapacity, sequenceWindow]);
+  const selectedDemandRows = useMemo(
+    () => filteredAvailable.filter((row) => selectedDemandIds.includes(row.shipmentId)),
+    [filteredAvailable, selectedDemandIds],
+  );
 
   async function refreshMeta() {
     const response = await fetch("/api/consolidation/load-plans", {
@@ -285,8 +382,8 @@ export function ConsolidationPlanner({
       id: string;
       reference: string;
       status: "DRAFT" | "FINALIZED" | "CANCELLED";
-      transportMode: "OCEAN" | "AIR" | "ROAD" | "RAIL";
-      containerSize: "LCL" | "FCL_20" | "FCL_40" | "FCL_40HC" | "TRUCK_13_6" | "AIR_ULD";
+      transportMode: TransportMode;
+      containerSize: ContainerSize;
       plannedEta: string | null;
       notes: string | null;
       warehouse: WarehouseRow;
@@ -387,6 +484,8 @@ export function ConsolidationPlanner({
       return;
     }
     setAvailable((prev) => prev.filter((r) => r.shipmentId !== row.shipmentId));
+    setSelectedDemandIds((prev) => prev.filter((id) => id !== row.shipmentId));
+    setOptimizedPlan(null);
     setInLoad((prev) => [...prev, row]);
     await refreshMeta();
     setBusy(false);
@@ -412,18 +511,17 @@ export function ConsolidationPlanner({
     }
     setInLoad((prev) => prev.filter((r) => r.shipmentId !== row.shipmentId));
     setAvailable((prev) => [...prev, row]);
+    setOptimizedPlan(null);
     await refreshMeta();
     setBusy(false);
   }
 
   useEffect(() => {
     if (!selectedLoadId) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadPlanDetails(selectedLoadId);
   }, [selectedLoadId]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadPresets();
   }, []);
 
@@ -487,6 +585,90 @@ export function ConsolidationPlanner({
     setBusy(false);
   }
 
+  function toggleDemandSelection(shipmentId: string, checked: boolean) {
+    setOptimizedPlan(null);
+    setSelectedDemandIds((prev) => {
+      if (checked) return prev.includes(shipmentId) ? prev : [...prev, shipmentId];
+      return prev.filter((id) => id !== shipmentId);
+    });
+  }
+
+  function runDemandOptimization() {
+    const selectedRows = filteredAvailable.filter((row) => selectedDemandIds.includes(row.shipmentId));
+    if (selectedRows.length === 0) {
+      setError("Select at least one shipment for demand-first optimization.");
+      return;
+    }
+    setError(null);
+    setOptimizedPlan(optimizeContainers(selectedRows, transportMode));
+  }
+
+  async function applyOptimizedPlan() {
+    if (!optimizedPlan || optimizedPlan.bins.length === 0) return;
+    if (!selectedWarehouseId) {
+      setError("Select a CFS / warehouse before applying optimized plan.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const createdLoadIds: string[] = [];
+      const stamp = new Date().toISOString().replace(/[-:TZ.]/g, "").slice(0, 12);
+      for (let i = 0; i < optimizedPlan.bins.length; i += 1) {
+        const bin = optimizedPlan.bins[i];
+        const createRes = await fetch("/api/consolidation/load-plans", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            reference: `LOAD-AUTO-${stamp}-${String(i + 1).padStart(2, "0")}`,
+            warehouseId: selectedWarehouseId,
+            transportMode,
+            containerSize: bin.size,
+            plannedEta: etaDate || null,
+            notes:
+              `Auto-optimized (${transportMode}) · ${bin.usedVolume.toFixed(2)} cbm · ${bin.usedWeight.toFixed(0)} kg`,
+          }),
+        });
+        const createPayload = (await createRes.json()) as { id?: string; error?: string };
+        if (!createRes.ok || !createPayload.id) {
+          throw new Error(createPayload.error ?? "Could not create one of the optimized loads.");
+        }
+        createdLoadIds.push(createPayload.id);
+        for (const shipment of bin.shipments) {
+          const assignRes = await fetch(
+            `/api/consolidation/load-plans/${createPayload.id}/shipments`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ shipmentId: shipment.shipmentId }),
+            },
+          );
+          if (!assignRes.ok) {
+            const assignPayload = (await assignRes.json()) as { error?: string };
+            throw new Error(
+              assignPayload.error ??
+                `Could not assign ${shipment.shipmentNo} to ${createPayload.id}.`,
+            );
+          }
+        }
+      }
+      setAvailable((prev) => {
+        const assigned = new Set(
+          optimizedPlan.bins.flatMap((b) => b.shipments.map((s) => s.shipmentId)),
+        );
+        return prev.filter((row) => !assigned.has(row.shipmentId));
+      });
+      setSelectedDemandIds([]);
+      setOptimizedPlan(null);
+      await refreshMeta();
+      if (createdLoadIds[0]) await loadPlanDetails(createdLoadIds[0]);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not apply optimized plan.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function applyPreset(id: string) {
     setSelectedPresetId(id);
     if (id === "none") return;
@@ -531,6 +713,34 @@ export function ConsolidationPlanner({
           {error}
         </div>
       ) : null}
+
+      <section className="mb-6 flex items-center gap-2 rounded-lg border border-zinc-200 bg-white p-3">
+        <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+          Planning mode
+        </span>
+        <button
+          type="button"
+          onClick={() => setPlanningMode("container")}
+          className={`rounded px-3 py-1.5 text-sm ${
+            planningMode === "container"
+              ? "bg-zinc-900 text-white"
+              : "border border-zinc-300 text-zinc-700"
+          }`}
+        >
+          Container-first
+        </button>
+        <button
+          type="button"
+          onClick={() => setPlanningMode("demand")}
+          className={`rounded px-3 py-1.5 text-sm ${
+            planningMode === "demand"
+              ? "bg-zinc-900 text-white"
+              : "border border-zinc-300 text-zinc-700"
+          }`}
+        >
+          Demand-first optimizer
+        </button>
+      </section>
 
       <section className="mb-6 grid gap-3 rounded-lg border border-zinc-200 bg-white p-4 sm:grid-cols-4">
         <label className="flex flex-col gap-1 text-sm">
@@ -783,6 +993,75 @@ export function ConsolidationPlanner({
         </div>
       </section>
 
+      {planningMode === "demand" ? (
+        <section className="mb-6 rounded-lg border border-zinc-200 bg-white p-4">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="text-base font-semibold text-zinc-900">Demand-first optimization</h2>
+              <p className="text-xs text-zinc-600">
+                Select required shipments first, then auto-pack into an optimized container mix.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={busy || selectedDemandRows.length === 0}
+                onClick={runDemandOptimization}
+                className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-800 disabled:opacity-50"
+              >
+                Optimize loads
+              </button>
+              <button
+                type="button"
+                disabled={busy || !optimizedPlan || optimizedPlan.bins.length === 0}
+                onClick={() => void applyOptimizedPlan()}
+                className="rounded bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+              >
+                Create optimized drafts
+              </button>
+            </div>
+          </div>
+          <p className="mt-2 text-xs text-zinc-500">
+            Selected: {selectedDemandRows.length} shipment(s) ·{" "}
+            {selectedDemandRows.reduce((s, r) => s + Number(r.estimatedVolumeCbm), 0).toFixed(2)} cbm ·{" "}
+            {selectedDemandRows
+              .reduce((s, r) => s + Number(r.estimatedWeightKg ?? r.remainingUnits * 18), 0)
+              .toFixed(0)} kg
+          </p>
+          {optimizedPlan ? (
+            <div className="mt-4 grid gap-3 lg:grid-cols-3">
+              {optimizedPlan.bins.map((bin, idx) => (
+                <article key={`${bin.size}-${idx}`} className="rounded-md border border-zinc-200 p-3">
+                  <p className="text-sm font-semibold text-zinc-900">
+                    Container {idx + 1} · {bin.size}
+                  </p>
+                  <p className="text-xs text-zinc-600">
+                    {bin.shipments.length} shipments · {bin.usedVolume.toFixed(2)} cbm ·{" "}
+                    {bin.usedWeight.toFixed(0)} kg
+                  </p>
+                  <ul className="mt-2 space-y-1 text-xs text-zinc-700">
+                    {bin.shipments.slice(0, 4).map((s) => (
+                      <li key={s.shipmentId}>{s.shipmentNo} · {s.orderNumber}</li>
+                    ))}
+                    {bin.shipments.length > 4 ? (
+                      <li className="text-zinc-500">+{bin.shipments.length - 4} more…</li>
+                    ) : null}
+                  </ul>
+                </article>
+              ))}
+              {optimizedPlan.unassigned.length > 0 ? (
+                <article className="rounded-md border border-rose-200 bg-rose-50 p-3">
+                  <p className="text-sm font-semibold text-rose-800">Unassigned shipments</p>
+                  <p className="text-xs text-rose-700">
+                    {optimizedPlan.unassigned.length} shipment(s) exceed current container options.
+                  </p>
+                </article>
+              ) : null}
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
       <section className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <article className="rounded-lg border border-zinc-200 bg-white p-3">
           <p className="text-xs uppercase tracking-wide text-zinc-500">Available</p>
@@ -1000,6 +1279,7 @@ export function ConsolidationPlanner({
             <table className="min-w-full divide-y divide-zinc-100 text-sm">
               <thead className="bg-zinc-50 text-left text-xs uppercase text-zinc-500">
                 <tr>
+                  <th className="px-3 py-2">Pick</th>
                   <th className="px-3 py-2">Shipment</th>
                   <th className="px-3 py-2">Order</th>
                   <th className="px-3 py-2">Supplier</th>
@@ -1011,13 +1291,21 @@ export function ConsolidationPlanner({
               <tbody className="divide-y divide-zinc-100">
                 {filteredAvailable.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-3 py-8 text-center text-zinc-500">
+                    <td colSpan={7} className="px-3 py-8 text-center text-zinc-500">
                       No available shipments.
                     </td>
                   </tr>
                 ) : (
                   filteredAvailable.map((row) => (
                     <tr key={row.shipmentId}>
+                      <td className="px-3 py-2">
+                        <input
+                          type="checkbox"
+                          checked={selectedDemandIds.includes(row.shipmentId)}
+                          onChange={(e) => toggleDemandSelection(row.shipmentId, e.target.checked)}
+                          className="h-4 w-4 rounded border-zinc-300"
+                        />
+                      </td>
                       <td className="px-3 py-2 text-zinc-800">
                         <p className="font-medium">{row.shipmentNo}</p>
                         <p className="text-xs text-zinc-500">

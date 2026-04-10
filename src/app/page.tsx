@@ -261,12 +261,14 @@ export default async function Home({
     "org.orders",
     "transition",
   );
+  const canCreateOrders = viewerHas(access.grantSet, "org.orders", "edit");
 
   return (
     <div className="min-h-screen bg-zinc-50">
       <OrdersBoard
         initialData={initialData}
         canTransitionOrders={canTransitionOrders}
+        canCreateOrders={canCreateOrders}
         defaultQueueFilter={initialQueue}
         defaultSortMode={initialSort}
         persistBoardPrefs

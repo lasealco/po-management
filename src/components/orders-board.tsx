@@ -52,6 +52,7 @@ type OrdersResponse = {
 export function OrdersBoard({
   initialData,
   canTransitionOrders = true,
+  canCreateOrders = false,
   defaultQueueFilter = defaultBoardQueue(),
   defaultSortMode = "priority",
   persistBoardPrefs = false,
@@ -59,6 +60,7 @@ export function OrdersBoard({
   initialData: OrdersResponse;
   /** When false, workflow action buttons are hidden (org.orders → transition). */
   canTransitionOrders?: boolean;
+  canCreateOrders?: boolean;
   defaultQueueFilter?: BoardQueueFilter;
   defaultSortMode?: BoardSortMode;
   /** Save queue + sort to user preferences (requires org.orders → view). */
@@ -253,6 +255,14 @@ export function OrdersBoard({
           </p>
         </div>
         <div className="mt-3 flex flex-wrap gap-2 text-xs">
+          {canCreateOrders ? (
+            <Link
+              href="/orders/new"
+              className="rounded-full bg-zinc-900 px-2.5 py-1 font-medium text-white"
+            >
+              + New order
+            </Link>
+          ) : null}
           <span className="rounded-full bg-emerald-100 px-2.5 py-1 font-medium text-emerald-900">
             Needs my action: {queueSummary.needsMyAction}
           </span>

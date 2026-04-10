@@ -7,6 +7,7 @@ type CreateWarehouseBody = {
   code?: string | null;
   name?: string;
   type?: "CFS" | "WAREHOUSE";
+  addressLine1?: string | null;
   city?: string | null;
   region?: string | null;
   countryCode?: string | null;
@@ -45,6 +46,7 @@ export async function POST(request: Request) {
         code: input.code?.trim() || null,
         name,
         type: input.type === "WAREHOUSE" ? "WAREHOUSE" : "CFS",
+        addressLine1: input.addressLine1?.trim() || null,
         city: input.city?.trim() || null,
         region: input.region?.trim() || null,
         countryCode: input.countryCode?.trim().toUpperCase() || null,

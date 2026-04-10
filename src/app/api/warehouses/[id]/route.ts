@@ -7,6 +7,7 @@ type PatchWarehouseBody = {
   code?: string | null;
   name?: string;
   type?: "CFS" | "WAREHOUSE";
+  addressLine1?: string | null;
   city?: string | null;
   region?: string | null;
   countryCode?: string | null;
@@ -33,6 +34,7 @@ export async function PATCH(
     code?: string | null;
     name?: string;
     type?: "CFS" | "WAREHOUSE";
+    addressLine1?: string | null;
     city?: string | null;
     region?: string | null;
     countryCode?: string | null;
@@ -45,6 +47,7 @@ export async function PATCH(
     patch.name = name;
   }
   if (input.type !== undefined) patch.type = input.type;
+  if (input.addressLine1 !== undefined) patch.addressLine1 = input.addressLine1?.trim() || null;
   if (input.city !== undefined) patch.city = input.city?.trim() || null;
   if (input.region !== undefined) patch.region = input.region?.trim() || null;
   if (input.countryCode !== undefined) {

@@ -8,6 +8,7 @@ type WarehouseRow = {
   code: string | null;
   name: string;
   type: "CFS" | "WAREHOUSE";
+  addressLine1: string | null;
   city: string | null;
   region: string | null;
   countryCode: string | null;
@@ -20,6 +21,7 @@ export function SettingsWarehousesClient({ initialRows }: { initialRows: Warehou
   const [createName, setCreateName] = useState("");
   const [createCode, setCreateCode] = useState("");
   const [createType, setCreateType] = useState<"CFS" | "WAREHOUSE">("CFS");
+  const [createAddressLine1, setCreateAddressLine1] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -28,7 +30,12 @@ export function SettingsWarehousesClient({ initialRows }: { initialRows: Warehou
     const res = await fetch("/api/warehouses", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: createName, code: createCode || null, type: createType }),
+      body: JSON.stringify({
+        name: createName,
+        code: createCode || null,
+        type: createType,
+        addressLine1: createAddressLine1 || null,
+      }),
     });
     const payload = (await res.json().catch(() => null)) as { error?: string } | null;
     if (!res.ok) {
@@ -37,6 +44,7 @@ export function SettingsWarehousesClient({ initialRows }: { initialRows: Warehou
     }
     setCreateName("");
     setCreateCode("");
+    setCreateAddressLine1("");
     router.refresh();
   }
 
@@ -60,7 +68,7 @@ export function SettingsWarehousesClient({ initialRows }: { initialRows: Warehou
     <div className="space-y-4">
       <div className="rounded-lg border border-zinc-200 bg-white p-4">
         <h3 className="text-sm font-semibold text-zinc-900">Create CFS / Warehouse</h3>
-        <div className="mt-3 grid gap-2 sm:grid-cols-4">
+        <div className="mt-3 grid gap-2 sm:grid-cols-5">
           <input
             value={createName}
             onChange={(e) => setCreateName(e.target.value)}
@@ -88,6 +96,12 @@ export function SettingsWarehousesClient({ initialRows }: { initialRows: Warehou
           >
             Create
           </button>
+          <input
+            value={createAddressLine1}
+            onChange={(e) => setCreateAddressLine1(e.target.value)}
+            placeholder="Address line 1 (optional)"
+            className="h-9 rounded border border-zinc-300 px-2 text-sm sm:col-span-5"
+          />
         </div>
       </div>
       {error ? <p className="text-sm text-red-700">{error}</p> : null}
@@ -98,6 +112,7 @@ export function SettingsWarehousesClient({ initialRows }: { initialRows: Warehou
               <th className="px-3 py-2">Name</th>
               <th className="px-3 py-2">Code</th>
               <th className="px-3 py-2">Type</th>
+              <th className="px-3 py-2">Address</th>
               <th className="px-3 py-2">City</th>
               <th className="px-3 py-2">Region</th>
               <th className="px-3 py-2">Country</th>
@@ -145,6 +160,19 @@ export function SettingsWarehousesClient({ initialRows }: { initialRows: Warehou
                     <option value="CFS">CFS</option>
                     <option value="WAREHOUSE">Warehouse</option>
                   </select>
+                </td>
+                <td className="px-3 py-2">
+                  <input
+                    value={row.addressLine1 ?? ""}
+                    onChange={(e) =>
+                      setRows((prev) =>
+                        prev.map((r) =>
+                          r.id === row.id ? { ...r, addressLine1: e.target.value } : r,
+                        ),
+                      )
+                    }
+                    className="h-8 rounded border border-zinc-300 px-2"
+                  />
                 </td>
                 <td className="px-3 py-2">
                   <input

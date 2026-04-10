@@ -21,6 +21,7 @@ export default async function SettingsWarehousesPage() {
       code: true,
       name: true,
       type: true,
+      addressLine1: true,
       city: true,
       region: true,
       countryCode: true,
