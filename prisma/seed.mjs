@@ -1,7 +1,13 @@
 import { Prisma, PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { config } from "dotenv";
+import { resolve } from "node:path";
 import { Pool } from "pg";
 import { scryptSync } from "node:crypto";
+
+// Next.js loads .env* automatically; `node prisma/seed.mjs` does not — load the same files.
+config({ path: resolve(process.cwd(), ".env") });
+config({ path: resolve(process.cwd(), ".env.local"), override: true });
 
 const prisma = new PrismaClient({
   adapter: new PrismaPg(
