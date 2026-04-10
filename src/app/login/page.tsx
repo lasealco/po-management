@@ -2,6 +2,13 @@
 
 import { useState } from "react";
 
+function safeNextPath(raw: string | null): string {
+  if (!raw) return "/";
+  const decoded = decodeURIComponent(raw);
+  if (!decoded.startsWith("/") || decoded.startsWith("//")) return "/";
+  return decoded;
+}
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,14 +29,22 @@ export default function LoginPage() {
       setError(payload?.error ?? "Login failed.");
       return;
     }
-    window.location.href = "/";
+    const next = safeNextPath(
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("next")
+        : null,
+    );
+    window.location.assign(next);
   }
 
   return (
     <main className="mx-auto max-w-md px-6 py-16">
       <h1 className="text-2xl font-semibold text-zinc-900">Sign in</h1>
       <p className="mt-2 text-sm text-zinc-600">
-        Use your tenant user email and password.
+        Use your tenant user email and password. Demo seed users use password{" "}
+        <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">demo12345</code>{" "}
+        (e.g. buyer@demo-company.com) when the{" "}
+        <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">demo-company</code> tenant exists.
       </p>
       <div className="mt-6 space-y-3 rounded-lg border border-zinc-200 bg-white p-4">
         <label className="flex flex-col text-sm">

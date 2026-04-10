@@ -1,15 +1,12 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { PO_AUTH_USER_COOKIE } from "@/lib/demo-actor";
+import { PO_AUTH_USER_COOKIE, PO_DEMO_USER_COOKIE } from "@/lib/demo-actor";
+import { httpSessionBase } from "@/lib/http-session-cookie";
 
 export async function POST() {
-  const jar = await cookies();
-  jar.set(PO_AUTH_USER_COOKIE, "", {
-    path: "/",
-    maxAge: 0,
-    sameSite: "lax",
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-  });
-  return NextResponse.json({ ok: true });
+  const base = httpSessionBase();
+  const cleared = { ...base, maxAge: 0 };
+  const res = NextResponse.json({ ok: true });
+  res.cookies.set(PO_AUTH_USER_COOKIE, "", cleared);
+  res.cookies.set(PO_DEMO_USER_COOKIE, "", cleared);
+  return res;
 }
