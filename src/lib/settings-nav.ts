@@ -23,6 +23,11 @@ export const SETTINGS_SECTIONS: readonly SettingsNavSection[] = [
         label: "CFS & Warehouses",
         description: "Create and manage consolidation locations",
       },
+      {
+        href: "/settings/logistics",
+        label: "Logistics master data",
+        description: "Forwarders, offices, contacts, and lane references",
+      },
     ],
   },
   {

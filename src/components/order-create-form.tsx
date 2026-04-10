@@ -1,15 +1,29 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type SupplierOption = {
   id: string;
   code: string | null;
   name: string;
+  email: string | null;
+  phone: string | null;
+  registeredAddressLine1: string | null;
+  registeredCity: string | null;
+  registeredRegion: string | null;
+  registeredPostalCode: string | null;
+  registeredCountryCode: string | null;
   paymentTermsDays: number | null;
   paymentTermsLabel: string | null;
   defaultIncoterm: string | null;
+  contacts: Array<{
+    id: string;
+    name: string;
+    email: string | null;
+    phone: string | null;
+    isPrimary: boolean;
+  }>;
 };
 
 type ProductOption = {
@@ -39,6 +53,7 @@ type ForwarderOption = {
   offices: Array<{
     id: string;
     name: string;
+    addressLine1: string | null;
     city: string | null;
     region: string | null;
     countryCode: string | null;
@@ -59,11 +74,15 @@ type LineDraft = {
 };
 
 export function OrderCreateForm({
+  buyerUser,
+  canSendDirect,
   suppliers,
   warehouses,
   forwarders,
   products,
 }: {
+  buyerUser: { id: string; name: string; email: string };
+  canSendDirect: boolean;
   suppliers: SupplierOption[];
   warehouses: WarehouseOption[];
   forwarders: ForwarderOption[];
@@ -105,6 +124,16 @@ export function OrderCreateForm({
   const [notesToSupplier, setNotesToSupplier] = useState("");
   const [adminNote, setAdminNote] = useState("");
   const [currency, setCurrency] = useState("USD");
+  const [paymentTermsDays, setPaymentTermsDays] = useState(
+    suppliers[0]?.paymentTermsDays != null ? String(suppliers[0].paymentTermsDays) : "",
+  );
+  const [paymentTermsLabel, setPaymentTermsLabel] = useState(
+    suppliers[0]?.paymentTermsLabel ?? "",
+  );
+  const [incoterm, setIncoterm] = useState(suppliers[0]?.defaultIncoterm ?? "");
+  const [taxPercent, setTaxPercent] = useState("8");
+  const [discountPercent, setDiscountPercent] = useState("0");
+  const [discountAmount, setDiscountAmount] = useState("0");
   const [newWarehouseOpen, setNewWarehouseOpen] = useState(false);
   const [newWarehouseName, setNewWarehouseName] = useState("");
   const [newWarehouseCode, setNewWarehouseCode] = useState("");
@@ -119,6 +148,7 @@ export function OrderCreateForm({
   const [newProductCode, setNewProductCode] = useState("");
   const [newProductName, setNewProductName] = useState("");
   const [newProductUnit, setNewProductUnit] = useState("");
+  const [submitMode, setSubmitMode] = useState<"draft" | "send">("draft");
   const [lines, setLines] = useState<LineDraft[]>([
     { productId: "", quantity: "1", unitPrice: "0" },
   ]);
@@ -142,6 +172,10 @@ export function OrderCreateForm({
       ) ?? null,
     [alternateDeliveryWarehouseId, warehouseOptions],
   );
+  const buyerWarehouse = useMemo(
+    () => warehouseOptions.find((w) => w.id === buyerWarehouseId && w.type === "WAREHOUSE") ?? null,
+    [buyerWarehouseId, warehouseOptions],
+  );
   const subtotal = useMemo(
     () =>
       lines.reduce((sum, row) => {
@@ -152,14 +186,32 @@ export function OrderCreateForm({
       }, 0),
     [lines],
   );
-  const tax = subtotal * 0.08;
-  const total = subtotal + tax;
+  const taxPctNum = Number(taxPercent);
+  const discountPctNum = Number(discountPercent);
+  const discountAmtNum = Number(discountAmount);
+  const discountFromPct =
+    Number.isFinite(discountPctNum) && discountPctNum > 0 ? (subtotal * discountPctNum) / 100 : 0;
+  const discountFromAmt =
+    Number.isFinite(discountAmtNum) && discountAmtNum > 0 ? discountAmtNum : 0;
+  const discountTotal = Math.min(subtotal, discountFromPct + discountFromAmt);
+  const taxable = Math.max(0, subtotal - discountTotal);
+  const tax = taxable * (Number.isFinite(taxPctNum) ? Math.max(0, taxPctNum) / 100 : 0);
+  const total = taxable + tax;
+
+  useEffect(() => {
+    if (useAlternateDelivery) return;
+    setShipToName(buyerWarehouse?.name ?? "");
+    setShipToLine1(buyerWarehouse?.addressLine1 ?? "");
+    setShipToCity(buyerWarehouse?.city ?? "");
+    setShipToRegion(buyerWarehouse?.region ?? "");
+    setShipToCountryCode(buyerWarehouse?.countryCode ?? "");
+  }, [buyerWarehouse, useAlternateDelivery]);
 
   function updateLine(index: number, patch: Partial<LineDraft>) {
     setLines((prev) => prev.map((line, i) => (i === index ? { ...line, ...patch } : line)));
   }
 
-  async function submit() {
+  async function submit(mode: "draft" | "send") {
     if (!supplierId) {
       setError("Select a supplier.");
       return;
@@ -230,7 +282,13 @@ export function OrderCreateForm({
         },
         notesToSupplier,
         adminNote,
-        currency,
+        currency: currency.trim().toUpperCase(),
+        paymentTermsDays: paymentTermsDays.trim() === "" ? null : Number(paymentTermsDays),
+        paymentTermsLabel: paymentTermsLabel.trim() || null,
+        incoterm: incoterm.trim() || null,
+        taxPercent: Number(taxPercent),
+        discountPercent: Number(discountPercent),
+        discountAmount: Number(discountAmount),
         items: payloadLines,
       }),
     });
@@ -239,6 +297,17 @@ export function OrderCreateForm({
     if (!response.ok || !payload.id) {
       setError(payload.error ?? "Could not create order.");
       return;
+    }
+    if (mode === "send" && canSendDirect) {
+      const sendRes = await fetch(`/api/orders/${payload.id}/transition`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ actionCode: "send_to_supplier" }),
+      });
+      if (!sendRes.ok) {
+        const sendPayload = (await sendRes.json()) as { error?: string };
+        setError(sendPayload.error ?? "Order saved but could not send.");
+      }
     }
     router.push(`/orders/${payload.id}`);
   }
@@ -360,8 +429,17 @@ export function OrderCreateForm({
           <select
             value={supplierId}
             onChange={(e) => {
-              setSupplierId(e.target.value);
+              const nextId = e.target.value;
+              setSupplierId(nextId);
               setLines([{ productId: "", quantity: "1", unitPrice: "0" }]);
+              const nextSupplier = supplierOptions.find((s) => s.id === nextId) ?? null;
+              setPaymentTermsDays(
+                nextSupplier?.paymentTermsDays != null
+                  ? String(nextSupplier.paymentTermsDays)
+                  : "",
+              );
+              setPaymentTermsLabel(nextSupplier?.paymentTermsLabel ?? "");
+              setIncoterm(nextSupplier?.defaultIncoterm ?? "");
             }}
             className="rounded-md border border-zinc-300 px-3 py-2"
           >
@@ -387,6 +465,7 @@ export function OrderCreateForm({
                 <option key={w.id} value={w.id}>
                   {w.code ? `${w.code} · ` : ""}
                   {w.name}
+                  {w.city ? ` · ${w.city}` : ""}
                 </option>
               ))}
           </select>
@@ -420,22 +499,58 @@ export function OrderCreateForm({
         </label>
         <label className="flex flex-col gap-1 text-sm">
           <span className="font-medium text-zinc-800">Currency</span>
-          <select
+          <input
             value={currency}
-            onChange={(e) => setCurrency(e.target.value)}
+            onChange={(e) => setCurrency(e.target.value.toUpperCase())}
+            list="currency-options"
+            maxLength={3}
+            placeholder="USD"
             className="rounded-md border border-zinc-300 px-3 py-2"
-          >
-            <option value="USD">USD</option>
-            <option value="EUR">EUR</option>
-            <option value="GBP">GBP</option>
-          </select>
+          />
+          <datalist id="currency-options">
+            <option value="USD" />
+            <option value="EUR" />
+            <option value="GBP" />
+            <option value="CNY" />
+            <option value="JPY" />
+            <option value="HKD" />
+            <option value="SGD" />
+            <option value="AUD" />
+            <option value="CAD" />
+            <option value="CHF" />
+            <option value="AED" />
+            <option value="INR" />
+          </datalist>
         </label>
-        <div className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600">
-          Default terms:{" "}
-          {supplier?.paymentTermsLabel ??
-            (supplier?.paymentTermsDays != null ? `Net ${supplier.paymentTermsDays}` : "—")}
-          {supplier?.defaultIncoterm ? ` · ${supplier.defaultIncoterm}` : ""}
-        </div>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-medium text-zinc-800">Terms label (editable)</span>
+          <input
+            value={paymentTermsLabel}
+            onChange={(e) => setPaymentTermsLabel(e.target.value)}
+            placeholder="Net 30"
+            className="rounded-md border border-zinc-300 px-3 py-2"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-medium text-zinc-800">Terms days (editable)</span>
+          <input
+            value={paymentTermsDays}
+            onChange={(e) => setPaymentTermsDays(e.target.value)}
+            type="number"
+            min={0}
+            placeholder="30"
+            className="rounded-md border border-zinc-300 px-3 py-2"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-medium text-zinc-800">Incoterm (editable)</span>
+          <input
+            value={incoterm}
+            onChange={(e) => setIncoterm(e.target.value.toUpperCase())}
+            placeholder="FOB"
+            className="rounded-md border border-zinc-300 px-3 py-2"
+          />
+        </label>
         <div className="flex items-end">
           <button
             type="button"
@@ -444,6 +559,70 @@ export function OrderCreateForm({
           >
             {newWarehouseOpen ? "Close quick add location" : "New buyer/CFS"}
           </button>
+        </div>
+      </section>
+
+      <section className="mb-4 grid gap-3 rounded-lg border border-zinc-200 bg-white p-4 sm:grid-cols-3">
+        <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-700">
+          <p className="mb-1 font-semibold text-zinc-900">Supplier details</p>
+          <p>{supplier?.name ?? "—"}</p>
+          <p>{supplier?.registeredAddressLine1 ?? "No street"}</p>
+          <p>
+            {[supplier?.registeredCity, supplier?.registeredRegion, supplier?.registeredPostalCode]
+              .filter(Boolean)
+              .join(", ") || "No city/region/post code"}
+          </p>
+          <p>{supplier?.registeredCountryCode ?? "No country"}</p>
+          <p className="mt-2 font-medium">Primary contact</p>
+          <p>{supplier?.contacts[0]?.name ?? "—"}</p>
+          <p>{supplier?.contacts[0]?.email ?? supplier?.email ?? "No email"}</p>
+          <p>{supplier?.contacts[0]?.phone ?? supplier?.phone ?? "No phone"}</p>
+        </div>
+        <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-700">
+          <p className="mb-1 font-semibold text-zinc-900">Buyer details</p>
+          <p>{buyerWarehouse?.name ?? "No buyer office selected"}</p>
+          <p>{buyerWarehouse?.addressLine1 ?? "No street"}</p>
+          <p>
+            {[buyerWarehouse?.city, buyerWarehouse?.region].filter(Boolean).join(", ") ||
+              "No city/region"}
+          </p>
+          <p>{buyerWarehouse?.countryCode ?? "No country"}</p>
+          <p className="mt-2 font-medium">Buyer contact</p>
+          <p>{buyerUser.name}</p>
+          <p>{buyerUser.email}</p>
+        </div>
+        <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-700">
+          <p className="mb-1 font-semibold text-zinc-900">Forwarder details</p>
+          <p>{forwarderSupplier?.name ?? "No forwarder selected"}</p>
+          <p>{forwarderSupplier?.offices.find((o) => o.id === forwarderOfficeId)?.name ?? "—"}</p>
+          <p>
+            {forwarderSupplier?.offices.find((o) => o.id === forwarderOfficeId)?.addressLine1 ??
+              "No office street"}
+          </p>
+          <p>
+            {[
+              forwarderSupplier?.offices.find((o) => o.id === forwarderOfficeId)?.city,
+              forwarderSupplier?.offices.find((o) => o.id === forwarderOfficeId)?.region,
+              forwarderSupplier?.offices.find((o) => o.id === forwarderOfficeId)?.countryCode,
+            ]
+              .filter(Boolean)
+              .join(", ") || "No office city/region/country"}
+          </p>
+          <p>
+            {forwarderSupplier?.contacts.find((c) => c.id === forwarderContactId)?.name ??
+              forwarderSupplier?.contacts[0]?.name ??
+              "No contact"}
+          </p>
+          <p>
+            {forwarderSupplier?.contacts.find((c) => c.id === forwarderContactId)?.email ??
+              forwarderSupplier?.contacts[0]?.email ??
+              "No email"}
+          </p>
+          <p>
+            {forwarderSupplier?.contacts.find((c) => c.id === forwarderContactId)?.phone ??
+              forwarderSupplier?.contacts[0]?.phone ??
+              "No phone"}
+          </p>
         </div>
       </section>
 
@@ -511,6 +690,7 @@ export function OrderCreateForm({
             {(forwarderSupplier?.offices ?? []).map((o) => (
               <option key={o.id} value={o.id}>
                 {o.name}
+                {o.addressLine1 ? ` · ${o.addressLine1}` : ""}
                 {o.city ? ` · ${o.city}` : ""}
               </option>
             ))}
@@ -525,6 +705,7 @@ export function OrderCreateForm({
               <option key={c.id} value={c.id}>
                 {c.name}
                 {c.email ? ` · ${c.email}` : ""}
+                {c.phone ? ` · ${c.phone}` : ""}
               </option>
             ))}
           </select>
@@ -603,7 +784,20 @@ export function OrderCreateForm({
           <input
             type="checkbox"
             checked={useAlternateDelivery}
-            onChange={(e) => setUseAlternateDelivery(e.target.checked)}
+            onChange={(e) => {
+              const checked = e.target.checked;
+              setUseAlternateDelivery(checked);
+              if (checked) {
+                setAlternateDeliveryWarehouseId("");
+                setShipToName("");
+                setShipToLine1("");
+                setShipToLine2("");
+                setShipToCity("");
+                setShipToRegion("");
+                setShipToPostalCode("");
+                setShipToCountryCode("");
+              }
+            }}
           />
           Ship to alternate delivery address (different from buyer office)
         </label>
@@ -613,10 +807,21 @@ export function OrderCreateForm({
               <span className="font-medium text-zinc-800">Delivery address book</span>
               <select
                 value={alternateDeliveryWarehouseId}
-                onChange={(e) => setAlternateDeliveryWarehouseId(e.target.value)}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setAlternateDeliveryWarehouseId(next);
+                  const selected =
+                    warehouseOptions.find((w) => w.id === next && w.type === "WAREHOUSE") ?? null;
+                  if (!selected) return;
+                  setShipToName(selected.name);
+                  setShipToLine1(selected.addressLine1 ?? "");
+                  setShipToCity(selected.city ?? "");
+                  setShipToRegion(selected.region ?? "");
+                  setShipToCountryCode(selected.countryCode ?? "");
+                }}
                 className="rounded-md border border-zinc-300 px-3 py-2"
               >
-                <option value="">Select saved address (optional)</option>
+                <option value="">Select saved delivery address</option>
                 {warehouseOptions
                   .filter((w) => w.type === "WAREHOUSE")
                   .map((w) => (
@@ -634,36 +839,42 @@ export function OrderCreateForm({
             value={shipToName}
             onChange={(e) => setShipToName(e.target.value)}
             placeholder="Receiver name"
+            disabled={!useAlternateDelivery}
             className="rounded-md border border-zinc-300 px-3 py-2 text-sm"
           />
           <input
             value={shipToLine1}
             onChange={(e) => setShipToLine1(e.target.value)}
             placeholder="Address line 1"
+            disabled={!useAlternateDelivery}
             className="rounded-md border border-zinc-300 px-3 py-2 text-sm"
           />
           <input
             value={shipToLine2}
             onChange={(e) => setShipToLine2(e.target.value)}
             placeholder="Address line 2"
+            disabled={!useAlternateDelivery}
             className="rounded-md border border-zinc-300 px-3 py-2 text-sm"
           />
           <input
             value={shipToCity}
             onChange={(e) => setShipToCity(e.target.value)}
             placeholder="City"
+            disabled={!useAlternateDelivery}
             className="rounded-md border border-zinc-300 px-3 py-2 text-sm"
           />
           <input
             value={shipToRegion}
             onChange={(e) => setShipToRegion(e.target.value)}
             placeholder="Region / state"
+            disabled={!useAlternateDelivery}
             className="rounded-md border border-zinc-300 px-3 py-2 text-sm"
           />
           <input
             value={shipToPostalCode}
             onChange={(e) => setShipToPostalCode(e.target.value)}
             placeholder="Postal code"
+            disabled={!useAlternateDelivery}
             className="rounded-md border border-zinc-300 px-3 py-2 text-sm"
           />
           <input
@@ -671,6 +882,7 @@ export function OrderCreateForm({
             onChange={(e) => setShipToCountryCode(e.target.value)}
             placeholder="Country code (US)"
             maxLength={2}
+            disabled={!useAlternateDelivery}
             className="rounded-md border border-zinc-300 px-3 py-2 text-sm"
           />
         </div>
@@ -798,6 +1010,12 @@ export function OrderCreateForm({
             </button>
           </div>
         ) : null}
+        {availableProducts.length === 0 ? (
+          <p className="mb-2 text-xs text-amber-700">
+            No products are linked to this supplier yet. Use "New product" to add one for this
+            supplier.
+          </p>
+        ) : null}
         <div className="space-y-2">
           {lines.map((line, idx) => (
             <div key={idx} className="grid gap-2 sm:grid-cols-[1fr_120px_140px_auto]">
@@ -867,8 +1085,48 @@ export function OrderCreateForm({
 
       <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
         <h2 className="text-sm font-semibold text-zinc-900">Pricing</h2>
+        <div className="mt-2 grid gap-2 sm:grid-cols-3">
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="font-medium text-zinc-800">Tax %</span>
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              value={taxPercent}
+              onChange={(e) => setTaxPercent(e.target.value)}
+              className="rounded-md border border-zinc-300 px-3 py-2"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="font-medium text-zinc-800">Discount %</span>
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              value={discountPercent}
+              onChange={(e) => setDiscountPercent(e.target.value)}
+              className="rounded-md border border-zinc-300 px-3 py-2"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="font-medium text-zinc-800">Discount amount</span>
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              value={discountAmount}
+              onChange={(e) => setDiscountAmount(e.target.value)}
+              className="rounded-md border border-zinc-300 px-3 py-2"
+            />
+          </label>
+        </div>
         <p className="mt-2 text-sm text-zinc-700">Subtotal: {subtotal.toFixed(2)} {currency}</p>
-        <p className="text-sm text-zinc-700">Tax (8%): {tax.toFixed(2)} {currency}</p>
+        <p className="text-sm text-zinc-700">
+          Discount: {discountTotal.toFixed(2)} {currency}
+        </p>
+        <p className="text-sm text-zinc-700">
+          Tax ({Number.isFinite(taxPctNum) ? taxPctNum : 0}%): {tax.toFixed(2)} {currency}
+        </p>
         <p className="text-sm font-semibold text-zinc-900">Total: {total.toFixed(2)} {currency}</p>
       </section>
 
@@ -876,11 +1134,27 @@ export function OrderCreateForm({
         <button
           type="button"
           disabled={busy}
-          onClick={() => void submit()}
+          onClick={() => {
+            setSubmitMode("draft");
+            void submit("draft");
+          }}
           className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
-          {busy ? "Saving…" : "Save order"}
+          {busy && submitMode === "draft" ? "Saving…" : "Save draft"}
         </button>
+        {canSendDirect ? (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => {
+              setSubmitMode("send");
+              void submit("send");
+            }}
+            className="rounded-md border border-emerald-700 bg-emerald-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+          >
+            {busy && submitMode === "send" ? "Sending…" : "Save and send"}
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={() => router.push("/")}

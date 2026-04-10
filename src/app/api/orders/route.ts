@@ -33,6 +33,12 @@ type CreateOrderBody = {
   notesToSupplier?: string;
   requestedDeliveryDate?: string | null;
   currency?: string;
+  paymentTermsDays?: number | null;
+  paymentTermsLabel?: string | null;
+  incoterm?: string | null;
+  taxPercent?: number | null;
+  discountPercent?: number | null;
+  discountAmount?: number | null;
   transportMode?: "OCEAN" | "AIR" | "ROAD" | "RAIL" | null;
   originCode?: string | null;
   destinationCode?: string | null;
@@ -350,8 +356,6 @@ export async function POST(request: Request) {
   }
 
   const subtotal = validItems.reduce((sum, row) => sum + row.quantity * row.unitPrice, 0);
-  const tax = subtotal * 0.08;
-  const total = subtotal + tax;
   const requestedDeliveryDate =
     input.requestedDeliveryDate && input.requestedDeliveryDate.trim()
       ? new Date(`${input.requestedDeliveryDate}T00:00:00.000Z`)
@@ -361,6 +365,25 @@ export async function POST(request: Request) {
   }
   const orderNumber = await nextOrderNumber(tenant.id);
   const currency = (input.currency || "USD").toUpperCase();
+  if (!/^[A-Z]{3}$/.test(currency)) {
+    return NextResponse.json({ error: "Currency must be a 3-letter code." }, { status: 400 });
+  }
+  const taxPercent =
+    typeof input.taxPercent === "number" && Number.isFinite(input.taxPercent)
+      ? Math.max(0, input.taxPercent)
+      : 8;
+  const discountPercent =
+    typeof input.discountPercent === "number" && Number.isFinite(input.discountPercent)
+      ? Math.max(0, input.discountPercent)
+      : 0;
+  const discountAmount =
+    typeof input.discountAmount === "number" && Number.isFinite(input.discountAmount)
+      ? Math.max(0, input.discountAmount)
+      : 0;
+  const discountTotal = Math.min(subtotal, subtotal * (discountPercent / 100) + discountAmount);
+  const taxable = Math.max(0, subtotal - discountTotal);
+  const tax = taxable * (taxPercent / 100);
+  const total = taxable + tax;
   const buyerOffice = input.buyerOffice?.trim() || null;
   const forwarder = input.forwarder?.trim() || null;
   const adminNote = input.adminNote?.trim() || null;
@@ -444,6 +467,9 @@ export async function POST(request: Request) {
     originCode ? `Origin code: ${originCode}` : null,
     destinationCode ? `Destination code: ${destinationCode}` : null,
     tags.length ? `Tags: ${tags.join(", ")}` : null,
+    `Tax %: ${taxPercent.toFixed(2)}`,
+    `Discount %: ${discountPercent.toFixed(2)}`,
+    `Discount amount: ${discountAmount.toFixed(2)}`,
     adminNote ? `Admin note: ${adminNote}` : null,
   ].filter((v): v is string => Boolean(v));
 
@@ -461,9 +487,12 @@ export async function POST(request: Request) {
       taxAmount: new Prisma.Decimal(tax.toFixed(2)),
       totalAmount: new Prisma.Decimal(total.toFixed(2)),
       buyerReference: buyerOffice,
-      paymentTermsDays: supplier.paymentTermsDays,
-      paymentTermsLabel: supplier.paymentTermsLabel,
-      incoterm: supplier.defaultIncoterm,
+      paymentTermsDays:
+        typeof input.paymentTermsDays === "number" && Number.isFinite(input.paymentTermsDays)
+          ? Math.max(0, Math.trunc(input.paymentTermsDays))
+          : supplier.paymentTermsDays,
+      paymentTermsLabel: input.paymentTermsLabel?.trim() || supplier.paymentTermsLabel,
+      incoterm: input.incoterm?.trim() || supplier.defaultIncoterm,
       requestedDeliveryDate,
       shipToName: input.deliveryAddress?.name?.trim() || null,
       shipToLine1: input.deliveryAddress?.line1?.trim() || null,

@@ -36,9 +36,20 @@ export default async function NewOrderPage() {
         id: true,
         code: true,
         name: true,
+        email: true,
+        phone: true,
+        registeredAddressLine1: true,
+        registeredCity: true,
+        registeredRegion: true,
+        registeredPostalCode: true,
+        registeredCountryCode: true,
         paymentTermsDays: true,
         paymentTermsLabel: true,
         defaultIncoterm: true,
+        contacts: {
+          orderBy: [{ isPrimary: "desc" }, { name: "asc" }],
+          select: { id: true, name: true, email: true, phone: true, isPrimary: true },
+        },
       },
     }),
     prisma.product.findMany({
@@ -80,6 +91,7 @@ export default async function NewOrderPage() {
           select: {
             id: true,
             name: true,
+            addressLine1: true,
             city: true,
             region: true,
             countryCode: true,
@@ -96,6 +108,8 @@ export default async function NewOrderPage() {
   return (
     <div className="min-h-screen bg-zinc-50">
       <OrderCreateForm
+        buyerUser={access.user}
+        canSendDirect={viewerHas(access.grantSet, "org.orders", "transition")}
         suppliers={suppliers}
         warehouses={warehouses}
         forwarders={forwarders}
