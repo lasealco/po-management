@@ -4,7 +4,53 @@ import { useEffect, useMemo, useState } from "react";
 
 type WmsData = {
   warehouses: Array<{ id: string; code: string | null; name: string; type: "CFS" | "WAREHOUSE" }>;
-  bins: Array<{ id: string; code: string; name: string; warehouse: { id: string; code: string | null; name: string } }>;
+  zones: Array<{
+    id: string;
+    code: string;
+    name: string;
+    zoneType: "RECEIVING" | "PICKING" | "RESERVE" | "QUARANTINE" | "STAGING" | "SHIPPING";
+    warehouse: { id: string; code: string | null; name: string };
+  }>;
+  bins: Array<{
+    id: string;
+    code: string;
+    name: string;
+    storageType: "PALLET" | "FLOOR" | "SHELF" | "QUARANTINE" | "STAGING";
+    isPickFace: boolean;
+    maxPallets: number | null;
+    warehouse: { id: string; code: string | null; name: string };
+    zone: { id: string; code: string; name: string; zoneType: string } | null;
+  }>;
+  replenishmentRules: Array<{
+    id: string;
+    warehouse: { id: string; code: string | null; name: string };
+    product: { id: string; productCode: string | null; sku: string | null; name: string };
+    sourceZone: { id: string; code: string; name: string } | null;
+    targetZone: { id: string; code: string; name: string } | null;
+    minPickQty: string;
+    maxPickQty: string;
+    replenishQty: string;
+    isActive: boolean;
+  }>;
+  outboundOrders: Array<{
+    id: string;
+    outboundNo: string;
+    customerRef: string | null;
+    shipToName: string | null;
+    shipToCity: string | null;
+    shipToCountryCode: string | null;
+    status: "DRAFT" | "RELEASED" | "PICKING" | "PACKED" | "SHIPPED" | "CANCELLED";
+    warehouse: { id: string; code: string | null; name: string };
+    lines: Array<{
+      id: string;
+      lineNo: number;
+      product: { id: string; productCode: string | null; sku: string | null; name: string };
+      quantity: string;
+      pickedQty: string;
+      packedQty: string;
+      shippedQty: string;
+    }>;
+  }>;
   balances: Array<{
     id: string;
     warehouse: { id: string; code: string | null; name: string };
@@ -50,8 +96,9 @@ type WmsData = {
     shipmentStatus: string;
   }>;
   pickCandidates: Array<{
-    orderItemId: string;
-    orderNumber: string;
+    outboundOrderId: string;
+    outboundNo: string;
+    outboundLineId: string;
     lineNo: number;
     description: string;
     product: { id: string; productCode: string | null; sku: string | null; name: string };
@@ -64,16 +111,38 @@ export function WmsClient({ canEdit }: { canEdit: boolean }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedWarehouseId, setSelectedWarehouseId] = useState("");
+  const [newZoneCode, setNewZoneCode] = useState("");
+  const [newZoneName, setNewZoneName] = useState("");
+  const [newZoneType, setNewZoneType] = useState<
+    "RECEIVING" | "PICKING" | "RESERVE" | "QUARANTINE" | "STAGING" | "SHIPPING"
+  >("PICKING");
   const [newBinCode, setNewBinCode] = useState("");
   const [newBinName, setNewBinName] = useState("");
+  const [newBinZoneId, setNewBinZoneId] = useState("");
+  const [newBinStorageType, setNewBinStorageType] = useState<
+    "PALLET" | "FLOOR" | "SHELF" | "QUARANTINE" | "STAGING"
+  >("PALLET");
+  const [newBinPickFace, setNewBinPickFace] = useState(false);
 
   const [putawayShipmentItemId, setPutawayShipmentItemId] = useState("");
   const [putawayQty, setPutawayQty] = useState("");
   const [putawayBinId, setPutawayBinId] = useState("");
 
-  const [pickOrderItemId, setPickOrderItemId] = useState("");
+  const [pickOutboundLineId, setPickOutboundLineId] = useState("");
   const [pickQty, setPickQty] = useState("");
   const [pickBinId, setPickBinId] = useState("");
+  const [replProductId, setReplProductId] = useState("");
+  const [replSourceZoneId, setReplSourceZoneId] = useState("");
+  const [replTargetZoneId, setReplTargetZoneId] = useState("");
+  const [replMin, setReplMin] = useState("");
+  const [replMax, setReplMax] = useState("");
+  const [replQty, setReplQty] = useState("");
+  const [outboundRef, setOutboundRef] = useState("");
+  const [outboundShipTo, setOutboundShipTo] = useState("");
+  const [outboundCity, setOutboundCity] = useState("");
+  const [outboundCountry, setOutboundCountry] = useState("");
+  const [outboundProductId, setOutboundProductId] = useState("");
+  const [outboundLineQty, setOutboundLineQty] = useState("");
 
   async function load() {
     const res = await fetch("/api/wms", { cache: "no-store" });
@@ -95,6 +164,10 @@ export function WmsClient({ canEdit }: { canEdit: boolean }) {
   const binsForWarehouse = useMemo(
     () => (data?.bins ?? []).filter((b) => b.warehouse.id === selectedWarehouseId),
     [data?.bins, selectedWarehouseId],
+  );
+  const zonesForWarehouse = useMemo(
+    () => (data?.zones ?? []).filter((z) => z.warehouse.id === selectedWarehouseId),
+    [data?.zones, selectedWarehouseId],
   );
 
   async function runAction(body: Record<string, unknown>) {
@@ -137,7 +210,7 @@ export function WmsClient({ canEdit }: { canEdit: boolean }) {
 
       <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
         <h2 className="text-sm font-semibold text-zinc-900">Warehouse setup</h2>
-        <div className="mt-2 grid gap-2 sm:grid-cols-5">
+        <div className="mt-2 grid gap-2 sm:grid-cols-6">
           <select
             value={selectedWarehouseId}
             onChange={(e) => setSelectedWarehouseId(e.target.value)}
@@ -152,6 +225,58 @@ export function WmsClient({ canEdit }: { canEdit: boolean }) {
             ))}
           </select>
           <input
+            value={newZoneCode}
+            onChange={(e) => setNewZoneCode(e.target.value.toUpperCase())}
+            placeholder="Zone code"
+            className="rounded border border-zinc-300 px-3 py-2 text-sm"
+          />
+          <input
+            value={newZoneName}
+            onChange={(e) => setNewZoneName(e.target.value)}
+            placeholder="Zone name"
+            className="rounded border border-zinc-300 px-3 py-2 text-sm"
+          />
+          <select
+            value={newZoneType}
+            onChange={(e) =>
+              setNewZoneType(
+                e.target.value as
+                  | "RECEIVING"
+                  | "PICKING"
+                  | "RESERVE"
+                  | "QUARANTINE"
+                  | "STAGING"
+                  | "SHIPPING",
+              )
+            }
+            className="rounded border border-zinc-300 px-3 py-2 text-sm"
+          >
+            <option value="RECEIVING">Receiving</option>
+            <option value="PICKING">Picking</option>
+            <option value="RESERVE">Reserve</option>
+            <option value="QUARANTINE">Quarantine</option>
+            <option value="STAGING">Staging</option>
+            <option value="SHIPPING">Shipping</option>
+          </select>
+          <button
+            type="button"
+            disabled={!canEdit || busy || !selectedWarehouseId}
+            onClick={() =>
+              void runAction({
+                action: "create_zone",
+                warehouseId: selectedWarehouseId,
+                code: newZoneCode,
+                name: newZoneName,
+                zoneType: newZoneType,
+              })
+            }
+            className="rounded border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-800 disabled:opacity-40"
+          >
+            Create zone
+          </button>
+        </div>
+        <div className="mt-2 grid gap-2 sm:grid-cols-6">
+          <input
             value={newBinCode}
             onChange={(e) => setNewBinCode(e.target.value.toUpperCase())}
             placeholder="Bin code"
@@ -163,6 +288,41 @@ export function WmsClient({ canEdit }: { canEdit: boolean }) {
             placeholder="Bin name"
             className="rounded border border-zinc-300 px-3 py-2 text-sm"
           />
+          <select
+            value={newBinZoneId}
+            onChange={(e) => setNewBinZoneId(e.target.value)}
+            className="rounded border border-zinc-300 px-3 py-2 text-sm"
+          >
+            <option value="">Zone (optional)</option>
+            {zonesForWarehouse.map((z) => (
+              <option key={z.id} value={z.id}>
+                {z.code} · {z.name}
+              </option>
+            ))}
+          </select>
+          <select
+            value={newBinStorageType}
+            onChange={(e) =>
+              setNewBinStorageType(
+                e.target.value as "PALLET" | "FLOOR" | "SHELF" | "QUARANTINE" | "STAGING",
+              )
+            }
+            className="rounded border border-zinc-300 px-3 py-2 text-sm"
+          >
+            <option value="PALLET">Pallet</option>
+            <option value="FLOOR">Floor</option>
+            <option value="SHELF">Shelf</option>
+            <option value="QUARANTINE">Quarantine</option>
+            <option value="STAGING">Staging</option>
+          </select>
+          <label className="flex items-center gap-2 rounded border border-zinc-300 px-3 py-2 text-sm">
+            <input
+              type="checkbox"
+              checked={newBinPickFace}
+              onChange={(e) => setNewBinPickFace(e.target.checked)}
+            />
+            Pick face
+          </label>
           <button
             type="button"
             disabled={!canEdit || busy}
@@ -170,13 +330,99 @@ export function WmsClient({ canEdit }: { canEdit: boolean }) {
               void runAction({
                 action: "create_bin",
                 warehouseId: selectedWarehouseId,
+                targetZoneId: newBinZoneId || null,
                 code: newBinCode,
                 name: newBinName,
+                storageType: newBinStorageType,
+                isPickFace: newBinPickFace,
               })
             }
             className="rounded border border-zinc-900 bg-zinc-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-40"
           >
             Create bin
+          </button>
+        </div>
+      </section>
+
+      <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
+        <h2 className="text-sm font-semibold text-zinc-900">Replenishment setup</h2>
+        <div className="mt-2 grid gap-2 sm:grid-cols-7">
+          <select
+            value={replProductId}
+            onChange={(e) => setReplProductId(e.target.value)}
+            className="rounded border border-zinc-300 px-3 py-2 text-sm"
+          >
+            <option value="">Product</option>
+            {Array.from(
+              new Map(
+                data.balances.map((b) => [b.product.id, b.product] as const),
+              ).values(),
+            ).map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.productCode || p.sku || "SKU"} · {p.name}
+              </option>
+            ))}
+          </select>
+          <select
+            value={replSourceZoneId}
+            onChange={(e) => setReplSourceZoneId(e.target.value)}
+            className="rounded border border-zinc-300 px-3 py-2 text-sm"
+          >
+            <option value="">Source zone</option>
+            {zonesForWarehouse.map((z) => (
+              <option key={z.id} value={z.id}>
+                {z.code} · {z.name}
+              </option>
+            ))}
+          </select>
+          <select
+            value={replTargetZoneId}
+            onChange={(e) => setReplTargetZoneId(e.target.value)}
+            className="rounded border border-zinc-300 px-3 py-2 text-sm"
+          >
+            <option value="">Target zone</option>
+            {zonesForWarehouse.map((z) => (
+              <option key={z.id} value={z.id}>
+                {z.code} · {z.name}
+              </option>
+            ))}
+          </select>
+          <input value={replMin} onChange={(e) => setReplMin(e.target.value)} placeholder="Min pick" className="rounded border border-zinc-300 px-3 py-2 text-sm" />
+          <input value={replMax} onChange={(e) => setReplMax(e.target.value)} placeholder="Max pick" className="rounded border border-zinc-300 px-3 py-2 text-sm" />
+          <input value={replQty} onChange={(e) => setReplQty(e.target.value)} placeholder="Replenish qty" className="rounded border border-zinc-300 px-3 py-2 text-sm" />
+          <button
+            type="button"
+            disabled={!canEdit || busy}
+            onClick={() =>
+              void runAction({
+                action: "set_replenishment_rule",
+                warehouseId: selectedWarehouseId,
+                productId: replProductId,
+                sourceZoneId: replSourceZoneId || null,
+                targetZoneId: replTargetZoneId || null,
+                minPickQty: Number(replMin),
+                maxPickQty: Number(replMax),
+                replenishQty: Number(replQty),
+              })
+            }
+            className="rounded border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-800 disabled:opacity-40"
+          >
+            Save rule
+          </button>
+        </div>
+        <div className="mt-2">
+          <button
+            type="button"
+            disabled={!canEdit || busy || !selectedWarehouseId}
+            onClick={() =>
+              void runAction({
+                action: "create_replenishment_tasks",
+                warehouseId: selectedWarehouseId,
+              })
+            }
+            className="rounded border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-800 disabled:opacity-40"
+          >
+            Generate replenishment tasks
           </button>
         </div>
       </section>
@@ -242,19 +488,19 @@ export function WmsClient({ canEdit }: { canEdit: boolean }) {
         <h2 className="text-sm font-semibold text-zinc-900">Create pick task</h2>
         <div className="mt-2 grid gap-2 sm:grid-cols-4">
           <select
-            value={pickOrderItemId}
+            value={pickOutboundLineId}
             onChange={(e) => {
               const id = e.target.value;
-              setPickOrderItemId(id);
-              const c = data.pickCandidates.find((x) => x.orderItemId === id);
+              setPickOutboundLineId(id);
+              const c = data.pickCandidates.find((x) => x.outboundLineId === id);
               setPickQty(c?.remainingQty ?? "");
             }}
             className="rounded border border-zinc-300 px-3 py-2 text-sm"
           >
             <option value="">Select order line</option>
             {data.pickCandidates.map((c) => (
-              <option key={c.orderItemId} value={c.orderItemId}>
-                {c.orderNumber} · L{c.lineNo} · {c.product.productCode || c.product.sku || "SKU"} ·{" "}
+              <option key={c.outboundLineId} value={c.outboundLineId}>
+                {c.outboundNo} · L{c.lineNo} · {c.product.productCode || c.product.sku || "SKU"} ·{" "}
                 {c.remainingQty}
               </option>
             ))}
@@ -281,12 +527,12 @@ export function WmsClient({ canEdit }: { canEdit: boolean }) {
             type="button"
             disabled={!canEdit || busy}
             onClick={() => {
-              const c = data.pickCandidates.find((x) => x.orderItemId === pickOrderItemId);
+              const c = data.pickCandidates.find((x) => x.outboundLineId === pickOutboundLineId);
               if (!c) return;
               void runAction({
                 action: "create_pick_task",
                 warehouseId: selectedWarehouseId,
-                orderItemId: pickOrderItemId,
+                outboundLineId: pickOutboundLineId,
                 productId: c.product.id,
                 binId: pickBinId,
                 quantity: Number(pickQty),
@@ -296,6 +542,66 @@ export function WmsClient({ canEdit }: { canEdit: boolean }) {
           >
             Create pick task
           </button>
+        </div>
+      </section>
+
+      <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
+        <h2 className="text-sm font-semibold text-zinc-900">Outbound flow</h2>
+        <div className="mt-2 grid gap-2 sm:grid-cols-6">
+          <input value={outboundRef} onChange={(e) => setOutboundRef(e.target.value)} placeholder="Customer ref" className="rounded border border-zinc-300 px-3 py-2 text-sm" />
+          <input value={outboundShipTo} onChange={(e) => setOutboundShipTo(e.target.value)} placeholder="Ship-to name" className="rounded border border-zinc-300 px-3 py-2 text-sm" />
+          <input value={outboundCity} onChange={(e) => setOutboundCity(e.target.value)} placeholder="City" className="rounded border border-zinc-300 px-3 py-2 text-sm" />
+          <input value={outboundCountry} onChange={(e) => setOutboundCountry(e.target.value.toUpperCase())} placeholder="Country" className="rounded border border-zinc-300 px-3 py-2 text-sm" />
+          <select value={outboundProductId} onChange={(e)=>setOutboundProductId(e.target.value)} className="rounded border border-zinc-300 px-3 py-2 text-sm">
+            <option value="">Product</option>
+            {Array.from(new Map(data.balances.map((b)=>[b.product.id,b.product] as const)).values()).map((p)=>(
+              <option key={p.id} value={p.id}>{p.productCode || p.sku || "SKU"} · {p.name}</option>
+            ))}
+          </select>
+          <input value={outboundLineQty} onChange={(e)=>setOutboundLineQty(e.target.value)} placeholder="Qty" className="rounded border border-zinc-300 px-3 py-2 text-sm" />
+        </div>
+        <div className="mt-2">
+          <button
+            type="button"
+            disabled={!canEdit || busy || !selectedWarehouseId}
+            onClick={() =>
+              void runAction({
+                action: "create_outbound_order",
+                warehouseId: selectedWarehouseId,
+                customerRef: outboundRef,
+                shipToName: outboundShipTo,
+                shipToCity: outboundCity,
+                shipToCountryCode: outboundCountry,
+                lines: outboundProductId
+                  ? [{ productId: outboundProductId, quantity: Number(outboundLineQty) }]
+                  : [],
+              })
+            }
+            className="rounded border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-800 disabled:opacity-40"
+          >
+            Create outbound order
+          </button>
+        </div>
+        <div className="mt-3 space-y-2">
+          {data.outboundOrders.map((o) => (
+            <div key={o.id} className="rounded border border-zinc-200 p-2 text-sm">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-zinc-900">{o.outboundNo}</span>
+                <span className="text-zinc-600">{o.status}</span>
+                <span className="text-zinc-500">{o.customerRef || "No ref"}</span>
+                {canEdit && o.status === "DRAFT" ? (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void runAction({ action: "release_outbound_order", outboundOrderId: o.id })}
+                    className="ml-auto rounded border border-zinc-300 px-2 py-1 text-xs font-medium text-zinc-800 disabled:opacity-40"
+                  >
+                    Release
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 

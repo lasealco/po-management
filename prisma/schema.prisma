@@ -23,11 +23,15 @@ model Tenant {
   supplierContacts  SupplierContact[]
   orders            PurchaseOrder[]
   warehouses        Warehouse[]
+  warehouseZones    WarehouseZone[]
   warehouseBins     WarehouseBin[]
   inventoryBalances InventoryBalance[]
   inventoryMovements InventoryMovement[]
   wmsTasks          WmsTask[]
   wmsWaves          WmsWave[]
+  replenishmentRules ReplenishmentRule[]
+  outboundOrders    OutboundOrder[]
+  outboundOrderLines OutboundOrderLine[]
   loadPlans         LoadPlan[]
   userPreferences   UserPreference[]
   workflows         Workflow[]
@@ -57,6 +61,7 @@ model User {
   wmsTasksCreated    WmsTask[] @relation("WmsTaskCreatedBy")
   wmsTasksCompleted  WmsTask[] @relation("WmsTaskCompletedBy")
   wmsWavesCreated    WmsWave[]
+  outboundOrdersCreated OutboundOrder[]
   loadPlansCreated    LoadPlan[]
   preferences         UserPreference[]
 
@@ -303,6 +308,8 @@ model Product {
   inventoryBalances InventoryBalance[]
   inventoryMovements InventoryMovement[]
   wmsTasks WmsTask[]
+  replenishmentRules ReplenishmentRule[]
+  outboundOrderLines OutboundOrderLine[]
   documents      ProductDocument[]
   productSuppliers ProductSupplier[]
 
@@ -656,33 +663,104 @@ model Warehouse {
 
   tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   loadPlans LoadPlan[]
+  zones     WarehouseZone[]
   bins      WarehouseBin[]
   inventoryBalances InventoryBalance[]
   inventoryMovements InventoryMovement[]
   wmsTasks  WmsTask[]
   wmsWaves  WmsWave[]
+  replenishmentRules ReplenishmentRule[]
+  outboundOrders OutboundOrder[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
+}
+
+enum WarehouseZoneType {
+  RECEIVING
+  PICKING
+  RESERVE
+  QUARANTINE
+  STAGING
+  SHIPPING
+}
+
+model WarehouseZone {
+  id          String            @id @default(cuid())
+  tenantId    String
+  warehouseId String
+  code        String
+  name        String
+  zoneType    WarehouseZoneType
+  isActive    Boolean           @default(true)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  bins      WarehouseBin[]
+  sourceRules ReplenishmentRule[] @relation("ReplenishmentSourceZone")
+  targetRules ReplenishmentRule[] @relation("ReplenishmentTargetZone")
+
+  @@unique([warehouseId, code])
+  @@index([tenantId, warehouseId, zoneType])
+}
+
+enum BinStorageType {
+  PALLET
+  FLOOR
+  SHELF
+  QUARANTINE
+  STAGING
 }
 
 model WarehouseBin {
   id          String   @id @default(cuid())
   tenantId    String
   warehouseId String
+  zoneId      String?
   code        String
   name        String
+  storageType BinStorageType @default(PALLET)
+  isPickFace  Boolean        @default(false)
+  maxPallets  Int?
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   warehouse Warehouse  @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  zone      WarehouseZone? @relation(fields: [zoneId], references: [id], onDelete: SetNull)
   inventoryBalances InventoryBalance[]
   inventoryMovements InventoryMovement[]
   wmsTasks WmsTask[]
 
   @@unique([warehouseId, code])
+  @@index([tenantId, warehouseId])
+  @@index([zoneId])
+}
+
+model ReplenishmentRule {
+  id             String   @id @default(cuid())
+  tenantId       String
+  warehouseId    String
+  productId      String
+  sourceZoneId   String?
+  targetZoneId   String?
+  minPickQty     Decimal  @db.Decimal(14, 3)
+  maxPickQty     Decimal  @db.Decimal(14, 3)
+  replenishQty   Decimal  @db.Decimal(14, 3)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenant      Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  warehouse   Warehouse     @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  product     Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sourceZone  WarehouseZone? @relation("ReplenishmentSourceZone", fields: [sourceZoneId], references: [id], onDelete: SetNull)
+  targetZone  WarehouseZone? @relation("ReplenishmentTargetZone", fields: [targetZoneId], references: [id], onDelete: SetNull)
+
+  @@unique([warehouseId, productId])
   @@index([tenantId, warehouseId])
 }
 
@@ -740,6 +818,7 @@ model InventoryMovement {
 enum WmsTaskType {
   PUTAWAY
   PICK
+  REPLENISH
   CYCLE_COUNT
 }
 
@@ -812,6 +891,62 @@ model WmsTask {
   @@index([tenantId, warehouseId, status, taskType])
   @@index([referenceType, referenceId])
   @@index([waveId])
+}
+
+enum OutboundOrderStatus {
+  DRAFT
+  RELEASED
+  PICKING
+  PACKED
+  SHIPPED
+  CANCELLED
+}
+
+model OutboundOrder {
+  id            String              @id @default(cuid())
+  tenantId      String
+  warehouseId   String
+  outboundNo    String
+  customerRef   String?
+  shipToName    String?
+  shipToLine1   String?
+  shipToCity    String?
+  shipToCountryCode String? @db.VarChar(2)
+  requestedShipDate DateTime?
+  status        OutboundOrderStatus @default(DRAFT)
+  notes         String?
+  createdById   String
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  warehouse   Warehouse   @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  createdBy   User        @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  lines       OutboundOrderLine[]
+
+  @@unique([tenantId, outboundNo])
+  @@index([tenantId, warehouseId, status])
+}
+
+model OutboundOrderLine {
+  id             String   @id @default(cuid())
+  tenantId       String
+  outboundOrderId String
+  lineNo         Int
+  productId      String
+  quantity       Decimal  @db.Decimal(14, 3)
+  pickedQty      Decimal  @default(0) @db.Decimal(14, 3)
+  packedQty      Decimal  @default(0) @db.Decimal(14, 3)
+  shippedQty     Decimal  @default(0) @db.Decimal(14, 3)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  outboundOrder OutboundOrder @relation(fields: [outboundOrderId], references: [id], onDelete: Cascade)
+  product       Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@unique([outboundOrderId, lineNo])
+  @@index([tenantId, outboundOrderId])
 }
 
 enum LoadPlanStatus {
