@@ -223,26 +223,36 @@ export function OrdersBoard({
   }
 
   return (
-    <main className="mx-auto w-full max-w-[1600px] px-4 py-8 sm:px-6">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 sm:text-[1.65rem]">
-          PO Workflow Playground
-        </h1>
-        <p className="mt-1.5 text-sm text-zinc-600">
-          Tenant: <span className="font-medium text-zinc-800">{data.tenant.name}</span>{" "}
-          <span className="tabular-nums text-zinc-500">({orderCount} orders)</span>
-        </p>
-        <p className="mt-1 text-xs text-zinc-400">
-          Quick jump:{" "}
-          <kbd className="rounded border border-zinc-200 bg-white px-1 font-mono text-[10px] text-zinc-600">
-            ⌘K
-          </kbd>{" "}
-          /{" "}
-          <kbd className="rounded border border-zinc-200 bg-white px-1 font-mono text-[10px] text-zinc-600">
-            Ctrl K
-          </kbd>
-        </p>
-        <div className="mt-4 flex flex-wrap gap-2 text-xs">
+    <main className="mx-auto w-full max-w-[1600px] px-4 py-5 sm:px-6">
+      <header className="mb-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-4">
+          <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
+            <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
+              Orders
+            </h1>
+            <span className="text-zinc-300 select-none" aria-hidden>
+              ·
+            </span>
+            <p className="text-sm text-zinc-600">
+              <span className="font-medium text-zinc-800">{data.tenant.name}</span>
+              <span className="tabular-nums text-zinc-500">
+                {" "}
+                · {orderCount} {orderCount === 1 ? "order" : "orders"}
+              </span>
+            </p>
+          </div>
+          <p className="text-[11px] text-zinc-400 sm:text-right">
+            <span className="text-zinc-500">Quick jump</span>{" "}
+            <kbd className="rounded border border-zinc-200 bg-white px-1 font-mono text-[10px] text-zinc-600">
+              ⌘K
+            </kbd>{" "}
+            /{" "}
+            <kbd className="rounded border border-zinc-200 bg-white px-1 font-mono text-[10px] text-zinc-600">
+              Ctrl K
+            </kbd>
+          </p>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2 text-xs">
           <span className="rounded-full bg-emerald-100 px-2.5 py-1 font-medium text-emerald-900">
             Needs my action: {queueSummary.needsMyAction}
           </span>
@@ -367,7 +377,7 @@ export function OrdersBoard({
       ) : null}
 
       <div className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-sm">
-        <div className="max-h-[min(72vh,calc(100dvh-14rem))] overflow-auto">
+        <div className="max-h-[min(78vh,calc(100dvh-9rem))] overflow-auto">
           <table className="w-full min-w-[920px] table-fixed border-collapse text-left">
             <thead className="sticky top-0 z-20 border-b border-zinc-200 bg-zinc-50/95 backdrop-blur-sm">
               <tr className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">

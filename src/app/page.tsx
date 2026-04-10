@@ -1,5 +1,4 @@
 import { AccessDenied } from "@/components/access-denied";
-import { HomeQuickActions } from "@/components/home-quick-actions";
 import { OrdersBoard } from "@/components/orders-board";
 import { getViewerGrantSet, userHasRoleNamed, viewerHas } from "@/lib/authz";
 import {
@@ -28,9 +27,7 @@ export default async function Home({
   if (!access) {
     return (
       <main className="mx-auto w-full max-w-3xl px-6 py-16">
-        <h1 className="text-3xl font-semibold text-zinc-900">
-          PO Workflow Playground
-        </h1>
+        <h1 className="text-3xl font-semibold text-zinc-900">Orders</h1>
         <p className="mt-4 text-zinc-600">
           Demo data not found. Run <code>npm run db:seed</code> locally, then
           deploy.
@@ -264,17 +261,9 @@ export default async function Home({
     "org.orders",
     "transition",
   );
-  const canManageSuppliers = viewerHas(access.grantSet, "org.suppliers", "edit");
-  const canUseConsolidation = viewerHas(access.grantSet, "org.consolidation", "view");
-  const canManageUsers = viewerHas(access.grantSet, "org.users", "edit");
 
   return (
     <div className="min-h-screen bg-zinc-50">
-      <HomeQuickActions
-        canManageSuppliers={canManageSuppliers}
-        canUseConsolidation={canUseConsolidation}
-        canManageUsers={canManageUsers}
-      />
       <OrdersBoard
         initialData={initialData}
         canTransitionOrders={canTransitionOrders}
