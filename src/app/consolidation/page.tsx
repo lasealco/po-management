@@ -108,6 +108,9 @@ export default async function ConsolidationPage() {
         estimatedVolumeCbm:
           shipment.estimatedVolumeCbm?.toString() ??
           (remainingUnits * 0.02).toFixed(3),
+        estimatedWeightKg:
+          shipment.estimatedWeightKg?.toString() ??
+          (remainingUnits * 18).toFixed(3),
         remainingUnits,
         lineCount: shipment.items.length,
       };

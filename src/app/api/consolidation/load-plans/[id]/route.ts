@@ -96,6 +96,9 @@ export async function GET(
       transportMode: assignment.shipment.transportMode,
       estimatedVolumeCbm:
         assignment.shipment.estimatedVolumeCbm?.toString() ?? null,
+      estimatedWeightKg:
+        assignment.shipment.estimatedWeightKg?.toString() ??
+        (remainingUnits * 18).toFixed(3),
       remainingUnits,
       lineCount: assignment.shipment.items.length,
     };

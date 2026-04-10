@@ -1,4 +1,5 @@
 import { Prisma, PrismaClient } from "@prisma/client";
+import { runBulkSeed } from "./bulk-seed.mjs";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { config } from "dotenv";
 import { resolve } from "node:path";
@@ -1362,6 +1363,33 @@ async function seed() {
   // Ensure starter load has no stale assignment collisions.
   await prisma.loadPlanShipment.deleteMany({
     where: { loadPlan: { tenantId: tenant.id }, loadPlanId: primaryDraftLoad.id },
+  });
+
+  await runBulkSeed(prisma, {
+    tenantId: tenant.id,
+    buyerId: buyer.id,
+    approverId: approver.id,
+    acmeSupplierId: supplier.id,
+    simpleWorkflowId: simpleWorkflow.id,
+    supplierWorkflowId: supplierWorkflow.id,
+    simple: {
+      draftId: simpleDraft.id,
+      openId: simpleOpen.id,
+      closedId: simpleClosed.id,
+    },
+    supplier: {
+      draftId: supplierDraft.id,
+      sentId: supplierSent.id,
+      confirmedId: supplierConfirmed.id,
+      fulfilledId: supplierFulfilled.id,
+      splitPendingId: supplierSplitPending.id,
+      cancelledId: supplierCancelled.id,
+      declinedId: supplierDeclined.id,
+      parentSplitCompleteId: supplierParentSplitComplete.id,
+      pendingChildId: supplierPendingChild.id,
+    },
+    productIds: [prodPaper.id, prodToner.id, prodCorrugated.id, prodPallet.id],
+    cfsShenzhenId: cfsShenzhen.id,
   });
 
   const userCount = await prisma.user.count({ where: { tenantId: tenant.id } });

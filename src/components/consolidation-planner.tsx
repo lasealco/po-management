@@ -12,6 +12,7 @@ type AvailableShipmentRow = {
   shippedAt: string;
   transportMode: "OCEAN" | "AIR" | "ROAD" | "RAIL" | null;
   estimatedVolumeCbm: string;
+  estimatedWeightKg: string | null;
   remainingUnits: number;
   lineCount: number;
 };
@@ -57,6 +58,39 @@ const CONTAINER_CAPACITY_CBM: Record<
   AIR_ULD: 20,
 };
 
+const CONTAINER_CAPACITY_KG: Record<
+  "LCL" | "FCL_20" | "FCL_40" | "FCL_40HC" | "TRUCK_13_6" | "AIR_ULD",
+  number
+> = {
+  LCL: 12_000,
+  FCL_20: 28_000,
+  FCL_40: 30_000,
+  FCL_40HC: 30_000,
+  TRUCK_13_6: 24_000,
+  AIR_ULD: 6_500,
+};
+
+const WEIGHT_WARNING_PCT_BY_MODE: Record<"OCEAN" | "AIR" | "ROAD" | "RAIL", number> = {
+  OCEAN: 95,
+  AIR: 85,
+  ROAD: 92,
+  RAIL: 94,
+};
+
+const MODE_WEIGHT_PENALTY_BY_MODE: Record<"OCEAN" | "AIR" | "ROAD" | "RAIL", number> = {
+  OCEAN: 140,
+  AIR: 190,
+  ROAD: 165,
+  RAIL: 150,
+};
+
+const MODE_VOLUME_PENALTY_BY_MODE: Record<"OCEAN" | "AIR" | "ROAD" | "RAIL", number> = {
+  OCEAN: 120,
+  AIR: 95,
+  ROAD: 130,
+  RAIL: 120,
+};
+
 export function ConsolidationPlanner({
   initialAvailable,
   initialWarehouses,
@@ -93,6 +127,8 @@ export function ConsolidationPlanner({
   const [presets, setPresets] = useState<FilterPreset[]>([]);
   const [selectedPresetId, setSelectedPresetId] = useState("none");
   const [inLoad, setInLoad] = useState<AvailableShipmentRow[]>([]);
+  const [playbackIndex, setPlaybackIndex] = useState(-1);
+  const [autoPlay, setAutoPlay] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const selectedLoad = loadPlans.find((row) => row.id === selectedLoadId) ?? null;
@@ -126,6 +162,10 @@ export function ConsolidationPlanner({
       loadShipments: inLoad.length,
       loadUnits: inLoad.reduce((sum, row) => sum + row.remainingUnits, 0),
       loadVolumeCbm: inLoad.reduce((sum, row) => sum + Number(row.estimatedVolumeCbm), 0),
+      loadWeightKg: inLoad.reduce(
+        (sum, row) => sum + Number(row.estimatedWeightKg ?? row.remainingUnits * 18),
+        0,
+      ),
     }),
     [filteredAvailable, inLoad],
   );
@@ -133,6 +173,83 @@ export function ConsolidationPlanner({
     999,
     (totals.loadVolumeCbm / CONTAINER_CAPACITY_CBM[containerSize]) * 100 || 0,
   );
+  const containerCapacity = CONTAINER_CAPACITY_CBM[containerSize];
+  const weightCapacityKg = CONTAINER_CAPACITY_KG[containerSize];
+  const remainingCbm = Math.max(containerCapacity - totals.loadVolumeCbm, 0);
+  const overfillCbm = Math.max(totals.loadVolumeCbm - containerCapacity, 0);
+  const remainingWeightKg = Math.max(weightCapacityKg - totals.loadWeightKg, 0);
+  const overweightKg = Math.max(totals.loadWeightKg - weightCapacityKg, 0);
+  const weightLoadPct = (totals.loadWeightKg / weightCapacityKg) * 100 || 0;
+  const weightWarningPct = WEIGHT_WARNING_PCT_BY_MODE[transportMode];
+  const modeWeightPenalty = MODE_WEIGHT_PENALTY_BY_MODE[transportMode];
+  const modeVolumePenalty = MODE_VOLUME_PENALTY_BY_MODE[transportMode];
+  const usageLabel =
+    loadFactorPct > 100 ? "Overfilled" : loadFactorPct >= 95 ? "Near capacity" : "Healthy";
+  const usageTone =
+    loadFactorPct > 100
+      ? "text-rose-700 bg-rose-50 border-rose-200"
+      : loadFactorPct >= 95
+        ? "text-amber-700 bg-amber-50 border-amber-200"
+        : "text-emerald-700 bg-emerald-50 border-emerald-200";
+  const sequence = useMemo(
+    () =>
+      [...inLoad].sort(
+        (a, b) => Number(b.estimatedVolumeCbm) - Number(a.estimatedVolumeCbm),
+      ),
+    [inLoad],
+  );
+  const mixedModeCount = useMemo(
+    () => inLoad.filter((row) => row.transportMode != null && row.transportMode !== transportMode).length,
+    [inLoad, transportMode],
+  );
+  const sequenceSteps = useMemo(
+    () =>
+      sequence.map((row, idx) => {
+      const rowVolume = Number(row.estimatedVolumeCbm);
+      const rowWeight = Number(row.estimatedWeightKg ?? row.remainingUnits * 18);
+      const prefix = sequence.slice(0, idx + 1);
+      const cumulativeVolume = prefix.reduce((sum, item) => sum + Number(item.estimatedVolumeCbm), 0);
+      const cumulativeWeight = prefix.reduce(
+        (sum, item) => sum + Number(item.estimatedWeightKg ?? item.remainingUnits * 18),
+        0,
+      );
+      const overVolRatio = Math.max(0, cumulativeVolume - containerCapacity) / containerCapacity;
+      const overWtRatio = Math.max(0, cumulativeWeight - weightCapacityKg) / weightCapacityKg;
+      const modePenalty = row.transportMode && row.transportMode !== transportMode ? 15 : 0;
+      const fitScore = Math.max(
+        0,
+        Math.round(
+          100 - overVolRatio * modeVolumePenalty - overWtRatio * modeWeightPenalty - modePenalty,
+        ),
+      );
+      return { row, step: idx + 1, rowVolume, rowWeight, fitScore };
+    }),
+    [
+      containerCapacity,
+      modeVolumePenalty,
+      modeWeightPenalty,
+      sequence,
+      transportMode,
+      weightCapacityKg,
+    ],
+  );
+  const playbackCursor =
+    playbackIndex < 0 ? sequence.length : Math.min(sequence.length, playbackIndex);
+  const sequenceWindow = useMemo(() => sequence.slice(0, playbackCursor), [playbackCursor, sequence]);
+  const visualBlocks = useMemo(() => {
+    if (sequenceWindow.length === 0) return [];
+    return sequenceWindow.slice(0, 14).map((row) => {
+      const pct = Math.max(
+        2,
+        Math.min(100, (Number(row.estimatedVolumeCbm) / containerCapacity) * 100),
+      );
+      return {
+        id: row.shipmentId,
+        label: row.shipmentNo,
+        pct,
+      };
+    });
+  }, [containerCapacity, sequenceWindow]);
 
   async function refreshMeta() {
     const response = await fetch("/api/consolidation/load-plans", {
@@ -301,14 +418,27 @@ export function ConsolidationPlanner({
 
   useEffect(() => {
     if (!selectedLoadId) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadPlanDetails(selectedLoadId);
-    // only run on initial selected id change
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedLoadId]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadPresets();
   }, []);
+
+  useEffect(() => {
+    if (!autoPlay) return;
+    if (playbackCursor >= sequence.length) return;
+    const id = window.setTimeout(() => {
+      setPlaybackIndex((prev) => {
+        const next = Math.min(sequence.length, Math.max(0, prev) + 1);
+        if (next >= sequence.length) setAutoPlay(false);
+        return next;
+      });
+    }, 450);
+    return () => window.clearTimeout(id);
+  }, [autoPlay, playbackCursor, sequence.length]);
 
   async function saveCurrentFilterPreset() {
     if (!presetName.trim()) {
@@ -653,35 +783,212 @@ export function ConsolidationPlanner({
         </div>
       </section>
 
-      <section className="mb-6 flex flex-wrap gap-2 text-xs">
-        <span className="rounded-full bg-sky-100 px-2.5 py-1 font-medium text-sky-900">
-          Available shipments: {totals.availableShipments}
-        </span>
-        <span className="rounded-full bg-sky-100 px-2.5 py-1 font-medium text-sky-900">
-          Available units: {totals.availableUnits}
-        </span>
-        <span className="rounded-full bg-emerald-100 px-2.5 py-1 font-medium text-emerald-900">
-          In load: {totals.loadShipments}
-        </span>
-        <span className="rounded-full bg-emerald-100 px-2.5 py-1 font-medium text-emerald-900">
-          Load units: {totals.loadUnits}
-        </span>
-        <span
-          className={`rounded-full px-2.5 py-1 font-medium ${
-            loadFactorPct > 100
-              ? "bg-rose-100 text-rose-900"
-              : loadFactorPct >= 95
-                ? "bg-amber-100 text-amber-900"
-                : "bg-violet-100 text-violet-900"
-          }`}
-        >
-          Load factor: {loadFactorPct.toFixed(1)}%
-        </span>
-        {loadFactorPct > 100 ? (
-          <span className="rounded-full bg-rose-100 px-2.5 py-1 font-medium text-rose-900">
-            Overfilled by {(loadFactorPct - 100).toFixed(1)}%
-          </span>
-        ) : null}
+      <section className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <article className="rounded-lg border border-zinc-200 bg-white p-3">
+          <p className="text-xs uppercase tracking-wide text-zinc-500">Available</p>
+          <p className="mt-1 text-lg font-semibold text-zinc-900">{totals.availableShipments}</p>
+          <p className="text-xs text-zinc-600">shipments, {totals.availableUnits.toFixed(1)} units</p>
+        </article>
+        <article className="rounded-lg border border-zinc-200 bg-white p-3">
+          <p className="text-xs uppercase tracking-wide text-zinc-500">In draft</p>
+          <p className="mt-1 text-lg font-semibold text-zinc-900">{totals.loadShipments}</p>
+          <p className="text-xs text-zinc-600">{totals.loadUnits.toFixed(1)} units assigned</p>
+        </article>
+        <article className="rounded-lg border border-zinc-200 bg-white p-3">
+          <p className="text-xs uppercase tracking-wide text-zinc-500">Volume used</p>
+          <p className="mt-1 text-lg font-semibold text-zinc-900">
+            {totals.loadVolumeCbm.toFixed(2)} / {containerCapacity.toFixed(2)} cbm
+          </p>
+          <p className="text-xs text-zinc-600">
+            {remainingCbm.toFixed(2)} cbm free
+          </p>
+        </article>
+        <article className={`rounded-lg border p-3 ${usageTone}`}>
+          <p className="text-xs uppercase tracking-wide">Load state</p>
+          <p className="mt-1 text-lg font-semibold">{loadFactorPct.toFixed(1)}%</p>
+          <p className="text-xs">
+            {usageLabel}
+            {overfillCbm > 0 ? ` · +${overfillCbm.toFixed(2)} cbm` : ""}
+          </p>
+        </article>
+        <article className="rounded-lg border border-zinc-200 bg-white p-3">
+          <p className="text-xs uppercase tracking-wide text-zinc-500">Weight used</p>
+          <p className="mt-1 text-lg font-semibold text-zinc-900">
+            {totals.loadWeightKg.toFixed(0)} / {weightCapacityKg.toFixed(0)} kg
+          </p>
+          <p className="text-xs text-zinc-600">
+            {overweightKg > 0
+              ? `Over by ${overweightKg.toFixed(0)} kg`
+              : `${remainingWeightKg.toFixed(0)} kg free`}
+          </p>
+        </article>
+      </section>
+
+      <section className="mb-6 grid gap-6 lg:grid-cols-3">
+        <article className="rounded-lg border border-zinc-200 bg-white p-4 lg:col-span-2">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-base font-medium text-zinc-900">Container fill simulation</h2>
+            <span className={`rounded-full border px-2 py-0.5 text-xs font-medium ${usageTone}`}>
+              {usageLabel}
+            </span>
+          </div>
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              disabled={sequence.length === 0}
+              onClick={() => {
+                setAutoPlay(false);
+                setPlaybackIndex(Math.max(0, playbackCursor - 1));
+              }}
+              className="rounded border border-zinc-300 px-2.5 py-1 text-xs font-medium text-zinc-700 disabled:opacity-50"
+            >
+              Prev
+            </button>
+            <button
+              type="button"
+              disabled={sequence.length === 0}
+              onClick={() => {
+                setAutoPlay(false);
+                setPlaybackIndex(Math.min(sequence.length, playbackCursor + 1));
+              }}
+              className="rounded border border-zinc-300 px-2.5 py-1 text-xs font-medium text-zinc-700 disabled:opacity-50"
+            >
+              Next
+            </button>
+            <button
+              type="button"
+              disabled={sequence.length === 0}
+              onClick={() => {
+                if (playbackCursor >= sequence.length) setPlaybackIndex(0);
+                setAutoPlay((v) => !v);
+              }}
+              className="rounded border border-violet-300 bg-violet-50 px-2.5 py-1 text-xs font-medium text-violet-700 disabled:opacity-50"
+            >
+              {autoPlay ? "Pause" : "Auto-play"}
+            </button>
+            <span className="text-xs text-zinc-600">
+              Step {playbackCursor} / {sequence.length}
+            </span>
+          </div>
+          <div className="mb-3 h-3 w-full overflow-hidden rounded-full bg-zinc-100">
+            <div
+              className={`h-full transition-all duration-500 ${
+                loadFactorPct > 100
+                  ? "bg-rose-500"
+                  : loadFactorPct >= 95
+                    ? "bg-amber-500"
+                    : "bg-emerald-500"
+              }`}
+              style={{ width: `${Math.min(loadFactorPct, 100)}%` }}
+            />
+          </div>
+          <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+            <div className="flex h-36 items-end gap-1 overflow-hidden rounded-lg border border-zinc-200 bg-white p-2">
+              {visualBlocks.length === 0 ? (
+                <p className="m-auto text-sm text-zinc-500">Add shipments to visualize stuffing order.</p>
+              ) : (
+                visualBlocks.map((block, idx) => (
+                  <div
+                    key={block.id}
+                    className="group relative min-w-3 flex-1 rounded-sm bg-violet-300/80 transition-all duration-500 hover:bg-violet-400"
+                    style={{
+                      height: `${block.pct}%`,
+                      opacity: 0.45 + (idx % 6) * 0.08,
+                    }}
+                    title={`${block.label} · ${block.pct.toFixed(1)}% of container volume`}
+                  >
+                    <span className="absolute -top-5 left-0 hidden text-[10px] text-zinc-700 group-hover:block">
+                      {block.label}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+          <p className="mt-2 text-xs text-zinc-600">
+            Visual blocks animate through the stuffing sequence. Use Prev/Next/Auto-play to preview
+            loading order.
+          </p>
+        </article>
+        <article className="rounded-lg border border-zinc-200 bg-white p-4">
+          <h2 className="text-base font-medium text-zinc-900">Suggested stuffing sequence</h2>
+          <p className="mt-1 text-xs text-zinc-600">
+            Start with higher-volume shipments, then add smaller remainder loads.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <span
+              className={`rounded-full border px-2 py-0.5 text-xs font-medium ${
+                overfillCbm > 0
+                  ? "border-rose-200 bg-rose-50 text-rose-700"
+                  : "border-emerald-200 bg-emerald-50 text-emerald-700"
+              }`}
+            >
+              {overfillCbm > 0 ? `Capacity breach +${overfillCbm.toFixed(2)} cbm` : "Capacity OK"}
+            </span>
+            <span
+              className={`rounded-full border px-2 py-0.5 text-xs font-medium ${
+                overweightKg > 0
+                  ? "border-rose-200 bg-rose-50 text-rose-700"
+                  : weightLoadPct >= weightWarningPct
+                    ? "border-amber-200 bg-amber-50 text-amber-700"
+                    : "border-emerald-200 bg-emerald-50 text-emerald-700"
+              }`}
+            >
+              {overweightKg > 0
+                ? `Weight breach +${overweightKg.toFixed(0)} kg`
+                : `Weight ${weightLoadPct.toFixed(1)}% (${transportMode})`}
+            </span>
+            <span
+              className={`rounded-full border px-2 py-0.5 text-xs font-medium ${
+                mixedModeCount > 0
+                  ? "border-amber-200 bg-amber-50 text-amber-700"
+                  : "border-emerald-200 bg-emerald-50 text-emerald-700"
+              }`}
+            >
+              {mixedModeCount > 0
+                ? `${mixedModeCount} shipment(s) mode mismatch`
+                : "Mode alignment OK"}
+            </span>
+          </div>
+          <ol className="mt-3 space-y-2">
+            {sequence.length === 0 ? (
+              <li className="rounded-md border border-dashed border-zinc-200 px-3 py-2 text-sm text-zinc-500">
+                No shipments in draft.
+              </li>
+            ) : (
+              sequenceSteps.slice(0, 8).map(({ row, step, rowVolume, rowWeight, fitScore }) => (
+                <li
+                  key={row.shipmentId}
+                  className={`rounded-md border px-3 py-2 ${
+                    step === playbackCursor
+                      ? "border-violet-300 bg-violet-50"
+                      : "border-zinc-200"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs text-zinc-500">Step {step}</p>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                        fitScore >= 85
+                          ? "bg-emerald-100 text-emerald-700"
+                          : fitScore >= 60
+                            ? "bg-amber-100 text-amber-700"
+                            : "bg-rose-100 text-rose-700"
+                      }`}
+                    >
+                      Fit {fitScore}
+                    </span>
+                  </div>
+                  <p className="text-sm font-medium text-zinc-900">{row.shipmentNo}</p>
+                  <p className="text-xs text-zinc-600">
+                    {row.orderNumber} · {rowVolume.toFixed(3)} cbm · {rowWeight.toFixed(0)} kg ·{" "}
+                    {row.remainingUnits.toFixed(1)} units
+                  </p>
+                </li>
+              ))
+            )}
+          </ol>
+        </article>
       </section>
 
       <div className="grid gap-6 lg:grid-cols-2">
