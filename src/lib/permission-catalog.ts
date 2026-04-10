@@ -71,6 +71,18 @@ export const GLOBAL_PERMISSION_CATALOG = [
     description:
       "Open Reports and export CSV summaries. Individual reports may also require other permissions (for example org.orders → view or org.suppliers → view).",
   },
+  {
+    resource: "org.wms",
+    action: "view",
+    label: "View warehouse operations",
+    description: "Open WMS dashboard, tasks, bins, and stock balances.",
+  },
+  {
+    resource: "org.wms",
+    action: "edit",
+    label: "Manage warehouse operations",
+    description: "Create and complete warehouse tasks, bins, and stock movements.",
+  },
 ] as const;
 
 export type GlobalPermissionRow = (typeof GLOBAL_PERMISSION_CATALOG)[number];

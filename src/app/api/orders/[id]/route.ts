@@ -112,6 +112,20 @@ export async function GET(
         orderBy: { createdAt: "desc" },
         include: {
           createdBy: { select: { name: true, email: true } },
+          booking: {
+            include: {
+              forwarderSupplier: { select: { id: true, name: true, code: true } },
+              forwarderOffice: { select: { id: true, name: true } },
+              forwarderContact: {
+                select: { id: true, name: true, email: true, phone: true },
+              },
+            },
+          },
+          milestones: {
+            orderBy: { createdAt: "desc" },
+            take: 20,
+            include: { updatedBy: { select: { name: true, email: true } } },
+          },
           items: {
             include: { orderItem: { select: { id: true, lineNo: true, description: true } } },
             orderBy: { orderItem: { lineNo: "asc" } },
@@ -159,6 +173,8 @@ export async function GET(
   const actorId = await getActorUserId();
   const isSupplierPortalUser =
     actorId !== null && (await userHasRoleNamed(actorId, "Supplier portal"));
+  const isForwarderUser =
+    actorId !== null && (await userHasRoleNamed(actorId, "Forwarder"));
   if (isSupplierPortalUser && !order.workflow.supplierPortalOn) {
     return NextResponse.json({ error: "Order not found" }, { status: 404 });
   }
@@ -196,6 +212,8 @@ export async function GET(
     (await userHasGlobalGrant(actorId, "org.orders", "edit"));
   const canSeeInternalFields = canSeeInternalMessages;
   const canReceiveShipments = canSeeInternalMessages && !isSupplierPortalUser;
+  const canManageBooking = canSeeInternalMessages && !isSupplierPortalUser;
+  const canUpdateMilestones = canManageBooking || isForwarderUser;
   const canCreateShipments =
     isSupplierPortalUser &&
     order.workflow.supplierPortalOn &&
@@ -271,6 +289,28 @@ export async function GET(
     take: 200,
     include: {
       author: { select: { name: true, email: true } },
+    },
+  });
+  const forwarders = await prisma.supplier.findMany({
+    where: {
+      tenantId: tenant.id,
+      isActive: true,
+      productSuppliers: { none: {} },
+    },
+    orderBy: { name: "asc" },
+    select: {
+      id: true,
+      code: true,
+      name: true,
+      offices: {
+        where: { isActive: true },
+        orderBy: { name: "asc" },
+        select: { id: true, name: true },
+      },
+      contacts: {
+        orderBy: [{ isPrimary: "desc" }, { name: "asc" }],
+        select: { id: true, name: true, email: true, phone: true },
+      },
     },
   });
 
@@ -355,6 +395,33 @@ export async function GET(
       estimatedWeightKg: shipment.estimatedWeightKg?.toString() ?? null,
       notes: shipment.notes,
       createdBy: shipment.createdBy,
+      booking: shipment.booking
+        ? {
+            status: shipment.booking.status,
+            bookingNo: shipment.booking.bookingNo,
+            serviceLevel: shipment.booking.serviceLevel,
+            mode: shipment.booking.mode,
+            originCode: shipment.booking.originCode,
+            destinationCode: shipment.booking.destinationCode,
+            etd: shipment.booking.etd?.toISOString() ?? null,
+            eta: shipment.booking.eta?.toISOString() ?? null,
+            latestEta: shipment.booking.latestEta?.toISOString() ?? null,
+            notes: shipment.booking.notes,
+            forwarderSupplier: shipment.booking.forwarderSupplier,
+            forwarderOffice: shipment.booking.forwarderOffice,
+            forwarderContact: shipment.booking.forwarderContact,
+          }
+        : null,
+      milestones: shipment.milestones.map((m) => ({
+        id: m.id,
+        code: m.code,
+        source: m.source,
+        plannedAt: m.plannedAt?.toISOString() ?? null,
+        actualAt: m.actualAt?.toISOString() ?? null,
+        note: m.note,
+        createdAt: m.createdAt.toISOString(),
+        updatedBy: m.updatedBy,
+      })),
       items: shipment.items.map((item) => ({
         id: item.id,
         orderItemId: item.orderItemId,
@@ -413,7 +480,11 @@ export async function GET(
     shipmentCapabilities: {
       canCreate: canCreateShipments,
       canReceive: canReceiveShipments,
+      canValidate: canManageBooking,
+      canBook: canManageBooking,
+      canUpdateMilestones,
     },
+    forwarders,
   });
 }
 

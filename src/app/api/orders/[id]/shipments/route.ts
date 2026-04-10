@@ -133,30 +133,42 @@ export async function POST(
     );
   }
 
-  const shipment = await prisma.shipment.create({
-    data: {
-      orderId: order.id,
-      shipmentNo: input.shipmentNo?.trim() || null,
-      shippedAt,
-      carrier: input.carrier?.trim() || null,
-      trackingNo: input.trackingNo?.trim() || null,
-      transportMode: input.transportMode ?? null,
-      estimatedVolumeCbm: volume != null ? volume.toString() : null,
-      estimatedWeightKg: weight != null ? weight.toString() : null,
-      notes: input.notes?.trim() || null,
-      createdById: actorId,
-      items: {
-        create: input.lines.map((line) => ({
-          orderItemId: line.orderItemId,
-          quantityShipped: line.quantityShipped,
-          plannedShipDate:
-            line.plannedShipDate && line.plannedShipDate.trim()
-              ? new Date(`${line.plannedShipDate.trim()}T12:00:00.000Z`)
-              : null,
-        })),
+  const shipment = await prisma.$transaction(async (tx) => {
+    const created = await tx.shipment.create({
+      data: {
+        orderId: order.id,
+        shipmentNo: input.shipmentNo?.trim() || null,
+        shippedAt,
+        carrier: input.carrier?.trim() || null,
+        trackingNo: input.trackingNo?.trim() || null,
+        transportMode: input.transportMode ?? null,
+        estimatedVolumeCbm: volume != null ? volume.toString() : null,
+        estimatedWeightKg: weight != null ? weight.toString() : null,
+        notes: input.notes?.trim() || null,
+        createdById: actorId,
+        items: {
+          create: input.lines.map((line) => ({
+            orderItemId: line.orderItemId,
+            quantityShipped: line.quantityShipped,
+            plannedShipDate:
+              line.plannedShipDate && line.plannedShipDate.trim()
+                ? new Date(`${line.plannedShipDate.trim()}T12:00:00.000Z`)
+                : null,
+          })),
+        },
       },
-    },
-    select: { id: true },
+      select: { id: true },
+    });
+    await tx.shipmentMilestone.create({
+      data: {
+        shipmentId: created.id,
+        code: "ASN_SUBMITTED",
+        source: "SUPPLIER",
+        actualAt: new Date(),
+        updatedById: actorId,
+      },
+    });
+    return created;
   });
 
   return NextResponse.json({ ok: true, shipmentId: shipment.id });

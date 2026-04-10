@@ -7,6 +7,7 @@ export type CommandPaletteGrants = {
   orders: boolean;
   reports: boolean;
   consolidation: boolean;
+  wms: boolean;
   suppliers: boolean;
   products: boolean;
   settings: boolean;
@@ -107,6 +108,15 @@ export function CommandPalette({ grants }: { grants: CommandPaletteGrants }) {
         label: "Consolidation planner",
         searchText: "load cfs container",
         action: go("/consolidation"),
+      });
+    }
+
+    if (grants.wms) {
+      list.push({
+        id: "wms",
+        label: "Warehouse operations (WMS)",
+        searchText: "warehouse wms stock bins putaway pick",
+        action: go("/wms"),
       });
     }
 

@@ -23,6 +23,10 @@ model Tenant {
   supplierContacts  SupplierContact[]
   orders            PurchaseOrder[]
   warehouses        Warehouse[]
+  warehouseBins     WarehouseBin[]
+  inventoryBalances InventoryBalance[]
+  inventoryMovements InventoryMovement[]
+  wmsTasks          WmsTask[]
   loadPlans         LoadPlan[]
   userPreferences   UserPreference[]
   workflows         Workflow[]
@@ -45,6 +49,12 @@ model User {
   orderTransitionLogs OrderTransitionLog[]
   splitProposals      SplitProposal[]
   shipmentsCreated    Shipment[]
+  shipmentBookingsCreated ShipmentBooking[] @relation("ShipmentBookingCreatedBy")
+  shipmentBookingsUpdated ShipmentBooking[] @relation("ShipmentBookingUpdatedBy")
+  shipmentMilestonesUpdated ShipmentMilestone[]
+  inventoryMovementsCreated InventoryMovement[]
+  wmsTasksCreated    WmsTask[] @relation("WmsTaskCreatedBy")
+  wmsTasksCompleted  WmsTask[] @relation("WmsTaskCompletedBy")
   loadPlansCreated    LoadPlan[]
   preferences         UserPreference[]
 
@@ -149,6 +159,7 @@ model Supplier {
   offices          SupplierOffice[]
   contacts         SupplierContact[]
   productSuppliers ProductSupplier[]
+  shipmentBookings ShipmentBooking[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -172,6 +183,7 @@ model SupplierContact {
 
   tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  shipmentBookings ShipmentBooking[]
 
   @@index([tenantId])
   @@index([supplierId])
@@ -231,6 +243,7 @@ model SupplierOffice {
   tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   supplier Supplier  @relation(fields: [supplierId], references: [id], onDelete: Cascade)
   products Product[]
+  shipmentBookings ShipmentBooking[]
 
   @@unique([supplierId, name])
   @@index([tenantId])
@@ -285,6 +298,9 @@ model Product {
 
   tenant         Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   orderItems     PurchaseOrderItem[]
+  inventoryBalances InventoryBalance[]
+  inventoryMovements InventoryMovement[]
+  wmsTasks WmsTask[]
   documents      ProductDocument[]
   productSuppliers ProductSupplier[]
 
@@ -449,6 +465,7 @@ model PurchaseOrder {
   splitProposal SplitProposal?       @relation("SplitProposalDraftOrders", fields: [splitProposalId], references: [id], onDelete: SetNull)
   items         PurchaseOrderItem[]
   shipments     Shipment[]
+  wmsTasks      WmsTask[]
   transitions   OrderTransitionLog[]
   chats         OrderChatMessage[]
   splitChildren PurchaseOrder[]      @relation("OrderSplitParent")
@@ -484,7 +501,34 @@ model PurchaseOrderItem {
 
 enum ShipmentStatus {
   SHIPPED
+  VALIDATED
+  BOOKED
+  IN_TRANSIT
+  DELIVERED
   RECEIVED
+}
+
+enum ShipmentBookingStatus {
+  DRAFT
+  CONFIRMED
+  CANCELLED
+}
+
+enum ShipmentMilestoneCode {
+  ASN_SUBMITTED
+  ASN_VALIDATED
+  BOOKING_CONFIRMED
+  DEPARTED
+  ARRIVED
+  DELIVERED
+  RECEIVED
+}
+
+enum ShipmentMilestoneSource {
+  SUPPLIER
+  INTERNAL
+  FORWARDER
+  SYSTEM
 }
 
 enum TransportMode {
@@ -515,6 +559,9 @@ model Shipment {
   createdBy User           @relation(fields: [createdById], references: [id], onDelete: Restrict)
   items     ShipmentItem[]
   loadPlanShipment LoadPlanShipment?
+  booking ShipmentBooking?
+  milestones ShipmentMilestone[]
+  wmsTasks WmsTask[]
 
   @@index([orderId, createdAt])
   @@index([status])
@@ -534,6 +581,56 @@ model ShipmentItem {
   @@index([shipmentId])
   @@index([orderItemId])
   @@unique([shipmentId, orderItemId])
+}
+
+model ShipmentBooking {
+  id                  String                @id @default(cuid())
+  shipmentId          String                @unique
+  status              ShipmentBookingStatus @default(DRAFT)
+  bookingNo           String?
+  serviceLevel        String?
+  forwarderSupplierId String?
+  forwarderOfficeId   String?
+  forwarderContactId  String?
+  mode                TransportMode?
+  originCode          String?
+  destinationCode     String?
+  etd                 DateTime?
+  eta                 DateTime?
+  latestEta           DateTime?
+  notes               String?
+  createdById         String
+  updatedById         String
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+
+  shipment        Shipment        @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  forwarderSupplier Supplier?     @relation(fields: [forwarderSupplierId], references: [id], onDelete: SetNull)
+  forwarderOffice SupplierOffice? @relation(fields: [forwarderOfficeId], references: [id], onDelete: SetNull)
+  forwarderContact SupplierContact? @relation(fields: [forwarderContactId], references: [id], onDelete: SetNull)
+  createdBy       User            @relation("ShipmentBookingCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy       User            @relation("ShipmentBookingUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+
+  @@index([status])
+  @@index([forwarderSupplierId])
+}
+
+model ShipmentMilestone {
+  id          String                  @id @default(cuid())
+  shipmentId  String
+  code        ShipmentMilestoneCode
+  source      ShipmentMilestoneSource @default(INTERNAL)
+  plannedAt   DateTime?
+  actualAt    DateTime?
+  note        String?
+  updatedById String
+  createdAt   DateTime                @default(now())
+
+  shipment  Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  updatedBy User     @relation(fields: [updatedById], references: [id], onDelete: Restrict)
+
+  @@index([shipmentId, createdAt])
+  @@index([code])
 }
 
 enum WarehouseType {
@@ -557,9 +654,129 @@ model Warehouse {
 
   tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   loadPlans LoadPlan[]
+  bins      WarehouseBin[]
+  inventoryBalances InventoryBalance[]
+  inventoryMovements InventoryMovement[]
+  wmsTasks  WmsTask[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
+}
+
+model WarehouseBin {
+  id          String   @id @default(cuid())
+  tenantId    String
+  warehouseId String
+  code        String
+  name        String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  warehouse Warehouse  @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  inventoryBalances InventoryBalance[]
+  inventoryMovements InventoryMovement[]
+  wmsTasks WmsTask[]
+
+  @@unique([warehouseId, code])
+  @@index([tenantId, warehouseId])
+}
+
+enum InventoryMovementType {
+  RECEIPT
+  PUTAWAY
+  PICK
+  ADJUSTMENT
+  SHIPMENT
+}
+
+model InventoryBalance {
+  id          String   @id @default(cuid())
+  tenantId    String
+  warehouseId String
+  binId       String
+  productId   String
+  onHandQty   Decimal  @default(0) @db.Decimal(14, 3)
+  allocatedQty Decimal @default(0) @db.Decimal(14, 3)
+  updatedAt   DateTime @updatedAt
+
+  tenant    Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  warehouse Warehouse   @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  bin       WarehouseBin @relation(fields: [binId], references: [id], onDelete: Cascade)
+  product   Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([warehouseId, binId, productId])
+  @@index([tenantId, warehouseId])
+}
+
+model InventoryMovement {
+  id             String               @id @default(cuid())
+  tenantId       String
+  warehouseId    String
+  binId          String?
+  productId      String
+  movementType   InventoryMovementType
+  quantity       Decimal              @db.Decimal(14, 3)
+  referenceType  String?
+  referenceId    String?
+  note           String?
+  createdById    String
+  createdAt      DateTime             @default(now())
+
+  tenant    Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  warehouse Warehouse     @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  bin       WarehouseBin? @relation(fields: [binId], references: [id], onDelete: SetNull)
+  product   Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdBy User          @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, warehouseId, createdAt])
+  @@index([referenceType, referenceId])
+}
+
+enum WmsTaskType {
+  PUTAWAY
+  PICK
+  CYCLE_COUNT
+}
+
+enum WmsTaskStatus {
+  OPEN
+  DONE
+  CANCELLED
+}
+
+model WmsTask {
+  id            String       @id @default(cuid())
+  tenantId      String
+  warehouseId   String
+  taskType      WmsTaskType
+  status        WmsTaskStatus @default(OPEN)
+  shipmentId    String?
+  orderId       String?
+  productId     String?
+  binId         String?
+  referenceType String?
+  referenceId   String?
+  quantity      Decimal      @default(0) @db.Decimal(14, 3)
+  note          String?
+  createdById   String
+  completedById String?
+  completedAt   DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  warehouse   Warehouse    @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  shipment    Shipment?    @relation(fields: [shipmentId], references: [id], onDelete: SetNull)
+  order       PurchaseOrder? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  product     Product?     @relation(fields: [productId], references: [id], onDelete: SetNull)
+  bin         WarehouseBin? @relation(fields: [binId], references: [id], onDelete: SetNull)
+  createdBy   User         @relation("WmsTaskCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  completedBy User?        @relation("WmsTaskCompletedBy", fields: [completedById], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, warehouseId, status, taskType])
+  @@index([referenceType, referenceId])
 }
 
 enum LoadPlanStatus {

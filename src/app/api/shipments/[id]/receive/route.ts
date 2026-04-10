@@ -84,9 +84,19 @@ export async function POST(
       (row) => Number(row.quantityReceived) >= Number(row.quantityShipped),
     );
     if (fullyReceived) {
+      const now = new Date();
       await tx.shipment.update({
         where: { id: shipment.id },
-        data: { status: "RECEIVED", receivedAt: new Date() },
+        data: { status: "RECEIVED", receivedAt: now },
+      });
+      await tx.shipmentMilestone.create({
+        data: {
+          shipmentId: shipment.id,
+          code: "RECEIVED",
+          source: "INTERNAL",
+          actualAt: now,
+          updatedById: actorId,
+        },
       });
     }
   });

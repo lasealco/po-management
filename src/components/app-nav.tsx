@@ -7,6 +7,7 @@ const links = [
   { href: "/", key: "orders" as const, label: "Orders" },
   { href: "/reports", key: "reports" as const, label: "Reports" },
   { href: "/consolidation", key: "consolidation" as const, label: "Consolidation" },
+  { href: "/wms", key: "wms" as const, label: "WMS" },
   { href: "/products", key: "products" as const, label: "Products" },
   { href: "/settings", key: "settings" as const, label: "Settings" },
   { href: "/suppliers", key: "suppliers" as const, label: "Suppliers" },
@@ -16,6 +17,7 @@ export type AppNavLinkVisibility = {
   orders: boolean;
   reports: boolean;
   consolidation: boolean;
+  wms: boolean;
   products: boolean;
   settings: boolean;
   suppliers: boolean;

@@ -74,7 +74,13 @@ type OrderDetailResponse = {
   shipments: Array<{
     id: string;
     shipmentNo: string | null;
-    status: "SHIPPED" | "RECEIVED";
+    status:
+      | "SHIPPED"
+      | "VALIDATED"
+      | "BOOKED"
+      | "IN_TRANSIT"
+      | "DELIVERED"
+      | "RECEIVED";
     shippedAt: string;
     receivedAt: string | null;
     carrier: string | null;
@@ -84,6 +90,43 @@ type OrderDetailResponse = {
     estimatedWeightKg: string | null;
     notes: string | null;
     createdBy: { name: string; email: string };
+    booking: null | {
+      status: "DRAFT" | "CONFIRMED" | "CANCELLED";
+      bookingNo: string | null;
+      serviceLevel: string | null;
+      mode: "OCEAN" | "AIR" | "ROAD" | "RAIL" | null;
+      originCode: string | null;
+      destinationCode: string | null;
+      etd: string | null;
+      eta: string | null;
+      latestEta: string | null;
+      notes: string | null;
+      forwarderSupplier: { id: string; name: string; code: string | null } | null;
+      forwarderOffice: { id: string; name: string } | null;
+      forwarderContact: {
+        id: string;
+        name: string;
+        email: string | null;
+        phone: string | null;
+      } | null;
+    };
+    milestones: Array<{
+      id: string;
+      code:
+        | "ASN_SUBMITTED"
+        | "ASN_VALIDATED"
+        | "BOOKING_CONFIRMED"
+        | "DEPARTED"
+        | "ARRIVED"
+        | "DELIVERED"
+        | "RECEIVED";
+      source: "SUPPLIER" | "INTERNAL" | "FORWARDER" | "SYSTEM";
+      plannedAt: string | null;
+      actualAt: string | null;
+      note: string | null;
+      createdAt: string;
+      updatedBy: { name: string; email: string };
+    }>;
     items: Array<{
       id: string;
       orderItemId: string;
@@ -139,7 +182,17 @@ type OrderDetailResponse = {
   shipmentCapabilities: {
     canCreate: boolean;
     canReceive: boolean;
+    canValidate: boolean;
+    canBook: boolean;
+    canUpdateMilestones: boolean;
   };
+  forwarders: Array<{
+    id: string;
+    code: string | null;
+    name: string;
+    offices: Array<{ id: string; name: string }>;
+    contacts: Array<{ id: string; name: string; email: string | null; phone: string | null }>;
+  }>;
 };
 
 const todayIsoDate = () => new Date().toISOString().slice(0, 10);
@@ -148,6 +201,21 @@ function deliveryDateInputValue(iso: string | null) {
   if (!iso) return "";
   return iso.slice(0, 10);
 }
+
+type BookingDraft = {
+  bookingNo: string;
+  serviceLevel: string;
+  forwarderSupplierId: string;
+  forwarderOfficeId: string;
+  forwarderContactId: string;
+  transportMode: "OCEAN" | "AIR" | "ROAD" | "RAIL" | "";
+  originCode: string;
+  destinationCode: string;
+  etd: string;
+  eta: string;
+  latestEta: string;
+  notes: string;
+};
 
 export function OrderDetail({
   orderId,
@@ -205,6 +273,9 @@ export function OrderDetail({
   const [asnQtyByItemId, setAsnQtyByItemId] = useState<Record<string, string>>({});
   const [receiveQtyByShipmentItemId, setReceiveQtyByShipmentItemId] = useState<
     Record<string, string>
+  >({});
+  const [bookingDraftByShipmentId, setBookingDraftByShipmentId] = useState<
+    Record<string, BookingDraft>
   >({});
 
   const searchParams = useSearchParams();
@@ -286,6 +357,27 @@ export function OrderDetail({
       const next: Record<string, string> = { ...prev };
       for (const item of data.items) {
         if (!(item.id in next)) next[item.id] = "";
+      }
+      return next;
+    });
+    setBookingDraftByShipmentId((prev) => {
+      const next = { ...prev };
+      for (const shipment of data.shipments) {
+        if (next[shipment.id]) continue;
+        next[shipment.id] = {
+          bookingNo: shipment.booking?.bookingNo ?? "",
+          serviceLevel: shipment.booking?.serviceLevel ?? "",
+          forwarderSupplierId: shipment.booking?.forwarderSupplier?.id ?? "",
+          forwarderOfficeId: shipment.booking?.forwarderOffice?.id ?? "",
+          forwarderContactId: shipment.booking?.forwarderContact?.id ?? "",
+          transportMode: shipment.booking?.mode ?? shipment.transportMode ?? "",
+          originCode: shipment.booking?.originCode ?? "",
+          destinationCode: shipment.booking?.destinationCode ?? "",
+          etd: deliveryDateInputValue(shipment.booking?.etd ?? null),
+          eta: deliveryDateInputValue(shipment.booking?.eta ?? null),
+          latestEta: deliveryDateInputValue(shipment.booking?.latestEta ?? null),
+          notes: shipment.booking?.notes ?? "",
+        };
       }
       return next;
     });
@@ -570,6 +662,104 @@ export function OrderDetail({
         for (const row of lines) delete next[row.shipmentItemId];
         return next;
       });
+    }
+    await load();
+    setBusy(false);
+  }
+
+  function patchBookingDraft(shipmentId: string, patch: Partial<BookingDraft>) {
+    const fallback: BookingDraft = {
+      bookingNo: "",
+      serviceLevel: "",
+      forwarderSupplierId: "",
+      forwarderOfficeId: "",
+      forwarderContactId: "",
+      transportMode: "",
+      originCode: "",
+      destinationCode: "",
+      etd: "",
+      eta: "",
+      latestEta: "",
+      notes: "",
+    };
+    setBookingDraftByShipmentId((prev) => ({
+      ...prev,
+      [shipmentId]: {
+        ...(prev[shipmentId] ?? fallback),
+        ...patch,
+      },
+    }));
+  }
+
+  async function validateShipment(shipmentId: string) {
+    setBusy(true);
+    setError(null);
+    const res = await fetch(`/api/shipments/${shipmentId}/validate`, {
+      method: "POST",
+    });
+    const payload = (await res.json()) as { error?: string };
+    if (!res.ok) {
+      setError(payload.error ?? "Could not validate ASN.");
+      setBusy(false);
+      return;
+    }
+    await load();
+    setBusy(false);
+  }
+
+  async function saveBooking(shipmentId: string, mode: "draft" | "confirm" | "cancel") {
+    const draft = bookingDraftByShipmentId[shipmentId];
+    if (!draft) return;
+    setBusy(true);
+    setError(null);
+    const res = await fetch(`/api/shipments/${shipmentId}/booking`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        mode,
+        bookingNo: draft.bookingNo || null,
+        serviceLevel: draft.serviceLevel || null,
+        forwarderSupplierId: draft.forwarderSupplierId || null,
+        forwarderOfficeId: draft.forwarderOfficeId || null,
+        forwarderContactId: draft.forwarderContactId || null,
+        transportMode: draft.transportMode || null,
+        originCode: draft.originCode || null,
+        destinationCode: draft.destinationCode || null,
+        etd: draft.etd || null,
+        eta: draft.eta || null,
+        latestEta: draft.latestEta || null,
+        notes: draft.notes || null,
+      }),
+    });
+    const payload = (await res.json()) as { error?: string };
+    if (!res.ok) {
+      setError(payload.error ?? "Could not save booking.");
+      setBusy(false);
+      return;
+    }
+    await load();
+    setBusy(false);
+  }
+
+  async function postMilestone(
+    shipmentId: string,
+    code: "DEPARTED" | "ARRIVED" | "DELIVERED",
+  ) {
+    setBusy(true);
+    setError(null);
+    const res = await fetch(`/api/shipments/${shipmentId}/milestones`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        code,
+        actualAt: todayIsoDate(),
+      }),
+    });
+    const payload = (await res.json()) as { error?: string };
+    if (!res.ok) {
+      setError(payload.error ?? "Could not post milestone.");
+      setBusy(false);
+      return;
     }
     await load();
     setBusy(false);
@@ -1044,6 +1234,10 @@ export function OrderDetail({
                   sum + (Number(row.quantityShipped) - Number(row.quantityReceived)),
                 0,
               );
+              const bookingDraft = bookingDraftByShipmentId[shipment.id];
+              const selectedForwarder = data.forwarders.find(
+                (f) => f.id === bookingDraft?.forwarderSupplierId,
+              );
               return (
                 <li
                   key={shipment.id}
@@ -1091,6 +1285,224 @@ export function OrderDetail({
                   </ul>
                   {shipment.notes ? (
                     <p className="mt-2 text-xs text-zinc-700">{shipment.notes}</p>
+                  ) : null}
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {data.shipmentCapabilities.canValidate && shipment.status === "SHIPPED" ? (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void validateShipment(shipment.id)}
+                        className="rounded-md border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-800 disabled:opacity-50"
+                      >
+                        Validate ASN
+                      </button>
+                    ) : null}
+                    {data.shipmentCapabilities.canUpdateMilestones ? (
+                      <>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => void postMilestone(shipment.id, "DEPARTED")}
+                          className="rounded-md border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-800 disabled:opacity-50"
+                        >
+                          Mark departed
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => void postMilestone(shipment.id, "ARRIVED")}
+                          className="rounded-md border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-800 disabled:opacity-50"
+                        >
+                          Mark arrived
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => void postMilestone(shipment.id, "DELIVERED")}
+                          className="rounded-md border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-800 disabled:opacity-50"
+                        >
+                          Mark delivered
+                        </button>
+                      </>
+                    ) : null}
+                  </div>
+                  {shipment.milestones.length > 0 ? (
+                    <ul className="mt-2 space-y-1 text-xs text-zinc-700">
+                      {shipment.milestones.map((m) => (
+                        <li key={m.id}>
+                          {m.code} · {m.source}
+                          {m.actualAt
+                            ? ` · ${new Date(m.actualAt).toLocaleDateString()}`
+                            : m.plannedAt
+                              ? ` · planned ${new Date(m.plannedAt).toLocaleDateString()}`
+                              : ""}
+                          {m.note ? ` · ${m.note}` : ""}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  {data.shipmentCapabilities.canBook && bookingDraft ? (
+                    <div className="mt-3 rounded-md border border-zinc-200 bg-white p-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-700">
+                        Forwarder booking
+                      </p>
+                      <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                        <input
+                          value={bookingDraft.bookingNo}
+                          onChange={(e) =>
+                            patchBookingDraft(shipment.id, { bookingNo: e.target.value })
+                          }
+                          placeholder="Booking reference"
+                          className="rounded border border-zinc-300 px-2 py-1 text-xs"
+                        />
+                        <input
+                          value={bookingDraft.serviceLevel}
+                          onChange={(e) =>
+                            patchBookingDraft(shipment.id, { serviceLevel: e.target.value })
+                          }
+                          placeholder="Service level"
+                          className="rounded border border-zinc-300 px-2 py-1 text-xs"
+                        />
+                        <select
+                          value={bookingDraft.forwarderSupplierId}
+                          onChange={(e) =>
+                            patchBookingDraft(shipment.id, {
+                              forwarderSupplierId: e.target.value,
+                              forwarderOfficeId: "",
+                              forwarderContactId: "",
+                            })
+                          }
+                          className="rounded border border-zinc-300 px-2 py-1 text-xs"
+                        >
+                          <option value="">Select forwarder</option>
+                          {data.forwarders.map((f) => (
+                            <option key={f.id} value={f.id}>
+                              {f.code ? `${f.code} · ` : ""}
+                              {f.name}
+                            </option>
+                          ))}
+                        </select>
+                        <select
+                          value={bookingDraft.forwarderOfficeId}
+                          onChange={(e) =>
+                            patchBookingDraft(shipment.id, { forwarderOfficeId: e.target.value })
+                          }
+                          className="rounded border border-zinc-300 px-2 py-1 text-xs"
+                        >
+                          <option value="">Forwarder office</option>
+                          {(selectedForwarder?.offices ?? []).map((office) => (
+                            <option key={office.id} value={office.id}>
+                              {office.name}
+                            </option>
+                          ))}
+                        </select>
+                        <select
+                          value={bookingDraft.forwarderContactId}
+                          onChange={(e) =>
+                            patchBookingDraft(shipment.id, { forwarderContactId: e.target.value })
+                          }
+                          className="rounded border border-zinc-300 px-2 py-1 text-xs"
+                        >
+                          <option value="">Forwarder contact</option>
+                          {(selectedForwarder?.contacts ?? []).map((contact) => (
+                            <option key={contact.id} value={contact.id}>
+                              {contact.name}
+                              {contact.email ? ` · ${contact.email}` : ""}
+                            </option>
+                          ))}
+                        </select>
+                        <select
+                          value={bookingDraft.transportMode}
+                          onChange={(e) =>
+                            patchBookingDraft(shipment.id, {
+                              transportMode: e.target.value as BookingDraft["transportMode"],
+                            })
+                          }
+                          className="rounded border border-zinc-300 px-2 py-1 text-xs"
+                        >
+                          <option value="">Transport mode</option>
+                          <option value="OCEAN">Ocean</option>
+                          <option value="AIR">Air</option>
+                          <option value="ROAD">Road</option>
+                          <option value="RAIL">Rail</option>
+                        </select>
+                        <input
+                          value={bookingDraft.originCode}
+                          onChange={(e) =>
+                            patchBookingDraft(shipment.id, { originCode: e.target.value })
+                          }
+                          placeholder="Origin code"
+                          className="rounded border border-zinc-300 px-2 py-1 text-xs"
+                        />
+                        <input
+                          value={bookingDraft.destinationCode}
+                          onChange={(e) =>
+                            patchBookingDraft(shipment.id, { destinationCode: e.target.value })
+                          }
+                          placeholder="Destination code"
+                          className="rounded border border-zinc-300 px-2 py-1 text-xs"
+                        />
+                        <input
+                          type="date"
+                          value={bookingDraft.etd}
+                          onChange={(e) =>
+                            patchBookingDraft(shipment.id, { etd: e.target.value })
+                          }
+                          className="rounded border border-zinc-300 px-2 py-1 text-xs"
+                        />
+                        <input
+                          type="date"
+                          value={bookingDraft.eta}
+                          onChange={(e) =>
+                            patchBookingDraft(shipment.id, { eta: e.target.value })
+                          }
+                          className="rounded border border-zinc-300 px-2 py-1 text-xs"
+                        />
+                        <input
+                          type="date"
+                          value={bookingDraft.latestEta}
+                          onChange={(e) =>
+                            patchBookingDraft(shipment.id, { latestEta: e.target.value })
+                          }
+                          className="rounded border border-zinc-300 px-2 py-1 text-xs"
+                        />
+                        <textarea
+                          value={bookingDraft.notes}
+                          onChange={(e) =>
+                            patchBookingDraft(shipment.id, { notes: e.target.value })
+                          }
+                          placeholder="Booking notes"
+                          className="sm:col-span-3 rounded border border-zinc-300 px-2 py-1 text-xs"
+                          rows={2}
+                        />
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => void saveBooking(shipment.id, "draft")}
+                          className="rounded-md border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-800 disabled:opacity-50"
+                        >
+                          Save draft booking
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => void saveBooking(shipment.id, "confirm")}
+                          className="rounded-md border border-emerald-700 bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                        >
+                          Confirm booking
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => void saveBooking(shipment.id, "cancel")}
+                          className="rounded-md border border-rose-300 px-3 py-1.5 text-xs font-medium text-rose-700 disabled:opacity-50"
+                        >
+                          Cancel booking
+                        </button>
+                      </div>
+                    </div>
                   ) : null}
                   {data.shipmentCapabilities.canReceive && remaining > 0 ? (
                     <div className="mt-3 space-y-2">

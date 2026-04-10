@@ -1,0 +1,130 @@
+import { NextResponse } from "next/server";
+import { getActorUserId, requireApiGrant, userHasRoleNamed } from "@/lib/authz";
+import { getDemoTenant } from "@/lib/demo-tenant";
+import { prisma } from "@/lib/prisma";
+
+type MilestoneBody = {
+  code?:
+    | "DEPARTED"
+    | "ARRIVED"
+    | "DELIVERED"
+    | "RECEIVED"
+    | "ASN_VALIDATED"
+    | "BOOKING_CONFIRMED";
+  plannedAt?: string | null;
+  actualAt?: string | null;
+  note?: string | null;
+};
+
+function parseDate(v: string | null | undefined) {
+  if (!v || !v.trim()) return null;
+  const d = new Date(`${v.trim()}T12:00:00.000Z`);
+  if (Number.isNaN(d.getTime())) return "invalid";
+  return d;
+}
+
+export async function POST(
+  request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  const gate = await requireApiGrant("org.orders", "transition");
+  if (gate) return gate;
+
+  const actorId = await getActorUserId();
+  if (!actorId) {
+    return NextResponse.json({ error: "No active demo actor." }, { status: 403 });
+  }
+  const isSupplier = await userHasRoleNamed(actorId, "Supplier portal");
+  if (isSupplier) {
+    return NextResponse.json(
+      { error: "Supplier users cannot post logistics milestones." },
+      { status: 403 },
+    );
+  }
+  const isForwarder = await userHasRoleNamed(actorId, "Forwarder");
+
+  const tenant = await getDemoTenant();
+  if (!tenant) {
+    return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  }
+
+  const { id: shipmentId } = await context.params;
+  const shipment = await prisma.shipment.findFirst({
+    where: { id: shipmentId, order: { tenantId: tenant.id } },
+    select: { id: true, status: true },
+  });
+  if (!shipment) {
+    return NextResponse.json({ error: "Shipment not found." }, { status: 404 });
+  }
+
+  let body: unknown = {};
+  try {
+    body = await request.json();
+  } catch {
+    body = {};
+  }
+  const input = (body && typeof body === "object" ? body : {}) as MilestoneBody;
+  const code = input.code;
+  if (!code) {
+    return NextResponse.json({ error: "Milestone code is required." }, { status: 400 });
+  }
+
+  const allowedForForwarder = new Set(["DEPARTED", "ARRIVED", "DELIVERED"]);
+  if (isForwarder && !allowedForForwarder.has(code)) {
+    return NextResponse.json(
+      { error: "Forwarder users can only post departed/arrived/delivered milestones." },
+      { status: 403 },
+    );
+  }
+
+  const plannedAt = parseDate(input.plannedAt);
+  const actualAt = parseDate(input.actualAt);
+  if (plannedAt === "invalid" || actualAt === "invalid") {
+    return NextResponse.json({ error: "Invalid milestone date." }, { status: 400 });
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.shipmentMilestone.create({
+      data: {
+        shipmentId: shipment.id,
+        code,
+        source: isForwarder ? "FORWARDER" : "INTERNAL",
+        plannedAt: plannedAt || null,
+        actualAt: actualAt || null,
+        note: input.note?.trim() || null,
+        updatedById: actorId,
+      },
+    });
+
+    if (actualAt) {
+      if (code === "DEPARTED" || code === "ARRIVED") {
+        await tx.shipment.update({
+          where: { id: shipment.id },
+          data: { status: "IN_TRANSIT" },
+        });
+      } else if (code === "DELIVERED") {
+        await tx.shipment.update({
+          where: { id: shipment.id },
+          data: { status: "DELIVERED" },
+        });
+      } else if (code === "RECEIVED") {
+        await tx.shipment.update({
+          where: { id: shipment.id },
+          data: { status: "RECEIVED", receivedAt: actualAt },
+        });
+      } else if (code === "ASN_VALIDATED") {
+        await tx.shipment.update({
+          where: { id: shipment.id },
+          data: { status: "VALIDATED" },
+        });
+      } else if (code === "BOOKING_CONFIRMED") {
+        await tx.shipment.update({
+          where: { id: shipment.id },
+          data: { status: "BOOKED" },
+        });
+      }
+    }
+  });
+
+  return NextResponse.json({ ok: true });
+}

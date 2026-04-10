@@ -144,6 +144,8 @@ async function seed() {
     ["org.suppliers", "view"],
     ["org.settings", "view"],
     ["org.reports", "view"],
+    ["org.wms", "view"],
+    ["org.wms", "edit"],
   ];
   const approverGrants = [
     ...buyerGrants,
