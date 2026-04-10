@@ -64,6 +64,15 @@ function categoryLabel(c: string) {
   return c;
 }
 
+function parseNumericValue(value: string | number | null | undefined): number | null {
+  if (value == null) return null;
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  const cleaned = value.replace(/[^0-9.-]/g, "");
+  if (!cleaned || cleaned === "-" || cleaned === "." || cleaned === "-.") return null;
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : null;
+}
+
 export function ReportsClient({
   initialList,
   blockedReports = [],
@@ -81,6 +90,32 @@ export function ReportsClient({
     () => reports.find((r) => r.id === selectedId) ?? null,
     [reports, selectedId],
   );
+  const chartModel = useMemo(() => {
+    if (!result || result.rows.length === 0) return null;
+    const numericColumn =
+      result.columns.find((c) => c.format === "number" || c.format === "currency") ?? null;
+    if (!numericColumn) return null;
+    const labelColumn =
+      result.columns.find((c) => c.key !== numericColumn.key && c.align !== "right") ??
+      result.columns[0];
+    const points = result.rows
+      .map((row) => {
+        const label = String(row[labelColumn.key] ?? "—");
+        const value = parseNumericValue(row[numericColumn.key]);
+        if (value == null) return null;
+        return { label, value };
+      })
+      .filter((p): p is { label: string; value: number } => p !== null)
+      .slice(0, 12);
+    if (points.length === 0) return null;
+    const max = Math.max(...points.map((p) => p.value), 1);
+    return {
+      points,
+      max,
+      label: labelColumn.label,
+      metric: numericColumn.label,
+    };
+  }, [result]);
 
   const run = useCallback(async () => {
     if (!selectedId) return;
@@ -187,6 +222,42 @@ export function ReportsClient({
               Download CSV
             </button>
           </div>
+          {chartModel ? (
+            <div className="border-b border-zinc-100 px-4 py-4">
+              <div className="mb-3 flex items-end justify-between gap-3">
+                <div>
+                  <h4 className="text-sm font-semibold text-zinc-900">Chart preview</h4>
+                  <p className="text-xs text-zinc-500">
+                    {chartModel.metric} by {chartModel.label} (top {chartModel.points.length})
+                  </p>
+                </div>
+                <p className="text-xs text-zinc-500">
+                  Max: {chartModel.max.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                </p>
+              </div>
+              <div className="space-y-2">
+                {chartModel.points.map((point) => {
+                  const widthPct = Math.max(3, (point.value / chartModel.max) * 100);
+                  return (
+                    <div key={`${point.label}-${point.value}`} className="grid grid-cols-[180px_1fr_90px] items-center gap-2">
+                      <p className="truncate text-xs text-zinc-600" title={point.label}>
+                        {point.label}
+                      </p>
+                      <div className="h-3 rounded-full bg-zinc-100">
+                        <div
+                          className="h-3 rounded-full bg-violet-500 transition-all duration-300"
+                          style={{ width: `${widthPct}%` }}
+                        />
+                      </div>
+                      <p className="text-right text-xs tabular-nums text-zinc-700">
+                        {point.value.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-zinc-200 text-sm">
               <thead className="bg-zinc-50">
