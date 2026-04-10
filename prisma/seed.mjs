@@ -9,6 +9,13 @@ import { scryptSync } from "node:crypto";
 config({ path: resolve(process.cwd(), ".env") });
 config({ path: resolve(process.cwd(), ".env.local"), override: true });
 
+if (!process.env.DATABASE_URL?.trim()) {
+  console.error(
+    "[db:seed] Missing DATABASE_URL. Add it to .env or .env.local, then run again.",
+  );
+  process.exit(1);
+}
+
 const prisma = new PrismaClient({
   adapter: new PrismaPg(
     new Pool({
@@ -18,6 +25,8 @@ const prisma = new PrismaClient({
 });
 
 async function seed() {
+  console.log("[db:seed] Starting (this can take ~1 minute on a remote database)…");
+
   const seedPasswordHash = (password, identitySalt) =>
     `${identitySalt.toLowerCase()}:${scryptSync(password, identitySalt.toLowerCase(), 64).toString("hex")}`;
   const tenant = await prisma.tenant.upsert({
@@ -1354,6 +1363,11 @@ async function seed() {
   await prisma.loadPlanShipment.deleteMany({
     where: { loadPlan: { tenantId: tenant.id }, loadPlanId: primaryDraftLoad.id },
   });
+
+  const userCount = await prisma.user.count({ where: { tenantId: tenant.id } });
+  console.log(
+    `[db:seed] Finished OK — tenant "${tenant.slug}", ${userCount} user(s). Login: buyer@demo-company.com / demo12345`,
+  );
 }
 
 seed()
