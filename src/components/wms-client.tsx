@@ -23,9 +23,20 @@ type WmsData = {
     product: { id: string; productCode: string | null; sku: string | null; name: string } | null;
     shipment: { id: string; shipmentNo: string | null; status: string } | null;
     order: { id: string; orderNumber: string } | null;
+    wave: { id: string; waveNo: string; status: string } | null;
     note: string | null;
     referenceType: string | null;
     referenceId: string | null;
+    createdAt: string;
+  }>;
+  waves: Array<{
+    id: string;
+    waveNo: string;
+    status: "OPEN" | "RELEASED" | "DONE" | "CANCELLED";
+    warehouse: { id: string; code: string | null; name: string };
+    taskCount: number;
+    openTaskCount: number;
+    totalQty: string;
     createdAt: string;
   }>;
   putawayCandidates: Array<{
@@ -289,6 +300,67 @@ export function WmsClient({ canEdit }: { canEdit: boolean }) {
       </section>
 
       <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
+        <h2 className="text-sm font-semibold text-zinc-900">Wave picking</h2>
+        <p className="mt-1 text-xs text-zinc-600">
+          Auto-build pick waves from open order demand and current available stock in selected
+          warehouse bins.
+        </p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={!canEdit || busy || !selectedWarehouseId}
+            onClick={() =>
+              void runAction({
+                action: "create_pick_wave",
+                warehouseId: selectedWarehouseId,
+              })
+            }
+            className="rounded border border-zinc-900 bg-zinc-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-40"
+          >
+            Create pick wave
+          </button>
+        </div>
+        <div className="mt-3 space-y-2 text-sm">
+          {data.waves.length === 0 ? (
+            <p className="text-zinc-500">No active waves.</p>
+          ) : (
+            data.waves.map((wave) => (
+              <div key={wave.id} className="flex flex-wrap items-center gap-2 rounded border border-zinc-200 p-2">
+                <span className="rounded bg-zinc-100 px-2 py-0.5 text-xs font-semibold text-zinc-800">
+                  {wave.waveNo}
+                </span>
+                <span className="text-zinc-700">{wave.status}</span>
+                <span className="text-zinc-500">{wave.warehouse.code || wave.warehouse.name}</span>
+                <span className="text-zinc-500">
+                  tasks {wave.taskCount} · open {wave.openTaskCount} · qty {wave.totalQty}
+                </span>
+                {canEdit && wave.status === "OPEN" ? (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void runAction({ action: "release_wave", waveId: wave.id })}
+                    className="ml-auto rounded border border-zinc-300 px-2 py-1 text-xs font-medium text-zinc-800 disabled:opacity-40"
+                  >
+                    Release
+                  </button>
+                ) : null}
+                {canEdit && (wave.status === "OPEN" || wave.status === "RELEASED") ? (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void runAction({ action: "complete_wave", waveId: wave.id })}
+                    className="rounded border border-emerald-700 bg-emerald-600 px-2 py-1 text-xs font-medium text-white disabled:opacity-40"
+                  >
+                    Complete wave
+                  </button>
+                ) : null}
+              </div>
+            ))
+          )}
+        </div>
+      </section>
+
+      <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
         <h2 className="mb-2 text-sm font-semibold text-zinc-900">Open tasks</h2>
         <div className="space-y-2 text-sm">
           {data.openTasks.length === 0 ? (
@@ -305,6 +377,7 @@ export function WmsClient({ canEdit }: { canEdit: boolean }) {
                 {t.bin ? <span className="text-zinc-500">Bin {t.bin.code}</span> : null}
                 {t.shipment ? <span className="text-zinc-500">Shipment {t.shipment.shipmentNo || t.shipment.id.slice(0, 6)}</span> : null}
                 {t.order ? <span className="text-zinc-500">Order {t.order.orderNumber}</span> : null}
+                {t.wave ? <span className="text-zinc-500">Wave {t.wave.waveNo}</span> : null}
                 {canEdit ? (
                   <button
                     type="button"

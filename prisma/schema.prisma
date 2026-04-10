@@ -27,6 +27,7 @@ model Tenant {
   inventoryBalances InventoryBalance[]
   inventoryMovements InventoryMovement[]
   wmsTasks          WmsTask[]
+  wmsWaves          WmsWave[]
   loadPlans         LoadPlan[]
   userPreferences   UserPreference[]
   workflows         Workflow[]
@@ -55,6 +56,7 @@ model User {
   inventoryMovementsCreated InventoryMovement[]
   wmsTasksCreated    WmsTask[] @relation("WmsTaskCreatedBy")
   wmsTasksCompleted  WmsTask[] @relation("WmsTaskCompletedBy")
+  wmsWavesCreated    WmsWave[]
   loadPlansCreated    LoadPlan[]
   preferences         UserPreference[]
 
@@ -658,6 +660,7 @@ model Warehouse {
   inventoryBalances InventoryBalance[]
   inventoryMovements InventoryMovement[]
   wmsTasks  WmsTask[]
+  wmsWaves  WmsWave[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -746,6 +749,35 @@ enum WmsTaskStatus {
   CANCELLED
 }
 
+enum WmsWaveStatus {
+  OPEN
+  RELEASED
+  DONE
+  CANCELLED
+}
+
+model WmsWave {
+  id          String        @id @default(cuid())
+  tenantId    String
+  warehouseId String
+  waveNo      String
+  status      WmsWaveStatus @default(OPEN)
+  note        String?
+  createdById String
+  releasedAt  DateTime?
+  completedAt DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  createdBy User      @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  tasks     WmsTask[]
+
+  @@unique([tenantId, waveNo])
+  @@index([tenantId, warehouseId, status])
+}
+
 model WmsTask {
   id            String       @id @default(cuid())
   tenantId      String
@@ -754,6 +786,7 @@ model WmsTask {
   status        WmsTaskStatus @default(OPEN)
   shipmentId    String?
   orderId       String?
+  waveId        String?
   productId     String?
   binId         String?
   referenceType String?
@@ -770,6 +803,7 @@ model WmsTask {
   warehouse   Warehouse    @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
   shipment    Shipment?    @relation(fields: [shipmentId], references: [id], onDelete: SetNull)
   order       PurchaseOrder? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  wave        WmsWave?     @relation(fields: [waveId], references: [id], onDelete: SetNull)
   product     Product?     @relation(fields: [productId], references: [id], onDelete: SetNull)
   bin         WarehouseBin? @relation(fields: [binId], references: [id], onDelete: SetNull)
   createdBy   User         @relation("WmsTaskCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
@@ -777,6 +811,7 @@ model WmsTask {
 
   @@index([tenantId, warehouseId, status, taskType])
   @@index([referenceType, referenceId])
+  @@index([waveId])
 }
 
 enum LoadPlanStatus {

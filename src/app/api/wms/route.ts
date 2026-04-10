@@ -13,6 +13,7 @@ type WmsBody = {
   orderItemId?: string;
   productId?: string;
   taskId?: string;
+  waveId?: string;
   binId?: string | null;
   quantity?: number;
   note?: string | null;
@@ -24,13 +25,27 @@ async function getTenant() {
   return tenant;
 }
 
+async function nextWaveNo(tenantId: string) {
+  const stamp = Date.now().toString().slice(-6);
+  let candidate = `WAVE-${stamp}`;
+  for (let i = 0; i < 8; i += 1) {
+    const exists = await prisma.wmsWave.findFirst({
+      where: { tenantId, waveNo: candidate },
+      select: { id: true },
+    });
+    if (!exists) return candidate;
+    candidate = `WAVE-${stamp}-${i + 1}`;
+  }
+  return `WAVE-${stamp}-${Math.floor(Math.random() * 1000)}`;
+}
+
 export async function GET() {
   const gate = await requireApiGrant("org.wms", "view");
   if (gate) return gate;
   const tenant = await getTenant();
   if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
 
-  const [warehouses, bins, balances, openTasks, shipmentItems, orderItems, movementRows] =
+  const [warehouses, bins, balances, openTasks, waves, shipmentItems, orderItems, movementRows] =
     await Promise.all([
       prisma.warehouse.findMany({
         where: { tenantId: tenant.id, isActive: true },
@@ -60,6 +75,18 @@ export async function GET() {
           product: { select: { id: true, productCode: true, sku: true, name: true } },
           shipment: { select: { id: true, shipmentNo: true, status: true } },
           order: { select: { id: true, orderNumber: true } },
+          wave: { select: { id: true, waveNo: true, status: true } },
+        },
+      }),
+      prisma.wmsWave.findMany({
+        where: { tenantId: tenant.id, status: { in: ["OPEN", "RELEASED"] } },
+        orderBy: { createdAt: "desc" },
+        include: {
+          warehouse: { select: { id: true, code: true, name: true } },
+          tasks: {
+            where: { taskType: "PICK" },
+            select: { id: true, status: true, quantity: true },
+          },
         },
       }),
       prisma.shipmentItem.findMany({
@@ -139,10 +166,21 @@ export async function GET() {
       product: t.product,
       shipment: t.shipment,
       order: t.order,
+      wave: t.wave,
       note: t.note,
       referenceType: t.referenceType,
       referenceId: t.referenceId,
       createdAt: t.createdAt.toISOString(),
+    })),
+    waves: waves.map((w) => ({
+      id: w.id,
+      waveNo: w.waveNo,
+      status: w.status,
+      warehouse: w.warehouse,
+      taskCount: w.tasks.length,
+      openTaskCount: w.tasks.filter((t) => t.status === "OPEN").length,
+      totalQty: w.tasks.reduce((s, t) => s + Number(t.quantity), 0).toFixed(3),
+      createdAt: w.createdAt.toISOString(),
     })),
     putawayCandidates: shipmentItems
       .map((row) => {
@@ -331,6 +369,187 @@ export async function POST(request: Request) {
       await tx.inventoryBalance.updateMany({
         where: { tenantId: tenant.id, warehouseId, binId, productId },
         data: { allocatedQty: { increment: qty.toString() } },
+      });
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "create_pick_wave") {
+    const warehouseId = input.warehouseId?.trim();
+    if (!warehouseId) {
+      return NextResponse.json({ error: "warehouseId required." }, { status: 400 });
+    }
+    const openOrderItems = await prisma.purchaseOrderItem.findMany({
+      where: {
+        order: { tenantId: tenant.id, splitParentId: null },
+        productId: { not: null },
+      },
+      orderBy: { order: { createdAt: "desc" } },
+      take: 300,
+      include: {
+        order: { select: { id: true } },
+      },
+    });
+    const pickedMovements = await prisma.inventoryMovement.findMany({
+      where: {
+        tenantId: tenant.id,
+        referenceType: "ORDER_ITEM_PICK",
+        referenceId: { in: openOrderItems.map((r) => r.id) },
+        movementType: "PICK",
+      },
+      select: { referenceId: true, quantity: true },
+    });
+    const pickedMap = new Map<string, number>();
+    for (const mv of pickedMovements) {
+      if (!mv.referenceId) continue;
+      pickedMap.set(
+        mv.referenceId,
+        (pickedMap.get(mv.referenceId) ?? 0) + Number(mv.quantity),
+      );
+    }
+    const balances = await prisma.inventoryBalance.findMany({
+      where: { tenantId: tenant.id, warehouseId },
+      include: { bin: { select: { id: true, code: true } } },
+    });
+    const byProduct = new Map<string, Array<{ binId: string; available: number }>>();
+    for (const row of balances) {
+      const available = Number(row.onHandQty) - Number(row.allocatedQty);
+      if (available <= 0) continue;
+      const list = byProduct.get(row.productId) ?? [];
+      list.push({ binId: row.binId, available });
+      byProduct.set(row.productId, list);
+    }
+    for (const [, list] of byProduct) {
+      list.sort((a, b) => b.available - a.available);
+    }
+
+    const waveNo = await nextWaveNo(tenant.id);
+    const result = await prisma.$transaction(async (tx) => {
+      const wave = await tx.wmsWave.create({
+        data: {
+          tenantId: tenant.id,
+          warehouseId,
+          waveNo,
+          createdById: actorId,
+        },
+      });
+      let createdTasks = 0;
+      for (const item of openOrderItems) {
+        if (!item.productId) continue;
+        const alreadyPicked = pickedMap.get(item.id) ?? 0;
+        let remaining = Math.max(0, Number(item.quantity) - alreadyPicked);
+        if (remaining <= 0) continue;
+        const binsForProduct = byProduct.get(item.productId) ?? [];
+        for (const slot of binsForProduct) {
+          if (remaining <= 0) break;
+          const take = Math.min(remaining, slot.available);
+          if (take <= 0) continue;
+          await tx.wmsTask.create({
+            data: {
+              tenantId: tenant.id,
+              warehouseId,
+              taskType: "PICK",
+              orderId: item.orderId,
+              waveId: wave.id,
+              productId: item.productId,
+              binId: slot.binId,
+              referenceType: "ORDER_ITEM_PICK",
+              referenceId: item.id,
+              quantity: take.toString(),
+              note: "Auto-allocated by wave",
+              createdById: actorId,
+            },
+          });
+          await tx.inventoryBalance.updateMany({
+            where: {
+              tenantId: tenant.id,
+              warehouseId,
+              binId: slot.binId,
+              productId: item.productId,
+            },
+            data: { allocatedQty: { increment: take.toString() } },
+          });
+          slot.available -= take;
+          remaining -= take;
+          createdTasks += 1;
+        }
+      }
+      return { waveId: wave.id, waveNo: wave.waveNo, createdTasks };
+    });
+    return NextResponse.json({ ok: true, ...result });
+  }
+
+  if (action === "release_wave") {
+    const waveId = input.waveId?.trim() || "";
+    if (!waveId) return NextResponse.json({ error: "waveId required." }, { status: 400 });
+    await prisma.wmsWave.updateMany({
+      where: { id: waveId, tenantId: tenant.id, status: "OPEN" },
+      data: { status: "RELEASED", releasedAt: new Date() },
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "complete_wave") {
+    const waveId = input.waveId?.trim() || "";
+    if (!waveId) return NextResponse.json({ error: "waveId required." }, { status: 400 });
+    await prisma.$transaction(async (tx) => {
+      const tasks = await tx.wmsTask.findMany({
+        where: {
+          tenantId: tenant.id,
+          waveId,
+          taskType: "PICK",
+          status: "OPEN",
+        },
+        select: {
+          id: true,
+          warehouseId: true,
+          productId: true,
+          binId: true,
+          quantity: true,
+          referenceId: true,
+        },
+      });
+      for (const task of tasks) {
+        if (!task.productId || !task.binId) continue;
+        const bal = await tx.inventoryBalance.findFirst({
+          where: {
+            tenantId: tenant.id,
+            warehouseId: task.warehouseId,
+            productId: task.productId,
+            binId: task.binId,
+          },
+          select: { id: true, onHandQty: true, allocatedQty: true },
+        });
+        if (!bal || Number(bal.onHandQty) < Number(task.quantity)) continue;
+        await tx.wmsTask.update({
+          where: { id: task.id },
+          data: { status: "DONE", completedAt: new Date(), completedById: actorId },
+        });
+        await tx.inventoryBalance.update({
+          where: { id: bal.id },
+          data: {
+            onHandQty: { decrement: task.quantity },
+            allocatedQty: { decrement: task.quantity },
+          },
+        });
+        await tx.inventoryMovement.create({
+          data: {
+            tenantId: tenant.id,
+            warehouseId: task.warehouseId,
+            binId: task.binId,
+            productId: task.productId,
+            movementType: "PICK",
+            quantity: task.quantity,
+            referenceType: "ORDER_ITEM_PICK",
+            referenceId: task.referenceId,
+            createdById: actorId,
+            note: "Wave completed",
+          },
+        });
+      }
+      await tx.wmsWave.updateMany({
+        where: { id: waveId, tenantId: tenant.id },
+        data: { status: "DONE", completedAt: new Date() },
       });
     });
     return NextResponse.json({ ok: true });
