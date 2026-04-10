@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { getDemoActorEmail, PO_DEMO_USER_COOKIE } from "@/lib/demo-actor";
@@ -47,7 +48,11 @@ export async function POST(request: Request) {
   }
 
   const user = await prisma.user.findFirst({
-    where: { tenantId: tenant.id, email: emailRaw, isActive: true },
+    where: {
+      tenantId: tenant.id,
+      isActive: true,
+      email: { equals: emailRaw, mode: Prisma.QueryMode.insensitive },
+    },
     select: { email: true },
   });
 

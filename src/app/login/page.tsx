@@ -41,16 +41,25 @@ export default function LoginPage() {
     <main className="mx-auto max-w-md px-6 py-16">
       <h1 className="text-2xl font-semibold text-zinc-900">Sign in</h1>
       <p className="mt-2 text-sm text-zinc-600">
-        Use your tenant user email and password. Demo seed users use password{" "}
+        Enter your email and password below (the fields are not pre-filled). Demo seed accounts use{" "}
         <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">demo12345</code>{" "}
-        (e.g. buyer@demo-company.com) when the{" "}
-        <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">demo-company</code> tenant exists.
+        with email{" "}
+        <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">buyer@demo-company.com</code> when
+        the{" "}
+        <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">demo-company</code> tenant is
+        seeded. If login still fails, run{" "}
+        <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">npm run db:seed</code> against
+        this environment&apos;s database.
       </p>
       <div className="mt-6 space-y-3 rounded-lg border border-zinc-200 bg-white p-4">
         <label className="flex flex-col text-sm">
           <span>Email</span>
           <input
             type="email"
+            name="email"
+            autoComplete="username"
+            required
+            placeholder="you@company.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="mt-1 rounded border border-zinc-300 px-3 py-2"
@@ -60,6 +69,10 @@ export default function LoginPage() {
           <span>Password</span>
           <input
             type="password"
+            name="password"
+            autoComplete="current-password"
+            required
+            placeholder="••••••••"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="mt-1 rounded border border-zinc-300 px-3 py-2"

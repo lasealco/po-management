@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { PO_AUTH_USER_COOKIE, PO_DEMO_USER_COOKIE } from "@/lib/demo-actor";
 import { getDemoTenant } from "@/lib/demo-tenant";
@@ -30,10 +31,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "email and password are required." }, { status: 400 });
   }
   const user = await prisma.user.findFirst({
-    where: { tenantId: tenant.id, email, isActive: true },
+    where: {
+      tenantId: tenant.id,
+      isActive: true,
+      email: { equals: email, mode: Prisma.QueryMode.insensitive },
+    },
     select: { email: true, passwordHash: true },
   });
-  if (!user || !verifyPassword(password, user.passwordHash)) {
+  if (!user?.passwordHash || !verifyPassword(password, user.passwordHash)) {
     return NextResponse.json({ error: "Invalid credentials." }, { status: 401 });
   }
 
