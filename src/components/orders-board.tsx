@@ -223,13 +223,14 @@ export function OrdersBoard({
   }
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-6 py-10">
-      <header className="mb-8">
-        <h1 className="text-3xl font-semibold text-zinc-900">
+    <main className="mx-auto w-full max-w-[1600px] px-4 py-8 sm:px-6">
+      <header className="mb-6">
+        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 sm:text-[1.65rem]">
           PO Workflow Playground
         </h1>
-        <p className="mt-2 text-zinc-600">
-          Tenant: <span className="font-medium">{data.tenant.name}</span> ({orderCount} orders)
+        <p className="mt-1.5 text-sm text-zinc-600">
+          Tenant: <span className="font-medium text-zinc-800">{data.tenant.name}</span>{" "}
+          <span className="tabular-nums text-zinc-500">({orderCount} orders)</span>
         </p>
         <p className="mt-1 text-xs text-zinc-400">
           Quick jump:{" "}
@@ -365,80 +366,112 @@ export function OrdersBoard({
         </div>
       ) : null}
 
-      <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white">
-        <table className="min-w-full divide-y divide-zinc-200">
-          <thead className="bg-zinc-50">
-            <tr className="text-left text-xs uppercase tracking-wide text-zinc-500">
-              <th className="px-4 py-3">Order</th>
-              <th className="px-4 py-3">Ref</th>
-              <th className="px-4 py-3">Due</th>
-              <th className="px-4 py-3">Aging</th>
-              <th className="px-4 py-3">Supplier</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Logistics</th>
-              <th className="px-4 py-3">Total</th>
-              <th className="px-4 py-3">Workflow</th>
-              <th className="px-4 py-3">Queue</th>
-              <th className="px-4 py-3">Comms SLA</th>
-              <th className="px-4 py-3">Allowed Actions</th>
-              <th className="px-4 py-3">Detail</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-zinc-100 text-sm">
+      <div className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-sm">
+        <div className="max-h-[min(72vh,calc(100dvh-14rem))] overflow-auto">
+          <table className="w-full min-w-[920px] table-fixed border-collapse text-left">
+            <thead className="sticky top-0 z-20 border-b border-zinc-200 bg-zinc-50/95 backdrop-blur-sm">
+              <tr className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                <th className="sticky left-0 z-30 w-[200px] min-w-[180px] bg-zinc-50/95 px-2.5 py-2 pl-3 shadow-[4px_0_12px_-4px_rgba(0,0,0,0.12)] backdrop-blur-sm sm:w-[220px]">
+                  PO
+                </th>
+                <th className="w-[72px] px-2 py-2">Ref</th>
+                <th className="w-[76px] px-2 py-2">Due</th>
+                <th className="w-[44px] px-1 py-2 text-right">Age</th>
+                <th className="w-[min(140px,12vw)] px-2 py-2">Supplier</th>
+                <th className="w-[120px] px-2 py-2">Status</th>
+                <th className="w-[88px] px-2 py-2">Ship</th>
+                <th className="w-[88px] px-2 py-2 text-right">Total</th>
+                <th className="min-w-[140px] px-2 py-2">Activity</th>
+                <th className="min-w-[160px] px-2 py-2 pr-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-100 text-[12px] leading-snug text-zinc-700">
             {displayedOrders.map((order) => (
-              <tr key={order.id}>
-                <td className="px-4 py-4">
-                  <Link href={`/orders/${order.id}`} className="group block">
-                    <p className="font-medium text-zinc-900 underline-offset-2 group-hover:underline">
-                      {order.orderNumber}
-                    </p>
-                    <p className="text-zinc-600">{order.title || "Untitled PO"}</p>
-                  </Link>
+              <tr
+                key={order.id}
+                className="group transition-colors hover:bg-zinc-50/90"
+              >
+                <td className="sticky left-0 z-10 bg-white px-2.5 py-2 pl-3 align-top shadow-[4px_0_12px_-4px_rgba(0,0,0,0.06)] group-hover:bg-zinc-50/90">
+                  <div className="flex min-w-0 items-start justify-between gap-2">
+                    <Link
+                      href={`/orders/${order.id}`}
+                      className="min-w-0 flex-1 text-zinc-900"
+                    >
+                      <span className="block truncate font-medium underline-offset-2 group-hover:underline">
+                        {order.orderNumber}
+                      </span>
+                      <span
+                        className="mt-0.5 block truncate text-[11px] font-normal text-zinc-500"
+                        title={order.title || "Untitled PO"}
+                      >
+                        {order.title || "Untitled PO"}
+                      </span>
+                    </Link>
+                    <Link
+                      href={`/orders/${order.id}`}
+                      className="shrink-0 pt-0.5 text-[11px] font-medium text-amber-800 underline-offset-2 hover:underline"
+                    >
+                      Open
+                    </Link>
+                  </div>
                 </td>
-                <td className="px-4 py-4 text-zinc-600">
-                  {order.buyerReference ?? "—"}
+                <td className="px-2 py-2 align-top text-[11px] text-zinc-600">
+                  <span className="line-clamp-2 break-words" title={order.buyerReference ?? ""}>
+                    {order.buyerReference ?? "—"}
+                  </span>
                 </td>
-                <td className="px-4 py-4 text-zinc-600">
+                <td className="px-2 py-2 align-top tabular-nums text-[11px] text-zinc-600">
                   {(() => {
                     if (!order.requestedDeliveryDate) return "—";
                     const due = new Date(order.requestedDeliveryDate);
                     const dueMs = due.getTime();
-                    const overdue =
-                      !Number.isNaN(dueMs) && dueMs < Date.now();
+                    const overdue = !Number.isNaN(dueMs) && dueMs < Date.now();
                     return (
                       <span
                         className={
-                          overdue
-                            ? "font-medium text-rose-700"
-                            : "text-zinc-600"
+                          overdue ? "font-medium text-rose-700" : "text-zinc-600"
                         }
                       >
-                        {due.toLocaleDateString()}
+                        {due.toLocaleDateString(undefined, {
+                          month: "short",
+                          day: "numeric",
+                        })}
                       </span>
                     );
                   })()}
                 </td>
-                <td className="px-4 py-4 text-zinc-600">
+                <td className="px-1 py-2 text-right align-top tabular-nums text-[11px] text-zinc-500">
                   {Math.max(
                     0,
                     Math.floor(
                       (Date.now() - new Date(order.createdAt).getTime()) /
                         (1000 * 60 * 60 * 24),
                     ),
-                  )}{" "}
+                  )}
                   d
                 </td>
-                <td className="px-4 py-4 text-zinc-700">
-                  {order.supplier?.name ?? "No supplier"}
-                </td>
-                <td className="px-4 py-4">
-                  <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700">
-                    {order.status.label}
+                <td className="px-2 py-2 align-top text-[11px] text-zinc-700">
+                  <span
+                    className="line-clamp-2 break-words"
+                    title={order.supplier?.name ?? "No supplier"}
+                  >
+                    {order.supplier?.name ?? "—"}
                   </span>
                 </td>
-                <td className="px-4 py-4">
+                <td className="px-2 py-2 align-top">
+                  <span className="inline-block max-w-full truncate rounded-md bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-800">
+                    {order.status.label}
+                  </span>
+                  <p
+                    className="mt-1 line-clamp-2 text-[10px] leading-tight text-zinc-500"
+                    title={order.workflow.name}
+                  >
+                    {order.workflow.name}
+                  </p>
+                </td>
+                <td className="px-2 py-2 align-top">
                   <span
-                    className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                    className={`inline-block max-w-full truncate rounded-md px-1.5 py-0.5 text-[10px] font-medium ${
                       order.logisticsStatus === "RECEIVED"
                         ? "bg-emerald-100 text-emerald-800"
                         : order.logisticsStatus === "PARTIALLY_RECEIVED"
@@ -453,79 +486,80 @@ export function OrdersBoard({
                       : order.logisticsStatus === "SHIPPED"
                         ? "Shipped"
                         : order.logisticsStatus === "PARTIALLY_RECEIVED"
-                          ? "Partially received"
-                          : "Received"}
+                          ? "Partial"
+                          : "Rcvd"}
                   </span>
                 </td>
-                <td className="px-4 py-4 text-zinc-700">
+                <td className="px-2 py-2 text-right align-top tabular-nums text-[11px] text-zinc-800">
                   {order.currency} {order.totalAmount}
                 </td>
-                <td className="px-4 py-4 text-zinc-700">{order.workflow.name}</td>
-                <td className="px-4 py-4">
-                  <div className="flex flex-wrap gap-1.5">
-                    {order.status.code === "SENT" ? (
-                      <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-medium text-sky-900">
-                        Awaiting supplier response
-                      </span>
-                    ) : null}
-                    {order.status.code === "SPLIT_PENDING_BUYER" ? (
-                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-900">
-                        Split pending buyer decision
-                      </span>
-                    ) : null}
-                    {order.status.code !== "SENT" &&
-                    order.status.code !== "SPLIT_PENDING_BUYER" ? (
-                      <span className="text-xs text-zinc-400">—</span>
-                    ) : null}
-                  </div>
-                </td>
-                <td className="px-4 py-4 text-xs">
-                  {order.conversationSla.awaitingReplyFrom ? (
-                    <div className="space-y-1">
-                      {(() => {
-                        const days = order.conversationSla.daysSinceLastShared ?? 0;
-                        const isWaitingOnMe =
-                          order.conversationSla.awaitingReplyFrom === data.viewerMode;
-                        const tone =
-                          isWaitingOnMe && days >= 5
-                            ? "bg-rose-100 text-rose-900"
-                            : isWaitingOnMe && days >= 2
-                              ? "bg-amber-100 text-amber-900"
-                              : isWaitingOnMe
-                                ? "bg-violet-100 text-violet-900"
-                                : "bg-zinc-100 text-zinc-700";
-                        return (
-                          <div className={`inline-flex rounded-full px-2 py-0.5 font-medium ${tone}`}>
-                            Waiting on {order.conversationSla.awaitingReplyFrom}
-                          </div>
-                        );
-                      })()}
-                      {order.conversationSla.daysSinceLastShared != null ? (
-                        <div
-                          className={`${
-                            order.conversationSla.awaitingReplyFrom === data.viewerMode &&
-                            order.conversationSla.daysSinceLastShared >= 5
-                              ? "font-medium text-rose-700"
-                              : order.conversationSla.awaitingReplyFrom === data.viewerMode &&
-                                  order.conversationSla.daysSinceLastShared >= 2
-                                ? "font-medium text-amber-700"
-                                : "text-zinc-500"
-                          }`}
-                        >
-                          Last shared msg {order.conversationSla.daysSinceLastShared}d ago
-                        </div>
+                <td className="px-2 py-2 align-top text-[10px] text-zinc-600">
+                  <div className="flex flex-col gap-1">
+                    <div className="flex flex-wrap gap-1">
+                      {order.status.code === "SENT" ? (
+                        <span className="rounded bg-sky-100 px-1 py-0.5 font-medium text-sky-900">
+                          Awaiting supplier
+                        </span>
+                      ) : null}
+                      {order.status.code === "SPLIT_PENDING_BUYER" ? (
+                        <span className="rounded bg-amber-100 px-1 py-0.5 font-medium text-amber-900">
+                          Split review
+                        </span>
+                      ) : null}
+                      {order.status.code !== "SENT" &&
+                      order.status.code !== "SPLIT_PENDING_BUYER" ? (
+                        <span className="text-zinc-400">—</span>
                       ) : null}
                     </div>
-                  ) : (
-                    <span className="text-zinc-400">No shared messages yet</span>
-                  )}
+                    {order.conversationSla.awaitingReplyFrom ? (
+                      <div className="space-y-0.5">
+                        {(() => {
+                          const days = order.conversationSla.daysSinceLastShared ?? 0;
+                          const isWaitingOnMe =
+                            order.conversationSla.awaitingReplyFrom === data.viewerMode;
+                          const tone =
+                            isWaitingOnMe && days >= 5
+                              ? "bg-rose-100 text-rose-900"
+                              : isWaitingOnMe && days >= 2
+                                ? "bg-amber-100 text-amber-900"
+                                : isWaitingOnMe
+                                  ? "bg-violet-100 text-violet-900"
+                                  : "bg-zinc-100 text-zinc-700";
+                          return (
+                            <span
+                              className={`inline-block rounded px-1 py-0.5 font-medium ${tone}`}
+                            >
+                              Reply: {order.conversationSla.awaitingReplyFrom}
+                            </span>
+                          );
+                        })()}
+                        {order.conversationSla.daysSinceLastShared != null ? (
+                          <div
+                            className={`tabular-nums ${
+                              order.conversationSla.awaitingReplyFrom === data.viewerMode &&
+                              order.conversationSla.daysSinceLastShared >= 5
+                                ? "font-medium text-rose-700"
+                                : order.conversationSla.awaitingReplyFrom === data.viewerMode &&
+                                    order.conversationSla.daysSinceLastShared >= 2
+                                  ? "font-medium text-amber-700"
+                                  : "text-zinc-500"
+                            }`}
+                          >
+                            Last msg {order.conversationSla.daysSinceLastShared}d ago
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <span className="text-zinc-400">No shared thread</span>
+                    )}
+                  </div>
                 </td>
-                <td className="px-4 py-4">
-                  <div className="flex flex-wrap gap-2">
+                <td className="px-2 py-2 pr-3 align-top">
+                  <div className="flex flex-wrap gap-1">
                     {!canTransitionOrders ? (
-                      <span className="text-xs text-zinc-500">View only</span>
+                      <span className="text-[11px] text-zinc-500">View only</span>
                     ) : order.allowedActions.length === 0 ? (
-                      <span className="text-xs text-zinc-400">No actions</span>
+                      <span className="text-[11px] text-zinc-400">—</span>
                     ) : (
                       order.allowedActions.map((action) => (
                         <button
@@ -533,7 +567,7 @@ export function OrdersBoard({
                           type="button"
                           disabled={busyOrderId === order.id}
                           onClick={() => applyAction(order, action)}
-                          className="rounded-md border border-zinc-300 px-2.5 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
+                          className="rounded border border-zinc-200 bg-white px-2 py-0.5 text-[11px] font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           {action.label}
                         </button>
@@ -541,21 +575,13 @@ export function OrdersBoard({
                     )}
                   </div>
                 </td>
-                <td className="px-4 py-4">
-                  <Link
-                    href={`/orders/${order.id}`}
-                    className="text-sm font-medium text-zinc-800 underline"
-                  >
-                    Open
-                  </Link>
-                </td>
               </tr>
             ))}
             {displayedOrders.length === 0 ? (
               <tr>
                 <td
-                  colSpan={13}
-                  className="px-4 py-10 text-center text-sm text-zinc-500"
+                  colSpan={10}
+                  className="px-4 py-12 text-center text-sm text-zinc-500"
                 >
                   No orders in this queue.
                 </td>
@@ -563,6 +589,7 @@ export function OrdersBoard({
             ) : null}
           </tbody>
         </table>
+        </div>
       </div>
     </main>
   );
