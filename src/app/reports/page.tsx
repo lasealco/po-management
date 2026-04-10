@@ -3,7 +3,7 @@ import { ReportsClient } from "@/components/reports-client";
 import { getActorUserId, getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { listReportDefinitions, toReportListItem } from "@/lib/reports/registry";
-import { canUserRunReport } from "@/lib/reports/run-report";
+import { getReportAccessBlocker } from "@/lib/reports/run-report";
 
 export const dynamic = "force-dynamic";
 
@@ -43,9 +43,25 @@ export default async function ReportsPage() {
   }
 
   const initialList = [];
+  const blockedReports: {
+    id: string;
+    title: string;
+    category: string;
+    missing: string;
+  }[] = [];
+
   for (const def of listReportDefinitions()) {
-    if (actorId && (await canUserRunReport(actorId, def.id)).ok) {
+    if (!actorId) break;
+    const blocker = await getReportAccessBlocker(actorId, def.id);
+    if (blocker === null) {
       initialList.push(toReportListItem(def));
+    } else {
+      blockedReports.push({
+        id: def.id,
+        title: def.title,
+        category: def.category,
+        missing: blocker,
+      });
     }
   }
 
@@ -54,16 +70,22 @@ export default async function ReportsPage() {
       <main className="mx-auto max-w-6xl px-6 py-10">
         <h1 className="text-3xl font-semibold text-zinc-900">Reports</h1>
         <p className="mt-2 text-zinc-600">
-          Operational summaries and exports. New report types can be added to the report
-          registry as the product grows.
+          Operational summaries and CSV exports. Each report checks{" "}
+          <span className="font-medium text-zinc-800">org.reports → view</span> plus any extra
+          grants noted below.
         </p>
         {initialList.length === 0 ? (
-          <p className="mt-8 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-            No reports are available for your current permissions.
-          </p>
+          <div className="mt-8 space-y-4">
+            <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+              None of the registered reports can run with your current role. If something below
+              looks wrong, ask an admin to update{" "}
+              <span className="font-medium">Settings → Roles</span>.
+            </p>
+            <ReportsClient initialList={[]} blockedReports={blockedReports} />
+          </div>
         ) : (
           <div className="mt-8">
-            <ReportsClient initialList={initialList} />
+            <ReportsClient initialList={initialList} blockedReports={blockedReports} />
           </div>
         )}
       </main>

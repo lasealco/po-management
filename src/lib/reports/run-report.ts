@@ -1,28 +1,47 @@
 import { getReportDefinition } from "@/lib/reports/registry";
-import type { ReportContext, ReportResult } from "@/lib/reports/types";
+import type { ReportContext, ReportDefinition, ReportResult } from "@/lib/reports/types";
 import { userHasGlobalGrant } from "@/lib/authz";
 import type { PrismaClient } from "@prisma/client";
+
+async function firstMissingReportRequirement(
+  userId: string,
+  def: ReportDefinition,
+): Promise<string | null> {
+  if (!(await userHasGlobalGrant(userId, "org.reports", "view"))) {
+    return "org.reports → view";
+  }
+  for (const req of def.requires ?? []) {
+    if (!(await userHasGlobalGrant(userId, req.resource, req.action))) {
+      return `${req.resource} → ${req.action}`;
+    }
+  }
+  return null;
+}
+
+/**
+ * For a registered report id: first missing global permission, or null if the user can run it.
+ * For an unknown id, returns null (callers should validate with `getReportDefinition` first).
+ */
+export async function getReportAccessBlocker(
+  userId: string,
+  reportId: string,
+): Promise<string | null> {
+  const def = getReportDefinition(reportId);
+  if (!def) return null;
+  return firstMissingReportRequirement(userId, def);
+}
 
 export async function canUserRunReport(
   userId: string,
   reportId: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  if (!(await userHasGlobalGrant(userId, "org.reports", "view"))) {
-    return { ok: false, error: "Forbidden: requires org.reports → view." };
-  }
   const def = getReportDefinition(reportId);
   if (!def) {
     return { ok: false, error: "Unknown report." };
   }
-  for (const req of def.requires ?? []) {
-    if (!(await userHasGlobalGrant(userId, req.resource, req.action))) {
-      return {
-        ok: false,
-        error: `Forbidden: this report also needs ${req.resource} → ${req.action}.`,
-      };
-    }
-  }
-  return { ok: true };
+  const missing = await firstMissingReportRequirement(userId, def);
+  if (missing === null) return { ok: true };
+  return { ok: false, error: `Forbidden: requires ${missing}.` };
 }
 
 export async function executeReport(params: {

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getActorUserId } from "@/lib/authz";
+import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
 import { executeReport } from "@/lib/reports/run-report";
@@ -10,6 +10,9 @@ type Body = {
 };
 
 export async function POST(request: Request) {
+  const gate = await requireApiGrant("org.reports", "view");
+  if (gate) return gate;
+
   const tenant = await getDemoTenant();
   const actorId = await getActorUserId();
   if (!tenant || !actorId) {

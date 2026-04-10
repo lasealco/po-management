@@ -10,6 +10,13 @@ type ReportListItem = {
   params?: unknown;
 };
 
+export type BlockedReportRow = {
+  id: string;
+  title: string;
+  category: string;
+  missing: string;
+};
+
 type ReportColumn = {
   key: string;
   label: string;
@@ -50,7 +57,20 @@ function toCsv(columns: ReportColumn[], rows: Record<string, string | number | n
   return [header, ...lines].join("\n");
 }
 
-export function ReportsClient({ initialList }: { initialList: ReportListItem[] }) {
+function categoryLabel(c: string) {
+  if (c === "orders") return "Orders";
+  if (c === "logistics") return "Logistics";
+  if (c === "planning") return "Planning";
+  return c;
+}
+
+export function ReportsClient({
+  initialList,
+  blockedReports = [],
+}: {
+  initialList: ReportListItem[];
+  blockedReports?: BlockedReportRow[];
+}) {
   const [reports] = useState(initialList);
   const [selectedId, setSelectedId] = useState(initialList[0]?.id ?? "");
   const [busy, setBusy] = useState(false);
@@ -104,34 +124,42 @@ export function ReportsClient({ initialList }: { initialList: ReportListItem[] }
         <div className="mt-4 flex flex-wrap items-end gap-4">
           <label className="flex min-w-[240px] flex-col gap-1 text-sm">
             <span className="font-medium text-zinc-800">Report</span>
-            <select
-              value={selectedId}
-              onChange={(e) => {
-                setSelectedId(e.target.value);
-                setResult(null);
-                setError(null);
-              }}
-              className="rounded-md border border-zinc-300 px-3 py-2 text-zinc-900"
-            >
-              {reports.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.title}
-                </option>
-              ))}
-            </select>
+            {reports.length === 0 ? (
+              <p className="rounded-md border border-dashed border-zinc-300 bg-zinc-50 px-3 py-2 text-zinc-600">
+                No runnable reports — see unavailable list below or ask for role updates.
+              </p>
+            ) : (
+              <select
+                value={selectedId}
+                onChange={(e) => {
+                  setSelectedId(e.target.value);
+                  setResult(null);
+                  setError(null);
+                }}
+                className="rounded-md border border-zinc-300 px-3 py-2 text-zinc-900"
+              >
+                {reports.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.title}
+                  </option>
+                ))}
+              </select>
+            )}
           </label>
           <button
             type="button"
-            disabled={busy || !selectedId}
+            disabled={busy || !selectedId || reports.length === 0}
             onClick={() => void run()}
             className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
           >
             {busy ? "Running…" : "Run"}
           </button>
         </div>
-        {selected ? (
+        {selected && reports.length > 0 ? (
           <p className="mt-3 text-xs text-zinc-500">
-            <span className="font-medium text-zinc-600">{selected.category}</span>
+            <span className="font-medium text-zinc-600">
+              {categoryLabel(selected.category)}
+            </span>
             {" · "}
             {selected.description}
           </p>
@@ -188,6 +216,48 @@ export function ReportsClient({ initialList }: { initialList: ReportListItem[] }
                         {cellDisplay(c, row[c.key])}
                       </td>
                     ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ) : null}
+
+      {blockedReports.length > 0 ? (
+        <section className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-zinc-900">Unavailable reports</h2>
+          <p className="mt-1 text-sm text-zinc-600">
+            These are registered in the product but your role is missing a required global
+            permission. An administrator can grant it under Settings → Roles → Permissions.
+          </p>
+          <div className="mt-4 overflow-x-auto rounded-lg border border-zinc-100">
+            <table className="min-w-full divide-y divide-zinc-200 text-sm">
+              <thead className="bg-zinc-50">
+                <tr>
+                  <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wide text-zinc-500">
+                    Report
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wide text-zinc-500">
+                    Area
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wide text-zinc-500">
+                    Missing permission
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-100">
+                {blockedReports.map((r) => (
+                  <tr key={r.id} className="text-zinc-800">
+                    <td className="px-4 py-2 font-medium">{r.title}</td>
+                    <td className="whitespace-nowrap px-4 py-2 text-zinc-600">
+                      {categoryLabel(r.category)}
+                    </td>
+                    <td className="px-4 py-2">
+                      <code className="rounded bg-zinc-100 px-1.5 py-0.5 text-xs text-zinc-800">
+                        {r.missing}
+                      </code>
+                    </td>
                   </tr>
                 ))}
               </tbody>

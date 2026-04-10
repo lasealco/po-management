@@ -68,7 +68,8 @@ export const GLOBAL_PERMISSION_CATALOG = [
     resource: "org.reports",
     action: "view",
     label: "Reports",
-    description: "Run tenant reports and export CSV summaries.",
+    description:
+      "Open Reports and export CSV summaries. Individual reports may also require other permissions (for example org.orders → view or org.suppliers → view).",
   },
 ] as const;
 
