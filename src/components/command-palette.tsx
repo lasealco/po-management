@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 export type CommandPaletteGrants = {
   orders: boolean;
+  reports: boolean;
   consolidation: boolean;
   suppliers: boolean;
   products: boolean;
@@ -49,6 +50,15 @@ export function CommandPalette({ grants }: { grants: CommandPaletteGrants }) {
         openHelp();
       },
     });
+
+    if (grants.reports) {
+      list.push({
+        id: "reports",
+        label: "Reports",
+        searchText: "analytics export csv summary",
+        action: go("/reports"),
+      });
+    }
 
     if (grants.orders) {
       list.push(

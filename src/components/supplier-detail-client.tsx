@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { SupplierOrderHistorySection } from "@/components/supplier-order-history";
+import type { SupplierOrderAnalytics } from "@/lib/supplier-order-analytics";
 
 export type SupplierContactRow = {
   id: string;
@@ -61,9 +63,12 @@ const CONTACT_ROLES = [
 export function SupplierDetailClient({
   initial,
   canEdit = true,
+  orderHistory = null,
 }: {
   initial: SupplierDetailSnapshot;
   canEdit?: boolean;
+  /** Present when viewer has org.orders → view. */
+  orderHistory?: SupplierOrderAnalytics | null;
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -424,9 +429,9 @@ export function SupplierDetailClient({
         </div>
         <p className="mt-1 text-sm text-zinc-600">
           {initial.productLinkCount} catalog product link
-          {initial.productLinkCount === 1 ? "" : "s"} · {initial.orderCount}{" "}
-          purchase order
-          {initial.orderCount === 1 ? "" : "s"}
+          {initial.productLinkCount === 1 ? "" : "s"} · {initial.orderCount} linked
+          PO row
+          {initial.orderCount === 1 ? "" : "s"} (includes split children)
         </p>
       </div>
 
@@ -434,6 +439,10 @@ export function SupplierDetailClient({
         <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
         </div>
+      ) : null}
+
+      {orderHistory ? (
+        <SupplierOrderHistorySection analytics={orderHistory} />
       ) : null}
 
       <section className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">

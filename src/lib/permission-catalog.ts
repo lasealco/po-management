@@ -64,6 +64,12 @@ export const GLOBAL_PERMISSION_CATALOG = [
     label: "Edit settings",
     description: "Change company data, users, roles, and permissions.",
   },
+  {
+    resource: "org.reports",
+    action: "view",
+    label: "Reports",
+    description: "Run tenant reports and export CSV summaries.",
+  },
 ] as const;
 
 export type GlobalPermissionRow = (typeof GLOBAL_PERMISSION_CATALOG)[number];

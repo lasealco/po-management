@@ -9,6 +9,7 @@ export async function AppNavWithGrants() {
     access?.user != null
       ? {
           orders: viewerHas(access.grantSet, "org.orders", "view"),
+          reports: viewerHas(access.grantSet, "org.reports", "view"),
           consolidation: viewerHas(access.grantSet, "org.orders", "view"),
           products: viewerHas(access.grantSet, "org.products", "view"),
           settings: viewerHas(access.grantSet, "org.settings", "view"),
@@ -21,6 +22,7 @@ export async function AppNavWithGrants() {
     linkVisibility != null &&
     !(
       linkVisibility.orders ||
+      linkVisibility.reports ||
       linkVisibility.consolidation ||
       linkVisibility.products ||
       linkVisibility.settings ||

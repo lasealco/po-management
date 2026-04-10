@@ -127,6 +127,7 @@ async function seed() {
     ["org.products", "edit"],
     ["org.suppliers", "view"],
     ["org.settings", "view"],
+    ["org.reports", "view"],
   ];
   const approverGrants = [
     ...buyerGrants,
@@ -1003,6 +1004,20 @@ async function seed() {
       },
     });
 
+    await prisma.orderTransitionLog.deleteMany({ where: { orderId: po1002.id } });
+    await prisma.orderTransitionLog.createMany({
+      data: [
+        {
+          orderId: po1002.id,
+          fromStatusId: supplierDraft.id,
+          toStatusId: supplierSent.id,
+          actionCode: "send_to_supplier",
+          actorUserId: approver.id,
+          createdAt: new Date("2026-04-01T08:00:00.000Z"),
+        },
+      ],
+    });
+
     await prisma.orderChatMessage.deleteMany({ where: { orderId: po1002.id } });
     await prisma.orderChatMessage.createMany({
       data: [
@@ -1011,12 +1026,21 @@ async function seed() {
           authorUserId: buyer.id,
           body: "Please confirm corrugated spec matches last year's order.",
           isInternal: false,
+          createdAt: new Date("2026-04-01T09:00:00.000Z"),
         },
         {
           orderId: po1002.id,
           authorUserId: approver.id,
           body: "Internal: pricing approved under the annual frame agreement.",
           isInternal: true,
+          createdAt: new Date("2026-04-01T10:00:00.000Z"),
+        },
+        {
+          orderId: po1002.id,
+          authorUserId: supplierUser.id,
+          body: "Confirmed — spec matches last year's run. We will ship per the May window.",
+          isInternal: false,
+          createdAt: new Date("2026-04-01T15:00:00.000Z"),
         },
       ],
     });

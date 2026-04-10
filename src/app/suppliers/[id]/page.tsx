@@ -5,6 +5,7 @@ import {
   type SupplierDetailSnapshot,
 } from "@/components/supplier-detail-client";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
+import { fetchSupplierOrderAnalytics } from "@/lib/supplier-order-analytics";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -104,14 +105,19 @@ export default async function SupplierDetailPage({
   };
 
   const canEdit = viewerHas(access.grantSet, "org.suppliers", "edit");
+  const canViewOrders = viewerHas(access.grantSet, "org.orders", "view");
+  const orderHistory = canViewOrders
+    ? await fetchSupplierOrderAnalytics(prisma, tenant.id, supplier.id)
+    : null;
 
   return (
     <div className="min-h-screen bg-zinc-50">
-      <main className="mx-auto max-w-4xl px-6 py-10">
+      <main className="mx-auto max-w-5xl px-6 py-10">
         <SupplierDetailClient
           key={supplier.id}
           initial={snapshot}
           canEdit={canEdit}
+          orderHistory={orderHistory}
         />
       </main>
     </div>

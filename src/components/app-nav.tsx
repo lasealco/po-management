@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 const links = [
   { href: "/", key: "orders" as const, label: "Orders" },
+  { href: "/reports", key: "reports" as const, label: "Reports" },
   { href: "/consolidation", key: "consolidation" as const, label: "Consolidation" },
   { href: "/products", key: "products" as const, label: "Products" },
   { href: "/settings", key: "settings" as const, label: "Settings" },
@@ -13,6 +14,7 @@ const links = [
 
 export type AppNavLinkVisibility = {
   orders: boolean;
+  reports: boolean;
   consolidation: boolean;
   products: boolean;
   settings: boolean;
@@ -70,7 +72,9 @@ export function AppNav({
                 ? pathname === "/" || pathname.startsWith("/orders")
                 : href === "/settings"
                   ? pathname.startsWith("/settings")
-                  : pathname === href || pathname.startsWith(`${href}/`);
+                  : href === "/reports"
+                    ? pathname === "/reports" || pathname.startsWith("/reports/")
+                    : pathname === href || pathname.startsWith(`${href}/`);
             return (
               <Link
                 key={href}
