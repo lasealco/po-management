@@ -118,42 +118,44 @@ export default async function ConsolidationPage() {
     .filter((row) => row.remainingUnits > 0 && !assignedShipmentIds.has(row.shipmentId));
 
   return (
-    <ConsolidationPlanner
-      initialAvailable={available}
-      initialWarehouses={warehouses}
-      initialLoadPlans={loadPlans.map((plan) => ({
-        id: plan.id,
-        reference: plan.reference,
-        status: plan.status,
-        transportMode: plan.transportMode,
-        containerSize: plan.containerSize,
-        plannedEta: plan.plannedEta?.toISOString() ?? null,
-        notes: plan.notes,
-        warehouse: plan.warehouse,
-        shipmentCount: plan.assignments.length,
-        unitCount: plan.assignments.reduce(
-          (sum, assignment) =>
-            sum +
-            assignment.shipment.items.reduce(
-              (s, row) => s + (Number(row.quantityShipped) - Number(row.quantityReceived)),
-              0,
-            ),
-          0,
-        ),
-        volumeCbm: plan.assignments.reduce(
-          (sum, assignment) =>
-            sum +
-            Number(
-              assignment.shipment.estimatedVolumeCbm ??
-                assignment.shipment.items.reduce(
-                  (s, row) =>
-                    s + (Number(row.quantityShipped) - Number(row.quantityReceived)) * 0.02,
-                  0,
-                ),
-            ),
-          0,
-        ),
-      }))}
-    />
+    <div className="min-h-screen bg-zinc-50">
+      <ConsolidationPlanner
+        initialAvailable={available}
+        initialWarehouses={warehouses}
+        initialLoadPlans={loadPlans.map((plan) => ({
+          id: plan.id,
+          reference: plan.reference,
+          status: plan.status,
+          transportMode: plan.transportMode,
+          containerSize: plan.containerSize,
+          plannedEta: plan.plannedEta?.toISOString() ?? null,
+          notes: plan.notes,
+          warehouse: plan.warehouse,
+          shipmentCount: plan.assignments.length,
+          unitCount: plan.assignments.reduce(
+            (sum, assignment) =>
+              sum +
+              assignment.shipment.items.reduce(
+                (s, row) => s + (Number(row.quantityShipped) - Number(row.quantityReceived)),
+                0,
+              ),
+            0,
+          ),
+          volumeCbm: plan.assignments.reduce(
+            (sum, assignment) =>
+              sum +
+              Number(
+                assignment.shipment.estimatedVolumeCbm ??
+                  assignment.shipment.items.reduce(
+                    (s, row) =>
+                      s + (Number(row.quantityShipped) - Number(row.quantityReceived)) * 0.02,
+                    0,
+                  ),
+              ),
+            0,
+          ),
+        }))}
+      />
+    </div>
   );
 }

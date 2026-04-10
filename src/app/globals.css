@@ -31,6 +31,7 @@ select,
 textarea {
   color: #18181b;
   background-color: #ffffff;
+  border-color: #a1a1aa;
 }
 
 input::placeholder,
@@ -44,9 +45,17 @@ select:disabled,
 textarea:disabled {
   color: #3f3f46;
   background-color: #f4f4f5;
+  border-color: #d4d4d8;
 }
 
 select option {
   color: #18181b;
   background-color: #ffffff;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: 2px solid #64748b;
+  outline-offset: 1px;
 }
