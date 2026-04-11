@@ -13,8 +13,12 @@ import path, { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Pool } from "pg";
 
+const cliDatabaseUrl = process.env.DATABASE_URL?.trim() || null;
 config({ path: resolve(process.cwd(), ".env") });
 config({ path: resolve(process.cwd(), ".env.local"), override: true });
+if (cliDatabaseUrl) {
+  process.env.DATABASE_URL = cliDatabaseUrl;
+}
 
 const DEMO_SEGMENT = "crm-demo-bulk";
 const LEAD_SOURCE = "DEMO_BULK";

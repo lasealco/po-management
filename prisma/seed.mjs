@@ -7,8 +7,13 @@ import { Pool } from "pg";
 import { scryptSync } from "node:crypto";
 
 // Next.js loads .env* automatically; `node prisma/seed.mjs` does not — load the same files.
+// If DATABASE_URL was set by the shell (e.g. one-off Neon prod seed), do not let .env.local clobber it.
+const cliDatabaseUrl = process.env.DATABASE_URL?.trim() || null;
 config({ path: resolve(process.cwd(), ".env") });
 config({ path: resolve(process.cwd(), ".env.local"), override: true });
+if (cliDatabaseUrl) {
+  process.env.DATABASE_URL = cliDatabaseUrl;
+}
 
 if (!process.env.DATABASE_URL?.trim()) {
   console.error(
