@@ -122,12 +122,44 @@ export function CommandPalette({ grants }: { grants: CommandPaletteGrants }) {
     }
 
     if (grants.crm) {
-      list.push({
-        id: "crm",
-        label: "CRM — leads & accounts",
-        searchText: "crm sales pipeline opportunities leads",
-        action: go("/crm"),
-      });
+      list.push(
+        {
+          id: "crm",
+          label: "CRM — overview",
+          searchText: "crm sales home dashboard",
+          action: go("/crm"),
+        },
+        {
+          id: "crm-leads",
+          label: "CRM — leads",
+          searchText: "crm leads prospects",
+          action: go("/crm/leads"),
+        },
+        {
+          id: "crm-accounts",
+          label: "CRM — accounts",
+          searchText: "crm accounts customers companies",
+          action: go("/crm/accounts"),
+        },
+        {
+          id: "crm-contacts",
+          label: "CRM — contacts",
+          searchText: "crm contacts people",
+          action: go("/crm/contacts"),
+        },
+        {
+          id: "crm-pipeline",
+          label: "CRM — pipeline",
+          searchText: "crm pipeline opportunities board stages",
+          action: go("/crm/pipeline"),
+        },
+        {
+          id: "crm-activities",
+          label: "CRM — activities",
+          searchText: "crm activities tasks calls meetings",
+          action: go("/crm/activities"),
+        },
+      );
     }
 
     if (grants.suppliers) {

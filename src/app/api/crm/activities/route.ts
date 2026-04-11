@@ -52,6 +52,8 @@ export async function GET() {
       relatedAccountId: true,
       relatedOpportunityId: true,
       owner: { select: { id: true, name: true } },
+      relatedAccount: { select: { id: true, name: true } },
+      relatedOpportunity: { select: { id: true, name: true } },
     },
   });
 

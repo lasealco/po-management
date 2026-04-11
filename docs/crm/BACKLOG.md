@@ -2,6 +2,15 @@
 
 Parking lot so we can ship vertical slices without losing track of the full PRD (`docs/crm/*.pdf`).
 
+## In the app today (not “all” PDF pages — core R1 + multi-page shell)
+
+- CRM sub-nav: Overview, Leads, Accounts, Contacts, Pipeline, Activities.
+- List hubs + detail: lead (`/crm/leads/[id]`), account, opportunity (`/crm/opportunities/[id]`), tenant-scoped contacts list.
+- APIs: `GET`/`PATCH` lead, opportunity, activity by id; `GET` contacts without `accountId` (scoped via account ownership).
+- Pipeline board (read-only columns by stage); activities hub with create + status updates.
+
+Everything below remains **out of scope** until picked up intentionally.
+
 ## Integrations (extra infra / contracts)
 
 - **Microsoft 365 / Outlook** — OAuth app registration, token storage, calendar two-way sync, `external_calendar_id` on activities, conflict handling.

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getActorUserId, requireApiGrant, userHasGlobalGrant } from "@/lib/authz";
+import { crmTenantFilter } from "@/lib/crm-scope";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
 
@@ -35,11 +36,38 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const accountId = searchParams.get("accountId")?.trim();
+
   if (!accountId) {
-    return NextResponse.json(
-      { error: "Query parameter accountId is required." },
-      { status: 400 },
-    );
+    const scope = await crmTenantFilter(tenant.id, actorId);
+    const contactWhere =
+      "ownerUserId" in scope && scope.ownerUserId
+        ? {
+            tenantId: tenant.id,
+            account: { ownerUserId: scope.ownerUserId },
+          }
+        : { tenantId: tenant.id };
+
+    const contacts = await prisma.crmContact.findMany({
+      where: contactWhere,
+      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+      take: 500,
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        phone: true,
+        title: true,
+        department: true,
+        decisionRole: true,
+        ownerUserId: true,
+        updatedAt: true,
+        accountId: true,
+        account: { select: { id: true, name: true } },
+      },
+    });
+
+    return NextResponse.json({ contacts });
   }
 
   const ok = await assertAccountAccess(tenant.id, accountId, actorId);

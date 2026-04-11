@@ -1,10 +1,10 @@
 import { AccessDenied } from "@/components/access-denied";
-import { CrmAccountDetail } from "@/components/crm-account-detail";
+import { CrmOpportunityDetail } from "@/components/crm-opportunity-detail";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
 
-export default async function CrmAccountPage({
+export default async function CrmOpportunityDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
@@ -14,8 +14,8 @@ export default async function CrmAccountPage({
     return (
       <div className="px-6 py-16">
         <AccessDenied
-          title="Account"
-          message="Choose an active user in the header to open this account."
+          title="Opportunity"
+          message="Choose an active user in the header to open this opportunity."
         />
       </div>
     );
@@ -24,7 +24,7 @@ export default async function CrmAccountPage({
     return (
       <div className="px-6 py-16">
         <AccessDenied
-          title="Account"
+          title="Opportunity"
           message="You need org.crm → view permission."
         />
       </div>
@@ -34,8 +34,8 @@ export default async function CrmAccountPage({
   const { id } = await params;
 
   return (
-    <CrmAccountDetail
-      accountId={id}
+    <CrmOpportunityDetail
+      opportunityId={id}
       actorUserId={access.user.id}
       canEditAll={viewerHas(access.grantSet, "org.crm", "edit")}
     />

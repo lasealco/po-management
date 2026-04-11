@@ -1,10 +1,8 @@
 import { AccessDenied } from "@/components/access-denied";
-import { CrmClient } from "@/components/crm-client";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 
-export const dynamic = "force-dynamic";
-
-export default async function CrmPage() {
+/** Server gate: CRM routes require org.crm → view (same as APIs). */
+export async function CrmGate({ children }: { children: React.ReactNode }) {
   const access = await getViewerGrantSet();
   if (!access?.user) {
     return (
@@ -26,11 +24,5 @@ export default async function CrmPage() {
       </div>
     );
   }
-
-  return (
-    <CrmClient
-      canEdit={viewerHas(access.grantSet, "org.crm", "edit")}
-      actorUserId={access.user.id}
-    />
-  );
+  return <>{children}</>;
 }

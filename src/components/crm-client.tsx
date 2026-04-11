@@ -348,7 +348,12 @@ export function CrmClient({
                   leads.map((row) => (
                     <tr key={row.id} className="border-b border-zinc-50 last:border-0">
                       <td className="px-3 py-2 font-medium text-zinc-900">
-                        {row.companyName}
+                        <Link
+                          href={`/crm/leads/${row.id}`}
+                          className="text-violet-700 hover:text-violet-900 hover:underline"
+                        >
+                          {row.companyName}
+                        </Link>
                       </td>
                       <td className="px-3 py-2 text-zinc-600">{row.status}</td>
                       <td className="px-3 py-2 text-zinc-600">{row.owner.name}</td>
@@ -437,7 +442,14 @@ export function CrmClient({
               ) : (
                 opportunities.map((row) => (
                   <tr key={row.id} className="border-b border-zinc-50 last:border-0">
-                    <td className="px-3 py-2 font-medium text-zinc-900">{row.name}</td>
+                    <td className="px-3 py-2 font-medium text-zinc-900">
+                      <Link
+                        href={`/crm/opportunities/${row.id}`}
+                        className="text-violet-700 hover:text-violet-900 hover:underline"
+                      >
+                        {row.name}
+                      </Link>
+                    </td>
                     <td className="px-3 py-2 text-zinc-600">{row.account.name}</td>
                     <td className="px-3 py-2 text-zinc-600">{row.stage}</td>
                     <td className="px-3 py-2 text-zinc-600">{row.probability}</td>
@@ -450,8 +462,9 @@ export function CrmClient({
       </section>
 
       <p className="mt-10 text-center text-xs text-zinc-400">
-        Product specs: <code className="rounded bg-zinc-100 px-1">docs/crm/</code> ·
-        Outlook and shipment sync come in later releases.
+        More views: use the CRM bar (Leads, Accounts, Contacts, Pipeline, Activities). Full
+        PRD scope (Outlook, quotes, control tower) is phased — see{" "}
+        <code className="rounded bg-zinc-100 px-1">docs/crm/BACKLOG.md</code>.
       </p>
     </div>
   );
