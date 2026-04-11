@@ -11,6 +11,7 @@ export function DemoUserSwitcher() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [openAccess, setOpenAccess] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -18,10 +19,12 @@ export function DemoUserSwitcher() {
     const data = (await res.json()) as {
       users?: SessionUser[];
       current?: string;
+      openAccess?: boolean;
     };
     if (res.ok && data.users) {
       setUsers(data.users);
       setCurrent(data.current ?? "");
+      setOpenAccess(Boolean(data.openAccess));
     }
     setLoading(false);
   }, []);
@@ -90,18 +93,30 @@ export function DemoUserSwitcher() {
           </label>
         )}
         <span className="text-xs text-amber-900/80">
-          Roles drive permissions. You can also use real sign-in at{" "}
-          <Link href="/login" className="underline">
-            /login
-          </Link>
-          .
+          {openAccess ? (
+            <>
+              Roles drive permissions. Pick a user above — no password required. Optional:{" "}
+              <Link href="/login" className="underline">
+                /login
+              </Link>{" "}
+              (buyer@ or approver@ + <span className="font-mono">demo12345</span>).
+            </>
+          ) : (
+            <>
+              Roles drive permissions. You can also use real sign-in at{" "}
+              <Link href="/login" className="underline">
+                /login
+              </Link>
+              .
+            </>
+          )}
         </span>
         <button
           type="button"
           onClick={() => void logout()}
           className="ml-auto rounded border border-amber-300 bg-white px-2 py-1 text-xs text-amber-900"
         >
-          Logout
+          {openAccess ? "Clear session" : "Logout"}
         </button>
       </div>
     </div>

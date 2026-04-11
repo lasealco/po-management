@@ -22,7 +22,11 @@ export async function GET() {
 
   const current = await getDemoActorEmail();
 
-  return NextResponse.json({ users, current });
+  return NextResponse.json({
+    users,
+    current,
+    openAccess: process.env.PO_ALLOW_UNAUTHENTICATED === "1",
+  });
 }
 
 export async function POST(request: Request) {

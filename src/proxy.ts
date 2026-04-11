@@ -4,8 +4,14 @@ import { PO_AUTH_USER_COOKIE, PO_DEMO_USER_COOKIE } from "@/lib/demo-actor";
 
 const PUBLIC_PATHS = new Set(["/login"]);
 
+/** When `1`, skip redirect to /login and use default demo actor (see getDemoActorEmail). */
+function allowUnauthenticated() {
+  return process.env.PO_ALLOW_UNAUTHENTICATED === "1";
+}
+
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const open = allowUnauthenticated();
 
   if (PUBLIC_PATHS.has(pathname)) return NextResponse.next();
   if (pathname.startsWith("/api/auth/")) return NextResponse.next();
@@ -15,7 +21,7 @@ export function proxy(request: NextRequest) {
 
   const authUser = request.cookies.get(PO_AUTH_USER_COOKIE)?.value;
   const demoUser = request.cookies.get(PO_DEMO_USER_COOKIE)?.value;
-  if (authUser || demoUser) return NextResponse.next();
+  if (authUser || demoUser || open) return NextResponse.next();
 
   const url = request.nextUrl.clone();
   url.pathname = "/login";
