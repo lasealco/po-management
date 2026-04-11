@@ -134,6 +134,20 @@ export function CrmOpportunitiesList() {
         </div>
       ) : null}
 
+      {staleOnly ? (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-950">
+          <span>
+            Showing opportunities whose close date or next-step date is before today (UTC).
+          </span>
+          <Link
+            href="/crm/opportunities"
+            className="shrink-0 font-medium text-violet-800 underline-offset-2 hover:underline"
+          >
+            Clear filter
+          </Link>
+        </div>
+      ) : null}
+
       <p className="mb-2 text-xs text-zinc-500">
         Showing {filtered.length} of {rows.length} loaded
       </p>
@@ -154,7 +168,7 @@ export function CrmOpportunitiesList() {
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-zinc-500">
+                <td colSpan={7} className="px-4 py-8 text-center text-zinc-500">
                   No opportunities match.
                 </td>
               </tr>
