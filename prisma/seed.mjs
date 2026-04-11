@@ -1396,6 +1396,15 @@ async function seed() {
     cfsShenzhenId: cfsShenzhen.id,
   });
 
+  if (process.env.SEED_CRM_DEMO === "1") {
+    const { runCrmDemoSeed } = await import("./crm-demo-seed.mjs");
+    await runCrmDemoSeed(prisma, tenant.id, {
+      buyerId: buyer.id,
+      approverId: approver.id,
+    });
+    console.log("[db:seed] CRM demo bulk applied (SEED_CRM_DEMO=1).");
+  }
+
   const userCount = await prisma.user.count({ where: { tenantId: tenant.id } });
   console.log(
     `[db:seed] Finished OK — tenant "${tenant.slug}", ${userCount} user(s). Login: buyer@demo-company.com / demo12345`,

@@ -21,7 +21,8 @@
     "db:migrate:deploy": "npm run db:migrate",
     "db:repair:supplier-migration": "node scripts/repair-failed-supplier-migration.cjs",
     "vercel-build": "node scripts/vercel-build.cjs",
-    "db:seed": "node prisma/seed.mjs"
+    "db:seed": "node prisma/seed.mjs",
+    "db:seed:crm-demo": "node prisma/crm-demo-seed.mjs"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.7.0",
