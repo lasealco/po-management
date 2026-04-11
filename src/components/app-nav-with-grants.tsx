@@ -12,6 +12,7 @@ export async function AppNavWithGrants() {
           reports: viewerHas(access.grantSet, "org.reports", "view"),
           consolidation: viewerHas(access.grantSet, "org.orders", "view"),
           wms: viewerHas(access.grantSet, "org.wms", "view"),
+          crm: viewerHas(access.grantSet, "org.crm", "view"),
           products: viewerHas(access.grantSet, "org.products", "view"),
           settings: viewerHas(access.grantSet, "org.settings", "view"),
           suppliers: viewerHas(access.grantSet, "org.suppliers", "view"),
@@ -26,6 +27,7 @@ export async function AppNavWithGrants() {
       linkVisibility.reports ||
       linkVisibility.consolidation ||
       linkVisibility.wms ||
+      linkVisibility.crm ||
       linkVisibility.products ||
       linkVisibility.settings ||
       linkVisibility.suppliers

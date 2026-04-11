@@ -8,6 +8,7 @@ const links = [
   { href: "/reports", key: "reports" as const, label: "Reports" },
   { href: "/consolidation", key: "consolidation" as const, label: "Consolidation" },
   { href: "/wms", key: "wms" as const, label: "WMS" },
+  { href: "/crm", key: "crm" as const, label: "CRM" },
   { href: "/products", key: "products" as const, label: "Products" },
   { href: "/settings", key: "settings" as const, label: "Settings" },
   { href: "/suppliers", key: "suppliers" as const, label: "Suppliers" },
@@ -18,6 +19,7 @@ export type AppNavLinkVisibility = {
   reports: boolean;
   consolidation: boolean;
   wms: boolean;
+  crm: boolean;
   products: boolean;
   settings: boolean;
   suppliers: boolean;
@@ -76,7 +78,9 @@ export function AppNav({
                   ? pathname.startsWith("/settings")
                   : href === "/reports"
                     ? pathname === "/reports" || pathname.startsWith("/reports/")
-                    : pathname === href || pathname.startsWith(`${href}/`);
+                    : href === "/crm"
+                      ? pathname === "/crm" || pathname.startsWith("/crm/")
+                      : pathname === href || pathname.startsWith(`${href}/`);
             return (
               <Link
                 key={href}

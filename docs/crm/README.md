@@ -10,3 +10,9 @@ PDFs exported from the CRM specification pack:
 - `logistics_crm_ux_ui_design_guideline.pdf` — UX/UI rules
 
 See also `docs/modular-product-and-crm-strategy.md` for how CRM fits into this monorepo.
+
+## Implementation (R1 in app)
+
+- **Tenant** is the CRM data boundary (`tenantId` on all CRM tables), same as PO/WMS.
+- **Permissions:** `org.crm` → `view` (own records) and `edit` (all tenant CRM rows). Granted to Buyer/Approver in `prisma/seed.mjs`; add to other roles in **Settings → Roles** as needed.
+- **UI:** `/crm` · **API:** `/api/crm/*` — run `npm run db:migrate:local` after pulling so the CRM migration is applied.

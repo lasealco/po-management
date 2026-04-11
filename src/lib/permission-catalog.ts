@@ -83,6 +83,19 @@ export const GLOBAL_PERMISSION_CATALOG = [
     label: "Manage warehouse operations",
     description: "Create and complete warehouse tasks, bins, and stock movements.",
   },
+  {
+    resource: "org.crm",
+    action: "view",
+    label: "View CRM",
+    description:
+      "Leads, accounts, contacts, opportunities, and activities (own records unless CRM edit is granted).",
+  },
+  {
+    resource: "org.crm",
+    action: "edit",
+    label: "Manage CRM",
+    description: "Create and update CRM records for any user in the tenant (managers).",
+  },
 ] as const;
 
 export type GlobalPermissionRow = (typeof GLOBAL_PERMISSION_CATALOG)[number];

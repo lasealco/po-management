@@ -8,6 +8,7 @@ export type CommandPaletteGrants = {
   reports: boolean;
   consolidation: boolean;
   wms: boolean;
+  crm: boolean;
   suppliers: boolean;
   products: boolean;
   settings: boolean;
@@ -117,6 +118,15 @@ export function CommandPalette({ grants }: { grants: CommandPaletteGrants }) {
         label: "Warehouse operations (WMS)",
         searchText: "warehouse wms stock bins putaway pick",
         action: go("/wms"),
+      });
+    }
+
+    if (grants.crm) {
+      list.push({
+        id: "crm",
+        label: "CRM — leads & accounts",
+        searchText: "crm sales pipeline opportunities leads",
+        action: go("/crm"),
       });
     }
 

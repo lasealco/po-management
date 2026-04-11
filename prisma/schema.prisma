@@ -35,6 +35,11 @@ model Tenant {
   loadPlans         LoadPlan[]
   userPreferences   UserPreference[]
   workflows         Workflow[]
+  crmLeads          CrmLead[]
+  crmAccounts       CrmAccount[]
+  crmContacts       CrmContact[]
+  crmOpportunities  CrmOpportunity[]
+  crmActivities     CrmActivity[]
 }
 
 model User {
@@ -64,6 +69,11 @@ model User {
   outboundOrdersCreated OutboundOrder[]
   loadPlansCreated    LoadPlan[]
   preferences         UserPreference[]
+  crmLeadsOwned       CrmLead[]          @relation("CrmLeadOwner")
+  crmAccountsOwned    CrmAccount[]      @relation("CrmAccountOwner")
+  crmContactsOwned    CrmContact[]      @relation("CrmContactOwner")
+  crmOpportunitiesOwned CrmOpportunity[] @relation("CrmOpportunityOwner")
+  crmActivitiesOwned  CrmActivity[]      @relation("CrmActivityOwner")
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -1069,4 +1079,208 @@ model OrderChatMessage {
   author User          @relation(fields: [authorUserId], references: [id], onDelete: Restrict)
 
   @@index([orderId, createdAt])
+}
+
+// --- Logistics CRM (R1 core entities; tenant-scoped, aligned with docs/crm PDFs) ---
+
+enum CrmLeadStatus {
+  NEW
+  WORKING
+  QUALIFIED
+  DISQUALIFIED
+  CONVERTED
+}
+
+enum CrmAccountType {
+  CUSTOMER
+  PROSPECT
+  PARTNER
+  AGENT
+  OTHER
+}
+
+enum CrmAccountLifecycle {
+  ACTIVE
+  INACTIVE
+}
+
+enum CrmOpportunityStage {
+  IDENTIFIED
+  QUALIFIED
+  DISCOVERY
+  SOLUTION_DESIGN
+  PROPOSAL_SUBMITTED
+  NEGOTIATION
+  VERBAL_AGREEMENT
+  WON_IMPLEMENTATION_PENDING
+  WON_LIVE
+  LOST
+  ON_HOLD
+}
+
+enum CrmActivityType {
+  TASK
+  CALL
+  MEETING
+  NOTE
+  EMAIL
+}
+
+model CrmLead {
+  id        String @id @default(cuid())
+  tenantId  String
+  ownerUserId String
+
+  companyName       String
+  contactFirstName  String?
+  contactLastName   String?
+  contactEmail      String?
+  contactPhone      String?
+  status            CrmLeadStatus @default(NEW)
+  source            String        @default("MANUAL")
+  serviceInterest   String?
+  qualificationNotes String?      @db.Text
+  estimatedAnnualSpend Decimal?   @db.Decimal(14, 2)
+  targetStartDate   DateTime?
+
+  convertedAt         DateTime?
+  convertedAccountId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  owner    User   @relation("CrmLeadOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, status])
+  @@index([tenantId, ownerUserId])
+  @@index([tenantId, createdAt])
+}
+
+model CrmAccount {
+  id         String @id @default(cuid())
+  tenantId   String
+  ownerUserId String
+
+  name       String
+  legalName  String?
+  website    String?
+  accountType CrmAccountType @default(PROSPECT)
+  lifecycle CrmAccountLifecycle @default(ACTIVE)
+  industry  String?
+  segment   String?
+  strategicFlag Boolean @default(false)
+
+  parentAccountId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  owner    User   @relation("CrmAccountOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  parent   CrmAccount?  @relation("CrmAccountHierarchy", fields: [parentAccountId], references: [id], onDelete: SetNull)
+  children CrmAccount[] @relation("CrmAccountHierarchy")
+
+  contacts      CrmContact[]
+  opportunities CrmOpportunity[]
+  activities    CrmActivity[] @relation("CrmActivityAccount")
+
+  @@index([tenantId, lifecycle])
+  @@index([tenantId, ownerUserId])
+  @@index([tenantId, name])
+}
+
+model CrmContact {
+  id         String @id @default(cuid())
+  tenantId   String
+  accountId  String
+  ownerUserId String
+
+  firstName   String
+  lastName    String
+  email       String?
+  phone       String?
+  title       String?
+  department  String?
+  decisionRole String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant       Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  account      CrmAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  owner        User   @relation("CrmContactOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  primaryFor   CrmOpportunity[] @relation("CrmOpportunityPrimaryContact")
+  activities   CrmActivity[] @relation("CrmActivityContact")
+
+  @@index([tenantId, accountId])
+  @@index([tenantId, email])
+}
+
+model CrmOpportunity {
+  id         String @id @default(cuid())
+  tenantId   String
+  accountId  String
+  ownerUserId String
+  primaryContactId String?
+
+  name        String
+  stage       CrmOpportunityStage @default(IDENTIFIED)
+  probability Int                 @default(10)
+  forecastCategory String?
+  estimatedRevenue    Decimal? @db.Decimal(14, 2)
+  estimatedNetRevenue Decimal? @db.Decimal(14, 2)
+  currency    String? @db.VarChar(3)
+  closeDate   DateTime?
+  nextStep    String? @db.Text
+  nextStepDate DateTime?
+  competitorName String?
+  lostReason  String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  account  CrmAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  owner    User   @relation("CrmOpportunityOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  primaryContact CrmContact? @relation("CrmOpportunityPrimaryContact", fields: [primaryContactId], references: [id], onDelete: SetNull)
+  activities CrmActivity[] @relation("CrmActivityOpportunity")
+
+  @@index([tenantId, stage])
+  @@index([tenantId, ownerUserId])
+  @@index([tenantId, accountId])
+  @@index([tenantId, closeDate])
+}
+
+model CrmActivity {
+  id         String @id @default(cuid())
+  tenantId   String
+  ownerUserId String
+
+  type    CrmActivityType
+  subject String
+  body    String? @db.Text
+  status  String  @default("OPEN")
+
+  dueDate    DateTime?
+  startTime  DateTime?
+  endTime    DateTime?
+
+  relatedAccountId     String?
+  relatedContactId     String?
+  relatedOpportunityId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant       Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  owner        User   @relation("CrmActivityOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  relatedAccount     CrmAccount?     @relation("CrmActivityAccount", fields: [relatedAccountId], references: [id], onDelete: SetNull)
+  relatedContact     CrmContact?     @relation("CrmActivityContact", fields: [relatedContactId], references: [id], onDelete: SetNull)
+  relatedOpportunity CrmOpportunity? @relation("CrmActivityOpportunity", fields: [relatedOpportunityId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, ownerUserId])
+  @@index([tenantId, dueDate])
+  @@index([relatedAccountId])
+  @@index([relatedOpportunityId])
 }
