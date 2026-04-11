@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
   const gate = await requireApiGrant("org.crm", "view");
   if (gate) return gate;
 
@@ -18,10 +18,26 @@ export async function GET() {
   }
 
   const scope = await crmTenantFilter(tenant.id, actorId);
-  const where =
+  const baseWhere =
     "ownerUserId" in scope && scope.ownerUserId
       ? { tenantId: tenant.id, ownerUserId: scope.ownerUserId }
       : { tenantId: tenant.id };
+
+  const { searchParams } = new URL(request.url);
+  const q = searchParams.get("q")?.trim();
+  const where = q
+    ? {
+        AND: [
+          baseWhere,
+          {
+            OR: [
+              { name: { contains: q, mode: "insensitive" as const } },
+              { legalName: { contains: q, mode: "insensitive" as const } },
+            ],
+          },
+        ],
+      }
+    : baseWhere;
 
   const accounts = await prisma.crmAccount.findMany({
     where,

@@ -6,9 +6,14 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
+type ConvertBody = {
+  /** When set, attach the lead to this account instead of creating a new one (same owner rules as account access). */
+  existingAccountId?: string | null;
+};
+
 /** Convert qualified lead → account (+ optional contact + starter opportunity). PRD US-005 baseline. */
 export async function POST(
-  _request: Request,
+  request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
   const gate = await requireApiGrant("org.crm", "view");
@@ -21,6 +26,14 @@ export async function POST(
   }
 
   const { id: leadId } = await context.params;
+
+  let body: ConvertBody = {};
+  try {
+    const text = await request.text();
+    if (text.trim()) body = JSON.parse(text) as ConvertBody;
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+  }
 
   const lead = await prisma.crmLead.findFirst({
     where: { id: leadId, tenantId: tenant.id },
@@ -44,17 +57,46 @@ export async function POST(
     );
   }
 
-  const result = await prisma.$transaction(async (tx) => {
-    const account = await tx.crmAccount.create({
-      data: {
+  const existingAccountId = body.existingAccountId?.trim() || null;
+
+  if (existingAccountId) {
+    const acc = await prisma.crmAccount.findFirst({
+      where: {
+        id: existingAccountId,
         tenantId: tenant.id,
-        ownerUserId: lead.ownerUserId,
-        name: lead.companyName,
-        accountType: "PROSPECT",
-        lifecycle: "ACTIVE",
+        ...(canEditAll ? {} : { ownerUserId: lead.ownerUserId }),
       },
-      select: { id: true, name: true },
+      select: { id: true },
     });
+    if (!acc) {
+      return NextResponse.json(
+        { error: "Account not found or you cannot attach to this account." },
+        { status: 404 },
+      );
+    }
+  }
+
+  const result = await prisma.$transaction(async (tx) => {
+    let account: { id: string; name: string };
+
+    if (existingAccountId) {
+      const acc = await tx.crmAccount.findFirstOrThrow({
+        where: { id: existingAccountId, tenantId: tenant.id },
+        select: { id: true, name: true },
+      });
+      account = acc;
+    } else {
+      account = await tx.crmAccount.create({
+        data: {
+          tenantId: tenant.id,
+          ownerUserId: lead.ownerUserId,
+          name: lead.companyName,
+          accountType: "PROSPECT",
+          lifecycle: "ACTIVE",
+        },
+        select: { id: true, name: true },
+      });
+    }
 
     let contact: { id: string; firstName: string; lastName: string } | null =
       null;
@@ -62,19 +104,42 @@ export async function POST(
       (lead.contactFirstName && lead.contactFirstName.trim()) ||
       (lead.contactLastName && lead.contactLastName.trim()) ||
       (lead.contactEmail && lead.contactEmail.trim());
+
     if (hasContact) {
-      contact = await tx.crmContact.create({
-        data: {
-          tenantId: tenant.id,
-          accountId: account.id,
-          ownerUserId: lead.ownerUserId,
-          firstName: (lead.contactFirstName ?? "").trim() || "—",
-          lastName: (lead.contactLastName ?? "").trim() || "—",
-          email: lead.contactEmail?.trim() || null,
-          phone: lead.contactPhone?.trim() || null,
-        },
-        select: { id: true, firstName: true, lastName: true },
-      });
+      const email = lead.contactEmail?.trim() || null;
+      if (email) {
+        const dup = await tx.crmContact.findFirst({
+          where: { accountId: account.id, email },
+          select: { id: true },
+        });
+        if (!dup) {
+          contact = await tx.crmContact.create({
+            data: {
+              tenantId: tenant.id,
+              accountId: account.id,
+              ownerUserId: lead.ownerUserId,
+              firstName: (lead.contactFirstName ?? "").trim() || "—",
+              lastName: (lead.contactLastName ?? "").trim() || "—",
+              email,
+              phone: lead.contactPhone?.trim() || null,
+            },
+            select: { id: true, firstName: true, lastName: true },
+          });
+        }
+      } else {
+        contact = await tx.crmContact.create({
+          data: {
+            tenantId: tenant.id,
+            accountId: account.id,
+            ownerUserId: lead.ownerUserId,
+            firstName: (lead.contactFirstName ?? "").trim() || "—",
+            lastName: (lead.contactLastName ?? "").trim() || "—",
+            email: null,
+            phone: lead.contactPhone?.trim() || null,
+          },
+          select: { id: true, firstName: true, lastName: true },
+        });
+      }
     }
 
     const opportunity = await tx.crmOpportunity.create({
@@ -103,7 +168,12 @@ export async function POST(
       },
     });
 
-    return { account, contact, opportunity };
+    return {
+      account,
+      contact,
+      opportunity,
+      linkedExistingAccount: Boolean(existingAccountId),
+    };
   });
 
   return NextResponse.json(result, { status: 201 });

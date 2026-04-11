@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 type OppRow = {
@@ -9,6 +10,7 @@ type OppRow = {
   stage: string;
   probability: number;
   closeDate: string | null;
+  nextStepDate: string | null;
   nextStep: string | null;
   account: { id: string; name: string };
   owner: { name: string };
@@ -29,6 +31,9 @@ const STAGES = [
 ] as const;
 
 export function CrmOpportunitiesList() {
+  const searchParams = useSearchParams();
+  const staleOnly = searchParams.get("stale") === "1";
+
   const [rows, setRows] = useState<OppRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [stageFilter, setStageFilter] = useState<string>("");
@@ -52,8 +57,19 @@ export function CrmOpportunitiesList() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
+    const startOfToday = new Date();
+    startOfToday.setUTCHours(0, 0, 0, 0);
+    const terminal = new Set(["LOST", "WON_LIVE"]);
     return rows.filter((r) => {
       if (stageFilter && r.stage !== stageFilter) return false;
+      if (staleOnly) {
+        if (terminal.has(r.stage)) return false;
+        const cd = r.closeDate ? new Date(r.closeDate) : null;
+        const nd = r.nextStepDate ? new Date(r.nextStepDate) : null;
+        const stale =
+          (cd !== null && cd < startOfToday) || (nd !== null && nd < startOfToday);
+        if (!stale) return false;
+      }
       if (!q) return true;
       return (
         r.name.toLowerCase().includes(q) ||
@@ -61,7 +77,7 @@ export function CrmOpportunitiesList() {
         r.stage.toLowerCase().includes(q)
       );
     });
-  }, [rows, stageFilter, query]);
+  }, [rows, stageFilter, query, staleOnly]);
 
   return (
     <div className="mx-auto max-w-7xl px-6 py-8">
@@ -131,6 +147,7 @@ export function CrmOpportunitiesList() {
               <th className="px-4 py-2">Stage</th>
               <th className="px-4 py-2">%</th>
               <th className="px-4 py-2">Close</th>
+              <th className="px-4 py-2">Next step</th>
               <th className="px-4 py-2">Owner</th>
             </tr>
           </thead>
@@ -166,6 +183,11 @@ export function CrmOpportunitiesList() {
                   <td className="px-4 py-2 text-zinc-600">{row.probability}</td>
                   <td className="px-4 py-2 text-xs text-zinc-500">
                     {row.closeDate ? new Date(row.closeDate).toLocaleDateString() : "—"}
+                  </td>
+                  <td className="px-4 py-2 text-xs text-zinc-500">
+                    {row.nextStepDate
+                      ? new Date(row.nextStepDate).toLocaleDateString()
+                      : "—"}
                   </td>
                   <td className="px-4 py-2 text-zinc-600">{row.owner.name}</td>
                 </tr>

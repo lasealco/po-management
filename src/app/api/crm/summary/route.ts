@@ -23,30 +23,70 @@ export async function GET() {
       ? { ownerUserId: scope.ownerUserId }
       : {};
 
-  const [leadCount, accountCount, opportunityCount, openActivityCount] =
-    await Promise.all([
-      prisma.crmLead.count({ where: { tenantId: tenant.id, ...ownerClause } }),
-      prisma.crmAccount.count({ where: { tenantId: tenant.id, ...ownerClause } }),
-      prisma.crmOpportunity.count({
-        where: {
-          tenantId: tenant.id,
-          ...ownerClause,
-          stage: { notIn: ["LOST", "WON_LIVE"] },
-        },
-      }),
-      prisma.crmActivity.count({
-        where: {
-          tenantId: tenant.id,
-          ...ownerClause,
-          status: { not: "DONE" },
-        },
-      }),
-    ]);
+  const startOfToday = new Date();
+  startOfToday.setUTCHours(0, 0, 0, 0);
+  const now = new Date();
+
+  const [
+    leadCount,
+    accountCount,
+    opportunityCount,
+    openActivityCount,
+    openQuoteCount,
+    staleOpportunityCount,
+    overdueActivityCount,
+  ] = await Promise.all([
+    prisma.crmLead.count({ where: { tenantId: tenant.id, ...ownerClause } }),
+    prisma.crmAccount.count({ where: { tenantId: tenant.id, ...ownerClause } }),
+    prisma.crmOpportunity.count({
+      where: {
+        tenantId: tenant.id,
+        ...ownerClause,
+        stage: { notIn: ["LOST", "WON_LIVE"] },
+      },
+    }),
+    prisma.crmActivity.count({
+      where: {
+        tenantId: tenant.id,
+        ...ownerClause,
+        status: { not: "DONE" },
+      },
+    }),
+    prisma.crmQuote.count({
+      where: {
+        tenantId: tenant.id,
+        ...ownerClause,
+        status: { in: ["DRAFT", "SENT"] },
+      },
+    }),
+    prisma.crmOpportunity.count({
+      where: {
+        tenantId: tenant.id,
+        ...ownerClause,
+        stage: { notIn: ["LOST", "WON_LIVE"] },
+        OR: [
+          { closeDate: { lt: startOfToday } },
+          { nextStepDate: { lt: startOfToday } },
+        ],
+      },
+    }),
+    prisma.crmActivity.count({
+      where: {
+        tenantId: tenant.id,
+        ...ownerClause,
+        status: { notIn: ["DONE", "CANCELLED"] },
+        dueDate: { lt: now },
+      },
+    }),
+  ]);
 
   return NextResponse.json({
     leads: leadCount,
     accounts: accountCount,
     openOpportunities: opportunityCount,
     openActivities: openActivityCount,
+    openQuotes: openQuoteCount,
+    staleOpportunities: staleOpportunityCount,
+    overdueActivities: overdueActivityCount,
   });
 }

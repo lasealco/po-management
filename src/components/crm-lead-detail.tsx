@@ -46,6 +46,11 @@ export function CrmLeadDetail({
   const [serviceInterest, setServiceInterest] = useState("");
   const [qualificationNotes, setQualificationNotes] = useState("");
 
+  const [accountMatches, setAccountMatches] = useState<{ id: string; name: string }[]>(
+    [],
+  );
+  const [existingAccountId, setExistingAccountId] = useState("");
+
   const load = useCallback(async () => {
     setError(null);
     try {
@@ -70,6 +75,27 @@ export function CrmLeadDetail({
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!lead || lead.status === "CONVERTED") {
+      setAccountMatches([]);
+      return;
+    }
+    const q = lead.companyName.trim();
+    if (q.length < 2) return;
+    let cancelled = false;
+    void fetch(`/api/crm/accounts?q=${encodeURIComponent(q.slice(0, 80))}`).then(
+      async (res) => {
+        const data = await res.json();
+        if (!cancelled && res.ok) {
+          setAccountMatches((data.accounts ?? []).slice(0, 8));
+        }
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [lead]);
 
   const canPatch = Boolean(
     lead &&
@@ -123,7 +149,15 @@ export function CrmLeadDetail({
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch(`/api/crm/leads/${leadId}/convert`, { method: "POST" });
+      const body =
+        existingAccountId.trim().length > 0
+          ? { existingAccountId: existingAccountId.trim() }
+          : {};
+      const res = await fetch(`/api/crm/leads/${leadId}/convert`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Convert failed");
       await load();
@@ -295,15 +329,45 @@ export function CrmLeadDetail({
         )}
       </form>
 
+      {canConvert && accountMatches.length > 0 ? (
+        <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+          <p className="font-medium">Possible duplicate accounts</p>
+          <p className="mt-1 text-xs text-amber-900/90">
+            Names similar to this lead exist already. Link to one below, or leave blank to
+            create a new account.
+          </p>
+        </div>
+      ) : null}
+
       {canConvert ? (
-        <div className="mt-6">
+        <div className="mt-4 space-y-3">
+          {accountMatches.length > 0 ? (
+            <label className="block text-sm">
+              <span className="text-zinc-600">Attach to existing account (optional)</span>
+              <select
+                value={existingAccountId}
+                onChange={(e) => setExistingAccountId(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm"
+                disabled={busy}
+              >
+                <option value="">— Create new account —</option>
+                {accountMatches.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
           <button
             type="button"
             disabled={busy}
             onClick={() => void convert()}
             className="rounded-lg border border-violet-300 bg-violet-50 px-4 py-2 text-sm font-medium text-violet-900 hover:bg-violet-100 disabled:opacity-50"
           >
-            Convert to account
+            {existingAccountId.trim()
+              ? "Convert & attach to selected account"
+              : "Convert to new account"}
           </button>
         </div>
       ) : null}

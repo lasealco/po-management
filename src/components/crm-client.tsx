@@ -8,6 +8,9 @@ type Summary = {
   accounts: number;
   openOpportunities: number;
   openActivities: number;
+  openQuotes: number;
+  staleOpportunities: number;
+  overdueActivities: number;
 };
 
 type LeadRow = {
@@ -206,13 +209,48 @@ export function CrmClient({
         </div>
       ) : null}
 
+      {summary &&
+      (summary.staleOpportunities > 0 || summary.overdueActivities > 0) ? (
+        <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+          <p className="font-medium">Needs attention</p>
+          <ul className="mt-2 list-inside list-disc space-y-1 text-xs text-amber-900/90">
+            {summary.staleOpportunities > 0 ? (
+              <li>
+                <Link
+                  href="/crm/opportunities?stale=1"
+                  className="font-medium text-violet-800 underline-offset-2 hover:underline"
+                >
+                  {summary.staleOpportunities} opportunit
+                  {summary.staleOpportunities === 1 ? "y" : "ies"} with a past close or next-step
+                  date
+                </Link>
+              </li>
+            ) : null}
+            {summary.overdueActivities > 0 ? (
+              <li>
+                <Link
+                  href="/crm/activities"
+                  className="font-medium text-violet-800 underline-offset-2 hover:underline"
+                >
+                  {summary.overdueActivities} overdue activit
+                  {summary.overdueActivities === 1 ? "y" : "ies"}
+                </Link>
+              </li>
+            ) : null}
+          </ul>
+        </div>
+      ) : null}
+
       {summary ? (
-        <div className="mb-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mb-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
           {[
             ["Leads", summary.leads],
             ["Accounts", summary.accounts],
             ["Open pipeline (opps)", summary.openOpportunities],
+            ["Open quotes", summary.openQuotes],
+            ["Stale opportunities", summary.staleOpportunities],
             ["Open activities", summary.openActivities],
+            ["Overdue activities", summary.overdueActivities],
           ].map(([label, n]) => (
             <div
               key={String(label)}

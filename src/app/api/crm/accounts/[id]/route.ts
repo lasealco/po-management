@@ -40,7 +40,7 @@ export async function GET(
     return NextResponse.json({ error: "Account not found." }, { status: 404 });
   }
 
-  const [contacts, opportunities, activities] = await Promise.all([
+  const [contacts, opportunities, activities, quotes] = await Promise.all([
     prisma.crmContact.findMany({
       where: { tenantId: tenant.id, accountId: id },
       orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
@@ -79,6 +79,20 @@ export async function GET(
         createdAt: true,
       },
     }),
+    prisma.crmQuote.findMany({
+      where: { tenantId: tenant.id, accountId: id },
+      orderBy: { updatedAt: "desc" },
+      take: 50,
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        quoteNumber: true,
+        subtotal: true,
+        validUntil: true,
+        updatedAt: true,
+      },
+    }),
   ]);
 
   return NextResponse.json({
@@ -86,6 +100,7 @@ export async function GET(
     contacts,
     opportunities,
     activities,
+    quotes,
   });
 }
 

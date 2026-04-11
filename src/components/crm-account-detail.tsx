@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type AccountDetail = {
   id: string;
@@ -44,6 +45,25 @@ type ActRow = {
   createdAt: string;
 };
 
+type QuoteRow = {
+  id: string;
+  title: string;
+  status: string;
+  quoteNumber: string | null;
+  subtotal: string | null;
+  validUntil: string | null;
+  updatedAt: string;
+};
+
+const TABS = [
+  { id: "overview" as const, label: "Overview" },
+  { id: "contacts" as const, label: "Contacts" },
+  { id: "opportunities" as const, label: "Opportunities" },
+  { id: "quotes" as const, label: "Quotes" },
+  { id: "shipments" as const, label: "Shipments" },
+  { id: "finance" as const, label: "Finance" },
+];
+
 export function CrmAccountDetail({
   accountId,
   actorUserId,
@@ -53,10 +73,23 @@ export function CrmAccountDetail({
   actorUserId: string;
   canEditAll: boolean;
 }) {
+  const searchParams = useSearchParams();
+  const initialTab = useMemo(() => {
+    const t = searchParams.get("tab");
+    if (t && TABS.some((x) => x.id === t)) return t as (typeof TABS)[number]["id"];
+    return "overview";
+  }, [searchParams]);
+
+  const [tab, setTab] = useState<(typeof TABS)[number]["id"]>(initialTab);
+  useEffect(() => {
+    setTab(initialTab);
+  }, [initialTab]);
+
   const [account, setAccount] = useState<AccountDetail | null>(null);
   const [contacts, setContacts] = useState<ContactRow[]>([]);
   const [opportunities, setOpportunities] = useState<OppRow[]>([]);
   const [activities, setActivities] = useState<ActRow[]>([]);
+  const [quotes, setQuotes] = useState<QuoteRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -67,6 +100,8 @@ export function CrmAccountDetail({
   const [cFirst, setCFirst] = useState("");
   const [cLast, setCLast] = useState("");
   const [cEmail, setCEmail] = useState("");
+
+  const [quoteTitle, setQuoteTitle] = useState("");
 
   const load = useCallback(async () => {
     setError(null);
@@ -81,6 +116,7 @@ export function CrmAccountDetail({
       setContacts(data.contacts ?? []);
       setOpportunities(data.opportunities ?? []);
       setActivities(data.activities ?? []);
+      setQuotes(data.quotes ?? []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Load failed");
     }
@@ -144,6 +180,35 @@ export function CrmAccountDetail({
     }
   }
 
+  async function createQuote(e: React.FormEvent) {
+    e.preventDefault();
+    if (!quoteTitle.trim()) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/crm/quotes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          accountId,
+          title: quoteTitle.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Save failed");
+      setQuoteTitle("");
+      await load();
+      setTab("quotes");
+      if (data.quote?.id) {
+        window.location.href = `/crm/quotes/${data.quote.id}`;
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Save failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   if (error && !account) {
     return (
       <div className="mx-auto max-w-3xl px-6 py-16">
@@ -167,12 +232,12 @@ export function CrmAccountDetail({
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-8">
-      <div className="mb-6 flex flex-wrap items-center gap-3">
+      <div className="mb-4 flex flex-wrap items-center gap-3">
         <Link
-          href="/crm"
+          href="/crm/accounts"
           className="text-sm font-medium text-violet-700 hover:text-violet-900"
         >
-          ← CRM home
+          ← Accounts
         </Link>
         <span className="text-zinc-300">/</span>
         <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
@@ -188,59 +253,95 @@ export function CrmAccountDetail({
         ) : null}
       </div>
 
+      <div className="mb-6 flex flex-wrap gap-1 border-b border-zinc-200 pb-2">
+        {TABS.map(({ id, label }) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setTab(id)}
+            className={`rounded-md px-3 py-1.5 text-sm font-medium ${
+              tab === id
+                ? "bg-violet-100 text-violet-900"
+                : "text-zinc-600 hover:bg-zinc-100"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       {error ? (
         <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-900">
           {error}
         </div>
       ) : null}
 
-      <section className="mb-10 rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
-        <h2 className="text-lg font-semibold text-zinc-900">Account summary</h2>
-        {canPatch ? (
-          <form onSubmit={saveAccount} className="mt-4 grid gap-3 sm:grid-cols-2">
-            <label className="text-sm sm:col-span-2">
-              <span className="text-zinc-600">Name</span>
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm"
-                disabled={busy}
-              />
-            </label>
-            <label className="text-sm">
-              <span className="text-zinc-600">Industry</span>
-              <input
-                value={industry}
-                onChange={(e) => setIndustry(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm"
-                disabled={busy}
-              />
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={strategic}
-                onChange={(e) => setStrategic(e.target.checked)}
-                disabled={busy}
-              />
-              <span className="text-zinc-700">Strategic account</span>
-            </label>
-            <div className="sm:col-span-2">
-              <button
-                type="submit"
-                disabled={busy || !name.trim()}
-                className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
-              >
-                Save changes
-              </button>
-            </div>
-          </form>
-        ) : (
-          <p className="mt-2 text-sm text-zinc-600">Read-only for this user.</p>
-        )}
-      </section>
+      {tab === "overview" ? (
+        <>
+          <section className="mb-10 rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
+            <h2 className="text-lg font-semibold text-zinc-900">Account summary</h2>
+            {canPatch ? (
+              <form onSubmit={saveAccount} className="mt-4 grid gap-3 sm:grid-cols-2">
+                <label className="text-sm sm:col-span-2">
+                  <span className="text-zinc-600">Name</span>
+                  <input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm"
+                    disabled={busy}
+                  />
+                </label>
+                <label className="text-sm">
+                  <span className="text-zinc-600">Industry</span>
+                  <input
+                    value={industry}
+                    onChange={(e) => setIndustry(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm"
+                    disabled={busy}
+                  />
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={strategic}
+                    onChange={(e) => setStrategic(e.target.checked)}
+                    disabled={busy}
+                  />
+                  <span className="text-zinc-700">Strategic account</span>
+                </label>
+                <div className="sm:col-span-2">
+                  <button
+                    type="submit"
+                    disabled={busy || !name.trim()}
+                    className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
+                  >
+                    Save changes
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <p className="mt-2 text-sm text-zinc-600">Read-only for this user.</p>
+            )}
+          </section>
+          <section className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
+            <h2 className="text-lg font-semibold text-zinc-900">Recent activities</h2>
+            <ul className="mt-4 divide-y divide-zinc-100 text-sm">
+              {activities.length === 0 ? (
+                <li className="py-3 text-zinc-500">No activities linked to this account.</li>
+              ) : (
+                activities.map((a) => (
+                  <li key={a.id} className="py-2">
+                    <span className="font-medium text-zinc-800">{a.subject}</span>
+                    <span className="text-zinc-500"> · {a.type}</span>
+                  </li>
+                ))
+              )}
+            </ul>
+          </section>
+        </>
+      ) : null}
 
-      <div className="grid gap-10 lg:grid-cols-2">
+      {tab === "contacts" ? (
         <section className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
           <h2 className="text-lg font-semibold text-zinc-900">Contacts</h2>
           {canPatch ? (
@@ -269,7 +370,7 @@ export function CrmAccountDetail({
               <button
                 type="submit"
                 disabled={busy || !cFirst.trim() || !cLast.trim()}
-                className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-sm font-medium text-violet-900 hover:bg-violet-100 disabled:opacity-50 sm:col-span-3"
+                className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-sm font-medium text-violet-900 disabled:opacity-50 sm:col-span-3"
               >
                 Add contact
               </button>
@@ -288,18 +389,16 @@ export function CrmAccountDetail({
                   <span className="font-medium text-zinc-900">
                     {c.firstName} {c.lastName}
                   </span>
-                  {c.title ? (
-                    <span className="text-zinc-500"> · {c.title}</span>
-                  ) : null}
-                  {c.email ? (
-                    <div className="text-xs text-zinc-500">{c.email}</div>
-                  ) : null}
+                  {c.title ? <span className="text-zinc-500"> · {c.title}</span> : null}
+                  {c.email ? <div className="text-xs text-zinc-500">{c.email}</div> : null}
                 </li>
               ))
             )}
           </ul>
         </section>
+      ) : null}
 
+      {tab === "opportunities" ? (
         <section className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
           <h2 className="text-lg font-semibold text-zinc-900">Opportunities</h2>
           <ul className="mt-4 divide-y divide-zinc-100 text-sm">
@@ -308,7 +407,12 @@ export function CrmAccountDetail({
             ) : (
               opportunities.map((o) => (
                 <li key={o.id} className="py-2">
-                  <div className="font-medium text-zinc-900">{o.name}</div>
+                  <Link
+                    href={`/crm/opportunities/${o.id}`}
+                    className="font-medium text-violet-700 hover:underline"
+                  >
+                    {o.name}
+                  </Link>
                   <div className="text-xs text-zinc-500">
                     {o.stage} · {o.probability}%
                   </div>
@@ -317,23 +421,75 @@ export function CrmAccountDetail({
             )}
           </ul>
         </section>
-      </div>
+      ) : null}
 
-      <section className="mt-10 rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
-        <h2 className="text-lg font-semibold text-zinc-900">Recent activities</h2>
-        <ul className="mt-4 divide-y divide-zinc-100 text-sm">
-          {activities.length === 0 ? (
-            <li className="py-3 text-zinc-500">No activities linked to this account.</li>
-          ) : (
-            activities.map((a) => (
-              <li key={a.id} className="py-2">
-                <span className="font-medium text-zinc-800">{a.subject}</span>
-                <span className="text-zinc-500"> · {a.type}</span>
-              </li>
-            ))
-          )}
-        </ul>
-      </section>
+      {tab === "quotes" ? (
+        <section className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <h2 className="text-lg font-semibold text-zinc-900">Quotes</h2>
+          {canPatch ? (
+            <form onSubmit={createQuote} className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+              <label className="flex-1 text-sm">
+                <span className="text-zinc-600">New quote title</span>
+                <input
+                  value={quoteTitle}
+                  onChange={(e) => setQuoteTitle(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm"
+                  placeholder="e.g. Chicago lane — Q2 proposal"
+                  disabled={busy}
+                />
+              </label>
+              <button
+                type="submit"
+                disabled={busy || !quoteTitle.trim()}
+                className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
+              >
+                Create & open
+              </button>
+            </form>
+          ) : null}
+          <ul className="mt-6 divide-y divide-zinc-100 text-sm">
+            {quotes.length === 0 ? (
+              <li className="py-3 text-zinc-500">No quotes for this account yet.</li>
+            ) : (
+              quotes.map((q) => (
+                <li key={q.id} className="py-2">
+                  <Link
+                    href={`/crm/quotes/${q.id}`}
+                    className="font-medium text-violet-700 hover:underline"
+                  >
+                    {q.title}
+                  </Link>
+                  <div className="text-xs text-zinc-500">
+                    {q.quoteNumber ?? "—"} · {q.status}
+                    {q.subtotal != null ? ` · ${q.subtotal}` : ""}
+                  </div>
+                </li>
+              ))
+            )}
+          </ul>
+        </section>
+      ) : null}
+
+      {tab === "shipments" ? (
+        <section className="rounded-xl border border-amber-200 bg-amber-50/60 p-6 text-sm text-amber-950">
+          <h2 className="text-lg font-semibold text-amber-950">Shipments</h2>
+          <p className="mt-2 leading-relaxed">
+            This panel will show milestones, bookings, and execution status when the{" "}
+            <strong>control tower / shipment</strong> integration is connected (after the
+            integration portal ships).
+          </p>
+        </section>
+      ) : null}
+
+      {tab === "finance" ? (
+        <section className="rounded-xl border border-sky-200 bg-sky-50/60 p-6 text-sm text-sky-950">
+          <h2 className="text-lg font-semibold text-sky-950">Finance</h2>
+          <p className="mt-2 leading-relaxed">
+            Invoices, payments, and DSO-style snapshots will appear here when an{" "}
+            <strong>ERP / accounting</strong> connector is available.
+          </p>
+        </section>
+      ) : null}
     </div>
   );
 }

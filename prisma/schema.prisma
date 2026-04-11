@@ -40,6 +40,7 @@ model Tenant {
   crmContacts       CrmContact[]
   crmOpportunities  CrmOpportunity[]
   crmActivities     CrmActivity[]
+  crmQuotes         CrmQuote[]
 }
 
 model User {
@@ -74,6 +75,7 @@ model User {
   crmContactsOwned    CrmContact[]      @relation("CrmContactOwner")
   crmOpportunitiesOwned CrmOpportunity[] @relation("CrmOpportunityOwner")
   crmActivitiesOwned  CrmActivity[]      @relation("CrmActivityOwner")
+  crmQuotesOwned      CrmQuote[]         @relation("CrmQuoteOwner")
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -1126,6 +1128,14 @@ enum CrmActivityType {
   EMAIL
 }
 
+enum CrmQuoteStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
 model CrmLead {
   id        String @id @default(cuid())
   tenantId  String
@@ -1184,6 +1194,7 @@ model CrmAccount {
   contacts      CrmContact[]
   opportunities CrmOpportunity[]
   activities    CrmActivity[] @relation("CrmActivityAccount")
+  quotes          CrmQuote[]
 
   @@index([tenantId, lifecycle])
   @@index([tenantId, ownerUserId])
@@ -1245,6 +1256,7 @@ model CrmOpportunity {
   owner    User   @relation("CrmOpportunityOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
   primaryContact CrmContact? @relation("CrmOpportunityPrimaryContact", fields: [primaryContactId], references: [id], onDelete: SetNull)
   activities CrmActivity[] @relation("CrmActivityOpportunity")
+  quotes     CrmQuote[]
 
   @@index([tenantId, stage])
   @@index([tenantId, ownerUserId])
@@ -1283,4 +1295,50 @@ model CrmActivity {
   @@index([tenantId, dueDate])
   @@index([relatedAccountId])
   @@index([relatedOpportunityId])
+}
+
+model CrmQuote {
+  id              String          @id @default(cuid())
+  tenantId        String
+  ownerUserId     String
+  accountId       String
+  opportunityId   String?
+
+  title           String
+  status          CrmQuoteStatus  @default(DRAFT)
+  quoteNumber     String?
+  validUntil      DateTime?
+  currency        String          @default("USD") @db.VarChar(3)
+  notes           String?         @db.Text
+  subtotal        Decimal?        @db.Decimal(14, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant      Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  owner       User           @relation("CrmQuoteOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  account     CrmAccount     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  opportunity CrmOpportunity? @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+  lines       CrmQuoteLine[]
+
+  @@index([tenantId, accountId])
+  @@index([tenantId, ownerUserId])
+  @@index([tenantId, status])
+}
+
+model CrmQuoteLine {
+  id             String   @id @default(cuid())
+  quoteId        String
+  sortOrder      Int      @default(0)
+  description    String
+  quantity       Decimal  @db.Decimal(14, 4)
+  unitPrice      Decimal  @db.Decimal(14, 4)
+  extendedAmount Decimal? @db.Decimal(14, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  quote CrmQuote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  @@index([quoteId])
 }

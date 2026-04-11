@@ -10,6 +10,7 @@ const items: { href: string; label: string }[] = [
   { href: "/crm/contacts", label: "Contacts" },
   { href: "/crm/opportunities", label: "Opportunities" },
   { href: "/crm/pipeline", label: "Pipeline" },
+  { href: "/crm/quotes", label: "Quotes" },
   { href: "/crm/activities", label: "Activities" },
 ];
 

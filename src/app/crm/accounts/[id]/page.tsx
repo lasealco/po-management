@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+
 import { AccessDenied } from "@/components/access-denied";
 import { CrmAccountDetail } from "@/components/crm-account-detail";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
@@ -34,10 +36,16 @@ export default async function CrmAccountPage({
   const { id } = await params;
 
   return (
-    <CrmAccountDetail
-      accountId={id}
-      actorUserId={access.user.id}
-      canEditAll={viewerHas(access.grantSet, "org.crm", "edit")}
-    />
+    <Suspense
+      fallback={
+        <div className="px-6 py-16 text-sm text-zinc-500">Loading account…</div>
+      }
+    >
+      <CrmAccountDetail
+        accountId={id}
+        actorUserId={access.user.id}
+        canEditAll={viewerHas(access.grantSet, "org.crm", "edit")}
+      />
+    </Suspense>
   );
 }
