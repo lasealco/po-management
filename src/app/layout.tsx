@@ -45,7 +45,13 @@ export default async function RootLayout({
         !isSupplierPortalUser,
     ),
     wms: Boolean(access?.user && viewerHas(access.grantSet, "org.wms", "view")),
-    crm: Boolean(access?.user && viewerHas(access.grantSet, "org.crm", "view")),
+    crm: Boolean(
+      access?.user &&
+        (viewerHas(access.grantSet, "org.crm", "view") ||
+          (!isSupplierPortalUser &&
+            (viewerHas(access.grantSet, "org.orders", "view") ||
+              viewerHas(access.grantSet, "org.settings", "view")))),
+    ),
     suppliers: Boolean(access?.user && viewerHas(access.grantSet, "org.suppliers", "view")),
     products: Boolean(access?.user && viewerHas(access.grantSet, "org.products", "view")),
     settings: Boolean(access?.user && viewerHas(access.grantSet, "org.settings", "view")),
