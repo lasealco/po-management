@@ -8,6 +8,7 @@ const items: { href: string; label: string }[] = [
   { href: "/crm/leads", label: "Leads" },
   { href: "/crm/accounts", label: "Accounts" },
   { href: "/crm/contacts", label: "Contacts" },
+  { href: "/crm/opportunities", label: "Opportunities" },
   { href: "/crm/pipeline", label: "Pipeline" },
   { href: "/crm/activities", label: "Activities" },
 ];

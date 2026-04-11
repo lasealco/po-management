@@ -148,6 +148,12 @@ export function CommandPalette({ grants }: { grants: CommandPaletteGrants }) {
           action: go("/crm/contacts"),
         },
         {
+          id: "crm-opportunities",
+          label: "CRM — opportunities (table)",
+          searchText: "crm opportunities deals pipeline list",
+          action: go("/crm/opportunities"),
+        },
+        {
           id: "crm-pipeline",
           label: "CRM — pipeline",
           searchText: "crm pipeline opportunities board stages",

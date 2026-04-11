@@ -2,10 +2,17 @@
 
 Parking lot so we can ship vertical slices without losing track of the full PRD (`docs/crm/*.pdf`).
 
+## Suggested build sequence (Outlook / M365 last)
+
+1. CRM entity depth: opportunities table + filters (done incrementally), quotes MVP, richer lead convert.
+2. Account workspace: tabbed “360” with **placeholder** panels until integrations exist.
+3. Automation & notifications (in-app first, email later).
+4. **Integration portal** (connectors, tokens, health) — then **Outlook** as one connector.
+
 ## In the app today (not “all” PDF pages — core R1 + multi-page shell)
 
-- CRM sub-nav: Overview, Leads, Accounts, Contacts, Pipeline, Activities.
-- List hubs + detail: lead (`/crm/leads/[id]`), account, opportunity (`/crm/opportunities/[id]`), tenant-scoped contacts list.
+- CRM sub-nav: Overview, Leads, Accounts, Contacts, Opportunities, Pipeline, Activities.
+- List hubs + detail: lead (`/crm/leads/[id]`), account, opportunity (`/crm/opportunities/[id]`), tenant-scoped contacts list; opportunities **table** at `/crm/opportunities`.
 - APIs: `GET`/`PATCH` lead, opportunity, activity by id; `GET` contacts without `accountId` (scoped via account ownership).
 - Pipeline board (read-only columns by stage); activities hub with create + status updates.
 
