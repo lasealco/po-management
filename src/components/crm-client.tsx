@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 type Summary = {
@@ -15,6 +16,7 @@ type LeadRow = {
   status: string;
   source: string;
   contactEmail: string | null;
+  ownerUserId: string;
   owner: { name: string; email: string };
   updatedAt: string;
 };
@@ -41,7 +43,13 @@ type OppRow = {
   account: { id: string; name: string };
 };
 
-export function CrmClient({ canEdit }: { canEdit: boolean }) {
+export function CrmClient({
+  canEdit,
+  actorUserId,
+}: {
+  canEdit: boolean;
+  actorUserId: string;
+}) {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [leads, setLeads] = useState<LeadRow[]>([]);
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
@@ -147,6 +155,23 @@ export function CrmClient({ canEdit }: { canEdit: boolean }) {
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Save failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function convertLead(leadId: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/crm/leads/${leadId}/convert`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Convert failed");
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Convert failed");
     } finally {
       setBusy(false);
     }
@@ -315,7 +340,7 @@ export function CrmClient({ canEdit }: { canEdit: boolean }) {
               <tbody>
                 {leads.length === 0 ? (
                   <tr>
-                    <td colSpan={3} className="px-3 py-6 text-center text-zinc-500">
+                    <td colSpan={4} className="px-3 py-6 text-center text-zinc-500">
                       No leads yet.
                     </td>
                   </tr>
@@ -327,6 +352,19 @@ export function CrmClient({ canEdit }: { canEdit: boolean }) {
                       </td>
                       <td className="px-3 py-2 text-zinc-600">{row.status}</td>
                       <td className="px-3 py-2 text-zinc-600">{row.owner.name}</td>
+                      <td className="px-3 py-2 text-right">
+                        {row.status !== "CONVERTED" &&
+                        (canEdit || row.ownerUserId === actorUserId) ? (
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => void convertLead(row.id)}
+                            className="text-sm font-medium text-violet-700 hover:text-violet-900 disabled:opacity-50"
+                          >
+                            Convert
+                          </button>
+                        ) : null}
+                      </td>
                     </tr>
                   ))
                 )}
@@ -356,7 +394,14 @@ export function CrmClient({ canEdit }: { canEdit: boolean }) {
                 ) : (
                   accounts.map((row) => (
                     <tr key={row.id} className="border-b border-zinc-50 last:border-0">
-                      <td className="px-3 py-2 font-medium text-zinc-900">{row.name}</td>
+                      <td className="px-3 py-2 font-medium text-zinc-900">
+                        <Link
+                          href={`/crm/accounts/${row.id}`}
+                          className="text-violet-700 hover:text-violet-900 hover:underline"
+                        >
+                          {row.name}
+                        </Link>
+                      </td>
                       <td className="px-3 py-2 text-zinc-600">{row.accountType}</td>
                       <td className="px-3 py-2 text-zinc-600">
                         {row._count.contacts} / {row._count.opportunities}
