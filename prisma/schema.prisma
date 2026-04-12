@@ -32,6 +32,10 @@ model Tenant {
   replenishmentRules ReplenishmentRule[]
   outboundOrders    OutboundOrder[]
   outboundOrderLines OutboundOrderLine[]
+  wmsBillingRates         WmsBillingRate[]
+  wmsBillingEvents        WmsBillingEvent[]
+  wmsBillingInvoiceRuns   WmsBillingInvoiceRun[]
+  wmsBillingInvoiceLines  WmsBillingInvoiceLine[]
   loadPlans         LoadPlan[]
   userPreferences   UserPreference[]
   workflows         Workflow[]
@@ -76,6 +80,7 @@ model User {
   crmOpportunitiesOwned CrmOpportunity[] @relation("CrmOpportunityOwner")
   crmActivitiesOwned  CrmActivity[]      @relation("CrmActivityOwner")
   crmQuotesOwned      CrmQuote[]         @relation("CrmQuoteOwner")
+  wmsBillingInvoiceRunsCreated WmsBillingInvoiceRun[] @relation("WmsBillingInvoiceRunCreatedBy")
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -319,6 +324,7 @@ model Product {
   orderItems     PurchaseOrderItem[]
   inventoryBalances InventoryBalance[]
   inventoryMovements InventoryMovement[]
+  wmsBillingEvents WmsBillingEvent[]
   wmsTasks WmsTask[]
   replenishmentRules ReplenishmentRule[]
   outboundOrderLines OutboundOrderLine[]
@@ -683,6 +689,7 @@ model Warehouse {
   wmsWaves  WmsWave[]
   replenishmentRules ReplenishmentRule[]
   outboundOrders OutboundOrder[]
+  wmsBillingEvents WmsBillingEvent[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -822,9 +829,107 @@ model InventoryMovement {
   bin       WarehouseBin? @relation(fields: [binId], references: [id], onDelete: SetNull)
   product   Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
   createdBy User          @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  wmsBillingEvent WmsBillingEvent?
 
   @@index([tenantId, warehouseId, createdAt])
   @@index([referenceType, referenceId])
+}
+
+enum WmsBillingProfileSource {
+  MANUAL
+  CRM_ACCOUNT
+}
+
+enum WmsBillingInvoiceStatus {
+  DRAFT
+  POSTED
+}
+
+/// Tenant-defined unit price per inventory movement type (Phase B billing foundation).
+model WmsBillingRate {
+  id             String   @id @default(cuid())
+  tenantId       String
+  code           String
+  description    String?
+  movementType   InventoryMovementType?
+  amountPerUnit  Decimal  @db.Decimal(14, 4)
+  currency       String   @default("USD") @db.VarChar(3)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, code])
+  @@index([tenantId, isActive])
+}
+
+/// Immutable billing fact derived from ops (`InventoryMovement`); amount snapshot at materialization.
+model WmsBillingEvent {
+  id                  String                  @id @default(cuid())
+  tenantId            String
+  profileSource       WmsBillingProfileSource @default(MANUAL)
+  inventoryMovementId String?               @unique
+  movementType        InventoryMovementType
+  warehouseId         String
+  productId           String
+  quantity            Decimal                 @db.Decimal(14, 3)
+  rateCode            String
+  unitRate            Decimal                 @db.Decimal(14, 4)
+  amount              Decimal                 @db.Decimal(14, 2)
+  currency            String                  @default("USD") @db.VarChar(3)
+  occurredAt          DateTime
+  invoiceRunId        String?
+  createdAt           DateTime                @default(now())
+
+  tenant            Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  warehouse         Warehouse            @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  product           Product              @relation(fields: [productId], references: [id], onDelete: Cascade)
+  inventoryMovement InventoryMovement?   @relation(fields: [inventoryMovementId], references: [id], onDelete: SetNull)
+  invoiceRun        WmsBillingInvoiceRun? @relation(fields: [invoiceRunId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, occurredAt])
+  @@index([tenantId, invoiceRunId])
+}
+
+model WmsBillingInvoiceRun {
+  id            String                  @id @default(cuid())
+  tenantId      String
+  runNo         String
+  profileSource WmsBillingProfileSource @default(MANUAL)
+  periodFrom    DateTime
+  periodTo      DateTime
+  status        WmsBillingInvoiceStatus @default(DRAFT)
+  totalAmount   Decimal                 @db.Decimal(14, 2)
+  currency      String                  @default("USD") @db.VarChar(3)
+  csvSnapshot   String?                 @db.Text
+  createdById   String
+  createdAt     DateTime                @default(now())
+
+  tenant    Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy User                    @relation("WmsBillingInvoiceRunCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  lines     WmsBillingInvoiceLine[]
+  events    WmsBillingEvent[]
+
+  @@unique([tenantId, runNo])
+  @@index([tenantId, createdAt])
+}
+
+model WmsBillingInvoiceLine {
+  id           String   @id @default(cuid())
+  tenantId     String
+  invoiceRunId String
+  lineNo       Int
+  description  String
+  quantity     Decimal  @db.Decimal(14, 3)
+  unitAmount   Decimal  @db.Decimal(14, 4)
+  lineAmount   Decimal  @db.Decimal(14, 2)
+
+  tenant     Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  invoiceRun WmsBillingInvoiceRun @relation(fields: [invoiceRunId], references: [id], onDelete: Cascade)
+
+  @@unique([invoiceRunId, lineNo])
+  @@index([tenantId, invoiceRunId])
 }
 
 enum WmsTaskType {

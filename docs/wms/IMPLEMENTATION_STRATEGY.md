@@ -49,9 +49,9 @@ Do **not** block a whole phase on these; ship code + migrations, then you run a 
 
 **Exit criteria**
 
-- [ ] Schema + migrations committed; deploy applies them on next Vercel build.
-- [ ] Manual or scripted path to generate a **minimal** invoice from stored events (even CSV/PDF stub is OK for v1).
-- [ ] Commercial/quotation **out of scope** here except a **placeholder** link or enum for “profile source = manual”.
+- [x] Schema + migrations committed; deploy applies them on next Vercel build.
+- [x] Manual or scripted path to generate a **minimal** invoice from stored events (even CSV/PDF stub is OK for v1).
+- [x] Commercial/quotation **out of scope** here except a **placeholder** link or enum for “profile source = manual”.
 
 ### Phase C — Commercial / CRM handoff (P3, later)
 
@@ -78,4 +78,4 @@ Do **not** block a whole phase on these; ship code + migrations, then you run a 
 
 ## Revision
 
-Update this file when phases complete or priorities change. Last aligned with: **build on top**, **ops → billing → commercial**.
+Update this file when phases complete or priorities change. Last aligned with: **build on top**, **ops → billing → commercial**. Phase **A** + **B** exit criteria satisfied in repo; **C** still deferred.

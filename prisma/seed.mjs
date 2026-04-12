@@ -1,4 +1,5 @@
 import { Prisma, PrismaClient } from "@prisma/client";
+import { DEFAULT_WMS_BILLING_RATES } from "./billing-default-rates.mjs";
 import { runBulkSeed } from "./bulk-seed.mjs";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { config } from "dotenv";
@@ -1409,6 +1410,26 @@ async function seed() {
     });
     console.log("[db:seed] CRM demo bulk applied (SEED_CRM_DEMO=1).");
   }
+
+  for (const s of DEFAULT_WMS_BILLING_RATES) {
+    await prisma.wmsBillingRate.upsert({
+      where: { tenantId_code: { tenantId: tenant.id, code: s.code } },
+      create: {
+        tenantId: tenant.id,
+        code: s.code,
+        description: s.description,
+        movementType: s.movementType,
+        amountPerUnit: s.amountPerUnit,
+      },
+      update: {
+        description: s.description,
+        movementType: s.movementType,
+        amountPerUnit: s.amountPerUnit,
+        isActive: true,
+      },
+    });
+  }
+  console.log("[db:seed] WMS default billing rates ensured.");
 
   const userCount = await prisma.user.count({ where: { tenantId: tenant.id } });
   console.log(

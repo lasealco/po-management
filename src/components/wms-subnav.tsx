@@ -8,6 +8,7 @@ const items: { href: string; label: string }[] = [
   { href: "/wms/setup", label: "Setup" },
   { href: "/wms/operations", label: "Operations" },
   { href: "/wms/stock", label: "Stock & ledger" },
+  { href: "/wms/billing", label: "Billing" },
 ];
 
 export function WmsSubNav() {

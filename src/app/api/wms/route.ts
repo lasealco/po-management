@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
+import { nextWaveNo } from "@/lib/wms/wave";
 
 type WmsBody = {
   action?: string;
@@ -42,20 +43,6 @@ async function getTenant() {
   const tenant = await getDemoTenant();
   if (!tenant) return null;
   return tenant;
-}
-
-async function nextWaveNo(tenantId: string) {
-  const stamp = Date.now().toString().slice(-6);
-  let candidate = `WAVE-${stamp}`;
-  for (let i = 0; i < 8; i += 1) {
-    const exists = await prisma.wmsWave.findFirst({
-      where: { tenantId, waveNo: candidate },
-      select: { id: true },
-    });
-    if (!exists) return candidate;
-    candidate = `WAVE-${stamp}-${i + 1}`;
-  }
-  return `WAVE-${stamp}-${Math.floor(Math.random() * 1000)}`;
 }
 
 export async function GET() {

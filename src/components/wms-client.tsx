@@ -126,6 +126,9 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedWarehouseId, setSelectedWarehouseId] = useState("");
+  const [movementTypeFilter, setMovementTypeFilter] = useState<
+    "" | "RECEIPT" | "PUTAWAY" | "PICK" | "ADJUSTMENT" | "SHIPMENT"
+  >("");
   const [newZoneCode, setNewZoneCode] = useState("");
   const [newZoneName, setNewZoneName] = useState("");
   const [newZoneType, setNewZoneType] = useState<
@@ -200,12 +203,15 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
   }, [data?.balances, section, selectedWarehouseId]);
 
   const movementsShown = useMemo(() => {
-    const rows = data?.recentMovements ?? [];
-    if (section !== "stock" || !selectedWarehouseId) {
-      return rows;
+    let rows = data?.recentMovements ?? [];
+    if (section === "stock" && selectedWarehouseId) {
+      rows = rows.filter((m) => m.warehouse.id === selectedWarehouseId);
     }
-    return rows.filter((m) => m.warehouse.id === selectedWarehouseId);
-  }, [data?.recentMovements, section, selectedWarehouseId]);
+    if (section === "stock" && movementTypeFilter) {
+      rows = rows.filter((m) => m.movementType === movementTypeFilter);
+    }
+    return rows;
+  }, [data?.recentMovements, section, selectedWarehouseId, movementTypeFilter]);
 
   async function runAction(body: Record<string, unknown>) {
     setBusy(true);
@@ -276,21 +282,42 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
           </select>
         </div>
       ) : (
-        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-zinc-200 bg-white px-4 py-3">
-          <span className="text-sm font-medium text-zinc-700">Warehouse filter</span>
-          <select
-            value={selectedWarehouseId}
-            onChange={(e) => setSelectedWarehouseId(e.target.value)}
-            className="rounded border border-zinc-300 px-3 py-2 text-sm"
-          >
-            <option value="">All warehouses</option>
-            {data.warehouses.map((w) => (
-              <option key={w.id} value={w.id}>
-                {w.code ? `${w.code} · ` : ""}
-                {w.name}
-              </option>
-            ))}
-          </select>
+        <div className="mb-4 flex flex-wrap items-center gap-4 rounded-lg border border-zinc-200 bg-white px-4 py-3">
+          <label className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-medium text-zinc-700">Warehouse</span>
+            <select
+              value={selectedWarehouseId}
+              onChange={(e) => setSelectedWarehouseId(e.target.value)}
+              className="rounded border border-zinc-300 px-3 py-2 text-sm"
+            >
+              <option value="">All warehouses</option>
+              {data.warehouses.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.code ? `${w.code} · ` : ""}
+                  {w.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-medium text-zinc-700">Movement type</span>
+            <select
+              value={movementTypeFilter}
+              onChange={(e) =>
+                setMovementTypeFilter(
+                  e.target.value as "" | "RECEIPT" | "PUTAWAY" | "PICK" | "ADJUSTMENT" | "SHIPMENT",
+                )
+              }
+              className="rounded border border-zinc-300 px-3 py-2 text-sm"
+            >
+              <option value="">All types</option>
+              <option value="RECEIPT">RECEIPT</option>
+              <option value="PUTAWAY">PUTAWAY</option>
+              <option value="PICK">PICK</option>
+              <option value="ADJUSTMENT">ADJUSTMENT</option>
+              <option value="SHIPMENT">SHIPMENT</option>
+            </select>
+          </label>
         </div>
       )}
 

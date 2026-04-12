@@ -20,6 +20,11 @@ const areas: { href: string; title: string; description: string }[] = [
     title: "Stock & ledger",
     description: "On-hand balances by bin and recent inventory movements.",
   },
+  {
+    href: "/wms/billing",
+    title: "Billing",
+    description: "Rates, billing events from movements, draft invoices, and CSV export (Phase B).",
+  },
 ];
 
 export default async function WmsPage() {
@@ -44,7 +49,7 @@ export default async function WmsPage() {
         ) : null}
       </header>
 
-      <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {areas.map((a) => (
           <li key={a.href}>
             <Link

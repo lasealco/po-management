@@ -37,7 +37,7 @@
 | Blueprint area | Repo reality |
 |----------------|--------------|
 | VAS / work orders | ❌ Phase C / separate epic |
-| Billing events | ❌ **Phase B** (orthogonal tables) |
+| Billing events | 🟡 **Phase B in repo** — `WmsBillingRate`, `WmsBillingEvent`, `WmsBillingInvoiceRun` / `Line`; `/api/wms/billing` + `/wms/billing` UI; PDF rate matrix not replicated field-for-field |
 | Commercial / quotes | ❌ **Phase C** (CRM or commercial module) |
 
 ## Existing API actions (`POST /api/wms`)
@@ -46,9 +46,9 @@
 
 ## Near-term build order (Phase A continuation)
 
-1. **Movement visibility + filters** (this increment): recent ledger in GET + WMS UI table.  
+1. **Movement visibility + filters** — recent ledger in GET + WMS UI table; **stock page** filters by warehouse + movement type.  
 2. **Hold / QC** minimal model or status flags on `InventoryBalance` (design choice in next increment).  
 3. **`WmsCustomer`** or reuse **CRM `CrmAccount`** for 3PL owner linkage — decision before deep inbound.  
-4. Split `src/app/api/wms/route.ts` into `src/lib/wms/*.ts` handlers per strategy doc.
+4. Split `src/app/api/wms/route.ts` into `src/lib/wms/*.ts` handlers per strategy doc (started: `lib/wms/wave.ts`, `lib/wms/billing-*`).
 
-_Last updated: Phase A kickoff._
+_Last updated: Phase B billing foundation shipped._
