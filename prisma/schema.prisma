@@ -799,6 +799,9 @@ model InventoryBalance {
   productId   String
   onHandQty   Decimal  @default(0) @db.Decimal(14, 3)
   allocatedQty Decimal @default(0) @db.Decimal(14, 3)
+  /// QC / quarantine: when true, picks and wave allocation skip this bin-product row.
+  onHold      Boolean  @default(false)
+  holdReason  String?  @db.VarChar(500)
   updatedAt   DateTime @updatedAt
 
   tenant    Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)

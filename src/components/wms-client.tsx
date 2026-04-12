@@ -59,6 +59,8 @@ type WmsData = {
     onHandQty: string;
     allocatedQty: string;
     availableQty: string;
+    onHold: boolean;
+    holdReason: string | null;
   }>;
   openTasks: Array<{
     id: string;
@@ -161,6 +163,8 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
   const [outboundCountry, setOutboundCountry] = useState("");
   const [outboundProductId, setOutboundProductId] = useState("");
   const [outboundLineQty, setOutboundLineQty] = useState("");
+  const [cycleBalanceId, setCycleBalanceId] = useState("");
+  const [cycleCountQtyByTask, setCycleCountQtyByTask] = useState<Record<string, string>>({});
 
   async function load() {
     const res = await fetch("/api/wms", { cache: "no-store" });
@@ -192,6 +196,14 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
   const zonesForWarehouse = useMemo(
     () => (data?.zones ?? []).filter((z) => z.warehouse.id === selectedWarehouseId),
     [data?.zones, selectedWarehouseId],
+  );
+
+  const balancesForWarehouseOps = useMemo(
+    () =>
+      (data?.balances ?? []).filter(
+        (b) => !selectedWarehouseId || b.warehouse.id === selectedWarehouseId,
+      ),
+    [data?.balances, selectedWarehouseId],
   );
 
   const balancesShown = useMemo(() => {
@@ -773,6 +785,37 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
       </section>
 
       <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
+        <h2 className="text-sm font-semibold text-zinc-900">Cycle count</h2>
+        <p className="mt-1 text-xs text-zinc-500">
+          Opens a <span className="font-medium">CYCLE_COUNT</span> task against a balance row (book qty is frozen on
+          the task). Complete it with the physical count to post an ADJUSTMENT if there is variance.
+        </p>
+        <div className="mt-2 flex flex-wrap items-end gap-2">
+          <select
+            value={cycleBalanceId}
+            onChange={(e) => setCycleBalanceId(e.target.value)}
+            className="min-w-[14rem] rounded border border-zinc-300 px-3 py-2 text-sm"
+          >
+            <option value="">Select balance (warehouse filter above)</option>
+            {balancesForWarehouseOps.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.bin.code} · {(b.product.productCode || b.product.sku || "SKU").slice(0, 12)} · book {b.onHandQty}
+                {Boolean(b.onHold) ? " · HOLD" : ""}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            disabled={!canEdit || busy || !selectedWarehouseId || !cycleBalanceId}
+            onClick={() => void runAction({ action: "create_cycle_count_task", balanceId: cycleBalanceId })}
+            className="rounded border border-zinc-900 bg-zinc-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-40"
+          >
+            Create cycle count task
+          </button>
+        </div>
+      </section>
+
+      <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
         <h2 className="mb-2 text-sm font-semibold text-zinc-900">Open tasks</h2>
         <div className="space-y-2 text-sm">
           {data.openTasks.length === 0 ? (
@@ -790,19 +833,55 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                 {t.shipment ? <span className="text-zinc-500">Shipment {t.shipment.shipmentNo || t.shipment.id.slice(0, 6)}</span> : null}
                 {t.order ? <span className="text-zinc-500">Order {t.order.orderNumber}</span> : null}
                 {t.wave ? <span className="text-zinc-500">Wave {t.wave.waveNo}</span> : null}
-                {canEdit && (t.taskType === "PUTAWAY" || t.taskType === "PICK") ? (
+                {t.taskType === "CYCLE_COUNT" ? (
+                  <label className="ml-auto flex items-center gap-1 text-xs text-zinc-600">
+                    Count
+                    <input
+                      type="number"
+                      step="any"
+                      value={cycleCountQtyByTask[t.id] ?? t.quantity}
+                      onChange={(e) =>
+                        setCycleCountQtyByTask((m) => ({ ...m, [t.id]: e.target.value }))
+                      }
+                      className="w-24 rounded border border-zinc-300 px-1 py-0.5 text-sm"
+                    />
+                  </label>
+                ) : null}
+                {canEdit &&
+                (t.taskType === "PUTAWAY" ||
+                  t.taskType === "PICK" ||
+                  t.taskType === "REPLENISH" ||
+                  t.taskType === "CYCLE_COUNT") ? (
                   <button
                     type="button"
                     disabled={busy}
-                    onClick={() =>
+                    onClick={() => {
+                      if (t.taskType === "PUTAWAY") {
+                        void runAction({
+                          action: "complete_putaway_task",
+                          taskId: t.id,
+                          binId: t.bin?.id ?? null,
+                        });
+                        return;
+                      }
+                      if (t.taskType === "PICK") {
+                        void runAction({ action: "complete_pick_task", taskId: t.id });
+                        return;
+                      }
+                      if (t.taskType === "REPLENISH") {
+                        void runAction({ action: "complete_replenish_task", taskId: t.id });
+                        return;
+                      }
+                      const raw = cycleCountQtyByTask[t.id] ?? t.quantity;
                       void runAction({
-                        action:
-                          t.taskType === "PUTAWAY" ? "complete_putaway_task" : "complete_pick_task",
+                        action: "complete_cycle_count_task",
                         taskId: t.id,
-                        ...(t.taskType === "PUTAWAY" ? { binId: t.bin?.id ?? null } : {}),
-                      })
-                    }
-                    className="ml-auto rounded border border-zinc-300 px-2 py-1 text-xs font-medium text-zinc-800 disabled:opacity-40"
+                        countedQty: Number(raw),
+                      });
+                    }}
+                    className={`rounded border border-zinc-300 px-2 py-1 text-xs font-medium text-zinc-800 disabled:opacity-40 ${
+                      t.taskType === "CYCLE_COUNT" ? "" : "ml-auto"
+                    }`}
                   >
                     Complete
                   </button>
@@ -883,18 +962,20 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                 <th className="px-2 py-1">On hand</th>
                 <th className="px-2 py-1">Allocated</th>
                 <th className="px-2 py-1">Available</th>
+                <th className="px-2 py-1">Hold</th>
+                <th className="px-2 py-1">QC</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 text-zinc-800">
               {balancesShown.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-2 py-3 text-zinc-500">
+                  <td colSpan={8} className="px-2 py-3 text-zinc-500">
                     No balances in this view.
                   </td>
                 </tr>
               ) : (
                 balancesShown.map((b) => (
-                  <tr key={b.id}>
+                  <tr key={b.id} className={Boolean(b.onHold) ? "bg-amber-50/80" : undefined}>
                     <td className="px-2 py-1">{b.warehouse.code || b.warehouse.name}</td>
                     <td className="px-2 py-1">
                       {b.bin.code} · {b.bin.name}
@@ -905,6 +986,46 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                     <td className="px-2 py-1">{b.onHandQty}</td>
                     <td className="px-2 py-1">{b.allocatedQty}</td>
                     <td className="px-2 py-1 font-medium">{b.availableQty}</td>
+                    <td className="px-2 py-1 text-xs text-zinc-600">
+                      {b.onHold ? (
+                        <span title={b.holdReason ?? ""}>Yes</span>
+                      ) : (
+                        "No"
+                      )}
+                    </td>
+                    <td className="whitespace-nowrap px-2 py-1">
+                      {canEdit && !Boolean(b.onHold) ? (
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => {
+                            const reason =
+                              typeof window !== "undefined"
+                                ? window.prompt("Hold reason (optional):", "QC hold")
+                                : null;
+                            if (reason === null) return;
+                            void runAction({
+                              action: "set_balance_hold",
+                              balanceId: b.id,
+                              holdReason: reason.trim() || "On hold",
+                            });
+                          }}
+                          className="rounded border border-amber-600 px-2 py-0.5 text-xs font-medium text-amber-900 disabled:opacity-40"
+                        >
+                          Set hold
+                        </button>
+                      ) : null}
+                      {canEdit && b.onHold ? (
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => void runAction({ action: "clear_balance_hold", balanceId: b.id })}
+                          className="ml-1 rounded border border-zinc-300 px-2 py-0.5 text-xs font-medium text-zinc-800 disabled:opacity-40"
+                        >
+                          Clear
+                        </button>
+                      ) : null}
+                    </td>
                   </tr>
                 ))
               )}

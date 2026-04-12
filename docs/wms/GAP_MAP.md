@@ -24,12 +24,12 @@
 
 | Blueprint area | Repo reality |
 |----------------|--------------|
-| QC / quarantine holds | ❌ No `InventoryHold` / quarantine status on balance |
+| QC / quarantine holds | 🟡 `InventoryBalance.onHold` + `holdReason`; picks / wave allocation skip held bins; UI on Stock page |
 | Appointment scheduling | ❌ |
 | Replenishment execution | 🟡 `ReplenishmentRule` + `create_replenishment_tasks` + REPLENISH tasks | Verify UI covers REPLENISH |
 | Wave planning | 🟡 `WmsWave` + release/complete | |
 | Packing / labels | 🟡 Line `packedQty` exists; limited workflow | |
-| Cycle count | 🟡 `CYCLE_COUNT` task type in schema | Wire / UX TBD |
+| Cycle count | 🟡 `CYCLE_COUNT` tasks: create from balance + complete with counted qty → `ADJUSTMENT` |
 | Dashboards | ❌ |
 
 ## R3 — VAS, portal, advanced allocation, billing events
@@ -42,7 +42,9 @@
 
 ## Existing API actions (`POST /api/wms`)
 
-`create_zone`, `create_bin`, `update_bin_profile`, `set_replenishment_rule`, `create_replenishment_tasks`, `create_outbound_order`, `release_outbound_order`, `create_putaway_task`, `complete_putaway_task`, `create_pick_task`, `create_pick_wave`, `release_wave`, `complete_wave`, `complete_pick_task`.
+`create_zone`, `create_bin`, `update_bin_profile`, `set_replenishment_rule`, `create_replenishment_tasks`, `create_outbound_order`, `release_outbound_order`, `create_putaway_task`, `complete_putaway_task`, `create_pick_task`, `create_pick_wave`, `release_wave`, `complete_wave`, `complete_pick_task`, `set_balance_hold`, `clear_balance_hold`, `complete_replenish_task`, `create_cycle_count_task`, `complete_cycle_count_task`.
+
+Handlers live in `src/lib/wms/post-actions.ts` (route stays a thin shell).
 
 ## Near-term build order (Phase A continuation)
 
