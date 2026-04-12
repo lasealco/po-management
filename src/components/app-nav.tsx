@@ -65,19 +65,19 @@ export function AppNav({
           </div>
         </div>
       ) : null}
-      <div className="mx-auto flex min-h-14 max-w-7xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-6 py-2">
+      <div className="mx-auto flex min-h-14 max-w-7xl flex-wrap items-center justify-between gap-x-6 gap-y-2 py-2 pl-2 pr-6 sm:pl-3 md:pl-6">
         <Link
           href="/"
-          className="flex h-14 max-h-14 shrink-0 items-center"
+          className="mr-auto flex h-14 max-h-14 shrink-0 items-center"
           aria-label="ARSCMP home"
         >
           <Image
             src="/arscmp-logo.png"
             alt="ARSCMP"
-            width={603}
-            height={403}
+            width={810}
+            height={319}
             className="h-14 w-auto max-h-14 object-contain object-left"
-            sizes="280px"
+            sizes="(max-width: 768px) 240px, 320px"
             priority
           />
         </Link>
