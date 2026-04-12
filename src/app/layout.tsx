@@ -5,7 +5,9 @@ import { CommandPalette } from "@/components/command-palette";
 import { DemoUserSwitcher } from "@/components/demo-user-switcher";
 import { GuideCallout } from "@/components/guide-callout";
 import { HelpAssistant } from "@/components/help-assistant";
+import { LayoutPoSubnav } from "@/components/layout-po-subnav";
 import { getViewerGrantSet, userHasRoleNamed, viewerHas } from "@/lib/authz";
+import { resolveNavState } from "@/lib/nav-visibility";
 import "./globals.css";
 
 /** Nav and demo bar read cookies; avoid caching a shell without grants. */
@@ -32,6 +34,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const access = await getViewerGrantSet();
+  const { poSubNavVisibility } = await resolveNavState(access);
   const actorId = access?.user?.id ?? null;
   const isSupplierPortalUser =
     actorId !== null && (await userHasRoleNamed(actorId, "Supplier portal"));
@@ -64,6 +67,7 @@ export default async function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-zinc-50">
         <AppNavWithGrants />
+        <LayoutPoSubnav visibility={poSubNavVisibility} />
         <DemoUserSwitcher />
         <GuideCallout />
         {children}

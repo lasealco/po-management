@@ -1,19 +1,50 @@
+import { cache } from "react";
 import { NextResponse } from "next/server";
 
 import { getDemoActorEmail } from "@/lib/demo-actor";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
 
+const grantKey = (resource: string, action: string) =>
+  `${resource}\0${action}`;
+
+/** Seeded internal demo accounts; some prod DBs predate CRM RolePermission rows. */
+const DEMO_INTERNAL_EMAILS = new Set([
+  "buyer@demo-company.com",
+  "approver@demo-company.com",
+]);
+
+function mergeDemoCrmGrants(
+  grantSet: Set<string>,
+  email: string,
+): Set<string> {
+  const e = email.trim().toLowerCase();
+  if (!DEMO_INTERNAL_EMAILS.has(e)) return grantSet;
+  if (grantSet.has(grantKey("org.crm", "view"))) return grantSet;
+  const next = new Set(grantSet);
+  next.add(grantKey("org.crm", "view"));
+  next.add(grantKey("org.crm", "edit"));
+  return next;
+}
+
 export async function loadGlobalGrantsForUser(userId: string) {
-  const perms = await prisma.rolePermission.findMany({
-    where: {
-      effect: "allow",
-      workflowStatusId: null,
-      role: { users: { some: { userId } } },
-    },
-    select: { resource: true, action: true },
-  });
-  return new Set(perms.map((p) => `${p.resource}\0${p.action}`));
+  const [perms, user] = await Promise.all([
+    prisma.rolePermission.findMany({
+      where: {
+        effect: "allow",
+        workflowStatusId: null,
+        role: { users: { some: { userId } } },
+      },
+      select: { resource: true, action: true },
+    }),
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true },
+    }),
+  ]);
+  const base = new Set(perms.map((p) => grantKey(p.resource, p.action)));
+  if (!user?.email) return base;
+  return mergeDemoCrmGrants(base, user.email);
 }
 
 export async function userHasGlobalGrant(
@@ -22,7 +53,7 @@ export async function userHasGlobalGrant(
   action: string,
 ) {
   const set = await loadGlobalGrantsForUser(userId);
-  return set.has(`${resource}\0${action}`);
+  return set.has(grantKey(resource, action));
 }
 
 export async function userHasRoleNamed(userId: string, roleName: string) {
@@ -35,9 +66,6 @@ export async function userHasRoleNamed(userId: string, roleName: string) {
   });
   return Boolean(row);
 }
-
-const grantKey = (resource: string, action: string) =>
-  `${resource}\0${action}`;
 
 export async function requireApiGrant(resource: string, action: string) {
   const tenant = await getDemoTenant();
@@ -97,7 +125,7 @@ export type ViewerAccess = {
   grantSet: Set<string>;
 };
 
-export async function getViewerGrantSet(): Promise<ViewerAccess | null> {
+async function fetchViewerGrantSet(): Promise<ViewerAccess | null> {
   const tenant = await getDemoTenant();
   if (!tenant) return null;
 
@@ -118,6 +146,9 @@ export async function getViewerGrantSet(): Promise<ViewerAccess | null> {
   const grantSet = await loadGlobalGrantsForUser(user.id);
   return { ...base, user, grantSet };
 }
+
+/** Deduped per request (layout + nav both read grants). */
+export const getViewerGrantSet = cache(fetchViewerGrantSet);
 
 export function viewerHas(
   grantSet: Set<string>,

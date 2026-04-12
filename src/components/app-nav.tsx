@@ -1,44 +1,47 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const links = [
-  { href: "/", key: "orders" as const, label: "Orders" },
-  { href: "/reports", key: "reports" as const, label: "Reports" },
-  { href: "/consolidation", key: "consolidation" as const, label: "Consolidation" },
-  { href: "/wms", key: "wms" as const, label: "WMS" },
-  { href: "/crm", key: "crm" as const, label: "CRM" },
-  { href: "/products", key: "products" as const, label: "Products" },
-  { href: "/settings", key: "settings" as const, label: "Settings" },
-  { href: "/suppliers", key: "suppliers" as const, label: "Suppliers" },
-] as const;
+import type { AppNavLinkVisibility } from "@/lib/nav-visibility";
 
-export type AppNavLinkVisibility = {
-  orders: boolean;
-  reports: boolean;
-  consolidation: boolean;
-  wms: boolean;
-  crm: boolean;
-  products: boolean;
-  settings: boolean;
-  suppliers: boolean;
-};
+type TopNavItem =
+  | { kind: "po"; key: "poManagement"; label: string; href: string }
+  | {
+      kind: "link";
+      key: Exclude<keyof AppNavLinkVisibility, "poManagement">;
+      label: string;
+      href: string;
+    };
+
+const topNavItems: TopNavItem[] = [
+  { kind: "po", key: "poManagement", label: "PO Management", href: "/" },
+  { kind: "link", key: "reports", label: "Reporting", href: "/reports" },
+  { kind: "link", key: "wms", label: "WMS", href: "/wms" },
+  { kind: "link", key: "crm", label: "CRM", href: "/crm" },
+  { kind: "link", key: "settings", label: "Settings", href: "/settings" },
+];
 
 export function AppNav({
   linkVisibility,
   setupIncomplete = false,
 }: {
-  /** When set (logged-in demo user), only show links for granted resources. */
   linkVisibility?: AppNavLinkVisibility;
-  /** User exists but has zero role grants (e.g. DB never seeded) — show all links + setup hint. */
   setupIncomplete?: boolean;
 }) {
   const pathname = usePathname();
   const visible =
     setupIncomplete || !linkVisibility
-      ? [...links]
-      : links.filter((l) => linkVisibility[l.key]);
+      ? [...topNavItems]
+      : topNavItems.filter((item) => linkVisibility[item.key]);
+
+  const poActive =
+    pathname === "/" ||
+    pathname.startsWith("/orders/") ||
+    pathname.startsWith("/consolidation") ||
+    pathname.startsWith("/products") ||
+    pathname.startsWith("/suppliers");
 
   return (
     <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
@@ -62,36 +65,45 @@ export function AppNav({
           </div>
         </div>
       ) : null}
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-8 gap-y-2 px-6 py-3">
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-6 gap-y-3 px-6 py-3">
         <Link
           href="/"
-          className="text-sm font-semibold tracking-tight text-zinc-900"
+          className="flex shrink-0 items-center gap-2.5 text-zinc-900"
+          aria-label="ARSCMP home"
         >
-          PO Management
+          <Image
+            src="/arscmp-logo.png"
+            alt=""
+            width={132}
+            height={36}
+            className="h-9 w-auto object-contain"
+            priority
+          />
+          <span className="text-sm font-semibold tracking-tight">ARSCMP</span>
         </Link>
-        <nav className="flex gap-6" aria-label="Main">
-          {visible.map(({ href, label }) => {
+        <nav className="flex flex-wrap items-center justify-end gap-x-6 gap-y-1" aria-label="Main">
+          {visible.map((item) => {
             const active =
-              href === "/"
-                ? pathname === "/" || pathname.startsWith("/orders")
-                : href === "/settings"
+              item.kind === "po"
+                ? poActive
+                : item.href === "/settings"
                   ? pathname.startsWith("/settings")
-                  : href === "/reports"
+                  : item.href === "/reports"
                     ? pathname === "/reports" || pathname.startsWith("/reports/")
-                    : href === "/crm"
+                    : item.href === "/crm"
                       ? pathname === "/crm" || pathname.startsWith("/crm/")
-                      : pathname === href || pathname.startsWith(`${href}/`);
+                      : pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
               <Link
-                key={href}
-                href={href}
+                key={item.key}
+                href={item.href}
                 className={`border-b-2 pb-0.5 text-sm font-medium transition-colors ${
                   active
                     ? "border-zinc-900 text-zinc-900"
                     : "border-transparent text-zinc-500 hover:border-zinc-300 hover:text-zinc-800"
                 }`}
               >
-                {label}
+                {item.label}
               </Link>
             );
           })}
