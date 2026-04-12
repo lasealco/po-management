@@ -65,21 +65,21 @@ export function AppNav({
           </div>
         </div>
       ) : null}
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-6 gap-y-3 px-6 py-3">
+      <div className="mx-auto flex min-h-14 max-w-7xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-6 py-2">
         <Link
           href="/"
-          className="flex shrink-0 items-center gap-2.5 text-zinc-900"
+          className="flex h-14 max-h-14 shrink-0 items-center"
           aria-label="ARSCMP home"
         >
           <Image
             src="/arscmp-logo.png"
-            alt=""
-            width={132}
-            height={36}
-            className="h-9 w-auto object-contain"
+            alt="ARSCMP"
+            width={603}
+            height={403}
+            className="h-14 w-auto max-h-14 object-contain object-left"
+            sizes="280px"
             priority
           />
-          <span className="text-sm font-semibold tracking-tight">ARSCMP</span>
         </Link>
         <nav className="flex flex-wrap items-center justify-end gap-x-6 gap-y-1" aria-label="Main">
           {visible.map((item) => {
