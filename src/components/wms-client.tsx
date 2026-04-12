@@ -119,7 +119,9 @@ type WmsData = {
   }>;
 };
 
-export function WmsClient({ canEdit }: { canEdit: boolean }) {
+export type WmsSection = "setup" | "operations" | "stock";
+
+export function WmsClient({ canEdit, section }: { canEdit: boolean; section: WmsSection }) {
   const [data, setData] = useState<WmsData | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -165,14 +167,20 @@ export function WmsClient({ canEdit }: { canEdit: boolean }) {
       return;
     }
     setData(payload);
-    if (!selectedWarehouseId && payload.warehouses[0]) {
-      setSelectedWarehouseId(payload.warehouses[0].id);
-    }
+    setSelectedWarehouseId((prev) => {
+      if (section === "stock") {
+        return prev;
+      }
+      if (!prev && payload.warehouses[0]) {
+        return payload.warehouses[0].id;
+      }
+      return prev;
+    });
   }
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [section]);
 
   const binsForWarehouse = useMemo(
     () => (data?.bins ?? []).filter((b) => b.warehouse.id === selectedWarehouseId),
@@ -182,6 +190,22 @@ export function WmsClient({ canEdit }: { canEdit: boolean }) {
     () => (data?.zones ?? []).filter((z) => z.warehouse.id === selectedWarehouseId),
     [data?.zones, selectedWarehouseId],
   );
+
+  const balancesShown = useMemo(() => {
+    const rows = data?.balances ?? [];
+    if (section !== "stock" || !selectedWarehouseId) {
+      return rows;
+    }
+    return rows.filter((b) => b.warehouse.id === selectedWarehouseId);
+  }, [data?.balances, section, selectedWarehouseId]);
+
+  const movementsShown = useMemo(() => {
+    const rows = data?.recentMovements ?? [];
+    if (section !== "stock" || !selectedWarehouseId) {
+      return rows;
+    }
+    return rows.filter((m) => m.warehouse.id === selectedWarehouseId);
+  }, [data?.recentMovements, section, selectedWarehouseId]);
 
   async function runAction(body: Record<string, unknown>) {
     setBusy(true);
@@ -207,13 +231,25 @@ export function WmsClient({ canEdit }: { canEdit: boolean }) {
     );
   }
 
+  const headerTitle =
+    section === "setup"
+      ? "Warehouse setup"
+      : section === "operations"
+        ? "Floor operations"
+        : "Stock & ledger";
+
   return (
     <main className="mx-auto w-full max-w-7xl px-6 py-8">
       <header className="mb-5">
-        <h1 className="text-2xl font-semibold text-zinc-900">Warehouse operations (WMS)</h1>
+        <h1 className="text-2xl font-semibold text-zinc-900">{headerTitle}</h1>
         <p className="mt-1 text-sm text-zinc-600">
-          Operations: setup, putaway/pick tasks, waves, live balances, and recent stock movements
-          (see <code className="rounded bg-zinc-100 px-1">docs/wms/GAP_MAP.md</code> for blueprint coverage).
+          {section === "setup"
+            ? "Zones, bins, and replenishment rules for the selected warehouse."
+            : section === "operations"
+              ? "Putaway, picking, outbound orders, waves, and open tasks."
+              : "On-hand balances and recent inventory ledger rows."}{" "}
+          Blueprint coverage:{" "}
+          <code className="rounded bg-zinc-100 px-1">docs/wms/GAP_MAP.md</code>.
         </p>
       </header>
       {error ? (
@@ -222,9 +258,9 @@ export function WmsClient({ canEdit }: { canEdit: boolean }) {
         </p>
       ) : null}
 
-      <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
-        <h2 className="text-sm font-semibold text-zinc-900">Warehouse setup</h2>
-        <div className="mt-2 grid gap-2 sm:grid-cols-6">
+      {section === "setup" || section === "operations" ? (
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-zinc-200 bg-white px-4 py-3">
+          <span className="text-sm font-medium text-zinc-700">Active warehouse</span>
           <select
             value={selectedWarehouseId}
             onChange={(e) => setSelectedWarehouseId(e.target.value)}
@@ -238,6 +274,31 @@ export function WmsClient({ canEdit }: { canEdit: boolean }) {
               </option>
             ))}
           </select>
+        </div>
+      ) : (
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-zinc-200 bg-white px-4 py-3">
+          <span className="text-sm font-medium text-zinc-700">Warehouse filter</span>
+          <select
+            value={selectedWarehouseId}
+            onChange={(e) => setSelectedWarehouseId(e.target.value)}
+            className="rounded border border-zinc-300 px-3 py-2 text-sm"
+          >
+            <option value="">All warehouses</option>
+            {data.warehouses.map((w) => (
+              <option key={w.id} value={w.id}>
+                {w.code ? `${w.code} · ` : ""}
+                {w.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {section === "setup" ? (
+        <>
+      <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
+        <h2 className="text-sm font-semibold text-zinc-900">Warehouse setup</h2>
+        <div className="mt-2 grid gap-2 sm:grid-cols-4">
           <input
             value={newZoneCode}
             onChange={(e) => setNewZoneCode(e.target.value.toUpperCase())}
@@ -440,7 +501,11 @@ export function WmsClient({ canEdit }: { canEdit: boolean }) {
           </button>
         </div>
       </section>
+        </>
+      ) : null}
 
+      {section === "operations" ? (
+        <>
       <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
         <h2 className="text-sm font-semibold text-zinc-900">Create putaway task</h2>
         <div className="mt-2 grid gap-2 sm:grid-cols-4">
@@ -720,12 +785,17 @@ export function WmsClient({ canEdit }: { canEdit: boolean }) {
           )}
         </div>
       </section>
+        </>
+      ) : null}
 
+      {section === "stock" ? (
+        <>
       <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
         <h2 className="mb-2 text-sm font-semibold text-zinc-900">Recent stock movements</h2>
         <p className="mb-2 text-xs text-zinc-500">
-          Last {data.recentMovements?.length ?? 0} ledger rows (PUTAWAY, PICK, etc.). Full filters and exports come in a
-          later increment.
+          Last {movementsShown.length} ledger rows shown
+          {selectedWarehouseId ? " (filtered)" : ""} (PUTAWAY, PICK, etc.). Full filters and exports come in a later
+          increment.
         </p>
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
@@ -741,14 +811,14 @@ export function WmsClient({ canEdit }: { canEdit: boolean }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 text-zinc-800">
-              {(data.recentMovements ?? []).length === 0 ? (
+              {movementsShown.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-2 py-3 text-zinc-500">
                     No movements yet.
                   </td>
                 </tr>
               ) : (
-                (data.recentMovements ?? []).map((m) => (
+                movementsShown.map((m) => (
                   <tr key={m.id}>
                     <td className="whitespace-nowrap px-2 py-1 text-xs text-zinc-600">
                       {new Date(m.createdAt).toLocaleString()}
@@ -789,24 +859,34 @@ export function WmsClient({ canEdit }: { canEdit: boolean }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 text-zinc-800">
-              {data.balances.map((b) => (
-                <tr key={b.id}>
-                  <td className="px-2 py-1">{b.warehouse.code || b.warehouse.name}</td>
-                  <td className="px-2 py-1">
-                    {b.bin.code} · {b.bin.name}
+              {balancesShown.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-2 py-3 text-zinc-500">
+                    No balances in this view.
                   </td>
-                  <td className="px-2 py-1">
-                    {b.product.productCode || b.product.sku || "SKU"} · {b.product.name}
-                  </td>
-                  <td className="px-2 py-1">{b.onHandQty}</td>
-                  <td className="px-2 py-1">{b.allocatedQty}</td>
-                  <td className="px-2 py-1 font-medium">{b.availableQty}</td>
                 </tr>
-              ))}
+              ) : (
+                balancesShown.map((b) => (
+                  <tr key={b.id}>
+                    <td className="px-2 py-1">{b.warehouse.code || b.warehouse.name}</td>
+                    <td className="px-2 py-1">
+                      {b.bin.code} · {b.bin.name}
+                    </td>
+                    <td className="px-2 py-1">
+                      {b.product.productCode || b.product.sku || "SKU"} · {b.product.name}
+                    </td>
+                    <td className="px-2 py-1">{b.onHandQty}</td>
+                    <td className="px-2 py-1">{b.allocatedQty}</td>
+                    <td className="px-2 py-1 font-medium">{b.availableQty}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
       </section>
+        </>
+      ) : null}
     </main>
   );
 }
