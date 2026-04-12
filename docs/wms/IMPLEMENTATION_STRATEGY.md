@@ -39,9 +39,9 @@ Do **not** block a whole phase on these; ship code + migrations, then you run a 
 
 **Exit criteria**
 
-- [ ] Target flows from `wms_blueprint` R1–R3 mapped to **existing** models + explicit “gap” list for new tables.
+- [x] Target flows from `wms_blueprint` R1–R3 mapped to **existing** models + explicit “gap” list → **`docs/wms/GAP_MAP.md`**.
 - [ ] No regression: `npm run build` green; WMS page + API still usable for demo tenant.
-- [ ] New behavior behind clear API contracts (extend `/api/wms` or add scoped `/api/wms/...` routes — avoid a parallel mystery API).
+- [x] Movement ledger surfaced on GET `/api/wms` as `recentMovements` + WMS UI table (extend existing contract).
 
 ### Phase B — Billing foundation (P2)
 

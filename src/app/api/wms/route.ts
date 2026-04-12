@@ -64,8 +64,19 @@ export async function GET() {
   const tenant = await getTenant();
   if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
 
-  const [warehouses, zones, bins, rules, outboundOrders, balances, openTasks, waves, shipmentItems, movementRows] =
-    await Promise.all([
+  const [
+    warehouses,
+    zones,
+    bins,
+    rules,
+    outboundOrders,
+    balances,
+    openTasks,
+    waves,
+    shipmentItems,
+    movementRows,
+    recentMovements,
+  ] = await Promise.all([
       prisma.warehouse.findMany({
         where: { tenantId: tenant.id, isActive: true },
         orderBy: [{ type: "asc" }, { name: "asc" }],
@@ -164,6 +175,17 @@ export async function GET() {
           referenceId: true,
           movementType: true,
           quantity: true,
+        },
+      }),
+      prisma.inventoryMovement.findMany({
+        where: { tenantId: tenant.id },
+        orderBy: { createdAt: "desc" },
+        take: 80,
+        include: {
+          warehouse: { select: { id: true, code: true, name: true } },
+          bin: { select: { id: true, code: true, name: true } },
+          product: { select: { id: true, productCode: true, sku: true, name: true } },
+          createdBy: { select: { id: true, name: true, email: true } },
         },
       }),
     ]);
@@ -304,6 +326,19 @@ export async function GET() {
         }),
       )
       .filter((r) => Number(r.remainingQty) > 0 && r.product),
+    recentMovements: recentMovements.map((m) => ({
+      id: m.id,
+      movementType: m.movementType,
+      quantity: m.quantity.toString(),
+      referenceType: m.referenceType,
+      referenceId: m.referenceId,
+      note: m.note,
+      createdAt: m.createdAt.toISOString(),
+      warehouse: m.warehouse,
+      bin: m.bin,
+      product: m.product,
+      createdBy: m.createdBy,
+    })),
   });
 }
 

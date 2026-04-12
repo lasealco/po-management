@@ -62,7 +62,7 @@ type WmsData = {
   }>;
   openTasks: Array<{
     id: string;
-    taskType: "PUTAWAY" | "PICK" | "CYCLE_COUNT";
+    taskType: "PUTAWAY" | "PICK" | "REPLENISH" | "CYCLE_COUNT";
     quantity: string;
     warehouse: { id: string; code: string | null; name: string };
     bin: { id: string; code: string; name: string } | null;
@@ -103,6 +103,19 @@ type WmsData = {
     description: string;
     product: { id: string; productCode: string | null; sku: string | null; name: string };
     remainingQty: string;
+  }>;
+  recentMovements: Array<{
+    id: string;
+    movementType: "RECEIPT" | "PUTAWAY" | "PICK" | "ADJUSTMENT" | "SHIPMENT";
+    quantity: string;
+    referenceType: string | null;
+    referenceId: string | null;
+    note: string | null;
+    createdAt: string;
+    warehouse: { id: string; code: string | null; name: string };
+    bin: { id: string; code: string; name: string } | null;
+    product: { id: string; productCode: string | null; sku: string | null; name: string };
+    createdBy: { id: string; name: string; email: string };
   }>;
 };
 
@@ -199,7 +212,8 @@ export function WmsClient({ canEdit }: { canEdit: boolean }) {
       <header className="mb-5">
         <h1 className="text-2xl font-semibold text-zinc-900">Warehouse operations (WMS)</h1>
         <p className="mt-1 text-sm text-zinc-600">
-          Phase 1: bins, putaway/pick tasks, and live stock balances.
+          Operations: setup, putaway/pick tasks, waves, live balances, and recent stock movements
+          (see <code className="rounded bg-zinc-100 px-1">docs/wms/GAP_MAP.md</code> for blueprint coverage).
         </p>
       </header>
       {error ? (
@@ -684,13 +698,14 @@ export function WmsClient({ canEdit }: { canEdit: boolean }) {
                 {t.shipment ? <span className="text-zinc-500">Shipment {t.shipment.shipmentNo || t.shipment.id.slice(0, 6)}</span> : null}
                 {t.order ? <span className="text-zinc-500">Order {t.order.orderNumber}</span> : null}
                 {t.wave ? <span className="text-zinc-500">Wave {t.wave.waveNo}</span> : null}
-                {canEdit ? (
+                {canEdit && (t.taskType === "PUTAWAY" || t.taskType === "PICK") ? (
                   <button
                     type="button"
                     disabled={busy}
                     onClick={() =>
                       void runAction({
-                        action: t.taskType === "PUTAWAY" ? "complete_putaway_task" : "complete_pick_task",
+                        action:
+                          t.taskType === "PUTAWAY" ? "complete_putaway_task" : "complete_pick_task",
                         taskId: t.id,
                         ...(t.taskType === "PUTAWAY" ? { binId: t.bin?.id ?? null } : {}),
                       })
@@ -703,6 +718,59 @@ export function WmsClient({ canEdit }: { canEdit: boolean }) {
               </div>
             ))
           )}
+        </div>
+      </section>
+
+      <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
+        <h2 className="mb-2 text-sm font-semibold text-zinc-900">Recent stock movements</h2>
+        <p className="mb-2 text-xs text-zinc-500">
+          Last {data.recentMovements?.length ?? 0} ledger rows (PUTAWAY, PICK, etc.). Full filters and exports come in a
+          later increment.
+        </p>
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead className="bg-zinc-100 text-left text-xs uppercase text-zinc-700">
+              <tr>
+                <th className="px-2 py-1">When</th>
+                <th className="px-2 py-1">Type</th>
+                <th className="px-2 py-1">Qty</th>
+                <th className="px-2 py-1">Product</th>
+                <th className="px-2 py-1">Bin</th>
+                <th className="px-2 py-1">Ref</th>
+                <th className="px-2 py-1">By</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-200 text-zinc-800">
+              {(data.recentMovements ?? []).length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-2 py-3 text-zinc-500">
+                    No movements yet.
+                  </td>
+                </tr>
+              ) : (
+                (data.recentMovements ?? []).map((m) => (
+                  <tr key={m.id}>
+                    <td className="whitespace-nowrap px-2 py-1 text-xs text-zinc-600">
+                      {new Date(m.createdAt).toLocaleString()}
+                    </td>
+                    <td className="px-2 py-1 font-medium">{m.movementType}</td>
+                    <td className="px-2 py-1">{m.quantity}</td>
+                    <td className="px-2 py-1">
+                      {m.product.productCode || m.product.sku || "—"} · {m.product.name}
+                    </td>
+                    <td className="px-2 py-1 text-zinc-600">
+                      {m.bin ? `${m.bin.code}` : "—"}
+                    </td>
+                    <td className="max-w-[10rem] truncate px-2 py-1 text-xs text-zinc-500" title={m.referenceId ?? ""}>
+                      {m.referenceType ?? "—"}
+                      {m.referenceId ? ` · ${m.referenceId.slice(0, 8)}…` : ""}
+                    </td>
+                    <td className="whitespace-nowrap px-2 py-1 text-xs text-zinc-600">{m.createdBy.name}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </section>
 
