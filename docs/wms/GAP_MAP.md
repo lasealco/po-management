@@ -16,7 +16,7 @@
 | Permissions / audit | 🟡 `org.wms` + `User` on movements | No field-level WMS matrix from `wms_role_permission_matrix` yet |
 | **Inbound ASN** | 🟡 **Orders + `Shipment` / `ShipmentItem`** | `Shipment.asnReference` + `expectedReceiveAt`; WMS inbound table + `set_shipment_inbound_fields`; putaway unchanged |
 | Receiving / putaway | ✅ `WmsTask` PUTAWAY + `InventoryMovement` PUTAWAY | Matches “directed putaway” at demo depth |
-| **Inventory inquiry** | ✅ `InventoryBalance` + **movement ledger** 🟡 | Balances in UI; ledger now exposed (recent rows) — full search/filter later |
+| **Inventory inquiry** | ✅ `InventoryBalance` + **movement ledger** 🟡 | Stock page: server ledger filters `mvWarehouse`, `mvType`, `mvSince`/`mvUntil`, `mvLimit` (≤300); balances unchanged |
 | Outbound order | 🟡 `OutboundOrder` / `OutboundOrderLine` | Pick → **Mark packed** → **Mark shipped** (`SHIPMENT` movements); CRM link locked after pack |
 | Allocation | 🟡 Line `allocatedQty` on balance + pick tasks | Not full multi-strategy allocation engine |
 
@@ -30,7 +30,7 @@
 | Wave planning | 🟡 `WmsWave` + release/complete | |
 | Packing / labels | 🟡 Line `packedQty` exists; limited workflow | |
 | Cycle count | 🟡 `CYCLE_COUNT` tasks: create from balance + complete with counted qty → `ADJUSTMENT` |
-| Dashboards | ❌ |
+| Dashboards | 🟡 | `/wms` **At a glance** counts (open tasks, outbound, waves, balances, unbilled events, 7d movements) |
 
 ## R3 — VAS, portal, advanced allocation, billing events
 
@@ -48,9 +48,9 @@ Handlers live in `src/lib/wms/post-actions.ts` (route stays a thin shell).
 
 ## Near-term build order (Phase A continuation)
 
-1. **Movement visibility + filters** — recent ledger in GET + WMS UI table; **stock page** filters by warehouse + movement type.  
+1. **Movement visibility + filters** — **done:** ledger query params + stock UI; export / saved views later.  
 2. **Hold / QC** minimal model or status flags on `InventoryBalance` (design choice in next increment).  
 3. **`WmsCustomer`** or reuse **CRM `CrmAccount`** for 3PL owner linkage — decision before deep inbound.  
 4. Split `src/app/api/wms/route.ts` into `src/lib/wms/*.ts` — **done:** `post-actions.ts` (POST), `get-wms-payload.ts` (GET), `wms-body.ts`, `wave.ts`, billing modules.
 
-_Last updated: billing CRM on events, pack/ship outbound workflow, shipment ASN fields._
+_Last updated: WMS home overview + server-filtered movement ledger._

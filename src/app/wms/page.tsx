@@ -1,6 +1,8 @@
 import Link from "next/link";
 
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
+import { WmsHomeOverview } from "@/components/wms-home-overview";
+import { getDemoTenant } from "@/lib/demo-tenant";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +31,7 @@ const areas: { href: string; title: string; description: string }[] = [
 
 export default async function WmsPage() {
   const access = await getViewerGrantSet();
+  const tenant = await getDemoTenant();
   const canEdit = Boolean(
     access?.user && viewerHas(access.grantSet, "org.wms", "edit"),
   );
@@ -48,6 +51,8 @@ export default async function WmsPage() {
           </p>
         ) : null}
       </header>
+
+      {tenant ? <WmsHomeOverview tenantId={tenant.id} /> : null}
 
       <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {areas.map((a) => (

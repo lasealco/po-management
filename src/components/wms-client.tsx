@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type WmsData = {
   warehouses: Array<{ id: string; code: string | null; name: string; type: "CFS" | "WAREHOUSE" }>;
@@ -185,9 +185,24 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
   >({});
   const [cycleBalanceId, setCycleBalanceId] = useState("");
   const [cycleCountQtyByTask, setCycleCountQtyByTask] = useState<Record<string, string>>({});
+  const [ledgerSince, setLedgerSince] = useState("");
+  const [ledgerUntil, setLedgerUntil] = useState("");
+  const [ledgerLimit, setLedgerLimit] = useState("");
+  const [ledgerDraftSince, setLedgerDraftSince] = useState("");
+  const [ledgerDraftUntil, setLedgerDraftUntil] = useState("");
+  const [ledgerDraftLimit, setLedgerDraftLimit] = useState("");
 
-  async function load() {
-    const res = await fetch("/api/wms", { cache: "no-store" });
+  const load = useCallback(async () => {
+    const params = new URLSearchParams();
+    if (section === "stock") {
+      if (selectedWarehouseId) params.set("mvWarehouse", selectedWarehouseId);
+      if (movementTypeFilter) params.set("mvType", movementTypeFilter);
+      if (ledgerSince) params.set("mvSince", ledgerSince);
+      if (ledgerUntil) params.set("mvUntil", ledgerUntil);
+      if (ledgerLimit) params.set("mvLimit", ledgerLimit);
+    }
+    const url = params.toString() ? `/api/wms?${params.toString()}` : "/api/wms";
+    const res = await fetch(url, { cache: "no-store" });
     const payload = (await res.json()) as WmsData & { error?: string };
     if (!res.ok) {
       setError(payload.error ?? "Could not load WMS.");
@@ -203,11 +218,18 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
       }
       return prev;
     });
-  }
+  }, [
+    section,
+    selectedWarehouseId,
+    movementTypeFilter,
+    ledgerSince,
+    ledgerUntil,
+    ledgerLimit,
+  ]);
 
   useEffect(() => {
     void load();
-  }, [section]);
+  }, [load]);
 
   useEffect(() => {
     if (!data) return;
@@ -248,17 +270,6 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
     return rows.filter((b) => b.warehouse.id === selectedWarehouseId);
   }, [data?.balances, section, selectedWarehouseId]);
 
-  const movementsShown = useMemo(() => {
-    let rows = data?.recentMovements ?? [];
-    if (section === "stock" && selectedWarehouseId) {
-      rows = rows.filter((m) => m.warehouse.id === selectedWarehouseId);
-    }
-    if (section === "stock" && movementTypeFilter) {
-      rows = rows.filter((m) => m.movementType === movementTypeFilter);
-    }
-    return rows;
-  }, [data?.recentMovements, section, selectedWarehouseId, movementTypeFilter]);
-
   async function runAction(body: Record<string, unknown>) {
     setBusy(true);
     setError(null);
@@ -282,6 +293,8 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
       <main className="mx-auto w-full max-w-7xl px-6 py-8 text-sm text-zinc-600">Loading WMS…</main>
     );
   }
+
+  const movementsShown = data.recentMovements;
 
   const headerTitle =
     section === "setup"
@@ -364,6 +377,64 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
               <option value="SHIPMENT">SHIPMENT</option>
             </select>
           </label>
+          <label className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-medium text-zinc-700">From</span>
+            <input
+              type="datetime-local"
+              value={ledgerDraftSince}
+              onChange={(e) => setLedgerDraftSince(e.target.value)}
+              className="rounded border border-zinc-300 px-2 py-1.5 text-sm"
+            />
+          </label>
+          <label className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-medium text-zinc-700">To</span>
+            <input
+              type="datetime-local"
+              value={ledgerDraftUntil}
+              onChange={(e) => setLedgerDraftUntil(e.target.value)}
+              className="rounded border border-zinc-300 px-2 py-1.5 text-sm"
+            />
+          </label>
+          <label className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-medium text-zinc-700">Row cap</span>
+            <select
+              value={ledgerDraftLimit}
+              onChange={(e) => setLedgerDraftLimit(e.target.value)}
+              className="rounded border border-zinc-300 px-2 py-1.5 text-sm"
+            >
+              <option value="">80 (default)</option>
+              <option value="120">120</option>
+              <option value="200">200</option>
+              <option value="300">300</option>
+            </select>
+          </label>
+          <button
+            type="button"
+            className="rounded border border-zinc-900 bg-zinc-900 px-3 py-2 text-sm font-medium text-white"
+            onClick={() => {
+              const s = ledgerDraftSince.trim();
+              const u = ledgerDraftUntil.trim();
+              setLedgerSince(s ? new Date(s).toISOString() : "");
+              setLedgerUntil(u ? new Date(u).toISOString() : "");
+              setLedgerLimit(ledgerDraftLimit.trim());
+            }}
+          >
+            Apply date / cap
+          </button>
+          <button
+            type="button"
+            className="rounded border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-800"
+            onClick={() => {
+              setLedgerDraftSince("");
+              setLedgerDraftUntil("");
+              setLedgerDraftLimit("");
+              setLedgerSince("");
+              setLedgerUntil("");
+              setLedgerLimit("");
+            }}
+          >
+            Clear dates
+          </button>
         </div>
       )}
 
@@ -1128,9 +1199,10 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
       <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
         <h2 className="mb-2 text-sm font-semibold text-zinc-900">Recent stock movements</h2>
         <p className="mb-2 text-xs text-zinc-500">
-          Last {movementsShown.length} ledger rows shown
-          {selectedWarehouseId ? " (filtered)" : ""} (PUTAWAY, PICK, etc.). Full filters and exports come in a later
-          increment.
+          Showing {movementsShown.length} ledger row{movementsShown.length === 1 ? "" : "s"}
+          {selectedWarehouseId || movementTypeFilter ? " for the warehouse / type filters above" : ""}.
+          Date range and row cap apply after you click <span className="font-medium">Apply date / cap</span>; warehouse
+          and movement type refetch automatically.
         </p>
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">

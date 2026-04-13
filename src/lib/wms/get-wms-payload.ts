@@ -2,10 +2,15 @@ import { Prisma } from "@prisma/client";
 
 import { userHasGlobalGrant } from "@/lib/authz";
 import { crmTenantFilter } from "@/lib/crm-scope";
+import { movementLedgerWhere, type ParsedMovementLedgerQuery } from "@/lib/wms/movement-ledger-query";
 import { prisma } from "@/lib/prisma";
 
 /** Serializable JSON for `GET /api/wms` (WMS client + pages). */
-export async function getWmsDashboardPayload(tenantId: string, actorUserId: string) {
+export async function getWmsDashboardPayload(
+  tenantId: string,
+  actorUserId: string,
+  movementLedger?: ParsedMovementLedgerQuery | null,
+) {
   const canPickCrmAccounts = await userHasGlobalGrant(actorUserId, "org.crm", "view");
   let crmAccountListWhere: { tenantId: string; ownerUserId?: string } = { tenantId };
   if (canPickCrmAccounts) {
@@ -14,6 +19,11 @@ export async function getWmsDashboardPayload(tenantId: string, actorUserId: stri
       crmAccountListWhere = { tenantId, ownerUserId: scope.ownerUserId };
     }
   }
+
+  const recentMovementWhere = movementLedger
+    ? movementLedgerWhere(tenantId, movementLedger)
+    : { tenantId };
+  const recentMovementTake = movementLedger?.limit ?? 80;
 
   const [
     warehouses,
@@ -158,9 +168,9 @@ export async function getWmsDashboardPayload(tenantId: string, actorUserId: stri
       },
     }),
     prisma.inventoryMovement.findMany({
-      where: { tenantId },
+      where: recentMovementWhere,
       orderBy: { createdAt: "desc" },
-      take: 80,
+      take: recentMovementTake,
       include: {
         warehouse: { select: { id: true, code: true, name: true } },
         bin: { select: { id: true, code: true, name: true } },

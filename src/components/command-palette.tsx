@@ -117,7 +117,7 @@ export function CommandPalette({ grants }: { grants: CommandPaletteGrants }) {
         {
           id: "wms",
           label: "WMS — overview",
-          searchText: "warehouse wms home",
+          searchText: "warehouse wms home dashboard at a glance",
           action: go("/wms"),
         },
         {
