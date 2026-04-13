@@ -36,6 +36,9 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# Local-only Neon URL notes (see docs/database-neon.md)
+/docs/neon-credentials.local.md
+
 # vercel
 .vercel
 
