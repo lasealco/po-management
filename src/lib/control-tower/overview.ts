@@ -35,6 +35,7 @@ export async function getControlTowerOverview(params: {
     arrivals14,
     withLegs,
     withContainers,
+    staleTopRows,
   ] = await Promise.all([
     prisma.shipment.groupBy({
       by: ["status"],
@@ -96,6 +97,23 @@ export async function getControlTowerOverview(params: {
         ctContainers: { some: {} },
       },
     }),
+    prisma.shipment.findMany({
+      where: {
+        ...scope,
+        status: { notIn: TERMINAL },
+        updatedAt: { lt: staleCut },
+      },
+      orderBy: { updatedAt: "asc" },
+      take: 6,
+      select: {
+        id: true,
+        shipmentNo: true,
+        status: true,
+        updatedAt: true,
+        order: { select: { orderNumber: true } },
+        booking: { select: { eta: true } },
+      },
+    }),
   ]);
 
   const byStatus = Object.fromEntries(
@@ -106,6 +124,14 @@ export async function getControlTowerOverview(params: {
     (byStatus.BOOKED ?? 0) +
     (byStatus.IN_TRANSIT ?? 0) +
     (byStatus.VALIDATED ?? 0);
+  const staleTop = staleTopRows.map((s) => ({
+    id: s.id,
+    shipmentNo: s.shipmentNo,
+    orderNumber: s.order.orderNumber,
+    status: s.status,
+    bookingEta: s.booking?.eta?.toISOString() ?? null,
+    updatedAt: s.updatedAt.toISOString(),
+  }));
 
   return {
     generatedAt: now.toISOString(),
@@ -126,5 +152,6 @@ export async function getControlTowerOverview(params: {
       withLegs,
       withContainers,
     },
+    staleTop,
   };
 }

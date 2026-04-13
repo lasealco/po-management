@@ -13,10 +13,18 @@ type Overview = {
     withLegs: number;
     withContainers: number;
   };
+  staleTop: Array<{
+    id: string;
+    shipmentNo: string | null;
+    orderNumber: string;
+    status: string;
+    bookingEta: string | null;
+    updatedAt: string;
+  }>;
 };
 
 export function ControlTowerDashboard({ overview }: { overview: Overview }) {
-  const { counts, isCustomerView } = overview;
+  const { counts, isCustomerView, staleTop } = overview;
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
@@ -73,6 +81,24 @@ export function ControlTowerDashboard({ overview }: { overview: Overview }) {
           <span className="font-semibold">{counts.withLegs}</span> shipments with legs ·{" "}
           <span className="font-semibold">{counts.withContainers}</span> shipments with containers
         </p>
+      </div>
+      <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm sm:col-span-2 lg:col-span-4">
+        <p className="text-xs font-semibold uppercase text-zinc-500">Stale spotlight</p>
+        {staleTop.length === 0 ? (
+          <p className="mt-1 text-sm text-zinc-500">No stale shipments right now.</p>
+        ) : (
+          <ul className="mt-2 space-y-1 text-sm text-zinc-700">
+            {staleTop.map((s) => (
+              <li key={s.id}>
+                <a className="font-medium text-sky-800 hover:underline" href={`/control-tower/shipments/${s.id}`}>
+                  {s.shipmentNo || s.id.slice(0, 8)}
+                </a>{" "}
+                · {s.orderNumber} · {s.status} · updated {new Date(s.updatedAt).toLocaleDateString()}
+                {s.bookingEta ? ` · ETA ${new Date(s.bookingEta).toLocaleDateString()}` : ""}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );

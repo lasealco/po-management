@@ -30,6 +30,9 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
   const [status, setStatus] = useState("");
   const [mode, setMode] = useState("");
   const [routeAction, setRouteAction] = useState("");
+  const [sortBy, setSortBy] = useState("updated_desc");
+  const [onlyOverdueEta, setOnlyOverdueEta] = useState(false);
+  const [page, setPage] = useState(1);
   const [q, setQ] = useState("");
   const [rows, setRows] = useState<Row[]>([]);
   const [busy, setBusy] = useState(false);
@@ -124,11 +127,21 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
 
   const applySaved = (json: unknown) => {
     if (!json || typeof json !== "object") return;
-    const o = json as { status?: string; mode?: string; q?: string; routeAction?: string };
+    const o = json as {
+      status?: string;
+      mode?: string;
+      q?: string;
+      routeAction?: string;
+      sortBy?: string;
+      onlyOverdueEta?: boolean;
+    };
     setStatus(typeof o.status === "string" ? o.status : "");
     setMode(typeof o.mode === "string" ? o.mode : "");
     setQ(typeof o.q === "string" ? o.q : "");
     setRouteAction(typeof o.routeAction === "string" ? o.routeAction : "");
+    setSortBy(typeof o.sortBy === "string" ? o.sortBy : "updated_desc");
+    setOnlyOverdueEta(Boolean(o.onlyOverdueEta));
+    setPage(1);
   };
 
   const saveCurrentFilter = async () => {
@@ -140,7 +153,7 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
       body: JSON.stringify({
         action: "save_ct_filter",
         name: name.trim(),
-        filtersJson: { status, mode, q, routeAction },
+        filtersJson: { status, mode, q, routeAction, sortBy, onlyOverdueEta },
       }),
     });
     if (!res.ok) {
@@ -182,9 +195,52 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
     return out;
   }, [rows]);
   const filteredRows = useMemo(() => {
-    if (!routeAction) return rows;
-    return rows.filter((r) => (r.nextAction || "").startsWith(routeAction));
-  }, [rows, routeAction]);
+    const nowMs = Date.now();
+    const routed = !routeAction
+      ? rows
+      : rows.filter((r) => (r.nextAction || "").startsWith(routeAction));
+    const etaScoped = !onlyOverdueEta
+      ? routed
+      : routed.filter((r) => {
+          const eta = r.latestEta || r.eta;
+          return eta ? new Date(eta).getTime() < nowMs : false;
+        });
+    const sorted = [...etaScoped];
+    sorted.sort((a, b) => {
+      if (sortBy === "eta_asc") {
+        const ae = a.latestEta || a.eta;
+        const be = b.latestEta || b.eta;
+        const av = ae ? new Date(ae).getTime() : Number.MAX_SAFE_INTEGER;
+        const bv = be ? new Date(be).getTime() : Number.MAX_SAFE_INTEGER;
+        return av - bv;
+      }
+      if (sortBy === "route_progress_asc") {
+        return (a.routeProgressPct ?? 999) - (b.routeProgressPct ?? 999);
+      }
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    });
+    return sorted;
+  }, [rows, routeAction, onlyOverdueEta, sortBy]);
+  const pageSize = 25;
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+  const pagedRows = useMemo(
+    () => filteredRows.slice((page - 1) * pageSize, page * pageSize),
+    [filteredRows, page],
+  );
+  const triageStats = useMemo(
+    () => ({
+      overdue: filteredRows.filter((r) => {
+        const eta = r.latestEta || r.eta;
+        return eta ? new Date(eta).getTime() < Date.now() : false;
+      }).length,
+      needsDeparture: filteredRows.filter((r) => (r.nextAction || "").startsWith("Mark departure")).length,
+      needsArrival: filteredRows.filter((r) => (r.nextAction || "").startsWith("Record arrival")).length,
+    }),
+    [filteredRows],
+  );
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
 
   return (
     <div className="space-y-4">
@@ -239,6 +295,32 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
               </option>
             ))}
           </select>
+        </label>
+        <label className="text-xs text-zinc-600">
+          Sort
+          <select
+            value={sortBy}
+            onChange={(e) => {
+              setSortBy(e.target.value);
+              setPage(1);
+            }}
+            className="mt-1 block rounded border border-zinc-300 px-2 py-1.5 text-sm"
+          >
+            <option value="updated_desc">Updated (newest)</option>
+            <option value="eta_asc">ETA (earliest)</option>
+            <option value="route_progress_asc">Route progress (lowest)</option>
+          </select>
+        </label>
+        <label className="flex items-center gap-2 text-xs text-zinc-700">
+          <input
+            type="checkbox"
+            checked={onlyOverdueEta}
+            onChange={(e) => {
+              setOnlyOverdueEta(e.target.checked);
+              setPage(1);
+            }}
+          />
+          Overdue ETA only
         </label>
         <button
           type="button"
@@ -326,6 +408,20 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
             </button>
           ))}
       </div>
+      <div className="flex flex-wrap gap-2 text-xs">
+        <span className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-zinc-700">
+          Visible: <strong>{filteredRows.length}</strong>
+        </span>
+        <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-amber-900">
+          Overdue ETA: <strong>{triageStats.overdue}</strong>
+        </span>
+        <span className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-sky-900">
+          Needs departure: <strong>{triageStats.needsDeparture}</strong>
+        </span>
+        <span className="rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-orange-900">
+          Needs arrival: <strong>{triageStats.needsArrival}</strong>
+        </span>
+      </div>
       <p className="text-xs text-zinc-500">
         Last refreshed: {lastRefreshedAt ? new Date(lastRefreshedAt).toLocaleTimeString() : "—"}
       </p>
@@ -359,7 +455,7 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
                 </td>
               </tr>
             ) : (
-              filteredRows.map((r) => (
+              pagedRows.map((r) => (
                 <tr
                   key={r.id}
                   className={`text-zinc-800 ${
@@ -410,6 +506,29 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
             )}
           </tbody>
         </table>
+      </div>
+      <div className="flex items-center justify-between rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm">
+        <span className="text-zinc-600">
+          Page {page} / {totalPages}
+        </span>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page <= 1}
+            className="rounded border border-zinc-300 px-3 py-1 disabled:opacity-40"
+          >
+            Previous
+          </button>
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page >= totalPages}
+            className="rounded border border-zinc-300 px-3 py-1 disabled:opacity-40"
+          >
+            Next
+          </button>
+        </div>
       </div>
     </div>
   );
