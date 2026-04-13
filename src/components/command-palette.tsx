@@ -113,12 +113,38 @@ export function CommandPalette({ grants }: { grants: CommandPaletteGrants }) {
     }
 
     if (grants.wms) {
-      list.push({
-        id: "wms",
-        label: "Warehouse operations (WMS)",
-        searchText: "warehouse wms stock bins putaway pick",
-        action: go("/wms"),
-      });
+      list.push(
+        {
+          id: "wms",
+          label: "WMS — overview",
+          searchText: "warehouse wms home",
+          action: go("/wms"),
+        },
+        {
+          id: "wms-setup",
+          label: "WMS — setup (zones, bins, replenishment)",
+          searchText: "wms zones bins replenishment rules",
+          action: go("/wms/setup"),
+        },
+        {
+          id: "wms-operations",
+          label: "WMS — operations (tasks, outbound, waves)",
+          searchText: "wms putaway pick outbound wave tasks",
+          action: go("/wms/operations"),
+        },
+        {
+          id: "wms-stock",
+          label: "WMS — stock & ledger",
+          searchText: "wms inventory balances movements ledger",
+          action: go("/wms/stock"),
+        },
+        {
+          id: "wms-billing",
+          label: "WMS — billing",
+          searchText: "wms billing rates invoice events",
+          action: go("/wms/billing"),
+        },
+      );
     }
 
     if (grants.crm) {

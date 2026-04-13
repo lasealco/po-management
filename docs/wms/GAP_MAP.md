@@ -51,6 +51,6 @@ Handlers live in `src/lib/wms/post-actions.ts` (route stays a thin shell).
 1. **Movement visibility + filters** — recent ledger in GET + WMS UI table; **stock page** filters by warehouse + movement type.  
 2. **Hold / QC** minimal model or status flags on `InventoryBalance` (design choice in next increment).  
 3. **`WmsCustomer`** or reuse **CRM `CrmAccount`** for 3PL owner linkage — decision before deep inbound.  
-4. Split `src/app/api/wms/route.ts` into `src/lib/wms/*.ts` handlers per strategy doc (started: `lib/wms/wave.ts`, `lib/wms/billing-*`).
+4. Split `src/app/api/wms/route.ts` into `src/lib/wms/*.ts` — **done:** `post-actions.ts` (POST), `get-wms-payload.ts` (GET), `wms-body.ts`, `wave.ts`, billing modules.
 
 _Last updated: Phase B billing foundation shipped._
