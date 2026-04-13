@@ -70,6 +70,7 @@ export async function GET(request: Request) {
       include: {
         warehouse: { select: { id: true, code: true, name: true } },
         product: { select: { id: true, productCode: true, sku: true, name: true } },
+        crmAccount: { select: { id: true, name: true } },
         invoiceRun: { select: { id: true, runNo: true, status: true } },
       },
     }),
@@ -97,6 +98,7 @@ export async function GET(request: Request) {
     events: events.map((e) => ({
       id: e.id,
       profileSource: e.profileSource,
+      crmAccount: e.crmAccount,
       movementType: e.movementType,
       quantity: e.quantity.toString(),
       rateCode: e.rateCode,

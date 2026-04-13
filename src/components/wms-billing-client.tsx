@@ -17,6 +17,8 @@ type BillingPayload = {
   }>;
   events: Array<{
     id: string;
+    profileSource: string;
+    crmAccount: { id: string; name: string } | null;
     movementType: string;
     quantity: string;
     rateCode: string;
@@ -298,6 +300,8 @@ export function WmsBillingClient({ canEdit }: { canEdit: boolean }) {
               <tr>
                 <th className="px-2 py-1">When</th>
                 <th className="px-2 py-1">Type</th>
+                <th className="px-2 py-1">Profile</th>
+                <th className="px-2 py-1">CRM</th>
                 <th className="px-2 py-1">Qty</th>
                 <th className="px-2 py-1">Amount</th>
                 <th className="px-2 py-1">Rate</th>
@@ -307,7 +311,7 @@ export function WmsBillingClient({ canEdit }: { canEdit: boolean }) {
             <tbody className="divide-y divide-zinc-200">
               {data.events.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-2 py-3 text-zinc-500">
+                  <td colSpan={8} className="px-2 py-3 text-zinc-500">
                     No events yet. Sync from movements after rates exist.
                   </td>
                 </tr>
@@ -318,6 +322,10 @@ export function WmsBillingClient({ canEdit }: { canEdit: boolean }) {
                       {new Date(e.occurredAt).toLocaleString()}
                     </td>
                     <td className="px-2 py-1">{e.movementType}</td>
+                    <td className="px-2 py-1 text-xs text-zinc-600">{e.profileSource}</td>
+                    <td className="px-2 py-1 text-xs text-zinc-600">
+                      {e.crmAccount ? e.crmAccount.name : "—"}
+                    </td>
                     <td className="px-2 py-1">{e.quantity}</td>
                     <td className="px-2 py-1 font-medium">
                       {e.amount} {e.currency}

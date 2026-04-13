@@ -1,5 +1,6 @@
 import { Prisma, type InventoryMovementType, type WmsBillingRate } from "@prisma/client";
 
+import { resolveCrmAccountIdsByMovementIds } from "@/lib/wms/billing-crm-resolve";
 import type { DefaultRateSeed } from "@/lib/wms/billing-default-rates";
 import { prisma } from "@/lib/prisma";
 
@@ -61,11 +62,15 @@ export async function syncBillingEventsFromMovements(
       productId: true,
       quantity: true,
       createdAt: true,
+      referenceType: true,
+      referenceId: true,
     },
   });
   if (movements.length === 0) {
     return { created: 0, skipped: 0 };
   }
+
+  const crmByMovementId = await resolveCrmAccountIdsByMovementIds(tenantId, movements);
 
   const existing = await prisma.wmsBillingEvent.findMany({
     where: {
@@ -94,11 +99,14 @@ export async function syncBillingEventsFromMovements(
     const qty = new Prisma.Decimal(mv.quantity).abs();
     const unit = new Prisma.Decimal(rate.amountPerUnit);
     const amount = qty.mul(unit).toDecimalPlaces(2);
+    const crmAccountId = crmByMovementId.get(mv.id) ?? null;
+    const profileSource = crmAccountId ? "CRM_ACCOUNT" : "MANUAL";
 
     await prisma.wmsBillingEvent.create({
       data: {
         tenantId,
-        profileSource: "MANUAL",
+        profileSource,
+        crmAccountId,
         inventoryMovementId: mv.id,
         movementType: mv.movementType,
         warehouseId: mv.warehouseId,
@@ -197,12 +205,19 @@ export async function createInvoiceRunFromUnbilledEvents(
   ];
   const csvSnapshot = csvLines.join("\n");
 
+  const distinctCrm = new Set(
+    events.map((e) => e.crmAccountId).filter((id): id is string => Boolean(id)),
+  );
+  const allLinkedCrm = events.every((e) => e.crmAccountId != null);
+  const runProfileSource =
+    allLinkedCrm && distinctCrm.size === 1 ? ("CRM_ACCOUNT" as const) : ("MANUAL" as const);
+
   const run = await prisma.$transaction(async (tx) => {
     const inv = await tx.wmsBillingInvoiceRun.create({
       data: {
         tenantId,
         runNo,
-        profileSource: "MANUAL",
+        profileSource: runProfileSource,
         periodFrom,
         periodTo,
         status: "DRAFT",

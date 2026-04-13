@@ -129,7 +129,7 @@ export function CommandPalette({ grants }: { grants: CommandPaletteGrants }) {
         {
           id: "wms-operations",
           label: "WMS — operations (tasks, outbound, waves)",
-          searchText: "wms putaway pick outbound wave tasks",
+          searchText: "wms putaway pick outbound wave tasks inbound asn pack ship",
           action: go("/wms/operations"),
         },
         {

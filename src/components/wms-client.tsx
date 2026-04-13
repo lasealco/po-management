@@ -89,8 +89,20 @@ type WmsData = {
     totalQty: string;
     createdAt: string;
   }>;
+  inboundShipments: Array<{
+    id: string;
+    shipmentNo: string | null;
+    status: string;
+    asnReference: string | null;
+    expectedReceiveAt: string | null;
+    shippedAt: string;
+    receivedAt: string | null;
+    orderNumber: string;
+    itemCount: number;
+  }>;
   putawayCandidates: Array<{
     shipmentItemId: string;
+    shipmentId: string;
     shipmentNo: string | null;
     orderNumber: string;
     lineNo: number;
@@ -98,6 +110,8 @@ type WmsData = {
     productId: string;
     remainingQty: string;
     shipmentStatus: string;
+    asnReference: string | null;
+    expectedReceiveAt: string | null;
   }>;
   pickCandidates: Array<{
     outboundOrderId: string;
@@ -166,6 +180,9 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
   const [outboundProductId, setOutboundProductId] = useState("");
   const [outboundLineQty, setOutboundLineQty] = useState("");
   const [outboundCrmAccountId, setOutboundCrmAccountId] = useState("");
+  const [inboundEdits, setInboundEdits] = useState<
+    Record<string, { asn: string; expectedReceiveAt: string }>
+  >({});
   const [cycleBalanceId, setCycleBalanceId] = useState("");
   const [cycleCountQtyByTask, setCycleCountQtyByTask] = useState<Record<string, string>>({});
 
@@ -191,6 +208,20 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
   useEffect(() => {
     void load();
   }, [section]);
+
+  useEffect(() => {
+    if (!data) return;
+    const next: Record<string, { asn: string; expectedReceiveAt: string }> = {};
+    for (const s of data.inboundShipments) {
+      next[s.id] = {
+        asn: s.asnReference ?? "",
+        expectedReceiveAt: s.expectedReceiveAt
+          ? s.expectedReceiveAt.slice(0, 16)
+          : "",
+      };
+    }
+    setInboundEdits(next);
+  }, [data]);
 
   const binsForWarehouse = useMemo(
     () => (data?.bins ?? []).filter((b) => b.warehouse.id === selectedWarehouseId),
@@ -549,6 +580,109 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
       {section === "operations" ? (
         <>
       <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
+        <h2 className="text-sm font-semibold text-zinc-900">Inbound / ASN</h2>
+        <p className="mt-1 text-xs text-zinc-600">
+          Lightweight receiving header on purchase-order shipments: ASN reference and expected receive
+          time for dock planning. Putaway still runs per shipment line below.
+        </p>
+        <div className="mt-3 overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead className="bg-zinc-100 text-left text-xs uppercase text-zinc-700">
+              <tr>
+                <th className="px-2 py-1">Order</th>
+                <th className="px-2 py-1">Shipment</th>
+                <th className="px-2 py-1">Status</th>
+                <th className="px-2 py-1">ASN ref</th>
+                <th className="px-2 py-1">Expected</th>
+                <th className="px-2 py-1">Lines</th>
+                {canEdit ? <th className="px-2 py-1">Save</th> : null}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-200">
+              {data.inboundShipments.length === 0 ? (
+                <tr>
+                  <td colSpan={canEdit ? 7 : 6} className="px-2 py-3 text-zinc-500">
+                    No shipments for this tenant yet.
+                  </td>
+                </tr>
+              ) : (
+                data.inboundShipments.map((s) => {
+                  const draft = inboundEdits[s.id] ?? { asn: "", expectedReceiveAt: "" };
+                  return (
+                    <tr key={s.id}>
+                      <td className="px-2 py-1 font-medium text-zinc-900">{s.orderNumber}</td>
+                      <td className="px-2 py-1 text-zinc-700">{s.shipmentNo || s.id.slice(0, 8)}</td>
+                      <td className="px-2 py-1 text-zinc-600">{s.status}</td>
+                      <td className="px-2 py-1">
+                        {canEdit ? (
+                          <input
+                            value={draft.asn}
+                            onChange={(e) =>
+                              setInboundEdits((prev) => ({
+                                ...prev,
+                                [s.id]: { ...draft, asn: e.target.value },
+                              }))
+                            }
+                            className="w-40 rounded border border-zinc-300 px-2 py-1 text-xs"
+                            placeholder="ASN / notice #"
+                          />
+                        ) : (
+                          <span className="text-zinc-700">{s.asnReference || "—"}</span>
+                        )}
+                      </td>
+                      <td className="px-2 py-1">
+                        {canEdit ? (
+                          <input
+                            type="datetime-local"
+                            value={draft.expectedReceiveAt}
+                            onChange={(e) =>
+                              setInboundEdits((prev) => ({
+                                ...prev,
+                                [s.id]: { ...draft, expectedReceiveAt: e.target.value },
+                              }))
+                            }
+                            className="rounded border border-zinc-300 px-2 py-1 text-xs"
+                          />
+                        ) : (
+                          <span className="text-zinc-600">
+                            {s.expectedReceiveAt
+                              ? new Date(s.expectedReceiveAt).toLocaleString()
+                              : "—"}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-2 py-1 text-zinc-600">{s.itemCount}</td>
+                      {canEdit ? (
+                        <td className="px-2 py-1">
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() =>
+                              void runAction({
+                                action: "set_shipment_inbound_fields",
+                                shipmentId: s.id,
+                                asnReference: draft.asn.trim() || null,
+                                expectedReceiveAt: draft.expectedReceiveAt.trim()
+                                  ? new Date(draft.expectedReceiveAt).toISOString()
+                                  : null,
+                              })
+                            }
+                            className="rounded border border-zinc-300 px-2 py-1 text-xs font-medium text-zinc-800 disabled:opacity-40"
+                          >
+                            Save
+                          </button>
+                        </td>
+                      ) : null}
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
         <h2 className="text-sm font-semibold text-zinc-900">Create putaway task</h2>
         <div className="mt-2 grid gap-2 sm:grid-cols-4">
           <select
@@ -732,7 +866,10 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
               canEdit &&
               data.crmAccountOptions.length > 0 &&
               o.status !== "SHIPPED" &&
-              o.status !== "CANCELLED";
+              o.status !== "CANCELLED" &&
+              o.status !== "PACKED";
+            const allPicked = o.lines.every((l) => Number(l.pickedQty) >= Number(l.quantity));
+            const allPacked = o.lines.every((l) => Number(l.packedQty) >= Number(l.quantity));
             return (
             <div key={o.id} className="rounded border border-zinc-200 p-2 text-sm">
               <div className="flex flex-wrap items-center gap-2">
@@ -776,6 +913,38 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                     Release
                   </button>
                 ) : null}
+                {canEdit && (o.status === "RELEASED" || o.status === "PICKING") && allPicked ? (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() =>
+                      void runAction({ action: "mark_outbound_packed", outboundOrderId: o.id })
+                    }
+                    className="rounded border border-amber-600 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-900 disabled:opacity-40"
+                  >
+                    Mark packed
+                  </button>
+                ) : null}
+                {canEdit && o.status === "PACKED" && allPacked ? (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() =>
+                      void runAction({ action: "mark_outbound_shipped", outboundOrderId: o.id })
+                    }
+                    className="rounded border border-emerald-700 bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-900 disabled:opacity-40"
+                  >
+                    Mark shipped
+                  </button>
+                ) : null}
+              </div>
+              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-zinc-600">
+                {o.lines.map((l) => (
+                  <span key={l.id}>
+                    L{l.lineNo}: pick {l.pickedQty}/{l.quantity} · pack {l.packedQty}/{l.quantity} · ship{" "}
+                    {l.shippedQty}/{l.quantity}
+                  </span>
+                ))}
               </div>
             </div>
             );

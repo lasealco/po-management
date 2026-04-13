@@ -14,10 +14,10 @@
 | Customer (3PL owner) | 🟡 | Optional `OutboundOrder.crmAccountId` → `CrmAccount` (same tenant); WMS UI + `set_outbound_crm_account`; linking requires `org.crm` → view |
 | SKU / UOM / lot rules | 🟡 `Product` | Shared with PO catalog; no WMS-specific lot master on item |
 | Permissions / audit | 🟡 `org.wms` + `User` on movements | No field-level WMS matrix from `wms_role_permission_matrix` yet |
-| **Inbound ASN** | 🟡 **Orders + `Shipment` / `ShipmentItem`** | Operational putaway ties to shipment lines, not a first-class ASN model |
+| **Inbound ASN** | 🟡 **Orders + `Shipment` / `ShipmentItem`** | `Shipment.asnReference` + `expectedReceiveAt`; WMS inbound table + `set_shipment_inbound_fields`; putaway unchanged |
 | Receiving / putaway | ✅ `WmsTask` PUTAWAY + `InventoryMovement` PUTAWAY | Matches “directed putaway” at demo depth |
 | **Inventory inquiry** | ✅ `InventoryBalance` + **movement ledger** 🟡 | Balances in UI; ledger now exposed (recent rows) — full search/filter later |
-| Outbound order | ✅ `OutboundOrder` / `OutboundOrderLine` | Statuses through picking |
+| Outbound order | 🟡 `OutboundOrder` / `OutboundOrderLine` | Pick → **Mark packed** → **Mark shipped** (`SHIPMENT` movements); CRM link locked after pack |
 | Allocation | 🟡 Line `allocatedQty` on balance + pick tasks | Not full multi-strategy allocation engine |
 
 ## R2 — Inbound depth, QC, replenishment UI, packing, waves, counts
@@ -37,7 +37,7 @@
 | Blueprint area | Repo reality |
 |----------------|--------------|
 | VAS / work orders | ❌ Phase C / separate epic |
-| Billing events | 🟡 **Phase B in repo** — `WmsBillingRate`, `WmsBillingEvent`, `WmsBillingInvoiceRun` / `Line`; `/api/wms/billing` + `/wms/billing` UI; PDF rate matrix not replicated field-for-field |
+| Billing events | 🟡 **Phase B in repo** — events carry **`crmAccountId`** + `profileSource` from outbound-linked PICK/SHIP movements; invoice run `CRM_ACCOUNT` when all events share one account; UI shows CRM column |
 | Commercial / quotes | ❌ **Phase C** (CRM or commercial module) |
 
 ## Existing API actions (`POST /api/wms`)
@@ -53,4 +53,4 @@ Handlers live in `src/lib/wms/post-actions.ts` (route stays a thin shell).
 3. **`WmsCustomer`** or reuse **CRM `CrmAccount`** for 3PL owner linkage — decision before deep inbound.  
 4. Split `src/app/api/wms/route.ts` into `src/lib/wms/*.ts` — **done:** `post-actions.ts` (POST), `get-wms-payload.ts` (GET), `wms-body.ts`, `wave.ts`, billing modules.
 
-_Last updated: outbound ↔ CRM account linkage for 3PL owner._
+_Last updated: billing CRM on events, pack/ship outbound workflow, shipment ASN fields._

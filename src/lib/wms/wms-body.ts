@@ -7,6 +7,11 @@ export type WmsBody = {
   zoneType?: "RECEIVING" | "PICKING" | "RESERVE" | "QUARANTINE" | "STAGING" | "SHIPPING";
   shipmentItemId?: string;
   orderItemId?: string;
+  shipmentId?: string;
+  /** ASN / notice reference or scheduled receive window (inbound). */
+  asnReference?: string | null;
+  /** ISO datetime string or null to clear. */
+  expectedReceiveAt?: string | null;
   outboundOrderId?: string;
   outboundLineId?: string;
   productId?: string;

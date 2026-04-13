@@ -26,6 +26,7 @@ export async function getWmsDashboardPayload(tenantId: string, actorUserId: stri
     openTasks,
     waves,
     shipmentItems,
+    inboundShipments,
     movementRows,
     recentMovements,
   ] = await Promise.all([
@@ -58,7 +59,7 @@ export async function getWmsDashboardPayload(tenantId: string, actorUserId: stri
       },
     }),
     prisma.outboundOrder.findMany({
-      where: { tenantId, status: { in: ["DRAFT", "RELEASED", "PICKING"] } },
+      where: { tenantId, status: { in: ["DRAFT", "RELEASED", "PICKING", "PACKED"] } },
       orderBy: { createdAt: "desc" },
       include: {
         warehouse: { select: { id: true, code: true, name: true } },
@@ -121,12 +122,30 @@ export async function getWmsDashboardPayload(tenantId: string, actorUserId: stri
             id: true,
             shipmentNo: true,
             status: true,
+            asnReference: true,
+            expectedReceiveAt: true,
             order: { select: { id: true, orderNumber: true } },
           },
         },
         orderItem: {
           select: { id: true, lineNo: true, description: true, productId: true },
         },
+      },
+    }),
+    prisma.shipment.findMany({
+      where: { order: { tenantId } },
+      orderBy: { shippedAt: "desc" },
+      take: 35,
+      select: {
+        id: true,
+        shipmentNo: true,
+        status: true,
+        asnReference: true,
+        expectedReceiveAt: true,
+        shippedAt: true,
+        receivedAt: true,
+        order: { select: { orderNumber: true } },
+        _count: { select: { items: true } },
       },
     }),
     prisma.inventoryMovement.findMany({
@@ -256,6 +275,17 @@ export async function getWmsDashboardPayload(tenantId: string, actorUserId: stri
       totalQty: w.tasks.reduce((s, t) => s + Number(t.quantity), 0).toFixed(3),
       createdAt: w.createdAt.toISOString(),
     })),
+    inboundShipments: inboundShipments.map((s) => ({
+      id: s.id,
+      shipmentNo: s.shipmentNo,
+      status: s.status,
+      asnReference: s.asnReference,
+      expectedReceiveAt: s.expectedReceiveAt?.toISOString() ?? null,
+      shippedAt: s.shippedAt.toISOString(),
+      receivedAt: s.receivedAt?.toISOString() ?? null,
+      orderNumber: s.order.orderNumber,
+      itemCount: s._count.items,
+    })),
     putawayCandidates: shipmentItems
       .map((row) => {
         const baseQty =
@@ -264,6 +294,7 @@ export async function getWmsDashboardPayload(tenantId: string, actorUserId: stri
         const remaining = Math.max(0, baseQty - used);
         return {
           shipmentItemId: row.id,
+          shipmentId: row.shipment.id,
           shipmentNo: row.shipment.shipmentNo,
           orderNumber: row.shipment.order.orderNumber,
           lineNo: row.orderItem.lineNo,
@@ -271,10 +302,13 @@ export async function getWmsDashboardPayload(tenantId: string, actorUserId: stri
           productId: row.orderItem.productId,
           remainingQty: remaining.toFixed(3),
           shipmentStatus: row.shipment.status,
+          asnReference: row.shipment.asnReference,
+          expectedReceiveAt: row.shipment.expectedReceiveAt?.toISOString() ?? null,
         };
       })
       .filter((r) => Number(r.remainingQty) > 0 && r.productId),
     pickCandidates: outboundOrders
+      .filter((o) => o.status === "RELEASED" || o.status === "PICKING")
       .flatMap((o) =>
         o.lines.map((line) => {
           const moved = pickedByOutboundLine.get(line.id) ?? 0;

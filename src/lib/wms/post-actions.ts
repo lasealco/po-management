@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 
 import { assertOutboundCrmAccountLinkable } from "./crm-account-link";
+import { syncOutboundOrderStatusAfterPick } from "./outbound-workflow";
 import { nextWaveNo } from "./wave";
 
 import type { WmsBody } from "./wms-body";
@@ -254,9 +256,13 @@ export async function handleWmsPost(
     if (!order) {
       return NextResponse.json({ error: "Outbound order not found." }, { status: 404 });
     }
-    if (order.status === "SHIPPED" || order.status === "CANCELLED") {
+    if (
+      order.status === "SHIPPED" ||
+      order.status === "CANCELLED" ||
+      order.status === "PACKED"
+    ) {
       return NextResponse.json(
-        { error: "Cannot change CRM link for shipped or cancelled orders." },
+        { error: "Cannot change CRM link after pack, on shipped, or on cancelled orders." },
         { status: 400 },
       );
     }
@@ -521,6 +527,15 @@ export async function handleWmsPost(
   if (action === "complete_wave") {
     const waveId = input.waveId?.trim() || "";
     if (!waveId) return NextResponse.json({ error: "waveId required." }, { status: 400 });
+    const wavePickTasks = await prisma.wmsTask.findMany({
+      where: {
+        tenantId,
+        waveId,
+        taskType: "PICK",
+        status: "OPEN",
+      },
+      select: { referenceId: true },
+    });
     await prisma.$transaction(async (tx) => {
       const tasks = await tx.wmsTask.findMany({
         where: {
@@ -649,6 +664,141 @@ export async function handleWmsPost(
           data: { pickedQty: { increment: task.quantity } },
         });
       }
+    });
+    await syncOutboundOrderStatusAfterPick(tenantId, task.referenceId);
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "mark_outbound_packed") {
+    const outboundOrderId = input.outboundOrderId?.trim();
+    if (!outboundOrderId) {
+      return NextResponse.json({ error: "outboundOrderId required." }, { status: 400 });
+    }
+    const order = await prisma.outboundOrder.findFirst({
+      where: { id: outboundOrderId, tenantId },
+      include: { lines: true },
+    });
+    if (!order) {
+      return NextResponse.json({ error: "Outbound order not found." }, { status: 404 });
+    }
+    if (order.status !== "RELEASED" && order.status !== "PICKING") {
+      return NextResponse.json(
+        { error: "Pack is only allowed when the order is RELEASED or PICKING." },
+        { status: 400 },
+      );
+    }
+    const allPicked = order.lines.every((l) => Number(l.pickedQty) >= Number(l.quantity));
+    if (!allPicked) {
+      return NextResponse.json(
+        { error: "All lines must be fully picked before packing." },
+        { status: 400 },
+      );
+    }
+    await prisma.$transaction(async (tx) => {
+      for (const line of order.lines) {
+        await tx.outboundOrderLine.update({
+          where: { id: line.id },
+          data: { packedQty: line.pickedQty },
+        });
+      }
+      await tx.outboundOrder.update({
+        where: { id: order.id },
+        data: { status: "PACKED" },
+      });
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "mark_outbound_shipped") {
+    const outboundOrderId = input.outboundOrderId?.trim();
+    if (!outboundOrderId) {
+      return NextResponse.json({ error: "outboundOrderId required." }, { status: 400 });
+    }
+    const order = await prisma.outboundOrder.findFirst({
+      where: { id: outboundOrderId, tenantId },
+      include: { lines: true },
+    });
+    if (!order) {
+      return NextResponse.json({ error: "Outbound order not found." }, { status: 404 });
+    }
+    if (order.status !== "PACKED") {
+      return NextResponse.json(
+        { error: "Ship is only allowed when the order is PACKED." },
+        { status: 400 },
+      );
+    }
+    const allPacked = order.lines.every((l) => Number(l.packedQty) >= Number(l.quantity));
+    if (!allPacked) {
+      return NextResponse.json({ error: "All lines must be fully packed." }, { status: 400 });
+    }
+    await prisma.$transaction(async (tx) => {
+      for (const line of order.lines) {
+        const shipDelta = new Prisma.Decimal(line.packedQty).minus(line.shippedQty);
+        if (shipDelta.lte(0)) continue;
+        await tx.inventoryMovement.create({
+          data: {
+            tenantId,
+            warehouseId: order.warehouseId,
+            binId: null,
+            productId: line.productId,
+            movementType: "SHIPMENT",
+            quantity: shipDelta,
+            referenceType: "OUTBOUND_LINE_SHIP",
+            referenceId: line.id,
+            createdById: actorId,
+            note: `Outbound ${order.outboundNo} shipped`,
+          },
+        });
+        await tx.outboundOrderLine.update({
+          where: { id: line.id },
+          data: { shippedQty: line.packedQty },
+        });
+      }
+      await tx.outboundOrder.update({
+        where: { id: order.id },
+        data: { status: "SHIPPED" },
+      });
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "set_shipment_inbound_fields") {
+    const shipmentId = input.shipmentId?.trim();
+    if (!shipmentId) {
+      return NextResponse.json({ error: "shipmentId required." }, { status: 400 });
+    }
+    const shipment = await prisma.shipment.findFirst({
+      where: { id: shipmentId, order: { tenantId } },
+      select: { id: true },
+    });
+    if (!shipment) {
+      return NextResponse.json({ error: "Shipment not found." }, { status: 404 });
+    }
+    const data: Prisma.ShipmentUpdateInput = {};
+    if (input.asnReference !== undefined) {
+      data.asnReference = input.asnReference?.trim() ? input.asnReference.trim() : null;
+    }
+    if (input.expectedReceiveAt !== undefined) {
+      const raw = input.expectedReceiveAt;
+      if (raw === null || raw === "") {
+        data.expectedReceiveAt = null;
+      } else {
+        const d = new Date(String(raw).trim());
+        if (Number.isNaN(d.getTime())) {
+          return NextResponse.json({ error: "Invalid expectedReceiveAt." }, { status: 400 });
+        }
+        data.expectedReceiveAt = d;
+      }
+    }
+    if (Object.keys(data).length === 0) {
+      return NextResponse.json(
+        { error: "Provide asnReference and/or expectedReceiveAt to update." },
+        { status: 400 },
+      );
+    }
+    await prisma.shipment.update({
+      where: { id: shipment.id },
+      data,
     });
     return NextResponse.json({ ok: true });
   }
