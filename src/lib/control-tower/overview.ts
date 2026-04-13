@@ -1,15 +1,19 @@
 import { prisma } from "@/lib/prisma";
 
-import { controlTowerOrderWhere } from "./viewer";
+import {
+  controlTowerShipmentScopeWhere,
+  type ControlTowerPortalContext,
+} from "./viewer";
 
 const TERMINAL: Array<"DELIVERED" | "RECEIVED"> = ["DELIVERED", "RECEIVED"];
 
 export async function getControlTowerOverview(params: {
   tenantId: string;
-  isCustomer: boolean;
+  ctx: ControlTowerPortalContext;
 }) {
-  const { tenantId, isCustomer } = params;
-  const orderWhere = controlTowerOrderWhere(isCustomer);
+  const { tenantId, ctx } = params;
+  const scope = controlTowerShipmentScopeWhere(tenantId, ctx);
+  const restricted = ctx.isRestrictedView;
 
   const now = new Date();
   const d3 = new Date(now);
@@ -32,44 +36,49 @@ export async function getControlTowerOverview(params: {
   ] = await Promise.all([
     prisma.shipment.groupBy({
       by: ["status"],
-      where: { order: { tenantId, ...orderWhere } },
+      where: scope,
       _count: { _all: true },
     }),
-    isCustomer
+    restricted
       ? Promise.resolve(0)
       : prisma.ctAlert.count({
-          where: { tenantId, status: "OPEN" },
+          where: {
+            tenantId,
+            status: "OPEN",
+            shipment: { is: scope },
+          },
         }),
-    isCustomer
+    restricted
       ? Promise.resolve(0)
       : prisma.ctException.count({
           where: {
             tenantId,
             status: { in: ["OPEN", "IN_PROGRESS"] },
+            shipment: { is: scope },
           },
         }),
     prisma.shipment.count({
       where: {
-        order: { tenantId, ...orderWhere },
+        ...scope,
         status: { notIn: TERMINAL },
         updatedAt: { lt: staleCut },
       },
     }),
     prisma.shipment.count({
       where: {
-        order: { tenantId, ...orderWhere },
+        ...scope,
         booking: { eta: { gte: now, lte: d3 } },
       },
     }),
     prisma.shipment.count({
       where: {
-        order: { tenantId, ...orderWhere },
+        ...scope,
         booking: { eta: { gte: now, lte: d7 } },
       },
     }),
     prisma.shipment.count({
       where: {
-        order: { tenantId, ...orderWhere },
+        ...scope,
         booking: { eta: { gte: now, lte: d14 } },
       },
     }),
@@ -86,12 +95,16 @@ export async function getControlTowerOverview(params: {
 
   return {
     generatedAt: now.toISOString(),
-    isCustomerView: isCustomer,
+    isCustomerView: restricted,
+    portal: {
+      supplierPortal: ctx.isSupplierPortal,
+      customerCrmAccountId: ctx.customerCrmAccountId,
+    },
     counts: {
       active,
       byStatus,
-      openAlerts: isCustomer ? null : openAlerts,
-      openExceptions: isCustomer ? null : openExceptions,
+      openAlerts: restricted ? null : openAlerts,
+      openExceptions: restricted ? null : openExceptions,
       staleShipments,
       arrivalsNext3Days: arrivals3,
       arrivalsNext7Days: arrivals7,

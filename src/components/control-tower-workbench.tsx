@@ -12,6 +12,7 @@ type Row = {
   carrier: string | null;
   orderNumber: string;
   supplierName: string | null;
+  customerCrmAccountId: string | null;
   originCode: string | null;
   destinationCode: string | null;
   etd: string | null;
@@ -73,6 +74,7 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
       "shipmentNo",
       "status",
       "mode",
+      "customerCrmAccountId",
       "origin",
       "destination",
       "eta",
@@ -87,6 +89,7 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
           esc(r.shipmentNo || ""),
           esc(r.status),
           esc(r.transportMode || ""),
+          esc(r.customerCrmAccountId || ""),
           esc(r.originCode || ""),
           esc(r.destinationCode || ""),
           esc(r.eta || r.latestEta || ""),
@@ -244,6 +247,7 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
               <th className="px-2 py-2">Shipment</th>
               <th className="px-2 py-2">Status</th>
               <th className="px-2 py-2">Mode</th>
+              <th className="px-2 py-2">CRM</th>
               <th className="px-2 py-2">Lane</th>
               <th className="px-2 py-2">ETA</th>
               <th className="px-2 py-2">Milestone</th>
@@ -253,7 +257,7 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
           <tbody className="divide-y divide-zinc-200">
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-2 py-6 text-center text-zinc-500">
+                <td colSpan={9} className="px-2 py-6 text-center text-zinc-500">
                   {busy ? "Loading…" : "No rows match."}
                 </td>
               </tr>
@@ -268,6 +272,9 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
                   <td className="px-2 py-2 text-zinc-600">{r.shipmentNo || r.id.slice(0, 8)}</td>
                   <td className="px-2 py-2">{r.status}</td>
                   <td className="px-2 py-2">{r.transportMode || "—"}</td>
+                  <td className="px-2 py-2 font-mono text-xs text-zinc-500">
+                    {r.customerCrmAccountId ? r.customerCrmAccountId.slice(0, 8) + "…" : "—"}
+                  </td>
                   <td className="px-2 py-2 text-xs text-zinc-600">
                     {(r.originCode || "—") + " → " + (r.destinationCode || "—")}
                   </td>

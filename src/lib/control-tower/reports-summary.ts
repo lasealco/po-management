@@ -1,28 +1,36 @@
 import { prisma } from "@/lib/prisma";
 
-import { controlTowerOrderWhere } from "./viewer";
+import {
+  controlTowerShipmentScopeWhere,
+  type ControlTowerPortalContext,
+} from "./viewer";
 
 /** Operational KPI snapshot for Control Tower reporting (R4). */
 export async function getControlTowerReportsSummary(params: {
   tenantId: string;
-  isCustomer: boolean;
+  ctx: ControlTowerPortalContext;
 }) {
-  const { tenantId, isCustomer } = params;
-  const orderWhere = controlTowerOrderWhere(isCustomer);
+  const { tenantId, ctx } = params;
+  const scope = controlTowerShipmentScopeWhere(tenantId, ctx);
+  const restricted = ctx.isRestrictedView;
 
   const [byStatus, withBooking, openExceptions] = await Promise.all([
     prisma.shipment.groupBy({
       by: ["status"],
-      where: { order: { tenantId, ...orderWhere } },
+      where: scope,
       _count: { _all: true },
     }),
     prisma.shipment.count({
-      where: { order: { tenantId, ...orderWhere }, booking: { isNot: null } },
+      where: { ...scope, booking: { isNot: null } },
     }),
-    isCustomer
+    restricted
       ? Promise.resolve(0)
       : prisma.ctException.count({
-          where: { tenantId, status: { in: ["OPEN", "IN_PROGRESS"] } },
+          where: {
+            tenantId,
+            status: { in: ["OPEN", "IN_PROGRESS"] },
+            shipment: { is: scope },
+          },
         }),
   ]);
 
@@ -31,11 +39,15 @@ export async function getControlTowerReportsSummary(params: {
 
   return {
     generatedAt: new Date().toISOString(),
-    isCustomerView: isCustomer,
+    isCustomerView: restricted,
+    portal: {
+      supplierPortal: ctx.isSupplierPortal,
+      customerCrmAccountId: ctx.customerCrmAccountId,
+    },
     totals: {
       shipments: total,
       withBooking,
-      openExceptions: isCustomer ? null : openExceptions,
+      openExceptions: restricted ? null : openExceptions,
     },
     byStatus: statusMap,
   };

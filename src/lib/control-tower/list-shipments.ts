@@ -2,7 +2,10 @@ import type { Prisma, ShipmentStatus, TransportMode } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 
-import { controlTowerOrderWhere } from "./viewer";
+import {
+  controlTowerShipmentScopeWhere,
+  type ControlTowerPortalContext,
+} from "./viewer";
 
 export type ListShipmentsQuery = {
   status?: ShipmentStatus | "";
@@ -13,19 +16,17 @@ export type ListShipmentsQuery = {
 
 export async function listControlTowerShipments(params: {
   tenantId: string;
-  isCustomer: boolean;
+  ctx: ControlTowerPortalContext;
   query: ListShipmentsQuery;
 }) {
-  const { tenantId, isCustomer, query } = params;
+  const { tenantId, ctx, query } = params;
   const take = Math.min(Math.max(query.take ?? 80, 1), 200);
-  const orderWhere = controlTowerOrderWhere(isCustomer);
+  const scope = controlTowerShipmentScopeWhere(tenantId, ctx);
 
   const where: Prisma.ShipmentWhereInput = {
-    order: { tenantId, ...orderWhere },
+    ...scope,
+    ...(query.status ? { status: query.status } : {}),
   };
-  if (query.status) {
-    where.status = query.status;
-  }
 
   const ands: Prisma.ShipmentWhereInput[] = [];
   if (query.mode) {
@@ -66,6 +67,7 @@ export async function listControlTowerShipments(params: {
       carrier: true,
       shippedAt: true,
       updatedAt: true,
+      customerCrmAccountId: true,
       order: {
         select: {
           orderNumber: true,
@@ -99,6 +101,7 @@ export async function listControlTowerShipments(params: {
     carrier: s.carrier,
     shippedAt: s.shippedAt.toISOString(),
     updatedAt: s.updatedAt.toISOString(),
+    customerCrmAccountId: s.customerCrmAccountId,
     orderNumber: s.order.orderNumber,
     supplierName: s.order.supplier?.name ?? null,
     originCode: s.booking?.originCode ?? null,

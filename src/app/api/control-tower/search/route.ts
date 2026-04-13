@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { listControlTowerShipments } from "@/lib/control-tower/list-shipments";
-import { isControlTowerCustomerView } from "@/lib/control-tower/viewer";
+import { getControlTowerPortalContext } from "@/lib/control-tower/viewer";
 import { getDemoTenant } from "@/lib/demo-tenant";
 
 export const dynamic = "force-dynamic";
@@ -16,8 +16,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
   }
   const actorId = await getActorUserId();
-  const isCustomer =
-    actorId !== null ? await isControlTowerCustomerView(actorId) : false;
+  if (!actorId) {
+    return NextResponse.json({ error: "No active user." }, { status: 403 });
+  }
+  const ctx = await getControlTowerPortalContext(actorId);
 
   const { searchParams } = new URL(request.url);
   const q = searchParams.get("q")?.trim() ?? "";
@@ -27,7 +29,7 @@ export async function GET(request: Request) {
 
   const rows = await listControlTowerShipments({
     tenantId: tenant.id,
-    isCustomer,
+    ctx,
     query: { q, take: 40 },
   });
 

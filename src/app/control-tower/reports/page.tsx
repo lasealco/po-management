@@ -1,6 +1,6 @@
 import { getActorUserId, getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { getControlTowerReportsSummary } from "@/lib/control-tower/reports-summary";
-import { isControlTowerCustomerView } from "@/lib/control-tower/viewer";
+import { getControlTowerPortalContext } from "@/lib/control-tower/viewer";
 import { getDemoTenant } from "@/lib/demo-tenant";
 
 import { ControlTowerReportsClient } from "./reports-client";
@@ -10,17 +10,21 @@ export const dynamic = "force-dynamic";
 export default async function ControlTowerReportsPage() {
   const tenant = await getDemoTenant();
   const actorId = await getActorUserId();
-  const isCustomer =
-    actorId !== null ? await isControlTowerCustomerView(actorId) : false;
+  const ctx =
+    actorId !== null
+      ? await getControlTowerPortalContext(actorId)
+      : {
+          isRestrictedView: false,
+          isSupplierPortal: false,
+          customerCrmAccountId: null,
+        };
   const access = await getViewerGrantSet();
   const canEdit = Boolean(
     access?.user && viewerHas(access.grantSet, "org.controltower", "edit"),
   );
 
   const summary =
-    tenant != null
-      ? await getControlTowerReportsSummary({ tenantId: tenant.id, isCustomer })
-      : null;
+    tenant != null ? await getControlTowerReportsSummary({ tenantId: tenant.id, ctx }) : null;
 
   return (
     <main className="mx-auto w-full max-w-7xl px-6 py-10">

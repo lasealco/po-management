@@ -53,6 +53,8 @@ model Tenant {
   ctExceptions        CtException[]
   ctAuditLogs         CtAuditLog[]
   ctSavedFilters      CtSavedFilter[]
+  ctShipmentLegs     CtShipmentLeg[]
+  ctShipmentContainers CtShipmentContainer[]
 }
 
 model User {
@@ -98,9 +100,13 @@ model User {
   ctExceptionsOwned CtException[] @relation("CtExceptionOwner")
   ctAuditLogsActor CtAuditLog[]
   ctSavedFilters CtSavedFilter[]
+  /// When set, Control Tower (and similar) list/detail is limited to shipments tagged with this CRM account.
+  customerCrmAccountId String?
+  customerCrmAccount   CrmAccount? @relation("UserCustomerPortalScope", fields: [customerCrmAccountId], references: [id], onDelete: SetNull)
 
   @@unique([tenantId, email])
   @@index([tenantId])
+  @@index([customerCrmAccountId])
 }
 
 model UserPreference {
@@ -599,11 +605,14 @@ model Shipment {
   estimatedVolumeCbm Decimal? @db.Decimal(12, 3)
   estimatedWeightKg Decimal? @db.Decimal(12, 3)
   notes        String?
+  /// Logistics customer (e.g. 3PL shipper account) for visibility and reporting.
+  customerCrmAccountId String?
   createdById  String
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
 
   order     PurchaseOrder  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  customerCrmAccount CrmAccount? @relation("ShipmentCustomerAccount", fields: [customerCrmAccountId], references: [id], onDelete: SetNull)
   createdBy User           @relation(fields: [createdById], references: [id], onDelete: Restrict)
   items     ShipmentItem[]
   loadPlanShipment LoadPlanShipment?
@@ -618,9 +627,12 @@ model Shipment {
   ctAlerts CtAlert[]
   ctExceptions CtException[]
   ctAuditLogs CtAuditLog[]
+  ctLegs     CtShipmentLeg[]
+  ctContainers CtShipmentContainer[]
 
   @@index([orderId, createdAt])
   @@index([status])
+  @@index([customerCrmAccountId])
 }
 
 model ShipmentItem {
@@ -890,6 +902,56 @@ model CtSavedFilter {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+/// Multi-leg routing (ocean/air/truck segments) for Control Tower.
+model CtShipmentLeg {
+  id               String          @id @default(cuid())
+  tenantId         String
+  shipmentId       String
+  legNo            Int             @default(1)
+  originCode      String?
+  destinationCode String?
+  carrier          String?
+  transportMode    TransportMode?
+  plannedEtd       DateTime?
+  plannedEta       DateTime?
+  actualAtd        DateTime?
+  actualAta        DateTime?
+  notes            String?         @db.Text
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  tenant    Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  shipment  Shipment             @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  containers CtShipmentContainer[]
+
+  @@unique([shipmentId, legNo])
+  @@index([tenantId, shipmentId])
+}
+
+model CtShipmentContainer {
+  id               String    @id @default(cuid())
+  tenantId         String
+  shipmentId       String
+  legId            String?
+  containerNumber  String
+  containerType    String?
+  seal             String?
+  status           String?
+  gateInAt         DateTime?
+  gateOutAt        DateTime?
+  notes            String?   @db.Text
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  tenant   Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  shipment Shipment      @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  leg      CtShipmentLeg? @relation(fields: [legId], references: [id], onDelete: SetNull)
+
+  @@index([shipmentId])
+  @@index([tenantId, containerNumber])
+  @@index([legId])
 }
 
 enum WarehouseType {
@@ -1545,6 +1607,8 @@ model CrmAccount {
   quotes          CrmQuote[]
   outboundOrders OutboundOrder[]
   wmsBillingEvents WmsBillingEvent[]
+  shipmentsAsCustomer Shipment[] @relation("ShipmentCustomerAccount")
+  customerPortalUsers User[] @relation("UserCustomerPortalScope")
 
   @@index([tenantId, lifecycle])
   @@index([tenantId, ownerUserId])

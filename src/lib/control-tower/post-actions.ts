@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, type TransportMode } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { getActorUserId, userHasRoleNamed } from "@/lib/authz";
@@ -447,6 +447,283 @@ export async function handleControlTowerPost(
     });
     if (!row) return bad("Saved filter not found", 404);
     await prisma.ctSavedFilter.delete({ where: { id: filterId } });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "set_shipment_customer_crm_account") {
+    const shipmentId = typeof body.shipmentId === "string" ? body.shipmentId : "";
+    if (!shipmentId) return bad("shipmentId required");
+    if (!(await assertShipmentTenant(shipmentId, tenantId))) return bad("Shipment not found", 404);
+    const raw = body.crmAccountId;
+    const crmAccountId =
+      raw === null || raw === ""
+        ? null
+        : typeof raw === "string"
+          ? raw.trim() || null
+          : undefined;
+    if (crmAccountId === undefined) return bad("crmAccountId required (string or null)");
+    if (crmAccountId) {
+      const acct = await prisma.crmAccount.findFirst({
+        where: { id: crmAccountId, tenantId },
+        select: { id: true },
+      });
+      if (!acct) return bad("CRM account not found in tenant", 404);
+    }
+    await prisma.shipment.update({
+      where: { id: shipmentId },
+      data: { customerCrmAccountId: crmAccountId },
+    });
+    await writeCtAudit({
+      tenantId,
+      shipmentId,
+      entityType: "Shipment",
+      entityId: shipmentId,
+      action: "set_customer_crm_account",
+      actorUserId: actorId,
+      payload: { crmAccountId },
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  const TRANSPORT: TransportMode[] = ["OCEAN", "AIR", "ROAD", "RAIL"];
+  const parseIso = (v: unknown): Date | null | undefined | "invalid" => {
+    if (v === null) return null;
+    if (v === undefined || v === "") return undefined;
+    if (typeof v !== "string") return "invalid";
+    const d = new Date(v);
+    return Number.isNaN(d.getTime()) ? "invalid" : d;
+  };
+
+  if (action === "create_ct_leg") {
+    const shipmentId = typeof body.shipmentId === "string" ? body.shipmentId : "";
+    if (!shipmentId) return bad("shipmentId required");
+    if (!(await assertShipmentTenant(shipmentId, tenantId))) return bad("Shipment not found", 404);
+    const agg = await prisma.ctShipmentLeg.aggregate({
+      where: { shipmentId },
+      _max: { legNo: true },
+    });
+    const legNo = (agg._max.legNo ?? 0) + 1;
+    let mode: TransportMode | null = null;
+    if (
+      body.transportMode !== undefined &&
+      body.transportMode !== null &&
+      body.transportMode !== ""
+    ) {
+      if (
+        typeof body.transportMode !== "string" ||
+        !TRANSPORT.includes(body.transportMode as TransportMode)
+      ) {
+        return bad("Invalid transportMode");
+      }
+      mode = body.transportMode as TransportMode;
+    }
+    const plannedEtd = parseIso(body.plannedEtd);
+    const plannedEta = parseIso(body.plannedEta);
+    const actualAtd = parseIso(body.actualAtd);
+    const actualAta = parseIso(body.actualAta);
+    if (
+      plannedEtd === "invalid" ||
+      plannedEta === "invalid" ||
+      actualAtd === "invalid" ||
+      actualAta === "invalid"
+    ) {
+      return bad("Invalid date on leg");
+    }
+    const row = await prisma.ctShipmentLeg.create({
+      data: {
+        tenantId,
+        shipmentId,
+        legNo,
+        originCode: typeof body.originCode === "string" ? body.originCode || null : null,
+        destinationCode:
+          typeof body.destinationCode === "string" ? body.destinationCode || null : null,
+        carrier: typeof body.carrier === "string" ? body.carrier || null : null,
+        transportMode: mode,
+        plannedEtd: plannedEtd === undefined ? null : plannedEtd,
+        plannedEta: plannedEta === undefined ? null : plannedEta,
+        actualAtd: actualAtd === undefined ? null : actualAtd,
+        actualAta: actualAta === undefined ? null : actualAta,
+        notes: typeof body.notes === "string" ? body.notes || null : null,
+      },
+    });
+    await writeCtAudit({
+      tenantId,
+      shipmentId,
+      entityType: "CtShipmentLeg",
+      entityId: row.id,
+      action: "create",
+      actorUserId: actorId,
+    });
+    return NextResponse.json({ ok: true, id: row.id });
+  }
+
+  if (action === "update_ct_leg") {
+    const legId = typeof body.legId === "string" ? body.legId : "";
+    if (!legId) return bad("legId required");
+    const leg = await prisma.ctShipmentLeg.findFirst({
+      where: { id: legId, tenantId, shipment: { order: { tenantId } } },
+      include: { shipment: { select: { id: true } } },
+    });
+    if (!leg) return bad("Leg not found", 404);
+    let transportModePatch: { transportMode: TransportMode | null } | Record<string, never> = {};
+    if (body.transportMode !== undefined) {
+      if (body.transportMode === null || body.transportMode === "") {
+        transportModePatch = { transportMode: null };
+      } else if (
+        typeof body.transportMode === "string" &&
+        TRANSPORT.includes(body.transportMode as TransportMode)
+      ) {
+        transportModePatch = { transportMode: body.transportMode as TransportMode };
+      } else {
+        return bad("Invalid transportMode");
+      }
+    }
+    const plannedEtd = parseIso(body.plannedEtd);
+    const plannedEta = parseIso(body.plannedEta);
+    const actualAtd = parseIso(body.actualAtd);
+    const actualAta = parseIso(body.actualAta);
+    if (
+      plannedEtd === "invalid" ||
+      plannedEta === "invalid" ||
+      actualAtd === "invalid" ||
+      actualAta === "invalid"
+    ) {
+      return bad("Invalid date on leg");
+    }
+    await prisma.ctShipmentLeg.update({
+      where: { id: legId },
+      data: {
+        ...(typeof body.originCode === "string" ? { originCode: body.originCode || null } : {}),
+        ...(typeof body.destinationCode === "string"
+          ? { destinationCode: body.destinationCode || null }
+          : {}),
+        ...(typeof body.carrier === "string" ? { carrier: body.carrier || null } : {}),
+        ...transportModePatch,
+        ...(plannedEtd !== undefined ? { plannedEtd } : {}),
+        ...(plannedEta !== undefined ? { plannedEta } : {}),
+        ...(actualAtd !== undefined ? { actualAtd } : {}),
+        ...(actualAta !== undefined ? { actualAta } : {}),
+        ...(typeof body.notes === "string" ? { notes: body.notes || null } : {}),
+      },
+    });
+    await writeCtAudit({
+      tenantId,
+      shipmentId: leg.shipment.id,
+      entityType: "CtShipmentLeg",
+      entityId: legId,
+      action: "update",
+      actorUserId: actorId,
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "delete_ct_leg") {
+    const legId = typeof body.legId === "string" ? body.legId : "";
+    if (!legId) return bad("legId required");
+    const leg = await prisma.ctShipmentLeg.findFirst({
+      where: { id: legId, tenantId },
+      select: { id: true, shipmentId: true },
+    });
+    if (!leg) return bad("Leg not found", 404);
+    await prisma.ctShipmentLeg.delete({ where: { id: legId } });
+    await writeCtAudit({
+      tenantId,
+      shipmentId: leg.shipmentId,
+      entityType: "CtShipmentLeg",
+      entityId: legId,
+      action: "delete",
+      actorUserId: actorId,
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "create_ct_container") {
+    const shipmentId = typeof body.shipmentId === "string" ? body.shipmentId : "";
+    const containerNumber =
+      typeof body.containerNumber === "string" ? body.containerNumber.trim() : "";
+    if (!shipmentId || !containerNumber) return bad("shipmentId and containerNumber required");
+    if (!(await assertShipmentTenant(shipmentId, tenantId))) return bad("Shipment not found", 404);
+    const legId = typeof body.legId === "string" && body.legId.trim() ? body.legId.trim() : null;
+    if (legId) {
+      const leg = await prisma.ctShipmentLeg.findFirst({
+        where: { id: legId, shipmentId, tenantId },
+      });
+      if (!leg) return bad("legId must belong to this shipment", 404);
+    }
+    const gi = parseIso(body.gateInAt);
+    const go = parseIso(body.gateOutAt);
+    if (gi === "invalid" || go === "invalid") return bad("Invalid gate date");
+    const row = await prisma.ctShipmentContainer.create({
+      data: {
+        tenantId,
+        shipmentId,
+        legId,
+        containerNumber,
+        containerType:
+          typeof body.containerType === "string" ? body.containerType || null : null,
+        seal: typeof body.seal === "string" ? body.seal || null : null,
+        status: typeof body.status === "string" ? body.status || null : null,
+        notes: typeof body.notes === "string" ? body.notes || null : null,
+        gateInAt: gi === undefined ? null : gi,
+        gateOutAt: go === undefined ? null : go,
+      },
+    });
+    await writeCtAudit({
+      tenantId,
+      shipmentId,
+      entityType: "CtShipmentContainer",
+      entityId: row.id,
+      action: "create",
+      actorUserId: actorId,
+      payload: { containerNumber },
+    });
+    return NextResponse.json({ ok: true, id: row.id });
+  }
+
+  if (action === "update_ct_container") {
+    const containerId = typeof body.containerId === "string" ? body.containerId : "";
+    if (!containerId) return bad("containerId required");
+    const c = await prisma.ctShipmentContainer.findFirst({
+      where: { id: containerId, tenantId },
+      select: { id: true, shipmentId: true },
+    });
+    if (!c) return bad("Container not found", 404);
+    const legIdRaw = body.legId;
+    let legId: string | null | undefined = undefined;
+    if (legIdRaw === null || legIdRaw === "") legId = null;
+    else if (typeof legIdRaw === "string" && legIdRaw.trim()) {
+      legId = legIdRaw.trim();
+      const leg = await prisma.ctShipmentLeg.findFirst({
+        where: { id: legId, shipmentId: c.shipmentId, tenantId },
+      });
+      if (!leg) return bad("legId must belong to this shipment", 404);
+    }
+    const gateInAt = parseIso(body.gateInAt);
+    const gateOutAt = parseIso(body.gateOutAt);
+    if (gateInAt === "invalid" || gateOutAt === "invalid") return bad("Invalid gate date");
+    await prisma.ctShipmentContainer.update({
+      where: { id: containerId },
+      data: {
+        ...(typeof body.containerNumber === "string"
+          ? { containerNumber: body.containerNumber.trim() }
+          : {}),
+        ...(typeof body.containerType === "string" ? { containerType: body.containerType || null } : {}),
+        ...(typeof body.seal === "string" ? { seal: body.seal || null } : {}),
+        ...(typeof body.status === "string" ? { status: body.status || null } : {}),
+        ...(typeof body.notes === "string" ? { notes: body.notes || null } : {}),
+        ...(legId !== undefined ? { legId } : {}),
+        ...(gateInAt !== undefined ? { gateInAt } : {}),
+        ...(gateOutAt !== undefined ? { gateOutAt } : {}),
+      },
+    });
+    await writeCtAudit({
+      tenantId,
+      shipmentId: c.shipmentId,
+      entityType: "CtShipmentContainer",
+      entityId: containerId,
+      action: "update",
+      actorUserId: actorId,
+    });
     return NextResponse.json({ ok: true });
   }
 

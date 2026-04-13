@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 
 type Tab =
   | "details"
+  | "routing"
   | "milestones"
   | "documents"
   | "notes"
@@ -81,9 +82,18 @@ export function ControlTowerShipment360({
   const exceptions = (data.exceptions as unknown[]) ?? [];
   const auditTrail = (data.auditTrail as unknown[]) ?? [];
   const ctReferences = (data.ctReferences as unknown[]) ?? [];
+  const legs = (data.legs as unknown[]) ?? [];
+  const containers = (data.containers as unknown[]) ?? [];
+  const crmAccountChoices =
+    (data.crmAccountChoices as Array<{ id: string; name: string }> | undefined) ?? [];
+  const customerCrmAccount = data.customerCrmAccount as
+    | { id: string; name: string; legalName: string | null }
+    | null
+    | undefined;
 
   const tabs: { id: Tab; label: string }[] = [
     { id: "details", label: "Details & parties" },
+    { id: "routing", label: "Routing & CRM" },
     { id: "milestones", label: "Milestones" },
     { id: "documents", label: "Documents" },
     { id: "notes", label: "Notes" },
@@ -242,6 +252,310 @@ export function ControlTowerShipment360({
                 <input name="refValue" placeholder="Value" className="rounded border px-2 py-1 text-xs" />
                 <button type="submit" className="rounded bg-zinc-900 px-2 py-1 text-xs text-white">
                   Add reference
+                </button>
+              </form>
+            ) : null}
+          </section>
+        </div>
+      ) : null}
+
+      {tab === "routing" ? (
+        <div className="space-y-4">
+          <section className="rounded-lg border border-zinc-200 bg-white p-4 text-sm">
+            <h2 className="font-semibold text-zinc-900">Logistics customer (CRM)</h2>
+            <p className="mt-1 text-xs text-zinc-500">
+              Shipments tagged for a CRM account are visible to users scoped to that account (in
+              addition to supplier-portal workflows).
+            </p>
+            {customerCrmAccount ? (
+              <p className="mt-2 text-zinc-800">
+                <span className="font-medium">{customerCrmAccount.name}</span>
+                {customerCrmAccount.legalName ? (
+                  <span className="text-zinc-500"> · {customerCrmAccount.legalName}</span>
+                ) : null}
+              </p>
+            ) : (
+              <p className="mt-2 text-xs text-zinc-500">No customer account linked.</p>
+            )}
+            {canEdit && crmAccountChoices.length > 0 ? (
+              <form
+                key={String(data.customerCrmAccountId ?? "none")}
+                className="mt-3 flex flex-wrap items-end gap-2 border-t border-zinc-100 pt-3 text-xs"
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  const fd = new FormData(e.currentTarget);
+                  const raw = String(fd.get("crmAccountId") ?? "");
+                  const crmAccountId = raw === "" ? null : raw;
+                  try {
+                    await postAction({
+                      action: "set_shipment_customer_crm_account",
+                      shipmentId,
+                      crmAccountId,
+                    });
+                  } catch (err) {
+                    window.alert(err instanceof Error ? err.message : "Failed");
+                  }
+                }}
+              >
+                <label className="flex flex-col gap-1">
+                  <span className="text-zinc-500">Link account</span>
+                  <select
+                    name="crmAccountId"
+                    defaultValue={(data.customerCrmAccountId as string) || ""}
+                    className="rounded border border-zinc-300 px-2 py-1"
+                  >
+                    <option value="">None</option>
+                    {crmAccountChoices.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button type="submit" className="rounded bg-zinc-900 px-3 py-1.5 text-white">
+                  Save
+                </button>
+              </form>
+            ) : null}
+          </section>
+
+          <section className="rounded-lg border border-zinc-200 bg-white p-4 text-sm">
+            <h2 className="font-semibold text-zinc-900">Legs</h2>
+            {legs.length === 0 ? (
+              <p className="mt-2 text-xs text-zinc-500">No routing legs yet.</p>
+            ) : (
+              <ul className="mt-2 space-y-2 text-xs">
+                {legs.map((raw) => {
+                  const leg = raw as Record<string, unknown>;
+                  return (
+                    <li
+                      key={String(leg.id)}
+                      className="flex flex-wrap items-start justify-between gap-2 border-b border-zinc-100 pb-2"
+                    >
+                      <div>
+                        <span className="font-medium">Leg {String(leg.legNo)}</span> ·{" "}
+                        {(leg.originCode as string) || "—"} → {(leg.destinationCode as string) || "—"} ·{" "}
+                        {(leg.carrier as string) || "—"} · {String(leg.transportMode || "—")}
+                        <div className="text-zinc-500">
+                          ETD {leg.plannedEtd ? new Date(leg.plannedEtd as string).toLocaleString() : "—"} · ETA{" "}
+                          {leg.plannedEta ? new Date(leg.plannedEta as string).toLocaleString() : "—"}
+                          {leg.actualAtd || leg.actualAta ? (
+                            <>
+                              {" "}
+                              · ATD{" "}
+                              {leg.actualAtd ? new Date(leg.actualAtd as string).toLocaleDateString() : "—"} / ATA{" "}
+                              {leg.actualAta ? new Date(leg.actualAta as string).toLocaleDateString() : "—"}
+                            </>
+                          ) : null}
+                        </div>
+                        {leg.notes ? <p className="mt-1 text-zinc-600">{String(leg.notes)}</p> : null}
+                      </div>
+                      {canEdit ? (
+                        <button
+                          type="button"
+                          className="shrink-0 rounded border border-red-200 px-2 py-0.5 text-red-800"
+                          onClick={async () => {
+                            if (!window.confirm("Delete this leg?")) return;
+                            try {
+                              await postAction({ action: "delete_ct_leg", legId: String(leg.id) });
+                            } catch (err) {
+                              window.alert(err instanceof Error ? err.message : "Failed");
+                            }
+                          }}
+                        >
+                          Delete
+                        </button>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            {canEdit ? (
+              <form
+                className="mt-3 grid gap-2 border-t border-zinc-100 pt-3 text-xs md:grid-cols-3"
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  const fd = new FormData(e.currentTarget);
+                  const mode = String(fd.get("transportMode") || "").trim();
+                  try {
+                    await postAction({
+                      action: "create_ct_leg",
+                      shipmentId,
+                      originCode: String(fd.get("originCode") || "") || null,
+                      destinationCode: String(fd.get("destinationCode") || "") || null,
+                      carrier: String(fd.get("carrier") || "") || null,
+                      transportMode: mode || null,
+                      plannedEtd: String(fd.get("plannedEtd") || "") || null,
+                      plannedEta: String(fd.get("plannedEta") || "") || null,
+                      notes: String(fd.get("notes") || "") || null,
+                    });
+                    (e.target as HTMLFormElement).reset();
+                  } catch (err) {
+                    window.alert(err instanceof Error ? err.message : "Failed");
+                  }
+                }}
+              >
+                <input name="originCode" placeholder="Origin code" className="rounded border px-2 py-1" />
+                <input name="destinationCode" placeholder="Dest code" className="rounded border px-2 py-1" />
+                <input name="carrier" placeholder="Carrier" className="rounded border px-2 py-1" />
+                <select name="transportMode" className="rounded border px-2 py-1">
+                  <option value="">Mode (optional)</option>
+                  <option value="OCEAN">OCEAN</option>
+                  <option value="AIR">AIR</option>
+                  <option value="ROAD">ROAD</option>
+                  <option value="RAIL">RAIL</option>
+                </select>
+                <input name="plannedEtd" type="datetime-local" className="rounded border px-2 py-1" />
+                <input name="plannedEta" type="datetime-local" className="rounded border px-2 py-1" />
+                <input name="notes" placeholder="Notes" className="rounded border px-2 py-1 md:col-span-3" />
+                <button type="submit" className="rounded bg-zinc-900 px-3 py-1 text-white md:col-span-3">
+                  Add leg
+                </button>
+              </form>
+            ) : null}
+          </section>
+
+          <section className="rounded-lg border border-zinc-200 bg-white p-4 text-sm">
+            <h2 className="font-semibold text-zinc-900">Containers</h2>
+            {containers.length === 0 ? (
+              <p className="mt-2 text-xs text-zinc-500">No containers yet.</p>
+            ) : (
+              <ul className="mt-2 space-y-3 text-xs">
+                {containers.map((raw) => {
+                  const c = raw as Record<string, unknown>;
+                  return (
+                    <li key={String(c.id)} className="border-b border-zinc-100 pb-2">
+                      <div className="font-medium">
+                        {String(c.containerNumber)}
+                        {c.legNo != null ? (
+                          <span className="font-normal text-zinc-500"> · leg {String(c.legNo)}</span>
+                        ) : null}
+                      </div>
+                      <div className="text-zinc-600">
+                        {String(c.containerType || "—")} · {String(c.status || "—")} · seal{" "}
+                        {String(c.seal || "—")}
+                      </div>
+                      <div className="text-zinc-500">
+                        Gate in {c.gateInAt ? new Date(c.gateInAt as string).toLocaleString() : "—"} · out{" "}
+                        {c.gateOutAt ? new Date(c.gateOutAt as string).toLocaleString() : "—"}
+                      </div>
+                      {canEdit ? (
+                        <form
+                          className="mt-2 flex flex-wrap items-end gap-2"
+                          onSubmit={async (e) => {
+                            e.preventDefault();
+                            const fd = new FormData(e.currentTarget);
+                            const legRaw = String(fd.get("legId") ?? "");
+                            try {
+                              await postAction({
+                                action: "update_ct_container",
+                                containerId: String(c.id),
+                                legId: legRaw === "" ? null : legRaw,
+                                containerNumber: String(fd.get("containerNumber") || "").trim() || undefined,
+                                containerType: String(fd.get("containerType") || "") || null,
+                                status: String(fd.get("status") || "") || null,
+                                seal: String(fd.get("seal") || "") || null,
+                                gateInAt: String(fd.get("gateInAt") || "") || null,
+                                gateOutAt: String(fd.get("gateOutAt") || "") || null,
+                              });
+                            } catch (err) {
+                              window.alert(err instanceof Error ? err.message : "Failed");
+                            }
+                          }}
+                        >
+                          <input
+                            name="containerNumber"
+                            defaultValue={String(c.containerNumber)}
+                            className="w-32 rounded border px-1 py-0.5"
+                          />
+                          <input
+                            name="containerType"
+                            defaultValue={String(c.containerType || "")}
+                            placeholder="Type"
+                            className="w-24 rounded border px-1 py-0.5"
+                          />
+                          <input
+                            name="status"
+                            defaultValue={String(c.status || "")}
+                            placeholder="Status"
+                            className="w-24 rounded border px-1 py-0.5"
+                          />
+                          <input
+                            name="seal"
+                            defaultValue={String(c.seal || "")}
+                            placeholder="Seal"
+                            className="w-24 rounded border px-1 py-0.5"
+                          />
+                          <select
+                            name="legId"
+                            defaultValue={c.legId ? String(c.legId) : ""}
+                            className="rounded border px-1 py-0.5"
+                          >
+                            <option value="">No leg</option>
+                            {legs.map((lr) => {
+                              const lg = lr as Record<string, unknown>;
+                              return (
+                                <option key={String(lg.id)} value={String(lg.id)}>
+                                  Leg {String(lg.legNo)}
+                                </option>
+                              );
+                            })}
+                          </select>
+                          <input name="gateInAt" type="datetime-local" className="rounded border px-1 py-0.5" />
+                          <input name="gateOutAt" type="datetime-local" className="rounded border px-1 py-0.5" />
+                          <button type="submit" className="rounded bg-zinc-800 px-2 py-0.5 text-white">
+                            Update
+                          </button>
+                        </form>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            {canEdit ? (
+              <form
+                className="mt-3 flex flex-wrap items-end gap-2 border-t border-zinc-100 pt-3 text-xs"
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  const fd = new FormData(e.currentTarget);
+                  const num = String(fd.get("containerNumber") || "").trim();
+                  if (!num) return;
+                  const legId = String(fd.get("legId") || "").trim();
+                  try {
+                    await postAction({
+                      action: "create_ct_container",
+                      shipmentId,
+                      containerNumber: num,
+                      legId: legId || null,
+                      containerType: String(fd.get("containerType") || "") || null,
+                      status: String(fd.get("status") || "") || null,
+                      seal: String(fd.get("seal") || "") || null,
+                    });
+                    (e.target as HTMLFormElement).reset();
+                  } catch (err) {
+                    window.alert(err instanceof Error ? err.message : "Failed");
+                  }
+                }}
+              >
+                <input name="containerNumber" placeholder="Container # *" className="rounded border px-2 py-1" />
+                <input name="containerType" placeholder="Type" className="rounded border px-2 py-1" />
+                <input name="status" placeholder="Status" className="rounded border px-2 py-1" />
+                <input name="seal" placeholder="Seal" className="rounded border px-2 py-1" />
+                <select name="legId" className="rounded border px-2 py-1">
+                  <option value="">Leg (optional)</option>
+                  {legs.map((lr) => {
+                    const lg = lr as Record<string, unknown>;
+                    return (
+                      <option key={String(lg.id)} value={String(lg.id)}>
+                        Leg {String(lg.legNo)}
+                      </option>
+                    );
+                  })}
+                </select>
+                <button type="submit" className="rounded bg-zinc-900 px-3 py-1 text-white">
+                  Add container
                 </button>
               </form>
             ) : null}

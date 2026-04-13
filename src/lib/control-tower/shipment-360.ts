@@ -1,18 +1,25 @@
 import { prisma } from "@/lib/prisma";
 
-import { controlTowerOrderWhere } from "./viewer";
+import {
+  controlTowerShipmentScopeWhere,
+  type ControlTowerPortalContext,
+} from "./viewer";
 
 export async function getShipment360(params: {
   tenantId: string;
   shipmentId: string;
-  isCustomer: boolean;
+  ctx: ControlTowerPortalContext;
 }) {
-  const { tenantId, shipmentId, isCustomer } = params;
-  const orderWhere = controlTowerOrderWhere(isCustomer);
+  const { tenantId, shipmentId, ctx } = params;
+  const scope = controlTowerShipmentScopeWhere(tenantId, ctx);
+  const restricted = ctx.isRestrictedView;
 
   const s = await prisma.shipment.findFirst({
-    where: { id: shipmentId, order: { tenantId, ...orderWhere } },
+    where: { id: shipmentId, ...scope },
     include: {
+      customerCrmAccount: {
+        select: { id: true, name: true, legalName: true },
+      },
       order: {
         select: {
           id: true,
@@ -79,22 +86,36 @@ export async function getShipment360(params: {
         take: 50,
         include: { actor: { select: { name: true } } },
       },
+      ctLegs: { orderBy: { legNo: "asc" } },
+      ctContainers: {
+        orderBy: { createdAt: "asc" },
+        include: { leg: { select: { id: true, legNo: true } } },
+      },
     },
   });
 
   if (!s) return null;
 
-  const docFilter = isCustomer
+  const crmAccountChoices = restricted
+    ? []
+    : await prisma.crmAccount.findMany({
+        where: { tenantId, lifecycle: "ACTIVE" },
+        take: 100,
+        orderBy: { name: "asc" },
+        select: { id: true, name: true },
+      });
+
+  const docFilter = restricted
     ? s.ctDocuments.filter((d) => d.visibility === "CUSTOMER_SHAREABLE")
     : s.ctDocuments;
 
-  const noteFilter = isCustomer
+  const noteFilter = restricted
     ? s.ctNotes.filter((n) => n.visibility === "SHARED")
     : s.ctNotes;
 
   const fin = s.ctFinancialSnapshots[0];
   const financial = fin
-    ? isCustomer
+    ? restricted
       ? fin.customerVisibleCost != null
         ? {
             asOf: fin.asOf.toISOString(),
@@ -115,7 +136,7 @@ export async function getShipment360(params: {
     : null;
 
   const exceptions = s.ctExceptions.map((e) =>
-    isCustomer
+    restricted
       ? {
           id: e.id,
           type: e.type,
@@ -137,7 +158,7 @@ export async function getShipment360(params: {
         },
   );
 
-  const alerts = isCustomer
+  const alerts = restricted
     ? s.ctAlerts
         .filter((a) => a.status !== "CLOSED")
         .map((a) => ({
@@ -161,6 +182,14 @@ export async function getShipment360(params: {
         updatedAt: a.updatedAt.toISOString(),
       }));
 
+  const customerCrmAccount = s.customerCrmAccount
+    ? {
+        id: s.customerCrmAccount.id,
+        name: s.customerCrmAccount.name,
+        legalName: restricted ? null : (s.customerCrmAccount.legalName ?? null),
+      }
+    : null;
+
   return {
     id: s.id,
     shipmentNo: s.shipmentNo,
@@ -175,6 +204,9 @@ export async function getShipment360(params: {
     estimatedVolumeCbm: s.estimatedVolumeCbm?.toString() ?? null,
     estimatedWeightKg: s.estimatedWeightKg?.toString() ?? null,
     shipmentNotes: s.notes,
+    customerCrmAccountId: s.customerCrmAccountId,
+    customerCrmAccount,
+    crmAccountChoices,
     createdBy: { name: s.createdBy.name },
     order: s.order,
     booking: s.booking
@@ -229,6 +261,33 @@ export async function getShipment360(params: {
       updatedByName: m.updatedBy.name,
       updatedAt: m.updatedAt.toISOString(),
     })),
+    legs: s.ctLegs.map((leg) => ({
+      id: leg.id,
+      legNo: leg.legNo,
+      originCode: leg.originCode,
+      destinationCode: leg.destinationCode,
+      carrier: leg.carrier,
+      transportMode: leg.transportMode,
+      plannedEtd: leg.plannedEtd?.toISOString() ?? null,
+      plannedEta: leg.plannedEta?.toISOString() ?? null,
+      actualAtd: leg.actualAtd?.toISOString() ?? null,
+      actualAta: leg.actualAta?.toISOString() ?? null,
+      notes: leg.notes,
+      updatedAt: leg.updatedAt.toISOString(),
+    })),
+    containers: s.ctContainers.map((c) => ({
+      id: c.id,
+      containerNumber: c.containerNumber,
+      containerType: c.containerType,
+      seal: c.seal,
+      status: c.status,
+      gateInAt: c.gateInAt?.toISOString() ?? null,
+      gateOutAt: c.gateOutAt?.toISOString() ?? null,
+      notes: c.notes,
+      legId: c.legId,
+      legNo: c.leg?.legNo ?? null,
+      updatedAt: c.updatedAt.toISOString(),
+    })),
     documents: docFilter.map((d) => ({
       id: d.id,
       docType: d.docType,
@@ -249,7 +308,7 @@ export async function getShipment360(params: {
     financial,
     alerts,
     exceptions,
-    auditTrail: isCustomer
+    auditTrail: restricted
       ? []
       : s.ctAuditLogs.map((a) => ({
           id: a.id,

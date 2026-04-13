@@ -174,6 +174,65 @@ async function seed() {
   await replaceGlobalRolePermissions(roleApprover.id, approverGrants);
   await replaceGlobalRolePermissions(roleSupplierPortal.id, supplierGrants);
 
+  const roleCustomerPortal = await prisma.role.upsert({
+    where: { tenantId_name: { tenantId: tenant.id, name: "Customer portal" } },
+    update: {},
+    create: { tenantId: tenant.id, name: "Customer portal", isSystem: true },
+  });
+  await replaceGlobalRolePermissions(roleCustomerPortal.id, [["org.controltower", "view"]]);
+
+  let demoLogisticsCrmAccount = await prisma.crmAccount.findFirst({
+    where: { tenantId: tenant.id, name: "Demo Logistics Customer" },
+    select: { id: true },
+  });
+  if (!demoLogisticsCrmAccount) {
+    demoLogisticsCrmAccount = await prisma.crmAccount.create({
+      data: {
+        tenantId: tenant.id,
+        ownerUserId: buyer.id,
+        name: "Demo Logistics Customer",
+        accountType: "CUSTOMER",
+        lifecycle: "ACTIVE",
+      },
+      select: { id: true },
+    });
+  } else {
+    await prisma.crmAccount.update({
+      where: { id: demoLogisticsCrmAccount.id },
+      data: {
+        lifecycle: "ACTIVE",
+        accountType: "CUSTOMER",
+        ownerUserId: buyer.id,
+      },
+    });
+  }
+
+  const customerPortalUser = await prisma.user.upsert({
+    where: {
+      tenantId_email: { tenantId: tenant.id, email: "customer@demo-company.com" },
+    },
+    update: {
+      name: "Customer Portal User",
+      isActive: true,
+      passwordHash: seedPasswordHash("demo12345", "customer@demo-company.com"),
+      customerCrmAccountId: demoLogisticsCrmAccount.id,
+    },
+    create: {
+      tenantId: tenant.id,
+      email: "customer@demo-company.com",
+      name: "Customer Portal User",
+      passwordHash: seedPasswordHash("demo12345", "customer@demo-company.com"),
+      customerCrmAccountId: demoLogisticsCrmAccount.id,
+    },
+  });
+  await prisma.userRole.upsert({
+    where: {
+      userId_roleId: { userId: customerPortalUser.id, roleId: roleCustomerPortal.id },
+    },
+    update: {},
+    create: { userId: customerPortalUser.id, roleId: roleCustomerPortal.id },
+  });
+
   const supplier = await prisma.supplier.upsert({
     where: { tenantId_code: { tenantId: tenant.id, code: "SUP-001" } },
     update: {
@@ -1087,6 +1146,7 @@ async function seed() {
         estimatedWeightKg: "6200.000",
         notes: "Partial shipment for urgent demand.",
         createdById: supplierUser.id,
+        customerCrmAccountId: demoLogisticsCrmAccount.id,
       },
       select: { id: true },
     });
@@ -1118,6 +1178,42 @@ async function seed() {
         ],
       });
     }
+
+    const legOcean = await prisma.ctShipmentLeg.create({
+      data: {
+        tenantId: tenant.id,
+        shipmentId: seededShipment.id,
+        legNo: 1,
+        originCode: "CNSZX",
+        destinationCode: "USLAX",
+        carrier: "Demo Ocean Line",
+        transportMode: "OCEAN",
+        plannedEtd: new Date("2026-05-08T00:00:00.000Z"),
+        plannedEta: new Date("2026-06-01T00:00:00.000Z"),
+      },
+    });
+    await prisma.ctShipmentLeg.create({
+      data: {
+        tenantId: tenant.id,
+        shipmentId: seededShipment.id,
+        legNo: 2,
+        originCode: "USLAX",
+        destinationCode: "USMKE",
+        carrier: "Demo Trucking",
+        transportMode: "ROAD",
+        plannedEta: new Date("2026-06-05T00:00:00.000Z"),
+      },
+    });
+    await prisma.ctShipmentContainer.create({
+      data: {
+        tenantId: tenant.id,
+        shipmentId: seededShipment.id,
+        legId: legOcean.id,
+        containerNumber: "MSCU1234567",
+        containerType: "40HC",
+        status: "IN_TRANSIT",
+      },
+    });
   }
 
   if (po1003) {
@@ -1436,7 +1532,8 @@ async function seed() {
 
   const userCount = await prisma.user.count({ where: { tenantId: tenant.id } });
   console.log(
-    `[db:seed] Finished OK — tenant "${tenant.slug}", ${userCount} user(s). Login: buyer@demo-company.com / demo12345`,
+    `[db:seed] Finished OK — tenant "${tenant.slug}", ${userCount} user(s). ` +
+      `Logins: buyer@ / approver@ / supplier@ / customer@demo-company.com — password demo12345`,
   );
 }
 
