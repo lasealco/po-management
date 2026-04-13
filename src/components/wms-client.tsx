@@ -32,6 +32,7 @@ type WmsData = {
     replenishQty: string;
     isActive: boolean;
   }>;
+  crmAccountOptions: Array<{ id: string; name: string; legalName: string | null }>;
   outboundOrders: Array<{
     id: string;
     outboundNo: string;
@@ -41,6 +42,7 @@ type WmsData = {
     shipToCountryCode: string | null;
     status: "DRAFT" | "RELEASED" | "PICKING" | "PACKED" | "SHIPPED" | "CANCELLED";
     warehouse: { id: string; code: string | null; name: string };
+    crmAccount: { id: string; name: string; legalName: string | null } | null;
     lines: Array<{
       id: string;
       lineNo: number;
@@ -163,6 +165,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
   const [outboundCountry, setOutboundCountry] = useState("");
   const [outboundProductId, setOutboundProductId] = useState("");
   const [outboundLineQty, setOutboundLineQty] = useState("");
+  const [outboundCrmAccountId, setOutboundCrmAccountId] = useState("");
   const [cycleBalanceId, setCycleBalanceId] = useState("");
   const [cycleCountQtyByTask, setCycleCountQtyByTask] = useState<Record<string, string>>({});
 
@@ -665,6 +668,10 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
 
       <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
         <h2 className="text-sm font-semibold text-zinc-900">Outbound flow</h2>
+        <p className="mt-1 text-xs text-zinc-600">
+          Optional CRM account links this outbound to a 3PL owner for billing and reporting (requires
+          org.crm → view to pick accounts).
+        </p>
         <div className="mt-2 grid gap-2 sm:grid-cols-6">
           <input value={outboundRef} onChange={(e) => setOutboundRef(e.target.value)} placeholder="Customer ref" className="rounded border border-zinc-300 px-3 py-2 text-sm" />
           <input value={outboundShipTo} onChange={(e) => setOutboundShipTo(e.target.value)} placeholder="Ship-to name" className="rounded border border-zinc-300 px-3 py-2 text-sm" />
@@ -678,6 +685,24 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
           </select>
           <input value={outboundLineQty} onChange={(e)=>setOutboundLineQty(e.target.value)} placeholder="Qty" className="rounded border border-zinc-300 px-3 py-2 text-sm" />
         </div>
+        {data.crmAccountOptions.length > 0 ? (
+          <div className="mt-2">
+            <label className="block text-xs font-medium text-zinc-600">CRM account (optional)</label>
+            <select
+              value={outboundCrmAccountId}
+              onChange={(e) => setOutboundCrmAccountId(e.target.value)}
+              className="mt-1 w-full max-w-md rounded border border-zinc-300 px-3 py-2 text-sm sm:w-auto"
+            >
+              <option value="">None</option>
+              {data.crmAccountOptions.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                  {a.legalName && a.legalName !== a.name ? ` (${a.legalName})` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
         <div className="mt-2">
           <button
             type="button"
@@ -690,6 +715,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                 shipToName: outboundShipTo,
                 shipToCity: outboundCity,
                 shipToCountryCode: outboundCountry,
+                crmAccountId: outboundCrmAccountId.trim() || null,
                 lines: outboundProductId
                   ? [{ productId: outboundProductId, quantity: Number(outboundLineQty) }]
                   : [],
@@ -701,25 +727,59 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
           </button>
         </div>
         <div className="mt-3 space-y-2">
-          {data.outboundOrders.map((o) => (
+          {data.outboundOrders.map((o) => {
+            const showCrmPicker =
+              canEdit &&
+              data.crmAccountOptions.length > 0 &&
+              o.status !== "SHIPPED" &&
+              o.status !== "CANCELLED";
+            return (
             <div key={o.id} className="rounded border border-zinc-200 p-2 text-sm">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="font-medium text-zinc-900">{o.outboundNo}</span>
                 <span className="text-zinc-600">{o.status}</span>
                 <span className="text-zinc-500">{o.customerRef || "No ref"}</span>
+                {o.crmAccount && !showCrmPicker ? (
+                  <span className="rounded bg-zinc-100 px-2 py-0.5 text-xs text-zinc-700">
+                    CRM: {o.crmAccount.name}
+                  </span>
+                ) : null}
+                {showCrmPicker ? (
+                  <select
+                    value={o.crmAccount?.id ?? ""}
+                    disabled={busy}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      void runAction({
+                        action: "set_outbound_crm_account",
+                        outboundOrderId: o.id,
+                        crmAccountId: v.trim() ? v : null,
+                      });
+                    }}
+                    className="ml-auto min-w-[10rem] rounded border border-zinc-300 px-2 py-1 text-xs"
+                  >
+                    <option value="">CRM: none</option>
+                    {data.crmAccountOptions.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : null}
                 {canEdit && o.status === "DRAFT" ? (
                   <button
                     type="button"
                     disabled={busy}
                     onClick={() => void runAction({ action: "release_outbound_order", outboundOrderId: o.id })}
-                    className="ml-auto rounded border border-zinc-300 px-2 py-1 text-xs font-medium text-zinc-800 disabled:opacity-40"
+                    className="rounded border border-zinc-300 px-2 py-1 text-xs font-medium text-zinc-800 disabled:opacity-40"
                   >
                     Release
                   </button>
                 ) : null}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 

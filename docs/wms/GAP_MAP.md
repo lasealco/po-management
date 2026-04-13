@@ -11,7 +11,7 @@
 | Warehouse / site | ✅ `Warehouse` | CFS vs WAREHOUSE; tenant-scoped |
 | Zone / aisle / bay… | 🟡 `WarehouseZone` + `WarehouseBin` | Flat zone + bin; no deeper hierarchy |
 | Dock / staging / quarantine as concepts | 🟡 Zone **types** + bin **storageType** | Enum-driven, not separate dock entities |
-| Customer (3PL owner) | ❌ | Inventory is tenant + `Product`; no `WmsCustomer` yet |
+| Customer (3PL owner) | 🟡 | Optional `OutboundOrder.crmAccountId` → `CrmAccount` (same tenant); WMS UI + `set_outbound_crm_account`; linking requires `org.crm` → view |
 | SKU / UOM / lot rules | 🟡 `Product` | Shared with PO catalog; no WMS-specific lot master on item |
 | Permissions / audit | 🟡 `org.wms` + `User` on movements | No field-level WMS matrix from `wms_role_permission_matrix` yet |
 | **Inbound ASN** | 🟡 **Orders + `Shipment` / `ShipmentItem`** | Operational putaway ties to shipment lines, not a first-class ASN model |
@@ -42,7 +42,7 @@
 
 ## Existing API actions (`POST /api/wms`)
 
-`create_zone`, `create_bin`, `update_bin_profile`, `set_replenishment_rule`, `create_replenishment_tasks`, `create_outbound_order`, `release_outbound_order`, `create_putaway_task`, `complete_putaway_task`, `create_pick_task`, `create_pick_wave`, `release_wave`, `complete_wave`, `complete_pick_task`, `set_balance_hold`, `clear_balance_hold`, `complete_replenish_task`, `create_cycle_count_task`, `complete_cycle_count_task`.
+`create_zone`, `create_bin`, `update_bin_profile`, `set_replenishment_rule`, `create_replenishment_tasks`, `create_outbound_order` (optional `crmAccountId`), `set_outbound_crm_account`, `release_outbound_order`, `create_putaway_task`, `complete_putaway_task`, `create_pick_task`, `create_pick_wave`, `release_wave`, `complete_wave`, `complete_pick_task`, `set_balance_hold`, `clear_balance_hold`, `complete_replenish_task`, `create_cycle_count_task`, `complete_cycle_count_task`.
 
 Handlers live in `src/lib/wms/post-actions.ts` (route stays a thin shell).
 
@@ -53,4 +53,4 @@ Handlers live in `src/lib/wms/post-actions.ts` (route stays a thin shell).
 3. **`WmsCustomer`** or reuse **CRM `CrmAccount`** for 3PL owner linkage — decision before deep inbound.  
 4. Split `src/app/api/wms/route.ts` into `src/lib/wms/*.ts` — **done:** `post-actions.ts` (POST), `get-wms-payload.ts` (GET), `wms-body.ts`, `wave.ts`, billing modules.
 
-_Last updated: Phase B billing foundation shipped._
+_Last updated: outbound ↔ CRM account linkage for 3PL owner._

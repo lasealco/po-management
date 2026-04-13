@@ -16,7 +16,9 @@ export async function GET() {
   if (gate) return gate;
   const tenant = await getTenant();
   if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
-  const payload = await getWmsDashboardPayload(tenant.id);
+  const actorId = await getActorUserId();
+  if (!actorId) return NextResponse.json({ error: "No active actor." }, { status: 403 });
+  const payload = await getWmsDashboardPayload(tenant.id, actorId);
   return NextResponse.json(payload);
 }
 
@@ -27,7 +29,6 @@ export async function POST(request: Request) {
   if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
   const actorId = await getActorUserId();
   if (!actorId) return NextResponse.json({ error: "No active actor." }, { status: 403 });
-
   let body: unknown = {};
   try {
     body = await request.json();

@@ -17,6 +17,8 @@ export type WmsBody = {
   targetBinId?: string;
   sourceZoneId?: string | null;
   targetZoneId?: string | null;
+  /** CRM account to attach (requires org.crm → view); omit or null to leave unset / clear. */
+  crmAccountId?: string | null;
   customerRef?: string;
   shipToName?: string;
   shipToLine1?: string;

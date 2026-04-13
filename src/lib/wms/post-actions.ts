@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 
+import { assertOutboundCrmAccountLinkable } from "./crm-account-link";
 import { nextWaveNo } from "./wave";
 
 import type { WmsBody } from "./wms-body";
@@ -193,12 +194,22 @@ export async function handleWmsPost(
     if (!warehouseId || lines.length === 0) {
       return NextResponse.json({ error: "warehouseId and lines required." }, { status: 400 });
     }
+    const crmRaw = input.crmAccountId;
+    const crmAccountId =
+      crmRaw === null || crmRaw === undefined ? null : String(crmRaw).trim() || null;
+    if (crmAccountId) {
+      const gate = await assertOutboundCrmAccountLinkable(tenantId, actorId, crmAccountId);
+      if (!gate.ok) {
+        return NextResponse.json({ error: gate.error }, { status: gate.status });
+      }
+    }
     const outboundNo = `OUT-${Date.now().toString().slice(-8)}`;
     const created = await prisma.outboundOrder.create({
       data: {
         tenantId,
         warehouseId,
         outboundNo,
+        crmAccountId,
         customerRef: input.customerRef?.trim() || null,
         shipToName: input.shipToName?.trim() || null,
         shipToLine1: input.shipToLine1?.trim() || null,
@@ -220,6 +231,40 @@ export async function handleWmsPost(
       select: { id: true, outboundNo: true },
     });
     return NextResponse.json({ ok: true, outboundOrder: created });
+  }
+
+  if (action === "set_outbound_crm_account") {
+    const outboundOrderId = input.outboundOrderId?.trim();
+    if (!outboundOrderId) {
+      return NextResponse.json({ error: "outboundOrderId required." }, { status: 400 });
+    }
+    const crmRaw = input.crmAccountId;
+    const crmAccountId =
+      crmRaw === null || crmRaw === undefined ? null : String(crmRaw).trim() || null;
+    if (crmAccountId) {
+      const gate = await assertOutboundCrmAccountLinkable(tenantId, actorId, crmAccountId);
+      if (!gate.ok) {
+        return NextResponse.json({ error: gate.error }, { status: gate.status });
+      }
+    }
+    const order = await prisma.outboundOrder.findFirst({
+      where: { id: outboundOrderId, tenantId },
+      select: { id: true, status: true },
+    });
+    if (!order) {
+      return NextResponse.json({ error: "Outbound order not found." }, { status: 404 });
+    }
+    if (order.status === "SHIPPED" || order.status === "CANCELLED") {
+      return NextResponse.json(
+        { error: "Cannot change CRM link for shipped or cancelled orders." },
+        { status: 400 },
+      );
+    }
+    await prisma.outboundOrder.update({
+      where: { id: order.id },
+      data: { crmAccountId },
+    });
+    return NextResponse.json({ ok: true });
   }
 
   if (action === "release_outbound_order") {

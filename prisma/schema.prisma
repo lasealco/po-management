@@ -1035,17 +1035,21 @@ model OutboundOrder {
   requestedShipDate DateTime?
   status        OutboundOrderStatus @default(DRAFT)
   notes         String?
+  /** Optional 3PL owner / bill-to CRM account (same tenant). */
+  crmAccountId  String?
   createdById   String
   createdAt     DateTime            @default(now())
   updatedAt     DateTime            @updatedAt
 
   tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   warehouse   Warehouse   @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  crmAccount  CrmAccount? @relation(fields: [crmAccountId], references: [id], onDelete: SetNull)
   createdBy   User        @relation(fields: [createdById], references: [id], onDelete: Restrict)
   lines       OutboundOrderLine[]
 
   @@unique([tenantId, outboundNo])
   @@index([tenantId, warehouseId, status])
+  @@index([tenantId, crmAccountId])
 }
 
 model OutboundOrderLine {
@@ -1303,6 +1307,7 @@ model CrmAccount {
   opportunities CrmOpportunity[]
   activities    CrmActivity[] @relation("CrmActivityAccount")
   quotes          CrmQuote[]
+  outboundOrders OutboundOrder[]
 
   @@index([tenantId, lifecycle])
   @@index([tenantId, ownerUserId])

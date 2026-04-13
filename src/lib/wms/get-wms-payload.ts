@@ -1,15 +1,27 @@
 import { Prisma } from "@prisma/client";
 
+import { userHasGlobalGrant } from "@/lib/authz";
+import { crmTenantFilter } from "@/lib/crm-scope";
 import { prisma } from "@/lib/prisma";
 
 /** Serializable JSON for `GET /api/wms` (WMS client + pages). */
-export async function getWmsDashboardPayload(tenantId: string) {
+export async function getWmsDashboardPayload(tenantId: string, actorUserId: string) {
+  const canPickCrmAccounts = await userHasGlobalGrant(actorUserId, "org.crm", "view");
+  let crmAccountListWhere: { tenantId: string; ownerUserId?: string } = { tenantId };
+  if (canPickCrmAccounts) {
+    const scope = await crmTenantFilter(tenantId, actorUserId);
+    if ("ownerUserId" in scope && scope.ownerUserId) {
+      crmAccountListWhere = { tenantId, ownerUserId: scope.ownerUserId };
+    }
+  }
+
   const [
     warehouses,
     zones,
     bins,
     rules,
     outboundOrders,
+    crmAccountOptions,
     balances,
     openTasks,
     waves,
@@ -50,6 +62,7 @@ export async function getWmsDashboardPayload(tenantId: string) {
       orderBy: { createdAt: "desc" },
       include: {
         warehouse: { select: { id: true, code: true, name: true } },
+        crmAccount: { select: { id: true, name: true, legalName: true } },
         lines: {
           orderBy: { lineNo: "asc" },
           include: {
@@ -58,6 +71,14 @@ export async function getWmsDashboardPayload(tenantId: string) {
         },
       },
     }),
+    canPickCrmAccounts
+      ? prisma.crmAccount.findMany({
+          where: crmAccountListWhere,
+          orderBy: { name: "asc" },
+          take: 200,
+          select: { id: true, name: true, legalName: true },
+        })
+      : Promise.resolve([]),
     prisma.inventoryBalance.findMany({
       where: { tenantId },
       orderBy: [{ warehouse: { name: "asc" } }, { bin: { code: "asc" } }],
@@ -178,6 +199,7 @@ export async function getWmsDashboardPayload(tenantId: string) {
       replenishQty: r.replenishQty.toString(),
       isActive: r.isActive,
     })),
+    crmAccountOptions,
     outboundOrders: outboundOrders.map((o) => ({
       id: o.id,
       outboundNo: o.outboundNo,
@@ -187,6 +209,7 @@ export async function getWmsDashboardPayload(tenantId: string) {
       shipToCountryCode: o.shipToCountryCode,
       status: o.status,
       warehouse: o.warehouse,
+      crmAccount: o.crmAccount,
       lines: o.lines.map((l) => ({
         id: l.id,
         lineNo: l.lineNo,
