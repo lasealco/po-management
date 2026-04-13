@@ -10,14 +10,18 @@ type Row = {
   transportMode: string | null;
   trackingNo: string | null;
   carrier: string | null;
+  orderId: string;
   orderNumber: string;
   supplierName: string | null;
   customerCrmAccountId: string | null;
+  customerCrmAccountName: string | null;
   originCode: string | null;
   destinationCode: string | null;
   etd: string | null;
   eta: string | null;
   latestEta: string | null;
+  routeProgressPct: number | null;
+  nextAction: string | null;
   updatedAt: string;
   latestMilestone: { code: string; hasActual: boolean } | null;
 };
@@ -25,10 +29,13 @@ type Row = {
 export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
   const [status, setStatus] = useState("");
   const [mode, setMode] = useState("");
+  const [routeAction, setRouteAction] = useState("");
   const [q, setQ] = useState("");
   const [rows, setRows] = useState<Row[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<string | null>(null);
   const [saved, setSaved] = useState<Array<{ id: string; name: string; filtersJson: unknown }>>([]);
 
   const load = useCallback(async () => {
@@ -44,6 +51,7 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
       const data = (await res.json()) as { shipments?: Row[]; error?: string };
       if (!res.ok) throw new Error(data.error || res.statusText);
       setRows(data.shipments ?? []);
+      setLastRefreshedAt(new Date().toISOString());
     } catch (e) {
       setError(e instanceof Error ? e.message : "Load failed");
     } finally {
@@ -54,6 +62,14 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!autoRefresh) return;
+    const t = window.setInterval(() => {
+      void load();
+    }, 60_000);
+    return () => window.clearInterval(t);
+  }, [autoRefresh, load]);
 
   useEffect(() => {
     void (async () => {
@@ -81,7 +97,7 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
       "updatedAt",
     ];
     const lines = [header.join(",")];
-    for (const r of rows) {
+    for (const r of filteredRows) {
       lines.push(
         [
           esc(r.id),
@@ -108,10 +124,11 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
 
   const applySaved = (json: unknown) => {
     if (!json || typeof json !== "object") return;
-    const o = json as { status?: string; mode?: string; q?: string };
+    const o = json as { status?: string; mode?: string; q?: string; routeAction?: string };
     setStatus(typeof o.status === "string" ? o.status : "");
     setMode(typeof o.mode === "string" ? o.mode : "");
     setQ(typeof o.q === "string" ? o.q : "");
+    setRouteAction(typeof o.routeAction === "string" ? o.routeAction : "");
   };
 
   const saveCurrentFilter = async () => {
@@ -123,7 +140,7 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
       body: JSON.stringify({
         action: "save_ct_filter",
         name: name.trim(),
-        filtersJson: { status, mode, q },
+        filtersJson: { status, mode, q, routeAction },
       }),
     });
     if (!res.ok) {
@@ -145,6 +162,29 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
     [],
   );
   const modeOptions = useMemo(() => ["", "OCEAN", "AIR", "ROAD", "RAIL"], []);
+  const routeActionOptions = useMemo(
+    () => ["", "Plan leg", "Mark departure", "Record arrival", "Route complete"],
+    [],
+  );
+  const routeActionCounts = useMemo(() => {
+    const out: Record<string, number> = {
+      "Plan leg": 0,
+      "Mark departure": 0,
+      "Record arrival": 0,
+      "Route complete": 0,
+    };
+    for (const r of rows) {
+      const action = r.nextAction || "";
+      for (const key of Object.keys(out)) {
+        if (action.startsWith(key)) out[key] += 1;
+      }
+    }
+    return out;
+  }, [rows]);
+  const filteredRows = useMemo(() => {
+    if (!routeAction) return rows;
+    return rows.filter((r) => (r.nextAction || "").startsWith(routeAction));
+  }, [rows, routeAction]);
 
   return (
     <div className="space-y-4">
@@ -186,6 +226,20 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
             className="mt-1 block w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"
           />
         </label>
+        <label className="text-xs text-zinc-600">
+          Route action
+          <select
+            value={routeAction}
+            onChange={(e) => setRouteAction(e.target.value)}
+            className="mt-1 block rounded border border-zinc-300 px-2 py-1.5 text-sm"
+          >
+            {routeActionOptions.map((opt) => (
+              <option key={opt || "all-actions"} value={opt}>
+                {opt || "Any"}
+              </option>
+            ))}
+          </select>
+        </label>
         <button
           type="button"
           disabled={busy}
@@ -196,7 +250,18 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
         </button>
         <button
           type="button"
-          disabled={rows.length === 0}
+          onClick={() => setAutoRefresh((v) => !v)}
+          className={`rounded border px-3 py-2 text-sm font-medium ${
+            autoRefresh
+              ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+              : "border-zinc-300 text-zinc-700"
+          }`}
+        >
+          Auto-refresh: {autoRefresh ? "On" : "Off"}
+        </button>
+        <button
+          type="button"
+          disabled={filteredRows.length === 0}
           onClick={exportCsv}
           className="rounded border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-800 disabled:opacity-40"
         >
@@ -234,6 +299,36 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
           </label>
         ) : null}
       </div>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => setRouteAction("")}
+          className={`rounded-full border px-3 py-1 text-xs ${
+            routeAction === "" ? "border-sky-300 bg-sky-50 text-sky-900" : "border-zinc-300 text-zinc-700"
+          }`}
+        >
+          Any ({rows.length})
+        </button>
+        {routeActionOptions
+          .filter((o) => o)
+          .map((opt) => (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => setRouteAction(opt)}
+              className={`rounded-full border px-3 py-1 text-xs ${
+                routeAction === opt
+                  ? "border-sky-300 bg-sky-50 text-sky-900"
+                  : "border-zinc-300 text-zinc-700"
+              }`}
+            >
+              {opt} ({routeActionCounts[opt] ?? 0})
+            </button>
+          ))}
+      </div>
+      <p className="text-xs text-zinc-500">
+        Last refreshed: {lastRefreshedAt ? new Date(lastRefreshedAt).toLocaleTimeString() : "—"}
+      </p>
 
       {error ? (
         <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">{error}</p>
@@ -243,13 +338,15 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
         <table className="min-w-full text-sm">
           <thead className="bg-zinc-100 text-left text-xs uppercase text-zinc-700">
             <tr>
-              <th className="px-2 py-2">Order</th>
               <th className="px-2 py-2">Shipment</th>
+              <th className="px-2 py-2">Order</th>
               <th className="px-2 py-2">Status</th>
               <th className="px-2 py-2">Mode</th>
-              <th className="px-2 py-2">CRM</th>
+              <th className="px-2 py-2">Customer</th>
               <th className="px-2 py-2">Lane</th>
               <th className="px-2 py-2">ETA</th>
+              <th className="px-2 py-2">Route</th>
+              <th className="px-2 py-2">Next action</th>
               <th className="px-2 py-2">Milestone</th>
               <th className="px-2 py-2">Updated</th>
             </tr>
@@ -257,23 +354,27 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
           <tbody className="divide-y divide-zinc-200">
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-2 py-6 text-center text-zinc-500">
+                <td colSpan={11} className="px-2 py-6 text-center text-zinc-500">
                   {busy ? "Loading…" : "No rows match."}
                 </td>
               </tr>
             ) : (
-              rows.map((r) => (
+              filteredRows.map((r) => (
                 <tr key={r.id} className="text-zinc-800">
                   <td className="px-2 py-2 font-medium">
                     <Link href={`/control-tower/shipments/${r.id}`} className="text-sky-800 hover:underline">
+                      {r.shipmentNo || r.id.slice(0, 8)}
+                    </Link>
+                  </td>
+                  <td className="px-2 py-2 text-zinc-600">
+                    <Link href={`/orders/${r.orderId}`} className="hover:underline">
                       {r.orderNumber}
                     </Link>
                   </td>
-                  <td className="px-2 py-2 text-zinc-600">{r.shipmentNo || r.id.slice(0, 8)}</td>
                   <td className="px-2 py-2">{r.status}</td>
                   <td className="px-2 py-2">{r.transportMode || "—"}</td>
-                  <td className="px-2 py-2 font-mono text-xs text-zinc-500">
-                    {r.customerCrmAccountId ? r.customerCrmAccountId.slice(0, 8) + "…" : "—"}
+                  <td className="px-2 py-2 text-xs text-zinc-600">
+                    {r.customerCrmAccountName || (r.customerCrmAccountId ? r.customerCrmAccountId.slice(0, 8) + "…" : "—")}
                   </td>
                   <td className="px-2 py-2 text-xs text-zinc-600">
                     {(r.originCode || "—") + " → " + (r.destinationCode || "—")}
@@ -282,6 +383,12 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
                     {r.eta || r.latestEta
                       ? new Date((r.latestEta || r.eta) as string).toLocaleDateString()
                       : "—"}
+                  </td>
+                  <td className="whitespace-nowrap px-2 py-2 text-xs text-zinc-700">
+                    {r.routeProgressPct == null ? "—" : `${r.routeProgressPct}%`}
+                  </td>
+                  <td className="whitespace-nowrap px-2 py-2 text-xs text-zinc-600">
+                    {r.nextAction || "—"}
                   </td>
                   <td className="px-2 py-2 text-xs text-zinc-600">
                     {r.latestMilestone ? `${r.latestMilestone.code}${r.latestMilestone.hasActual ? " ✓" : ""}` : "—"}

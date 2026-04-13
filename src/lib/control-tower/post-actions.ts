@@ -637,6 +637,51 @@ export async function handleControlTowerPost(
     return NextResponse.json({ ok: true });
   }
 
+  if (action === "move_ct_leg") {
+    const legId = typeof body.legId === "string" ? body.legId : "";
+    const direction = body.direction === "up" || body.direction === "down" ? body.direction : "";
+    if (!legId || !direction) return bad("legId and direction (up|down) required");
+    const leg = await prisma.ctShipmentLeg.findFirst({
+      where: { id: legId, tenantId },
+      select: { id: true, shipmentId: true, legNo: true },
+    });
+    if (!leg) return bad("Leg not found", 404);
+    const targetLegNo = direction === "up" ? leg.legNo - 1 : leg.legNo + 1;
+    if (targetLegNo < 1) return NextResponse.json({ ok: true });
+    const other = await prisma.ctShipmentLeg.findFirst({
+      where: { tenantId, shipmentId: leg.shipmentId, legNo: targetLegNo },
+      select: { id: true, legNo: true },
+    });
+    if (!other) return NextResponse.json({ ok: true });
+
+    // Swap leg numbers with a temporary slot to satisfy unique(shipmentId, legNo).
+    await prisma.$transaction(async (tx) => {
+      await tx.ctShipmentLeg.update({
+        where: { id: leg.id },
+        data: { legNo: 0 },
+      });
+      await tx.ctShipmentLeg.update({
+        where: { id: other.id },
+        data: { legNo: leg.legNo },
+      });
+      await tx.ctShipmentLeg.update({
+        where: { id: leg.id },
+        data: { legNo: other.legNo },
+      });
+    });
+
+    await writeCtAudit({
+      tenantId,
+      shipmentId: leg.shipmentId,
+      entityType: "CtShipmentLeg",
+      entityId: leg.id,
+      action: "reorder",
+      actorUserId: actorId,
+      payload: { direction, from: leg.legNo, to: targetLegNo },
+    });
+    return NextResponse.json({ ok: true });
+  }
+
   if (action === "create_ct_container") {
     const shipmentId = typeof body.shipmentId === "string" ? body.shipmentId : "";
     const containerNumber =

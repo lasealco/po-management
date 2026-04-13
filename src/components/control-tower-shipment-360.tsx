@@ -56,6 +56,26 @@ export function ControlTowerShipment360({
     await load();
   }
 
+  const asLocalDateTime = (iso: unknown) => {
+    if (typeof iso !== "string" || !iso) return "";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "";
+    const tzOffsetMs = d.getTimezoneOffset() * 60_000;
+    return new Date(d.getTime() - tzOffsetMs).toISOString().slice(0, 16);
+  };
+  const legPhase = (leg: Record<string, unknown>) => {
+    if (leg.actualAta) return "Arrived";
+    if (leg.actualAtd) return "Departed";
+    if (leg.plannedEtd || leg.plannedEta) return "Planned";
+    return "Draft";
+  };
+  const legPhaseClass = (phase: string) => {
+    if (phase === "Arrived") return "border-emerald-200 bg-emerald-50 text-emerald-800";
+    if (phase === "Departed") return "border-sky-200 bg-sky-50 text-sky-800";
+    if (phase === "Planned") return "border-amber-200 bg-amber-50 text-amber-800";
+    return "border-zinc-200 bg-zinc-50 text-zinc-700";
+  };
+
   if (error) {
     return (
       <div className="rounded border border-red-200 bg-red-50 px-4 py-6 text-sm text-red-900">
@@ -84,6 +104,31 @@ export function ControlTowerShipment360({
   const ctReferences = (data.ctReferences as unknown[]) ?? [];
   const legs = (data.legs as unknown[]) ?? [];
   const containers = (data.containers as unknown[]) ?? [];
+  const routeProgress = (() => {
+    if (!legs.length) return { pct: 0, hint: "Add at least one leg to start route tracking." };
+    const normalized = legs.map((raw) => legPhase(raw as Record<string, unknown>));
+    const score = normalized.reduce((sum, p) => {
+      if (p === "Arrived") return sum + 1;
+      if (p === "Departed") return sum + 0.6;
+      if (p === "Planned") return sum + 0.2;
+      return sum;
+    }, 0);
+    const pct = Math.round((score / legs.length) * 100);
+    const nextIdx = normalized.findIndex((p) => p !== "Arrived");
+    if (nextIdx === -1) return { pct, hint: "Route complete: all legs arrived." };
+    const nextLeg = legs[nextIdx] as Record<string, unknown>;
+    const nextPhase = normalized[nextIdx];
+    const origin = (nextLeg.originCode as string) || "—";
+    const destination = (nextLeg.destinationCode as string) || "—";
+    const nextLabel = `Leg ${String(nextLeg.legNo)} ${origin} -> ${destination}`;
+    if (nextPhase === "Draft") {
+      return { pct, hint: `Next action: enrich ${nextLabel} with carrier/mode and ETD/ETA.` };
+    }
+    if (nextPhase === "Planned") {
+      return { pct, hint: `Next action: mark departure updates for ${nextLabel}.` };
+    }
+    return { pct, hint: `Next action: record arrival for ${nextLabel}.` };
+  })();
   const crmAccountChoices =
     (data.crmAccountChoices as Array<{ id: string; name: string }> | undefined) ?? [];
   const customerCrmAccount = data.customerCrmAccount as
@@ -262,9 +307,9 @@ export function ControlTowerShipment360({
       {tab === "routing" ? (
         <div className="space-y-4">
           <section className="rounded-lg border border-zinc-200 bg-white p-4 text-sm">
-            <h2 className="font-semibold text-zinc-900">Logistics customer (CRM)</h2>
+            <h2 className="font-semibold text-zinc-900">Customer account scope</h2>
             <p className="mt-1 text-xs text-zinc-500">
-              Shipments tagged for a CRM account are visible to users scoped to that account (in
+              Shipments tagged for a customer account are visible to users scoped to that account (in
               addition to supplier-portal workflows).
             </p>
             {customerCrmAccount ? (
@@ -321,6 +366,49 @@ export function ControlTowerShipment360({
 
           <section className="rounded-lg border border-zinc-200 bg-white p-4 text-sm">
             <h2 className="font-semibold text-zinc-900">Legs</h2>
+            {legs.length > 0 ? (
+              <div className="mt-2 rounded border border-zinc-100 bg-zinc-50 p-2">
+                <div className="mb-2">
+                  <div className="mb-1 flex items-center justify-between text-[11px] text-zinc-600">
+                    <span>Route progress</span>
+                    <span className="font-semibold text-zinc-800">{routeProgress.pct}%</span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded bg-zinc-200">
+                    <div
+                      className="h-full rounded bg-sky-600 transition-all"
+                      style={{ width: `${routeProgress.pct}%` }}
+                    />
+                  </div>
+                  <p className="mt-1 text-[11px] text-zinc-600">{routeProgress.hint}</p>
+                </div>
+                <p className="text-[11px] uppercase tracking-wide text-zinc-500">Route timeline</p>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  {legs.map((raw, idx) => {
+                    const leg = raw as Record<string, unknown>;
+                    const phase = legPhase(leg);
+                    return (
+                      <div key={String(leg.id)} className="flex items-center gap-2">
+                        <div
+                          className={`rounded border px-2 py-1 text-[11px] ${legPhaseClass(phase)}`}
+                          title={`Leg ${String(leg.legNo)} · ${phase}`}
+                        >
+                          <span className="font-semibold">L{String(leg.legNo)}</span>{" "}
+                          {(leg.originCode as string) || "—"} → {(leg.destinationCode as string) || "—"}
+                          <span className="ml-1 opacity-80">({phase})</span>
+                          {(Boolean(leg.plannedEtd) || Boolean(leg.plannedEta)) && (
+                            <span className="ml-1 opacity-80">
+                              · {leg.plannedEtd ? new Date(leg.plannedEtd as string).toLocaleDateString() : "—"} to{" "}
+                              {leg.plannedEta ? new Date(leg.plannedEta as string).toLocaleDateString() : "—"}
+                            </span>
+                          )}
+                        </div>
+                        {idx < legs.length - 1 ? <span className="text-zinc-400">→</span> : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
             {legs.length === 0 ? (
               <p className="mt-2 text-xs text-zinc-500">No routing legs yet.</p>
             ) : (
@@ -328,14 +416,14 @@ export function ControlTowerShipment360({
                 {legs.map((raw) => {
                   const leg = raw as Record<string, unknown>;
                   return (
-                    <li
-                      key={String(leg.id)}
-                      className="flex flex-wrap items-start justify-between gap-2 border-b border-zinc-100 pb-2"
-                    >
+                    <li key={String(leg.id)} className="border-b border-zinc-100 pb-2">
                       <div>
                         <span className="font-medium">Leg {String(leg.legNo)}</span> ·{" "}
                         {(leg.originCode as string) || "—"} → {(leg.destinationCode as string) || "—"} ·{" "}
                         {(leg.carrier as string) || "—"} · {String(leg.transportMode || "—")}
+                        <span className="ml-2 rounded-full border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-[11px] text-zinc-600">
+                          {legPhase(leg)}
+                        </span>
                         <div className="text-zinc-500">
                           ETD {leg.plannedEtd ? new Date(leg.plannedEtd as string).toLocaleString() : "—"} · ETA{" "}
                           {leg.plannedEta ? new Date(leg.plannedEta as string).toLocaleString() : "—"}
@@ -351,20 +439,144 @@ export function ControlTowerShipment360({
                         {leg.notes ? <p className="mt-1 text-zinc-600">{String(leg.notes)}</p> : null}
                       </div>
                       {canEdit ? (
-                        <button
-                          type="button"
-                          className="shrink-0 rounded border border-red-200 px-2 py-0.5 text-red-800"
-                          onClick={async () => {
-                            if (!window.confirm("Delete this leg?")) return;
-                            try {
-                              await postAction({ action: "delete_ct_leg", legId: String(leg.id) });
-                            } catch (err) {
-                              window.alert(err instanceof Error ? err.message : "Failed");
-                            }
-                          }}
-                        >
-                          Delete
-                        </button>
+                        <div className="mt-2 flex flex-wrap items-end gap-2">
+                          <form
+                            className="flex flex-wrap items-end gap-2"
+                            onSubmit={async (e) => {
+                              e.preventDefault();
+                              const fd = new FormData(e.currentTarget);
+                              const mode = String(fd.get("transportMode") || "").trim();
+                              try {
+                                await postAction({
+                                  action: "update_ct_leg",
+                                  legId: String(leg.id),
+                                  originCode: String(fd.get("originCode") || ""),
+                                  destinationCode: String(fd.get("destinationCode") || ""),
+                                  carrier: String(fd.get("carrier") || ""),
+                                  transportMode: mode || null,
+                                  plannedEtd: String(fd.get("plannedEtd") || "") || null,
+                                  plannedEta: String(fd.get("plannedEta") || "") || null,
+                                  actualAtd: String(fd.get("actualAtd") || "") || null,
+                                  actualAta: String(fd.get("actualAta") || "") || null,
+                                  notes: String(fd.get("notes") || ""),
+                                });
+                              } catch (err) {
+                                window.alert(err instanceof Error ? err.message : "Failed");
+                              }
+                            }}
+                          >
+                            <input
+                              name="originCode"
+                              defaultValue={String(leg.originCode || "")}
+                              placeholder="Origin"
+                              className="w-24 rounded border px-1 py-0.5"
+                            />
+                            <input
+                              name="destinationCode"
+                              defaultValue={String(leg.destinationCode || "")}
+                              placeholder="Dest"
+                              className="w-24 rounded border px-1 py-0.5"
+                            />
+                            <input
+                              name="carrier"
+                              defaultValue={String(leg.carrier || "")}
+                              placeholder="Carrier"
+                              className="w-28 rounded border px-1 py-0.5"
+                            />
+                            <select
+                              name="transportMode"
+                              defaultValue={String(leg.transportMode || "")}
+                              className="rounded border px-1 py-0.5"
+                            >
+                              <option value="">Mode</option>
+                              <option value="OCEAN">OCEAN</option>
+                              <option value="AIR">AIR</option>
+                              <option value="ROAD">ROAD</option>
+                              <option value="RAIL">RAIL</option>
+                            </select>
+                            <input
+                              name="plannedEtd"
+                              type="datetime-local"
+                              defaultValue={asLocalDateTime(leg.plannedEtd)}
+                              className="rounded border px-1 py-0.5"
+                            />
+                            <input
+                              name="plannedEta"
+                              type="datetime-local"
+                              defaultValue={asLocalDateTime(leg.plannedEta)}
+                              className="rounded border px-1 py-0.5"
+                            />
+                            <input
+                              name="actualAtd"
+                              type="datetime-local"
+                              defaultValue={asLocalDateTime(leg.actualAtd)}
+                              className="rounded border px-1 py-0.5"
+                            />
+                            <input
+                              name="actualAta"
+                              type="datetime-local"
+                              defaultValue={asLocalDateTime(leg.actualAta)}
+                              className="rounded border px-1 py-0.5"
+                            />
+                            <input
+                              name="notes"
+                              defaultValue={String(leg.notes || "")}
+                              placeholder="Notes"
+                              className="w-36 rounded border px-1 py-0.5"
+                            />
+                            <button type="submit" className="rounded bg-zinc-800 px-2 py-0.5 text-white">
+                              Update
+                            </button>
+                          </form>
+                          <button
+                            type="button"
+                            className="shrink-0 rounded border border-zinc-300 px-2 py-0.5"
+                            onClick={async () => {
+                              try {
+                                await postAction({
+                                  action: "move_ct_leg",
+                                  legId: String(leg.id),
+                                  direction: "up",
+                                });
+                              } catch (err) {
+                                window.alert(err instanceof Error ? err.message : "Failed");
+                              }
+                            }}
+                          >
+                            Move up
+                          </button>
+                          <button
+                            type="button"
+                            className="shrink-0 rounded border border-zinc-300 px-2 py-0.5"
+                            onClick={async () => {
+                              try {
+                                await postAction({
+                                  action: "move_ct_leg",
+                                  legId: String(leg.id),
+                                  direction: "down",
+                                });
+                              } catch (err) {
+                                window.alert(err instanceof Error ? err.message : "Failed");
+                              }
+                            }}
+                          >
+                            Move down
+                          </button>
+                          <button
+                            type="button"
+                            className="shrink-0 rounded border border-red-200 px-2 py-0.5 text-red-800"
+                            onClick={async () => {
+                              if (!window.confirm("Delete this leg?")) return;
+                              try {
+                                await postAction({ action: "delete_ct_leg", legId: String(leg.id) });
+                              } catch (err) {
+                                window.alert(err instanceof Error ? err.message : "Failed");
+                              }
+                            }}
+                          >
+                            Delete
+                          </button>
+                        </div>
                       ) : null}
                     </li>
                   );
@@ -440,6 +652,14 @@ export function ControlTowerShipment360({
                         Gate in {c.gateInAt ? new Date(c.gateInAt as string).toLocaleString() : "—"} · out{" "}
                         {c.gateOutAt ? new Date(c.gateOutAt as string).toLocaleString() : "—"}
                       </div>
+                      <div className="mt-1 flex gap-1">
+                        <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-[11px] text-zinc-600">
+                          {c.gateInAt ? "Gate-in done" : "Awaiting gate-in"}
+                        </span>
+                        <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-[11px] text-zinc-600">
+                          {c.gateOutAt ? "Gate-out done" : "Awaiting gate-out"}
+                        </span>
+                      </div>
                       {canEdit ? (
                         <form
                           className="mt-2 flex flex-wrap items-end gap-2"
@@ -502,10 +722,88 @@ export function ControlTowerShipment360({
                               );
                             })}
                           </select>
-                          <input name="gateInAt" type="datetime-local" className="rounded border px-1 py-0.5" />
-                          <input name="gateOutAt" type="datetime-local" className="rounded border px-1 py-0.5" />
+                          <input
+                            name="gateInAt"
+                            type="datetime-local"
+                            defaultValue={asLocalDateTime(c.gateInAt)}
+                            className="rounded border px-1 py-0.5"
+                          />
+                          <input
+                            name="gateOutAt"
+                            type="datetime-local"
+                            defaultValue={asLocalDateTime(c.gateOutAt)}
+                            className="rounded border px-1 py-0.5"
+                          />
                           <button type="submit" className="rounded bg-zinc-800 px-2 py-0.5 text-white">
                             Update
+                          </button>
+                          <button
+                            type="button"
+                            className="rounded border border-zinc-300 px-2 py-0.5"
+                            onClick={async () => {
+                              try {
+                                await postAction({
+                                  action: "update_ct_container",
+                                  containerId: String(c.id),
+                                  gateInAt: new Date().toISOString(),
+                                });
+                              } catch (err) {
+                                window.alert(err instanceof Error ? err.message : "Failed");
+                              }
+                            }}
+                          >
+                            Gate in now
+                          </button>
+                          <button
+                            type="button"
+                            className="rounded border border-zinc-300 px-2 py-0.5"
+                            onClick={async () => {
+                              try {
+                                await postAction({
+                                  action: "update_ct_container",
+                                  containerId: String(c.id),
+                                  gateOutAt: new Date().toISOString(),
+                                });
+                              } catch (err) {
+                                window.alert(err instanceof Error ? err.message : "Failed");
+                              }
+                            }}
+                          >
+                            Gate out now
+                          </button>
+                          <button
+                            type="button"
+                            className="rounded border border-zinc-300 px-2 py-0.5"
+                            onClick={async () => {
+                              try {
+                                await postAction({
+                                  action: "update_ct_container",
+                                  containerId: String(c.id),
+                                  gateInAt: null,
+                                });
+                              } catch (err) {
+                                window.alert(err instanceof Error ? err.message : "Failed");
+                              }
+                            }}
+                          >
+                            Clear gate-in
+                          </button>
+                          <button
+                            type="button"
+                            className="rounded border border-zinc-300 px-2 py-0.5"
+                            onClick={async () => {
+                              try {
+                                await postAction({
+                                  action: "update_ct_container",
+                                  containerId: String(c.id),
+                                  gateOutAt: null,
+                                });
+                              } catch (err) {
+                                window.alert(err instanceof Error ? err.message : "Failed");
+                              }
+                            }}
+                          >
+                            Clear gate-out
                           </button>
                         </form>
                       ) : null}
