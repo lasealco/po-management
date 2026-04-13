@@ -6,6 +6,7 @@ export type AppNavLinkVisibility = {
   orders: boolean;
   reports: boolean;
   consolidation: boolean;
+  controlTower: boolean;
   wms: boolean;
   crm: boolean;
   products: boolean;
@@ -36,6 +37,7 @@ export async function resolveNavState(access: ViewerAccess | null): Promise<{
           const reports = viewerHas(access.grantSet, "org.reports", "view");
           const consolidation = orders;
           const wms = viewerHas(access.grantSet, "org.wms", "view");
+          const controlTower = viewerHas(access.grantSet, "org.controltower", "view");
           const crm =
             viewerHas(access.grantSet, "org.crm", "view") ||
             (!isSupplierPortalUser &&
@@ -49,6 +51,7 @@ export async function resolveNavState(access: ViewerAccess | null): Promise<{
             orders,
             reports,
             consolidation,
+            controlTower,
             wms,
             crm,
             products,
@@ -61,10 +64,11 @@ export async function resolveNavState(access: ViewerAccess | null): Promise<{
   const setupIncomplete =
     access?.user != null &&
     linkVisibility != null &&
-    !(
+      !(
       linkVisibility.orders ||
       linkVisibility.reports ||
       linkVisibility.consolidation ||
+      linkVisibility.controlTower ||
       linkVisibility.wms ||
       linkVisibility.crm ||
       linkVisibility.products ||

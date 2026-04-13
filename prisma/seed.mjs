@@ -154,6 +154,8 @@ async function seed() {
     ["org.wms", "edit"],
     ["org.crm", "view"],
     ["org.crm", "edit"],
+    ["org.controltower", "view"],
+    ["org.controltower", "edit"],
   ];
   const approverGrants = [
     ...buyerGrants,
@@ -165,6 +167,7 @@ async function seed() {
     ["org.orders", "transition"],
     ["org.orders", "split"],
     ["org.products", "view"],
+    ["org.controltower", "view"],
   ];
 
   await replaceGlobalRolePermissions(roleBuyer.id, buyerGrants);

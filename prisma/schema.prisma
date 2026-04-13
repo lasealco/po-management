@@ -45,6 +45,14 @@ model Tenant {
   crmOpportunities  CrmOpportunity[]
   crmActivities     CrmActivity[]
   crmQuotes         CrmQuote[]
+  ctTrackingMilestones CtTrackingMilestone[]
+  ctShipmentDocuments CtShipmentDocument[]
+  ctShipmentNotes   CtShipmentNote[]
+  ctFinancialSnapshots CtShipmentFinancialSnapshot[]
+  ctAlerts            CtAlert[]
+  ctExceptions        CtException[]
+  ctAuditLogs         CtAuditLog[]
+  ctSavedFilters      CtSavedFilter[]
 }
 
 model User {
@@ -81,6 +89,15 @@ model User {
   crmActivitiesOwned  CrmActivity[]      @relation("CrmActivityOwner")
   crmQuotesOwned      CrmQuote[]         @relation("CrmQuoteOwner")
   wmsBillingInvoiceRunsCreated WmsBillingInvoiceRun[] @relation("WmsBillingInvoiceRunCreatedBy")
+  ctTrackingMilestonesUpdated CtTrackingMilestone[]
+  ctShipmentDocumentsUploaded CtShipmentDocument[]
+  ctShipmentNotesCreated CtShipmentNote[]
+  ctFinancialSnapshotsCreated CtShipmentFinancialSnapshot[]
+  ctAlertsOwned CtAlert[] @relation("CtAlertOwner")
+  ctAlertsAcknowledged CtAlert[] @relation("CtAlertAckBy")
+  ctExceptionsOwned CtException[] @relation("CtExceptionOwner")
+  ctAuditLogsActor CtAuditLog[]
+  ctSavedFilters CtSavedFilter[]
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -593,6 +610,14 @@ model Shipment {
   booking ShipmentBooking?
   milestones ShipmentMilestone[]
   wmsTasks WmsTask[]
+  ctReferences CtShipmentReference[]
+  ctTrackingMilestones CtTrackingMilestone[]
+  ctDocuments CtShipmentDocument[]
+  ctNotes CtShipmentNote[]
+  ctFinancialSnapshots CtShipmentFinancialSnapshot[]
+  ctAlerts CtAlert[]
+  ctExceptions CtException[]
+  ctAuditLogs CtAuditLog[]
 
   @@index([orderId, createdAt])
   @@index([status])
@@ -662,6 +687,209 @@ model ShipmentMilestone {
 
   @@index([shipmentId, createdAt])
   @@index([code])
+}
+
+/// Extra reference numbers (master/house B/L, AWB, etc.) for Control Tower.
+model CtShipmentReference {
+  id          String   @id @default(cuid())
+  shipmentId String
+  refType     String
+  refValue    String
+  createdAt   DateTime @default(now())
+
+  shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@index([shipmentId])
+  @@index([refValue])
+}
+
+/// Flexible planned / predicted / actual milestones (beyond enum `ShipmentMilestone`).
+model CtTrackingMilestone {
+  id          String    @id @default(cuid())
+  tenantId    String
+  shipmentId  String
+  code        String
+  label       String?
+  plannedAt   DateTime?
+  predictedAt DateTime?
+  actualAt    DateTime?
+  sourceType  String    @default("MANUAL")
+  sourceRef   String?
+  confidence  Int?
+  notes       String?   @db.Text
+  updatedById String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  shipment  Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  updatedBy User     @relation(fields: [updatedById], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, shipmentId])
+  @@index([code])
+}
+
+enum CtDocVisibility {
+  INTERNAL
+  CUSTOMER_SHAREABLE
+}
+
+model CtShipmentDocument {
+  id           String          @id @default(cuid())
+  tenantId     String
+  shipmentId   String
+  docType      String
+  fileName     String
+  blobUrl      String
+  visibility   CtDocVisibility @default(INTERNAL)
+  version      Int             @default(1)
+  uploadedById String
+  createdAt    DateTime        @default(now())
+
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  shipment   Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  uploadedBy User     @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+
+  @@index([shipmentId])
+}
+
+enum CtNoteVisibility {
+  INTERNAL
+  SHARED
+}
+
+model CtShipmentNote {
+  id          String           @id @default(cuid())
+  tenantId    String
+  shipmentId  String
+  body        String           @db.Text
+  visibility  CtNoteVisibility @default(INTERNAL)
+  createdById String
+  createdAt   DateTime         @default(now())
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  shipment  Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  createdBy User     @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([shipmentId])
+}
+
+model CtShipmentFinancialSnapshot {
+  id                   String    @id @default(cuid())
+  tenantId             String
+  shipmentId           String
+  customerVisibleCost  Decimal?  @db.Decimal(14, 2)
+  internalCost         Decimal?  @db.Decimal(14, 2)
+  internalRevenue      Decimal?  @db.Decimal(14, 2)
+  internalNet          Decimal?  @db.Decimal(14, 2)
+  internalMarginPct    Decimal?  @db.Decimal(9, 4)
+  currency             String    @default("USD") @db.VarChar(3)
+  asOf                 DateTime  @default(now())
+  createdById          String
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  shipment  Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  createdBy User     @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([shipmentId, asOf])
+}
+
+enum CtAlertSeverity {
+  INFO
+  WARN
+  CRITICAL
+}
+
+enum CtAlertStatus {
+  OPEN
+  ACKNOWLEDGED
+  CLOSED
+}
+
+model CtAlert {
+  id                 String          @id @default(cuid())
+  tenantId           String
+  shipmentId         String
+  type               String
+  severity           CtAlertSeverity @default(WARN)
+  title              String
+  body               String?         @db.Text
+  ownerUserId        String?
+  acknowledgedAt     DateTime?
+  acknowledgedById String?
+  status             CtAlertStatus    @default(OPEN)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  shipment       Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  owner          User?    @relation("CtAlertOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  acknowledgedBy User?    @relation("CtAlertAckBy", fields: [acknowledgedById], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status])
+  @@index([shipmentId])
+}
+
+enum CtExceptionStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+model CtException {
+  id          String            @id @default(cuid())
+  tenantId    String
+  shipmentId  String
+  type        String
+  severity    CtAlertSeverity   @default(WARN)
+  ownerUserId String?
+  rootCause   String?           @db.Text
+  status      CtExceptionStatus @default(OPEN)
+  claimAmount Decimal?          @db.Decimal(14, 2)
+  resolvedAt  DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  owner    User?    @relation("CtExceptionOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+
+  @@index([shipmentId])
+  @@index([tenantId, status])
+}
+
+model CtAuditLog {
+  id          String   @id @default(cuid())
+  tenantId    String
+  shipmentId  String?
+  entityType  String
+  entityId    String
+  action      String
+  payload     Json?
+  actorUserId String
+  createdAt   DateTime @default(now())
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  shipment Shipment? @relation(fields: [shipmentId], references: [id], onDelete: SetNull)
+  actor    User      @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, shipmentId])
+  @@index([entityType, entityId])
+}
+
+model CtSavedFilter {
+  id          String   @id @default(cuid())
+  tenantId    String
+  userId      String
+  name        String
+  filtersJson Json
+  createdAt   DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 enum WarehouseType {

@@ -96,6 +96,19 @@ export const GLOBAL_PERMISSION_CATALOG = [
     label: "Manage CRM",
     description: "Create and update CRM records for any user in the tenant (managers).",
   },
+  {
+    resource: "org.controltower",
+    action: "view",
+    label: "View Control Tower",
+    description: "Dashboard, workbench, shipment 360, search, and customer-safe reporting.",
+  },
+  {
+    resource: "org.controltower",
+    action: "edit",
+    label: "Manage Control Tower",
+    description:
+      "Post milestones, notes, documents, financial snapshots, alerts, exceptions, and saved views.",
+  },
 ] as const;
 
 export type GlobalPermissionRow = (typeof GLOBAL_PERMISSION_CATALOG)[number];

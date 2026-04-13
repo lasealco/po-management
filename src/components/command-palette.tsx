@@ -7,6 +7,7 @@ export type CommandPaletteGrants = {
   orders: boolean;
   reports: boolean;
   consolidation: boolean;
+  controlTower: boolean;
   wms: boolean;
   crm: boolean;
   suppliers: boolean;
@@ -110,6 +111,35 @@ export function CommandPalette({ grants }: { grants: CommandPaletteGrants }) {
         searchText: "load cfs container",
         action: go("/consolidation"),
       });
+    }
+
+    if (grants.controlTower) {
+      list.push(
+        {
+          id: "control-tower",
+          label: "Control Tower — dashboard",
+          searchText: "control tower logistics visibility shipments",
+          action: go("/control-tower"),
+        },
+        {
+          id: "control-tower-workbench",
+          label: "Control Tower — workbench",
+          searchText: "control tower tracking workbench grid filters",
+          action: go("/control-tower/workbench"),
+        },
+        {
+          id: "control-tower-search",
+          label: "Control Tower — search & assist",
+          searchText: "control tower search assist",
+          action: go("/control-tower/search"),
+        },
+        {
+          id: "control-tower-reports",
+          label: "Control Tower — reports",
+          searchText: "control tower kpi reporting",
+          action: go("/control-tower/reports"),
+        },
+      );
     }
 
     if (grants.wms) {
