@@ -17,6 +17,16 @@ type Summary = {
     routeComplete: number;
     noLegs: number;
   };
+  ownerLoad: {
+    alerts: {
+      unassigned: number;
+      top: Array<{ ownerUserId: string; ownerName: string; count: number }>;
+    };
+    exceptions: {
+      unassigned: number;
+      top: Array<{ ownerUserId: string; ownerName: string; count: number }>;
+    };
+  };
   byStatus: Record<string, number>;
 };
 
@@ -110,6 +120,43 @@ export function ControlTowerReportsClient({
           </div>
         </div>
       </div>
+      {!summary.isCustomerView ? (
+        <div className="rounded-lg border border-zinc-200 bg-white p-4">
+          <h2 className="text-sm font-semibold text-zinc-900">Owner workload</h2>
+          <div className="mt-3 grid gap-4 md:grid-cols-2">
+            <section>
+              <p className="text-xs uppercase text-zinc-500">
+                Alerts · Unassigned: {summary.ownerLoad.alerts.unassigned}
+              </p>
+              <ul className="mt-2 space-y-1 text-sm text-zinc-700">
+                {summary.ownerLoad.alerts.top.map((r) => (
+                  <li key={r.ownerUserId}>
+                    {r.ownerName}: <strong>{r.count}</strong>
+                  </li>
+                ))}
+                {summary.ownerLoad.alerts.top.length === 0 ? (
+                  <li className="text-zinc-500">No open alert ownership load.</li>
+                ) : null}
+              </ul>
+            </section>
+            <section>
+              <p className="text-xs uppercase text-zinc-500">
+                Exceptions · Unassigned: {summary.ownerLoad.exceptions.unassigned}
+              </p>
+              <ul className="mt-2 space-y-1 text-sm text-zinc-700">
+                {summary.ownerLoad.exceptions.top.map((r) => (
+                  <li key={r.ownerUserId}>
+                    {r.ownerName}: <strong>{r.count}</strong>
+                  </li>
+                ))}
+                {summary.ownerLoad.exceptions.top.length === 0 ? (
+                  <li className="text-zinc-500">No open exception ownership load.</li>
+                ) : null}
+              </ul>
+            </section>
+          </div>
+        </div>
+      ) : null}
       <div className="rounded-lg border border-zinc-200 bg-white p-4">
         <div className="mb-2 flex items-center justify-between gap-2">
           <h2 className="text-sm font-semibold text-zinc-900">Snapshot JSON</h2>

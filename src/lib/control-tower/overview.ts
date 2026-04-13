@@ -36,6 +36,9 @@ export async function getControlTowerOverview(params: {
     withLegs,
     withContainers,
     staleTopRows,
+    overdueEta,
+    unassignedOpenAlerts,
+    unassignedOpenExceptions,
   ] = await Promise.all([
     prisma.shipment.groupBy({
       by: ["status"],
@@ -114,6 +117,33 @@ export async function getControlTowerOverview(params: {
         booking: { select: { eta: true } },
       },
     }),
+    prisma.shipment.count({
+      where: {
+        ...scope,
+        status: { notIn: TERMINAL },
+        booking: { eta: { lt: now } },
+      },
+    }),
+    restricted
+      ? Promise.resolve(0)
+      : prisma.ctAlert.count({
+          where: {
+            tenantId,
+            status: { in: ["OPEN", "ACKNOWLEDGED"] },
+            ownerUserId: null,
+            shipment: { is: scope },
+          },
+        }),
+    restricted
+      ? Promise.resolve(0)
+      : prisma.ctException.count({
+          where: {
+            tenantId,
+            status: { in: ["OPEN", "IN_PROGRESS"] },
+            ownerUserId: null,
+            shipment: { is: scope },
+          },
+        }),
   ]);
 
   const byStatus = Object.fromEntries(
@@ -151,6 +181,9 @@ export async function getControlTowerOverview(params: {
       arrivalsNext14Days: arrivals14,
       withLegs,
       withContainers,
+      overdueEta,
+      unassignedOpenAlerts: restricted ? null : unassignedOpenAlerts,
+      unassignedOpenExceptions: restricted ? null : unassignedOpenExceptions,
     },
     staleTop,
   };

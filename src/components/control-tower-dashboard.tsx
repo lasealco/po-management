@@ -12,6 +12,9 @@ type Overview = {
     arrivalsNext14Days: number;
     withLegs: number;
     withContainers: number;
+    overdueEta: number;
+    unassignedOpenAlerts: number | null;
+    unassignedOpenExceptions: number | null;
   };
   staleTop: Array<{
     id: string;
@@ -82,6 +85,16 @@ export function ControlTowerDashboard({ overview }: { overview: Overview }) {
           <span className="font-semibold">{counts.withContainers}</span> shipments with containers
         </p>
       </div>
+      {!isCustomerView ? (
+        <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm sm:col-span-2 lg:col-span-4">
+          <p className="text-xs font-semibold uppercase text-zinc-500">Risk spotlight</p>
+          <p className="mt-1 text-sm text-zinc-700">
+            <span className="font-semibold text-amber-800">{counts.overdueEta}</span> overdue ETA ·{" "}
+            <span className="font-semibold">{counts.unassignedOpenAlerts ?? 0}</span> unassigned alerts ·{" "}
+            <span className="font-semibold">{counts.unassignedOpenExceptions ?? 0}</span> unassigned exceptions
+          </p>
+        </div>
+      ) : null}
       <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm sm:col-span-2 lg:col-span-4">
         <p className="text-xs font-semibold uppercase text-zinc-500">Stale spotlight</p>
         {staleTop.length === 0 ? (

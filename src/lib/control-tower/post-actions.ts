@@ -308,6 +308,50 @@ export async function handleControlTowerPost(
     return NextResponse.json({ ok: true });
   }
 
+  if (action === "close_ct_alert") {
+    const alertId = typeof body.alertId === "string" ? body.alertId : "";
+    if (!alertId) return bad("alertId required");
+    const alert = await prisma.ctAlert.findFirst({
+      where: { id: alertId, tenantId },
+    });
+    if (!alert) return bad("Alert not found", 404);
+    await prisma.ctAlert.update({
+      where: { id: alertId },
+      data: { status: "CLOSED" },
+    });
+    await writeCtAudit({
+      tenantId,
+      shipmentId: alert.shipmentId,
+      entityType: "CtAlert",
+      entityId: alertId,
+      action: "close",
+      actorUserId: actorId,
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "reopen_ct_alert") {
+    const alertId = typeof body.alertId === "string" ? body.alertId : "";
+    if (!alertId) return bad("alertId required");
+    const alert = await prisma.ctAlert.findFirst({
+      where: { id: alertId, tenantId },
+    });
+    if (!alert) return bad("Alert not found", 404);
+    await prisma.ctAlert.update({
+      where: { id: alertId },
+      data: { status: "OPEN" },
+    });
+    await writeCtAudit({
+      tenantId,
+      shipmentId: alert.shipmentId,
+      entityType: "CtAlert",
+      entityId: alertId,
+      action: "reopen",
+      actorUserId: actorId,
+    });
+    return NextResponse.json({ ok: true });
+  }
+
   if (action === "assign_ct_alert_owner") {
     const alertId = typeof body.alertId === "string" ? body.alertId : "";
     const ownerUserId =
@@ -417,6 +461,44 @@ export async function handleControlTowerPost(
       action: "update",
       actorUserId: actorId,
       payload: { status },
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "assign_ct_exception_owner") {
+    const exceptionId = typeof body.exceptionId === "string" ? body.exceptionId : "";
+    const ownerUserId =
+      body.ownerUserId === null || body.ownerUserId === ""
+        ? null
+        : typeof body.ownerUserId === "string"
+          ? body.ownerUserId
+          : undefined;
+    if (!exceptionId || ownerUserId === undefined) {
+      return bad("exceptionId and ownerUserId (or null) required");
+    }
+    const ex = await prisma.ctException.findFirst({
+      where: { id: exceptionId, tenantId },
+    });
+    if (!ex) return bad("Exception not found", 404);
+    if (ownerUserId) {
+      const u = await prisma.user.findFirst({
+        where: { id: ownerUserId, tenantId },
+        select: { id: true },
+      });
+      if (!u) return bad("Owner user not in tenant", 404);
+    }
+    await prisma.ctException.update({
+      where: { id: exceptionId },
+      data: { ownerUserId },
+    });
+    await writeCtAudit({
+      tenantId,
+      shipmentId: ex.shipmentId,
+      entityType: "CtException",
+      entityId: exceptionId,
+      action: "assign_owner",
+      actorUserId: actorId,
+      payload: { ownerUserId },
     });
     return NextResponse.json({ ok: true });
   }

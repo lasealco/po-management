@@ -75,6 +75,16 @@ export function ControlTowerShipment360({
     if (phase === "Planned") return "border-amber-200 bg-amber-50 text-amber-800";
     return "border-zinc-200 bg-zinc-50 text-zinc-700";
   };
+  const slaHours = (severity: string) =>
+    severity === "CRITICAL" ? 24 : severity === "WARN" ? 48 : 72;
+  const itemSla = (row: Record<string, unknown>) => {
+    const created = new Date(String(row.createdAt || ""));
+    const ageHours = Number.isNaN(created.getTime())
+      ? 0
+      : Math.floor((Date.now() - created.getTime()) / 3_600_000);
+    const threshold = slaHours(String(row.severity || "WARN"));
+    return { ageHours, threshold, breached: ageHours > threshold };
+  };
 
   if (error) {
     return (
@@ -131,6 +141,8 @@ export function ControlTowerShipment360({
   })();
   const crmAccountChoices =
     (data.crmAccountChoices as Array<{ id: string; name: string }> | undefined) ?? [];
+  const assigneeChoices =
+    (data.assigneeChoices as Array<{ id: string; name: string }> | undefined) ?? [];
   const customerCrmAccount = data.customerCrmAccount as
     | { id: string; name: string; legalName: string | null }
     | null
@@ -1105,27 +1117,92 @@ export function ControlTowerShipment360({
           <ul className="space-y-2 text-xs">
             {alerts.map((a) => {
               const row = a as Record<string, unknown>;
+              const sla = itemSla(row);
               return (
                 <li key={String(row.id)} className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-50 pb-2">
                   <div>
                     <span className="font-medium">{String(row.title)}</span> · {String(row.severity)} ·{" "}
                     {String(row.status)}
+                    <span
+                      className={`ml-2 rounded-full border px-2 py-0.5 ${
+                        sla.breached
+                          ? "border-red-200 bg-red-50 text-red-800"
+                          : "border-zinc-200 bg-zinc-50 text-zinc-700"
+                      }`}
+                    >
+                      age {sla.ageHours}h / SLA {sla.threshold}h
+                    </span>
                     {row.body ? <p className="text-zinc-600">{String(row.body)}</p> : null}
                   </div>
-                  {canEdit && row.status === "OPEN" ? (
-                    <button
-                      type="button"
-                      className="rounded border border-zinc-300 px-2 py-0.5"
-                      onClick={async () => {
-                        try {
-                          await postAction({ action: "acknowledge_ct_alert", alertId: String(row.id) });
-                        } catch (err) {
-                          window.alert(err instanceof Error ? err.message : "Failed");
-                        }
-                      }}
-                    >
-                      Ack
-                    </button>
+                  {canEdit ? (
+                    <div className="flex flex-wrap items-center gap-1">
+                      <select
+                        defaultValue={row.owner ? String((row.owner as { id: string }).id) : ""}
+                        className="rounded border border-zinc-300 px-1 py-0.5"
+                        onChange={async (e) => {
+                          try {
+                            await postAction({
+                              action: "assign_ct_alert_owner",
+                              alertId: String(row.id),
+                              ownerUserId: e.target.value || null,
+                            });
+                          } catch (err) {
+                            window.alert(err instanceof Error ? err.message : "Failed");
+                          }
+                        }}
+                      >
+                        <option value="">Owner: none</option>
+                        {assigneeChoices.map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.name}
+                          </option>
+                        ))}
+                      </select>
+                      {row.status === "OPEN" ? (
+                        <button
+                          type="button"
+                          className="rounded border border-zinc-300 px-2 py-0.5"
+                          onClick={async () => {
+                            try {
+                              await postAction({ action: "acknowledge_ct_alert", alertId: String(row.id) });
+                            } catch (err) {
+                              window.alert(err instanceof Error ? err.message : "Failed");
+                            }
+                          }}
+                        >
+                          Ack
+                        </button>
+                      ) : null}
+                      {row.status !== "CLOSED" ? (
+                        <button
+                          type="button"
+                          className="rounded border border-zinc-300 px-2 py-0.5"
+                          onClick={async () => {
+                            try {
+                              await postAction({ action: "close_ct_alert", alertId: String(row.id) });
+                            } catch (err) {
+                              window.alert(err instanceof Error ? err.message : "Failed");
+                            }
+                          }}
+                        >
+                          Close
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="rounded border border-zinc-300 px-2 py-0.5"
+                          onClick={async () => {
+                            try {
+                              await postAction({ action: "reopen_ct_alert", alertId: String(row.id) });
+                            } catch (err) {
+                              window.alert(err instanceof Error ? err.message : "Failed");
+                            }
+                          }}
+                        >
+                          Reopen
+                        </button>
+                      )}
+                    </div>
                   ) : null}
                 </li>
               );
@@ -1175,13 +1252,45 @@ export function ControlTowerShipment360({
           <ul className="space-y-2 text-xs">
             {exceptions.map((x) => {
               const row = x as Record<string, unknown>;
+              const sla = itemSla(row);
               return (
                 <li key={String(row.id)} className="border-b border-zinc-50 pb-2">
                   <span className="font-medium">{String(row.type)}</span> · {String(row.status)} ·{" "}
                   {String(row.severity)}
+                  <span
+                    className={`ml-2 rounded-full border px-2 py-0.5 ${
+                      sla.breached
+                        ? "border-red-200 bg-red-50 text-red-800"
+                        : "border-zinc-200 bg-zinc-50 text-zinc-700"
+                    }`}
+                  >
+                    age {sla.ageHours}h / SLA {sla.threshold}h
+                  </span>
                   {row.rootCause ? <p className="text-zinc-600">{String(row.rootCause)}</p> : null}
                   {canEdit ? (
                     <div className="mt-1 flex gap-1">
+                      <select
+                        defaultValue={row.owner ? String((row.owner as { id: string }).id) : ""}
+                        className="rounded border border-zinc-200 px-2 py-0.5"
+                        onChange={async (e) => {
+                          try {
+                            await postAction({
+                              action: "assign_ct_exception_owner",
+                              exceptionId: String(row.id),
+                              ownerUserId: e.target.value || null,
+                            });
+                          } catch (err) {
+                            window.alert(err instanceof Error ? err.message : "Failed");
+                          }
+                        }}
+                      >
+                        <option value="">Owner: none</option>
+                        {assigneeChoices.map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.name}
+                          </option>
+                        ))}
+                      </select>
                       {(["IN_PROGRESS", "RESOLVED", "CLOSED"] as const).map((st) => (
                         <button
                           key={st}

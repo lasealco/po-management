@@ -76,6 +76,62 @@ export async function getControlTowerReportsSummary(params: {
     else if (next === "Planned") routeActions.markDeparture += 1;
     else routeActions.recordArrival += 1;
   }
+  const [alertOwnerGroups, exceptionOwnerGroups] = restricted
+    ? [[], []]
+    : await Promise.all([
+        prisma.ctAlert.groupBy({
+          by: ["ownerUserId"],
+          where: {
+            tenantId,
+            status: { in: ["OPEN", "ACKNOWLEDGED"] },
+            shipment: { is: scope },
+          },
+          _count: { _all: true },
+        }),
+        prisma.ctException.groupBy({
+          by: ["ownerUserId"],
+          where: {
+            tenantId,
+            status: { in: ["OPEN", "IN_PROGRESS"] },
+            shipment: { is: scope },
+          },
+          _count: { _all: true },
+        }),
+      ]);
+  const ownerIds = Array.from(
+    new Set(
+      [...alertOwnerGroups, ...exceptionOwnerGroups]
+        .map((g) => g.ownerUserId)
+        .filter((v): v is string => Boolean(v)),
+    ),
+  );
+  const ownerMap = ownerIds.length
+    ? new Map(
+        (
+          await prisma.user.findMany({
+            where: { id: { in: ownerIds } },
+            select: { id: true, name: true },
+          })
+        ).map((u) => [u.id, u.name]),
+      )
+    : new Map<string, string>();
+  const summarizeOwnerLoad = (
+    groups: Array<{ ownerUserId: string | null; _count: { _all: number } }>,
+  ) => {
+    const unassigned = groups.find((g) => g.ownerUserId === null)?._count._all ?? 0;
+    const top = groups
+      .filter((g) => g.ownerUserId)
+      .sort((a, b) => b._count._all - a._count._all)
+      .slice(0, 8)
+      .map((g) => ({
+        ownerUserId: g.ownerUserId as string,
+        ownerName: ownerMap.get(g.ownerUserId as string) ?? "Unknown",
+        count: g._count._all,
+      }));
+    return { unassigned, top };
+  };
+  const alertOwnerLoad = summarizeOwnerLoad(alertOwnerGroups);
+  const exceptionOwnerLoad = summarizeOwnerLoad(exceptionOwnerGroups);
 
   return {
     generatedAt: new Date().toISOString(),
@@ -90,6 +146,10 @@ export async function getControlTowerReportsSummary(params: {
       openExceptions: restricted ? null : openExceptions,
     },
     routeActions,
+    ownerLoad: {
+      alerts: alertOwnerLoad,
+      exceptions: exceptionOwnerLoad,
+    },
     byStatus: statusMap,
   };
 }

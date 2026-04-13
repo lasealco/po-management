@@ -104,6 +104,14 @@ export async function getShipment360(params: {
         orderBy: { name: "asc" },
         select: { id: true, name: true },
       });
+  const assigneeChoices = restricted
+    ? []
+    : await prisma.user.findMany({
+        where: { tenantId, isActive: true },
+        orderBy: { name: "asc" },
+        take: 200,
+        select: { id: true, name: true },
+      });
 
   const docFilter = restricted
     ? s.ctDocuments.filter((d) => d.visibility === "CUSTOMER_SHAREABLE")
@@ -207,6 +215,7 @@ export async function getShipment360(params: {
     customerCrmAccountId: s.customerCrmAccountId,
     customerCrmAccount,
     crmAccountChoices,
+    assigneeChoices,
     createdBy: { name: s.createdBy.name },
     order: s.order,
     booking: s.booking
