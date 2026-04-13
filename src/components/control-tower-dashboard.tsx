@@ -10,6 +10,8 @@ type Overview = {
     arrivalsNext3Days: number;
     arrivalsNext7Days: number;
     arrivalsNext14Days: number;
+    withLegs: number;
+    withContainers: number;
   };
 };
 
@@ -64,6 +66,13 @@ export function ControlTowerDashboard({ overview }: { overview: Overview }) {
             </span>
           ))}
         </div>
+      </div>
+      <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm sm:col-span-2 lg:col-span-4">
+        <p className="text-xs font-semibold uppercase text-zinc-500">Route data coverage</p>
+        <p className="mt-1 text-sm text-zinc-700">
+          <span className="font-semibold">{counts.withLegs}</span> shipments with legs ·{" "}
+          <span className="font-semibold">{counts.withContainers}</span> shipments with containers
+        </p>
       </div>
     </div>
   );

@@ -33,6 +33,8 @@ export async function getControlTowerOverview(params: {
     arrivals3,
     arrivals7,
     arrivals14,
+    withLegs,
+    withContainers,
   ] = await Promise.all([
     prisma.shipment.groupBy({
       by: ["status"],
@@ -82,6 +84,18 @@ export async function getControlTowerOverview(params: {
         booking: { eta: { gte: now, lte: d14 } },
       },
     }),
+    prisma.shipment.count({
+      where: {
+        ...scope,
+        ctLegs: { some: {} },
+      },
+    }),
+    prisma.shipment.count({
+      where: {
+        ...scope,
+        ctContainers: { some: {} },
+      },
+    }),
   ]);
 
   const byStatus = Object.fromEntries(
@@ -109,6 +123,8 @@ export async function getControlTowerOverview(params: {
       arrivalsNext3Days: arrivals3,
       arrivalsNext7Days: arrivals7,
       arrivalsNext14Days: arrivals14,
+      withLegs,
+      withContainers,
     },
   };
 }

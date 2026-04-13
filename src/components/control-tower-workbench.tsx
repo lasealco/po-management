@@ -360,7 +360,16 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
               </tr>
             ) : (
               filteredRows.map((r) => (
-                <tr key={r.id} className="text-zinc-800">
+                <tr
+                  key={r.id}
+                  className={`text-zinc-800 ${
+                    (r.nextAction || "").startsWith("Record arrival")
+                      ? "bg-amber-50/40"
+                      : (r.nextAction || "").startsWith("Mark departure")
+                        ? "bg-sky-50/40"
+                        : ""
+                  }`}
+                >
                   <td className="px-2 py-2 font-medium">
                     <Link href={`/control-tower/shipments/${r.id}`} className="text-sky-800 hover:underline">
                       {r.shipmentNo || r.id.slice(0, 8)}

@@ -10,6 +10,13 @@ type Summary = {
     withBooking: number;
     openExceptions: number | null;
   };
+  routeActions: {
+    planLeg: number;
+    markDeparture: number;
+    recordArrival: number;
+    routeComplete: number;
+    noLegs: number;
+  };
   byStatus: Record<string, number>;
 };
 
@@ -44,6 +51,26 @@ export function ControlTowerReportsClient({
             Customer-safe report: exception counts hidden.
           </div>
         )}
+      </div>
+      <div className="rounded-lg border border-zinc-200 bg-white p-4">
+        <h2 className="text-sm font-semibold text-zinc-900">Route action buckets</h2>
+        <div className="mt-2 grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-5">
+          <div className="rounded border border-zinc-200 bg-zinc-50 px-3 py-2">
+            Plan leg: <strong>{summary.routeActions.planLeg}</strong>
+          </div>
+          <div className="rounded border border-zinc-200 bg-zinc-50 px-3 py-2">
+            Mark departure: <strong>{summary.routeActions.markDeparture}</strong>
+          </div>
+          <div className="rounded border border-zinc-200 bg-zinc-50 px-3 py-2">
+            Record arrival: <strong>{summary.routeActions.recordArrival}</strong>
+          </div>
+          <div className="rounded border border-zinc-200 bg-zinc-50 px-3 py-2">
+            Route complete: <strong>{summary.routeActions.routeComplete}</strong>
+          </div>
+          <div className="rounded border border-zinc-200 bg-zinc-50 px-3 py-2">
+            No legs: <strong>{summary.routeActions.noLegs}</strong>
+          </div>
+        </div>
       </div>
       <div className="rounded-lg border border-zinc-200 bg-white p-4">
         <div className="mb-2 flex items-center justify-between gap-2">
