@@ -156,6 +156,17 @@ export async function getWmsDashboardPayload(
         receivedAt: true,
         order: { select: { orderNumber: true } },
         _count: { select: { items: true } },
+        milestones: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          select: {
+            code: true,
+            source: true,
+            actualAt: true,
+            createdAt: true,
+            note: true,
+          },
+        },
       },
     }),
     prisma.inventoryMovement.findMany({
@@ -285,17 +296,29 @@ export async function getWmsDashboardPayload(
       totalQty: w.tasks.reduce((s, t) => s + Number(t.quantity), 0).toFixed(3),
       createdAt: w.createdAt.toISOString(),
     })),
-    inboundShipments: inboundShipments.map((s) => ({
-      id: s.id,
-      shipmentNo: s.shipmentNo,
-      status: s.status,
-      asnReference: s.asnReference,
-      expectedReceiveAt: s.expectedReceiveAt?.toISOString() ?? null,
-      shippedAt: s.shippedAt.toISOString(),
-      receivedAt: s.receivedAt?.toISOString() ?? null,
-      orderNumber: s.order.orderNumber,
-      itemCount: s._count.items,
-    })),
+    inboundShipments: inboundShipments.map((s) => {
+      const m0 = s.milestones[0];
+      return {
+        id: s.id,
+        shipmentNo: s.shipmentNo,
+        status: s.status,
+        asnReference: s.asnReference,
+        expectedReceiveAt: s.expectedReceiveAt?.toISOString() ?? null,
+        shippedAt: s.shippedAt.toISOString(),
+        receivedAt: s.receivedAt?.toISOString() ?? null,
+        orderNumber: s.order.orderNumber,
+        itemCount: s._count.items,
+        latestMilestone: m0
+          ? {
+              code: m0.code,
+              source: m0.source,
+              actualAt: m0.actualAt?.toISOString() ?? null,
+              createdAt: m0.createdAt.toISOString(),
+              note: m0.note,
+            }
+          : null,
+      };
+    }),
     putawayCandidates: shipmentItems
       .map((row) => {
         const baseQty =

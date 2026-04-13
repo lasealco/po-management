@@ -99,6 +99,13 @@ type WmsData = {
     receivedAt: string | null;
     orderNumber: string;
     itemCount: number;
+    latestMilestone: {
+      code: string;
+      source: string;
+      actualAt: string | null;
+      createdAt: string;
+      note: string | null;
+    } | null;
   }>;
   putawayCandidates: Array<{
     shipmentItemId: string;
@@ -138,6 +145,63 @@ type WmsData = {
 };
 
 export type WmsSection = "setup" | "operations" | "stock";
+
+const INBOUND_MILESTONE_LOG_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: "ASN_SUBMITTED", label: "ASN submitted" },
+  { value: "ASN_VALIDATED", label: "ASN validated" },
+  { value: "BOOKING_CONFIRMED", label: "Booking confirmed" },
+  { value: "DEPARTED", label: "Departed" },
+  { value: "ARRIVED", label: "Arrived" },
+  { value: "DELIVERED", label: "Delivered" },
+  { value: "RECEIVED", label: "Received" },
+];
+
+function downloadMovementLedgerCsv(
+  rows: WmsData["recentMovements"],
+  filenameBase = "wms-ledger",
+) {
+  const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
+  const header = [
+    "createdAt",
+    "movementType",
+    "quantity",
+    "productCode",
+    "sku",
+    "productName",
+    "warehouse",
+    "bin",
+    "referenceType",
+    "referenceId",
+    "note",
+    "createdBy",
+  ];
+  const lines = [header.join(",")];
+  for (const m of rows) {
+    lines.push(
+      [
+        esc(m.createdAt),
+        esc(m.movementType),
+        esc(m.quantity),
+        esc(m.product.productCode ?? ""),
+        esc(m.product.sku ?? ""),
+        esc(m.product.name),
+        esc(m.warehouse.code || m.warehouse.name),
+        esc(m.bin ? m.bin.code : ""),
+        esc(m.referenceType ?? ""),
+        esc(m.referenceId ?? ""),
+        esc(m.note ?? ""),
+        esc(m.createdBy.name),
+      ].join(","),
+    );
+  }
+  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${filenameBase}-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export function WmsClient({ canEdit, section }: { canEdit: boolean; section: WmsSection }) {
   const [data, setData] = useState<WmsData | null>(null);
@@ -191,6 +255,10 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
   const [ledgerDraftSince, setLedgerDraftSince] = useState("");
   const [ledgerDraftUntil, setLedgerDraftUntil] = useState("");
   const [ledgerDraftLimit, setLedgerDraftLimit] = useState("");
+  const [openTaskTypeFilter, setOpenTaskTypeFilter] = useState<
+    "" | "PUTAWAY" | "PICK" | "REPLENISH" | "CYCLE_COUNT"
+  >("");
+  const [balanceTextFilter, setBalanceTextFilter] = useState("");
 
   const load = useCallback(async () => {
     const params = new URLSearchParams();
@@ -269,6 +337,24 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
     }
     return rows.filter((b) => b.warehouse.id === selectedWarehouseId);
   }, [data?.balances, section, selectedWarehouseId]);
+
+  const tasksShown = useMemo(() => {
+    const rows = data?.openTasks ?? [];
+    if (!openTaskTypeFilter) return rows;
+    return rows.filter((t) => t.taskType === openTaskTypeFilter);
+  }, [data?.openTasks, openTaskTypeFilter]);
+
+  const balancesTableRows = useMemo(() => {
+    const q = balanceTextFilter.trim().toLowerCase();
+    if (!q) return balancesShown;
+    return balancesShown.filter((b) => {
+      const pcode = (b.product.productCode || "").toLowerCase();
+      const sku = (b.product.sku || "").toLowerCase();
+      const name = b.product.name.toLowerCase();
+      const bin = b.bin.code.toLowerCase();
+      return pcode.includes(q) || sku.includes(q) || name.includes(q) || bin.includes(q);
+    });
+  }, [balancesShown, balanceTextFilter]);
 
   async function runAction(body: Record<string, unknown>) {
     setBusy(true);
@@ -663,16 +749,18 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                 <th className="px-2 py-1">Order</th>
                 <th className="px-2 py-1">Shipment</th>
                 <th className="px-2 py-1">Status</th>
+                <th className="px-2 py-1">Last milestone</th>
                 <th className="px-2 py-1">ASN ref</th>
                 <th className="px-2 py-1">Expected</th>
                 <th className="px-2 py-1">Lines</th>
+                {canEdit ? <th className="px-2 py-1">Log</th> : null}
                 {canEdit ? <th className="px-2 py-1">Save</th> : null}
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200">
               {data.inboundShipments.length === 0 ? (
                 <tr>
-                  <td colSpan={canEdit ? 7 : 6} className="px-2 py-3 text-zinc-500">
+                  <td colSpan={canEdit ? 9 : 7} className="px-2 py-3 text-zinc-500">
                     No shipments for this tenant yet.
                   </td>
                 </tr>
@@ -684,6 +772,11 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                       <td className="px-2 py-1 font-medium text-zinc-900">{s.orderNumber}</td>
                       <td className="px-2 py-1 text-zinc-700">{s.shipmentNo || s.id.slice(0, 8)}</td>
                       <td className="px-2 py-1 text-zinc-600">{s.status}</td>
+                      <td className="max-w-[10rem] truncate px-2 py-1 text-xs text-zinc-600" title={s.latestMilestone?.code ?? ""}>
+                        {s.latestMilestone
+                          ? `${s.latestMilestone.code}${s.latestMilestone.actualAt ? " ✓" : ""}`
+                          : "—"}
+                      </td>
                       <td className="px-2 py-1">
                         {canEdit ? (
                           <input
@@ -723,6 +816,32 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                         )}
                       </td>
                       <td className="px-2 py-1 text-zinc-600">{s.itemCount}</td>
+                      {canEdit ? (
+                        <td className="px-2 py-1">
+                          <select
+                            defaultValue=""
+                            disabled={busy}
+                            onChange={(e) => {
+                              const code = e.target.value;
+                              e.target.value = "";
+                              if (!code) return;
+                              void runAction({
+                                action: "record_shipment_milestone",
+                                shipmentId: s.id,
+                                milestoneCode: code,
+                              });
+                            }}
+                            className="max-w-[11rem] rounded border border-zinc-300 px-1 py-1 text-xs"
+                          >
+                            <option value="">Log milestone…</option>
+                            {INBOUND_MILESTONE_LOG_OPTIONS.map((o) => (
+                              <option key={o.value} value={o.value}>
+                                {o.label}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                      ) : null}
                       {canEdit ? (
                         <td className="px-2 py-1">
                           <button
@@ -1116,12 +1235,40 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
       </section>
 
       <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
-        <h2 className="mb-2 text-sm font-semibold text-zinc-900">Open tasks</h2>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold text-zinc-900">Open tasks</h2>
+          <label className="flex items-center gap-2 text-xs text-zinc-600">
+            Type
+            <select
+              value={openTaskTypeFilter}
+              onChange={(e) =>
+                setOpenTaskTypeFilter(
+                  e.target.value as "" | "PUTAWAY" | "PICK" | "REPLENISH" | "CYCLE_COUNT",
+                )
+              }
+              className="rounded border border-zinc-300 px-2 py-1 text-sm"
+            >
+              <option value="">All ({data.openTasks.length})</option>
+              <option value="PUTAWAY">
+                Putaway ({data.openTasks.filter((t) => t.taskType === "PUTAWAY").length})
+              </option>
+              <option value="PICK">Pick ({data.openTasks.filter((t) => t.taskType === "PICK").length})</option>
+              <option value="REPLENISH">
+                Replenish ({data.openTasks.filter((t) => t.taskType === "REPLENISH").length})
+              </option>
+              <option value="CYCLE_COUNT">
+                Cycle count ({data.openTasks.filter((t) => t.taskType === "CYCLE_COUNT").length})
+              </option>
+            </select>
+          </label>
+        </div>
         <div className="space-y-2 text-sm">
           {data.openTasks.length === 0 ? (
             <p className="text-zinc-500">No open tasks.</p>
+          ) : tasksShown.length === 0 ? (
+            <p className="text-zinc-500">No tasks match this type filter.</p>
           ) : (
-            data.openTasks.map((t) => (
+            tasksShown.map((t) => (
               <div key={t.id} className="flex flex-wrap items-center gap-2 rounded border border-zinc-200 p-2">
                 <span className="rounded bg-zinc-100 px-2 py-0.5 text-xs font-semibold text-zinc-800">
                   {t.taskType}
@@ -1197,13 +1344,25 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
       {section === "stock" ? (
         <>
       <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
-        <h2 className="mb-2 text-sm font-semibold text-zinc-900">Recent stock movements</h2>
-        <p className="mb-2 text-xs text-zinc-500">
-          Showing {movementsShown.length} ledger row{movementsShown.length === 1 ? "" : "s"}
-          {selectedWarehouseId || movementTypeFilter ? " for the warehouse / type filters above" : ""}.
-          Date range and row cap apply after you click <span className="font-medium">Apply date / cap</span>; warehouse
-          and movement type refetch automatically.
-        </p>
+        <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <h2 className="text-sm font-semibold text-zinc-900">Recent stock movements</h2>
+            <p className="mt-1 text-xs text-zinc-500">
+              Showing {movementsShown.length} ledger row{movementsShown.length === 1 ? "" : "s"}
+              {selectedWarehouseId || movementTypeFilter ? " for the warehouse / type filters above" : ""}. Date range
+              and row cap apply after you click <span className="font-medium">Apply date / cap</span>; warehouse and
+              movement type refetch automatically.
+            </p>
+          </div>
+          <button
+            type="button"
+            disabled={movementsShown.length === 0}
+            onClick={() => downloadMovementLedgerCsv(movementsShown)}
+            className="shrink-0 rounded border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-800 disabled:opacity-40"
+          >
+            Export CSV
+          </button>
+        </div>
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead className="bg-zinc-100 text-left text-xs uppercase text-zinc-700">
@@ -1252,7 +1411,19 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
       </section>
 
       <section className="rounded-lg border border-zinc-200 bg-white p-4">
-        <h2 className="mb-2 text-sm font-semibold text-zinc-900">Stock balances</h2>
+        <div className="mb-2 flex flex-wrap items-end justify-between gap-2">
+          <h2 className="text-sm font-semibold text-zinc-900">Stock balances</h2>
+          <label className="flex min-w-[12rem] flex-1 flex-col gap-1 text-xs text-zinc-600 sm:max-w-sm">
+            Filter by product or bin
+            <input
+              type="search"
+              value={balanceTextFilter}
+              onChange={(e) => setBalanceTextFilter(e.target.value)}
+              placeholder="Code, SKU, name, bin…"
+              className="rounded border border-zinc-300 px-2 py-1.5 text-sm"
+            />
+          </label>
+        </div>
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead className="bg-zinc-100 text-left text-xs uppercase text-zinc-700">
@@ -1268,14 +1439,16 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 text-zinc-800">
-              {balancesShown.length === 0 ? (
+              {balancesTableRows.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-2 py-3 text-zinc-500">
-                    No balances in this view.
+                    {balancesShown.length === 0
+                      ? "No balances in this view."
+                      : "No balances match this filter."}
                   </td>
                 </tr>
               ) : (
-                balancesShown.map((b) => (
+                balancesTableRows.map((b) => (
                   <tr key={b.id} className={Boolean(b.onHold) ? "bg-amber-50/80" : undefined}>
                     <td className="px-2 py-1">{b.warehouse.code || b.warehouse.name}</td>
                     <td className="px-2 py-1">

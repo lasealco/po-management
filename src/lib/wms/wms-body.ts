@@ -12,6 +12,8 @@ export type WmsBody = {
   asnReference?: string | null;
   /** ISO datetime string or null to clear. */
   expectedReceiveAt?: string | null;
+  /** `ShipmentMilestoneCode` value for `record_shipment_milestone`. */
+  milestoneCode?: string;
   outboundOrderId?: string;
   outboundLineId?: string;
   productId?: string;

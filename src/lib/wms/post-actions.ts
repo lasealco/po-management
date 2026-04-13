@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
+import { Prisma, ShipmentMilestoneCode } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 
@@ -799,6 +799,37 @@ export async function handleWmsPost(
     await prisma.shipment.update({
       where: { id: shipment.id },
       data,
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "record_shipment_milestone") {
+    const shipmentId = input.shipmentId?.trim();
+    const rawCode = input.milestoneCode?.trim();
+    if (!shipmentId || !rawCode) {
+      return NextResponse.json(
+        { error: "shipmentId and milestoneCode required." },
+        { status: 400 },
+      );
+    }
+    if (!Object.values(ShipmentMilestoneCode).includes(rawCode as ShipmentMilestoneCode)) {
+      return NextResponse.json({ error: "Invalid milestoneCode." }, { status: 400 });
+    }
+    const code = rawCode as ShipmentMilestoneCode;
+    const shipment = await prisma.shipment.findFirst({
+      where: { id: shipmentId, order: { tenantId } },
+      select: { id: true },
+    });
+    if (!shipment) {
+      return NextResponse.json({ error: "Shipment not found." }, { status: 404 });
+    }
+    await prisma.shipmentMilestone.create({
+      data: {
+        shipmentId: shipment.id,
+        code,
+        note: input.note?.trim() || null,
+        updatedById: actorId,
+      },
     });
     return NextResponse.json({ ok: true });
   }

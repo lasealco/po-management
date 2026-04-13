@@ -4,13 +4,22 @@ export async function WmsHomeOverview({ tenantId }: { tenantId: string }) {
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   const [
     openTasks,
+    openPutaway,
+    openPick,
+    openReplenish,
+    openCycleCount,
     outboundActive,
     wavesActive,
     balanceRows,
+    balancesOnHold,
     unbilledEvents,
     movementsWeek,
   ] = await Promise.all([
     prisma.wmsTask.count({ where: { tenantId, status: "OPEN" } }),
+    prisma.wmsTask.count({ where: { tenantId, status: "OPEN", taskType: "PUTAWAY" } }),
+    prisma.wmsTask.count({ where: { tenantId, status: "OPEN", taskType: "PICK" } }),
+    prisma.wmsTask.count({ where: { tenantId, status: "OPEN", taskType: "REPLENISH" } }),
+    prisma.wmsTask.count({ where: { tenantId, status: "OPEN", taskType: "CYCLE_COUNT" } }),
     prisma.outboundOrder.count({
       where: {
         tenantId,
@@ -21,6 +30,7 @@ export async function WmsHomeOverview({ tenantId }: { tenantId: string }) {
       where: { tenantId, status: { in: ["OPEN", "RELEASED"] } },
     }),
     prisma.inventoryBalance.count({ where: { tenantId } }),
+    prisma.inventoryBalance.count({ where: { tenantId, onHold: true } }),
     prisma.wmsBillingEvent.count({ where: { tenantId, invoiceRunId: null } }),
     prisma.inventoryMovement.count({
       where: { tenantId, createdAt: { gte: weekAgo } },
@@ -28,21 +38,26 @@ export async function WmsHomeOverview({ tenantId }: { tenantId: string }) {
   ]);
 
   const tiles = [
-    { label: "Open WMS tasks", value: openTasks, hint: "Putaway, pick, replenish, cycle count" },
+    { label: "Open WMS tasks", value: openTasks, hint: "All types (see breakdown below)" },
+    { label: "Open putaway", value: openPutaway, hint: "Inbound to bin" },
+    { label: "Open picks", value: openPick, hint: "Wave or ad-hoc" },
+    { label: "Open replenishments", value: openReplenish, hint: "From REPLENISH rules" },
+    { label: "Open cycle counts", value: openCycleCount, hint: "Awaiting count entry" },
     { label: "Outbound in flight", value: outboundActive, hint: "Draft through packed" },
     { label: "Active waves", value: wavesActive, hint: "Open or released" },
-    { label: "Balance rows", value: balanceRows, hint: "Bin × product positions" },
-    { label: "Unbilled ledger charges", value: unbilledEvents, hint: "Billing events not on a run" },
-    { label: "Movements (7 days)", value: movementsWeek, hint: "All movement types" },
+    { label: "Balance rows", value: balanceRows, hint: "Bin × product" },
+    { label: "On-hold balances", value: balancesOnHold, hint: "QC / quarantine flags" },
+    { label: "Unbilled charges", value: unbilledEvents, hint: "Billing events not invoiced" },
+    { label: "Movements (7d)", value: movementsWeek, hint: "All movement types" },
   ];
 
   return (
     <section className="mb-10">
       <h2 className="text-sm font-semibold text-zinc-900">At a glance</h2>
       <p className="mt-1 text-xs text-zinc-600">
-        Live counts for this tenant — use the tabs above for detail.
+        Live counts for this tenant — Operations and Stock tabs hold the detail.
       </p>
-      <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <ul className="mt-4 grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         {tiles.map((t) => (
           <li
             key={t.label}

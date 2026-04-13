@@ -4,6 +4,8 @@
 
 **Legend:** ✅ covered · 🟡 partial / simplified · ❌ not in schema or not wired
 
+**Phase A / R1–R2 demo exit (this repo):** setup + receiving/putaway + stock inquiry (ledger + balance filter + CSV) + outbound pick/pack/ship + holds + replenishment tasks + waves + cycle count + inbound ASN fields + **shipment milestones** (log + last milestone in UI) + billing event materialization to CRM account where linked. **Explicitly deferred:** zone hierarchy beyond flat zone/bin, lot master, field-level WMS permission matrix, multi-strategy allocation, dock appointments, VAS/work orders, commercial quotes (see R3).
+
 ## R1 — Foundation (setup, receiving path basics, inquiry, outbound basic, permissions)
 
 | Blueprint area | Repo reality | Notes |
@@ -16,7 +18,7 @@
 | Permissions / audit | 🟡 `org.wms` + `User` on movements | No field-level WMS matrix from `wms_role_permission_matrix` yet |
 | **Inbound ASN** | 🟡 **Orders + `Shipment` / `ShipmentItem`** | `Shipment.asnReference` + `expectedReceiveAt`; WMS inbound table + `set_shipment_inbound_fields`; putaway unchanged |
 | Receiving / putaway | ✅ `WmsTask` PUTAWAY + `InventoryMovement` PUTAWAY | Matches “directed putaway” at demo depth |
-| **Inventory inquiry** | ✅ `InventoryBalance` + **movement ledger** 🟡 | Stock page: server ledger filters `mvWarehouse`, `mvType`, `mvSince`/`mvUntil`, `mvLimit` (≤300); balances unchanged |
+| **Inventory inquiry** | ✅ `InventoryBalance` + **movement ledger** 🟡 | Stock page: server ledger filters `mvWarehouse`, `mvType`, `mvSince`/`mvUntil`, `mvLimit` (≤300); **client text filter** on balances; **Export CSV** for visible ledger rows |
 | Outbound order | 🟡 `OutboundOrder` / `OutboundOrderLine` | Pick → **Mark packed** → **Mark shipped** (`SHIPMENT` movements); CRM link locked after pack |
 | Allocation | 🟡 Line `allocatedQty` on balance + pick tasks | Not full multi-strategy allocation engine |
 
@@ -42,15 +44,17 @@
 
 ## Existing API actions (`POST /api/wms`)
 
-`create_zone`, `create_bin`, `update_bin_profile`, `set_replenishment_rule`, `create_replenishment_tasks`, `create_outbound_order` (optional `crmAccountId`), `set_outbound_crm_account`, `release_outbound_order`, `create_putaway_task`, `complete_putaway_task`, `create_pick_task`, `create_pick_wave`, `release_wave`, `complete_wave`, `complete_pick_task`, `set_balance_hold`, `clear_balance_hold`, `complete_replenish_task`, `create_cycle_count_task`, `complete_cycle_count_task`.
+`create_zone`, `create_bin`, `update_bin_profile`, `set_replenishment_rule`, `create_replenishment_tasks`, `create_outbound_order` (optional `crmAccountId`), `set_outbound_crm_account`, `release_outbound_order`, `create_putaway_task`, `complete_putaway_task`, `create_pick_task`, `create_pick_wave`, `release_wave`, `complete_wave`, `complete_pick_task`, `mark_outbound_packed`, `mark_outbound_shipped`, `set_shipment_inbound_fields`, `record_shipment_milestone`, `set_balance_hold`, `clear_balance_hold`, `complete_replenish_task`, `create_cycle_count_task`, `complete_cycle_count_task`.
 
 Handlers live in `src/lib/wms/post-actions.ts` (route stays a thin shell).
 
 ## Near-term build order (Phase A continuation)
 
-1. **Movement visibility + filters** — **done:** ledger query params + stock UI; export / saved views later.  
-2. **Hold / QC** minimal model or status flags on `InventoryBalance` (design choice in next increment).  
-3. **`WmsCustomer`** or reuse **CRM `CrmAccount`** for 3PL owner linkage — decision before deep inbound.  
+1. **Movement visibility + filters** — **done:** ledger query params + stock UI + **CSV export** for current rows.  
+2. **Hold / QC** — **done:** `onHold` / `holdReason` on `InventoryBalance` + UI.  
+3. **`WmsCustomer`** or reuse **CRM `CrmAccount`** — **done** for outbound (optional link + `set_outbound_crm_account`).  
 4. Split `src/app/api/wms/route.ts` into `src/lib/wms/*.ts` — **done:** `post-actions.ts` (POST), `get-wms-payload.ts` (GET), `wms-body.ts`, `wave.ts`, billing modules.
 
-_Last updated: WMS home overview + server-filtered movement ledger._
+_Next optional increments:_ saved ledger views, outbound ASN parity, deeper receiving states — not required for Phase A exit above.
+
+_Last updated: inbound milestones UI, open-task type filter, balance search, movement CSV, GAP_MAP refresh._
