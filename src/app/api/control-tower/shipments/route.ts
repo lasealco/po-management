@@ -37,11 +37,20 @@ export async function GET(request: Request) {
   const modeRaw = searchParams.get("mode") ?? "";
   const q = searchParams.get("q") ?? undefined;
   const take = searchParams.get("take");
+  const onlyOverdueEtaRaw = searchParams.get("onlyOverdueEta") ?? "";
+  const routeActionRaw = searchParams.get("routeAction") ?? "";
+  const dispatchOwnerUserId = searchParams.get("dispatchOwnerUserId")?.trim() || undefined;
 
   const status = STATUSES.includes(statusRaw as ShipmentStatus)
     ? (statusRaw as ShipmentStatus)
     : "";
   const mode = MODES.includes(modeRaw as TransportMode) ? (modeRaw as TransportMode) : "";
+  const onlyOverdueEta =
+    onlyOverdueEtaRaw === "1" || onlyOverdueEtaRaw.toLowerCase() === "true";
+  const routeActionAllowed = ["Plan leg", "Mark departure", "Record arrival", "Route complete"] as const;
+  const routeActionPrefix = routeActionAllowed.includes(routeActionRaw as (typeof routeActionAllowed)[number])
+    ? (routeActionRaw as (typeof routeActionAllowed)[number])
+    : "";
 
   const rows = await listControlTowerShipments({
     tenantId: tenant.id,
@@ -51,6 +60,9 @@ export async function GET(request: Request) {
       mode: mode || undefined,
       q,
       take: take ? Number(take) : undefined,
+      onlyOverdueEta: onlyOverdueEta || undefined,
+      routeActionPrefix: routeActionPrefix || undefined,
+      dispatchOwnerUserId: dispatchOwnerUserId || undefined,
     },
   });
 

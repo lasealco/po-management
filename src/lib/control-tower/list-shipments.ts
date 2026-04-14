@@ -7,11 +7,21 @@ import {
   type ControlTowerPortalContext,
 } from "./viewer";
 
+const TERMINAL_SHIPMENT: Array<"DELIVERED" | "RECEIVED"> = ["DELIVERED", "RECEIVED"];
+
+const ROUTE_ACTION_PREFIXES = ["Plan leg", "Mark departure", "Record arrival", "Route complete"] as const;
+
 export type ListShipmentsQuery = {
   status?: ShipmentStatus | "";
   mode?: TransportMode | "";
   q?: string;
   take?: number;
+  /** Booking ETA or latest ETA before now; excludes terminal shipments. */
+  onlyOverdueEta?: boolean;
+  /** Prefix of derived `nextAction` (e.g. `Plan leg`); applied after fetch with overscan. */
+  routeActionPrefix?: (typeof ROUTE_ACTION_PREFIXES)[number] | "";
+  /** Shipments with at least one open alert or open exception assigned to this user (internal lists). */
+  dispatchOwnerUserId?: string;
 };
 
 const listSelectCore = {
@@ -182,8 +192,15 @@ export async function listControlTowerShipments(params: {
   query: ListShipmentsQuery;
 }) {
   const { tenantId, ctx, query } = params;
-  const take = Math.min(Math.max(query.take ?? 80, 1), 200);
+  const requestedTake = Math.min(Math.max(query.take ?? 80, 1), 200);
+  const routePrefix =
+    query.routeActionPrefix &&
+    ROUTE_ACTION_PREFIXES.includes(query.routeActionPrefix as (typeof ROUTE_ACTION_PREFIXES)[number])
+      ? query.routeActionPrefix
+      : "";
+  const dbTake = routePrefix ? Math.min(600, Math.max(requestedTake * 5, 120)) : requestedTake;
   const scope = controlTowerShipmentScopeWhere(tenantId, ctx);
+  const now = new Date();
 
   const where: Prisma.ShipmentWhereInput = {
     ...scope,
@@ -213,28 +230,72 @@ export async function listControlTowerShipments(params: {
       ],
     });
   }
+  if (query.onlyOverdueEta) {
+    ands.push({
+      status: { notIn: [...TERMINAL_SHIPMENT] },
+      OR: [
+        { booking: { is: { eta: { lt: now } } } },
+        { booking: { is: { latestEta: { lt: now } } } },
+      ],
+    });
+  }
+
+  const ownerId = query.dispatchOwnerUserId?.trim();
+  if (ownerId && !ctx.isRestrictedView) {
+    ands.push({
+      OR: [
+        {
+          ctAlerts: {
+            some: {
+              status: { in: ["OPEN", "ACKNOWLEDGED"] },
+              ownerUserId: ownerId,
+            },
+          },
+        },
+        {
+          ctExceptions: {
+            some: {
+              status: { in: ["OPEN", "IN_PROGRESS"] },
+              ownerUserId: ownerId,
+            },
+          },
+        },
+      ],
+    });
+  }
+
   if (ands.length) {
     where.AND = ands;
   }
 
   const orderBy = { updatedAt: "desc" as const };
 
+  const postFilter = (
+    rows: Array<ReturnType<typeof mapShipmentListRow>>,
+  ): Array<ReturnType<typeof mapShipmentListRow>> => {
+    let out = rows;
+    if (routePrefix) {
+      out = out.filter((r) => (r.nextAction ?? "").startsWith(routePrefix));
+    }
+    return out.slice(0, requestedTake);
+  };
+
   if (ctx.isRestrictedView) {
     const rows = await prisma.shipment.findMany({
       where,
-      take,
+      take: dbTake,
       orderBy,
       select: listSelectCore,
     });
-    return rows.map(mapShipmentListRow);
+    return postFilter(rows.map(mapShipmentListRow));
   }
 
   const rows = await prisma.shipment.findMany({
     where,
-    take,
+    take: dbTake,
     orderBy,
     select: listSelectInternal,
   });
 
-  return rows.map(mapShipmentListRow);
+  return postFilter(rows.map(mapShipmentListRow));
 }

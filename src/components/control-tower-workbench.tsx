@@ -49,6 +49,7 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
       if (status) sp.set("status", status);
       if (mode) sp.set("mode", mode);
       if (q.trim()) sp.set("q", q.trim());
+      if (onlyOverdueEta) sp.set("onlyOverdueEta", "1");
       sp.set("take", "120");
       const res = await fetch(`/api/control-tower/shipments?${sp.toString()}`);
       const data = (await res.json()) as { shipments?: Row[]; error?: string };
@@ -60,7 +61,7 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
     } finally {
       setBusy(false);
     }
-  }, [status, mode, q]);
+  }, [status, mode, q, onlyOverdueEta]);
 
   useEffect(() => {
     void load();

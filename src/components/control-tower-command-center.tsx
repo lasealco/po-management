@@ -52,6 +52,7 @@ export function ControlTowerCommandCenter() {
   const [status, setStatus] = useState("");
   const [routeAction, setRouteAction] = useState("");
   const [onlyOverdueEta, setOnlyOverdueEta] = useState(false);
+  const [ownerDirectory, setOwnerDirectory] = useState(() => new Map<string, string>());
 
   useEffect(() => {
     const t = window.setTimeout(() => setDebouncedQ(qInput.trim()), 400);
@@ -65,53 +66,49 @@ export function ControlTowerCommandCenter() {
       const sp = new URLSearchParams();
       if (debouncedQ) sp.set("q", debouncedQ);
       if (status) sp.set("status", status);
+      if (onlyOverdueEta) sp.set("onlyOverdueEta", "1");
+      if (routeAction) sp.set("routeAction", routeAction);
+      if (ownerFilter && ownerFilter !== "__unassigned") {
+        sp.set("dispatchOwnerUserId", ownerFilter);
+      }
       sp.set("take", "150");
       const res = await fetch(`/api/control-tower/shipments?${sp.toString()}`);
       const data = (await res.json()) as { shipments?: Row[]; error?: string };
       if (!res.ok) throw new Error(data.error || res.statusText);
-      setRows(data.shipments ?? []);
+      const list = data.shipments ?? [];
+      setRows(list);
+      setOwnerDirectory((prev) => {
+        const next = new Map(prev);
+        for (const r of list) {
+          if (r.dispatchOwner) next.set(r.dispatchOwner.id, r.dispatchOwner.name);
+        }
+        return next;
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Load failed");
     } finally {
       setBusy(false);
     }
-  }, [debouncedQ, status]);
+  }, [debouncedQ, status, onlyOverdueEta, routeAction, ownerFilter]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
   const ownerOptions = useMemo(() => {
-    const m = new Map<string, string>();
+    const m = new Map<string, string>(ownerDirectory);
     m.set("", "All owners");
     m.set("__unassigned", "Unassigned queue");
-    for (const r of rows) {
-      if (r.dispatchOwner) {
-        m.set(r.dispatchOwner.id, r.dispatchOwner.name);
-      }
-    }
     return Array.from(m.entries());
-  }, [rows]);
+  }, [ownerDirectory]);
 
   const filtered = useMemo(() => {
-    const nowMs = Date.now();
     let list = rows;
     if (ownerFilter === "__unassigned") {
       list = list.filter((r) => !r.dispatchOwner);
-    } else if (ownerFilter) {
-      list = list.filter((r) => r.dispatchOwner?.id === ownerFilter);
-    }
-    if (routeAction) {
-      list = list.filter((r) => (r.nextAction || "").startsWith(routeAction));
-    }
-    if (onlyOverdueEta) {
-      list = list.filter((r) => {
-        const eta = r.latestEta || r.eta;
-        return eta ? new Date(eta).getTime() < nowMs : false;
-      });
     }
     return list;
-  }, [rows, ownerFilter, routeAction, onlyOverdueEta]);
+  }, [rows, ownerFilter]);
 
   const byLane = useMemo(() => {
     const map = new Map<string, Row[]>();
@@ -198,7 +195,8 @@ export function ControlTowerCommandCenter() {
         {busy ? <span className="text-xs text-zinc-500">Loading…</span> : null}
       </div>
       <p className="text-xs text-zinc-500">
-        Search applies after you pause typing (~400ms). Lane and overdue filters apply on top of the loaded rows.
+        Search applies after you pause typing (~400ms). Status, overdue ETA, route lane, and dispatch owner (except
+        &quot;Unassigned queue&quot;) are applied on the server. Unassigned queue is filtered in the browser.
       </p>
       {error ? (
         <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">{error}</div>
