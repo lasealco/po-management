@@ -30,6 +30,8 @@ type Row = {
   cbmRef: string | null;
   updatedAt: string;
   latestMilestone: { code: string; hasActual: boolean } | null;
+  dispatchOwner: { id: string; name: string } | null;
+  openQueueCounts: { openAlerts: number; openExceptions: number };
 };
 
 export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
@@ -50,6 +52,7 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<string | null>(null);
   const [saved, setSaved] = useState<Array<{ id: string; name: string; filtersJson: unknown }>>([]);
+  const [ownerFilter, setOwnerFilter] = useState("");
 
   const load = useCallback(async () => {
     setBusy(true);
@@ -62,6 +65,7 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
       if (shipperFilter.trim()) sp.set("shipperName", shipperFilter.trim());
       if (consigneeFilter.trim()) sp.set("consigneeName", consigneeFilter.trim());
       if (laneFilter.trim()) sp.set("lane", laneFilter.trim());
+      if (ownerFilter) sp.set("dispatchOwnerUserId", ownerFilter);
       if (onlyOverdueEta) sp.set("onlyOverdueEta", "1");
       sp.set("take", "120");
       const res = await fetch(`/api/control-tower/shipments?${sp.toString()}`);
@@ -74,7 +78,7 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
     } finally {
       setBusy(false);
     }
-  }, [status, mode, q, shipperFilter, consigneeFilter, laneFilter, onlyOverdueEta]);
+  }, [status, mode, q, shipperFilter, consigneeFilter, laneFilter, ownerFilter, onlyOverdueEta]);
 
   useEffect(() => {
     void load();
@@ -183,6 +187,7 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
       shipperFilter?: string;
       consigneeFilter?: string;
       laneFilter?: string;
+      ownerFilter?: string;
       routeAction?: string;
       sortBy?: string;
       onlyOverdueEta?: boolean;
@@ -193,6 +198,7 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
     setShipperFilter(typeof o.shipperFilter === "string" ? o.shipperFilter : "");
     setConsigneeFilter(typeof o.consigneeFilter === "string" ? o.consigneeFilter : "");
     setLaneFilter(typeof o.laneFilter === "string" ? o.laneFilter : "");
+    setOwnerFilter(typeof o.ownerFilter === "string" ? o.ownerFilter : "");
     setRouteAction(typeof o.routeAction === "string" ? o.routeAction : "");
     setSortBy(typeof o.sortBy === "string" ? o.sortBy : "updated_desc");
     setOnlyOverdueEta(Boolean(o.onlyOverdueEta));
@@ -215,6 +221,7 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
           shipperFilter,
           consigneeFilter,
           laneFilter,
+          ownerFilter,
           routeAction,
           sortBy,
           onlyOverdueEta,
@@ -252,6 +259,13 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
       }
     }
     return out;
+  }, [rows]);
+  const ownerChoices = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const r of rows) {
+      if (r.dispatchOwner?.id) m.set(r.dispatchOwner.id, r.dispatchOwner.name);
+    }
+    return Array.from(m.entries()).map(([id, name]) => ({ id, name }));
   }, [rows]);
   const filteredRows = useMemo(() => {
     const nowMs = Date.now();
@@ -367,6 +381,21 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
             placeholder="e.g. CNSHA or USLAX"
             className="mt-1 block rounded border border-zinc-300 px-2 py-1.5 text-sm"
           />
+        </label>
+        <label className="text-xs text-zinc-600">
+          Dispatch owner
+          <select
+            value={ownerFilter}
+            onChange={(e) => setOwnerFilter(e.target.value)}
+            className="mt-1 block rounded border border-zinc-300 px-2 py-1.5 text-sm"
+          >
+            <option value="">Any</option>
+            {ownerChoices.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.name}
+              </option>
+            ))}
+          </select>
         </label>
         <label className="text-xs text-zinc-600">
           Route action
@@ -575,6 +604,7 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
               <th className="px-2 py-2">ATA / Delay</th>
               <th className="px-2 py-2">Parties</th>
               <th className="px-2 py-2">Qty / Wt / Cbm</th>
+              <th className="px-2 py-2">Owner / Queue</th>
               <th className="px-2 py-2">Route</th>
               <th className="px-2 py-2">Next action</th>
               <th className="px-2 py-2">Milestone</th>
@@ -584,7 +614,7 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
           <tbody className="divide-y divide-zinc-200">
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={14} className="px-2 py-6 text-center text-zinc-500">
+                <td colSpan={15} className="px-2 py-6 text-center text-zinc-500">
                   {busy ? "Loading…" : "No rows match."}
                 </td>
               </tr>
@@ -653,6 +683,12 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
                   </td>
                   <td className="whitespace-nowrap px-2 py-2 text-xs text-zinc-600">
                     {r.quantityRef || "—"} / {r.weightKgRef || "—"}kg / {r.cbmRef || "—"}cbm
+                  </td>
+                  <td className="px-2 py-2 text-xs text-zinc-600">
+                    <div>{r.dispatchOwner?.name || "Unassigned"}</div>
+                    <div className="text-zinc-500">
+                      A:{r.openQueueCounts?.openAlerts ?? 0} / E:{r.openQueueCounts?.openExceptions ?? 0}
+                    </div>
                   </td>
                   <td className="whitespace-nowrap px-2 py-2 text-xs text-zinc-700">
                     {r.routeProgressPct == null ? "—" : `${r.routeProgressPct}%`}
