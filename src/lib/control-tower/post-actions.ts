@@ -163,6 +163,44 @@ export async function handleControlTowerPost(
       action: "create",
       actorUserId: actorId,
     });
+    if (visibility === "INTERNAL") {
+      const emailMentions = Array.from(
+        new Set(
+          text
+            .match(/@([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})/gi)
+            ?.map((m) => m.slice(1).toLowerCase()) ?? [],
+        ),
+      );
+      if (emailMentions.length) {
+        const users = await prisma.user.findMany({
+          where: { tenantId, email: { in: emailMentions } },
+          select: { id: true, email: true },
+        });
+        for (const u of users) {
+          const mentionAlert = await prisma.ctAlert.create({
+            data: {
+              tenantId,
+              shipmentId,
+              type: "COLLAB_MENTION",
+              severity: "INFO",
+              title: `Mentioned in internal note (${u.email})`,
+              body: text.slice(0, 500),
+              status: "OPEN",
+              ownerUserId: u.id,
+            },
+          });
+          await writeCtAudit({
+            tenantId,
+            shipmentId,
+            entityType: "CtAlert",
+            entityId: mentionAlert.id,
+            action: "create_mention_alert",
+            actorUserId: actorId,
+            payload: { mention: u.email, noteId: row.id },
+          });
+        }
+      }
+    }
     return NextResponse.json({ ok: true, id: row.id });
   }
 

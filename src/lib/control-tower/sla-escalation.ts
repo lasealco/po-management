@@ -211,3 +211,60 @@ export async function runSlaEscalationsAllTenants(): Promise<{
 
   return { tenants: tenants.length, shipmentsTouched };
 }
+
+export async function previewSlaEscalationsForTenant(tenantId: string): Promise<{
+  shipmentIds: string[];
+  openAlertCandidates: number;
+  openExceptionCandidates: number;
+}> {
+  const [openAlerts, openExc] = await Promise.all([
+    prisma.ctAlert.findMany({
+      where: {
+        tenantId,
+        status: { in: ["OPEN", "ACKNOWLEDGED"] },
+        type: { not: "SLA_ESCALATION" },
+      },
+      select: { shipmentId: true, createdAt: true, severity: true },
+    }),
+    prisma.ctException.findMany({
+      where: {
+        tenantId,
+        status: { in: ["OPEN", "IN_PROGRESS"] },
+      },
+      select: { shipmentId: true, createdAt: true, severity: true },
+    }),
+  ]);
+
+  const shipmentIds = new Set<string>();
+  for (const r of openAlerts) {
+    if (ctSlaBreached(r.createdAt, r.severity)) shipmentIds.add(r.shipmentId);
+  }
+  for (const r of openExc) {
+    if (ctSlaBreached(r.createdAt, r.severity)) shipmentIds.add(r.shipmentId);
+  }
+  return {
+    shipmentIds: Array.from(shipmentIds),
+    openAlertCandidates: openAlerts.length,
+    openExceptionCandidates: openExc.length,
+  };
+}
+
+export async function runSlaEscalationsForTenant(params: {
+  tenantId: string;
+  actorUserId: string;
+  dryRun?: boolean;
+}) {
+  const { tenantId, actorUserId, dryRun = false } = params;
+  const preview = await previewSlaEscalationsForTenant(tenantId);
+  if (!dryRun) {
+    for (const shipmentId of preview.shipmentIds) {
+      await ensureSlaEscalationsForShipment({ tenantId, shipmentId, actorUserId });
+    }
+  }
+  return {
+    dryRun,
+    shipmentsTouched: preview.shipmentIds.length,
+    openAlertCandidates: preview.openAlertCandidates,
+    openExceptionCandidates: preview.openExceptionCandidates,
+  };
+}

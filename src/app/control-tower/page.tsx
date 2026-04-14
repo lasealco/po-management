@@ -45,7 +45,7 @@ export default async function ControlTowerPage() {
 
       {overview ? <ControlTowerDashboard overview={overview} /> : null}
 
-      <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <Link
           href="/control-tower/workbench"
           className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm transition hover:border-sky-300 hover:shadow-md"
@@ -81,6 +81,16 @@ export default async function ControlTowerPage() {
           <span className="text-base font-semibold text-zinc-900">Search & assist</span>
           <p className="mt-2 text-sm text-zinc-600">
             Structured search plus lightweight query hints (R5) — no external LLM required.
+          </p>
+          <span className="mt-4 inline-block text-sm font-medium text-sky-800">Open →</span>
+        </Link>
+        <Link
+          href="/control-tower/ops"
+          className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm transition hover:border-sky-300 hover:shadow-md"
+        >
+          <span className="text-base font-semibold text-zinc-900">Ops console</span>
+          <p className="mt-2 text-sm text-zinc-600">
+            Run SLA automations, review run history, and monitor owner capacity and ETA reliability.
           </p>
           <span className="mt-4 inline-block text-sm font-medium text-sky-800">Open →</span>
         </Link>

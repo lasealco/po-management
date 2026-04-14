@@ -7,6 +7,7 @@ const items: { href: string; label: string }[] = [
   { href: "/control-tower", label: "Dashboard" },
   { href: "/control-tower/workbench", label: "Workbench" },
   { href: "/control-tower/command-center", label: "Command center" },
+  { href: "/control-tower/ops", label: "Ops console" },
   { href: "/control-tower/reports", label: "Reports" },
   { href: "/control-tower/search", label: "Search & assist" },
 ];

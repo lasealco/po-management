@@ -167,6 +167,49 @@ export async function getControlTowerReportsSummary(params: {
   };
   const alertOwnerLoad = summarizeOwnerLoad(alertOwnerGroups);
   const exceptionOwnerLoad = summarizeOwnerLoad(exceptionOwnerGroups);
+  const ownerCombined = (arr: Array<{ ownerUserId: string; count: number }>) =>
+    arr.sort((a, b) => b.count - a.count);
+  const combinedMap = new Map<string, number>();
+  for (const r of alertOwnerLoad.top) {
+    combinedMap.set(r.ownerUserId, (combinedMap.get(r.ownerUserId) ?? 0) + r.count);
+  }
+  for (const r of exceptionOwnerLoad.top) {
+    combinedMap.set(r.ownerUserId, (combinedMap.get(r.ownerUserId) ?? 0) + r.count);
+  }
+  const combinedTop = ownerCombined(
+    Array.from(combinedMap.entries()).map(([ownerUserId, count]) => ({ ownerUserId, count })),
+  )
+    .slice(0, 8)
+    .map((r) => ({
+      ownerUserId: r.ownerUserId,
+      ownerName: ownerMap.get(r.ownerUserId) ?? "Unknown",
+      count: r.count,
+    }));
+  const capacityThreshold = 12;
+  const overloadedOwnerCount = combinedTop.filter((r) => r.count > capacityThreshold).length;
+  const underloadedOwnerCount = combinedTop.filter((r) => r.count > 0 && r.count <= 4).length;
+
+  const completedEtaRows = await prisma.shipment.findMany({
+    where: {
+      ...scope,
+      status: { in: ["DELIVERED", "RECEIVED"] },
+      receivedAt: { not: null },
+      booking: { is: { eta: { not: null } } },
+    },
+    select: { receivedAt: true, booking: { select: { eta: true } } },
+    take: 1200,
+    orderBy: { updatedAt: "desc" },
+  });
+  let onTime = 0;
+  let late = 0;
+  for (const row of completedEtaRows) {
+    const eta = row.booking?.eta;
+    const rec = row.receivedAt;
+    if (!eta || !rec) continue;
+    if (rec.getTime() <= eta.getTime()) onTime += 1;
+    else late += 1;
+  }
+  const etaCompared = onTime + late;
 
   return {
     generatedAt: new Date().toISOString(),
@@ -187,6 +230,18 @@ export async function getControlTowerReportsSummary(params: {
     ownerLoad: {
       alerts: alertOwnerLoad,
       exceptions: exceptionOwnerLoad,
+    },
+    ownerBalancing: {
+      capacityThreshold,
+      overloadedOwnerCount,
+      underloadedOwnerCount,
+      combinedTop,
+    },
+    etaPerformance: {
+      compared: etaCompared,
+      onTime,
+      late,
+      onTimePct: etaCompared ? Math.round((onTime / etaCompared) * 1000) / 10 : 0,
     },
     byStatus: statusMap,
   };

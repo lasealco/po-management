@@ -31,6 +31,18 @@ type Summary = {
       top: Array<{ ownerUserId: string; ownerName: string; count: number }>;
     };
   };
+  ownerBalancing: {
+    capacityThreshold: number;
+    overloadedOwnerCount: number;
+    underloadedOwnerCount: number;
+    combinedTop: Array<{ ownerUserId: string; ownerName: string; count: number }>;
+  };
+  etaPerformance: {
+    compared: number;
+    onTime: number;
+    late: number;
+    onTimePct: number;
+  };
   byStatus: Record<string, number>;
 };
 
@@ -148,6 +160,31 @@ export function ControlTowerReportsClient({
           </p>
         </div>
       ) : null}
+      {!summary.isCustomerView ? (
+        <div className="rounded-lg border border-zinc-200 bg-white p-4">
+          <h2 className="text-sm font-semibold text-zinc-900">Owner balancing guidance</h2>
+          <p className="mt-1 text-xs text-zinc-600">
+            Threshold {summary.ownerBalancing.capacityThreshold} open items · overloaded{" "}
+            {summary.ownerBalancing.overloadedOwnerCount} · underloaded{" "}
+            {summary.ownerBalancing.underloadedOwnerCount}
+          </p>
+          <ul className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
+            {summary.ownerBalancing.combinedTop.map((r) => (
+              <li key={r.ownerUserId} className="rounded border border-zinc-200 bg-zinc-50 px-3 py-2">
+                {r.ownerName}: <strong>{r.count}</strong>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      <div className="rounded-lg border border-zinc-200 bg-white p-4">
+        <h2 className="text-sm font-semibold text-zinc-900">ETA reliability</h2>
+        <p className="mt-1 text-sm text-zinc-700">
+          Compared: <strong>{summary.etaPerformance.compared}</strong> · On-time:{" "}
+          <strong>{summary.etaPerformance.onTime}</strong> · Late: <strong>{summary.etaPerformance.late}</strong> ·
+          On-time %: <strong>{summary.etaPerformance.onTimePct}%</strong>
+        </p>
+      </div>
       <div className="rounded-lg border border-zinc-200 bg-white p-4">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-sm font-semibold text-zinc-900">Route action buckets</h2>
