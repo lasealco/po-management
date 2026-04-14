@@ -134,38 +134,46 @@ export async function runBulkSeed(prisma, ctx) {
 
   const supplierPool = [acmeSupplierId, ...extraSuppliers];
 
-  const genOrders = await prisma.purchaseOrder.findMany({
-    where: { tenantId, orderNumber: { startsWith: "GEN-" } },
-    select: { id: true },
-  });
-  const genOrderIds = genOrders.map((o) => o.id);
+  /** ILIKE catches odd casing; delete shipments first so ShipmentItem (Restrict on orderItem) cascades. */
+  const genOrderRows = await prisma.$queryRaw(Prisma.sql`
+    SELECT id FROM "PurchaseOrder"
+    WHERE "tenantId" = ${tenantId}
+      AND "orderNumber" ILIKE 'GEN-%'
+  `);
+  const genOrderIds = genOrderRows.map((r) => r.id);
   if (genOrderIds.length > 0) {
-    /**
-     * `ShipmentItem.orderItemId` is `Restrict`. Nested `deleteMany({ orderItem: { orderId … } })`
-     * did not remove rows reliably on the pg adapter; delete by explicit `orderItemId` list instead.
-     */
-    const ORDER_CHUNK = 200;
+    const CHUNK = 200;
+    const LINE_CHUNK = 300;
     let removedLines = 0;
-    for (let c = 0; c < genOrderIds.length; c += ORDER_CHUNK) {
-      const idChunk = genOrderIds.slice(c, c + ORDER_CHUNK);
+    for (let c = 0; c < genOrderIds.length; c += CHUNK) {
+      const idChunk = genOrderIds.slice(c, c + CHUNK);
       const lineIds = (
         await prisma.purchaseOrderItem.findMany({
           where: { orderId: { in: idChunk } },
           select: { id: true },
         })
       ).map((row) => row.id);
-      if (lineIds.length === 0) continue;
-      const LINE_CHUNK = 300;
       for (let lc = 0; lc < lineIds.length; lc += LINE_CHUNK) {
         const slice = lineIds.slice(lc, lc + LINE_CHUNK);
+        if (slice.length === 0) continue;
         const r = await prisma.shipmentItem.deleteMany({ where: { orderItemId: { in: slice } } });
         removedLines += r.count;
       }
     }
-    const shipDel = await prisma.shipment.deleteMany({ where: { orderId: { in: genOrderIds } } });
-    const poDel = await prisma.purchaseOrder.deleteMany({ where: { id: { in: genOrderIds } } });
+    let shipDel = 0;
+    let poDel = 0;
+    for (let c = 0; c < genOrderIds.length; c += CHUNK) {
+      const chunk = genOrderIds.slice(c, c + CHUNK);
+      const s = await prisma.shipment.deleteMany({ where: { orderId: { in: chunk } } });
+      shipDel += s.count;
+    }
+    for (let c = 0; c < genOrderIds.length; c += CHUNK) {
+      const chunk = genOrderIds.slice(c, c + CHUNK);
+      const p = await prisma.purchaseOrder.deleteMany({ where: { id: { in: chunk } } });
+      poDel += p.count;
+    }
     console.log(
-      `[db:seed] Removed prior GEN-* data: ${removedLines} shipment line(s), ${shipDel.count} shipment(s), ${poDel.count} order(s)`,
+      `[db:seed] Removed prior GEN-* data: ${removedLines} shipment line(s), ${shipDel} shipment(s), ${poDel} order(s) (ILIKE 'GEN-%')`,
     );
   }
 

@@ -23,7 +23,8 @@
     "vercel-build": "node scripts/vercel-build.cjs",
     "db:seed": "node prisma/seed.mjs",
     "db:seed:ct-volume": "node prisma/ct-demo-shipments-volume.mjs",
-    "db:seed:crm-demo": "node prisma/crm-demo-seed.mjs"
+    "db:seed:crm-demo": "node prisma/crm-demo-seed.mjs",
+    "db:seed:demo-full": "node scripts/seed-demo-full.mjs"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.7.0",
