@@ -42,13 +42,21 @@ type Summary = {
     onTime: number;
     late: number;
     onTimePct: number;
+    avgDelayDays: number;
+    topDelayedLanes: Array<{
+      lane: string;
+      total: number;
+      delayed: number;
+      overdueOpen: number;
+      delayedPct: number;
+    }>;
   };
   byStatus: Record<string, number>;
 };
 
 export function ControlTowerReportsClient({
   summary,
-  canEdit: _canEdit,
+  canEdit,
 }: {
   summary: Summary;
   canEdit: boolean;
@@ -182,8 +190,35 @@ export function ControlTowerReportsClient({
         <p className="mt-1 text-sm text-zinc-700">
           Compared: <strong>{summary.etaPerformance.compared}</strong> · On-time:{" "}
           <strong>{summary.etaPerformance.onTime}</strong> · Late: <strong>{summary.etaPerformance.late}</strong> ·
-          On-time %: <strong>{summary.etaPerformance.onTimePct}%</strong>
+          On-time %: <strong>{summary.etaPerformance.onTimePct}%</strong> · Avg delay:{" "}
+          <strong>{summary.etaPerformance.avgDelayDays}d</strong>
         </p>
+        {summary.etaPerformance.topDelayedLanes.length > 0 ? (
+          <div className="mt-3 overflow-x-auto">
+            <table className="min-w-[28rem] text-xs">
+              <thead className="text-left uppercase text-zinc-500">
+                <tr>
+                  <th className="pr-3">Lane</th>
+                  <th className="pr-3">Total</th>
+                  <th className="pr-3">Delayed</th>
+                  <th className="pr-3">Delayed %</th>
+                  <th className="pr-3">Overdue open</th>
+                </tr>
+              </thead>
+              <tbody>
+                {summary.etaPerformance.topDelayedLanes.map((l) => (
+                  <tr key={l.lane} className="border-t border-zinc-100 text-zinc-700">
+                    <td className="py-1 pr-3">{l.lane}</td>
+                    <td className="py-1 pr-3">{l.total}</td>
+                    <td className="py-1 pr-3">{l.delayed}</td>
+                    <td className="py-1 pr-3">{l.delayedPct}%</td>
+                    <td className="py-1 pr-3">{l.overdueOpen}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
       </div>
       <div className="rounded-lg border border-zinc-200 bg-white p-4">
         <div className="flex items-center justify-between gap-2">
@@ -262,6 +297,14 @@ export function ControlTowerReportsClient({
             >
               Export status CSV
             </button>
+            {canEdit ? (
+              <Link
+                href="/control-tower/workbench"
+                className="rounded border border-sky-300 px-3 py-1 text-xs font-medium text-sky-900"
+              >
+                Open Workbench
+              </Link>
+            ) : null}
             <button
               type="button"
               onClick={async () => {

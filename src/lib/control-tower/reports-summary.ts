@@ -210,6 +210,49 @@ export async function getControlTowerReportsSummary(params: {
     else late += 1;
   }
   const etaCompared = onTime + late;
+  const delayRows = await prisma.shipment.findMany({
+    where: {
+      ...scope,
+      booking: { isNot: null },
+    },
+    select: {
+      id: true,
+      booking: {
+        select: { originCode: true, destinationCode: true, eta: true, latestEta: true },
+      },
+      receivedAt: true,
+      status: true,
+    },
+    take: 2000,
+    orderBy: { updatedAt: "desc" },
+  });
+  const laneAgg = new Map<string, { lane: string; total: number; delayed: number; overdueOpen: number }>();
+  let delayDaysTotal = 0;
+  let delayCompared = 0;
+  for (const row of delayRows) {
+    const booking = row.booking;
+    if (!booking) continue;
+    const lane = `${booking.originCode ?? "?"}->${booking.destinationCode ?? "?"}`;
+    const laneRow = laneAgg.get(lane) ?? { lane, total: 0, delayed: 0, overdueOpen: 0 };
+    laneRow.total += 1;
+    const etaRef = booking.latestEta ?? booking.eta;
+    if (etaRef && row.receivedAt) {
+      const deltaDays = (row.receivedAt.getTime() - etaRef.getTime()) / (1000 * 60 * 60 * 24);
+      delayCompared += 1;
+      delayDaysTotal += deltaDays;
+      if (deltaDays > 0) laneRow.delayed += 1;
+    } else if (etaRef && ["BOOKED", "IN_TRANSIT", "VALIDATED", "SHIPPED"].includes(row.status)) {
+      if (etaRef.getTime() < now.getTime()) laneRow.overdueOpen += 1;
+    }
+    laneAgg.set(lane, laneRow);
+  }
+  const topDelayedLanes = Array.from(laneAgg.values())
+    .map((l) => ({
+      ...l,
+      delayedPct: l.total ? Math.round((l.delayed / l.total) * 1000) / 10 : 0,
+    }))
+    .sort((a, b) => b.overdueOpen - a.overdueOpen || b.delayedPct - a.delayedPct || b.total - a.total)
+    .slice(0, 8);
 
   return {
     generatedAt: new Date().toISOString(),
@@ -242,6 +285,8 @@ export async function getControlTowerReportsSummary(params: {
       onTime,
       late,
       onTimePct: etaCompared ? Math.round((onTime / etaCompared) * 1000) / 10 : 0,
+      avgDelayDays: delayCompared ? Math.round((delayDaysTotal / delayCompared) * 100) / 100 : 0,
+      topDelayedLanes,
     },
     byStatus: statusMap,
   };

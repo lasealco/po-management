@@ -33,6 +33,7 @@ type Row = {
 };
 
 export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
+  const defaultViewKey = "ct-workbench-default-view-id";
   const [status, setStatus] = useState("");
   const [mode, setMode] = useState("");
   const [routeAction, setRouteAction] = useState("");
@@ -89,7 +90,21 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
         filters?: Array<{ id: string; name: string; filtersJson: unknown }>;
       };
       setSaved(data.filters ?? []);
+      const defaultId = typeof window !== "undefined" ? window.localStorage.getItem(defaultViewKey) : null;
+      if (defaultId) {
+        const match = (data.filters ?? []).find((f) => f.id === defaultId);
+        if (match) applySaved(match.filtersJson);
+      }
     })();
+  }, []);
+
+  const refreshSaved = useCallback(async () => {
+    const list = await fetch("/api/control-tower/saved-filters");
+    if (!list.ok) return;
+    const data = (await list.json()) as {
+      filters?: Array<{ id: string; name: string; filtersJson: unknown }>;
+    };
+    setSaved(data.filters ?? []);
   }, []);
 
   const exportCsv = () => {
@@ -189,13 +204,7 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
       window.alert(err.error || "Save failed");
       return;
     }
-    const list = await fetch("/api/control-tower/saved-filters");
-    if (list.ok) {
-      const data = (await list.json()) as {
-        filters?: Array<{ id: string; name: string; filtersJson: unknown }>;
-      };
-      setSaved(data.filters ?? []);
-    }
+    await refreshSaved();
   };
 
   const statusOptions = useMemo(
@@ -387,26 +396,71 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
           </button>
         ) : null}
         {saved.length > 0 ? (
-          <label className="text-xs text-zinc-600">
-            Saved views
-            <select
-              defaultValue=""
-              onChange={(e) => {
-                const id = e.target.value;
-                e.target.value = "";
-                const f = saved.find((x) => x.id === id);
-                if (f) applySaved(f.filtersJson);
-              }}
-              className="mt-1 block max-w-[10rem] rounded border border-zinc-300 px-2 py-1.5 text-sm"
-            >
-              <option value="">Apply…</option>
+          <div className="flex flex-col gap-1 text-xs text-zinc-600">
+            <span>Saved views</span>
+            <div className="max-h-24 overflow-auto rounded border border-zinc-200 bg-zinc-50 p-1">
               {saved.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.name}
-                </option>
+                <div key={f.id} className="mb-1 flex items-center gap-1 last:mb-0">
+                  <button
+                    type="button"
+                    className="rounded border border-zinc-300 bg-white px-2 py-1 text-left text-xs hover:bg-zinc-100"
+                    onClick={() => applySaved(f.filtersJson)}
+                    title="Apply saved view"
+                  >
+                    {f.name}
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded border border-zinc-300 px-2 py-1 text-[11px]"
+                    title="Set default"
+                    onClick={() => {
+                      if (typeof window !== "undefined") {
+                        window.localStorage.setItem(defaultViewKey, f.id);
+                      }
+                    }}
+                  >
+                    Default
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded border border-red-200 px-2 py-1 text-[11px] text-red-800"
+                    title="Delete saved view"
+                    onClick={async () => {
+                      if (!window.confirm(`Delete saved view "${f.name}"?`)) return;
+                      const res = await fetch("/api/control-tower", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ action: "delete_ct_filter", filterId: f.id }),
+                      });
+                      if (!res.ok) {
+                        const err = (await res.json()) as { error?: string };
+                        window.alert(err.error || "Delete failed");
+                        return;
+                      }
+                      if (
+                        typeof window !== "undefined" &&
+                        window.localStorage.getItem(defaultViewKey) === f.id
+                      ) {
+                        window.localStorage.removeItem(defaultViewKey);
+                      }
+                      await refreshSaved();
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
               ))}
-            </select>
-          </label>
+            </div>
+            <button
+              type="button"
+              className="self-start rounded border border-zinc-300 px-2 py-1 text-[11px]"
+              onClick={() => {
+                if (typeof window !== "undefined") window.localStorage.removeItem(defaultViewKey);
+              }}
+            >
+              Clear default
+            </button>
+          </div>
         ) : null}
       </div>
       <div className="flex flex-wrap gap-2">
