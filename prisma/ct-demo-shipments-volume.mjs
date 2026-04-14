@@ -12,6 +12,12 @@
  *
  *   npm run db:seed:ct-volume
  *   CT_VOL_COUNT=500 node prisma/ct-demo-shipments-volume.mjs   # smaller test
+ *
+ * Env note: `prisma migrate deploy` uses prisma.config.ts and effectively reads `.env`
+ * (not `.env.local`). This script defaults the same way so migrations and seed hit the
+ * same database. To use `DATABASE_URL` from `.env.local` (e.g. Neon only there), run:
+ *   USE_DOTENV_LOCAL=1 npm run db:seed:ct-volume
+ * Then run `npm run db:migrate` with that same URL (or migrate Neon in CI).
  */
 import { Prisma, PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
@@ -21,18 +27,38 @@ import { Pool } from "pg";
 
 const cliDatabaseUrl = process.env.DATABASE_URL?.trim() || null;
 config({ path: resolve(process.cwd(), ".env") });
-config({ path: resolve(process.cwd(), ".env.local"), override: true });
+if (process.env.USE_DOTENV_LOCAL === "1" || process.env.USE_DOTENV_LOCAL === "true") {
+  config({ path: resolve(process.cwd(), ".env.local"), override: true });
+}
 if (cliDatabaseUrl) process.env.DATABASE_URL = cliDatabaseUrl;
 
-if (!process.env.DATABASE_URL?.trim()) {
-  console.error("[ct-volume] Missing DATABASE_URL.");
+/** Same precedence as prisma.config.ts datasource */
+const connectionString =
+  process.env.DATABASE_URL_UNPOOLED?.trim() ||
+  process.env.DIRECT_URL?.trim() ||
+  process.env.DATABASE_URL?.trim();
+
+if (!connectionString) {
+  console.error("[ct-volume] Missing DATABASE_URL (or DATABASE_URL_UNPOOLED / DIRECT_URL).");
   process.exit(1);
+}
+
+try {
+  const u = new URL(connectionString.replace(/^postgresql:/, "postgres:"));
+  console.log(
+    `[ct-volume] Connecting to ${u.hostname}${u.port ? `:${u.port}` : ""} /${u.pathname.replace(/^\//, "") || "db"}`,
+  );
+} catch {
+  console.log("[ct-volume] Connecting (URL host not logged).");
+}
+if (!process.env.USE_DOTENV_LOCAL) {
+  console.log("[ct-volume] Env: .env only (matches prisma migrate). USE_DOTENV_LOCAL=1 merges .env.local.");
 }
 
 const prisma = new PrismaClient({
   adapter: new PrismaPg(
     new Pool({
-      connectionString: process.env.DATABASE_URL,
+      connectionString,
     }),
   ),
 });
