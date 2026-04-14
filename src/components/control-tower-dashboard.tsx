@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 type Overview = {
   generatedAt: string;
   isCustomerView: boolean;
@@ -15,6 +17,9 @@ type Overview = {
     overdueEta: number;
     unassignedOpenAlerts: number | null;
     unassignedOpenExceptions: number | null;
+    slaBreachedAlerts: number | null;
+    slaBreachedExceptions: number | null;
+    openSlaEscalationAlerts: number | null;
   };
   staleTop: Array<{
     id: string;
@@ -93,6 +98,40 @@ export function ControlTowerDashboard({ overview }: { overview: Overview }) {
             <span className="font-semibold">{counts.unassignedOpenAlerts ?? 0}</span> unassigned alerts ·{" "}
             <span className="font-semibold">{counts.unassignedOpenExceptions ?? 0}</span> unassigned exceptions
           </p>
+          <p className="mt-2 text-sm text-zinc-700">
+            <span className="font-semibold text-rose-800">{counts.slaBreachedAlerts ?? 0}</span> SLA-breached alerts ·{" "}
+            <span className="font-semibold text-rose-800">{counts.slaBreachedExceptions ?? 0}</span> SLA-breached
+            exceptions · <span className="font-semibold text-violet-800">{counts.openSlaEscalationAlerts ?? 0}</span>{" "}
+            open SLA follow-up alerts
+          </p>
+        </div>
+      ) : null}
+      {!isCustomerView ? (
+        <div className="flex flex-wrap gap-2 sm:col-span-2 lg:col-span-4">
+          <Link
+            href="/control-tower/command-center"
+            className="rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-sky-900 shadow-sm hover:border-sky-300"
+          >
+            Command center
+          </Link>
+          <Link
+            href="/control-tower/workbench"
+            className="rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-sky-900 shadow-sm hover:border-sky-300"
+          >
+            Workbench
+          </Link>
+          <Link
+            href="/control-tower/reports"
+            className="rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-sky-900 shadow-sm hover:border-sky-300"
+          >
+            Reports
+          </Link>
+          <Link
+            href="/control-tower/search"
+            className="rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-sky-900 shadow-sm hover:border-sky-300"
+          >
+            Search
+          </Link>
         </div>
       ) : null}
       <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm sm:col-span-2 lg:col-span-4">

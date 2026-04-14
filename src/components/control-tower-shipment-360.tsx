@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
+import { ctSlaState } from "@/lib/control-tower/sla-thresholds";
+
 type Tab =
   | "details"
   | "routing"
@@ -75,17 +77,6 @@ export function ControlTowerShipment360({
     if (phase === "Planned") return "border-amber-200 bg-amber-50 text-amber-800";
     return "border-zinc-200 bg-zinc-50 text-zinc-700";
   };
-  const slaHours = (severity: string) =>
-    severity === "CRITICAL" ? 24 : severity === "WARN" ? 48 : 72;
-  const itemSla = (row: Record<string, unknown>) => {
-    const created = new Date(String(row.createdAt || ""));
-    const ageHours = Number.isNaN(created.getTime())
-      ? 0
-      : Math.floor((Date.now() - created.getTime()) / 3_600_000);
-    const threshold = slaHours(String(row.severity || "WARN"));
-    return { ageHours, threshold, breached: ageHours > threshold };
-  };
-
   if (error) {
     return (
       <div className="rounded border border-red-200 bg-red-50 px-4 py-6 text-sm text-red-900">
@@ -1117,7 +1108,7 @@ export function ControlTowerShipment360({
           <ul className="space-y-2 text-xs">
             {alerts.map((a) => {
               const row = a as Record<string, unknown>;
-              const sla = itemSla(row);
+              const sla = ctSlaState(String(row.createdAt ?? ""), String(row.severity || "WARN"));
               return (
                 <li key={String(row.id)} className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-50 pb-2">
                   <div>
@@ -1252,7 +1243,7 @@ export function ControlTowerShipment360({
           <ul className="space-y-2 text-xs">
             {exceptions.map((x) => {
               const row = x as Record<string, unknown>;
-              const sla = itemSla(row);
+              const sla = ctSlaState(String(row.createdAt ?? ""), String(row.severity || "WARN"));
               return (
                 <li key={String(row.id)} className="border-b border-zinc-50 pb-2">
                   <span className="font-medium">{String(row.type)}</span> · {String(row.status)} ·{" "}

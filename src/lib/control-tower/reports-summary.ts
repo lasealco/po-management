@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 
+import { ctSlaBreachedSeverityBranches } from "./sla-breach-where";
 import {
   controlTowerShipmentScopeWhere,
   type ControlTowerPortalContext,
@@ -14,25 +15,59 @@ export async function getControlTowerReportsSummary(params: {
   const scope = controlTowerShipmentScopeWhere(tenantId, ctx);
   const restricted = ctx.isRestrictedView;
 
-  const [byStatus, withBooking, openExceptions] = await Promise.all([
-    prisma.shipment.groupBy({
-      by: ["status"],
-      where: scope,
-      _count: { _all: true },
-    }),
-    prisma.shipment.count({
-      where: { ...scope, booking: { isNot: null } },
-    }),
-    restricted
-      ? Promise.resolve(0)
-      : prisma.ctException.count({
-          where: {
-            tenantId,
-            status: { in: ["OPEN", "IN_PROGRESS"] },
-            shipment: { is: scope },
-          },
-        }),
-  ]);
+  const now = new Date();
+
+  const [byStatus, withBooking, openExceptions, slaBreachedAlerts, slaBreachedExceptions, openSlaEscalationAlerts] =
+    await Promise.all([
+      prisma.shipment.groupBy({
+        by: ["status"],
+        where: scope,
+        _count: { _all: true },
+      }),
+      prisma.shipment.count({
+        where: { ...scope, booking: { isNot: null } },
+      }),
+      restricted
+        ? Promise.resolve(0)
+        : prisma.ctException.count({
+            where: {
+              tenantId,
+              status: { in: ["OPEN", "IN_PROGRESS"] },
+              shipment: { is: scope },
+            },
+          }),
+      restricted
+        ? Promise.resolve(0)
+        : prisma.ctAlert.count({
+            where: {
+              tenantId,
+              status: { in: ["OPEN", "ACKNOWLEDGED"] },
+              type: { not: "SLA_ESCALATION" },
+              shipment: { is: scope },
+              OR: ctSlaBreachedSeverityBranches(now),
+            },
+          }),
+      restricted
+        ? Promise.resolve(0)
+        : prisma.ctException.count({
+            where: {
+              tenantId,
+              status: { in: ["OPEN", "IN_PROGRESS"] },
+              shipment: { is: scope },
+              OR: ctSlaBreachedSeverityBranches(now),
+            },
+          }),
+      restricted
+        ? Promise.resolve(0)
+        : prisma.ctAlert.count({
+            where: {
+              tenantId,
+              status: { in: ["OPEN", "ACKNOWLEDGED"] },
+              type: "SLA_ESCALATION",
+              shipment: { is: scope },
+            },
+          }),
+    ]);
 
   const total = byStatus.reduce((s, g) => s + g._count._all, 0);
   const statusMap = Object.fromEntries(byStatus.map((g) => [g.status, g._count._all]));
@@ -144,6 +179,9 @@ export async function getControlTowerReportsSummary(params: {
       shipments: total,
       withBooking,
       openExceptions: restricted ? null : openExceptions,
+      slaBreachedAlerts: restricted ? null : slaBreachedAlerts,
+      slaBreachedExceptions: restricted ? null : slaBreachedExceptions,
+      openSlaEscalationAlerts: restricted ? null : openSlaEscalationAlerts,
     },
     routeActions,
     ownerLoad: {

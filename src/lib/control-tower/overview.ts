@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 
+import { ctSlaBreachedSeverityBranches } from "./sla-breach-where";
 import {
   controlTowerShipmentScopeWhere,
   type ControlTowerPortalContext,
@@ -39,6 +40,9 @@ export async function getControlTowerOverview(params: {
     overdueEta,
     unassignedOpenAlerts,
     unassignedOpenExceptions,
+    slaBreachedAlerts,
+    slaBreachedExceptions,
+    openSlaEscalationAlerts,
   ] = await Promise.all([
     prisma.shipment.groupBy({
       by: ["status"],
@@ -144,6 +148,37 @@ export async function getControlTowerOverview(params: {
             shipment: { is: scope },
           },
         }),
+    restricted
+      ? Promise.resolve(0)
+      : prisma.ctAlert.count({
+          where: {
+            tenantId,
+            status: { in: ["OPEN", "ACKNOWLEDGED"] },
+            type: { not: "SLA_ESCALATION" },
+            shipment: { is: scope },
+            OR: ctSlaBreachedSeverityBranches(now),
+          },
+        }),
+    restricted
+      ? Promise.resolve(0)
+      : prisma.ctException.count({
+          where: {
+            tenantId,
+            status: { in: ["OPEN", "IN_PROGRESS"] },
+            shipment: { is: scope },
+            OR: ctSlaBreachedSeverityBranches(now),
+          },
+        }),
+    restricted
+      ? Promise.resolve(0)
+      : prisma.ctAlert.count({
+          where: {
+            tenantId,
+            status: { in: ["OPEN", "ACKNOWLEDGED"] },
+            type: "SLA_ESCALATION",
+            shipment: { is: scope },
+          },
+        }),
   ]);
 
   const byStatus = Object.fromEntries(
@@ -184,6 +219,9 @@ export async function getControlTowerOverview(params: {
       overdueEta,
       unassignedOpenAlerts: restricted ? null : unassignedOpenAlerts,
       unassignedOpenExceptions: restricted ? null : unassignedOpenExceptions,
+      slaBreachedAlerts: restricted ? null : slaBreachedAlerts,
+      slaBreachedExceptions: restricted ? null : slaBreachedExceptions,
+      openSlaEscalationAlerts: restricted ? null : openSlaEscalationAlerts,
     },
     staleTop,
   };

@@ -43,7 +43,7 @@ export async function ensureSlaEscalationsForShipment(params: {
         status: { in: ["OPEN", "ACKNOWLEDGED"] },
         type: { not: "SLA_ESCALATION" },
       },
-      select: { id: true, title: true, severity: true, createdAt: true },
+      select: { id: true, title: true, severity: true, createdAt: true, ownerUserId: true },
     }),
     prisma.ctException.findMany({
       where: {
@@ -51,7 +51,7 @@ export async function ensureSlaEscalationsForShipment(params: {
         shipmentId,
         status: { in: ["OPEN", "IN_PROGRESS"] },
       },
-      select: { id: true, type: true, severity: true, createdAt: true },
+      select: { id: true, type: true, severity: true, createdAt: true, ownerUserId: true },
     }),
   ]);
 
@@ -83,6 +83,7 @@ export async function ensureSlaEscalationsForShipment(params: {
           title: `SLA breach follow-up: ${a.title}`,
           body: `Original alert exceeded SLA (${age}h / ${threshold}h). Source alert id: ${a.id}.`,
           status: "OPEN",
+          ownerUserId: a.ownerUserId,
         },
       });
     });
@@ -126,6 +127,7 @@ export async function ensureSlaEscalationsForShipment(params: {
           title: `SLA breach follow-up: exception ${e.type}`,
           body: `Original exception exceeded SLA (${age}h / ${threshold}h). Source exception id: ${e.id}.`,
           status: "OPEN",
+          ownerUserId: e.ownerUserId,
         },
       });
     });

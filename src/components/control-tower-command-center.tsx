@@ -29,6 +29,10 @@ const LANES = [
   "Other",
 ] as const;
 
+const STATUS_OPTIONS = ["", "SHIPPED", "VALIDATED", "BOOKED", "IN_TRANSIT", "DELIVERED", "RECEIVED"] as const;
+
+const ROUTE_ACTION_FILTER = ["", "Plan leg", "Mark departure", "Record arrival", "Route complete"] as const;
+
 function laneKey(nextAction: string | null): (typeof LANES)[number] {
   if (!nextAction) return "No route legs";
   if (nextAction === "Route complete") return "Route complete";
@@ -43,14 +47,24 @@ export function ControlTowerCommandCenter() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ownerFilter, setOwnerFilter] = useState("");
-  const [q, setQ] = useState("");
+  const [qInput, setQInput] = useState("");
+  const [debouncedQ, setDebouncedQ] = useState("");
+  const [status, setStatus] = useState("");
+  const [routeAction, setRouteAction] = useState("");
+  const [onlyOverdueEta, setOnlyOverdueEta] = useState(false);
+
+  useEffect(() => {
+    const t = window.setTimeout(() => setDebouncedQ(qInput.trim()), 400);
+    return () => window.clearTimeout(t);
+  }, [qInput]);
 
   const load = useCallback(async () => {
     setBusy(true);
     setError(null);
     try {
       const sp = new URLSearchParams();
-      if (q.trim()) sp.set("q", q.trim());
+      if (debouncedQ) sp.set("q", debouncedQ);
+      if (status) sp.set("status", status);
       sp.set("take", "150");
       const res = await fetch(`/api/control-tower/shipments?${sp.toString()}`);
       const data = (await res.json()) as { shipments?: Row[]; error?: string };
@@ -61,7 +75,7 @@ export function ControlTowerCommandCenter() {
     } finally {
       setBusy(false);
     }
-  }, [q]);
+  }, [debouncedQ, status]);
 
   useEffect(() => {
     void load();
@@ -80,14 +94,24 @@ export function ControlTowerCommandCenter() {
   }, [rows]);
 
   const filtered = useMemo(() => {
+    const nowMs = Date.now();
     let list = rows;
     if (ownerFilter === "__unassigned") {
       list = list.filter((r) => !r.dispatchOwner);
     } else if (ownerFilter) {
       list = list.filter((r) => r.dispatchOwner?.id === ownerFilter);
     }
+    if (routeAction) {
+      list = list.filter((r) => (r.nextAction || "").startsWith(routeAction));
+    }
+    if (onlyOverdueEta) {
+      list = list.filter((r) => {
+        const eta = r.latestEta || r.eta;
+        return eta ? new Date(eta).getTime() < nowMs : false;
+      });
+    }
     return list;
-  }, [rows, ownerFilter]);
+  }, [rows, ownerFilter, routeAction, onlyOverdueEta]);
 
   const byLane = useMemo(() => {
     const map = new Map<string, Row[]>();
@@ -108,10 +132,38 @@ export function ControlTowerCommandCenter() {
           <span className="font-medium text-zinc-700">Search</span>
           <input
             className="mt-1 block w-56 rounded border border-zinc-300 px-2 py-1.5 text-sm"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
+            value={qInput}
+            onChange={(e) => setQInput(e.target.value)}
             placeholder="PO, tracking, carrier…"
           />
+        </label>
+        <label className="block text-sm">
+          <span className="font-medium text-zinc-700">Status</span>
+          <select
+            className="mt-1 block w-44 rounded border border-zinc-300 px-2 py-1.5 text-sm"
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+          >
+            {STATUS_OPTIONS.map((s) => (
+              <option key={s || "all"} value={s}>
+                {s ? s.replaceAll("_", " ") : "All statuses"}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block text-sm">
+          <span className="font-medium text-zinc-700">Route lane filter</span>
+          <select
+            className="mt-1 block w-48 rounded border border-zinc-300 px-2 py-1.5 text-sm"
+            value={routeAction}
+            onChange={(e) => setRouteAction(e.target.value)}
+          >
+            {ROUTE_ACTION_FILTER.map((a) => (
+              <option key={a || "all"} value={a}>
+                {a ? `${a}…` : "All lanes (below)"}
+              </option>
+            ))}
+          </select>
         </label>
         <label className="block text-sm">
           <span className="font-medium text-zinc-700">Dispatch owner</span>
@@ -127,6 +179,15 @@ export function ControlTowerCommandCenter() {
             ))}
           </select>
         </label>
+        <label className="flex items-center gap-2 text-sm text-zinc-700">
+          <input
+            type="checkbox"
+            checked={onlyOverdueEta}
+            onChange={(e) => setOnlyOverdueEta(e.target.checked)}
+            className="rounded border-zinc-300"
+          />
+          Overdue ETA only
+        </label>
         <button
           type="button"
           onClick={() => void load()}
@@ -136,6 +197,9 @@ export function ControlTowerCommandCenter() {
         </button>
         {busy ? <span className="text-xs text-zinc-500">Loading…</span> : null}
       </div>
+      <p className="text-xs text-zinc-500">
+        Search applies after you pause typing (~400ms). Lane and overdue filters apply on top of the loaded rows.
+      </p>
       {error ? (
         <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">{error}</div>
       ) : null}

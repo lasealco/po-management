@@ -45,7 +45,7 @@ export default async function ControlTowerPage() {
 
       {overview ? <ControlTowerDashboard overview={overview} /> : null}
 
-      <div className="mt-10 grid gap-4 sm:grid-cols-2">
+      <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Link
           href="/control-tower/workbench"
           className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm transition hover:border-sky-300 hover:shadow-md"
@@ -54,6 +54,24 @@ export default async function ControlTowerPage() {
           <p className="mt-2 text-sm text-zinc-600">
             Filterable shipment grid, CSV export, and saved views (R1 + R4).
           </p>
+          <span className="mt-4 inline-block text-sm font-medium text-sky-800">Open →</span>
+        </Link>
+        <Link
+          href="/control-tower/command-center"
+          className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm transition hover:border-sky-300 hover:shadow-md"
+        >
+          <span className="text-base font-semibold text-zinc-900">Command center</span>
+          <p className="mt-2 text-sm text-zinc-600">
+            Kanban by next route action with dispatch-owner triage lanes.
+          </p>
+          <span className="mt-4 inline-block text-sm font-medium text-sky-800">Open →</span>
+        </Link>
+        <Link
+          href="/control-tower/reports"
+          className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm transition hover:border-sky-300 hover:shadow-md"
+        >
+          <span className="text-base font-semibold text-zinc-900">Reports</span>
+          <p className="mt-2 text-sm text-zinc-600">Route buckets, owner workload, and SLA snapshot export.</p>
           <span className="mt-4 inline-block text-sm font-medium text-sky-800">Open →</span>
         </Link>
         <Link

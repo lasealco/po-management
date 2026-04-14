@@ -9,6 +9,9 @@ type Summary = {
     shipments: number;
     withBooking: number;
     openExceptions: number | null;
+    slaBreachedAlerts: number | null;
+    slaBreachedExceptions: number | null;
+    openSlaEscalationAlerts: number | null;
   };
   routeActions: {
     planLeg: number;
@@ -50,6 +53,24 @@ export function ControlTowerReportsClient({
     a.click();
     URL.revokeObjectURL(url);
   };
+  const exportSlaCsv = () => {
+    if (summary.isCustomerView) return;
+    const rows = [
+      ["metric", "count"],
+      ["sla_breached_alerts", String(summary.totals.slaBreachedAlerts ?? 0)],
+      ["sla_breached_exceptions", String(summary.totals.slaBreachedExceptions ?? 0)],
+      ["open_sla_escalation_alerts", String(summary.totals.openSlaEscalationAlerts ?? 0)],
+    ];
+    const csv = rows.map((r) => r.map((v) => `"${v.replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `control-tower-sla-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const exportRouteActionsCsv = () => {
     const items: Array<[string, number]> = [
       ["plan_leg", summary.routeActions.planLeg],
@@ -71,7 +92,7 @@ export function ControlTowerReportsClient({
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <div className="rounded-lg border border-zinc-200 bg-white p-4">
           <p className="text-xs font-semibold uppercase text-zinc-500">Shipments</p>
           <p className="mt-1 text-2xl font-semibold">{summary.totals.shipments}</p>
@@ -91,6 +112,31 @@ export function ControlTowerReportsClient({
           </div>
         )}
       </div>
+      {!summary.isCustomerView ? (
+        <div className="rounded-lg border border-zinc-200 bg-white p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold text-zinc-900">SLA pressure</h2>
+            <button
+              type="button"
+              onClick={exportSlaCsv}
+              className="rounded border border-zinc-300 px-3 py-1 text-xs font-medium text-zinc-800"
+            >
+              Export SLA CSV
+            </button>
+          </div>
+          <div className="mt-3 grid gap-2 text-sm sm:grid-cols-3">
+            <div className="rounded border border-rose-100 bg-rose-50 px-3 py-2 text-rose-950">
+              Breached alerts: <strong>{summary.totals.slaBreachedAlerts ?? 0}</strong>
+            </div>
+            <div className="rounded border border-rose-100 bg-rose-50 px-3 py-2 text-rose-950">
+              Breached exceptions: <strong>{summary.totals.slaBreachedExceptions ?? 0}</strong>
+            </div>
+            <div className="rounded border border-violet-100 bg-violet-50 px-3 py-2 text-violet-950">
+              Open SLA follow-ups: <strong>{summary.totals.openSlaEscalationAlerts ?? 0}</strong>
+            </div>
+          </div>
+        </div>
+      ) : null}
       <div className="rounded-lg border border-zinc-200 bg-white p-4">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-sm font-semibold text-zinc-900">Route action buckets</h2>
