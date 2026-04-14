@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
+import { ensureSlaEscalationsForShipment } from "@/lib/control-tower/sla-escalation";
 import { getShipment360 } from "@/lib/control-tower/shipment-360";
 import { getControlTowerPortalContext } from "@/lib/control-tower/viewer";
 import { getDemoTenant } from "@/lib/demo-tenant";
@@ -25,6 +26,13 @@ export async function GET(
   const ctx = await getControlTowerPortalContext(actorId);
 
   const { id } = await context.params;
+  if (!ctx.isRestrictedView) {
+    await ensureSlaEscalationsForShipment({
+      tenantId: tenant.id,
+      shipmentId: id,
+      actorUserId: actorId,
+    });
+  }
   const data = await getShipment360({
     tenantId: tenant.id,
     shipmentId: id,

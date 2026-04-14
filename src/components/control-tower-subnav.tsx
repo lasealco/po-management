@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const items: { href: string; label: string }[] = [
   { href: "/control-tower", label: "Dashboard" },
   { href: "/control-tower/workbench", label: "Workbench" },
+  { href: "/control-tower/command-center", label: "Command center" },
   { href: "/control-tower/reports", label: "Reports" },
   { href: "/control-tower/search", label: "Search & assist" },
 ];
@@ -27,7 +28,9 @@ export function ControlTowerSubNav() {
                 ? pathname === href ||
                   pathname.startsWith(`${href}/`) ||
                   pathname.startsWith("/control-tower/shipments/")
-                : pathname === href || pathname.startsWith(`${href}/`);
+                : href === "/control-tower/command-center"
+                  ? pathname === href || pathname.startsWith(`${href}/`)
+                  : pathname === href || pathname.startsWith(`${href}/`);
           return (
             <Link
               key={href}
