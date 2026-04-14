@@ -111,6 +111,16 @@ const ROUTES = [
 ];
 
 const CARRIERS = ["Maersk Demo", "CMA CGM Demo", "MSC Demo", "ONE Line", "Hapag-Lloyd", "DHL Global", "FedEx Freight"];
+const CONTAINER_TYPES = ["20GP", "40GP", "40HC", "45HC", "LCL"];
+const SERVICE_LEVELS = ["STANDARD", "EXPRESS", "DEFERRED"];
+
+function makeContainerNumber(i, n) {
+  return `MSCU${String(2000000 + i * 3 + n).padStart(7, "0")}`;
+}
+
+function maybeRound(v, n = 3) {
+  return new Prisma.Decimal(Number(v).toFixed(n));
+}
 
 /**
  * @param {number} i
@@ -258,6 +268,12 @@ async function main() {
     select: { id: true },
   });
   const productId = product?.id ?? null;
+  const crmAccounts = await prisma.crmAccount.findMany({
+    where: { tenantId: tenant.id, lifecycle: "ACTIVE" },
+    select: { id: true, name: true, legalName: true },
+    take: 120,
+  });
+  const crmPool = crmAccounts.length > 0 ? crmAccounts : [{ id: null, name: "Demo Logistics Customer", legalName: null }];
 
   const win = windowBounds();
 
@@ -265,10 +281,44 @@ async function main() {
     where: { tenantId: tenant.id, orderNumber: { startsWith: ORDER_PREFIX } },
   });
   if (existing > 0) {
-    const del = await prisma.purchaseOrder.deleteMany({
+    const priorOrders = await prisma.purchaseOrder.findMany({
       where: { tenantId: tenant.id, orderNumber: { startsWith: ORDER_PREFIX } },
+      select: { id: true },
     });
-    console.log(`[ct-volume] Removed ${del.count} prior ${ORDER_PREFIX}* order(s) (cascaded shipments).`);
+    const priorOrderIds = priorOrders.map((o) => o.id);
+    const CHUNK = 200;
+    const LINE_CHUNK = 300;
+    let removedLines = 0;
+    let removedShipments = 0;
+    let removedOrders = 0;
+    for (let c = 0; c < priorOrderIds.length; c += CHUNK) {
+      const idChunk = priorOrderIds.slice(c, c + CHUNK);
+      const lineIds = (
+        await prisma.purchaseOrderItem.findMany({
+          where: { orderId: { in: idChunk } },
+          select: { id: true },
+        })
+      ).map((row) => row.id);
+      for (let lc = 0; lc < lineIds.length; lc += LINE_CHUNK) {
+        const slice = lineIds.slice(lc, lc + LINE_CHUNK);
+        if (slice.length === 0) continue;
+        const r = await prisma.shipmentItem.deleteMany({ where: { orderItemId: { in: slice } } });
+        removedLines += r.count;
+      }
+    }
+    for (let c = 0; c < priorOrderIds.length; c += CHUNK) {
+      const chunk = priorOrderIds.slice(c, c + CHUNK);
+      const s = await prisma.shipment.deleteMany({ where: { orderId: { in: chunk } } });
+      removedShipments += s.count;
+    }
+    for (let c = 0; c < priorOrderIds.length; c += CHUNK) {
+      const chunk = priorOrderIds.slice(c, c + CHUNK);
+      const p = await prisma.purchaseOrder.deleteMany({ where: { id: { in: chunk } } });
+      removedOrders += p.count;
+    }
+    console.log(
+      `[ct-volume] Removed prior ${ORDER_PREFIX}* data: ${removedLines} line(s), ${removedShipments} shipment(s), ${removedOrders} order(s).`,
+    );
   }
 
   const BATCH = 20;
@@ -283,11 +333,19 @@ async function main() {
           const sc = buildShipmentScenario(i, total, rand, win);
           const mode = pickMode(rand);
           const [originCode, destinationCode] = pick(ROUTES, rand);
+          const shipper = pick(crmPool, rand);
+          const consignee = pick(crmPool, rand);
           const subtotal = (150 + Math.floor(rand() * 8500)).toFixed(2);
           const tax = (Number(subtotal) * 0.08).toFixed(2);
           const orderTotal = (Number(subtotal) + Number(tax)).toFixed(2);
           const lineQty = (2 + Math.floor(rand() * 80)).toFixed(3);
           const unitPrice = (Number(subtotal) / Number(lineQty)).toFixed(4);
+          const estWeight = 200 + rand() * 12_000;
+          const estCbm = 3 + rand() * 40;
+          const dimL = 120 + rand() * 500;
+          const dimW = 80 + rand() * 220;
+          const dimH = 70 + rand() * 260;
+          const isOverdue = sc.latestEta.getTime() < win.now && !sc.receivedAt;
 
           const po = await tx.purchaseOrder.create({
             data: {
@@ -338,8 +396,13 @@ async function main() {
               carrier: pick(CARRIERS, rand),
               trackingNo: `V3KTRK${String(1_000_000 + i)}`,
               transportMode: mode,
-              estimatedVolumeCbm: new Prisma.Decimal((3 + rand() * 40).toFixed(3)),
-              estimatedWeightKg: new Prisma.Decimal((200 + rand() * 12_000).toFixed(3)),
+              estimatedVolumeCbm: maybeRound(estCbm),
+              estimatedWeightKg: maybeRound(estWeight),
+              customerCrmAccountId: shipper.id,
+              notes:
+                `Shipper: ${shipper.legalName ?? shipper.name}. ` +
+                `Consignee: ${consignee.legalName ?? consignee.name}. ` +
+                `Dims(cm): ${dimL.toFixed(0)}x${dimW.toFixed(0)}x${dimH.toFixed(0)}.`,
               createdById: buyer.id,
               createdAt: sc.createdAt,
               items: {
@@ -367,14 +430,144 @@ async function main() {
               mode,
               originCode,
               destinationCode,
+              serviceLevel: pick(SERVICE_LEVELS, rand),
               etd: sc.etd,
               eta: sc.eta,
               latestEta: sc.latestEta,
               bookingNo: `BK-V3K-${String(i + 1).padStart(7, "0")}`,
               createdById: buyer.id,
               updatedById: buyer.id,
+              notes: `${originCode} -> ${destinationCode}; qty ${lineQty}; est ${estWeight.toFixed(0)}kg / ${estCbm.toFixed(2)}cbm`,
             },
           });
+
+          await tx.shipmentMilestone.createMany({
+            data: [
+              {
+                shipmentId: ship.id,
+                code: "ASN_SUBMITTED",
+                source: "SUPPLIER",
+                plannedAt: new Date(sc.etd.getTime() - 10 * DAY_MS),
+                actualAt: new Date(sc.etd.getTime() - (9 + rand() * 2) * DAY_MS),
+                note: "ASN submitted by supplier.",
+                updatedById: buyer.id,
+              },
+              {
+                shipmentId: ship.id,
+                code: "BOOKING_CONFIRMED",
+                source: "FORWARDER",
+                plannedAt: new Date(sc.etd.getTime() - 5 * DAY_MS),
+                actualAt: new Date(sc.etd.getTime() - (4 + rand()) * DAY_MS),
+                note: "Forwarder booking confirmed.",
+                updatedById: buyer.id,
+              },
+              {
+                shipmentId: ship.id,
+                code: "DEPARTED",
+                source: "INTERNAL",
+                plannedAt: sc.etd,
+                actualAt: sc.status === "VALIDATED" || sc.status === "BOOKED" ? null : sc.shippedAt,
+                note: "Departure milestone.",
+                updatedById: buyer.id,
+              },
+              {
+                shipmentId: ship.id,
+                code: "ARRIVED",
+                source: "SYSTEM",
+                plannedAt: sc.eta,
+                actualAt: sc.receivedAt,
+                note: "Arrival milestone.",
+                updatedById: buyer.id,
+              },
+            ],
+          });
+
+          await tx.ctTrackingMilestone.createMany({
+            data: [
+              {
+                tenantId: tenant.id,
+                shipmentId: ship.id,
+                code: "ETD",
+                label: "Planned ETD",
+                plannedAt: sc.etd,
+                predictedAt: sc.etd,
+                actualAt: sc.status === "VALIDATED" || sc.status === "BOOKED" ? null : sc.shippedAt,
+                sourceType: "SYSTEM",
+                confidence: 92,
+                notes: "Generated volume ETD marker.",
+                updatedById: buyer.id,
+              },
+              {
+                tenantId: tenant.id,
+                shipmentId: ship.id,
+                code: "ETA",
+                label: "Latest ETA",
+                plannedAt: sc.eta,
+                predictedAt: sc.latestEta,
+                actualAt: sc.receivedAt,
+                sourceType: "CARRIER_ETA",
+                confidence: isOverdue ? 55 : 84,
+                notes: isOverdue ? "Predicted overdue in transit." : "Predicted on-track.",
+                updatedById: buyer.id,
+              },
+            ],
+          });
+
+          await tx.ctShipmentReference.createMany({
+            data: [
+              { shipmentId: ship.id, refType: "BOOKING_NO", refValue: `BK-V3K-${String(i + 1).padStart(7, "0")}` },
+              { shipmentId: ship.id, refType: "MASTER_BL", refValue: `MBL${String(900000 + i).padStart(8, "0")}` },
+              { shipmentId: ship.id, refType: "SHIPPER", refValue: shipper.legalName ?? shipper.name },
+              { shipmentId: ship.id, refType: "CONSIGNEE", refValue: consignee.legalName ?? consignee.name },
+              { shipmentId: ship.id, refType: "QTY", refValue: lineQty },
+              { shipmentId: ship.id, refType: "WEIGHT_KG", refValue: estWeight.toFixed(2) },
+              { shipmentId: ship.id, refType: "CBM", refValue: estCbm.toFixed(3) },
+            ],
+          });
+
+          await tx.ctShipmentFinancialSnapshot.create({
+            data: {
+              tenantId: tenant.id,
+              shipmentId: ship.id,
+              customerVisibleCost: maybeRound(Number(orderTotal) * 0.92, 2),
+              internalCost: maybeRound(Number(orderTotal) * 0.7, 2),
+              internalRevenue: maybeRound(Number(orderTotal) * 1.06, 2),
+              internalNet: maybeRound(Number(orderTotal) * 0.36, 2),
+              internalMarginPct: maybeRound(34 + rand() * 14, 4),
+              currency: "USD",
+              asOf: new Date(sc.createdAt.getTime() + 2 * DAY_MS),
+              createdById: buyer.id,
+            },
+          });
+
+          if (isOverdue || rand() < 0.18) {
+            await tx.ctAlert.create({
+              data: {
+                tenantId: tenant.id,
+                shipmentId: ship.id,
+                type: isOverdue ? "ETA_DELAY" : "TRANSIT_RISK",
+                severity: isOverdue ? "CRITICAL" : "WARN",
+                title: isOverdue ? "Shipment overdue vs latest ETA" : "Schedule risk flagged",
+                body: `Route ${originCode} -> ${destinationCode}. Latest ETA ${sc.latestEta.toISOString()}.`,
+                ownerUserId: buyer.id,
+                status: "OPEN",
+              },
+            });
+          }
+          if (isOverdue && rand() < 0.45) {
+            await tx.ctException.create({
+              data: {
+                tenantId: tenant.id,
+                shipmentId: ship.id,
+                type: "TRANSIT_DELAY",
+                severity: "CRITICAL",
+                ownerUserId: buyer.id,
+                rootCause: pick(["Port congestion", "Customs hold", "Carrier roll-over"], rand),
+                status: rand() < 0.25 ? "IN_PROGRESS" : "OPEN",
+                claimAmount: maybeRound(500 + rand() * 6000, 2),
+              },
+            });
+          }
 
           const legRoll = rand();
           if (legRoll < 0.65) {
@@ -398,6 +591,32 @@ async function main() {
                   hasActual && rand() < 0.8 ? new Date(plannedEta.getTime() + (rand() - 0.3) * 3 * DAY_MS) : null,
               },
             });
+          }
+
+          const containerCount = mode === "OCEAN" ? 1 + Math.floor(rand() * 3) : rand() < 0.25 ? 1 : 0;
+          if (containerCount > 0) {
+            const firstLeg = await tx.ctShipmentLeg.findFirst({
+              where: { tenantId: tenant.id, shipmentId: ship.id },
+              orderBy: { legNo: "asc" },
+              select: { id: true, plannedEtd: true, actualAtd: true },
+            });
+            for (let c = 0; c < containerCount; c += 1) {
+              const gateBase = firstLeg?.actualAtd ?? firstLeg?.plannedEtd ?? sc.etd;
+              await tx.ctShipmentContainer.create({
+                data: {
+                  tenantId: tenant.id,
+                  shipmentId: ship.id,
+                  legId: firstLeg?.id ?? null,
+                  containerNumber: makeContainerNumber(i, c + 1),
+                  containerType: pick(CONTAINER_TYPES, rand),
+                  seal: `SEAL${String(100000 + i * 4 + c).padStart(6, "0")}`,
+                  status: sc.receivedAt ? "ARRIVED" : sc.status === "IN_TRANSIT" ? "IN_TRANSIT" : "GATED_IN",
+                  gateInAt: new Date(gateBase.getTime() - (2 + rand()) * DAY_MS),
+                  gateOutAt: new Date(gateBase.getTime() - (0.3 + rand()) * DAY_MS),
+                  notes: `Container for ${originCode} -> ${destinationCode}.`,
+                },
+              });
+            }
           }
         }
       },
