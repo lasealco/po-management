@@ -8,6 +8,8 @@ export const dynamic = "force-dynamic";
  * Scheduled sweep for SLA breach follow-ups (internal notes + escalation alerts).
  * Secure with `CRON_SECRET`: send `Authorization: Bearer <CRON_SECRET>`.
  * Vercel Cron invokes GET; POST supported for manual or external schedulers.
+ * On Vercel Hobby, crons run at most once per day (see `vercel.json` schedule).
+ * Optional: set `CONTROL_TOWER_SYSTEM_ACTOR_EMAIL` to an active tenant user for audit/note attribution.
  */
 async function handleCron(request: Request) {
   const secret = process.env.CRON_SECRET;

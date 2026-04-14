@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 
 type Summary = {
@@ -135,6 +136,16 @@ export function ControlTowerReportsClient({
               Open SLA follow-ups: <strong>{summary.totals.openSlaEscalationAlerts ?? 0}</strong>
             </div>
           </div>
+          <p className="mt-3 text-xs text-zinc-600">
+            Triage:{" "}
+            <Link href="/control-tower/command-center" className="font-medium text-sky-800 underline">
+              Command center
+            </Link>{" "}
+            ·{" "}
+            <Link href="/control-tower/workbench" className="font-medium text-sky-800 underline">
+              Workbench
+            </Link>
+          </p>
         </div>
       ) : null}
       <div className="rounded-lg border border-zinc-200 bg-white p-4">
