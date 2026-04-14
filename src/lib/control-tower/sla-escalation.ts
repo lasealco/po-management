@@ -144,8 +144,19 @@ export async function ensureSlaEscalationsForShipment(params: {
   }
 }
 
-/** Resolve a cron/system actor for a tenant (first active user). */
+/**
+ * Actor for cron-created notes and audit rows.
+ * Prefer `CONTROL_TOWER_SYSTEM_ACTOR_EMAIL` (must match an active user in that tenant), else first active user.
+ */
 export async function resolveTenantCronActorUserId(tenantId: string): Promise<string | null> {
+  const email = process.env.CONTROL_TOWER_SYSTEM_ACTOR_EMAIL?.trim().toLowerCase();
+  if (email) {
+    const byEmail = await prisma.user.findFirst({
+      where: { tenantId, isActive: true, email: { equals: email, mode: "insensitive" } },
+      select: { id: true },
+    });
+    if (byEmail) return byEmail.id;
+  }
   const u = await prisma.user.findFirst({
     where: { tenantId, isActive: true },
     orderBy: { createdAt: "asc" },
@@ -155,7 +166,7 @@ export async function resolveTenantCronActorUserId(tenantId: string): Promise<st
 }
 
 /**
- * Hourly-style sweep: all tenants with demo-style multi-tenant support.
+ * Scheduled sweep across tenants (intended for daily cron on Vercel Hobby).
  */
 export async function runSlaEscalationsAllTenants(): Promise<{
   tenants: number;

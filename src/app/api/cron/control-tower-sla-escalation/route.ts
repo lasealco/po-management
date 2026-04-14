@@ -7,8 +7,9 @@ export const dynamic = "force-dynamic";
 /**
  * Scheduled sweep for SLA breach follow-ups (internal notes + escalation alerts).
  * Secure with `CRON_SECRET`: send `Authorization: Bearer <CRON_SECRET>`.
+ * Vercel Cron invokes GET; POST supported for manual or external schedulers.
  */
-export async function GET(request: Request) {
+async function handleCron(request: Request) {
   const secret = process.env.CRON_SECRET;
   if (!secret) {
     return NextResponse.json(
@@ -23,4 +24,12 @@ export async function GET(request: Request) {
 
   const summary = await runSlaEscalationsAllTenants();
   return NextResponse.json({ ok: true, ...summary });
+}
+
+export async function GET(request: Request) {
+  return handleCron(request);
+}
+
+export async function POST(request: Request) {
+  return handleCron(request);
 }
