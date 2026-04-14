@@ -36,6 +36,9 @@ export async function GET(request: Request) {
   const statusRaw = searchParams.get("status") ?? "";
   const modeRaw = searchParams.get("mode") ?? "";
   const q = searchParams.get("q") ?? undefined;
+  const shipperName = searchParams.get("shipperName") ?? undefined;
+  const consigneeName = searchParams.get("consigneeName") ?? undefined;
+  const lane = searchParams.get("lane") ?? undefined;
   const take = searchParams.get("take");
   const onlyOverdueEtaRaw = searchParams.get("onlyOverdueEta") ?? "";
   const routeActionRaw = searchParams.get("routeAction") ?? "";
@@ -59,6 +62,9 @@ export async function GET(request: Request) {
       status: status || undefined,
       mode: mode || undefined,
       q,
+      shipperName,
+      consigneeName,
+      lane,
       take: take ? Number(take) : undefined,
       onlyOverdueEta: onlyOverdueEta || undefined,
       routeActionPrefix: routeActionPrefix || undefined,

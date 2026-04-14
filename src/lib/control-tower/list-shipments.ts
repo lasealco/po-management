@@ -22,6 +22,9 @@ export type ListShipmentsQuery = {
   routeActionPrefix?: (typeof ROUTE_ACTION_PREFIXES)[number] | "";
   /** Shipments with at least one open alert or open exception assigned to this user (internal lists). */
   dispatchOwnerUserId?: string;
+  shipperName?: string;
+  consigneeName?: string;
+  lane?: string;
 };
 
 const listSelectCore = {
@@ -251,6 +254,39 @@ export async function listControlTowerShipments(params: {
         { ctReferences: { some: { refValue: contains } } },
         { ctReferences: { some: { refType: contains } } },
         { ctContainers: { some: { containerNumber: contains } } },
+      ],
+    });
+  }
+  const shipper = query.shipperName?.trim();
+  if (shipper) {
+    ands.push({
+      ctReferences: {
+        some: {
+          refType: "SHIPPER",
+          refValue: { contains: shipper, mode: "insensitive" },
+        },
+      },
+    });
+  }
+  const consignee = query.consigneeName?.trim();
+  if (consignee) {
+    ands.push({
+      ctReferences: {
+        some: {
+          refType: "CONSIGNEE",
+          refValue: { contains: consignee, mode: "insensitive" },
+        },
+      },
+    });
+  }
+  const lane = query.lane?.trim();
+  if (lane) {
+    ands.push({
+      OR: [
+        { booking: { is: { originCode: { contains: lane, mode: "insensitive" } } } },
+        { booking: { is: { destinationCode: { contains: lane, mode: "insensitive" } } } },
+        { ctLegs: { some: { originCode: { contains: lane, mode: "insensitive" } } } },
+        { ctLegs: { some: { destinationCode: { contains: lane, mode: "insensitive" } } } },
       ],
     });
   }

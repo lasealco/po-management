@@ -41,6 +41,9 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
   const [onlyOverdueEta, setOnlyOverdueEta] = useState(false);
   const [page, setPage] = useState(1);
   const [q, setQ] = useState("");
+  const [shipperFilter, setShipperFilter] = useState("");
+  const [consigneeFilter, setConsigneeFilter] = useState("");
+  const [laneFilter, setLaneFilter] = useState("");
   const [rows, setRows] = useState<Row[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,6 +59,9 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
       if (status) sp.set("status", status);
       if (mode) sp.set("mode", mode);
       if (q.trim()) sp.set("q", q.trim());
+      if (shipperFilter.trim()) sp.set("shipperName", shipperFilter.trim());
+      if (consigneeFilter.trim()) sp.set("consigneeName", consigneeFilter.trim());
+      if (laneFilter.trim()) sp.set("lane", laneFilter.trim());
       if (onlyOverdueEta) sp.set("onlyOverdueEta", "1");
       sp.set("take", "120");
       const res = await fetch(`/api/control-tower/shipments?${sp.toString()}`);
@@ -68,7 +74,7 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
     } finally {
       setBusy(false);
     }
-  }, [status, mode, q, onlyOverdueEta]);
+  }, [status, mode, q, shipperFilter, consigneeFilter, laneFilter, onlyOverdueEta]);
 
   useEffect(() => {
     void load();
@@ -174,6 +180,9 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
       status?: string;
       mode?: string;
       q?: string;
+      shipperFilter?: string;
+      consigneeFilter?: string;
+      laneFilter?: string;
       routeAction?: string;
       sortBy?: string;
       onlyOverdueEta?: boolean;
@@ -181,6 +190,9 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
     setStatus(typeof o.status === "string" ? o.status : "");
     setMode(typeof o.mode === "string" ? o.mode : "");
     setQ(typeof o.q === "string" ? o.q : "");
+    setShipperFilter(typeof o.shipperFilter === "string" ? o.shipperFilter : "");
+    setConsigneeFilter(typeof o.consigneeFilter === "string" ? o.consigneeFilter : "");
+    setLaneFilter(typeof o.laneFilter === "string" ? o.laneFilter : "");
     setRouteAction(typeof o.routeAction === "string" ? o.routeAction : "");
     setSortBy(typeof o.sortBy === "string" ? o.sortBy : "updated_desc");
     setOnlyOverdueEta(Boolean(o.onlyOverdueEta));
@@ -196,7 +208,17 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
       body: JSON.stringify({
         action: "save_ct_filter",
         name: name.trim(),
-        filtersJson: { status, mode, q, routeAction, sortBy, onlyOverdueEta },
+        filtersJson: {
+          status,
+          mode,
+          q,
+          shipperFilter,
+          consigneeFilter,
+          laneFilter,
+          routeAction,
+          sortBy,
+          onlyOverdueEta,
+        },
       }),
     });
     if (!res.ok) {
@@ -317,6 +339,33 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
             onChange={(e) => setQ(e.target.value)}
             placeholder="PO #, tracking, B/L ref…"
             className="mt-1 block w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"
+          />
+        </label>
+        <label className="text-xs text-zinc-600">
+          Shipper
+          <input
+            value={shipperFilter}
+            onChange={(e) => setShipperFilter(e.target.value)}
+            placeholder="Shipper contains"
+            className="mt-1 block rounded border border-zinc-300 px-2 py-1.5 text-sm"
+          />
+        </label>
+        <label className="text-xs text-zinc-600">
+          Consignee
+          <input
+            value={consigneeFilter}
+            onChange={(e) => setConsigneeFilter(e.target.value)}
+            placeholder="Consignee contains"
+            className="mt-1 block rounded border border-zinc-300 px-2 py-1.5 text-sm"
+          />
+        </label>
+        <label className="text-xs text-zinc-600">
+          Lane
+          <input
+            value={laneFilter}
+            onChange={(e) => setLaneFilter(e.target.value)}
+            placeholder="e.g. CNSHA or USLAX"
+            className="mt-1 block rounded border border-zinc-300 px-2 py-1.5 text-sm"
           />
         </label>
         <label className="text-xs text-zinc-600">
