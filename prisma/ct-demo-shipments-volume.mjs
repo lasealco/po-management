@@ -180,16 +180,44 @@ function buildShipmentScenario(i, total, rand, win) {
   };
 }
 
+async function assertControlTowerSchemaReady() {
+  const rows = await prisma.$queryRaw`
+    SELECT EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'Shipment'
+        AND column_name = 'customerCrmAccountId'
+    ) AS ok
+  `;
+  const ok = Array.isArray(rows) && rows[0]?.ok === true;
+  if (!ok) {
+    console.error(
+      "[ct-volume] This database is missing column Shipment.customerCrmAccountId (migrations not applied here).",
+    );
+    console.error("  Run migrations against the SAME database as this script (see host in the log above):");
+    console.error("    npm run db:migrate");
+    console.error("  If you use Neon: copy DATABASE_URL (or DATABASE_URL_UNPOOLED) from .env.local into the");
+    console.error("  shell, or run:  DATABASE_URL='postgresql://…neon…' npm run db:migrate");
+    process.exit(1);
+  }
+}
+
 async function main() {
   const total = Math.min(10_000, Math.max(1, Number(process.env.CT_VOL_COUNT || 3000)));
   const rand = mulberry32(0xdeed3000);
+
+  await assertControlTowerSchemaReady();
 
   const tenant = await prisma.tenant.findUnique({
     where: { slug: "demo-company" },
     select: { id: true },
   });
   if (!tenant) {
-    console.error('[ct-volume] Tenant "demo-company" not found. Run npm run db:seed first.');
+    console.error('[ct-volume] Tenant "demo-company" not found.');
+    console.error("  Run base seed against this same database:");
+    console.error("    npm run db:seed");
+    console.error("  If demo data lives on Neon (DATABASE_URL in .env.local only):");
+    console.error("    USE_DOTENV_LOCAL=1 npm run db:seed");
     process.exit(1);
   }
 
