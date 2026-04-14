@@ -20,8 +20,14 @@ type Row = {
   etd: string | null;
   eta: string | null;
   latestEta: string | null;
+  receivedAt: string | null;
   routeProgressPct: number | null;
   nextAction: string | null;
+  shipperName: string | null;
+  consigneeName: string | null;
+  quantityRef: string | null;
+  weightKgRef: string | null;
+  cbmRef: string | null;
   updatedAt: string;
   latestMilestone: { code: string; hasActual: boolean } | null;
 };
@@ -98,6 +104,13 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
       "origin",
       "destination",
       "eta",
+      "ata",
+      "etaVsAtaDays",
+      "shipper",
+      "consignee",
+      "quantityRef",
+      "weightKgRef",
+      "cbmRef",
       "updatedAt",
     ];
     const lines = [header.join(",")];
@@ -113,6 +126,20 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
           esc(r.originCode || ""),
           esc(r.destinationCode || ""),
           esc(r.eta || r.latestEta || ""),
+          esc(r.receivedAt || ""),
+          esc(
+            (() => {
+              const etaIso = r.latestEta || r.eta;
+              if (!etaIso || !r.receivedAt) return "";
+              const deltaMs = new Date(r.receivedAt).getTime() - new Date(etaIso).getTime();
+              return (deltaMs / 86_400_000).toFixed(1);
+            })(),
+          ),
+          esc(r.shipperName || ""),
+          esc(r.consigneeName || ""),
+          esc(r.quantityRef || ""),
+          esc(r.weightKgRef || ""),
+          esc(r.cbmRef || ""),
           esc(r.updatedAt),
         ].join(","),
       );
@@ -442,6 +469,9 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
               <th className="px-2 py-2">Customer</th>
               <th className="px-2 py-2">Lane</th>
               <th className="px-2 py-2">ETA</th>
+              <th className="px-2 py-2">ATA / Delay</th>
+              <th className="px-2 py-2">Parties</th>
+              <th className="px-2 py-2">Qty / Wt / Cbm</th>
               <th className="px-2 py-2">Route</th>
               <th className="px-2 py-2">Next action</th>
               <th className="px-2 py-2">Milestone</th>
@@ -451,7 +481,7 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
           <tbody className="divide-y divide-zinc-200">
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={11} className="px-2 py-6 text-center text-zinc-500">
+                <td colSpan={14} className="px-2 py-6 text-center text-zinc-500">
                   {busy ? "Loading…" : "No rows match."}
                 </td>
               </tr>
@@ -489,6 +519,37 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
                     {r.eta || r.latestEta
                       ? new Date((r.latestEta || r.eta) as string).toLocaleDateString()
                       : "—"}
+                  </td>
+                  <td className="whitespace-nowrap px-2 py-2 text-xs text-zinc-600">
+                    {r.receivedAt ? new Date(r.receivedAt).toLocaleDateString() : "—"}
+                    {(() => {
+                      const etaIso = r.latestEta || r.eta;
+                      if (!etaIso || !r.receivedAt) return null;
+                      const deltaMs = new Date(r.receivedAt).getTime() - new Date(etaIso).getTime();
+                      const days = Math.round((deltaMs / 86_400_000) * 10) / 10;
+                      return (
+                        <span
+                          className={`ml-2 rounded-full border px-2 py-0.5 ${
+                            days <= 0
+                              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                              : "border-rose-200 bg-rose-50 text-rose-800"
+                          }`}
+                        >
+                          {days <= 0 ? `${Math.abs(days)}d early` : `${days}d late`}
+                        </span>
+                      );
+                    })()}
+                  </td>
+                  <td className="max-w-[14rem] px-2 py-2 text-xs text-zinc-600">
+                    <div className="truncate" title={r.shipperName || ""}>
+                      S: {r.shipperName || "—"}
+                    </div>
+                    <div className="truncate" title={r.consigneeName || ""}>
+                      C: {r.consigneeName || "—"}
+                    </div>
+                  </td>
+                  <td className="whitespace-nowrap px-2 py-2 text-xs text-zinc-600">
+                    {r.quantityRef || "—"} / {r.weightKgRef || "—"}kg / {r.cbmRef || "—"}cbm
                   </td>
                   <td className="whitespace-nowrap px-2 py-2 text-xs text-zinc-700">
                     {r.routeProgressPct == null ? "—" : `${r.routeProgressPct}%`}

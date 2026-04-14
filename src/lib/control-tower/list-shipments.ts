@@ -33,6 +33,7 @@ const listSelectCore = {
   carrier: true,
   shippedAt: true,
   updatedAt: true,
+  receivedAt: true,
   customerCrmAccountId: true,
   customerCrmAccount: {
     select: { name: true },
@@ -43,6 +44,15 @@ const listSelectCore = {
       orderNumber: true,
       supplier: { select: { name: true } },
     },
+  },
+  ctReferences: {
+    where: {
+      refType: {
+        in: ["SHIPPER", "CONSIGNEE", "QTY", "WEIGHT_KG", "CBM"] as const,
+      },
+    },
+    select: { refType: true, refValue: true },
+    take: 12,
   },
   booking: {
     select: {
@@ -183,6 +193,17 @@ function mapShipmentListRow(s: ShipmentListCore | ShipmentListInternal) {
       : null,
     dispatchOwner,
     openQueueCounts,
+    shipperName:
+      s.ctReferences.find((r) => r.refType === "SHIPPER")?.refValue ?? null,
+    consigneeName:
+      s.ctReferences.find((r) => r.refType === "CONSIGNEE")?.refValue ?? null,
+    quantityRef:
+      s.ctReferences.find((r) => r.refType === "QTY")?.refValue ?? null,
+    weightKgRef:
+      s.ctReferences.find((r) => r.refType === "WEIGHT_KG")?.refValue ?? null,
+    cbmRef:
+      s.ctReferences.find((r) => r.refType === "CBM")?.refValue ?? null,
+    receivedAt: s.receivedAt?.toISOString() ?? null,
   };
 }
 
@@ -225,7 +246,10 @@ export async function listControlTowerShipments(params: {
         { trackingNo: contains },
         { carrier: contains },
         { order: { orderNumber: contains } },
+        { order: { supplier: { is: { name: contains } } } },
+        { customerCrmAccount: { is: { name: contains } } },
         { ctReferences: { some: { refValue: contains } } },
+        { ctReferences: { some: { refType: contains } } },
         { ctContainers: { some: { containerNumber: contains } } },
       ],
     });
