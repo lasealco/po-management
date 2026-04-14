@@ -25,6 +25,8 @@ export type ListShipmentsQuery = {
   shipperName?: string;
   consigneeName?: string;
   lane?: string;
+  minRouteProgressPct?: number;
+  maxRouteProgressPct?: number;
 };
 
 const listSelectCore = {
@@ -336,6 +338,12 @@ export async function listControlTowerShipments(params: {
     let out = rows;
     if (routePrefix) {
       out = out.filter((r) => (r.nextAction ?? "").startsWith(routePrefix));
+    }
+    if (typeof query.minRouteProgressPct === "number") {
+      out = out.filter((r) => (r.routeProgressPct ?? -1) >= query.minRouteProgressPct!);
+    }
+    if (typeof query.maxRouteProgressPct === "number") {
+      out = out.filter((r) => (r.routeProgressPct ?? 101) <= query.maxRouteProgressPct!);
     }
     return out.slice(0, requestedTake);
   };

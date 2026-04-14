@@ -43,6 +43,8 @@ export async function GET(request: Request) {
   const onlyOverdueEtaRaw = searchParams.get("onlyOverdueEta") ?? "";
   const routeActionRaw = searchParams.get("routeAction") ?? "";
   const dispatchOwnerUserId = searchParams.get("dispatchOwnerUserId")?.trim() || undefined;
+  const minRouteProgressPctRaw = searchParams.get("minRouteProgressPct");
+  const maxRouteProgressPctRaw = searchParams.get("maxRouteProgressPct");
 
   const status = STATUSES.includes(statusRaw as ShipmentStatus)
     ? (statusRaw as ShipmentStatus)
@@ -54,6 +56,15 @@ export async function GET(request: Request) {
   const routeActionPrefix = routeActionAllowed.includes(routeActionRaw as (typeof routeActionAllowed)[number])
     ? (routeActionRaw as (typeof routeActionAllowed)[number])
     : "";
+
+  const parsePct = (v: string | null) => {
+    if (!v) return undefined;
+    const n = Number(v);
+    if (!Number.isFinite(n)) return undefined;
+    return Math.max(0, Math.min(100, Math.round(n)));
+  };
+  const minRouteProgressPct = parsePct(minRouteProgressPctRaw);
+  const maxRouteProgressPct = parsePct(maxRouteProgressPctRaw);
 
   const rows = await listControlTowerShipments({
     tenantId: tenant.id,
@@ -69,6 +80,8 @@ export async function GET(request: Request) {
       onlyOverdueEta: onlyOverdueEta || undefined,
       routeActionPrefix: routeActionPrefix || undefined,
       dispatchOwnerUserId: dispatchOwnerUserId || undefined,
+      minRouteProgressPct,
+      maxRouteProgressPct,
     },
   });
 

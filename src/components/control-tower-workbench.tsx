@@ -53,6 +53,7 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
   const [lastRefreshedAt, setLastRefreshedAt] = useState<string | null>(null);
   const [saved, setSaved] = useState<Array<{ id: string; name: string; filtersJson: unknown }>>([]);
   const [ownerFilter, setOwnerFilter] = useState("");
+  const [routeHealth, setRouteHealth] = useState("");
 
   const load = useCallback(async () => {
     setBusy(true);
@@ -66,6 +67,16 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
       if (consigneeFilter.trim()) sp.set("consigneeName", consigneeFilter.trim());
       if (laneFilter.trim()) sp.set("lane", laneFilter.trim());
       if (ownerFilter) sp.set("dispatchOwnerUserId", ownerFilter);
+      if (routeHealth === "stalled") {
+        sp.set("minRouteProgressPct", "0");
+        sp.set("maxRouteProgressPct", "40");
+      } else if (routeHealth === "mid") {
+        sp.set("minRouteProgressPct", "41");
+        sp.set("maxRouteProgressPct", "79");
+      } else if (routeHealth === "advanced") {
+        sp.set("minRouteProgressPct", "80");
+        sp.set("maxRouteProgressPct", "100");
+      }
       if (onlyOverdueEta) sp.set("onlyOverdueEta", "1");
       sp.set("take", "120");
       const res = await fetch(`/api/control-tower/shipments?${sp.toString()}`);
@@ -78,7 +89,7 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
     } finally {
       setBusy(false);
     }
-  }, [status, mode, q, shipperFilter, consigneeFilter, laneFilter, ownerFilter, onlyOverdueEta]);
+  }, [status, mode, q, shipperFilter, consigneeFilter, laneFilter, ownerFilter, routeHealth, onlyOverdueEta]);
 
   useEffect(() => {
     void load();
@@ -188,6 +199,7 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
       consigneeFilter?: string;
       laneFilter?: string;
       ownerFilter?: string;
+      routeHealth?: string;
       routeAction?: string;
       sortBy?: string;
       onlyOverdueEta?: boolean;
@@ -199,6 +211,7 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
     setConsigneeFilter(typeof o.consigneeFilter === "string" ? o.consigneeFilter : "");
     setLaneFilter(typeof o.laneFilter === "string" ? o.laneFilter : "");
     setOwnerFilter(typeof o.ownerFilter === "string" ? o.ownerFilter : "");
+    setRouteHealth(typeof o.routeHealth === "string" ? o.routeHealth : "");
     setRouteAction(typeof o.routeAction === "string" ? o.routeAction : "");
     setSortBy(typeof o.sortBy === "string" ? o.sortBy : "updated_desc");
     setOnlyOverdueEta(Boolean(o.onlyOverdueEta));
@@ -222,6 +235,7 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
           consigneeFilter,
           laneFilter,
           ownerFilter,
+          routeHealth,
           routeAction,
           sortBy,
           onlyOverdueEta,
@@ -395,6 +409,19 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
                 {o.name}
               </option>
             ))}
+          </select>
+        </label>
+        <label className="text-xs text-zinc-600">
+          Route health
+          <select
+            value={routeHealth}
+            onChange={(e) => setRouteHealth(e.target.value)}
+            className="mt-1 block rounded border border-zinc-300 px-2 py-1.5 text-sm"
+          >
+            <option value="">Any</option>
+            <option value="stalled">Stalled (0-40%)</option>
+            <option value="mid">Mid-route (41-79%)</option>
+            <option value="advanced">Advanced (80-100%)</option>
           </select>
         </label>
         <label className="text-xs text-zinc-600">
