@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 type Row = {
   id: string;
@@ -34,6 +34,28 @@ type Row = {
   openQueueCounts: { openAlerts: number; openExceptions: number };
 };
 
+const CT_URL_STATUSES = new Set([
+  "SHIPPED",
+  "VALIDATED",
+  "BOOKED",
+  "IN_TRANSIT",
+  "DELIVERED",
+  "RECEIVED",
+]);
+const CT_URL_MODES = new Set(["OCEAN", "AIR", "ROAD", "RAIL"]);
+
+function workbenchUrlHasSearchFilters(sp: URLSearchParams): boolean {
+  return Boolean(
+    (sp.get("q") ?? "").trim() ||
+      (sp.get("status") ?? "").trim() ||
+      (sp.get("mode") ?? "").trim() ||
+      (sp.get("shipperName") ?? "").trim() ||
+      (sp.get("consigneeName") ?? "").trim() ||
+      (sp.get("lane") ?? "").trim() ||
+      (sp.get("onlyOverdueEta") ?? "").trim(),
+  );
+}
+
 export function ControlTowerWorkbench({
   canEdit,
   restrictedView = false,
@@ -54,6 +76,8 @@ export function ControlTowerWorkbench({
   const [shipperFilter, setShipperFilter] = useState("");
   const [consigneeFilter, setConsigneeFilter] = useState("");
   const [laneFilter, setLaneFilter] = useState("");
+  /** False until client layout reads `?q=` / filters from the URL (avoids a stale first fetch). */
+  const [filtersReady, setFiltersReady] = useState(false);
   const [rows, setRows] = useState<Row[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,6 +86,28 @@ export function ControlTowerWorkbench({
   const [saved, setSaved] = useState<Array<{ id: string; name: string; filtersJson: unknown }>>([]);
   const [ownerFilter, setOwnerFilter] = useState("");
   const [routeHealth, setRouteHealth] = useState("");
+
+  useLayoutEffect(() => {
+    if (typeof window === "undefined") return;
+    const sp = new URLSearchParams(window.location.search);
+    const qParam = sp.get("q");
+    if (qParam) setQ(qParam);
+    const st = sp.get("status") ?? "";
+    if (CT_URL_STATUSES.has(st)) setStatus(st);
+    const mo = sp.get("mode") ?? "";
+    if (CT_URL_MODES.has(mo)) setMode(mo);
+    const ship = sp.get("shipperName");
+    if (ship) setShipperFilter(ship);
+    const cons = sp.get("consigneeName");
+    if (cons) setConsigneeFilter(cons);
+    const lane = sp.get("lane");
+    if (lane) setLaneFilter(lane);
+    const oo = sp.get("onlyOverdueEta") ?? "";
+    if (oo === "1" || oo.toLowerCase() === "true") setOnlyOverdueEta(true);
+    const owner = sp.get("dispatchOwnerUserId");
+    if (owner) setOwnerFilter(owner);
+    setFiltersReady(true);
+  }, []);
 
   const load = useCallback(async () => {
     const myId = ++workbenchRequestId.current;
@@ -117,16 +163,17 @@ export function ControlTowerWorkbench({
   ]);
 
   useEffect(() => {
+    if (!filtersReady) return;
     void load();
-  }, [load]);
+  }, [load, filtersReady]);
 
   useEffect(() => {
-    if (!autoRefresh) return;
+    if (!filtersReady || !autoRefresh) return;
     const t = window.setInterval(() => {
       void load();
     }, 60_000);
     return () => window.clearInterval(t);
-  }, [autoRefresh, load]);
+  }, [autoRefresh, load, filtersReady]);
 
   useEffect(() => {
     void (async () => {
@@ -139,7 +186,11 @@ export function ControlTowerWorkbench({
       const defaultId = typeof window !== "undefined" ? window.localStorage.getItem(defaultViewKey) : null;
       if (defaultId) {
         const match = (data.filters ?? []).find((f) => f.id === defaultId);
-        if (match) applySaved(match.filtersJson);
+        const sp =
+          typeof window !== "undefined" ? new URLSearchParams(window.location.search) : new URLSearchParams();
+        if (match && !workbenchUrlHasSearchFilters(sp)) {
+          applySaved(match.filtersJson);
+        }
       }
     })();
   }, []);

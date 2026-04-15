@@ -80,7 +80,8 @@ export default async function ControlTowerPage() {
         >
           <span className="text-base font-semibold text-zinc-900">Search & assist</span>
           <p className="mt-2 text-sm text-zinc-600">
-            Structured search plus lightweight query hints (R5) — no external LLM required.
+            Rule-based query parsing to structured filters (R5) plus the same text index as the workbench — no external
+            LLM.
           </p>
           <span className="mt-4 inline-block text-sm font-medium text-sky-800">Open →</span>
         </Link>

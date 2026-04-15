@@ -1,3 +1,4 @@
+import type { ShipmentStatus, TransportMode } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
@@ -6,6 +7,16 @@ import { getControlTowerPortalContext } from "@/lib/control-tower/viewer";
 import { getDemoTenant } from "@/lib/demo-tenant";
 
 export const dynamic = "force-dynamic";
+
+const STATUSES: ShipmentStatus[] = [
+  "SHIPPED",
+  "VALIDATED",
+  "BOOKED",
+  "IN_TRANSIT",
+  "DELIVERED",
+  "RECEIVED",
+];
+const MODES: TransportMode[] = ["OCEAN", "AIR", "ROAD", "RAIL"];
 
 export async function GET(request: Request) {
   const gate = await requireApiGrant("org.controltower", "view");
@@ -23,15 +34,49 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const q = searchParams.get("q")?.trim() ?? "";
-  if (!q) {
-    return NextResponse.json({ shipments: [], message: "Provide q= search text." });
+  const statusRaw = searchParams.get("status") ?? "";
+  const modeRaw = searchParams.get("mode") ?? "";
+  const onlyOverdueEtaRaw = searchParams.get("onlyOverdueEta") ?? "";
+  const shipperName = searchParams.get("shipperName")?.trim() || undefined;
+  const consigneeName = searchParams.get("consigneeName")?.trim() || undefined;
+  const lane = searchParams.get("lane")?.trim() || undefined;
+  const takeRaw = searchParams.get("take");
+  const takeParsed = takeRaw ? Number(takeRaw) : NaN;
+  const take = Number.isFinite(takeParsed)
+    ? Math.min(200, Math.max(1, Math.floor(takeParsed)))
+    : undefined;
+
+  const status = STATUSES.includes(statusRaw as ShipmentStatus)
+    ? (statusRaw as ShipmentStatus)
+    : undefined;
+  const mode = MODES.includes(modeRaw as TransportMode) ? (modeRaw as TransportMode) : undefined;
+  const onlyOverdueEta =
+    onlyOverdueEtaRaw === "1" || onlyOverdueEtaRaw.toLowerCase() === "true" ? true : undefined;
+
+  const hasStructured = Boolean(
+    mode || status || onlyOverdueEta || shipperName || consigneeName || lane,
+  );
+  if (!q && !hasStructured) {
+    return NextResponse.json({
+      shipments: [],
+      message: "Provide q= text and/or filters: mode, status, onlyOverdueEta, shipperName, consigneeName, lane.",
+    });
   }
 
   const rows = await listControlTowerShipments({
     tenantId: tenant.id,
     ctx,
-    query: { q, take: 40 },
+    query: {
+      q: q || undefined,
+      take: take ?? 60,
+      status: status ?? "",
+      mode: mode ?? "",
+      onlyOverdueEta: onlyOverdueEta ?? false,
+      shipperName,
+      consigneeName,
+      lane,
+    },
   });
 
-  return NextResponse.json({ q, shipments: rows });
+  return NextResponse.json({ q: q || null, shipments: rows });
 }

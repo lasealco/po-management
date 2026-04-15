@@ -1,4 +1,5 @@
 import type { Prisma, ShipmentStatus, TransportMode } from "@prisma/client";
+import { ShipmentMilestoneCode } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 
@@ -10,6 +11,10 @@ import {
 const TERMINAL_SHIPMENT: Array<"DELIVERED" | "RECEIVED"> = ["DELIVERED", "RECEIVED"];
 
 const ROUTE_ACTION_PREFIXES = ["Plan leg", "Mark departure", "Record arrival", "Route complete"] as const;
+
+function isProbableCuid(s: string): boolean {
+  return s.length >= 20 && s.length <= 32 && /^c[a-z0-9]+$/i.test(s);
+}
 
 export type ListShipmentsQuery = {
   status?: ShipmentStatus | "";
@@ -249,16 +254,41 @@ export async function listControlTowerShipments(params: {
   const q = query.q?.trim();
   if (q) {
     const contains = { contains: q, mode: "insensitive" as const };
+    const idOr: Prisma.ShipmentWhereInput[] = isProbableCuid(q) ? [{ id: q }] : [];
+    const qLower = q.toLowerCase();
+    const milestoneCodesMatching = (Object.values(ShipmentMilestoneCode) as ShipmentMilestoneCode[]).filter((code) =>
+      code.toLowerCase().includes(qLower),
+    );
+    const milestoneMatch: Prisma.ShipmentWhereInput | null =
+      milestoneCodesMatching.length > 0
+        ? { milestones: { some: { code: { in: milestoneCodesMatching } } } }
+        : null;
     ands.push({
       OR: [
+        ...idOr,
         { shipmentNo: contains },
         { trackingNo: contains },
         { carrier: contains },
+        { asnReference: contains },
+        { notes: contains },
         { order: { orderNumber: contains } },
         { order: { supplier: { is: { name: contains } } } },
         { customerCrmAccount: { is: { name: contains } } },
         { ctReferences: { some: { refValue: contains } } },
         { ctContainers: { some: { containerNumber: contains } } },
+        ...(milestoneMatch ? [milestoneMatch] : []),
+        {
+          booking: {
+            is: {
+              OR: [
+                { bookingNo: contains },
+                { serviceLevel: contains },
+                { notes: contains },
+                { forwarderSupplier: { is: { name: contains } } },
+              ],
+            },
+          },
+        },
       ],
     });
   }
