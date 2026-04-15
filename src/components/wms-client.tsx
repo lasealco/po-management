@@ -1,5 +1,6 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 type WmsData = {
@@ -204,6 +205,7 @@ function downloadMovementLedgerCsv(
 }
 
 export function WmsClient({ canEdit, section }: { canEdit: boolean; section: WmsSection }) {
+  const searchParams = useSearchParams();
   const [data, setData] = useState<WmsData | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -259,6 +261,14 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
     "" | "PUTAWAY" | "PICK" | "REPLENISH" | "CYCLE_COUNT"
   >("");
   const [balanceTextFilter, setBalanceTextFilter] = useState("");
+  const onHoldOnly = searchParams.get("onHold") === "1";
+
+  useEffect(() => {
+    const taskType = (searchParams.get("taskType") || "").toUpperCase();
+    if (taskType === "PUTAWAY" || taskType === "PICK" || taskType === "REPLENISH" || taskType === "CYCLE_COUNT") {
+      setOpenTaskTypeFilter(taskType);
+    }
+  }, [searchParams]);
 
   const load = useCallback(async () => {
     const params = new URLSearchParams();
@@ -332,11 +342,10 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
 
   const balancesShown = useMemo(() => {
     const rows = data?.balances ?? [];
-    if (section !== "stock" || !selectedWarehouseId) {
-      return rows;
-    }
-    return rows.filter((b) => b.warehouse.id === selectedWarehouseId);
-  }, [data?.balances, section, selectedWarehouseId]);
+    const byWarehouse =
+      section !== "stock" || !selectedWarehouseId ? rows : rows.filter((b) => b.warehouse.id === selectedWarehouseId);
+    return onHoldOnly ? byWarehouse.filter((b) => b.onHold) : byWarehouse;
+  }, [data?.balances, onHoldOnly, section, selectedWarehouseId]);
 
   const tasksShown = useMemo(() => {
     const rows = data?.openTasks ?? [];
@@ -1424,6 +1433,14 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
             />
           </label>
         </div>
+        {onHoldOnly ? (
+          <p className="mb-2 rounded border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-900">
+            Filtered view: on-hold inventory only ·{" "}
+            <a className="underline" href="/wms/stock">
+              clear
+            </a>
+          </p>
+        ) : null}
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead className="bg-zinc-100 text-left text-xs uppercase text-zinc-700">

@@ -141,7 +141,7 @@ export async function buildReportingCockpitSnapshot(params: {
         label: "Open logistics exceptions",
         count: openCtExceptionCount,
         severity: openCtExceptionCount >= 15 ? "high" : "medium",
-        href: "/control-tower/ops",
+        href: "/control-tower/ops?focus=exceptions",
       },
       {
         id: "po-overdue",
@@ -204,7 +204,7 @@ export async function buildReportingCockpitSnapshot(params: {
             id: "act-ct-exceptions",
             title: "Triage open logistics exceptions",
             reason: `${openCtExceptionCount} exceptions are open/in progress and may impact service levels.`,
-            href: "/control-tower/ops",
+            href: "/control-tower/ops?focus=exceptions",
             priority: priorityByThreshold(openCtExceptionCount, 15),
           }]
         : []),
@@ -222,8 +222,17 @@ export async function buildReportingCockpitSnapshot(params: {
             id: "act-crm-stale",
             title: "Push stale opportunities to next step",
             reason: `${staleOpportunityCount} opportunities are past close/next-step dates.`,
-            href: "/crm/pipeline",
+            href: "/crm/pipeline?focus=stale",
             priority: priorityByThreshold(staleOpportunityCount, 10),
+          }]
+        : []),
+      ...(overdueActivityCount > 0
+        ? [{
+            id: "act-crm-overdue-activities",
+            title: "Close overdue CRM activities",
+            reason: `${overdueActivityCount} activities are overdue and still open.`,
+            href: "/crm/activities?status=OPEN&due=overdue",
+            priority: priorityByThreshold(overdueActivityCount, 25),
           }]
         : []),
       ...(onHoldInventoryCount > 0
@@ -231,7 +240,7 @@ export async function buildReportingCockpitSnapshot(params: {
             id: "act-wms-hold",
             title: "Clear on-hold inventory blockers",
             reason: `${onHoldInventoryCount} hold rows can block picks/replenishment.`,
-            href: "/wms/stock",
+            href: "/wms/stock?onHold=1",
             priority: priorityByThreshold(onHoldInventoryCount, 12),
           }]
         : []),

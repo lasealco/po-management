@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 const STAGES = [
@@ -27,6 +28,7 @@ type Opp = {
 };
 
 export function CrmPipelineBoard() {
+  const searchParams = useSearchParams();
   const [opportunities, setOpportunities] = useState<Opp[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,16 +48,36 @@ export function CrmPipelineBoard() {
     void load();
   }, [load]);
 
+  const stageFilterRaw = (searchParams.get("stage") || "").toUpperCase();
+  const stageFilter = STAGES.includes(stageFilterRaw as (typeof STAGES)[number]) ? stageFilterRaw : "";
+  const focus = (searchParams.get("focus") || "").toLowerCase();
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
+
+  const filteredOpps = useMemo(() => {
+    return opportunities.filter((o) => {
+      if (stageFilter && o.stage !== stageFilter) return false;
+      if (focus === "stale") {
+        if (!o.closeDate) return false;
+        return new Date(o.closeDate) < today;
+      }
+      return true;
+    });
+  }, [focus, opportunities, stageFilter, today]);
+
   const byStage = useMemo(() => {
     const m = new Map<string, Opp[]>();
     for (const s of STAGES) m.set(s, []);
-    for (const o of opportunities) {
+    for (const o of filteredOpps) {
       const list = m.get(o.stage) ?? [];
       list.push(o);
       m.set(o.stage, list);
     }
     return m;
-  }, [opportunities]);
+  }, [filteredOpps]);
 
   return (
     <div className="mx-auto max-w-[1600px] px-6 py-8">
@@ -77,6 +99,18 @@ export function CrmPipelineBoard() {
       {error ? (
         <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-900">
           {error}
+        </div>
+      ) : null}
+      {(stageFilter || focus === "stale") ? (
+        <div className="mb-3 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-900">
+          Filtered view:{" "}
+          {stageFilter ? <span className="font-semibold">stage={stageFilter}</span> : null}
+          {stageFilter && focus === "stale" ? " · " : null}
+          {focus === "stale" ? <span className="font-semibold">stale opportunities</span> : null}
+          {" · "}
+          <Link href="/crm/pipeline" className="underline">
+            clear
+          </Link>
         </div>
       ) : null}
       <div className="flex gap-3 overflow-x-auto pb-4">

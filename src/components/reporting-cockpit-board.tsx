@@ -4,13 +4,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { ReportingCockpitSnapshot } from "@/lib/reporting/cockpit-types";
 
-type WidgetType = "summary" | "exceptions" | "cashCycle" | "actions" | "ai";
+type WidgetType = "summary" | "exceptions" | "cashCycle" | "actions" | "drivers" | "ai";
 type WidgetDef = { id: string; title: string; type: WidgetType; span: 1 | 2 };
 
 const DEFAULT_LAYOUT: WidgetDef[] = [
   { id: "summary", title: "Cross-Module Pulse", type: "summary", span: 2 },
   { id: "exceptions", title: "Exceptions Wall", type: "exceptions", span: 1 },
   { id: "cashCycle", title: "Cash Cycle Signal", type: "cashCycle", span: 1 },
+  { id: "drivers", title: "Top Drivers", type: "drivers", span: 1 },
   { id: "actions", title: "Suggested Actions", type: "actions", span: 1 },
   { id: "ai", title: "AI Executive Narrative", type: "ai", span: 2 },
 ];
@@ -136,6 +137,14 @@ export function ReportingCockpitBoard({
     () => snapshot.cashCycle.reduce((sum, c) => sum + c.amount, 0),
     [snapshot.cashCycle],
   );
+  const topExceptions = useMemo(
+    () => [...snapshot.exceptions].sort((a, b) => b.count - a.count).slice(0, 3),
+    [snapshot.exceptions],
+  );
+  const topCash = useMemo(
+    () => [...snapshot.cashCycle].sort((a, b) => b.amount - a.amount).slice(0, 2),
+    [snapshot.cashCycle],
+  );
 
   return (
     <section className="mb-8 rounded-2xl border border-zinc-200 bg-white/70 p-3 shadow-sm">
@@ -248,6 +257,29 @@ export function ReportingCockpitBoard({
                     </li>
                   ))}
                 </ul>
+              ) : null}
+
+              {w.type === "drivers" ? (
+                <div className="space-y-2 text-xs">
+                  <div className="rounded border border-zinc-200 bg-zinc-50 px-2 py-1.5">
+                    <p className="mb-1 font-semibold text-zinc-700">Risk drivers</p>
+                    {topExceptions.map((e) => (
+                      <div key={e.id} className="flex items-center justify-between">
+                        <span className="truncate text-zinc-700">{e.label}</span>
+                        <span className="font-semibold text-zinc-900">{formatNumber(e.count)}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="rounded border border-zinc-200 bg-zinc-50 px-2 py-1.5">
+                    <p className="mb-1 font-semibold text-zinc-700">Cash concentration</p>
+                    {topCash.map((c) => (
+                      <div key={c.id} className="flex items-center justify-between">
+                        <span className="truncate text-zinc-700">{c.label}</span>
+                        <span className="font-semibold text-zinc-900">{formatMoney(c.amount, snapshot.currency)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               ) : null}
 
               {w.type === "ai" ? (

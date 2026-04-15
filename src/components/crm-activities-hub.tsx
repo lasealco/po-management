@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 type ActivityRow = {
@@ -19,7 +20,21 @@ type ActivityRow = {
 type AccountOpt = { id: string; name: string };
 
 export function CrmActivitiesHub() {
+  const searchParams = useSearchParams();
   const [activities, setActivities] = useState<ActivityRow[]>([]);
+  const statusFilter = (searchParams.get("status") || "").toUpperCase();
+  const dueFilter = (searchParams.get("due") || "").toLowerCase();
+  const now = new Date();
+  const visibleActivities = activities.filter((row) => {
+    if (statusFilter && row.status.toUpperCase() !== statusFilter) return false;
+    if (dueFilter === "overdue") {
+      if (!row.dueDate) return false;
+      if (row.status.toUpperCase() === "DONE" || row.status.toUpperCase() === "CANCELLED") return false;
+      return new Date(row.dueDate) < now;
+    }
+    return true;
+  });
+
   const [accounts, setAccounts] = useState<AccountOpt[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -122,6 +137,18 @@ export function CrmActivitiesHub() {
           {error}
         </div>
       ) : null}
+      {(statusFilter || dueFilter === "overdue") ? (
+        <div className="mb-3 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-900">
+          Filtered view:{" "}
+          {statusFilter ? <span className="font-semibold">status={statusFilter}</span> : null}
+          {statusFilter && dueFilter === "overdue" ? " · " : null}
+          {dueFilter === "overdue" ? <span className="font-semibold">overdue only</span> : null}
+          {" · "}
+          <Link href="/crm/activities" className="underline">
+            clear
+          </Link>
+        </div>
+      ) : null}
 
       <section className="mb-10 rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
         <h2 className="text-lg font-semibold text-zinc-900">New activity</h2>
@@ -206,8 +233,14 @@ export function CrmActivitiesHub() {
                   No activities yet.
                 </td>
               </tr>
+            ) : visibleActivities.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="px-4 py-8 text-center text-zinc-500">
+                  No activities match the active filter.
+                </td>
+              </tr>
             ) : (
-              activities.map((row) => (
+              visibleActivities.map((row) => (
                 <tr key={row.id} className="border-b border-zinc-50 last:border-0">
                   <td className="px-4 py-2 font-medium text-zinc-900">{row.subject}</td>
                   <td className="px-4 py-2 text-zinc-600">{row.type}</td>
