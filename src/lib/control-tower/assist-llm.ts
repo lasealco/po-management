@@ -96,16 +96,13 @@ async function fetchLlmAssistPatch(params: {
 }
 
 /**
- * Rule-based assist first; optionally merge a small OpenAI JSON patch when enabled and requested.
+ * Rule-based assist first; merges an OpenAI JSON patch when the deployment is LLM-capable (env-gated).
  */
-export async function runControlTowerAssist(params: {
-  raw: string;
-  useLlm: boolean;
-}): Promise<ControlTowerAssistResult> {
+export async function runControlTowerAssist(params: { raw: string }): Promise<ControlTowerAssistResult> {
   const rule = assistControlTowerQuery(params.raw);
   const capable = controlTowerAssistLlmCapable();
 
-  if (!params.useLlm || !capable) {
+  if (!capable) {
     return {
       hints: rule.hints,
       suggestedFilters: rule.suggestedFilters,

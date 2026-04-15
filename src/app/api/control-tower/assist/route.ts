@@ -15,12 +15,8 @@ export async function POST(request: Request) {
   }
   const q =
     typeof (body as { q?: unknown }).q === "string" ? (body as { q: string }).q : "";
-  const useLlm =
-    typeof (body as { useLlm?: unknown }).useLlm === "boolean"
-      ? (body as { useLlm: boolean }).useLlm
-      : false;
 
-  const result = await runControlTowerAssist({ raw: q, useLlm });
+  const result = await runControlTowerAssist({ raw: q });
   return NextResponse.json({
     hints: result.hints,
     suggestedFilters: result.suggestedFilters,
