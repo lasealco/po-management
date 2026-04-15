@@ -44,6 +44,14 @@ const CT_URL_STATUSES = new Set([
 ]);
 const CT_URL_MODES = new Set(["OCEAN", "AIR", "ROAD", "RAIL"]);
 
+/** Matches `routeAction` / `routeActionPrefix` on GET /api/control-tower/shipments. */
+const CT_URL_ROUTE_ACTION_PREFIXES = new Set([
+  "Plan leg",
+  "Mark departure",
+  "Record arrival",
+  "Route complete",
+]);
+
 function workbenchUrlHasSearchFilters(sp: URLSearchParams): boolean {
   return Boolean(
     (sp.get("q") ?? "").trim() ||
@@ -52,7 +60,11 @@ function workbenchUrlHasSearchFilters(sp: URLSearchParams): boolean {
       (sp.get("shipperName") ?? "").trim() ||
       (sp.get("consigneeName") ?? "").trim() ||
       (sp.get("lane") ?? "").trim() ||
-      (sp.get("onlyOverdueEta") ?? "").trim(),
+      (sp.get("onlyOverdueEta") ?? "").trim() ||
+      (sp.get("routeAction") ?? "").trim() ||
+      (sp.get("dispatchOwnerUserId") ?? "").trim() ||
+      (sp.get("minRouteProgressPct") ?? "").trim() ||
+      (sp.get("maxRouteProgressPct") ?? "").trim(),
   );
 }
 
@@ -106,6 +118,13 @@ export function ControlTowerWorkbench({
     if (oo === "1" || oo.toLowerCase() === "true") setOnlyOverdueEta(true);
     const owner = sp.get("dispatchOwnerUserId");
     if (owner) setOwnerFilter(owner);
+    const ra = sp.get("routeAction") ?? "";
+    if (CT_URL_ROUTE_ACTION_PREFIXES.has(ra)) setRouteAction(ra);
+    const minPct = sp.get("minRouteProgressPct");
+    const maxPct = sp.get("maxRouteProgressPct");
+    if (minPct === "0" && maxPct === "40") setRouteHealth("stalled");
+    else if (minPct === "41" && maxPct === "79") setRouteHealth("mid");
+    else if (minPct === "80" && maxPct === "100") setRouteHealth("advanced");
     setFiltersReady(true);
   }, []);
 
