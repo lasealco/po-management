@@ -22,9 +22,37 @@ function metricValue(widget: Widget): string {
   return sum.toLocaleString();
 }
 
+function seriesFor(widget: Widget): Array<{ label: string; value: number }> {
+  const measure = widget.report.config.measure;
+  return widget.report.rows
+    .slice(0, 10)
+    .map((r) => ({ label: r.label, value: Number(r.metrics[measure] ?? 0) }));
+}
+
+function MiniBarChart({ data, height = 64 }: { data: Array<{ label: string; value: number }>; height?: number }) {
+  const max = Math.max(...data.map((d) => d.value), 0);
+  if (!data.length || max <= 0) {
+    return <div className="rounded border border-zinc-200 bg-zinc-50 px-2 py-2 text-xs text-zinc-500">No chart data</div>;
+  }
+  const barW = Math.max(6, Math.floor(220 / data.length));
+  const gap = 2;
+  const width = data.length * (barW + gap);
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} className="h-16 w-full rounded border border-zinc-200 bg-white">
+      {data.map((d, i) => {
+        const h = Math.max(2, Math.round((d.value / max) * (height - 8)));
+        const x = i * (barW + gap);
+        const y = height - h - 2;
+        return <rect key={d.label + i} x={x} y={y} width={barW} height={h} rx={1} fill="#0284c7" />;
+      })}
+    </svg>
+  );
+}
+
 export function ControlTowerDashboardWidgets({ canEdit }: { canEdit: boolean }) {
   const [widgets, setWidgets] = useState<Widget[]>([]);
   const [err, setErr] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<Widget | null>(null);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/control-tower/dashboard/widgets");
@@ -82,6 +110,15 @@ export function ControlTowerDashboardWidgets({ canEdit }: { canEdit: boolean }) 
               {w.report.config.measure} by {w.report.config.dimension}
             </p>
             <p className="mt-2 text-2xl font-semibold text-zinc-950">{metricValue(w)}</p>
+            <button
+              type="button"
+              onClick={() => setExpanded(w)}
+              className="mt-2 block w-full text-left"
+              title="Open chart preview"
+            >
+              <MiniBarChart data={seriesFor(w)} />
+              <span className="mt-1 inline-block text-[11px] font-medium text-sky-800">Click to enlarge chart</span>
+            </button>
             <ul className="mt-3 space-y-1 text-xs text-zinc-700">
               {w.report.rows.slice(0, 4).map((r) => (
                 <li key={r.key} className="flex items-center justify-between gap-2">
@@ -102,6 +139,32 @@ export function ControlTowerDashboardWidgets({ canEdit }: { canEdit: boolean }) 
           </article>
         ))}
       </div>
+      {expanded ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setExpanded(null)}
+        >
+          <div
+            className="w-full max-w-4xl rounded-xl bg-white p-4 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-base font-semibold text-zinc-900">{expanded.title}</h3>
+              <button
+                type="button"
+                onClick={() => setExpanded(null)}
+                className="rounded border border-zinc-300 px-3 py-1 text-sm"
+              >
+                Close
+              </button>
+            </div>
+            <MiniBarChart data={seriesFor(expanded)} height={200} />
+            <p className="mt-2 text-xs text-zinc-500">
+              {expanded.report.config.measure} by {expanded.report.config.dimension}
+            </p>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
