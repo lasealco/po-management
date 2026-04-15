@@ -2,8 +2,23 @@
 
 import { useCallback, useMemo, useState } from "react";
 
-import type { CtReportCoverage } from "@/lib/control-tower/report-engine";
-import { CT_REPORT_MEASURES } from "@/lib/control-tower/report-engine";
+const CT_REPORT_MEASURES = [
+  "shipments",
+  "volumeCbm",
+  "weightKg",
+  "shippingSpend",
+  "onTimePct",
+  "avgDelayDays",
+] as const;
+type CtReportMeasure = (typeof CT_REPORT_MEASURES)[number];
+
+type CtReportCoverage = {
+  totalShipmentsQueried: number;
+  shipmentsAggregated: number;
+  excludedByDateOrMissingDateField: number;
+  dimensionGroupsTotal: number;
+  dimensionGroupsShown: number;
+};
 
 export const BAR_COLORS = [
   "#0284c7",
@@ -28,8 +43,8 @@ export type CtDashboardWidgetReport = {
     dateField?: string;
     topN?: number;
   };
-  rows: Array<{ key: string; label: string; metrics: Record<string, number> }>;
-  fullSeriesRows?: Array<{ key: string; label: string; metrics: Record<string, number> }>;
+  rows: Array<{ key: string; label: string; metrics: Record<CtReportMeasure, number> }>;
+  fullSeriesRows?: Array<{ key: string; label: string; metrics: Record<CtReportMeasure, number> }>;
   coverage?: CtReportCoverage;
   totals?: Record<string, number>;
   generatedAt: string;
