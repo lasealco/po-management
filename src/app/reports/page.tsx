@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { AccessDenied } from "@/components/access-denied";
 import { ReportsClient } from "@/components/reports-client";
 import { getActorUserId, getViewerGrantSet, viewerHas } from "@/lib/authz";
@@ -68,6 +70,11 @@ export default async function ReportsPage() {
   return (
     <div className="min-h-screen bg-zinc-50">
       <main className="mx-auto max-w-6xl px-6 py-10">
+        <p className="mb-2 text-sm">
+          <Link href="/reporting?focus=po" className="font-medium text-sky-800 hover:underline">
+            ← All reporting modules
+          </Link>
+        </p>
         <h1 className="text-3xl font-semibold text-zinc-900">Reports</h1>
         <p className="mt-2 text-zinc-600">
           Operational summaries and CSV exports. Each report checks{" "}

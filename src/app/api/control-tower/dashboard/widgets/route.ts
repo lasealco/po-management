@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { runControlTowerReport, sanitizeCtReportConfig } from "@/lib/control-tower/report-engine";
 import { getControlTowerPortalContext } from "@/lib/control-tower/viewer";
+import { DASHBOARD_PIN_DATASET } from "@/lib/reporting/report-dataset";
 import { prisma } from "@/lib/prisma";
 import { getDemoTenant } from "@/lib/demo-tenant";
 
@@ -79,9 +80,15 @@ export async function POST(request: Request) {
 
   const report = await prisma.ctSavedReport.findFirst({
     where: { id: savedReportId, tenantId: tenant.id, OR: [{ userId: actorId }, { isShared: true }] },
-    select: { id: true, name: true },
+    select: { id: true, name: true, dataset: true },
   });
   if (!report) return NextResponse.json({ error: "Report not found." }, { status: 404 });
+  if (report.dataset !== DASHBOARD_PIN_DATASET) {
+    return NextResponse.json(
+      { error: "Only Control Tower logistics reports can be pinned to this dashboard." },
+      { status: 400 },
+    );
+  }
 
   const titleRaw = typeof obj.title === "string" ? obj.title.trim() : "";
   const maxOrder = await prisma.ctDashboardWidget.aggregate({

@@ -261,7 +261,7 @@ export function ControlTowerReportBuilder({ canEdit }: { canEdit: boolean }) {
   const [insightErr, setInsightErr] = useState<string | null>(null);
 
   const loadSaved = useCallback(async () => {
-    const res = await fetch("/api/control-tower/reports/saved");
+    const res = await fetch("/api/control-tower/reports/saved?dataset=CONTROL_TOWER");
     if (!res.ok) return;
     const json = (await res.json()) as { reports?: SavedReport[]; meUserId?: string };
     setMeUserId(typeof json.meUserId === "string" ? json.meUserId : null);

@@ -38,6 +38,10 @@ const OPEN_PATH_ALLOWLIST = new Set([
   "/control-tower/dashboard",
   "/control-tower/command-center",
   "/control-tower/ops",
+  "/reporting",
+  "/reports",
+  "/crm/reporting",
+  "/wms/reporting",
 ]);
 
 const ORDER_FOCUS = new Set(["workflow", "asn", "chat", "split"]);

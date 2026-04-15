@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { getActorUserId, getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { getControlTowerReportsSummary } from "@/lib/control-tower/reports-summary";
 import { getControlTowerPortalContext } from "@/lib/control-tower/viewer";
@@ -30,6 +32,11 @@ export default async function ControlTowerReportsPage() {
   return (
     <main className="mx-auto w-full max-w-7xl px-6 py-10">
       <header className="mb-6">
+        <p className="mb-2 text-sm">
+          <Link href="/reporting?focus=control-tower" className="font-medium text-sky-800 hover:underline">
+            ← All reporting modules
+          </Link>
+        </p>
         <h1 className="text-2xl font-semibold text-zinc-900">Control Tower reports</h1>
         <p className="mt-1 text-sm text-zinc-600">
           Operational KPI snapshot plus configurable report builder (grouping/filtering by lane, carrier, customer,

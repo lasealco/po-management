@@ -2,12 +2,13 @@ import { NextResponse } from "next/server";
 
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { sanitizeCtReportConfig } from "@/lib/control-tower/report-engine";
+import { parseReportDatasetQuery } from "@/lib/reporting/report-dataset";
 import { prisma } from "@/lib/prisma";
 import { getDemoTenant } from "@/lib/demo-tenant";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
   const gate = await requireApiGrant("org.controltower", "view");
   if (gate) return gate;
   const tenant = await getDemoTenant();
@@ -15,10 +16,13 @@ export async function GET() {
   const actorId = await getActorUserId();
   if (!actorId) return NextResponse.json({ error: "No active user." }, { status: 403 });
 
+  const datasetFilter = parseReportDatasetQuery(new URL(request.url).searchParams.get("dataset"));
+
   const reports = await prisma.ctSavedReport.findMany({
     where: {
       tenantId: tenant.id,
       OR: [{ userId: actorId }, { isShared: true }],
+      ...(datasetFilter ? { dataset: datasetFilter } : {}),
     },
     orderBy: { updatedAt: "desc" },
     select: {
@@ -78,6 +82,7 @@ export async function POST(request: Request) {
       name: name.slice(0, 120),
       description,
       isShared,
+      dataset: "CONTROL_TOWER",
       configJson: config,
     },
     select: { id: true },

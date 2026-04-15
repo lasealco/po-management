@@ -54,11 +54,21 @@ export function CommandPalette({ grants }: { grants: CommandPaletteGrants }) {
       },
     });
 
+    if (grants.reports || grants.controlTower || grants.crm || grants.wms) {
+      list.push({
+        id: "reporting-hub",
+        label: "Reporting hub",
+        hint: "PO, Control Tower, CRM, WMS",
+        searchText: "reporting analytics hub all modules",
+        action: go("/reporting"),
+      });
+    }
+
     if (grants.reports) {
       list.push({
-        id: "reports",
-        label: "Reports",
-        searchText: "analytics export csv summary",
+        id: "reports-po",
+        label: "PO Management — reports",
+        searchText: "analytics export csv summary purchase orders",
         action: go("/reports"),
       });
     }

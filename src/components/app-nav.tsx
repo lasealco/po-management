@@ -17,7 +17,7 @@ type TopNavItem =
 
 const topNavItems: TopNavItem[] = [
   { kind: "po", key: "poManagement", label: "PO Management", href: "/" },
-  { kind: "link", key: "reports", label: "Reporting", href: "/reports" },
+  { kind: "link", key: "reports", label: "Reporting", href: "/reporting" },
   { kind: "link", key: "controlTower", label: "Control Tower", href: "/control-tower" },
   { kind: "link", key: "wms", label: "WMS", href: "/wms" },
   { kind: "link", key: "crm", label: "CRM", href: "/crm" },
@@ -89,8 +89,12 @@ export function AppNav({
                 ? poActive
                 : item.href === "/settings"
                   ? pathname.startsWith("/settings")
-                  : item.href === "/reports"
-                    ? pathname === "/reports" || pathname.startsWith("/reports/")
+                  : item.href === "/reporting"
+                    ? pathname === "/reporting" ||
+                      pathname === "/reports" ||
+                      pathname.startsWith("/reports/") ||
+                      pathname === "/crm/reporting" ||
+                      pathname === "/wms/reporting"
                     : item.href === "/crm"
                       ? pathname === "/crm" || pathname.startsWith("/crm/")
                       : item.href === "/control-tower"

@@ -912,16 +912,25 @@ model CtSavedFilter {
   @@index([userId])
 }
 
+/// Which product domain a saved report belongs to (unified reporting; engines vary by dataset).
+enum ReportDataset {
+  CONTROL_TOWER
+  PO
+  CRM
+  WMS
+}
+
 model CtSavedReport {
-  id          String   @id @default(cuid())
+  id          String         @id @default(cuid())
   tenantId    String
   userId      String
   name        String
   description String?
   configJson  Json
-  isShared    Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  isShared    Boolean        @default(false)
+  dataset     ReportDataset  @default(CONTROL_TOWER)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -929,6 +938,7 @@ model CtSavedReport {
 
   @@index([tenantId, userId, createdAt])
   @@index([tenantId, isShared, createdAt])
+  @@index([tenantId, dataset, createdAt])
 }
 
 model CtDashboardWidget {

@@ -25,6 +25,7 @@ const ROUTE_HINTS: HelpAction[] = [
   { label: "Control Tower home", href: "/control-tower" },
   { label: "Control Tower workbench", href: "/control-tower/workbench" },
   { label: "Control Tower reports", href: "/control-tower/reports" },
+  { label: "Reporting hub", href: "/reporting" },
   { label: "Login", href: "/login" },
 ];
 
@@ -144,7 +145,7 @@ export async function buildHelpReply(params: {
     "Allowed doActions types:",
     "- open_order: payload { orderNumber: string, focus?: 'workflow'|'asn'|'chat'|'split', guide?: playbook id, step?: number }",
     "- open_orders_queue: payload { queue: 'all'|'needs_my_action'|'waiting_on_me'|'awaiting_supplier'|'overdue'|'split_pending_buyer', guide?, step? }",
-    "- open_path: payload { path: '/'|'/consolidation'|'/suppliers'|'/settings/users'|'/settings/warehouses'|'/login'|'/catalog'|'/products'|'/control-tower'|'/control-tower/workbench'|'/control-tower/reports'|'/control-tower/search'|'/control-tower/dashboard'|'/control-tower/command-center'|'/control-tower/ops', guide?, step? }",
+    "- open_path: payload { path: '/'|'/consolidation'|'/suppliers'|'/settings/users'|'/settings/warehouses'|'/login'|'/catalog'|'/products'|'/reporting'|'/reports'|'/crm/reporting'|'/wms/reporting'|'/control-tower'|'/control-tower/workbench'|'/control-tower/reports'|'/control-tower/search'|'/control-tower/dashboard'|'/control-tower/command-center'|'/control-tower/ops', guide?, step? }",
     "Use demo PO-1004 only as a known example order number when suggesting open_order.",
     "Do not invent unavailable pages or arbitrary paths.",
   ].join(" ");

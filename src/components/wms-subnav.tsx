@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 const items: { href: string; label: string }[] = [
   { href: "/wms", label: "Overview" },
+  { href: "/wms/reporting", label: "Reporting" },
   { href: "/wms/setup", label: "Setup" },
   { href: "/wms/operations", label: "Operations" },
   { href: "/wms/stock", label: "Stock & ledger" },
