@@ -34,6 +34,7 @@ export async function GET() {
   });
 
   return NextResponse.json({
+    meUserId: actorId,
     reports: reports.map((r) => ({
       id: r.id,
       name: r.name,

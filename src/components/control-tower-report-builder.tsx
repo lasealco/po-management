@@ -181,6 +181,8 @@ export function ControlTowerReportBuilder({ canEdit }: { canEdit: boolean }) {
   const [result, setResult] = useState<RunResult | null>(null);
   const [compareResult, setCompareResult] = useState<RunResult | null>(null);
   const [saved, setSaved] = useState<SavedReport[]>([]);
+  const [meUserId, setMeUserId] = useState<string | null>(null);
+  const [saveAsShared, setSaveAsShared] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -188,7 +190,8 @@ export function ControlTowerReportBuilder({ canEdit }: { canEdit: boolean }) {
   const loadSaved = useCallback(async () => {
     const res = await fetch("/api/control-tower/reports/saved");
     if (!res.ok) return;
-    const json = (await res.json()) as { reports?: SavedReport[] };
+    const json = (await res.json()) as { reports?: SavedReport[]; meUserId?: string };
+    setMeUserId(typeof json.meUserId === "string" ? json.meUserId : null);
     setSaved(json.reports ?? []);
   }, []);
 
@@ -253,7 +256,7 @@ export function ControlTowerReportBuilder({ canEdit }: { canEdit: boolean }) {
           name: name.trim(),
           description: "",
           config: toRunPayload({ ...config, title: name.trim() }),
-          isShared: false,
+          isShared: saveAsShared,
         }),
       });
       const data = (await res.json()) as { ok?: boolean; id?: string; error?: string };
@@ -265,7 +268,32 @@ export function ControlTowerReportBuilder({ canEdit }: { canEdit: boolean }) {
     } finally {
       setBusy(false);
     }
-  }, [canEdit, config, loadSaved]);
+  }, [canEdit, config, loadSaved, saveAsShared]);
+
+  const toggleShare = useCallback(
+    async (report: SavedReport) => {
+      if (!canEdit) return;
+      setBusy(true);
+      setErr(null);
+      setMsg(null);
+      try {
+        const res = await fetch(`/api/control-tower/reports/saved/${report.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isShared: !report.isShared }),
+        });
+        const data = (await res.json()) as { ok?: boolean; error?: string };
+        if (!res.ok) throw new Error(data.error || res.statusText);
+        setMsg(!report.isShared ? "Report is now shared." : "Report is now private.");
+        await loadSaved();
+      } catch (e) {
+        setErr(e instanceof Error ? e.message : "Share toggle failed.");
+      } finally {
+        setBusy(false);
+      }
+    },
+    [canEdit, loadSaved],
+  );
 
   const pinReport = useCallback(async (savedReportId: string, title: string) => {
     setBusy(true);
@@ -287,11 +315,25 @@ export function ControlTowerReportBuilder({ canEdit }: { canEdit: boolean }) {
     }
   }, []);
 
-  const maxVal = useMemo(() => {
-    if (!result?.rows?.length) return 0;
-    const values = result.rows.map((r) => r.metrics[result.config.measure] ?? 0);
-    return Math.max(...values, 0);
-  }, [result]);
+  const compareByKey = useMemo(() => {
+    const m = new Map<string, number>();
+    if (!compareResult) return m;
+    const measure = result?.config.measure ?? compareResult.config.measure;
+    for (const row of compareResult.rows) {
+      m.set(row.key, Number(row.metrics[measure] ?? 0));
+    }
+    return m;
+  }, [compareResult, result]);
+  const compareMaxVal = useMemo(() => {
+    if (!result) return 0;
+    let max = 0;
+    for (const row of result.rows) {
+      const current = Number(row.metrics[result.config.measure] ?? 0);
+      const previous = Number(compareByKey.get(row.key) ?? 0);
+      max = Math.max(max, current, previous);
+    }
+    return max;
+  }, [compareByKey, result]);
 
   const comparisonLine = useMemo(() => {
     if (!result || !compareResult) return null;
@@ -325,6 +367,16 @@ export function ControlTowerReportBuilder({ canEdit }: { canEdit: boolean }) {
             >
               Save
             </button>
+          ) : null}
+          {canEdit ? (
+            <label className="ml-1 flex items-center gap-2 text-xs text-zinc-700">
+              <input
+                type="checkbox"
+                checked={saveAsShared}
+                onChange={(e) => setSaveAsShared(e.target.checked)}
+              />
+              Save as shared
+            </label>
           ) : null}
         </div>
       </div>
@@ -502,19 +554,41 @@ export function ControlTowerReportBuilder({ canEdit }: { canEdit: boolean }) {
           ) : null}
           {result.config.chartType === "table" ? null : (
             <div className="space-y-2">
+              {compareResult ? (
+                <div className="mb-1 flex items-center gap-3 text-[11px] text-zinc-600">
+                  <span className="inline-flex items-center gap-1">
+                    <span className="inline-block h-2.5 w-2.5 rounded bg-sky-500" />
+                    Current
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <span className="inline-block h-2.5 w-2.5 rounded bg-violet-500" />
+                    Compare
+                  </span>
+                </div>
+              ) : null}
               {result.rows.map((row) => {
                 const val = row.metrics[result.config.measure] ?? 0;
-                const width = maxVal > 0 ? Math.max(4, Math.round((val / maxVal) * 100)) : 4;
+                const prevVal = Number(compareByKey.get(row.key) ?? 0);
+                const width = compareMaxVal > 0 ? Math.max(4, Math.round((val / compareMaxVal) * 100)) : 4;
+                const prevWidth =
+                  compareResult && compareMaxVal > 0
+                    ? Math.max(4, Math.round((prevVal / compareMaxVal) * 100))
+                    : 0;
                 return (
                   <div key={row.key} className="space-y-1">
                     <div className="flex items-center justify-between text-xs">
                       <span className="truncate text-zinc-700">{row.label}</span>
-                      <span className="font-medium text-zinc-900">
-                        {formatMetric(result.config.measure, val)}
-                      </span>
+                      <span className="font-medium text-zinc-900">{formatMetric(result.config.measure, val)}</span>
                     </div>
-                    <div className="h-2 rounded bg-zinc-100">
-                      <div className="h-2 rounded bg-sky-500" style={{ width: `${width}%` }} />
+                    <div className="space-y-1">
+                      <div className="h-2 rounded bg-zinc-100">
+                        <div className="h-2 rounded bg-sky-500" style={{ width: `${width}%` }} />
+                      </div>
+                      {compareResult ? (
+                        <div className="h-2 rounded bg-zinc-100">
+                          <div className="h-2 rounded bg-violet-500" style={{ width: `${prevWidth}%` }} />
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                 );
@@ -528,6 +602,7 @@ export function ControlTowerReportBuilder({ canEdit }: { canEdit: boolean }) {
                 <tr>
                   <th className="px-2 py-2">{result.config.dimension}</th>
                   <th className="px-2 py-2">{MEASURE_LABELS[result.config.measure]}</th>
+                  {compareResult ? <th className="px-2 py-2">Compare</th> : null}
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-200">
@@ -537,6 +612,11 @@ export function ControlTowerReportBuilder({ canEdit }: { canEdit: boolean }) {
                     <td className="px-2 py-2 font-medium text-zinc-900">
                       {formatMetric(result.config.measure, row.metrics[result.config.measure] ?? 0)}
                     </td>
+                    {compareResult ? (
+                      <td className="px-2 py-2 text-zinc-700">
+                        {formatMetric(result.config.measure, Number(compareByKey.get(row.key) ?? 0))}
+                      </td>
+                    ) : null}
                   </tr>
                 ))}
               </tbody>
@@ -552,7 +632,12 @@ export function ControlTowerReportBuilder({ canEdit }: { canEdit: boolean }) {
             {saved.slice(0, 20).map((r) => (
               <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 rounded bg-white px-2 py-1.5">
                 <div>
-                  <p className="text-sm font-medium text-zinc-900">{r.name}</p>
+                  <p className="text-sm font-medium text-zinc-900">
+                    {r.name}{" "}
+                    <span className={`text-xs ${r.isShared ? "text-emerald-700" : "text-zinc-500"}`}>
+                      {r.isShared ? "· Shared" : "· Private"}
+                    </span>
+                  </p>
                   <p className="text-xs text-zinc-500">Owner: {r.owner.name}</p>
                 </div>
                 <div className="flex gap-2">
@@ -563,6 +648,17 @@ export function ControlTowerReportBuilder({ canEdit }: { canEdit: boolean }) {
                   >
                     Load
                   </button>
+                  {canEdit ? (
+                    meUserId === r.owner.id ? (
+                      <button
+                        type="button"
+                        onClick={() => void toggleShare(r)}
+                        className="rounded border border-zinc-300 px-2 py-1 text-xs text-zinc-800"
+                      >
+                        {r.isShared ? "Make private" : "Share"}
+                      </button>
+                    ) : null
+                  ) : null}
                   {canEdit ? (
                     <button
                       type="button"
