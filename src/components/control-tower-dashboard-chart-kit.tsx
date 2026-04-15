@@ -37,7 +37,7 @@ export type ChartViewMode = "bar" | "line" | "pie";
 
 export type CtDashboardWidgetReport = {
   config: {
-    measure: string;
+    measure: CtReportMeasure;
     dimension: string;
     chartType?: string;
     dateField?: string;
