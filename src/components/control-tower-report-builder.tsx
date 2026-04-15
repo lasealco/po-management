@@ -176,6 +176,75 @@ function formatMetric(measure: Measure, value: number): string {
   return value.toLocaleString();
 }
 
+function ResultLineChart({
+  rows,
+  measure,
+  compareByKey,
+  compareEnabled,
+}: {
+  rows: Array<{ key: string; label: string; metrics: Record<Measure, number> }>;
+  measure: Measure;
+  compareByKey: Map<string, number>;
+  compareEnabled: boolean;
+}) {
+  const values = rows.map((r) => Number(r.metrics[measure] ?? 0));
+  const compareValues = rows.map((r) => Number(compareByKey.get(r.key) ?? 0));
+  const max = Math.max(1, ...values, ...(compareEnabled ? compareValues : []));
+  const w = 700;
+  const h = 220;
+  const p = 24;
+  const step = rows.length > 1 ? (w - p * 2) / (rows.length - 1) : 0;
+  const y = (v: number) => h - p - (v / max) * (h - p * 2);
+  const currentPoints = rows.map((r, i) => `${p + i * step},${y(Number(r.metrics[measure] ?? 0))}`).join(" ");
+  const comparePoints = rows.map((r, i) => `${p + i * step},${y(Number(compareByKey.get(r.key) ?? 0))}`).join(" ");
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="h-56 w-full rounded border border-zinc-200 bg-white">
+      <line x1={p} y1={h - p} x2={w - p} y2={h - p} stroke="#d4d4d8" />
+      <line x1={p} y1={p} x2={p} y2={h - p} stroke="#d4d4d8" />
+      {compareEnabled ? <polyline fill="none" stroke="#8b5cf6" strokeWidth="2" points={comparePoints} /> : null}
+      <polyline fill="none" stroke="#0ea5e9" strokeWidth="2.5" points={currentPoints} />
+    </svg>
+  );
+}
+
+function ResultPieChart({
+  rows,
+  measure,
+}: {
+  rows: Array<{ key: string; label: string; metrics: Record<Measure, number> }>;
+  measure: Measure;
+}) {
+  const colors = ["#0ea5e9", "#6366f1", "#10b981", "#f59e0b", "#ef4444", "#a855f7", "#14b8a6", "#f97316"];
+  const entries = rows.slice(0, 8).map((r, i) => ({
+    label: r.label,
+    value: Math.max(0, Number(r.metrics[measure] ?? 0)),
+    color: colors[i % colors.length],
+  }));
+  const total = entries.reduce((a, b) => a + b.value, 0);
+  if (total <= 0) return <div className="rounded border border-zinc-200 bg-zinc-50 px-3 py-4 text-xs text-zinc-500">No chart data</div>;
+  let cursor = 0;
+  const gradientParts = entries.map((e) => {
+    const start = (cursor / total) * 100;
+    cursor += e.value;
+    const end = (cursor / total) * 100;
+    return `${e.color} ${start}% ${end}%`;
+  });
+  return (
+    <div className="flex flex-wrap items-center gap-4">
+      <div className="h-40 w-40 rounded-full border border-zinc-200" style={{ background: `conic-gradient(${gradientParts.join(", ")})` }} />
+      <ul className="space-y-1 text-xs text-zinc-700">
+        {entries.map((e) => (
+          <li key={e.label} className="flex items-center gap-2">
+            <span className="inline-block h-2.5 w-2.5 rounded" style={{ backgroundColor: e.color }} />
+            <span>{e.label}</span>
+            <span className="font-medium">{formatMetric(measure, e.value)}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export function ControlTowerReportBuilder({ canEdit }: { canEdit: boolean }) {
   const [config, setConfig] = useState<ReportConfig>(DEFAULT_CONFIG);
   const [result, setResult] = useState<RunResult | null>(null);
@@ -528,7 +597,19 @@ export function ControlTowerReportBuilder({ canEdit }: { canEdit: boolean }) {
         </label>
         <label className="text-xs text-zinc-700">From<input type="date" value={config.dateFrom} onChange={(e)=>setConfig(c=>({...c,dateFrom:e.target.value}))} className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"/></label>
         <label className="text-xs text-zinc-700">To<input type="date" value={config.dateTo} onChange={(e)=>setConfig(c=>({...c,dateTo:e.target.value}))} className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"/></label>
-        <label className="text-xs text-zinc-700">Top N<input type="number" min={1} max={50} value={config.topN} onChange={(e)=>setConfig(c=>({...c,topN:Number(e.target.value)||12}))} className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"/></label>
+        <label className="text-xs text-zinc-700">
+          Top N
+          <select
+            value={String(config.topN)}
+            onChange={(e) => setConfig((c) => ({ ...c, topN: Number(e.target.value) }))}
+            className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"
+          >
+            <option value="5">Top 5</option>
+            <option value="10">Top 10</option>
+            <option value="20">Top 20</option>
+            <option value="50">Top 50</option>
+          </select>
+        </label>
       </div>
 
       {msg ? <p className="mt-2 text-xs text-emerald-700">{msg}</p> : null}
@@ -566,33 +647,46 @@ export function ControlTowerReportBuilder({ canEdit }: { canEdit: boolean }) {
                   </span>
                 </div>
               ) : null}
-              {result.rows.map((row) => {
-                const val = row.metrics[result.config.measure] ?? 0;
-                const prevVal = Number(compareByKey.get(row.key) ?? 0);
-                const width = compareMaxVal > 0 ? Math.max(4, Math.round((val / compareMaxVal) * 100)) : 4;
-                const prevWidth =
-                  compareResult && compareMaxVal > 0
-                    ? Math.max(4, Math.round((prevVal / compareMaxVal) * 100))
-                    : 0;
-                return (
-                  <div key={row.key} className="space-y-1">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="truncate text-zinc-700">{row.label}</span>
-                      <span className="font-medium text-zinc-900">{formatMetric(result.config.measure, val)}</span>
-                    </div>
-                    <div className="space-y-1">
-                      <div className="h-2 rounded bg-zinc-100">
-                        <div className="h-2 rounded bg-sky-500" style={{ width: `${width}%` }} />
-                      </div>
-                      {compareResult ? (
-                        <div className="h-2 rounded bg-zinc-100">
-                          <div className="h-2 rounded bg-violet-500" style={{ width: `${prevWidth}%` }} />
+              {result.config.chartType === "line" ? (
+                <ResultLineChart
+                  rows={result.rows}
+                  measure={result.config.measure}
+                  compareByKey={compareByKey}
+                  compareEnabled={Boolean(compareResult)}
+                />
+              ) : null}
+              {result.config.chartType === "pie" ? (
+                <ResultPieChart rows={result.rows} measure={result.config.measure} />
+              ) : null}
+              {result.config.chartType === "bar"
+                ? result.rows.map((row) => {
+                    const val = row.metrics[result.config.measure] ?? 0;
+                    const prevVal = Number(compareByKey.get(row.key) ?? 0);
+                    const width = compareMaxVal > 0 ? Math.max(4, Math.round((val / compareMaxVal) * 100)) : 4;
+                    const prevWidth =
+                      compareResult && compareMaxVal > 0
+                        ? Math.max(4, Math.round((prevVal / compareMaxVal) * 100))
+                        : 0;
+                    return (
+                      <div key={row.key} className="space-y-1">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="truncate text-zinc-700">{row.label}</span>
+                          <span className="font-medium text-zinc-900">{formatMetric(result.config.measure, val)}</span>
                         </div>
-                      ) : null}
-                    </div>
-                  </div>
-                );
-              })}
+                        <div className="space-y-1">
+                          <div className="h-2 rounded bg-zinc-100">
+                            <div className="h-2 rounded bg-sky-500" style={{ width: `${width}%` }} />
+                          </div>
+                          {compareResult ? (
+                            <div className="h-2 rounded bg-zinc-100">
+                              <div className="h-2 rounded bg-violet-500" style={{ width: `${prevWidth}%` }} />
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                    );
+                  })
+                : null}
             </div>
           )}
 

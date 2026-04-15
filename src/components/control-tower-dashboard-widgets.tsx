@@ -13,6 +13,7 @@ type Widget = {
     generatedAt: string;
   };
 };
+type ChartView = "bar" | "line";
 const BAR_COLORS = [
   "#0284c7",
   "#6366f1",
@@ -102,10 +103,31 @@ function MiniBarChart({ data, height = 64 }: { data: Array<{ label: string; valu
   );
 }
 
+function MiniLineChart({ data, height = 64 }: { data: Array<{ label: string; value: number }>; height?: number }) {
+  const max = Math.max(...data.map((d) => d.value), 0);
+  if (!data.length || max <= 0) {
+    return <div className="rounded border border-zinc-200 bg-zinc-50 px-2 py-2 text-xs text-zinc-500">No chart data</div>;
+  }
+  const width = 320;
+  const pad = 18;
+  const plotH = height - pad * 2;
+  const step = data.length > 1 ? (width - pad * 2) / (data.length - 1) : 0;
+  const points = data
+    .map((d, i) => `${pad + i * step},${pad + plotH - (d.value / max) * plotH}`)
+    .join(" ");
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" style={{ height: `${height}px` }} className="w-full rounded border border-zinc-200 bg-white">
+      <line x1={pad} y1={height - pad} x2={width - pad} y2={height - pad} stroke="#e4e4e7" />
+      <polyline fill="none" stroke="#0ea5e9" strokeWidth="2.5" points={points} />
+    </svg>
+  );
+}
+
 export function ControlTowerDashboardWidgets({ canEdit }: { canEdit: boolean }) {
   const [widgets, setWidgets] = useState<Widget[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Widget | null>(null);
+  const [chartView, setChartView] = useState<ChartView>("bar");
 
   const load = useCallback(async () => {
     const res = await fetch("/api/control-tower/dashboard/widgets");
@@ -165,7 +187,10 @@ export function ControlTowerDashboardWidgets({ canEdit }: { canEdit: boolean }) 
             <p className="mt-2 text-2xl font-semibold text-zinc-950">{metricValue(w)}</p>
             <button
               type="button"
-              onClick={() => setExpanded(w)}
+              onClick={() => {
+                setExpanded(w);
+                setChartView("bar");
+              }}
               className="mt-2 block w-full text-left"
               title="Open chart preview"
             >
@@ -211,15 +236,37 @@ export function ControlTowerDashboardWidgets({ canEdit }: { canEdit: boolean }) 
           >
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-base font-semibold text-zinc-900">{expanded.title}</h3>
-              <button
-                type="button"
-                onClick={() => setExpanded(null)}
-                className="rounded border border-zinc-300 px-3 py-1 text-sm"
-              >
-                Close
-              </button>
+              <div className="flex items-center gap-2">
+                <div className="inline-flex rounded border border-zinc-300 p-0.5 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setChartView("bar")}
+                    className={`rounded px-2 py-1 ${chartView === "bar" ? "bg-zinc-900 text-white" : "text-zinc-700"}`}
+                  >
+                    Bar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setChartView("line")}
+                    className={`rounded px-2 py-1 ${chartView === "line" ? "bg-zinc-900 text-white" : "text-zinc-700"}`}
+                  >
+                    Line
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setExpanded(null)}
+                  className="rounded border border-zinc-300 px-3 py-1 text-sm"
+                >
+                  Close
+                </button>
+              </div>
             </div>
-            <MiniBarChart data={seriesFor(expanded)} height={280} />
+            {chartView === "bar" ? (
+              <MiniBarChart data={seriesFor(expanded)} height={280} />
+            ) : (
+              <MiniLineChart data={seriesFor(expanded)} height={280} />
+            )}
             <ul className="mt-3 grid gap-1 text-xs text-zinc-700 md:grid-cols-2">
               {seriesFor(expanded).slice(0, 12).map((r, i) => (
                 <li key={r.label + i} className="flex items-center justify-between gap-2 rounded bg-zinc-50 px-2 py-1">

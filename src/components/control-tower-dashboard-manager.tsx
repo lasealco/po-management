@@ -17,6 +17,7 @@ type Widget = {
 };
 
 type Span = 1 | 2 | 3;
+type ChartView = "bar" | "line";
 const BAR_COLORS = [
   "#0284c7",
   "#6366f1",
@@ -113,6 +114,26 @@ function MiniBarChart({ data, height = 72 }: { data: Array<{ label: string; valu
   );
 }
 
+function MiniLineChart({ data, height = 72 }: { data: Array<{ label: string; value: number }>; height?: number }) {
+  const max = Math.max(...data.map((d) => d.value), 0);
+  if (!data.length || max <= 0) {
+    return <div className="rounded border border-zinc-200 bg-zinc-50 px-2 py-3 text-xs text-zinc-500">No chart data</div>;
+  }
+  const width = 320;
+  const pad = 18;
+  const plotH = height - pad * 2;
+  const step = data.length > 1 ? (width - pad * 2) / (data.length - 1) : 0;
+  const points = data
+    .map((d, i) => `${pad + i * step},${pad + plotH - (d.value / max) * plotH}`)
+    .join(" ");
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" style={{ height: `${height}px` }} className="w-full rounded border border-zinc-200 bg-white">
+      <line x1={pad} y1={height - pad} x2={width - pad} y2={height - pad} stroke="#e4e4e7" />
+      <polyline fill="none" stroke="#0ea5e9" strokeWidth="2.5" points={points} />
+    </svg>
+  );
+}
+
 export function ControlTowerDashboardManager({ canEdit }: { canEdit: boolean }) {
   const [widgets, setWidgets] = useState<Widget[]>([]);
   const [busy, setBusy] = useState(false);
@@ -120,6 +141,7 @@ export function ControlTowerDashboardManager({ canEdit }: { canEdit: boolean }) 
   const [msg, setMsg] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Widget | null>(null);
+  const [chartView, setChartView] = useState<ChartView>("bar");
 
   const load = useCallback(async () => {
     const res = await fetch("/api/control-tower/dashboard/widgets");
@@ -159,20 +181,6 @@ export function ControlTowerDashboardManager({ canEdit }: { canEdit: boolean }) 
       setBusy(false);
     }
   }, [load]);
-
-  const move = useCallback(
-    async (id: string, delta: -1 | 1) => {
-      const idx = widgets.findIndex((w) => w.id === id);
-      const target = idx + delta;
-      if (idx < 0 || target < 0 || target >= widgets.length) return;
-      const next = [...widgets];
-      const [item] = next.splice(idx, 1);
-      next.splice(target, 0, item);
-      setWidgets(next);
-      await persistOrder(next);
-    },
-    [persistOrder, widgets],
-  );
 
   const dropBefore = useCallback(
     async (targetId: string) => {
@@ -264,7 +272,7 @@ export function ControlTowerDashboardManager({ canEdit }: { canEdit: boolean }) 
         </p>
       ) : (
         <div className={gridClass}>
-          {widgets.map((w, idx) => {
+          {widgets.map((w) => {
             const span = getSpan(w.layout);
             const spanClass = span === 3 ? "md:col-span-3" : span === 2 ? "md:col-span-2" : "md:col-span-1";
             return (
@@ -291,22 +299,6 @@ export function ControlTowerDashboardManager({ canEdit }: { canEdit: boolean }) 
                       </span>
                       <button
                         type="button"
-                        disabled={busy || idx === 0}
-                        onClick={() => void move(w.id, -1)}
-                        className="rounded border border-zinc-300 px-2 py-1 text-xs disabled:opacity-40"
-                      >
-                        Up
-                      </button>
-                      <button
-                        type="button"
-                        disabled={busy || idx === widgets.length - 1}
-                        onClick={() => void move(w.id, 1)}
-                        className="rounded border border-zinc-300 px-2 py-1 text-xs disabled:opacity-40"
-                      >
-                        Down
-                      </button>
-                      <button
-                        type="button"
                         disabled={busy}
                         onClick={() => void remove(w.id)}
                         className="rounded border border-red-200 px-2 py-1 text-xs text-red-800 disabled:opacity-40"
@@ -322,7 +314,10 @@ export function ControlTowerDashboardManager({ canEdit }: { canEdit: boolean }) 
                 <p className="mt-2 text-2xl font-semibold text-zinc-950">{metricValue(w)}</p>
                 <button
                   type="button"
-                  onClick={() => setExpanded(w)}
+                  onClick={() => {
+                    setExpanded(w);
+                    setChartView("bar");
+                  }}
                   className="mt-2 block w-full text-left"
                   title="Open chart preview"
                 >
@@ -381,15 +376,37 @@ export function ControlTowerDashboardManager({ canEdit }: { canEdit: boolean }) 
           >
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-base font-semibold text-zinc-900">{expanded.title}</h3>
-              <button
-                type="button"
-                onClick={() => setExpanded(null)}
-                className="rounded border border-zinc-300 px-3 py-1 text-sm"
-              >
-                Close
-              </button>
+              <div className="flex items-center gap-2">
+                <div className="inline-flex rounded border border-zinc-300 p-0.5 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setChartView("bar")}
+                    className={`rounded px-2 py-1 ${chartView === "bar" ? "bg-zinc-900 text-white" : "text-zinc-700"}`}
+                  >
+                    Bar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setChartView("line")}
+                    className={`rounded px-2 py-1 ${chartView === "line" ? "bg-zinc-900 text-white" : "text-zinc-700"}`}
+                  >
+                    Line
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setExpanded(null)}
+                  className="rounded border border-zinc-300 px-3 py-1 text-sm"
+                >
+                  Close
+                </button>
+              </div>
             </div>
-            <MiniBarChart data={seriesFor(expanded)} height={280} />
+            {chartView === "bar" ? (
+              <MiniBarChart data={seriesFor(expanded)} height={280} />
+            ) : (
+              <MiniLineChart data={seriesFor(expanded)} height={280} />
+            )}
             <ul className="mt-3 grid gap-1 text-xs text-zinc-700 md:grid-cols-2">
               {seriesFor(expanded).slice(0, 12).map((r, i) => (
                 <li key={r.label + i} className="flex items-center justify-between gap-2 rounded bg-zinc-50 px-2 py-1">
