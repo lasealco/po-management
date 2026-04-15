@@ -164,6 +164,28 @@ export function ControlTowerDashboardManager({ canEdit }: { canEdit: boolean }) 
     [load, widgets],
   );
 
+  const remove = useCallback(
+    async (id: string) => {
+      setBusy(true);
+      setErr(null);
+      setMsg(null);
+      try {
+        const res = await fetch(`/api/control-tower/dashboard/widgets/${id}`, {
+          method: "DELETE",
+        });
+        const j = (await res.json()) as { error?: string };
+        if (!res.ok) throw new Error(j.error || res.statusText);
+        setMsg("Widget removed.");
+        await load();
+      } catch (e) {
+        setErr(e instanceof Error ? e.message : "Failed to remove widget.");
+      } finally {
+        setBusy(false);
+      }
+    },
+    [load],
+  );
+
   const gridClass = useMemo(() => "grid gap-3 md:grid-cols-3", []);
 
   return (
@@ -229,6 +251,14 @@ export function ControlTowerDashboardManager({ canEdit }: { canEdit: boolean }) 
                         className="rounded border border-zinc-300 px-2 py-1 text-xs disabled:opacity-40"
                       >
                         Down
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void remove(w.id)}
+                        className="rounded border border-red-200 px-2 py-1 text-xs text-red-800 disabled:opacity-40"
+                      >
+                        Remove
                       </button>
                     </div>
                   ) : null}
