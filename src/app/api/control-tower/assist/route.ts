@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireApiGrant } from "@/lib/authz";
-import { assistControlTowerQuery } from "@/lib/control-tower/assist";
+import { runControlTowerAssist } from "@/lib/control-tower/assist-llm";
 
 export async function POST(request: Request) {
   const gate = await requireApiGrant("org.controltower", "view");
@@ -14,10 +14,17 @@ export async function POST(request: Request) {
     body = {};
   }
   const q =
-    typeof (body as { q?: unknown }).q === "string"
-      ? (body as { q: string }).q
-      : "";
+    typeof (body as { q?: unknown }).q === "string" ? (body as { q: string }).q : "";
+  const useLlm =
+    typeof (body as { useLlm?: unknown }).useLlm === "boolean"
+      ? (body as { useLlm: boolean }).useLlm
+      : false;
 
-  const { hints, suggestedFilters } = assistControlTowerQuery(q);
-  return NextResponse.json({ hints, suggestedFilters });
+  const result = await runControlTowerAssist({ raw: q, useLlm });
+  return NextResponse.json({
+    hints: result.hints,
+    suggestedFilters: result.suggestedFilters,
+    capabilities: result.capabilities,
+    usedLlm: result.usedLlm,
+  });
 }

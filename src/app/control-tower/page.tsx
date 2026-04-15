@@ -80,8 +80,8 @@ export default async function ControlTowerPage() {
         >
           <span className="text-base font-semibold text-zinc-900">Search & assist</span>
           <p className="mt-2 text-sm text-zinc-600">
-            Rule-based query parsing to structured filters (R5) plus the same text index as the workbench — no external
-            LLM.
+            R5: rule-based query parsing to structured filters, same text index as the workbench, and optional OpenAI
+            refine when enabled in environment settings.
           </p>
           <span className="mt-4 inline-block text-sm font-medium text-sky-800">Open →</span>
         </Link>

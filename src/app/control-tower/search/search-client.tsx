@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { AssistSuggestedFilters } from "@/lib/control-tower/assist";
 import { appendAssistToSearchParams, hasStructuredSearchInput } from "@/lib/control-tower/search-query";
+
+const USE_LLM_STORAGE = "ct-search-use-llm";
 
 type Hit = {
   id: string;
@@ -31,8 +33,17 @@ export function ControlTowerSearchClient() {
   const [hits, setHits] = useState<Hit[]>([]);
   const [hints, setHints] = useState<string[]>([]);
   const [suggested, setSuggested] = useState<AssistSuggestedFilters | null>(null);
+  const [llmAvailable, setLlmAvailable] = useState(false);
+  const [usedLlm, setUsedLlm] = useState(false);
+  const [useLlm, setUseLlm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const v = window.localStorage.getItem(USE_LLM_STORAGE);
+    setUseLlm(v === "1");
+  }, []);
 
   const workbenchHref = useMemo(() => {
     if (!suggested && !q.trim()) return "/control-tower/workbench";
@@ -47,18 +58,24 @@ export function ControlTowerSearchClient() {
       const assistRes = await fetch("/api/control-tower/assist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ q: raw }),
+        body: JSON.stringify({ q: raw, useLlm }),
       });
       const assistJson = (await assistRes.json()) as {
         hints?: string[];
         suggestedFilters?: AssistSuggestedFilters;
+        capabilities?: { llmAssist?: boolean };
+        usedLlm?: boolean;
       };
       if (assistRes.ok) {
         setHints(assistJson.hints ?? []);
         setSuggested(assistJson.suggestedFilters ?? {});
+        setLlmAvailable(Boolean(assistJson.capabilities?.llmAssist));
+        setUsedLlm(Boolean(assistJson.usedLlm));
       } else {
         setHints([]);
         setSuggested(null);
+        setLlmAvailable(false);
+        setUsedLlm(false);
       }
 
       const filters = assistRes.ok ? (assistJson.suggestedFilters ?? {}) : {};
@@ -80,7 +97,14 @@ export function ControlTowerSearchClient() {
     } finally {
       setBusy(false);
     }
-  }, [q]);
+  }, [q, useLlm]);
+
+  const persistUseLlm = useCallback((next: boolean) => {
+    setUseLlm(next);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(USE_LLM_STORAGE, next ? "1" : "0");
+    }
+  }, []);
 
   const structuredSummary = suggested && hasStructuredSearchInput(suggested) && (
     <p className="text-xs text-zinc-600">
@@ -119,6 +143,25 @@ export function ControlTowerSearchClient() {
           Search
         </button>
       </div>
+      {llmAvailable ? (
+        <label className="flex cursor-pointer items-center gap-2 text-sm text-zinc-700">
+          <input
+            type="checkbox"
+            checked={useLlm}
+            onChange={(e) => persistUseLlm(e.target.checked)}
+            className="rounded border-zinc-400"
+          />
+          Refine filters with AI (OpenAI). Rule-based parsing always runs first; the model may adjust filters.
+        </label>
+      ) : (
+        <p className="text-xs text-zinc-500">
+          AI refine is off. Set <code className="rounded bg-zinc-100 px-1">OPENAI_API_KEY</code> and{" "}
+          <code className="rounded bg-zinc-100 px-1">CONTROL_TOWER_ASSIST_LLM=1</code> to enable (optional).
+        </p>
+      )}
+      {usedLlm ? (
+        <p className="text-xs font-medium text-violet-800">Last search used AI-assisted filter merge.</p>
+      ) : null}
       {structuredSummary}
       <div className="flex flex-wrap gap-2 text-xs">
         <Link
