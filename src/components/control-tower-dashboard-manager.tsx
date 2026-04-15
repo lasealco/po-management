@@ -30,12 +30,24 @@ const BAR_COLORS = [
   "#334155",
 ];
 
+function formatDecimal(value: number, frac = 2): string {
+  return new Intl.NumberFormat("de-DE", {
+    minimumFractionDigits: frac,
+    maximumFractionDigits: frac,
+  }).format(value);
+}
+
+function formatMetric(measure: string, value: number): string {
+  if (measure === "onTimePct") return `${formatDecimal(value, 2)}%`;
+  if (measure === "shippingSpend") return formatDecimal(value, 2);
+  return formatDecimal(value, 2);
+}
+
 function metricValue(widget: Widget): string {
   const m = widget.report.config.measure;
   const sum = widget.report.rows.reduce((acc, r) => acc + Number(r.metrics[m] ?? 0), 0);
-  if (m === "onTimePct") return `${(sum / Math.max(widget.report.rows.length, 1)).toFixed(2)}%`;
-  if (m === "shippingSpend") return `$${sum.toFixed(2)}`;
-  return sum.toLocaleString();
+  if (m === "onTimePct") return formatMetric(m, sum / Math.max(widget.report.rows.length, 1));
+  return formatMetric(m, sum);
 }
 
 function getSpan(layout: unknown): Span {
@@ -63,7 +75,12 @@ function MiniBarChart({ data, height = 72 }: { data: Array<{ label: string; valu
   }
   const barW = Math.max(8, Math.floor(260 / data.length));
   const gap = 3;
-  const width = data.length * (barW + gap);
+  const width = data.length * (barW + gap) + 48;
+  const axisLeft = 36;
+  const axisBottom = 14;
+  const axisTop = 6;
+  const plotHeight = height - axisBottom - axisTop;
+  const ticks = [max, max / 2, 0];
   return (
     <svg
       viewBox={`0 0 ${width} ${height}`}
@@ -71,13 +88,24 @@ function MiniBarChart({ data, height = 72 }: { data: Array<{ label: string; valu
       style={{ height: `${height}px` }}
       className="w-full rounded border border-zinc-200 bg-white"
     >
+      {ticks.map((t, idx) => {
+        const y = axisTop + (plotHeight * idx) / (ticks.length - 1);
+        return (
+          <g key={`tick-${idx}`}>
+            <line x1={axisLeft} y1={y} x2={width - 2} y2={y} stroke="#e4e4e7" strokeWidth="1" />
+            <text x={axisLeft - 4} y={y + 3} textAnchor="end" fontSize="8" fill="#71717a">
+              {formatDecimal(t, 0)}
+            </text>
+          </g>
+        );
+      })}
       {data.map((d, i) => {
-        const h = Math.max(2, Math.round((d.value / max) * (height - 10)));
-        const x = i * (barW + gap);
-        const y = height - h - 2;
+        const h = Math.max(2, Math.round((d.value / max) * plotHeight));
+        const x = axisLeft + i * (barW + gap);
+        const y = axisTop + plotHeight - h;
         return (
           <rect key={d.label + i} x={x} y={y} width={barW} height={h} rx={1} fill={colorFor(i)}>
-            <title>{`${d.label}: ${d.value.toFixed(2)}`}</title>
+            <title>{`${d.label}: ${formatDecimal(d.value, 2)}`}</title>
           </rect>
         );
       })}
@@ -311,7 +339,9 @@ export function ControlTowerDashboardManager({ canEdit }: { canEdit: boolean }) 
                         />
                         <span className="truncate">{r.label}</span>
                       </span>
-                      <span className="font-medium">{Number(r.metrics[w.report.config.measure] ?? 0).toFixed(2)}</span>
+                      <span className="font-medium">
+                        {formatMetric(w.report.config.measure, Number(r.metrics[w.report.config.measure] ?? 0))}
+                      </span>
                     </li>
                   ))}
                 </ul>
@@ -370,7 +400,9 @@ export function ControlTowerDashboardManager({ canEdit }: { canEdit: boolean }) 
                     />
                     <span className="truncate">{r.label}</span>
                   </span>
-                  <span className="font-medium">{r.value.toFixed(2)}</span>
+                  <span className="font-medium">
+                    {formatMetric(expanded.report.config.measure, r.value)}
+                  </span>
                 </li>
               ))}
             </ul>
