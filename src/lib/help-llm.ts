@@ -12,6 +12,8 @@ export type HelpReply = {
   suggestions: string[];
   actions: HelpAction[];
   doActions: HelpDoAction[];
+  /** True when OpenAI returned a structured reply (not rule-only fallback). */
+  llmUsed: boolean;
 };
 
 const ROUTE_HINTS: HelpAction[] = [
@@ -20,6 +22,9 @@ const ROUTE_HINTS: HelpAction[] = [
   { label: "Open Suppliers", href: "/suppliers" },
   { label: "Open Users", href: "/settings/users" },
   { label: "Open Warehouses", href: "/settings/warehouses" },
+  { label: "Control Tower home", href: "/control-tower" },
+  { label: "Control Tower workbench", href: "/control-tower/workbench" },
+  { label: "Control Tower reports", href: "/control-tower/reports" },
   { label: "Login", href: "/login" },
 ];
 
@@ -61,6 +66,18 @@ function fallbackReply(message: string): HelpReply {
         payload: { path: "/settings/users", guide: matched.id, step: 0 },
       });
     }
+    if (matched.id === "control_tower") {
+      doActions.push({
+        type: "open_path",
+        label: "Open Control Tower reports",
+        payload: { path: "/control-tower/reports", guide: matched.id, step: 2 },
+      });
+      doActions.push({
+        type: "open_path",
+        label: "Open workbench",
+        payload: { path: "/control-tower/workbench", guide: matched.id, step: 1 },
+      });
+    }
     return {
       answer: `${matched.title}: ${matched.summary}`,
       playbook: matched,
@@ -71,15 +88,17 @@ function fallbackReply(message: string): HelpReply {
       ],
       actions: firstHref ? [{ label: "Start guide", href: firstHref }] : [],
       doActions,
+      llmUsed: false,
     };
   }
   return {
     answer:
-      "I can guide you through orders, suppliers, consolidation, and user administration. Try asking: 'I want to create an order' or 'How do I build a consolidation load?'",
+      "I can guide you through orders, suppliers, consolidation, Control Tower, and user administration. Try asking: 'I want to create an order', 'Open Control Tower reports', or 'How do I build a consolidation load?'",
     playbook: null,
     suggestions: HELP_PLAYBOOKS.map((p) => p.title),
-    actions: ROUTE_HINTS.slice(0, 3),
+    actions: ROUTE_HINTS.slice(0, 4),
     doActions: [],
+    llmUsed: false,
   };
 }
 
@@ -91,12 +110,23 @@ function safeJsonParse<T>(raw: string): T | null {
   }
 }
 
+function extractJsonObject(raw: string): string | null {
+  const trimmed = raw.trim();
+  const fence = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fence?.[1]) return fence[1].trim();
+  const start = trimmed.indexOf("{");
+  const end = trimmed.lastIndexOf("}");
+  if (start >= 0 && end > start) return trimmed.slice(start, end + 1);
+  return null;
+}
+
 export async function buildHelpReply(params: {
   message: string;
   currentPath?: string;
 }): Promise<HelpReply> {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
-  if (!apiKey) return fallbackReply(params.message);
+  const llmDisabled = process.env.HELP_LLM === "0" || process.env.OPENAI_HELP_DISABLED === "1";
+  if (!apiKey || llmDisabled) return fallbackReply(params.message);
 
   const matched = matchPlaybook(params.message);
   const playbookHint = matched
@@ -108,13 +138,13 @@ export async function buildHelpReply(params: {
     "Give concise, practical guidance in plain English.",
     "If user asks 'how do I do X', provide short answer plus actionable next click.",
     "Prefer existing routes only.",
-    "Return JSON only with keys: answer, suggestions, actions, doActions.",
+    "Return a single JSON object only (no markdown) with keys: answer, suggestions, actions, doActions.",
     "actions is array of {label, href}. href must start with '/'.",
     "doActions is optional array of {type, label, payload} for one-click execution (server-validated).",
     "Allowed doActions types:",
     "- open_order: payload { orderNumber: string, focus?: 'workflow'|'asn'|'chat'|'split', guide?: playbook id, step?: number }",
     "- open_orders_queue: payload { queue: 'all'|'needs_my_action'|'waiting_on_me'|'awaiting_supplier'|'overdue'|'split_pending_buyer', guide?, step? }",
-    "- open_path: payload { path: '/'|'/consolidation'|'/suppliers'|'/settings/users'|'/settings/warehouses'|'/login'|'/catalog'|'/products', guide?, step? }",
+    "- open_path: payload { path: '/'|'/consolidation'|'/suppliers'|'/settings/users'|'/settings/warehouses'|'/login'|'/catalog'|'/products'|'/control-tower'|'/control-tower/workbench'|'/control-tower/reports'|'/control-tower/search'|'/control-tower/dashboard'|'/control-tower/command-center'|'/control-tower/ops', guide?, step? }",
     "Use demo PO-1004 only as a known example order number when suggesting open_order.",
     "Do not invent unavailable pages or arbitrary paths.",
   ].join(" ");
@@ -136,6 +166,7 @@ export async function buildHelpReply(params: {
       body: JSON.stringify({
         model: process.env.OPENAI_HELP_MODEL || "gpt-4o-mini",
         temperature: 0.2,
+        response_format: { type: "json_object" },
         messages: [
           { role: "system", content: system },
           { role: "user", content: user },
@@ -147,12 +178,13 @@ export async function buildHelpReply(params: {
       choices?: Array<{ message?: { content?: string | null } }>;
     };
     const text = payload.choices?.[0]?.message?.content?.trim() || "";
+    const jsonSlice = extractJsonObject(text) ?? text;
     const parsed = safeJsonParse<{
       answer?: string;
       suggestions?: string[];
       actions?: Array<{ label?: string; href?: string }>;
       doActions?: unknown;
-    }>(text);
+    }>(jsonSlice);
     if (!parsed?.answer) return fallbackReply(params.message);
 
     const actions = (parsed.actions ?? [])
@@ -168,6 +200,7 @@ export async function buildHelpReply(params: {
         : [],
       actions,
       doActions,
+      llmUsed: true,
     };
   } catch {
     return fallbackReply(params.message);

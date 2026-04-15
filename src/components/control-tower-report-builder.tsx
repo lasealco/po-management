@@ -255,6 +255,10 @@ export function ControlTowerReportBuilder({ canEdit }: { canEdit: boolean }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [insightQuestion, setInsightQuestion] = useState("");
+  const [insightText, setInsightText] = useState<string | null>(null);
+  const [insightBusy, setInsightBusy] = useState(false);
+  const [insightErr, setInsightErr] = useState<string | null>(null);
 
   const loadSaved = useCallback(async () => {
     const res = await fetch("/api/control-tower/reports/saved");
@@ -272,6 +276,8 @@ export function ControlTowerReportBuilder({ canEdit }: { canEdit: boolean }) {
     setBusy(true);
     setErr(null);
     setMsg(null);
+    setInsightText(null);
+    setInsightErr(null);
     try {
       const res = await fetch("/api/control-tower/reports/run", {
         method: "POST",
@@ -309,6 +315,29 @@ export function ControlTowerReportBuilder({ canEdit }: { canEdit: boolean }) {
       setBusy(false);
     }
   }, [config]);
+
+  const fetchInsight = useCallback(async () => {
+    setInsightBusy(true);
+    setInsightErr(null);
+    try {
+      const res = await fetch("/api/control-tower/reports/insight", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          config: toRunPayload(config),
+          question: insightQuestion.trim() || undefined,
+        }),
+      });
+      const data = (await res.json()) as { insight?: string; error?: string };
+      if (!res.ok) throw new Error(data.error || res.statusText);
+      setInsightText(data.insight ?? "");
+    } catch (e) {
+      setInsightErr(e instanceof Error ? e.message : "Insight failed.");
+      setInsightText(null);
+    } finally {
+      setInsightBusy(false);
+    }
+  }, [config, insightQuestion]);
 
   const saveReport = useCallback(async () => {
     if (!canEdit) return;
@@ -715,6 +744,37 @@ export function ControlTowerReportBuilder({ canEdit }: { canEdit: boolean }) {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          <div className="rounded-lg border border-violet-200 bg-violet-50/80 p-3">
+            <p className="text-xs font-semibold text-violet-950">Optional AI insight</p>
+            <p className="mt-1 text-[11px] text-violet-900/80">
+              Runs the same report on the server and asks the model to interpret aggregated numbers only. Add
+              CONTROL_TOWER_REPORT_INSIGHT_LLM=1 and OPENAI_API_KEY on the server.
+            </p>
+            <label className="mt-2 block text-xs text-violet-950">
+              Focus question (optional)
+              <input
+                value={insightQuestion}
+                onChange={(e) => setInsightQuestion(e.target.value)}
+                placeholder="e.g. Which carrier should we watch? Any concentration risk?"
+                className="mt-1 w-full rounded border border-violet-200 bg-white px-2 py-1.5 text-sm text-zinc-900"
+              />
+            </label>
+            <button
+              type="button"
+              disabled={insightBusy}
+              onClick={() => void fetchInsight()}
+              className="mt-2 rounded border border-violet-700 bg-violet-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+            >
+              {insightBusy ? "Generating…" : "Get AI insight"}
+            </button>
+            {insightErr ? <p className="mt-2 text-xs text-red-700">{insightErr}</p> : null}
+            {insightText ? (
+              <div className="mt-3 whitespace-pre-wrap rounded border border-violet-100 bg-white p-3 text-sm text-zinc-900">
+                {insightText}
+              </div>
+            ) : null}
           </div>
         </div>
       ) : null}

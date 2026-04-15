@@ -31,6 +31,13 @@ const OPEN_PATH_ALLOWLIST = new Set([
   "/login",
   "/catalog",
   "/products",
+  "/control-tower",
+  "/control-tower/workbench",
+  "/control-tower/reports",
+  "/control-tower/search",
+  "/control-tower/dashboard",
+  "/control-tower/command-center",
+  "/control-tower/ops",
 ]);
 
 const ORDER_FOCUS = new Set(["workflow", "asn", "chat", "split"]);
@@ -128,6 +135,10 @@ export async function executeHelpDoAction(
     } else if (path === "/catalog" || path === "/products") {
       if (!viewerHas(access.grantSet, "org.products", "view")) {
         return { ok: false, error: "You do not have permission to view the catalog." };
+      }
+    } else if (path.startsWith("/control-tower")) {
+      if (!viewerHas(access.grantSet, "org.controltower", "view")) {
+        return { ok: false, error: "You do not have permission to open Control Tower." };
       }
     }
     const playbookId = typeof payload.guide === "string" ? payload.guide.trim() : "";

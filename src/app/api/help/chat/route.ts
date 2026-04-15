@@ -42,6 +42,7 @@ export async function POST(request: Request) {
     suggestions: reply.suggestions,
     actions: reply.actions,
     doActions: reply.doActions,
+    llmUsed: reply.llmUsed,
     quickPlaybooks: HELP_PLAYBOOKS.map((p) => ({ id: p.id, title: p.title })),
   });
 }

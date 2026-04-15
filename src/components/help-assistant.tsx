@@ -28,6 +28,7 @@ export function HelpAssistant() {
   const [resumeHint, setResumeHint] = useState<{ playbookId: string; stepIdx: number } | null>(
     null,
   );
+  const [llmUsed, setLlmUsed] = useState(false);
 
   const currentStep = useMemo(
     () => (playbook ? playbook.steps[Math.min(stepIdx, playbook.steps.length - 1)] : null),
@@ -87,6 +88,7 @@ export function HelpAssistant() {
           suggestions?: string[];
           actions?: HelpAction[];
           doActions?: HelpDoAction[];
+          llmUsed?: boolean;
           error?: string;
         }
       | null;
@@ -95,6 +97,7 @@ export function HelpAssistant() {
       setError(payload?.error ?? "Help assistant failed.");
       return;
     }
+    setLlmUsed(Boolean(payload?.llmUsed));
     if (payload?.answer) {
       setChat((prev) => [...prev, { role: "assistant", text: payload.answer! }]);
     }
@@ -160,9 +163,20 @@ export function HelpAssistant() {
       {open ? (
         <aside className="fixed bottom-20 right-5 z-40 w-[22rem] rounded-xl border border-zinc-200 bg-white shadow-2xl">
           <div className="border-b border-zinc-100 px-4 py-3">
-            <h3 className="text-sm font-semibold text-zinc-900">Guided Help Assistant</h3>
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-sm font-semibold text-zinc-900">Guided Help Assistant</h3>
+              {llmUsed ? (
+                <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-medium text-violet-900">
+                  AI answer
+                </span>
+              ) : (
+                <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] text-zinc-600">
+                  Guided
+                </span>
+              )}
+            </div>
             <p className="mt-1 text-xs text-zinc-600">
-              Ask what you want to do, and follow guided steps.
+              Ask what you want to do, follow guided steps, or get AI suggestions when your API key is enabled.
             </p>
             <div className="mt-2 flex flex-wrap gap-1">
               {resumeHint ? (

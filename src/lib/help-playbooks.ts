@@ -186,6 +186,63 @@ export const HELP_PLAYBOOKS: HelpPlaybook[] = [
     ],
   },
   {
+    id: "control_tower",
+    title: "Control Tower (shipments & reports)",
+    summary: "Search shipments, run analytics reports, and manage your dashboard widgets.",
+    steps: [
+      {
+        title: "Open Control Tower home",
+        description: "Overview, shortcuts, and pinned report widgets.",
+        href: "/control-tower",
+        doAction: {
+          type: "open_path",
+          label: "Open Control Tower",
+          payload: { path: "/control-tower", guide: "control_tower", step: 0 },
+        },
+      },
+      {
+        title: "Workbench — shipment list",
+        description: "Filter and open shipment 360 for a specific move.",
+        href: "/control-tower/workbench",
+        doAction: {
+          type: "open_path",
+          label: "Open workbench",
+          payload: { path: "/control-tower/workbench", guide: "control_tower", step: 1 },
+        },
+      },
+      {
+        title: "Reports & analytics",
+        description: "Build charts, compare periods, and save or pin reports.",
+        href: "/control-tower/reports",
+        doAction: {
+          type: "open_path",
+          label: "Open reports",
+          payload: { path: "/control-tower/reports", guide: "control_tower", step: 2 },
+        },
+      },
+      {
+        title: "Search & assist",
+        description: "Free-text search with structured filters; optional LLM assist when enabled.",
+        href: "/control-tower/search",
+        doAction: {
+          type: "open_path",
+          label: "Open search",
+          payload: { path: "/control-tower/search", guide: "control_tower", step: 3 },
+        },
+      },
+      {
+        title: "My dashboard widgets",
+        description: "Reorder and resize pinned report widgets.",
+        href: "/control-tower/dashboard",
+        doAction: {
+          type: "open_path",
+          label: "Open My dashboard",
+          payload: { path: "/control-tower/dashboard", guide: "control_tower", step: 4 },
+        },
+      },
+    ],
+  },
+  {
     id: "user_admin",
     title: "User Administration & Login",
     summary: "Create users, assign roles, set passwords, and sign in.",
@@ -234,6 +291,16 @@ export const HELP_PLAYBOOKS: HelpPlaybook[] = [
 
 export function matchPlaybook(query: string): HelpPlaybook | null {
   const q = query.toLowerCase();
+  if (
+    q.includes("control tower") ||
+    q.includes("control-tower") ||
+    q.includes("shipment 360") ||
+    q.includes("workbench") ||
+    (q.includes("report") && (q.includes("carrier") || q.includes("lane") || q.includes("analytics"))) ||
+    (q.includes("dashboard") && q.includes("widget"))
+  ) {
+    return HELP_PLAYBOOKS.find((p) => p.id === "control_tower") ?? null;
+  }
   if (q.includes("order")) return HELP_PLAYBOOKS.find((p) => p.id === "create_order") ?? null;
   if (q.includes("supplier")) return HELP_PLAYBOOKS.find((p) => p.id === "create_supplier") ?? null;
   if (q.includes("consol") || q.includes("load") || q.includes("container")) {
