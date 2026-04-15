@@ -19,7 +19,8 @@ function truncate(s: string, max: number): string {
 export function buildReportInsightContext(result: CtRunReportResult, question: string | null) {
   const m = result.config.measure;
   const measureLabel = MEASURE_LABELS[m] ?? m;
-  const top = result.rows.slice(0, 25).map((r) => ({
+  const series = result.fullSeriesRows.length ? result.fullSeriesRows : result.rows;
+  const top = series.slice(0, 25).map((r) => ({
     label: truncate(r.label, 80),
     value: Number(r.metrics[m] ?? 0),
   }));
@@ -31,6 +32,8 @@ export function buildReportInsightContext(result: CtRunReportResult, question: s
     dateField: result.config.dateField,
     topN: result.config.topN,
     rowCount: result.rows.length,
+    fullSeriesRowCount: result.fullSeriesRows.length,
+    coverage: result.coverage,
     totals: result.totals,
     topRows: top,
     generatedAt: result.generatedAt,

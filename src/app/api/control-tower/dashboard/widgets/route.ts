@@ -49,6 +49,7 @@ export async function GET() {
           id: w.savedReport.id,
           name: w.savedReport.name,
           updatedAt: w.savedReport.updatedAt.toISOString(),
+          config: sanitizeCtReportConfig(w.savedReport.configJson) as Record<string, unknown>,
         },
         report: result,
       };

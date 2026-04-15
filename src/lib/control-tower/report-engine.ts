@@ -66,6 +66,19 @@ export type CtReportSeriesRow = {
   metrics: Record<CtReportMeasure, number>;
 };
 
+export type CtReportCoverage = {
+  /** Shipments returned by the filtered Prisma query (max 10k). */
+  totalShipmentsQueried: number;
+  /** Shipments that passed the report date window and were rolled into dimension buckets. */
+  shipmentsAggregated: number;
+  /** Shipments skipped because the selected date field was missing or fell outside from/to. */
+  excludedByDateOrMissingDateField: number;
+  /** Distinct dimension buckets before Top-N truncation (equals shown count for month dimension). */
+  dimensionGroupsTotal: number;
+  /** Dimension buckets returned in rows (chart / primary table). */
+  dimensionGroupsShown: number;
+};
+
 export type CtRunReportResult = {
   config: {
     title?: string;
@@ -76,7 +89,11 @@ export type CtRunReportResult = {
     dateField: "shippedAt" | "receivedAt" | "bookingEta";
     topN: number;
   };
+  /** Chart / builder primary series (Top-N except month, which keeps full timeline). */
   rows: CtReportSeriesRow[];
+  /** All dimension buckets after aggregation (no Top-N cap); use for exports and full tables. */
+  fullSeriesRows: CtReportSeriesRow[];
+  coverage: CtReportCoverage;
   totals: Record<CtReportMeasure, number>;
   generatedAt: string;
 };
@@ -345,9 +362,15 @@ export async function runControlTowerReport(params: {
 
   const grouped = new Map<string, CtReportSeriesRow>();
   const totals = makeZeroMetrics();
+  let excludedByDateOrMissingDateField = 0;
+  let shipmentsAggregated = 0;
   for (const r of rows) {
     const dateValue = pickDateField(r, dateField);
-    if ((from && (!dateValue || dateValue < from)) || (to && (!dateValue || dateValue > to))) continue;
+    if ((from && (!dateValue || dateValue < from)) || (to && (!dateValue || dateValue > to))) {
+      excludedByDateOrMissingDateField += 1;
+      continue;
+    }
+    shipmentsAggregated += 1;
     const key = rowDimensionValue(r, config.dimension ?? "month");
     const existing = grouped.get(key) ?? { key, label: key, metrics: makeZeroMetrics() };
     existing.metrics.shipments += 1;
@@ -395,6 +418,13 @@ export async function runControlTowerReport(params: {
   });
 
   const sliced = config.dimension === "month" ? normalized : normalized.slice(0, config.topN ?? 12);
+  const coverage: CtReportCoverage = {
+    totalShipmentsQueried: rows.length,
+    shipmentsAggregated,
+    excludedByDateOrMissingDateField,
+    dimensionGroupsTotal: normalized.length,
+    dimensionGroupsShown: sliced.length,
+  };
   for (const r of sliced) {
     for (const m of CT_REPORT_MEASURES) totals[m] += r.metrics[m] ?? 0;
   }
@@ -412,6 +442,8 @@ export async function runControlTowerReport(params: {
       topN: config.topN ?? 12,
     },
     rows: sliced,
+    fullSeriesRows: normalized,
+    coverage,
     totals,
     generatedAt: new Date().toISOString(),
   };
