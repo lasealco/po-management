@@ -9,6 +9,10 @@ function decimalToNumber(v: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+function priorityByThreshold(value: number, threshold: number): "P1" | "P2" {
+  return value >= threshold ? "P1" : "P2";
+}
+
 export async function buildReportingCockpitSnapshot(params: {
   tenantId: string;
 }): Promise<ReportingCockpitSnapshot> {
@@ -194,5 +198,43 @@ export async function buildReportingCockpitSnapshot(params: {
         hint: "Billable WMS events not yet invoiced.",
       },
     ],
+    recommendedActions: [
+      ...(openCtExceptionCount > 0
+        ? [{
+            id: "act-ct-exceptions",
+            title: "Triage open logistics exceptions",
+            reason: `${openCtExceptionCount} exceptions are open/in progress and may impact service levels.`,
+            href: "/control-tower/ops",
+            priority: priorityByThreshold(openCtExceptionCount, 15),
+          }]
+        : []),
+      ...(overduePoCount > 0
+        ? [{
+            id: "act-po-overdue",
+            title: "Review overdue requested delivery dates",
+            reason: `${overduePoCount} purchase orders are past requested delivery.`,
+            href: "/reports",
+            priority: priorityByThreshold(overduePoCount, 20),
+          }]
+        : []),
+      ...(staleOpportunityCount > 0
+        ? [{
+            id: "act-crm-stale",
+            title: "Push stale opportunities to next step",
+            reason: `${staleOpportunityCount} opportunities are past close/next-step dates.`,
+            href: "/crm/pipeline",
+            priority: priorityByThreshold(staleOpportunityCount, 10),
+          }]
+        : []),
+      ...(onHoldInventoryCount > 0
+        ? [{
+            id: "act-wms-hold",
+            title: "Clear on-hold inventory blockers",
+            reason: `${onHoldInventoryCount} hold rows can block picks/replenishment.`,
+            href: "/wms/stock",
+            priority: priorityByThreshold(onHoldInventoryCount, 12),
+          }]
+        : []),
+    ].slice(0, 4),
   };
 }

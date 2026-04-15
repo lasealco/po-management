@@ -13,6 +13,14 @@ export type CockpitCashFlowStage = {
   hint: string;
 };
 
+export type CockpitRecommendedAction = {
+  id: string;
+  title: string;
+  reason: string;
+  href: string;
+  priority: "P1" | "P2";
+};
+
 export type ReportingCockpitSnapshot = {
   generatedAt: string;
   currency: string;
@@ -26,4 +34,5 @@ export type ReportingCockpitSnapshot = {
   };
   exceptions: CockpitException[];
   cashCycle: CockpitCashFlowStage[];
+  recommendedActions: CockpitRecommendedAction[];
 };

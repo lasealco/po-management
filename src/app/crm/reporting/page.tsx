@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { AccessDenied } from "@/components/access-denied";
+import { CrmReportingOverview } from "@/components/crm-reporting-overview";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
@@ -38,6 +39,7 @@ export default async function CrmReportingPage() {
         CRM-specific charts and saved definitions will live here as we connect the shared reporting engine. Until then, use
         the global reporting hub and — where relevant — Control Tower for shipment-linked customer metrics.
       </p>
+      <CrmReportingOverview />
       <ul className="mt-6 space-y-3 text-sm">
         <li>
           <Link href="/reporting?focus=crm" className="font-medium text-violet-800 hover:underline">

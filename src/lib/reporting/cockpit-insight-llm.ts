@@ -20,6 +20,7 @@ export function buildCockpitInsightContext(snapshot: ReportingCockpitSnapshot, q
       amount: Number(c.amount ?? 0),
       hint: truncate(c.hint, 120),
     })),
+    recommendedActions: snapshot.recommendedActions,
     userQuestion: question?.trim() || null,
   };
 }
