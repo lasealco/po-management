@@ -1,9 +1,11 @@
 import Link from "next/link";
 
 import { AccessDenied } from "@/components/access-denied";
+import { ReportingCockpitBoard } from "@/components/reporting-cockpit-board";
 import { ReportingCockpitClient } from "@/components/reporting-cockpit-client";
 import { getActorUserId, getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
+import { buildReportingCockpitSnapshot } from "@/lib/reporting/cockpit-data";
 
 export const dynamic = "force-dynamic";
 
@@ -57,6 +59,8 @@ export default async function ReportingHubPage({
     );
   }
 
+  const snapshot = await buildReportingCockpitSnapshot({ tenantId: tenant.id });
+
   return (
     <main className="mx-auto min-h-screen max-w-7xl bg-zinc-50 px-6 py-10">
       <header className="mb-6">
@@ -67,6 +71,7 @@ export default async function ReportingHubPage({
         </p>
       </header>
 
+      <ReportingCockpitBoard snapshot={snapshot} />
       <ReportingCockpitClient canPo={canPo} canCt={canCt} canCrm={canCrm} canWms={canWms} />
 
       <div className="grid gap-4 md:grid-cols-2">
