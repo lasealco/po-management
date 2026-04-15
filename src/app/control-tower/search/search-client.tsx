@@ -35,6 +35,8 @@ export function ControlTowerSearchClient() {
   const [usedLlm, setUsedLlm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  /** Shown when assist fails but search still runs on raw / partial input. */
+  const [assistWarn, setAssistWarn] = useState<string | null>(null);
 
   const workbenchHref = useMemo(() => {
     if (!suggested && !q.trim()) return "/control-tower/workbench";
@@ -45,18 +47,25 @@ export function ControlTowerSearchClient() {
     const raw = q.trim();
     setBusy(true);
     setErr(null);
+    setAssistWarn(null);
     try {
       const assistRes = await fetch("/api/control-tower/assist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ q: raw }),
       });
-      const assistJson = (await assistRes.json()) as {
+      let assistJson: {
         hints?: string[];
         suggestedFilters?: AssistSuggestedFilters;
         capabilities?: { llmAssist?: boolean };
         usedLlm?: boolean;
-      };
+        error?: string;
+      } = {};
+      try {
+        assistJson = (await assistRes.json()) as typeof assistJson;
+      } catch {
+        assistJson = {};
+      }
       if (assistRes.ok) {
         setHints(assistJson.hints ?? []);
         setSuggested(assistJson.suggestedFilters ?? {});
@@ -67,6 +76,10 @@ export function ControlTowerSearchClient() {
         setSuggested(null);
         setLlmAvailable(false);
         setUsedLlm(false);
+        const detail = assistJson.error?.trim() || assistRes.statusText || `HTTP ${assistRes.status}`;
+        setAssistWarn(
+          `Assist unavailable (${detail}). Search is using your raw query only — structured tokens were not applied.`,
+        );
       }
 
       const filters = assistRes.ok ? (assistJson.suggestedFilters ?? {}) : {};
@@ -156,6 +169,9 @@ export function ControlTowerSearchClient() {
             <li key={h}>· {h}</li>
           ))}
         </ul>
+      ) : null}
+      {assistWarn ? (
+        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">{assistWarn}</p>
       ) : null}
       {err ? <p className="text-sm text-red-700">{err}</p> : null}
       <ul className="divide-y divide-zinc-200 rounded-lg border border-zinc-200 bg-white">

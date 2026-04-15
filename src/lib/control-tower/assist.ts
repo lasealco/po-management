@@ -37,7 +37,8 @@ function stripOnce(text: string, pattern: RegExp): string {
 }
 
 /**
- * Lightweight R5 assistant: maps free text to structured filters + hints (no LLM).
+ * Lightweight R5 assistant: maps free text to structured filters + hints (rule-based core).
+ * Optional OpenAI merge is applied in `assist-llm` when the deployment enables it.
  * Also returns a cleaned `q` for plain-text search after removing explicit tokens.
  */
 export function assistControlTowerQuery(raw: string): {

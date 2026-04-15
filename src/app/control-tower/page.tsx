@@ -43,6 +43,13 @@ export default async function ControlTowerPage() {
         ) : null}
       </header>
 
+      {!tenant ? (
+        <p className="mb-6 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+          No tenant context. Dashboard metrics are hidden; configure a demo tenant or session so APIs can resolve
+          data. You can still open the links below once a tenant is available.
+        </p>
+      ) : null}
+
       {overview ? <ControlTowerDashboard overview={overview} /> : null}
 
       <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">

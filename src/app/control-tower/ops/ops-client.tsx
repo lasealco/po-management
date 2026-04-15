@@ -67,10 +67,15 @@ export function ControlTowerOpsClient({ initialSummary }: { initialSummary: OpsS
   const [summary, setSummary] = useState(initialSummary);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [refreshErr, setRefreshErr] = useState<string | null>(null);
 
   const refresh = async () => {
     const res = await fetch("/api/control-tower/ops/summary");
-    if (!res.ok) return;
+    if (!res.ok) {
+      setRefreshErr(`Could not refresh ops summary (${res.status}).`);
+      return;
+    }
+    setRefreshErr(null);
     const data = (await res.json()) as OpsSummary;
     setSummary(data);
   };
@@ -139,6 +144,7 @@ export function ControlTowerOpsClient({ initialSummary }: { initialSummary: OpsS
           </div>
         </div>
         {msg ? <p className="mt-2 text-xs text-zinc-700">{msg}</p> : null}
+        {refreshErr ? <p className="mt-2 text-xs text-amber-800">{refreshErr}</p> : null}
         {!summary.isCustomerView ? (
           <p className="mt-3 text-xs text-zinc-600">
             After automation runs, clear or assign items in{" "}

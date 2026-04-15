@@ -96,6 +96,7 @@ export function ControlTowerWorkbench({
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<string | null>(null);
   const [saved, setSaved] = useState<Array<{ id: string; name: string; filtersJson: unknown }>>([]);
+  const [savedFiltersErr, setSavedFiltersErr] = useState<string | null>(null);
   const [ownerFilter, setOwnerFilter] = useState("");
   const [routeHealth, setRouteHealth] = useState("");
 
@@ -197,7 +198,11 @@ export function ControlTowerWorkbench({
   useEffect(() => {
     void (async () => {
       const res = await fetch("/api/control-tower/saved-filters");
-      if (!res.ok) return;
+      if (!res.ok) {
+        setSavedFiltersErr("Could not load saved views.");
+        return;
+      }
+      setSavedFiltersErr(null);
       const data = (await res.json()) as {
         filters?: Array<{ id: string; name: string; filtersJson: unknown }>;
       };
@@ -216,7 +221,11 @@ export function ControlTowerWorkbench({
 
   const refreshSaved = useCallback(async () => {
     const list = await fetch("/api/control-tower/saved-filters");
-    if (!list.ok) return;
+    if (!list.ok) {
+      setSavedFiltersErr("Could not load saved views.");
+      return;
+    }
+    setSavedFiltersErr(null);
     const data = (await list.json()) as {
       filters?: Array<{ id: string; name: string; filtersJson: unknown }>;
     };
@@ -715,6 +724,9 @@ export function ControlTowerWorkbench({
 
       {error ? (
         <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">{error}</p>
+      ) : null}
+      {savedFiltersErr ? (
+        <p className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">{savedFiltersErr}</p>
       ) : null}
 
       <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white">

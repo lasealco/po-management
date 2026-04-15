@@ -1,5 +1,6 @@
-import { getViewerGrantSet, viewerHas } from "@/lib/authz";
+import { getActorUserId, getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { ControlTowerShipment360 } from "@/components/control-tower-shipment-360";
+import { getControlTowerPortalContext } from "@/lib/control-tower/viewer";
 
 export const dynamic = "force-dynamic";
 
@@ -13,9 +14,24 @@ export default async function ControlTowerShipmentPage({
   const canEdit = Boolean(
     access?.user && viewerHas(access.grantSet, "org.controltower", "edit"),
   );
+  const actorId = await getActorUserId();
+  const ctx =
+    actorId !== null
+      ? await getControlTowerPortalContext(actorId)
+      : {
+          isRestrictedView: false,
+          isSupplierPortal: false,
+          customerCrmAccountId: null,
+        };
 
   return (
     <main className="mx-auto w-full max-w-7xl px-6 py-10">
+      {ctx.isRestrictedView ? (
+        <p className="mb-4 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-950">
+          Your view is scoped to customer- or supplier-visible shipments; internal alerts, exceptions, and audit may be
+          hidden.
+        </p>
+      ) : null}
       <ControlTowerShipment360 shipmentId={id} canEdit={canEdit} />
     </main>
   );

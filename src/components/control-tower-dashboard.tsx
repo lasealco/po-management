@@ -142,9 +142,12 @@ export function ControlTowerDashboard({ overview }: { overview: Overview }) {
           <ul className="mt-2 space-y-1 text-sm text-zinc-700">
             {staleTop.map((s) => (
               <li key={s.id}>
-                <a className="font-medium text-sky-800 hover:underline" href={`/control-tower/shipments/${s.id}`}>
+                <Link
+                  className="font-medium text-sky-800 hover:underline"
+                  href={`/control-tower/shipments/${s.id}`}
+                >
                   {s.shipmentNo || s.id.slice(0, 8)}
-                </a>{" "}
+                </Link>{" "}
                 · {s.orderNumber} · {s.status} · updated {new Date(s.updatedAt).toLocaleDateString()}
                 {s.bookingEta ? ` · ETA ${new Date(s.bookingEta).toLocaleDateString()}` : ""}
               </li>
