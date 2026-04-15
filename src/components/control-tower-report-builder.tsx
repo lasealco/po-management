@@ -1,0 +1,583 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+
+type Measure = "shipments" | "volumeCbm" | "weightKg" | "shippingSpend" | "onTimePct" | "avgDelayDays";
+type Dimension =
+  | "none"
+  | "status"
+  | "mode"
+  | "lane"
+  | "carrier"
+  | "customer"
+  | "supplier"
+  | "origin"
+  | "destination"
+  | "month";
+type ChartType = "table" | "bar" | "line" | "pie";
+
+type ReportConfig = {
+  title?: string;
+  chartType: ChartType;
+  dimension: Dimension;
+  measure: Measure;
+  compareMeasure: Measure | null;
+  comparePeriod: "none" | "prev_period" | "prev_year";
+  dateField: "shippedAt" | "receivedAt" | "bookingEta";
+  dateFrom: string;
+  dateTo: string;
+  topN: number;
+  filters: {
+    status: string;
+    mode: string;
+    lane: string;
+    carrier: string;
+    customer: string;
+    supplier: string;
+    origin: string;
+    destination: string;
+  };
+};
+
+type RunResult = {
+  config: {
+    title?: string;
+    chartType: ChartType;
+    dimension: Dimension;
+    measure: Measure;
+    compareMeasure: Measure | null;
+    dateField: "shippedAt" | "receivedAt" | "bookingEta";
+    topN: number;
+  };
+  rows: Array<{ key: string; label: string; metrics: Record<Measure, number> }>;
+  totals: Record<Measure, number>;
+  generatedAt: string;
+};
+
+type SavedReport = {
+  id: string;
+  name: string;
+  description: string | null;
+  isShared: boolean;
+  owner: { id: string; name: string };
+  config: unknown;
+  createdAt: string;
+  updatedAt: string;
+};
+
+const MEASURE_LABELS: Record<Measure, string> = {
+  shipments: "Shipments",
+  volumeCbm: "Volume (cbm)",
+  weightKg: "Weight (kg)",
+  shippingSpend: "Shipping spend",
+  onTimePct: "On-time %",
+  avgDelayDays: "Avg delay (days)",
+};
+
+const DEFAULT_CONFIG: ReportConfig = {
+  title: "New report",
+  chartType: "bar",
+  dimension: "month",
+  measure: "shipments",
+  compareMeasure: null,
+  comparePeriod: "none",
+  dateField: "shippedAt",
+  dateFrom: "",
+  dateTo: "",
+  topN: 12,
+  filters: {
+    status: "",
+    mode: "",
+    lane: "",
+    carrier: "",
+    customer: "",
+    supplier: "",
+    origin: "",
+    destination: "",
+  },
+};
+
+function hydrateConfig(input: unknown): ReportConfig {
+  const o = input && typeof input === "object" ? (input as Record<string, unknown>) : {};
+  const filters = o.filters && typeof o.filters === "object" ? (o.filters as Record<string, unknown>) : {};
+  return {
+    ...DEFAULT_CONFIG,
+    title: typeof o.title === "string" ? o.title : DEFAULT_CONFIG.title,
+    chartType:
+      o.chartType === "table" || o.chartType === "bar" || o.chartType === "line" || o.chartType === "pie"
+        ? o.chartType
+        : DEFAULT_CONFIG.chartType,
+    dimension: typeof o.dimension === "string" ? (o.dimension as Dimension) : DEFAULT_CONFIG.dimension,
+    measure: typeof o.measure === "string" ? (o.measure as Measure) : DEFAULT_CONFIG.measure,
+    compareMeasure: typeof o.compareMeasure === "string" ? (o.compareMeasure as Measure) : null,
+    comparePeriod:
+      o.comparePeriod === "prev_period" || o.comparePeriod === "prev_year"
+        ? o.comparePeriod
+        : "none",
+    dateField:
+      o.dateField === "receivedAt" || o.dateField === "bookingEta" || o.dateField === "shippedAt"
+        ? o.dateField
+        : DEFAULT_CONFIG.dateField,
+    dateFrom: typeof o.dateFrom === "string" ? o.dateFrom : "",
+    dateTo: typeof o.dateTo === "string" ? o.dateTo : "",
+    topN: typeof o.topN === "number" ? o.topN : DEFAULT_CONFIG.topN,
+    filters: {
+      status: typeof filters.status === "string" ? filters.status : "",
+      mode: typeof filters.mode === "string" ? filters.mode : "",
+      lane: typeof filters.lane === "string" ? filters.lane : "",
+      carrier: typeof filters.carrier === "string" ? filters.carrier : "",
+      customer: typeof filters.customer === "string" ? filters.customer : "",
+      supplier: typeof filters.supplier === "string" ? filters.supplier : "",
+      origin: typeof filters.origin === "string" ? filters.origin : "",
+      destination: typeof filters.destination === "string" ? filters.destination : "",
+    },
+  };
+}
+
+function shiftDateIso(iso: string, byDays: number): string {
+  const d = new Date(`${iso}T00:00:00.000Z`);
+  d.setUTCDate(d.getUTCDate() + byDays);
+  return d.toISOString().slice(0, 10);
+}
+
+function compareRange(config: ReportConfig): { from: string; to: string } | null {
+  if (!config.dateFrom || !config.dateTo || config.comparePeriod === "none") return null;
+  if (config.comparePeriod === "prev_year") {
+    const from = new Date(`${config.dateFrom}T00:00:00.000Z`);
+    const to = new Date(`${config.dateTo}T00:00:00.000Z`);
+    from.setUTCFullYear(from.getUTCFullYear() - 1);
+    to.setUTCFullYear(to.getUTCFullYear() - 1);
+    return { from: from.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10) };
+  }
+  const fromMs = new Date(`${config.dateFrom}T00:00:00.000Z`).getTime();
+  const toMs = new Date(`${config.dateTo}T00:00:00.000Z`).getTime();
+  const spanDays = Math.max(1, Math.round((toMs - fromMs) / 86400000) + 1);
+  return {
+    from: shiftDateIso(config.dateFrom, -spanDays),
+    to: shiftDateIso(config.dateTo, -spanDays),
+  };
+}
+
+function toRunPayload(config: ReportConfig) {
+  return {
+    ...config,
+    dateFrom: config.dateFrom || null,
+    dateTo: config.dateTo || null,
+    filters: Object.fromEntries(
+      Object.entries(config.filters).map(([k, v]) => [k, v.trim() || null]),
+    ),
+  };
+}
+
+function formatMetric(measure: Measure, value: number): string {
+  if (measure === "onTimePct") return `${value.toFixed(2)}%`;
+  if (measure === "shippingSpend") return `$${value.toFixed(2)}`;
+  if (measure === "avgDelayDays") return `${value.toFixed(2)}d`;
+  return value.toLocaleString();
+}
+
+export function ControlTowerReportBuilder({ canEdit }: { canEdit: boolean }) {
+  const [config, setConfig] = useState<ReportConfig>(DEFAULT_CONFIG);
+  const [result, setResult] = useState<RunResult | null>(null);
+  const [compareResult, setCompareResult] = useState<RunResult | null>(null);
+  const [saved, setSaved] = useState<SavedReport[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  const loadSaved = useCallback(async () => {
+    const res = await fetch("/api/control-tower/reports/saved");
+    if (!res.ok) return;
+    const json = (await res.json()) as { reports?: SavedReport[] };
+    setSaved(json.reports ?? []);
+  }, []);
+
+  useEffect(() => {
+    void loadSaved();
+  }, [loadSaved]);
+
+  const run = useCallback(async () => {
+    setBusy(true);
+    setErr(null);
+    setMsg(null);
+    try {
+      const res = await fetch("/api/control-tower/reports/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ config: toRunPayload(config) }),
+      });
+      const data = (await res.json()) as RunResult & { error?: string };
+      if (!res.ok) throw new Error(data.error || res.statusText);
+      setResult(data);
+
+      const shifted = compareRange(config);
+      if (shifted) {
+        const compareRes = await fetch("/api/control-tower/reports/run", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            config: toRunPayload({
+              ...config,
+              dateFrom: shifted.from,
+              dateTo: shifted.to,
+              comparePeriod: "none",
+            }),
+          }),
+        });
+        const compareData = (await compareRes.json()) as RunResult & { error?: string };
+        if (compareRes.ok) setCompareResult(compareData);
+        else setCompareResult(null);
+      } else {
+        setCompareResult(null);
+      }
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Report run failed.");
+      setCompareResult(null);
+    } finally {
+      setBusy(false);
+    }
+  }, [config]);
+
+  const saveReport = useCallback(async () => {
+    if (!canEdit) return;
+    const name = window.prompt("Report name:", config.title || "New report");
+    if (!name?.trim()) return;
+    setBusy(true);
+    setErr(null);
+    setMsg(null);
+    try {
+      const res = await fetch("/api/control-tower/reports/saved", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          description: "",
+          config: toRunPayload({ ...config, title: name.trim() }),
+          isShared: false,
+        }),
+      });
+      const data = (await res.json()) as { ok?: boolean; id?: string; error?: string };
+      if (!res.ok) throw new Error(data.error || res.statusText);
+      setMsg("Report saved.");
+      await loadSaved();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Save failed.");
+    } finally {
+      setBusy(false);
+    }
+  }, [canEdit, config, loadSaved]);
+
+  const pinReport = useCallback(async (savedReportId: string, title: string) => {
+    setBusy(true);
+    setErr(null);
+    setMsg(null);
+    try {
+      const res = await fetch("/api/control-tower/dashboard/widgets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ savedReportId, title }),
+      });
+      const data = (await res.json()) as { ok?: boolean; error?: string };
+      if (!res.ok) throw new Error(data.error || res.statusText);
+      setMsg("Pinned to dashboard.");
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Pin failed.");
+    } finally {
+      setBusy(false);
+    }
+  }, []);
+
+  const maxVal = useMemo(() => {
+    if (!result?.rows?.length) return 0;
+    const values = result.rows.map((r) => r.metrics[result.config.measure] ?? 0);
+    return Math.max(...values, 0);
+  }, [result]);
+
+  const comparisonLine = useMemo(() => {
+    if (!result || !compareResult) return null;
+    const m = result.config.measure;
+    const current = result.rows.reduce((acc, r) => acc + Number(r.metrics[m] ?? 0), 0);
+    const previous = compareResult.rows.reduce((acc, r) => acc + Number(r.metrics[m] ?? 0), 0);
+    const delta = current - previous;
+    const deltaPct = previous !== 0 ? (delta / previous) * 100 : null;
+    return { current, previous, delta, deltaPct, measure: m };
+  }, [result, compareResult]);
+
+  return (
+    <section className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-base font-semibold text-zinc-900">Report builder</h2>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => void run()}
+            disabled={busy}
+            className="rounded border border-zinc-900 bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+          >
+            {busy ? "Running…" : "Run"}
+          </button>
+          {canEdit ? (
+            <button
+              type="button"
+              onClick={() => void saveReport()}
+              disabled={busy}
+              className="rounded border border-sky-600 px-3 py-1.5 text-sm font-medium text-sky-900 disabled:opacity-50"
+            >
+              Save
+            </button>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="grid gap-2 md:grid-cols-4">
+        <button
+          type="button"
+          className="rounded border border-zinc-300 bg-zinc-50 px-2 py-1 text-xs text-zinc-800"
+          onClick={() =>
+            setConfig((c) => ({
+              ...c,
+              title: "Volume by lane",
+              chartType: "bar",
+              dimension: "lane",
+              measure: "volumeCbm",
+            }))
+          }
+        >
+          Preset: Volume by lane
+        </button>
+        <button
+          type="button"
+          className="rounded border border-zinc-300 bg-zinc-50 px-2 py-1 text-xs text-zinc-800"
+          onClick={() =>
+            setConfig((c) => ({
+              ...c,
+              title: "Spend by carrier",
+              chartType: "bar",
+              dimension: "carrier",
+              measure: "shippingSpend",
+            }))
+          }
+        >
+          Preset: Spend by carrier
+        </button>
+        <button
+          type="button"
+          className="rounded border border-zinc-300 bg-zinc-50 px-2 py-1 text-xs text-zinc-800"
+          onClick={() =>
+            setConfig((c) => ({
+              ...c,
+              title: "On-time by lane",
+              chartType: "bar",
+              dimension: "lane",
+              measure: "onTimePct",
+              dateField: "receivedAt",
+            }))
+          }
+        >
+          Preset: On-time by lane
+        </button>
+        <button
+          type="button"
+          className="rounded border border-zinc-300 bg-zinc-50 px-2 py-1 text-xs text-zinc-800"
+          onClick={() =>
+            setConfig((c) => ({
+              ...c,
+              title: "Shipments trend",
+              chartType: "line",
+              dimension: "month",
+              measure: "shipments",
+            }))
+          }
+        >
+          Preset: Monthly trend
+        </button>
+      </div>
+
+      <div className="mt-2 grid gap-2 md:grid-cols-4">
+        <label className="text-xs text-zinc-700">
+          Title
+          <input
+            value={config.title || ""}
+            onChange={(e) => setConfig((c) => ({ ...c, title: e.target.value }))}
+            className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"
+          />
+        </label>
+        <label className="text-xs text-zinc-700">
+          Chart
+          <select
+            value={config.chartType}
+            onChange={(e) => setConfig((c) => ({ ...c, chartType: e.target.value as ChartType }))}
+            className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"
+          >
+            <option value="bar">Bar</option>
+            <option value="line">Line</option>
+            <option value="pie">Pie</option>
+            <option value="table">Table</option>
+          </select>
+        </label>
+        <label className="text-xs text-zinc-700">
+          Group by
+          <select
+            value={config.dimension}
+            onChange={(e) => setConfig((c) => ({ ...c, dimension: e.target.value as Dimension }))}
+            className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"
+          >
+            {["month", "lane", "carrier", "customer", "supplier", "status", "mode", "origin", "destination", "none"].map((d) => (
+              <option key={d} value={d}>{d}</option>
+            ))}
+          </select>
+        </label>
+        <label className="text-xs text-zinc-700">
+          Measure
+          <select
+            value={config.measure}
+            onChange={(e) => setConfig((c) => ({ ...c, measure: e.target.value as Measure }))}
+            className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"
+          >
+            {Object.entries(MEASURE_LABELS).map(([k, v]) => (
+              <option key={k} value={k}>
+                {v}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="text-xs text-zinc-700">
+          Compare period
+          <select
+            value={config.comparePeriod}
+            onChange={(e) =>
+              setConfig((c) => ({ ...c, comparePeriod: e.target.value as ReportConfig["comparePeriod"] }))
+            }
+            className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"
+          >
+            <option value="none">None</option>
+            <option value="prev_period">Previous period</option>
+            <option value="prev_year">Same period last year</option>
+          </select>
+        </label>
+      </div>
+
+      <div className="mt-2 grid gap-2 md:grid-cols-6">
+        <label className="text-xs text-zinc-700">Status<input value={config.filters.status} onChange={(e)=>setConfig(c=>({...c,filters:{...c.filters,status:e.target.value}}))} className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"/></label>
+        <label className="text-xs text-zinc-700">Mode<input value={config.filters.mode} onChange={(e)=>setConfig(c=>({...c,filters:{...c.filters,mode:e.target.value}}))} className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"/></label>
+        <label className="text-xs text-zinc-700">Lane<input value={config.filters.lane} onChange={(e)=>setConfig(c=>({...c,filters:{...c.filters,lane:e.target.value}}))} className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"/></label>
+        <label className="text-xs text-zinc-700">Carrier<input value={config.filters.carrier} onChange={(e)=>setConfig(c=>({...c,filters:{...c.filters,carrier:e.target.value}}))} className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"/></label>
+        <label className="text-xs text-zinc-700">Customer<input value={config.filters.customer} onChange={(e)=>setConfig(c=>({...c,filters:{...c.filters,customer:e.target.value}}))} className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"/></label>
+        <label className="text-xs text-zinc-700">Supplier<input value={config.filters.supplier} onChange={(e)=>setConfig(c=>({...c,filters:{...c.filters,supplier:e.target.value}}))} className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"/></label>
+      </div>
+
+      <div className="mt-2 grid gap-2 md:grid-cols-5">
+        <label className="text-xs text-zinc-700">Date field
+          <select value={config.dateField} onChange={(e)=>setConfig(c=>({...c,dateField:e.target.value as ReportConfig["dateField"]}))} className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm">
+            <option value="shippedAt">Shipped</option>
+            <option value="receivedAt">Received</option>
+            <option value="bookingEta">Booking ETA</option>
+          </select>
+        </label>
+        <label className="text-xs text-zinc-700">From<input type="date" value={config.dateFrom} onChange={(e)=>setConfig(c=>({...c,dateFrom:e.target.value}))} className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"/></label>
+        <label className="text-xs text-zinc-700">To<input type="date" value={config.dateTo} onChange={(e)=>setConfig(c=>({...c,dateTo:e.target.value}))} className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"/></label>
+        <label className="text-xs text-zinc-700">Top N<input type="number" min={1} max={50} value={config.topN} onChange={(e)=>setConfig(c=>({...c,topN:Number(e.target.value)||12}))} className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"/></label>
+      </div>
+
+      {msg ? <p className="mt-2 text-xs text-emerald-700">{msg}</p> : null}
+      {err ? <p className="mt-2 text-xs text-red-700">{err}</p> : null}
+
+      {result ? (
+        <div className="mt-4 space-y-3">
+          <p className="text-xs text-zinc-500">
+            Generated {new Date(result.generatedAt).toLocaleString()} · {result.rows.length} rows
+          </p>
+          {comparisonLine ? (
+            <p className="text-xs text-zinc-700">
+              Compare ({config.comparePeriod}): current{" "}
+              <strong>{formatMetric(comparisonLine.measure, comparisonLine.current)}</strong> vs previous{" "}
+              <strong>{formatMetric(comparisonLine.measure, comparisonLine.previous)}</strong> · delta{" "}
+              <strong className={comparisonLine.delta >= 0 ? "text-emerald-700" : "text-rose-700"}>
+                {comparisonLine.delta >= 0 ? "+" : ""}
+                {comparisonLine.deltaPct != null
+                  ? `${comparisonLine.deltaPct.toFixed(2)}%`
+                  : formatMetric(comparisonLine.measure, comparisonLine.delta)}
+              </strong>
+            </p>
+          ) : null}
+          {result.config.chartType === "table" ? null : (
+            <div className="space-y-2">
+              {result.rows.map((row) => {
+                const val = row.metrics[result.config.measure] ?? 0;
+                const width = maxVal > 0 ? Math.max(4, Math.round((val / maxVal) * 100)) : 4;
+                return (
+                  <div key={row.key} className="space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="truncate text-zinc-700">{row.label}</span>
+                      <span className="font-medium text-zinc-900">
+                        {formatMetric(result.config.measure, val)}
+                      </span>
+                    </div>
+                    <div className="h-2 rounded bg-zinc-100">
+                      <div className="h-2 rounded bg-sky-500" style={{ width: `${width}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="overflow-x-auto rounded border border-zinc-200">
+            <table className="min-w-full text-sm">
+              <thead className="bg-zinc-100 text-left text-xs uppercase text-zinc-700">
+                <tr>
+                  <th className="px-2 py-2">{result.config.dimension}</th>
+                  <th className="px-2 py-2">{MEASURE_LABELS[result.config.measure]}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-200">
+                {result.rows.map((row) => (
+                  <tr key={row.key}>
+                    <td className="px-2 py-2 text-zinc-800">{row.label}</td>
+                    <td className="px-2 py-2 font-medium text-zinc-900">
+                      {formatMetric(result.config.measure, row.metrics[result.config.measure] ?? 0)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : null}
+
+      {saved.length > 0 ? (
+        <div className="mt-4 rounded border border-zinc-200 bg-zinc-50 p-3">
+          <p className="text-xs font-semibold uppercase text-zinc-600">Saved reports</p>
+          <ul className="mt-2 space-y-2">
+            {saved.slice(0, 20).map((r) => (
+              <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 rounded bg-white px-2 py-1.5">
+                <div>
+                  <p className="text-sm font-medium text-zinc-900">{r.name}</p>
+                  <p className="text-xs text-zinc-500">Owner: {r.owner.name}</p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setConfig(hydrateConfig(r.config))}
+                    className="rounded border border-zinc-300 px-2 py-1 text-xs text-zinc-800"
+                  >
+                    Load
+                  </button>
+                  {canEdit ? (
+                    <button
+                      type="button"
+                      onClick={() => void pinReport(r.id, r.name)}
+                      className="rounded border border-sky-400 px-2 py-1 text-xs text-sky-900"
+                    >
+                      Pin to dashboard
+                    </button>
+                  ) : null}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </section>
+  );
+}

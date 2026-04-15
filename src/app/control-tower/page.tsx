@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { ControlTowerDashboard } from "@/components/control-tower-dashboard";
+import { ControlTowerDashboardWidgets } from "@/components/control-tower-dashboard-widgets";
 import { getActorUserId, getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { getControlTowerOverview } from "@/lib/control-tower/overview";
 import { getControlTowerPortalContext } from "@/lib/control-tower/viewer";
@@ -51,6 +52,7 @@ export default async function ControlTowerPage() {
       ) : null}
 
       {overview ? <ControlTowerDashboard overview={overview} /> : null}
+      <ControlTowerDashboardWidgets canEdit={canEdit} />
 
       <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <Link
@@ -78,7 +80,9 @@ export default async function ControlTowerPage() {
           className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm transition hover:border-sky-300 hover:shadow-md"
         >
           <span className="text-base font-semibold text-zinc-900">Reports</span>
-          <p className="mt-2 text-sm text-zinc-600">Route buckets, owner workload, and SLA snapshot export.</p>
+          <p className="mt-2 text-sm text-zinc-600">
+            Snapshot KPIs plus configurable report builder with save + pin-to-dashboard widgets.
+          </p>
           <span className="mt-4 inline-block text-sm font-medium text-sky-800">Open →</span>
         </Link>
         <Link

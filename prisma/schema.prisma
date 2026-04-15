@@ -53,6 +53,8 @@ model Tenant {
   ctExceptions        CtException[]
   ctAuditLogs         CtAuditLog[]
   ctSavedFilters      CtSavedFilter[]
+  ctSavedReports      CtSavedReport[]
+  ctDashboardWidgets  CtDashboardWidget[]
   ctShipmentLegs     CtShipmentLeg[]
   ctShipmentContainers CtShipmentContainer[]
 }
@@ -100,6 +102,8 @@ model User {
   ctExceptionsOwned CtException[] @relation("CtExceptionOwner")
   ctAuditLogsActor CtAuditLog[]
   ctSavedFilters CtSavedFilter[]
+  ctSavedReports CtSavedReport[]
+  ctDashboardWidgets CtDashboardWidget[]
   /// When set, Control Tower (and similar) list/detail is limited to shipments tagged with this CRM account.
   customerCrmAccountId String?
   customerCrmAccount   CrmAccount? @relation("UserCustomerPortalScope", fields: [customerCrmAccountId], references: [id], onDelete: SetNull)
@@ -902,6 +906,43 @@ model CtSavedFilter {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+model CtSavedReport {
+  id          String   @id @default(cuid())
+  tenantId    String
+  userId      String
+  name        String
+  description String?
+  configJson  Json
+  isShared    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dashboardWidgets CtDashboardWidget[]
+
+  @@index([tenantId, userId, createdAt])
+  @@index([tenantId, isShared, createdAt])
+}
+
+model CtDashboardWidget {
+  id            String   @id @default(cuid())
+  tenantId      String
+  userId        String
+  savedReportId String
+  title         String
+  layoutJson    Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant      Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  savedReport CtSavedReport @relation(fields: [savedReportId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, userId, createdAt])
+  @@index([savedReportId])
 }
 
 /// Multi-leg routing (ocean/air/truck segments) for Control Tower.

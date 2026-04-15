@@ -2,6 +2,7 @@ import { getActorUserId, getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { getControlTowerReportsSummary } from "@/lib/control-tower/reports-summary";
 import { getControlTowerPortalContext } from "@/lib/control-tower/viewer";
 import { getDemoTenant } from "@/lib/demo-tenant";
+import { ControlTowerReportBuilder } from "@/components/control-tower-report-builder";
 
 import { ControlTowerReportsClient } from "./reports-client";
 
@@ -31,8 +32,8 @@ export default async function ControlTowerReportsPage() {
       <header className="mb-6">
         <h1 className="text-2xl font-semibold text-zinc-900">Control Tower reports</h1>
         <p className="mt-1 text-sm text-zinc-600">
-          Operational KPI snapshot (R4). Export workbench rows as CSV from the workbench page; here you can copy JSON
-          for downstream BI.
+          Operational KPI snapshot plus configurable report builder (grouping/filtering by lane, carrier, customer,
+          supplier, etc.). Save reports and pin them to your Control Tower dashboard widgets.
         </p>
         {ctx.isRestrictedView ? (
           <p className="mt-3 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-950">
@@ -41,7 +42,12 @@ export default async function ControlTowerReportsPage() {
           </p>
         ) : null}
       </header>
-      {summary ? <ControlTowerReportsClient summary={summary} canEdit={canEdit} /> : (
+      {summary ? (
+        <div className="space-y-6">
+          <ControlTowerReportsClient summary={summary} canEdit={canEdit} />
+          <ControlTowerReportBuilder canEdit={canEdit} />
+        </div>
+      ) : (
         <p className="text-sm text-zinc-500">No tenant context.</p>
       )}
     </main>
