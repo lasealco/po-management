@@ -17,6 +17,18 @@ type Widget = {
 };
 
 type Span = 1 | 2 | 3;
+const BAR_COLORS = [
+  "#0284c7",
+  "#6366f1",
+  "#059669",
+  "#d97706",
+  "#dc2626",
+  "#7c3aed",
+  "#0f766e",
+  "#c2410c",
+  "#be185d",
+  "#334155",
+];
 
 function metricValue(widget: Widget): string {
   const m = widget.report.config.measure;
@@ -40,21 +52,34 @@ function seriesFor(widget: Widget): Array<{ label: string; value: number }> {
     .map((r) => ({ label: r.label, value: Number(r.metrics[measure] ?? 0) }));
 }
 
+function colorFor(i: number): string {
+  return BAR_COLORS[i % BAR_COLORS.length];
+}
+
 function MiniBarChart({ data, height = 72 }: { data: Array<{ label: string; value: number }>; height?: number }) {
   const max = Math.max(...data.map((d) => d.value), 0);
   if (!data.length || max <= 0) {
     return <div className="rounded border border-zinc-200 bg-zinc-50 px-2 py-3 text-xs text-zinc-500">No chart data</div>;
   }
-  const barW = Math.max(6, Math.floor(260 / data.length));
-  const gap = 2;
+  const barW = Math.max(8, Math.floor(260 / data.length));
+  const gap = 3;
   const width = data.length * (barW + gap);
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="h-20 w-full rounded border border-zinc-200 bg-white">
+    <svg
+      viewBox={`0 0 ${width} ${height}`}
+      preserveAspectRatio="none"
+      style={{ height: `${height}px` }}
+      className="w-full rounded border border-zinc-200 bg-white"
+    >
       {data.map((d, i) => {
         const h = Math.max(2, Math.round((d.value / max) * (height - 10)));
         const x = i * (barW + gap);
         const y = height - h - 2;
-        return <rect key={d.label + i} x={x} y={y} width={barW} height={h} rx={1} fill="#0284c7" />;
+        return (
+          <rect key={d.label + i} x={x} y={y} width={barW} height={h} rx={1} fill={colorFor(i)}>
+            <title>{`${d.label}: ${d.value.toFixed(2)}`}</title>
+          </rect>
+        );
       })}
     </svg>
   );
@@ -277,9 +302,15 @@ export function ControlTowerDashboardManager({ canEdit }: { canEdit: boolean }) 
                   <span className="mt-1 inline-block text-[11px] font-medium text-sky-800">Click to enlarge chart</span>
                 </button>
                 <ul className="mt-3 space-y-1 text-xs text-zinc-700">
-                  {w.report.rows.slice(0, 4).map((r) => (
+                  {w.report.rows.slice(0, 4).map((r, i) => (
                     <li key={r.key} className="flex items-center justify-between gap-2">
-                      <span className="truncate">{r.label}</span>
+                      <span className="flex min-w-0 items-center gap-1.5 truncate">
+                        <span
+                          className="inline-block h-2.5 w-2.5 shrink-0 rounded"
+                          style={{ backgroundColor: colorFor(i) }}
+                        />
+                        <span className="truncate">{r.label}</span>
+                      </span>
                       <span className="font-medium">{Number(r.metrics[w.report.config.measure] ?? 0).toFixed(2)}</span>
                     </li>
                   ))}
@@ -328,7 +359,21 @@ export function ControlTowerDashboardManager({ canEdit }: { canEdit: boolean }) 
                 Close
               </button>
             </div>
-            <MiniBarChart data={seriesFor(expanded)} height={200} />
+            <MiniBarChart data={seriesFor(expanded)} height={280} />
+            <ul className="mt-3 grid gap-1 text-xs text-zinc-700 md:grid-cols-2">
+              {seriesFor(expanded).slice(0, 12).map((r, i) => (
+                <li key={r.label + i} className="flex items-center justify-between gap-2 rounded bg-zinc-50 px-2 py-1">
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    <span
+                      className="inline-block h-2.5 w-2.5 shrink-0 rounded"
+                      style={{ backgroundColor: colorFor(i) }}
+                    />
+                    <span className="truncate">{r.label}</span>
+                  </span>
+                  <span className="font-medium">{r.value.toFixed(2)}</span>
+                </li>
+              ))}
+            </ul>
             <p className="mt-2 text-xs text-zinc-500">
               {expanded.report.config.measure} by {expanded.report.config.dimension}
             </p>
