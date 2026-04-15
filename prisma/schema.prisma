@@ -57,6 +57,8 @@ model Tenant {
   ctDashboardWidgets  CtDashboardWidget[]
   ctShipmentLegs     CtShipmentLeg[]
   ctShipmentContainers CtShipmentContainer[]
+  ctFxRates          CtFxRate[]
+  ctShipmentCostLines CtShipmentCostLine[]
 }
 
 model User {
@@ -104,6 +106,7 @@ model User {
   ctSavedFilters CtSavedFilter[]
   ctSavedReports CtSavedReport[]
   ctDashboardWidgets CtDashboardWidget[]
+  ctShipmentCostLinesCreated CtShipmentCostLine[]
   /// When set, Control Tower (and similar) list/detail is limited to shipments tagged with this CRM account.
   customerCrmAccountId String?
   customerCrmAccount   CrmAccount? @relation("UserCustomerPortalScope", fields: [customerCrmAccountId], references: [id], onDelete: SetNull)
@@ -633,6 +636,7 @@ model Shipment {
   ctAuditLogs CtAuditLog[]
   ctLegs     CtShipmentLeg[]
   ctContainers CtShipmentContainer[]
+  ctCostLines CtShipmentCostLine[]
 
   @@index([orderId, createdAt])
   @@index([status])
@@ -944,6 +948,46 @@ model CtDashboardWidget {
 
   @@index([tenantId, userId, sortOrder, createdAt])
   @@index([savedReportId])
+}
+
+model CtFxRate {
+  id            String   @id @default(cuid())
+  tenantId      String
+  baseCurrency  String   @db.VarChar(3)
+  quoteCurrency String   @db.VarChar(3)
+  rate          Decimal  @db.Decimal(18, 8)
+  rateDate      DateTime
+  provider      String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, baseCurrency, quoteCurrency, rateDate])
+  @@index([tenantId, baseCurrency, quoteCurrency, rateDate])
+}
+
+model CtShipmentCostLine {
+  id          String   @id @default(cuid())
+  tenantId    String
+  shipmentId  String
+  category    String
+  description String?
+  vendor      String?
+  invoiceNo   String?
+  invoiceDate DateTime?
+  amountMinor BigInt
+  currency    String   @db.VarChar(3)
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  createdBy User    @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, shipmentId, createdAt])
+  @@index([shipmentId, currency])
 }
 
 /// Multi-leg routing (ocean/air/truck segments) for Control Tower.

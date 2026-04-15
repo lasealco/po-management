@@ -6,6 +6,10 @@
     {
       "path": "/api/cron/control-tower-sla-escalation",
       "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/control-tower-fx-refresh",
+      "schedule": "0 3 * * *"
     }
   ]
 }

@@ -105,6 +105,39 @@ export function ControlTowerShipment360({
   const documents = (data.documents as unknown[]) ?? [];
   const collaborationNotes = (data.collaborationNotes as unknown[]) ?? [];
   const financial = data.financial as Record<string, unknown> | null | undefined;
+  const costing = data.costing as
+    | {
+        displayCurrency: string;
+        totalOriginalByCurrency: Record<string, number>;
+        convertedTotal: number;
+        missingConversionCount: number;
+        fxDates: string[];
+        lines: Array<{
+          id: string;
+          category: string;
+          description: string | null;
+          vendor: string | null;
+          invoiceNo: string | null;
+          invoiceDate: string | null;
+          currency: string;
+          amount: number;
+          convertedAmount: number | null;
+          convertedCurrency: string;
+          convertedFxDate: string | null;
+          createdByName: string;
+          createdAt: string;
+        }>;
+        availableFxRates: Array<{
+          id: string;
+          baseCurrency: string;
+          quoteCurrency: string;
+          rate: number;
+          rateDate: string;
+          provider: string | null;
+        }>;
+      }
+    | null
+    | undefined;
   const alerts = (data.alerts as unknown[]) ?? [];
   const exceptions = (data.exceptions as unknown[]) ?? [];
   const auditTrail = (data.auditTrail as unknown[]) ?? [];
@@ -148,6 +181,8 @@ export function ControlTowerShipment360({
   const restricted = Boolean(
     (data as { view?: { restricted?: boolean } }).view?.restricted,
   );
+  const formatMoney = (v: number) =>
+    new Intl.NumberFormat("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
 
   const allTabs: { id: Tab; label: string }[] = [
     { id: "details", label: "Details & parties" },
@@ -1086,6 +1121,69 @@ export function ControlTowerShipment360({
           ) : (
             <p className="text-xs text-zinc-500">No financial snapshot yet.</p>
           )}
+          {costing ? (
+            <div className="mt-4 rounded border border-zinc-200 bg-zinc-50 p-3">
+              <p className="text-xs font-semibold uppercase text-zinc-700">Cost lines (multi-currency)</p>
+              <p className="mt-1 text-sm text-zinc-800">
+                Total ({costing.displayCurrency}):{" "}
+                <span className="font-semibold">
+                  {formatMoney(costing.convertedTotal)} {costing.displayCurrency}
+                </span>
+              </p>
+              <p className="mt-1 text-xs text-zinc-600">
+                Original totals:{" "}
+                {Object.entries(costing.totalOriginalByCurrency)
+                  .map(([cur, val]) => `${formatMoney(val)} ${cur}`)
+                  .join(" · ") || "—"}
+              </p>
+              <p className="mt-1 text-xs text-zinc-500">
+                FX dates used:{" "}
+                {costing.fxDates.length > 0
+                  ? costing.fxDates.map((d) => new Date(d).toLocaleDateString()).join(", ")
+                  : "same currency only"}
+              </p>
+              {costing.missingConversionCount > 0 ? (
+                <p className="mt-1 text-xs text-amber-700">
+                  {costing.missingConversionCount} line(s) missing FX conversion to {costing.displayCurrency}.
+                </p>
+              ) : null}
+              <ul className="mt-3 space-y-1 text-xs text-zinc-700">
+                {costing.lines.map((line) => (
+                  <li key={line.id} className="flex flex-wrap items-center justify-between gap-2 rounded bg-white px-2 py-1">
+                    <span className="min-w-0 truncate">
+                      {line.category}
+                      {line.description ? ` · ${line.description}` : ""}
+                      {line.vendor ? ` · ${line.vendor}` : ""}
+                      {line.invoiceNo ? ` · inv ${line.invoiceNo}` : ""}
+                    </span>
+                    <span className="font-medium">
+                      {formatMoney(line.amount)} {line.currency}
+                      {" → "}
+                      {line.convertedAmount != null
+                        ? `${formatMoney(line.convertedAmount)} ${line.convertedCurrency}`
+                        : "no FX"}
+                    </span>
+                    {canEdit ? (
+                      <button
+                        type="button"
+                        className="rounded border border-red-200 px-2 py-0.5 text-red-700"
+                        onClick={async () => {
+                          if (!window.confirm("Delete this cost line?")) return;
+                          try {
+                            await postAction({ action: "delete_ct_cost_line", costLineId: line.id });
+                          } catch (err) {
+                            window.alert(err instanceof Error ? err.message : "Failed");
+                          }
+                        }}
+                      >
+                        Delete
+                      </button>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           {canEdit ? (
             <form
               className="mt-4 grid gap-2 border-t border-zinc-100 pt-4 text-xs md:grid-cols-2"
@@ -1121,6 +1219,112 @@ export function ControlTowerShipment360({
                 Record snapshot
               </button>
             </form>
+          ) : null}
+          {canEdit ? (
+            <form
+              className="mt-4 grid gap-2 border-t border-zinc-100 pt-4 text-xs md:grid-cols-3"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const fd = new FormData(e.currentTarget);
+                try {
+                  await postAction({
+                    action: "add_ct_cost_line",
+                    shipmentId,
+                    category: String(fd.get("category") || "").trim(),
+                    description: String(fd.get("description") || "").trim() || null,
+                    vendor: String(fd.get("vendor") || "").trim() || null,
+                    invoiceNo: String(fd.get("invoiceNo") || "").trim() || null,
+                    invoiceDate: String(fd.get("invoiceDate") || "") || null,
+                    currency: String(fd.get("currency") || "USD"),
+                    amount: Number(String(fd.get("amount") || "0").replace(",", ".")),
+                  });
+                  (e.target as HTMLFormElement).reset();
+                } catch (err) {
+                  window.alert(err instanceof Error ? err.message : "Failed");
+                }
+              }}
+            >
+              <input name="category" placeholder="Category *" className="rounded border px-2 py-1" required />
+              <input name="description" placeholder="Description" className="rounded border px-2 py-1" />
+              <input name="vendor" placeholder="Vendor" className="rounded border px-2 py-1" />
+              <input name="invoiceNo" placeholder="Invoice #" className="rounded border px-2 py-1" />
+              <input name="invoiceDate" type="date" className="rounded border px-2 py-1" />
+              <input name="currency" placeholder="Currency (EUR)" defaultValue="EUR" className="rounded border px-2 py-1" />
+              <input name="amount" placeholder="Amount (e.g. 1200,50)" className="rounded border px-2 py-1" required />
+              <button type="submit" className="rounded bg-zinc-900 px-3 py-1 text-white md:col-span-3">
+                Add cost line
+              </button>
+            </form>
+          ) : null}
+          {canEdit ? (
+            <form
+              className="mt-3 flex flex-wrap items-end gap-2 border-t border-zinc-100 pt-3 text-xs"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const fd = new FormData(e.currentTarget);
+                try {
+                  await postAction({
+                    action: "set_ct_display_currency",
+                    currency: String(fd.get("displayCurrency") || "USD"),
+                  });
+                } catch (err) {
+                  window.alert(err instanceof Error ? err.message : "Failed");
+                }
+              }}
+            >
+              <label className="flex flex-col gap-1">
+                <span className="text-zinc-500">Display currency</span>
+                <input
+                  name="displayCurrency"
+                  defaultValue={costing?.displayCurrency || "USD"}
+                  className="rounded border px-2 py-1"
+                />
+              </label>
+              <button type="submit" className="rounded border border-zinc-300 px-3 py-1">
+                Save display currency
+              </button>
+            </form>
+          ) : null}
+          {canEdit ? (
+            <form
+              className="mt-3 grid gap-2 border-t border-zinc-100 pt-3 text-xs md:grid-cols-5"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const fd = new FormData(e.currentTarget);
+                try {
+                  await postAction({
+                    action: "upsert_ct_fx_rate",
+                    baseCurrency: String(fd.get("baseCurrency") || ""),
+                    quoteCurrency: String(fd.get("quoteCurrency") || ""),
+                    rate: Number(String(fd.get("rate") || "0").replace(",", ".")),
+                    rateDate: String(fd.get("rateDate") || ""),
+                    provider: String(fd.get("provider") || "").trim() || null,
+                  });
+                  (e.target as HTMLFormElement).reset();
+                } catch (err) {
+                  window.alert(err instanceof Error ? err.message : "Failed");
+                }
+              }}
+            >
+              <input name="baseCurrency" placeholder="Base (USD)" className="rounded border px-2 py-1" required />
+              <input name="quoteCurrency" placeholder="Quote (EUR)" className="rounded border px-2 py-1" required />
+              <input name="rate" placeholder="Rate (0,92)" className="rounded border px-2 py-1" required />
+              <input name="rateDate" type="date" className="rounded border px-2 py-1" required />
+              <input name="provider" placeholder="Provider" className="rounded border px-2 py-1" />
+              <button type="submit" className="rounded bg-zinc-900 px-3 py-1 text-white md:col-span-5">
+                Save FX rate
+              </button>
+            </form>
+          ) : null}
+          {costing && costing.availableFxRates.length > 0 ? (
+            <ul className="mt-3 space-y-1 text-xs text-zinc-600">
+              {costing.availableFxRates.map((r) => (
+                <li key={r.id}>
+                  {r.baseCurrency}/{r.quoteCurrency} {formatMoney(r.rate)} · {new Date(r.rateDate).toLocaleDateString()}
+                  {r.provider ? ` · ${r.provider}` : ""}
+                </li>
+              ))}
+            </ul>
           ) : null}
         </section>
       ) : null}

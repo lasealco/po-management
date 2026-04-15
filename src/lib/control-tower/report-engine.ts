@@ -1,6 +1,7 @@
 import type { Prisma, ShipmentStatus, TransportMode } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import { convertAmount, minorToAmount, normalizeCurrency } from "@/lib/control-tower/currency";
 
 import {
   controlTowerShipmentScopeWhere,
@@ -155,6 +156,10 @@ type ShipmentRow = {
     customerVisibleCost: Prisma.Decimal | null;
     internalCost: Prisma.Decimal | null;
   }>;
+  ctCostLines: Array<{
+    amountMinor: bigint;
+    currency: string;
+  }>;
 };
 
 function decimalToNumber(v: Prisma.Decimal | null | undefined): number {
@@ -213,6 +218,7 @@ export async function runControlTowerReport(params: {
   tenantId: string;
   ctx: ControlTowerPortalContext;
   configInput: unknown;
+  actorUserId?: string;
 }): Promise<CtRunReportResult> {
   const config = sanitizeCtReportConfig(params.configInput);
   const scope = controlTowerShipmentScopeWhere(params.tenantId, params.ctx);
@@ -286,8 +292,56 @@ export async function runControlTowerReport(params: {
         orderBy: { asOf: "desc" },
         take: 1,
       },
+      ctCostLines: {
+        select: { amountMinor: true, currency: true },
+      },
     },
   })) as ShipmentRow[];
+
+  let displayCurrency = "USD";
+  if (params.actorUserId) {
+    const pref = await prisma.userPreference.findUnique({
+      where: {
+        userId_key: {
+          userId: params.actorUserId,
+          key: "controlTower.displayCurrency",
+        },
+      },
+      select: { value: true },
+    });
+    const prefCurrencyRaw =
+      pref && pref.value && typeof pref.value === "object" && "currency" in pref.value
+        ? (pref.value as { currency?: unknown }).currency
+        : null;
+    displayCurrency = normalizeCurrency(typeof prefCurrencyRaw === "string" ? prefCurrencyRaw : "USD");
+  }
+  const costCurrencies = Array.from(
+    new Set(
+      rows.flatMap((r) =>
+        r.ctCostLines.map((c) => normalizeCurrency(c.currency)),
+      ),
+    ),
+  );
+  const fxRatesRaw =
+    costCurrencies.length > 0
+      ? await prisma.ctFxRate.findMany({
+          where: {
+            tenantId: params.tenantId,
+            OR: [
+              { baseCurrency: { in: costCurrencies }, quoteCurrency: displayCurrency },
+              { baseCurrency: displayCurrency, quoteCurrency: { in: costCurrencies } },
+            ],
+          },
+          orderBy: { rateDate: "desc" },
+        })
+      : [];
+  const seenFx = new Set<string>();
+  const latestFxRates = fxRatesRaw.filter((r) => {
+    const k = `${r.baseCurrency}->${r.quoteCurrency}`;
+    if (seenFx.has(k)) return false;
+    seenFx.add(k);
+    return true;
+  });
 
   const grouped = new Map<string, CtReportSeriesRow>();
   const totals = makeZeroMetrics();
@@ -299,10 +353,23 @@ export async function runControlTowerReport(params: {
     existing.metrics.shipments += 1;
     existing.metrics.volumeCbm += decimalToNumber(r.estimatedVolumeCbm);
     existing.metrics.weightKg += decimalToNumber(r.estimatedWeightKg);
-    const snapshot = r.ctFinancialSnapshots[0];
-    existing.metrics.shippingSpend += params.ctx.isRestrictedView
-      ? decimalToNumber(snapshot?.customerVisibleCost)
-      : decimalToNumber(snapshot?.internalCost) || decimalToNumber(snapshot?.customerVisibleCost);
+    if (r.ctCostLines.length > 0) {
+      const convertedSum = r.ctCostLines.reduce((sum, line) => {
+        const converted = convertAmount({
+          amount: minorToAmount(line.amountMinor),
+          sourceCurrency: normalizeCurrency(line.currency),
+          targetCurrency: displayCurrency,
+          rates: latestFxRates,
+        });
+        return sum + (converted.converted ?? 0);
+      }, 0);
+      existing.metrics.shippingSpend += convertedSum;
+    } else {
+      const snapshot = r.ctFinancialSnapshots[0];
+      existing.metrics.shippingSpend += params.ctx.isRestrictedView
+        ? decimalToNumber(snapshot?.customerVisibleCost)
+        : decimalToNumber(snapshot?.internalCost) || decimalToNumber(snapshot?.customerVisibleCost);
+    }
     const etaRef = r.booking?.latestEta ?? r.booking?.eta;
     if (etaRef && r.receivedAt) {
       const delayDays = (r.receivedAt.getTime() - etaRef.getTime()) / 86400000;

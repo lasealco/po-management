@@ -37,6 +37,7 @@ export async function GET(
     tenantId: tenant.id,
     shipmentId: id,
     ctx,
+    actorUserId: actorId,
   });
   if (!data) {
     return NextResponse.json({ error: "Shipment not found." }, { status: 404 });

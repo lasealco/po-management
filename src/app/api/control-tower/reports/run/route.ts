@@ -30,6 +30,7 @@ export async function POST(request: Request) {
     tenantId: tenant.id,
     ctx,
     configInput: config,
+    actorUserId: actorId,
   });
   return NextResponse.json(result);
 }

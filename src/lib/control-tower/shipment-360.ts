@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { convertAmount, minorToAmount, normalizeCurrency } from "@/lib/control-tower/currency";
 
 import {
   controlTowerShipmentScopeWhere,
@@ -9,8 +10,9 @@ export async function getShipment360(params: {
   tenantId: string;
   shipmentId: string;
   ctx: ControlTowerPortalContext;
+  actorUserId: string;
 }) {
-  const { tenantId, shipmentId, ctx } = params;
+  const { tenantId, shipmentId, ctx, actorUserId } = params;
   const scope = controlTowerShipmentScopeWhere(tenantId, ctx);
   const restricted = ctx.isRestrictedView;
 
@@ -69,6 +71,10 @@ export async function getShipment360(params: {
         take: 5,
         include: { createdBy: { select: { name: true } } },
       },
+      ctCostLines: {
+        orderBy: { createdAt: "desc" },
+        include: { createdBy: { select: { name: true } } },
+      },
       ctAlerts: {
         orderBy: { createdAt: "desc" },
         take: 40,
@@ -105,6 +111,67 @@ export async function getShipment360(params: {
         orderBy: { name: "asc" },
         select: { id: true, name: true },
       });
+  const pref = await prisma.userPreference.findUnique({
+    where: { userId_key: { userId: actorUserId, key: "controlTower.displayCurrency" } },
+    select: { value: true },
+  });
+  const prefCurrencyRaw =
+    pref && pref.value && typeof pref.value === "object" && "currency" in pref.value
+      ? (pref.value as { currency?: unknown }).currency
+      : null;
+  const displayCurrency = normalizeCurrency(typeof prefCurrencyRaw === "string" ? prefCurrencyRaw : "USD");
+  const costCurrencies = Array.from(new Set(s.ctCostLines.map((c) => normalizeCurrency(c.currency))));
+  const fxRates = await prisma.ctFxRate.findMany({
+    where: {
+      tenantId,
+      OR: [
+        { baseCurrency: { in: costCurrencies }, quoteCurrency: displayCurrency },
+        { baseCurrency: displayCurrency, quoteCurrency: { in: costCurrencies } },
+      ],
+    },
+    orderBy: { rateDate: "desc" },
+  });
+  const seenPair = new Set<string>();
+  const latestRates = fxRates.filter((r) => {
+    const k = `${r.baseCurrency}->${r.quoteCurrency}`;
+    if (seenPair.has(k)) return false;
+    seenPair.add(k);
+    return true;
+  });
+  const fxDates = new Set<string>();
+  const costLines = s.ctCostLines.map((line) => {
+    const amount = minorToAmount(line.amountMinor);
+    const converted = convertAmount({
+      amount,
+      sourceCurrency: normalizeCurrency(line.currency),
+      targetCurrency: displayCurrency,
+      rates: latestRates,
+    });
+    if (converted.fxDate) fxDates.add(converted.fxDate);
+    return {
+      id: line.id,
+      category: line.category,
+      description: line.description,
+      vendor: line.vendor,
+      invoiceNo: line.invoiceNo,
+      invoiceDate: line.invoiceDate?.toISOString() ?? null,
+      currency: normalizeCurrency(line.currency),
+      amount,
+      convertedAmount: converted.converted,
+      convertedCurrency: displayCurrency,
+      convertedFxDate: converted.fxDate,
+      createdByName: line.createdBy.name,
+      createdAt: line.createdAt.toISOString(),
+    };
+  });
+  const totalOriginalByCurrency = costLines.reduce<Record<string, number>>((acc, row) => {
+    const key = row.currency;
+    acc[key] = (acc[key] ?? 0) + row.amount;
+    return acc;
+  }, {});
+  const convertedRows = costLines.filter((r) => r.convertedAmount != null);
+  const missingRows = costLines.filter((r) => r.convertedAmount == null && r.currency !== displayCurrency);
+  const convertedTotal = convertedRows.reduce((sum, r) => sum + Number(r.convertedAmount ?? 0), 0);
   const assigneeChoices = restricted
     ? []
     : await prisma.user.findMany({
@@ -332,6 +399,24 @@ export async function getShipment360(params: {
       createdAt: n.createdAt.toISOString(),
     })),
     financial,
+    costing: restricted
+      ? null
+      : {
+          displayCurrency,
+          totalOriginalByCurrency,
+          convertedTotal,
+          missingConversionCount: missingRows.length,
+          fxDates: Array.from(fxDates).sort(),
+          lines: costLines,
+          availableFxRates: latestRates.map((r) => ({
+            id: r.id,
+            baseCurrency: r.baseCurrency,
+            quoteCurrency: r.quoteCurrency,
+            rate: Number(r.rate),
+            rateDate: r.rateDate.toISOString(),
+            provider: r.provider,
+          })),
+        },
     alerts,
     exceptions,
     auditTrail: restricted

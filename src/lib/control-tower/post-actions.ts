@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { getActorUserId, userHasRoleNamed } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
+import { amountToMinor, normalizeCurrency } from "@/lib/control-tower/currency";
 
 import { writeCtAudit } from "./audit";
 
@@ -288,6 +289,132 @@ export async function handleControlTowerPost(
       actorUserId: actorId,
     });
     return NextResponse.json({ ok: true, id: row.id });
+  }
+
+  if (action === "add_ct_cost_line") {
+    const shipmentId = typeof body.shipmentId === "string" ? body.shipmentId : "";
+    const category = typeof body.category === "string" ? body.category.trim() : "";
+    const amount = Number(body.amount);
+    if (!shipmentId || !category) return bad("shipmentId and category required");
+    if (!Number.isFinite(amount)) return bad("amount must be numeric");
+    if (!(await assertShipmentTenant(shipmentId, tenantId))) return bad("Shipment not found", 404);
+    const invoiceDateRaw = body.invoiceDate;
+    let invoiceDate: Date | null = null;
+    if (typeof invoiceDateRaw === "string" && invoiceDateRaw.trim()) {
+      const parsed = new Date(invoiceDateRaw);
+      if (Number.isNaN(parsed.getTime())) return bad("invoiceDate invalid");
+      invoiceDate = parsed;
+    }
+    const currency = normalizeCurrency(typeof body.currency === "string" ? body.currency : "USD");
+    const row = await prisma.ctShipmentCostLine.create({
+      data: {
+        tenantId,
+        shipmentId,
+        category,
+        description: typeof body.description === "string" ? body.description.trim() || null : null,
+        vendor: typeof body.vendor === "string" ? body.vendor.trim() || null : null,
+        invoiceNo: typeof body.invoiceNo === "string" ? body.invoiceNo.trim() || null : null,
+        invoiceDate,
+        amountMinor: amountToMinor(amount),
+        currency,
+        createdById: actorId,
+      },
+    });
+    await writeCtAudit({
+      tenantId,
+      shipmentId,
+      entityType: "CtShipmentCostLine",
+      entityId: row.id,
+      action: "create",
+      actorUserId: actorId,
+      payload: { category, currency },
+    });
+    return NextResponse.json({ ok: true, id: row.id });
+  }
+
+  if (action === "delete_ct_cost_line") {
+    const costLineId = typeof body.costLineId === "string" ? body.costLineId : "";
+    if (!costLineId) return bad("costLineId required");
+    const row = await prisma.ctShipmentCostLine.findFirst({
+      where: { id: costLineId, tenantId },
+      select: { id: true, shipmentId: true },
+    });
+    if (!row) return bad("Cost line not found", 404);
+    await prisma.ctShipmentCostLine.delete({ where: { id: row.id } });
+    await writeCtAudit({
+      tenantId,
+      shipmentId: row.shipmentId,
+      entityType: "CtShipmentCostLine",
+      entityId: row.id,
+      action: "delete",
+      actorUserId: actorId,
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "upsert_ct_fx_rate") {
+    const baseRaw = typeof body.baseCurrency === "string" ? body.baseCurrency.trim().toUpperCase() : "";
+    const quoteRaw = typeof body.quoteCurrency === "string" ? body.quoteCurrency.trim().toUpperCase() : "";
+    const baseCurrency = /^[A-Z]{3}$/.test(baseRaw) ? baseRaw : "";
+    const quoteCurrency = /^[A-Z]{3}$/.test(quoteRaw) ? quoteRaw : "";
+    const rate = Number(body.rate);
+    const rateDateRaw = typeof body.rateDate === "string" ? body.rateDate : "";
+    if (!baseCurrency || !quoteCurrency || !rateDateRaw) {
+      return bad("baseCurrency, quoteCurrency, rateDate required");
+    }
+    if (baseCurrency === quoteCurrency) return bad("baseCurrency and quoteCurrency must differ");
+    if (!Number.isFinite(rate) || rate <= 0) return bad("rate must be > 0");
+    const date = new Date(rateDateRaw);
+    if (Number.isNaN(date.getTime())) return bad("rateDate invalid");
+    const row = await prisma.ctFxRate.upsert({
+      where: {
+        tenantId_baseCurrency_quoteCurrency_rateDate: {
+          tenantId,
+          baseCurrency,
+          quoteCurrency,
+          rateDate: date,
+        },
+      },
+      create: {
+        tenantId,
+        baseCurrency,
+        quoteCurrency,
+        rate: new Prisma.Decimal(rate),
+        rateDate: date,
+        provider: typeof body.provider === "string" ? body.provider.trim() || null : null,
+      },
+      update: {
+        rate: new Prisma.Decimal(rate),
+        provider: typeof body.provider === "string" ? body.provider.trim() || null : null,
+      },
+    });
+    await writeCtAudit({
+      tenantId,
+      shipmentId: null,
+      entityType: "CtFxRate",
+      entityId: row.id,
+      action: "upsert",
+      actorUserId: actorId,
+      payload: { baseCurrency, quoteCurrency, rateDate: date.toISOString() },
+    });
+    return NextResponse.json({ ok: true, id: row.id });
+  }
+
+  if (action === "set_ct_display_currency") {
+    const currency = normalizeCurrency(typeof body.currency === "string" ? body.currency : "USD");
+    await prisma.userPreference.upsert({
+      where: { userId_key: { userId: actorId, key: "controlTower.displayCurrency" } },
+      create: {
+        tenantId,
+        userId: actorId,
+        key: "controlTower.displayCurrency",
+        value: { currency },
+      },
+      update: {
+        value: { currency },
+      },
+    });
+    return NextResponse.json({ ok: true });
   }
 
   if (action === "create_ct_alert") {

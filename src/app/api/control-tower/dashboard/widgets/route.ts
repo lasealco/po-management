@@ -38,6 +38,7 @@ export async function GET() {
         tenantId: tenant.id,
         ctx,
         configInput: config,
+        actorUserId: actorId,
       });
       return {
         id: w.id,
