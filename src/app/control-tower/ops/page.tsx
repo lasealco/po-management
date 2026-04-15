@@ -7,9 +7,15 @@ import { ControlTowerOpsClient } from "./ops-client";
 
 export const dynamic = "force-dynamic";
 
-export default async function ControlTowerOpsPage() {
+export default async function ControlTowerOpsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ focus?: string }>;
+}) {
   const tenant = await getDemoTenant();
   const actorId = await getActorUserId();
+  const sp = searchParams ? await searchParams : {};
+  const focus = typeof sp.focus === "string" ? sp.focus.toLowerCase() : "";
   const ctx =
     actorId !== null
       ? await getControlTowerPortalContext(actorId)
@@ -31,7 +37,7 @@ export default async function ControlTowerOpsPage() {
         </p>
       </header>
       {summary ? (
-        <ControlTowerOpsClient initialSummary={summary} />
+        <ControlTowerOpsClient initialSummary={summary} focus={focus} />
       ) : (
         <p className="text-sm text-zinc-500">No tenant context.</p>
       )}

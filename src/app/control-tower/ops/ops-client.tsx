@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type OpsSummary = {
   generatedAt: string;
@@ -63,11 +63,26 @@ type OpsSummary = {
     | null;
 };
 
-export function ControlTowerOpsClient({ initialSummary }: { initialSummary: OpsSummary }) {
+export function ControlTowerOpsClient({ initialSummary, focus }: { initialSummary: OpsSummary; focus?: string }) {
   const [summary, setSummary] = useState(initialSummary);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [refreshErr, setRefreshErr] = useState<string | null>(null);
+  const [focusHint, setFocusHint] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!focus) return;
+    const map: Record<string, { id: string; label: string }> = {
+      exceptions: { id: "ct-ops-exception-lifecycle", label: "Exception lifecycle taxonomy" },
+      owners: { id: "ct-ops-owner-capacity", label: "Owner capacity balancing" },
+      automation: { id: "ct-ops-automation", label: "Automation rules engine" },
+    };
+    const target = map[focus];
+    if (!target) return;
+    setFocusHint(`Focused view: ${target.label}`);
+    const node = document.getElementById(target.id);
+    if (node) node.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [focus]);
 
   const refresh = async () => {
     const res = await fetch("/api/control-tower/ops/summary");
@@ -145,6 +160,9 @@ export function ControlTowerOpsClient({ initialSummary }: { initialSummary: OpsS
         </div>
         {msg ? <p className="mt-2 text-xs text-zinc-700">{msg}</p> : null}
         {refreshErr ? <p className="mt-2 text-xs text-amber-800">{refreshErr}</p> : null}
+        {focusHint ? (
+          <p className="mt-2 rounded border border-sky-200 bg-sky-50 px-2 py-1 text-xs text-sky-900">{focusHint}</p>
+        ) : null}
         {!summary.isCustomerView ? (
           <p className="mt-3 text-xs text-zinc-600">
             After automation runs, clear or assign items in{" "}
@@ -192,7 +210,7 @@ export function ControlTowerOpsClient({ initialSummary }: { initialSummary: OpsS
       </div>
 
       {summary.ownerBalancing ? (
-        <div className="rounded-lg border border-zinc-200 bg-white p-4">
+        <div id="ct-ops-owner-capacity" className="rounded-lg border border-zinc-200 bg-white p-4">
           <h2 className="text-sm font-semibold text-zinc-900">Owner capacity balancing</h2>
           <p className="mt-1 text-xs text-zinc-600">
             Threshold {summary.ownerBalancing.suggestedCapacityThreshold} open items · overloaded{" "}
@@ -214,7 +232,7 @@ export function ControlTowerOpsClient({ initialSummary }: { initialSummary: OpsS
       ) : null}
 
       {summary.exceptionLifecycle ? (
-        <div className="rounded-lg border border-zinc-200 bg-white p-4">
+        <div id="ct-ops-exception-lifecycle" className="rounded-lg border border-zinc-200 bg-white p-4">
           <h2 className="text-sm font-semibold text-zinc-900">Exception lifecycle taxonomy</h2>
           <div className="mt-2 flex flex-wrap gap-2 text-sm">
             {summary.exceptionLifecycle.openByType.map((r) => (
@@ -229,7 +247,7 @@ export function ControlTowerOpsClient({ initialSummary }: { initialSummary: OpsS
         </div>
       ) : null}
 
-      <div className="rounded-lg border border-zinc-200 bg-white p-4">
+      <div id="ct-ops-automation" className="rounded-lg border border-zinc-200 bg-white p-4">
         <h2 className="text-sm font-semibold text-zinc-900">Automation rules engine (lite)</h2>
         <ul className="mt-2 list-disc pl-5 text-sm text-zinc-700">
           {summary.automationRules.activeRules.map((r) => (
