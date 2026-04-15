@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { AccessDenied } from "@/components/access-denied";
+import { ReportingCockpitClient } from "@/components/reporting-cockpit-client";
 import { getActorUserId, getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 
@@ -58,22 +59,21 @@ export default async function ReportingHubPage({
 
   return (
     <main className="mx-auto min-h-screen max-w-7xl bg-zinc-50 px-6 py-10">
-      <header className="mb-8">
+      <header className="mb-6">
         <h1 className="text-2xl font-semibold text-zinc-900">Reporting</h1>
         <p className="mt-2 max-w-3xl text-sm leading-relaxed text-zinc-600">
-          One place to reach analytics across PO, logistics (Control Tower), CRM, and WMS. Each module can grow its own
-          saved reports and metrics; Control Tower dashboards today pin <strong>logistics</strong> saved reports only. A
-          single cross-module dashboard surface can mix widgets per domain as engines are added.
+          Extraordinary cross-module analytics cockpit plus module-specific workspaces. This first release focuses on
+          exceptions and cash-cycle visibility, with AI narrative on top.
         </p>
       </header>
+
+      <ReportingCockpitClient canPo={canPo} canCt={canCt} canCrm={canCrm} canWms={canWms} />
 
       <div className="grid gap-4 md:grid-cols-2">
         {canPo ? (
           <section id="po" className={`scroll-mt-24 ${cardClass(focus, "po")}`}>
             <h2 className="text-lg font-semibold text-zinc-900">PO Management</h2>
-            <p className="mt-1 text-sm text-zinc-600">
-              Order and procurement reports (registry-based definitions, CSV export).
-            </p>
+            <p className="mt-1 text-sm text-zinc-600">Order and procurement reports (registry-based definitions, CSV export).</p>
             <Link
               href="/reports"
               className="mt-4 inline-block rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
@@ -87,8 +87,7 @@ export default async function ReportingHubPage({
           <section id="control-tower" className={`scroll-mt-24 ${cardClass(focus, "control-tower")}`}>
             <h2 className="text-lg font-semibold text-zinc-900">Control Tower</h2>
             <p className="mt-1 text-sm text-zinc-600">
-              Shipment KPIs, lanes, spend, on-time — save reports and pin charts to your personal Control Tower
-              dashboard.
+              Shipment KPIs, lanes, spend, on-time — save reports and pin charts to your personal dashboard.
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               <Link
@@ -103,12 +102,6 @@ export default async function ReportingHubPage({
               >
                 My dashboard
               </Link>
-              <Link
-                href="/control-tower"
-                className="inline-block rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
-              >
-                Overview
-              </Link>
             </div>
           </section>
         ) : null}
@@ -117,8 +110,7 @@ export default async function ReportingHubPage({
           <section id="crm" className={`scroll-mt-24 ${cardClass(focus, "crm")}`}>
             <h2 className="text-lg font-semibold text-zinc-900">CRM</h2>
             <p className="mt-1 text-sm text-zinc-600">
-              Pipeline and account analytics will plug into the same reporting layer. Use the CRM reporting entry for
-              module-specific shortcuts.
+              Pipeline, account, and activity analytics — connected with the same cross-module storytelling layer.
             </p>
             <Link
               href="/crm/reporting"
@@ -133,7 +125,7 @@ export default async function ReportingHubPage({
           <section id="wms" className={`scroll-mt-24 ${cardClass(focus, "wms")}`}>
             <h2 className="text-lg font-semibold text-zinc-900">WMS</h2>
             <p className="mt-1 text-sm text-zinc-600">
-              Inventory, throughput, and billing views will connect here. Warehouse-specific entry point below.
+              Throughput, inventory, and billing analytics integrated into this shared reporting architecture.
             </p>
             <Link
               href="/wms/reporting"
@@ -144,11 +136,6 @@ export default async function ReportingHubPage({
           </section>
         ) : null}
       </div>
-
-      <p className="mt-8 text-xs text-zinc-500">
-        Tip: CRM and WMS subnav include <strong>Reporting</strong> for quick access. Deep links:{" "}
-        <code className="rounded bg-zinc-200/70 px-1">/reporting?focus=crm</code>.
-      </p>
     </main>
   );
 }
