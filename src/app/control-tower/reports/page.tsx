@@ -44,8 +44,8 @@ export default async function ControlTowerReportsPage() {
       </header>
       {summary ? (
         <div className="space-y-6">
-          <ControlTowerReportsClient summary={summary} canEdit={canEdit} />
           <ControlTowerReportBuilder canEdit={canEdit} />
+          <ControlTowerReportsClient summary={summary} canEdit={canEdit} />
         </div>
       ) : (
         <p className="text-sm text-zinc-500">No tenant context.</p>

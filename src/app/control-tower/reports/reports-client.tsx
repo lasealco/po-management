@@ -64,6 +64,7 @@ export function ControlTowerReportsClient({
 }) {
   const [copied, setCopied] = useState(false);
   const [copiedSafe, setCopiedSafe] = useState(false);
+  const [showSnapshotJson, setShowSnapshotJson] = useState(false);
   const json = useMemo(() => JSON.stringify(summary, null, 2), [summary]);
   const customerSafeJson = useMemo(() => {
     if (!summary.isCustomerView) return null;
@@ -319,8 +320,15 @@ export function ControlTowerReportsClient({
       ) : null}
       <div className="rounded-lg border border-zinc-200 bg-white p-4">
         <div className="mb-2 flex items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold text-zinc-900">Snapshot JSON</h2>
+          <h2 className="text-sm font-semibold text-zinc-900">Snapshot JSON (raw)</h2>
           <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setShowSnapshotJson((v) => !v)}
+              className="rounded border border-zinc-300 px-3 py-1 text-xs font-medium text-zinc-800"
+            >
+              {showSnapshotJson ? "Hide JSON" : "Show JSON"}
+            </button>
             <button
               type="button"
               onClick={exportStatusCsv}
@@ -364,9 +372,15 @@ export function ControlTowerReportsClient({
             ) : null}
           </div>
         </div>
-        <pre className="max-h-[28rem] overflow-auto rounded-md border border-zinc-300 bg-white p-4 font-mono text-sm leading-relaxed text-zinc-950 shadow-inner">
-          {summary.isCustomerView && customerSafeJson ? customerSafeJson : json}
-        </pre>
+        {showSnapshotJson ? (
+          <pre className="max-h-[28rem] overflow-auto rounded-md border border-zinc-300 bg-white p-4 font-mono text-sm leading-relaxed text-zinc-950 shadow-inner">
+            {summary.isCustomerView && customerSafeJson ? customerSafeJson : json}
+          </pre>
+        ) : (
+          <p className="rounded border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-600">
+            Hidden by default. Use <span className="font-medium">Show JSON</span> only when you need raw payload details.
+          </p>
+        )}
         {summary.isCustomerView ? (
           <p className="mt-2 text-xs text-zinc-500">
             Preview matches the customer-safe export (no internal SLA or owner-load blocks).

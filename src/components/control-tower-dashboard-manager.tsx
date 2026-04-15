@@ -38,6 +38,7 @@ export function ControlTowerDashboardManager({ canEdit }: { canEdit: boolean }) 
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const [dragId, setDragId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/control-tower/dashboard/widgets");
@@ -90,6 +91,22 @@ export function ControlTowerDashboardManager({ canEdit }: { canEdit: boolean }) 
       await persistOrder(next);
     },
     [persistOrder, widgets],
+  );
+
+  const dropBefore = useCallback(
+    async (targetId: string) => {
+      if (!dragId || dragId === targetId) return;
+      const from = widgets.findIndex((w) => w.id === dragId);
+      const to = widgets.findIndex((w) => w.id === targetId);
+      if (from < 0 || to < 0) return;
+      const next = [...widgets];
+      const [item] = next.splice(from, 1);
+      next.splice(to, 0, item);
+      setWidgets(next);
+      setDragId(null);
+      await persistOrder(next);
+    },
+    [dragId, persistOrder, widgets],
   );
 
   const setSpan = useCallback(
@@ -148,11 +165,27 @@ export function ControlTowerDashboardManager({ canEdit }: { canEdit: boolean }) 
             const span = getSpan(w.layout);
             const spanClass = span === 3 ? "md:col-span-3" : span === 2 ? "md:col-span-2" : "md:col-span-1";
             return (
-              <article key={w.id} className={`rounded-lg border border-zinc-200 bg-white p-4 shadow-sm ${spanClass}`}>
+              <article
+                key={w.id}
+                draggable={canEdit}
+                onDragStart={() => setDragId(w.id)}
+                onDragOver={(e) => {
+                  if (canEdit) e.preventDefault();
+                }}
+                onDrop={() => {
+                  void dropBefore(w.id);
+                }}
+                className={`rounded-lg border border-zinc-200 bg-white p-4 shadow-sm ${spanClass} ${
+                  dragId === w.id ? "opacity-60" : ""
+                }`}
+              >
                 <div className="flex items-start justify-between gap-2">
                   <h2 className="text-sm font-semibold text-zinc-900">{w.title}</h2>
                   {canEdit ? (
-                    <div className="flex gap-1">
+                    <div className="flex items-center gap-1">
+                      <span className="cursor-grab rounded border border-zinc-300 px-2 py-1 text-[11px] text-zinc-700">
+                        Drag
+                      </span>
                       <button
                         type="button"
                         disabled={busy || idx === 0}
