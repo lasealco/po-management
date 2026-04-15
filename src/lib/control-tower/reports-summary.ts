@@ -17,8 +17,15 @@ export async function getControlTowerReportsSummary(params: {
 
   const now = new Date();
 
-  const [byStatus, withBooking, openExceptions, slaBreachedAlerts, slaBreachedExceptions, openSlaEscalationAlerts] =
-    await Promise.all([
+  const [
+    byStatus,
+    withBooking,
+    openExceptions,
+    slaBreachedAlerts,
+    slaBreachedExceptions,
+    openSlaEscalationAlerts,
+    customerScopedOpenExceptions,
+  ] = await Promise.all([
       prisma.shipment.groupBy({
         by: ["status"],
         where: scope,
@@ -67,6 +74,15 @@ export async function getControlTowerReportsSummary(params: {
               shipment: { is: scope },
             },
           }),
+      restricted
+        ? prisma.ctException.count({
+            where: {
+              tenantId,
+              status: "OPEN",
+              shipment: { is: scope },
+            },
+          })
+        : Promise.resolve(null as number | null),
     ]);
 
   const total = byStatus.reduce((s, g) => s + g._count._all, 0);
@@ -265,6 +281,8 @@ export async function getControlTowerReportsSummary(params: {
       shipments: total,
       withBooking,
       openExceptions: restricted ? null : openExceptions,
+      /** OPEN exceptions on the viewer's scoped shipments (customer/supplier portal). */
+      customerOpenExceptions: customerScopedOpenExceptions,
       slaBreachedAlerts: restricted ? null : slaBreachedAlerts,
       slaBreachedExceptions: restricted ? null : slaBreachedExceptions,
       openSlaEscalationAlerts: restricted ? null : openSlaEscalationAlerts,

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 
 type OpsSummary = {
@@ -138,6 +139,19 @@ export function ControlTowerOpsClient({ initialSummary }: { initialSummary: OpsS
           </div>
         </div>
         {msg ? <p className="mt-2 text-xs text-zinc-700">{msg}</p> : null}
+        {!summary.isCustomerView ? (
+          <p className="mt-3 text-xs text-zinc-600">
+            After automation runs, clear or assign items in{" "}
+            <Link href="/control-tower/workbench" className="font-medium text-sky-800 underline">
+              Workbench
+            </Link>{" "}
+            and{" "}
+            <Link href="/control-tower/command-center" className="font-medium text-sky-800 underline">
+              Command center
+            </Link>
+            , then use Shipment 360 → Alerts / Exceptions to acknowledge, resolve, and close with audit trail.
+          </p>
+        ) : null}
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">

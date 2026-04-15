@@ -74,6 +74,7 @@ export async function getShipment360(params: {
         take: 40,
         include: {
           owner: { select: { id: true, name: true } },
+          acknowledgedBy: { select: { id: true, name: true } },
         },
       },
       ctExceptions: {
@@ -186,6 +187,7 @@ export async function getShipment360(params: {
         status: a.status,
         owner: a.owner ? { id: a.owner.id, name: a.owner.name } : null,
         acknowledgedAt: a.acknowledgedAt?.toISOString() ?? null,
+        acknowledgedByName: a.acknowledgedBy?.name ?? null,
         createdAt: a.createdAt.toISOString(),
         updatedAt: a.updatedAt.toISOString(),
       }));

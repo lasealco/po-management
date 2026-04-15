@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
-import { getControlTowerPortalContext } from "@/lib/control-tower/viewer";
+import {
+  controlTowerShipmentScopeWhere,
+  getControlTowerPortalContext,
+} from "@/lib/control-tower/viewer";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
 
@@ -20,14 +23,9 @@ export async function GET() {
     return NextResponse.json({ error: "No active user." }, { status: 403 });
   }
   const ctx = await getControlTowerPortalContext(actorId);
-  const shipmentScope = ctx.customerCrmAccountId
-    ? { customerCrmAccountId: ctx.customerCrmAccountId }
-    : {};
+  const scope = controlTowerShipmentScopeWhere(tenant.id, ctx);
   const shipments = await prisma.shipment.findMany({
-    where: {
-      order: { tenantId: tenant.id },
-      ...shipmentScope,
-    },
+    where: scope,
     select: {
       id: true,
       shipmentNo: true,
@@ -44,7 +42,11 @@ export async function GET() {
   });
   return NextResponse.json({
     generatedAt: new Date().toISOString(),
-    customerScope: ctx.customerCrmAccountId ?? null,
+    view: {
+      restricted: ctx.isRestrictedView,
+      supplierPortal: ctx.isSupplierPortal,
+      customerCrmAccountId: ctx.customerCrmAccountId,
+    },
     items: shipments.map((s) => ({
       id: s.id,
       shipmentNo: s.shipmentNo,

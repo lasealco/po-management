@@ -10,6 +10,7 @@ type Summary = {
     shipments: number;
     withBooking: number;
     openExceptions: number | null;
+    customerOpenExceptions?: number | null;
     slaBreachedAlerts: number | null;
     slaBreachedExceptions: number | null;
     openSlaEscalationAlerts: number | null;
@@ -62,7 +63,27 @@ export function ControlTowerReportsClient({
   canEdit: boolean;
 }) {
   const [copied, setCopied] = useState(false);
+  const [copiedSafe, setCopiedSafe] = useState(false);
   const json = useMemo(() => JSON.stringify(summary, null, 2), [summary]);
+  const customerSafeJson = useMemo(() => {
+    if (!summary.isCustomerView) return null;
+    return JSON.stringify(
+      {
+        generatedAt: summary.generatedAt,
+        isCustomerView: true,
+        totals: {
+          shipments: summary.totals.shipments,
+          withBooking: summary.totals.withBooking,
+          openExceptionsOnYourShipments: summary.totals.customerOpenExceptions ?? 0,
+        },
+        routeActions: summary.routeActions,
+        etaPerformance: summary.etaPerformance,
+        byStatus: summary.byStatus,
+      },
+      null,
+      2,
+    );
+  }, [summary]);
   const exportStatusCsv = () => {
     const rows = [["status", "count"], ...Object.entries(summary.byStatus).map(([k, v]) => [k, String(v)])];
     const csv = rows.map((r) => r.map((v) => `"${v.replace(/"/g, '""')}"`).join(",")).join("\n");
@@ -128,8 +149,14 @@ export function ControlTowerReportsClient({
             <p className="mt-1 text-2xl font-semibold">{summary.totals.openExceptions ?? 0}</p>
           </div>
         ) : (
-          <div className="rounded-lg border border-sky-100 bg-sky-50 p-4 text-sm text-sky-950">
-            Customer-safe report: exception counts hidden.
+          <div className="rounded-lg border border-sky-100 bg-sky-50 p-4">
+            <p className="text-xs font-semibold uppercase text-sky-800">Your open exceptions</p>
+            <p className="mt-1 text-2xl font-semibold text-sky-950">
+              {summary.totals.customerOpenExceptions ?? 0}
+            </p>
+            <p className="mt-1 text-xs text-sky-900">
+              OPEN exceptions on shipments in your portal scope (not internal pipeline totals).
+            </p>
           </div>
         )}
       </div>
@@ -305,20 +332,42 @@ export function ControlTowerReportsClient({
                 Open Workbench
               </Link>
             ) : null}
-            <button
-              type="button"
-              onClick={async () => {
-                await navigator.clipboard.writeText(json);
-                setCopied(true);
-                setTimeout(() => setCopied(false), 2000);
-              }}
-              className="rounded border border-zinc-300 px-3 py-1 text-xs font-medium text-zinc-800"
-            >
-              {copied ? "Copied" : "Copy"}
-            </button>
+            {!summary.isCustomerView ? (
+              <button
+                type="button"
+                onClick={async () => {
+                  await navigator.clipboard.writeText(json);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                }}
+                className="rounded border border-zinc-300 px-3 py-1 text-xs font-medium text-zinc-800"
+              >
+                {copied ? "Copied" : "Copy full"}
+              </button>
+            ) : null}
+            {summary.isCustomerView && customerSafeJson ? (
+              <button
+                type="button"
+                onClick={async () => {
+                  await navigator.clipboard.writeText(customerSafeJson);
+                  setCopiedSafe(true);
+                  setTimeout(() => setCopiedSafe(false), 2000);
+                }}
+                className="rounded border border-sky-500 px-3 py-1 text-xs font-medium text-sky-900"
+              >
+                {copiedSafe ? "Copied" : "Copy customer-safe"}
+              </button>
+            ) : null}
           </div>
         </div>
-        <pre className="max-h-[28rem] overflow-auto rounded bg-zinc-50 p-3 text-xs text-zinc-800">{json}</pre>
+        <pre className="max-h-[28rem] overflow-auto rounded bg-zinc-50 p-3 text-xs text-zinc-800">
+          {summary.isCustomerView && customerSafeJson ? customerSafeJson : json}
+        </pre>
+        {summary.isCustomerView ? (
+          <p className="mt-2 text-xs text-zinc-500">
+            Preview matches the customer-safe export (no internal SLA or owner-load blocks).
+          </p>
+        ) : null}
       </div>
     </div>
   );

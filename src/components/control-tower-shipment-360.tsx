@@ -1146,6 +1146,13 @@ export function ControlTowerShipment360({
                       age {sla.ageHours}h / SLA {sla.threshold}h
                     </span>
                     {row.body ? <p className="text-zinc-600">{String(row.body)}</p> : null}
+                    {row.status === "ACKNOWLEDGED" && row.acknowledgedAt ? (
+                      <p className="mt-1 text-[11px] text-zinc-500">
+                        Acknowledged{" "}
+                        {row.acknowledgedByName ? `by ${String(row.acknowledgedByName)} ` : null}
+                        {new Date(String(row.acknowledgedAt)).toLocaleString()}
+                      </p>
+                    ) : null}
                   </div>
                   {canEdit ? (
                     <div className="flex flex-wrap items-center gap-1">
@@ -1281,10 +1288,10 @@ export function ControlTowerShipment360({
                   </span>
                   {row.rootCause ? <p className="text-zinc-600">{String(row.rootCause)}</p> : null}
                   {canEdit ? (
-                    <div className="mt-1 flex gap-1">
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
                       <select
                         defaultValue={row.owner ? String((row.owner as { id: string }).id) : ""}
-                        className="rounded border border-zinc-200 px-2 py-0.5"
+                        className="rounded border border-zinc-200 px-2 py-0.5 text-xs"
                         onChange={async (e) => {
                           try {
                             await postAction({
@@ -1304,12 +1311,15 @@ export function ControlTowerShipment360({
                           </option>
                         ))}
                       </select>
-                      {(["IN_PROGRESS", "RESOLVED", "CLOSED"] as const).map((st) => (
-                        <button
-                          key={st}
-                          type="button"
-                          className="rounded border border-zinc-200 px-2 py-0.5"
-                          onClick={async () => {
+                      <label className="flex items-center gap-1 text-xs text-zinc-600">
+                        Status
+                        <select
+                          key={`${String(row.id)}-${String(row.status)}`}
+                          defaultValue={String(row.status)}
+                          className="rounded border border-zinc-300 px-2 py-1"
+                          onChange={async (e) => {
+                            const st = e.target.value;
+                            if (!st || st === String(row.status)) return;
                             try {
                               await postAction({
                                 action: "update_ct_exception",
@@ -1321,9 +1331,12 @@ export function ControlTowerShipment360({
                             }
                           }}
                         >
-                          {st}
-                        </button>
-                      ))}
+                          <option value="OPEN">OPEN</option>
+                          <option value="IN_PROGRESS">IN_PROGRESS</option>
+                          <option value="RESOLVED">RESOLVED</option>
+                          <option value="CLOSED">CLOSED</option>
+                        </select>
+                      </label>
                     </div>
                   ) : null}
                 </li>

@@ -34,6 +34,12 @@ export default async function ControlTowerReportsPage() {
           Operational KPI snapshot (R4). Export workbench rows as CSV from the workbench page; here you can copy JSON
           for downstream BI.
         </p>
+        {ctx.isRestrictedView ? (
+          <p className="mt-3 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-950">
+            Customer / supplier report: internal SLA, owner load, and exception pipeline metrics are hidden. Exports
+            default to a customer-safe JSON slice.
+          </p>
+        ) : null}
       </header>
       {summary ? <ControlTowerReportsClient summary={summary} canEdit={canEdit} /> : (
         <p className="text-sm text-zinc-500">No tenant context.</p>

@@ -327,6 +327,9 @@ export async function handleControlTowerPost(
       where: { id: alertId, tenantId },
     });
     if (!alert) return bad("Alert not found", 404);
+    if (alert.status !== "OPEN") {
+      return bad("Only OPEN alerts can be acknowledged", 409);
+    }
     await prisma.ctAlert.update({
       where: { id: alertId },
       data: {
@@ -342,6 +345,7 @@ export async function handleControlTowerPost(
       entityId: alertId,
       action: "acknowledge",
       actorUserId: actorId,
+      payload: { fromStatus: alert.status },
     });
     return NextResponse.json({ ok: true });
   }
@@ -353,6 +357,9 @@ export async function handleControlTowerPost(
       where: { id: alertId, tenantId },
     });
     if (!alert) return bad("Alert not found", 404);
+    if (alert.status === "CLOSED") {
+      return NextResponse.json({ ok: true, noop: true });
+    }
     await prisma.ctAlert.update({
       where: { id: alertId },
       data: { status: "CLOSED" },
@@ -364,6 +371,7 @@ export async function handleControlTowerPost(
       entityId: alertId,
       action: "close",
       actorUserId: actorId,
+      payload: { fromStatus: alert.status },
     });
     return NextResponse.json({ ok: true });
   }
@@ -375,9 +383,16 @@ export async function handleControlTowerPost(
       where: { id: alertId, tenantId },
     });
     if (!alert) return bad("Alert not found", 404);
+    if (alert.status === "OPEN") {
+      return NextResponse.json({ ok: true, noop: true });
+    }
     await prisma.ctAlert.update({
       where: { id: alertId },
-      data: { status: "OPEN" },
+      data: {
+        status: "OPEN",
+        acknowledgedAt: null,
+        acknowledgedById: null,
+      },
     });
     await writeCtAudit({
       tenantId,
@@ -386,6 +401,7 @@ export async function handleControlTowerPost(
       entityId: alertId,
       action: "reopen",
       actorUserId: actorId,
+      payload: { fromStatus: alert.status },
     });
     return NextResponse.json({ ok: true });
   }
@@ -410,6 +426,7 @@ export async function handleControlTowerPost(
       });
       if (!u) return bad("Owner user not in tenant", 404);
     }
+    const previousOwnerUserId = alert.ownerUserId;
     await prisma.ctAlert.update({
       where: { id: alertId },
       data: { ownerUserId },
@@ -421,7 +438,7 @@ export async function handleControlTowerPost(
       entityId: alertId,
       action: "assign_owner",
       actorUserId: actorId,
-      payload: { ownerUserId },
+      payload: { ownerUserId, previousOwnerUserId },
     });
     return NextResponse.json({ ok: true });
   }
@@ -475,20 +492,17 @@ export async function handleControlTowerPost(
       return bad("status must be OPEN | IN_PROGRESS | RESOLVED | CLOSED");
     }
     const rootCause = typeof body.rootCause === "string" ? body.rootCause : undefined;
+    const fromStatus = ex.status;
     const resolvedAt =
       status === "RESOLVED" || status === "CLOSED"
-        ? new Date()
-        : body.resolvedAt === null
-          ? null
-          : typeof body.resolvedAt === "string"
-            ? new Date(body.resolvedAt)
-            : undefined;
+        ? ex.resolvedAt ?? new Date()
+        : null;
     await prisma.ctException.update({
       where: { id: exceptionId },
       data: {
         status: status as "OPEN" | "IN_PROGRESS" | "RESOLVED" | "CLOSED",
         ...(rootCause !== undefined ? { rootCause } : {}),
-        ...(resolvedAt !== undefined ? { resolvedAt } : {}),
+        resolvedAt,
       },
     });
     await writeCtAudit({
@@ -498,7 +512,11 @@ export async function handleControlTowerPost(
       entityId: exceptionId,
       action: "update",
       actorUserId: actorId,
-      payload: { status },
+      payload: {
+        fromStatus,
+        toStatus: status,
+        ...(rootCause !== undefined ? { rootCauseSet: true } : {}),
+      },
     });
     return NextResponse.json({ ok: true });
   }
@@ -525,6 +543,7 @@ export async function handleControlTowerPost(
       });
       if (!u) return bad("Owner user not in tenant", 404);
     }
+    const previousOwnerUserId = ex.ownerUserId;
     await prisma.ctException.update({
       where: { id: exceptionId },
       data: { ownerUserId },
@@ -536,7 +555,7 @@ export async function handleControlTowerPost(
       entityId: exceptionId,
       action: "assign_owner",
       actorUserId: actorId,
-      payload: { ownerUserId },
+      payload: { ownerUserId, previousOwnerUserId },
     });
     return NextResponse.json({ ok: true });
   }
