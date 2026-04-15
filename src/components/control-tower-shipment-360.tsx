@@ -47,6 +47,12 @@ export function ControlTowerShipment360({
     void load();
   }, [load]);
 
+  useEffect(() => {
+    if (!data) return;
+    const r = Boolean((data as { view?: { restricted?: boolean } }).view?.restricted);
+    if (r && tab === "audit") setTab("details");
+  }, [data, tab]);
+
   async function postAction(body: Record<string, unknown>) {
     const res = await fetch("/api/control-tower", {
       method: "POST",
@@ -139,7 +145,11 @@ export function ControlTowerShipment360({
     | null
     | undefined;
 
-  const tabs: { id: Tab; label: string }[] = [
+  const restricted = Boolean(
+    (data as { view?: { restricted?: boolean } }).view?.restricted,
+  );
+
+  const allTabs: { id: Tab; label: string }[] = [
     { id: "details", label: "Details & parties" },
     { id: "routing", label: "Routing & CRM" },
     { id: "milestones", label: "Milestones" },
@@ -150,9 +160,15 @@ export function ControlTowerShipment360({
     { id: "exceptions", label: "Exceptions" },
     { id: "audit", label: "Audit" },
   ];
+  const tabs = restricted ? allTabs.filter((t) => t.id !== "audit") : allTabs;
 
   return (
     <div className="space-y-4">
+      {restricted ? (
+        <p className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-950">
+          Customer or supplier portal view: internal references, audit, and some operational notes are hidden.
+        </p>
+      ) : null}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-xl font-semibold text-zinc-900">
@@ -1038,9 +1054,15 @@ export function ControlTowerShipment360({
               }}
             >
               <textarea name="body" rows={3} className="w-full rounded border px-2 py-1" placeholder="Note" />
-              <select name="visibility" className="rounded border px-2 py-1">
-                <option value="INTERNAL">Internal</option>
-                <option value="SHARED">Shared with customer</option>
+              <select name="visibility" className="rounded border px-2 py-1" defaultValue={restricted ? "SHARED" : "INTERNAL"}>
+                {restricted ? (
+                  <option value="SHARED">Shared with customer</option>
+                ) : (
+                  <>
+                    <option value="INTERNAL">Internal</option>
+                    <option value="SHARED">Shared with customer</option>
+                  </>
+                )}
               </select>
               <button type="submit" className="rounded bg-zinc-900 px-3 py-1 text-white">
                 Post note

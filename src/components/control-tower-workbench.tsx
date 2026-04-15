@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type Row = {
   id: string;
@@ -34,8 +34,16 @@ type Row = {
   openQueueCounts: { openAlerts: number; openExceptions: number };
 };
 
-export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
+export function ControlTowerWorkbench({
+  canEdit,
+  restrictedView = false,
+}: {
+  canEdit: boolean;
+  /** Supplier portal or CRM-scoped customer — hide internal dispatch triage. */
+  restrictedView?: boolean;
+}) {
   const defaultViewKey = "ct-workbench-default-view-id";
+  const workbenchRequestId = useRef(0);
   const [status, setStatus] = useState("");
   const [mode, setMode] = useState("");
   const [routeAction, setRouteAction] = useState("");
@@ -56,6 +64,7 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
   const [routeHealth, setRouteHealth] = useState("");
 
   const load = useCallback(async () => {
+    const myId = ++workbenchRequestId.current;
     setBusy(true);
     setError(null);
     try {
@@ -66,7 +75,7 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
       if (shipperFilter.trim()) sp.set("shipperName", shipperFilter.trim());
       if (consigneeFilter.trim()) sp.set("consigneeName", consigneeFilter.trim());
       if (laneFilter.trim()) sp.set("lane", laneFilter.trim());
-      if (ownerFilter) sp.set("dispatchOwnerUserId", ownerFilter);
+      if (!restrictedView && ownerFilter) sp.set("dispatchOwnerUserId", ownerFilter);
       if (routeHealth === "stalled") {
         sp.set("minRouteProgressPct", "0");
         sp.set("maxRouteProgressPct", "40");
@@ -78,18 +87,34 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
         sp.set("maxRouteProgressPct", "100");
       }
       if (onlyOverdueEta) sp.set("onlyOverdueEta", "1");
-      sp.set("take", "120");
+      if (routeAction) sp.set("routeAction", routeAction);
+      sp.set("take", routeAction ? "200" : "150");
       const res = await fetch(`/api/control-tower/shipments?${sp.toString()}`);
       const data = (await res.json()) as { shipments?: Row[]; error?: string };
       if (!res.ok) throw new Error(data.error || res.statusText);
+      if (myId !== workbenchRequestId.current) return;
       setRows(data.shipments ?? []);
       setLastRefreshedAt(new Date().toISOString());
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Load failed");
+      if (myId === workbenchRequestId.current) {
+        setError(e instanceof Error ? e.message : "Load failed");
+      }
     } finally {
-      setBusy(false);
+      if (myId === workbenchRequestId.current) setBusy(false);
     }
-  }, [status, mode, q, shipperFilter, consigneeFilter, laneFilter, ownerFilter, routeHealth, onlyOverdueEta]);
+  }, [
+    status,
+    mode,
+    q,
+    shipperFilter,
+    consigneeFilter,
+    laneFilter,
+    ownerFilter,
+    routeHealth,
+    onlyOverdueEta,
+    routeAction,
+    restrictedView,
+  ]);
 
   useEffect(() => {
     void load();
@@ -281,18 +306,9 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
     }
     return Array.from(m.entries()).map(([id, name]) => ({ id, name }));
   }, [rows]);
+  /** Route bucket + overdue are applied server-side; we only sort client-side. */
   const filteredRows = useMemo(() => {
-    const nowMs = Date.now();
-    const routed = !routeAction
-      ? rows
-      : rows.filter((r) => (r.nextAction || "").startsWith(routeAction));
-    const etaScoped = !onlyOverdueEta
-      ? routed
-      : routed.filter((r) => {
-          const eta = r.latestEta || r.eta;
-          return eta ? new Date(eta).getTime() < nowMs : false;
-        });
-    const sorted = [...etaScoped];
+    const sorted = [...rows];
     sorted.sort((a, b) => {
       if (sortBy === "eta_asc") {
         const ae = a.latestEta || a.eta;
@@ -307,7 +323,7 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
       return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
     });
     return sorted;
-  }, [rows, routeAction, onlyOverdueEta, sortBy]);
+  }, [rows, sortBy]);
   const pageSize = 25;
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
   const pagedRows = useMemo(
@@ -329,8 +345,16 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
 
+  const tableColSpan = restrictedView ? 14 : 15;
+
   return (
     <div className="space-y-4">
+      {restrictedView ? (
+        <p className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-950">
+          Portal view: dispatch-owner triage and internal queue columns are hidden. Data is limited to shipments linked
+          to your account or supplier scope.
+        </p>
+      ) : null}
       <div className="flex flex-wrap items-end gap-3 rounded-lg border border-zinc-200 bg-white p-4">
         <label className="text-xs text-zinc-600">
           Status
@@ -396,21 +420,23 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
             className="mt-1 block rounded border border-zinc-300 px-2 py-1.5 text-sm"
           />
         </label>
-        <label className="text-xs text-zinc-600">
-          Dispatch owner
-          <select
-            value={ownerFilter}
-            onChange={(e) => setOwnerFilter(e.target.value)}
-            className="mt-1 block rounded border border-zinc-300 px-2 py-1.5 text-sm"
-          >
-            <option value="">Any</option>
-            {ownerChoices.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        {!restrictedView ? (
+          <label className="text-xs text-zinc-600">
+            Dispatch owner
+            <select
+              value={ownerFilter}
+              onChange={(e) => setOwnerFilter(e.target.value)}
+              className="mt-1 block rounded border border-zinc-300 px-2 py-1.5 text-sm"
+            >
+              <option value="">Any</option>
+              {ownerChoices.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
         <label className="text-xs text-zinc-600">
           Route health
           <select
@@ -595,6 +621,10 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
             </button>
           ))}
       </div>
+      <p className="text-xs text-zinc-500">
+        Route bucket counts use the shipments returned for your filters (see Visible). Use Refresh after changing
+        filters.
+      </p>
       <div className="flex flex-wrap gap-2 text-xs">
         <span className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-zinc-700">
           Visible: <strong>{filteredRows.length}</strong>
@@ -631,7 +661,7 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
               <th className="px-2 py-2">ATA / Delay</th>
               <th className="px-2 py-2">Parties</th>
               <th className="px-2 py-2">Qty / Wt / Cbm</th>
-              <th className="px-2 py-2">Owner / Queue</th>
+              {!restrictedView ? <th className="px-2 py-2">Owner / Queue</th> : null}
               <th className="px-2 py-2">Route</th>
               <th className="px-2 py-2">Next action</th>
               <th className="px-2 py-2">Milestone</th>
@@ -641,7 +671,7 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
           <tbody className="divide-y divide-zinc-200">
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={15} className="px-2 py-6 text-center text-zinc-500">
+                <td colSpan={tableColSpan} className="px-2 py-6 text-center text-zinc-500">
                   {busy ? "Loading…" : "No rows match."}
                 </td>
               </tr>
@@ -711,12 +741,14 @@ export function ControlTowerWorkbench({ canEdit }: { canEdit: boolean }) {
                   <td className="whitespace-nowrap px-2 py-2 text-xs text-zinc-600">
                     {r.quantityRef || "—"} / {r.weightKgRef || "—"}kg / {r.cbmRef || "—"}cbm
                   </td>
-                  <td className="px-2 py-2 text-xs text-zinc-600">
-                    <div>{r.dispatchOwner?.name || "Unassigned"}</div>
-                    <div className="text-zinc-500">
-                      A:{r.openQueueCounts?.openAlerts ?? 0} / E:{r.openQueueCounts?.openExceptions ?? 0}
-                    </div>
-                  </td>
+                  {!restrictedView ? (
+                    <td className="px-2 py-2 text-xs text-zinc-600">
+                      <div>{r.dispatchOwner?.name || "Unassigned"}</div>
+                      <div className="text-zinc-500">
+                        A:{r.openQueueCounts?.openAlerts ?? 0} / E:{r.openQueueCounts?.openExceptions ?? 0}
+                      </div>
+                    </td>
+                  ) : null}
                   <td className="whitespace-nowrap px-2 py-2 text-xs text-zinc-700">
                     {r.routeProgressPct == null ? "—" : `${r.routeProgressPct}%`}
                   </td>

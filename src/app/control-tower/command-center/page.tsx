@@ -1,8 +1,16 @@
+import { getActorUserId } from "@/lib/authz";
 import { ControlTowerCommandCenter } from "@/components/control-tower-command-center";
+import { getControlTowerPortalContext } from "@/lib/control-tower/viewer";
 
 export const dynamic = "force-dynamic";
 
 export default async function ControlTowerCommandCenterPage() {
+  const actorId = await getActorUserId();
+  const ctx =
+    actorId !== null
+      ? await getControlTowerPortalContext(actorId)
+      : { isRestrictedView: false, isSupplierPortal: false, customerCrmAccountId: null };
+
   return (
     <main className="mx-auto w-full max-w-7xl px-6 py-10">
       <header className="mb-6">
@@ -10,9 +18,12 @@ export default async function ControlTowerCommandCenterPage() {
         <p className="mt-1 max-w-3xl text-sm text-zinc-600">
           Kanban-style triage by the next route action on each shipment. Filter by the first assigned owner on open
           alerts or exceptions. Cards link to Shipment 360 for execution.
+          {ctx.isRestrictedView
+            ? " Dispatch-owner filtering is available to internal users only."
+            : null}
         </p>
       </header>
-      <ControlTowerCommandCenter />
+      <ControlTowerCommandCenter restrictedView={ctx.isRestrictedView} />
     </main>
   );
 }

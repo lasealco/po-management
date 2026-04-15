@@ -198,7 +198,22 @@ export async function getShipment360(params: {
       }
     : null;
 
+  const orderPayload = restricted
+    ? {
+        id: s.order.id,
+        orderNumber: s.order.orderNumber,
+        incoterm: s.order.incoterm,
+        shipToName: s.order.shipToName,
+        shipToCity: s.order.shipToCity,
+        shipToCountryCode: s.order.shipToCountryCode,
+        supplier: s.order.supplier
+          ? { id: s.order.supplier.id, name: s.order.supplier.name }
+          : null,
+      }
+    : s.order;
+
   return {
+    view: { restricted },
     id: s.id,
     shipmentNo: s.shipmentNo,
     status: s.status,
@@ -211,13 +226,13 @@ export async function getShipment360(params: {
     receivedAt: s.receivedAt?.toISOString() ?? null,
     estimatedVolumeCbm: s.estimatedVolumeCbm?.toString() ?? null,
     estimatedWeightKg: s.estimatedWeightKg?.toString() ?? null,
-    shipmentNotes: s.notes,
+    shipmentNotes: restricted ? null : s.notes,
     customerCrmAccountId: s.customerCrmAccountId,
     customerCrmAccount,
     crmAccountChoices,
     assigneeChoices,
     createdBy: { name: s.createdBy.name },
-    order: s.order,
+    order: orderPayload,
     booking: s.booking
       ? {
           status: s.booking.status,
@@ -229,7 +244,7 @@ export async function getShipment360(params: {
           etd: s.booking.etd?.toISOString() ?? null,
           eta: s.booking.eta?.toISOString() ?? null,
           latestEta: s.booking.latestEta?.toISOString() ?? null,
-          notes: s.booking.notes,
+          notes: restricted ? null : s.booking.notes,
         }
       : null,
     lines: s.items.map((it) => ({
@@ -246,7 +261,7 @@ export async function getShipment360(params: {
       source: m.source,
       plannedAt: m.plannedAt?.toISOString() ?? null,
       actualAt: m.actualAt?.toISOString() ?? null,
-      note: m.note,
+      note: restricted ? null : m.note,
       updatedByName: m.updatedBy.name,
       createdAt: m.createdAt.toISOString(),
     })),
@@ -266,7 +281,7 @@ export async function getShipment360(params: {
       sourceType: m.sourceType,
       sourceRef: m.sourceRef,
       confidence: m.confidence,
-      notes: m.notes,
+      notes: restricted ? null : m.notes,
       updatedByName: m.updatedBy.name,
       updatedAt: m.updatedAt.toISOString(),
     })),
@@ -281,18 +296,18 @@ export async function getShipment360(params: {
       plannedEta: leg.plannedEta?.toISOString() ?? null,
       actualAtd: leg.actualAtd?.toISOString() ?? null,
       actualAta: leg.actualAta?.toISOString() ?? null,
-      notes: leg.notes,
+      notes: restricted ? null : leg.notes,
       updatedAt: leg.updatedAt.toISOString(),
     })),
     containers: s.ctContainers.map((c) => ({
       id: c.id,
       containerNumber: c.containerNumber,
       containerType: c.containerType,
-      seal: c.seal,
+      seal: restricted ? null : c.seal,
       status: c.status,
       gateInAt: c.gateInAt?.toISOString() ?? null,
       gateOutAt: c.gateOutAt?.toISOString() ?? null,
-      notes: c.notes,
+      notes: restricted ? null : c.notes,
       legId: c.legId,
       legNo: c.leg?.legNo ?? null,
       updatedAt: c.updatedAt.toISOString(),

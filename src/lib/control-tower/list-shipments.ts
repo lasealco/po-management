@@ -218,7 +218,11 @@ export async function listControlTowerShipments(params: {
   query: ListShipmentsQuery;
 }) {
   const { tenantId, ctx, query } = params;
-  const requestedTake = Math.min(Math.max(query.take ?? 80, 1), 200);
+  const rawTake = query.take;
+  const requestedTake =
+    typeof rawTake === "number" && Number.isFinite(rawTake)
+      ? Math.min(Math.max(Math.floor(rawTake), 1), 200)
+      : 80;
   const routePrefix =
     query.routeActionPrefix &&
     ROUTE_ACTION_PREFIXES.includes(query.routeActionPrefix as (typeof ROUTE_ACTION_PREFIXES)[number])
@@ -254,7 +258,6 @@ export async function listControlTowerShipments(params: {
         { order: { supplier: { is: { name: contains } } } },
         { customerCrmAccount: { is: { name: contains } } },
         { ctReferences: { some: { refValue: contains } } },
-        { ctReferences: { some: { refType: contains } } },
         { ctContainers: { some: { containerNumber: contains } } },
       ],
     });

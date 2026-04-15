@@ -1,5 +1,6 @@
-import { getViewerGrantSet, viewerHas } from "@/lib/authz";
+import { getActorUserId, getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { ControlTowerWorkbench } from "@/components/control-tower-workbench";
+import { getControlTowerPortalContext } from "@/lib/control-tower/viewer";
 
 export const dynamic = "force-dynamic";
 
@@ -8,6 +9,11 @@ export default async function ControlTowerWorkbenchPage() {
   const canEdit = Boolean(
     access?.user && viewerHas(access.grantSet, "org.controltower", "edit"),
   );
+  const actorId = await getActorUserId();
+  const ctx =
+    actorId !== null
+      ? await getControlTowerPortalContext(actorId)
+      : { isRestrictedView: false, isSupplierPortal: false, customerCrmAccountId: null };
 
   return (
     <main className="mx-auto w-full max-w-7xl px-6 py-10">
@@ -16,9 +22,12 @@ export default async function ControlTowerWorkbenchPage() {
         <p className="mt-1 text-sm text-zinc-600">
           High-volume list with status, mode, and text search across PO numbers, tracking, carriers, and saved B/L
           references.
+          {ctx.isRestrictedView
+            ? " Your view is scoped to customer or supplier-visible shipments."
+            : null}
         </p>
       </header>
-      <ControlTowerWorkbench canEdit={canEdit} />
+      <ControlTowerWorkbench canEdit={canEdit} restrictedView={ctx.isRestrictedView} />
     </main>
   );
 }

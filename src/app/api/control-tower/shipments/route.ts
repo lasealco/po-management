@@ -39,7 +39,9 @@ export async function GET(request: Request) {
   const shipperName = searchParams.get("shipperName") ?? undefined;
   const consigneeName = searchParams.get("consigneeName") ?? undefined;
   const lane = searchParams.get("lane") ?? undefined;
-  const take = searchParams.get("take");
+  const takeRaw = searchParams.get("take");
+  const takeParsed = takeRaw ? Number(takeRaw) : NaN;
+  const take = Number.isFinite(takeParsed) ? takeParsed : undefined;
   const onlyOverdueEtaRaw = searchParams.get("onlyOverdueEta") ?? "";
   const routeActionRaw = searchParams.get("routeAction") ?? "";
   const dispatchOwnerUserId = searchParams.get("dispatchOwnerUserId")?.trim() || undefined;
@@ -76,7 +78,7 @@ export async function GET(request: Request) {
       shipperName,
       consigneeName,
       lane,
-      take: take ? Number(take) : undefined,
+      take,
       onlyOverdueEta: onlyOverdueEta || undefined,
       routeActionPrefix: routeActionPrefix || undefined,
       dispatchOwnerUserId: dispatchOwnerUserId || undefined,

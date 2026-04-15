@@ -42,7 +42,11 @@ function laneKey(nextAction: string | null): (typeof LANES)[number] {
   return "Other";
 }
 
-export function ControlTowerCommandCenter() {
+export function ControlTowerCommandCenter({
+  restrictedView = false,
+}: {
+  restrictedView?: boolean;
+}) {
   const [rows, setRows] = useState<Row[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,6 +63,10 @@ export function ControlTowerCommandCenter() {
     return () => window.clearTimeout(t);
   }, [qInput]);
 
+  useEffect(() => {
+    if (restrictedView) setOwnerFilter("");
+  }, [restrictedView]);
+
   const load = useCallback(async () => {
     setBusy(true);
     setError(null);
@@ -68,7 +76,7 @@ export function ControlTowerCommandCenter() {
       if (status) sp.set("status", status);
       if (onlyOverdueEta) sp.set("onlyOverdueEta", "1");
       if (routeAction) sp.set("routeAction", routeAction);
-      if (ownerFilter && ownerFilter !== "__unassigned") {
+      if (!restrictedView && ownerFilter && ownerFilter !== "__unassigned") {
         sp.set("dispatchOwnerUserId", ownerFilter);
       }
       sp.set("take", "150");
@@ -89,7 +97,7 @@ export function ControlTowerCommandCenter() {
     } finally {
       setBusy(false);
     }
-  }, [debouncedQ, status, onlyOverdueEta, routeAction, ownerFilter]);
+  }, [debouncedQ, status, onlyOverdueEta, routeAction, ownerFilter, restrictedView]);
 
   useEffect(() => {
     void load();
@@ -124,6 +132,11 @@ export function ControlTowerCommandCenter() {
 
   return (
     <div className="space-y-4">
+      {restrictedView ? (
+        <p className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-950">
+          Portal view: dispatch-owner filter is hidden; cards still reflect your scoped shipments.
+        </p>
+      ) : null}
       <div className="flex flex-wrap items-end gap-3">
         <label className="block text-sm">
           <span className="font-medium text-zinc-700">Search</span>
@@ -162,20 +175,22 @@ export function ControlTowerCommandCenter() {
             ))}
           </select>
         </label>
-        <label className="block text-sm">
-          <span className="font-medium text-zinc-700">Dispatch owner</span>
-          <select
-            className="mt-1 block w-52 rounded border border-zinc-300 px-2 py-1.5 text-sm"
-            value={ownerFilter}
-            onChange={(e) => setOwnerFilter(e.target.value)}
-          >
-            {ownerOptions.map(([id, label]) => (
-              <option key={id || "all"} value={id}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
+        {!restrictedView ? (
+          <label className="block text-sm">
+            <span className="font-medium text-zinc-700">Dispatch owner</span>
+            <select
+              className="mt-1 block w-52 rounded border border-zinc-300 px-2 py-1.5 text-sm"
+              value={ownerFilter}
+              onChange={(e) => setOwnerFilter(e.target.value)}
+            >
+              {ownerOptions.map(([id, label]) => (
+                <option key={id || "all"} value={id}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
         <label className="flex items-center gap-2 text-sm text-zinc-700">
           <input
             type="checkbox"
@@ -195,8 +210,10 @@ export function ControlTowerCommandCenter() {
         {busy ? <span className="text-xs text-zinc-500">Loading…</span> : null}
       </div>
       <p className="text-xs text-zinc-500">
-        Search applies after you pause typing (~400ms). Status, overdue ETA, route lane, and dispatch owner (except
-        &quot;Unassigned queue&quot;) are applied on the server. Unassigned queue is filtered in the browser.
+        Search applies after you pause typing (~400ms). Status, overdue ETA, and route lane are applied on the server.
+        {!restrictedView
+          ? ' Dispatch owner (except "Unassigned queue") is applied on the server; unassigned queue is filtered in the browser.'
+          : null}
       </p>
       {error ? (
         <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">{error}</div>
