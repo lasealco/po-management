@@ -933,6 +933,7 @@ model CtDashboardWidget {
   userId        String
   savedReportId String
   title         String
+  sortOrder     Int      @default(0)
   layoutJson    Json?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -941,7 +942,7 @@ model CtDashboardWidget {
   user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   savedReport CtSavedReport @relation(fields: [savedReportId], references: [id], onDelete: Cascade)
 
-  @@index([tenantId, userId, createdAt])
+  @@index([tenantId, userId, sortOrder, createdAt])
   @@index([savedReportId])
 }
 

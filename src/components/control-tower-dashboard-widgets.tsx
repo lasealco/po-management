@@ -56,6 +56,12 @@ export function ControlTowerDashboardWidgets({ canEdit }: { canEdit: boolean }) 
   return (
     <section className="mt-6">
       <h2 className="mb-3 text-lg font-semibold text-zinc-900">My report widgets</h2>
+      <Link
+        href="/control-tower/dashboard"
+        className="mb-3 inline-block text-sm font-medium text-sky-800 hover:underline"
+      >
+        Manage layout →
+      </Link>
       {err ? <p className="mb-3 text-sm text-red-700">{err}</p> : null}
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {widgets.map((w) => (

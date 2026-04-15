@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 const items: { href: string; label: string }[] = [
   { href: "/control-tower", label: "Dashboard" },
+  { href: "/control-tower/dashboard", label: "My dashboard" },
   { href: "/control-tower/workbench", label: "Workbench" },
   { href: "/control-tower/command-center", label: "Command center" },
   { href: "/control-tower/ops", label: "Ops console" },
