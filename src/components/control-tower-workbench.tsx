@@ -3,6 +3,11 @@
 import Link from "next/link";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
+import {
+  controlTowerListPrimaryTitle,
+  controlTowerListSecondaryRef,
+} from "@/lib/control-tower/shipment-list-label";
+
 type Row = {
   id: string;
   shipmentNo: string | null;
@@ -731,9 +736,11 @@ export function ControlTowerWorkbench({
 
       <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white">
         <table className="min-w-full text-sm">
-          <thead className="bg-zinc-100 text-left text-xs uppercase text-zinc-700">
+          <thead className="bg-zinc-100 text-left text-xs font-semibold uppercase text-zinc-800">
             <tr>
-              <th className="px-2 py-2">Shipment</th>
+              <th className="px-2 py-2" title="Opens Shipment 360. Prefers PO when shipment no looks like an ASN ref.">
+                PO / shipment
+              </th>
               <th className="px-2 py-2">Order</th>
               <th className="px-2 py-2">Status</th>
               <th className="px-2 py-2">Mode</th>
@@ -770,8 +777,24 @@ export function ControlTowerWorkbench({
                   }`}
                 >
                   <td className="px-2 py-2 font-medium">
-                    <Link href={`/control-tower/shipments/${r.id}`} className="text-sky-800 hover:underline">
-                      {r.shipmentNo || r.id.slice(0, 8)}
+                    <Link href={`/control-tower/shipments/${r.id}`} className="block text-sky-800 hover:underline">
+                      <span className="text-zinc-900">
+                        {controlTowerListPrimaryTitle({
+                          orderNumber: r.orderNumber,
+                          shipmentNo: r.shipmentNo,
+                          id: r.id,
+                        })}
+                      </span>
+                      {(() => {
+                        const sub = controlTowerListSecondaryRef({
+                          orderNumber: r.orderNumber,
+                          shipmentNo: r.shipmentNo,
+                          id: r.id,
+                        });
+                        return sub ? (
+                          <span className="mt-0.5 block text-xs font-normal text-zinc-600">{sub}</span>
+                        ) : null;
+                      })()}
                     </Link>
                   </td>
                   <td className="px-2 py-2 text-zinc-600">

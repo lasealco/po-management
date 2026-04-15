@@ -3,6 +3,11 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import {
+  controlTowerListPrimaryTitle,
+  controlTowerListSecondaryRef,
+} from "@/lib/control-tower/shipment-list-label";
+
 type Row = {
   id: string;
   shipmentNo: string | null;
@@ -238,8 +243,24 @@ export function ControlTowerCommandCenter({
                       href={`/control-tower/shipments/${r.id}`}
                       className="block rounded-md border border-zinc-200 bg-white p-2.5 text-sm shadow-sm transition hover:border-sky-300 hover:bg-sky-50/40"
                     >
-                      <div className="font-medium text-zinc-900">{r.shipmentNo || r.orderNumber}</div>
-                      <div className="mt-0.5 text-xs text-zinc-600">
+                      <div className="font-medium text-zinc-900">
+                        {controlTowerListPrimaryTitle({
+                          orderNumber: r.orderNumber,
+                          shipmentNo: r.shipmentNo,
+                          id: r.id,
+                        })}
+                      </div>
+                      {(() => {
+                        const sub = controlTowerListSecondaryRef({
+                          orderNumber: r.orderNumber,
+                          shipmentNo: r.shipmentNo,
+                          id: r.id,
+                        });
+                        return sub ? (
+                          <div className="mt-0.5 text-[11px] font-normal text-zinc-700">{sub}</div>
+                        ) : null;
+                      })()}
+                      <div className="mt-0.5 text-xs text-zinc-700">
                         {r.originCode ?? "—"} → {r.destinationCode ?? "—"}
                       </div>
                       {r.routeProgressPct != null ? (
@@ -251,7 +272,7 @@ export function ControlTowerCommandCenter({
                             {r.dispatchOwner.name}
                           </span>
                         ) : (
-                          <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-zinc-600">Unassigned</span>
+                          <span className="rounded bg-zinc-200 px-1.5 py-0.5 text-zinc-900">Unassigned</span>
                         )}
                         {r.openQueueCounts.openAlerts > 0 ? (
                           <span className="rounded bg-rose-50 px-1.5 py-0.5 text-rose-900">

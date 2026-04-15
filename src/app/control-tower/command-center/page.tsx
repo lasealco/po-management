@@ -17,7 +17,8 @@ export default async function ControlTowerCommandCenterPage() {
         <h1 className="text-2xl font-semibold text-zinc-900">Command center</h1>
         <p className="mt-1 max-w-3xl text-sm text-zinc-600">
           Kanban-style triage by the next route action on each shipment. Filter by the first assigned owner on open
-          alerts or exceptions. Cards link to Shipment 360 for execution.
+          alerts or exceptions. Cards link to Shipment 360 for execution; titles prefer the PO when shipment numbers
+          look like ASN references.
           {ctx.isRestrictedView
             ? " Dispatch-owner filtering is available to internal users only."
             : null}

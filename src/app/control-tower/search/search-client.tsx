@@ -4,6 +4,10 @@ import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 
 import type { AssistSuggestedFilters } from "@/lib/control-tower/assist";
+import {
+  controlTowerListPrimaryTitle,
+  controlTowerListSecondaryRef,
+} from "@/lib/control-tower/shipment-list-label";
 import { appendAssistToSearchParams, hasStructuredSearchInput } from "@/lib/control-tower/search-query";
 
 type Hit = {
@@ -183,8 +187,21 @@ export function ControlTowerSearchClient() {
           hits.map((h) => (
             <li key={h.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm">
               <div>
-                <span className="font-medium text-zinc-900">{h.orderNumber}</span>{" "}
-                <span className="text-zinc-500">{h.shipmentNo || h.id.slice(0, 8)}</span>
+                <span className="font-medium text-zinc-900">
+                  {controlTowerListPrimaryTitle({
+                    orderNumber: h.orderNumber,
+                    shipmentNo: h.shipmentNo,
+                    id: h.id,
+                  })}
+                </span>
+                {(() => {
+                  const sub = controlTowerListSecondaryRef({
+                    orderNumber: h.orderNumber,
+                    shipmentNo: h.shipmentNo,
+                    id: h.id,
+                  });
+                  return sub ? <span className="text-xs text-zinc-600"> · {sub}</span> : null;
+                })()}
                 <span className="ml-2 text-xs text-zinc-500">
                   {h.status} · {h.transportMode || "—"}
                   {h.carrier ? ` · ${h.carrier}` : ""}

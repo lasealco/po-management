@@ -1,5 +1,10 @@
 import Link from "next/link";
 
+import {
+  controlTowerListPrimaryTitle,
+  controlTowerListSecondaryRef,
+} from "@/lib/control-tower/shipment-list-label";
+
 type Overview = {
   generatedAt: string;
   isCustomerView: boolean;
@@ -140,18 +145,22 @@ export function ControlTowerDashboard({ overview }: { overview: Overview }) {
           <p className="mt-1 text-sm text-zinc-500">No stale shipments right now.</p>
         ) : (
           <ul className="mt-2 space-y-1 text-sm text-zinc-700">
-            {staleTop.map((s) => (
-              <li key={s.id}>
-                <Link
-                  className="font-medium text-sky-800 hover:underline"
-                  href={`/control-tower/shipments/${s.id}`}
-                >
-                  {s.shipmentNo || s.id.slice(0, 8)}
-                </Link>{" "}
-                · {s.orderNumber} · {s.status} · updated {new Date(s.updatedAt).toLocaleDateString()}
-                {s.bookingEta ? ` · ETA ${new Date(s.bookingEta).toLocaleDateString()}` : ""}
-              </li>
-            ))}
+            {staleTop.map((s) => {
+              const labelArgs = { orderNumber: s.orderNumber, shipmentNo: s.shipmentNo, id: s.id };
+              const primary = controlTowerListPrimaryTitle(labelArgs);
+              const sub = controlTowerListSecondaryRef(labelArgs);
+              return (
+                <li key={s.id}>
+                  <Link className="font-medium text-sky-800 hover:underline" href={`/control-tower/shipments/${s.id}`}>
+                    {primary}
+                  </Link>
+                  {sub ? <span className="text-zinc-600"> ({sub})</span> : null}
+                  {primary !== s.orderNumber.trim() ? ` · ${s.orderNumber}` : ""} · {s.status} · updated{" "}
+                  {new Date(s.updatedAt).toLocaleDateString()}
+                  {s.bookingEta ? ` · ETA ${new Date(s.bookingEta).toLocaleDateString()}` : ""}
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>

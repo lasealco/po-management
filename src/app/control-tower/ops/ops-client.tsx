@@ -200,8 +200,13 @@ export function ControlTowerOpsClient({ initialSummary }: { initialSummary: OpsS
           </p>
           <ul className="mt-2 grid gap-2 text-sm md:grid-cols-2">
             {ownerRows.map((row) => (
-              <li key={row.id} className="rounded border border-zinc-200 bg-zinc-50 px-3 py-2">
-                {row.name}: <strong>{row.total}</strong> ({row.openAlerts} alerts / {row.openExceptions} exceptions)
+              <li
+                key={row.id}
+                className="rounded border border-zinc-300 bg-zinc-100 px-3 py-2 text-sm text-zinc-950"
+              >
+                <span className="font-medium">{row.name}</span>:{" "}
+                <strong className="tabular-nums">{row.total}</strong> ({row.openAlerts} alerts /{" "}
+                {row.openExceptions} exceptions)
               </li>
             ))}
           </ul>
@@ -213,8 +218,11 @@ export function ControlTowerOpsClient({ initialSummary }: { initialSummary: OpsS
           <h2 className="text-sm font-semibold text-zinc-900">Exception lifecycle taxonomy</h2>
           <div className="mt-2 flex flex-wrap gap-2 text-sm">
             {summary.exceptionLifecycle.openByType.map((r) => (
-              <span key={r.type} className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1">
-                {r.type}: <strong>{r.count}</strong>
+              <span
+                key={r.type}
+                className="rounded-full border border-zinc-400 bg-zinc-100 px-3 py-1 text-sm font-medium text-zinc-950"
+              >
+                {r.type}: <strong className="tabular-nums">{r.count}</strong>
               </span>
             ))}
           </div>
@@ -254,7 +262,9 @@ export function ControlTowerOpsClient({ initialSummary }: { initialSummary: OpsS
             Copy
           </button>
         </div>
-        <pre className="max-h-[22rem] overflow-auto rounded bg-zinc-50 p-3 text-xs text-zinc-800">{json}</pre>
+        <pre className="max-h-[22rem] overflow-auto rounded-md border border-zinc-300 bg-white p-4 font-mono text-sm leading-relaxed text-zinc-950 shadow-inner">
+          {json}
+        </pre>
       </div>
     </div>
   );

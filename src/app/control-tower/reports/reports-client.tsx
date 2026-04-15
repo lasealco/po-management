@@ -135,23 +135,23 @@ export function ControlTowerReportsClient({
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <div className="rounded-lg border border-zinc-200 bg-white p-4">
-          <p className="text-xs font-semibold uppercase text-zinc-500">Shipments</p>
-          <p className="mt-1 text-2xl font-semibold">{summary.totals.shipments}</p>
+        <div className="rounded-lg border border-zinc-200 bg-white p-4 text-zinc-900">
+          <p className="text-xs font-semibold uppercase text-zinc-600">Shipments</p>
+          <p className="mt-1 text-2xl font-semibold tabular-nums text-zinc-950">{summary.totals.shipments}</p>
         </div>
-        <div className="rounded-lg border border-zinc-200 bg-white p-4">
-          <p className="text-xs font-semibold uppercase text-zinc-500">With booking</p>
-          <p className="mt-1 text-2xl font-semibold">{summary.totals.withBooking}</p>
+        <div className="rounded-lg border border-zinc-200 bg-white p-4 text-zinc-900">
+          <p className="text-xs font-semibold uppercase text-zinc-600">With booking</p>
+          <p className="mt-1 text-2xl font-semibold tabular-nums text-zinc-950">{summary.totals.withBooking}</p>
         </div>
         {!summary.isCustomerView ? (
-          <div className="rounded-lg border border-zinc-200 bg-white p-4">
-            <p className="text-xs font-semibold uppercase text-zinc-500">Open exceptions</p>
-            <p className="mt-1 text-2xl font-semibold">{summary.totals.openExceptions ?? 0}</p>
+          <div className="rounded-lg border border-zinc-200 bg-white p-4 text-zinc-900">
+            <p className="text-xs font-semibold uppercase text-zinc-600">Open exceptions</p>
+            <p className="mt-1 text-2xl font-semibold tabular-nums text-zinc-950">{summary.totals.openExceptions ?? 0}</p>
           </div>
         ) : (
           <div className="rounded-lg border border-sky-100 bg-sky-50 p-4">
             <p className="text-xs font-semibold uppercase text-sky-800">Your open exceptions</p>
-            <p className="mt-1 text-2xl font-semibold text-sky-950">
+            <p className="mt-1 text-2xl font-semibold tabular-nums text-sky-950">
               {summary.totals.customerOpenExceptions ?? 0}
             </p>
             <p className="mt-1 text-xs text-sky-900">
@@ -205,8 +205,12 @@ export function ControlTowerReportsClient({
           </p>
           <ul className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
             {summary.ownerBalancing.combinedTop.map((r) => (
-              <li key={r.ownerUserId} className="rounded border border-zinc-200 bg-zinc-50 px-3 py-2">
-                {r.ownerName}: <strong>{r.count}</strong>
+              <li
+                key={r.ownerUserId}
+                className="rounded border border-zinc-300 bg-zinc-100 px-3 py-2 text-sm text-zinc-950"
+              >
+                <span className="font-medium">{r.ownerName}</span>:{" "}
+                <strong className="tabular-nums">{r.count}</strong>
               </li>
             ))}
           </ul>
@@ -259,20 +263,20 @@ export function ControlTowerReportsClient({
           </button>
         </div>
         <div className="mt-2 grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-5">
-          <div className="rounded border border-zinc-200 bg-zinc-50 px-3 py-2">
-            Plan leg: <strong>{summary.routeActions.planLeg}</strong>
+          <div className="rounded border border-zinc-300 bg-zinc-100 px-3 py-2 text-sm text-zinc-950">
+            Plan leg: <strong className="tabular-nums">{summary.routeActions.planLeg}</strong>
           </div>
-          <div className="rounded border border-zinc-200 bg-zinc-50 px-3 py-2">
-            Mark departure: <strong>{summary.routeActions.markDeparture}</strong>
+          <div className="rounded border border-zinc-300 bg-zinc-100 px-3 py-2 text-sm text-zinc-950">
+            Mark departure: <strong className="tabular-nums">{summary.routeActions.markDeparture}</strong>
           </div>
-          <div className="rounded border border-zinc-200 bg-zinc-50 px-3 py-2">
-            Record arrival: <strong>{summary.routeActions.recordArrival}</strong>
+          <div className="rounded border border-zinc-300 bg-zinc-100 px-3 py-2 text-sm text-zinc-950">
+            Record arrival: <strong className="tabular-nums">{summary.routeActions.recordArrival}</strong>
           </div>
-          <div className="rounded border border-zinc-200 bg-zinc-50 px-3 py-2">
-            Route complete: <strong>{summary.routeActions.routeComplete}</strong>
+          <div className="rounded border border-zinc-300 bg-zinc-100 px-3 py-2 text-sm text-zinc-950">
+            Route complete: <strong className="tabular-nums">{summary.routeActions.routeComplete}</strong>
           </div>
-          <div className="rounded border border-zinc-200 bg-zinc-50 px-3 py-2">
-            No legs: <strong>{summary.routeActions.noLegs}</strong>
+          <div className="rounded border border-zinc-300 bg-zinc-100 px-3 py-2 text-sm text-zinc-950">
+            No legs: <strong className="tabular-nums">{summary.routeActions.noLegs}</strong>
           </div>
         </div>
       </div>
@@ -360,7 +364,7 @@ export function ControlTowerReportsClient({
             ) : null}
           </div>
         </div>
-        <pre className="max-h-[28rem] overflow-auto rounded bg-zinc-50 p-3 text-xs text-zinc-800">
+        <pre className="max-h-[28rem] overflow-auto rounded-md border border-zinc-300 bg-white p-4 font-mono text-sm leading-relaxed text-zinc-950 shadow-inner">
           {summary.isCustomerView && customerSafeJson ? customerSafeJson : json}
         </pre>
         {summary.isCustomerView ? (
