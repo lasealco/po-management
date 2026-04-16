@@ -17,6 +17,7 @@ type TopNavItem =
 
 const topNavItems: TopNavItem[] = [
   { kind: "po", key: "poManagement", label: "PO Management", href: "/" },
+  { kind: "link", key: "salesOrders", label: "Sales Orders", href: "/sales-orders" },
   { kind: "link", key: "reports", label: "Reporting", href: "/reporting" },
   { kind: "link", key: "controlTower", label: "Control Tower", href: "/control-tower" },
   { kind: "link", key: "wms", label: "WMS", href: "/wms" },
@@ -89,6 +90,8 @@ export function AppNav({
                 ? poActive
                 : item.href === "/settings"
                   ? pathname.startsWith("/settings")
+                  : item.href === "/sales-orders"
+                    ? pathname === "/sales-orders" || pathname.startsWith("/sales-orders/")
                   : item.href === "/reporting"
                     ? pathname === "/reporting" ||
                       pathname === "/reports" ||

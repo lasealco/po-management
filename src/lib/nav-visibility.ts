@@ -12,6 +12,7 @@ export type AppNavLinkVisibility = {
   products: boolean;
   settings: boolean;
   suppliers: boolean;
+  salesOrders: boolean;
 };
 
 export type PoMgmtSubNavVisibility = {
@@ -45,6 +46,7 @@ export async function resolveNavState(access: ViewerAccess | null): Promise<{
           const products = viewerHas(access.grantSet, "org.products", "view");
           const settings = viewerHas(access.grantSet, "org.settings", "view");
           const suppliers = viewerHas(access.grantSet, "org.suppliers", "view");
+          const salesOrders = orders;
           const poManagement = orders || consolidation || products || suppliers;
           return {
             poManagement,
@@ -57,6 +59,7 @@ export async function resolveNavState(access: ViewerAccess | null): Promise<{
             products,
             settings,
             suppliers,
+            salesOrders,
           };
         })()
       : undefined;
@@ -73,7 +76,8 @@ export async function resolveNavState(access: ViewerAccess | null): Promise<{
       linkVisibility.crm ||
       linkVisibility.products ||
       linkVisibility.settings ||
-      linkVisibility.suppliers
+      linkVisibility.suppliers ||
+      linkVisibility.salesOrders
     );
 
   const poSubNavVisibility: PoMgmtSubNavVisibility = setupIncomplete
