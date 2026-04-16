@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { AccessDenied } from "@/components/access-denied";
+import { SalesOrderStatusActions } from "@/components/sales-order-status-actions";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
@@ -58,6 +59,11 @@ export default async function SalesOrderDetailPage({
     <main className="mx-auto w-full max-w-5xl px-6 py-8">
       <h1 className="text-2xl font-semibold text-zinc-900">{row.soNumber}</h1>
       <p className="mt-1 text-sm text-zinc-600">Status: {row.status}</p>
+      <SalesOrderStatusActions
+        salesOrderId={row.id}
+        status={row.status}
+        canTransition={viewerHas(access.grantSet, "org.orders", "transition")}
+      />
       <div className="mt-4 grid gap-3 rounded-lg border border-zinc-200 bg-white p-4 text-sm sm:grid-cols-2">
         <p>
           <span className="text-zinc-500">Customer: </span>
