@@ -1,12 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import {
   controlTowerListPrimaryTitle,
   controlTowerListSecondaryRef,
 } from "@/lib/control-tower/shipment-list-label";
+import {
+  buildWorkbenchSearchString,
+  readWorkbenchUrlState,
+  type WorkbenchUrlState,
+} from "@/lib/control-tower/workbench-url-sync";
 
 type Row = {
   id: string;
@@ -39,24 +45,6 @@ type Row = {
   openQueueCounts: { openAlerts: number; openExceptions: number };
 };
 
-const CT_URL_STATUSES = new Set([
-  "SHIPPED",
-  "VALIDATED",
-  "BOOKED",
-  "IN_TRANSIT",
-  "DELIVERED",
-  "RECEIVED",
-]);
-const CT_URL_MODES = new Set(["OCEAN", "AIR", "ROAD", "RAIL"]);
-
-/** Matches `routeAction` / `routeActionPrefix` on GET /api/control-tower/shipments. */
-const CT_URL_ROUTE_ACTION_PREFIXES = new Set([
-  "Plan leg",
-  "Mark departure",
-  "Record arrival",
-  "Route complete",
-]);
-
 function workbenchUrlHasSearchFilters(sp: URLSearchParams): boolean {
   return Boolean(
     (sp.get("q") ?? "").trim() ||
@@ -78,7 +66,7 @@ function workbenchUrlHasSearchFilters(sp: URLSearchParams): boolean {
   );
 }
 
-export function ControlTowerWorkbench({
+function ControlTowerWorkbenchInner({
   canEdit,
   restrictedView = false,
 }: {
@@ -86,8 +74,14 @@ export function ControlTowerWorkbench({
   /** Supplier portal or CRM-scoped customer — hide internal dispatch triage. */
   restrictedView?: boolean;
 }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const defaultViewKey = "ct-workbench-default-view-id";
   const workbenchRequestId = useRef(0);
+  const pendingDesiredQueryRef = useRef<string | null>(null);
+  const skipExternalHydrateOnceRef = useRef(true);
+  const urlInitRef = useRef(false);
   const [status, setStatus] = useState("");
   const [mode, setMode] = useState("");
   const [routeAction, setRouteAction] = useState("");
@@ -116,43 +110,111 @@ export function ControlTowerWorkbench({
   const [routeHealth, setRouteHealth] = useState("");
 
   useLayoutEffect(() => {
-    if (typeof window === "undefined") return;
-    const sp = new URLSearchParams(window.location.search);
-    const qParam = sp.get("q");
-    if (qParam) setQ(qParam);
-    const st = sp.get("status") ?? "";
-    if (CT_URL_STATUSES.has(st)) setStatus(st);
-    const mo = sp.get("mode") ?? "";
-    if (CT_URL_MODES.has(mo)) setMode(mo);
-    const ship = sp.get("shipperName");
-    if (ship) setShipperFilter(ship);
-    const cons = sp.get("consigneeName");
-    if (cons) setConsigneeFilter(cons);
-    const lane = sp.get("lane");
-    if (lane) setLaneFilter(lane);
-    const carrier = sp.get("carrier");
-    if (carrier) setCarrierFilter(carrier);
-    const supplierName = sp.get("supplierName");
-    if (supplierName) setSupplierNameFilter(supplierName);
-    const customerName = sp.get("customerName");
-    if (customerName) setCustomerNameFilter(customerName);
-    const originCode = sp.get("originCode");
-    if (originCode) setOriginCodeFilter(originCode);
-    const destinationCode = sp.get("destinationCode");
-    if (destinationCode) setDestinationCodeFilter(destinationCode);
-    const oo = sp.get("onlyOverdueEta") ?? "";
-    if (oo === "1" || oo.toLowerCase() === "true") setOnlyOverdueEta(true);
-    const owner = sp.get("dispatchOwnerUserId");
-    if (owner) setOwnerFilter(owner);
-    const ra = sp.get("routeAction") ?? "";
-    if (CT_URL_ROUTE_ACTION_PREFIXES.has(ra)) setRouteAction(ra);
-    const minPct = sp.get("minRouteProgressPct");
-    const maxPct = sp.get("maxRouteProgressPct");
-    if (minPct === "0" && maxPct === "40") setRouteHealth("stalled");
-    else if (minPct === "41" && maxPct === "79") setRouteHealth("mid");
-    else if (minPct === "80" && maxPct === "100") setRouteHealth("advanced");
+    if (urlInitRef.current) return;
+    urlInitRef.current = true;
+    const s = readWorkbenchUrlState(new URLSearchParams(searchParams.toString()), restrictedView);
+    setStatus(s.status);
+    setMode(s.mode);
+    setRouteAction(s.routeAction);
+    setSortBy(s.sortBy);
+    setPage(s.page);
+    setOnlyOverdueEta(s.onlyOverdueEta);
+    setQ(s.q);
+    setShipperFilter(s.shipperFilter);
+    setConsigneeFilter(s.consigneeFilter);
+    setLaneFilter(s.laneFilter);
+    setCarrierFilter(s.carrierFilter);
+    setSupplierNameFilter(s.supplierNameFilter);
+    setCustomerNameFilter(s.customerNameFilter);
+    setOriginCodeFilter(s.originCodeFilter);
+    setDestinationCodeFilter(s.destinationCodeFilter);
+    setOwnerFilter(s.ownerFilter);
+    setRouteHealth(s.routeHealth);
     setFiltersReady(true);
-  }, []);
+  }, [searchParams, restrictedView]);
+
+  const workbenchUrlState = useMemo(
+    (): WorkbenchUrlState => ({
+      status,
+      mode,
+      routeAction,
+      sortBy,
+      page,
+      onlyOverdueEta,
+      q,
+      shipperFilter,
+      consigneeFilter,
+      laneFilter,
+      carrierFilter,
+      supplierNameFilter,
+      customerNameFilter,
+      originCodeFilter,
+      destinationCodeFilter,
+      ownerFilter,
+      routeHealth,
+    }),
+    [
+      status,
+      mode,
+      routeAction,
+      sortBy,
+      page,
+      onlyOverdueEta,
+      q,
+      shipperFilter,
+      consigneeFilter,
+      laneFilter,
+      carrierFilter,
+      supplierNameFilter,
+      customerNameFilter,
+      originCodeFilter,
+      destinationCodeFilter,
+      ownerFilter,
+      routeHealth,
+    ],
+  );
+
+  useEffect(() => {
+    if (!filtersReady) return;
+    const t = window.setTimeout(() => {
+      const qs = buildWorkbenchSearchString(workbenchUrlState, restrictedView);
+      if (qs === searchParams.toString()) return;
+      pendingDesiredQueryRef.current = qs;
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    }, 400);
+    return () => window.clearTimeout(t);
+  }, [filtersReady, pathname, router, searchParams, restrictedView, workbenchUrlState]);
+
+  useEffect(() => {
+    if (!filtersReady) return;
+    const cur = searchParams.toString();
+    if (pendingDesiredQueryRef.current !== null && pendingDesiredQueryRef.current === cur) {
+      pendingDesiredQueryRef.current = null;
+      return;
+    }
+    if (skipExternalHydrateOnceRef.current) {
+      skipExternalHydrateOnceRef.current = false;
+      return;
+    }
+    const s = readWorkbenchUrlState(new URLSearchParams(cur), restrictedView);
+    setStatus(s.status);
+    setMode(s.mode);
+    setRouteAction(s.routeAction);
+    setSortBy(s.sortBy);
+    setPage(s.page);
+    setOnlyOverdueEta(s.onlyOverdueEta);
+    setQ(s.q);
+    setShipperFilter(s.shipperFilter);
+    setConsigneeFilter(s.consigneeFilter);
+    setLaneFilter(s.laneFilter);
+    setCarrierFilter(s.carrierFilter);
+    setSupplierNameFilter(s.supplierNameFilter);
+    setCustomerNameFilter(s.customerNameFilter);
+    setOriginCodeFilter(s.originCodeFilter);
+    setDestinationCodeFilter(s.destinationCodeFilter);
+    setOwnerFilter(s.ownerFilter);
+    setRouteHealth(s.routeHealth);
+  }, [searchParams, filtersReady, restrictedView]);
 
   const load = useCallback(async () => {
     const myId = ++workbenchRequestId.current;
@@ -485,6 +547,9 @@ export function ControlTowerWorkbench({
         </p>
       ) : null}
       <div className="flex flex-wrap items-end gap-3 rounded-lg border border-zinc-200 bg-white p-4">
+        <p className="w-full text-[11px] text-zinc-500">
+          Filters update the address bar after you pause typing (~400ms) so you can copy or bookmark the exact list query.
+        </p>
         <label className="text-xs text-zinc-600">
           Status
           <select
@@ -986,5 +1051,16 @@ export function ControlTowerWorkbench({
         </div>
       </div>
     </div>
+  );
+}
+
+export function ControlTowerWorkbench(props: {
+  canEdit: boolean;
+  restrictedView?: boolean;
+}) {
+  return (
+    <Suspense fallback={<p className="text-sm text-zinc-500">Loading workbench…</p>}>
+      <ControlTowerWorkbenchInner {...props} />
+    </Suspense>
   );
 }
