@@ -360,6 +360,20 @@ export function ControlTowerShipment360({
     }>) ?? [];
   const opsAssignee = data.opsAssignee as { id: string; name: string } | null | undefined;
   const opsAssigneeUserId = (data.opsAssigneeUserId as string | null | undefined) ?? null;
+  const salesOrder = data.salesOrder as
+    | {
+        id: string;
+        soNumber: string;
+        status: string;
+        customerName: string;
+        externalRef: string | null;
+      }
+    | null
+    | undefined;
+  const salesOrderChoices =
+    (data.salesOrderChoices as
+      | Array<{ id: string; soNumber: string; customerName: string; status: string }>
+      | undefined) ?? [];
   const customerCrmAccount = data.customerCrmAccount as
     | { id: string; name: string; legalName: string | null }
     | null
@@ -696,6 +710,73 @@ export function ControlTowerShipment360({
                       <span className="block text-zinc-600">
                         Last saved by {String(booking.bookingUpdatedByName)}
                       </span>
+                    ) : null}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-zinc-500">Sales order</dt>
+                  <dd>
+                    {salesOrder ? (
+                      <span className="block">
+                        <Link href={`/sales-orders/${salesOrder.id}`} className="text-sky-800 underline">
+                          {salesOrder.soNumber}
+                        </Link>{" "}
+                        · {salesOrder.status} · {salesOrder.customerName}
+                        {salesOrder.externalRef ? (
+                          <span className="block text-[11px] text-zinc-600">External ref: {salesOrder.externalRef}</span>
+                        ) : null}
+                      </span>
+                    ) : (
+                      <span className="block text-zinc-500">Not linked</span>
+                    )}
+                    {canEdit && !salesOrder && isUnlinkedShipment ? (
+                      <button
+                        type="button"
+                        className="mt-1 rounded border border-zinc-300 bg-white px-2 py-1 text-[11px] hover:bg-zinc-50"
+                        onClick={async () => {
+                          try {
+                            await postAction({ action: "create_sales_order_from_shipment", shipmentId });
+                          } catch (err) {
+                            window.alert(err instanceof Error ? err.message : "Failed");
+                          }
+                        }}
+                      >
+                        Create SO from shipment
+                      </button>
+                    ) : null}
+                    {canEdit && salesOrderChoices.length > 0 ? (
+                      <form
+                        className="mt-1 flex items-end gap-2"
+                        onSubmit={async (e) => {
+                          e.preventDefault();
+                          const fd = new FormData(e.currentTarget);
+                          try {
+                            await postAction({
+                              action: "link_shipment_sales_order",
+                              shipmentId,
+                              salesOrderId: String(fd.get("salesOrderId") || "") || null,
+                            });
+                          } catch (err) {
+                            window.alert(err instanceof Error ? err.message : "Failed");
+                          }
+                        }}
+                      >
+                        <select
+                          name="salesOrderId"
+                          defaultValue={salesOrder?.id || ""}
+                          className="max-w-xs rounded border border-zinc-300 px-2 py-1"
+                        >
+                          <option value="">No link</option>
+                          {salesOrderChoices.map((so) => (
+                            <option key={so.id} value={so.id}>
+                              {so.soNumber} · {so.customerName} · {so.status}
+                            </option>
+                          ))}
+                        </select>
+                        <button type="submit" className="rounded bg-zinc-900 px-2.5 py-1 text-white">
+                          Save
+                        </button>
+                      </form>
                     ) : null}
                   </dd>
                 </div>

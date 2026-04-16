@@ -158,6 +158,15 @@ export async function getShipment360(params: {
       },
       createdBy: { select: { id: true, name: true } },
       opsAssignee: { select: { id: true, name: true } },
+      salesOrder: {
+        select: {
+          id: true,
+          soNumber: true,
+          status: true,
+          customerName: true,
+          externalRef: true,
+        },
+      },
       booking: {
         include: {
           forwarderSupplier: { select: { id: true, name: true } },
@@ -262,6 +271,14 @@ export async function getShipment360(params: {
         take: 100,
         orderBy: { name: "asc" },
         select: { id: true, name: true },
+      });
+  const salesOrderChoices = restricted
+    ? []
+    : await prisma.salesOrder.findMany({
+        where: { tenantId },
+        orderBy: { createdAt: "desc" },
+        take: 100,
+        select: { id: true, soNumber: true, customerName: true, status: true },
       });
   const pref = await prisma.userPreference.findUnique({
     where: { userId_key: { userId: actorUserId, key: "controlTower.displayCurrency" } },
@@ -596,6 +613,16 @@ export async function getShipment360(params: {
         ? { id: s.opsAssignee.id, name: s.opsAssignee.name }
         : null,
     createdBy: { id: s.createdBy.id, name: s.createdBy.name },
+    salesOrder: s.salesOrder
+      ? {
+          id: s.salesOrder.id,
+          soNumber: s.salesOrder.soNumber,
+          status: s.salesOrder.status,
+          customerName: s.salesOrder.customerName,
+          externalRef: s.salesOrder.externalRef,
+        }
+      : null,
+    salesOrderChoices,
     order: orderPayload,
     routePerformance,
     booking: s.booking

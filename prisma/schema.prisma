@@ -22,6 +22,7 @@ model Tenant {
   supplierOffices   SupplierOffice[]
   supplierContacts  SupplierContact[]
   orders            PurchaseOrder[]
+  salesOrders       SalesOrder[]
   warehouses        Warehouse[]
   warehouseZones    WarehouseZone[]
   warehouseBins     WarehouseBin[]
@@ -96,6 +97,7 @@ model User {
   userRoles           UserRole[]
   orderChats          OrderChatMessage[]
   purchaseOrders      PurchaseOrder[]
+  salesOrdersCreated  SalesOrder[]
   orderTransitionLogs OrderTransitionLog[]
   splitProposals      SplitProposal[]
   shipmentsCreated    Shipment[]
@@ -578,6 +580,32 @@ model PurchaseOrderItem {
   @@index([orderId])
 }
 
+model SalesOrder {
+  id                  String           @id @default(cuid())
+  tenantId            String
+  soNumber            String
+  status              SalesOrderStatus @default(DRAFT)
+  customerName        String
+  customerCrmAccountId String?
+  externalRef         String?
+  requestedShipDate   DateTime?
+  requestedDeliveryDate DateTime?
+  currency            String           @default("USD") @db.VarChar(3)
+  notes               String?          @db.Text
+  createdById         String
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customerCrmAccount CrmAccount? @relation(fields: [customerCrmAccountId], references: [id], onDelete: SetNull)
+  createdBy User @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  shipments Shipment[]
+
+  @@unique([tenantId, soNumber])
+  @@index([tenantId, status, createdAt])
+  @@index([customerCrmAccountId])
+}
+
 enum ShipmentStatus {
   SHIPPED
   VALIDATED
@@ -617,9 +645,16 @@ enum TransportMode {
   RAIL
 }
 
+enum SalesOrderStatus {
+  DRAFT
+  OPEN
+  CLOSED
+}
+
 model Shipment {
   id           String         @id @default(cuid())
   orderId      String
+  salesOrderId String?
   shipmentNo   String?
   status       ShipmentStatus @default(SHIPPED)
   shippedAt    DateTime
@@ -651,6 +686,7 @@ model Shipment {
   updatedAt    DateTime       @updatedAt
 
   order     PurchaseOrder  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  salesOrder SalesOrder?   @relation(fields: [salesOrderId], references: [id], onDelete: SetNull)
   customerCrmAccount CrmAccount? @relation("ShipmentCustomerAccount", fields: [customerCrmAccountId], references: [id], onDelete: SetNull)
   opsAssignee User? @relation("ShipmentOpsAssignee", fields: [opsAssigneeUserId], references: [id], onDelete: SetNull)
   createdBy User           @relation(fields: [createdById], references: [id], onDelete: Restrict)
@@ -674,6 +710,7 @@ model Shipment {
   @@index([orderId, createdAt])
   @@index([status])
   @@index([customerCrmAccountId])
+  @@index([salesOrderId])
   @@index([opsAssigneeUserId])
 }
 
@@ -1797,6 +1834,7 @@ model CrmAccount {
   outboundOrders OutboundOrder[]
   wmsBillingEvents WmsBillingEvent[]
   shipmentsAsCustomer Shipment[] @relation("ShipmentCustomerAccount")
+  salesOrders         SalesOrder[]
   customerPortalUsers User[] @relation("UserCustomerPortalScope")
 
   @@index([tenantId, lifecycle])

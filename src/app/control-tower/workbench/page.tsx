@@ -31,13 +31,23 @@ export default async function ControlTowerWorkbenchPage() {
             : null}
           </p>
         </div>
-        {canEdit && !ctx.isRestrictedView ? (
-          <Link
-            href="/control-tower/shipments/new"
-            className="inline-flex shrink-0 items-center justify-center rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
-          >
-            New logistics shipment
-          </Link>
+        {!ctx.isRestrictedView ? (
+          <div className="flex shrink-0 gap-2">
+            <Link
+              href="/sales-orders"
+              className="inline-flex items-center justify-center rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
+            >
+              Sales orders
+            </Link>
+            {canEdit ? (
+              <Link
+                href="/control-tower/shipments/new"
+                className="inline-flex items-center justify-center rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+              >
+                New logistics shipment
+              </Link>
+            ) : null}
+          </div>
         ) : null}
       </header>
       <ControlTowerWorkbench canEdit={canEdit} restrictedView={ctx.isRestrictedView} />

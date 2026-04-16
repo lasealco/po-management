@@ -8,6 +8,7 @@ const items: { href: string; label: string }[] = [
   { href: "/control-tower/dashboard", label: "My dashboard" },
   { href: "/control-tower/workbench", label: "Workbench" },
   { href: "/control-tower/shipments/new", label: "New shipment" },
+  { href: "/sales-orders", label: "Sales orders" },
   { href: "/control-tower/command-center", label: "Command center" },
   { href: "/control-tower/ops", label: "Ops console" },
   { href: "/control-tower/reports", label: "Reports" },
@@ -29,6 +30,8 @@ export function ControlTowerSubNav() {
               ? pathname === "/control-tower"
               : href === "/control-tower/shipments/new"
                 ? pathname === href
+              : href === "/sales-orders"
+                ? pathname === href || pathname.startsWith("/sales-orders/")
               : href === "/control-tower/workbench"
                 ? pathname === href ||
                   pathname.startsWith(`${href}/`) ||

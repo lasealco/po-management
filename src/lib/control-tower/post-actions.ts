@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { getActorUserId, userHasRoleNamed } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { amountToMinor, normalizeCurrency } from "@/lib/control-tower/currency";
+import { nextSalesOrderNumber } from "@/lib/sales-orders";
 
 import { writeCtAudit } from "./audit";
 import { applyCtMilestonePack } from "./milestone-templates";
@@ -1026,6 +1027,94 @@ export async function handleControlTowerPost(
         previousBuyerReference: ship.order.buyerReference,
         buyerReference: externalOrderRef,
       },
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "create_sales_order_from_shipment") {
+    const shipmentId = typeof body.shipmentId === "string" ? body.shipmentId : "";
+    if (!shipmentId) return bad("shipmentId required");
+    const ship = await prisma.shipment.findFirst({
+      where: { id: shipmentId, order: { tenantId } },
+      select: {
+        id: true,
+        salesOrderId: true,
+        order: {
+          select: {
+            shipToName: true,
+            requestedDeliveryDate: true,
+            buyerReference: true,
+          },
+        },
+      },
+    });
+    if (!ship) return bad("Shipment not found", 404);
+    if (ship.salesOrderId) return bad("Shipment already linked to a sales order", 409);
+    const soNumberRaw = typeof body.soNumber === "string" ? body.soNumber.trim() : "";
+    const soNumber = soNumberRaw || (await nextSalesOrderNumber(tenantId));
+    const customerNameRaw = typeof body.customerName === "string" ? body.customerName.trim() : "";
+    const customerName = customerNameRaw || ship.order.shipToName || "Unknown customer";
+    const externalRefRaw = typeof body.externalRef === "string" ? body.externalRef.trim() : "";
+    const externalRef = externalRefRaw || ship.order.buyerReference || null;
+    const requestedDeliveryDate = ship.order.requestedDeliveryDate ?? null;
+
+    const row = await prisma.$transaction(async (tx) => {
+      const so = await tx.salesOrder.create({
+        data: {
+          tenantId,
+          soNumber,
+          status: "DRAFT",
+          customerName,
+          externalRef,
+          requestedDeliveryDate,
+          createdById: actorId,
+        },
+        select: { id: true, soNumber: true },
+      });
+      await tx.shipment.update({
+        where: { id: shipmentId },
+        data: { salesOrderId: so.id },
+      });
+      return so;
+    });
+    await writeCtAudit({
+      tenantId,
+      shipmentId,
+      entityType: "SalesOrder",
+      entityId: row.id,
+      action: "create_from_shipment",
+      actorUserId: actorId,
+      payload: { soNumber: row.soNumber },
+    });
+    return NextResponse.json({ ok: true, salesOrderId: row.id, soNumber: row.soNumber });
+  }
+
+  if (action === "link_shipment_sales_order") {
+    const shipmentId = typeof body.shipmentId === "string" ? body.shipmentId : "";
+    const salesOrderIdRaw = typeof body.salesOrderId === "string" ? body.salesOrderId.trim() : "";
+    if (!shipmentId) return bad("shipmentId required");
+    if (!(await assertShipmentTenant(shipmentId, tenantId))) return bad("Shipment not found", 404);
+    let salesOrderId: string | null = null;
+    if (salesOrderIdRaw) {
+      const so = await prisma.salesOrder.findFirst({
+        where: { id: salesOrderIdRaw, tenantId },
+        select: { id: true },
+      });
+      if (!so) return bad("Sales order not found", 404);
+      salesOrderId = so.id;
+    }
+    await prisma.shipment.update({
+      where: { id: shipmentId },
+      data: { salesOrderId },
+    });
+    await writeCtAudit({
+      tenantId,
+      shipmentId,
+      entityType: "Shipment",
+      entityId: shipmentId,
+      action: "link_sales_order",
+      actorUserId: actorId,
+      payload: { salesOrderId },
     });
     return NextResponse.json({ ok: true });
   }
