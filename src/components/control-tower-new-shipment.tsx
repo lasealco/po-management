@@ -141,13 +141,20 @@ export function ControlTowerNewShipment() {
           milestonePackId: packId.trim() || null,
         }),
       });
-      const payload = (await res.json()) as { error?: string; shipmentId?: string };
+      const payload = (await res.json()) as {
+        error?: string;
+        shipmentId?: string;
+        milestonePackWarning?: string | null;
+      };
       if (!res.ok) {
         setError(payload.error ?? "Create failed.");
         setBusy(false);
         return;
       }
       if (payload.shipmentId) {
+        if (payload.milestonePackWarning) {
+          window.alert(payload.milestonePackWarning);
+        }
         router.push(`/control-tower/shipments/${payload.shipmentId}`);
         return;
       }

@@ -199,7 +199,7 @@ export async function POST(request: Request) {
     typeof o.milestonePackId === "string" && o.milestonePackId.trim() ? o.milestonePackId.trim() : null;
 
   try {
-    const { shipmentId } = await createLogisticsShipment({
+    const { shipmentId, milestonePackWarning } = await createLogisticsShipment({
       tenantId: tenant.id,
       actorUserId: actorId,
       orderId,
@@ -213,7 +213,11 @@ export async function POST(request: Request) {
       booking,
       milestonePackId,
     });
-    return NextResponse.json({ ok: true, shipmentId });
+    return NextResponse.json({
+      ok: true,
+      shipmentId,
+      milestonePackWarning: milestonePackWarning ?? null,
+    });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Could not create shipment.";
     return NextResponse.json({ error: msg }, { status: 400 });

@@ -294,6 +294,23 @@ export function ControlTowerShipment360({
   const ctReferences = (data.ctReferences as unknown[]) ?? [];
   const legs = (data.legs as unknown[]) ?? [];
   const containers = (data.containers as unknown[]) ?? [];
+  const routePerformance = data.routePerformance as
+    | {
+        orderRequestedDeliveryAt: string | null;
+        plannedDepartureAt: string | null;
+        plannedArrivalAt: string | null;
+        actualArrivalAt: string | null;
+        plannedVsRequestedDays: number | null;
+        actualVsRequestedDays: number | null;
+        plannedVsRequestedStatus: "ok" | "at_risk" | "late" | "unknown";
+        summary: string | null;
+        bookingEtd: string | null;
+        bookingEta: string | null;
+        bookingLatestEta: string | null;
+        hasSyntheticLeg: boolean;
+      }
+    | undefined;
+  const orderForLink = data.order as { id?: string; orderNumber?: string } | undefined;
   const routeProgress = (() => {
     if (!legs.length) return { pct: 0, hint: "Add at least one leg to start route tracking." };
     const normalized = legs.map((raw) => legPhase(raw as Record<string, unknown>));
@@ -485,6 +502,28 @@ export function ControlTowerShipment360({
                   <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-800/90">CO₂e (est.)</p>
                   <p className="font-semibold tabular-nums">{emissions.totalKgCo2e} kg</p>
                 </div>
+              ) : null}
+              {routePerformance && routePerformance.plannedVsRequestedStatus !== "unknown" ? (
+                <button
+                  type="button"
+                  onClick={() => setTab("routing")}
+                  className={`rounded-lg border px-3 py-1.5 text-left text-xs transition ${
+                    routePerformance.plannedVsRequestedStatus === "ok"
+                      ? "border-emerald-200 bg-emerald-50/90 text-emerald-950 hover:bg-emerald-100"
+                      : routePerformance.plannedVsRequestedStatus === "at_risk"
+                        ? "border-amber-200 bg-amber-50/90 text-amber-950 hover:bg-amber-100"
+                        : "border-rose-200 bg-rose-50/90 text-rose-950 hover:bg-rose-100"
+                  }`}
+                >
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">PO vs plan</p>
+                  <p className="font-semibold">
+                    {routePerformance.plannedVsRequestedStatus === "ok"
+                      ? "On track"
+                      : routePerformance.plannedVsRequestedStatus === "at_risk"
+                        ? "At risk"
+                        : "Late vs PO"}
+                  </p>
+                </button>
               ) : null}
               {!restricted ? (
                 <button
@@ -1222,6 +1261,125 @@ export function ControlTowerShipment360({
 
       {tab === "routing" ? (
         <div className="space-y-4">
+          {routePerformance ? (
+            <section className="rounded-lg border border-zinc-200 bg-white p-4 text-sm shadow-sm">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="font-semibold text-zinc-900">Route plan vs PO & actuals</h2>
+                  <p className="mt-1 text-xs text-zinc-600">
+                    Compare requested delivery on the PO to planned booking / leg arrival and recorded actuals.
+                    {routePerformance.hasSyntheticLeg ? (
+                      <span className="ml-1 text-amber-800">
+                        Showing booking as a single segment until you add explicit legs.
+                      </span>
+                    ) : null}
+                  </p>
+                </div>
+                <span
+                  className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold uppercase tracking-wide ${
+                    routePerformance.plannedVsRequestedStatus === "ok"
+                      ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                      : routePerformance.plannedVsRequestedStatus === "at_risk"
+                        ? "border-amber-300 bg-amber-50 text-amber-950"
+                        : routePerformance.plannedVsRequestedStatus === "late"
+                          ? "border-rose-300 bg-rose-50 text-rose-950"
+                          : "border-zinc-200 bg-zinc-50 text-zinc-700"
+                  }`}
+                >
+                  {routePerformance.plannedVsRequestedStatus === "ok"
+                    ? "On plan"
+                    : routePerformance.plannedVsRequestedStatus === "at_risk"
+                      ? "At risk vs PO"
+                      : routePerformance.plannedVsRequestedStatus === "late"
+                        ? "Late vs PO"
+                        : "Incomplete data"}
+                </span>
+              </div>
+              {routePerformance.summary ? (
+                <p className="mt-3 rounded-md border border-zinc-100 bg-zinc-50 px-3 py-2 text-xs text-zinc-800">
+                  {routePerformance.summary}
+                </p>
+              ) : null}
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded-md border border-zinc-100 bg-zinc-50/80 p-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">PO requested</p>
+                  <p className="mt-1 font-mono text-sm text-zinc-900">
+                    {routePerformance.orderRequestedDeliveryAt
+                      ? new Date(routePerformance.orderRequestedDeliveryAt).toLocaleDateString()
+                      : "—"}
+                  </p>
+                  {orderForLink?.id ? (
+                    <Link
+                      href={`/orders/${orderForLink.id}`}
+                      className="mt-2 inline-block text-xs text-sky-800 underline"
+                    >
+                      Open {orderForLink.orderNumber ?? "PO"}
+                    </Link>
+                  ) : null}
+                </div>
+                <div className="rounded-md border border-zinc-100 bg-zinc-50/80 p-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">Planned departure</p>
+                  <p className="mt-1 font-mono text-sm text-zinc-900">
+                    {routePerformance.plannedDepartureAt
+                      ? new Date(routePerformance.plannedDepartureAt).toLocaleString()
+                      : "—"}
+                  </p>
+                  <p className="mt-1 text-[11px] text-zinc-500">
+                    Booking ETD {routePerformance.bookingEtd ? new Date(routePerformance.bookingEtd).toLocaleDateString() : "—"}
+                  </p>
+                </div>
+                <div className="rounded-md border border-zinc-100 bg-zinc-50/80 p-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">Planned arrival</p>
+                  <p className="mt-1 font-mono text-sm text-zinc-900">
+                    {routePerformance.plannedArrivalAt
+                      ? new Date(routePerformance.plannedArrivalAt).toLocaleString()
+                      : "—"}
+                  </p>
+                  <p className="mt-1 text-[11px] text-zinc-500">
+                    ETA / latest{" "}
+                    {routePerformance.bookingLatestEta || routePerformance.bookingEta
+                      ? new Date(
+                          routePerformance.bookingLatestEta || routePerformance.bookingEta || "",
+                        ).toLocaleDateString()
+                      : "—"}
+                  </p>
+                  {routePerformance.plannedVsRequestedDays != null &&
+                  routePerformance.orderRequestedDeliveryAt ? (
+                    <p
+                      className={`mt-1 text-[11px] font-medium ${
+                        routePerformance.plannedVsRequestedDays > 0 ? "text-amber-800" : "text-emerald-800"
+                      }`}
+                    >
+                      {routePerformance.plannedVsRequestedDays > 0
+                        ? `+${routePerformance.plannedVsRequestedDays} d vs PO`
+                        : `${routePerformance.plannedVsRequestedDays} d vs PO`}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="rounded-md border border-zinc-100 bg-zinc-50/80 p-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">Actual arrival</p>
+                  <p className="mt-1 font-mono text-sm text-zinc-900">
+                    {routePerformance.actualArrivalAt
+                      ? new Date(routePerformance.actualArrivalAt).toLocaleString()
+                      : "—"}
+                  </p>
+                  {routePerformance.actualVsRequestedDays != null &&
+                  routePerformance.orderRequestedDeliveryAt ? (
+                    <p
+                      className={`mt-1 text-[11px] font-medium ${
+                        routePerformance.actualVsRequestedDays > 0 ? "text-rose-800" : "text-emerald-800"
+                      }`}
+                    >
+                      {routePerformance.actualVsRequestedDays > 0
+                        ? `+${routePerformance.actualVsRequestedDays} d vs PO`
+                        : `${routePerformance.actualVsRequestedDays} d vs PO`}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            </section>
+          ) : null}
+
           <section className="rounded-lg border border-zinc-200 bg-white p-4 text-sm">
             <h2 className="font-semibold text-zinc-900">Customer account scope</h2>
             <p className="mt-1 text-xs text-zinc-500">

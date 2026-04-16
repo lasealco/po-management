@@ -47,7 +47,7 @@ function parsePositiveQty(raw: string): Prisma.Decimal {
  */
 export async function createLogisticsShipment(
   input: CreateLogisticsShipmentInput,
-): Promise<{ shipmentId: string }> {
+): Promise<{ shipmentId: string; milestonePackWarning?: string }> {
   const {
     tenantId,
     actorUserId,
@@ -146,6 +146,7 @@ export async function createLogisticsShipment(
     payload: { orderId: order.id, lineCount: lines.length, milestonePackId: pack },
   });
 
+  let milestonePackWarning: string | undefined;
   if (pack) {
     try {
       await applyCtMilestonePack({
@@ -156,11 +157,9 @@ export async function createLogisticsShipment(
       });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      throw new Error(
-        `Shipment was created (id ${shipmentId}) but applying the milestone template failed: ${msg}`,
-      );
+      milestonePackWarning = `Milestone template was not applied: ${msg}`;
     }
   }
 
-  return { shipmentId };
+  return { shipmentId, milestonePackWarning };
 }

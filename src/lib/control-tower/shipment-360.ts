@@ -11,6 +11,7 @@ import {
   filterMilestonePackCatalogByTransportMode,
   listMilestonePackCatalogForTenant,
 } from "./milestone-templates";
+import { buildRoutePerformance } from "./route-performance";
 import { computeShipmentEmissionsSummary } from "./shipment-emissions";
 import { labelForCtDocType } from "./shipment-document-types";
 
@@ -121,6 +122,7 @@ export async function getShipment360(params: {
         select: {
           id: true,
           orderNumber: true,
+          requestedDeliveryDate: true,
           incoterm: true,
           buyerReference: true,
           supplierReference: true,
@@ -450,6 +452,7 @@ export async function getShipment360(params: {
     ? {
         id: s.order.id,
         orderNumber: s.order.orderNumber,
+        requestedDeliveryDate: s.order.requestedDeliveryDate?.toISOString() ?? null,
         incoterm: s.order.incoterm,
         shipToName: s.order.shipToName,
         shipToCity: s.order.shipToCity,
@@ -458,7 +461,10 @@ export async function getShipment360(params: {
           ? { id: s.order.supplier.id, name: s.order.supplier.name }
           : null,
       }
-    : s.order;
+    : {
+        ...s.order,
+        requestedDeliveryDate: s.order.requestedDeliveryDate?.toISOString() ?? null,
+      };
 
   const bolDocumentParties = buildBolDocumentParties(s, restricted);
   const documentRouting = {
@@ -523,6 +529,30 @@ export async function getShipment360(params: {
     lineCargoGrossKg: s.items.map((it) => it.cargoGrossWeightKg),
   });
 
+  const routePerformance = buildRoutePerformance({
+    requestedDeliveryDate: s.order.requestedDeliveryDate,
+    booking: s.booking
+      ? {
+          etd: s.booking.etd,
+          eta: s.booking.eta,
+          latestEta: s.booking.latestEta,
+          originCode: s.booking.originCode,
+          destinationCode: s.booking.destinationCode,
+        }
+      : null,
+    legs: s.ctLegs.map((leg) => ({
+      legNo: leg.legNo,
+      originCode: leg.originCode,
+      destinationCode: leg.destinationCode,
+      plannedEtd: leg.plannedEtd,
+      plannedEta: leg.plannedEta,
+      actualAtd: leg.actualAtd,
+      actualAta: leg.actualAta,
+    })),
+    shipmentReceivedAt: s.receivedAt,
+    shipmentStatus: s.status,
+  });
+
   return {
     view: { restricted },
     id: s.id,
@@ -560,6 +590,7 @@ export async function getShipment360(params: {
         : null,
     createdBy: { id: s.createdBy.id, name: s.createdBy.name },
     order: orderPayload,
+    routePerformance,
     booking: s.booking
       ? {
           status: s.booking.status,
