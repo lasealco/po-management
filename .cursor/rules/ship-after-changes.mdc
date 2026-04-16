@@ -1,0 +1,31 @@
+---
+description: After making substantive code/schema changes, commit and push to main for Vercel deploy
+alwaysApply: true
+---
+
+# Ship changes to GitHub (Vercel deploy)
+
+When you **implement** or **fix** something in this repo (code, Prisma schema/migrations, config that belongs in git), treat **commit + push to `main`** as the normal completion step so **Vercel** can deploy.
+
+## Do this at the end of the task
+
+1. `git status` — review what changed; only commit files that belong in the repo.
+2. **Never** commit secrets or machine-local env: `.env.local`, `docs/*credentials*.md` with real secrets, tokens, or passwords. Prefer `.example` / docs placeholders only.
+3. Stage intentionally (`git add` with paths or `git add -u` as appropriate).
+4. `git commit -m "…"` — imperative mood, concise scope (e.g. `feat(control-tower): …` or `fix: …`).
+5. `git push origin main` — requires `git_write` and `network` permissions in the agent environment.
+
+## Skip or pause when
+
+- The session was **read-only** (no edits).
+- The user asked **not** to push, or said **WIP / hold**.
+- There is **nothing to commit**, or changes are **only** local secrets/docs you must not track.
+- **Push would fail** (no `origin`, auth, or branch not `main`): report the error and what they need to fix (e.g. `gh auth login`, set `origin`, merge/rebase first).
+
+## Database migrations
+
+If you applied migrations to a shared DB (e.g. Neon), the **schema/migration files** must still be **committed and pushed** so production builds match the database. Migrations alone are not a substitute for pushing app code.
+
+## If Vercel CLI is unavailable
+
+Rely on **GitHub → Vercel** after `git push origin main`; do not assume `vercel` is installed locally.
