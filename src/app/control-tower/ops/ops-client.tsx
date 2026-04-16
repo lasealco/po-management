@@ -12,6 +12,7 @@ type OpsSummary = {
     staleBacklogAlerts: number | null;
     staleBacklogExceptions: number | null;
     escalationRuns24h: number | null;
+    escalationSweepRuns7d: number | null;
     escalationActions7d: number | null;
   };
   ownerBalancing:
@@ -254,11 +255,37 @@ export function ControlTowerOpsClient({ initialSummary, focus }: { initialSummar
             <li key={r}>{r}</li>
           ))}
         </ul>
+        {!summary.isCustomerView ? (
+          <div className="mt-3 rounded border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-700">
+            <p className="font-semibold text-zinc-800">SLA sweep telemetry</p>
+            <p className="mt-1">
+              <span className="tabular-nums font-medium text-zinc-900">
+                {summary.slaOps.escalationRuns24h ?? 0}
+              </span>{" "}
+              sweep run(s) in the last <strong>24 hours</strong> (each Run now / dry run writes one audit).{" "}
+              <span className="tabular-nums font-medium text-zinc-900">
+                {summary.slaOps.escalationSweepRuns7d ?? 0}
+              </span>{" "}
+              sweep run(s) in the last <strong>7 days</strong>.
+            </p>
+            <p className="mt-1">
+              <span className="tabular-nums font-medium text-zinc-900">
+                {summary.slaOps.escalationActions7d ?? 0}
+              </span>{" "}
+              per-item SLA follow-ups in 7 days (internal note + SLA_ESCALATION alert).{" "}
+              <strong>Dry runs</strong> count as sweeps but not here; dedupe can also skip new follow-ups.
+            </p>
+          </div>
+        ) : null}
       </div>
 
       {runs.length ? (
         <div className="rounded-lg border border-zinc-200 bg-white p-4">
           <h2 className="text-sm font-semibold text-zinc-900">Recent run history</h2>
+          <p className="mt-1 text-xs text-zinc-600">
+            Latest 20 audit rows (any age). Compare to the 24h / 7d counters above—older rows do not affect the 24h
+            count.
+          </p>
           <ul className="mt-2 space-y-1 text-sm text-zinc-700">
             {runs.map((r) => (
               <li key={r.id}>

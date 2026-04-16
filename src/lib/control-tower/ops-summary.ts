@@ -27,6 +27,8 @@ export async function getControlTowerOpsSummary(params: {
     staleBacklogAlerts,
     staleBacklogExceptions,
     escalationRuns24h,
+    // SLA sweep invocations in last 7d (ops_run_sla_escalation; includes dry runs).
+    escalationSweepRuns7d,
     escalationActions7d,
     recentOpsAudit,
     ownerLoads,
@@ -80,6 +82,15 @@ export async function getControlTowerOpsSummary(params: {
             tenantId,
             action: "ops_run_sla_escalation",
             createdAt: { gte: d1 },
+          },
+        }),
+    restricted
+      ? Promise.resolve(0)
+      : prisma.ctAuditLog.count({
+          where: {
+            tenantId,
+            action: "ops_run_sla_escalation",
+            createdAt: { gte: d7 },
           },
         }),
     restricted
@@ -205,6 +216,7 @@ export async function getControlTowerOpsSummary(params: {
       staleBacklogAlerts: restricted ? null : staleBacklogAlerts,
       staleBacklogExceptions: restricted ? null : staleBacklogExceptions,
       escalationRuns24h: restricted ? null : escalationRuns24h,
+      escalationSweepRuns7d: restricted ? null : escalationSweepRuns7d,
       escalationActions7d: restricted ? null : escalationActions7d,
     },
     ownerBalancing: restricted
