@@ -34,6 +34,8 @@ export type WorkbenchUrlState = {
   destinationCodeFilter: string;
   ownerFilter: string;
   routeHealth: string;
+  /** Default true; URL carries `autoRefresh=0` when off. */
+  autoRefresh: boolean;
 };
 
 const SORT_OPTIONS = ["updated_desc", "eta_asc", "route_progress_asc"] as const;
@@ -64,6 +66,9 @@ export function readWorkbenchUrlState(
   else if (minPct === "41" && maxPct === "79") routeHealth = "mid";
   else if (minPct === "80" && maxPct === "100") routeHealth = "advanced";
   const owner = sp.get("dispatchOwnerUserId") ?? "";
+  const ar = sp.get("autoRefresh") ?? "";
+  const autoRefresh =
+    ar === "0" || ar.toLowerCase() === "false" || ar.toLowerCase() === "off" ? false : true;
   return {
     status,
     mode,
@@ -71,6 +76,7 @@ export function readWorkbenchUrlState(
     sortBy,
     page,
     onlyOverdueEta,
+    autoRefresh,
     q: sp.get("q") ?? "",
     shipperFilter: sp.get("shipperName") ?? "",
     consigneeFilter: sp.get("consigneeName") ?? "",
@@ -113,5 +119,6 @@ export function buildWorkbenchSearchString(state: WorkbenchUrlState, restrictedV
   }
   if (state.sortBy !== "updated_desc") p.set("sortBy", state.sortBy);
   if (state.page > 1) p.set("page", String(state.page));
+  if (!state.autoRefresh) p.set("autoRefresh", "0");
   return p.toString();
 }

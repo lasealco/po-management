@@ -62,7 +62,8 @@ function workbenchUrlHasSearchFilters(sp: URLSearchParams): boolean {
       (sp.get("routeAction") ?? "").trim() ||
       (sp.get("dispatchOwnerUserId") ?? "").trim() ||
       (sp.get("minRouteProgressPct") ?? "").trim() ||
-      (sp.get("maxRouteProgressPct") ?? "").trim(),
+      (sp.get("maxRouteProgressPct") ?? "").trim() ||
+      (sp.get("autoRefresh") ?? "").trim(),
   );
 }
 
@@ -130,6 +131,7 @@ function ControlTowerWorkbenchInner({
     setDestinationCodeFilter(s.destinationCodeFilter);
     setOwnerFilter(s.ownerFilter);
     setRouteHealth(s.routeHealth);
+    setAutoRefresh(s.autoRefresh);
     setFiltersReady(true);
   }, [searchParams, restrictedView]);
 
@@ -152,6 +154,7 @@ function ControlTowerWorkbenchInner({
       destinationCodeFilter,
       ownerFilter,
       routeHealth,
+      autoRefresh,
     }),
     [
       status,
@@ -171,6 +174,7 @@ function ControlTowerWorkbenchInner({
       destinationCodeFilter,
       ownerFilter,
       routeHealth,
+      autoRefresh,
     ],
   );
 
@@ -214,6 +218,7 @@ function ControlTowerWorkbenchInner({
     setDestinationCodeFilter(s.destinationCodeFilter);
     setOwnerFilter(s.ownerFilter);
     setRouteHealth(s.routeHealth);
+    setAutoRefresh(s.autoRefresh);
   }, [searchParams, filtersReady, restrictedView]);
 
   const load = useCallback(async () => {
@@ -409,6 +414,7 @@ function ControlTowerWorkbenchInner({
       routeAction?: string;
       sortBy?: string;
       onlyOverdueEta?: boolean;
+      autoRefresh?: boolean;
     };
     setStatus(typeof o.status === "string" ? o.status : "");
     setMode(typeof o.mode === "string" ? o.mode : "");
@@ -426,6 +432,7 @@ function ControlTowerWorkbenchInner({
     setRouteAction(typeof o.routeAction === "string" ? o.routeAction : "");
     setSortBy(typeof o.sortBy === "string" ? o.sortBy : "updated_desc");
     setOnlyOverdueEta(Boolean(o.onlyOverdueEta));
+    setAutoRefresh(typeof o.autoRefresh === "boolean" ? o.autoRefresh : true);
     setPage(1);
   };
 
@@ -455,6 +462,7 @@ function ControlTowerWorkbenchInner({
           routeAction,
           sortBy,
           onlyOverdueEta,
+          autoRefresh,
         },
       }),
     });
@@ -549,6 +557,7 @@ function ControlTowerWorkbenchInner({
       <div className="flex flex-wrap items-end gap-3 rounded-lg border border-zinc-200 bg-white p-4">
         <p className="w-full text-[11px] text-zinc-500">
           Filters update the address bar after you pause typing (~400ms) so you can copy or bookmark the exact list query.
+          Auto-refresh off is stored as <span className="font-mono text-zinc-600">autoRefresh=0</span> (default on omits the param).
         </p>
         <label className="text-xs text-zinc-600">
           Status
