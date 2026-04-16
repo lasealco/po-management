@@ -231,6 +231,10 @@ export function ControlTowerShipment360({
   }
 
   const order = data.order as Record<string, unknown> | undefined;
+  const isUnlinkedShipment = Boolean(
+    !(order?.supplier as { name?: string } | undefined)?.name &&
+      String(order?.title || "").startsWith("Ad-hoc export shipment"),
+  );
   const booking = data.booking as Record<string, unknown> | null | undefined;
   const lines = (data.lines as unknown[]) ?? [];
   const emissions = data.emissionsSummary as
@@ -695,6 +699,46 @@ export function ControlTowerShipment360({
                     ) : null}
                   </dd>
                 </div>
+                {isUnlinkedShipment ? (
+                  <div>
+                    <dt className="text-zinc-500">External sales reference</dt>
+                    <dd>
+                      <span className="block text-zinc-700">
+                        {(documentRouting?.buyerReference as string) || "—"}
+                      </span>
+                      {canEdit ? (
+                        <form
+                          className="mt-1 flex max-w-sm items-end gap-2"
+                          onSubmit={async (e) => {
+                            e.preventDefault();
+                            const fd = new FormData(e.currentTarget);
+                            const externalOrderRef = String(fd.get("externalOrderRef") || "").trim();
+                            if (!externalOrderRef) return;
+                            try {
+                              await postAction({
+                                action: "set_order_external_reference",
+                                shipmentId,
+                                externalOrderRef,
+                              });
+                              (e.currentTarget as HTMLFormElement).reset();
+                            } catch (err) {
+                              window.alert(err instanceof Error ? err.message : "Failed");
+                            }
+                          }}
+                        >
+                          <input
+                            name="externalOrderRef"
+                            placeholder="ERP SO / external ref"
+                            className="w-full rounded border border-zinc-300 px-2 py-1"
+                          />
+                          <button type="submit" className="rounded bg-zinc-900 px-2.5 py-1 text-white">
+                            Save
+                          </button>
+                        </form>
+                      ) : null}
+                    </dd>
+                  </div>
+                ) : null}
                 <div className="sm:col-span-2">
                   <dt className="text-zinc-500">Ops assignee (this shipment)</dt>
                   <dd>

@@ -25,6 +25,7 @@ type Row = {
   orderId: string;
   orderNumber: string;
   supplierName: string | null;
+  shipmentSource?: "PO" | "UNLINKED";
   customerCrmAccountId: string | null;
   customerCrmAccountName: string | null;
   originCode: string | null;
@@ -60,6 +61,7 @@ function workbenchUrlHasSearchFilters(sp: URLSearchParams): boolean {
       (sp.get("customerName") ?? "").trim() ||
       (sp.get("originCode") ?? "").trim() ||
       (sp.get("destinationCode") ?? "").trim() ||
+      (sp.get("shipmentSource") ?? "").trim() ||
       (sp.get("onlyOverdueEta") ?? "").trim() ||
       (sp.get("routeAction") ?? "").trim() ||
       (sp.get("dispatchOwnerUserId") ?? "").trim() ||
@@ -107,6 +109,7 @@ function ControlTowerWorkbenchInner({
   const [customerNameFilter, setCustomerNameFilter] = useState("");
   const [originCodeFilter, setOriginCodeFilter] = useState("");
   const [destinationCodeFilter, setDestinationCodeFilter] = useState("");
+  const [shipmentSource, setShipmentSource] = useState<"" | "PO" | "UNLINKED">("");
   /** False until client layout reads `?q=` / filters from the URL (avoids a stale first fetch). */
   const [filtersReady, setFiltersReady] = useState(false);
   const [rows, setRows] = useState<Row[]>([]);
@@ -139,6 +142,7 @@ function ControlTowerWorkbenchInner({
     setCustomerNameFilter(s.customerNameFilter);
     setOriginCodeFilter(s.originCodeFilter);
     setDestinationCodeFilter(s.destinationCodeFilter);
+    setShipmentSource(s.shipmentSource);
     setOwnerFilter(s.ownerFilter);
     setRouteHealth(s.routeHealth);
     setAutoRefresh(s.autoRefresh);
@@ -163,6 +167,7 @@ function ControlTowerWorkbenchInner({
       customerNameFilter,
       originCodeFilter,
       destinationCodeFilter,
+      shipmentSource,
       ownerFilter,
       routeHealth,
       autoRefresh,
@@ -184,6 +189,7 @@ function ControlTowerWorkbenchInner({
       customerNameFilter,
       originCodeFilter,
       destinationCodeFilter,
+      shipmentSource,
       ownerFilter,
       routeHealth,
       autoRefresh,
@@ -229,6 +235,7 @@ function ControlTowerWorkbenchInner({
     setCustomerNameFilter(s.customerNameFilter);
     setOriginCodeFilter(s.originCodeFilter);
     setDestinationCodeFilter(s.destinationCodeFilter);
+    setShipmentSource(s.shipmentSource);
     setOwnerFilter(s.ownerFilter);
     setRouteHealth(s.routeHealth);
     setAutoRefresh(s.autoRefresh);
@@ -252,6 +259,7 @@ function ControlTowerWorkbenchInner({
       if (customerNameFilter.trim()) sp.set("customerName", customerNameFilter.trim());
       if (originCodeFilter.trim()) sp.set("originCode", originCodeFilter.trim());
       if (destinationCodeFilter.trim()) sp.set("destinationCode", destinationCodeFilter.trim());
+      if (shipmentSource) sp.set("shipmentSource", shipmentSource);
       if (!restrictedView && ownerFilter) sp.set("dispatchOwnerUserId", ownerFilter);
       if (routeHealth === "stalled") {
         sp.set("minRouteProgressPct", "0");
@@ -291,6 +299,7 @@ function ControlTowerWorkbenchInner({
     customerNameFilter,
     originCodeFilter,
     destinationCodeFilter,
+    shipmentSource,
     ownerFilter,
     routeHealth,
     onlyOverdueEta,
@@ -423,6 +432,7 @@ function ControlTowerWorkbenchInner({
       customerNameFilter?: string;
       originCodeFilter?: string;
       destinationCodeFilter?: string;
+      shipmentSource?: "" | "PO" | "UNLINKED";
       ownerFilter?: string;
       routeHealth?: string;
       routeAction?: string;
@@ -442,6 +452,7 @@ function ControlTowerWorkbenchInner({
     setCustomerNameFilter(typeof o.customerNameFilter === "string" ? o.customerNameFilter : "");
     setOriginCodeFilter(typeof o.originCodeFilter === "string" ? o.originCodeFilter : "");
     setDestinationCodeFilter(typeof o.destinationCodeFilter === "string" ? o.destinationCodeFilter : "");
+    setShipmentSource(o.shipmentSource === "PO" || o.shipmentSource === "UNLINKED" ? o.shipmentSource : "");
     setOwnerFilter(typeof o.ownerFilter === "string" ? o.ownerFilter : "");
     setRouteHealth(typeof o.routeHealth === "string" ? o.routeHealth : "");
     setRouteAction(typeof o.routeAction === "string" ? o.routeAction : "");
@@ -473,6 +484,7 @@ function ControlTowerWorkbenchInner({
           customerNameFilter,
           originCodeFilter,
           destinationCodeFilter,
+          shipmentSource,
           ownerFilter,
           routeHealth,
           routeAction,
@@ -667,6 +679,18 @@ function ControlTowerWorkbenchInner({
             placeholder="CRM customer contains"
             className="mt-1 block rounded border border-zinc-300 px-2 py-1.5 text-sm"
           />
+        </label>
+        <label className="text-xs text-zinc-600">
+          Shipment source
+          <select
+            value={shipmentSource}
+            onChange={(e) => setShipmentSource(e.target.value as "" | "PO" | "UNLINKED")}
+            className="mt-1 block rounded border border-zinc-300 px-2 py-1.5 text-sm"
+          >
+            <option value="">Any</option>
+            <option value="PO">PO-linked</option>
+            <option value="UNLINKED">Unlinked / export</option>
+          </select>
         </label>
         <label className="text-xs text-zinc-600">
           Origin code
@@ -996,6 +1020,11 @@ function ControlTowerWorkbenchInner({
                     <Link href={`/orders/${r.orderId}`} className="hover:underline">
                       {r.orderNumber}
                     </Link>
+                    {r.shipmentSource === "UNLINKED" ? (
+                      <span className="ml-1 rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-900">
+                        UNLINKED
+                      </span>
+                    ) : null}
                   </td>
                   <td className="px-2 py-2">{r.status}</td>
                   <td className="px-2 py-2">{r.transportMode || "—"}</td>

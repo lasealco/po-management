@@ -1002,6 +1002,34 @@ export async function handleControlTowerPost(
     return NextResponse.json({ ok: true });
   }
 
+  if (action === "set_order_external_reference") {
+    const shipmentId = typeof body.shipmentId === "string" ? body.shipmentId : "";
+    const externalOrderRef = typeof body.externalOrderRef === "string" ? body.externalOrderRef.trim() : "";
+    if (!shipmentId || !externalOrderRef) return bad("shipmentId and externalOrderRef required");
+    const ship = await prisma.shipment.findFirst({
+      where: { id: shipmentId, order: { tenantId } },
+      select: { id: true, orderId: true, order: { select: { buyerReference: true } } },
+    });
+    if (!ship) return bad("Shipment not found", 404);
+    await prisma.purchaseOrder.update({
+      where: { id: ship.orderId },
+      data: { buyerReference: externalOrderRef },
+    });
+    await writeCtAudit({
+      tenantId,
+      shipmentId,
+      entityType: "PurchaseOrder",
+      entityId: ship.orderId,
+      action: "set_external_reference",
+      actorUserId: actorId,
+      payload: {
+        previousBuyerReference: ship.order.buyerReference,
+        buyerReference: externalOrderRef,
+      },
+    });
+    return NextResponse.json({ ok: true });
+  }
+
   const TRANSPORT: TransportMode[] = ["OCEAN", "AIR", "ROAD", "RAIL"];
   const parseIso = (v: unknown): Date | null | undefined | "invalid" => {
     if (v === null) return null;

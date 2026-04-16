@@ -32,6 +32,7 @@ export type WorkbenchUrlState = {
   customerNameFilter: string;
   originCodeFilter: string;
   destinationCodeFilter: string;
+  shipmentSource: "" | "PO" | "UNLINKED";
   ownerFilter: string;
   routeHealth: string;
   /** Default true; URL carries `autoRefresh=0` when off. */
@@ -71,6 +72,9 @@ export function readWorkbenchUrlState(
   else if (minPct === "41" && maxPct === "79") routeHealth = "mid";
   else if (minPct === "80" && maxPct === "100") routeHealth = "advanced";
   const owner = sp.get("dispatchOwnerUserId") ?? "";
+  const sourceRaw = sp.get("shipmentSource") ?? "";
+  const shipmentSource: "" | "PO" | "UNLINKED" =
+    sourceRaw === "PO" || sourceRaw === "UNLINKED" ? sourceRaw : "";
   const ar = sp.get("autoRefresh") ?? "";
   const autoRefresh =
     ar === "0" || ar.toLowerCase() === "false" || ar.toLowerCase() === "off" ? false : true;
@@ -94,6 +98,7 @@ export function readWorkbenchUrlState(
     customerNameFilter: sp.get("customerName") ?? "",
     originCodeFilter: sp.get("originCode") ?? "",
     destinationCodeFilter: sp.get("destinationCode") ?? "",
+    shipmentSource,
     ownerFilter: restrictedView ? "" : owner,
     routeHealth,
   };
@@ -112,6 +117,7 @@ export function buildWorkbenchSearchString(state: WorkbenchUrlState, restrictedV
   if (state.customerNameFilter.trim()) p.set("customerName", state.customerNameFilter.trim());
   if (state.originCodeFilter.trim()) p.set("originCode", state.originCodeFilter.trim());
   if (state.destinationCodeFilter.trim()) p.set("destinationCode", state.destinationCodeFilter.trim());
+  if (state.shipmentSource) p.set("shipmentSource", state.shipmentSource);
   if (!restrictedView && state.ownerFilter.trim()) p.set("dispatchOwnerUserId", state.ownerFilter.trim());
   if (state.onlyOverdueEta) p.set("onlyOverdueEta", "1");
   if (state.routeAction) p.set("routeAction", state.routeAction);

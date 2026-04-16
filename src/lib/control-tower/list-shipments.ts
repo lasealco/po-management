@@ -41,6 +41,8 @@ export type ListShipmentsQuery = {
   originCode?: string;
   /** Booking or leg destination port code contains. */
   destinationCode?: string;
+  /** PO-linked operational flow vs ad-hoc export shell order flow. */
+  shipmentSource?: "PO" | "UNLINKED" | "";
   minRouteProgressPct?: number;
   maxRouteProgressPct?: number;
 };
@@ -63,6 +65,7 @@ const listSelectCore = {
     select: {
       id: true,
       orderNumber: true,
+      title: true,
       supplier: { select: { name: true } },
     },
   },
@@ -221,6 +224,10 @@ function mapShipmentListRow(s: ShipmentListCore | ShipmentListInternal) {
     orderId: s.order.id,
     orderNumber: s.order.orderNumber,
     supplierName: s.order.supplier?.name ?? null,
+    shipmentSource:
+      !s.order.supplier?.name && (s.order.title || "").startsWith("Ad-hoc export shipment")
+        ? ("UNLINKED" as const)
+        : ("PO" as const),
     originCode: s.booking?.originCode ?? firstLeg?.originCode ?? null,
     destinationCode: s.booking?.destinationCode ?? lastLeg?.destinationCode ?? null,
     etd: s.booking?.etd?.toISOString() ?? null,
@@ -400,6 +407,23 @@ export async function listControlTowerShipments(params: {
         { booking: { is: { eta: { lt: now } } } },
         { booking: { is: { latestEta: { lt: now } } } },
       ],
+    });
+  }
+  if (query.shipmentSource === "UNLINKED") {
+    ands.push({
+      order: {
+        supplierId: null,
+        title: { startsWith: "Ad-hoc export shipment" },
+      },
+    });
+  } else if (query.shipmentSource === "PO") {
+    ands.push({
+      NOT: {
+        order: {
+          supplierId: null,
+          title: { startsWith: "Ad-hoc export shipment" },
+        },
+      },
     });
   }
 
