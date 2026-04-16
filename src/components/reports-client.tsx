@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 type ReportListItem = {
   id: string;
@@ -67,7 +68,7 @@ function categoryLabel(c: string) {
 function parseNumericValue(value: string | number | null | undefined): number | null {
   if (value == null) return null;
   if (typeof value === "number") return Number.isFinite(value) ? value : null;
-  const cleaned = value.replace(/[^0-9.-]/g, "");
+  const cleaned = String(value).replace(/[^0-9.-]/g, "");
   if (!cleaned || cleaned === "-" || cleaned === "." || cleaned === "-.") return null;
   const n = Number(cleaned);
   return Number.isFinite(n) ? n : null;
@@ -77,12 +78,18 @@ export function ReportsClient({
   initialList,
   blockedReports = [],
   initialReportId,
+  initialDrillRow = null,
 }: {
   initialList: ReportListItem[];
   blockedReports?: BlockedReportRow[];
   /** When set and present in `initialList`, pre-select this report (e.g. from `?report=`). */
   initialReportId?: string | null;
+  /** Optional `?row=` index into the result table after run (server pass-through). */
+  initialDrillRow?: number | null;
 }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [reports] = useState(initialList);
   const preferredId =
     initialReportId && initialList.some((r) => r.id === initialReportId) ? initialReportId : initialList[0]?.id ?? "";
@@ -90,11 +97,30 @@ export function ReportsClient({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ReportResult | null>(null);
+  const [chartRowIndex, setChartRowIndex] = useState<number | null>(null);
+  const rowRefs = useRef<Map<number, HTMLTableRowElement>>(new Map());
+
+  const rowFromUrl = searchParams.get("row");
+  const parsedRowFromUrl =
+    rowFromUrl !== null && /^\d+$/.test(rowFromUrl) ? Math.min(Number(rowFromUrl), 500_000) : null;
+
+  const patchReportUrl = useCallback(
+    (next: { reportId: string; row: number | null }) => {
+      const p = new URLSearchParams(searchParams.toString());
+      p.set("report", next.reportId);
+      if (next.row !== null && Number.isFinite(next.row)) p.set("row", String(next.row));
+      else p.delete("row");
+      const qs = p.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [pathname, router, searchParams],
+  );
 
   const selected = useMemo(
     () => reports.find((r) => r.id === selectedId) ?? null,
     [reports, selectedId],
   );
+
   const chartModel = useMemo(() => {
     if (!result || result.rows.length === 0) return null;
     const numericColumn =
@@ -104,13 +130,13 @@ export function ReportsClient({
       result.columns.find((c) => c.key !== numericColumn.key && c.align !== "right") ??
       result.columns[0];
     const points = result.rows
-      .map((row) => {
+      .map((row, rowIndex) => {
         const label = String(row[labelColumn.key] ?? "—");
         const value = parseNumericValue(row[numericColumn.key]);
         if (value == null) return null;
-        return { label, value };
+        return { rowIndex, label, value };
       })
-      .filter((p): p is { label: string; value: number } => p !== null)
+      .filter((p): p is { rowIndex: number; label: string; value: number } => p !== null)
       .slice(0, 12);
     if (points.length === 0) return null;
     const max = Math.max(...points.map((p) => p.value), 1);
@@ -121,6 +147,34 @@ export function ReportsClient({
       metric: numericColumn.label,
     };
   }, [result]);
+
+  const chartPreviewRowIndexes = useMemo(() => {
+    if (!chartModel) return new Set<number>();
+    return new Set(chartModel.points.map((p) => p.rowIndex));
+  }, [chartModel]);
+
+  useEffect(() => {
+    if (!result) {
+      setChartRowIndex(null);
+      return;
+    }
+    const fromUrl = parsedRowFromUrl;
+    const fromProp =
+      initialDrillRow != null && initialDrillRow >= 0 && initialDrillRow < result.rows.length
+        ? initialDrillRow
+        : null;
+    const pick = fromUrl != null && fromUrl >= 0 && fromUrl < result.rows.length ? fromUrl : fromProp;
+    if (pick != null && chartPreviewRowIndexes.has(pick)) {
+      setChartRowIndex(pick);
+    } else {
+      setChartRowIndex(null);
+    }
+  }, [result?.generatedAt, parsedRowFromUrl, initialDrillRow, chartPreviewRowIndexes, result]);
+
+  useEffect(() => {
+    if (chartRowIndex == null) return;
+    rowRefs.current.get(chartRowIndex)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [chartRowIndex, result?.generatedAt]);
 
   const run = useCallback(async () => {
     if (!selectedId) return;
@@ -138,8 +192,14 @@ export function ReportsClient({
       setError(payload.error ?? "Report failed.");
       return;
     }
-    if (payload.result) setResult(payload.result);
-  }, [selectedId]);
+    if (payload.result) {
+      setResult(payload.result);
+      const p = new URLSearchParams(searchParams.toString());
+      p.set("report", selectedId);
+      const qs = p.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    }
+  }, [pathname, router, searchParams, selectedId]);
 
   function downloadCsv() {
     if (!result) return;
@@ -153,13 +213,24 @@ export function ReportsClient({
     URL.revokeObjectURL(url);
   }
 
+  const toggleChartRow = useCallback(
+    (rowIndex: number) => {
+      if (!selectedId) return;
+      const next = chartRowIndex === rowIndex ? null : rowIndex;
+      setChartRowIndex(next);
+      patchReportUrl({ reportId: selectedId, row: next });
+    },
+    [chartRowIndex, patchReportUrl, selectedId],
+  );
+
   return (
     <div className="space-y-8">
       <section className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-zinc-900">Run a report</h2>
         <p className="mt-1 text-sm text-zinc-600">
-          Reports run against your tenant&apos;s live data. Export results as CSV for
-          spreadsheets.
+          Reports run against your tenant&apos;s live data. Export results as CSV for spreadsheets. After you run,
+          click a bar in the chart preview to highlight that row; the URL updates with <span className="font-medium">?row=</span>{" "}
+          for sharing.
         </p>
         <div className="mt-4 flex flex-wrap items-end gap-4">
           <label className="flex min-w-[240px] flex-col gap-1 text-sm">
@@ -172,9 +243,12 @@ export function ReportsClient({
               <select
                 value={selectedId}
                 onChange={(e) => {
-                  setSelectedId(e.target.value);
+                  const next = e.target.value;
+                  setSelectedId(next);
                   setResult(null);
                   setError(null);
+                  setChartRowIndex(null);
+                  patchReportUrl({ reportId: next, row: null });
                 }}
                 className="rounded-md border border-zinc-300 px-3 py-2 text-zinc-900"
               >
@@ -233,7 +307,8 @@ export function ReportsClient({
                 <div>
                   <h4 className="text-sm font-semibold text-zinc-900">Chart preview</h4>
                   <p className="text-xs text-zinc-500">
-                    {chartModel.metric} by {chartModel.label} (top {chartModel.points.length})
+                    {chartModel.metric} by {chartModel.label} (top {chartModel.points.length}) · click a bar to
+                    highlight the row
                   </p>
                 </div>
                 <p className="text-xs text-zinc-500">
@@ -243,8 +318,17 @@ export function ReportsClient({
               <div className="space-y-2">
                 {chartModel.points.map((point) => {
                   const widthPct = Math.max(3, (point.value / chartModel.max) * 100);
+                  const sel = chartRowIndex === point.rowIndex;
                   return (
-                    <div key={`${point.label}-${point.value}`} className="grid grid-cols-[180px_1fr_90px] items-center gap-2">
+                    <button
+                      key={point.rowIndex}
+                      type="button"
+                      onClick={() => toggleChartRow(point.rowIndex)}
+                      className={`grid w-full grid-cols-[180px_1fr_90px] items-center gap-2 rounded-md px-1 py-0.5 text-left outline-none ring-offset-2 hover:bg-violet-50/50 focus-visible:ring-2 focus-visible:ring-violet-400 ${
+                        sel ? "bg-violet-50 ring-1 ring-violet-300" : ""
+                      }`}
+                      aria-pressed={sel}
+                    >
                       <p className="truncate text-xs text-zinc-600" title={point.label}>
                         {point.label}
                       </p>
@@ -257,7 +341,7 @@ export function ReportsClient({
                       <p className="text-right text-xs tabular-nums text-zinc-700">
                         {point.value.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                       </p>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
@@ -281,7 +365,14 @@ export function ReportsClient({
               </thead>
               <tbody className="divide-y divide-zinc-100">
                 {result.rows.map((row, i) => (
-                  <tr key={i} className="hover:bg-zinc-50/80">
+                  <tr
+                    key={i}
+                    ref={(el) => {
+                      if (el) rowRefs.current.set(i, el);
+                      else rowRefs.current.delete(i);
+                    }}
+                    className={`hover:bg-zinc-50/80 ${chartRowIndex === i ? "bg-violet-50 ring-1 ring-inset ring-violet-200" : ""}`}
+                  >
                     {result.columns.map((c) => (
                       <td
                         key={c.key}

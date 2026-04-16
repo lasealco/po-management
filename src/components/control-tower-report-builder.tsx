@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { WorkbenchDrillLink } from "@/components/workbench-drill-link";
+
 type Measure = "shipments" | "volumeCbm" | "weightKg" | "shippingSpend" | "onTimePct" | "avgDelayDays";
 type Dimension =
   | "none"
@@ -542,6 +544,11 @@ export function ControlTowerReportBuilder({ canEdit }: { canEdit: boolean }) {
     return { current, previous, delta, deltaPct, measure: m };
   }, [result, compareResult]);
 
+  const chartDrillRow = useMemo(() => {
+    if (!result || !chartDrillKey) return null;
+    return result.rows.find((r) => r.key === chartDrillKey) ?? null;
+  }, [result, chartDrillKey]);
+
   return (
     <section className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -838,6 +845,17 @@ export function ControlTowerReportBuilder({ canEdit }: { canEdit: boolean }) {
                 : null}
             </div>
           )}
+
+          {chartDrillRow ? (
+            <div className="flex flex-wrap items-center gap-2 rounded-md border border-sky-100 bg-sky-50/60 px-3 py-2 text-xs text-zinc-700">
+              <span className="font-medium text-sky-950">Drill-down</span>
+              <WorkbenchDrillLink
+                dimension={result.config.dimension}
+                rowKey={chartDrillRow.key}
+                rowLabel={chartDrillRow.label}
+              />
+            </div>
+          ) : null}
 
           <div className="overflow-x-auto rounded border border-zinc-200">
             <table className="min-w-full text-sm">

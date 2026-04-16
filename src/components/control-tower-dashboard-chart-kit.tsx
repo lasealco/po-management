@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { WorkbenchDrillLink } from "@/components/workbench-drill-link";
+
 const CT_REPORT_MEASURES = [
   "shipments",
   "volumeCbm",
@@ -435,26 +437,57 @@ export function ControlTowerDashboardWidgetModal(props: {
   /** Sanitized report config for re-running the insight API. */
   savedReportConfig?: Record<string, unknown> | null;
   onClose: () => void;
+  /** When opening from a shared URL (`?widget=&drill=`), select this row key if it exists in the table. */
+  initialDrillKey?: string | null;
+  /** Notified when the user changes chart drill selection (for URL sync on the dashboard). */
+  onDrillKeyChange?: (key: string | null) => void;
 }) {
-  const { title, report, savedReportConfig, onClose } = props;
+  const { title, report, savedReportConfig, onClose, initialDrillKey = null, onDrillKeyChange } = props;
   const [chartView, setChartView] = useState<ChartViewMode>(() => chartViewFromConfig(report.config.chartType));
-  const [drillKey, setDrillKey] = useState<string | null>(null);
+  const tableRows = useMemo(() => tableRowsFromReport(report), [report]);
+  const [drillKey, setDrillKey] = useState<string | null>(() => {
+    const rows = tableRowsFromReport(report);
+    return initialDrillKey && rows.some((r) => r.key === initialDrillKey) ? initialDrillKey : null;
+  });
   const [insightQuestion, setInsightQuestion] = useState("");
   const [insightText, setInsightText] = useState<string | null>(null);
   const [insightBusy, setInsightBusy] = useState(false);
   const [insightErr, setInsightErr] = useState<string | null>(null);
   const rowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
+  const skippedChartReset = useRef(true);
+  const prevUrlDrillRef = useRef<string | null>(null);
 
   const chartData = useMemo(() => seriesForChart(report), [report]);
-  const tableRows = useMemo(() => tableRowsFromReport(report), [report]);
 
   useEffect(() => {
-    setDrillKey(null);
-  }, [report.generatedAt, chartView]);
+    const cur = initialDrillKey;
+    if (cur && tableRows.some((r) => r.key === cur)) {
+      setDrillKey(cur);
+    } else if (prevUrlDrillRef.current && !cur) {
+      setDrillKey(null);
+    }
+    prevUrlDrillRef.current = cur ?? null;
+  }, [initialDrillKey, tableRows]);
 
-  const toggleDrill = useCallback((key: string) => {
-    setDrillKey((prev) => (prev === key ? null : key));
-  }, []);
+  useEffect(() => {
+    if (skippedChartReset.current) {
+      skippedChartReset.current = false;
+      return;
+    }
+    setDrillKey(null);
+    onDrillKeyChange?.(null);
+  }, [report.generatedAt, chartView, onDrillKeyChange]);
+
+  const toggleDrill = useCallback(
+    (key: string) => {
+      setDrillKey((prev) => {
+        const next = prev === key ? null : key;
+        onDrillKeyChange?.(next);
+        return next;
+      });
+    },
+    [onDrillKeyChange],
+  );
 
   useEffect(() => {
     if (!drillKey) return;
@@ -561,7 +594,14 @@ export function ControlTowerDashboardWidgetModal(props: {
 
         {drillRow ? (
           <div className="mt-3 rounded-lg border border-sky-200 bg-sky-50/80 px-3 py-2 text-xs text-zinc-800">
-            <p className="font-semibold text-sky-950">Selected · {drillRow.label}</p>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="font-semibold text-sky-950">Selected · {drillRow.label}</p>
+              <WorkbenchDrillLink
+                dimension={report.config.dimension}
+                rowKey={drillRow.key}
+                rowLabel={drillRow.label}
+              />
+            </div>
             <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-3">
               {CT_REPORT_MEASURES.map((m) => (
                 <div key={m}>

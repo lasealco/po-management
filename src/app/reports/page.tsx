@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 
 import { AccessDenied } from "@/components/access-denied";
 import { ReportsClient } from "@/components/reports-client";
@@ -12,10 +13,12 @@ export const dynamic = "force-dynamic";
 export default async function ReportsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ report?: string }>;
+  searchParams?: Promise<{ report?: string; row?: string }>;
 }) {
   const sp = searchParams ? await searchParams : {};
   const reportParam = typeof sp.report === "string" ? sp.report.trim() : "";
+  const rowRaw = typeof sp.row === "string" ? sp.row.trim() : "";
+  const initialDrillRow = /^\d+$/.test(rowRaw) ? Math.min(Number(rowRaw), 500_000) : null;
   const access = await getViewerGrantSet();
   const tenant = await getDemoTenant();
   const actorId = await getActorUserId();
@@ -94,15 +97,25 @@ export default async function ReportsPage({
               looks wrong, ask an admin to update{" "}
               <span className="font-medium">Settings → Roles</span>.
             </p>
-            <ReportsClient initialList={[]} blockedReports={blockedReports} initialReportId={reportParam || null} />
+            <Suspense fallback={<p className="text-sm text-zinc-500">Loading…</p>}>
+              <ReportsClient
+                initialList={[]}
+                blockedReports={blockedReports}
+                initialReportId={reportParam || null}
+                initialDrillRow={initialDrillRow}
+              />
+            </Suspense>
           </div>
         ) : (
           <div className="mt-8">
-            <ReportsClient
-              initialList={initialList}
-              blockedReports={blockedReports}
-              initialReportId={reportParam || null}
-            />
+            <Suspense fallback={<p className="text-sm text-zinc-500">Loading…</p>}>
+              <ReportsClient
+                initialList={initialList}
+                blockedReports={blockedReports}
+                initialReportId={reportParam || null}
+                initialDrillRow={initialDrillRow}
+              />
+            </Suspense>
           </div>
         )}
       </main>

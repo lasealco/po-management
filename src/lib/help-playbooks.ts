@@ -72,7 +72,7 @@ export const HELP_PLAYBOOKS: HelpPlaybook[] = [
       {
         title: "Chart → table drill-down",
         description:
-          "On My dashboard, open a pinned Control Tower widget: click a bar, line point, or pie slice to highlight that dimension in the table (and see a quick metric strip). Same idea in the report builder after you run a chart.",
+          "On My dashboard, open a pinned Control Tower widget: click a bar, line point, or pie slice to highlight that row, scroll the table, and copy a shareable URL (?widget=…&drill=…). Use “Open in workbench” for a filtered shipment list when the dimension maps to workbench query params. PO reports under /reports support ?report=…&row=… the same way.",
         href: "/control-tower/dashboard",
         doAction: {
           type: "open_path",
