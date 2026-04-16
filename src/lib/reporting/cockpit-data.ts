@@ -13,10 +13,15 @@ function priorityByThreshold(value: number, threshold: number): "P1" | "P2" {
   return value >= threshold ? "P1" : "P2";
 }
 
+const PO_OVERDUE_REPORT_HREF = "/reports?report=overdue_orders";
+
 export async function buildReportingCockpitSnapshot(params: {
   tenantId: string;
 }): Promise<ReportingCockpitSnapshot> {
   const now = new Date();
+  const ms7 = 7 * 24 * 60 * 60 * 1000;
+  const last7Start = new Date(now.getTime() - ms7);
+  const prev7Start = new Date(now.getTime() - 2 * ms7);
 
   const [
     openPoCount,
@@ -113,6 +118,57 @@ export async function buildReportingCockpitSnapshot(params: {
     }),
   ]);
 
+  const [
+    poCreatedLast7,
+    poCreatedPrev7,
+    shipmentsCreatedLast7,
+    shipmentsCreatedPrev7,
+    ctOpenedLast7,
+    ctOpenedPrev7,
+    crmActivitiesLast7,
+    crmActivitiesPrev7,
+  ] = await Promise.all([
+    prisma.purchaseOrder.count({
+      where: { tenantId: params.tenantId, createdAt: { gte: last7Start } },
+    }),
+    prisma.purchaseOrder.count({
+      where: {
+        tenantId: params.tenantId,
+        createdAt: { gte: prev7Start, lt: last7Start },
+      },
+    }),
+    prisma.shipment.count({
+      where: {
+        order: { tenantId: params.tenantId },
+        createdAt: { gte: last7Start },
+      },
+    }),
+    prisma.shipment.count({
+      where: {
+        order: { tenantId: params.tenantId },
+        createdAt: { gte: prev7Start, lt: last7Start },
+      },
+    }),
+    prisma.ctException.count({
+      where: { tenantId: params.tenantId, createdAt: { gte: last7Start } },
+    }),
+    prisma.ctException.count({
+      where: {
+        tenantId: params.tenantId,
+        createdAt: { gte: prev7Start, lt: last7Start },
+      },
+    }),
+    prisma.crmActivity.count({
+      where: { tenantId: params.tenantId, createdAt: { gte: last7Start } },
+    }),
+    prisma.crmActivity.count({
+      where: {
+        tenantId: params.tenantId,
+        createdAt: { gte: prev7Start, lt: last7Start },
+      },
+    }),
+  ]);
+
   const weightedPipelineAmount = weightedPipelineAgg.reduce((sum, o) => {
     const rev = decimalToNumber(o.estimatedRevenue);
     const p = Math.min(100, Math.max(0, Number(o.probability ?? 0)));
@@ -135,6 +191,13 @@ export async function buildReportingCockpitSnapshot(params: {
       onHoldInventoryQty: onHoldQty,
       uninvoicedBillingAmount,
     },
+    activityTrends: {
+      periodLabel: "Last 7 days vs prior 7 days",
+      purchaseOrdersCreated: { last7: poCreatedLast7, prev7: poCreatedPrev7 },
+      shipmentsCreated: { last7: shipmentsCreatedLast7, prev7: shipmentsCreatedPrev7 },
+      ctExceptionsOpened: { last7: ctOpenedLast7, prev7: ctOpenedPrev7 },
+      crmActivitiesCreated: { last7: crmActivitiesLast7, prev7: crmActivitiesPrev7 },
+    },
     exceptions: [
       {
         id: "ct-open-exceptions",
@@ -148,7 +211,7 @@ export async function buildReportingCockpitSnapshot(params: {
         label: "POs past requested delivery",
         count: overduePoCount,
         severity: overduePoCount >= 20 ? "high" : "medium",
-        href: "/reports",
+        href: PO_OVERDUE_REPORT_HREF,
       },
       {
         id: "crm-stale-opps",
@@ -213,7 +276,7 @@ export async function buildReportingCockpitSnapshot(params: {
             id: "act-po-overdue",
             title: "Review overdue requested delivery dates",
             reason: `${overduePoCount} purchase orders are past requested delivery.`,
-            href: "/reports",
+            href: PO_OVERDUE_REPORT_HREF,
             priority: priorityByThreshold(overduePoCount, 20),
           }]
         : []),

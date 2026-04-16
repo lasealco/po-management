@@ -21,6 +21,20 @@ export type CockpitRecommendedAction = {
   priority: "P1" | "P2";
 };
 
+export type CockpitWeekPair = {
+  last7: number;
+  prev7: number;
+};
+
+export type CockpitActivityTrends = {
+  /** Human-readable comparison window, e.g. last 7 calendar days vs the prior 7. */
+  periodLabel: string;
+  purchaseOrdersCreated: CockpitWeekPair;
+  shipmentsCreated: CockpitWeekPair;
+  ctExceptionsOpened: CockpitWeekPair;
+  crmActivitiesCreated: CockpitWeekPair;
+};
+
 export type ReportingCockpitSnapshot = {
   generatedAt: string;
   currency: string;
@@ -32,6 +46,7 @@ export type ReportingCockpitSnapshot = {
     onHoldInventoryQty: number;
     uninvoicedBillingAmount: number;
   };
+  activityTrends: CockpitActivityTrends;
   exceptions: CockpitException[];
   cashCycle: CockpitCashFlowStage[];
   recommendedActions: CockpitRecommendedAction[];

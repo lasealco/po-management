@@ -11,6 +11,7 @@ export function buildCockpitInsightContext(snapshot: ReportingCockpitSnapshot, q
     generatedAt: snapshot.generatedAt,
     currency: snapshot.currency,
     summary: snapshot.summary,
+    activityTrends: snapshot.activityTrends,
     topExceptions: snapshot.exceptions
       .slice()
       .sort((a, b) => b.count - a.count)

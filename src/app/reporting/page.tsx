@@ -2,7 +2,6 @@ import Link from "next/link";
 
 import { AccessDenied } from "@/components/access-denied";
 import { ReportingCockpitBoard } from "@/components/reporting-cockpit-board";
-import { ReportingCockpitClient } from "@/components/reporting-cockpit-client";
 import { getActorUserId, getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { buildReportingCockpitSnapshot } from "@/lib/reporting/cockpit-data";
@@ -72,7 +71,38 @@ export default async function ReportingHubPage({
       </header>
 
       <ReportingCockpitBoard snapshot={snapshot} />
-      <ReportingCockpitClient canPo={canPo} canCt={canCt} canCrm={canCrm} canWms={canWms} />
+
+      <div className="mb-6 flex flex-wrap gap-2">
+        {canPo ? (
+          <Link href="/reports" className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm hover:bg-zinc-50">
+            PO reports
+          </Link>
+        ) : null}
+        {canCt ? (
+          <Link
+            href="/control-tower/reports"
+            className="rounded-md border border-sky-300 bg-sky-50 px-3 py-1.5 text-sm text-sky-900 hover:bg-sky-100"
+          >
+            Control Tower reports
+          </Link>
+        ) : null}
+        {canCrm ? (
+          <Link
+            href="/crm/reporting"
+            className="rounded-md border border-violet-300 bg-violet-50 px-3 py-1.5 text-sm text-violet-900 hover:bg-violet-100"
+          >
+            CRM reporting
+          </Link>
+        ) : null}
+        {canWms ? (
+          <Link
+            href="/wms/reporting"
+            className="rounded-md border border-violet-300 bg-violet-50 px-3 py-1.5 text-sm text-violet-900 hover:bg-violet-100"
+          >
+            WMS reporting
+          </Link>
+        ) : null}
+      </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         {canPo ? (

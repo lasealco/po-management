@@ -76,12 +76,17 @@ function parseNumericValue(value: string | number | null | undefined): number | 
 export function ReportsClient({
   initialList,
   blockedReports = [],
+  initialReportId,
 }: {
   initialList: ReportListItem[];
   blockedReports?: BlockedReportRow[];
+  /** When set and present in `initialList`, pre-select this report (e.g. from `?report=`). */
+  initialReportId?: string | null;
 }) {
   const [reports] = useState(initialList);
-  const [selectedId, setSelectedId] = useState(initialList[0]?.id ?? "");
+  const preferredId =
+    initialReportId && initialList.some((r) => r.id === initialReportId) ? initialReportId : initialList[0]?.id ?? "";
+  const [selectedId, setSelectedId] = useState(preferredId);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ReportResult | null>(null);

@@ -9,7 +9,13 @@ import { getReportAccessBlocker } from "@/lib/reports/run-report";
 
 export const dynamic = "force-dynamic";
 
-export default async function ReportsPage() {
+export default async function ReportsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ report?: string }>;
+}) {
+  const sp = searchParams ? await searchParams : {};
+  const reportParam = typeof sp.report === "string" ? sp.report.trim() : "";
   const access = await getViewerGrantSet();
   const tenant = await getDemoTenant();
   const actorId = await getActorUserId();
@@ -88,11 +94,15 @@ export default async function ReportsPage() {
               looks wrong, ask an admin to update{" "}
               <span className="font-medium">Settings → Roles</span>.
             </p>
-            <ReportsClient initialList={[]} blockedReports={blockedReports} />
+            <ReportsClient initialList={[]} blockedReports={blockedReports} initialReportId={reportParam || null} />
           </div>
         ) : (
           <div className="mt-8">
-            <ReportsClient initialList={initialList} blockedReports={blockedReports} />
+            <ReportsClient
+              initialList={initialList}
+              blockedReports={blockedReports}
+              initialReportId={reportParam || null}
+            />
           </div>
         )}
       </main>

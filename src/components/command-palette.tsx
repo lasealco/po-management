@@ -58,19 +58,27 @@ export function CommandPalette({ grants }: { grants: CommandPaletteGrants }) {
       list.push({
         id: "reporting-hub",
         label: "Reporting hub",
-        hint: "PO, Control Tower, CRM, WMS",
-        searchText: "reporting analytics hub all modules",
+        hint: "PO, Control Tower, CRM, WMS — on page: R refresh, Shift+R silent",
+        searchText: "reporting analytics hub all modules refresh keyboard shift cockpit",
         action: go("/reporting"),
       });
     }
 
     if (grants.reports) {
-      list.push({
-        id: "reports-po",
-        label: "PO Management — reports",
-        searchText: "analytics export csv summary purchase orders",
-        action: go("/reports"),
-      });
+      list.push(
+        {
+          id: "reports-po",
+          label: "PO Management — reports",
+          searchText: "analytics export csv summary purchase orders",
+          action: go("/reports"),
+        },
+        {
+          id: "reports-po-overdue",
+          label: "PO reports — overdue by requested delivery",
+          searchText: "overdue delivery late requested date report",
+          action: go("/reports?report=overdue_orders"),
+        },
+      );
     }
 
     if (grants.orders) {
