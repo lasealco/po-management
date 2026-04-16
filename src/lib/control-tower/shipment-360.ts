@@ -11,6 +11,93 @@ import { listMilestonePackCatalogForTenant } from "./milestone-templates";
 import { computeShipmentEmissionsSummary } from "./shipment-emissions";
 import { labelForCtDocType } from "./shipment-document-types";
 
+function localityLine(
+  city: string | null | undefined,
+  region: string | null | undefined,
+  postal: string | null | undefined,
+  country: string | null | undefined,
+): string | null {
+  const line = [postal, region, city].map((x) => (x ? String(x).trim() : "")).filter(Boolean).join(" ");
+  const cc = country ? String(country).trim().toUpperCase() : "";
+  if (line && cc) return `${line}, ${cc}`;
+  if (line) return line;
+  if (cc) return cc;
+  return null;
+}
+
+/** Shipper / consignee / notify blocks in the style of BOL / AWB party boxes (from PO + supplier master). */
+function buildBolDocumentParties(
+  s: {
+    order: {
+      shipToName: string | null;
+      shipToLine1: string | null;
+      shipToLine2: string | null;
+      shipToCity: string | null;
+      shipToRegion: string | null;
+      shipToPostalCode: string | null;
+      shipToCountryCode: string | null;
+      supplier: {
+        name: string;
+        legalName: string | null;
+        taxId: string | null;
+        registeredAddressLine1: string | null;
+        registeredAddressLine2: string | null;
+        registeredCity: string | null;
+        registeredRegion: string | null;
+        registeredPostalCode: string | null;
+        registeredCountryCode: string | null;
+      } | null;
+    };
+    customerCrmAccount: { name: string; legalName: string | null } | null;
+  },
+  restricted: boolean,
+) {
+  const o = s.order;
+  const sup = o.supplier;
+  const shipperName = sup ? (sup.legalName?.trim() || sup.name) : null;
+  const shipperLines: string[] = [];
+  if (sup && !restricted) {
+    if (sup.registeredAddressLine1?.trim()) shipperLines.push(sup.registeredAddressLine1.trim());
+    if (sup.registeredAddressLine2?.trim()) shipperLines.push(sup.registeredAddressLine2.trim());
+  }
+  const shipperLocality = sup
+    ? localityLine(sup.registeredCity, sup.registeredRegion, sup.registeredPostalCode, sup.registeredCountryCode)
+    : null;
+
+  const consigneeName = o.shipToName?.trim() || null;
+  const consigneeLines: string[] = [];
+  if (!restricted) {
+    if (o.shipToLine1?.trim()) consigneeLines.push(o.shipToLine1.trim());
+    if (o.shipToLine2?.trim()) consigneeLines.push(o.shipToLine2.trim());
+  }
+  const consigneeLocality = localityLine(
+    o.shipToCity,
+    o.shipToRegion,
+    o.shipToPostalCode,
+    o.shipToCountryCode,
+  );
+
+  return {
+    shipper: {
+      name: shipperName,
+      addressLines: shipperLines,
+      localityLine: shipperLocality,
+      taxId: restricted ? null : (sup?.taxId?.trim() || null),
+    },
+    consignee: {
+      name: consigneeName,
+      addressLines: consigneeLines,
+      localityLine: consigneeLocality,
+    },
+    notifyParty: s.customerCrmAccount
+      ? {
+          name: s.customerCrmAccount.name,
+          legalName: restricted ? null : (s.customerCrmAccount.legalName?.trim() || null),
+        }
+      : null,
+  };
+}
+
 export async function getShipment360(params: {
   tenantId: string;
   shipmentId: string;
@@ -35,9 +122,26 @@ export async function getShipment360(params: {
           buyerReference: true,
           supplierReference: true,
           shipToName: true,
+          shipToLine1: true,
+          shipToLine2: true,
           shipToCity: true,
+          shipToRegion: true,
+          shipToPostalCode: true,
           shipToCountryCode: true,
-          supplier: { select: { id: true, name: true, legalName: true } },
+          supplier: {
+            select: {
+              id: true,
+              name: true,
+              legalName: true,
+              taxId: true,
+              registeredAddressLine1: true,
+              registeredAddressLine2: true,
+              registeredCity: true,
+              registeredRegion: true,
+              registeredPostalCode: true,
+              registeredCountryCode: true,
+            },
+          },
         },
       },
       createdBy: { select: { id: true, name: true } },
@@ -353,6 +457,15 @@ export async function getShipment360(params: {
       }
     : s.order;
 
+  const bolDocumentParties = buildBolDocumentParties(s, restricted);
+  const documentRouting = {
+    originCode: s.booking?.originCode ?? null,
+    destinationCode: s.booking?.destinationCode ?? null,
+    incoterm: s.order.incoterm ?? null,
+    buyerReference: restricted ? null : (s.order.buyerReference ?? null),
+    supplierReference: restricted ? null : (s.order.supplierReference ?? null),
+  };
+
   const ctMilestoneSourceRows = restricted
     ? filterCtTrackingMilestonesForPortal(s.ctTrackingMilestones)
     : s.ctTrackingMilestones;
@@ -422,6 +535,8 @@ export async function getShipment360(params: {
     shipmentNotes: restricted ? null : s.notes,
     customerCrmAccountId: s.customerCrmAccountId,
     customerCrmAccount,
+    bolDocumentParties,
+    documentRouting,
     crmAccountChoices,
     assigneeChoices,
     exceptionCodeCatalog,

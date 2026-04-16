@@ -57,6 +57,29 @@ function transportModeChipClass(mode: string) {
   return "border-zinc-300 bg-white text-zinc-800";
 }
 
+type BolPartyBlock = {
+  name: string | null;
+  addressLines: string[];
+  localityLine: string | null;
+  taxId?: string | null;
+};
+
+function BolPartyBox({ label, party }: { label: string; party: BolPartyBlock }) {
+  return (
+    <div className="rounded-lg border border-zinc-200/80 bg-zinc-50/50 p-3">
+      <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">{label}</p>
+      <p className="mt-1 text-base font-semibold leading-snug text-zinc-950">{party.name || "—"}</p>
+      {party.addressLines.map((ln) => (
+        <p key={ln} className="text-sm leading-snug text-zinc-700">
+          {ln}
+        </p>
+      ))}
+      {party.localityLine ? <p className="mt-1 text-xs text-zinc-600">{party.localityLine}</p> : null}
+      {party.taxId ? <p className="mt-0.5 text-[11px] text-zinc-500">Tax ID: {party.taxId}</p> : null}
+    </div>
+  );
+}
+
 export function ControlTowerShipment360({
   shipmentId,
   canEdit,
@@ -318,6 +341,22 @@ export function ControlTowerShipment360({
   const customerCrmAccount = data.customerCrmAccount as
     | { id: string; name: string; legalName: string | null }
     | null
+    | undefined;
+  const bolDocumentParties = data.bolDocumentParties as
+    | {
+        shipper: BolPartyBlock;
+        consignee: BolPartyBlock;
+        notifyParty: { name: string; legalName: string | null } | null;
+      }
+    | undefined;
+  const documentRouting = data.documentRouting as
+    | {
+        originCode: string | null;
+        destinationCode: string | null;
+        incoterm: string | null;
+        buyerReference: string | null;
+        supplierReference: string | null;
+      }
     | undefined;
 
   const restricted = Boolean(
@@ -711,6 +750,66 @@ export function ControlTowerShipment360({
             </section>
           ) : null}
           </div>
+
+          {bolDocumentParties ? (
+            <section className="rounded-xl border border-zinc-200/90 bg-white p-4 text-sm shadow-sm">
+              <h2 className="text-sm font-semibold text-zinc-900">Shipper, consignee & notify party</h2>
+              <p className="mt-0.5 text-xs leading-relaxed text-zinc-500">
+                Typical BOL / AWB party boxes: shipper from the supplier master (registered address), consignee from the
+                order ship-to, notify party from the linked logistics customer when set.
+              </p>
+              <div className="mt-4 grid gap-3 lg:grid-cols-3">
+                <BolPartyBox label="Shipper" party={bolDocumentParties.shipper} />
+                <BolPartyBox label="Consignee" party={bolDocumentParties.consignee} />
+                <BolPartyBox
+                  label="Notify party"
+                  party={{
+                    name: bolDocumentParties.notifyParty?.name ?? null,
+                    addressLines: bolDocumentParties.notifyParty?.legalName
+                      ? [bolDocumentParties.notifyParty.legalName]
+                      : [],
+                    localityLine: null,
+                  }}
+                />
+              </div>
+              {documentRouting ? (
+                <dl className="mt-4 grid gap-3 border-t border-zinc-100 pt-4 text-xs text-zinc-700 sm:grid-cols-2 lg:grid-cols-4">
+                  <div>
+                    <dt className="font-semibold uppercase tracking-wide text-zinc-500">Place of receipt / origin</dt>
+                    <dd className="mt-0.5 font-mono text-sm text-zinc-900">
+                      {documentRouting.originCode || "—"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="font-semibold uppercase tracking-wide text-zinc-500">
+                      Port of discharge / destination
+                    </dt>
+                    <dd className="mt-0.5 font-mono text-sm text-zinc-900">
+                      {documentRouting.destinationCode || "—"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="font-semibold uppercase tracking-wide text-zinc-500">Incoterm</dt>
+                    <dd className="mt-0.5">{documentRouting.incoterm || "—"}</dd>
+                  </div>
+                  <div className="sm:col-span-2 lg:col-span-1">
+                    <dt className="font-semibold uppercase tracking-wide text-zinc-500">References on documents</dt>
+                    <dd className="mt-0.5 space-y-0.5">
+                      {documentRouting.buyerReference ? (
+                        <span className="block">Buyer ref: {documentRouting.buyerReference}</span>
+                      ) : null}
+                      {documentRouting.supplierReference ? (
+                        <span className="block">Supplier ref: {documentRouting.supplierReference}</span>
+                      ) : null}
+                      {!documentRouting.buyerReference && !documentRouting.supplierReference ? (
+                        <span className="text-zinc-400">—</span>
+                      ) : null}
+                    </dd>
+                  </div>
+                </dl>
+              ) : null}
+            </section>
+          ) : null}
 
           <section className="rounded-xl border border-zinc-200/90 bg-white p-4 text-sm shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-2">
