@@ -337,12 +337,19 @@ export function MiniPieChart({
   const cx = size / 2;
   const cy = size / 2;
   const r = size * 0.38;
-  let angle = -Math.PI / 2;
-  const slices = data.map((d, i) => {
-    const sweep = (d.value / total) * Math.PI * 2;
-    const a0 = angle;
-    const a1 = angle + sweep;
-    angle = a1;
+  const sliceAngles: { d: (typeof data)[number]; i: number; a0: number; a1: number }[] = [];
+  {
+    let angle = -Math.PI / 2;
+    for (let i = 0; i < data.length; i += 1) {
+      const d = data[i]!;
+      const sweep = (d.value / total) * Math.PI * 2;
+      const a0 = angle;
+      const a1 = angle + sweep;
+      sliceAngles.push({ d, i, a0, a1 });
+      angle = a1;
+    }
+  }
+  const slices = sliceAngles.map(({ d, i, a0, a1 }) => {
     const path = pieSlicePath(cx, cy, r, a0, a1);
     const k = seriesKey(d, i);
     const sel = selectedKey != null && selectedKey === k;

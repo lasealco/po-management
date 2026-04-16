@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { HelpDoAction } from "@/lib/help-actions";
 import { HELP_PLAYBOOKS, type HelpPlaybook } from "@/lib/help-playbooks";
 
@@ -8,6 +9,7 @@ type ChatEntry = { role: "user" | "assistant"; text: string };
 type HelpAction = { label: string; href: string };
 
 export function HelpAssistant() {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -129,7 +131,7 @@ export function HelpAssistant() {
       return;
     }
     setChat((prev) => [...prev, { role: "assistant", text: payload.message ?? "Done." }]);
-    window.location.href = payload.href;
+    router.push(payload.href);
   }
 
   function runSuggestion(text: string) {

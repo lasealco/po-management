@@ -527,15 +527,6 @@ export async function handleWmsPost(
   if (action === "complete_wave") {
     const waveId = input.waveId?.trim() || "";
     if (!waveId) return NextResponse.json({ error: "waveId required." }, { status: 400 });
-    const wavePickTasks = await prisma.wmsTask.findMany({
-      where: {
-        tenantId,
-        waveId,
-        taskType: "PICK",
-        status: "OPEN",
-      },
-      select: { referenceId: true },
-    });
     await prisma.$transaction(async (tx) => {
       const tasks = await tx.wmsTask.findMany({
         where: {

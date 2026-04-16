@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { startTransition, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 
 type SessionUser = { email: string; name: string; isActive: boolean };
@@ -30,7 +30,9 @@ export function DemoUserSwitcher() {
   }, []);
 
   useEffect(() => {
-    void load();
+    startTransition(() => {
+      void load();
+    });
   }, [load]);
 
   async function onSelect(email: string) {

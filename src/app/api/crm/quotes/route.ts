@@ -107,7 +107,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Account not found." }, { status: 404 });
   }
 
-  let opportunityId: string | null = body.opportunityId?.trim() || null;
+  const opportunityId: string | null = body.opportunityId?.trim() || null;
   if (opportunityId) {
     const opp = await prisma.crmOpportunity.findFirst({
       where: {

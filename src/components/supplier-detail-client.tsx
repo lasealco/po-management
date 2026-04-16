@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SupplierOrderHistorySection } from "@/components/supplier-order-history";
 import type { SupplierOrderAnalytics } from "@/lib/supplier-order-analytics";
@@ -110,28 +110,30 @@ export function SupplierDetailClient({
   );
 
   useEffect(() => {
-    setName(initial.name);
-    setCode(initial.code ?? "");
-    setEmail(initial.email ?? "");
-    setPhone(initial.phone ?? "");
-    setIsActive(initial.isActive);
-    setLegalName(initial.legalName ?? "");
-    setTaxId(initial.taxId ?? "");
-    setWebsite(initial.website ?? "");
-    setRegLine1(initial.registeredAddressLine1 ?? "");
-    setRegLine2(initial.registeredAddressLine2 ?? "");
-    setRegCity(initial.registeredCity ?? "");
-    setRegRegion(initial.registeredRegion ?? "");
-    setRegPostal(initial.registeredPostalCode ?? "");
-    setRegCountry(initial.registeredCountryCode ?? "");
-    setPayDays(
-      initial.paymentTermsDays != null ? String(initial.paymentTermsDays) : "",
-    );
-    setPayLabel(initial.paymentTermsLabel ?? "");
-    setCreditLimit(initial.creditLimit ?? "");
-    setCreditCurrency(initial.creditCurrency ?? "");
-    setIncoterm(initial.defaultIncoterm ?? "");
-    setInternalNotes(initial.internalNotes ?? "");
+    startTransition(() => {
+      setName(initial.name);
+      setCode(initial.code ?? "");
+      setEmail(initial.email ?? "");
+      setPhone(initial.phone ?? "");
+      setIsActive(initial.isActive);
+      setLegalName(initial.legalName ?? "");
+      setTaxId(initial.taxId ?? "");
+      setWebsite(initial.website ?? "");
+      setRegLine1(initial.registeredAddressLine1 ?? "");
+      setRegLine2(initial.registeredAddressLine2 ?? "");
+      setRegCity(initial.registeredCity ?? "");
+      setRegRegion(initial.registeredRegion ?? "");
+      setRegPostal(initial.registeredPostalCode ?? "");
+      setRegCountry(initial.registeredCountryCode ?? "");
+      setPayDays(
+        initial.paymentTermsDays != null ? String(initial.paymentTermsDays) : "",
+      );
+      setPayLabel(initial.paymentTermsLabel ?? "");
+      setCreditLimit(initial.creditLimit ?? "");
+      setCreditCurrency(initial.creditCurrency ?? "");
+      setIncoterm(initial.defaultIncoterm ?? "");
+      setInternalNotes(initial.internalNotes ?? "");
+    });
   }, [initial.updatedAt]);
 
   const [officeName, setOfficeName] = useState("");

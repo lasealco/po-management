@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { startTransition, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type SupplierOption = {
@@ -200,11 +200,13 @@ export function OrderCreateForm({
 
   useEffect(() => {
     if (useAlternateDelivery) return;
-    setShipToName(buyerWarehouse?.name ?? "");
-    setShipToLine1(buyerWarehouse?.addressLine1 ?? "");
-    setShipToCity(buyerWarehouse?.city ?? "");
-    setShipToRegion(buyerWarehouse?.region ?? "");
-    setShipToCountryCode(buyerWarehouse?.countryCode ?? "");
+    startTransition(() => {
+      setShipToName(buyerWarehouse?.name ?? "");
+      setShipToLine1(buyerWarehouse?.addressLine1 ?? "");
+      setShipToCity(buyerWarehouse?.city ?? "");
+      setShipToRegion(buyerWarehouse?.region ?? "");
+      setShipToCountryCode(buyerWarehouse?.countryCode ?? "");
+    });
   }, [buyerWarehouse, useAlternateDelivery]);
 
   function updateLine(index: number, patch: Partial<LineDraft>) {
@@ -1012,7 +1014,7 @@ export function OrderCreateForm({
         ) : null}
         {availableProducts.length === 0 ? (
           <p className="mb-2 text-xs text-amber-700">
-            No products are linked to this supplier yet. Use "New product" to add one for this
+            No products are linked to this supplier yet. Use &quot;New product&quot; to add one for this
             supplier.
           </p>
         ) : null}

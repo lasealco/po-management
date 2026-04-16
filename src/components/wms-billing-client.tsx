@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { startTransition, useCallback, useEffect, useState } from "react";
 
 type BillingPayload = {
   profileSourceNote?: string;
@@ -66,7 +66,9 @@ export function WmsBillingClient({ canEdit }: { canEdit: boolean }) {
   }, []);
 
   useEffect(() => {
-    void load();
+    startTransition(() => {
+      void load();
+    });
   }, [load]);
 
   async function postAction(body: Record<string, unknown>) {

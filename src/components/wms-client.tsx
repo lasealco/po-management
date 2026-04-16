@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useState } from "react";
 
 type WmsData = {
   warehouses: Array<{ id: string; code: string | null; name: string; type: "CFS" | "WAREHOUSE" }>;
@@ -266,7 +266,9 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
   useEffect(() => {
     const taskType = (searchParams.get("taskType") || "").toUpperCase();
     if (taskType === "PUTAWAY" || taskType === "PICK" || taskType === "REPLENISH" || taskType === "CYCLE_COUNT") {
-      setOpenTaskTypeFilter(taskType);
+      startTransition(() => {
+        setOpenTaskTypeFilter(taskType);
+      });
     }
   }, [searchParams]);
 
@@ -306,21 +308,25 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
   ]);
 
   useEffect(() => {
-    void load();
+    startTransition(() => {
+      void load();
+    });
   }, [load]);
 
   useEffect(() => {
     if (!data) return;
-    const next: Record<string, { asn: string; expectedReceiveAt: string }> = {};
-    for (const s of data.inboundShipments) {
-      next[s.id] = {
-        asn: s.asnReference ?? "",
-        expectedReceiveAt: s.expectedReceiveAt
-          ? s.expectedReceiveAt.slice(0, 16)
-          : "",
-      };
-    }
-    setInboundEdits(next);
+    startTransition(() => {
+      const next: Record<string, { asn: string; expectedReceiveAt: string }> = {};
+      for (const s of data.inboundShipments) {
+        next[s.id] = {
+          asn: s.asnReference ?? "",
+          expectedReceiveAt: s.expectedReceiveAt
+            ? s.expectedReceiveAt.slice(0, 16)
+            : "",
+        };
+      }
+      setInboundEdits(next);
+    });
   }, [data]);
 
   const binsForWarehouse = useMemo(

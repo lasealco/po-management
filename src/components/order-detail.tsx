@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 type OrderDetailResponse = {
@@ -295,7 +295,9 @@ export function OrderDetail({
   }, [orderId]);
 
   useEffect(() => {
-    void load();
+    startTransition(() => {
+      void load();
+    });
   }, [load]);
 
   useEffect(() => {
@@ -335,74 +337,78 @@ export function OrderDetail({
 
   useEffect(() => {
     if (!data) return;
-    const o = data.order;
-    setBuyerReference(o.buyerReference ?? "");
-    setSupplierReference(o.supplierReference ?? "");
-    setPaymentTermsDays(
-      o.paymentTermsDays != null ? String(o.paymentTermsDays) : "",
-    );
-    setPaymentTermsLabel(o.paymentTermsLabel ?? "");
-    setIncoterm(o.incoterm ?? "");
-    setRequestedDeliveryDate(deliveryDateInputValue(o.requestedDeliveryDate));
-    setShipToName(o.shipToName ?? "");
-    setShipToLine1(o.shipToLine1 ?? "");
-    setShipToLine2(o.shipToLine2 ?? "");
-    setShipToCity(o.shipToCity ?? "");
-    setShipToRegion(o.shipToRegion ?? "");
-    setShipToPostalCode(o.shipToPostalCode ?? "");
-    setShipToCountryCode(o.shipToCountryCode ?? "");
-    setInternalNotes(o.internalNotes ?? "");
-    setNotesToSupplier(o.notesToSupplier ?? "");
-    setAsnQtyByItemId((prev) => {
-      const next: Record<string, string> = { ...prev };
-      for (const item of data.items) {
-        if (!(item.id in next)) next[item.id] = "";
-      }
-      return next;
-    });
-    setBookingDraftByShipmentId((prev) => {
-      const next = { ...prev };
-      for (const shipment of data.shipments) {
-        if (next[shipment.id]) continue;
-        next[shipment.id] = {
-          bookingNo: shipment.booking?.bookingNo ?? "",
-          serviceLevel: shipment.booking?.serviceLevel ?? "",
-          forwarderSupplierId: shipment.booking?.forwarderSupplier?.id ?? "",
-          forwarderOfficeId: shipment.booking?.forwarderOffice?.id ?? "",
-          forwarderContactId: shipment.booking?.forwarderContact?.id ?? "",
-          transportMode: shipment.booking?.mode ?? shipment.transportMode ?? "",
-          originCode: shipment.booking?.originCode ?? "",
-          destinationCode: shipment.booking?.destinationCode ?? "",
-          etd: deliveryDateInputValue(shipment.booking?.etd ?? null),
-          eta: deliveryDateInputValue(shipment.booking?.eta ?? null),
-          latestEta: deliveryDateInputValue(shipment.booking?.latestEta ?? null),
-          notes: shipment.booking?.notes ?? "",
-        };
-      }
-      return next;
+    startTransition(() => {
+      const o = data.order;
+      setBuyerReference(o.buyerReference ?? "");
+      setSupplierReference(o.supplierReference ?? "");
+      setPaymentTermsDays(
+        o.paymentTermsDays != null ? String(o.paymentTermsDays) : "",
+      );
+      setPaymentTermsLabel(o.paymentTermsLabel ?? "");
+      setIncoterm(o.incoterm ?? "");
+      setRequestedDeliveryDate(deliveryDateInputValue(o.requestedDeliveryDate));
+      setShipToName(o.shipToName ?? "");
+      setShipToLine1(o.shipToLine1 ?? "");
+      setShipToLine2(o.shipToLine2 ?? "");
+      setShipToCity(o.shipToCity ?? "");
+      setShipToRegion(o.shipToRegion ?? "");
+      setShipToPostalCode(o.shipToPostalCode ?? "");
+      setShipToCountryCode(o.shipToCountryCode ?? "");
+      setInternalNotes(o.internalNotes ?? "");
+      setNotesToSupplier(o.notesToSupplier ?? "");
+      setAsnQtyByItemId((prev) => {
+        const next: Record<string, string> = { ...prev };
+        for (const item of data.items) {
+          if (!(item.id in next)) next[item.id] = "";
+        }
+        return next;
+      });
+      setBookingDraftByShipmentId((prev) => {
+        const next = { ...prev };
+        for (const shipment of data.shipments) {
+          if (next[shipment.id]) continue;
+          next[shipment.id] = {
+            bookingNo: shipment.booking?.bookingNo ?? "",
+            serviceLevel: shipment.booking?.serviceLevel ?? "",
+            forwarderSupplierId: shipment.booking?.forwarderSupplier?.id ?? "",
+            forwarderOfficeId: shipment.booking?.forwarderOffice?.id ?? "",
+            forwarderContactId: shipment.booking?.forwarderContact?.id ?? "",
+            transportMode: shipment.booking?.mode ?? shipment.transportMode ?? "",
+            originCode: shipment.booking?.originCode ?? "",
+            destinationCode: shipment.booking?.destinationCode ?? "",
+            etd: deliveryDateInputValue(shipment.booking?.etd ?? null),
+            eta: deliveryDateInputValue(shipment.booking?.eta ?? null),
+            latestEta: deliveryDateInputValue(shipment.booking?.latestEta ?? null),
+            notes: shipment.booking?.notes ?? "",
+          };
+        }
+        return next;
+      });
     });
   }, [data?.order.updatedAt]);
 
   useEffect(() => {
     if (!data?.items.length) return;
-    setAllocations((previous) => {
-      const next: typeof previous = { ...previous };
-      for (const item of data.items) {
-        if (!next[item.id]) next[item.id] = {};
-        for (let i = 1; i <= childCount; i += 1) {
-          if (!next[item.id][i]) {
-            next[item.id][i] = {
-              quantity: "",
-              plannedShipDate: todayIsoDate(),
-            };
+    startTransition(() => {
+      setAllocations((previous) => {
+        const next: typeof previous = { ...previous };
+        for (const item of data.items) {
+          if (!next[item.id]) next[item.id] = {};
+          for (let i = 1; i <= childCount; i += 1) {
+            if (!next[item.id][i]) {
+              next[item.id][i] = {
+                quantity: "",
+                plannedShipDate: todayIsoDate(),
+              };
+            }
           }
+          Object.keys(next[item.id]).forEach((key) => {
+            const idx = Number(key);
+            if (idx > childCount) delete next[item.id][idx];
+          });
         }
-        Object.keys(next[item.id]).forEach((key) => {
-          const idx = Number(key);
-          if (idx > childCount) delete next[item.id][idx];
-        });
-      }
-      return next;
+        return next;
+      });
     });
   }, [data?.items, childCount]);
 

@@ -285,12 +285,15 @@ function ResultPieChart({
   }));
   const total = entries.reduce((a, b) => a + b.value, 0);
   if (total <= 0) return <div className="rounded border border-zinc-200 bg-zinc-50 px-3 py-4 text-xs text-zinc-500">No chart data</div>;
-  let cursor = 0;
-  const gradientParts = entries.map((e) => {
-    const start = (cursor / total) * 100;
-    cursor += e.value;
-    const end = (cursor / total) * 100;
-    return `${e.color} ${start}% ${end}%`;
+  const cumulative = entries.reduce<number[]>((acc, e, idx) => {
+    const prev = idx === 0 ? 0 : acc[idx - 1]!;
+    acc.push(prev + e.value);
+    return acc;
+  }, []);
+  const gradientParts = entries.map((e, idx) => {
+    const start = (idx === 0 ? 0 : cumulative[idx - 1]!) / total;
+    const end = cumulative[idx]! / total;
+    return `${e.color} ${start * 100}% ${end * 100}%`;
   });
   return (
     <div className="flex flex-wrap items-center gap-4">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { startTransition, useCallback, useEffect, useState } from "react";
 
 import {
   groupCatalogByResource,
@@ -11,6 +11,14 @@ import {
 type RoleOption = { id: string; name: string };
 
 type CatalogRow = GlobalPermissionRow & { granted: boolean };
+
+function grantsKey(rows: CatalogRow[]) {
+  return rows
+    .filter((r) => r.granted)
+    .map((r) => `${r.resource}\0${r.action}`)
+    .sort()
+    .join("|");
+}
 
 export function SettingsPermissionsClient({
   roles,
@@ -50,16 +58,10 @@ export function SettingsPermissionsClient({
   }, []);
 
   useEffect(() => {
-    void load(roleId);
+    startTransition(() => {
+      void load(roleId);
+    });
   }, [roleId, load]);
-
-  function grantsKey(rows: CatalogRow[]) {
-    return rows
-      .filter((r) => r.granted)
-      .map((r) => `${r.resource}\0${r.action}`)
-      .sort()
-      .join("|");
-  }
 
   function toggle(resource: string, action: string, checked: boolean) {
     setCatalog((prev) => {

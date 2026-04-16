@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma";
 
 export async function WmsHomeOverview({ tenantId }: { tenantId: string }) {
-  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const asOf = new Date();
+  const weekAgo = new Date(asOf.getTime() - 7 * 24 * 60 * 60 * 1000);
   const [
     openTasks,
     openPutaway,

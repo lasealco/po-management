@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export type CommandPaletteGrants = {
@@ -316,7 +316,9 @@ export function CommandPalette({ grants }: { grants: CommandPaletteGrants }) {
   }, [commands, query]);
 
   useEffect(() => {
-    setActiveIdx(0);
+    startTransition(() => {
+      setActiveIdx(0);
+    });
   }, [query, open]);
 
   const toggle = useCallback(() => {

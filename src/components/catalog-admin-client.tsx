@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { startTransition, useCallback, useEffect, useState } from "react";
 
 type Category = {
   id: string;
@@ -45,7 +45,9 @@ export function CatalogAdminClient() {
   }, []);
 
   useEffect(() => {
-    void load();
+    startTransition(() => {
+      void load();
+    });
   }, [load]);
 
   async function addCategory(e: React.FormEvent) {

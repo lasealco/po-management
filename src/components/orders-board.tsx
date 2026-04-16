@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   defaultBoardQueue,
   type BoardQueueFilter,
@@ -73,6 +73,19 @@ export function OrdersBoard({
     useState<BoardQueueFilter>(defaultQueueFilter);
   const [sortMode, setSortMode] = useState<BoardSortMode>(defaultSortMode);
   const skipNextBoardPrefsPersist = useRef(true);
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  useEffect(() => {
+    startTransition(() => {
+      setNowMs(Date.now());
+    });
+    const id = window.setInterval(() => {
+      startTransition(() => {
+        setNowMs(Date.now());
+      });
+    }, 60_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   useEffect(() => {
     if (!persistBoardPrefs) return;
@@ -89,12 +102,15 @@ export function OrdersBoard({
     }, 450);
     return () => window.clearTimeout(t);
   }, [queueFilter, sortMode, persistBoardPrefs]);
-  const isNeedsMyActionRow = (order: OrderRow) => {
-    if (order.allowedActions.length > 0) return true;
-    // buyer split decisions are intentionally detail-only actions (hidden on board),
-    // but they should still appear in "Needs My Action" queues.
-    return data.viewerMode === "buyer" && order.status.code === "SPLIT_PENDING_BUYER";
-  };
+  const isNeedsMyActionRow = useCallback(
+    (order: OrderRow) => {
+      if (order.allowedActions.length > 0) return true;
+      // buyer split decisions are intentionally detail-only actions (hidden on board),
+      // but they should still appear in "Needs My Action" queues.
+      return data.viewerMode === "buyer" && order.status.code === "SPLIT_PENDING_BUYER";
+    },
+    [data.viewerMode],
+  );
 
   const orderCount = useMemo(() => data.orders.length, [data.orders.length]);
   const queueSummary = useMemo(() => {
@@ -105,7 +121,7 @@ export function OrdersBoard({
     let waitingOnMeWarn = 0;
     let waitingOnMeCritical = 0;
     let overdue = 0;
-    const now = Date.now();
+    const now = nowMs;
     for (const order of data.orders) {
       if (order.status.code === "SENT") awaitingSupplier += 1;
       if (order.status.code === "SPLIT_PENDING_BUYER") splitPendingBuyer += 1;
@@ -130,7 +146,7 @@ export function OrdersBoard({
       waitingOnMeCritical,
       overdue,
     };
-  }, [data.orders, data.viewerMode]);
+  }, [data.orders, data.viewerMode, nowMs, isNeedsMyActionRow]);
   const filteredOrders = useMemo(() => {
     if (queueFilter === "needs_my_action") {
       return data.orders.filter((o) => isNeedsMyActionRow(o));
@@ -144,7 +160,7 @@ export function OrdersBoard({
       return data.orders.filter((o) => o.status.code === "SENT");
     }
     if (queueFilter === "overdue") {
-      const now = Date.now();
+      const now = nowMs;
       return data.orders.filter((o) => {
         if (!o.requestedDeliveryDate) return false;
         const dueMs = new Date(o.requestedDeliveryDate).getTime();
@@ -155,11 +171,11 @@ export function OrdersBoard({
       return data.orders.filter((o) => o.status.code === "SPLIT_PENDING_BUYER");
     }
     return data.orders;
-  }, [data.orders, queueFilter]);
+  }, [data.orders, data.viewerMode, queueFilter, nowMs, isNeedsMyActionRow]);
   const displayedOrders = useMemo(() => {
     if (sortMode === "newest") return filteredOrders;
     const rows = [...filteredOrders];
-    const now = Date.now();
+    const now = nowMs;
     const score = (order: OrderRow) => {
       let s = 0;
       const waitingOnMe = order.conversationSla.awaitingReplyFrom === data.viewerMode;
@@ -182,7 +198,7 @@ export function OrdersBoard({
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
     return rows;
-  }, [filteredOrders, sortMode, data.viewerMode]);
+  }, [filteredOrders, sortMode, data.viewerMode, nowMs, isNeedsMyActionRow]);
 
   async function applyAction(order: OrderRow, action: OrderAction) {
     setBusyOrderId(order.id);
@@ -445,7 +461,7 @@ export function OrdersBoard({
                     if (!order.requestedDeliveryDate) return "—";
                     const due = new Date(order.requestedDeliveryDate);
                     const dueMs = due.getTime();
-                    const overdue = !Number.isNaN(dueMs) && dueMs < Date.now();
+                    const overdue = !Number.isNaN(dueMs) && dueMs < nowMs;
                     return (
                       <span
                         className={
@@ -464,7 +480,7 @@ export function OrdersBoard({
                   {Math.max(
                     0,
                     Math.floor(
-                      (Date.now() - new Date(order.createdAt).getTime()) /
+                      (nowMs - new Date(order.createdAt).getTime()) /
                         (1000 * 60 * 60 * 24),
                     ),
                   )}

@@ -90,7 +90,7 @@ Names only (no secrets in git). Use `.env.local` for local development.
 ## Quality checks before pushing
 
 - **`npm run build`** — recommended; runs the Next.js compile and TypeScript pass.
-- **`npm run lint`** — ESLint for the whole tree. The repository may still contain legacy violations in files unrelated to your change; for a narrow check: `npx eslint <path-to-files>`.
+- **`npm run lint`** — ESLint for the whole tree (exits 0). A few `react-hooks/exhaustive-deps` warnings remain on large forms; tighten those when touching those files. For a narrow check: `npx eslint <path-to-files>`.
 
 ## Deploy
 

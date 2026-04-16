@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 type ReportListItem = {
@@ -149,21 +149,23 @@ export function ReportsClient({
   }, [result]);
 
   useEffect(() => {
-    if (!result) {
-      setChartRowIndex(null);
-      return;
-    }
-    const fromUrl = parsedRowFromUrl;
-    const fromProp =
-      initialDrillRow != null && initialDrillRow >= 0 && initialDrillRow < result.rows.length
-        ? initialDrillRow
-        : null;
-    const pick = fromUrl != null && fromUrl >= 0 && fromUrl < result.rows.length ? fromUrl : fromProp;
-    if (pick != null) {
-      setChartRowIndex(pick);
-    } else {
-      setChartRowIndex(null);
-    }
+    startTransition(() => {
+      if (!result) {
+        setChartRowIndex(null);
+        return;
+      }
+      const fromUrl = parsedRowFromUrl;
+      const fromProp =
+        initialDrillRow != null && initialDrillRow >= 0 && initialDrillRow < result.rows.length
+          ? initialDrillRow
+          : null;
+      const pick = fromUrl != null && fromUrl >= 0 && fromUrl < result.rows.length ? fromUrl : fromProp;
+      if (pick != null) {
+        setChartRowIndex(pick);
+      } else {
+        setChartRowIndex(null);
+      }
+    });
   }, [result?.generatedAt, parsedRowFromUrl, initialDrillRow, result]);
 
   useEffect(() => {
