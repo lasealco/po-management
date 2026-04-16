@@ -35,17 +35,33 @@ export type CockpitActivityTrends = {
   crmActivitiesCreated: CockpitWeekPair;
 };
 
+export type CockpitSummary = {
+  openPoCount: number;
+  inTransitShipmentCount: number;
+  openCtExceptionCount: number;
+  activeOpportunityCount: number;
+  onHoldInventoryQty: number;
+  uninvoicedBillingAmount: number;
+};
+
+/** Signed deltas vs the last stored cockpit headline snapshot for this user (see `reporting.cockpitHeadlineBaseline`). */
+export type CockpitHeadlineChange = {
+  sinceLabel: string;
+  baselineGeneratedAt: string;
+  openPoCount: number;
+  inTransitShipmentCount: number;
+  openCtExceptionCount: number;
+  activeOpportunityCount: number;
+  onHoldInventoryQty: number;
+  uninvoicedBillingAmount: number;
+};
+
 export type ReportingCockpitSnapshot = {
   generatedAt: string;
   currency: string;
-  summary: {
-    openPoCount: number;
-    inTransitShipmentCount: number;
-    openCtExceptionCount: number;
-    activeOpportunityCount: number;
-    onHoldInventoryQty: number;
-    uninvoicedBillingAmount: number;
-  };
+  summary: CockpitSummary;
+  /** Null on first load per user, or when `actorUserId` was not passed. */
+  headlineChange: CockpitHeadlineChange | null;
   activityTrends: CockpitActivityTrends;
   exceptions: CockpitException[];
   cashCycle: CockpitCashFlowStage[];

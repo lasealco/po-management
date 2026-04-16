@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getViewerGrantSet, viewerHas } from "@/lib/authz";
+import { getActorUserId, getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { buildReportingCockpitSnapshot } from "@/lib/reporting/cockpit-data";
 
@@ -21,6 +21,10 @@ export async function GET() {
     return NextResponse.json({ error: "Forbidden: no reporting module grants." }, { status: 403 });
   }
 
-  const snapshot = await buildReportingCockpitSnapshot({ tenantId: tenant.id });
+  const actorId = await getActorUserId();
+  const snapshot = await buildReportingCockpitSnapshot({
+    tenantId: tenant.id,
+    actorUserId: actorId,
+  });
   return NextResponse.json({ snapshot });
 }

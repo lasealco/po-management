@@ -22,6 +22,56 @@ export type HelpPlaybook = {
 
 export const HELP_PLAYBOOKS: HelpPlaybook[] = [
   {
+    id: "reporting_hub",
+    title: "Reporting hub & cockpit",
+    summary:
+      "Cross-module cockpit on /reporting: refresh data, optional auto-refresh, keyboard shortcuts, and links to PO, Control Tower, CRM, and WMS reporting.",
+    steps: [
+      {
+        title: "Open the Reporting hub",
+        description: "Single place for the executive cockpit and module shortcuts.",
+        href: "/reporting",
+        doAction: {
+          type: "open_path",
+          label: "Open Reporting hub",
+          payload: { path: "/reporting", guide: "reporting_hub", step: 0 },
+        },
+      },
+      {
+        title: "Refresh cockpit numbers",
+        description:
+          "Use Refresh data, or press R while focus is not in a field. Shift+R refreshes silently (no button spinner).",
+        href: "/reporting",
+        doAction: {
+          type: "open_path",
+          label: "Go to Reporting hub",
+          payload: { path: "/reporting", guide: "reporting_hub", step: 1 },
+        },
+      },
+      {
+        title: "Auto-refresh in the background",
+        description:
+          "Turn on Auto-refresh and pick 5, 10, or 15 minutes. Pauses while the tab is hidden; catch-up runs when you return after a longer break.",
+        href: "/reporting",
+        doAction: {
+          type: "open_path",
+          label: "Open Reporting hub",
+          payload: { path: "/reporting", guide: "reporting_hub", step: 2 },
+        },
+      },
+      {
+        title: "Module workspaces",
+        description: "Jump to PO reports, Control Tower reports, CRM reporting, or WMS reporting from the same page.",
+        href: "/reporting",
+        doAction: {
+          type: "open_path",
+          label: "Open Reporting hub",
+          payload: { path: "/reporting", guide: "reporting_hub", step: 3 },
+        },
+      },
+    ],
+  },
+  {
     id: "create_order",
     title: "Create a Purchase Order",
     summary: "Guide to creating and sending a PO to supplier.",
@@ -291,6 +341,18 @@ export const HELP_PLAYBOOKS: HelpPlaybook[] = [
 
 export function matchPlaybook(query: string): HelpPlaybook | null {
   const q = query.toLowerCase();
+  if (
+    q.includes("/reporting") ||
+    q.includes("reporting hub") ||
+    q.includes("reporting cockpit") ||
+    q.includes("cross-module pulse") ||
+    q.includes("cockpit board") ||
+    (q.includes("reporting") && q.includes("cockpit")) ||
+    (q.includes("reporting") && (q.includes("refresh") || q.includes("keyboard") || q.includes("shortcut"))) ||
+    (q.includes("reporting") && (q.includes("auto-refresh") || q.includes("auto refresh")))
+  ) {
+    return HELP_PLAYBOOKS.find((p) => p.id === "reporting_hub") ?? null;
+  }
   if (
     q.includes("control tower") ||
     q.includes("control-tower") ||

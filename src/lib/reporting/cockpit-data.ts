@@ -2,7 +2,11 @@ import { CrmOpportunityStage, CtExceptionStatus, ShipmentStatus } from "@prisma/
 
 import { prisma } from "@/lib/prisma";
 
-import type { ReportingCockpitSnapshot } from "./cockpit-types";
+import type {
+  CockpitHeadlineChange,
+  CockpitSummary,
+  ReportingCockpitSnapshot,
+} from "./cockpit-types";
 
 function decimalToNumber(v: unknown): number {
   const n = Number(v ?? 0);
@@ -14,9 +18,33 @@ function priorityByThreshold(value: number, threshold: number): "P1" | "P2" {
 }
 
 const PO_OVERDUE_REPORT_HREF = "/reports?report=overdue_orders";
+const HEADLINE_BASELINE_KEY = "reporting.cockpitHeadlineBaseline";
+
+function isCockpitSummary(o: unknown): o is CockpitSummary {
+  if (!o || typeof o !== "object") return false;
+  const x = o as Record<string, unknown>;
+  const nums = ["openPoCount", "inTransitShipmentCount", "openCtExceptionCount", "activeOpportunityCount", "onHoldInventoryQty", "uninvoicedBillingAmount"];
+  return nums.every((k) => typeof x[k] === "number" && Number.isFinite(x[k] as number));
+}
+
+function parseHeadlineBaseline(raw: unknown): { generatedAt: string; summary: CockpitSummary } | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const generatedAt = typeof r.generatedAt === "string" ? r.generatedAt : null;
+  if (!generatedAt || !isCockpitSummary(r.summary)) return null;
+  return { generatedAt, summary: r.summary };
+}
 
 export async function buildReportingCockpitSnapshot(params: {
   tenantId: string;
+  /** When set, snapshot includes headline deltas vs this user’s last stored baseline. */
+  actorUserId?: string | null;
+  /**
+   * When false, baseline is read for headline deltas but not written.
+   * Use for one-off rebuilds (e.g. cockpit insight) so we do not advance the baseline without a full page refresh.
+   * Default: true whenever `actorUserId` is set.
+   */
+  persistHeadlineBaseline?: boolean;
 }): Promise<ReportingCockpitSnapshot> {
   const now = new Date();
   const ms7 = 7 * 24 * 60 * 60 * 1000;
@@ -180,17 +208,55 @@ export async function buildReportingCockpitSnapshot(params: {
   const onHoldQty = decimalToNumber(onHoldInventoryQtyAgg._sum.onHandQty);
   const uninvoicedBillingAmount = decimalToNumber(uninvoicedBillingAgg._sum.amount);
 
+  const summary: CockpitSummary = {
+    openPoCount,
+    inTransitShipmentCount,
+    openCtExceptionCount,
+    activeOpportunityCount,
+    onHoldInventoryQty: onHoldQty,
+    uninvoicedBillingAmount,
+  };
+
+  let headlineChange: CockpitHeadlineChange | null = null;
+  const actorId = params.actorUserId?.trim();
+  const persistBaseline = Boolean(actorId) && params.persistHeadlineBaseline !== false;
+  if (actorId) {
+    const pref = await prisma.userPreference.findUnique({
+      where: { userId_key: { userId: actorId, key: HEADLINE_BASELINE_KEY } },
+      select: { value: true },
+    });
+    const baseline = parseHeadlineBaseline(pref?.value);
+    if (baseline) {
+      headlineChange = {
+        sinceLabel: "Since last cockpit snapshot",
+        baselineGeneratedAt: baseline.generatedAt,
+        openPoCount: summary.openPoCount - baseline.summary.openPoCount,
+        inTransitShipmentCount: summary.inTransitShipmentCount - baseline.summary.inTransitShipmentCount,
+        openCtExceptionCount: summary.openCtExceptionCount - baseline.summary.openCtExceptionCount,
+        activeOpportunityCount: summary.activeOpportunityCount - baseline.summary.activeOpportunityCount,
+        onHoldInventoryQty: summary.onHoldInventoryQty - baseline.summary.onHoldInventoryQty,
+        uninvoicedBillingAmount: summary.uninvoicedBillingAmount - baseline.summary.uninvoicedBillingAmount,
+      };
+    }
+    if (persistBaseline) {
+      await prisma.userPreference.upsert({
+        where: { userId_key: { userId: actorId, key: HEADLINE_BASELINE_KEY } },
+        create: {
+          tenantId: params.tenantId,
+          userId: actorId,
+          key: HEADLINE_BASELINE_KEY,
+          value: { generatedAt: now.toISOString(), summary },
+        },
+        update: { value: { generatedAt: now.toISOString(), summary } },
+      });
+    }
+  }
+
   return {
     generatedAt: now.toISOString(),
     currency: "USD",
-    summary: {
-      openPoCount,
-      inTransitShipmentCount,
-      openCtExceptionCount,
-      activeOpportunityCount,
-      onHoldInventoryQty: onHoldQty,
-      uninvoicedBillingAmount,
-    },
+    summary,
+    headlineChange,
     activityTrends: {
       periodLabel: "Last 7 days vs prior 7 days",
       purchaseOrdersCreated: { last7: poCreatedLast7, prev7: poCreatedPrev7 },

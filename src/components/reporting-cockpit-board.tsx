@@ -42,6 +42,31 @@ function weekDelta(pair: CockpitWeekPair): number {
   return pair.last7 - pair.prev7;
 }
 
+function HeadlineDeltaInline({ d, kind }: { d: number; kind: "neutral" | "risk" }) {
+  if (d === 0) {
+    return <span className="ml-1 text-xs font-medium tabular-nums text-zinc-400">(0)</span>;
+  }
+  const abs = formatNumber(Math.abs(d));
+  const sym = d > 0 ? "+" : "−";
+  const tone =
+    kind === "risk" ? (d > 0 ? "text-rose-600" : "text-emerald-600") : "text-zinc-500";
+  return (
+    <span className={`ml-1 text-xs font-medium tabular-nums ${tone}`}>
+      ({sym}
+      {abs})
+    </span>
+  );
+}
+
+function formatSignedMoneyDelta(n: number, currency: string) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+    signDisplay: "exceptZero",
+  }).format(n);
+}
+
 function DeltaHint({ pair, moreIsWorse }: { pair: CockpitWeekPair; moreIsWorse?: boolean }) {
   const d = weekDelta(pair);
   const good = moreIsWorse ? d < 0 : d > 0;
@@ -487,17 +512,88 @@ export function ReportingCockpitBoard({
                   <div className="grid gap-2 sm:grid-cols-3">
                     <div className="rounded border border-zinc-200 bg-zinc-50 px-2 py-1.5 text-xs">
                       <p className="text-zinc-500">Open POs</p>
-                      <p className="text-base font-semibold">{formatNumber(data.summary.openPoCount)}</p>
+                      <p className="text-base font-semibold">
+                        {formatNumber(data.summary.openPoCount)}
+                        {data.headlineChange ? (
+                          <HeadlineDeltaInline d={data.headlineChange.openPoCount} kind="neutral" />
+                        ) : null}
+                      </p>
                     </div>
                     <div className="rounded border border-zinc-200 bg-zinc-50 px-2 py-1.5 text-xs">
                       <p className="text-zinc-500">In-transit</p>
-                      <p className="text-base font-semibold">{formatNumber(data.summary.inTransitShipmentCount)}</p>
+                      <p className="text-base font-semibold">
+                        {formatNumber(data.summary.inTransitShipmentCount)}
+                        {data.headlineChange ? (
+                          <HeadlineDeltaInline d={data.headlineChange.inTransitShipmentCount} kind="neutral" />
+                        ) : null}
+                      </p>
                     </div>
                     <div className="rounded border border-zinc-200 bg-zinc-50 px-2 py-1.5 text-xs">
                       <p className="text-zinc-500">Active opps</p>
-                      <p className="text-base font-semibold">{formatNumber(data.summary.activeOpportunityCount)}</p>
+                      <p className="text-base font-semibold">
+                        {formatNumber(data.summary.activeOpportunityCount)}
+                        {data.headlineChange ? (
+                          <HeadlineDeltaInline d={data.headlineChange.activeOpportunityCount} kind="neutral" />
+                        ) : null}
+                      </p>
                     </div>
                   </div>
+                  {data.headlineChange ? (
+                    <div
+                      className="rounded border border-zinc-100 bg-zinc-50/90 px-2 py-1.5 text-[11px] text-zinc-600"
+                      title={`Compared to snapshot at ${new Date(data.headlineChange.baselineGeneratedAt).toLocaleString()}`}
+                    >
+                      <span className="font-semibold text-zinc-800">{data.headlineChange.sinceLabel}</span>
+                      <span className="text-zinc-400"> · </span>
+                      <span className="text-zinc-500">
+                        baseline {formatSnapshotAge(data.headlineChange.baselineGeneratedAt, nowMs)}
+                      </span>
+                      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 tabular-nums">
+                        <span>
+                          Open CT exc{" "}
+                          <span
+                            className={
+                              data.headlineChange.openCtExceptionCount === 0
+                                ? "text-zinc-400"
+                                : data.headlineChange.openCtExceptionCount > 0
+                                  ? "font-medium text-rose-600"
+                                  : "font-medium text-emerald-600"
+                            }
+                          >
+                            ({formatNumber(data.headlineChange.openCtExceptionCount)})
+                          </span>
+                        </span>
+                        <span>
+                          On-hold qty{" "}
+                          <span
+                            className={
+                              data.headlineChange.onHoldInventoryQty === 0
+                                ? "text-zinc-400"
+                                : data.headlineChange.onHoldInventoryQty > 0
+                                  ? "font-medium text-rose-600"
+                                  : "font-medium text-emerald-600"
+                            }
+                          >
+                            ({formatNumber(data.headlineChange.onHoldInventoryQty)})
+                          </span>
+                        </span>
+                        <span>
+                          Uninvoiced{" "}
+                          <span
+                            className={
+                              data.headlineChange.uninvoicedBillingAmount === 0
+                                ? "text-zinc-400"
+                                : data.headlineChange.uninvoicedBillingAmount > 0
+                                  ? "font-medium text-amber-700"
+                                  : "font-medium text-emerald-600"
+                            }
+                          >
+                            ({formatSignedMoneyDelta(data.headlineChange.uninvoicedBillingAmount, data.currency)})
+                          </span>
+                        </span>
+                      </div>
+                    </div>
+                  ) : null}
                   <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">
                     New volume · {data.activityTrends.periodLabel}
                   </p>

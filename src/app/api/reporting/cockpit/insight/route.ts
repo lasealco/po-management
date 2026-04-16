@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getViewerGrantSet, viewerHas } from "@/lib/authz";
+import { getActorUserId, getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { buildReportingCockpitSnapshot } from "@/lib/reporting/cockpit-data";
 import { runCockpitInsightLlm } from "@/lib/reporting/cockpit-insight-llm";
@@ -30,7 +30,12 @@ export async function POST(request: Request) {
   const obj = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
   const question = typeof obj.question === "string" ? obj.question.trim().slice(0, 2000) : "";
 
-  const snapshot = await buildReportingCockpitSnapshot({ tenantId: tenant.id });
+  const actorId = await getActorUserId();
+  const snapshot = await buildReportingCockpitSnapshot({
+    tenantId: tenant.id,
+    actorUserId: actorId,
+    persistHeadlineBaseline: false,
+  });
   const out = await runCockpitInsightLlm({ snapshot, question: question || null });
   if ("error" in out) return NextResponse.json({ error: out.error }, { status: 503 });
   return NextResponse.json({ insight: out.insight, generatedAt: snapshot.generatedAt });

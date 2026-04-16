@@ -58,7 +58,10 @@ export default async function ReportingHubPage({
     );
   }
 
-  const snapshot = await buildReportingCockpitSnapshot({ tenantId: tenant.id });
+  const snapshot = await buildReportingCockpitSnapshot({
+    tenantId: tenant.id,
+    actorUserId: actorId,
+  });
 
   return (
     <main className="mx-auto min-h-screen max-w-7xl bg-zinc-50 px-6 py-10">
@@ -67,6 +70,16 @@ export default async function ReportingHubPage({
         <p className="mt-2 max-w-3xl text-sm leading-relaxed text-zinc-600">
           Extraordinary cross-module analytics cockpit plus module-specific workspaces. This first release focuses on
           exceptions and cash-cycle visibility, with AI narrative on top.
+        </p>
+        <p className="mt-3 max-w-3xl text-xs leading-relaxed text-zinc-500">
+          <span className="font-medium text-zinc-700">Tips:</span> use{" "}
+          <kbd className="rounded border border-zinc-300 bg-zinc-100 px-1 py-0.5 font-mono text-[11px]">R</kbd> to
+          refresh the cockpit (when you are not typing in a field),{" "}
+          <kbd className="rounded border border-zinc-300 bg-zinc-100 px-1 py-0.5 font-mono text-[11px]">
+            Shift+R
+          </kbd>{" "}
+          for a silent refresh, and optional <span className="font-medium text-zinc-700">Auto-refresh</span> on the
+          board. Open the Help assistant anytime for the full Reporting hub playbook.
         </p>
       </header>
 

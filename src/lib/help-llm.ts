@@ -79,6 +79,13 @@ function fallbackReply(message: string): HelpReply {
         payload: { path: "/control-tower/workbench", guide: matched.id, step: 1 },
       });
     }
+    if (matched.id === "reporting_hub") {
+      doActions.push({
+        type: "open_path",
+        label: "Open Reporting hub",
+        payload: { path: "/reporting", guide: matched.id, step: 0 },
+      });
+    }
     return {
       answer: `${matched.title}: ${matched.summary}`,
       playbook: matched,
@@ -94,7 +101,7 @@ function fallbackReply(message: string): HelpReply {
   }
   return {
     answer:
-      "I can guide you through orders, suppliers, consolidation, Control Tower, and user administration. Try asking: 'I want to create an order', 'Open Control Tower reports', or 'How do I build a consolidation load?'",
+      "I can guide you through orders, suppliers, consolidation, Control Tower, the Reporting hub (cockpit, refresh shortcuts), and user administration. Try asking: 'I want to create an order', 'How do I refresh the reporting cockpit?', or 'How do I build a consolidation load?'",
     playbook: null,
     suggestions: HELP_PLAYBOOKS.map((p) => p.title),
     actions: ROUTE_HINTS.slice(0, 4),
@@ -148,6 +155,7 @@ export async function buildHelpReply(params: {
     "- open_path: payload { path: '/'|'/consolidation'|'/suppliers'|'/settings/users'|'/settings/warehouses'|'/login'|'/catalog'|'/products'|'/reporting'|'/reports'|'/crm/reporting'|'/wms/reporting'|'/control-tower'|'/control-tower/workbench'|'/control-tower/reports'|'/control-tower/search'|'/control-tower/dashboard'|'/control-tower/command-center'|'/control-tower/ops', guide?, step? }",
     "Use demo PO-1004 only as a known example order number when suggesting open_order.",
     "Do not invent unavailable pages or arbitrary paths.",
+    "Reporting hub (/reporting): Cockpit board supports Refresh data, optional Auto-refresh (5/10/15 min, pauses when the tab is hidden, catch-up when returning), R to refresh when focus is not in an input/textarea/select, Shift+R for silent refresh. Command palette lists the Reporting hub with the same shortcut hints.",
   ].join(" ");
 
   const user = JSON.stringify({
@@ -155,6 +163,8 @@ export async function buildHelpReply(params: {
     currentPath: params.currentPath ?? null,
     availableRoutes: ROUTE_HINTS,
     playbookHint,
+    reportingCockpitHints:
+      "On /reporting: R = refresh snapshot (not while typing in a field). Shift+R = silent refresh. Auto-refresh checkbox + interval; status line shows last auto result (timer, returned to tab, or on enable).",
   });
 
   try {

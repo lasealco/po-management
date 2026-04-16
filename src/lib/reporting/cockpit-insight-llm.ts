@@ -11,6 +11,7 @@ export function buildCockpitInsightContext(snapshot: ReportingCockpitSnapshot, q
     generatedAt: snapshot.generatedAt,
     currency: snapshot.currency,
     summary: snapshot.summary,
+    headlineChange: snapshot.headlineChange,
     activityTrends: snapshot.activityTrends,
     topExceptions: snapshot.exceptions
       .slice()
