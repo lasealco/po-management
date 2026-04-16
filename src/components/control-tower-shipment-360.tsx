@@ -35,6 +35,28 @@ function tabFromInitial(v: string | undefined): Tab {
   return ALL_TABS.includes(v as Tab) ? (v as Tab) : "details";
 }
 
+function shipmentStatusChipClass(status: string) {
+  switch (status) {
+    case "RECEIVED":
+    case "DELIVERED":
+      return "border-emerald-300 bg-emerald-50 text-emerald-900";
+    case "IN_TRANSIT":
+    case "BOOKED":
+      return "border-sky-300 bg-sky-50 text-sky-900";
+    default:
+      return "border-zinc-300 bg-zinc-100 text-zinc-800";
+  }
+}
+
+function transportModeChipClass(mode: string) {
+  const m = mode.toUpperCase();
+  if (m === "OCEAN") return "border-cyan-300 bg-cyan-50 text-cyan-950";
+  if (m === "AIR") return "border-violet-300 bg-violet-50 text-violet-950";
+  if (m === "ROAD") return "border-amber-300 bg-amber-50 text-amber-950";
+  if (m === "RAIL") return "border-orange-300 bg-orange-50 text-orange-950";
+  return "border-zinc-300 bg-white text-zinc-800";
+}
+
 export function ControlTowerShipment360({
   shipmentId,
   canEdit,
@@ -301,6 +323,33 @@ export function ControlTowerShipment360({
   ];
   const tabs = restricted ? allTabs.filter((t) => t.id !== "audit") : allTabs;
 
+  const routeSubtitle = useMemo(() => {
+    const oc = booking?.originCode ? String(booking.originCode) : "";
+    const dc = booking?.destinationCode ? String(booking.destinationCode) : "";
+    if (oc || dc) return `${oc || "—"} → ${dc || "—"}`;
+    const first = legs[0] as Record<string, unknown> | undefined;
+    const last = legs.length ? (legs[legs.length - 1] as Record<string, unknown>) : undefined;
+    if (first && last) {
+      const a = String(first.originCode || "—");
+      const b = String(last.destinationCode || "—");
+      return `${a} → ${b}`;
+    }
+    return null;
+  }, [booking, legs]);
+
+  const openExceptionCount = useMemo(
+    () =>
+      exceptions.filter((x) => {
+        const st = String((x as Record<string, unknown>).status || "");
+        return st === "OPEN" || st === "IN_PROGRESS";
+      }).length,
+    [exceptions],
+  );
+
+  const modeLabel = String(
+    (data.transportMode as string) || (booking?.mode as string) || "—",
+  );
+
   return (
     <div className="space-y-4">
       {restricted ? (
@@ -349,32 +398,79 @@ export function ControlTowerShipment360({
           </p>
         </div>
       ) : null}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h1 className="text-xl font-semibold text-zinc-900">
-            Shipment {(data.shipmentNo as string) || shipmentId.slice(0, 8)}
-          </h1>
-          <p className="text-sm text-zinc-600">
-            Order {(order?.orderNumber as string) || "—"} · {(data.status as string) || "—"} ·{" "}
-            {((data.transportMode as string) || booking?.mode || "—") as string}
-          </p>
+      <header className="rounded-xl border border-zinc-200/90 bg-gradient-to-b from-white via-white to-zinc-50/90 p-4 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-2xl font-bold tracking-tight text-zinc-950">
+                {(data.shipmentNo as string)
+                  ? `Shipment ${data.shipmentNo as string}`
+                  : `Shipment ${shipmentId.slice(0, 8)}`}
+              </h1>
+              <span
+                className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide ${shipmentStatusChipClass(String(data.status || ""))}`}
+              >
+                {String(data.status || "—")}
+              </span>
+              <span
+                className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide ${transportModeChipClass(modeLabel)}`}
+              >
+                {modeLabel}
+              </span>
+            </div>
+            <p className="mt-1.5 text-sm text-zinc-600">
+              Order <span className="font-medium text-zinc-800">{(order?.orderNumber as string) || "—"}</span>
+              {routeSubtitle ? (
+                <>
+                  <span className="text-zinc-400"> · </span>
+                  <span className="font-medium text-zinc-800">{routeSubtitle}</span>
+                </>
+              ) : null}
+            </p>
+          </div>
+          <div className="flex shrink-0 flex-col items-stretch gap-2 sm:items-end">
+            <div className="flex flex-wrap justify-end gap-2">
+              {emissions && emissions.totalKgCo2e != null ? (
+                <div className="rounded-lg border border-emerald-200/80 bg-emerald-50/90 px-3 py-1.5 text-right text-xs text-emerald-950">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-800/90">CO₂e (est.)</p>
+                  <p className="font-semibold tabular-nums">{emissions.totalKgCo2e} kg</p>
+                </div>
+              ) : null}
+              {!restricted ? (
+                <button
+                  type="button"
+                  onClick={() => setTab("exceptions")}
+                  className={`rounded-lg border px-3 py-1.5 text-left text-xs transition ${
+                    openExceptionCount > 0
+                      ? "border-amber-300 bg-amber-50 text-amber-950 hover:bg-amber-100"
+                      : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
+                  }`}
+                >
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Exceptions</p>
+                  <p className="font-semibold tabular-nums">{openExceptionCount} open</p>
+                </button>
+              ) : null}
+            </div>
+            <Link
+              href="/control-tower/workbench"
+              className="text-right text-sm font-medium text-sky-800 hover:underline"
+            >
+              ← Workbench
+            </Link>
+          </div>
         </div>
-        <Link
-          href="/control-tower/workbench"
-          className="text-sm font-medium text-sky-800 hover:underline"
-        >
-          ← Workbench
-        </Link>
-      </div>
+      </header>
 
-      <div className="flex flex-wrap gap-1 border-b border-zinc-200 pb-2">
+      <div className="flex flex-wrap gap-1 rounded-lg border border-zinc-200/80 bg-zinc-50/80 p-1">
         {tabs.map((t) => (
           <button
             key={t.id}
             type="button"
             onClick={() => setTab(t.id)}
-            className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-              tab === t.id ? "bg-sky-100 text-sky-900" : "text-zinc-600 hover:bg-zinc-100"
+            className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
+              tab === t.id
+                ? "bg-white text-sky-900 shadow-sm ring-1 ring-zinc-200/80"
+                : "text-zinc-600 hover:bg-white/70 hover:text-zinc-900"
             }`}
           >
             {t.label}
@@ -383,97 +479,96 @@ export function ControlTowerShipment360({
       </div>
 
       {tab === "details" ? (
-        <div className="grid gap-4 md:grid-cols-2">
-          <section className="rounded-lg border border-zinc-200 bg-white p-4 text-sm">
-            <h2 className="font-semibold text-zinc-900">Shipment</h2>
-            <dl className="mt-2 space-y-1 text-zinc-700">
-              <div>
-                <dt className="text-xs text-zinc-500">Status · mode</dt>
-                <dd>
-                  <span className="font-medium">{String(data.status || "—")}</span>
-                  <span className="text-zinc-400"> · </span>
-                  {String(data.transportMode || "—")}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-zinc-500">Shipment created by</dt>
-                <dd>{String((data.createdBy as { name?: string } | undefined)?.name || "—")}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-zinc-500">Carrier / tracking</dt>
-                <dd>
-                  {(data.carrier as string) || "—"} · {(data.trackingNo as string) || "—"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-zinc-500">ASN / expected receive</dt>
-                <dd className="text-xs">
-                  {(data.asnReference as string) || "—"}
-                  <span className="text-zinc-400"> · </span>
-                  {data.expectedReceiveAt
-                    ? new Date(data.expectedReceiveAt as string).toLocaleString()
-                    : "—"}
-                </dd>
-              </div>
-              {data.shipmentNotes ? (
+        <div className="space-y-4">
+          <div className={`grid gap-3 ${restricted ? "lg:grid-cols-2" : "lg:grid-cols-3"}`}>
+            <section className="rounded-xl border border-zinc-200/90 bg-white p-4 text-sm shadow-sm">
+              <h2 className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Movement</h2>
+              <dl className="mt-3 space-y-2.5 text-zinc-800">
                 <div>
-                  <dt className="text-xs text-zinc-500">Shipment notes</dt>
-                  <dd className="text-zinc-700">{String(data.shipmentNotes)}</dd>
+                  <dt className="text-xs text-zinc-500">Carrier · tracking</dt>
+                  <dd className="font-medium">
+                    {(data.carrier as string) || "—"}
+                    <span className="text-zinc-400"> · </span>
+                    {(data.trackingNo as string) || "—"}
+                  </dd>
                 </div>
-              ) : null}
-              <div>
-                <dt className="text-xs text-zinc-500">Shipped · received</dt>
-                <dd className="text-xs">
-                  {data.shippedAt ? new Date(data.shippedAt as string).toLocaleString() : "—"}
-                  <span className="text-zinc-400"> → </span>
-                  {data.receivedAt ? new Date(data.receivedAt as string).toLocaleString() : "—"}
-                </dd>
-              </div>
-              {booking ? (
-                <>
-                  <div>
-                    <dt className="text-xs text-zinc-500">Booking</dt>
-                    <dd>
-                      {(booking.bookingNo as string) || "—"} · {(booking.status as string) || "—"}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs text-zinc-500">ETD / ETA</dt>
-                    <dd className="text-xs">
-                      {booking.etd ? new Date(booking.etd as string).toLocaleString() : "—"} →{" "}
-                      {booking.eta ? new Date(booking.eta as string).toLocaleString() : "—"}
-                    </dd>
-                  </div>
-                  {booking.forwarderSupplierName ? (
+                {booking ? (
+                  <>
                     <div>
-                      <dt className="text-xs text-zinc-500">Forwarder (booking)</dt>
-                      <dd className="text-xs">{String(booking.forwarderSupplierName)}</dd>
+                      <dt className="text-xs text-zinc-500">Booking</dt>
+                      <dd>
+                        <span className="font-medium">{(booking.bookingNo as string) || "—"}</span>
+                        <span className="text-zinc-400"> · </span>
+                        {String(booking.status || "—")}
+                      </dd>
                     </div>
-                  ) : null}
-                </>
-              ) : null}
-            </dl>
-          </section>
-          <section className="rounded-lg border border-zinc-200 bg-white p-4 text-sm">
-            <h2 className="font-semibold text-zinc-900">Parties</h2>
-            <dl className="mt-2 space-y-1 text-zinc-700">
-              <div>
-                <dt className="text-xs text-zinc-500">Supplier</dt>
-                <dd>{(order?.supplier as { name?: string } | undefined)?.name || "—"}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-zinc-500">Ship to</dt>
-                <dd>
-                  {(order?.shipToName as string) || "—"}
-                  {order?.shipToCity ? `, ${String(order.shipToCity)}` : ""}{" "}
-                  {(order?.shipToCountryCode as string) || ""}
-                </dd>
-              </div>
-            </dl>
-          </section>
+                    <div>
+                      <dt className="text-xs text-zinc-500">ETD → ETA</dt>
+                      <dd className="text-xs">
+                        {booking.etd ? new Date(booking.etd as string).toLocaleString() : "—"} →{" "}
+                        {booking.eta ? new Date(booking.eta as string).toLocaleString() : "—"}
+                      </dd>
+                    </div>
+                  </>
+                ) : null}
+                <div>
+                  <dt className="text-xs text-zinc-500">Forwarder</dt>
+                  <dd className="font-medium text-zinc-900">
+                    {booking?.forwarderSupplierName ? String(booking.forwarderSupplierName) : "—"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-zinc-500">ASN · expected receive</dt>
+                  <dd className="text-xs">
+                    {(data.asnReference as string) || "—"}
+                    <span className="text-zinc-400"> · </span>
+                    {data.expectedReceiveAt
+                      ? new Date(data.expectedReceiveAt as string).toLocaleString()
+                      : "—"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-zinc-500">Shipped → received</dt>
+                  <dd className="text-xs">
+                    {data.shippedAt ? new Date(data.shippedAt as string).toLocaleString() : "—"}
+                    <span className="text-zinc-400"> → </span>
+                    {data.receivedAt ? new Date(data.receivedAt as string).toLocaleString() : "—"}
+                  </dd>
+                </div>
+                {data.shipmentNotes ? (
+                  <div>
+                    <dt className="text-xs text-zinc-500">Notes</dt>
+                    <dd className="text-sm leading-snug text-zinc-700">{String(data.shipmentNotes)}</dd>
+                  </div>
+                ) : null}
+              </dl>
+            </section>
+            <section className="rounded-xl border border-zinc-200/90 bg-white p-4 text-sm shadow-sm">
+              <h2 className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Parties</h2>
+              <dl className="mt-3 space-y-2.5 text-zinc-800">
+                <div>
+                  <dt className="text-xs text-zinc-500">Supplier</dt>
+                  <dd className="font-medium">{(order?.supplier as { name?: string } | undefined)?.name || "—"}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-zinc-500">Ship to</dt>
+                  <dd>
+                    {(order?.shipToName as string) || "—"}
+                    {order?.shipToCity ? `, ${String(order.shipToCity)}` : ""}{" "}
+                    {(order?.shipToCountryCode as string) || ""}
+                  </dd>
+                </div>
+                {customerCrmAccount ? (
+                  <div>
+                    <dt className="text-xs text-zinc-500">Logistics customer</dt>
+                    <dd className="font-medium text-zinc-900">{customerCrmAccount.name}</dd>
+                  </div>
+                ) : null}
+              </dl>
+            </section>
           {!restricted ? (
-            <section className="rounded-lg border border-zinc-200 bg-white p-4 text-sm md:col-span-2">
-              <h2 className="font-semibold text-zinc-900">Forwarder & custody</h2>
+            <section className="rounded-xl border border-zinc-200/90 bg-white p-4 text-sm shadow-sm">
+              <h2 className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Custody & forwarder</h2>
               <dl className="mt-2 grid gap-2 text-xs text-zinc-700 sm:grid-cols-2">
                 <div>
                   <dt className="text-zinc-500">Forwarder</dt>
@@ -609,7 +704,9 @@ export function ControlTowerShipment360({
               ) : null}
             </section>
           ) : null}
-          <section className="rounded-lg border border-zinc-200 bg-white p-4 text-sm md:col-span-2">
+          </div>
+
+          <section className="rounded-xl border border-zinc-200/90 bg-white p-4 text-sm shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-2">
               <h2 className="font-semibold text-zinc-900">Cargo & equipment</h2>
               <button
@@ -752,7 +849,7 @@ export function ControlTowerShipment360({
               </form>
             ) : null}
           </section>
-          <section className="rounded-lg border border-emerald-200/80 bg-emerald-50/50 p-4 text-sm md:col-span-2">
+          <section className="rounded-xl border border-emerald-200/80 bg-emerald-50/50 p-4 text-sm shadow-sm">
             <h2 className="font-semibold text-emerald-950">CO₂e (estimated)</h2>
             <p className="mt-1 text-xs text-emerald-900/80">
               Planning-grade footprint from legs × mass. Extend the coordinate table and swap emission factors when you
@@ -832,7 +929,7 @@ export function ControlTowerShipment360({
               </p>
             )}
           </section>
-          <section className="rounded-lg border border-zinc-200 bg-white p-4 text-sm md:col-span-2">
+          <section className="rounded-xl border border-zinc-200/90 bg-white p-4 text-sm shadow-sm">
             <h2 className="font-semibold text-zinc-900">Lines & cargo (order)</h2>
             <div className="mt-2 overflow-x-auto rounded border border-zinc-100">
               <table className="min-w-full text-left text-xs text-zinc-800">
@@ -964,7 +1061,7 @@ export function ControlTowerShipment360({
               </table>
             </div>
           </section>
-          <section className="rounded-lg border border-zinc-200 bg-white p-4 text-sm md:col-span-2">
+          <section className="rounded-xl border border-zinc-200/90 bg-white p-4 text-sm shadow-sm">
             <h2 className="mb-2 font-semibold text-zinc-900">References</h2>
             <ul className="space-y-1 text-xs">
               {ctReferences.length === 0 ? (
