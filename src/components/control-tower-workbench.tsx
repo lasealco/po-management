@@ -25,6 +25,7 @@ type Row = {
   orderId: string;
   orderNumber: string;
   supplierName: string | null;
+  externalOrderRef?: string | null;
   shipmentSource?: "PO" | "UNLINKED";
   customerCrmAccountId: string | null;
   customerCrmAccountName: string | null;
@@ -575,6 +576,35 @@ function ControlTowerWorkbenchInner({
 
   const tableColSpan = restrictedView ? 14 : 15;
 
+  const setExternalOrderRef = useCallback(
+    async (row: Row) => {
+      const current = row.externalOrderRef || "";
+      const next = window.prompt("External sales / ERP reference", current);
+      if (next === null) return;
+      const value = next.trim();
+      if (!value) {
+        window.alert("Reference cannot be empty.");
+        return;
+      }
+      const res = await fetch("/api/control-tower", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "set_order_external_reference",
+          shipmentId: row.id,
+          externalOrderRef: value,
+        }),
+      });
+      const payload = (await res.json()) as { error?: string };
+      if (!res.ok) {
+        window.alert(payload.error || "Could not save reference");
+        return;
+      }
+      await load();
+    },
+    [load],
+  );
+
   return (
     <div className="space-y-4">
       {restrictedView ? (
@@ -1021,9 +1051,23 @@ function ControlTowerWorkbenchInner({
                       {r.orderNumber}
                     </Link>
                     {r.shipmentSource === "UNLINKED" ? (
-                      <span className="ml-1 rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-900">
-                        UNLINKED
-                      </span>
+                      <div className="mt-1 space-y-1">
+                        <span className="rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-900">
+                          UNLINKED
+                        </span>
+                        <div className="text-[11px] text-zinc-600">
+                          Ext ref: {r.externalOrderRef || "—"}
+                        </div>
+                        {!restrictedView ? (
+                          <button
+                            type="button"
+                            className="rounded border border-zinc-300 bg-white px-1.5 py-0.5 text-[10px] hover:bg-zinc-50"
+                            onClick={() => void setExternalOrderRef(r)}
+                          >
+                            Set ref
+                          </button>
+                        ) : null}
+                      </div>
                     ) : null}
                   </td>
                   <td className="px-2 py-2">{r.status}</td>

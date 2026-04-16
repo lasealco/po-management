@@ -66,6 +66,7 @@ const listSelectCore = {
       id: true,
       orderNumber: true,
       title: true,
+      buyerReference: true,
       supplier: { select: { name: true } },
     },
   },
@@ -224,6 +225,7 @@ function mapShipmentListRow(s: ShipmentListCore | ShipmentListInternal) {
     orderId: s.order.id,
     orderNumber: s.order.orderNumber,
     supplierName: s.order.supplier?.name ?? null,
+    externalOrderRef: s.order.buyerReference ?? null,
     shipmentSource:
       !s.order.supplier?.name && (s.order.title || "").startsWith("Ad-hoc export shipment")
         ? ("UNLINKED" as const)
