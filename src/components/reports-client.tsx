@@ -148,11 +148,6 @@ export function ReportsClient({
     };
   }, [result]);
 
-  const chartPreviewRowIndexes = useMemo(() => {
-    if (!chartModel) return new Set<number>();
-    return new Set(chartModel.points.map((p) => p.rowIndex));
-  }, [chartModel]);
-
   useEffect(() => {
     if (!result) {
       setChartRowIndex(null);
@@ -164,12 +159,12 @@ export function ReportsClient({
         ? initialDrillRow
         : null;
     const pick = fromUrl != null && fromUrl >= 0 && fromUrl < result.rows.length ? fromUrl : fromProp;
-    if (pick != null && chartPreviewRowIndexes.has(pick)) {
+    if (pick != null) {
       setChartRowIndex(pick);
     } else {
       setChartRowIndex(null);
     }
-  }, [result?.generatedAt, parsedRowFromUrl, initialDrillRow, chartPreviewRowIndexes, result]);
+  }, [result?.generatedAt, parsedRowFromUrl, initialDrillRow, result]);
 
   useEffect(() => {
     if (chartRowIndex == null) return;
@@ -213,7 +208,7 @@ export function ReportsClient({
     URL.revokeObjectURL(url);
   }
 
-  const toggleChartRow = useCallback(
+  const toggleHighlightRow = useCallback(
     (rowIndex: number) => {
       if (!selectedId) return;
       const next = chartRowIndex === rowIndex ? null : rowIndex;
@@ -229,8 +224,8 @@ export function ReportsClient({
         <h2 className="text-lg font-semibold text-zinc-900">Run a report</h2>
         <p className="mt-1 text-sm text-zinc-600">
           Reports run against your tenant&apos;s live data. Export results as CSV for spreadsheets. After you run,
-          click a bar in the chart preview to highlight that row; the URL updates with <span className="font-medium">?row=</span>{" "}
-          for sharing.
+          click a chart bar or a table row to highlight it (any row index). The URL updates with{" "}
+          <span className="font-medium">?row=</span> for sharing.
         </p>
         <div className="mt-4 flex flex-wrap items-end gap-4">
           <label className="flex min-w-[240px] flex-col gap-1 text-sm">
@@ -307,8 +302,8 @@ export function ReportsClient({
                 <div>
                   <h4 className="text-sm font-semibold text-zinc-900">Chart preview</h4>
                   <p className="text-xs text-zinc-500">
-                    {chartModel.metric} by {chartModel.label} (top {chartModel.points.length}) · click a bar to
-                    highlight the row
+                    {chartModel.metric} by {chartModel.label} (top {chartModel.points.length} in chart) · click a bar
+                    or use <span className="font-medium">?row=</span> for any table row
                   </p>
                 </div>
                 <p className="text-xs text-zinc-500">
@@ -323,7 +318,7 @@ export function ReportsClient({
                     <button
                       key={point.rowIndex}
                       type="button"
-                      onClick={() => toggleChartRow(point.rowIndex)}
+                      onClick={() => toggleHighlightRow(point.rowIndex)}
                       className={`grid w-full grid-cols-[180px_1fr_90px] items-center gap-2 rounded-md px-1 py-0.5 text-left outline-none ring-offset-2 hover:bg-violet-50/50 focus-visible:ring-2 focus-visible:ring-violet-400 ${
                         sel ? "bg-violet-50 ring-1 ring-violet-300" : ""
                       }`}
@@ -371,7 +366,19 @@ export function ReportsClient({
                       if (el) rowRefs.current.set(i, el);
                       else rowRefs.current.delete(i);
                     }}
-                    className={`hover:bg-zinc-50/80 ${chartRowIndex === i ? "bg-violet-50 ring-1 ring-inset ring-violet-200" : ""}`}
+                    onClick={() => toggleHighlightRow(i)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        toggleHighlightRow(i);
+                      }
+                    }}
+                    tabIndex={0}
+                    role="button"
+                    aria-pressed={chartRowIndex === i}
+                    className={`cursor-pointer outline-none hover:bg-zinc-50/80 focus-visible:ring-2 focus-visible:ring-violet-400 ${
+                      chartRowIndex === i ? "bg-violet-50 ring-1 ring-inset ring-violet-200" : ""
+                    }`}
                   >
                     {result.columns.map((c) => (
                       <td

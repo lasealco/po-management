@@ -65,6 +65,11 @@ function workbenchUrlHasSearchFilters(sp: URLSearchParams): boolean {
       (sp.get("shipperName") ?? "").trim() ||
       (sp.get("consigneeName") ?? "").trim() ||
       (sp.get("lane") ?? "").trim() ||
+      (sp.get("carrier") ?? "").trim() ||
+      (sp.get("supplierName") ?? "").trim() ||
+      (sp.get("customerName") ?? "").trim() ||
+      (sp.get("originCode") ?? "").trim() ||
+      (sp.get("destinationCode") ?? "").trim() ||
       (sp.get("onlyOverdueEta") ?? "").trim() ||
       (sp.get("routeAction") ?? "").trim() ||
       (sp.get("dispatchOwnerUserId") ?? "").trim() ||
@@ -93,6 +98,11 @@ export function ControlTowerWorkbench({
   const [shipperFilter, setShipperFilter] = useState("");
   const [consigneeFilter, setConsigneeFilter] = useState("");
   const [laneFilter, setLaneFilter] = useState("");
+  const [carrierFilter, setCarrierFilter] = useState("");
+  const [supplierNameFilter, setSupplierNameFilter] = useState("");
+  const [customerNameFilter, setCustomerNameFilter] = useState("");
+  const [originCodeFilter, setOriginCodeFilter] = useState("");
+  const [destinationCodeFilter, setDestinationCodeFilter] = useState("");
   /** False until client layout reads `?q=` / filters from the URL (avoids a stale first fetch). */
   const [filtersReady, setFiltersReady] = useState(false);
   const [rows, setRows] = useState<Row[]>([]);
@@ -120,6 +130,16 @@ export function ControlTowerWorkbench({
     if (cons) setConsigneeFilter(cons);
     const lane = sp.get("lane");
     if (lane) setLaneFilter(lane);
+    const carrier = sp.get("carrier");
+    if (carrier) setCarrierFilter(carrier);
+    const supplierName = sp.get("supplierName");
+    if (supplierName) setSupplierNameFilter(supplierName);
+    const customerName = sp.get("customerName");
+    if (customerName) setCustomerNameFilter(customerName);
+    const originCode = sp.get("originCode");
+    if (originCode) setOriginCodeFilter(originCode);
+    const destinationCode = sp.get("destinationCode");
+    if (destinationCode) setDestinationCodeFilter(destinationCode);
     const oo = sp.get("onlyOverdueEta") ?? "";
     if (oo === "1" || oo.toLowerCase() === "true") setOnlyOverdueEta(true);
     const owner = sp.get("dispatchOwnerUserId");
@@ -146,6 +166,11 @@ export function ControlTowerWorkbench({
       if (shipperFilter.trim()) sp.set("shipperName", shipperFilter.trim());
       if (consigneeFilter.trim()) sp.set("consigneeName", consigneeFilter.trim());
       if (laneFilter.trim()) sp.set("lane", laneFilter.trim());
+      if (carrierFilter.trim()) sp.set("carrier", carrierFilter.trim());
+      if (supplierNameFilter.trim()) sp.set("supplierName", supplierNameFilter.trim());
+      if (customerNameFilter.trim()) sp.set("customerName", customerNameFilter.trim());
+      if (originCodeFilter.trim()) sp.set("originCode", originCodeFilter.trim());
+      if (destinationCodeFilter.trim()) sp.set("destinationCode", destinationCodeFilter.trim());
       if (!restrictedView && ownerFilter) sp.set("dispatchOwnerUserId", ownerFilter);
       if (routeHealth === "stalled") {
         sp.set("minRouteProgressPct", "0");
@@ -180,6 +205,11 @@ export function ControlTowerWorkbench({
     shipperFilter,
     consigneeFilter,
     laneFilter,
+    carrierFilter,
+    supplierNameFilter,
+    customerNameFilter,
+    originCodeFilter,
+    destinationCodeFilter,
     ownerFilter,
     routeHealth,
     onlyOverdueEta,
@@ -307,6 +337,11 @@ export function ControlTowerWorkbench({
       shipperFilter?: string;
       consigneeFilter?: string;
       laneFilter?: string;
+      carrierFilter?: string;
+      supplierNameFilter?: string;
+      customerNameFilter?: string;
+      originCodeFilter?: string;
+      destinationCodeFilter?: string;
       ownerFilter?: string;
       routeHealth?: string;
       routeAction?: string;
@@ -319,6 +354,11 @@ export function ControlTowerWorkbench({
     setShipperFilter(typeof o.shipperFilter === "string" ? o.shipperFilter : "");
     setConsigneeFilter(typeof o.consigneeFilter === "string" ? o.consigneeFilter : "");
     setLaneFilter(typeof o.laneFilter === "string" ? o.laneFilter : "");
+    setCarrierFilter(typeof o.carrierFilter === "string" ? o.carrierFilter : "");
+    setSupplierNameFilter(typeof o.supplierNameFilter === "string" ? o.supplierNameFilter : "");
+    setCustomerNameFilter(typeof o.customerNameFilter === "string" ? o.customerNameFilter : "");
+    setOriginCodeFilter(typeof o.originCodeFilter === "string" ? o.originCodeFilter : "");
+    setDestinationCodeFilter(typeof o.destinationCodeFilter === "string" ? o.destinationCodeFilter : "");
     setOwnerFilter(typeof o.ownerFilter === "string" ? o.ownerFilter : "");
     setRouteHealth(typeof o.routeHealth === "string" ? o.routeHealth : "");
     setRouteAction(typeof o.routeAction === "string" ? o.routeAction : "");
@@ -343,6 +383,11 @@ export function ControlTowerWorkbench({
           shipperFilter,
           consigneeFilter,
           laneFilter,
+          carrierFilter,
+          supplierNameFilter,
+          customerNameFilter,
+          originCodeFilter,
+          destinationCodeFilter,
           ownerFilter,
           routeHealth,
           routeAction,
@@ -501,6 +546,51 @@ export function ControlTowerWorkbench({
             value={laneFilter}
             onChange={(e) => setLaneFilter(e.target.value)}
             placeholder="e.g. CNSHA or USLAX"
+            className="mt-1 block rounded border border-zinc-300 px-2 py-1.5 text-sm"
+          />
+        </label>
+        <label className="text-xs text-zinc-600">
+          Carrier
+          <input
+            value={carrierFilter}
+            onChange={(e) => setCarrierFilter(e.target.value)}
+            placeholder="Carrier contains"
+            className="mt-1 block rounded border border-zinc-300 px-2 py-1.5 text-sm"
+          />
+        </label>
+        <label className="text-xs text-zinc-600">
+          Supplier
+          <input
+            value={supplierNameFilter}
+            onChange={(e) => setSupplierNameFilter(e.target.value)}
+            placeholder="PO supplier contains"
+            className="mt-1 block rounded border border-zinc-300 px-2 py-1.5 text-sm"
+          />
+        </label>
+        <label className="text-xs text-zinc-600">
+          Customer
+          <input
+            value={customerNameFilter}
+            onChange={(e) => setCustomerNameFilter(e.target.value)}
+            placeholder="CRM customer contains"
+            className="mt-1 block rounded border border-zinc-300 px-2 py-1.5 text-sm"
+          />
+        </label>
+        <label className="text-xs text-zinc-600">
+          Origin code
+          <input
+            value={originCodeFilter}
+            onChange={(e) => setOriginCodeFilter(e.target.value)}
+            placeholder="e.g. BEANR"
+            className="mt-1 block rounded border border-zinc-300 px-2 py-1.5 text-sm"
+          />
+        </label>
+        <label className="text-xs text-zinc-600">
+          Dest. code
+          <input
+            value={destinationCodeFilter}
+            onChange={(e) => setDestinationCodeFilter(e.target.value)}
+            placeholder="e.g. CLVAP"
             className="mt-1 block rounded border border-zinc-300 px-2 py-1.5 text-sm"
           />
         </label>

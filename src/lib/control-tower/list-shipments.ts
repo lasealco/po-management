@@ -30,6 +30,16 @@ export type ListShipmentsQuery = {
   shipperName?: string;
   consigneeName?: string;
   lane?: string;
+  /** Shipment.carrier contains (case-insensitive). */
+  carrier?: string;
+  /** Purchase order supplier name contains. */
+  supplierName?: string;
+  /** Linked CRM customer account name contains. */
+  customerName?: string;
+  /** Booking or leg origin port code contains. */
+  originCode?: string;
+  /** Booking or leg destination port code contains. */
+  destinationCode?: string;
   minRouteProgressPct?: number;
   maxRouteProgressPct?: number;
 };
@@ -322,6 +332,40 @@ export async function listControlTowerShipments(params: {
         { booking: { is: { destinationCode: { contains: lane, mode: "insensitive" } } } },
         { ctLegs: { some: { originCode: { contains: lane, mode: "insensitive" } } } },
         { ctLegs: { some: { destinationCode: { contains: lane, mode: "insensitive" } } } },
+      ],
+    });
+  }
+  const carrier = query.carrier?.trim();
+  if (carrier) {
+    ands.push({ carrier: { contains: carrier, mode: "insensitive" } });
+  }
+  const supplierName = query.supplierName?.trim();
+  if (supplierName) {
+    ands.push({
+      order: { supplier: { is: { name: { contains: supplierName, mode: "insensitive" } } } },
+    });
+  }
+  const customerName = query.customerName?.trim();
+  if (customerName) {
+    ands.push({
+      customerCrmAccount: { is: { name: { contains: customerName, mode: "insensitive" } } },
+    });
+  }
+  const originCode = query.originCode?.trim();
+  if (originCode) {
+    ands.push({
+      OR: [
+        { booking: { is: { originCode: { contains: originCode, mode: "insensitive" } } } },
+        { ctLegs: { some: { originCode: { contains: originCode, mode: "insensitive" } } } },
+      ],
+    });
+  }
+  const destinationCode = query.destinationCode?.trim();
+  if (destinationCode) {
+    ands.push({
+      OR: [
+        { booking: { is: { destinationCode: { contains: destinationCode, mode: "insensitive" } } } },
+        { ctLegs: { some: { destinationCode: { contains: destinationCode, mode: "insensitive" } } } },
       ],
     });
   }
