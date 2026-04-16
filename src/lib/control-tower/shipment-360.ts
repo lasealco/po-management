@@ -33,6 +33,7 @@ function localityLine(
 function buildBolDocumentParties(
   s: {
     order: {
+      internalNotes?: string | null;
       shipToName: string | null;
       shipToLine1: string | null;
       shipToLine2: string | null;
@@ -58,7 +59,12 @@ function buildBolDocumentParties(
 ) {
   const o = s.order;
   const sup = o.supplier;
-  const shipperName = sup ? (sup.legalName?.trim() || sup.name) : null;
+  const shipperFallback = (() => {
+    const text = o.internalNotes || "";
+    const m = text.match(/(?:^|\n)Shipper:\s*(.+)/i);
+    return m?.[1]?.trim() || null;
+  })();
+  const shipperName = sup ? (sup.legalName?.trim() || sup.name) : shipperFallback;
   const shipperLines: string[] = [];
   if (sup && !restricted) {
     if (sup.registeredAddressLine1?.trim()) shipperLines.push(sup.registeredAddressLine1.trim());
@@ -124,6 +130,7 @@ export async function getShipment360(params: {
           orderNumber: true,
           requestedDeliveryDate: true,
           incoterm: true,
+          internalNotes: true,
           buyerReference: true,
           supplierReference: true,
           shipToName: true,

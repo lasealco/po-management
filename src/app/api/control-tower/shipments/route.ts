@@ -141,13 +141,11 @@ export async function POST(request: Request) {
   }
   const o = body as Record<string, unknown>;
   const orderId = typeof o.orderId === "string" ? o.orderId.trim() : "";
+  const createUnlinked = o.createUnlinked === true;
   const transportModeRaw = typeof o.transportMode === "string" ? o.transportMode.trim() : "";
   const transportMode = MODES.includes(transportModeRaw as TransportMode)
     ? (transportModeRaw as TransportMode)
     : null;
-  if (!orderId) {
-    return NextResponse.json({ error: "orderId is required." }, { status: 400 });
-  }
   if (!transportMode) {
     return NextResponse.json(
       { error: "transportMode must be OCEAN, AIR, ROAD, or RAIL." },
@@ -156,29 +154,34 @@ export async function POST(request: Request) {
   }
 
   const linesRaw = o.lines;
-  if (!Array.isArray(linesRaw) || linesRaw.length === 0) {
-    return NextResponse.json(
-      { error: "lines[] with orderItemId and quantityShipped is required." },
-      { status: 400 },
-    );
-  }
   const lines: { orderItemId: string; quantityShipped: string }[] = [];
-  for (const row of linesRaw) {
-    if (!row || typeof row !== "object") {
-      return NextResponse.json({ error: "Invalid line." }, { status: 400 });
+  if (!createUnlinked) {
+    if (!orderId) {
+      return NextResponse.json({ error: "orderId is required unless createUnlinked=true." }, { status: 400 });
     }
-    const r = row as Record<string, unknown>;
-    const orderItemId = typeof r.orderItemId === "string" ? r.orderItemId.trim() : "";
-    const quantityShipped =
-      typeof r.quantityShipped === "string"
-        ? r.quantityShipped
-        : typeof r.quantityShipped === "number"
-          ? String(r.quantityShipped)
-          : "";
-    if (!orderItemId || !quantityShipped.trim()) {
-      return NextResponse.json({ error: "Each line needs orderItemId and quantityShipped." }, { status: 400 });
+    if (!Array.isArray(linesRaw) || linesRaw.length === 0) {
+      return NextResponse.json(
+        { error: "lines[] with orderItemId and quantityShipped is required." },
+        { status: 400 },
+      );
     }
-    lines.push({ orderItemId, quantityShipped });
+    for (const row of linesRaw) {
+      if (!row || typeof row !== "object") {
+        return NextResponse.json({ error: "Invalid line." }, { status: 400 });
+      }
+      const r = row as Record<string, unknown>;
+      const orderItemId = typeof r.orderItemId === "string" ? r.orderItemId.trim() : "";
+      const quantityShipped =
+        typeof r.quantityShipped === "string"
+          ? r.quantityShipped
+          : typeof r.quantityShipped === "number"
+            ? String(r.quantityShipped)
+            : "";
+      if (!orderItemId || !quantityShipped.trim()) {
+        return NextResponse.json({ error: "Each line needs orderItemId and quantityShipped." }, { status: 400 });
+      }
+      lines.push({ orderItemId, quantityShipped });
+    }
   }
 
   const bookingObj =
@@ -202,8 +205,16 @@ export async function POST(request: Request) {
     const { shipmentId, milestonePackWarning } = await createLogisticsShipment({
       tenantId: tenant.id,
       actorUserId: actorId,
-      orderId,
+      orderId: orderId || null,
       lines,
+      unlinkedOrder: createUnlinked
+        ? {
+            referenceNo: typeof o.referenceNo === "string" ? o.referenceNo : null,
+            shipperName: typeof o.shipperName === "string" ? o.shipperName : null,
+            consigneeName: typeof o.consigneeName === "string" ? o.consigneeName : null,
+            requestedDeliveryDate: parseIsoDate(o.requestedDeliveryDate),
+          }
+        : null,
       transportMode,
       shipmentNo: typeof o.shipmentNo === "string" ? o.shipmentNo : null,
       shippedAt: parseIsoDate(o.shippedAt) ?? null,

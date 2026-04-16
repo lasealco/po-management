@@ -6,6 +6,7 @@ import { startTransition, useCallback, useEffect, useMemo, useState } from "reac
 
 import { ctSlaState } from "@/lib/control-tower/sla-thresholds";
 import { CT_SHIPMENT_DOCUMENT_TYPES } from "@/lib/control-tower/shipment-document-types";
+import { ControlTowerRouteMap } from "@/components/control-tower-route-map";
 
 type Tab =
   | "details"
@@ -1379,6 +1380,20 @@ export function ControlTowerShipment360({
               </div>
             </section>
           ) : null}
+          <ControlTowerRouteMap
+            legs={legs.map((raw) => {
+              const leg = raw as Record<string, unknown>;
+              return {
+                legNo: Number(leg.legNo) || 0,
+                originCode: (leg.originCode as string) || null,
+                destinationCode: (leg.destinationCode as string) || null,
+                plannedEtd: (leg.plannedEtd as string) || null,
+                plannedEta: (leg.plannedEta as string) || null,
+                actualAtd: (leg.actualAtd as string) || null,
+                actualAta: (leg.actualAta as string) || null,
+              };
+            })}
+          />
 
           <section className="rounded-lg border border-zinc-200 bg-white p-4 text-sm">
             <h2 className="font-semibold text-zinc-900">Customer account scope</h2>

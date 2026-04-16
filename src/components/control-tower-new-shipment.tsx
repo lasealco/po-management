@@ -23,6 +23,7 @@ type PackRow = { id: string; title: string; description: string; milestoneCount:
 
 export function ControlTowerNewShipment() {
   const router = useRouter();
+  const [createUnlinked, setCreateUnlinked] = useState(false);
   const [q, setQ] = useState("");
   const [orders, setOrders] = useState<OrderPickRow[]>([]);
   const [pickLoading, setPickLoading] = useState(false);
@@ -40,6 +41,10 @@ export function ControlTowerNewShipment() {
   const [destinationCode, setDestinationCode] = useState("");
   const [etd, setEtd] = useState("");
   const [eta, setEta] = useState("");
+  const [referenceNo, setReferenceNo] = useState("");
+  const [shipperName, setShipperName] = useState("");
+  const [consigneeName, setConsigneeName] = useState("");
+  const [requestedDeliveryDate, setRequestedDeliveryDate] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -97,7 +102,7 @@ export function ControlTowerNewShipment() {
 
   async function submit() {
     setError(null);
-    if (!selected) {
+    if (!createUnlinked && !selected) {
       setError("Select a purchase order.");
       return;
     }
@@ -105,10 +110,12 @@ export function ControlTowerNewShipment() {
       setError("Select a transport mode.");
       return;
     }
-    const lines = Object.entries(qtyByItemId)
-      .map(([orderItemId, quantityShipped]) => ({ orderItemId, quantityShipped: quantityShipped.trim() }))
-      .filter((l) => l.quantityShipped !== "");
-    if (lines.length === 0) {
+    const lines = createUnlinked
+      ? []
+      : Object.entries(qtyByItemId)
+          .map(([orderItemId, quantityShipped]) => ({ orderItemId, quantityShipped: quantityShipped.trim() }))
+          .filter((l) => l.quantityShipped !== "");
+    if (!createUnlinked && lines.length === 0) {
       setError("Enter shipped quantity on at least one line.");
       return;
     }
@@ -130,9 +137,14 @@ export function ControlTowerNewShipment() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          orderId: selected.id,
+          createUnlinked,
+          orderId: createUnlinked ? null : selected?.id,
           transportMode,
           lines,
+          referenceNo: createUnlinked ? referenceNo.trim() || null : null,
+          shipperName: createUnlinked ? shipperName.trim() || null : null,
+          consigneeName: createUnlinked ? consigneeName.trim() || null : null,
+          requestedDeliveryDate: createUnlinked ? requestedDeliveryDate || null : null,
           shipmentNo: shipmentNo.trim() || null,
           carrier: carrier.trim() || null,
           trackingNo: trackingNo.trim() || null,
@@ -168,75 +180,142 @@ export function ControlTowerNewShipment() {
   return (
     <div className="space-y-8 text-sm text-zinc-800">
       <section className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
-        <h2 className="text-base font-semibold text-zinc-900">1. Link to purchase order</h2>
-        <p className="mt-1 text-xs text-zinc-600">
-          Shipments stay tied to a PO for lines and parties. Search by PO number (or paste order id).
-        </p>
-        <input
-          className="mt-3 w-full max-w-md rounded border border-zinc-300 px-3 py-2 text-sm"
-          placeholder="Search…"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-        />
-        {pickLoading ? <p className="mt-2 text-xs text-zinc-500">Searching…</p> : null}
-        {orders.length > 0 ? (
-          <ul className="mt-3 max-h-48 overflow-auto rounded border border-zinc-200 bg-zinc-50">
-            {orders.map((o) => (
-              <li key={o.id}>
-                <button
-                  type="button"
-                  className={`flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left text-xs hover:bg-white ${
-                    selected?.id === o.id ? "bg-sky-50" : ""
-                  }`}
-                  onClick={() => selectOrder(o)}
-                >
-                  <span className="font-semibold text-zinc-900">{o.orderNumber}</span>
-                  <span className="text-zinc-600">{o.supplierName ?? "—"}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : null}
+        <h2 className="text-base font-semibold text-zinc-900">1. Shipment source</h2>
+        <div className="mt-2 flex flex-wrap gap-4 text-xs">
+          <label className="flex items-center gap-2">
+            <input
+              type="radio"
+              checked={!createUnlinked}
+              onChange={() => setCreateUnlinked(false)}
+            />
+            Link to purchase order
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="radio"
+              checked={createUnlinked}
+              onChange={() => setCreateUnlinked(true)}
+            />
+            Shipment without PO (export / ad-hoc)
+          </label>
+        </div>
+        {!createUnlinked ? (
+          <>
+            <p className="mt-2 text-xs text-zinc-600">
+              Search by PO number (or paste order id), then select lines and shipped quantity.
+            </p>
+            <input
+              className="mt-3 w-full max-w-md rounded border border-zinc-300 px-3 py-2 text-sm"
+              placeholder="Search…"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
+            {pickLoading ? <p className="mt-2 text-xs text-zinc-500">Searching…</p> : null}
+            {orders.length > 0 ? (
+              <ul className="mt-3 max-h-48 overflow-auto rounded border border-zinc-200 bg-zinc-50">
+                {orders.map((o) => (
+                  <li key={o.id}>
+                    <button
+                      type="button"
+                      className={`flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left text-xs hover:bg-white ${
+                        selected?.id === o.id ? "bg-sky-50" : ""
+                      }`}
+                      onClick={() => selectOrder(o)}
+                    >
+                      <span className="font-semibold text-zinc-900">{o.orderNumber}</span>
+                      <span className="text-zinc-600">{o.supplierName ?? "—"}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </>
+        ) : (
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
+            <label className="text-xs">
+              Reference no. (optional)
+              <input
+                className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5"
+                value={referenceNo}
+                onChange={(e) => setReferenceNo(e.target.value)}
+                placeholder="EXP-2026-001"
+              />
+            </label>
+            <label className="text-xs">
+              Requested delivery
+              <input
+                type="date"
+                className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5"
+                value={requestedDeliveryDate}
+                onChange={(e) => setRequestedDeliveryDate(e.target.value)}
+              />
+            </label>
+            <label className="text-xs">
+              Shipper
+              <input
+                className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5"
+                value={shipperName}
+                onChange={(e) => setShipperName(e.target.value)}
+              />
+            </label>
+            <label className="text-xs">
+              Consignee
+              <input
+                className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5"
+                value={consigneeName}
+                onChange={(e) => setConsigneeName(e.target.value)}
+              />
+            </label>
+          </div>
+        )}
       </section>
 
-      {selected ? (
+      {createUnlinked || selected ? (
         <>
           <section className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
             <h2 className="text-base font-semibold text-zinc-900">2. Lines & mode</h2>
-            <p className="mt-1 text-xs text-zinc-600">
-              Order <span className="font-medium">{selected.orderNumber}</span> — set quantities to ship on this
-              movement.
-            </p>
-            <div className="mt-3 overflow-x-auto">
-              <table className="min-w-full border-collapse text-xs">
-                <thead>
-                  <tr className="border-b border-zinc-200 text-left text-zinc-600">
-                    <th className="py-2 pr-3">Line</th>
-                    <th className="py-2 pr-3">Description</th>
-                    <th className="py-2 pr-3">Open</th>
-                    <th className="py-2">This shipment qty</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selected.items.map((it) => (
-                    <tr key={it.id} className="border-b border-zinc-100">
-                      <td className="py-2 pr-3 font-mono">{it.lineNo}</td>
-                      <td className="max-w-xs truncate py-2 pr-3">{it.description ?? "—"}</td>
-                      <td className="py-2 pr-3">{it.quantityRemaining}</td>
-                      <td className="py-2">
-                        <input
-                          className="w-24 rounded border border-zinc-300 px-2 py-1"
-                          value={qtyByItemId[it.id] ?? ""}
-                          onChange={(e) =>
-                            setQtyByItemId((prev) => ({ ...prev, [it.id]: e.target.value }))
-                          }
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            {!createUnlinked && selected ? (
+              <>
+                <p className="mt-1 text-xs text-zinc-600">
+                  Order <span className="font-medium">{selected.orderNumber}</span> — set quantities to ship on this
+                  movement.
+                </p>
+                <div className="mt-3 overflow-x-auto">
+                  <table className="min-w-full border-collapse text-xs">
+                    <thead>
+                      <tr className="border-b border-zinc-200 text-left text-zinc-600">
+                        <th className="py-2 pr-3">Line</th>
+                        <th className="py-2 pr-3">Description</th>
+                        <th className="py-2 pr-3">Open</th>
+                        <th className="py-2">This shipment qty</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selected.items.map((it) => (
+                        <tr key={it.id} className="border-b border-zinc-100">
+                          <td className="py-2 pr-3 font-mono">{it.lineNo}</td>
+                          <td className="max-w-xs truncate py-2 pr-3">{it.description ?? "—"}</td>
+                          <td className="py-2 pr-3">{it.quantityRemaining}</td>
+                          <td className="py-2">
+                            <input
+                              className="w-24 rounded border border-zinc-300 px-2 py-1"
+                              value={qtyByItemId[it.id] ?? ""}
+                              onChange={(e) =>
+                                setQtyByItemId((prev) => ({ ...prev, [it.id]: e.target.value }))
+                              }
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            ) : (
+              <p className="mt-2 text-xs text-zinc-600">
+                Unlinked mode creates an ad-hoc shell order behind the scenes and one placeholder line.
+              </p>
+            )}
             <label className="mt-4 block text-xs font-medium text-zinc-700">
               Transport mode
               <select
