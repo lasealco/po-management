@@ -379,6 +379,11 @@ export function ControlTowerShipment360({
     (data.milestonePackCatalog as
       | Array<{ id: string; title: string; description: string; milestoneCount: number }>
       | undefined) ?? [];
+  const canApplyMilestonePack = Boolean(
+    (data as { canApplyMilestonePack?: boolean }).canApplyMilestonePack,
+  );
+  const transportModeForMilestonePacks = (data as { transportModeForMilestonePacks?: string | null })
+    .transportModeForMilestonePacks;
   const formatMoney = (v: number) =>
     new Intl.NumberFormat("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
 
@@ -1898,8 +1903,25 @@ export function ControlTowerShipment360({
             Milestone template packs follow{" "}
             <span className="font-mono text-zinc-800">docs/controltower/control_tower_milestone_template_catalog</span>.
             Planned dates anchor to booking ETD/ETA (or shipment created) and skip rows when the anchor is missing.
+            Packs match the shipment transport mode (from the shipment or booking). Apply is only available before any
+            control-tower tracking milestones exist — use{" "}
+            <Link className="text-sky-800 underline" href="/control-tower/shipments/new">
+              New logistics shipment
+            </Link>{" "}
+            to set mode and optional template at create time.
           </p>
-          {!restricted && canEdit && milestonePackCatalog.length > 0 ? (
+          {!restricted && canEdit && !canApplyMilestonePack ? (
+            <p className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-700">
+              Template packs are disabled once this shipment has tracking milestones. Add or edit milestones manually,
+              or keep using workflow milestones below.
+            </p>
+          ) : null}
+          {!restricted && canEdit && canApplyMilestonePack && !transportModeForMilestonePacks ? (
+            <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
+              Set transport mode on the shipment or booking to see mode-specific template packs.
+            </p>
+          ) : null}
+          {!restricted && canEdit && canApplyMilestonePack && milestonePackCatalog.length > 0 ? (
             <section className="rounded-lg border border-sky-200 bg-sky-50/60 p-4 text-sm">
               <h2 className="font-semibold text-sky-950">Apply milestone pack</h2>
               <p className="mt-1 text-xs text-sky-900">

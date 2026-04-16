@@ -7,7 +7,10 @@ import {
 } from "./viewer";
 import { computeCtMilestoneSummary } from "./milestone-summary";
 import { filterCtTrackingMilestonesForPortal } from "./milestone-visibility";
-import { listMilestonePackCatalogForTenant } from "./milestone-templates";
+import {
+  filterMilestonePackCatalogByTransportMode,
+  listMilestonePackCatalogForTenant,
+} from "./milestone-templates";
 import { computeShipmentEmissionsSummary } from "./shipment-emissions";
 import { labelForCtDocType } from "./shipment-document-types";
 
@@ -477,7 +480,13 @@ export async function getShipment360(params: {
     actualAt: m.actualAt?.toISOString() ?? null,
   }));
   const milestoneSummary = computeCtMilestoneSummary(ctMilestoneInputs);
-  const milestonePackCatalog = restricted ? null : await listMilestonePackCatalogForTenant(tenantId);
+  const fullMilestonePackCatalog = restricted ? null : await listMilestonePackCatalogForTenant(tenantId);
+  const effectiveTransportMode = (s.transportMode ?? s.booking?.mode) ?? null;
+  const milestonePackCatalog =
+    restricted || !fullMilestonePackCatalog
+      ? null
+      : filterMilestonePackCatalogByTransportMode(fullMilestonePackCatalog, effectiveTransportMode);
+  const canApplyMilestonePack = !restricted && s.ctTrackingMilestones.length === 0;
 
   const legsForEmissions =
     s.ctLegs.length > 0
@@ -620,6 +629,8 @@ export async function getShipment360(params: {
     })),
     milestoneSummary,
     milestonePackCatalog,
+    canApplyMilestonePack,
+    transportModeForMilestonePacks: effectiveTransportMode,
     emissionsSummary: {
       tonnageKg: emissionsSummary.tonnageKg,
       tonnageSource: emissionsSummary.tonnageSource,

@@ -3,6 +3,7 @@
  * Built-in definitions are merged with optional per-tenant rows in `CtMilestoneTemplatePack` (DB overrides / extensions).
  */
 
+import type { TransportMode } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 import { writeCtAudit } from "./audit";
@@ -65,7 +66,49 @@ export const BUILT_IN_MILESTONE_PACKS: Record<string, BuiltInPackMeta> = {
       { code: "FINAL_MILE_READY", label: "Final mile / truck ready", anchor: "BOOKING_LATEST_ETA", offsetDays: 0 },
     ],
   },
+  ROAD_DOOR_TO_DOOR: {
+    title: "Road — door to door",
+    description: "Pickup, linehaul, and delivery windows around booking ETD/ETA.",
+    milestones: [
+      { code: "BOOKING_CONFIRMED", label: "Booking confirmed", anchor: "SHIPMENT_CREATED", offsetDays: 0 },
+      { code: "ROAD_PICKUP_SCHEDULED", label: "Pickup scheduled / at shipper", anchor: "BOOKING_ETD", offsetDays: -1 },
+      { code: "ROAD_DEPARTED_SHIPPER", label: "Departed shipper / origin", anchor: "BOOKING_ETD", offsetDays: 0 },
+      { code: "ROAD_ARRIVED_CONSIGNEE", label: "Arrived consignee / destination", anchor: "BOOKING_ETA", offsetDays: 0 },
+      { code: "ROAD_DELIVERY_COMPLETE", label: "Delivery complete / POD", anchor: "BOOKING_LATEST_ETA", offsetDays: 0 },
+    ],
+  },
 };
+
+/** Built-in pack slugs are mode-specific; tenant-defined packs (unknown slug) stay visible for all modes. */
+const BUILT_IN_PACK_TRANSPORT_MODE: Partial<Record<string, TransportMode>> = {
+  OCEAN_PORT_TO_PORT: "OCEAN",
+  AIR_ORIGIN_TO_DEST: "AIR",
+  RAIL_TERMINAL_TO_TERMINAL: "RAIL",
+  ROAD_DOOR_TO_DOOR: "ROAD",
+};
+
+export function builtInMilestonePackTransportMode(packSlug: string): TransportMode | null {
+  return BUILT_IN_PACK_TRANSPORT_MODE[packSlug] ?? null;
+}
+
+/** Whether a pack may be offered or applied for the given shipment transport mode (null = unknown / unset). */
+export function milestonePackMatchesTransportMode(
+  packSlug: string,
+  mode: TransportMode | null | undefined,
+): boolean {
+  const expected = builtInMilestonePackTransportMode(packSlug);
+  if (!expected) return true;
+  if (!mode) return false;
+  return expected === mode;
+}
+
+export function filterMilestonePackCatalogByTransportMode(
+  entries: MilestonePackCatalogEntry[],
+  mode: TransportMode | null | undefined,
+): MilestonePackCatalogEntry[] {
+  if (!mode) return [];
+  return entries.filter((e) => milestonePackMatchesTransportMode(e.id, mode));
+}
 
 const ANCHORS: MilestoneAnchor[] = [
   "SHIPMENT_CREATED",
@@ -202,13 +245,26 @@ export async function applyCtMilestonePack(params: {
     where: { id: shipmentId, order: { tenantId } },
     select: {
       createdAt: true,
+      transportMode: true,
+      ctTrackingMilestones: { select: { id: true }, take: 1 },
       booking: {
-        select: { etd: true, eta: true, latestEta: true },
+        select: { etd: true, eta: true, latestEta: true, mode: true },
       },
     },
   });
   if (!shipment) {
     throw new Error("Shipment not found.");
+  }
+  if (shipment.ctTrackingMilestones.length > 0) {
+    throw new Error(
+      "This shipment already has tracking milestones. Template packs are only for the initial plan — add or edit milestones manually.",
+    );
+  }
+  const effectiveMode = shipment.transportMode ?? shipment.booking?.mode;
+  if (!milestonePackMatchesTransportMode(packId, effectiveMode)) {
+    throw new Error(
+      "This pack does not match the shipment transport mode (air / ocean / rail / road).",
+    );
   }
 
   const existing = await prisma.ctTrackingMilestone.findMany({
