@@ -36,6 +36,11 @@ export type WorkbenchUrlState = {
   routeHealth: string;
   /** Default true; URL carries `autoRefresh=0` when off. */
   autoRefresh: boolean;
+  /**
+   * When `milestones`, shipment links from the workbench open Shipment 360 on the Milestones tab.
+   * URL param: `ship360Tab=milestones`.
+   */
+  ship360Tab: "" | "milestones";
 };
 
 const SORT_OPTIONS = ["updated_desc", "eta_asc", "route_progress_asc"] as const;
@@ -69,6 +74,8 @@ export function readWorkbenchUrlState(
   const ar = sp.get("autoRefresh") ?? "";
   const autoRefresh =
     ar === "0" || ar.toLowerCase() === "false" || ar.toLowerCase() === "off" ? false : true;
+  const tabRaw = (sp.get("ship360Tab") ?? "").toLowerCase();
+  const ship360Tab: "" | "milestones" = tabRaw === "milestones" ? "milestones" : "";
   return {
     status,
     mode,
@@ -77,6 +84,7 @@ export function readWorkbenchUrlState(
     page,
     onlyOverdueEta,
     autoRefresh,
+    ship360Tab,
     q: sp.get("q") ?? "",
     shipperFilter: sp.get("shipperName") ?? "",
     consigneeFilter: sp.get("consigneeName") ?? "",
@@ -120,5 +128,6 @@ export function buildWorkbenchSearchString(state: WorkbenchUrlState, restrictedV
   if (state.sortBy !== "updated_desc") p.set("sortBy", state.sortBy);
   if (state.page > 1) p.set("page", String(state.page));
   if (!state.autoRefresh) p.set("autoRefresh", "0");
+  if (state.ship360Tab === "milestones") p.set("ship360Tab", "milestones");
   return p.toString();
 }

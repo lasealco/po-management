@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { startTransition, useCallback, useEffect, useState } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useState } from "react";
 
 import { ctSlaState } from "@/lib/control-tower/sla-thresholds";
+import { CT_SHIPMENT_DOCUMENT_TYPES } from "@/lib/control-tower/shipment-document-types";
 
 type Tab =
   | "details"
@@ -139,6 +140,24 @@ export function ControlTowerShipment360({
   const order = data.order as Record<string, unknown> | undefined;
   const booking = data.booking as Record<string, unknown> | null | undefined;
   const lines = (data.lines as unknown[]) ?? [];
+  const emissions = data.emissionsSummary as
+    | {
+        tonnageKg: number | null;
+        tonnageSource: string;
+        totalKgCo2e: number | null;
+        totalDistanceKm: number | null;
+        methodology: string;
+        legs: Array<{
+          legNo: number;
+          originCode: string | null;
+          destinationCode: string | null;
+          mode: string | null;
+          distanceKm: number | null;
+          distanceSource: string;
+          kgCo2e: number | null;
+        }>;
+      }
+    | undefined;
   const milestones = (data.milestones as unknown[]) ?? [];
   const ctMilestones = (data.ctTrackingMilestones as unknown[]) ?? [];
   const documents = (data.documents as unknown[]) ?? [];
@@ -183,6 +202,20 @@ export function ControlTowerShipment360({
   const ctReferences = (data.ctReferences as unknown[]) ?? [];
   const legs = (data.legs as unknown[]) ?? [];
   const containers = (data.containers as unknown[]) ?? [];
+  const stuffedQtyByShipmentItemId = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const raw of containers) {
+      const box = raw as Record<string, unknown>;
+      for (const row of (box.cargoLines as unknown[]) ?? []) {
+        const cl = row as Record<string, unknown>;
+        const sid = String(cl.shipmentItemId);
+        const q = Number(String(cl.quantity));
+        if (!sid || !Number.isFinite(q)) continue;
+        m.set(sid, (m.get(sid) ?? 0) + q);
+      }
+    }
+    return m;
+  }, [containers]);
   const routeProgress = (() => {
     if (!legs.length) return { pct: 0, hint: "Add at least one leg to start route tracking." };
     const normalized = legs.map((raw) => legPhase(raw as Record<string, unknown>));
@@ -212,6 +245,21 @@ export function ControlTowerShipment360({
     (data.crmAccountChoices as Array<{ id: string; name: string }> | undefined) ?? [];
   const assigneeChoices =
     (data.assigneeChoices as Array<{ id: string; name: string }> | undefined) ?? [];
+  const exceptionCodeCatalog =
+    (data.exceptionCodeCatalog as Array<{ code: string; label: string; defaultSeverity: string }>) ?? [];
+  const forwarderSupplierChoices =
+    (data.forwarderSupplierChoices as Array<{ id: string; name: string }>) ?? [];
+  const forwarderOfficeChoices =
+    (data.forwarderOfficeChoices as Array<{ id: string; name: string; supplierId: string }>) ?? [];
+  const forwarderContactChoices =
+    (data.forwarderContactChoices as Array<{
+      id: string;
+      name: string;
+      supplierId: string;
+      email: string | null;
+    }>) ?? [];
+  const opsAssignee = data.opsAssignee as { id: string; name: string } | null | undefined;
+  const opsAssigneeUserId = (data.opsAssigneeUserId as string | null | undefined) ?? null;
   const customerCrmAccount = data.customerCrmAccount as
     | { id: string; name: string; legalName: string | null }
     | null
@@ -260,7 +308,7 @@ export function ControlTowerShipment360({
           Customer or supplier portal view: internal references, audit, and some operational notes are hidden.
         </p>
       ) : null}
-      {!restricted && milestoneSummary && (milestoneSummary.next || milestoneSummary.lateCount > 0) ? (
+      {milestoneSummary && (milestoneSummary.next || milestoneSummary.lateCount > 0) ? (
         <div
           className={`rounded-lg border px-4 py-3 text-sm ${
             milestoneSummary.lateCount > 0
@@ -340,9 +388,31 @@ export function ControlTowerShipment360({
             <h2 className="font-semibold text-zinc-900">Shipment</h2>
             <dl className="mt-2 space-y-1 text-zinc-700">
               <div>
+                <dt className="text-xs text-zinc-500">Status · mode</dt>
+                <dd>
+                  <span className="font-medium">{String(data.status || "—")}</span>
+                  <span className="text-zinc-400"> · </span>
+                  {String(data.transportMode || "—")}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-zinc-500">Shipment created by</dt>
+                <dd>{String((data.createdBy as { name?: string } | undefined)?.name || "—")}</dd>
+              </div>
+              <div>
                 <dt className="text-xs text-zinc-500">Carrier / tracking</dt>
                 <dd>
                   {(data.carrier as string) || "—"} · {(data.trackingNo as string) || "—"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-zinc-500">ASN / expected receive</dt>
+                <dd className="text-xs">
+                  {(data.asnReference as string) || "—"}
+                  <span className="text-zinc-400"> · </span>
+                  {data.expectedReceiveAt
+                    ? new Date(data.expectedReceiveAt as string).toLocaleString()
+                    : "—"}
                 </dd>
               </div>
               {data.shipmentNotes ? (
@@ -352,8 +422,12 @@ export function ControlTowerShipment360({
                 </div>
               ) : null}
               <div>
-                <dt className="text-xs text-zinc-500">Shipped</dt>
-                <dd>{data.shippedAt ? new Date(data.shippedAt as string).toLocaleString() : "—"}</dd>
+                <dt className="text-xs text-zinc-500">Shipped · received</dt>
+                <dd className="text-xs">
+                  {data.shippedAt ? new Date(data.shippedAt as string).toLocaleString() : "—"}
+                  <span className="text-zinc-400"> → </span>
+                  {data.receivedAt ? new Date(data.receivedAt as string).toLocaleString() : "—"}
+                </dd>
               </div>
               {booking ? (
                 <>
@@ -370,6 +444,12 @@ export function ControlTowerShipment360({
                       {booking.eta ? new Date(booking.eta as string).toLocaleString() : "—"}
                     </dd>
                   </div>
+                  {booking.forwarderSupplierName ? (
+                    <div>
+                      <dt className="text-xs text-zinc-500">Forwarder (booking)</dt>
+                      <dd className="text-xs">{String(booking.forwarderSupplierName)}</dd>
+                    </div>
+                  ) : null}
                 </>
               ) : null}
             </dl>
@@ -391,20 +471,498 @@ export function ControlTowerShipment360({
               </div>
             </dl>
           </section>
+          {!restricted ? (
+            <section className="rounded-lg border border-zinc-200 bg-white p-4 text-sm md:col-span-2">
+              <h2 className="font-semibold text-zinc-900">Forwarder & custody</h2>
+              <dl className="mt-2 grid gap-2 text-xs text-zinc-700 sm:grid-cols-2">
+                <div>
+                  <dt className="text-zinc-500">Forwarder</dt>
+                  <dd className="font-medium">
+                    {booking?.forwarderSupplierName
+                      ? String(booking.forwarderSupplierName)
+                      : "—"}
+                    {booking?.forwarderOfficeName ? (
+                      <span className="block text-[11px] font-normal text-zinc-600">
+                        Office: {String(booking.forwarderOfficeName)}
+                        {booking.forwarderOfficeCity ? ` · ${String(booking.forwarderOfficeCity)}` : ""}
+                      </span>
+                    ) : null}
+                    {booking?.forwarderContactName ? (
+                      <span className="block text-[11px] font-normal text-zinc-600">
+                        Contact: {String(booking.forwarderContactName)}
+                        {booking.forwarderContactEmail ? ` · ${String(booking.forwarderContactEmail)}` : ""}
+                      </span>
+                    ) : null}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-zinc-500">Booking record</dt>
+                  <dd>
+                    {booking?.bookingCreatedByName ? (
+                      <span className="block">Created by {String(booking.bookingCreatedByName)}</span>
+                    ) : (
+                      <span className="block text-zinc-500">No booking row yet</span>
+                    )}
+                    {booking?.bookingUpdatedByName ? (
+                      <span className="block text-zinc-600">
+                        Last saved by {String(booking.bookingUpdatedByName)}
+                      </span>
+                    ) : null}
+                  </dd>
+                </div>
+                <div className="sm:col-span-2">
+                  <dt className="text-zinc-500">Ops assignee (this shipment)</dt>
+                  <dd>
+                    {canEdit ? (
+                      <select
+                        className="mt-0.5 max-w-xs rounded border border-zinc-300 px-2 py-1"
+                        defaultValue={opsAssigneeUserId || ""}
+                        onChange={async (e) => {
+                          try {
+                            await postAction({
+                              action: "update_shipment_ops_assignee",
+                              shipmentId,
+                              opsAssigneeUserId: e.target.value || null,
+                            });
+                          } catch (err) {
+                            window.alert(err instanceof Error ? err.message : "Failed");
+                          }
+                        }}
+                      >
+                        <option value="">Unassigned</option>
+                        {assigneeChoices.map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.name}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="font-medium">{opsAssignee?.name ?? "—"}</span>
+                    )}
+                  </dd>
+                </div>
+              </dl>
+              {canEdit ? (
+                <form
+                  key={`fwd-${String(booking?.forwarderSupplierId ?? "")}`}
+                  className="mt-3 flex flex-wrap items-end gap-2 border-t border-zinc-100 pt-3 text-xs"
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    const fd = new FormData(e.currentTarget);
+                    const sup = String(fd.get("forwarderSupplierId") || "").trim();
+                    try {
+                      await postAction({
+                        action: "update_ct_shipment_booking_forwarder",
+                        shipmentId,
+                        forwarderSupplierId: sup || null,
+                        forwarderOfficeId: String(fd.get("forwarderOfficeId") || "").trim() || null,
+                        forwarderContactId: String(fd.get("forwarderContactId") || "").trim() || null,
+                      });
+                      await load();
+                    } catch (err) {
+                      window.alert(err instanceof Error ? err.message : "Failed");
+                    }
+                  }}
+                >
+                  <label className="flex flex-col gap-0.5">
+                    <span className="text-[11px] text-zinc-500">Forwarder (supplier)</span>
+                    <select
+                      name="forwarderSupplierId"
+                      defaultValue={String(booking?.forwarderSupplierId || "")}
+                      className="min-w-[200px] rounded border px-2 py-1"
+                    >
+                      <option value="">None</option>
+                      {forwarderSupplierChoices.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-0.5">
+                    <span className="text-[11px] text-zinc-500">Office</span>
+                    <select name="forwarderOfficeId" className="min-w-[180px] rounded border px-2 py-1">
+                      <option value="">—</option>
+                      {forwarderOfficeChoices.map((o) => (
+                        <option key={o.id} value={o.id}>
+                          {o.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-0.5">
+                    <span className="text-[11px] text-zinc-500">Contact</span>
+                    <select name="forwarderContactId" className="min-w-[200px] rounded border px-2 py-1">
+                      <option value="">—</option>
+                      {forwarderContactChoices.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                          {c.email ? ` (${c.email})` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <button type="submit" className="rounded bg-zinc-900 px-3 py-1 text-white">
+                    Save forwarder
+                  </button>
+                </form>
+              ) : null}
+            </section>
+          ) : null}
           <section className="rounded-lg border border-zinc-200 bg-white p-4 text-sm md:col-span-2">
-            <h2 className="font-semibold text-zinc-900">Lines</h2>
-            <ul className="mt-2 divide-y divide-zinc-100">
-              {lines.map((line) => {
-                const l = line as Record<string, unknown>;
-                const p = l.product as Record<string, unknown> | null | undefined;
-                return (
-                  <li key={String(l.id)} className="py-2 text-xs text-zinc-700">
-                    Line {String(l.lineNo)} · {String(l.description)} · qty {String(l.quantityShipped)}
-                    {p ? ` · ${String(p.sku || p.productCode || "")}` : ""}
-                  </li>
-                );
-              })}
-            </ul>
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <h2 className="font-semibold text-zinc-900">Cargo & equipment</h2>
+              <button
+                type="button"
+                onClick={() => setTab("routing")}
+                className="text-xs font-medium text-sky-800 underline decoration-sky-300 hover:text-sky-950"
+              >
+                Routing & containers →
+              </button>
+            </div>
+            <dl className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 text-zinc-700">
+              <div>
+                <dt className="text-xs text-zinc-500">Est. gross weight</dt>
+                <dd className="font-medium tabular-nums">
+                  {data.estimatedWeightKg != null && String(data.estimatedWeightKg).trim() !== ""
+                    ? `${data.estimatedWeightKg} kg`
+                    : "—"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-zinc-500">Est. volume</dt>
+                <dd className="font-medium tabular-nums">
+                  {data.estimatedVolumeCbm != null && String(data.estimatedVolumeCbm).trim() !== ""
+                    ? `${data.estimatedVolumeCbm} m³`
+                    : "—"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-zinc-500">Outer packages (pieces)</dt>
+                <dd className="font-medium tabular-nums">
+                  {data.cargoOuterPackageCount != null ? String(data.cargoOuterPackageCount) : "—"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-zinc-500">Chargeable weight</dt>
+                <dd className="font-medium tabular-nums">
+                  {data.cargoChargeableWeightKg != null && String(data.cargoChargeableWeightKg).trim() !== ""
+                    ? `${data.cargoChargeableWeightKg} kg`
+                    : "—"}
+                </dd>
+              </div>
+              <div className="sm:col-span-2">
+                <dt className="text-xs text-zinc-500">Dimensions (summary)</dt>
+                <dd className="text-sm">{String(data.cargoDimensionsText || "—")}</dd>
+              </div>
+              <div className="sm:col-span-2 lg:col-span-3">
+                <dt className="text-xs text-zinc-500">Commodity</dt>
+                <dd className="text-sm text-zinc-800">{String(data.cargoCommoditySummary || "—")}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-zinc-500">Containers on file</dt>
+                <dd className="font-medium tabular-nums">{containers.length}</dd>
+              </div>
+            </dl>
+            {canEdit ? (
+              <form
+                className="mt-4 border-t border-zinc-100 pt-4 text-xs"
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  const fd = new FormData(e.currentTarget);
+                  const numOrEmpty = (name: string) => {
+                    const v = String(fd.get(name) ?? "").trim();
+                    return v === "" ? null : v;
+                  };
+                  try {
+                    await postAction({
+                      action: "update_shipment_cargo_summary",
+                      shipmentId,
+                      estimatedWeightKg: numOrEmpty("estimatedWeightKg"),
+                      estimatedVolumeCbm: numOrEmpty("estimatedVolumeCbm"),
+                      cargoOuterPackageCount: numOrEmpty("cargoOuterPackageCount"),
+                      cargoChargeableWeightKg: numOrEmpty("cargoChargeableWeightKg"),
+                      cargoDimensionsText: String(fd.get("cargoDimensionsText") ?? "").trim() || null,
+                      cargoCommoditySummary: String(fd.get("cargoCommoditySummary") ?? "").trim() || null,
+                    });
+                  } catch (err) {
+                    window.alert(err instanceof Error ? err.message : "Failed");
+                  }
+                }}
+              >
+                <p className="mb-2 font-medium text-zinc-800">Edit cargo summary</p>
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  <label className="flex flex-col gap-1">
+                    <span className="text-zinc-500">Est. weight (kg)</span>
+                    <input
+                      name="estimatedWeightKg"
+                      defaultValue={String(data.estimatedWeightKg ?? "")}
+                      className="rounded border border-zinc-300 px-2 py-1"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-zinc-500">Est. volume (m³)</span>
+                    <input
+                      name="estimatedVolumeCbm"
+                      defaultValue={String(data.estimatedVolumeCbm ?? "")}
+                      className="rounded border border-zinc-300 px-2 py-1"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-zinc-500">Outer packages</span>
+                    <input
+                      name="cargoOuterPackageCount"
+                      defaultValue={
+                        data.cargoOuterPackageCount != null ? String(data.cargoOuterPackageCount) : ""
+                      }
+                      className="rounded border border-zinc-300 px-2 py-1"
+                      inputMode="numeric"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-zinc-500">Chargeable weight (kg)</span>
+                    <input
+                      name="cargoChargeableWeightKg"
+                      defaultValue={String(data.cargoChargeableWeightKg ?? "")}
+                      className="rounded border border-zinc-300 px-2 py-1"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 sm:col-span-2">
+                    <span className="text-zinc-500">Dimensions (text)</span>
+                    <input
+                      name="cargoDimensionsText"
+                      defaultValue={String(data.cargoDimensionsText ?? "")}
+                      placeholder="e.g. 120×80×100 cm"
+                      className="rounded border border-zinc-300 px-2 py-1"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 sm:col-span-2 lg:col-span-3">
+                    <span className="text-zinc-500">Commodity</span>
+                    <textarea
+                      name="cargoCommoditySummary"
+                      defaultValue={String(data.cargoCommoditySummary ?? "")}
+                      rows={2}
+                      className="rounded border border-zinc-300 px-2 py-1"
+                    />
+                  </label>
+                </div>
+                <button type="submit" className="mt-3 rounded bg-zinc-900 px-3 py-1.5 text-white">
+                  Save cargo summary
+                </button>
+              </form>
+            ) : null}
+          </section>
+          <section className="rounded-lg border border-emerald-200/80 bg-emerald-50/50 p-4 text-sm md:col-span-2">
+            <h2 className="font-semibold text-emerald-950">CO₂e (estimated)</h2>
+            <p className="mt-1 text-xs text-emerald-900/80">
+              Planning-grade footprint from legs × mass. Extend the coordinate table and swap emission factors when you
+              lock a methodology for reporting.
+            </p>
+            {emissions && emissions.legs.length > 0 ? (
+              <>
+                <dl className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-xs text-emerald-950">
+                  <div>
+                    <dt className="text-[10px] font-semibold uppercase tracking-wide text-emerald-800/90">Mass basis</dt>
+                    <dd className="font-medium tabular-nums">
+                      {emissions.tonnageKg != null
+                        ? `${emissions.tonnageKg} kg (${emissions.tonnageSource.replace(/_/g, " ")})`
+                        : "— (add chargeable / est. weight or line kg)"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-[10px] font-semibold uppercase tracking-wide text-emerald-800/90">
+                      Route distance (sum)
+                    </dt>
+                    <dd className="font-medium tabular-nums">
+                      {emissions.totalDistanceKm != null ? `${emissions.totalDistanceKm} km` : "—"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-[10px] font-semibold uppercase tracking-wide text-emerald-800/90">
+                      Shipment total
+                    </dt>
+                    <dd className="text-base font-semibold tabular-nums text-emerald-950">
+                      {emissions.totalKgCo2e != null ? `${emissions.totalKgCo2e} kg CO₂e` : "—"}
+                    </dd>
+                  </div>
+                </dl>
+                <div className="mt-3 overflow-x-auto rounded border border-emerald-100/80 bg-white/80">
+                  <table className="min-w-full text-left text-xs text-emerald-950">
+                    <thead className="bg-emerald-100/50 text-[10px] font-semibold uppercase tracking-wide text-emerald-900">
+                      <tr>
+                        <th className="px-2 py-2">Leg</th>
+                        <th className="px-2 py-2">Lane</th>
+                        <th className="px-2 py-2">Mode</th>
+                        <th className="px-2 py-2">Distance</th>
+                        <th className="px-2 py-2">Source</th>
+                        <th className="px-2 py-2">Leg CO₂e</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-emerald-100">
+                      {emissions.legs.map((row) => (
+                        <tr key={row.legNo}>
+                          <td className="whitespace-nowrap px-2 py-2 font-mono">{row.legNo}</td>
+                          <td className="whitespace-nowrap px-2 py-2">
+                            {(row.originCode || "—") + " → " + (row.destinationCode || "—")}
+                          </td>
+                          <td className="whitespace-nowrap px-2 py-2">{row.mode || "—"}</td>
+                          <td className="whitespace-nowrap px-2 py-2 tabular-nums">
+                            {row.distanceKm != null ? `${row.distanceKm} km` : "—"}
+                          </td>
+                          <td className="whitespace-nowrap px-2 py-2 text-emerald-800/90">
+                            {row.distanceSource === "coordinates"
+                              ? "Great circle"
+                              : row.distanceSource === "time_speed"
+                                ? "Schedule × speed"
+                                : "—"}
+                          </td>
+                          <td className="whitespace-nowrap px-2 py-2 tabular-nums font-medium">
+                            {row.kgCo2e != null ? `${row.kgCo2e} kg` : "—"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="mt-2 text-[11px] leading-snug text-emerald-900/75">{emissions.methodology}</p>
+              </>
+            ) : (
+              <p className="mt-2 text-xs text-emerald-900/80">
+                Add routing legs (or a booking with origin / destination) plus shipment weight to estimate CO₂e.
+              </p>
+            )}
+          </section>
+          <section className="rounded-lg border border-zinc-200 bg-white p-4 text-sm md:col-span-2">
+            <h2 className="font-semibold text-zinc-900">Lines & cargo (order)</h2>
+            <div className="mt-2 overflow-x-auto rounded border border-zinc-100">
+              <table className="min-w-full text-left text-xs text-zinc-800">
+                <thead className="bg-zinc-50 text-[10px] font-semibold uppercase tracking-wide text-zinc-600">
+                  <tr>
+                    <th className="whitespace-nowrap px-2 py-2">Ln</th>
+                    <th className="min-w-[8rem] px-2 py-2">Description</th>
+                    <th className="whitespace-nowrap px-2 py-2">SKU / code</th>
+                    <th className="whitespace-nowrap px-2 py-2">Order qty</th>
+                    <th className="whitespace-nowrap px-2 py-2">Shipped</th>
+                    <th className="whitespace-nowrap px-2 py-2">Rcvd</th>
+                    <th className="whitespace-nowrap px-2 py-2">HS</th>
+                    <th className="whitespace-nowrap px-2 py-2">DG</th>
+                    <th className="whitespace-nowrap px-2 py-2">Pkgs</th>
+                    <th className="whitespace-nowrap px-2 py-2">Kg</th>
+                    <th className="whitespace-nowrap px-2 py-2">m³</th>
+                    <th className="min-w-[6rem] px-2 py-2">Dims</th>
+                    {canEdit ? <th className="px-2 py-2"> </th> : null}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-100">
+                  {lines.map((line) => {
+                    const l = line as Record<string, unknown>;
+                    const p = l.product as Record<string, unknown> | null | undefined;
+                    const dg = Boolean(p?.isDangerousGoods);
+                    const sku = p ? String(p.sku || p.productCode || "") : "";
+                    return (
+                      <tr key={String(l.id)} className="align-top">
+                        <td className="whitespace-nowrap px-2 py-2 font-mono">{String(l.lineNo)}</td>
+                        <td className="max-w-[14rem] px-2 py-2 text-zinc-700">{String(l.description)}</td>
+                        <td className="whitespace-nowrap px-2 py-2 text-zinc-600">{sku || "—"}</td>
+                        <td className="whitespace-nowrap px-2 py-2 tabular-nums">{String(l.orderLineQuantity)}</td>
+                        <td className="whitespace-nowrap px-2 py-2 tabular-nums">{String(l.quantityShipped)}</td>
+                        <td className="whitespace-nowrap px-2 py-2 tabular-nums">{String(l.quantityReceived)}</td>
+                        <td className="whitespace-nowrap px-2 py-2 font-mono text-[10px]">
+                          {p?.hsCode ? String(p.hsCode) : "—"}
+                        </td>
+                        <td className="whitespace-nowrap px-2 py-2">
+                          {dg ? (
+                            <span className="rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-amber-900">
+                              DG{p?.unNumber ? ` · ${String(p.unNumber)}` : ""}
+                            </span>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+                        <td className="whitespace-nowrap px-2 py-2 tabular-nums">
+                          {l.cargoPackageCount != null ? String(l.cargoPackageCount) : "—"}
+                        </td>
+                        <td className="whitespace-nowrap px-2 py-2 tabular-nums">
+                          {l.cargoGrossWeightKg != null ? String(l.cargoGrossWeightKg) : "—"}
+                        </td>
+                        <td className="whitespace-nowrap px-2 py-2 tabular-nums">
+                          {l.cargoVolumeCbm != null ? String(l.cargoVolumeCbm) : "—"}
+                        </td>
+                        <td className="max-w-[10rem] px-2 py-2 text-zinc-600">
+                          {l.cargoDimensionsText ? String(l.cargoDimensionsText) : "—"}
+                        </td>
+                        {canEdit ? (
+                          <td className="px-2 py-2">
+                            <form
+                              className="flex flex-col gap-1"
+                              onSubmit={async (e) => {
+                                e.preventDefault();
+                                const fd = new FormData(e.currentTarget);
+                                const emptyToNull = (name: string) => {
+                                  const v = String(fd.get(name) ?? "").trim();
+                                  return v === "" ? null : v;
+                                };
+                                try {
+                                  await postAction({
+                                    action: "update_shipment_item_cargo",
+                                    shipmentId,
+                                    shipmentItemId: String(l.id),
+                                    cargoPackageCount: emptyToNull("cargoPackageCount"),
+                                    cargoGrossWeightKg: emptyToNull("cargoGrossWeightKg"),
+                                    cargoVolumeCbm: emptyToNull("cargoVolumeCbm"),
+                                    cargoDimensionsText:
+                                      String(fd.get("cargoDimensionsText") ?? "").trim() || null,
+                                  });
+                                } catch (err) {
+                                  window.alert(err instanceof Error ? err.message : "Failed");
+                                }
+                              }}
+                            >
+                              <input
+                                name="cargoPackageCount"
+                                placeholder="Pkgs"
+                                defaultValue={
+                                  l.cargoPackageCount != null ? String(l.cargoPackageCount) : ""
+                                }
+                                className="w-14 rounded border px-1 py-0.5"
+                              />
+                              <input
+                                name="cargoGrossWeightKg"
+                                placeholder="Kg"
+                                defaultValue={
+                                  l.cargoGrossWeightKg != null ? String(l.cargoGrossWeightKg) : ""
+                                }
+                                className="w-16 rounded border px-1 py-0.5"
+                              />
+                              <input
+                                name="cargoVolumeCbm"
+                                placeholder="m³"
+                                defaultValue={
+                                  l.cargoVolumeCbm != null ? String(l.cargoVolumeCbm) : ""
+                                }
+                                className="w-16 rounded border px-1 py-0.5"
+                              />
+                              <input
+                                name="cargoDimensionsText"
+                                placeholder="Dims"
+                                defaultValue={String(l.cargoDimensionsText ?? "")}
+                                className="w-24 rounded border px-1 py-0.5"
+                              />
+                              <button
+                                type="submit"
+                                className="rounded bg-zinc-800 px-2 py-0.5 text-[10px] text-white"
+                              >
+                                Save
+                              </button>
+                            </form>
+                          </td>
+                        ) : null}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </section>
           <section className="rounded-lg border border-zinc-200 bg-white p-4 text-sm md:col-span-2">
             <h2 className="mb-2 font-semibold text-zinc-900">References</h2>
@@ -811,6 +1369,126 @@ export function ControlTowerShipment360({
                           {c.gateOutAt ? "Gate-out done" : "Awaiting gate-out"}
                         </span>
                       </div>
+                      <div className="mt-3 rounded border border-sky-100 bg-sky-50/70 p-2">
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-sky-950">
+                          Loaded in this container
+                        </p>
+                        {Array.isArray(c.cargoLines) && (c.cargoLines as unknown[]).length > 0 ? (
+                          <ul className="mt-1.5 space-y-1.5">
+                            {(c.cargoLines as unknown[]).map((row) => {
+                              const cl = row as Record<string, unknown>;
+                              return (
+                                <li
+                                  key={String(cl.id)}
+                                  className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-zinc-800"
+                                >
+                                  <span>
+                                    Line {String(cl.lineNo)} — {String(cl.description)} ·{" "}
+                                    <span className="font-medium tabular-nums">{String(cl.quantity)}</span>
+                                    {cl.notes != null && String(cl.notes) ? (
+                                      <span className="text-zinc-500"> ({String(cl.notes)})</span>
+                                    ) : null}
+                                  </span>
+                                  {canEdit ? (
+                                    <button
+                                      type="button"
+                                      className="shrink-0 rounded border border-red-200 px-2 py-0.5 text-[10px] text-red-800"
+                                      onClick={async () => {
+                                        if (!window.confirm("Remove this line from the container?")) return;
+                                        try {
+                                          await postAction({
+                                            action: "delete_ct_container_cargo_line",
+                                            cargoLineId: String(cl.id),
+                                          });
+                                        } catch (err) {
+                                          window.alert(err instanceof Error ? err.message : "Failed");
+                                        }
+                                      }}
+                                    >
+                                      Remove
+                                    </button>
+                                  ) : null}
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        ) : (
+                          <p className="mt-1 text-[11px] text-zinc-500">No shipment lines linked yet.</p>
+                        )}
+                        {canEdit ? (
+                          <form
+                            className="mt-2 flex flex-wrap items-end gap-2 border-t border-sky-100/80 pt-2"
+                            onSubmit={async (e) => {
+                              e.preventDefault();
+                              const fd = new FormData(e.currentTarget);
+                              const sid = String(fd.get("shipmentItemId") || "");
+                              const q = String(fd.get("quantity") || "").trim();
+                              if (!sid || !q) return;
+                              try {
+                                await postAction({
+                                  action: "upsert_ct_container_cargo_line",
+                                  containerId: String(c.id),
+                                  shipmentItemId: sid,
+                                  quantity: q,
+                                  notes: String(fd.get("notes") || "") || null,
+                                });
+                                (e.target as HTMLFormElement).reset();
+                              } catch (err) {
+                                window.alert(err instanceof Error ? err.message : "Failed");
+                              }
+                            }}
+                          >
+                            <select
+                              name="shipmentItemId"
+                              required
+                              className="max-w-[min(100%,260px)] rounded border px-2 py-1 text-[11px]"
+                            >
+                              <option value="">Shipment line…</option>
+                              {lines.map((lr) => {
+                                const ln = lr as Record<string, unknown>;
+                                const lid = String(ln.id);
+                                const cap = Number(String(ln.quantityShipped));
+                                const usedAll = stuffedQtyByShipmentItemId.get(lid) ?? 0;
+                                const cargoRows = ((c.cargoLines as unknown[]) ?? []) as Array<
+                                  Record<string, unknown>
+                                >;
+                                const rowHere = cargoRows.find((x) => String(x.shipmentItemId) === lid);
+                                const inThis = rowHere ? Number(String(rowHere.quantity)) : 0;
+                                const maxHere = Number.isFinite(cap)
+                                  ? Math.max(0, cap - usedAll + (Number.isFinite(inThis) ? inThis : 0))
+                                  : 0;
+                                return (
+                                  <option key={lid} value={lid}>
+                                    Line {String(ln.lineNo)} — {String(ln.description).slice(0, 40)}
+                                    {String(ln.description).length > 40 ? "…" : ""} (max {maxHere} in this
+                                    container)
+                                  </option>
+                                );
+                              })}
+                            </select>
+                            <input
+                              name="quantity"
+                              type="number"
+                              min={0}
+                              step="0.001"
+                              required
+                              placeholder="Qty"
+                              className="w-24 rounded border px-2 py-1 text-[11px] tabular-nums"
+                            />
+                            <input
+                              name="notes"
+                              placeholder="Notes (optional)"
+                              className="min-w-[120px] flex-1 rounded border px-2 py-1 text-[11px]"
+                            />
+                            <button
+                              type="submit"
+                              className="rounded bg-sky-900 px-2 py-1 text-[11px] text-white"
+                            >
+                              Add / update
+                            </button>
+                          </form>
+                        ) : null}
+                      </div>
                       {canEdit ? (
                         <form
                           className="mt-2 flex flex-wrap items-end gap-2"
@@ -1160,11 +1838,19 @@ export function ControlTowerShipment360({
 
       {tab === "documents" ? (
         <section className="rounded-lg border border-zinc-200 bg-white p-4 text-sm">
-          <ul className="space-y-2 text-xs">
+          <p className="text-xs text-zinc-600">
+            Files live in object storage (or local <code className="text-[11px]">public/uploads</code> in
+            development); this screen only stores metadata and links. Integrations (e.g. CargoWise) can register
+            documents via API; otherwise use upload below.
+          </p>
+          <ul className="mt-3 space-y-2 text-xs">
             {documents.map((d) => {
               const row = d as Record<string, unknown>;
+              const src = String(row.source || "UPLOAD");
+              const prov = row.integrationProvider != null ? String(row.integrationProvider) : "";
+              const extRef = row.externalRef != null ? String(row.externalRef) : "";
               return (
-                <li key={String(row.id)}>
+                <li key={String(row.id)} className="border-b border-zinc-100 pb-2">
                   <a
                     href={String(row.blobUrl)}
                     target="_blank"
@@ -1172,8 +1858,34 @@ export function ControlTowerShipment360({
                     className="font-medium text-sky-800 hover:underline"
                   >
                     {String(row.fileName)}
-                  </a>{" "}
-                  · {String(row.docType)} · {String(row.visibility)}
+                  </a>
+                  <div className="mt-0.5 text-[11px] text-zinc-600">
+                    <span className="font-medium text-zinc-800">
+                      {String(row.docTypeLabel || row.docType)}
+                    </span>
+                    {String(row.docType) !== String(row.docTypeLabel) ? (
+                      <span className="text-zinc-400"> ({String(row.docType)})</span>
+                    ) : null}
+                    {" · "}
+                    {String(row.visibility)}
+                    {" · "}
+                    <span
+                      className={
+                        src === "INTEGRATION"
+                          ? "text-violet-800"
+                          : "text-zinc-700"
+                      }
+                    >
+                      {src === "INTEGRATION" ? "Integration" : "Upload"}
+                    </span>
+                    {prov ? <span className="text-zinc-500"> · {prov}</span> : null}
+                    {extRef ? (
+                      <span className="text-zinc-400" title={extRef}>
+                        {" "}
+                        · ref {extRef.length > 40 ? `${extRef.slice(0, 40)}…` : extRef}
+                      </span>
+                    ) : null}
+                  </div>
                 </li>
               );
             })}
@@ -1209,12 +1921,28 @@ export function ControlTowerShipment360({
               }}
             >
               <input type="file" name="file" accept=".pdf,image/*" required className="text-xs" />
-              <div className="flex flex-wrap gap-2">
-                <input name="docType" placeholder="Doc type" className="rounded border px-2 py-1" />
-                <select name="visibility" className="rounded border px-2 py-1">
-                  <option value="INTERNAL">Internal</option>
-                  <option value="CUSTOMER_SHAREABLE">Customer shareable</option>
-                </select>
+              <div className="flex flex-wrap items-end gap-2">
+                <label className="flex flex-col gap-0.5">
+                  <span className="text-[11px] text-zinc-500">Document type</span>
+                  <select name="docType" className="min-w-[200px] rounded border px-2 py-1" required>
+                    {Array.from(new Set(CT_SHIPMENT_DOCUMENT_TYPES.map((t) => t.group))).map((group) => (
+                      <optgroup key={group} label={group}>
+                        {CT_SHIPMENT_DOCUMENT_TYPES.filter((t) => t.group === group).map((t) => (
+                          <option key={t.code} value={t.code}>
+                            {t.label}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex flex-col gap-0.5">
+                  <span className="text-[11px] text-zinc-500">Visibility</span>
+                  <select name="visibility" className="rounded border px-2 py-1">
+                    <option value="INTERNAL">Internal</option>
+                    <option value="CUSTOMER_SHAREABLE">Customer shareable</option>
+                  </select>
+                </label>
                 <button type="submit" className="rounded bg-zinc-900 px-3 py-1 text-white">
                   Upload
                 </button>
@@ -1651,8 +2379,12 @@ export function ControlTowerShipment360({
               const sla = ctSlaState(String(row.createdAt ?? ""), String(row.severity || "WARN"));
               return (
                 <li key={String(row.id)} className="border-b border-zinc-50 pb-2">
-                  <span className="font-medium">{String(row.type)}</span> · {String(row.status)} ·{" "}
-                  {String(row.severity)}
+                  <span className="font-medium">{String(row.typeLabel || row.type)}</span>
+                  {String(row.typeLabel) !== String(row.type) ? (
+                    <span className="font-mono text-[10px] text-zinc-400"> ({String(row.type)})</span>
+                  ) : null}
+                  {" · "}
+                  {String(row.status)} · {String(row.severity)}
                   <span
                     className={`ml-2 rounded-full border px-2 py-0.5 ${
                       sla.breached
@@ -1721,34 +2453,79 @@ export function ControlTowerShipment360({
           </ul>
           {canEdit ? (
             <form
-              className="mt-4 flex flex-wrap gap-2 border-t border-zinc-100 pt-4 text-xs"
+              className="mt-4 flex flex-col gap-2 border-t border-zinc-100 pt-4 text-xs"
               onSubmit={async (e) => {
                 e.preventDefault();
                 const fd = new FormData(e.currentTarget);
-                const type = String(fd.get("type") || "").trim();
-                if (!type) return;
+                const sevRaw = String(fd.get("severity") || "").trim();
+                const rootCause = String(fd.get("rootCause") || "").trim() || null;
                 try {
-                  await postAction({
-                    action: "create_ct_exception",
-                    shipmentId,
-                    type,
-                    severity: String(fd.get("severity") || "WARN"),
-                  });
+                  if (exceptionCodeCatalog.length > 0) {
+                    const code = String(fd.get("exceptionCode") || "").trim();
+                    if (!code) return;
+                    await postAction({
+                      action: "create_ct_exception",
+                      shipmentId,
+                      exceptionCode: code,
+                      ...(sevRaw === "INFO" || sevRaw === "WARN" || sevRaw === "CRITICAL"
+                        ? { severity: sevRaw }
+                        : {}),
+                      ...(rootCause ? { rootCause } : {}),
+                    });
+                  } else {
+                    const type = String(fd.get("type") || "").trim();
+                    if (!type) return;
+                    await postAction({
+                      action: "create_ct_exception",
+                      shipmentId,
+                      type,
+                      severity:
+                        sevRaw === "INFO" || sevRaw === "WARN" || sevRaw === "CRITICAL" ? sevRaw : "WARN",
+                      ...(rootCause ? { rootCause } : {}),
+                    });
+                  }
                   (e.target as HTMLFormElement).reset();
+                  await load();
                 } catch (err) {
                   window.alert(err instanceof Error ? err.message : "Failed");
                 }
               }}
             >
-              <input name="type" placeholder="Exception type *" className="rounded border px-2 py-1" />
-              <select name="severity" className="rounded border px-2 py-1">
-                <option value="WARN">WARN</option>
-                <option value="INFO">INFO</option>
-                <option value="CRITICAL">CRITICAL</option>
-              </select>
-              <button type="submit" className="rounded bg-zinc-900 px-3 py-1 text-white">
-                Log exception
-              </button>
+              {exceptionCodeCatalog.length > 0 ? (
+                <label className="flex max-w-md flex-col gap-0.5">
+                  <span className="text-[11px] text-zinc-500">Exception type</span>
+                  <select name="exceptionCode" required className="rounded border px-2 py-1">
+                    <option value="">Select code…</option>
+                    {exceptionCodeCatalog.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.label} ({c.code})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : (
+                <input name="type" placeholder="Exception type *" className="max-w-md rounded border px-2 py-1" />
+              )}
+              <div className="flex flex-wrap items-end gap-2">
+                <label className="flex flex-col gap-0.5">
+                  <span className="text-[11px] text-zinc-500">Severity</span>
+                  <select name="severity" className="rounded border px-2 py-1">
+                    <option value="">Default (from code)</option>
+                    <option value="INFO">INFO</option>
+                    <option value="WARN">WARN</option>
+                    <option value="CRITICAL">CRITICAL</option>
+                  </select>
+                </label>
+                <button type="submit" className="rounded bg-zinc-900 px-3 py-1 text-white">
+                  Log exception
+                </button>
+              </div>
+              <textarea
+                name="rootCause"
+                placeholder="Root cause / notes (optional)"
+                rows={2}
+                className="max-w-xl rounded border px-2 py-1"
+              />
             </form>
           ) : null}
         </section>

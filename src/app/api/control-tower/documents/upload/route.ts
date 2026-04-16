@@ -6,6 +6,7 @@ import { NextResponse } from "next/server";
 
 import { getActorUserId, requireApiGrant, userHasRoleNamed } from "@/lib/authz";
 import { writeCtAudit } from "@/lib/control-tower/audit";
+import { normalizeUploadDocType } from "@/lib/control-tower/shipment-document-types";
 import { prisma } from "@/lib/prisma";
 import { getDemoTenant } from "@/lib/demo-tenant";
 
@@ -48,7 +49,7 @@ export async function POST(request: Request) {
   }
 
   const shipmentId = String(form.get("shipmentId") ?? "").trim();
-  const docType = String(form.get("docType") ?? "OTHER").trim() || "OTHER";
+  const docType = normalizeUploadDocType(String(form.get("docType") ?? "OTHER"));
   const visibilityRaw = String(form.get("visibility") ?? "INTERNAL").trim();
   const visibility =
     visibilityRaw === "CUSTOMER_SHAREABLE" ? "CUSTOMER_SHAREABLE" : "INTERNAL";
@@ -115,6 +116,7 @@ export async function POST(request: Request) {
       fileName: file.name || basename,
       blobUrl: url,
       visibility,
+      source: "UPLOAD",
       uploadedById: actorId,
     },
   });
@@ -126,7 +128,7 @@ export async function POST(request: Request) {
     entityId: row.id,
     action: "upload",
     actorUserId: actorId,
-    payload: { docType, fileName: file.name || basename, visibility },
+    payload: { docType, fileName: file.name || basename, visibility, source: "UPLOAD" },
   });
 
   return NextResponse.json({ ok: true, id: row.id, url });

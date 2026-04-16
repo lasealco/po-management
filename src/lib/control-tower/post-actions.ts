@@ -7,6 +7,10 @@ import { amountToMinor, normalizeCurrency } from "@/lib/control-tower/currency";
 
 import { writeCtAudit } from "./audit";
 import { applyCtMilestonePack } from "./milestone-templates";
+import {
+  normalizeUploadDocType,
+  parseIntegrationDocType,
+} from "./shipment-document-types";
 
 type Json = Record<string, unknown>;
 
@@ -20,6 +24,44 @@ async function assertShipmentTenant(shipmentId: string, tenantId: string) {
     select: { id: true },
   });
   return Boolean(row);
+}
+
+function parseOptUInt(v: unknown): number | null | undefined | "invalid" {
+  if (v === undefined) return undefined;
+  if (v === null) return null;
+  if (typeof v === "string" && !v.trim()) return null;
+  const n = typeof v === "number" ? v : parseInt(String(v), 10);
+  if (!Number.isFinite(n) || n < 0 || !Number.isInteger(n)) return "invalid";
+  return n;
+}
+
+function parseOptDecimal(v: unknown): Prisma.Decimal | null | undefined | "invalid" {
+  if (v === undefined) return undefined;
+  if (v === null) return null;
+  if (typeof v === "string" && !v.trim()) return null;
+  const n = Number(typeof v === "string" ? v.trim() : v);
+  if (!Number.isFinite(n) || n < 0) return "invalid";
+  return new Prisma.Decimal(String(n));
+}
+
+function parseOptVarChar(v: unknown, maxLen: number): string | null | undefined | "invalid" {
+  if (v === undefined) return undefined;
+  if (v === null) return null;
+  if (typeof v !== "string") return "invalid";
+  const t = v.trim();
+  if (!t) return null;
+  if (t.length > maxLen) return "invalid";
+  return t;
+}
+
+function parseOptText(v: unknown): string | null | undefined | "invalid" {
+  if (v === undefined) return undefined;
+  if (v === null) return null;
+  if (typeof v !== "string") return "invalid";
+  const t = v.trim();
+  if (!t) return null;
+  if (t.length > 20_000) return "invalid";
+  return t;
 }
 
 export async function handleControlTowerPost(
@@ -228,13 +270,34 @@ export async function handleControlTowerPost(
     const shipmentId = typeof body.shipmentId === "string" ? body.shipmentId : "";
     const blobUrl = typeof body.blobUrl === "string" ? body.blobUrl.trim() : "";
     const fileName = typeof body.fileName === "string" ? body.fileName.trim() : "file";
-    const docType = typeof body.docType === "string" ? body.docType.trim() : "OTHER";
+    const docTypeRaw = typeof body.docType === "string" ? body.docType : "OTHER";
     const visibility =
       body.visibility === "CUSTOMER_SHAREABLE"
         ? "CUSTOMER_SHAREABLE"
         : ("INTERNAL" as const);
     if (!shipmentId || !blobUrl) return bad("shipmentId and blobUrl required");
+    if (blobUrl.length > 2048) return bad("blobUrl too long");
     if (!(await assertShipmentTenant(shipmentId, tenantId))) return bad("Shipment not found", 404);
+
+    const integrationProvider = parseOptVarChar(body.integrationProvider, 64);
+    const externalRef = parseOptVarChar(body.externalRef, 512);
+    if (integrationProvider === "invalid" || externalRef === "invalid") {
+      return bad("Invalid integrationProvider or externalRef");
+    }
+
+    let source: "UPLOAD" | "INTEGRATION" = "UPLOAD";
+    if (body.source === "INTEGRATION") source = "INTEGRATION";
+    else if (body.source === "UPLOAD") source = "UPLOAD";
+    else if (typeof body.integrationProvider === "string" && body.integrationProvider.trim()) {
+      source = "INTEGRATION";
+    }
+
+    const docType =
+      source === "INTEGRATION"
+        ? parseIntegrationDocType(docTypeRaw || "OTHER")
+        : normalizeUploadDocType(typeof docTypeRaw === "string" ? docTypeRaw : "OTHER");
+    if (docType === "invalid") return bad("Invalid docType");
+
     const row = await prisma.ctShipmentDocument.create({
       data: {
         tenantId,
@@ -243,6 +306,9 @@ export async function handleControlTowerPost(
         fileName,
         blobUrl,
         visibility,
+        source,
+        ...(integrationProvider !== undefined ? { integrationProvider } : {}),
+        ...(externalRef !== undefined ? { externalRef } : {}),
         uploadedById: actorId,
       },
     });
@@ -253,7 +319,14 @@ export async function handleControlTowerPost(
       entityId: row.id,
       action: "create",
       actorUserId: actorId,
-      payload: { docType, fileName, visibility },
+      payload: {
+        docType,
+        fileName,
+        visibility,
+        source,
+        integrationProvider: integrationProvider ?? null,
+        externalRef: externalRef ?? null,
+      },
     });
     return NextResponse.json({ ok: true, id: row.id });
   }
@@ -591,11 +664,32 @@ export async function handleControlTowerPost(
 
   if (action === "create_ct_exception") {
     const shipmentId = typeof body.shipmentId === "string" ? body.shipmentId : "";
-    const type = typeof body.type === "string" ? body.type.trim() : "";
-    if (!shipmentId || !type) return bad("shipmentId and type required");
+    const exceptionCode = typeof body.exceptionCode === "string" ? body.exceptionCode.trim() : "";
+    const typeLegacy = typeof body.type === "string" ? body.type.trim() : "";
+    if (!shipmentId) return bad("shipmentId required");
     if (!(await assertShipmentTenant(shipmentId, tenantId))) return bad("Shipment not found", 404);
-    const severity =
-      body.severity === "INFO" || body.severity === "CRITICAL" ? body.severity : "WARN";
+
+    let type: string;
+    let severity: "INFO" | "WARN" | "CRITICAL" = "WARN";
+    if (exceptionCode) {
+      const codeRow = await prisma.ctExceptionCode.findFirst({
+        where: { tenantId, code: exceptionCode, isActive: true },
+        select: { code: true, defaultSeverity: true },
+      });
+      if (!codeRow) return bad("Invalid exceptionCode", 400);
+      type = codeRow.code;
+      severity =
+        body.severity === "INFO" || body.severity === "WARN" || body.severity === "CRITICAL"
+          ? body.severity
+          : codeRow.defaultSeverity;
+    } else if (typeLegacy) {
+      type = typeLegacy;
+      severity =
+        body.severity === "INFO" || body.severity === "CRITICAL" ? body.severity : "WARN";
+    } else {
+      return bad("exceptionCode or type required");
+    }
+
     const ownerUserId =
       typeof body.ownerUserId === "string" && body.ownerUserId ? body.ownerUserId : null;
     if (ownerUserId) {
@@ -605,6 +699,8 @@ export async function handleControlTowerPost(
       });
       if (!u) return bad("Owner user not in tenant", 404);
     }
+    const rootCause = parseOptText(body.rootCause);
+    if (rootCause === "invalid") return bad("rootCause too long");
     const row = await prisma.ctException.create({
       data: {
         tenantId,
@@ -612,6 +708,7 @@ export async function handleControlTowerPost(
         type,
         severity,
         ownerUserId,
+        ...(rootCause !== undefined ? { rootCause } : {}),
       },
     });
     await writeCtAudit({
@@ -621,6 +718,7 @@ export async function handleControlTowerPost(
       entityId: row.id,
       action: "create",
       actorUserId: actorId,
+      payload: { type, exceptionCode: exceptionCode || null },
     });
     return NextResponse.json({ ok: true, id: row.id });
   }
@@ -702,6 +800,140 @@ export async function handleControlTowerPost(
       action: "assign_owner",
       actorUserId: actorId,
       payload: { ownerUserId, previousOwnerUserId },
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "update_ct_shipment_booking_forwarder") {
+    const shipmentId = typeof body.shipmentId === "string" ? body.shipmentId : "";
+    if (!shipmentId) return bad("shipmentId required");
+    if (!(await assertShipmentTenant(shipmentId, tenantId))) return bad("Shipment not found", 404);
+
+    const fsNull = body.forwarderSupplierId === null || body.forwarderSupplierId === "";
+    const forwarderSupplierId = fsNull
+      ? null
+      : typeof body.forwarderSupplierId === "string"
+        ? body.forwarderSupplierId.trim()
+        : null;
+    const foNull = body.forwarderOfficeId === null || body.forwarderOfficeId === "";
+    const forwarderOfficeId = foNull
+      ? null
+      : typeof body.forwarderOfficeId === "string"
+        ? body.forwarderOfficeId.trim()
+        : null;
+    const fcNull = body.forwarderContactId === null || body.forwarderContactId === "";
+    const forwarderContactId = fcNull
+      ? null
+      : typeof body.forwarderContactId === "string"
+        ? body.forwarderContactId.trim()
+        : null;
+
+    if (forwarderSupplierId) {
+      const supplier = await prisma.supplier.findFirst({
+        where: { id: forwarderSupplierId, tenantId, isActive: true },
+        select: { id: true },
+      });
+      if (!supplier) return bad("Invalid forwarder supplier", 400);
+      if (forwarderOfficeId) {
+        const office = await prisma.supplierOffice.findFirst({
+          where: {
+            id: forwarderOfficeId,
+            supplierId: forwarderSupplierId,
+            tenantId,
+            isActive: true,
+          },
+          select: { id: true },
+        });
+        if (!office) return bad("Invalid forwarder office", 400);
+      }
+      if (forwarderContactId) {
+        const contact = await prisma.supplierContact.findFirst({
+          where: {
+            id: forwarderContactId,
+            supplierId: forwarderSupplierId,
+            tenantId,
+          },
+          select: { id: true },
+        });
+        if (!contact) return bad("Invalid forwarder contact", 400);
+      }
+    } else if (forwarderOfficeId || forwarderContactId) {
+      return bad("forwarder office/contact require a forwarder supplier");
+    }
+
+    const existing = await prisma.shipmentBooking.findUnique({
+      where: { shipmentId },
+      select: { id: true },
+    });
+    if (existing) {
+      await prisma.shipmentBooking.update({
+        where: { shipmentId },
+        data: {
+          forwarderSupplierId,
+          forwarderOfficeId: forwarderSupplierId ? forwarderOfficeId : null,
+          forwarderContactId: forwarderSupplierId ? forwarderContactId : null,
+          updatedById: actorId,
+        },
+      });
+    } else {
+      await prisma.shipmentBooking.create({
+        data: {
+          shipmentId,
+          status: "DRAFT",
+          forwarderSupplierId,
+          forwarderOfficeId,
+          forwarderContactId,
+          createdById: actorId,
+          updatedById: actorId,
+        },
+      });
+    }
+    const bookingRow = await prisma.shipmentBooking.findUnique({
+      where: { shipmentId },
+      select: { id: true },
+    });
+    await writeCtAudit({
+      tenantId,
+      shipmentId,
+      entityType: "ShipmentBooking",
+      entityId: bookingRow?.id ?? shipmentId,
+      action: "update_forwarder",
+      actorUserId: actorId,
+      payload: { forwarderSupplierId, forwarderOfficeId, forwarderContactId },
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "update_shipment_ops_assignee") {
+    const shipmentId = typeof body.shipmentId === "string" ? body.shipmentId : "";
+    if (!shipmentId) return bad("shipmentId required");
+    if (!(await assertShipmentTenant(shipmentId, tenantId))) return bad("Shipment not found", 404);
+    const opsAssigneeUserId =
+      body.opsAssigneeUserId === null || body.opsAssigneeUserId === ""
+        ? null
+        : typeof body.opsAssigneeUserId === "string"
+          ? body.opsAssigneeUserId.trim()
+          : undefined;
+    if (opsAssigneeUserId === undefined) return bad("opsAssigneeUserId required (or null to clear)");
+    if (opsAssigneeUserId) {
+      const u = await prisma.user.findFirst({
+        where: { id: opsAssigneeUserId, tenantId, isActive: true },
+        select: { id: true },
+      });
+      if (!u) return bad("Assignee not found in tenant", 404);
+    }
+    await prisma.shipment.update({
+      where: { id: shipmentId },
+      data: { opsAssigneeUserId },
+    });
+    await writeCtAudit({
+      tenantId,
+      shipmentId,
+      entityType: "Shipment",
+      entityId: shipmentId,
+      action: "update_ops_assignee",
+      actorUserId: actorId,
+      payload: { opsAssigneeUserId },
     });
     return NextResponse.json({ ok: true });
   }
@@ -1010,6 +1242,91 @@ export async function handleControlTowerPost(
     return NextResponse.json({ ok: true, id: row.id });
   }
 
+  if (action === "update_shipment_cargo_summary") {
+    const shipmentId = typeof body.shipmentId === "string" ? body.shipmentId : "";
+    if (!shipmentId) return bad("shipmentId required");
+    if (!(await assertShipmentTenant(shipmentId, tenantId))) return bad("Shipment not found", 404);
+
+    const estKg = parseOptDecimal(body.estimatedWeightKg);
+    const estCbm = parseOptDecimal(body.estimatedVolumeCbm);
+    const outer = parseOptUInt(body.cargoOuterPackageCount);
+    const chg = parseOptDecimal(body.cargoChargeableWeightKg);
+    const dims = parseOptVarChar(body.cargoDimensionsText, 512);
+    const commodity = parseOptText(body.cargoCommoditySummary);
+    if (
+      estKg === "invalid" ||
+      estCbm === "invalid" ||
+      outer === "invalid" ||
+      chg === "invalid" ||
+      dims === "invalid" ||
+      commodity === "invalid"
+    ) {
+      return bad("Invalid numeric or text field");
+    }
+
+    await prisma.shipment.update({
+      where: { id: shipmentId },
+      data: {
+        ...(estKg !== undefined ? { estimatedWeightKg: estKg } : {}),
+        ...(estCbm !== undefined ? { estimatedVolumeCbm: estCbm } : {}),
+        ...(outer !== undefined ? { cargoOuterPackageCount: outer } : {}),
+        ...(chg !== undefined ? { cargoChargeableWeightKg: chg } : {}),
+        ...(dims !== undefined ? { cargoDimensionsText: dims } : {}),
+        ...(commodity !== undefined ? { cargoCommoditySummary: commodity } : {}),
+      },
+    });
+    await writeCtAudit({
+      tenantId,
+      shipmentId,
+      entityType: "Shipment",
+      entityId: shipmentId,
+      action: "update_cargo_summary",
+      actorUserId: actorId,
+      payload: {},
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "update_shipment_item_cargo") {
+    const shipmentItemId = typeof body.shipmentItemId === "string" ? body.shipmentItemId : "";
+    const shipmentId = typeof body.shipmentId === "string" ? body.shipmentId : "";
+    if (!shipmentItemId || !shipmentId) return bad("shipmentItemId and shipmentId required");
+    if (!(await assertShipmentTenant(shipmentId, tenantId))) return bad("Shipment not found", 404);
+    const item = await prisma.shipmentItem.findFirst({
+      where: { id: shipmentItemId, shipmentId },
+      select: { id: true },
+    });
+    if (!item) return bad("Shipment line not found", 404);
+
+    const pkgs = parseOptUInt(body.cargoPackageCount);
+    const gw = parseOptDecimal(body.cargoGrossWeightKg);
+    const vol = parseOptDecimal(body.cargoVolumeCbm);
+    const lineDims = parseOptVarChar(body.cargoDimensionsText, 512);
+    if (pkgs === "invalid" || gw === "invalid" || vol === "invalid" || lineDims === "invalid") {
+      return bad("Invalid numeric or text field");
+    }
+
+    await prisma.shipmentItem.update({
+      where: { id: shipmentItemId },
+      data: {
+        ...(pkgs !== undefined ? { cargoPackageCount: pkgs } : {}),
+        ...(gw !== undefined ? { cargoGrossWeightKg: gw } : {}),
+        ...(vol !== undefined ? { cargoVolumeCbm: vol } : {}),
+        ...(lineDims !== undefined ? { cargoDimensionsText: lineDims } : {}),
+      },
+    });
+    await writeCtAudit({
+      tenantId,
+      shipmentId,
+      entityType: "ShipmentItem",
+      entityId: shipmentItemId,
+      action: "update_line_cargo",
+      actorUserId: actorId,
+      payload: {},
+    });
+    return NextResponse.json({ ok: true });
+  }
+
   if (action === "update_ct_container") {
     const containerId = typeof body.containerId === "string" ? body.containerId : "";
     if (!containerId) return bad("containerId required");
@@ -1053,6 +1370,113 @@ export async function handleControlTowerPost(
       entityId: containerId,
       action: "update",
       actorUserId: actorId,
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "upsert_ct_container_cargo_line") {
+    const containerId = typeof body.containerId === "string" ? body.containerId.trim() : "";
+    const shipmentItemId =
+      typeof body.shipmentItemId === "string" ? body.shipmentItemId.trim() : "";
+    if (!containerId || !shipmentItemId) return bad("containerId and shipmentItemId required");
+
+    const qtyRaw = parseOptDecimal(body.quantity);
+    if (qtyRaw === "invalid" || qtyRaw === undefined || qtyRaw === null) {
+      return bad("quantity is required and must be a non-negative number");
+    }
+    if (qtyRaw.equals(0)) {
+      await prisma.ctContainerCargoLine.deleteMany({
+        where: { tenantId, containerId, shipmentItemId },
+      });
+      const c0 = await prisma.ctShipmentContainer.findFirst({
+        where: { id: containerId, tenantId },
+        select: { shipmentId: true },
+      });
+      if (c0) {
+        await writeCtAudit({
+          tenantId,
+          shipmentId: c0.shipmentId,
+          entityType: "CtContainerCargoLine",
+          entityId: `${containerId}:${shipmentItemId}`,
+          action: "delete",
+          actorUserId: actorId,
+          payload: { containerId, shipmentItemId },
+        });
+      }
+      return NextResponse.json({ ok: true });
+    }
+
+    const container = await prisma.ctShipmentContainer.findFirst({
+      where: { id: containerId, tenantId },
+      select: { id: true, shipmentId: true },
+    });
+    if (!container) return bad("Container not found", 404);
+
+    const item = await prisma.shipmentItem.findFirst({
+      where: { id: shipmentItemId, shipmentId: container.shipmentId },
+      select: { id: true, quantityShipped: true },
+    });
+    if (!item) return bad("Shipment line not on this shipment", 404);
+
+    const othersAgg = await prisma.ctContainerCargoLine.aggregate({
+      where: { shipmentItemId, tenantId, containerId: { not: containerId } },
+      _sum: { quantity: true },
+    });
+    const othersSum = othersAgg._sum.quantity ?? new Prisma.Decimal(0);
+    const cap = item.quantityShipped;
+    if (othersSum.add(qtyRaw).greaterThan(cap)) {
+      return bad("Total stuffed quantity per line cannot exceed quantity shipped on that line");
+    }
+
+    const notesParsed = parseOptText(body.notes);
+    if (notesParsed === "invalid") return bad("notes too long");
+
+    await prisma.ctContainerCargoLine.upsert({
+      where: {
+        containerId_shipmentItemId: { containerId, shipmentItemId },
+      },
+      create: {
+        tenantId,
+        containerId,
+        shipmentItemId,
+        quantity: qtyRaw,
+        ...(notesParsed !== undefined ? { notes: notesParsed } : {}),
+      },
+      update: {
+        quantity: qtyRaw,
+        ...(notesParsed !== undefined ? { notes: notesParsed } : {}),
+      },
+    });
+
+    await writeCtAudit({
+      tenantId,
+      shipmentId: container.shipmentId,
+      entityType: "CtContainerCargoLine",
+      entityId: `${containerId}:${shipmentItemId}`,
+      action: "upsert",
+      actorUserId: actorId,
+      payload: { containerId, shipmentItemId, quantity: qtyRaw.toString() },
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "delete_ct_container_cargo_line") {
+    const cargoLineId = typeof body.cargoLineId === "string" ? body.cargoLineId.trim() : "";
+    if (!cargoLineId) return bad("cargoLineId required");
+    const row = await prisma.ctContainerCargoLine.findFirst({
+      where: { id: cargoLineId, tenantId },
+      include: { container: { select: { shipmentId: true } } },
+    });
+    if (!row) return bad("Cargo line not found", 404);
+    await prisma.ctContainerCargoLine.delete({ where: { id: cargoLineId } });
+    await writeCtAudit({
+      tenantId,
+      shipmentId: row.container.shipmentId,
+      entityType: "CtContainerCargoLine",
+      entityId: cargoLineId,
+      action: "delete",
+      actorUserId: actorId,
+      payload: { containerId: row.containerId, shipmentItemId: row.shipmentItemId },
     });
     return NextResponse.json({ ok: true });
   }

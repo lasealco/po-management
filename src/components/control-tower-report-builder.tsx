@@ -856,6 +856,11 @@ export function ControlTowerReportBuilder({ canEdit }: { canEdit: boolean }) {
                 dimension={result.config.dimension}
                 rowKey={chartDrillRow.key}
                 rowLabel={chartDrillRow.label}
+                ship360Tab={
+                  result.config.measure === "onTimePct" || result.config.measure === "avgDelayDays"
+                    ? "milestones"
+                    : undefined
+                }
               />
             </div>
           ) : null}

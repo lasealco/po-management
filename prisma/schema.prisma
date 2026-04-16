@@ -59,6 +59,27 @@ model Tenant {
   ctShipmentContainers CtShipmentContainer[]
   ctFxRates          CtFxRate[]
   ctShipmentCostLines CtShipmentCostLine[]
+  ctMilestoneTemplatePacks CtMilestoneTemplatePack[]
+  ctContainerCargoLines CtContainerCargoLine[]
+  ctExceptionCodes      CtExceptionCode[]
+}
+
+/// Tenant-scoped milestone template packs (override or extend built-in packs in code).
+model CtMilestoneTemplatePack {
+  id          String   @id @default(cuid())
+  tenantId    String
+  slug        String
+  title       String
+  description String?  @db.Text
+  milestones  Json
+  isBuiltIn   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
 }
 
 model User {
@@ -107,6 +128,7 @@ model User {
   ctSavedReports CtSavedReport[]
   ctDashboardWidgets CtDashboardWidget[]
   ctShipmentCostLinesCreated CtShipmentCostLine[]
+  shipmentsOpsAssigned       Shipment[] @relation("ShipmentOpsAssignee")
   /// When set, Control Tower (and similar) list/detail is limited to shipments tagged with this CRM account.
   customerCrmAccountId String?
   customerCrmAccount   CrmAccount? @relation("UserCustomerPortalScope", fields: [customerCrmAccountId], references: [id], onDelete: SetNull)
@@ -611,15 +633,26 @@ model Shipment {
   transportMode TransportMode?
   estimatedVolumeCbm Decimal? @db.Decimal(12, 3)
   estimatedWeightKg Decimal? @db.Decimal(12, 3)
+  /// Outward package / collo count (forwarder cargo).
+  cargoOuterPackageCount Int?
+  /// Chargeable / billable weight where different from estimatedWeightKg (e.g. air).
+  cargoChargeableWeightKg Decimal? @db.Decimal(12, 3)
+  /// Freeform dimensions (e.g. 120×80×100 cm) until structured L/W/H exist.
+  cargoDimensionsText String? @db.VarChar(512)
+  /// Main commodity description for customs / booking screens.
+  cargoCommoditySummary String? @db.Text
   notes        String?
   /// Logistics customer (e.g. 3PL shipper account) for visibility and reporting.
   customerCrmAccountId String?
+  /// Primary Control Tower / ops owner for this shipment (optional).
+  opsAssigneeUserId String?
   createdById  String
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
 
   order     PurchaseOrder  @relation(fields: [orderId], references: [id], onDelete: Cascade)
   customerCrmAccount CrmAccount? @relation("ShipmentCustomerAccount", fields: [customerCrmAccountId], references: [id], onDelete: SetNull)
+  opsAssignee User? @relation("ShipmentOpsAssignee", fields: [opsAssigneeUserId], references: [id], onDelete: SetNull)
   createdBy User           @relation(fields: [createdById], references: [id], onDelete: Restrict)
   items     ShipmentItem[]
   loadPlanShipment LoadPlanShipment?
@@ -641,6 +674,7 @@ model Shipment {
   @@index([orderId, createdAt])
   @@index([status])
   @@index([customerCrmAccountId])
+  @@index([opsAssigneeUserId])
 }
 
 model ShipmentItem {
@@ -650,9 +684,15 @@ model ShipmentItem {
   quantityShipped  Decimal  @db.Decimal(14, 3)
   quantityReceived Decimal  @default(0) @db.Decimal(14, 3)
   plannedShipDate  DateTime?
+  /// Line-level outward packages (optional; may differ from PO qty unit).
+  cargoPackageCount Int?
+  cargoGrossWeightKg Decimal? @db.Decimal(14, 3)
+  cargoVolumeCbm   Decimal? @db.Decimal(12, 6)
+  cargoDimensionsText String? @db.VarChar(512)
 
   shipment  Shipment          @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
   orderItem  PurchaseOrderItem @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
+  containerCargoLines CtContainerCargoLine[]
 
   @@index([shipmentId])
   @@index([orderItemId])
@@ -754,23 +794,36 @@ enum CtDocVisibility {
   CUSTOMER_SHAREABLE
 }
 
+enum CtShipmentDocumentSource {
+  UPLOAD
+  INTEGRATION
+}
+
 model CtShipmentDocument {
   id           String          @id @default(cuid())
   tenantId     String
   shipmentId   String
+  /// Canonical code (see `shipment-document-types.ts`) or integration-specific code.
   docType      String
   fileName     String
+  /// File URL in object storage (or public path in local dev) — not the file bytes.
   blobUrl      String
   visibility   CtDocVisibility @default(INTERNAL)
   version      Int             @default(1)
   uploadedById String
   createdAt    DateTime        @default(now())
+  source                    CtShipmentDocumentSource @default(UPLOAD)
+  /// When `source` is INTEGRATION: e.g. CARGOWISE, FREIGHTOS.
+  integrationProvider       String?
+  /// External document / message id for dedupe and support (optional).
+  externalRef               String?
 
   tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   shipment   Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
   uploadedBy User     @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
 
   @@index([shipmentId])
+  @@index([shipmentId, source])
 }
 
 enum CtNoteVisibility {
@@ -855,6 +908,24 @@ enum CtExceptionStatus {
   IN_PROGRESS
   RESOLVED
   CLOSED
+}
+
+/// Tenant catalog of exception types for Control Tower (dropdown + defaults).
+model CtExceptionCode {
+  id               String          @id @default(cuid())
+  tenantId         String
+  code             String
+  label            String
+  defaultSeverity  CtAlertSeverity @default(WARN)
+  sortOrder        Int             @default(0)
+  isActive         Boolean         @default(true)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, code])
+  @@index([tenantId, isActive])
 }
 
 model CtException {
@@ -1044,10 +1115,32 @@ model CtShipmentContainer {
   tenant   Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   shipment Shipment      @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
   leg      CtShipmentLeg? @relation(fields: [legId], references: [id], onDelete: SetNull)
+  cargoLines CtContainerCargoLine[]
 
   @@index([shipmentId])
   @@index([tenantId, containerNumber])
   @@index([legId])
+}
+
+/// Quantities of a shipment line allocated to a specific container (stuffing / load plan).
+model CtContainerCargoLine {
+  id             String   @id @default(cuid())
+  tenantId       String
+  containerId    String
+  shipmentItemId String
+  /// Same unit as `ShipmentItem.quantityShipped` (order line UOM).
+  quantity       Decimal  @db.Decimal(14, 3)
+  notes          String?  @db.Text
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenant       Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  container    CtShipmentContainer  @relation(fields: [containerId], references: [id], onDelete: Cascade)
+  shipmentItem ShipmentItem         @relation(fields: [shipmentItemId], references: [id], onDelete: Cascade)
+
+  @@unique([containerId, shipmentItemId])
+  @@index([tenantId, containerId])
+  @@index([shipmentItemId])
 }
 
 enum WarehouseType {

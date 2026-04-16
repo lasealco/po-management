@@ -3,6 +3,7 @@ import { DEFAULT_WMS_BILLING_RATES } from "./billing-default-rates.mjs";
 import { runBulkSeed } from "./bulk-seed.mjs";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { config } from "dotenv";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { Pool } from "pg";
 import { scryptSync } from "node:crypto";
@@ -44,6 +45,38 @@ async function seed() {
       slug: "demo-company",
     },
   });
+
+  const milestonePacksPath = resolve(process.cwd(), "prisma/milestone-packs-seed.json");
+  try {
+    const milestonePacksRaw = JSON.parse(readFileSync(milestonePacksPath, "utf8"));
+    if (!Array.isArray(milestonePacksRaw)) {
+      console.warn("[db:seed] milestone-packs-seed.json: expected a JSON array, skipping packs.");
+    } else {
+      for (const pack of milestonePacksRaw) {
+        if (!pack || typeof pack !== "object" || typeof pack.slug !== "string") continue;
+        await prisma.ctMilestoneTemplatePack.upsert({
+          where: { tenantId_slug: { tenantId: tenant.id, slug: pack.slug } },
+          update: {
+            title: typeof pack.title === "string" ? pack.title : pack.slug,
+            description: typeof pack.description === "string" ? pack.description : null,
+            milestones: pack.milestones ?? [],
+            isBuiltIn: Boolean(pack.isBuiltIn),
+          },
+          create: {
+            tenantId: tenant.id,
+            slug: pack.slug,
+            title: typeof pack.title === "string" ? pack.title : pack.slug,
+            description: typeof pack.description === "string" ? pack.description : null,
+            milestones: pack.milestones ?? [],
+            isBuiltIn: Boolean(pack.isBuiltIn),
+          },
+        });
+      }
+      console.log(`[db:seed] Upserted ${milestonePacksRaw.length} Control Tower milestone template pack(s).`);
+    }
+  } catch (e) {
+    console.warn("[db:seed] Could not load milestone-packs-seed.json:", e instanceof Error ? e.message : e);
+  }
 
   const [buyer, approver, supplierUser] = await Promise.all([
     prisma.user.upsert({

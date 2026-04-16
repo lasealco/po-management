@@ -6,7 +6,10 @@ import {
   type ControlTowerPortalContext,
 } from "./viewer";
 import { computeCtMilestoneSummary } from "./milestone-summary";
-import { listMilestonePackSummaries } from "./milestone-templates";
+import { filterCtTrackingMilestonesForPortal } from "./milestone-visibility";
+import { listMilestonePackCatalogForTenant } from "./milestone-templates";
+import { computeShipmentEmissionsSummary } from "./shipment-emissions";
+import { labelForCtDocType } from "./shipment-document-types";
 
 export async function getShipment360(params: {
   tenantId: string;
@@ -38,7 +41,16 @@ export async function getShipment360(params: {
         },
       },
       createdBy: { select: { id: true, name: true } },
-      booking: true,
+      opsAssignee: { select: { id: true, name: true } },
+      booking: {
+        include: {
+          forwarderSupplier: { select: { id: true, name: true } },
+          forwarderOffice: { select: { id: true, name: true, city: true } },
+          forwarderContact: { select: { id: true, name: true, email: true } },
+          createdBy: { select: { id: true, name: true } },
+          updatedBy: { select: { id: true, name: true } },
+        },
+      },
       items: {
         include: {
           orderItem: {
@@ -46,7 +58,16 @@ export async function getShipment360(params: {
               lineNo: true,
               description: true,
               quantity: true,
-              product: { select: { sku: true, productCode: true, name: true } },
+              product: {
+                select: {
+                  sku: true,
+                  productCode: true,
+                  name: true,
+                  hsCode: true,
+                  isDangerousGoods: true,
+                  unNumber: true,
+                },
+              },
             },
           },
         },
@@ -98,7 +119,20 @@ export async function getShipment360(params: {
       ctLegs: { orderBy: { legNo: "asc" } },
       ctContainers: {
         orderBy: { createdAt: "asc" },
-        include: { leg: { select: { id: true, legNo: true } } },
+        include: {
+          leg: { select: { id: true, legNo: true } },
+          cargoLines: {
+            orderBy: { createdAt: "asc" },
+            include: {
+              shipmentItem: {
+                select: {
+                  id: true,
+                  orderItem: { select: { lineNo: true, description: true } },
+                },
+              },
+            },
+          },
+        },
       },
     },
   });
@@ -183,6 +217,40 @@ export async function getShipment360(params: {
         select: { id: true, name: true },
       });
 
+  const exceptionCodeCatalog = await prisma.ctExceptionCode.findMany({
+    where: { tenantId, isActive: true },
+    orderBy: [{ sortOrder: "asc" }, { code: "asc" }],
+    select: { code: true, label: true, defaultSeverity: true },
+  });
+  const exceptionLabelByCode = new Map(exceptionCodeCatalog.map((c) => [c.code, c.label]));
+
+  let forwarderSupplierChoices: { id: string; name: string }[] = [];
+  let forwarderOfficeChoices: { id: string; name: string; supplierId: string }[] = [];
+  let forwarderContactChoices: { id: string; name: string; supplierId: string; email: string | null }[] = [];
+  if (!restricted) {
+    forwarderSupplierChoices = await prisma.supplier.findMany({
+      where: { tenantId, isActive: true },
+      orderBy: { name: "asc" },
+      take: 400,
+      select: { id: true, name: true },
+    });
+    const fwdSid = s.booking?.forwarderSupplierId;
+    if (fwdSid) {
+      forwarderOfficeChoices = await prisma.supplierOffice.findMany({
+        where: { tenantId, supplierId: fwdSid, isActive: true },
+        orderBy: { name: "asc" },
+        take: 200,
+        select: { id: true, name: true, supplierId: true },
+      });
+      forwarderContactChoices = await prisma.supplierContact.findMany({
+        where: { tenantId, supplierId: fwdSid },
+        orderBy: [{ isPrimary: "desc" }, { name: "asc" }],
+        take: 200,
+        select: { id: true, name: true, supplierId: true, email: true },
+      });
+    }
+  }
+
   const docFilter = restricted
     ? s.ctDocuments.filter((d) => d.visibility === "CUSTOMER_SHAREABLE")
     : s.ctDocuments;
@@ -218,6 +286,7 @@ export async function getShipment360(params: {
       ? {
           id: e.id,
           type: e.type,
+          typeLabel: exceptionLabelByCode.get(e.type) ?? e.type,
           status: e.status,
           severity: e.severity,
           createdAt: e.createdAt.toISOString(),
@@ -225,6 +294,7 @@ export async function getShipment360(params: {
       : {
           id: e.id,
           type: e.type,
+          typeLabel: exceptionLabelByCode.get(e.type) ?? e.type,
           status: e.status,
           severity: e.severity,
           owner: e.owner ? { id: e.owner.id, name: e.owner.name } : null,
@@ -283,15 +353,53 @@ export async function getShipment360(params: {
       }
     : s.order;
 
-  const ctMilestoneInputs = s.ctTrackingMilestones.map((m) => ({
+  const ctMilestoneSourceRows = restricted
+    ? filterCtTrackingMilestonesForPortal(s.ctTrackingMilestones)
+    : s.ctTrackingMilestones;
+  const ctMilestoneInputs = ctMilestoneSourceRows.map((m) => ({
     code: m.code,
     label: m.label,
     plannedAt: m.plannedAt?.toISOString() ?? null,
     predictedAt: m.predictedAt?.toISOString() ?? null,
     actualAt: m.actualAt?.toISOString() ?? null,
   }));
-  const milestoneSummary = restricted ? null : computeCtMilestoneSummary(ctMilestoneInputs);
-  const milestonePackCatalog = restricted ? null : listMilestonePackSummaries();
+  const milestoneSummary = computeCtMilestoneSummary(ctMilestoneInputs);
+  const milestonePackCatalog = restricted ? null : await listMilestonePackCatalogForTenant(tenantId);
+
+  const legsForEmissions =
+    s.ctLegs.length > 0
+      ? s.ctLegs.map((leg) => ({
+          legNo: leg.legNo,
+          originCode: leg.originCode,
+          destinationCode: leg.destinationCode,
+          transportMode: leg.transportMode,
+          plannedEtd: leg.plannedEtd,
+          plannedEta: leg.plannedEta,
+          actualAtd: leg.actualAtd,
+          actualAta: leg.actualAta,
+        }))
+      : s.booking?.originCode?.trim() && s.booking?.destinationCode?.trim()
+        ? [
+            {
+              legNo: 1,
+              originCode: s.booking.originCode,
+              destinationCode: s.booking.destinationCode,
+              transportMode: s.booking.mode ?? s.transportMode,
+              plannedEtd: s.booking.etd,
+              plannedEta: s.booking.latestEta ?? s.booking.eta,
+              actualAtd: null,
+              actualAta: null,
+            },
+          ]
+        : [];
+
+  const emissionsSummary = computeShipmentEmissionsSummary({
+    legs: legsForEmissions,
+    shipmentTransportMode: s.transportMode,
+    cargoChargeableWeightKg: s.cargoChargeableWeightKg,
+    estimatedWeightKg: s.estimatedWeightKg,
+    lineCargoGrossKg: s.items.map((it) => it.cargoGrossWeightKg),
+  });
 
   return {
     view: { restricted },
@@ -307,12 +415,26 @@ export async function getShipment360(params: {
     receivedAt: s.receivedAt?.toISOString() ?? null,
     estimatedVolumeCbm: s.estimatedVolumeCbm?.toString() ?? null,
     estimatedWeightKg: s.estimatedWeightKg?.toString() ?? null,
+    cargoOuterPackageCount: s.cargoOuterPackageCount ?? null,
+    cargoChargeableWeightKg: s.cargoChargeableWeightKg?.toString() ?? null,
+    cargoDimensionsText: s.cargoDimensionsText ?? null,
+    cargoCommoditySummary: s.cargoCommoditySummary ?? null,
     shipmentNotes: restricted ? null : s.notes,
     customerCrmAccountId: s.customerCrmAccountId,
     customerCrmAccount,
     crmAccountChoices,
     assigneeChoices,
-    createdBy: { name: s.createdBy.name },
+    exceptionCodeCatalog,
+    forwarderSupplierChoices: restricted ? [] : forwarderSupplierChoices,
+    forwarderOfficeChoices: restricted ? [] : forwarderOfficeChoices,
+    forwarderContactChoices: restricted ? [] : forwarderContactChoices,
+    opsAssigneeUserId: restricted ? null : s.opsAssigneeUserId,
+    opsAssignee: restricted
+      ? null
+      : s.opsAssignee
+        ? { id: s.opsAssignee.id, name: s.opsAssignee.name }
+        : null,
+    createdBy: { id: s.createdBy.id, name: s.createdBy.name },
     order: orderPayload,
     booking: s.booking
       ? {
@@ -326,6 +448,16 @@ export async function getShipment360(params: {
           eta: s.booking.eta?.toISOString() ?? null,
           latestEta: s.booking.latestEta?.toISOString() ?? null,
           notes: restricted ? null : s.booking.notes,
+          forwarderSupplierId: s.booking.forwarderSupplierId,
+          forwarderOfficeId: restricted ? null : s.booking.forwarderOfficeId,
+          forwarderContactId: restricted ? null : s.booking.forwarderContactId,
+          forwarderSupplierName: s.booking.forwarderSupplier?.name ?? null,
+          forwarderOfficeName: restricted ? null : (s.booking.forwarderOffice?.name ?? null),
+          forwarderOfficeCity: restricted ? null : (s.booking.forwarderOffice?.city ?? null),
+          forwarderContactName: restricted ? null : (s.booking.forwarderContact?.name ?? null),
+          forwarderContactEmail: restricted ? null : (s.booking.forwarderContact?.email ?? null),
+          bookingCreatedByName: restricted ? null : s.booking.createdBy.name,
+          bookingUpdatedByName: restricted ? null : s.booking.updatedBy.name,
         }
       : null,
     lines: s.items.map((it) => ({
@@ -334,7 +466,12 @@ export async function getShipment360(params: {
       quantityReceived: it.quantityReceived.toString(),
       lineNo: it.orderItem.lineNo,
       description: it.orderItem.description,
+      orderLineQuantity: it.orderItem.quantity.toString(),
       product: it.orderItem.product,
+      cargoPackageCount: it.cargoPackageCount ?? null,
+      cargoGrossWeightKg: it.cargoGrossWeightKg?.toString() ?? null,
+      cargoVolumeCbm: it.cargoVolumeCbm?.toString() ?? null,
+      cargoDimensionsText: it.cargoDimensionsText ?? null,
     })),
     milestones: s.milestones.map((m) => ({
       id: m.id,
@@ -352,7 +489,7 @@ export async function getShipment360(params: {
       refValue: r.refValue,
       createdAt: r.createdAt.toISOString(),
     })),
-    ctTrackingMilestones: s.ctTrackingMilestones.map((m) => ({
+    ctTrackingMilestones: ctMilestoneSourceRows.map((m) => ({
       id: m.id,
       code: m.code,
       label: m.label,
@@ -368,6 +505,22 @@ export async function getShipment360(params: {
     })),
     milestoneSummary,
     milestonePackCatalog,
+    emissionsSummary: {
+      tonnageKg: emissionsSummary.tonnageKg,
+      tonnageSource: emissionsSummary.tonnageSource,
+      totalKgCo2e: emissionsSummary.totalKgCo2e,
+      totalDistanceKm: emissionsSummary.totalDistanceKm,
+      methodology: emissionsSummary.methodology,
+      legs: emissionsSummary.legs.map((row) => ({
+        legNo: row.legNo,
+        originCode: row.originCode,
+        destinationCode: row.destinationCode,
+        mode: row.mode,
+        distanceKm: row.distanceKm,
+        distanceSource: row.distanceSource,
+        kgCo2e: row.kgCo2e,
+      })),
+    },
     legs: s.ctLegs.map((leg) => ({
       id: leg.id,
       legNo: leg.legNo,
@@ -394,14 +547,26 @@ export async function getShipment360(params: {
       legId: c.legId,
       legNo: c.leg?.legNo ?? null,
       updatedAt: c.updatedAt.toISOString(),
+      cargoLines: c.cargoLines.map((cl) => ({
+        id: cl.id,
+        shipmentItemId: cl.shipmentItemId,
+        quantity: cl.quantity.toString(),
+        notes: restricted ? null : cl.notes,
+        lineNo: cl.shipmentItem.orderItem.lineNo,
+        description: cl.shipmentItem.orderItem.description,
+      })),
     })),
     documents: docFilter.map((d) => ({
       id: d.id,
       docType: d.docType,
+      docTypeLabel: labelForCtDocType(d.docType),
       fileName: d.fileName,
       blobUrl: d.blobUrl,
       visibility: d.visibility,
       version: d.version,
+      source: d.source,
+      integrationProvider: restricted ? null : d.integrationProvider,
+      externalRef: restricted ? null : d.externalRef,
       uploadedByName: d.uploadedBy.name,
       createdAt: d.createdAt.toISOString(),
     })),

@@ -65,8 +65,15 @@ function workbenchUrlHasSearchFilters(sp: URLSearchParams): boolean {
       (sp.get("dispatchOwnerUserId") ?? "").trim() ||
       (sp.get("minRouteProgressPct") ?? "").trim() ||
       (sp.get("maxRouteProgressPct") ?? "").trim() ||
-      (sp.get("autoRefresh") ?? "").trim(),
+      (sp.get("autoRefresh") ?? "").trim() ||
+      (sp.get("ship360Tab") ?? "").trim(),
   );
+}
+
+function shipment360Href(shipmentId: string, ship360Tab: "" | "milestones") {
+  const base = `/control-tower/shipments/${shipmentId}`;
+  if (ship360Tab === "milestones") return `${base}?tab=milestones`;
+  return base;
 }
 
 function ControlTowerWorkbenchInner({
@@ -111,6 +118,7 @@ function ControlTowerWorkbenchInner({
   const [savedFiltersErr, setSavedFiltersErr] = useState<string | null>(null);
   const [ownerFilter, setOwnerFilter] = useState("");
   const [routeHealth, setRouteHealth] = useState("");
+  const [ship360Tab, setShip360Tab] = useState<"" | "milestones">("");
 
   useLayoutEffect(() => {
     if (urlInitRef.current) return;
@@ -134,6 +142,7 @@ function ControlTowerWorkbenchInner({
     setOwnerFilter(s.ownerFilter);
     setRouteHealth(s.routeHealth);
     setAutoRefresh(s.autoRefresh);
+    setShip360Tab(s.ship360Tab);
     setFiltersReady(true);
   }, [searchParams, restrictedView]);
 
@@ -157,6 +166,7 @@ function ControlTowerWorkbenchInner({
       ownerFilter,
       routeHealth,
       autoRefresh,
+      ship360Tab,
     }),
     [
       status,
@@ -177,6 +187,7 @@ function ControlTowerWorkbenchInner({
       ownerFilter,
       routeHealth,
       autoRefresh,
+      ship360Tab,
     ],
   );
 
@@ -221,6 +232,7 @@ function ControlTowerWorkbenchInner({
     setOwnerFilter(s.ownerFilter);
     setRouteHealth(s.routeHealth);
     setAutoRefresh(s.autoRefresh);
+    setShip360Tab(s.ship360Tab);
   }, [searchParams, filtersReady, restrictedView]);
 
   const load = useCallback(async () => {
@@ -417,6 +429,7 @@ function ControlTowerWorkbenchInner({
       sortBy?: string;
       onlyOverdueEta?: boolean;
       autoRefresh?: boolean;
+      ship360Tab?: "" | "milestones";
     };
     setStatus(typeof o.status === "string" ? o.status : "");
     setMode(typeof o.mode === "string" ? o.mode : "");
@@ -435,6 +448,7 @@ function ControlTowerWorkbenchInner({
     setSortBy(typeof o.sortBy === "string" ? o.sortBy : "updated_desc");
     setOnlyOverdueEta(Boolean(o.onlyOverdueEta));
     setAutoRefresh(typeof o.autoRefresh === "boolean" ? o.autoRefresh : true);
+    setShip360Tab(o.ship360Tab === "milestones" ? "milestones" : "");
     setPage(1);
   };
 
@@ -465,6 +479,7 @@ function ControlTowerWorkbenchInner({
           sortBy,
           onlyOverdueEta,
           autoRefresh,
+          ship360Tab,
         },
       }),
     });
@@ -560,6 +575,7 @@ function ControlTowerWorkbenchInner({
         <p className="w-full text-[11px] text-zinc-500">
           Filters update the address bar after you pause typing (~400ms) so you can copy or bookmark the exact list query.
           Auto-refresh off is stored as <span className="font-mono text-zinc-600">autoRefresh=0</span> (default on omits the param).
+          Use <span className="font-mono text-zinc-600">ship360Tab=milestones</span> so PO/shipment links open Shipment 360 on the Milestones tab.
         </p>
         <label className="text-xs text-zinc-600">
           Status
@@ -739,6 +755,17 @@ function ControlTowerWorkbenchInner({
             }}
           />
           Overdue ETA only
+        </label>
+        <label className="flex items-center gap-2 text-xs text-zinc-700">
+          <input
+            type="checkbox"
+            checked={ship360Tab === "milestones"}
+            onChange={(e) => {
+              setShip360Tab(e.target.checked ? "milestones" : "");
+              setPage(1);
+            }}
+          />
+          Shipment links → Milestones tab
         </label>
         <button
           type="button"
@@ -945,7 +972,7 @@ function ControlTowerWorkbenchInner({
                   }`}
                 >
                   <td className="px-2 py-2 font-medium">
-                    <Link href={`/control-tower/shipments/${r.id}`} className="block text-sky-800 hover:underline">
+                    <Link href={shipment360Href(r.id, ship360Tab)} className="block text-sky-800 hover:underline">
                       <span className="text-zinc-900">
                         {controlTowerListPrimaryTitle({
                           orderNumber: r.orderNumber,

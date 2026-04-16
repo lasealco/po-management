@@ -1,5 +1,11 @@
 # Neon database (demo / development)
 
+## Start here (so nothing gets “lost” again)
+
+- **One-shot migrate + full demo stack:** step-by-step in [`docs/neon-connection.local.example.md`](./neon-connection.local.example.md) — command is `npm run db:seed:demo-full` (or `-- --skip-migrate` if schema is already current).
+- **Where the Neon “Copy snippet” line lives in-repo:** `docs/neon-credentials.local.md` — **gitignored** (never committed). Create it by copying [`docs/neon-connection.local.example.md`](./neon-connection.local.example.md) or [`docs/neon-credentials.local.md.example`](./neon-credentials.local.md.example), then paste one `postgresql://…` line.
+- **Day-to-day Next.js / Prisma:** `.env.local` at the repo root is fine; `seed-demo-full` and `db:migrate` can use either env **or** that doc file (see script comments).
+
 ## Where the connection string lives
 
 Real URLs and passwords must **not** be committed to git.

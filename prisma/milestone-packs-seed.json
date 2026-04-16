@@ -1,0 +1,43 @@
+[
+  {
+    "slug": "OCEAN_PORT_TO_PORT",
+    "title": "Ocean — port to port",
+    "description": "Booking-driven cutoffs and port milestones (cargo ready, documentation, sail, arrival, release).",
+    "isBuiltIn": true,
+    "milestones": [
+      { "code": "BOOKING_CONFIRMED", "label": "Booking confirmed", "anchor": "SHIPMENT_CREATED", "offsetDays": 0 },
+      { "code": "CARGO_READY", "label": "Cargo ready / factory gate", "anchor": "BOOKING_ETD", "offsetDays": -10 },
+      { "code": "EXPORT_CUSTOMS_FILED", "label": "Export customs filed", "anchor": "BOOKING_ETD", "offsetDays": -5 },
+      { "code": "POL_DEPARTURE", "label": "Port of loading departure", "anchor": "BOOKING_ETD", "offsetDays": 0 },
+      { "code": "POD_ARRIVAL", "label": "Port of discharge arrival", "anchor": "BOOKING_ETA", "offsetDays": 0 },
+      { "code": "IMPORT_CUSTOMS_RELEASE", "label": "Import customs released", "anchor": "BOOKING_ETA", "offsetDays": 2 },
+      { "code": "DELIVERY_AVAILABLE", "label": "Delivery slot / available", "anchor": "BOOKING_LATEST_ETA", "offsetDays": 0 }
+    ]
+  },
+  {
+    "slug": "AIR_ORIGIN_TO_DEST",
+    "title": "Air — origin to destination",
+    "description": "Tighter air milestones around ETD/ETA windows.",
+    "isBuiltIn": true,
+    "milestones": [
+      { "code": "BOOKING_CONFIRMED", "label": "Booking confirmed", "anchor": "SHIPMENT_CREATED", "offsetDays": 0 },
+      { "code": "CARGO_RECEIVED_ORIGIN", "label": "Cargo received at origin", "anchor": "BOOKING_ETD", "offsetDays": -2 },
+      { "code": "FLIGHT_DEPARTURE", "label": "Flight departure", "anchor": "BOOKING_ETD", "offsetDays": 0 },
+      { "code": "FLIGHT_ARRIVAL", "label": "Flight arrival", "anchor": "BOOKING_ETA", "offsetDays": 0 },
+      { "code": "DESTINATION_CUSTOMS", "label": "Destination customs cleared", "anchor": "BOOKING_ETA", "offsetDays": 1 }
+    ]
+  },
+  {
+    "slug": "RAIL_TERMINAL_TO_TERMINAL",
+    "title": "Rail — terminal to terminal",
+    "description": "Intermodal rail handoffs and arrival milestones (aligned with CT rail mode).",
+    "isBuiltIn": true,
+    "milestones": [
+      { "code": "BOOKING_CONFIRMED", "label": "Booking confirmed", "anchor": "SHIPMENT_CREATED", "offsetDays": 0 },
+      { "code": "RAIL_ORIGIN_DEPARTURE", "label": "Origin rail departure", "anchor": "BOOKING_ETD", "offsetDays": 0 },
+      { "code": "RAIL_INTERCHANGE", "label": "Interchange / handoff", "anchor": "BOOKING_ETD", "offsetDays": 3 },
+      { "code": "RAIL_DESTINATION_ARRIVAL", "label": "Destination rail arrival", "anchor": "BOOKING_ETA", "offsetDays": 0 },
+      { "code": "FINAL_MILE_READY", "label": "Final mile / truck ready", "anchor": "BOOKING_LATEST_ETA", "offsetDays": 0 }
+    ]
+  }
+]

@@ -7,6 +7,8 @@ export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
+    /** `package.json` prisma.seed is ignored when this config file exists. */
+    seed: "node prisma/seed.mjs",
   },
   datasource: {
     // Migrate needs a session-capable Postgres connection. Poolers (PgBouncer, Neon

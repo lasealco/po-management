@@ -607,6 +607,11 @@ export function ControlTowerDashboardWidgetModal(props: {
                 dimension={report.config.dimension}
                 rowKey={drillRow.key}
                 rowLabel={drillRow.label}
+                ship360Tab={
+                  report.config.measure === "onTimePct" || report.config.measure === "avgDelayDays"
+                    ? "milestones"
+                    : undefined
+                }
               />
             </div>
             <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-3">
