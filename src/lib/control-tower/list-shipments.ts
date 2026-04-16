@@ -7,6 +7,7 @@ import {
   controlTowerShipmentScopeWhere,
   type ControlTowerPortalContext,
 } from "./viewer";
+import { computeCtMilestoneSummary } from "./milestone-summary";
 
 const TERMINAL_SHIPMENT: Array<"DELIVERED" | "RECEIVED"> = ["DELIVERED", "RECEIVED"];
 
@@ -132,6 +133,18 @@ const listSelectInternal = {
       owner: { select: { id: true, name: true } },
     },
   },
+  ctTrackingMilestones: {
+    where: { actualAt: null },
+    orderBy: [{ plannedAt: "asc" }, { predictedAt: "asc" }],
+    take: 20,
+    select: {
+      code: true,
+      label: true,
+      plannedAt: true,
+      predictedAt: true,
+      actualAt: true,
+    },
+  },
 } satisfies Prisma.ShipmentSelect;
 
 type ShipmentListCore = Prisma.ShipmentGetPayload<{ select: typeof listSelectCore }>;
@@ -172,6 +185,16 @@ function mapShipmentListRow(s: ShipmentListCore | ShipmentListInternal) {
           : `Record arrival leg ${nextLeg?.legNo ?? "?"}`;
 
   const internal = "_count" in s ? s : null;
+  const ctOpenRows = internal
+    ? internal.ctTrackingMilestones.map((m) => ({
+        code: m.code,
+        label: m.label,
+        plannedAt: m.plannedAt?.toISOString() ?? null,
+        predictedAt: m.predictedAt?.toISOString() ?? null,
+        actualAt: m.actualAt?.toISOString() ?? null,
+      }))
+    : [];
+  const trackingMilestoneSummary = internal ? computeCtMilestoneSummary(ctOpenRows) : null;
   const dispatchOwner = internal
     ? (internal.ctAlerts.find((a) => a.owner)?.owner ??
         internal.ctExceptions.find((e) => e.owner)?.owner ??
@@ -211,6 +234,7 @@ function mapShipmentListRow(s: ShipmentListCore | ShipmentListInternal) {
           hasActual: Boolean(s.milestones[0].actualAt),
         }
       : null,
+    trackingMilestoneSummary,
     dispatchOwner,
     openQueueCounts,
     shipperName:

@@ -5,6 +5,8 @@ import {
   controlTowerShipmentScopeWhere,
   type ControlTowerPortalContext,
 } from "./viewer";
+import { computeCtMilestoneSummary } from "./milestone-summary";
+import { listMilestonePackSummaries } from "./milestone-templates";
 
 export async function getShipment360(params: {
   tenantId: string;
@@ -281,6 +283,16 @@ export async function getShipment360(params: {
       }
     : s.order;
 
+  const ctMilestoneInputs = s.ctTrackingMilestones.map((m) => ({
+    code: m.code,
+    label: m.label,
+    plannedAt: m.plannedAt?.toISOString() ?? null,
+    predictedAt: m.predictedAt?.toISOString() ?? null,
+    actualAt: m.actualAt?.toISOString() ?? null,
+  }));
+  const milestoneSummary = restricted ? null : computeCtMilestoneSummary(ctMilestoneInputs);
+  const milestonePackCatalog = restricted ? null : listMilestonePackSummaries();
+
   return {
     view: { restricted },
     id: s.id,
@@ -354,6 +366,8 @@ export async function getShipment360(params: {
       updatedByName: m.updatedBy.name,
       updatedAt: m.updatedAt.toISOString(),
     })),
+    milestoneSummary,
+    milestonePackCatalog,
     legs: s.ctLegs.map((leg) => ({
       id: leg.id,
       legNo: leg.legNo,

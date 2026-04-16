@@ -4,12 +4,34 @@ import { getControlTowerPortalContext } from "@/lib/control-tower/viewer";
 
 export const dynamic = "force-dynamic";
 
+const SHIPMENT_TABS = new Set([
+  "details",
+  "routing",
+  "milestones",
+  "documents",
+  "notes",
+  "commercial",
+  "alerts",
+  "exceptions",
+  "audit",
+]);
+
 export default async function ControlTowerShipmentPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { id } = await params;
+  const [{ id }, spRaw] = await Promise.all([
+    params,
+    searchParams ?? Promise.resolve({} as Record<string, string | string[] | undefined>),
+  ]);
+  const sp = spRaw as Record<string, string | string[] | undefined>;
+  const rawTab = sp.tab;
+  const tabParam = Array.isArray(rawTab) ? rawTab[0] : rawTab;
+  const initialTab =
+    typeof tabParam === "string" && SHIPMENT_TABS.has(tabParam) ? tabParam : undefined;
   const access = await getViewerGrantSet();
   const canEdit = Boolean(
     access?.user && viewerHas(access.grantSet, "org.controltower", "edit"),
@@ -32,7 +54,7 @@ export default async function ControlTowerShipmentPage({
           hidden.
         </p>
       ) : null}
-      <ControlTowerShipment360 shipmentId={id} canEdit={canEdit} />
+      <ControlTowerShipment360 shipmentId={id} canEdit={canEdit} initialTab={initialTab} />
     </main>
   );
 }

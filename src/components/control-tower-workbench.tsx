@@ -13,6 +13,7 @@ import {
   readWorkbenchUrlState,
   type WorkbenchUrlState,
 } from "@/lib/control-tower/workbench-url-sync";
+import type { CtMilestoneSummary } from "@/lib/control-tower/milestone-summary";
 
 type Row = {
   id: string;
@@ -41,6 +42,7 @@ type Row = {
   cbmRef: string | null;
   updatedAt: string;
   latestMilestone: { code: string; hasActual: boolean } | null;
+  trackingMilestoneSummary: CtMilestoneSummary | null;
   dispatchOwner: { id: string; name: string } | null;
   openQueueCounts: { openAlerts: number; openExceptions: number };
 };
@@ -917,7 +919,9 @@ function ControlTowerWorkbenchInner({
               {!restrictedView ? <th className="px-2 py-2">Owner / Queue</th> : null}
               <th className="px-2 py-2">Route</th>
               <th className="px-2 py-2">Next action</th>
-              <th className="px-2 py-2">Milestone</th>
+              <th className="px-2 py-2" title="Workflow milestone (latest) and Control Tower tracking next due.">
+                Milestone / tracking
+              </th>
               <th className="px-2 py-2">Updated</th>
             </tr>
           </thead>
@@ -1025,7 +1029,45 @@ function ControlTowerWorkbenchInner({
                     {r.nextAction || "—"}
                   </td>
                   <td className="px-2 py-2 text-xs text-zinc-600">
-                    {r.latestMilestone ? `${r.latestMilestone.code}${r.latestMilestone.hasActual ? " ✓" : ""}` : "—"}
+                    <div>
+                      {r.latestMilestone
+                        ? `${r.latestMilestone.code}${r.latestMilestone.hasActual ? " ✓" : ""}`
+                        : "—"}{" "}
+                      <span className="text-zinc-400">(workflow)</span>
+                    </div>
+                    {!restrictedView && r.trackingMilestoneSummary?.next ? (
+                      <div className="mt-1">
+                        <Link
+                          href={`/control-tower/shipments/${r.id}?tab=milestones`}
+                          className={`inline-flex max-w-[14rem] flex-col rounded border px-2 py-0.5 hover:underline ${
+                            r.trackingMilestoneSummary.next.isLate
+                              ? "border-rose-200 bg-rose-50 text-rose-900"
+                              : "border-sky-200 bg-sky-50 text-sky-900"
+                          }`}
+                          title="Open Shipment 360 → Milestones"
+                        >
+                          <span className="font-mono text-[10px]">{r.trackingMilestoneSummary.next.code}</span>
+                          {r.trackingMilestoneSummary.next.dueAt ? (
+                            <span className="text-[10px] text-zinc-600">
+                              {new Date(r.trackingMilestoneSummary.next.dueAt).toLocaleDateString()}
+                              {r.trackingMilestoneSummary.next.isLate ? " · late" : ""}
+                            </span>
+                          ) : null}
+                        </Link>
+                      </div>
+                    ) : !restrictedView &&
+                      r.trackingMilestoneSummary &&
+                      r.trackingMilestoneSummary.openCount > 0 &&
+                      !r.trackingMilestoneSummary.next ? (
+                      <div className="mt-1 text-[10px] text-zinc-500">
+                        <Link
+                          href={`/control-tower/shipments/${r.id}?tab=milestones`}
+                          className="text-sky-800 underline"
+                        >
+                          {r.trackingMilestoneSummary.openCount} open tracking
+                        </Link>
+                      </div>
+                    ) : null}
                   </td>
                   <td className="whitespace-nowrap px-2 py-2 text-xs text-zinc-500">
                     {new Date(r.updatedAt).toLocaleString()}

@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { startTransition, useCallback, useEffect, useState } from "react";
 
 import { ctSlaState } from "@/lib/control-tower/sla-thresholds";
 
@@ -16,14 +17,36 @@ type Tab =
   | "exceptions"
   | "audit";
 
+const ALL_TABS: Tab[] = [
+  "details",
+  "routing",
+  "milestones",
+  "documents",
+  "notes",
+  "commercial",
+  "alerts",
+  "exceptions",
+  "audit",
+];
+
+function tabFromInitial(v: string | undefined): Tab {
+  if (!v) return "details";
+  return ALL_TABS.includes(v as Tab) ? (v as Tab) : "details";
+}
+
 export function ControlTowerShipment360({
   shipmentId,
   canEdit,
+  initialTab,
 }: {
   shipmentId: string;
   canEdit: boolean;
+  /** Deep-link from workbench / ops (`?tab=milestones`, etc.). */
+  initialTab?: string;
 }) {
-  const [tab, setTab] = useState<Tab>("details");
+  const router = useRouter();
+  const pathname = usePathname();
+  const [tab, setTab] = useState<Tab>(() => tabFromInitial(initialTab));
   const [data, setData] = useState<Record<string, unknown> | null>(null);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -44,7 +67,9 @@ export function ControlTowerShipment360({
   }, [shipmentId]);
 
   useEffect(() => {
-    void load();
+    startTransition(() => {
+      void load();
+    });
   }, [load]);
 
   useEffect(() => {
@@ -53,15 +78,29 @@ export function ControlTowerShipment360({
     if (r && tab === "audit") setTab("details");
   }, [data, tab]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const current = params.get("tab") ?? "";
+    const want = tab === "details" ? "" : tab;
+    if (current === want) return;
+    const nextParams = new URLSearchParams(window.location.search);
+    if (tab === "details") nextParams.delete("tab");
+    else nextParams.set("tab", tab);
+    const q = nextParams.toString();
+    router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false });
+  }, [tab, pathname, router]);
+
   async function postAction(body: Record<string, unknown>) {
     const res = await fetch("/api/control-tower", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    const json = (await res.json()) as { error?: string };
+    const json = (await res.json()) as Record<string, unknown> & { error?: string };
     if (!res.ok) throw new Error(json.error || res.statusText);
     await load();
+    return json;
   }
 
   const asLocalDateTime = (iso: unknown) => {
@@ -181,6 +220,23 @@ export function ControlTowerShipment360({
   const restricted = Boolean(
     (data as { view?: { restricted?: boolean } }).view?.restricted,
   );
+  const milestoneSummary = data.milestoneSummary as
+    | {
+        openCount: number;
+        lateCount: number;
+        next: {
+          code: string;
+          label: string | null;
+          dueAt: string | null;
+          isLate: boolean;
+        } | null;
+      }
+    | null
+    | undefined;
+  const milestonePackCatalog =
+    (data.milestonePackCatalog as
+      | Array<{ id: string; title: string; description: string; milestoneCount: number }>
+      | undefined) ?? [];
   const formatMoney = (v: number) =>
     new Intl.NumberFormat("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
 
@@ -203,6 +259,47 @@ export function ControlTowerShipment360({
         <p className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-950">
           Customer or supplier portal view: internal references, audit, and some operational notes are hidden.
         </p>
+      ) : null}
+      {!restricted && milestoneSummary && (milestoneSummary.next || milestoneSummary.lateCount > 0) ? (
+        <div
+          className={`rounded-lg border px-4 py-3 text-sm ${
+            milestoneSummary.lateCount > 0
+              ? "border-amber-300 bg-amber-50 text-amber-950"
+              : "border-zinc-300 bg-zinc-50 text-zinc-800"
+          }`}
+        >
+          <p className="font-semibold text-zinc-900">Tracking milestones</p>
+          <p className="mt-1 text-zinc-700">
+            {milestoneSummary.next ? (
+              <>
+                Next: <span className="font-mono">{milestoneSummary.next.code}</span>
+                {milestoneSummary.next.label ? ` (${milestoneSummary.next.label})` : ""}
+                {milestoneSummary.next.dueAt ? (
+                  <>
+                    {" "}
+                    · due{" "}
+                    <span className="font-medium">
+                      {new Date(milestoneSummary.next.dueAt).toLocaleString()}
+                    </span>
+                  </>
+                ) : null}
+                {milestoneSummary.next.isLate ? (
+                  <span className="ml-2 rounded-full border border-rose-300 bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-900">
+                    Late
+                  </span>
+                ) : null}
+              </>
+            ) : (
+              <span>No dated open tracking milestones — add planned dates or apply a template pack.</span>
+            )}
+            {milestoneSummary.openCount > 0 ? (
+              <span className="ml-2 text-xs text-zinc-600">
+                ({milestoneSummary.openCount} open
+                {milestoneSummary.lateCount > 0 ? ` · ${milestoneSummary.lateCount} late` : ""})
+              </span>
+            ) : null}
+          </p>
+        </div>
       ) : null}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
@@ -917,6 +1014,49 @@ export function ControlTowerShipment360({
 
       {tab === "milestones" ? (
         <div className="space-y-4">
+          <p className="text-xs text-zinc-600">
+            Milestone template packs follow{" "}
+            <span className="font-mono text-zinc-800">docs/controltower/control_tower_milestone_template_catalog</span>.
+            Planned dates anchor to booking ETD/ETA (or shipment created) and skip rows when the anchor is missing.
+          </p>
+          {!restricted && canEdit && milestonePackCatalog.length > 0 ? (
+            <section className="rounded-lg border border-sky-200 bg-sky-50/60 p-4 text-sm">
+              <h2 className="font-semibold text-sky-950">Apply milestone pack</h2>
+              <p className="mt-1 text-xs text-sky-900">
+                Creates tracking milestones that are not already on this shipment (never overwrites an existing code).
+              </p>
+              <div className="mt-3 grid gap-3 md:grid-cols-2">
+                {milestonePackCatalog.map((pack) => (
+                  <div key={pack.id} className="rounded border border-sky-200 bg-white p-3 text-xs text-zinc-800">
+                    <p className="font-semibold text-zinc-900">{pack.title}</p>
+                    <p className="mt-1 text-zinc-600">{pack.description}</p>
+                    <p className="mt-1 text-zinc-500">{pack.milestoneCount} milestones</p>
+                    <button
+                      type="button"
+                      className="mt-2 rounded bg-sky-700 px-3 py-1 text-[11px] font-medium text-white hover:bg-sky-800"
+                      onClick={async () => {
+                        if (!window.confirm(`Apply “${pack.title}” to this shipment?`)) return;
+                        try {
+                          const json = await postAction({
+                            action: "apply_ct_milestone_pack",
+                            shipmentId,
+                            packId: pack.id,
+                          });
+                          window.alert(
+                            `Applied: ${Number(json.created ?? 0)} created, ${Number(json.skipped ?? 0)} skipped (existing or missing anchor).`,
+                          );
+                        } catch (err) {
+                          window.alert(err instanceof Error ? err.message : "Failed");
+                        }
+                      }}
+                    >
+                      Apply {pack.id.replace(/_/g, " ").toLowerCase()}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : null}
           <section className="rounded-lg border border-zinc-200 bg-white p-4 text-sm">
             <h2 className="font-semibold text-zinc-900">Workflow milestones</h2>
             <ul className="mt-2 space-y-2 text-xs">
@@ -932,20 +1072,52 @@ export function ControlTowerShipment360({
             </ul>
           </section>
           <section className="rounded-lg border border-zinc-200 bg-white p-4 text-sm">
-            <h2 className="font-semibold text-zinc-900">Control tower milestones</h2>
-            <ul className="mt-2 space-y-2 text-xs">
-              {ctMilestones.map((m) => {
-                const row = m as Record<string, unknown>;
-                return (
-                  <li key={String(row.id)} className="border-b border-zinc-100 pb-2">
-                    <span className="font-medium">{String(row.code)}</span> {row.label ? `· ${String(row.label)}` : ""}{" "}
-                    · plan {row.plannedAt ? new Date(row.plannedAt as string).toLocaleDateString() : "—"} · act{" "}
-                    {row.actualAt ? new Date(row.actualAt as string).toLocaleDateString() : "—"} ·{" "}
-                    {String(row.sourceType)}
-                  </li>
-                );
-              })}
-            </ul>
+            <h2 className="font-semibold text-zinc-900">Control tower tracking milestones</h2>
+            <div className="mt-2 overflow-x-auto">
+              <table className="min-w-full border-collapse text-xs">
+                <thead>
+                  <tr className="border-b border-zinc-200 text-left text-zinc-600">
+                    <th className="py-2 pr-3 font-medium">Code</th>
+                    <th className="py-2 pr-3 font-medium">Label</th>
+                    <th className="py-2 pr-3 font-medium">Planned</th>
+                    <th className="py-2 pr-3 font-medium">Predicted</th>
+                    <th className="py-2 pr-3 font-medium">Actual</th>
+                    <th className="py-2 pr-3 font-medium">Source</th>
+                    <th className="py-2 font-medium">Updated</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ctMilestones.map((m) => {
+                    const row = m as Record<string, unknown>;
+                    return (
+                      <tr key={String(row.id)} className="border-b border-zinc-100 text-zinc-800">
+                        <td className="py-2 pr-3 font-mono">{String(row.code)}</td>
+                        <td className="py-2 pr-3">{row.label ? String(row.label) : "—"}</td>
+                        <td className="py-2 pr-3 whitespace-nowrap">
+                          {row.plannedAt ? new Date(row.plannedAt as string).toLocaleString() : "—"}
+                        </td>
+                        <td className="py-2 pr-3 whitespace-nowrap">
+                          {row.predictedAt ? new Date(row.predictedAt as string).toLocaleString() : "—"}
+                        </td>
+                        <td className="py-2 pr-3 whitespace-nowrap">
+                          {row.actualAt ? new Date(row.actualAt as string).toLocaleString() : "—"}
+                        </td>
+                        <td className="py-2 pr-3">
+                          {String(row.sourceType)}
+                          {row.sourceRef ? (
+                            <span className="text-zinc-500"> · {String(row.sourceRef)}</span>
+                          ) : null}
+                        </td>
+                        <td className="py-2 whitespace-nowrap text-zinc-500">
+                          {row.updatedByName ? String(row.updatedByName) : "—"} ·{" "}
+                          {row.updatedAt ? new Date(row.updatedAt as string).toLocaleString() : "—"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
             {canEdit ? (
               <form
                 className="mt-3 grid gap-2 text-xs md:grid-cols-2"

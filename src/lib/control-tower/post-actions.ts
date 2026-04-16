@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { amountToMinor, normalizeCurrency } from "@/lib/control-tower/currency";
 
 import { writeCtAudit } from "./audit";
+import { applyCtMilestonePack } from "./milestone-templates";
 
 type Json = Record<string, unknown>;
 
@@ -138,6 +139,24 @@ export async function handleControlTowerPost(
       payload: { code },
     });
     return NextResponse.json({ ok: true, id: row.id });
+  }
+
+  if (action === "apply_ct_milestone_pack") {
+    const shipmentId = typeof body.shipmentId === "string" ? body.shipmentId : "";
+    const packId = typeof body.packId === "string" ? body.packId.trim() : "";
+    if (!shipmentId || !packId) return bad("shipmentId and packId required");
+    if (!(await assertShipmentTenant(shipmentId, tenantId))) return bad("Shipment not found", 404);
+    try {
+      const result = await applyCtMilestonePack({
+        tenantId,
+        shipmentId,
+        actorUserId: actorId,
+        packId,
+      });
+      return NextResponse.json({ ok: true, ...result });
+    } catch (e) {
+      return bad(e instanceof Error ? e.message : "Could not apply pack", 400);
+    }
   }
 
   if (action === "create_ct_note") {
