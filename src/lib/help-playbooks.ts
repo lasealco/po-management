@@ -69,6 +69,17 @@ export const HELP_PLAYBOOKS: HelpPlaybook[] = [
           payload: { path: "/reporting", guide: "reporting_hub", step: 3 },
         },
       },
+      {
+        title: "Chart → table drill-down",
+        description:
+          "On My dashboard, open a pinned Control Tower widget: click a bar, line point, or pie slice to highlight that dimension in the table (and see a quick metric strip). Same idea in the report builder after you run a chart.",
+        href: "/control-tower/dashboard",
+        doAction: {
+          type: "open_path",
+          label: "Open My dashboard",
+          payload: { path: "/control-tower/dashboard", guide: "reporting_hub", step: 4 },
+        },
+      },
     ],
   },
   {

@@ -79,7 +79,8 @@ export default async function ReportingHubPage({
             Shift+R
           </kbd>{" "}
           for a silent refresh, and optional <span className="font-medium text-zinc-700">Auto-refresh</span> on the
-          board. Open the Help assistant anytime for the full Reporting hub playbook.
+          board. Open the Help assistant anytime for the full Reporting hub playbook. On Control Tower dashboards, open a
+          pinned widget and click a bar, line point, or pie slice to jump to that row in the data table.
         </p>
       </header>
 

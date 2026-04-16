@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type Measure = "shipments" | "volumeCbm" | "weightKg" | "shippingSpend" | "onTimePct" | "avgDelayDays";
 type Dimension =
@@ -181,12 +181,17 @@ function ResultLineChart({
   measure,
   compareByKey,
   compareEnabled,
+  selectedKey,
+  onPointSelect,
 }: {
   rows: Array<{ key: string; label: string; metrics: Record<Measure, number> }>;
   measure: Measure;
   compareByKey: Map<string, number>;
   compareEnabled: boolean;
+  selectedKey?: string | null;
+  onPointSelect?: (key: string) => void;
 }) {
+  const interactive = Boolean(onPointSelect);
   const values = rows.map((r) => Number(r.metrics[measure] ?? 0));
   const compareValues = rows.map((r) => Number(compareByKey.get(r.key) ?? 0));
   const max = Math.max(1, ...values, ...(compareEnabled ? compareValues : []));
@@ -198,11 +203,61 @@ function ResultLineChart({
   const currentPoints = rows.map((r, i) => `${p + i * step},${y(Number(r.metrics[measure] ?? 0))}`).join(" ");
   const comparePoints = rows.map((r, i) => `${p + i * step},${y(Number(compareByKey.get(r.key) ?? 0))}`).join(" ");
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="h-56 w-full rounded border border-zinc-200 bg-white">
+    <svg
+      viewBox={`0 0 ${w} ${h}`}
+      className="h-56 w-full rounded border border-zinc-200 bg-white"
+      role={interactive ? "img" : undefined}
+      aria-label={interactive ? "Line chart; click a point to highlight the row in the table below." : undefined}
+    >
       <line x1={p} y1={h - p} x2={w - p} y2={h - p} stroke="#d4d4d8" />
       <line x1={p} y1={p} x2={p} y2={h - p} stroke="#d4d4d8" />
-      {compareEnabled ? <polyline fill="none" stroke="#8b5cf6" strokeWidth="2" points={comparePoints} /> : null}
-      <polyline fill="none" stroke="#0ea5e9" strokeWidth="2.5" points={currentPoints} />
+      {compareEnabled ? (
+        <polyline fill="none" stroke="#8b5cf6" strokeWidth="2" points={comparePoints} pointerEvents="none" />
+      ) : null}
+      <polyline fill="none" stroke="#0ea5e9" strokeWidth="2.5" points={currentPoints} pointerEvents="none" />
+      {interactive
+        ? rows.map((r, i) => {
+            const cx = p + i * step;
+            const cy = y(Number(r.metrics[measure] ?? 0));
+            const sel = selectedKey === r.key;
+            return (
+              <g key={r.key}>
+                <circle
+                  cx={cx}
+                  cy={cy}
+                  r={16}
+                  fill="transparent"
+                  className="cursor-pointer"
+                  tabIndex={0}
+                  role="button"
+                  aria-label={`${r.label}: ${formatMetric(measure, Number(r.metrics[measure] ?? 0))}${sel ? ", selected" : ""}`}
+                  aria-pressed={sel}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onPointSelect?.(r.key);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onPointSelect?.(r.key);
+                    }
+                  }}
+                >
+                  <title>{`${r.label}: ${formatMetric(measure, Number(r.metrics[measure] ?? 0))}`}</title>
+                </circle>
+                <circle
+                  cx={cx}
+                  cy={cy}
+                  r={sel ? 7 : 5}
+                  fill="#fff"
+                  stroke={sel ? "#0c4a6e" : "#0ea5e9"}
+                  strokeWidth={sel ? 3 : 2}
+                  pointerEvents="none"
+                />
+              </g>
+            );
+          })
+        : null}
     </svg>
   );
 }
@@ -210,12 +265,18 @@ function ResultLineChart({
 function ResultPieChart({
   rows,
   measure,
+  selectedKey,
+  onSliceSelect,
 }: {
   rows: Array<{ key: string; label: string; metrics: Record<Measure, number> }>;
   measure: Measure;
+  selectedKey?: string | null;
+  onSliceSelect?: (key: string) => void;
 }) {
+  const interactive = Boolean(onSliceSelect);
   const colors = ["#0ea5e9", "#6366f1", "#10b981", "#f59e0b", "#ef4444", "#a855f7", "#14b8a6", "#f97316"];
   const entries = rows.slice(0, 8).map((r, i) => ({
+    key: r.key,
     label: r.label,
     value: Math.max(0, Number(r.metrics[measure] ?? 0)),
     color: colors[i % colors.length],
@@ -231,15 +292,38 @@ function ResultPieChart({
   });
   return (
     <div className="flex flex-wrap items-center gap-4">
-      <div className="h-40 w-40 rounded-full border border-zinc-200" style={{ background: `conic-gradient(${gradientParts.join(", ")})` }} />
-      <ul className="space-y-1 text-xs text-zinc-700">
-        {entries.map((e) => (
-          <li key={e.label} className="flex items-center gap-2">
-            <span className="inline-block h-2.5 w-2.5 rounded" style={{ backgroundColor: e.color }} />
-            <span>{e.label}</span>
-            <span className="font-medium">{formatMetric(measure, e.value)}</span>
-          </li>
-        ))}
+      <div
+        className="h-40 w-40 shrink-0 rounded-full border border-zinc-200"
+        style={{ background: `conic-gradient(${gradientParts.join(", ")})` }}
+        aria-hidden
+      />
+      <ul className="min-w-0 flex-1 space-y-1 text-xs text-zinc-700">
+        {entries.map((e) => {
+          const sel = selectedKey === e.key;
+          return (
+            <li key={e.key}>
+              {interactive ? (
+                <button
+                  type="button"
+                  onClick={() => onSliceSelect?.(e.key)}
+                  className={`flex w-full items-center gap-2 rounded px-1 py-0.5 text-left hover:bg-zinc-100 ${
+                    sel ? "bg-sky-50 ring-1 ring-sky-300" : ""
+                  }`}
+                >
+                  <span className="inline-block h-2.5 w-2.5 shrink-0 rounded" style={{ backgroundColor: e.color }} />
+                  <span className="min-w-0 truncate">{e.label}</span>
+                  <span className="ml-auto shrink-0 font-medium">{formatMetric(measure, e.value)}</span>
+                </button>
+              ) : (
+                <span className="flex items-center gap-2">
+                  <span className="inline-block h-2.5 w-2.5 rounded" style={{ backgroundColor: e.color }} />
+                  <span>{e.label}</span>
+                  <span className="font-medium">{formatMetric(measure, e.value)}</span>
+                </span>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
@@ -259,6 +343,21 @@ export function ControlTowerReportBuilder({ canEdit }: { canEdit: boolean }) {
   const [insightText, setInsightText] = useState<string | null>(null);
   const [insightBusy, setInsightBusy] = useState(false);
   const [insightErr, setInsightErr] = useState<string | null>(null);
+  const [chartDrillKey, setChartDrillKey] = useState<string | null>(null);
+  const resultRowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
+
+  const toggleChartDrill = useCallback((key: string) => {
+    setChartDrillKey((prev) => (prev === key ? null : key));
+  }, []);
+
+  useEffect(() => {
+    setChartDrillKey(null);
+  }, [result?.generatedAt]);
+
+  useEffect(() => {
+    if (!chartDrillKey) return;
+    resultRowRefs.current.get(chartDrillKey)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [chartDrillKey]);
 
   const loadSaved = useCallback(async () => {
     const res = await fetch("/api/control-tower/reports/saved?dataset=CONTROL_TOWER");
@@ -664,6 +763,10 @@ export function ControlTowerReportBuilder({ canEdit }: { canEdit: boolean }) {
           ) : null}
           {result.config.chartType === "table" ? null : (
             <div className="space-y-2">
+              <p className="text-[11px] text-zinc-500">
+                Click the chart (bar, point, or legend row) to highlight that dimension in the table below; click again
+                to clear.
+              </p>
               {compareResult ? (
                 <div className="mb-1 flex items-center gap-3 text-[11px] text-zinc-600">
                   <span className="inline-flex items-center gap-1">
@@ -682,10 +785,17 @@ export function ControlTowerReportBuilder({ canEdit }: { canEdit: boolean }) {
                   measure={result.config.measure}
                   compareByKey={compareByKey}
                   compareEnabled={Boolean(compareResult)}
+                  selectedKey={chartDrillKey}
+                  onPointSelect={toggleChartDrill}
                 />
               ) : null}
               {result.config.chartType === "pie" ? (
-                <ResultPieChart rows={result.rows} measure={result.config.measure} />
+                <ResultPieChart
+                  rows={result.rows}
+                  measure={result.config.measure}
+                  selectedKey={chartDrillKey}
+                  onSliceSelect={toggleChartDrill}
+                />
               ) : null}
               {result.config.chartType === "bar"
                 ? result.rows.map((row) => {
@@ -696,22 +806,32 @@ export function ControlTowerReportBuilder({ canEdit }: { canEdit: boolean }) {
                       compareResult && compareMaxVal > 0
                         ? Math.max(4, Math.round((prevVal / compareMaxVal) * 100))
                         : 0;
+                    const sel = chartDrillKey === row.key;
                     return (
                       <div key={row.key} className="space-y-1">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="truncate text-zinc-700">{row.label}</span>
-                          <span className="font-medium text-zinc-900">{formatMetric(result.config.measure, val)}</span>
-                        </div>
-                        <div className="space-y-1">
-                          <div className="h-2 rounded bg-zinc-100">
-                            <div className="h-2 rounded bg-sky-500" style={{ width: `${width}%` }} />
+                        <button
+                          type="button"
+                          onClick={() => toggleChartDrill(row.key)}
+                          className={`w-full rounded px-1 text-left outline-none ring-offset-2 hover:bg-zinc-50 focus-visible:ring-2 focus-visible:ring-sky-400 ${
+                            sel ? "bg-sky-50 ring-1 ring-sky-300" : ""
+                          }`}
+                          aria-pressed={sel}
+                        >
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="truncate text-zinc-700">{row.label}</span>
+                            <span className="font-medium text-zinc-900">{formatMetric(result.config.measure, val)}</span>
                           </div>
-                          {compareResult ? (
+                          <div className="mt-1 space-y-1">
                             <div className="h-2 rounded bg-zinc-100">
-                              <div className="h-2 rounded bg-violet-500" style={{ width: `${prevWidth}%` }} />
+                              <div className="h-2 rounded bg-sky-500" style={{ width: `${width}%` }} />
                             </div>
-                          ) : null}
-                        </div>
+                            {compareResult ? (
+                              <div className="h-2 rounded bg-zinc-100">
+                                <div className="h-2 rounded bg-violet-500" style={{ width: `${prevWidth}%` }} />
+                              </div>
+                            ) : null}
+                          </div>
+                        </button>
                       </div>
                     );
                   })
@@ -730,7 +850,14 @@ export function ControlTowerReportBuilder({ canEdit }: { canEdit: boolean }) {
               </thead>
               <tbody className="divide-y divide-zinc-200">
                 {result.rows.map((row) => (
-                  <tr key={row.key}>
+                  <tr
+                    key={row.key}
+                    ref={(el) => {
+                      if (el) resultRowRefs.current.set(row.key, el);
+                      else resultRowRefs.current.delete(row.key);
+                    }}
+                    className={chartDrillKey === row.key ? "bg-sky-50 ring-1 ring-inset ring-sky-200" : ""}
+                  >
                     <td className="px-2 py-2 text-zinc-800">{row.label}</td>
                     <td className="px-2 py-2 font-medium text-zinc-900">
                       {formatMetric(result.config.measure, row.metrics[result.config.measure] ?? 0)}

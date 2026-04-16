@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const CT_REPORT_MEASURES = [
   "shipments",
@@ -73,10 +73,21 @@ export function seriesForCard(report: CtDashboardWidgetReport, max = 10): Array<
   return report.rows.slice(0, max).map((r) => ({ label: r.label, value: Number(r.metrics[measure] ?? 0) }));
 }
 
+/** One point in a widget chart, keyed for drill-down to the data table row. */
+export type ChartSeriesPoint = { key: string; label: string; value: number };
+
 /** Full chart series from saved Top-N rows (matches report builder chart). */
-export function seriesForChart(report: CtDashboardWidgetReport): Array<{ label: string; value: number }> {
+export function seriesForChart(report: CtDashboardWidgetReport): ChartSeriesPoint[] {
   const measure = report.config.measure;
-  return report.rows.map((r) => ({ label: r.label, value: Number(r.metrics[measure] ?? 0) }));
+  return report.rows.map((r) => ({
+    key: r.key,
+    label: r.label,
+    value: Number(r.metrics[measure] ?? 0),
+  }));
+}
+
+function seriesKey(d: { key?: string; label: string; value: number }, index: number): string {
+  return d.key ?? `i:${index}:${d.label}`;
 }
 
 export function metricSummaryValue(report: CtDashboardWidgetReport): string {
@@ -120,7 +131,18 @@ function downloadCsv(filename: string, csv: string) {
   URL.revokeObjectURL(url);
 }
 
-export function MiniBarChart({ data, height = 64 }: { data: Array<{ label: string; value: number }>; height?: number }) {
+export function MiniBarChart({
+  data,
+  height = 64,
+  selectedKey = null,
+  onBarSelect,
+}: {
+  data: Array<{ key?: string; label: string; value: number }>;
+  height?: number;
+  selectedKey?: string | null;
+  onBarSelect?: (key: string) => void;
+}) {
+  const interactive = Boolean(onBarSelect);
   const max = Math.max(...data.map((d) => d.value), 0);
   if (!data.length || max <= 0) {
     return <div className="rounded border border-zinc-200 bg-zinc-50 px-2 py-2 text-xs text-zinc-500">No chart data</div>;
@@ -138,7 +160,9 @@ export function MiniBarChart({ data, height = 64 }: { data: Array<{ label: strin
       viewBox={`0 0 ${width} ${height}`}
       preserveAspectRatio="none"
       style={{ height: `${height}px` }}
-      className="w-full rounded border border-zinc-200 bg-white"
+      className={`w-full rounded border border-zinc-200 bg-white ${interactive ? "[&_rect.bar]:cursor-pointer" : ""}`}
+      role={interactive ? "img" : undefined}
+      aria-label={interactive ? "Bar chart; click a bar to highlight the matching row below." : undefined}
     >
       {ticks.map((t, idx) => {
         const y = axisTop + (plotHeight * idx) / (ticks.length - 1);
@@ -155,17 +179,64 @@ export function MiniBarChart({ data, height = 64 }: { data: Array<{ label: strin
         const h = Math.max(2, Math.round((d.value / max) * plotHeight));
         const x = axisLeft + i * (barW + gap);
         const y = axisTop + plotHeight - h;
+        const k = seriesKey(d, i);
+        const sel = selectedKey != null && selectedKey === k;
         return (
-          <rect key={d.label + i} x={x} y={y} width={barW} height={h} rx={1} fill={colorFor(i)}>
-            <title>{`${d.label}: ${formatDecimal(d.value, 2)}`}</title>
-          </rect>
+          <g key={k}>
+            <rect
+              className="bar"
+              x={x}
+              y={y}
+              width={barW}
+              height={h}
+              rx={1}
+              fill={colorFor(i)}
+              stroke={sel ? "#0c4a6e" : "none"}
+              strokeWidth={sel ? 2 : 0}
+              tabIndex={interactive ? 0 : undefined}
+              role={interactive ? "button" : undefined}
+              aria-label={`${d.label}: ${formatDecimal(d.value, 2)}${sel ? ", selected" : ""}`}
+              aria-pressed={interactive ? sel : undefined}
+              onClick={
+                interactive
+                  ? (e) => {
+                      e.stopPropagation();
+                      onBarSelect?.(k);
+                    }
+                  : undefined
+              }
+              onKeyDown={
+                interactive
+                  ? (e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        onBarSelect?.(k);
+                      }
+                    }
+                  : undefined
+              }
+            >
+              <title>{`${d.label}: ${formatDecimal(d.value, 2)}`}</title>
+            </rect>
+          </g>
         );
       })}
     </svg>
   );
 }
 
-export function MiniLineChart({ data, height = 64 }: { data: Array<{ label: string; value: number }>; height?: number }) {
+export function MiniLineChart({
+  data,
+  height = 64,
+  selectedKey = null,
+  onPointSelect,
+}: {
+  data: Array<{ key?: string; label: string; value: number }>;
+  height?: number;
+  selectedKey?: string | null;
+  onPointSelect?: (key: string) => void;
+}) {
+  const interactive = Boolean(onPointSelect);
   const max = Math.max(...data.map((d) => d.value), 0);
   if (!data.length || max <= 0) {
     return <div className="rounded border border-zinc-200 bg-zinc-50 px-2 py-2 text-xs text-zinc-500">No chart data</div>;
@@ -183,9 +254,55 @@ export function MiniLineChart({ data, height = 64 }: { data: Array<{ label: stri
       preserveAspectRatio="none"
       style={{ height: `${height}px` }}
       className="w-full rounded border border-zinc-200 bg-white"
+      role={interactive ? "img" : undefined}
+      aria-label={interactive ? "Line chart; click a point to highlight the matching row below." : undefined}
     >
       <line x1={pad} y1={height - pad} x2={width - pad} y2={height - pad} stroke="#e4e4e7" />
-      <polyline fill="none" stroke="#0ea5e9" strokeWidth="2.5" points={points} />
+      <polyline fill="none" stroke="#0ea5e9" strokeWidth="2.5" points={points} pointerEvents="none" />
+      {interactive
+        ? data.map((d, i) => {
+            const cx = pad + i * step;
+            const cy = pad + plotH - (d.value / max) * plotH;
+            const k = seriesKey(d, i);
+            const sel = selectedKey != null && selectedKey === k;
+            return (
+              <g key={k}>
+                <circle
+                  cx={cx}
+                  cy={cy}
+                  r={14}
+                  fill="transparent"
+                  className="cursor-pointer"
+                  tabIndex={0}
+                  role="button"
+                  aria-label={`${d.label}: ${formatDecimal(d.value, 2)}${sel ? ", selected" : ""}`}
+                  aria-pressed={sel}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onPointSelect?.(k);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onPointSelect?.(k);
+                    }
+                  }}
+                >
+                  <title>{`${d.label}: ${formatDecimal(d.value, 2)}`}</title>
+                </circle>
+                <circle
+                  cx={cx}
+                  cy={cy}
+                  r={sel ? 6 : 4}
+                  fill="#fff"
+                  stroke={sel ? "#0c4a6e" : "#0ea5e9"}
+                  strokeWidth={sel ? 2.5 : 2}
+                  pointerEvents="none"
+                />
+              </g>
+            );
+          })
+        : null}
     </svg>
   );
 }
@@ -199,7 +316,18 @@ function pieSlicePath(cx: number, cy: number, r: number, a0: number, a1: number)
   return `M ${cx} ${cy} L ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1} Z`;
 }
 
-export function MiniPieChart({ data, size = 200 }: { data: Array<{ label: string; value: number }>; size?: number }) {
+export function MiniPieChart({
+  data,
+  size = 200,
+  selectedKey = null,
+  onSliceSelect,
+}: {
+  data: Array<{ key?: string; label: string; value: number }>;
+  size?: number;
+  selectedKey?: string | null;
+  onSliceSelect?: (key: string) => void;
+}) {
+  const interactive = Boolean(onSliceSelect);
   const total = data.reduce((s, d) => s + d.value, 0);
   if (!data.length || total <= 0) {
     return <div className="rounded border border-zinc-200 bg-zinc-50 px-2 py-6 text-center text-xs text-zinc-500">No chart data</div>;
@@ -214,10 +342,52 @@ export function MiniPieChart({ data, size = 200 }: { data: Array<{ label: string
     const a1 = angle + sweep;
     angle = a1;
     const path = pieSlicePath(cx, cy, r, a0, a1);
-    return <path key={d.label + i} d={path} fill={colorFor(i)} stroke="#fff" strokeWidth="1"><title>{`${d.label}: ${formatDecimal(d.value, 2)}`}</title></path>;
+    const k = seriesKey(d, i);
+    const sel = selectedKey != null && selectedKey === k;
+    return (
+      <path
+        key={k}
+        d={path}
+        fill={colorFor(i)}
+        stroke={sel ? "#0c4a6e" : "#fff"}
+        strokeWidth={sel ? 2.5 : 1}
+        className={interactive ? "cursor-pointer" : undefined}
+        tabIndex={interactive ? 0 : undefined}
+        role={interactive ? "button" : undefined}
+        aria-label={`${d.label}: ${formatDecimal(d.value, 2)}${sel ? ", selected" : ""}`}
+        aria-pressed={interactive ? sel : undefined}
+        onClick={
+          interactive
+            ? (e) => {
+                e.stopPropagation();
+                onSliceSelect?.(k);
+              }
+            : undefined
+        }
+        onKeyDown={
+          interactive
+            ? (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onSliceSelect?.(k);
+                }
+              }
+            : undefined
+        }
+      >
+        <title>{`${d.label}: ${formatDecimal(d.value, 2)}`}</title>
+      </path>
+    );
   });
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="mx-auto rounded border border-zinc-200 bg-white">
+    <svg
+      width={size}
+      height={size}
+      viewBox={`0 0 ${size} ${size}`}
+      className="mx-auto rounded border border-zinc-200 bg-white"
+      role={interactive ? "img" : undefined}
+      aria-label={interactive ? "Pie chart; click a slice to highlight the matching row below." : undefined}
+    >
       {slices}
     </svg>
   );
@@ -268,12 +438,29 @@ export function ControlTowerDashboardWidgetModal(props: {
 }) {
   const { title, report, savedReportConfig, onClose } = props;
   const [chartView, setChartView] = useState<ChartViewMode>(() => chartViewFromConfig(report.config.chartType));
+  const [drillKey, setDrillKey] = useState<string | null>(null);
   const [insightQuestion, setInsightQuestion] = useState("");
   const [insightText, setInsightText] = useState<string | null>(null);
   const [insightBusy, setInsightBusy] = useState(false);
   const [insightErr, setInsightErr] = useState<string | null>(null);
+  const rowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
 
   const chartData = useMemo(() => seriesForChart(report), [report]);
+  const tableRows = useMemo(() => tableRowsFromReport(report), [report]);
+
+  useEffect(() => {
+    setDrillKey(null);
+  }, [report.generatedAt, chartView]);
+
+  const toggleDrill = useCallback((key: string) => {
+    setDrillKey((prev) => (prev === key ? null : key));
+  }, []);
+
+  useEffect(() => {
+    if (!drillKey) return;
+    const el = rowRefs.current.get(drillKey);
+    el?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [drillKey]);
 
   const fetchInsight = useCallback(async () => {
     if (!savedReportConfig || Object.keys(savedReportConfig).length === 0) {
@@ -302,8 +489,8 @@ export function ControlTowerDashboardWidgetModal(props: {
     }
   }, [savedReportConfig, insightQuestion]);
 
-  const tableRows = useMemo(() => tableRowsFromReport(report), [report]);
   const measure = report.config.measure;
+  const drillRow = drillKey ? tableRows.find((r) => r.key === drillKey) : null;
 
   const onDownload = () => {
     downloadCsv(title, reportToCsv(report));
@@ -347,15 +534,44 @@ export function ControlTowerDashboardWidgetModal(props: {
 
         <CoverageSummary coverage={report.coverage} />
 
-        <div className="mt-3">
+        <p className="mt-2 text-[11px] text-zinc-500">
+          Tip: click a bar, line point, or pie slice to highlight the matching row in the table below (click again to
+          clear).
+        </p>
+
+        <div className="mt-2">
           {chartView === "bar" ? (
-            <MiniBarChart data={chartData} height={280} />
+            <MiniBarChart
+              data={chartData}
+              height={280}
+              selectedKey={drillKey}
+              onBarSelect={toggleDrill}
+            />
           ) : chartView === "line" ? (
-            <MiniLineChart data={chartData} height={280} />
+            <MiniLineChart
+              data={chartData}
+              height={280}
+              selectedKey={drillKey}
+              onPointSelect={toggleDrill}
+            />
           ) : (
-            <MiniPieChart data={chartData} size={280} />
+            <MiniPieChart data={chartData} size={280} selectedKey={drillKey} onSliceSelect={toggleDrill} />
           )}
         </div>
+
+        {drillRow ? (
+          <div className="mt-3 rounded-lg border border-sky-200 bg-sky-50/80 px-3 py-2 text-xs text-zinc-800">
+            <p className="font-semibold text-sky-950">Selected · {drillRow.label}</p>
+            <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-3">
+              {CT_REPORT_MEASURES.map((m) => (
+                <div key={m}>
+                  <dt className="text-[10px] uppercase tracking-wide text-zinc-500">{m}</dt>
+                  <dd className="font-medium tabular-nums">{formatMetric(m, Number(drillRow.metrics[m] ?? 0))}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        ) : null}
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <button
@@ -384,7 +600,16 @@ export function ControlTowerDashboardWidgetModal(props: {
             </thead>
             <tbody>
               {tableRows.map((r) => (
-                <tr key={r.key} className="odd:bg-white even:bg-zinc-50">
+                <tr
+                  key={r.key}
+                  ref={(el) => {
+                    if (el) rowRefs.current.set(r.key, el);
+                    else rowRefs.current.delete(r.key);
+                  }}
+                  className={`odd:bg-white even:bg-zinc-50 ${
+                    drillKey === r.key ? "bg-sky-50 ring-1 ring-inset ring-sky-300" : ""
+                  }`}
+                >
                   <td className="border-b border-zinc-100 px-2 py-1 font-medium text-zinc-900">{r.label}</td>
                   {CT_REPORT_MEASURES.map((m) => (
                     <td key={m} className="border-b border-zinc-100 px-2 py-1 tabular-nums text-zinc-700">
