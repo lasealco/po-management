@@ -114,6 +114,53 @@ export function ControlTowerShipment360({
     router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false });
   }, [tab, pathname, router]);
 
+  const bookingSafe = (data?.booking as Record<string, unknown> | null | undefined) ?? undefined;
+  const legsSafe = (data?.legs as unknown[]) ?? [];
+  const containersSafe = (data?.containers as unknown[]) ?? [];
+  const exceptionsSafe = (data?.exceptions as unknown[]) ?? [];
+
+  const stuffedQtyByShipmentItemId = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const raw of containersSafe) {
+      const box = raw as Record<string, unknown>;
+      for (const row of (box.cargoLines as unknown[]) ?? []) {
+        const cl = row as Record<string, unknown>;
+        const sid = String(cl.shipmentItemId);
+        const q = Number(String(cl.quantity));
+        if (!sid || !Number.isFinite(q)) continue;
+        m.set(sid, (m.get(sid) ?? 0) + q);
+      }
+    }
+    return m;
+  }, [containersSafe]);
+
+  const routeSubtitle = useMemo(() => {
+    const oc = bookingSafe?.originCode ? String(bookingSafe.originCode) : "";
+    const dc = bookingSafe?.destinationCode ? String(bookingSafe.destinationCode) : "";
+    if (oc || dc) return `${oc || "—"} → ${dc || "—"}`;
+    const first = legsSafe[0] as Record<string, unknown> | undefined;
+    const last = legsSafe.length ? (legsSafe[legsSafe.length - 1] as Record<string, unknown>) : undefined;
+    if (first && last) {
+      const a = String(first.originCode || "—");
+      const b = String(last.destinationCode || "—");
+      return `${a} → ${b}`;
+    }
+    return null;
+  }, [bookingSafe, legsSafe]);
+
+  const openExceptionCount = useMemo(
+    () =>
+      exceptionsSafe.filter((x) => {
+        const st = String((x as Record<string, unknown>).status || "");
+        return st === "OPEN" || st === "IN_PROGRESS";
+      }).length,
+    [exceptionsSafe],
+  );
+
+  const modeLabel = String(
+    (data?.transportMode as string) || (bookingSafe?.mode as string) || "—",
+  );
+
   async function postAction(body: Record<string, unknown>) {
     const res = await fetch("/api/control-tower", {
       method: "POST",
@@ -224,20 +271,6 @@ export function ControlTowerShipment360({
   const ctReferences = (data.ctReferences as unknown[]) ?? [];
   const legs = (data.legs as unknown[]) ?? [];
   const containers = (data.containers as unknown[]) ?? [];
-  const stuffedQtyByShipmentItemId = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const raw of containers) {
-      const box = raw as Record<string, unknown>;
-      for (const row of (box.cargoLines as unknown[]) ?? []) {
-        const cl = row as Record<string, unknown>;
-        const sid = String(cl.shipmentItemId);
-        const q = Number(String(cl.quantity));
-        if (!sid || !Number.isFinite(q)) continue;
-        m.set(sid, (m.get(sid) ?? 0) + q);
-      }
-    }
-    return m;
-  }, [containers]);
   const routeProgress = (() => {
     if (!legs.length) return { pct: 0, hint: "Add at least one leg to start route tracking." };
     const normalized = legs.map((raw) => legPhase(raw as Record<string, unknown>));
@@ -322,33 +355,6 @@ export function ControlTowerShipment360({
     { id: "audit", label: "Audit" },
   ];
   const tabs = restricted ? allTabs.filter((t) => t.id !== "audit") : allTabs;
-
-  const routeSubtitle = useMemo(() => {
-    const oc = booking?.originCode ? String(booking.originCode) : "";
-    const dc = booking?.destinationCode ? String(booking.destinationCode) : "";
-    if (oc || dc) return `${oc || "—"} → ${dc || "—"}`;
-    const first = legs[0] as Record<string, unknown> | undefined;
-    const last = legs.length ? (legs[legs.length - 1] as Record<string, unknown>) : undefined;
-    if (first && last) {
-      const a = String(first.originCode || "—");
-      const b = String(last.destinationCode || "—");
-      return `${a} → ${b}`;
-    }
-    return null;
-  }, [booking, legs]);
-
-  const openExceptionCount = useMemo(
-    () =>
-      exceptions.filter((x) => {
-        const st = String((x as Record<string, unknown>).status || "");
-        return st === "OPEN" || st === "IN_PROGRESS";
-      }).length,
-    [exceptions],
-  );
-
-  const modeLabel = String(
-    (data.transportMode as string) || (booking?.mode as string) || "—",
-  );
 
   return (
     <div className="space-y-4">
