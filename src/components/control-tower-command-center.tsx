@@ -8,6 +8,7 @@ import {
   controlTowerListPrimaryTitle,
   controlTowerListSecondaryRef,
 } from "@/lib/control-tower/shipment-list-label";
+import { controlTowerWorkbenchPath } from "@/lib/control-tower/workbench-url-sync";
 
 type Row = {
   id: string;
@@ -187,6 +188,20 @@ export function ControlTowerCommandCenter({
     return stats;
   }, [filtered]);
 
+  const workbenchDrillQuery = useMemo(() => {
+    const q: Record<string, string> = {};
+    if (status) q.status = status;
+    if (routeAction) q.routeAction = routeAction;
+    if (onlyOverdueEta) q.onlyOverdueEta = "1";
+    if (debouncedQ.trim()) q.q = debouncedQ.trim();
+    if (!restrictedView && ownerFilter && ownerFilter !== "__unassigned") {
+      q.dispatchOwnerUserId = ownerFilter;
+    }
+    return q;
+  }, [status, routeAction, onlyOverdueEta, debouncedQ, restrictedView, ownerFilter]);
+  const workbenchDrillHref = controlTowerWorkbenchPath(workbenchDrillQuery);
+  const hasWorkbenchDrillFilters = Object.keys(workbenchDrillQuery).length > 0;
+
   return (
     <div className="space-y-4">
       {restrictedView ? (
@@ -268,7 +283,11 @@ export function ControlTowerCommandCenter({
         Search applies after you pause typing (~400ms). Status, overdue ETA, and route lane are applied on the server.
         {!restrictedView
           ? ' Dispatch owner (except "Unassigned queue") is applied on the server; unassigned queue is filtered in the browser.'
-          : null}
+          : null}{" "}
+        <Link href={workbenchDrillHref} className="font-medium text-sky-800 hover:underline">
+          {hasWorkbenchDrillFilters ? "Open these filters in workbench" : "Open workbench"}
+        </Link>
+        .
       </p>
       <div className="flex flex-wrap gap-2 text-xs">
         <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-900">

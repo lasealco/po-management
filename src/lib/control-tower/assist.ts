@@ -1,5 +1,7 @@
 import type { ShipmentStatus, TransportMode } from "@prisma/client";
 
+import { CT_URL_ROUTE_ACTION_PREFIXES } from "@/lib/control-tower/workbench-url-sync";
+
 /** Rule-based parse output for Search & assist (no LLM). */
 export type AssistSuggestedFilters = {
   q?: string;
@@ -7,6 +9,22 @@ export type AssistSuggestedFilters = {
   status?: ShipmentStatus;
   onlyOverdueEta?: boolean;
   lane?: string;
+  /** Next route action prefix; set from `route:<slug>` (e.g. `route:plan_leg`). */
+  routeAction?: string;
+  /** PO supplier id (Prisma cuid-style) when the user passes `supplier:…`. */
+  supplierId?: string;
+  /** CRM customer account id when the user passes `customer:…`. */
+  customerCrmAccountId?: string;
+  /** Shipment carrier supplier id when the user passes `carrier:…`. */
+  carrierSupplierId?: string;
+  /** Booking / leg origin port code (substring match) from `origin:…`. */
+  originCode?: string;
+  /** Booking / leg destination port code from `dest:` or `destination:`. */
+  destinationCode?: string;
+  /** PO-linked vs ad-hoc export shell from `source:po` / `source:unlinked` / `source:export`. */
+  shipmentSource?: "PO" | "UNLINKED";
+  /** Open alert/exception owner queue filter from `owner:…` / `assignee:…` / `dispatch:…` (user cuid). */
+  dispatchOwnerUserId?: string;
 };
 
 const STATUS_WORDS: ShipmentStatus[] = [
@@ -36,6 +54,41 @@ function stripOnce(text: string, pattern: RegExp): string {
   return text.replace(pattern, " ").replace(/\s+/g, " ").trim();
 }
 
+function isProbableAssistCuid(s: string): boolean {
+  return s.length >= 20 && s.length <= 32 && /^c[a-z0-9]+$/i.test(s);
+}
+
+function normalizePortToken(raw: string): string | null {
+  const v = raw.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (v.length < 3 || v.length > 10) return null;
+  return v;
+}
+
+/** Slugs for `route:` token → workbench `routeAction` query (must match `CT_URL_ROUTE_ACTION_PREFIXES`). */
+function resolveRouteActionSlug(raw: string): string | undefined {
+  const slug = raw.trim().toLowerCase().replace(/-/g, "_");
+  const map: Record<string, string> = {
+    send: "Send booking",
+    send_booking: "Send booking",
+    await: "Await booking",
+    await_booking: "Await booking",
+    awaiting: "Await booking",
+    escalate: "Escalate booking",
+    escalate_booking: "Escalate booking",
+    plan: "Plan leg",
+    plan_leg: "Plan leg",
+    departure: "Mark departure",
+    mark_departure: "Mark departure",
+    arrival: "Record arrival",
+    record_arrival: "Record arrival",
+    complete: "Route complete",
+    route_complete: "Route complete",
+  };
+  const v = map[slug];
+  if (v && CT_URL_ROUTE_ACTION_PREFIXES.has(v)) return v;
+  return undefined;
+}
+
 /**
  * Lightweight R5 assistant: maps free text to structured filters + hints (rule-based core).
  * Optional OpenAI merge is applied in `assist-llm` when the deployment enables it.
@@ -50,7 +103,9 @@ export function assistControlTowerQuery(raw: string): {
   const suggestedFilters: AssistSuggestedFilters = {};
 
   if (!working) {
-    hints.push("Enter a PO number, booking ref, container id, carrier, or UN/LOCODE-style port (e.g. CNSHA), or try lane: and overdue tokens.");
+    hints.push(
+      "Enter a PO number, booking ref, container id, carrier name, or UN/LOCODE-style port (e.g. CNSHA), or try lane:, origin:, dest:, route:plan_leg, source:po|unlinked, owner:, carrier:, supplier:, customer:, and overdue tokens.",
+    );
     return { hints, suggestedFilters };
   }
 
@@ -65,6 +120,101 @@ export function assistControlTowerQuery(raw: string): {
       working = stripOnce(working, /\b(?:lane|pol|pod)\s*:\s*[A-Za-z0-9]{3,10}\b/i);
       working = stripOnce(working, /\b(?:from|to)\s+[A-Z]{2}[A-Z0-9]{3}\b/);
     }
+  }
+
+  const originTok = working.match(/\borigin\s*:\s*([A-Za-z0-9]{3,10})\b/i);
+  if (originTok) {
+    const v = normalizePortToken(originTok[1]);
+    if (v) {
+      suggestedFilters.originCode = v;
+      hints.push(`Origin port filter (contains): ${v}.`);
+    }
+    working = stripOnce(working, /\borigin\s*:\s*[A-Za-z0-9]{3,10}\b/i);
+  }
+
+  const destTok =
+    working.match(/\bdestination\s*:\s*([A-Za-z0-9]{3,10})\b/i) ||
+    working.match(/\bdest\s*:\s*([A-Za-z0-9]{3,10})\b/i);
+  if (destTok) {
+    const v = normalizePortToken(destTok[1]);
+    if (v) {
+      suggestedFilters.destinationCode = v;
+      hints.push(`Destination port filter (contains): ${v}.`);
+    }
+    working = stripOnce(working, /\bdestination\s*:\s*[A-Za-z0-9]{3,10}\b/i);
+    working = stripOnce(working, /\bdest\s*:\s*[A-Za-z0-9]{3,10}\b/i);
+  }
+
+  const supplierM = working.match(/\bsupplier\s*:\s*(\S+)/i);
+  if (supplierM) {
+    const v = supplierM[1].trim();
+    if (isProbableAssistCuid(v)) {
+      suggestedFilters.supplierId = v;
+      hints.push(`Using supplier id filter (${v.slice(0, 8)}…).`);
+    } else {
+      hints.push("supplier: expects a cuid-style id (from the supplier record).");
+    }
+    working = stripOnce(working, /\bsupplier\s*:\s*\S+/i);
+  }
+
+  const customerM = working.match(/\bcustomer\s*:\s*(\S+)/i);
+  if (customerM) {
+    const v = customerM[1].trim();
+    if (isProbableAssistCuid(v)) {
+      suggestedFilters.customerCrmAccountId = v;
+      hints.push(`Using CRM customer id filter (${v.slice(0, 8)}…).`);
+    } else {
+      hints.push("customer: expects a cuid-style CRM account id.");
+    }
+    working = stripOnce(working, /\bcustomer\s*:\s*\S+/i);
+  }
+
+  const carrierM = working.match(/\bcarrier\s*:\s*(\S+)/i);
+  if (carrierM) {
+    const v = carrierM[1].trim();
+    if (isProbableAssistCuid(v)) {
+      suggestedFilters.carrierSupplierId = v;
+      hints.push(`Using carrier supplier id filter (${v.slice(0, 8)}…).`);
+    } else {
+      hints.push("carrier: expects a cuid-style supplier id (carrier / forwarder record).");
+    }
+    working = stripOnce(working, /\bcarrier\s*:\s*\S+/i);
+  }
+
+  const dispatchOwnerM = working.match(/\b(?:owner|assignee|dispatch)\s*:\s*(\S+)/i);
+  if (dispatchOwnerM) {
+    const v = dispatchOwnerM[1].trim();
+    if (isProbableAssistCuid(v)) {
+      suggestedFilters.dispatchOwnerUserId = v;
+      hints.push(`Dispatch owner filter on open queues (${v.slice(0, 8)}…).`);
+    } else {
+      hints.push("owner: / assignee: / dispatch: expects a cuid-style user id.");
+    }
+    working = stripOnce(working, /\b(?:owner|assignee|dispatch)\s*:\s*\S+/i);
+  }
+
+  const routeM = working.match(/\broute\s*:\s*([a-z0-9_-]+)\b/i);
+  if (routeM) {
+    const slug = routeM[1];
+    const prefix = resolveRouteActionSlug(slug);
+    if (prefix) {
+      suggestedFilters.routeAction = prefix;
+      hints.push(`Route action filter: ${prefix}.`);
+    } else {
+      hints.push(
+        "route: expects a slug (e.g. plan_leg, send_booking, mark_departure, record_arrival, route_complete).",
+      );
+    }
+    working = stripOnce(working, /\broute\s*:\s*[a-z0-9_-]+\b/i);
+  }
+
+  const shipSrcM = working.match(/\b(?:shipmentSource|source|flow)\s*:\s*(po|unlinked|export)\b/i);
+  if (shipSrcM) {
+    const raw = shipSrcM[1].toLowerCase();
+    const v: "PO" | "UNLINKED" = raw === "po" ? "PO" : "UNLINKED";
+    suggestedFilters.shipmentSource = v;
+    hints.push(`Shipment flow filter: ${v === "PO" ? "PO-linked" : "Unlinked / export shell"}.`);
+    working = stripOnce(working, /\b(?:shipmentSource|source|flow)\s*:\s*(?:po|unlinked|export)\b/i);
   }
 
   if (/\b(overdue|past\s*eta|late\s*eta|behind\s*schedule)\b/i.test(working)) {

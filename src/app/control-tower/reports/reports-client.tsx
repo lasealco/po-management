@@ -3,6 +3,11 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
+import {
+  controlTowerWorkbenchPath,
+  controlTowerWorkbenchPathFromEtaLaneLabel,
+} from "@/lib/control-tower/workbench-url-sync";
+
 type Summary = {
   generatedAt: string;
   isCustomerView: boolean;
@@ -192,6 +197,13 @@ export function ControlTowerReportsClient({
             ·{" "}
             <Link href="/control-tower/workbench" className="font-medium text-sky-800 underline">
               Workbench
+            </Link>{" "}
+            ·{" "}
+            <Link
+              href={controlTowerWorkbenchPath({ onlyOverdueEta: "1", sortBy: "eta_asc" })}
+              className="font-medium text-amber-900 underline decoration-amber-700/40"
+            >
+              Overdue ETAs
             </Link>
           </p>
         </div>
@@ -240,7 +252,14 @@ export function ControlTowerReportsClient({
               <tbody>
                 {summary.etaPerformance.topDelayedLanes.map((l) => (
                   <tr key={l.lane} className="border-t border-zinc-100 text-zinc-700">
-                    <td className="py-1 pr-3">{l.lane}</td>
+                    <td className="py-1 pr-3">
+                      <Link
+                        href={controlTowerWorkbenchPathFromEtaLaneLabel(l.lane)}
+                        className="font-medium text-sky-800 hover:underline"
+                      >
+                        {l.lane}
+                      </Link>
+                    </td>
                     <td className="py-1 pr-3">{l.total}</td>
                     <td className="py-1 pr-3">{l.delayed}</td>
                     <td className="py-1 pr-3">{l.delayedPct}%</td>
@@ -264,18 +283,54 @@ export function ControlTowerReportsClient({
           </button>
         </div>
         <div className="mt-2 grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-5">
-          <div className="rounded border border-zinc-300 bg-zinc-100 px-3 py-2 text-sm text-zinc-950">
-            Plan leg: <strong className="tabular-nums">{summary.routeActions.planLeg}</strong>
-          </div>
-          <div className="rounded border border-zinc-300 bg-zinc-100 px-3 py-2 text-sm text-zinc-950">
-            Mark departure: <strong className="tabular-nums">{summary.routeActions.markDeparture}</strong>
-          </div>
-          <div className="rounded border border-zinc-300 bg-zinc-100 px-3 py-2 text-sm text-zinc-950">
-            Record arrival: <strong className="tabular-nums">{summary.routeActions.recordArrival}</strong>
-          </div>
-          <div className="rounded border border-zinc-300 bg-zinc-100 px-3 py-2 text-sm text-zinc-950">
-            Route complete: <strong className="tabular-nums">{summary.routeActions.routeComplete}</strong>
-          </div>
+          {summary.routeActions.planLeg > 0 ? (
+            <Link
+              href={controlTowerWorkbenchPath({ routeAction: "Plan leg" })}
+              className="block rounded border border-zinc-300 bg-zinc-100 px-3 py-2 text-sm text-zinc-950 hover:border-sky-300 hover:bg-sky-50"
+            >
+              Plan leg: <strong className="tabular-nums">{summary.routeActions.planLeg}</strong>
+            </Link>
+          ) : (
+            <div className="rounded border border-zinc-300 bg-zinc-100 px-3 py-2 text-sm text-zinc-950">
+              Plan leg: <strong className="tabular-nums">{summary.routeActions.planLeg}</strong>
+            </div>
+          )}
+          {summary.routeActions.markDeparture > 0 ? (
+            <Link
+              href={controlTowerWorkbenchPath({ routeAction: "Mark departure" })}
+              className="block rounded border border-zinc-300 bg-zinc-100 px-3 py-2 text-sm text-zinc-950 hover:border-sky-300 hover:bg-sky-50"
+            >
+              Mark departure: <strong className="tabular-nums">{summary.routeActions.markDeparture}</strong>
+            </Link>
+          ) : (
+            <div className="rounded border border-zinc-300 bg-zinc-100 px-3 py-2 text-sm text-zinc-950">
+              Mark departure: <strong className="tabular-nums">{summary.routeActions.markDeparture}</strong>
+            </div>
+          )}
+          {summary.routeActions.recordArrival > 0 ? (
+            <Link
+              href={controlTowerWorkbenchPath({ routeAction: "Record arrival" })}
+              className="block rounded border border-zinc-300 bg-zinc-100 px-3 py-2 text-sm text-zinc-950 hover:border-sky-300 hover:bg-sky-50"
+            >
+              Record arrival: <strong className="tabular-nums">{summary.routeActions.recordArrival}</strong>
+            </Link>
+          ) : (
+            <div className="rounded border border-zinc-300 bg-zinc-100 px-3 py-2 text-sm text-zinc-950">
+              Record arrival: <strong className="tabular-nums">{summary.routeActions.recordArrival}</strong>
+            </div>
+          )}
+          {summary.routeActions.routeComplete > 0 ? (
+            <Link
+              href={controlTowerWorkbenchPath({ routeAction: "Route complete" })}
+              className="block rounded border border-zinc-300 bg-zinc-100 px-3 py-2 text-sm text-zinc-950 hover:border-sky-300 hover:bg-sky-50"
+            >
+              Route complete: <strong className="tabular-nums">{summary.routeActions.routeComplete}</strong>
+            </Link>
+          ) : (
+            <div className="rounded border border-zinc-300 bg-zinc-100 px-3 py-2 text-sm text-zinc-950">
+              Route complete: <strong className="tabular-nums">{summary.routeActions.routeComplete}</strong>
+            </div>
+          )}
           <div className="rounded border border-zinc-300 bg-zinc-100 px-3 py-2 text-sm text-zinc-950">
             No legs: <strong className="tabular-nums">{summary.routeActions.noLegs}</strong>
           </div>
@@ -336,6 +391,14 @@ export function ControlTowerReportsClient({
             >
               Export status CSV
             </button>
+            {canEdit ? (
+              <Link
+                href={controlTowerWorkbenchPath({ onlyOverdueEta: "1", sortBy: "eta_asc" })}
+                className="rounded border border-amber-200 px-3 py-1 text-xs font-medium text-amber-950 hover:bg-amber-50"
+              >
+                Overdue ETAs
+              </Link>
+            ) : null}
             {canEdit ? (
               <Link
                 href="/control-tower/workbench"

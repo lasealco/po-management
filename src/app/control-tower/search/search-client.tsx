@@ -23,7 +23,7 @@ type Hit = {
 
 function buildWorkbenchUrl(filters: AssistSuggestedFilters, rawInput: string): string {
   const sp = new URLSearchParams();
-  appendAssistToSearchParams(sp, filters, { take: 150 });
+  appendAssistToSearchParams(sp, filters);
   if (!sp.has("q") && rawInput.trim()) {
     sp.set("q", rawInput.trim());
   }
@@ -115,6 +115,14 @@ export function ControlTowerSearchClient() {
         suggested.status && `status=${suggested.status}`,
         suggested.onlyOverdueEta && "overdueEta",
         suggested.lane && `lane=${suggested.lane}`,
+        suggested.supplierId && `supplierId=${suggested.supplierId.slice(0, 8)}…`,
+        suggested.customerCrmAccountId && `customer=${suggested.customerCrmAccountId.slice(0, 8)}…`,
+        suggested.carrierSupplierId && `carrier=${suggested.carrierSupplierId.slice(0, 8)}…`,
+        suggested.originCode && `origin=${suggested.originCode}`,
+        suggested.destinationCode && `dest=${suggested.destinationCode}`,
+        suggested.routeAction && `routeAction=${suggested.routeAction}`,
+        suggested.shipmentSource && `shipmentSource=${suggested.shipmentSource}`,
+        suggested.dispatchOwnerUserId && `owner=${suggested.dispatchOwnerUserId.slice(0, 8)}…`,
       ]
         .filter(Boolean)
         .join(" · ")}
@@ -127,7 +135,7 @@ export function ControlTowerSearchClient() {
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="PO-…, MEDU1234567, lane:CNSHA, overdue SHIPPED…"
+          placeholder="PO-…, source:unlinked, lane:CNSHA, route:plan_leg, overdue…"
           className="flex-1 rounded-lg border border-zinc-300 px-3 py-2 text-sm"
           onKeyDown={(e) => {
             if (e.key === "Enter") void run();

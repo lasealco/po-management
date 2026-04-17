@@ -6,6 +6,7 @@ import { getActorUserId, getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { getControlTowerOverview } from "@/lib/control-tower/overview";
 import { getControlTowerPortalContext } from "@/lib/control-tower/viewer";
 import { getDemoTenant } from "@/lib/demo-tenant";
+import { controlTowerWorkbenchPath } from "@/lib/control-tower/workbench-url-sync";
 
 export const dynamic = "force-dynamic";
 
@@ -55,16 +56,21 @@ export default async function ControlTowerPage() {
       <ControlTowerDashboardWidgets canEdit={canEdit} />
 
       <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <Link
-          href="/control-tower/workbench"
-          className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm transition hover:border-sky-300 hover:shadow-md"
-        >
-          <span className="text-base font-semibold text-zinc-900">Tracking workbench</span>
-          <p className="mt-2 text-sm text-zinc-600">
-            Filterable shipment grid, CSV export, and saved views (R1 + R4).
-          </p>
-          <span className="mt-4 inline-block text-sm font-medium text-sky-800">Open →</span>
-        </Link>
+        <div className="rounded-xl border border-zinc-200 bg-white shadow-sm transition hover:border-sky-300 hover:shadow-md">
+          <Link href="/control-tower/workbench" className="block p-5">
+            <span className="text-base font-semibold text-zinc-900">Tracking workbench</span>
+            <p className="mt-2 text-sm text-zinc-600">
+              Filterable shipment grid, CSV export, and saved views (R1 + R4).
+            </p>
+            <span className="mt-4 inline-block text-sm font-medium text-sky-800">Open →</span>
+          </Link>
+          <Link
+            href={controlTowerWorkbenchPath({ onlyOverdueEta: "1", sortBy: "eta_asc" })}
+            className="block border-t border-zinc-100 px-5 py-2.5 text-sm font-medium text-amber-900 hover:bg-amber-50"
+          >
+            Overdue ETAs (earliest first) →
+          </Link>
+        </div>
         <Link
           href="/control-tower/command-center"
           className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm transition hover:border-sky-300 hover:shadow-md"

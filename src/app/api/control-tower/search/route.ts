@@ -20,6 +20,16 @@ const STATUSES: ShipmentStatus[] = [
 ];
 const MODES: TransportMode[] = ["OCEAN", "AIR", "ROAD", "RAIL"];
 
+const ROUTE_ACTION_ALLOWED = [
+  "Send booking",
+  "Await booking",
+  "Escalate booking",
+  "Plan leg",
+  "Mark departure",
+  "Record arrival",
+  "Route complete",
+] as const;
+
 export async function GET(request: Request) {
   const gate = await requireApiGrant("org.controltower", "view");
   if (gate) return gate;
@@ -40,6 +50,28 @@ export async function GET(request: Request) {
   const modeRaw = searchParams.get("mode") ?? "";
   const onlyOverdueEtaRaw = searchParams.get("onlyOverdueEta") ?? "";
   const lane = searchParams.get("lane")?.trim() || undefined;
+  const supplierIdRaw = searchParams.get("supplierId")?.trim() ?? "";
+  const customerCrmAccountIdRaw = searchParams.get("customerCrmAccountId")?.trim() ?? "";
+  const carrierSupplierIdRaw = searchParams.get("carrierSupplierId")?.trim() ?? "";
+  const originCodeRaw = searchParams.get("originCode")?.trim() ?? "";
+  const destinationCodeRaw = searchParams.get("destinationCode")?.trim() ?? "";
+  const isProbableCuid = (s: string) => s.length >= 20 && s.length <= 32 && /^c[a-z0-9]+$/i.test(s);
+  const supplierId = isProbableCuid(supplierIdRaw) ? supplierIdRaw : undefined;
+  const customerCrmAccountId = isProbableCuid(customerCrmAccountIdRaw) ? customerCrmAccountIdRaw : undefined;
+  const carrierSupplierId = isProbableCuid(carrierSupplierIdRaw) ? carrierSupplierIdRaw : undefined;
+  const portToken = (s: string) => {
+    const t = s.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    return t.length >= 3 && t.length <= 10 ? t : undefined;
+  };
+  const originCode = portToken(originCodeRaw);
+  const destinationCode = portToken(destinationCodeRaw);
+  const shipmentSourceRaw = searchParams.get("shipmentSource")?.trim() ?? "";
+  const shipmentSource: "PO" | "UNLINKED" | undefined =
+    shipmentSourceRaw === "PO" || shipmentSourceRaw === "UNLINKED" ? shipmentSourceRaw : undefined;
+  const dispatchOwnerUserIdRaw = searchParams.get("dispatchOwnerUserId")?.trim() ?? "";
+  const dispatchOwnerUserId = isProbableCuid(dispatchOwnerUserIdRaw) ? dispatchOwnerUserIdRaw : undefined;
+  const routeActionRaw = searchParams.get("routeAction")?.trim() ?? "";
+  const routeActionPrefix = ROUTE_ACTION_ALLOWED.find((a) => a === routeActionRaw);
   const takeRaw = searchParams.get("take");
   const takeParsed = takeRaw ? Number(takeRaw) : NaN;
   const take = Number.isFinite(takeParsed)
@@ -54,12 +86,24 @@ export async function GET(request: Request) {
     onlyOverdueEtaRaw === "1" || onlyOverdueEtaRaw.toLowerCase() === "true" ? true : undefined;
 
   const hasStructured = Boolean(
-    mode || status || onlyOverdueEta || lane,
+    mode ||
+      status ||
+      onlyOverdueEta ||
+      lane ||
+      supplierId ||
+      customerCrmAccountId ||
+      carrierSupplierId ||
+      originCode ||
+      destinationCode ||
+      routeActionPrefix ||
+      shipmentSource ||
+      dispatchOwnerUserId,
   );
   if (!q && !hasStructured) {
     return NextResponse.json({
       shipments: [],
-      message: "Provide q= text and/or filters: mode, status, onlyOverdueEta, lane.",
+      message:
+        "Provide q= text and/or filters: mode, status, onlyOverdueEta, lane, originCode, destinationCode, routeAction, shipmentSource, dispatchOwnerUserId, supplierId, customerCrmAccountId, carrierSupplierId.",
     });
   }
 
@@ -73,6 +117,14 @@ export async function GET(request: Request) {
       mode: mode ?? "",
       onlyOverdueEta: onlyOverdueEta ?? false,
       lane,
+      supplierId,
+      customerCrmAccountId,
+      carrierSupplierId,
+      originCode,
+      destinationCode,
+      routeActionPrefix,
+      shipmentSource: shipmentSource ?? "",
+      dispatchOwnerUserId,
     },
   });
 

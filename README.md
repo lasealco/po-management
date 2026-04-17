@@ -81,6 +81,7 @@ Names only (no secrets in git). Use `.env.local` for local development.
 | `DEMO_ACTOR_EMAIL` | Demo session actor override |
 | `CONTROL_TOWER_FX_BASES`, `CONTROL_TOWER_FX_TARGETS` | FX refresh currency lists |
 | `CONTROL_TOWER_SYSTEM_ACTOR_EMAIL` | System actor for SLA escalation |
+| `CONTROL_TOWER_INBOUND_WEBHOOK_SECRET` | Shared secret for `POST /api/integrations/control-tower/inbound` (Bearer or `x-ct-inbound-secret`); omit locally if you do not call the stub |
 
 ## Product documentation
 

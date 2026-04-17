@@ -127,6 +127,13 @@ export function CommandPalette({ grants }: { grants: CommandPaletteGrants }) {
           searchText: "due late",
           action: go("/orders?queue=overdue"),
         },
+        {
+          id: "product-trace",
+          label: "Product trace",
+          hint: "SKU → PO, shipments, warehouse stock",
+          searchText: "product trace sku where inventory shipment customer",
+          action: go("/product-trace"),
+        },
       );
     }
 

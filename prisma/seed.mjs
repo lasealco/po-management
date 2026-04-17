@@ -433,6 +433,7 @@ async function seed() {
       update: {
         name: "Warehouse Los Angeles",
         type: "WAREHOUSE",
+        addressLine1: "5000 Distribution Pkwy",
         city: "Los Angeles",
         region: "CA",
         countryCode: "US",
@@ -443,6 +444,7 @@ async function seed() {
         code: "WH-LAX",
         name: "Warehouse Los Angeles",
         type: "WAREHOUSE",
+        addressLine1: "5000 Distribution Pkwy",
         city: "Los Angeles",
         region: "CA",
         countryCode: "US",
@@ -615,6 +617,49 @@ async function seed() {
       create: { productId: p.id, supplierId: supplier.id },
     });
   }
+
+  /** Zone/bin + on-hand stock for product trace (PKG-CORR-ROLL) at demo LA DC. */
+  const whLaxTraceZone = await prisma.warehouseZone.upsert({
+    where: { warehouseId_code: { warehouseId: whLosAngeles.id, code: "PT-DEMO" } },
+    update: {},
+    create: {
+      tenantId: tenant.id,
+      warehouseId: whLosAngeles.id,
+      code: "PT-DEMO",
+      name: "Product trace demo",
+      zoneType: "RESERVE",
+    },
+  });
+  const whLaxTraceBin = await prisma.warehouseBin.upsert({
+    where: { warehouseId_code: { warehouseId: whLosAngeles.id, code: "PTRACE-01" } },
+    update: { zoneId: whLaxTraceZone.id },
+    create: {
+      tenantId: tenant.id,
+      warehouseId: whLosAngeles.id,
+      zoneId: whLaxTraceZone.id,
+      code: "PTRACE-01",
+      name: "Staging (product trace demo)",
+      storageType: "PALLET",
+    },
+  });
+  await prisma.inventoryBalance.upsert({
+    where: {
+      warehouseId_binId_productId: {
+        warehouseId: whLosAngeles.id,
+        binId: whLaxTraceBin.id,
+        productId: prodCorrugated.id,
+      },
+    },
+    update: { onHandQty: "125.000", allocatedQty: "5.000" },
+    create: {
+      tenantId: tenant.id,
+      warehouseId: whLosAngeles.id,
+      binId: whLaxTraceBin.id,
+      productId: prodCorrugated.id,
+      onHandQty: "125.000",
+      allocatedQty: "5.000",
+    },
+  });
 
   const simpleWorkflow = await prisma.workflow.upsert({
     where: { tenantId_code: { tenantId: tenant.id, code: "SIMPLE_INTERNAL" } },
@@ -1212,17 +1257,21 @@ async function seed() {
     });
 
     await prisma.shipment.deleteMany({ where: { orderId: po1002.id } });
+    const traceEtd = new Date(Date.now() - 6 * 86_400_000);
+    const traceEta = new Date(Date.now() + 20 * 86_400_000);
     const seededShipment = await prisma.shipment.create({
       data: {
         orderId: po1002.id,
         shipmentNo: "ASN-PO1002-1",
-        shippedAt: new Date("2026-05-10T12:00:00.000Z"),
+        status: "IN_TRANSIT",
+        shippedAt: traceEtd,
+        expectedReceiveAt: traceEta,
         carrier: "Demo Freight",
         trackingNo: "DF-77821-1",
         transportMode: "OCEAN",
         estimatedVolumeCbm: "18.500",
         estimatedWeightKg: "6200.000",
-        notes: "Partial shipment for urgent demand.",
+        notes: "Partial shipment for urgent demand (product trace demo — ocean leg CNSZX→USLAX).",
         createdById: supplierUser.id,
         customerCrmAccountId: demoLogisticsCrmAccount.id,
       },
@@ -1290,6 +1339,30 @@ async function seed() {
         containerNumber: "MSCU1234567",
         containerType: "40HC",
         status: "IN_TRANSIT",
+      },
+    });
+
+    await prisma.shipmentBooking.upsert({
+      where: { shipmentId: seededShipment.id },
+      update: {
+        status: "CONFIRMED",
+        mode: "OCEAN",
+        originCode: "CNSZX",
+        destinationCode: "USLAX",
+        etd: traceEtd,
+        eta: traceEta,
+        updatedById: buyer.id,
+      },
+      create: {
+        shipmentId: seededShipment.id,
+        status: "CONFIRMED",
+        mode: "OCEAN",
+        originCode: "CNSZX",
+        destinationCode: "USLAX",
+        etd: traceEtd,
+        eta: traceEta,
+        createdById: buyer.id,
+        updatedById: buyer.id,
       },
     });
   }

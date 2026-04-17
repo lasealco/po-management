@@ -136,3 +136,40 @@ export function buildWorkbenchSearchString(state: WorkbenchUrlState, restrictedV
   if (state.ship360Tab === "milestones") p.set("ship360Tab", "milestones");
   return p.toString();
 }
+
+/**
+ * Builds `/control-tower/workbench?…` for deep links from dashboards and other pages.
+ * Keys should match workbench URL params (`readWorkbenchUrlState`); values are not validated here.
+ */
+export function controlTowerWorkbenchPath(query: Record<string, string>): string {
+  const p = new URLSearchParams();
+  for (const [k, v] of Object.entries(query)) {
+    const t = v.trim();
+    if (t) p.set(k, t);
+  }
+  const s = p.toString();
+  return s ? `/control-tower/workbench?${s}` : "/control-tower/workbench";
+}
+
+const PORT_TOKEN = /^[A-Z0-9]{3,10}$/;
+
+/**
+ * Maps reporting ETA lane labels (`ORIG->DEST`, possibly with `?`) to workbench
+ * `originCode` / `destinationCode` query params.
+ */
+export function controlTowerWorkbenchPathFromEtaLaneLabel(laneLabel: string): string {
+  const parts = laneLabel.trim().split("->");
+  if (parts.length !== 2) return "/control-tower/workbench";
+  const norm = (s: string) =>
+    s
+      .trim()
+      .replaceAll("?", "")
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "");
+  const o = norm(parts[0]);
+  const d = norm(parts[1]);
+  const q: Record<string, string> = {};
+  if (PORT_TOKEN.test(o)) q.originCode = o;
+  if (PORT_TOKEN.test(d)) q.destinationCode = d;
+  return controlTowerWorkbenchPath(q);
+}

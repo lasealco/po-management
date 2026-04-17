@@ -6,6 +6,7 @@ import { startTransition, useCallback, useEffect, useMemo, useState } from "reac
 
 import { ctSlaState } from "@/lib/control-tower/sla-thresholds";
 import { CT_SHIPMENT_DOCUMENT_TYPES } from "@/lib/control-tower/shipment-document-types";
+import { controlTowerWorkbenchPath } from "@/lib/control-tower/workbench-url-sync";
 import { ControlTowerRouteMap } from "@/components/control-tower-route-map";
 import { FormSearchableSelect } from "@/components/form-searchable-select";
 import { LocationCodePicker } from "@/components/location-code-picker";
@@ -234,7 +235,7 @@ export function ControlTowerShipment360({
     return (
       <div className="rounded border border-red-200 bg-red-50 px-4 py-6 text-sm text-red-900">
         {error}{" "}
-        <Link href="/control-tower/workbench" className="font-medium underline">
+        <Link href={controlTowerWorkbenchPath({ q: shipmentId })} className="font-medium underline">
           Back to workbench
         </Link>
       </div>
@@ -632,7 +633,7 @@ export function ControlTowerShipment360({
               ) : null}
             </div>
             <Link
-              href="/control-tower/workbench"
+              href={controlTowerWorkbenchPath({ q: shipmentId })}
               className="text-right text-sm font-medium text-sky-800 hover:underline"
             >
               ← Workbench

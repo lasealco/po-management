@@ -14,6 +14,15 @@ import {
   type WorkbenchUrlState,
 } from "@/lib/control-tower/workbench-url-sync";
 import type { CtMilestoneSummary } from "@/lib/control-tower/milestone-summary";
+import {
+  WORKBENCH_COLUMN_LABELS,
+  WORKBENCH_COLUMN_STORAGE_KEY,
+  WORKBENCH_TOGGABLE_COLUMNS,
+  defaultWorkbenchColumnVisibility,
+  parseWorkbenchColumnVisibility,
+  workbenchVisibleColumnCount,
+  type WorkbenchTogglableColumn,
+} from "@/lib/control-tower/workbench-column-prefs";
 
 type Row = {
   id: string;
@@ -111,6 +120,30 @@ function ActionTooltipButton({
       </div>
     </div>
   );
+}
+
+function WbTh({
+  show,
+  className,
+  title,
+  children,
+}: {
+  show: boolean;
+  className?: string;
+  title?: string;
+  children: ReactNode;
+}) {
+  if (!show) return null;
+  return (
+    <th className={className ?? "px-2 py-2"} title={title}>
+      {children}
+    </th>
+  );
+}
+
+function WbTd({ show, className, children }: { show: boolean; className?: string; children: ReactNode }) {
+  if (!show) return null;
+  return <td className={className}>{children}</td>;
 }
 
 function CtWorkbenchDemoTools({
@@ -287,6 +320,26 @@ function ControlTowerWorkbenchInner({
   const [ownerFilter, setOwnerFilter] = useState("");
   const [routeHealth, setRouteHealth] = useState("");
   const [ship360Tab, setShip360Tab] = useState<"" | "milestones">("");
+  const [colVis, setColVis] = useState<Record<WorkbenchTogglableColumn, boolean>>(defaultWorkbenchColumnVisibility);
+
+  useLayoutEffect(() => {
+    const patch = parseWorkbenchColumnVisibility(window.localStorage.getItem(WORKBENCH_COLUMN_STORAGE_KEY));
+    if (Object.keys(patch).length > 0) {
+      setColVis({ ...defaultWorkbenchColumnVisibility(), ...patch });
+    }
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem(WORKBENCH_COLUMN_STORAGE_KEY, JSON.stringify(colVis));
+  }, [colVis]);
+
+  const showCol = useCallback(
+    (k: WorkbenchTogglableColumn) => {
+      if (k === "owner" && restrictedView) return false;
+      return colVis[k] !== false;
+    },
+    [colVis, restrictedView],
+  );
 
   useLayoutEffect(() => {
     if (urlInitRef.current) return;
@@ -510,63 +563,6 @@ function ControlTowerWorkbenchInner({
     setSaved(data.filters ?? []);
   }, []);
 
-  const exportCsv = () => {
-    const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
-    const header = [
-      "shipmentId",
-      "orderNumber",
-      "shipmentNo",
-      "status",
-      "mode",
-      "customerCrmAccountId",
-      "origin",
-      "destination",
-      "eta",
-      "ata",
-      "etaVsAtaDays",
-      "quantityRef",
-      "weightKgRef",
-      "cbmRef",
-      "updatedAt",
-    ];
-    const lines = [header.join(",")];
-    for (const r of filteredRows) {
-      lines.push(
-        [
-          esc(r.id),
-          esc(r.orderNumber),
-          esc(r.shipmentNo || ""),
-          esc(r.status),
-          esc(r.transportMode || ""),
-          esc(r.customerCrmAccountId || ""),
-          esc(r.originCode || ""),
-          esc(r.destinationCode || ""),
-          esc(r.eta || r.latestEta || ""),
-          esc(r.receivedAt || ""),
-          esc(
-            (() => {
-              const etaIso = r.latestEta || r.eta;
-              if (!etaIso || !r.receivedAt) return "";
-              const deltaMs = new Date(r.receivedAt).getTime() - new Date(etaIso).getTime();
-              return (deltaMs / 86_400_000).toFixed(1);
-            })(),
-          ),
-          esc(r.quantityRef || ""),
-          esc(r.weightKgRef || ""),
-          esc(r.cbmRef || ""),
-          esc(r.updatedAt),
-        ].join(","),
-      );
-    }
-    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `control-tower-shipments-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
   const applySaved = (json: unknown) => {
     if (!json || typeof json !== "object") return;
     const o = json as {
@@ -587,6 +583,7 @@ function ControlTowerWorkbenchInner({
       onlyOverdueEta?: boolean;
       autoRefresh?: boolean;
       ship360Tab?: "" | "milestones";
+      columnVisibility?: Record<string, unknown>;
     };
     setStatus(typeof o.status === "string" ? o.status : "");
     setMode(typeof o.mode === "string" ? o.mode : "");
@@ -607,6 +604,12 @@ function ControlTowerWorkbenchInner({
     setOnlyOverdueEta(Boolean(o.onlyOverdueEta));
     setAutoRefresh(typeof o.autoRefresh === "boolean" ? o.autoRefresh : true);
     setShip360Tab(o.ship360Tab === "milestones" ? "milestones" : "");
+    if (o.columnVisibility && typeof o.columnVisibility === "object") {
+      const patch = parseWorkbenchColumnVisibility(JSON.stringify(o.columnVisibility));
+      if (Object.keys(patch).length > 0) {
+        setColVis({ ...defaultWorkbenchColumnVisibility(), ...patch });
+      }
+    }
     setPage(1);
   };
 
@@ -637,6 +640,7 @@ function ControlTowerWorkbenchInner({
           onlyOverdueEta,
           autoRefresh,
           ship360Tab,
+          columnVisibility: colVis,
         },
       }),
     });
@@ -723,6 +727,103 @@ function ControlTowerWorkbenchInner({
     });
     return sorted;
   }, [rows, sortBy]);
+
+  const exportCsv = useCallback(() => {
+    const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
+    const colOn = (k: WorkbenchTogglableColumn) => {
+      if (k === "owner" && restrictedView) return false;
+      return colVis[k] !== false;
+    };
+
+    const hs: string[] = ["shipmentId", "orderNumber", "shipmentNo"];
+    if (colOn("status")) hs.push("status");
+    if (colOn("mode")) hs.push("mode");
+    if (colOn("health")) hs.push("health");
+    if (colOn("customer")) hs.push("customer");
+    if (colOn("lane")) hs.push("lane");
+    if (colOn("eta")) hs.push("eta");
+    if (colOn("ataDelay")) {
+      hs.push("ata", "etaVsAtaDays");
+    }
+    if (colOn("qtyWt")) {
+      hs.push("quantityRef", "weightKgRef", "cbmRef");
+    }
+    if (colOn("owner")) {
+      hs.push("owner", "openAlerts", "openExceptions");
+    }
+    if (colOn("route")) hs.push("routeProgressPct");
+    if (colOn("nextAction")) hs.push("nextAction");
+    if (colOn("milestone")) hs.push("milestoneSummary");
+    if (colOn("updated")) hs.push("updatedAt");
+
+    const rowLine = (r: Row) => {
+      const cells: string[] = [esc(r.id), esc(r.orderNumber), esc(r.shipmentNo || "")];
+      if (colOn("status")) cells.push(esc(r.status));
+      if (colOn("mode")) cells.push(esc(r.transportMode || ""));
+      if (colOn("health")) {
+        const health = classifyShipmentHealth(r, Date.now());
+        cells.push(esc(healthLabel(health)));
+      }
+      if (colOn("customer")) {
+        cells.push(esc(r.customerCrmAccountName || r.customerCrmAccountId || ""));
+      }
+      if (colOn("lane")) {
+        cells.push(esc(`${r.originCode || ""} → ${r.destinationCode || ""}`));
+      }
+      if (colOn("eta")) {
+        cells.push(esc(r.eta || r.latestEta || ""));
+      }
+      if (colOn("ataDelay")) {
+        cells.push(esc(r.receivedAt || ""));
+        cells.push(
+          esc(
+            (() => {
+              const etaIso = r.latestEta || r.eta;
+              if (!etaIso || !r.receivedAt) return "";
+              const deltaMs = new Date(r.receivedAt).getTime() - new Date(etaIso).getTime();
+              return (deltaMs / 86_400_000).toFixed(1);
+            })(),
+          ),
+        );
+      }
+      if (colOn("qtyWt")) {
+        cells.push(esc(r.quantityRef || ""));
+        cells.push(esc(r.weightKgRef || ""));
+        cells.push(esc(r.cbmRef || ""));
+      }
+      if (colOn("owner")) {
+        cells.push(esc(r.dispatchOwner?.name || "Unassigned"));
+        cells.push(esc(String(r.openQueueCounts?.openAlerts ?? 0)));
+        cells.push(esc(String(r.openQueueCounts?.openExceptions ?? 0)));
+      }
+      if (colOn("route")) {
+        cells.push(esc(r.routeProgressPct == null ? "" : String(r.routeProgressPct)));
+      }
+      if (colOn("nextAction")) cells.push(esc(r.nextAction || ""));
+      if (colOn("milestone")) {
+        const parts: string[] = [];
+        if (r.latestMilestone) {
+          parts.push(`${r.latestMilestone.code}${r.latestMilestone.hasActual ? " ✓" : ""}`);
+        }
+        if (r.trackingMilestoneSummary?.next?.code) {
+          parts.push(`next:${r.trackingMilestoneSummary.next.code}`);
+        }
+        cells.push(esc(parts.length ? parts.join("; ") : ""));
+      }
+      if (colOn("updated")) cells.push(esc(r.updatedAt));
+      return cells.join(",");
+    };
+
+    const lines = [hs.join(","), ...filteredRows.map(rowLine)];
+    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `control-tower-shipments-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [filteredRows, colVis, restrictedView]);
+
   const pageSize = 25;
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
   const pagedRows = useMemo(
@@ -758,7 +859,10 @@ function ControlTowerWorkbenchInner({
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
 
-  const tableColSpan = restrictedView ? 14 : 15;
+  const tableColSpan = useMemo(
+    () => workbenchVisibleColumnCount(colVis, Boolean(restrictedView)),
+    [colVis, restrictedView],
+  );
 
   const setExternalOrderRef = useCallback(
     async (row: Row) => {
@@ -1194,6 +1298,34 @@ function ControlTowerWorkbenchInner({
         <p className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">{savedFiltersErr}</p>
       ) : null}
 
+      <details className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-800">
+        <summary className="cursor-pointer select-none font-medium text-zinc-900">Table columns</summary>
+        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-xs text-zinc-700">
+          {WORKBENCH_TOGGABLE_COLUMNS.filter((k) => !(k === "owner" && restrictedView)).map((k) => (
+            <label key={k} className="flex cursor-pointer items-center gap-1.5">
+              <input
+                type="checkbox"
+                checked={colVis[k] !== false}
+                onChange={() =>
+                  setColVis((prev) => ({
+                    ...prev,
+                    [k]: prev[k] !== false ? false : true,
+                  }))
+                }
+              />
+              {WORKBENCH_COLUMN_LABELS[k]}
+            </label>
+          ))}
+          <button
+            type="button"
+            className="rounded border border-zinc-300 bg-white px-2 py-1 text-xs text-zinc-800 hover:bg-zinc-100"
+            onClick={() => setColVis(defaultWorkbenchColumnVisibility())}
+          >
+            Reset columns
+          </button>
+        </div>
+      </details>
+
       <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white">
         <table className="min-w-full text-sm">
           <thead className="bg-zinc-100 text-left text-xs font-semibold uppercase text-zinc-800">
@@ -1202,21 +1334,24 @@ function ControlTowerWorkbenchInner({
                 PO / shipment
               </th>
               <th className="px-2 py-2">Order</th>
-              <th className="px-2 py-2">Status</th>
-              <th className="px-2 py-2">Mode</th>
-              <th className="px-2 py-2">Health</th>
-              <th className="px-2 py-2">Customer</th>
-              <th className="px-2 py-2">Lane</th>
-              <th className="px-2 py-2">ETA</th>
-              <th className="px-2 py-2">ATA / Delay</th>
-              <th className="px-2 py-2">Qty / Wt / Cbm</th>
-              {!restrictedView ? <th className="px-2 py-2">Owner / Queue</th> : null}
-              <th className="px-2 py-2">Route</th>
-              <th className="px-2 py-2">Next action</th>
-              <th className="px-2 py-2" title="Workflow milestone (latest) and Control Tower tracking next due.">
+              <WbTh show={showCol("status")}>Status</WbTh>
+              <WbTh show={showCol("mode")}>Mode</WbTh>
+              <WbTh show={showCol("health")}>Health</WbTh>
+              <WbTh show={showCol("customer")}>Customer</WbTh>
+              <WbTh show={showCol("lane")}>Lane</WbTh>
+              <WbTh show={showCol("eta")}>ETA</WbTh>
+              <WbTh show={showCol("ataDelay")}>ATA / Delay</WbTh>
+              <WbTh show={showCol("qtyWt")}>Qty / Wt / Cbm</WbTh>
+              <WbTh show={showCol("owner")}>Owner / Queue</WbTh>
+              <WbTh show={showCol("route")}>Route</WbTh>
+              <WbTh show={showCol("nextAction")}>Next action</WbTh>
+              <WbTh
+                show={showCol("milestone")}
+                title="Workflow milestone (latest) and Control Tower tracking next due."
+              >
                 Milestone / tracking
-              </th>
-              <th className="px-2 py-2">Updated</th>
+              </WbTh>
+              <WbTh show={showCol("updated")}>Updated</WbTh>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-200">
@@ -1283,9 +1418,13 @@ function ControlTowerWorkbenchInner({
                       </div>
                     ) : null}
                   </td>
-                  <td className="px-2 py-2">{r.status}</td>
-                  <td className="px-2 py-2">{r.transportMode || "—"}</td>
-                  <td className="whitespace-nowrap px-2 py-2">
+                  <WbTd show={showCol("status")} className="px-2 py-2">
+                    {r.status}
+                  </WbTd>
+                  <WbTd show={showCol("mode")} className="px-2 py-2">
+                    {r.transportMode || "—"}
+                  </WbTd>
+                  <WbTd show={showCol("health")} className="whitespace-nowrap px-2 py-2">
                     {(() => {
                       const health = classifyShipmentHealth(r, Date.now());
                       return (
@@ -1294,19 +1433,19 @@ function ControlTowerWorkbenchInner({
                         </span>
                       );
                     })()}
-                  </td>
-                  <td className="px-2 py-2 text-xs text-zinc-600">
+                  </WbTd>
+                  <WbTd show={showCol("customer")} className="px-2 py-2 text-xs text-zinc-600">
                     {r.customerCrmAccountName || (r.customerCrmAccountId ? r.customerCrmAccountId.slice(0, 8) + "…" : "—")}
-                  </td>
-                  <td className="px-2 py-2 text-xs text-zinc-600">
+                  </WbTd>
+                  <WbTd show={showCol("lane")} className="px-2 py-2 text-xs text-zinc-600">
                     {(r.originCode || "—") + " → " + (r.destinationCode || "—")}
-                  </td>
-                  <td className="whitespace-nowrap px-2 py-2 text-xs">
+                  </WbTd>
+                  <WbTd show={showCol("eta")} className="whitespace-nowrap px-2 py-2 text-xs">
                     {r.eta || r.latestEta
                       ? new Date((r.latestEta || r.eta) as string).toLocaleDateString()
                       : "—"}
-                  </td>
-                  <td className="whitespace-nowrap px-2 py-2 text-xs text-zinc-600">
+                  </WbTd>
+                  <WbTd show={showCol("ataDelay")} className="whitespace-nowrap px-2 py-2 text-xs text-zinc-600">
                     {r.receivedAt ? new Date(r.receivedAt).toLocaleDateString() : "—"}
                     {(() => {
                       const etaIso = r.latestEta || r.eta;
@@ -1325,25 +1464,23 @@ function ControlTowerWorkbenchInner({
                         </span>
                       );
                     })()}
-                  </td>
-                  <td className="whitespace-nowrap px-2 py-2 text-xs text-zinc-600">
+                  </WbTd>
+                  <WbTd show={showCol("qtyWt")} className="whitespace-nowrap px-2 py-2 text-xs text-zinc-600">
                     {r.quantityRef || "—"} / {r.weightKgRef || "—"}kg / {r.cbmRef || "—"}cbm
-                  </td>
-                  {!restrictedView ? (
-                    <td className="px-2 py-2 text-xs text-zinc-600">
-                      <div>{r.dispatchOwner?.name || "Unassigned"}</div>
-                      <div className="text-zinc-500">
-                        A:{r.openQueueCounts?.openAlerts ?? 0} / E:{r.openQueueCounts?.openExceptions ?? 0}
-                      </div>
-                    </td>
-                  ) : null}
-                  <td className="whitespace-nowrap px-2 py-2 text-xs text-zinc-700">
+                  </WbTd>
+                  <WbTd show={showCol("owner")} className="px-2 py-2 text-xs text-zinc-600">
+                    <div>{r.dispatchOwner?.name || "Unassigned"}</div>
+                    <div className="text-zinc-500">
+                      A:{r.openQueueCounts?.openAlerts ?? 0} / E:{r.openQueueCounts?.openExceptions ?? 0}
+                    </div>
+                  </WbTd>
+                  <WbTd show={showCol("route")} className="whitespace-nowrap px-2 py-2 text-xs text-zinc-700">
                     {r.routeProgressPct == null ? "—" : `${r.routeProgressPct}%`}
-                  </td>
-                  <td className="whitespace-nowrap px-2 py-2 text-xs text-zinc-600">
+                  </WbTd>
+                  <WbTd show={showCol("nextAction")} className="whitespace-nowrap px-2 py-2 text-xs text-zinc-600">
                     {r.nextAction || "—"}
-                  </td>
-                  <td className="px-2 py-2 text-xs text-zinc-600">
+                  </WbTd>
+                  <WbTd show={showCol("milestone")} className="px-2 py-2 text-xs text-zinc-600">
                     <div>
                       {r.latestMilestone
                         ? `${r.latestMilestone.code}${r.latestMilestone.hasActual ? " ✓" : ""}`
@@ -1383,10 +1520,10 @@ function ControlTowerWorkbenchInner({
                         </Link>
                       </div>
                     ) : null}
-                  </td>
-                  <td className="whitespace-nowrap px-2 py-2 text-xs text-zinc-500">
+                  </WbTd>
+                  <WbTd show={showCol("updated")} className="whitespace-nowrap px-2 py-2 text-xs text-zinc-500">
                     {new Date(r.updatedAt).toLocaleString()}
-                  </td>
+                  </WbTd>
                 </tr>
               ))
             )}

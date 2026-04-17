@@ -15,7 +15,7 @@
 | Tenant isolation | ✅ `tenantId` on CT entities; shipment via `order.tenantId` | Same tenant model as PO/WMS |
 | Role gates | ✅ `org.controltower` → `view` / `edit`; supplier portal + `User.customerCrmAccountId` scope | `src/lib/authz.ts`, `viewer.ts`, API `requireApiGrant` |
 | Overview / KPI strip | ✅ `/control-tower` + `getControlTowerOverview` + API `GET /api/control-tower/overview` | `control-tower-dashboard.tsx`, pinned widgets shell |
-| Tracking workbench | ✅ List, filters, CSV, saved views | `list-shipments.ts`, `control-tower-workbench.tsx`, `saved-filters` API |
+| Tracking workbench | ✅ List, filters, CSV, saved views, **column visibility** (localStorage + optional per saved view) | `list-shipments.ts`, `control-tower-workbench.tsx`, `workbench-column-prefs.ts`, `saved-filters` API |
 | Shipment 360 | ✅ Tabs: details, booking, milestones, legs, containers, refs, alerts, exceptions, docs, notes, finance, audit, … | `shipment-360.ts`, `control-tower-shipment-360.tsx` |
 | Booking workflow (draft → send → confirm) | 🟡 POST actions + UI on 360 | Simulated / demo paths; not live EDI |
 | **Exception type catalog** | ✅ `CtExceptionCode` per tenant + Shipment 360 dropdown + **Settings** `/settings/control-tower-exception-codes` + `GET /api/control-tower/exception-codes` + `upsert_ct_exception_code` | Tenant admins extend beyond migration seed set |
@@ -55,7 +55,7 @@
 
 | Area | Repo reality | Notes |
 |------|--------------|--------|
-| Inbound webhooks (carrier, forwarder) | ❌ | No public ingress contract in repo |
+| Inbound webhooks (carrier, forwarder) | 🟡 Signed stub + `CtAuditLog` only | `POST /api/integrations/control-tower/inbound` + `CONTROL_TOWER_INBOUND_WEBHOOK_SECRET`; no carrier-specific payload mapping yet |
 | Normalized event stream / idempotency keys | 🟡 Audit + milestone `sourceType` | Not a dedicated event bus table |
 | Master / house B/L, AWB as first-class sync | 🟡 `CtShipmentReference` + manual add | |
 | **SIMULATED** vs **INTEGRATION** provenance | 🟡 Fields + UI hints | Enrich/regenerate demo timeline actions |
@@ -89,6 +89,7 @@ High-level groups: **references** · **tracking milestones** (+ pack apply) · *
 | `GET …/ops/summary`, `POST …/ops/run-escalation` | Ops |
 | `POST …/documents/upload` | Blob upload |
 | `GET …/customer/digest` | Portal digest |
+| `POST …/integrations/control-tower/inbound` | Demo inbound webhook (secret + audit row) |
 
 ---
 
@@ -96,10 +97,10 @@ High-level groups: **references** · **tracking milestones** (+ pack apply) · *
 
 1. **Keep this file current** when merging Control Tower PRs (checkbox discipline).
 2. ~~**Exception catalog admin**~~ — ✅ Settings page + `GET /api/control-tower/exception-codes` + `upsert_ct_exception_code` POST action.
-3. **Integration stub** — smallest vertical: signed webhook route + append-only `CtAuditLog` / milestone update **or** document the “no ingress” decision in README.
-4. **Assist / chatbot** — expand rule pack + retrieval over saved reports / workbench context; tighten LLM prompts from PDF.
+3. ~~**Integration stub**~~ — 🟡 `POST /api/integrations/control-tower/inbound` + audit log; extend with idempotent milestone updates / payload mapping when needed.
+4. **Assist / chatbot** — expand rule pack + retrieval over saved reports / workbench context; tighten LLM prompts from PDF (lane / **origin** / **dest** port tokens + carrier/supplier/customer cuid + search API parity).
 5. **Reporting** — schedules, email/export parity with `control_tower_reporting_and_kpi_spec`.
-6. **Workbench** — column prefs persistence, cross-filter URL parity with spec.
+6. **Workbench** — ~~column prefs persistence~~ (localStorage + CSV respects visible columns); ~~cross-filter deep links~~ from Control Tower dashboard + executive cockpit (`controlTowerWorkbenchPath`, overdue ETA + status chips).
 
 ---
 
@@ -108,3 +109,13 @@ High-level groups: **references** · **tracking milestones** (+ pack apply) · *
 | Date | Change |
 |------|--------|
 | 2026-04-17 | Initial `GAP_MAP.md` + `README.md`. Implemented **Settings → Control Tower exception types** + `exception-codes` GET + `upsert_ct_exception_code` POST action. |
+| 2026-04-17 | Control Tower inbound webhook stub; workbench **table column** prefs + CSV alignment; assist `supplier:` / `customer:` cuid filters + search API support. |
+| 2026-04-17 | Saved workbench views persist **columnVisibility**; search → workbench link omits stray `take=`; assist **carrier:** cuid token + search `carrierSupplierId`. |
+| 2026-04-17 | `controlTowerWorkbenchPath` + deep links: dashboard **by-status** + overdue ETA, executive **overdue** + delayed row → Shipment 360, hub workbench card footer. |
+| 2026-04-17 | Assist **`origin:`** / **`dest:`** / **`destination:`** port tokens + `GET /api/control-tower/search` `originCode` & `destinationCode` (workbench URL parity). |
+| 2026-04-17 | Assist **`route:<slug>`** (e.g. `plan_leg`, `send_booking`) + search `routeAction` → list `routeActionPrefix`. |
+| 2026-04-17 | Assist **`source:`** / **`shipmentSource:`** / **`flow:`** `po` \| `unlinked` \| `export` + search `shipmentSource`. |
+| 2026-04-17 | Assist **`owner:`** / **`assignee:`** / **`dispatch:`** cuid + search `dispatchOwnerUserId` (open alert/exception owner scope). |
+| 2026-04-17 | `tsconfig`: exclude `.next` from `tsc` (stable CI; avoids stale/duplicate generated validators); reports snapshot **workbench drills** (ETA lane → origin/dest, route-action buckets, overdue links). |
+| 2026-04-17 | **Ops** + **Command center** → workbench: overdue drill in ops copy; command center “open filters in workbench” encodes status, routeAction, overdue, q, dispatch owner. |
+| 2026-04-17 | **Shipment 360** back links → workbench with `q=<shipmentId>` (matches list `q` id branch). |

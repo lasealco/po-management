@@ -4,6 +4,7 @@ import {
   controlTowerListPrimaryTitle,
   controlTowerListSecondaryRef,
 } from "@/lib/control-tower/shipment-list-label";
+import { CT_URL_STATUSES, controlTowerWorkbenchPath } from "@/lib/control-tower/workbench-url-sync";
 
 type Overview = {
   generatedAt: string;
@@ -78,14 +79,21 @@ export function ControlTowerDashboard({ overview }: { overview: Overview }) {
       <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm sm:col-span-2 lg:col-span-4">
         <p className="text-xs font-semibold uppercase text-zinc-500">By status</p>
         <div className="mt-2 flex flex-wrap gap-2 text-sm">
-          {Object.entries(counts.byStatus).map(([k, v]) => (
-            <span
-              key={k}
-              className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-zinc-800"
-            >
-              {k}: <strong>{v}</strong>
-            </span>
-          ))}
+          {Object.entries(counts.byStatus).map(([k, v]) =>
+            CT_URL_STATUSES.has(k) ? (
+              <Link
+                key={k}
+                href={controlTowerWorkbenchPath({ status: k })}
+                className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-zinc-800 hover:border-sky-300 hover:bg-sky-50"
+              >
+                {k}: <strong>{v}</strong>
+              </Link>
+            ) : (
+              <span key={k} className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-zinc-800">
+                {k}: <strong>{v}</strong>
+              </span>
+            ),
+          )}
         </div>
       </div>
       <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm sm:col-span-2 lg:col-span-4">
@@ -99,8 +107,13 @@ export function ControlTowerDashboard({ overview }: { overview: Overview }) {
         <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm sm:col-span-2 lg:col-span-4">
           <p className="text-xs font-semibold uppercase text-zinc-500">Risk spotlight</p>
           <p className="mt-1 text-sm text-zinc-700">
-            <span className="font-semibold text-amber-800">{counts.overdueEta}</span> overdue ETA ·{" "}
-            <span className="font-semibold">{counts.unassignedOpenAlerts ?? 0}</span> unassigned alerts ·{" "}
+            <Link
+              href={controlTowerWorkbenchPath({ onlyOverdueEta: "1", sortBy: "eta_asc" })}
+              className="font-semibold text-amber-800 underline decoration-amber-800/40 underline-offset-2 hover:decoration-amber-800"
+            >
+              {counts.overdueEta}
+            </Link>{" "}
+            overdue ETA · <span className="font-semibold">{counts.unassignedOpenAlerts ?? 0}</span> unassigned alerts ·{" "}
             <span className="font-semibold">{counts.unassignedOpenExceptions ?? 0}</span> unassigned exceptions
           </p>
           <p className="mt-2 text-sm text-zinc-700">
@@ -124,6 +137,12 @@ export function ControlTowerDashboard({ overview }: { overview: Overview }) {
             className="rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-sky-900 shadow-sm hover:border-sky-300"
           >
             Workbench
+          </Link>
+          <Link
+            href={controlTowerWorkbenchPath({ onlyOverdueEta: "1", sortBy: "eta_asc" })}
+            className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-950 shadow-sm hover:border-amber-300"
+          >
+            Overdue ETAs
           </Link>
           <Link
             href="/control-tower/reports"

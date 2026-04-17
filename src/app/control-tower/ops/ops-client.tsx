@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
+import { controlTowerWorkbenchPath } from "@/lib/control-tower/workbench-url-sync";
+
 type OpsSummary = {
   generatedAt: string;
   isCustomerView: boolean;
@@ -170,7 +172,14 @@ export function ControlTowerOpsClient({ initialSummary, focus }: { initialSummar
             <Link href="/control-tower/workbench" className="font-medium text-sky-800 underline">
               Workbench
             </Link>{" "}
-            and{" "}
+            (
+            <Link
+              href={controlTowerWorkbenchPath({ onlyOverdueEta: "1", sortBy: "eta_asc" })}
+              className="font-medium text-amber-900 underline decoration-amber-800/35"
+            >
+              overdue ETAs
+            </Link>
+            ) and{" "}
             <Link href="/control-tower/command-center" className="font-medium text-sky-800 underline">
               Command center
             </Link>

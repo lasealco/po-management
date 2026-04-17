@@ -4,6 +4,7 @@ import { AccessDenied } from "@/components/access-denied";
 import { getActorUserId, getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { buildExecutiveSummary } from "@/lib/executive/summary";
+import { controlTowerWorkbenchPath } from "@/lib/control-tower/workbench-url-sync";
 
 export const dynamic = "force-dynamic";
 
@@ -127,6 +128,12 @@ export default async function ExecutiveDashboardPage({
               className="rounded-full border border-white/20 bg-white/5 px-3 py-1 text-xs font-medium text-zinc-100 hover:bg-white/10"
             >
               Open control tower workbench
+            </Link>
+            <Link
+              href={controlTowerWorkbenchPath({ onlyOverdueEta: "1", sortBy: "eta_asc" })}
+              className="rounded-full border border-amber-300/35 bg-amber-300/10 px-3 py-1 text-xs font-medium text-amber-100 hover:bg-amber-300/15"
+            >
+              Overdue inbound ETAs
             </Link>
             <Link
               href={
@@ -579,13 +586,24 @@ export default async function ExecutiveDashboardPage({
             </section>
 
             <section>
-              <h3 className="text-sm font-semibold text-amber-200">Top delayed inbound shipments</h3>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold text-amber-200">Top delayed inbound shipments</h3>
+                <Link
+                  href={controlTowerWorkbenchPath({ onlyOverdueEta: "1", sortBy: "eta_asc" })}
+                  className="text-xs font-medium text-amber-100/90 underline decoration-amber-200/35 underline-offset-2 hover:decoration-amber-100"
+                >
+                  Open in workbench
+                </Link>
+              </div>
               <ul className="mt-2 space-y-2 text-sm text-zinc-300">
                 {summary.actionPanel.delayedInbound.length ? (
                   summary.actionPanel.delayedInbound.map((s) => (
                     <li key={s.shipmentId} className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
                       <p className="font-medium text-zinc-100">
-                        {s.shipmentNo} · {s.customer}
+                        <Link href={`/control-tower/shipments/${s.shipmentId}`} className="hover:underline">
+                          {s.shipmentNo}
+                        </Link>{" "}
+                        · {s.customer}
                       </p>
                       <p className="text-xs text-zinc-400">
                         {s.delayDays} day(s) late | status {s.status}

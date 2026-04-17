@@ -3,6 +3,7 @@ import { WorkflowHeader } from "@/components/workflow-header";
 import { getActorUserId, getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { ControlTowerShipment360 } from "@/components/control-tower-shipment-360";
 import { getControlTowerPortalContext } from "@/lib/control-tower/viewer";
+import { controlTowerWorkbenchPath } from "@/lib/control-tower/workbench-url-sync";
 
 export const dynamic = "force-dynamic";
 
@@ -51,7 +52,10 @@ export default async function ControlTowerShipmentPage({
   return (
     <main className="mx-auto w-full max-w-7xl px-6 py-10">
       <p className="text-sm">
-        <Link href="/control-tower/workbench" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+        <Link
+          href={controlTowerWorkbenchPath({ q: id })}
+          className="font-medium text-[var(--arscmp-primary)] hover:underline"
+        >
           ← Control Tower workbench
         </Link>
       </p>
