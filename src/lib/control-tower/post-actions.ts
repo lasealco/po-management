@@ -850,10 +850,16 @@ export async function handleControlTowerPost(
 
     if (forwarderSupplierId) {
       const supplier = await prisma.supplier.findFirst({
-        where: { id: forwarderSupplierId, tenantId, isActive: true },
+        where: {
+          id: forwarderSupplierId,
+          tenantId,
+          isActive: true,
+          approvalStatus: "approved",
+          srmCategory: "logistics",
+        },
         select: { id: true },
       });
-      if (!supplier) return bad("Invalid forwarder supplier", 400);
+      if (!supplier) return bad("Forwarder must be an approved logistics partner (SRM).", 400);
       if (forwarderOfficeId) {
         const office = await prisma.supplierOffice.findFirst({
           where: {
@@ -1050,10 +1056,16 @@ export async function handleControlTowerPost(
     let carrierName: string | null = null;
     if (carrierSupplierId) {
       const supplier = await prisma.supplier.findFirst({
-        where: { id: carrierSupplierId, tenantId, isActive: true },
+        where: {
+          id: carrierSupplierId,
+          tenantId,
+          isActive: true,
+          approvalStatus: "approved",
+          srmCategory: "logistics",
+        },
         select: { id: true, name: true },
       });
-      if (!supplier) return bad("Carrier supplier not found in tenant", 404);
+      if (!supplier) return bad("Carrier must be an approved logistics partner (SRM).", 404);
       carrierName = supplier.name;
     }
 
@@ -1632,10 +1644,16 @@ export async function handleControlTowerPost(
     let carrier: string | null = null;
     if (carrierSupplierIdRaw) {
       const supplier = await prisma.supplier.findFirst({
-        where: { id: carrierSupplierIdRaw, tenantId, isActive: true },
+        where: {
+          id: carrierSupplierIdRaw,
+          tenantId,
+          isActive: true,
+          approvalStatus: "approved",
+          srmCategory: "logistics",
+        },
         select: { id: true, name: true },
       });
-      if (!supplier) return bad("Invalid carrier supplier", 400);
+      if (!supplier) return bad("Carrier must be an approved logistics partner (SRM).", 400);
       carrierSupplierId = supplier.id;
       carrier = supplier.name;
     }
@@ -1714,10 +1732,16 @@ export async function handleControlTowerPost(
         carrierPatch = { carrierSupplierId: null, carrier: null };
       } else {
         const supplier = await prisma.supplier.findFirst({
-          where: { id: carrierSupplierIdRaw, tenantId, isActive: true },
+          where: {
+            id: carrierSupplierIdRaw,
+            tenantId,
+            isActive: true,
+            approvalStatus: "approved",
+            srmCategory: "logistics",
+          },
           select: { id: true, name: true },
         });
-        if (!supplier) return bad("Invalid carrier supplier", 400);
+        if (!supplier) return bad("Carrier must be an approved logistics partner (SRM).", 400);
         carrierPatch = { carrierSupplierId: supplier.id, carrier: supplier.name };
       }
     }

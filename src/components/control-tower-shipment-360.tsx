@@ -33,6 +33,18 @@ const ALL_TABS: Tab[] = [
   "audit",
 ];
 
+function formatPlannedVsActualShort(plannedIso: string | null, actualIso: string | null): string | null {
+  if (!plannedIso || !actualIso) return null;
+  const p = new Date(plannedIso).getTime();
+  const a = new Date(actualIso).getTime();
+  if (!Number.isFinite(p) || !Number.isFinite(a)) return null;
+  const ms = a - p;
+  const hours = Math.round(ms / 3_600_000);
+  if (Math.abs(hours) < 72) return `${hours >= 0 ? "+" : ""}${hours} h`;
+  const days = Math.round(ms / 86_400_000);
+  return `${days >= 0 ? "+" : ""}${days} d`;
+}
+
 function tabFromInitial(v: string | undefined): Tab {
   if (!v) return "details";
   return ALL_TABS.includes(v as Tab) ? (v as Tab) : "details";
@@ -318,6 +330,7 @@ export function ControlTowerShipment360({
     | {
         orderRequestedDeliveryAt: string | null;
         plannedDepartureAt: string | null;
+        actualDepartureAt: string | null;
         plannedArrivalAt: string | null;
         actualArrivalAt: string | null;
         plannedVsRequestedDays: number | null;
@@ -328,6 +341,15 @@ export function ControlTowerShipment360({
         bookingEta: string | null;
         bookingLatestEta: string | null;
         hasSyntheticLeg: boolean;
+        legs?: Array<{
+          legNo: number;
+          originCode: string | null;
+          destinationCode: string | null;
+          plannedEtd: string | null;
+          plannedEta: string | null;
+          actualAtd: string | null;
+          actualAta: string | null;
+        }>;
       }
     | undefined;
   const orderForLink = data.order as { id?: string; orderNumber?: string } | undefined;
@@ -1564,7 +1586,8 @@ export function ControlTowerShipment360({
                 <div>
                   <h2 className="font-semibold text-zinc-900">Route plan vs PO & actuals</h2>
                   <p className="mt-1 text-xs text-zinc-600">
-                    Compare requested delivery on the PO to planned booking / leg arrival and recorded actuals.
+                    Compare PO requested delivery to planned departure and arrival (ETD/ETA vs ATD/ATA). One row per
+                    leg when explicit legs exist.
                     {routePerformance.hasSyntheticLeg ? (
                       <span className="ml-1 text-amber-800">
                         Showing booking as a single segment until you add explicit legs.
@@ -1597,7 +1620,7 @@ export function ControlTowerShipment360({
                   {routePerformance.summary}
                 </p>
               ) : null}
-              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
                 <div className="rounded-md border border-zinc-100 bg-zinc-50/80 p-3">
                   <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">PO requested</p>
                   <p className="mt-1 font-mono text-sm text-zinc-900">
@@ -1623,6 +1646,21 @@ export function ControlTowerShipment360({
                   </p>
                   <p className="mt-1 text-[11px] text-zinc-500">
                     Booking ETD {routePerformance.bookingEtd ? new Date(routePerformance.bookingEtd).toLocaleDateString() : "—"}
+                  </p>
+                </div>
+                <div className="rounded-md border border-zinc-100 bg-zinc-50/80 p-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">Actual departure</p>
+                  <p className="mt-1 font-mono text-sm text-zinc-900">
+                    {routePerformance.actualDepartureAt
+                      ? new Date(routePerformance.actualDepartureAt).toLocaleString()
+                      : "—"}
+                  </p>
+                  <p className="mt-1 text-[11px] text-zinc-500">
+                    First leg ATD · ETD vs ATD{" "}
+                    {formatPlannedVsActualShort(
+                      routePerformance.plannedDepartureAt,
+                      routePerformance.actualDepartureAt,
+                    ) ?? "—"}
                   </p>
                 </div>
                 <div className="rounded-md border border-zinc-100 bg-zinc-50/80 p-3">
@@ -1674,6 +1712,46 @@ export function ControlTowerShipment360({
                   ) : null}
                 </div>
               </div>
+              {Array.isArray(routePerformance.legs) && routePerformance.legs.length > 0 ? (
+                <div className="mt-4 rounded-md border border-zinc-100 bg-white p-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">By leg</p>
+                  <ul className="mt-2 space-y-2 text-xs text-zinc-800">
+                    {routePerformance.legs.map((leg) => (
+                      <li
+                        key={leg.legNo}
+                        className="flex flex-col gap-0.5 border-b border-zinc-50 pb-2 last:border-0 last:pb-0"
+                      >
+                        <span className="font-medium">
+                          Leg {leg.legNo}{" "}
+                          <span className="font-normal text-zinc-500">
+                            {(leg.originCode || "—")} → {leg.destinationCode || "—"}
+                          </span>
+                        </span>
+                        <span>
+                          ETD {leg.plannedEtd ? new Date(leg.plannedEtd).toLocaleString() : "—"}
+                          <span className="text-zinc-400"> · </span>
+                          ATD {leg.actualAtd ? new Date(leg.actualAtd).toLocaleString() : "—"}
+                          {formatPlannedVsActualShort(leg.plannedEtd, leg.actualAtd) ? (
+                            <span className="ml-1 font-medium text-zinc-600">
+                              ({formatPlannedVsActualShort(leg.plannedEtd, leg.actualAtd)})
+                            </span>
+                          ) : null}
+                        </span>
+                        <span>
+                          ETA {leg.plannedEta ? new Date(leg.plannedEta).toLocaleString() : "—"}
+                          <span className="text-zinc-400"> · </span>
+                          ATA {leg.actualAta ? new Date(leg.actualAta).toLocaleString() : "—"}
+                          {formatPlannedVsActualShort(leg.plannedEta, leg.actualAta) ? (
+                            <span className="ml-1 font-medium text-zinc-600">
+                              ({formatPlannedVsActualShort(leg.plannedEta, leg.actualAta)})
+                            </span>
+                          ) : null}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
             </section>
           ) : null}
           <ControlTowerRouteMap

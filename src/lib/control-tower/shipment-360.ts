@@ -366,7 +366,12 @@ export async function getShipment360(params: {
   let forwarderContactChoices: { id: string; name: string; supplierId: string; email: string | null }[] = [];
   if (!restricted) {
     forwarderSupplierChoices = await prisma.supplier.findMany({
-      where: { tenantId, isActive: true, productSuppliers: { none: {} } },
+      where: {
+        tenantId,
+        isActive: true,
+        approvalStatus: "approved",
+        srmCategory: "logistics",
+      },
       orderBy: { name: "asc" },
       take: 400,
       select: { id: true, name: true },

@@ -19,6 +19,8 @@ export type RoutePerformancePayload = {
   bookingLatestEta: string | null;
   /** First departure in plan (booking ETD or first leg ETD). */
   plannedDepartureAt: string | null;
+  /** First recorded actual departure (first leg ATD in leg order), when present. */
+  actualDepartureAt: string | null;
   /** Best-effort planned arrival at destination (last leg ETA or booking ETA / latest ETA). */
   plannedArrivalAt: string | null;
   /** Last known actual arrival (last leg ATA, else shipment receivedAt). */
@@ -119,6 +121,16 @@ export function buildRoutePerformance(input: BuildInput): RoutePerformancePayloa
     if (last?.plannedEta) plannedArrivalAt = last.plannedEta.toISOString();
   }
 
+  let actualDepartureAt: string | null = null;
+  if (sortedLegs.length > 0) {
+    for (const leg of sortedLegs) {
+      if (leg.actualAtd) {
+        actualDepartureAt = leg.actualAtd.toISOString();
+        break;
+      }
+    }
+  }
+
   let actualArrivalAt: string | null = input.shipmentReceivedAt?.toISOString() ?? null;
   if (sortedLegs.length > 0) {
     for (let i = sortedLegs.length - 1; i >= 0; i -= 1) {
@@ -180,6 +192,7 @@ export function buildRoutePerformance(input: BuildInput): RoutePerformancePayloa
     bookingEta,
     bookingLatestEta,
     plannedDepartureAt,
+    actualDepartureAt,
     plannedArrivalAt,
     actualArrivalAt,
     plannedVsRequestedDays,

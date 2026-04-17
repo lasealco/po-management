@@ -215,7 +215,13 @@ export async function createLogisticsShipment(
   const carrierSupplier = carrierSupplierId?.trim() || null;
   if (carrierSupplier) {
     const supplier = await prisma.supplier.findFirst({
-      where: { id: carrierSupplier, tenantId, isActive: true, productSuppliers: { none: {} } },
+      where: {
+        id: carrierSupplier,
+        tenantId,
+        isActive: true,
+        approvalStatus: "approved",
+        srmCategory: "logistics",
+      },
       select: { id: true, name: true },
     });
     if (!supplier) {
