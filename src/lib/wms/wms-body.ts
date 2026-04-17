@@ -34,6 +34,12 @@ export type WmsBody = {
   storageType?: "PALLET" | "FLOOR" | "SHELF" | "QUARANTINE" | "STAGING";
   isPickFace?: boolean;
   maxPallets?: number | null;
+  /** Physical rack / bay grouping for maps (optional). */
+  rackCode?: string | null;
+  aisle?: string | null;
+  bay?: string | null;
+  level?: number | null;
+  positionIndex?: number | null;
   minPickQty?: number;
   maxPickQty?: number;
   replenishQty?: number;

@@ -45,6 +45,18 @@ export async function handleWmsPost(
     if (!warehouseId || !code || !name) {
       return NextResponse.json({ error: "warehouseId, code, name required." }, { status: 400 });
     }
+    const rackCode = input.rackCode?.trim() || null;
+    const aisle = input.aisle?.trim() || null;
+    const bay = input.bay?.trim() || null;
+    const level =
+      typeof input.level === "number" && Number.isFinite(input.level)
+        ? Math.max(1, Math.trunc(input.level))
+        : null;
+    const positionIndex =
+      typeof input.positionIndex === "number" && Number.isFinite(input.positionIndex)
+        ? Math.max(1, Math.trunc(input.positionIndex))
+        : null;
+
     await prisma.warehouseBin.create({
       data: {
         tenantId,
@@ -58,6 +70,11 @@ export async function handleWmsPost(
           typeof input.maxPallets === "number" && Number.isFinite(input.maxPallets)
             ? Math.max(0, Math.trunc(input.maxPallets))
             : null,
+        rackCode,
+        aisle,
+        bay,
+        level,
+        positionIndex,
       },
     });
     return NextResponse.json({ ok: true });
@@ -66,19 +83,35 @@ export async function handleWmsPost(
   if (action === "update_bin_profile") {
     const binId = input.binId?.trim();
     if (!binId) return NextResponse.json({ error: "binId required." }, { status: 400 });
+    const data: Prisma.WarehouseBinUncheckedUpdateManyInput = {
+      zoneId: input.targetZoneId?.trim() || null,
+      storageType: input.storageType ?? undefined,
+      isPickFace: typeof input.isPickFace === "boolean" ? input.isPickFace : undefined,
+      maxPallets:
+        typeof input.maxPallets === "number" && Number.isFinite(input.maxPallets)
+          ? Math.max(0, Math.trunc(input.maxPallets))
+          : input.maxPallets === null
+            ? null
+            : undefined,
+    };
+    if (input.rackCode !== undefined) data.rackCode = input.rackCode?.trim() || null;
+    if (input.aisle !== undefined) data.aisle = input.aisle?.trim() || null;
+    if (input.bay !== undefined) data.bay = input.bay?.trim() || null;
+    if (input.level !== undefined) {
+      data.level =
+        typeof input.level === "number" && Number.isFinite(input.level)
+          ? Math.max(1, Math.trunc(input.level))
+          : null;
+    }
+    if (input.positionIndex !== undefined) {
+      data.positionIndex =
+        typeof input.positionIndex === "number" && Number.isFinite(input.positionIndex)
+          ? Math.max(1, Math.trunc(input.positionIndex))
+          : null;
+    }
     await prisma.warehouseBin.updateMany({
       where: { id: binId, tenantId },
-      data: {
-        zoneId: input.targetZoneId?.trim() || null,
-        storageType: input.storageType ?? undefined,
-        isPickFace: typeof input.isPickFace === "boolean" ? input.isPickFace : undefined,
-        maxPallets:
-          typeof input.maxPallets === "number" && Number.isFinite(input.maxPallets)
-            ? Math.max(0, Math.trunc(input.maxPallets))
-            : input.maxPallets === null
-              ? null
-              : undefined,
-      },
+      data,
     });
     return NextResponse.json({ ok: true });
   }

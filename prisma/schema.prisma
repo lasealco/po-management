@@ -1275,6 +1275,14 @@ model WarehouseBin {
   storageType BinStorageType @default(PALLET)
   isPickFace  Boolean        @default(false)
   maxPallets  Int?
+  /// Groups bins into one physical rack / bay run for layout maps (e.g. `R-A01`).
+  rackCode       String? @db.VarChar(64)
+  aisle          String? @db.VarChar(32)
+  bay            String? @db.VarChar(32)
+  /// 1-based shelf level (floor = 1) when using rack maps.
+  level          Int?
+  /// 1-based slot along the rack front (width axis) for grid columns.
+  positionIndex  Int?
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -1289,6 +1297,7 @@ model WarehouseBin {
   @@unique([warehouseId, code])
   @@index([tenantId, warehouseId])
   @@index([zoneId])
+  @@index([warehouseId, rackCode])
 }
 
 model ReplenishmentRule {

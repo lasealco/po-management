@@ -21,6 +21,11 @@ type WmsData = {
     storageType: "PALLET" | "FLOOR" | "SHELF" | "QUARANTINE" | "STAGING";
     isPickFace: boolean;
     maxPallets: number | null;
+    rackCode: string | null;
+    aisle: string | null;
+    bay: string | null;
+    level: number | null;
+    positionIndex: number | null;
     warehouse: { id: string; code: string | null; name: string };
     zone: { id: string; code: string; name: string; zoneType: string } | null;
   }>;
@@ -229,6 +234,12 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
     "PALLET" | "FLOOR" | "SHELF" | "QUARANTINE" | "STAGING"
   >("PALLET");
   const [newBinPickFace, setNewBinPickFace] = useState(false);
+  const [newBinRackCode, setNewBinRackCode] = useState("");
+  const [newBinAisle, setNewBinAisle] = useState("");
+  const [newBinBay, setNewBinBay] = useState("");
+  const [newBinLevel, setNewBinLevel] = useState("");
+  const [newBinPosition, setNewBinPosition] = useState("");
+  const [rackVizCode, setRackVizCode] = useState("");
 
   const [putawayShipmentItemId, setPutawayShipmentItemId] = useState("");
   const [putawayQty, setPutawayQty] = useState("");
@@ -343,6 +354,20 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
     () => (data?.zones ?? []).filter((z) => z.warehouse.id === selectedWarehouseId),
     [data?.zones, selectedWarehouseId],
   );
+  const replenishmentRulesForWarehouse = useMemo(
+    () =>
+      (data?.replenishmentRules ?? []).filter((r) => r.warehouse.id === selectedWarehouseId),
+    [data?.replenishmentRules, selectedWarehouseId],
+  );
+
+  const rackCodesForSetup = useMemo(() => {
+    const s = new Set<string>();
+    for (const b of binsForWarehouse) {
+      const c = b.rackCode?.trim();
+      if (c) s.add(c);
+    }
+    return [...s].sort();
+  }, [binsForWarehouse]);
 
   const balancesForWarehouseOps = useMemo(
     () =>
@@ -351,6 +376,37 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
       ),
     [data?.balances, selectedWarehouseId],
   );
+
+  const balanceLinesByBinId = useMemo(() => {
+    const m = new Map<string, string[]>();
+    for (const row of balancesForWarehouseOps) {
+      if (Number(row.onHandQty) <= 0) continue;
+      const id = row.bin.id;
+      const line = `${row.product.sku || row.product.productCode || "?"}: ${row.onHandQty}`;
+      const arr = m.get(id) ?? [];
+      arr.push(line);
+      m.set(id, arr);
+    }
+    return m;
+  }, [balancesForWarehouseOps]);
+
+  const rackMapModel = useMemo(() => {
+    const code = rackVizCode.trim();
+    if (!code) return null;
+    const inRack = binsForWarehouse.filter((b) => (b.rackCode?.trim() || "") === code);
+    const placed = inRack.filter((b) => b.level != null && b.positionIndex != null);
+    const unplaced = inRack.filter((b) => b.level == null || b.positionIndex == null);
+    if (placed.length === 0) {
+      return { code, grid: null as { levels: number; positions: number; cellByKey: Map<string, (typeof binsForWarehouse)[0]> } | null, unplaced };
+    }
+    const levels = Math.max(...placed.map((b) => b.level!));
+    const positions = Math.max(...placed.map((b) => b.positionIndex!));
+    const cellByKey = new Map<string, (typeof binsForWarehouse)[0]>();
+    for (const b of placed) {
+      cellByKey.set(`${b.level}-${b.positionIndex}`, b);
+    }
+    return { code, grid: { levels, positions, cellByKey }, unplaced };
+  }, [rackVizCode, binsForWarehouse]);
 
   const balancesShown = useMemo(() => {
     const rows = data?.balances ?? [];
@@ -575,6 +631,271 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
       {section === "setup" ? (
         <>
       <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
+        <h2 className="text-sm font-semibold text-zinc-900">Current layout</h2>
+        <p className="mt-1 text-xs text-zinc-600">
+          Read-only view of zones, bins, and replenishment rules. Bins can carry optional{" "}
+          <span className="font-medium text-zinc-700">rack / aisle / bay / level / position</span> for pallet
+          racking and pick shelves; use the rack map below once those coordinates are set.
+        </p>
+        {!selectedWarehouseId ? (
+          <p className="mt-3 text-sm text-zinc-500">Select a warehouse above to see its layout.</p>
+        ) : (
+          <div className="mt-4 space-y-6">
+            <div>
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Zones</h3>
+              <div className="mt-2 max-h-48 overflow-auto rounded border border-zinc-200">
+                <table className="min-w-full text-sm">
+                  <thead className="sticky top-0 bg-zinc-100 text-left text-xs uppercase text-zinc-700">
+                    <tr>
+                      <th className="px-2 py-1">Code</th>
+                      <th className="px-2 py-1">Name</th>
+                      <th className="px-2 py-1">Type</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-200">
+                    {zonesForWarehouse.length === 0 ? (
+                      <tr>
+                        <td colSpan={3} className="px-2 py-2 text-zinc-500">
+                          No zones for this warehouse.
+                        </td>
+                      </tr>
+                    ) : (
+                      [...zonesForWarehouse]
+                        .sort((a, b) => a.code.localeCompare(b.code))
+                        .map((z) => (
+                          <tr key={z.id}>
+                            <td className="whitespace-nowrap px-2 py-1 font-mono text-xs">{z.code}</td>
+                            <td className="px-2 py-1 text-zinc-800">{z.name}</td>
+                            <td className="px-2 py-1 text-zinc-600">{z.zoneType}</td>
+                          </tr>
+                        ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div>
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                Bins ({binsForWarehouse.length})
+              </h3>
+              <div className="mt-2 max-h-72 overflow-auto rounded border border-zinc-200">
+                <table className="min-w-full text-sm">
+                  <thead className="sticky top-0 bg-zinc-100 text-left text-xs uppercase text-zinc-700">
+                    <tr>
+                      <th className="px-2 py-1">Code</th>
+                      <th className="px-2 py-1">Name</th>
+                      <th className="px-2 py-1">Zone</th>
+                      <th className="px-2 py-1">Storage</th>
+                      <th className="px-2 py-1">Pick face</th>
+                      <th className="px-2 py-1">Max pal.</th>
+                      <th className="px-2 py-1">Rack</th>
+                      <th className="px-2 py-1">Aisle</th>
+                      <th className="px-2 py-1">Bay</th>
+                      <th className="px-2 py-1">Lvl</th>
+                      <th className="px-2 py-1">Pos</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-200">
+                    {binsForWarehouse.length === 0 ? (
+                      <tr>
+                        <td colSpan={11} className="px-2 py-2 text-zinc-500">
+                          No bins for this warehouse.
+                        </td>
+                      </tr>
+                    ) : (
+                      [...binsForWarehouse]
+                        .sort((a, b) => a.code.localeCompare(b.code))
+                        .map((b) => (
+                          <tr key={b.id}>
+                            <td className="whitespace-nowrap px-2 py-1 font-mono text-xs">{b.code}</td>
+                            <td className="px-2 py-1 text-zinc-800">{b.name}</td>
+                            <td className="px-2 py-1 text-zinc-600">
+                              {b.zone ? `${b.zone.code} · ${b.zone.name}` : "—"}
+                            </td>
+                            <td className="px-2 py-1 text-zinc-600">{b.storageType}</td>
+                            <td className="px-2 py-1 text-zinc-600">{b.isPickFace ? "Yes" : "—"}</td>
+                            <td className="px-2 py-1 text-zinc-600">
+                              {b.maxPallets != null ? String(b.maxPallets) : "—"}
+                            </td>
+                            <td className="whitespace-nowrap px-2 py-1 font-mono text-xs text-zinc-700">
+                              {b.rackCode ?? "—"}
+                            </td>
+                            <td className="px-2 py-1 text-zinc-600">{b.aisle ?? "—"}</td>
+                            <td className="px-2 py-1 text-zinc-600">{b.bay ?? "—"}</td>
+                            <td className="px-2 py-1 text-zinc-600">{b.level ?? "—"}</td>
+                            <td className="px-2 py-1 text-zinc-600">{b.positionIndex ?? "—"}</td>
+                          </tr>
+                        ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div>
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Rack front map</h3>
+              <p className="mt-1 text-xs text-zinc-600">
+                Rows are shelf <span className="font-medium">levels</span> (1 = lowest), columns are{" "}
+                <span className="font-medium">positions</span> along the rack. Each cell shows the bin and
+                on-hand SKUs for this warehouse. Overall rack width/height in metres is not stored yet—use
+                zone/bin names or external drawings until we add a dedicated rack record.
+              </p>
+              {!selectedWarehouseId ? (
+                <p className="mt-2 text-sm text-zinc-500">Select a warehouse to use the map.</p>
+              ) : rackCodesForSetup.length === 0 ? (
+                <p className="mt-2 text-sm text-zinc-500">
+                  No bins have a <span className="font-mono">rackCode</span> yet. Set it (and level + position)
+                  when creating bins, or extend the seed later.
+                </p>
+              ) : (
+                <div className="mt-3 space-y-3">
+                  <label className="flex flex-wrap items-center gap-2 text-sm text-zinc-700">
+                    Rack
+                    <select
+                      value={rackVizCode}
+                      onChange={(e) => setRackVizCode(e.target.value)}
+                      className="rounded border border-zinc-300 px-2 py-1.5 text-sm"
+                    >
+                      <option value="">Choose rack…</option>
+                      {rackCodesForSetup.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {rackMapModel?.grid != null ? (
+                    <div className="overflow-auto rounded border border-zinc-200 bg-zinc-50/50 p-2">
+                      {(() => {
+                        const g = rackMapModel.grid;
+                        return (
+                      <table className="border-collapse text-left text-xs">
+                        <thead>
+                          <tr>
+                            <th className="border border-zinc-200 bg-zinc-100 px-1.5 py-1 font-normal text-zinc-600">
+                              Lvl \ Pos
+                            </th>
+                            {Array.from({ length: g.positions }, (_, pi) => (
+                              <th
+                                key={pi}
+                                className="min-w-[6.5rem] border border-zinc-200 bg-zinc-100 px-1.5 py-1 text-center font-normal text-zinc-600"
+                              >
+                                {pi + 1}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {Array.from({ length: g.levels }, (_, li) => {
+                            const level = li + 1;
+                            return (
+                              <tr key={level}>
+                                <td className="border border-zinc-200 bg-zinc-100 px-1.5 py-1 text-center font-medium text-zinc-700">
+                                  {level}
+                                </td>
+                                {Array.from({ length: g.positions }, (_, pi) => {
+                                  const pos = pi + 1;
+                                  const bin = g.cellByKey.get(`${level}-${pos}`);
+                                  const lines = bin ? balanceLinesByBinId.get(bin.id) : undefined;
+                                  return (
+                                    <td
+                                      key={pos}
+                                      className="align-top border border-zinc-200 bg-white px-1.5 py-1.5 text-zinc-800"
+                                    >
+                                      {bin ? (
+                                        <>
+                                          <div className="font-mono text-[11px] font-semibold text-zinc-900">
+                                            {bin.code}
+                                          </div>
+                                          <div className="mt-0.5 text-[11px] leading-snug text-zinc-600">
+                                            {lines?.length
+                                              ? lines.slice(0, 4).map((t, i) => (
+                                                  <div key={i}>{t}</div>
+                                                ))
+                                              : "Empty"}
+                                          </div>
+                                        </>
+                                      ) : (
+                                        <span className="text-zinc-300">—</span>
+                                      )}
+                                    </td>
+                                  );
+                                })}
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                        );
+                      })()}
+                    </div>
+                  ) : rackMapModel ? (
+                    <p className="text-sm text-amber-900">
+                      Rack <span className="font-mono">{rackMapModel.code}</span> has bins, but none define both{" "}
+                      <span className="font-medium">level</span> and <span className="font-medium">position</span>{" "}
+                      yet—add those on each bin to fill the grid.
+                    </p>
+                  ) : null}
+                  {rackMapModel && rackMapModel.unplaced.length > 0 ? (
+                    <p className="text-xs text-zinc-600">
+                      Bins on this rack without level/position:{" "}
+                      {rackMapModel.unplaced.map((b) => b.code).join(", ")}
+                    </p>
+                  ) : null}
+                </div>
+              )}
+            </div>
+            <div>
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                Replenishment rules ({replenishmentRulesForWarehouse.length})
+              </h3>
+              <div className="mt-2 max-h-48 overflow-auto rounded border border-zinc-200">
+                <table className="min-w-full text-sm">
+                  <thead className="sticky top-0 bg-zinc-100 text-left text-xs uppercase text-zinc-700">
+                    <tr>
+                      <th className="px-2 py-1">Product</th>
+                      <th className="px-2 py-1">Source</th>
+                      <th className="px-2 py-1">Target</th>
+                      <th className="px-2 py-1">Min / max pick</th>
+                      <th className="px-2 py-1">Replenish qty</th>
+                      <th className="px-2 py-1">Active</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-200">
+                    {replenishmentRulesForWarehouse.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-2 py-2 text-zinc-500">
+                          No replenishment rules for this warehouse.
+                        </td>
+                      </tr>
+                    ) : (
+                      replenishmentRulesForWarehouse.map((r) => (
+                        <tr key={r.id} className={r.isActive ? undefined : "bg-zinc-50 text-zinc-500"}>
+                          <td className="px-2 py-1">
+                            {r.product.productCode || r.product.sku || "—"} · {r.product.name}
+                          </td>
+                          <td className="px-2 py-1 text-zinc-600">
+                            {r.sourceZone ? `${r.sourceZone.code}` : "—"}
+                          </td>
+                          <td className="px-2 py-1 text-zinc-600">
+                            {r.targetZone ? `${r.targetZone.code}` : "—"}
+                          </td>
+                          <td className="whitespace-nowrap px-2 py-1 text-zinc-600">
+                            {r.minPickQty} / {r.maxPickQty}
+                          </td>
+                          <td className="px-2 py-1 text-zinc-600">{r.replenishQty}</td>
+                          <td className="px-2 py-1 text-zinc-600">{r.isActive ? "Yes" : "No"}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+      </section>
+
+      <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
         <h2 className="text-sm font-semibold text-zinc-900">Warehouse setup</h2>
         <div className="mt-2 grid gap-2 sm:grid-cols-4">
           <input
@@ -678,8 +999,12 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
           </label>
           <button
             type="button"
-            disabled={!canEdit || busy}
-            onClick={() =>
+            disabled={!canEdit || busy || !selectedWarehouseId}
+            onClick={() => {
+              const levelRaw = newBinLevel.trim();
+              const posRaw = newBinPosition.trim();
+              const levelNum = levelRaw === "" ? undefined : Number(levelRaw);
+              const posNum = posRaw === "" ? undefined : Number(posRaw);
               void runAction({
                 action: "create_bin",
                 warehouseId: selectedWarehouseId,
@@ -688,12 +1013,56 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                 name: newBinName,
                 storageType: newBinStorageType,
                 isPickFace: newBinPickFace,
-              })
-            }
+                rackCode: newBinRackCode.trim() || undefined,
+                aisle: newBinAisle.trim() || undefined,
+                bay: newBinBay.trim() || undefined,
+                level: Number.isFinite(levelNum) ? levelNum : undefined,
+                positionIndex: Number.isFinite(posNum) ? posNum : undefined,
+              });
+            }}
             className="rounded border border-zinc-900 bg-zinc-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-40"
           >
             Create bin
           </button>
+        </div>
+        <p className="mt-2 text-xs text-zinc-500">
+          Optional rack addressing (same <span className="font-mono">rackCode</span> on many bins = one
+          physical rack). Use positive integers for <span className="font-medium">level</span> and{" "}
+          <span className="font-medium">position</span> so the map can place the bin.
+        </p>
+        <div className="mt-2 grid gap-2 sm:grid-cols-5">
+          <input
+            value={newBinRackCode}
+            onChange={(e) => setNewBinRackCode(e.target.value)}
+            placeholder="Rack code (e.g. R-A01)"
+            className="rounded border border-zinc-300 px-3 py-2 text-sm"
+          />
+          <input
+            value={newBinAisle}
+            onChange={(e) => setNewBinAisle(e.target.value)}
+            placeholder="Aisle"
+            className="rounded border border-zinc-300 px-3 py-2 text-sm"
+          />
+          <input
+            value={newBinBay}
+            onChange={(e) => setNewBinBay(e.target.value)}
+            placeholder="Bay"
+            className="rounded border border-zinc-300 px-3 py-2 text-sm"
+          />
+          <input
+            value={newBinLevel}
+            onChange={(e) => setNewBinLevel(e.target.value)}
+            placeholder="Level (1=…)"
+            inputMode="numeric"
+            className="rounded border border-zinc-300 px-3 py-2 text-sm"
+          />
+          <input
+            value={newBinPosition}
+            onChange={(e) => setNewBinPosition(e.target.value)}
+            placeholder="Position (column)"
+            inputMode="numeric"
+            className="rounded border border-zinc-300 px-3 py-2 text-sm"
+          />
         </div>
       </section>
 

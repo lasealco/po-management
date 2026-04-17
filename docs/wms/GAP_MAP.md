@@ -11,7 +11,7 @@
 | Blueprint area | Repo reality | Notes |
 |----------------|--------------|--------|
 | Warehouse / site | ✅ `Warehouse` | CFS vs WAREHOUSE; tenant-scoped |
-| Zone / aisle / bay… | 🟡 `WarehouseZone` + `WarehouseBin` | Flat zone + bin; no deeper hierarchy |
+| Zone / aisle / bay… | 🟡 `WarehouseZone` + `WarehouseBin` | Flat zone + bin; optional **`rackCode` / `aisle` / `bay` / `level` / `positionIndex`** on bins for rack addressing + **Setup rack front map** (2D grid + on-hand text); still no mm-level geometry or 3D |
 | Dock / staging / quarantine as concepts | 🟡 Zone **types** + bin **storageType** | Enum-driven, not separate dock entities |
 | Customer (3PL owner) | 🟡 | Optional `OutboundOrder.crmAccountId` → `CrmAccount` (same tenant); WMS UI + `set_outbound_crm_account`; linking requires `org.crm` → view |
 | SKU / UOM / lot rules | 🟡 `Product` | Shared with PO catalog; no WMS-specific lot master on item |
