@@ -37,6 +37,8 @@ Internal operations app: **purchase orders**, **suppliers**, **catalog**, **cons
 
    CRM-focused demo: [docs/crm/README.md](docs/crm/README.md).
 
+   Control Tower scope vs code: [docs/controltower/GAP_MAP.md](docs/controltower/GAP_MAP.md) · WMS: [docs/wms/GAP_MAP.md](docs/wms/GAP_MAP.md).
+
 4. **Run the dev server**:
 
    ```bash

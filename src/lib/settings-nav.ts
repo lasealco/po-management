@@ -80,4 +80,14 @@ export const SETTINGS_SECTIONS: readonly SettingsNavSection[] = [
       },
     ],
   },
+  {
+    title: "Control Tower",
+    links: [
+      {
+        href: "/settings/control-tower-exception-codes",
+        label: "Exception types",
+        description: "Catalog codes for Shipment 360 exceptions (label, severity, sort)",
+      },
+    ],
+  },
 ] as const;

@@ -2119,5 +2119,97 @@ export async function handleControlTowerPost(
     return NextResponse.json({ ok: true });
   }
 
+  if (action === "upsert_ct_exception_code") {
+    const id = typeof body.id === "string" ? body.id.trim() : "";
+    const codeRaw =
+      typeof body.code === "string" ? body.code.trim().toUpperCase().replace(/\s+/g, "_") : "";
+    const labelIn = body.label;
+    const sevIn = typeof body.defaultSeverity === "string" ? body.defaultSeverity.trim() : "";
+    const sortOrderRaw = body.sortOrder;
+    let sortOrder: number | undefined;
+    if (typeof sortOrderRaw === "number" && Number.isInteger(sortOrderRaw)) {
+      sortOrder = sortOrderRaw;
+    } else if (typeof sortOrderRaw === "string" && sortOrderRaw.trim()) {
+      const n = parseInt(sortOrderRaw, 10);
+      if (Number.isFinite(n) && Number.isInteger(n)) sortOrder = n;
+    }
+    const isActiveIn = body.isActive;
+
+    const sevOk = (s: string): s is "INFO" | "WARN" | "CRITICAL" =>
+      s === "INFO" || s === "WARN" || s === "CRITICAL";
+
+    if (id) {
+      const row = await prisma.ctExceptionCode.findFirst({ where: { id, tenantId } });
+      if (!row) return bad("Exception code row not found", 404);
+      const data: Prisma.CtExceptionCodeUpdateInput = {};
+      if (typeof labelIn === "string") {
+        const t = labelIn.trim();
+        if (!t) return bad("label cannot be empty");
+        data.label = t;
+      }
+      if (sevIn && sevOk(sevIn)) {
+        data.defaultSeverity = sevIn;
+      }
+      if (sortOrder !== undefined) {
+        data.sortOrder = sortOrder;
+      }
+      if (typeof isActiveIn === "boolean") {
+        data.isActive = isActiveIn;
+      }
+      if (Object.keys(data).length === 0) {
+        return bad("No fields to update", 400);
+      }
+      const updated = await prisma.ctExceptionCode.update({ where: { id }, data });
+      await writeCtAudit({
+        tenantId,
+        shipmentId: null,
+        entityType: "CtExceptionCode",
+        entityId: id,
+        action: "update",
+        actorUserId: actorId,
+        payload: {
+          code: updated.code,
+          label: updated.label,
+          defaultSeverity: updated.defaultSeverity,
+          sortOrder: updated.sortOrder,
+          isActive: updated.isActive,
+        },
+      });
+      return NextResponse.json({ ok: true, row: updated });
+    }
+
+    if (!codeRaw) return bad("code is required for create");
+    if (!/^[A-Z][A-Z0-9_]{0,39}$/.test(codeRaw)) {
+      return bad("code must match ^[A-Z][A-Z0-9_]{0,39}$ (uppercase, no spaces)");
+    }
+    if (typeof labelIn !== "string" || !labelIn.trim()) return bad("label is required");
+    const sev = sevOk(sevIn) ? sevIn : "WARN";
+    const dup = await prisma.ctExceptionCode.findFirst({
+      where: { tenantId, code: codeRaw },
+      select: { id: true },
+    });
+    if (dup) return bad("code already exists for this tenant", 409);
+    const created = await prisma.ctExceptionCode.create({
+      data: {
+        tenantId,
+        code: codeRaw,
+        label: labelIn.trim(),
+        defaultSeverity: sev,
+        sortOrder: sortOrder ?? 100,
+        isActive: typeof isActiveIn === "boolean" ? isActiveIn : true,
+      },
+    });
+    await writeCtAudit({
+      tenantId,
+      shipmentId: null,
+      entityType: "CtExceptionCode",
+      entityId: created.id,
+      action: "create",
+      actorUserId: actorId,
+      payload: { code: codeRaw, label: created.label },
+    });
+    return NextResponse.json({ ok: true, row: created });
+  }
+
   return bad(`Unknown action: ${action}`, 400);
 }
