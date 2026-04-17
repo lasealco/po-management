@@ -1,0 +1,38 @@
+---
+description: po-management stack, env, deploy, seeds, WMS demo — read first in new chats
+alwaysApply: true
+---
+
+# Project context (po-management)
+
+## Stack
+
+- **Next.js** app, **Prisma** + **PostgreSQL** (often **Neon**). Production on **Vercel** (`git push` → deploy). Build: `npm run vercel-build` → `scripts/vercel-build.cjs` (generate → migrate → optional seeds → `next build`).
+
+## Environment & secrets
+
+- **Local:** `.env` / **`.env.local`** (gitignored). Neon URL scratchpad: **`docs/neon-credentials.local.md`** (gitignored). Full ops notes: **`docs/database-neon.md`**.
+- **Do not** commit real URLs/passwords. **Do not** ask the user to paste `DATABASE_URL` into chat if seeds can run with **`USE_DOTENV_LOCAL=1`** from the repo root (merges `.env.local`).
+
+## Seeds (agent should run when relevant, not only instruct)
+
+- **Main tenant / PO demo:** `USE_DOTENV_LOCAL=1 npm run db:seed` (can be long; recreates bulk GEN demo volume).
+- **WMS demo (WH-DEMO-DC1, inventory, tasks):** `USE_DOTENV_LOCAL=1 npm run db:seed:wms-demo` (long; ~10+ min to Neon). Requires **`demo-company`** from main seed first.
+- **Same DB everywhere:** whatever you seed locally must match **Vercel `DATABASE_URL`** for that environment, or production will look empty.
+
+## Vercel build-time seeds (optional)
+
+- Env vars on the project: **`RUN_DB_SEED=1`**, **`RUN_WMS_DEMO_SEED=1`** — run during build; **turn off after** a good deploy (slow, re-seeds).
+- See **`docs/database-neon.md`** for the table.
+
+## WMS / demo tenant
+
+- App uses tenant slug **`demo-company`** (`getDemoTenant()` / `DEMO_TENANT_SLUG`). WMS demo warehouse code **`WH-DEMO-DC1`**. PO and WMS share that tenant; WMS tables need the **WMS demo seed**, not only `db:seed`.
+
+## Ship workflow
+
+- After substantive code changes: commit + push — see **`.cursor/rules/ship-after-changes.mdc`**.
+
+## New chat shortcut
+
+- User may say: “Follow **`.cursor/rules`** and **`docs/database-neon.md`**.” No need to re-derive deploy/seed flow from scratch.
