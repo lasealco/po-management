@@ -8,7 +8,7 @@ export async function ControlTowerGate({ children }: { children: React.ReactNode
       <div className="px-6 py-16">
         <AccessDenied
           title="Control Tower"
-          message="Choose an active user in the header to open the control tower."
+          message="Choose an active demo user: open Settings → Demo session (/settings/demo)."
         />
       </div>
     );

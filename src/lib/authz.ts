@@ -43,6 +43,13 @@ function mergeDemoLegacyGrants(
     ensure("org.wms", "edit");
   }
 
+  if (e === "buyer@demo-company.com" && !grantSet.has(grantKey("org.suppliers", "edit"))) {
+    ensure("org.suppliers", "edit");
+  }
+  if (e === "approver@demo-company.com" && !grantSet.has(grantKey("org.suppliers", "approve"))) {
+    ensure("org.suppliers", "approve");
+  }
+
   return next ?? grantSet;
 }
 
@@ -108,7 +115,7 @@ export async function requireApiGrant(resource: string, action: string) {
     return NextResponse.json(
       {
         error:
-          "No active demo user for this session. Choose a user in the header bar.",
+          "No active demo user for this session. Open Settings → Demo session (/settings/demo) to choose who you are acting as.",
       },
       { status: 403 },
     );

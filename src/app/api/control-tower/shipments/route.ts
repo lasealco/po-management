@@ -10,6 +10,8 @@ import { getDemoTenant } from "@/lib/demo-tenant";
 export const dynamic = "force-dynamic";
 
 const STATUSES: ShipmentStatus[] = [
+  "BOOKING_DRAFT",
+  "BOOKING_SUBMITTED",
   "SHIPPED",
   "VALIDATED",
   "BOOKED",
@@ -63,7 +65,15 @@ export async function GET(request: Request) {
   const mode = MODES.includes(modeRaw as TransportMode) ? (modeRaw as TransportMode) : "";
   const onlyOverdueEta =
     onlyOverdueEtaRaw === "1" || onlyOverdueEtaRaw.toLowerCase() === "true";
-  const routeActionAllowed = ["Plan leg", "Mark departure", "Record arrival", "Route complete"] as const;
+  const routeActionAllowed = [
+    "Send booking",
+    "Await booking",
+    "Escalate booking",
+    "Plan leg",
+    "Mark departure",
+    "Record arrival",
+    "Route complete",
+  ] as const;
   const routeActionPrefix = routeActionAllowed.includes(routeActionRaw as (typeof routeActionAllowed)[number])
     ? (routeActionRaw as (typeof routeActionAllowed)[number])
     : "";

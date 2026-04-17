@@ -14,7 +14,7 @@ export default async function SettingsLogisticsPage() {
     );
   }
 
-  const [locations, suppliers] = await Promise.all([
+  const [locations, locationCodes] = await Promise.all([
     prisma.warehouse.findMany({
       where: { tenantId: tenant.id },
       orderBy: [{ type: "asc" }, { name: "asc" }],
@@ -30,43 +30,11 @@ export default async function SettingsLogisticsPage() {
         isActive: true,
       },
     }),
-    prisma.supplier.findMany({
+    prisma.locationCode.findMany({
       where: { tenantId: tenant.id },
-      orderBy: { name: "asc" },
-      select: {
-        id: true,
-        name: true,
-        code: true,
-        email: true,
-        phone: true,
-        _count: {
-          select: {
-            productSuppliers: true,
-          },
-        },
-        offices: {
-          orderBy: { name: "asc" },
-          select: {
-            id: true,
-            name: true,
-            city: true,
-            region: true,
-            countryCode: true,
-            isActive: true,
-          },
-        },
-        contacts: {
-          orderBy: [{ isPrimary: "desc" }, { name: "asc" }],
-          select: {
-            id: true,
-            name: true,
-            role: true,
-            email: true,
-            phone: true,
-            isPrimary: true,
-          },
-        },
-      },
+      orderBy: [{ type: "asc" }, { code: "asc" }],
+      take: 120,
+      select: { id: true, type: true, code: true, name: true, countryCode: true, isActive: true, source: true },
     }),
   ]);
 
@@ -74,11 +42,11 @@ export default async function SettingsLogisticsPage() {
     <div>
       <h2 className="text-2xl font-semibold text-zinc-900">Logistics master data</h2>
       <p className="mt-1 text-sm text-zinc-600">
-        Centralize buyer offices, CFS locations, and forwarder offices/contacts used by the order
-        create workflow.
+        Keep buyer offices and CFS location codes here. Supplier/forwarder/carrier profiles are now
+        managed in SRM.
       </p>
       <div className="mt-8">
-        <SettingsLogisticsClient initialLocations={locations} initialForwarders={suppliers} />
+        <SettingsLogisticsClient initialLocations={locations} initialLocationCodes={locationCodes} />
       </div>
     </div>
   );

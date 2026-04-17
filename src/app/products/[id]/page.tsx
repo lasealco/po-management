@@ -24,7 +24,7 @@ export default async function ProductDetailPage({
       <div className="min-h-screen bg-zinc-50 px-6 py-16">
         <AccessDenied
           title="Product"
-          message="Choose a demo user in the header."
+          message="Choose an active demo user: open Settings → Demo session (/settings/demo)."
         />
       </div>
     );

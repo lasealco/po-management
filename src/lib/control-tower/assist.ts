@@ -10,6 +10,8 @@ export type AssistSuggestedFilters = {
 };
 
 const STATUS_WORDS: ShipmentStatus[] = [
+  "BOOKING_DRAFT",
+  "BOOKING_SUBMITTED",
   "SHIPPED",
   "VALIDATED",
   "BOOKED",

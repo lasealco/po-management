@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AppNavWithGrants } from "@/components/app-nav-with-grants";
 import { CommandPalette } from "@/components/command-palette";
-import { DemoUserSwitcher } from "@/components/demo-user-switcher";
 import { GuideCallout } from "@/components/guide-callout";
 import { HelpAssistant } from "@/components/help-assistant";
 import { LayoutPoSubnav } from "@/components/layout-po-subnav";
+import { SiteLegalStrip } from "@/components/site-legal-strip";
 import { getViewerGrantSet, userHasRoleNamed, viewerHas } from "@/lib/authz";
+import { pathUsesAppChrome } from "@/lib/app-shell-paths";
 import { resolveNavState } from "@/lib/nav-visibility";
 import "./globals.css";
 
@@ -24,8 +26,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PO Management",
-  description: "Purchase order workflow playground",
+  title: "AR SCMP",
+  description: "Connected supply chain platform — procurement, logistics, and operations.",
 };
 
 export default async function RootLayout({
@@ -33,6 +35,9 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const pathname = (await headers()).get("x-pathname") ?? "";
+  const showAppChrome = pathUsesAppChrome(pathname);
+
   const access = await getViewerGrantSet();
   const { poSubNavVisibility } = await resolveNavState(access);
   const actorId = access?.user?.id ?? null;
@@ -59,6 +64,7 @@ export default async function RootLayout({
               viewerHas(access.grantSet, "org.settings", "view")))),
     ),
     suppliers: Boolean(access?.user && viewerHas(access.grantSet, "org.suppliers", "view")),
+    srm: Boolean(access?.user && viewerHas(access.grantSet, "org.suppliers", "view")),
     products: Boolean(access?.user && viewerHas(access.grantSet, "org.products", "view")),
     settings: Boolean(access?.user && viewerHas(access.grantSet, "org.settings", "view")),
   };
@@ -66,16 +72,28 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} h-full scroll-smooth antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-zinc-50">
-        <AppNavWithGrants />
-        <LayoutPoSubnav visibility={poSubNavVisibility} />
-        <DemoUserSwitcher />
-        <GuideCallout />
-        {children}
-        <CommandPalette grants={commandGrants} />
-        <HelpAssistant />
+      <body
+        className={
+          showAppChrome ? "flex min-h-full flex-col bg-zinc-50" : "min-h-full bg-white"
+        }
+      >
+        {showAppChrome ? (
+          <>
+            <AppNavWithGrants />
+            <LayoutPoSubnav visibility={poSubNavVisibility} />
+            <GuideCallout />
+            <div className="flex min-h-0 flex-1 flex-col">
+              <div className="min-h-0 flex-1">{children}</div>
+              <SiteLegalStrip />
+            </div>
+            <CommandPalette grants={commandGrants} />
+            <HelpAssistant />
+          </>
+        ) : (
+          children
+        )}
       </body>
     </html>
   );

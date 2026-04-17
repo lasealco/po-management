@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { startTransition, useCallback, useEffect, useState } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useState } from "react";
+import { SearchableSelectField } from "@/components/searchable-select-field";
 
 import {
   groupCatalogByResource,
@@ -35,6 +36,10 @@ export function SettingsPermissionsClient({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [baselineKey, setBaselineKey] = useState<string>("");
+  const roleOptions = useMemo(
+    () => roles.map((r) => ({ value: r.id, label: r.name })),
+    [roles],
+  );
 
   const load = useCallback(async (rid: string) => {
     if (!rid) return;
@@ -117,17 +122,15 @@ export function SettingsPermissionsClient({
       <div className="flex flex-wrap items-end gap-4">
         <label className="flex flex-col gap-1 text-sm">
           <span className="font-medium text-zinc-800">Role</span>
-          <select
+          <SearchableSelectField
             value={roleId}
-            onChange={(e) => setRoleId(e.target.value)}
-            className="h-9 min-w-[12rem] rounded border border-zinc-300 px-2 text-sm"
-          >
-            {roles.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.name}
-              </option>
-            ))}
-          </select>
+            onChange={setRoleId}
+            options={roleOptions}
+            placeholder="Type to filter role..."
+            emptyLabel="Select role..."
+            inputClassName="h-9 min-w-[12rem] rounded border border-zinc-300 px-2 text-sm"
+            listClassName="max-h-36 overflow-auto rounded border border-zinc-200 bg-white"
+          />
         </label>
         <button
           type="button"

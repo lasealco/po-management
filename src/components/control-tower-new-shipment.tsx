@@ -1,8 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { ActionButton, ActionLink } from "@/components/action-button";
+import { LocationCodePicker } from "@/components/location-code-picker";
 
 type OrderItemRow = {
   id: string;
@@ -20,6 +21,72 @@ type OrderPickRow = {
 };
 
 type PackRow = { id: string; title: string; description: string; milestoneCount: number };
+
+function SearchableSelect({
+  label,
+  placeholder,
+  emptyLabel,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  placeholder: string;
+  emptyLabel: string;
+  value: string;
+  onChange: (next: string) => void;
+  options: Array<{ id: string; label: string }>;
+}) {
+  const selectedLabel = options.find((o) => o.id === value)?.label ?? "";
+  const [query, setQuery] = useState(selectedLabel);
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return options;
+    return options.filter((o) => o.label.toLowerCase().includes(q));
+  }, [options, query]);
+
+  useEffect(() => {
+    setQuery(selectedLabel);
+  }, [selectedLabel]);
+
+  return (
+    <label className="text-xs">
+      {label}
+      <input
+        className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5"
+        placeholder={placeholder}
+        value={query}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          if (!e.target.value.trim()) onChange("");
+        }}
+      />
+      <div className="mt-1 max-h-40 overflow-auto rounded border border-zinc-200 bg-white">
+        <button
+          type="button"
+          onClick={() => onChange("")}
+          className={`block w-full px-2 py-1.5 text-left text-xs hover:bg-zinc-50 ${
+            value === "" ? "bg-sky-50 font-medium text-sky-900" : "text-zinc-600"
+          }`}
+        >
+          {emptyLabel}
+        </button>
+        {filtered.map((o) => (
+          <button
+            key={o.id}
+            type="button"
+            onClick={() => onChange(o.id)}
+            className={`block w-full px-2 py-1.5 text-left text-xs hover:bg-zinc-50 ${
+              value === o.id ? "bg-sky-50 font-medium text-sky-900" : "text-zinc-700"
+            }`}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </label>
+  );
+}
 
 export function ControlTowerNewShipment({
   suppliers,
@@ -53,6 +120,18 @@ export function ControlTowerNewShipment({
   const [requestedDeliveryDate, setRequestedDeliveryDate] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const supplierOptions = useMemo(
+    () => suppliers.map((s) => ({ id: s.id, label: s.name })),
+    [suppliers],
+  );
+  const crmAccountOptions = useMemo(
+    () =>
+      crmAccounts.map((a) => ({
+        id: a.id,
+        label: `${a.name}${a.legalName ? ` · ${a.legalName}` : ""}`,
+      })),
+    [crmAccounts],
+  );
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -189,8 +268,8 @@ export function ControlTowerNewShipment({
 
   return (
     <div className="space-y-8 text-sm text-zinc-800">
-      <section className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
-        <h2 className="text-base font-semibold text-zinc-900">1. Shipment source</h2>
+      <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+        <h2 className="text-base font-semibold text-zinc-900">1. Order or parties</h2>
         <div className="mt-2 flex flex-wrap gap-4 text-xs">
           <label className="flex items-center gap-2">
             <input
@@ -260,44 +339,32 @@ export function ControlTowerNewShipment({
                 onChange={(e) => setRequestedDeliveryDate(e.target.value)}
               />
             </label>
-            <label className="text-xs">
-              Shipper (supplier master)
-              <select
-                className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5"
-                value={shipperSupplierId}
-                onChange={(e) => setShipperSupplierId(e.target.value)}
-              >
-                <option value="">Select supplier...</option>
-                {suppliers.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="text-xs">
-              Consignee (CRM account)
-              <select
-                className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5"
-                value={consigneeCrmAccountId}
-                onChange={(e) => setConsigneeCrmAccountId(e.target.value)}
-              >
-                <option value="">Select customer...</option>
-                {crmAccounts.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name}
-                    {a.legalName ? ` · ${a.legalName}` : ""}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <SearchableSelect
+              label="Shipper (supplier master)"
+              placeholder="Type to filter shipper..."
+              emptyLabel="Select supplier..."
+              value={shipperSupplierId}
+              onChange={setShipperSupplierId}
+              options={supplierOptions}
+            />
+            <SearchableSelect
+              label="Consignee (CRM customer account)"
+              placeholder="Type to filter customer..."
+              emptyLabel="Select customer..."
+              value={consigneeCrmAccountId}
+              onChange={setConsigneeCrmAccountId}
+              options={crmAccountOptions}
+            />
+            <p className="text-[11px] text-zinc-500 md:col-span-2">
+              Consignees are managed in <span className="font-medium">CRM → Accounts</span>.
+            </p>
           </div>
         )}
       </section>
 
       {createUnlinked || selected ? (
         <>
-          <section className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
             <h2 className="text-base font-semibold text-zinc-900">2. Lines & mode</h2>
             {!createUnlinked && selected ? (
               <>
@@ -361,8 +428,11 @@ export function ControlTowerNewShipment({
             </label>
           </section>
 
-          <section className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
             <h2 className="text-base font-semibold text-zinc-900">3. References & booking draft</h2>
+            <p className="mt-1 text-xs text-zinc-600">
+              This creates a <span className="font-medium">booking draft</span> (shipment stays pre-execution until the forwarder confirms). Choose a forwarder on Shipment 360, then send the booking; EDI and email-with-PDF dispatch are planned next.
+            </p>
             <div className="mt-3 grid gap-3 md:grid-cols-2">
               <label className="text-xs">
                 Shipment ref (optional)
@@ -372,21 +442,14 @@ export function ControlTowerNewShipment({
                   onChange={(e) => setShipmentNo(e.target.value)}
                 />
               </label>
-              <label className="text-xs">
-                Carrier (supplier master)
-                <select
-                  className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5"
-                  value={carrierSupplierId}
-                  onChange={(e) => setCarrierSupplierId(e.target.value)}
-                >
-                  <option value="">Select carrier...</option>
-                  {suppliers.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <SearchableSelect
+                label="Carrier (supplier master)"
+                placeholder="Type to filter carrier..."
+                emptyLabel="Select carrier..."
+                value={carrierSupplierId}
+                onChange={setCarrierSupplierId}
+                options={supplierOptions}
+              />
               <label className="text-xs">
                 Tracking / AWB (optional)
                 <input
@@ -405,18 +468,24 @@ export function ControlTowerNewShipment({
               </label>
               <label className="text-xs">
                 Origin UN/LOCODE
-                <input
-                  className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 font-mono uppercase"
+                <LocationCodePicker
                   value={originCode}
-                  onChange={(e) => setOriginCode(e.target.value)}
+                  onChange={setOriginCode}
+                  placeholder="Type code or place name..."
+                  types={["UN_LOCODE", "PORT", "AIRPORT"]}
+                  emptyLabel="No origin code"
+                  className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 font-mono uppercase"
                 />
               </label>
               <label className="text-xs">
                 Destination UN/LOCODE
-                <input
-                  className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 font-mono uppercase"
+                <LocationCodePicker
                   value={destinationCode}
-                  onChange={(e) => setDestinationCode(e.target.value)}
+                  onChange={setDestinationCode}
+                  placeholder="Type code or place name..."
+                  types={["UN_LOCODE", "PORT", "AIRPORT"]}
+                  emptyLabel="No destination code"
+                  className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 font-mono uppercase"
                 />
               </label>
               <label className="text-xs">
@@ -449,7 +518,7 @@ export function ControlTowerNewShipment({
             </label>
           </section>
 
-          <section className="rounded-xl border border-sky-200 bg-sky-50/40 p-5 shadow-sm">
+          <section className="rounded-2xl border border-sky-200 bg-sky-50/40 p-5 shadow-sm">
             <h2 className="text-base font-semibold text-sky-950">4. Initial milestone pack (optional)</h2>
             <p className="mt-1 text-xs text-sky-900">
               Only packs that match the selected mode are listed. Planned dates use booking ETD/ETA when present;
@@ -480,17 +549,15 @@ export function ControlTowerNewShipment({
           ) : null}
 
           <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
+            <ActionButton
               disabled={busy}
-              className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
               onClick={() => void submit()}
             >
-              {busy ? "Creating…" : "Create shipment"}
-            </button>
-            <Link href="/control-tower/workbench" className="rounded-lg border border-zinc-300 px-4 py-2 text-sm">
+              {busy ? "Creating…" : "Create booking draft"}
+            </ActionButton>
+            <ActionLink href="/control-tower/workbench" variant="secondary" className="font-medium">
               Cancel
-            </Link>
+            </ActionLink>
           </div>
         </>
       ) : null}

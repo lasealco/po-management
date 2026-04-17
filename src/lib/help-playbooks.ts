@@ -90,7 +90,7 @@ export const HELP_PLAYBOOKS: HelpPlaybook[] = [
       {
         title: "Open Orders board",
         description: "Go to Orders and check your current draft queue.",
-        href: "/",
+        href: "/orders",
         doAction: {
           type: "open_orders_queue",
           label: "Show needs my action",
@@ -101,7 +101,7 @@ export const HELP_PLAYBOOKS: HelpPlaybook[] = [
         title: "Use demo/send flow starter order",
         description:
           "Open a draft order (for example PO-1004 in demo) to edit header and lines.",
-        href: "/",
+        href: "/orders",
         doAction: {
           type: "open_order",
           label: "Open PO-1004",

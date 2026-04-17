@@ -17,7 +17,7 @@ export type HelpReply = {
 };
 
 const ROUTE_HINTS: HelpAction[] = [
-  { label: "Open Orders", href: "/" },
+  { label: "Open Orders", href: "/orders" },
   { label: "Open Consolidation", href: "/consolidation" },
   { label: "Open Suppliers", href: "/suppliers" },
   { label: "Open Users", href: "/settings/users" },
@@ -152,7 +152,7 @@ export async function buildHelpReply(params: {
     "Allowed doActions types:",
     "- open_order: payload { orderNumber: string, focus?: 'workflow'|'asn'|'chat'|'split', guide?: playbook id, step?: number }",
     "- open_orders_queue: payload { queue: 'all'|'needs_my_action'|'waiting_on_me'|'awaiting_supplier'|'overdue'|'split_pending_buyer', guide?, step? }",
-    "- open_path: payload { path: '/'|'/consolidation'|'/suppliers'|'/settings/users'|'/settings/warehouses'|'/login'|'/catalog'|'/products'|'/reporting'|'/reports'|'/crm/reporting'|'/wms/reporting'|'/control-tower'|'/control-tower/workbench'|'/control-tower/reports'|'/control-tower/search'|'/control-tower/dashboard'|'/control-tower/command-center'|'/control-tower/ops', guide?, step? }",
+    "- open_path: payload { path: '/platform'|'/orders'|'/consolidation'|'/suppliers'|'/settings/users'|'/settings/warehouses'|'/login'|'/catalog'|'/products'|'/reporting'|'/reports'|'/crm/reporting'|'/wms/reporting'|'/control-tower'|'/control-tower/workbench'|'/control-tower/reports'|'/control-tower/search'|'/control-tower/dashboard'|'/control-tower/command-center'|'/control-tower/ops', guide?, step? }",
     "Use demo PO-1004 only as a known example order number when suggesting open_order.",
     "Do not invent unavailable pages or arbitrary paths.",
     "Reporting hub (/reporting): Cockpit board supports Refresh data, optional Auto-refresh (5/10/15 min, pauses when the tab is hidden, catch-up when returning), R to refresh when focus is not in an input/textarea/select, Shift+R for silent refresh. Command palette lists the Reporting hub with the same shortcut hints.",

@@ -25,6 +25,8 @@ export type SupplierDetailSnapshot = {
   email: string | null;
   phone: string | null;
   isActive: boolean;
+  srmCategory: "product" | "logistics";
+  approvalStatus: "pending_approval" | "approved" | "rejected";
   legalName: string | null;
   taxId: string | null;
   website: string | null;
@@ -63,10 +65,13 @@ const CONTACT_ROLES = [
 export function SupplierDetailClient({
   initial,
   canEdit = true,
+  canApprove = false,
   orderHistory = null,
 }: {
   initial: SupplierDetailSnapshot;
   canEdit?: boolean;
+  /** Approver / admin: approve or reject supplier, change activation. */
+  canApprove?: boolean;
   /** Present when viewer has org.orders → view. */
   orderHistory?: SupplierOrderAnalytics | null;
 }) {
@@ -79,6 +84,9 @@ export function SupplierDetailClient({
   const [email, setEmail] = useState(initial.email ?? "");
   const [phone, setPhone] = useState(initial.phone ?? "");
   const [isActive, setIsActive] = useState(initial.isActive);
+  const [srmCategory, setSrmCategory] = useState<"product" | "logistics">(
+    initial.srmCategory,
+  );
   const [legalName, setLegalName] = useState(initial.legalName ?? "");
   const [taxId, setTaxId] = useState(initial.taxId ?? "");
   const [website, setWebsite] = useState(initial.website ?? "");
@@ -116,6 +124,7 @@ export function SupplierDetailClient({
       setEmail(initial.email ?? "");
       setPhone(initial.phone ?? "");
       setIsActive(initial.isActive);
+      setSrmCategory(initial.srmCategory);
       setLegalName(initial.legalName ?? "");
       setTaxId(initial.taxId ?? "");
       setWebsite(initial.website ?? "");
@@ -166,15 +175,12 @@ export function SupplierDetailClient({
       setError("Payment terms (days) must be a whole number from 0 to 3650.");
       return;
     }
-    const res = await fetch(`/api/suppliers/${initial.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    const baseBody: Record<string, unknown> = {
         name,
         code: code || null,
         email: email || null,
         phone: phone || null,
-        isActive,
+        srmCategory,
         legalName: legalName || null,
         taxId: taxId || null,
         website: website || null,
@@ -190,7 +196,14 @@ export function SupplierDetailClient({
         creditCurrency: creditCurrency.trim().toUpperCase() || null,
         defaultIncoterm: incoterm || null,
         internalNotes: internalNotes || null,
-      }),
+    };
+    if (canApprove) {
+      baseBody.isActive = isActive;
+    }
+    const res = await fetch(`/api/suppliers/${initial.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(baseBody),
     });
     const payload = (await res.json()) as { error?: string };
     if (!res.ok) {
@@ -274,7 +287,27 @@ export function SupplierDetailClient({
     router.refresh();
   }
 
+  async function submitApproval(decision: "approve" | "reject") {
+    setError(null);
+    setBusy(true);
+    const res = await fetch(`/api/suppliers/${initial.id}/approval`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ decision }),
+    });
+    const payload = (await res.json().catch(() => null)) as { error?: string } | null;
+    if (!res.ok) {
+      setBusy(false);
+      setError(payload?.error ?? "Approval update failed.");
+      return;
+    }
+    setBusy(false);
+    setIsActive(decision === "approve");
+    router.refresh();
+  }
+
   async function archiveSupplier() {
+    if (!canApprove) return;
     if (!window.confirm("Archive this supplier (set inactive)?")) return;
     setBusy(true);
     setError(null);
@@ -399,10 +432,14 @@ export function SupplierDetailClient({
     <div className="space-y-10">
       <div>
         <Link
-          href="/suppliers"
+          href={
+            initial.srmCategory === "logistics"
+              ? "/suppliers?kind=logistics"
+              : "/suppliers?kind=product"
+          }
           className="text-sm text-zinc-600 hover:text-zinc-900"
         >
-          ← Suppliers
+          ← {initial.srmCategory === "logistics" ? "Logistics" : "Product"} suppliers
         </Link>
         <div className="mt-2 flex items-center justify-between gap-3">
           <h1 className="text-2xl font-semibold text-zinc-900">
@@ -410,14 +447,16 @@ export function SupplierDetailClient({
           </h1>
           {canEdit ? (
             <div className="flex gap-2">
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void archiveSupplier()}
-                className="rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-800 disabled:opacity-50"
-              >
-                Archive supplier
-              </button>
+              {canApprove ? (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void archiveSupplier()}
+                  className="rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-800 disabled:opacity-50"
+                >
+                  Archive supplier
+                </button>
+              ) : null}
               <button
                 type="button"
                 disabled={busy}
@@ -440,6 +479,36 @@ export function SupplierDetailClient({
       {error ? (
         <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
+        </div>
+      ) : null}
+
+      {initial.approvalStatus === "pending_approval" ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+          <p className="font-medium">Pending procurement approval</p>
+          <p className="mt-1 text-xs text-amber-900/90">
+            This supplier is not active until an approver confirms it. SRM workflow is in
+            development.
+          </p>
+          {canApprove ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void submitApproval("approve")}
+                className="rounded-md bg-[var(--arscmp-primary)] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+              >
+                Approve &amp; activate
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void submitApproval("reject")}
+                className="rounded-md border border-rose-300 bg-white px-3 py-1.5 text-xs font-medium text-rose-800 disabled:opacity-50"
+              >
+                Reject
+              </button>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -467,6 +536,19 @@ export function SupplierDetailClient({
               <label className="flex flex-col text-sm">
                 <span className={label}>Code</span>
                 <input value={code} onChange={(e) => setCode(e.target.value)} className={f} />
+              </label>
+              <label className="flex flex-col text-sm sm:col-span-2">
+                <span className={label}>SRM category</span>
+                <select
+                  value={srmCategory}
+                  onChange={(e) =>
+                    setSrmCategory(e.target.value === "logistics" ? "logistics" : "product")
+                  }
+                  className={f}
+                >
+                  <option value="product">Product (PO / materials)</option>
+                  <option value="logistics">Logistics (forwarder, carrier party, …)</option>
+                </select>
               </label>
               <label className="flex flex-col text-sm sm:col-span-2">
                 <span className={label}>Legal name</span>
@@ -503,15 +585,25 @@ export function SupplierDetailClient({
                 <span className={label}>Phone</span>
                 <input value={phone} onChange={(e) => setPhone(e.target.value)} className={f} />
               </label>
-              <label className="flex items-center gap-2 text-sm sm:col-span-2">
-                <input
-                  type="checkbox"
-                  checked={isActive}
-                  onChange={(e) => setIsActive(e.target.checked)}
-                  className="rounded border-zinc-300"
-                />
-                Active supplier
-              </label>
+              {canApprove ? (
+                <label className="flex items-center gap-2 text-sm sm:col-span-2">
+                  <input
+                    type="checkbox"
+                    checked={isActive}
+                    onChange={(e) => setIsActive(e.target.checked)}
+                    className="rounded border-zinc-300"
+                  />
+                  Active supplier
+                </label>
+              ) : (
+                <div className="text-sm sm:col-span-2">
+                  <span className={label}>Activation</span>
+                  <p className="mt-1 text-zinc-600">
+                    {isActive ? "Active" : "Inactive"} — only users with supplier approval rights can
+                    change this.
+                  </p>
+                </div>
+              )}
             </>
           ) : (
             <>
@@ -556,10 +648,24 @@ export function SupplierDetailClient({
                 <span className={label}>Phone</span>
                 <p className="mt-1 text-zinc-900">{phone || "—"}</p>
               </div>
-              <div className="text-sm sm:col-span-2">
-                <span className={label}>Status</span>
+              <div className="text-sm">
+                <span className={label}>SRM category</span>
+                <p className="mt-1 capitalize text-zinc-900">{initial.srmCategory}</p>
+              </div>
+              <div className="text-sm">
+                <span className={label}>Approval</span>
                 <p className="mt-1 text-zinc-900">
-                  {isActive ? "Active supplier" : "Inactive"}
+                  {initial.approvalStatus === "pending_approval"
+                    ? "Pending approval"
+                    : initial.approvalStatus === "approved"
+                      ? "Approved"
+                      : "Rejected"}
+                </p>
+              </div>
+              <div className="text-sm sm:col-span-2">
+                <span className={label}>Active</span>
+                <p className="mt-1 text-zinc-900">
+                  {isActive ? "Yes" : "No"}
                 </p>
               </div>
             </>

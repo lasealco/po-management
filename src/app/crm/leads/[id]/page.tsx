@@ -15,7 +15,7 @@ export default async function CrmLeadDetailPage({
       <div className="px-6 py-16">
         <AccessDenied
           title="Lead"
-          message="Choose an active user in the header to open this lead."
+          message="Choose an active demo user: open Settings → Demo session (/settings/demo)."
         />
       </div>
     );

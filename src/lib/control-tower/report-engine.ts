@@ -35,7 +35,16 @@ export type CtReportMeasure = (typeof CT_REPORT_MEASURES)[number];
 export const CT_REPORT_CHARTS = ["table", "bar", "line", "pie"] as const;
 export type CtReportChartType = (typeof CT_REPORT_CHARTS)[number];
 
-const STATUSES: ShipmentStatus[] = ["SHIPPED", "VALIDATED", "BOOKED", "IN_TRANSIT", "DELIVERED", "RECEIVED"];
+const STATUSES: ShipmentStatus[] = [
+  "BOOKING_DRAFT",
+  "BOOKING_SUBMITTED",
+  "SHIPPED",
+  "VALIDATED",
+  "BOOKED",
+  "IN_TRANSIT",
+  "DELIVERED",
+  "RECEIVED",
+];
 const MODES: TransportMode[] = ["OCEAN", "AIR", "ROAD", "RAIL"];
 
 export type CtReportConfig = {

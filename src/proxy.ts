@@ -2,26 +2,39 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { PO_AUTH_USER_COOKIE, PO_DEMO_USER_COOKIE } from "@/lib/demo-actor";
 
-const PUBLIC_PATHS = new Set(["/login"]);
+const PUBLIC_PATHS = new Set(["/", "/privacy", "/terms", "/cookies", "/login", "/settings/demo"]);
 
 /** When `1`, skip redirect to /login and use default demo actor (see getDemoActorEmail). */
 function allowUnauthenticated() {
   return process.env.PO_ALLOW_UNAUTHENTICATED === "1";
 }
 
+function nextWithPathname(request: NextRequest) {
+  const h = new Headers(request.headers);
+  h.set("x-pathname", request.nextUrl.pathname);
+  return NextResponse.next({ request: { headers: h } });
+}
+
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const open = allowUnauthenticated();
 
-  if (PUBLIC_PATHS.has(pathname)) return NextResponse.next();
-  if (pathname.startsWith("/api/auth/")) return NextResponse.next();
-  if (pathname.startsWith("/api/demo-session")) return NextResponse.next();
-  if (pathname.startsWith("/_next/")) return NextResponse.next();
-  if (pathname === "/favicon.ico") return NextResponse.next();
+  /** Legacy: orders board lived at `/` with `?queue=`; now `/orders`. */
+  if (pathname === "/" && request.nextUrl.searchParams.has("queue")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/orders";
+    return NextResponse.redirect(url);
+  }
+
+  if (PUBLIC_PATHS.has(pathname)) return nextWithPathname(request);
+  if (pathname.startsWith("/api/auth/")) return nextWithPathname(request);
+  if (pathname.startsWith("/api/demo-session")) return nextWithPathname(request);
+  if (pathname.startsWith("/_next/")) return nextWithPathname(request);
+  if (pathname === "/favicon.ico") return nextWithPathname(request);
 
   const authUser = request.cookies.get(PO_AUTH_USER_COOKIE)?.value;
   const demoUser = request.cookies.get(PO_DEMO_USER_COOKIE)?.value;
-  if (authUser || demoUser || open) return NextResponse.next();
+  if (authUser || demoUser || open) return nextWithPathname(request);
 
   const url = request.nextUrl.clone();
   url.pathname = "/login";

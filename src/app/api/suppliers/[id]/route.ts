@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
-import { requireApiGrant } from "@/lib/authz";
+import { Prisma, SrmSupplierCategory, SupplierApprovalStatus } from "@prisma/client";
+import {
+  getActorUserId,
+  loadGlobalGrantsForUser,
+  requireApiGrant,
+  viewerHas,
+} from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { optionalStringField } from "@/lib/supplier-patch";
 import { prisma } from "@/lib/prisma";
@@ -72,7 +77,27 @@ export async function PATCH(
     return NextResponse.json({ error: "Not found." }, { status: 404 });
   }
 
+  const actorId = await getActorUserId();
+  if (!actorId) {
+    return NextResponse.json({ error: "No active user." }, { status: 403 });
+  }
+  const grantSet = await loadGlobalGrantsForUser(actorId);
+  const canApprove = viewerHas(grantSet, "org.suppliers", "approve");
+
   const o = body as Record<string, unknown>;
+  if (
+    (o.isActive !== undefined || o.approvalStatus !== undefined) &&
+    !canApprove
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "Changing activation or approval status requires org.suppliers → approve.",
+      },
+      { status: 403 },
+    );
+  }
+
   const data: Prisma.SupplierUpdateInput = {};
 
   if (o.name !== undefined) {
@@ -95,6 +120,58 @@ export async function PATCH(
   }
   if (o.isActive !== undefined) {
     data.isActive = Boolean(o.isActive);
+  }
+
+  if (o.approvalStatus !== undefined) {
+    const v = o.approvalStatus;
+    if (v === SupplierApprovalStatus.pending_approval) {
+      data.approvalStatus = SupplierApprovalStatus.pending_approval;
+    } else if (v === SupplierApprovalStatus.approved) {
+      data.approvalStatus = SupplierApprovalStatus.approved;
+    } else if (v === SupplierApprovalStatus.rejected) {
+      data.approvalStatus = SupplierApprovalStatus.rejected;
+    } else if (typeof v === "string") {
+      const t = v.trim().toLowerCase();
+      if (t === "pending_approval") {
+        data.approvalStatus = SupplierApprovalStatus.pending_approval;
+      } else if (t === "approved") {
+        data.approvalStatus = SupplierApprovalStatus.approved;
+      } else if (t === "rejected") {
+        data.approvalStatus = SupplierApprovalStatus.rejected;
+      } else {
+        return NextResponse.json(
+          { error: "Invalid approvalStatus." },
+          { status: 400 },
+        );
+      }
+    } else {
+      return NextResponse.json(
+        { error: "Invalid approvalStatus." },
+        { status: 400 },
+      );
+    }
+  }
+
+  if (o.srmCategory !== undefined) {
+    const v = o.srmCategory;
+    if (v === SrmSupplierCategory.product || v === SrmSupplierCategory.logistics) {
+      data.srmCategory = v;
+    } else if (typeof v === "string") {
+      const t = v.trim().toLowerCase();
+      if (t === "product") data.srmCategory = SrmSupplierCategory.product;
+      else if (t === "logistics") data.srmCategory = SrmSupplierCategory.logistics;
+      else {
+        return NextResponse.json(
+          { error: "Invalid srmCategory." },
+          { status: 400 },
+        );
+      }
+    } else {
+      return NextResponse.json(
+        { error: "Invalid srmCategory." },
+        { status: 400 },
+      );
+    }
   }
 
   const stringKeys = [

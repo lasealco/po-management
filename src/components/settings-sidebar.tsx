@@ -63,6 +63,15 @@ export function SettingsSidebar() {
                 exact
               />
             </li>
+            <li>
+              <SettingsSidebarLink
+                href="/settings/demo"
+                pathname={pathname}
+                label="Demo session"
+                description="Switch demo user or clear session"
+                exact
+              />
+            </li>
           </ul>
         </div>
         {SETTINGS_SECTIONS.map((section) => (

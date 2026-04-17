@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
+import { ensureBookingConfirmationSlaAlerts } from "@/lib/control-tower/booking-sla";
 import { ensureSlaEscalationsForShipment } from "@/lib/control-tower/sla-escalation";
 import { getShipment360 } from "@/lib/control-tower/shipment-360";
 import { getControlTowerPortalContext } from "@/lib/control-tower/viewer";
@@ -27,6 +28,10 @@ export async function GET(
 
   const { id } = await context.params;
   if (!ctx.isRestrictedView) {
+    await ensureBookingConfirmationSlaAlerts({
+      tenantId: tenant.id,
+      shipmentIds: [id],
+    });
     await ensureSlaEscalationsForShipment({
       tenantId: tenant.id,
       shipmentId: id,

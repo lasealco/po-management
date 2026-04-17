@@ -28,7 +28,7 @@ export default async function ProductCatalogPage() {
       <div className="min-h-screen bg-zinc-50 px-6 py-16">
         <AccessDenied
           title="Products"
-          message="Choose a demo user in the header to view the product catalog."
+          message="Choose an active demo user: open Settings → Demo session (/settings/demo)."
         />
       </div>
     );

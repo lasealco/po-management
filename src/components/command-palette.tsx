@@ -11,6 +11,7 @@ export type CommandPaletteGrants = {
   wms: boolean;
   crm: boolean;
   suppliers: boolean;
+  srm: boolean;
   products: boolean;
   settings: boolean;
 };
@@ -56,6 +57,13 @@ export function CommandPalette({ grants }: { grants: CommandPaletteGrants }) {
 
     if (grants.reports || grants.controlTower || grants.crm || grants.wms) {
       list.push({
+        id: "executive-dashboard",
+        label: "Executive dashboard",
+        hint: "CEO command center",
+        searchText: "executive ceo dashboard investors risk growth capital",
+        action: go("/executive"),
+      });
+      list.push({
         id: "reporting-hub",
         label: "Reporting hub",
         hint: "PO, Control Tower, CRM, WMS — on page: R refresh, Shift+R silent",
@@ -87,37 +95,37 @@ export function CommandPalette({ grants }: { grants: CommandPaletteGrants }) {
           id: "orders-all",
           label: "Orders — All",
           searchText: "orders home po board all",
-          action: go("/"),
+          action: go("/orders"),
         },
         {
           id: "orders-nma",
           label: "Orders — Needs my action",
           searchText: "queue nma action",
-          action: go("/?queue=needs_my_action"),
+          action: go("/orders?queue=needs_my_action"),
         },
         {
           id: "orders-wait",
           label: "Orders — Waiting on me",
           searchText: "waiting reply comms",
-          action: go("/?queue=waiting_on_me"),
+          action: go("/orders?queue=waiting_on_me"),
         },
         {
           id: "orders-supp",
           label: "Orders — Awaiting supplier",
           searchText: "supplier sent",
-          action: go("/?queue=awaiting_supplier"),
+          action: go("/orders?queue=awaiting_supplier"),
         },
         {
           id: "orders-split",
           label: "Orders — Split pending (buyer)",
           searchText: "split",
-          action: go("/?queue=split_pending_buyer"),
+          action: go("/orders?queue=split_pending_buyer"),
         },
         {
           id: "orders-overdue",
           label: "Orders — Overdue",
           searchText: "due late",
-          action: go("/?queue=overdue"),
+          action: go("/orders?queue=overdue"),
         },
       );
     }
@@ -248,12 +256,13 @@ export function CommandPalette({ grants }: { grants: CommandPaletteGrants }) {
       );
     }
 
-    if (grants.suppliers) {
+    if (grants.srm) {
       list.push({
-        id: "suppliers",
-        label: "Suppliers",
-        searchText: "vendor directory",
-        action: go("/suppliers"),
+        id: "srm",
+        label: "SRM — supplier management",
+        hint: "Procurement hub (in development)",
+        searchText: "srm procurement supplier relationship vendor approve partner",
+        action: go("/srm"),
       });
     }
 

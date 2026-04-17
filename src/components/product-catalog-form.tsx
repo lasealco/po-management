@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { SearchableSelectField } from "@/components/searchable-select-field";
 
 const MAX_DESC = 2000;
 const MAX_EAN = 32;
@@ -125,6 +126,18 @@ export function ProductCatalogForm({
     supplierMapFromIds(i?.linkedSupplierIds ?? []),
   );
   const [isActive, setIsActive] = useState(i?.isActive ?? true);
+  const categoryOptions = useMemo(
+    () => categories.map((c) => ({ value: c.id, label: c.name })),
+    [categories],
+  );
+  const divisionOptions = useMemo(
+    () => divisions.map((d) => ({ value: d.id, label: d.name })),
+    [divisions],
+  );
+  const supplierOfficeOptions = useMemo(
+    () => supplierOffices.map((o) => ({ value: o.id, label: o.label })),
+    [supplierOffices],
+  );
 
   const router = useRouter();
 
@@ -397,33 +410,27 @@ export function ProductCatalogForm({
           <div className="grid gap-2 sm:grid-cols-2">
             <label className={label}>
               <span className="font-medium text-zinc-700">Category</span>
-              <select
+              <SearchableSelectField
                 value={categoryId}
-                onChange={(e) => setCategoryId(e.target.value)}
-                className={field}
-              >
-                <option value="">— None —</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+                onChange={setCategoryId}
+                options={categoryOptions}
+                placeholder="Type to filter category..."
+                emptyLabel="— None —"
+                inputClassName={field}
+                listClassName="max-h-36 overflow-auto rounded border border-zinc-200 bg-white"
+              />
             </label>
             <label className={label}>
               <span className="font-medium text-zinc-700">Division</span>
-              <select
+              <SearchableSelectField
                 value={divisionId}
-                onChange={(e) => setDivisionId(e.target.value)}
-                className={field}
-              >
-                <option value="">— None —</option>
-                {divisions.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}
-                  </option>
-                ))}
-              </select>
+                onChange={setDivisionId}
+                options={divisionOptions}
+                placeholder="Type to filter division..."
+                emptyLabel="— None —"
+                inputClassName={field}
+                listClassName="max-h-36 overflow-auto rounded border border-zinc-200 bg-white"
+              />
             </label>
             <label className={label}>
               <span className="font-medium text-zinc-700">
@@ -703,18 +710,15 @@ export function ProductCatalogForm({
           </legend>
           <label className={label}>
             <span className="font-medium text-zinc-700">Supplier office</span>
-            <select
+            <SearchableSelectField
               value={supplierOfficeId}
-              onChange={(e) => setSupplierOfficeId(e.target.value)}
-              className={field}
-            >
-              <option value="">— None —</option>
-              {supplierOffices.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
+              onChange={setSupplierOfficeId}
+              options={supplierOfficeOptions}
+              placeholder="Type to filter supplier office..."
+              emptyLabel="— None —"
+              inputClassName={field}
+              listClassName="max-h-36 overflow-auto rounded border border-zinc-200 bg-white"
+            />
           </label>
           <div>
             <p className="text-sm font-medium text-zinc-700">

@@ -5,7 +5,7 @@ import Link from "next/link";
 
 type SessionUser = { email: string; name: string; isActive: boolean };
 
-export function DemoUserSwitcher() {
+export function DemoUserPanel({ className = "" }: { className?: string }) {
   const [users, setUsers] = useState<SessionUser[]>([]);
   const [current, setCurrent] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -54,7 +54,6 @@ export function DemoUserSwitcher() {
       return;
     }
     setCurrent(email);
-    // Full reload so layouts/pages pick up the new httpOnly cookie reliably on Vercel.
     window.location.reload();
   }
 
@@ -66,19 +65,21 @@ export function DemoUserSwitcher() {
   const actives = users.filter((u) => u.isActive);
 
   return (
-    <div className="border-b border-zinc-200 bg-amber-50/80 px-4 py-2 text-sm text-amber-950">
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-4 gap-y-1">
-        <span className="font-medium">Demo user</span>
+    <section
+      className={`rounded-xl border border-amber-200/90 bg-amber-50/95 p-5 text-sm text-amber-950 shadow-sm ${className}`}
+    >
+      <div className="flex flex-wrap items-start gap-x-4 gap-y-3">
+        <span className="font-semibold text-amber-950">Demo user</span>
         {loading ? (
           <span className="text-amber-800/80">Loading…</span>
         ) : (
-          <label className="flex items-center gap-2">
+          <label className="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:flex-nowrap">
             <span className="sr-only">Act as user</span>
             <select
               value={current}
               disabled={saving}
               onChange={(e) => void onSelect(e.target.value)}
-              className="h-8 min-w-[14rem] rounded border border-amber-200/80 bg-white px-2 text-sm text-zinc-900"
+              className="h-9 min-w-[12rem] max-w-full flex-1 rounded-md border border-amber-300/90 bg-white px-2 text-sm text-zinc-900 shadow-sm"
             >
               {actives.map((u) => (
                 <option key={u.email} value={u.email}>
@@ -94,33 +95,33 @@ export function DemoUserSwitcher() {
             ) : null}
           </label>
         )}
-        <span className="text-xs text-amber-900/80">
-          {openAccess ? (
-            <>
-              Roles drive permissions. Pick a user above — no password required. Optional:{" "}
-              <Link href="/login" className="underline">
-                /login
-              </Link>{" "}
-              (buyer@ or approver@ + <span className="font-mono">demo12345</span>).
-            </>
-          ) : (
-            <>
-              Roles drive permissions. You can also use real sign-in at{" "}
-              <Link href="/login" className="underline">
-                /login
-              </Link>
-              .
-            </>
-          )}
-        </span>
         <button
           type="button"
           onClick={() => void logout()}
-          className="ml-auto rounded border border-amber-300 bg-white px-2 py-1 text-xs text-amber-900"
+          className="ml-auto shrink-0 rounded-md border border-amber-400/80 bg-white px-3 py-1.5 text-xs font-medium text-amber-950 shadow-sm hover:bg-amber-50"
         >
           {openAccess ? "Clear session" : "Logout"}
         </button>
       </div>
-    </div>
+      <p className="mt-4 text-xs leading-relaxed text-amber-900/85">
+        {openAccess ? (
+          <>
+            Roles drive permissions. Pick a user above — no password required. Optional:{" "}
+            <Link href="/login" className="font-medium underline underline-offset-2">
+              /login
+            </Link>{" "}
+            (buyer@ or approver@ + <span className="font-mono">demo12345</span>).
+          </>
+        ) : (
+          <>
+            Roles drive permissions. You can also use real sign-in at{" "}
+            <Link href="/login" className="font-medium underline underline-offset-2">
+              /login
+            </Link>
+            .
+          </>
+        )}
+      </p>
+    </section>
   );
 }

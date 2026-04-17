@@ -3,6 +3,7 @@ import { ShipmentMilestoneCode } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 
+import { ensureBookingConfirmationSlaAlerts } from "./booking-sla";
 import {
   controlTowerShipmentScopeWhere,
   type ControlTowerPortalContext,
@@ -11,7 +12,15 @@ import { computeCtMilestoneSummary } from "./milestone-summary";
 
 const TERMINAL_SHIPMENT: Array<"DELIVERED" | "RECEIVED"> = ["DELIVERED", "RECEIVED"];
 
-const ROUTE_ACTION_PREFIXES = ["Plan leg", "Mark departure", "Record arrival", "Route complete"] as const;
+const ROUTE_ACTION_PREFIXES = [
+  "Send booking",
+  "Await booking",
+  "Escalate booking",
+  "Plan leg",
+  "Mark departure",
+  "Record arrival",
+  "Route complete",
+] as const;
 
 function isProbableCuid(s: string): boolean {
   return s.length >= 20 && s.length <= 32 && /^c[a-z0-9]+$/i.test(s);
@@ -81,12 +90,15 @@ const listSelectCore = {
   },
   booking: {
     select: {
+      status: true,
       mode: true,
       originCode: true,
       destinationCode: true,
       etd: true,
       eta: true,
       latestEta: true,
+      bookingSentAt: true,
+      bookingConfirmSlaDueAt: true,
     },
   },
   milestones: {
@@ -154,6 +166,34 @@ const listSelectInternal = {
 type ShipmentListCore = Prisma.ShipmentGetPayload<{ select: typeof listSelectCore }>;
 type ShipmentListInternal = Prisma.ShipmentGetPayload<{ select: typeof listSelectInternal }>;
 
+function deriveRouteNextAction(s: ShipmentListCore | ShipmentListInternal): string | null {
+  if (!s.ctLegs.length) return null;
+  const phases = s.ctLegs.map((leg) => {
+    if (leg.actualAta) return "Arrived";
+    if (leg.actualAtd) return "Departed";
+    if (leg.plannedEtd || leg.plannedEta) return "Planned";
+    return "Draft";
+  });
+  const nextLegIdx = phases.findIndex((p) => p !== "Arrived");
+  const nextLeg = nextLegIdx >= 0 ? s.ctLegs[nextLegIdx] : null;
+  if (nextLegIdx === -1) return "Route complete";
+  if (phases[nextLegIdx] === "Draft") return `Plan leg ${nextLeg?.legNo ?? "?"}`;
+  if (phases[nextLegIdx] === "Planned") return `Mark departure leg ${nextLeg?.legNo ?? "?"}`;
+  return `Record arrival leg ${nextLeg?.legNo ?? "?"}`;
+}
+
+function deriveBookingNextAction(s: ShipmentListCore | ShipmentListInternal): string | null {
+  const b = s.booking;
+  if (!b?.status) return null;
+  if (b.status === "DRAFT") return "Send booking to forwarder";
+  if (b.status === "SENT") {
+    const dueMs = b.bookingConfirmSlaDueAt ? b.bookingConfirmSlaDueAt.getTime() : null;
+    if (dueMs !== null && dueMs < Date.now()) return "Escalate booking SLA";
+    return "Await booking confirmation";
+  }
+  return null;
+}
+
 function mapShipmentListRow(s: ShipmentListCore | ShipmentListInternal) {
   const firstLeg = s.ctLegs[0];
   const lastLeg = s.ctLegs[s.ctLegs.length - 1];
@@ -176,17 +216,14 @@ function mapShipmentListRow(s: ShipmentListCore | ShipmentListInternal) {
             s.ctLegs.length) *
             100,
         );
-  const nextLegIdx = phases.findIndex((p) => p !== "Arrived");
-  const nextLeg = nextLegIdx >= 0 ? s.ctLegs[nextLegIdx] : null;
-  const nextAction = !s.ctLegs.length
-    ? null
-    : nextLegIdx === -1
-      ? "Route complete"
-      : phases[nextLegIdx] === "Draft"
-        ? `Plan leg ${nextLeg?.legNo ?? "?"}`
-        : phases[nextLegIdx] === "Planned"
-          ? `Mark departure leg ${nextLeg?.legNo ?? "?"}`
-          : `Record arrival leg ${nextLeg?.legNo ?? "?"}`;
+  const bookingStatus = s.booking?.status ?? null;
+  const bookingSlaBreached =
+    bookingStatus === "SENT" &&
+    Boolean(s.booking?.bookingConfirmSlaDueAt && s.booking.bookingConfirmSlaDueAt.getTime() < Date.now());
+  const bookingPipeline = bookingStatus === "DRAFT" || bookingStatus === "SENT";
+  const bookingAction = deriveBookingNextAction(s);
+  const routeNext = deriveRouteNextAction(s);
+  const nextAction = bookingPipeline && bookingAction ? bookingAction : routeNext;
 
   const internal = "_count" in s ? s : null;
   const ctOpenRows = internal
@@ -239,6 +276,10 @@ function mapShipmentListRow(s: ShipmentListCore | ShipmentListInternal) {
     latestEta: s.booking?.latestEta?.toISOString() ?? null,
     routeProgressPct,
     nextAction,
+    bookingStatus,
+    bookingSlaBreached,
+    bookingSentAt: s.booking?.bookingSentAt?.toISOString() ?? null,
+    bookingConfirmSlaDueAt: s.booking?.bookingConfirmSlaDueAt?.toISOString() ?? null,
     latestMilestone: s.milestones[0]
       ? {
           code: s.milestones[0].code,
@@ -466,6 +507,11 @@ export async function listControlTowerShipments(params: {
     take: dbTake,
     orderBy,
     select: listSelectInternal,
+  });
+
+  await ensureBookingConfirmationSlaAlerts({
+    tenantId,
+    shipmentIds: rows.map((r) => r.id),
   });
 
   return postFilter(rows.map(mapShipmentListRow));

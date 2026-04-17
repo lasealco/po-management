@@ -1,4 +1,4 @@
-import { Prisma, type TransportMode } from "@prisma/client";
+import { Prisma, ShipmentMilestoneCode, type TransportMode } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { getActorUserId, userHasRoleNamed } from "@/lib/authz";
@@ -1195,6 +1195,386 @@ export async function handleControlTowerPost(
       payload: { salesOrderId },
     });
     return NextResponse.json({ ok: true });
+  }
+
+  if (action === "send_booking_to_forwarder") {
+    const shipmentId = typeof body.shipmentId === "string" ? body.shipmentId : "";
+    if (!shipmentId) return bad("shipmentId required");
+    if (!(await assertShipmentTenant(shipmentId, tenantId))) return bad("Shipment not found", 404);
+    const booking = await prisma.shipmentBooking.findUnique({
+      where: { shipmentId },
+      select: {
+        id: true,
+        status: true,
+        forwarderSupplierId: true,
+        forwarderSupplier: {
+          select: { bookingConfirmationSlaHours: true },
+        },
+      },
+    });
+    if (!booking) return bad("Booking row missing", 400);
+    if (booking.status !== "DRAFT") return bad("Booking is not in draft status", 400);
+    if (!booking.forwarderSupplierId) return bad("Select a forwarder before sending the booking");
+    const hours = booking.forwarderSupplier?.bookingConfirmationSlaHours ?? 24;
+    const now = new Date();
+    const due = new Date(now.getTime() + Math.max(1, hours) * 3_600_000);
+    await prisma.$transaction([
+      prisma.shipmentBooking.update({
+        where: { shipmentId },
+        data: {
+          status: "SENT",
+          bookingSentAt: now,
+          bookingConfirmSlaDueAt: due,
+          updatedById: actorId,
+        },
+      }),
+      prisma.shipment.update({
+        where: { id: shipmentId },
+        data: { status: "BOOKING_SUBMITTED" },
+      }),
+    ]);
+    await writeCtAudit({
+      tenantId,
+      shipmentId,
+      entityType: "ShipmentBooking",
+      entityId: booking.id,
+      action: "send_booking",
+      actorUserId: actorId,
+      payload: { bookingConfirmSlaDueAt: due.toISOString(), slaHours: hours },
+    });
+    return NextResponse.json({ ok: true, bookingConfirmSlaDueAt: due.toISOString() });
+  }
+
+  if (action === "confirm_forwarder_booking") {
+    const shipmentId = typeof body.shipmentId === "string" ? body.shipmentId : "";
+    if (!shipmentId) return bad("shipmentId required");
+    if (!(await assertShipmentTenant(shipmentId, tenantId))) return bad("Shipment not found", 404);
+    const booking = await prisma.shipmentBooking.findUnique({
+      where: { shipmentId },
+      select: { id: true, status: true },
+    });
+    if (!booking) return bad("Booking row missing", 400);
+    if (booking.status !== "SENT") return bad("Booking must be sent before it can be confirmed", 400);
+    const confirmedAt = new Date();
+    await prisma.$transaction(async (tx) => {
+      await tx.shipmentBooking.update({
+        where: { shipmentId },
+        data: {
+          status: "CONFIRMED",
+          bookingSentAt: null,
+          bookingConfirmSlaDueAt: null,
+          updatedById: actorId,
+        },
+      });
+      await tx.shipment.update({
+        where: { id: shipmentId },
+        data: { status: "VALIDATED" },
+      });
+      const existing = await tx.shipmentMilestone.findFirst({
+        where: { shipmentId, code: ShipmentMilestoneCode.BOOKING_CONFIRMED },
+        orderBy: { createdAt: "desc" },
+        select: { id: true },
+      });
+      if (existing) {
+        await tx.shipmentMilestone.update({
+          where: { id: existing.id },
+          data: { actualAt: confirmedAt, updatedById: actorId },
+        });
+      } else {
+        await tx.shipmentMilestone.create({
+          data: {
+            shipmentId,
+            code: ShipmentMilestoneCode.BOOKING_CONFIRMED,
+            source: "FORWARDER",
+            actualAt: confirmedAt,
+            updatedById: actorId,
+          },
+        });
+      }
+      await tx.ctAlert.updateMany({
+        where: {
+          tenantId,
+          shipmentId,
+          type: "BOOKING_SLA_BREACHED",
+          status: { in: ["OPEN", "ACKNOWLEDGED"] },
+        },
+        data: { status: "CLOSED" },
+      });
+    });
+    await writeCtAudit({
+      tenantId,
+      shipmentId,
+      entityType: "ShipmentBooking",
+      entityId: booking.id,
+      action: "confirm_booking",
+      actorUserId: actorId,
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "enrich_ct_demo_tracking") {
+    const takeRaw = Number(body.take);
+    const take = Number.isFinite(takeRaw) ? Math.max(1, Math.min(400, Math.floor(takeRaw))) : 120;
+    const shipments = await prisma.shipment.findMany({
+      where: { order: { tenantId } },
+      orderBy: { updatedAt: "desc" },
+      take,
+      select: {
+        id: true,
+        status: true,
+        transportMode: true,
+        shippedAt: true,
+        receivedAt: true,
+        expectedReceiveAt: true,
+        ctLegs: { select: { id: true } },
+        ctTrackingMilestones: { select: { id: true } },
+        booking: {
+          select: {
+            originCode: true,
+            destinationCode: true,
+            etd: true,
+            eta: true,
+            latestEta: true,
+          },
+        },
+      },
+    });
+    let legsCreated = 0;
+    let milestonesCreated = 0;
+    let shipmentsUpdated = 0;
+    for (const s of shipments) {
+      const hasLegs = s.ctLegs.length > 0;
+      const hasTracking = s.ctTrackingMilestones.length > 0;
+      if (hasLegs && hasTracking) continue;
+      const bookingEta = s.booking?.latestEta || s.booking?.eta || null;
+      const finalEta = s.expectedReceiveAt || bookingEta || new Date(s.shippedAt.getTime() + 8 * 86_400_000);
+      const originCode = s.booking?.originCode || "CNSHA";
+      const destinationCode = s.booking?.destinationCode || "USLAX";
+      const leg1Etd = s.booking?.etd || new Date(s.shippedAt.getTime() - 12 * 3_600_000);
+      const leg1Eta = new Date(Math.min(finalEta.getTime() - 3 * 86_400_000, leg1Etd.getTime() + 3 * 86_400_000));
+      const leg2Etd = new Date(leg1Eta.getTime() + 6 * 3_600_000);
+      const leg2Eta = finalEta;
+      const preMovement =
+        s.status === "BOOKED" || s.status === "BOOKING_DRAFT" || s.status === "BOOKING_SUBMITTED";
+      await prisma.$transaction(async (tx) => {
+        if (!hasLegs) {
+          await tx.ctShipmentLeg.createMany({
+            data: [
+              {
+                tenantId,
+                shipmentId: s.id,
+                legNo: 1,
+                originCode,
+                destinationCode: "HUB",
+                transportMode: s.transportMode ?? "ROAD",
+                plannedEtd: leg1Etd,
+                plannedEta: leg1Eta,
+                actualAtd: preMovement ? null : leg1Etd,
+                actualAta: ["SHIPPED", "IN_TRANSIT", "DELIVERED", "RECEIVED"].includes(s.status) ? leg1Eta : null,
+              },
+              {
+                tenantId,
+                shipmentId: s.id,
+                legNo: 2,
+                originCode: "HUB",
+                destinationCode,
+                transportMode: s.transportMode ?? "OCEAN",
+                plannedEtd: leg2Etd,
+                plannedEta: leg2Eta,
+                actualAtd: ["IN_TRANSIT", "DELIVERED", "RECEIVED"].includes(s.status) ? leg2Etd : null,
+                actualAta: ["DELIVERED", "RECEIVED"].includes(s.status) ? s.receivedAt || leg2Eta : null,
+              },
+            ],
+          });
+          legsCreated += 2;
+        }
+        if (!hasTracking) {
+          await tx.ctTrackingMilestone.createMany({
+            data: [
+              {
+                tenantId,
+                shipmentId: s.id,
+                code: "PICKUP_CONFIRMED",
+                label: "Pickup confirmed",
+                plannedAt: leg1Etd,
+                predictedAt: leg1Etd,
+                actualAt: preMovement ? null : leg1Etd,
+                sourceType: "SIMULATED",
+                confidence: 72,
+                notes: "Auto-generated demo tracking baseline.",
+                updatedById: actorId,
+              },
+              {
+                tenantId,
+                shipmentId: s.id,
+                code: "IN_TRANSIT_MAIN",
+                label: "Main leg in transit",
+                plannedAt: leg2Etd,
+                predictedAt: leg2Etd,
+                actualAt: ["IN_TRANSIT", "DELIVERED", "RECEIVED"].includes(s.status) ? leg2Etd : null,
+                sourceType: "SIMULATED",
+                confidence: 70,
+                notes: "Auto-generated demo tracking baseline.",
+                updatedById: actorId,
+              },
+              {
+                tenantId,
+                shipmentId: s.id,
+                code: "DELIVERED_FINAL",
+                label: "Final delivery",
+                plannedAt: leg2Eta,
+                predictedAt: leg2Eta,
+                actualAt: ["DELIVERED", "RECEIVED"].includes(s.status) ? s.receivedAt || leg2Eta : null,
+                sourceType: "SIMULATED",
+                confidence: 68,
+                notes: "Auto-generated demo tracking baseline.",
+                updatedById: actorId,
+              },
+            ],
+          });
+          milestonesCreated += 3;
+        }
+      });
+      shipmentsUpdated += 1;
+    }
+    return NextResponse.json({
+      ok: true,
+      scanned: shipments.length,
+      shipmentsUpdated,
+      legsCreated,
+      milestonesCreated,
+    });
+  }
+
+  if (action === "regenerate_ct_demo_timeline") {
+    const takeRaw = Number(body.take);
+    const take = Number.isFinite(takeRaw) ? Math.max(1, Math.min(500, Math.floor(takeRaw))) : 240;
+    const shipments = await prisma.shipment.findMany({
+      where: { order: { tenantId } },
+      orderBy: { updatedAt: "desc" },
+      take,
+      select: {
+        id: true,
+        status: true,
+        shippedAt: true,
+        expectedReceiveAt: true,
+        receivedAt: true,
+        ctLegs: { select: { id: true } },
+        ctTrackingMilestones: { select: { id: true } },
+      },
+    });
+    let updated = 0;
+    let delayed = 0;
+    let atRisk = 0;
+    let onTime = 0;
+    for (let i = 0; i < shipments.length; i += 1) {
+      const s = shipments[i];
+      const shippedMs = s.shippedAt.getTime();
+      const baseEta = s.expectedReceiveAt ?? new Date(shippedMs + 8 * 86_400_000);
+      const bucket = i % 10;
+      const profile: "delayed" | "at_risk" | "on_time" = bucket < 3 ? "delayed" : bucket < 6 ? "at_risk" : "on_time";
+      const etaShiftDays = profile === "delayed" ? 2 : profile === "at_risk" ? 1 : -1;
+      const eta = new Date(baseEta.getTime() + etaShiftDays * 86_400_000);
+      const leg1Etd = new Date(shippedMs - 8 * 3_600_000);
+      const leg1Eta = new Date(Math.min(eta.getTime() - 3 * 86_400_000, leg1Etd.getTime() + 3 * 86_400_000));
+      const leg2Etd = new Date(leg1Eta.getTime() + 6 * 3_600_000);
+      const finalActual =
+        profile === "delayed" ? new Date(eta.getTime() + 18 * 3_600_000) : profile === "on_time" ? new Date(eta.getTime() - 4 * 3_600_000) : null;
+      await prisma.$transaction(async (tx) => {
+        await tx.shipment.update({
+          where: { id: s.id },
+          data: {
+            expectedReceiveAt: eta,
+            receivedAt: s.status === "RECEIVED" || s.status === "DELIVERED" ? finalActual ?? s.receivedAt : null,
+          },
+        });
+        if (s.ctLegs.length > 0) {
+          await tx.ctShipmentLeg.deleteMany({ where: { shipmentId: s.id } });
+        }
+        await tx.ctShipmentLeg.createMany({
+          data: [
+            {
+              tenantId,
+              shipmentId: s.id,
+              legNo: 1,
+              originCode: "CNSHA",
+              destinationCode: "HUB",
+              transportMode: "ROAD",
+              plannedEtd: leg1Etd,
+              plannedEta: leg1Eta,
+              actualAtd: leg1Etd,
+              actualAta: leg1Eta,
+            },
+            {
+              tenantId,
+              shipmentId: s.id,
+              legNo: 2,
+              originCode: "HUB",
+              destinationCode: "USLAX",
+              transportMode: "OCEAN",
+              plannedEtd: leg2Etd,
+              plannedEta: eta,
+              actualAtd:
+                s.status === "BOOKED" || s.status === "BOOKING_DRAFT" || s.status === "BOOKING_SUBMITTED"
+                  ? null
+                  : leg2Etd,
+              actualAta: finalActual,
+            },
+          ],
+        });
+        if (s.ctTrackingMilestones.length > 0) {
+          await tx.ctTrackingMilestone.deleteMany({ where: { shipmentId: s.id } });
+        }
+        await tx.ctTrackingMilestone.createMany({
+          data: [
+            {
+              tenantId,
+              shipmentId: s.id,
+              code: "PICKUP_CONFIRMED",
+              label: "Pickup confirmed",
+              plannedAt: leg1Etd,
+              predictedAt: leg1Etd,
+              actualAt: leg1Etd,
+              sourceType: "SIMULATED",
+              confidence: 75,
+              notes: `Timeline profile: ${profile}`,
+              updatedById: actorId,
+            },
+            {
+              tenantId,
+              shipmentId: s.id,
+              code: "IN_TRANSIT_MAIN",
+              label: "Main leg in transit",
+              plannedAt: leg2Etd,
+              predictedAt: profile === "at_risk" ? new Date(leg2Etd.getTime() + 8 * 3_600_000) : leg2Etd,
+              actualAt: s.status === "BOOKED" ? null : leg2Etd,
+              sourceType: "SIMULATED",
+              confidence: 70,
+              notes: `Timeline profile: ${profile}`,
+              updatedById: actorId,
+            },
+            {
+              tenantId,
+              shipmentId: s.id,
+              code: "DELIVERED_FINAL",
+              label: "Final delivery",
+              plannedAt: eta,
+              predictedAt: profile === "delayed" ? new Date(eta.getTime() + 12 * 3_600_000) : eta,
+              actualAt: finalActual,
+              sourceType: "SIMULATED",
+              confidence: 68,
+              notes: `Timeline profile: ${profile}`,
+              updatedById: actorId,
+            },
+          ],
+        });
+      });
+      updated += 1;
+      if (profile === "delayed") delayed += 1;
+      else if (profile === "at_risk") atRisk += 1;
+      else onTime += 1;
+    }
+    return NextResponse.json({ ok: true, scanned: shipments.length, updated, delayed, atRisk, onTime });
   }
 
   const TRANSPORT: TransportMode[] = ["OCEAN", "AIR", "ROAD", "RAIL"];

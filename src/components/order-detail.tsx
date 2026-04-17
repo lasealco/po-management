@@ -775,7 +775,7 @@ export function OrderDetail({
     return (
       <main className="mx-auto max-w-4xl px-6 py-10">
         <p className="text-red-600">{error}</p>
-        <Link href="/" className="mt-4 inline-block text-zinc-700 underline">
+        <Link href="/orders" className="mt-4 inline-block text-zinc-700 underline">
           Back
         </Link>
       </main>
@@ -792,7 +792,7 @@ export function OrderDetail({
     <main className="mx-auto max-w-4xl px-6 py-10">
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
-          <Link href="/" className="text-sm text-zinc-500 hover:text-zinc-800">
+          <Link href="/orders" className="text-sm text-zinc-500 hover:text-zinc-800">
             ← Orders
           </Link>
           <h1 className="mt-2 text-2xl font-semibold text-zinc-900">

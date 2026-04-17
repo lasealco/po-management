@@ -33,7 +33,7 @@ export default async function SalesOrdersPage() {
   });
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-6 py-8">
+    <main className="mx-auto w-full max-w-6xl bg-zinc-50 px-6 py-8">
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-zinc-900">Sales Orders</h1>
@@ -58,7 +58,7 @@ export default async function SalesOrdersPage() {
               <th className="px-3 py-2">Shipments</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-200">
+          <tbody className="divide-y divide-zinc-200 text-zinc-900">
             {rows.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-3 py-8 text-center text-zinc-500">

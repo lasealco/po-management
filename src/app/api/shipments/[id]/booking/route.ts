@@ -83,7 +83,12 @@ export async function POST(
   const forwarderContactId = input.forwarderContactId?.trim() || null;
   if (forwarderSupplierId) {
     const supplier = await prisma.supplier.findFirst({
-      where: { id: forwarderSupplierId, tenantId: tenant.id, isActive: true },
+      where: {
+        id: forwarderSupplierId,
+        tenantId: tenant.id,
+        isActive: true,
+        productSuppliers: { none: {} },
+      },
       select: { id: true },
     });
     if (!supplier) {

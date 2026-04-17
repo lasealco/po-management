@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { SearchableSelectField } from "@/components/searchable-select-field";
 
 import {
   controlTowerListPrimaryTitle,
@@ -25,7 +26,24 @@ type Row = {
   openQueueCounts: { openAlerts: number; openExceptions: number };
 };
 
+type HealthState = "good" | "at_risk" | "delayed" | "missing_data";
+
+function classifyShipmentHealth(r: Row, nowMs: number): HealthState {
+  const etaIso = r.latestEta || r.eta;
+  const etaMs = etaIso ? new Date(etaIso).getTime() : Number.NaN;
+  const hasRoutePlan = Boolean(r.nextAction);
+  if ((r.nextAction || "").startsWith("Escalate booking")) return "at_risk";
+  if (!hasRoutePlan) return "missing_data";
+  if (r.routeProgressPct != null && r.routeProgressPct < 40 && Number.isFinite(etaMs) && etaMs < nowMs) return "delayed";
+  if (Number.isFinite(etaMs) && etaMs < nowMs) return "delayed";
+  if ((r.openQueueCounts?.openAlerts ?? 0) > 0 || (r.openQueueCounts?.openExceptions ?? 0) > 0) return "at_risk";
+  return "good";
+}
+
 const LANES = [
+  "Booking: send",
+  "Booking: awaiting confirm",
+  "Booking: SLA overdue",
   "No route legs",
   "Plan leg",
   "Mark departure",
@@ -34,12 +52,34 @@ const LANES = [
   "Other",
 ] as const;
 
-const STATUS_OPTIONS = ["", "SHIPPED", "VALIDATED", "BOOKED", "IN_TRANSIT", "DELIVERED", "RECEIVED"] as const;
+const STATUS_OPTIONS = [
+  "",
+  "BOOKING_DRAFT",
+  "BOOKING_SUBMITTED",
+  "SHIPPED",
+  "VALIDATED",
+  "BOOKED",
+  "IN_TRANSIT",
+  "DELIVERED",
+  "RECEIVED",
+] as const;
 
-const ROUTE_ACTION_FILTER = ["", "Plan leg", "Mark departure", "Record arrival", "Route complete"] as const;
+const ROUTE_ACTION_FILTER = [
+  "",
+  "Send booking",
+  "Await booking",
+  "Escalate booking",
+  "Plan leg",
+  "Mark departure",
+  "Record arrival",
+  "Route complete",
+] as const;
 
 function laneKey(nextAction: string | null): (typeof LANES)[number] {
   if (!nextAction) return "No route legs";
+  if (nextAction.startsWith("Send booking")) return "Booking: send";
+  if (nextAction.startsWith("Await booking")) return "Booking: awaiting confirm";
+  if (nextAction.startsWith("Escalate booking")) return "Booking: SLA overdue";
   if (nextAction === "Route complete") return "Route complete";
   if (nextAction.startsWith("Plan leg")) return "Plan leg";
   if (nextAction.startsWith("Mark departure")) return "Mark departure";
@@ -114,6 +154,10 @@ export function ControlTowerCommandCenter({
     m.set("__unassigned", "Unassigned queue");
     return Array.from(m.entries());
   }, [ownerDirectory]);
+  const ownerSearchOptions = useMemo(
+    () => ownerOptions.map(([id, label]) => ({ value: id, label })),
+    [ownerOptions],
+  );
 
   const filtered = useMemo(() => {
     let list = rows;
@@ -133,6 +177,14 @@ export function ControlTowerCommandCenter({
       map.get(k)!.push(r);
     }
     return map;
+  }, [filtered]);
+  const healthStats = useMemo(() => {
+    const now = Date.now();
+    const stats = { good: 0, at_risk: 0, delayed: 0, missing_data: 0 };
+    for (const r of filtered) {
+      stats[classifyShipmentHealth(r, now)] += 1;
+    }
+    return stats;
   }, [filtered]);
 
   return (
@@ -183,17 +235,15 @@ export function ControlTowerCommandCenter({
         {!restrictedView ? (
           <label className="block text-sm">
             <span className="font-medium text-zinc-700">Dispatch owner</span>
-            <select
-              className="mt-1 block w-52 rounded border border-zinc-300 px-2 py-1.5 text-sm"
+            <SearchableSelectField
               value={ownerFilter}
-              onChange={(e) => setOwnerFilter(e.target.value)}
-            >
-              {ownerOptions.map(([id, label]) => (
-                <option key={id || "all"} value={id}>
-                  {label}
-                </option>
-              ))}
-            </select>
+              onChange={setOwnerFilter}
+              options={ownerSearchOptions}
+              placeholder="Type to filter owner..."
+              emptyLabel="All owners"
+              inputClassName="mt-1 block w-52 rounded border border-zinc-300 px-2 py-1.5 text-sm"
+              listClassName="max-h-36 overflow-auto rounded border border-zinc-200 bg-white"
+            />
           </label>
         ) : null}
         <label className="flex items-center gap-2 text-sm text-zinc-700">
@@ -220,6 +270,20 @@ export function ControlTowerCommandCenter({
           ? ' Dispatch owner (except "Unassigned queue") is applied on the server; unassigned queue is filtered in the browser.'
           : null}
       </p>
+      <div className="flex flex-wrap gap-2 text-xs">
+        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-900">
+          On-time: <strong>{healthStats.good}</strong>
+        </span>
+        <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-amber-900">
+          At risk: <strong>{healthStats.at_risk}</strong>
+        </span>
+        <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-rose-900">
+          Delayed: <strong>{healthStats.delayed}</strong>
+        </span>
+        <span className="rounded-full border border-zinc-300 bg-zinc-100 px-3 py-1 text-zinc-700">
+          Missing legs/route: <strong>{healthStats.missing_data}</strong>
+        </span>
+      </div>
       {error ? (
         <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">{error}</div>
       ) : null}
@@ -263,6 +327,32 @@ export function ControlTowerCommandCenter({
                       <div className="mt-0.5 text-xs text-zinc-700">
                         {r.originCode ?? "—"} → {r.destinationCode ?? "—"}
                       </div>
+                      {(() => {
+                        const health = classifyShipmentHealth(r, Date.now());
+                        return (
+                          <div className="mt-1">
+                            <span
+                              className={`rounded-full border px-1.5 py-0.5 text-[11px] ${
+                                health === "good"
+                                  ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+                                  : health === "at_risk"
+                                    ? "border-amber-200 bg-amber-50 text-amber-900"
+                                    : health === "delayed"
+                                      ? "border-rose-200 bg-rose-50 text-rose-900"
+                                      : "border-zinc-300 bg-zinc-100 text-zinc-700"
+                              }`}
+                            >
+                              {health === "good"
+                                ? "On-time"
+                                : health === "at_risk"
+                                  ? "At risk"
+                                  : health === "delayed"
+                                    ? "Delayed"
+                                    : "Missing route plan"}
+                            </span>
+                          </div>
+                        );
+                      })()}
                       {r.routeProgressPct != null ? (
                         <div className="mt-1 text-xs text-zinc-500">Route {r.routeProgressPct}%</div>
                       ) : null}

@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { AccessDenied } from "@/components/access-denied";
+import { WorkflowHeader } from "@/components/workflow-header";
 import {
   SupplierDetailClient,
   type SupplierDetailSnapshot,
@@ -24,7 +26,7 @@ export default async function SupplierDetailPage({
       <div className="min-h-screen bg-zinc-50 px-6 py-16">
         <AccessDenied
           title="Supplier"
-          message="Choose a demo user in the header."
+          message="Choose an active demo user: open Settings → Demo session (/settings/demo)."
         />
       </div>
     );
@@ -83,6 +85,13 @@ export default async function SupplierDetailPage({
     email: supplier.email,
     phone: supplier.phone,
     isActive: supplier.isActive,
+    srmCategory: supplier.srmCategory === "logistics" ? "logistics" : "product",
+    approvalStatus:
+      supplier.approvalStatus === "pending_approval"
+        ? "pending_approval"
+        : supplier.approvalStatus === "rejected"
+          ? "rejected"
+          : "approved",
     legalName: supplier.legalName,
     taxId: supplier.taxId,
     website: supplier.website,
@@ -105,6 +114,7 @@ export default async function SupplierDetailPage({
   };
 
   const canEdit = viewerHas(access.grantSet, "org.suppliers", "edit");
+  const canApprove = viewerHas(access.grantSet, "org.suppliers", "approve");
   const canViewOrders = viewerHas(access.grantSet, "org.orders", "view");
   const orderHistory = canViewOrders
     ? await fetchSupplierOrderAnalytics(prisma, tenant.id, supplier.id)
@@ -113,10 +123,23 @@ export default async function SupplierDetailPage({
   return (
     <div className="min-h-screen bg-zinc-50">
       <main className="mx-auto max-w-5xl px-6 py-10">
+        <p className="text-sm">
+          <Link href="/suppliers" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+            ← Suppliers
+          </Link>
+        </p>
+        <div className="mt-3 mb-5">
+          <WorkflowHeader
+            eyebrow="Supplier governance workspace"
+            title={supplier.name}
+            steps={["Step 1: Verify profile and contacts", "Step 2: Edit and approve", "Step 3: Review order performance"]}
+          />
+        </div>
         <SupplierDetailClient
           key={supplier.id}
           initial={snapshot}
           canEdit={canEdit}
+          canApprove={canApprove}
           orderHistory={orderHistory}
         />
       </main>

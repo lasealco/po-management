@@ -6,10 +6,9 @@ import { usePathname } from "next/navigation";
 import type { PoMgmtSubNavVisibility } from "@/lib/nav-visibility";
 
 const items: { href: string; label: string; key: keyof PoMgmtSubNavVisibility }[] = [
-  { href: "/", label: "Orders", key: "orders" },
+  { href: "/orders", label: "Orders", key: "orders" },
   { href: "/consolidation", label: "Consolidations", key: "consolidation" },
   { href: "/products", label: "Products", key: "products" },
-  { href: "/suppliers", label: "Suppliers", key: "suppliers" },
 ];
 
 export function PoMgmtSubNav({ visibility }: { visibility: PoMgmtSubNavVisibility }) {
@@ -25,8 +24,8 @@ export function PoMgmtSubNav({ visibility }: { visibility: PoMgmtSubNavVisibilit
         </span>
         {visibleItems.map(({ href, label }) => {
           const active =
-            href === "/"
-              ? pathname === "/" || pathname.startsWith("/orders/")
+            href === "/orders"
+              ? pathname === "/orders" || pathname.startsWith("/orders/")
               : pathname === href || pathname.startsWith(`${href}/`);
           return (
             <Link

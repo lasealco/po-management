@@ -407,6 +407,28 @@ function chartViewFromConfig(chartType: string | undefined): ChartViewMode {
   return "bar";
 }
 
+function metricLabel(measure: CtReportMeasure): string {
+  if (measure === "onTimePct") return "On-time %";
+  if (measure === "shippingSpend") return "Shipping spend";
+  if (measure === "avgDelayDays") return "Avg delay (days)";
+  if (measure === "volumeCbm") return "Volume (CBM)";
+  if (measure === "weightKg") return "Weight (kg)";
+  return "Shipments";
+}
+
+function dimensionLabel(dimension: string): string {
+  if (dimension === "lane") return "Lane";
+  if (dimension === "carrier") return "Carrier";
+  if (dimension === "customer") return "Customer";
+  if (dimension === "supplier") return "Supplier";
+  if (dimension === "origin") return "Origin";
+  if (dimension === "destination") return "Destination";
+  if (dimension === "month") return "Month";
+  if (dimension === "mode") return "Mode";
+  if (dimension === "status") return "Status";
+  return "Dimension";
+}
+
 function CoverageSummary({ coverage }: { coverage?: CtReportCoverage }) {
   if (!coverage) {
     return <p className="text-xs text-zinc-500">Shipment coverage is not available for this widget.</p>;
@@ -465,6 +487,11 @@ export function ControlTowerDashboardWidgetModal(props: {
   const prevUrlDrillRef = useRef<string | null>(null);
 
   const chartData = useMemo(() => seriesForChart(report), [report]);
+  const colorByRowKey = useMemo(() => {
+    const m = new Map<string, string>();
+    chartData.forEach((p, i) => m.set(p.key, colorFor(i)));
+    return m;
+  }, [chartData]);
 
   useEffect(() => {
     const cur = initialDrillKey;
@@ -560,17 +587,28 @@ export function ControlTowerDashboardWidgetModal(props: {
                   key={v}
                   type="button"
                   onClick={() => setChartView(v)}
-                  className={`rounded px-2 py-1 capitalize ${chartView === v ? "bg-zinc-900 text-white" : "text-zinc-700"}`}
+                  className={`rounded px-2 py-1 capitalize transition ${
+                    chartView === v
+                      ? "bg-[var(--arscmp-primary)] text-white"
+                      : "text-zinc-700 hover:bg-zinc-100"
+                  }`}
                 >
                   {v}
                 </button>
               ))}
             </div>
-            <button type="button" onClick={() => onClose()} className="rounded border border-zinc-300 px-3 py-1 text-sm">
+            <button
+              type="button"
+              onClick={() => onClose()}
+              className="rounded border border-zinc-300 bg-white px-3 py-1 text-sm text-zinc-700 hover:bg-zinc-50"
+            >
               Close
             </button>
           </div>
         </div>
+        <p className="mb-2 text-xs text-zinc-600">
+          {metricLabel(report.config.measure)} by {dimensionLabel(report.config.dimension)}
+        </p>
 
         <CoverageSummary coverage={report.coverage} />
 
@@ -597,6 +635,9 @@ export function ControlTowerDashboardWidgetModal(props: {
           ) : (
             <MiniPieChart data={chartData} size={280} selectedKey={drillKey} onSliceSelect={toggleDrill} />
           )}
+        </div>
+        <div className="mt-2 rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1.5 text-[11px] text-zinc-600">
+          X-axis: {dimensionLabel(report.config.dimension)} groups. Y-axis: {metricLabel(report.config.measure)}.
         </div>
 
         {drillRow ? (
@@ -642,7 +683,8 @@ export function ControlTowerDashboardWidgetModal(props: {
           <table className="w-full min-w-[520px] border-collapse text-left text-xs">
             <thead className="sticky top-0 bg-zinc-100 text-zinc-700">
               <tr>
-                <th className="border-b border-zinc-200 px-2 py-1.5 font-semibold">Label</th>
+                <th className="border-b border-zinc-200 px-2 py-1.5 font-semibold">Color</th>
+                <th className="border-b border-zinc-200 px-2 py-1.5 font-semibold">{dimensionLabel(report.config.dimension)}</th>
                 {CT_REPORT_MEASURES.map((m) => (
                   <th key={m} className="border-b border-zinc-200 px-2 py-1.5 font-semibold">
                     {m}
@@ -662,6 +704,12 @@ export function ControlTowerDashboardWidgetModal(props: {
                     drillKey === r.key ? "bg-sky-50 ring-1 ring-inset ring-sky-300" : ""
                   }`}
                 >
+                  <td className="border-b border-zinc-100 px-2 py-1">
+                    <span
+                      className="inline-block h-2.5 w-2.5 rounded"
+                      style={{ backgroundColor: colorByRowKey.get(r.key) ?? "#9ca3af" }}
+                    />
+                  </td>
                   <td className="border-b border-zinc-100 px-2 py-1 font-medium text-zinc-900">{r.label}</td>
                   {CT_REPORT_MEASURES.map((m) => (
                     <td key={m} className="border-b border-zinc-100 px-2 py-1 tabular-nums text-zinc-700">

@@ -10,7 +10,9 @@ export const dynamic = "force-dynamic";
 
 function cardClass(focus: string | undefined, id: string) {
   const active = focus === id;
-  return `rounded-xl border bg-white p-5 shadow-sm ${active ? "border-sky-400 ring-2 ring-sky-100" : "border-zinc-200"}`;
+  return `rounded-2xl border bg-white p-6 shadow-sm transition ${
+    active ? "border-[var(--arscmp-primary)] ring-2 ring-teal-100" : "border-zinc-200 hover:border-zinc-300"
+  }`;
 }
 
 export default async function ReportingHubPage({
@@ -37,7 +39,7 @@ export default async function ReportingHubPage({
   if (!access?.user || !actorId) {
     return (
       <div className="min-h-screen bg-zinc-50 px-6 py-16">
-        <AccessDenied title="Reporting" message="Choose an active user in the header to open reporting." />
+        <AccessDenied title="Reporting" message="Choose an active demo user: open Settings → Demo session (/settings/demo)." />
       </div>
     );
   }
@@ -65,37 +67,50 @@ export default async function ReportingHubPage({
 
   return (
     <main className="mx-auto min-h-screen max-w-7xl bg-zinc-50 px-6 py-10">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold text-zinc-900">Reporting</h1>
-        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-zinc-600">
-          Extraordinary cross-module analytics cockpit plus module-specific workspaces. This first release focuses on
-          exceptions and cash-cycle visibility, with AI narrative on top.
+      <header className="mb-8 rounded-3xl border border-zinc-200 bg-white p-7 shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-500">Reporting command center</p>
+        <h1 className="mt-2 text-3xl font-semibold text-zinc-900">Reporting</h1>
+        <p className="mt-3 max-w-4xl text-sm leading-relaxed text-zinc-600">
+          Cross-module analytics cockpit plus module-specific workspaces. Start with the shared board for risk and cash
+          signals, then move into the module report builders for execution.
         </p>
-        <p className="mt-3 max-w-3xl text-xs leading-relaxed text-zinc-500">
-          <span className="font-medium text-zinc-700">Tips:</span> use{" "}
-          <kbd className="rounded border border-zinc-300 bg-zinc-100 px-1 py-0.5 font-mono text-[11px]">R</kbd> to
-          refresh the cockpit (when you are not typing in a field),{" "}
-          <kbd className="rounded border border-zinc-300 bg-zinc-100 px-1 py-0.5 font-mono text-[11px]">
-            Shift+R
-          </kbd>{" "}
-          for a silent refresh, and optional <span className="font-medium text-zinc-700">Auto-refresh</span> on the
-          board. Open the Help assistant anytime for the full Reporting hub playbook. On Control Tower dashboards, open a
-          pinned widget and click a bar, line point, or pie slice to jump to that row in the data table.
+        <div className="mt-5 grid gap-3 md:grid-cols-3">
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Step 1</p>
+            <p className="mt-1 text-sm font-medium text-zinc-900">Scan cockpit signals</p>
+          </div>
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Step 2</p>
+            <p className="mt-1 text-sm font-medium text-zinc-900">Choose module workspace</p>
+          </div>
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Step 3</p>
+            <p className="mt-1 text-sm font-medium text-zinc-900">Run, save, and share</p>
+          </div>
+        </div>
+        <p className="mt-4 max-w-4xl text-xs leading-relaxed text-zinc-500">
+          Tip: use <kbd className="rounded border border-zinc-300 bg-zinc-100 px-1 py-0.5 font-mono text-[11px]">R</kbd>{" "}
+          to refresh,{" "}
+          <kbd className="rounded border border-zinc-300 bg-zinc-100 px-1 py-0.5 font-mono text-[11px]">Shift+R</kbd> for
+          silent refresh, and enable auto-refresh when presenting live metrics.
         </p>
       </header>
 
       <ReportingCockpitBoard snapshot={snapshot} />
 
-      <div className="mb-6 flex flex-wrap gap-2">
+      <div className="mb-8 mt-6 flex flex-wrap gap-3">
         {canPo ? (
-          <Link href="/reports" className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm hover:bg-zinc-50">
+          <Link
+            href="/reports"
+            className="inline-flex items-center rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
+          >
             PO reports
           </Link>
         ) : null}
         {canCt ? (
           <Link
             href="/control-tower/reports"
-            className="rounded-md border border-sky-300 bg-sky-50 px-3 py-1.5 text-sm text-sky-900 hover:bg-sky-100"
+            className="inline-flex items-center rounded-xl bg-[var(--arscmp-primary)] px-4 py-2.5 text-sm font-semibold text-white hover:brightness-95"
           >
             Control Tower reports
           </Link>
@@ -103,7 +118,7 @@ export default async function ReportingHubPage({
         {canCrm ? (
           <Link
             href="/crm/reporting"
-            className="rounded-md border border-violet-300 bg-violet-50 px-3 py-1.5 text-sm text-violet-900 hover:bg-violet-100"
+            className="inline-flex items-center rounded-xl border border-violet-300 bg-violet-50 px-4 py-2.5 text-sm font-medium text-violet-900 hover:bg-violet-100"
           >
             CRM reporting
           </Link>
@@ -111,7 +126,7 @@ export default async function ReportingHubPage({
         {canWms ? (
           <Link
             href="/wms/reporting"
-            className="rounded-md border border-violet-300 bg-violet-50 px-3 py-1.5 text-sm text-violet-900 hover:bg-violet-100"
+            className="inline-flex items-center rounded-xl border border-violet-300 bg-violet-50 px-4 py-2.5 text-sm font-medium text-violet-900 hover:bg-violet-100"
           >
             WMS reporting
           </Link>
@@ -121,11 +136,12 @@ export default async function ReportingHubPage({
       <div className="grid gap-4 md:grid-cols-2">
         {canPo ? (
           <section id="po" className={`scroll-mt-24 ${cardClass(focus, "po")}`}>
-            <h2 className="text-lg font-semibold text-zinc-900">PO Management</h2>
-            <p className="mt-1 text-sm text-zinc-600">Order and procurement reports (registry-based definitions, CSV export).</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Step 2A</p>
+            <h2 className="mt-1 text-lg font-semibold text-zinc-900">PO Management</h2>
+            <p className="mt-1 text-sm text-zinc-600">Order and procurement reports with drilldowns and CSV export.</p>
             <Link
               href="/reports"
-              className="mt-4 inline-block rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+              className="mt-5 inline-flex items-center rounded-xl bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-zinc-800"
             >
               Open PO reports
             </Link>
@@ -134,20 +150,21 @@ export default async function ReportingHubPage({
 
         {canCt ? (
           <section id="control-tower" className={`scroll-mt-24 ${cardClass(focus, "control-tower")}`}>
-            <h2 className="text-lg font-semibold text-zinc-900">Control Tower</h2>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Step 2B</p>
+            <h2 className="mt-1 text-lg font-semibold text-zinc-900">Control Tower</h2>
             <p className="mt-1 text-sm text-zinc-600">
               Shipment KPIs, lanes, spend, on-time — save reports and pin charts to your personal dashboard.
             </p>
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="mt-5 flex flex-wrap gap-3">
               <Link
                 href="/control-tower/reports"
-                className="inline-block rounded-md bg-sky-700 px-4 py-2 text-sm font-medium text-white hover:bg-sky-800"
+                className="inline-flex items-center rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white hover:brightness-95"
               >
                 Report builder
               </Link>
               <Link
                 href="/control-tower/dashboard"
-                className="inline-block rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
+                className="inline-flex items-center rounded-xl border border-zinc-300 bg-white px-5 py-2.5 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
               >
                 My dashboard
               </Link>
@@ -157,13 +174,14 @@ export default async function ReportingHubPage({
 
         {canCrm ? (
           <section id="crm" className={`scroll-mt-24 ${cardClass(focus, "crm")}`}>
-            <h2 className="text-lg font-semibold text-zinc-900">CRM</h2>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Step 2C</p>
+            <h2 className="mt-1 text-lg font-semibold text-zinc-900">CRM</h2>
             <p className="mt-1 text-sm text-zinc-600">
               Pipeline, account, and activity analytics — connected with the same cross-module storytelling layer.
             </p>
             <Link
               href="/crm/reporting"
-              className="mt-4 inline-block rounded-md bg-violet-700 px-4 py-2 text-sm font-medium text-white hover:bg-violet-800"
+              className="mt-5 inline-flex items-center rounded-xl bg-violet-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-violet-800"
             >
               CRM reporting
             </Link>
@@ -172,13 +190,14 @@ export default async function ReportingHubPage({
 
         {canWms ? (
           <section id="wms" className={`scroll-mt-24 ${cardClass(focus, "wms")}`}>
-            <h2 className="text-lg font-semibold text-zinc-900">WMS</h2>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Step 2D</p>
+            <h2 className="mt-1 text-lg font-semibold text-zinc-900">WMS</h2>
             <p className="mt-1 text-sm text-zinc-600">
               Throughput, inventory, and billing analytics integrated into this shared reporting architecture.
             </p>
             <Link
               href="/wms/reporting"
-              className="mt-4 inline-block rounded-md bg-violet-700 px-4 py-2 text-sm font-medium text-white hover:bg-violet-800"
+              className="mt-5 inline-flex items-center rounded-xl bg-violet-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-violet-800"
             >
               WMS reporting
             </Link>

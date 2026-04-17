@@ -1,4 +1,6 @@
 export const CT_URL_STATUSES = new Set([
+  "BOOKING_DRAFT",
+  "BOOKING_SUBMITTED",
   "SHIPPED",
   "VALIDATED",
   "BOOKED",
@@ -10,6 +12,9 @@ export const CT_URL_STATUSES = new Set([
 export const CT_URL_MODES = new Set(["OCEAN", "AIR", "ROAD", "RAIL"]);
 
 export const CT_URL_ROUTE_ACTION_PREFIXES = new Set([
+  "Send booking",
+  "Await booking",
+  "Escalate booking",
   "Plan leg",
   "Mark departure",
   "Record arrival",

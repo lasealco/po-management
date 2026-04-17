@@ -1,7 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { startTransition, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ActionButton } from "@/components/action-button";
+import { LocationCodePicker } from "@/components/location-code-picker";
+import { SearchableSelectField } from "@/components/searchable-select-field";
+import { WorkflowHeader } from "@/components/workflow-header";
 
 type SupplierOption = {
   id: string;
@@ -136,12 +141,6 @@ export function OrderCreateForm({
   const [newWarehouseName, setNewWarehouseName] = useState("");
   const [newWarehouseCode, setNewWarehouseCode] = useState("");
   const [newWarehouseType, setNewWarehouseType] = useState<"CFS" | "WAREHOUSE">("WAREHOUSE");
-  const [newForwarderOpen, setNewForwarderOpen] = useState(false);
-  const [newForwarderName, setNewForwarderName] = useState("");
-  const [newForwarderCode, setNewForwarderCode] = useState("");
-  const [newForwarderOfficeName, setNewForwarderOfficeName] = useState("");
-  const [newForwarderContactName, setNewForwarderContactName] = useState("");
-  const [newForwarderContactEmail, setNewForwarderContactEmail] = useState("");
   const [newProductOpen, setNewProductOpen] = useState(false);
   const [newProductCode, setNewProductCode] = useState("");
   const [newProductName, setNewProductName] = useState("");
@@ -162,6 +161,67 @@ export function OrderCreateForm({
   const forwarderSupplier = useMemo(
     () => forwarderOptions.find((f) => f.id === forwarderSupplierId) ?? null,
     [forwarderOptions, forwarderSupplierId],
+  );
+  const supplierSearchOptions = useMemo(
+    () =>
+      supplierOptions.map((s) => ({
+        value: s.id,
+        label: `${s.code ? `${s.code} · ` : ""}${s.name}`,
+      })),
+    [supplierOptions],
+  );
+  const warehouseSearchOptions = useMemo(
+    () =>
+      warehouseOptions
+        .filter((w) => w.type === "WAREHOUSE")
+        .map((w) => ({
+          value: w.id,
+          label: `${w.code ? `${w.code} · ` : ""}${w.name}${w.city ? ` · ${w.city}` : ""}`,
+        })),
+    [warehouseOptions],
+  );
+  const cfsSearchOptions = useMemo(
+    () =>
+      warehouseOptions
+        .filter((w) => w.type === "CFS")
+        .map((w) => ({
+          value: w.id,
+          label: `${w.code ? `${w.code} · ` : ""}${w.name}`,
+        })),
+    [warehouseOptions],
+  );
+  const forwarderOptionsSearch = useMemo(
+    () =>
+      forwarderOptions.map((f) => ({
+        value: f.id,
+        label: `${f.code ? `${f.code} · ` : ""}${f.name}`,
+      })),
+    [forwarderOptions],
+  );
+  const forwarderOfficeOptions = useMemo(
+    () =>
+      (forwarderSupplier?.offices ?? []).map((o) => ({
+        value: o.id,
+        label: `${o.name}${o.addressLine1 ? ` · ${o.addressLine1}` : ""}${o.city ? ` · ${o.city}` : ""}`,
+      })),
+    [forwarderSupplier],
+  );
+  const forwarderContactOptions = useMemo(
+    () =>
+      (forwarderSupplier?.contacts ?? []).map((c) => ({
+        value: c.id,
+        label: `${c.name}${c.email ? ` · ${c.email}` : ""}${c.phone ? ` · ${c.phone}` : ""}`,
+      })),
+    [forwarderSupplier],
+  );
+  const alternateAddressOptions = warehouseSearchOptions;
+  const availableProductOptions = useMemo(
+    () =>
+      availableProducts.map((p) => ({
+        value: p.id,
+        label: `${p.productCode || p.sku || "—"} · ${p.name}${p.unit ? ` (${p.unit})` : ""}`,
+      })),
+    [availableProducts],
   );
   const alternateDeliveryWarehouse = useMemo(
     () =>
@@ -320,47 +380,6 @@ export function OrderCreateForm({
     router.refresh();
   }
 
-  async function quickCreateForwarder() {
-    if (!newForwarderName.trim()) return;
-    const createSupplier = await fetch("/api/suppliers", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: newForwarderName.trim(),
-        code: newForwarderCode.trim() || null,
-      }),
-    });
-    const supPayload = (await createSupplier.json()) as {
-      supplier?: { id: string; name: string; code: string | null };
-      error?: string;
-    };
-    if (!createSupplier.ok || !supPayload.supplier) {
-      setError(supPayload.error ?? "Could not create forwarder.");
-      return;
-    }
-    const supplierId = supPayload.supplier.id;
-    if (newForwarderOfficeName.trim()) {
-      await fetch(`/api/suppliers/${supplierId}/offices`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newForwarderOfficeName.trim() }),
-      });
-    }
-    if (newForwarderContactName.trim()) {
-      await fetch(`/api/suppliers/${supplierId}/contacts`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: newForwarderContactName.trim(),
-          email: newForwarderContactEmail.trim() || null,
-          role: "Forwarding",
-          isPrimary: true,
-        }),
-      });
-    }
-    router.refresh();
-  }
-
   async function quickCreateProduct() {
     if (!supplierId || !newProductCode.trim() || !newProductName.trim()) return;
     const res = await fetch("/api/products", {
@@ -400,11 +419,13 @@ export function OrderCreateForm({
 
   return (
     <main className="mx-auto w-full max-w-5xl px-6 py-8">
-      <header className="mb-5">
-        <h1 className="text-2xl font-semibold text-zinc-900">Create Purchase Order</h1>
-        <p className="mt-1 text-sm text-zinc-600">
-          Select supplier, add eligible products, and save draft order.
-        </p>
+      <header className="mb-6">
+        <WorkflowHeader
+          eyebrow="PO creation workflow"
+          title="Create Purchase Order"
+          description="Select supplier, configure delivery and terms, then save draft or send in one consistent workflow."
+          steps={["Step 1: Supplier and locations", "Step 2: Line items and routing", "Step 3: Review totals and save"]}
+        />
       </header>
       {error ? (
         <p className="mb-4 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
@@ -415,10 +436,9 @@ export function OrderCreateForm({
       <section className="mb-4 grid gap-3 rounded-lg border border-zinc-200 bg-white p-4 sm:grid-cols-3">
         <label className="flex flex-col gap-1 text-sm">
           <span className="font-medium text-zinc-800">Supplier</span>
-          <select
+          <SearchableSelectField
             value={supplierId}
-            onChange={(e) => {
-              const nextId = e.target.value;
+            onChange={(nextId) => {
               setSupplierId(nextId);
               setLines([{ productId: "", quantity: "1", unitPrice: "0" }]);
               const nextSupplier = supplierOptions.find((s) => s.id === nextId) ?? null;
@@ -430,52 +450,36 @@ export function OrderCreateForm({
               setPaymentTermsLabel(nextSupplier?.paymentTermsLabel ?? "");
               setIncoterm(nextSupplier?.defaultIncoterm ?? "");
             }}
-            className="rounded-md border border-zinc-300 px-3 py-2"
-          >
-            {supplierOptions.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.code ? `${s.code} · ` : ""}
-                {s.name}
-              </option>
-            ))}
-          </select>
+            options={supplierSearchOptions}
+            placeholder="Type to filter supplier..."
+            emptyLabel="Select supplier..."
+            inputClassName="rounded-md border border-zinc-300 px-3 py-2"
+            listClassName="max-h-36 overflow-auto rounded border border-zinc-200 bg-white"
+          />
         </label>
         <label className="flex flex-col gap-1 text-sm">
           <span className="font-medium text-zinc-800">Buyer office location</span>
-          <select
+          <SearchableSelectField
             value={buyerWarehouseId}
-            onChange={(e) => setBuyerWarehouseId(e.target.value)}
-            className="rounded-md border border-zinc-300 px-3 py-2"
-          >
-            <option value="">Select buyer office</option>
-            {warehouseOptions
-              .filter((w) => w.type === "WAREHOUSE")
-              .map((w) => (
-                <option key={w.id} value={w.id}>
-                  {w.code ? `${w.code} · ` : ""}
-                  {w.name}
-                  {w.city ? ` · ${w.city}` : ""}
-                </option>
-              ))}
-          </select>
+            onChange={setBuyerWarehouseId}
+            options={warehouseSearchOptions}
+            placeholder="Type to filter buyer office..."
+            emptyLabel="Select buyer office"
+            inputClassName="rounded-md border border-zinc-300 px-3 py-2"
+            listClassName="max-h-36 overflow-auto rounded border border-zinc-200 bg-white"
+          />
         </label>
         <label className="flex flex-col gap-1 text-sm">
           <span className="font-medium text-zinc-800">CFS location</span>
-          <select
+          <SearchableSelectField
             value={cfsWarehouseId}
-            onChange={(e) => setCfsWarehouseId(e.target.value)}
-            className="rounded-md border border-zinc-300 px-3 py-2"
-          >
-            <option value="">Select CFS</option>
-            {warehouseOptions
-              .filter((w) => w.type === "CFS")
-              .map((w) => (
-                <option key={w.id} value={w.id}>
-                  {w.code ? `${w.code} · ` : ""}
-                  {w.name}
-                </option>
-              ))}
-          </select>
+            onChange={setCfsWarehouseId}
+            options={cfsSearchOptions}
+            placeholder="Type to filter CFS..."
+            emptyLabel="Select CFS"
+            inputClassName="rounded-md border border-zinc-300 px-3 py-2"
+            listClassName="max-h-36 overflow-auto rounded border border-zinc-200 bg-white"
+          />
         </label>
         <label className="flex flex-col gap-1 text-sm">
           <span className="font-medium text-zinc-800">Requested delivery date</span>
@@ -653,107 +657,46 @@ export function OrderCreateForm({
       <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
         <h2 className="mb-2 text-sm font-semibold text-zinc-900">Forwarder</h2>
         <div className="grid gap-2 sm:grid-cols-3">
-          <select
+          <SearchableSelectField
             value={forwarderSupplierId}
-            onChange={(e) => {
-              setForwarderSupplierId(e.target.value);
+            onChange={(next) => {
+              setForwarderSupplierId(next);
               setForwarderOfficeId("");
               setForwarderContactId("");
             }}
-            className="rounded-md border border-zinc-300 px-3 py-2 text-sm"
-          >
-            <option value="">Select forwarder company</option>
-            {forwarderOptions.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.code ? `${f.code} · ` : ""}
-                {f.name}
-              </option>
-            ))}
-          </select>
-          <select
+            options={forwarderOptionsSearch}
+            placeholder="Type to filter forwarder..."
+            emptyLabel="Select forwarder company"
+            inputClassName="rounded-md border border-zinc-300 px-3 py-2 text-sm"
+            listClassName="max-h-36 overflow-auto rounded border border-zinc-200 bg-white"
+          />
+          <SearchableSelectField
             value={forwarderOfficeId}
-            onChange={(e) => setForwarderOfficeId(e.target.value)}
-            className="rounded-md border border-zinc-300 px-3 py-2 text-sm"
-          >
-            <option value="">Forwarder office (optional)</option>
-            {(forwarderSupplier?.offices ?? []).map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.name}
-                {o.addressLine1 ? ` · ${o.addressLine1}` : ""}
-                {o.city ? ` · ${o.city}` : ""}
-              </option>
-            ))}
-          </select>
-          <select
+            onChange={setForwarderOfficeId}
+            options={forwarderOfficeOptions}
+            placeholder="Type to filter office..."
+            emptyLabel="Forwarder office (optional)"
+            inputClassName="rounded-md border border-zinc-300 px-3 py-2 text-sm"
+            listClassName="max-h-36 overflow-auto rounded border border-zinc-200 bg-white"
+          />
+          <SearchableSelectField
             value={forwarderContactId}
-            onChange={(e) => setForwarderContactId(e.target.value)}
-            className="rounded-md border border-zinc-300 px-3 py-2 text-sm"
-          >
-            <option value="">Forwarder contact (optional)</option>
-            {(forwarderSupplier?.contacts ?? []).map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-                {c.email ? ` · ${c.email}` : ""}
-                {c.phone ? ` · ${c.phone}` : ""}
-              </option>
-            ))}
-          </select>
+            onChange={setForwarderContactId}
+            options={forwarderContactOptions}
+            placeholder="Type to filter contact..."
+            emptyLabel="Forwarder contact (optional)"
+            inputClassName="rounded-md border border-zinc-300 px-3 py-2 text-sm"
+            listClassName="max-h-36 overflow-auto rounded border border-zinc-200 bg-white"
+          />
         </div>
-        <div className="mt-2">
-          <button
-            type="button"
-            onClick={() => setNewForwarderOpen((v) => !v)}
-            className="rounded border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700"
-          >
-            {newForwarderOpen ? "Close quick add forwarder" : "New forwarder"}
-          </button>
+        <div className="mt-2 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-700">
+          Forwarders and suppliers are managed in SRM.
+          <Link href="/srm" className="ml-1 font-semibold text-[var(--arscmp-primary)] hover:underline">
+            Open SRM
+          </Link>
+          .
         </div>
       </section>
-
-      {newForwarderOpen ? (
-        <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
-          <h2 className="mb-2 text-sm font-semibold text-zinc-900">Quick add forwarder</h2>
-          <div className="grid gap-2 sm:grid-cols-3">
-            <input
-              value={newForwarderName}
-              onChange={(e) => setNewForwarderName(e.target.value)}
-              placeholder="Forwarder company"
-              className="rounded-md border border-zinc-300 px-3 py-2 text-sm"
-            />
-            <input
-              value={newForwarderCode}
-              onChange={(e) => setNewForwarderCode(e.target.value)}
-              placeholder="Code (optional)"
-              className="rounded-md border border-zinc-300 px-3 py-2 text-sm"
-            />
-            <input
-              value={newForwarderOfficeName}
-              onChange={(e) => setNewForwarderOfficeName(e.target.value)}
-              placeholder="Office name (optional)"
-              className="rounded-md border border-zinc-300 px-3 py-2 text-sm"
-            />
-            <input
-              value={newForwarderContactName}
-              onChange={(e) => setNewForwarderContactName(e.target.value)}
-              placeholder="Primary contact name (optional)"
-              className="rounded-md border border-zinc-300 px-3 py-2 text-sm"
-            />
-            <input
-              value={newForwarderContactEmail}
-              onChange={(e) => setNewForwarderContactEmail(e.target.value)}
-              placeholder="Primary contact email (optional)"
-              className="rounded-md border border-zinc-300 px-3 py-2 text-sm"
-            />
-            <button
-              type="button"
-              onClick={() => void quickCreateForwarder()}
-              className="rounded border border-zinc-900 bg-zinc-900 px-3 py-2 text-sm font-medium text-white"
-            >
-              Create
-            </button>
-          </div>
-        </section>
-      ) : null}
 
       <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
         <h2 className="mb-2 text-sm font-semibold text-zinc-900">Delivery address</h2>
@@ -782,10 +725,9 @@ export function OrderCreateForm({
           <div className="mb-3 grid gap-2 sm:grid-cols-2">
             <label className="flex flex-col gap-1 text-sm">
               <span className="font-medium text-zinc-800">Delivery address book</span>
-              <select
+              <SearchableSelectField
                 value={alternateDeliveryWarehouseId}
-                onChange={(e) => {
-                  const next = e.target.value;
+                onChange={(next) => {
                   setAlternateDeliveryWarehouseId(next);
                   const selected =
                     warehouseOptions.find((w) => w.id === next && w.type === "WAREHOUSE") ?? null;
@@ -796,18 +738,12 @@ export function OrderCreateForm({
                   setShipToRegion(selected.region ?? "");
                   setShipToCountryCode(selected.countryCode ?? "");
                 }}
-                className="rounded-md border border-zinc-300 px-3 py-2"
-              >
-                <option value="">Select saved delivery address</option>
-                {warehouseOptions
-                  .filter((w) => w.type === "WAREHOUSE")
-                  .map((w) => (
-                    <option key={w.id} value={w.id}>
-                      {w.name}
-                      {w.city ? ` · ${w.city}` : ""}
-                    </option>
-                  ))}
-              </select>
+                options={alternateAddressOptions}
+                placeholder="Type to filter saved address..."
+                emptyLabel="Select saved delivery address"
+                inputClassName="rounded-md border border-zinc-300 px-3 py-2"
+                listClassName="max-h-36 overflow-auto rounded border border-zinc-200 bg-white"
+              />
             </label>
           </div>
         ) : null}
@@ -893,9 +829,9 @@ export function OrderCreateForm({
                     ? "Rail terminal origin"
                     : "Road origin"}
             </span>
-            <input
+            <LocationCodePicker
               value={originCode}
-              onChange={(e) => setOriginCode(e.target.value)}
+              onChange={setOriginCode}
               placeholder={
                 transportMode === "OCEAN"
                   ? "CNSZX"
@@ -905,6 +841,8 @@ export function OrderCreateForm({
                       ? "SZ-TML-01"
                       : "Shenzhen facility"
               }
+              types={["UN_LOCODE", "PORT", "AIRPORT"]}
+              emptyLabel="No origin code"
               className="rounded-md border border-zinc-300 px-3 py-2"
             />
           </label>
@@ -918,9 +856,9 @@ export function OrderCreateForm({
                     ? "Rail terminal destination"
                     : "Road destination"}
             </span>
-            <input
+            <LocationCodePicker
               value={destinationCode}
-              onChange={(e) => setDestinationCode(e.target.value)}
+              onChange={setDestinationCode}
               placeholder={
                 transportMode === "OCEAN"
                   ? "NLRTM"
@@ -930,6 +868,8 @@ export function OrderCreateForm({
                       ? "RTM-TML-02"
                       : "Customer DC"
               }
+              types={["UN_LOCODE", "PORT", "AIRPORT"]}
+              emptyLabel="No destination code"
               className="rounded-md border border-zinc-300 px-3 py-2"
             />
           </label>
@@ -996,19 +936,15 @@ export function OrderCreateForm({
         <div className="space-y-2">
           {lines.map((line, idx) => (
             <div key={idx} className="grid gap-2 sm:grid-cols-[1fr_120px_140px_auto]">
-              <select
+              <SearchableSelectField
                 value={line.productId}
-                onChange={(e) => updateLine(idx, { productId: e.target.value })}
-                className="rounded-md border border-zinc-300 px-3 py-2 text-sm"
-              >
-                <option value="">Select product</option>
-                {availableProducts.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.productCode || p.sku || "—"} · {p.name}
-                    {p.unit ? ` (${p.unit})` : ""}
-                  </option>
-                ))}
-              </select>
+                onChange={(next) => updateLine(idx, { productId: next })}
+                options={availableProductOptions}
+                placeholder="Type to filter product..."
+                emptyLabel="Select product"
+                inputClassName="rounded-md border border-zinc-300 px-3 py-2 text-sm"
+                listClassName="max-h-36 overflow-auto rounded border border-zinc-200 bg-white"
+              />
               <input
                 value={line.quantity}
                 onChange={(e) => updateLine(idx, { quantity: e.target.value })}
@@ -1107,38 +1043,34 @@ export function OrderCreateForm({
         <p className="text-sm font-semibold text-zinc-900">Total: {total.toFixed(2)} {currency}</p>
       </section>
 
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+        <ActionButton
           disabled={busy}
           onClick={() => {
             setSubmitMode("draft");
             void submit("draft");
           }}
-          className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
           {busy && submitMode === "draft" ? "Saving…" : "Save draft"}
-        </button>
+        </ActionButton>
         {canSendDirect ? (
-          <button
-            type="button"
+          <ActionButton
+            variant="accent"
             disabled={busy}
             onClick={() => {
               setSubmitMode("send");
               void submit("send");
             }}
-            className="rounded-md border border-emerald-700 bg-emerald-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
           >
             {busy && submitMode === "send" ? "Sending…" : "Save and send"}
-          </button>
+          </ActionButton>
         ) : null}
-        <button
-          type="button"
-          onClick={() => router.push("/")}
-          className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700"
+        <ActionButton
+          variant="secondary"
+          onClick={() => router.push("/orders")}
         >
           Cancel
-        </button>
+        </ActionButton>
       </div>
     </main>
   );

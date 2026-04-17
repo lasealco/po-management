@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { WorkflowHeader } from "@/components/workflow-header";
 import { getActorUserId, getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { ControlTowerShipment360 } from "@/components/control-tower-shipment-360";
 import { getControlTowerPortalContext } from "@/lib/control-tower/viewer";
@@ -48,6 +50,22 @@ export default async function ControlTowerShipmentPage({
 
   return (
     <main className="mx-auto w-full max-w-7xl px-6 py-10">
+      <p className="text-sm">
+        <Link href="/control-tower/workbench" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+          ← Control Tower workbench
+        </Link>
+      </p>
+      <div className="mt-3 mb-5">
+        <WorkflowHeader
+          eyebrow="Shipment 360 workspace"
+          title="Shipment detail"
+          steps={[
+            "Step 1: Send or confirm booking with forwarder",
+            "Step 2: Plan legs, milestones, and alerts",
+            "Step 3: Close exceptions and commercial follow-up",
+          ]}
+        />
+      </div>
       {ctx.isRestrictedView ? (
         <p className="mb-4 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-950">
           Your view is scoped to customer- or supplier-visible shipments; internal alerts, exceptions, and audit may be

@@ -9,6 +9,8 @@ import { getDemoTenant } from "@/lib/demo-tenant";
 export const dynamic = "force-dynamic";
 
 const STATUSES: ShipmentStatus[] = [
+  "BOOKING_DRAFT",
+  "BOOKING_SUBMITTED",
   "SHIPPED",
   "VALIDATED",
   "BOOKED",

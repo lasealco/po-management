@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Suspense, type ReactNode, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import {
@@ -39,6 +39,10 @@ type Row = {
   receivedAt: string | null;
   routeProgressPct: number | null;
   nextAction: string | null;
+  bookingStatus?: string | null;
+  bookingSlaBreached?: boolean;
+  bookingSentAt?: string | null;
+  bookingConfirmSlaDueAt?: string | null;
   quantityRef: string | null;
   weightKgRef: string | null;
   cbmRef: string | null;
@@ -48,6 +52,66 @@ type Row = {
   dispatchOwner: { id: string; name: string } | null;
   openQueueCounts: { openAlerts: number; openExceptions: number };
 };
+
+type HealthState = "good" | "at_risk" | "delayed" | "missing_data";
+
+function classifyShipmentHealth(r: Row, nowMs: number): HealthState {
+  if (r.bookingSlaBreached) return "at_risk";
+  const na = r.nextAction || "";
+  if (na.startsWith("Escalate booking")) return "at_risk";
+  if (na.startsWith("Send booking")) return "missing_data";
+  const etaIso = r.latestEta || r.eta;
+  const etaMs = etaIso ? new Date(etaIso).getTime() : Number.NaN;
+  const hasTracking = Boolean(r.trackingMilestoneSummary?.next || (r.trackingMilestoneSummary?.openCount ?? 0) > 0);
+  const hasRoutePlan = Boolean(r.nextAction);
+  if (!hasTracking && !hasRoutePlan) return "missing_data";
+  if (r.receivedAt && Number.isFinite(etaMs)) {
+    return new Date(r.receivedAt).getTime() <= etaMs ? "good" : "delayed";
+  }
+  if (Number.isFinite(etaMs) && etaMs < nowMs) return "delayed";
+  if ((r.openQueueCounts?.openAlerts ?? 0) > 0 || (r.openQueueCounts?.openExceptions ?? 0) > 0) return "at_risk";
+  if (r.trackingMilestoneSummary?.next?.isLate) return "at_risk";
+  return "good";
+}
+
+function healthBadgeClass(health: HealthState): string {
+  if (health === "good") return "border-emerald-200 bg-emerald-50 text-emerald-900";
+  if (health === "at_risk") return "border-amber-200 bg-amber-50 text-amber-950";
+  if (health === "delayed") return "border-rose-200 bg-rose-50 text-rose-900";
+  return "border-zinc-300 bg-zinc-100 text-zinc-700";
+}
+
+function healthLabel(health: HealthState): string {
+  if (health === "good") return "On-time";
+  if (health === "at_risk") return "At risk";
+  if (health === "delayed") return "Delayed";
+  return "Missing plan/tracking";
+}
+
+function ActionTooltipButton({
+  disabled,
+  onClick,
+  className,
+  tooltip,
+  children,
+}: {
+  disabled?: boolean;
+  onClick: () => void | Promise<void>;
+  className: string;
+  tooltip: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="group relative inline-flex">
+      <button type="button" disabled={disabled} onClick={() => void onClick()} className={className}>
+        {children}
+      </button>
+      <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 hidden w-72 -translate-x-1/2 rounded-md border border-zinc-200 bg-white px-3 py-2 text-xs text-zinc-700 shadow-md group-hover:block">
+        {tooltip}
+      </div>
+    </div>
+  );
+}
 
 function workbenchUrlHasSearchFilters(sp: URLSearchParams): boolean {
   return Boolean(
@@ -120,6 +184,8 @@ function ControlTowerWorkbenchInner({
   const [lastRefreshedAt, setLastRefreshedAt] = useState<string | null>(null);
   const [saved, setSaved] = useState<Array<{ id: string; name: string; filtersJson: unknown }>>([]);
   const [savedFiltersErr, setSavedFiltersErr] = useState<string | null>(null);
+  const [enrichBusy, setEnrichBusy] = useState(false);
+  const [timelineBusy, setTimelineBusy] = useState(false);
   const [ownerFilter, setOwnerFilter] = useState("");
   const [routeHealth, setRouteHealth] = useState("");
   const [ship360Tab, setShip360Tab] = useState<"" | "milestones">("");
@@ -485,16 +551,38 @@ function ControlTowerWorkbenchInner({
   };
 
   const statusOptions = useMemo(
-    () => ["", "SHIPPED", "VALIDATED", "BOOKED", "IN_TRANSIT", "DELIVERED", "RECEIVED"],
+    () => [
+      "",
+      "BOOKING_DRAFT",
+      "BOOKING_SUBMITTED",
+      "SHIPPED",
+      "VALIDATED",
+      "BOOKED",
+      "IN_TRANSIT",
+      "DELIVERED",
+      "RECEIVED",
+    ],
     [],
   );
   const modeOptions = useMemo(() => ["", "OCEAN", "AIR", "ROAD", "RAIL"], []);
   const routeActionOptions = useMemo(
-    () => ["", "Plan leg", "Mark departure", "Record arrival", "Route complete"],
+    () => [
+      "",
+      "Send booking",
+      "Await booking",
+      "Escalate booking",
+      "Plan leg",
+      "Mark departure",
+      "Record arrival",
+      "Route complete",
+    ],
     [],
   );
   const routeActionCounts = useMemo(() => {
     const out: Record<string, number> = {
+      "Send booking": 0,
+      "Await booking": 0,
+      "Escalate booking": 0,
       "Plan leg": 0,
       "Mark departure": 0,
       "Record arrival": 0,
@@ -502,9 +590,13 @@ function ControlTowerWorkbenchInner({
     };
     for (const r of rows) {
       const action = r.nextAction || "";
-      for (const key of Object.keys(out)) {
-        if (action.startsWith(key)) out[key] += 1;
-      }
+      if (action.startsWith("Send booking")) out["Send booking"] += 1;
+      else if (action.startsWith("Await booking")) out["Await booking"] += 1;
+      else if (action.startsWith("Escalate booking")) out["Escalate booking"] += 1;
+      else if (action.startsWith("Plan leg")) out["Plan leg"] += 1;
+      else if (action.startsWith("Mark departure")) out["Mark departure"] += 1;
+      else if (action.startsWith("Record arrival")) out["Record arrival"] += 1;
+      else if (action.startsWith("Route complete")) out["Route complete"] += 1;
     }
     return out;
   }, [rows]);
@@ -545,16 +637,30 @@ function ControlTowerWorkbenchInner({
         const eta = r.latestEta || r.eta;
         return eta ? new Date(eta).getTime() < Date.now() : false;
       }).length,
+      needsSendBooking: filteredRows.filter((r) => (r.nextAction || "").startsWith("Send booking")).length,
+      awaitingBooking: filteredRows.filter((r) => (r.nextAction || "").startsWith("Await booking")).length,
+      bookingSlaOverdue: filteredRows.filter(
+        (r) => (r.nextAction || "").startsWith("Escalate booking") || Boolean(r.bookingSlaBreached),
+      ).length,
       needsDeparture: filteredRows.filter((r) => (r.nextAction || "").startsWith("Mark departure")).length,
       needsArrival: filteredRows.filter((r) => (r.nextAction || "").startsWith("Record arrival")).length,
     }),
     [filteredRows],
   );
+  const healthStats = useMemo(() => {
+    const now = Date.now();
+    const stats = { good: 0, at_risk: 0, delayed: 0, missing_data: 0 };
+    for (const r of filteredRows) {
+      const health = classifyShipmentHealth(r, now);
+      stats[health] += 1;
+    }
+    return stats;
+  }, [filteredRows]);
   useEffect(() => {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
 
-  const tableColSpan = restrictedView ? 13 : 14;
+  const tableColSpan = restrictedView ? 14 : 15;
 
   const setExternalOrderRef = useCallback(
     async (row: Row) => {
@@ -809,6 +915,75 @@ function ControlTowerWorkbenchInner({
         >
           Refresh
         </button>
+        {!restrictedView ? (
+          <ActionTooltipButton
+            disabled={enrichBusy}
+            tooltip="Adds missing route legs and tracking milestones for recent shipments without changing existing fully-populated timelines."
+            onClick={async () => {
+              try {
+                setEnrichBusy(true);
+                const res = await fetch("/api/control-tower", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ action: "enrich_ct_demo_tracking", take: 180 }),
+                });
+                const payload = (await res.json()) as {
+                  error?: string;
+                  shipmentsUpdated?: number;
+                  legsCreated?: number;
+                  milestonesCreated?: number;
+                };
+                if (!res.ok) throw new Error(payload.error || "Could not enrich shipments.");
+                window.alert(
+                  `Demo enrichment complete.\nShipments updated: ${payload.shipmentsUpdated ?? 0}\nLegs created: ${payload.legsCreated ?? 0}\nTracking milestones created: ${payload.milestonesCreated ?? 0}`,
+                );
+                await load();
+              } catch (e) {
+                window.alert(e instanceof Error ? e.message : "Could not enrich shipments.");
+              } finally {
+                setEnrichBusy(false);
+              }
+            }}
+            className="rounded border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-900 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {enrichBusy ? "Generating demo tracking..." : "Generate demo tracking"}
+          </ActionTooltipButton>
+        ) : null}
+        {!restrictedView ? (
+          <ActionTooltipButton
+            disabled={timelineBusy}
+            tooltip="Rebuilds route legs and milestone timelines for a larger shipment set, creating a visible mix of on-time, at-risk, and delayed profiles for demos."
+            onClick={async () => {
+              try {
+                setTimelineBusy(true);
+                const res = await fetch("/api/control-tower", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ action: "regenerate_ct_demo_timeline", take: 260 }),
+                });
+                const payload = (await res.json()) as {
+                  error?: string;
+                  updated?: number;
+                  onTime?: number;
+                  atRisk?: number;
+                  delayed?: number;
+                };
+                if (!res.ok) throw new Error(payload.error || "Could not regenerate timeline.");
+                window.alert(
+                  `Timeline regenerated.\nShipments updated: ${payload.updated ?? 0}\nOn-time profile: ${payload.onTime ?? 0}\nAt-risk profile: ${payload.atRisk ?? 0}\nDelayed profile: ${payload.delayed ?? 0}`,
+                );
+                await load();
+              } catch (e) {
+                window.alert(e instanceof Error ? e.message : "Could not regenerate timeline.");
+              } finally {
+                setTimelineBusy(false);
+              }
+            }}
+            className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {timelineBusy ? "Regenerating timeline..." : "Regenerate timeline (heavier)"}
+          </ActionTooltipButton>
+        ) : null}
         <button
           type="button"
           onClick={() => setAutoRefresh((v) => !v)}
@@ -937,11 +1112,32 @@ function ControlTowerWorkbenchInner({
         filters.
       </p>
       <div className="flex flex-wrap gap-2 text-xs">
+        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-900">
+          On-time: <strong>{healthStats.good}</strong>
+        </span>
+        <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-amber-900">
+          At risk: <strong>{healthStats.at_risk}</strong>
+        </span>
+        <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-rose-900">
+          Delayed: <strong>{healthStats.delayed}</strong>
+        </span>
+        <span className="rounded-full border border-zinc-300 bg-zinc-100 px-3 py-1 text-zinc-700">
+          Missing plan/tracking: <strong>{healthStats.missing_data}</strong>
+        </span>
         <span className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-zinc-700">
           Visible: <strong>{filteredRows.length}</strong>
         </span>
         <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-amber-900">
           Overdue ETA: <strong>{triageStats.overdue}</strong>
+        </span>
+        <span className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-violet-900">
+          Send booking: <strong>{triageStats.needsSendBooking}</strong>
+        </span>
+        <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-800">
+          Await confirm: <strong>{triageStats.awaitingBooking}</strong>
+        </span>
+        <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-rose-900">
+          Booking SLA overdue: <strong>{triageStats.bookingSlaOverdue}</strong>
         </span>
         <span className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-sky-900">
           Needs departure: <strong>{triageStats.needsDeparture}</strong>
@@ -971,6 +1167,7 @@ function ControlTowerWorkbenchInner({
               <th className="px-2 py-2">Order</th>
               <th className="px-2 py-2">Status</th>
               <th className="px-2 py-2">Mode</th>
+              <th className="px-2 py-2">Health</th>
               <th className="px-2 py-2">Customer</th>
               <th className="px-2 py-2">Lane</th>
               <th className="px-2 py-2">ETA</th>
@@ -1051,6 +1248,16 @@ function ControlTowerWorkbenchInner({
                   </td>
                   <td className="px-2 py-2">{r.status}</td>
                   <td className="px-2 py-2">{r.transportMode || "—"}</td>
+                  <td className="whitespace-nowrap px-2 py-2">
+                    {(() => {
+                      const health = classifyShipmentHealth(r, Date.now());
+                      return (
+                        <span className={`rounded-full border px-2 py-0.5 text-xs font-medium ${healthBadgeClass(health)}`}>
+                          {healthLabel(health)}
+                        </span>
+                      );
+                    })()}
+                  </td>
                   <td className="px-2 py-2 text-xs text-zinc-600">
                     {r.customerCrmAccountName || (r.customerCrmAccountId ? r.customerCrmAccountId.slice(0, 8) + "…" : "—")}
                   </td>

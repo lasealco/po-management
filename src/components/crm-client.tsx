@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { ActionButton } from "@/components/action-button";
+import { WorkflowHeader } from "@/components/workflow-header";
 
 type Summary = {
   leads: number;
@@ -182,25 +184,23 @@ export function CrmClient({
 
   return (
     <div className="mx-auto max-w-7xl px-6 py-8">
-      <div className="mb-8 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
-            CRM
-          </h1>
-          <p className="text-sm text-zinc-600">
-            Leads, accounts, and opportunities (R1). Scoped to your tenant;{" "}
-            {canEdit
-              ? "you can see all tenant CRM records."
-              : "you see records you own."}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => void load()}
-          className="self-start rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
+      <div className="mb-8">
+        <WorkflowHeader
+          eyebrow="CRM command workspace"
+          title="CRM"
+          description={`Leads, accounts, and opportunities (R1). Scoped to your tenant; ${
+            canEdit ? "you can see all tenant CRM records." : "you see records you own."
+          }`}
+          steps={[
+            "Step 1: Capture lead/account inputs",
+            "Step 2: Create or convert opportunities",
+            "Step 3: Advance pipeline execution",
+          ]}
         >
-          Refresh
-        </button>
+          <ActionButton variant="secondary" onClick={() => void load()}>
+            Refresh
+          </ActionButton>
+        </WorkflowHeader>
       </div>
 
       {error ? (
@@ -265,8 +265,9 @@ export function CrmClient({
         </div>
       ) : null}
 
-      <div className="grid gap-10 lg:grid-cols-2">
-        <section className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
+      <div className="grid gap-5 lg:grid-cols-2">
+        <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">Step 1A</p>
           <h2 className="text-lg font-semibold text-zinc-900">New lead</h2>
           <form onSubmit={addLead} className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
             <label className="flex-1 text-sm">
@@ -279,17 +280,17 @@ export function CrmClient({
                 disabled={busy}
               />
             </label>
-            <button
+            <ActionButton
               type="submit"
               disabled={busy || !leadCompany.trim()}
-              className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
             >
               Save lead
-            </button>
+            </ActionButton>
           </form>
         </section>
 
-        <section className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
+        <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">Step 1B</p>
           <h2 className="text-lg font-semibold text-zinc-900">New account</h2>
           <form
             onSubmit={addAccount}
@@ -305,18 +306,18 @@ export function CrmClient({
                 disabled={busy}
               />
             </label>
-            <button
+            <ActionButton
               type="submit"
               disabled={busy || !accountName.trim()}
-              className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
             >
               Save account
-            </button>
+            </ActionButton>
           </form>
         </section>
       </div>
 
-      <section className="mt-10 rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
+      <section className="mt-5 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">Step 2</p>
         <h2 className="text-lg font-semibold text-zinc-900">New opportunity</h2>
         <form
           onSubmit={addOpportunity}
@@ -352,18 +353,17 @@ export function CrmClient({
             />
           </label>
           <div className="sm:col-span-3">
-            <button
+            <ActionButton
               type="submit"
               disabled={busy || !oppAccountId || !oppName.trim()}
-              className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
             >
               Save opportunity
-            </button>
+            </ActionButton>
           </div>
         </form>
       </section>
 
-      <div className="mt-10 grid gap-10 lg:grid-cols-2">
+      <div className="mt-8 grid gap-6 lg:grid-cols-2">
         <section>
           <h2 className="mb-3 text-lg font-semibold text-zinc-900">Leads</h2>
           <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
@@ -398,14 +398,14 @@ export function CrmClient({
                       <td className="px-3 py-2 text-right">
                         {row.status !== "CONVERTED" &&
                         (canEdit || row.ownerUserId === actorUserId) ? (
-                          <button
-                            type="button"
+                          <ActionButton
+                            variant="secondary"
                             disabled={busy}
                             onClick={() => void convertLead(row.id)}
-                            className="text-sm font-medium text-violet-700 hover:text-violet-900 disabled:opacity-50"
+                            className="px-3 py-1.5 text-xs"
                           >
                             Convert
-                          </button>
+                          </ActionButton>
                         ) : null}
                       </td>
                     </tr>

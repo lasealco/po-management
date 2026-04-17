@@ -14,7 +14,7 @@ export default async function WmsReportingPage() {
   if (!access?.user) {
     return (
       <div className="min-h-screen bg-zinc-50 px-6 py-16">
-        <AccessDenied title="WMS reporting" message="Choose an active user in the header." />
+        <AccessDenied title="WMS reporting" message="Choose an active demo user: open Settings → Demo session (/settings/demo)." />
       </div>
     );
   }
@@ -43,34 +43,61 @@ export default async function WmsReportingPage() {
         <span className="mx-1">/</span>
         <span className="text-zinc-700">Reporting</span>
       </nav>
-      <h1 className="text-2xl font-semibold text-zinc-900">WMS reporting</h1>
-      <p className="mt-2 max-w-2xl text-sm text-zinc-600">
-        Warehouse throughput, stock, and billing analytics will plug into the same reporting layer. Stock and operations
-        screens remain the day-to-day operational home.
-      </p>
-      <WmsHomeOverview tenantId={tenant.id} />
-      <ul className="mt-6 space-y-3 text-sm">
-        <li>
-          <Link href="/reporting?focus=wms" className="font-medium text-violet-800 hover:underline">
-            All reporting modules →
+      <section className="rounded-3xl border border-zinc-200 bg-white p-7 shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-500">WMS analytics workspace</p>
+        <h1 className="mt-2 text-3xl font-semibold text-zinc-900">WMS reporting</h1>
+        <p className="mt-3 max-w-3xl text-sm text-zinc-600">
+          This shell follows the same workflow language as Control Tower: review operating signals, run focused analysis,
+          then share actions across inventory and fulfillment teams.
+        </p>
+        <div className="mt-5 grid gap-3 md:grid-cols-3">
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Step 1</p>
+            <p className="mt-1 text-sm font-medium text-zinc-900">Scan stock and throughput</p>
+          </div>
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Step 2</p>
+            <p className="mt-1 text-sm font-medium text-zinc-900">Run operational views</p>
+          </div>
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Step 3</p>
+            <p className="mt-1 text-sm font-medium text-zinc-900">Share and follow through</p>
+          </div>
+        </div>
+        <div className="mt-5 flex flex-wrap gap-3">
+          <Link
+            href="/reporting?focus=wms"
+            className="inline-flex items-center rounded-xl bg-violet-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-violet-800"
+          >
+            Open reporting hub
           </Link>
-        </li>
-        <li>
-          <Link href="/wms/stock" className="font-medium text-violet-800 hover:underline">
-            Stock & ledger
+          <Link
+            href="/wms/operations"
+            className="inline-flex items-center rounded-xl border border-violet-300 bg-violet-50 px-5 py-2.5 text-sm font-medium text-violet-900 hover:bg-violet-100"
+          >
+            Operations workspace
           </Link>
-        </li>
-        <li>
-          <Link href="/wms/operations" className="font-medium text-violet-800 hover:underline">
-            Operations
-          </Link>
-        </li>
-        <li>
-          <Link href="/control-tower/reports" className="font-medium text-sky-800 hover:underline">
-            Control Tower report builder (inbound/outbound logistics)
-          </Link>
-        </li>
-      </ul>
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+        <WmsHomeOverview tenantId={tenant.id} />
+      </section>
+
+      <div className="mt-6 flex flex-wrap gap-3 text-sm">
+        <Link
+          href="/wms/stock"
+          className="inline-flex items-center rounded-xl border border-zinc-300 bg-white px-4 py-2 text-zinc-700 hover:bg-zinc-50"
+        >
+          Stock & ledger
+        </Link>
+        <Link
+          href="/control-tower/reports"
+          className="inline-flex items-center rounded-xl border border-sky-300 bg-sky-50 px-4 py-2 text-sky-900 hover:bg-sky-100"
+        >
+          Control Tower report builder
+        </Link>
+      </div>
     </main>
   );
 }

@@ -36,7 +36,7 @@ export default async function ReportsPage({
       <div className="min-h-screen bg-zinc-50 px-6 py-16">
         <AccessDenied
           title="Reports"
-          message="Choose an active user in the header to run reports."
+          message="Choose an active demo user: open Settings → Demo session (/settings/demo)."
         />
       </div>
     );
@@ -79,17 +79,44 @@ export default async function ReportsPage({
   return (
     <div className="min-h-screen bg-zinc-50">
       <main className="mx-auto max-w-6xl px-6 py-10">
-        <p className="mb-2 text-sm">
-          <Link href="/reporting?focus=po" className="font-medium text-sky-800 hover:underline">
+        <p className="mb-3 text-sm">
+          <Link href="/reporting?focus=po" className="font-medium text-[var(--arscmp-primary)] hover:underline">
             ← All reporting modules
           </Link>
         </p>
-        <h1 className="text-3xl font-semibold text-zinc-900">Reports</h1>
-        <p className="mt-2 text-zinc-600">
-          Operational summaries and CSV exports. Each report checks{" "}
-          <span className="font-medium text-zinc-800">org.reports → view</span> plus any extra
-          grants noted below.
-        </p>
+        <section className="rounded-3xl border border-zinc-200 bg-white p-7 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-500">PO reporting workspace</p>
+          <h1 className="mt-2 text-3xl font-semibold text-zinc-900">Reports</h1>
+          <p className="mt-3 text-sm text-zinc-600">
+            Build operational summaries and CSV exports in a clear 3-step workflow: pick the report, run the output, then
+            save/share with your team.
+          </p>
+          <div className="mt-5 grid gap-3 md:grid-cols-3">
+            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Step 1</p>
+              <p className="mt-1 text-sm font-medium text-zinc-900">Choose report template</p>
+            </div>
+            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Step 2</p>
+              <p className="mt-1 text-sm font-medium text-zinc-900">Run and inspect results</p>
+            </div>
+            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Step 3</p>
+              <p className="mt-1 text-sm font-medium text-zinc-900">Export or save definition</p>
+            </div>
+          </div>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <Link
+              href="/reporting?focus=po"
+              className="inline-flex items-center rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white hover:brightness-95"
+            >
+              Open reporting hub
+            </Link>
+            <p className="inline-flex items-center rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm text-zinc-600">
+              Requires <span className="mx-1 font-medium text-zinc-800">org.reports → view</span> plus report-specific grants.
+            </p>
+          </div>
+        </section>
         {initialList.length === 0 ? (
           <div className="mt-8 space-y-4">
             <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">

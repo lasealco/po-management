@@ -3,9 +3,9 @@
 import { useState } from "react";
 
 function safeNextPath(raw: string | null): string {
-  if (!raw) return "/";
+  if (!raw) return "/platform";
   const decoded = decodeURIComponent(raw);
-  if (!decoded.startsWith("/") || decoded.startsWith("//")) return "/";
+  if (!decoded.startsWith("/") || decoded.startsWith("//")) return "/platform";
   return decoded;
 }
 

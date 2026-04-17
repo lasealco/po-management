@@ -3,6 +3,8 @@
 import { useSearchParams } from "next/navigation";
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { ActionButton } from "@/components/action-button";
+import { WorkflowHeader } from "@/components/workflow-header";
 import { WMS_DEMO_WAREHOUSE_CODE } from "@/lib/wms/demo-warehouse-code";
 
 type WmsData = {
@@ -471,16 +473,24 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
   return (
     <main className="mx-auto w-full max-w-7xl px-6 py-8">
       <header className="mb-5">
-        <h1 className="text-2xl font-semibold text-zinc-900">{headerTitle}</h1>
-        <p className="mt-1 text-sm text-zinc-600">
-          {section === "setup"
-            ? "Zones, bins, and replenishment rules for the selected warehouse."
-            : section === "operations"
-              ? "Putaway, picking, outbound orders, waves, and open tasks."
-              : "On-hand balances and recent inventory ledger rows."}{" "}
-          Blueprint coverage:{" "}
-          <code className="rounded bg-zinc-100 px-1">docs/wms/GAP_MAP.md</code>.
-        </p>
+        <WorkflowHeader
+          eyebrow="WMS workspace"
+          title={headerTitle}
+          description={`${
+            section === "setup"
+              ? "Zones, bins, and replenishment rules for the selected warehouse."
+              : section === "operations"
+                ? "Putaway, picking, outbound orders, waves, and open tasks."
+                : "On-hand balances and recent inventory ledger rows."
+          } Blueprint coverage: docs/wms/GAP_MAP.md.`}
+          steps={
+            section === "setup"
+              ? ["Step 1: Review current layout", "Step 2: Configure zones and bins", "Step 3: Save replenishment rules"]
+              : section === "operations"
+                ? ["Step 1: Manage inbound/ASN", "Step 2: Execute tasks and waves", "Step 3: Confirm stock updates"]
+                : ["Step 1: Filter ledger scope", "Step 2: Review balances", "Step 3: Export stock evidence"]
+          }
+        />
       </header>
       {error ? (
         <p className="mb-4 rounded border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
@@ -630,7 +640,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
 
       {section === "setup" ? (
         <>
-      <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
+      <section className="mb-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
         <h2 className="text-sm font-semibold text-zinc-900">Current layout</h2>
         <p className="mt-1 text-xs text-zinc-600">
           Read-only view of zones, bins, and replenishment rules. Bins can carry optional{" "}
@@ -932,8 +942,8 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
             <option value="STAGING">Staging</option>
             <option value="SHIPPING">Shipping</option>
           </select>
-          <button
-            type="button"
+          <ActionButton
+            variant="secondary"
             disabled={!canEdit || busy || !selectedWarehouseId}
             onClick={() =>
               void runAction({
@@ -944,10 +954,9 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                 zoneType: newZoneType,
               })
             }
-            className="rounded border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-800 disabled:opacity-40"
           >
             Create zone
-          </button>
+          </ActionButton>
         </div>
         <div className="mt-2 grid gap-2 sm:grid-cols-6">
           <input
@@ -997,8 +1006,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
             />
             Pick face
           </label>
-          <button
-            type="button"
+          <ActionButton
             disabled={!canEdit || busy || !selectedWarehouseId}
             onClick={() => {
               const levelRaw = newBinLevel.trim();
@@ -1020,10 +1028,9 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                 positionIndex: Number.isFinite(posNum) ? posNum : undefined,
               });
             }}
-            className="rounded border border-zinc-900 bg-zinc-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-40"
           >
             Create bin
-          </button>
+          </ActionButton>
         </div>
         <p className="mt-2 text-xs text-zinc-500">
           Optional rack addressing (same <span className="font-mono">rackCode</span> on many bins = one
@@ -1066,7 +1073,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
         </div>
       </section>
 
-      <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
+      <section className="mb-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
         <h2 className="text-sm font-semibold text-zinc-900">Replenishment setup</h2>
         <div className="mt-2 grid gap-2 sm:grid-cols-7">
           <select
@@ -1112,8 +1119,8 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
           <input value={replMin} onChange={(e) => setReplMin(e.target.value)} placeholder="Min pick" className="rounded border border-zinc-300 px-3 py-2 text-sm" />
           <input value={replMax} onChange={(e) => setReplMax(e.target.value)} placeholder="Max pick" className="rounded border border-zinc-300 px-3 py-2 text-sm" />
           <input value={replQty} onChange={(e) => setReplQty(e.target.value)} placeholder="Replenish qty" className="rounded border border-zinc-300 px-3 py-2 text-sm" />
-          <button
-            type="button"
+          <ActionButton
+            variant="secondary"
             disabled={!canEdit || busy}
             onClick={() =>
               void runAction({
@@ -1127,14 +1134,13 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                 replenishQty: Number(replQty),
               })
             }
-            className="rounded border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-800 disabled:opacity-40"
           >
             Save rule
-          </button>
+          </ActionButton>
         </div>
         <div className="mt-2">
-          <button
-            type="button"
+          <ActionButton
+            variant="secondary"
             disabled={!canEdit || busy || !selectedWarehouseId}
             onClick={() =>
               void runAction({
@@ -1142,10 +1148,9 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                 warehouseId: selectedWarehouseId,
               })
             }
-            className="rounded border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-800 disabled:opacity-40"
           >
             Generate replenishment tasks
-          </button>
+          </ActionButton>
         </div>
       </section>
         </>

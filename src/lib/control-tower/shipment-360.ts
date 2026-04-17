@@ -366,7 +366,7 @@ export async function getShipment360(params: {
   let forwarderContactChoices: { id: string; name: string; supplierId: string; email: string | null }[] = [];
   if (!restricted) {
     forwarderSupplierChoices = await prisma.supplier.findMany({
-      where: { tenantId, isActive: true },
+      where: { tenantId, isActive: true, productSuppliers: { none: {} } },
       orderBy: { name: "asc" },
       take: 400,
       select: { id: true, name: true },
@@ -642,6 +642,8 @@ export async function getShipment360(params: {
           etd: s.booking.etd?.toISOString() ?? null,
           eta: s.booking.eta?.toISOString() ?? null,
           latestEta: s.booking.latestEta?.toISOString() ?? null,
+          bookingSentAt: s.booking.bookingSentAt?.toISOString() ?? null,
+          bookingConfirmSlaDueAt: s.booking.bookingConfirmSlaDueAt?.toISOString() ?? null,
           notes: restricted ? null : s.booking.notes,
           forwarderSupplierId: s.booking.forwarderSupplierId,
           forwarderOfficeId: restricted ? null : s.booking.forwarderOfficeId,

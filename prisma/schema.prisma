@@ -63,6 +63,7 @@ model Tenant {
   ctMilestoneTemplatePacks CtMilestoneTemplatePack[]
   ctContainerCargoLines CtContainerCargoLine[]
   ctExceptionCodes      CtExceptionCode[]
+  locationCodes         LocationCode[]
 }
 
 /// Tenant-scoped milestone template packs (override or extend built-in packs in code).
@@ -199,6 +200,17 @@ model RolePermission {
   @@index([workflowStatusId])
 }
 
+enum SrmSupplierCategory {
+  product
+  logistics
+}
+
+enum SupplierApprovalStatus {
+  pending_approval
+  approved
+  rejected
+}
+
 model Supplier {
   id        String   @id @default(cuid())
   tenantId  String
@@ -207,6 +219,11 @@ model Supplier {
   email     String?
   phone     String?
   isActive  Boolean  @default(true)
+
+  /// Procurement: materials vs logistics partners (forwarders, carriers-as-parties, etc.).
+  srmCategory SrmSupplierCategory @default(product)
+  /// Buyer-created suppliers start pending until an approver activates them.
+  approvalStatus SupplierApprovalStatus @default(approved)
 
   /// Legal / registered business name if different from trade name.
   legalName String?
@@ -228,6 +245,9 @@ model Supplier {
   creditCurrency     String?  @db.VarChar(3)
   defaultIncoterm    String?
   internalNotes      String?  @db.Text
+
+  /// Hours allowed for booking confirmation after send (logistics partners). Null = tenant default (24h).
+  bookingConfirmationSlaHours Int?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -610,6 +630,10 @@ model SalesOrder {
 }
 
 enum ShipmentStatus {
+  /// Internal draft: booking data captured, not yet submitted to forwarder.
+  BOOKING_DRAFT
+  /// Booking request sent; awaiting forwarder confirmation within SLA.
+  BOOKING_SUBMITTED
   SHIPPED
   VALIDATED
   BOOKED
@@ -620,6 +644,8 @@ enum ShipmentStatus {
 
 enum ShipmentBookingStatus {
   DRAFT
+  /// Sent to forwarder / carrier channel; awaiting confirmation.
+  SENT
   CONFIRMED
   CANCELLED
 }
@@ -659,7 +685,7 @@ model Shipment {
   orderId      String
   salesOrderId String?
   shipmentNo   String?
-  status       ShipmentStatus @default(SHIPPED)
+  status       ShipmentStatus @default(BOOKING_DRAFT)
   shippedAt    DateTime
   receivedAt   DateTime?
   /// Supplier / forwarder ASN or notice id (WMS receiving layer).
@@ -757,6 +783,10 @@ model ShipmentBooking {
   etd                 DateTime?
   eta                 DateTime?
   latestEta           DateTime?
+  /// When the booking request was submitted to the forwarder (EDI / email / portal).
+  bookingSentAt           DateTime?
+  /// Deadline for forwarder booking confirmation per SLA (derived from Supplier or default).
+  bookingConfirmSlaDueAt DateTime?
   notes               String?
   createdById         String
   updatedById         String
@@ -1195,6 +1225,32 @@ model CtContainerCargoLine {
 enum WarehouseType {
   CFS
   WAREHOUSE
+}
+
+enum LocationCodeType {
+  UN_LOCODE
+  PORT
+  AIRPORT
+}
+
+model LocationCode {
+  id          String           @id @default(cuid())
+  tenantId    String
+  type        LocationCodeType
+  code        String
+  name        String
+  countryCode String?          @db.VarChar(2)
+  subdivision String?
+  source      String?
+  isActive    Boolean          @default(true)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, type, code])
+  @@index([tenantId, type, isActive])
+  @@index([tenantId, code])
 }
 
 model Warehouse {

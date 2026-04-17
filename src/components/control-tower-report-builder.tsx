@@ -67,6 +67,8 @@ type SavedReport = {
   updatedAt: string;
 };
 
+type NamedOption = { id: string; name: string };
+
 const MEASURE_LABELS: Record<Measure, string> = {
   shipments: "Shipments",
   volumeCbm: "Volume (cbm)",
@@ -178,6 +180,77 @@ function formatMetric(measure: Measure, value: number): string {
   if (measure === "shippingSpend") return `$${value.toFixed(2)}`;
   if (measure === "avgDelayDays") return `${value.toFixed(2)}d`;
   return value.toLocaleString();
+}
+
+function stepClass(active: boolean) {
+  return `flex items-center gap-2 pb-3 border-b-2 transition-all ${
+    active ? "border-[var(--arscmp-primary)]" : "border-transparent opacity-45"
+  }`;
+}
+
+function SearchableOptionField({
+  label,
+  emptyLabel,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  emptyLabel: string;
+  options: NamedOption[];
+  value: string;
+  onChange: (next: string) => void;
+}) {
+  const selectedName = options.find((o) => o.id === value)?.name ?? "";
+  const [query, setQuery] = useState(selectedName);
+
+  useEffect(() => {
+    setQuery(selectedName);
+  }, [selectedName]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return options;
+    return options.filter((o) => o.name.toLowerCase().includes(q));
+  }, [options, query]);
+
+  return (
+    <label className="rounded-xl border border-slate-100 bg-slate-50 p-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+      {label}
+      <input
+        value={query}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          if (!e.target.value.trim()) onChange("");
+        }}
+        placeholder={`Type to filter ${label.toLowerCase()}...`}
+        className="mt-2 w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm font-medium normal-case text-slate-800 outline-none"
+      />
+      <div className="mt-2 max-h-36 overflow-auto rounded-md border border-slate-200 bg-white">
+        <button
+          type="button"
+          onClick={() => onChange("")}
+          className={`block w-full px-2 py-1.5 text-left text-xs normal-case hover:bg-slate-50 ${
+            value === "" ? "bg-sky-50 font-semibold text-sky-900" : "text-slate-600"
+          }`}
+        >
+          {emptyLabel}
+        </button>
+        {filtered.map((o) => (
+          <button
+            key={o.id}
+            type="button"
+            onClick={() => onChange(o.id)}
+            className={`block w-full px-2 py-1.5 text-left text-xs normal-case hover:bg-slate-50 ${
+              value === o.id ? "bg-sky-50 font-semibold text-sky-900" : "text-slate-700"
+            }`}
+          >
+            {o.name}
+          </button>
+        ))}
+      </div>
+    </label>
+  );
 }
 
 function ResultLineChart({
@@ -563,252 +636,376 @@ export function ControlTowerReportBuilder({
   }, [result, chartDrillKey]);
 
   return (
-    <section className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-base font-semibold text-zinc-900">Report builder</h2>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => void run()}
-            disabled={busy}
-            className="rounded border border-zinc-900 bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
-          >
-            {busy ? "Running…" : "Run"}
-          </button>
+    <section className="rounded-2xl border border-slate-200 bg-[#f8fafc] p-6 shadow-sm">
+      <div className="mb-7 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="text-2xl font-black text-slate-900">Build a Control Tower report</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Configure dimensions, measures, and filters. Then run, save, and pin.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
           {canEdit ? (
-            <button
-              type="button"
-              onClick={() => void saveReport()}
-              disabled={busy}
-              className="rounded border border-sky-600 px-3 py-1.5 text-sm font-medium text-sky-900 disabled:opacity-50"
-            >
-              Save
-            </button>
-          ) : null}
-          {canEdit ? (
-            <label className="ml-1 flex items-center gap-2 text-xs text-zinc-700">
+            <label className="mr-2 flex items-center gap-2 text-xs font-medium text-slate-600">
               <input
                 type="checkbox"
                 checked={saveAsShared}
                 onChange={(e) => setSaveAsShared(e.target.checked)}
               />
-              Save as shared
+              Shared report
             </label>
           ) : null}
+          {canEdit ? (
+            <button
+              type="button"
+              onClick={() => void saveReport()}
+              disabled={busy}
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+            >
+              Save report
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => void run()}
+            disabled={busy}
+            className="rounded-lg bg-[var(--arscmp-primary)] px-6 py-2 text-sm font-bold text-white shadow-lg hover:opacity-95 disabled:opacity-50"
+          >
+            {busy ? "Running..." : "Run report"}
+          </button>
         </div>
       </div>
 
-      <div className="grid gap-2 md:grid-cols-4">
-        <button
-          type="button"
-          className="rounded border border-zinc-300 bg-zinc-50 px-2 py-1 text-xs text-zinc-800"
-          onClick={() =>
-            setConfig((c) => ({
-              ...c,
-              title: "Volume by lane",
-              chartType: "bar",
-              dimension: "lane",
-              measure: "volumeCbm",
-            }))
-          }
-        >
-          Preset: Volume by lane
-        </button>
-        <button
-          type="button"
-          className="rounded border border-zinc-300 bg-zinc-50 px-2 py-1 text-xs text-zinc-800"
-          onClick={() =>
-            setConfig((c) => ({
-              ...c,
-              title: "Spend by carrier",
-              chartType: "bar",
-              dimension: "carrier",
-              measure: "shippingSpend",
-            }))
-          }
-        >
-          Preset: Spend by carrier
-        </button>
-        <button
-          type="button"
-          className="rounded border border-zinc-300 bg-zinc-50 px-2 py-1 text-xs text-zinc-800"
-          onClick={() =>
-            setConfig((c) => ({
-              ...c,
-              title: "On-time by lane",
-              chartType: "bar",
-              dimension: "lane",
-              measure: "onTimePct",
-              dateField: "receivedAt",
-            }))
-          }
-        >
-          Preset: On-time by lane
-        </button>
-        <button
-          type="button"
-          className="rounded border border-zinc-300 bg-zinc-50 px-2 py-1 text-xs text-zinc-800"
-          onClick={() =>
-            setConfig((c) => ({
-              ...c,
-              title: "Shipments trend",
-              chartType: "line",
-              dimension: "month",
-              measure: "shipments",
-            }))
-          }
-        >
-          Preset: Monthly trend
-        </button>
+      <div className="grid gap-6 xl:grid-cols-[2fr,1fr]">
+        <div className="space-y-5">
+          <div className="rounded-2xl border border-slate-200 bg-white p-6">
+            <div className={stepClass(true)}>
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--arscmp-primary)] text-xs font-bold text-white">
+                1
+              </span>
+              <span className="text-xs font-bold uppercase tracking-widest text-slate-700">
+                Start with template
+              </span>
+            </div>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <button
+                type="button"
+                className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-left text-xs font-bold text-slate-700 transition hover:border-slate-300"
+                onClick={() =>
+                  setConfig((c) => ({
+                    ...c,
+                    title: "Volume by lane",
+                    chartType: "bar",
+                    dimension: "lane",
+                    measure: "volumeCbm",
+                  }))
+                }
+              >
+                Volume by lane
+              </button>
+              <button
+                type="button"
+                className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-left text-xs font-bold text-slate-700 transition hover:border-slate-300"
+                onClick={() =>
+                  setConfig((c) => ({
+                    ...c,
+                    title: "Spend by carrier",
+                    chartType: "bar",
+                    dimension: "carrier",
+                    measure: "shippingSpend",
+                  }))
+                }
+              >
+                Spend by carrier
+              </button>
+              <button
+                type="button"
+                className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-left text-xs font-bold text-slate-700 transition hover:border-slate-300"
+                onClick={() =>
+                  setConfig((c) => ({
+                    ...c,
+                    title: "On-time by lane",
+                    chartType: "bar",
+                    dimension: "lane",
+                    measure: "onTimePct",
+                    dateField: "receivedAt",
+                  }))
+                }
+              >
+                On-time performance
+              </button>
+              <button
+                type="button"
+                className="rounded-xl border-2 border-[var(--arscmp-primary)] bg-[color:rgba(22,91,103,0.05)] p-4 text-left text-xs font-bold text-[var(--arscmp-primary)] transition"
+                onClick={() =>
+                  setConfig((c) => ({
+                    ...c,
+                    title: "Shipments trend",
+                    chartType: "line",
+                    dimension: "month",
+                    measure: "shipments",
+                  }))
+                }
+              >
+                Custom report
+              </button>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-6">
+            <div className={stepClass(true)}>
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--arscmp-primary)] text-xs font-bold text-white">
+                2
+              </span>
+              <span className="text-xs font-bold uppercase tracking-widest text-slate-700">
+                Define configuration
+              </span>
+            </div>
+
+            <div className="mt-5 grid gap-3 md:grid-cols-2">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 md:col-span-2">
+                Report title
+                <input
+                  value={config.title || ""}
+                  onChange={(e) => setConfig((c) => ({ ...c, title: e.target.value }))}
+                  className="mt-1.5 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-900 focus:border-[var(--arscmp-primary)] focus:outline-none"
+                />
+              </label>
+              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                Measure
+                <select
+                  value={config.measure}
+                  onChange={(e) => setConfig((c) => ({ ...c, measure: e.target.value as Measure }))}
+                  className="mt-1.5 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-800"
+                >
+                  {Object.entries(MEASURE_LABELS).map(([k, v]) => (
+                    <option key={k} value={k}>
+                      {v}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                Group by
+                <select
+                  value={config.dimension}
+                  onChange={(e) => setConfig((c) => ({ ...c, dimension: e.target.value as Dimension }))}
+                  className="mt-1.5 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-800"
+                >
+                  {["month", "lane", "carrier", "customer", "supplier", "status", "mode", "origin", "destination", "none"].map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                Chart type
+                <select
+                  value={config.chartType}
+                  onChange={(e) => setConfig((c) => ({ ...c, chartType: e.target.value as ChartType }))}
+                  className="mt-1.5 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-800"
+                >
+                  <option value="bar">Bar</option>
+                  <option value="line">Line</option>
+                  <option value="pie">Pie</option>
+                  <option value="table">Table</option>
+                </select>
+              </label>
+              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                Compare period
+                <select
+                  value={config.comparePeriod}
+                  onChange={(e) =>
+                    setConfig((c) => ({
+                      ...c,
+                      comparePeriod: e.target.value as ReportConfig["comparePeriod"],
+                    }))
+                  }
+                  className="mt-1.5 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-800"
+                >
+                  <option value="none">None</option>
+                  <option value="prev_period">Previous period</option>
+                  <option value="prev_year">Same period last year</option>
+                </select>
+              </label>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-6">
+            <div className={stepClass(true)}>
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--arscmp-primary)] text-xs font-bold text-white">
+                3
+              </span>
+              <span className="text-xs font-bold uppercase tracking-widest text-slate-700">
+                Add filters
+              </span>
+            </div>
+            <div className="mt-5 grid gap-3 md:grid-cols-3">
+              <SearchableOptionField
+                label="Inbound supplier"
+                emptyLabel="All suppliers"
+                options={supplierChoices}
+                value={config.filters.supplierId}
+                onChange={(next) => setConfig((c) => ({ ...c, filters: { ...c.filters, supplierId: next } }))}
+              />
+              <SearchableOptionField
+                label="Internal carrier"
+                emptyLabel="All carriers"
+                options={supplierChoices}
+                value={config.filters.carrierSupplierId}
+                onChange={(next) =>
+                  setConfig((c) => ({ ...c, filters: { ...c.filters, carrierSupplierId: next } }))
+                }
+              />
+              <SearchableOptionField
+                label="Outbound customer"
+                emptyLabel="All customers"
+                options={crmAccountChoices}
+                value={config.filters.customerCrmAccountId}
+                onChange={(next) =>
+                  setConfig((c) => ({ ...c, filters: { ...c.filters, customerCrmAccountId: next } }))
+                }
+              />
+            </div>
+
+            <div className="mt-3 grid gap-3 md:grid-cols-3">
+              <label className="text-xs text-zinc-700">
+                Date field
+                <select
+                  value={config.dateField}
+                  onChange={(e) =>
+                    setConfig((c) => ({ ...c, dateField: e.target.value as ReportConfig["dateField"] }))
+                  }
+                  className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"
+                >
+                  <option value="shippedAt">Shipped</option>
+                  <option value="receivedAt">Received</option>
+                  <option value="bookingEta">Booking ETA</option>
+                </select>
+              </label>
+              <label className="text-xs text-zinc-700">
+                From
+                <input
+                  type="date"
+                  value={config.dateFrom}
+                  onChange={(e) => setConfig((c) => ({ ...c, dateFrom: e.target.value }))}
+                  className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"
+                />
+              </label>
+              <label className="text-xs text-zinc-700">
+                To
+                <input
+                  type="date"
+                  value={config.dateTo}
+                  onChange={(e) => setConfig((c) => ({ ...c, dateTo: e.target.value }))}
+                  className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"
+                />
+              </label>
+            </div>
+
+            <div className="mt-3 grid gap-3 md:grid-cols-4">
+              <label className="text-xs text-zinc-700">
+                Status
+                <input
+                  value={config.filters.status}
+                  onChange={(e) =>
+                    setConfig((c) => ({ ...c, filters: { ...c.filters, status: e.target.value } }))
+                  }
+                  className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"
+                />
+              </label>
+              <label className="text-xs text-zinc-700">
+                Mode
+                <input
+                  value={config.filters.mode}
+                  onChange={(e) =>
+                    setConfig((c) => ({ ...c, filters: { ...c.filters, mode: e.target.value } }))
+                  }
+                  className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"
+                />
+              </label>
+              <label className="text-xs text-zinc-700">
+                Lane
+                <input
+                  value={config.filters.lane}
+                  onChange={(e) =>
+                    setConfig((c) => ({ ...c, filters: { ...c.filters, lane: e.target.value } }))
+                  }
+                  className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"
+                />
+              </label>
+              <label className="text-xs text-zinc-700">
+                Top N
+                <select
+                  value={String(config.topN)}
+                  onChange={(e) => setConfig((c) => ({ ...c, topN: Number(e.target.value) }))}
+                  className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"
+                >
+                  <option value="5">Top 5</option>
+                  <option value="10">Top 10</option>
+                  <option value="20">Top 20</option>
+                  <option value="50">Top 50</option>
+                </select>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <aside className="space-y-4">
+          <div className="rounded-2xl bg-[var(--arscmp-primary)] p-6 text-white shadow-xl">
+            <h3 className="text-sm font-bold uppercase tracking-wider">Save & automate</h3>
+            <div className="mt-4 space-y-3">
+              <button
+                type="button"
+                onClick={() => void saveReport()}
+                disabled={!canEdit || busy}
+                className="w-full rounded-xl border border-white/25 bg-white/10 px-3 py-2.5 text-sm font-bold disabled:opacity-60"
+              >
+                Save to my reports
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const first = saved[0];
+                  if (first) void pinReport(first.id, first.name);
+                }}
+                disabled={!canEdit || busy || saved.length === 0}
+                className="w-full rounded-xl bg-white px-3 py-2.5 text-sm font-bold text-[var(--arscmp-primary)] disabled:opacity-60"
+              >
+                Pin latest saved report
+              </button>
+              <button
+                type="button"
+                onClick={() => void run()}
+                disabled={busy}
+                className="w-full rounded-xl border border-white/30 bg-black/15 px-3 py-2.5 text-sm font-bold disabled:opacity-60"
+              >
+                {busy ? "Running..." : "Run now"}
+              </button>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-5">
+            <h3 className="text-xs font-black uppercase tracking-widest text-slate-700">
+              Recent reports
+            </h3>
+            <div className="mt-3 space-y-2">
+              {saved.slice(0, 3).map((r) => (
+                <div key={r.id} className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
+                  <p className="text-sm font-semibold text-slate-800">{r.name}</p>
+                  <p className="text-[11px] text-slate-500">{r.isShared ? "Shared" : "Private"}</p>
+                </div>
+              ))}
+              {saved.length === 0 ? (
+                <p className="text-xs text-slate-400">No saved reports yet.</p>
+              ) : null}
+            </div>
+          </div>
+        </aside>
       </div>
 
-      <div className="mt-2 grid gap-2 md:grid-cols-4">
-        <label className="text-xs text-zinc-700">
-          Title
-          <input
-            value={config.title || ""}
-            onChange={(e) => setConfig((c) => ({ ...c, title: e.target.value }))}
-            className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"
-          />
-        </label>
-        <label className="text-xs text-zinc-700">
-          Chart
-          <select
-            value={config.chartType}
-            onChange={(e) => setConfig((c) => ({ ...c, chartType: e.target.value as ChartType }))}
-            className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"
-          >
-            <option value="bar">Bar</option>
-            <option value="line">Line</option>
-            <option value="pie">Pie</option>
-            <option value="table">Table</option>
-          </select>
-        </label>
-        <label className="text-xs text-zinc-700">
-          Group by
-          <select
-            value={config.dimension}
-            onChange={(e) => setConfig((c) => ({ ...c, dimension: e.target.value as Dimension }))}
-            className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"
-          >
-            {["month", "lane", "carrier", "customer", "supplier", "status", "mode", "origin", "destination", "none"].map((d) => (
-              <option key={d} value={d}>{d}</option>
-            ))}
-          </select>
-        </label>
-        <label className="text-xs text-zinc-700">
-          Measure
-          <select
-            value={config.measure}
-            onChange={(e) => setConfig((c) => ({ ...c, measure: e.target.value as Measure }))}
-            className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"
-          >
-            {Object.entries(MEASURE_LABELS).map(([k, v]) => (
-              <option key={k} value={k}>
-                {v}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="text-xs text-zinc-700">
-          Compare period
-          <select
-            value={config.comparePeriod}
-            onChange={(e) =>
-              setConfig((c) => ({ ...c, comparePeriod: e.target.value as ReportConfig["comparePeriod"] }))
-            }
-            className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"
-          >
-            <option value="none">None</option>
-            <option value="prev_period">Previous period</option>
-            <option value="prev_year">Same period last year</option>
-          </select>
-        </label>
-      </div>
-
-      <div className="mt-2 grid gap-2 md:grid-cols-6">
-        <label className="text-xs text-zinc-700">Status<input value={config.filters.status} onChange={(e)=>setConfig(c=>({...c,filters:{...c.filters,status:e.target.value}}))} className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"/></label>
-        <label className="text-xs text-zinc-700">Mode<input value={config.filters.mode} onChange={(e)=>setConfig(c=>({...c,filters:{...c.filters,mode:e.target.value}}))} className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"/></label>
-        <label className="text-xs text-zinc-700">Lane<input value={config.filters.lane} onChange={(e)=>setConfig(c=>({...c,filters:{...c.filters,lane:e.target.value}}))} className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"/></label>
-        <label className="text-xs text-zinc-700">
-          Carrier
-          <select
-            value={config.filters.carrierSupplierId}
-            onChange={(e) =>
-              setConfig((c) => ({ ...c, filters: { ...c.filters, carrierSupplierId: e.target.value } }))
-            }
-            className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"
-          >
-            <option value="">Any</option>
-            {supplierChoices.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="text-xs text-zinc-700">
-          Customer
-          <select
-            value={config.filters.customerCrmAccountId}
-            onChange={(e) =>
-              setConfig((c) => ({ ...c, filters: { ...c.filters, customerCrmAccountId: e.target.value } }))
-            }
-            className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"
-          >
-            <option value="">Any</option>
-            {crmAccountChoices.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="text-xs text-zinc-700">
-          Supplier
-          <select
-            value={config.filters.supplierId}
-            onChange={(e) =>
-              setConfig((c) => ({ ...c, filters: { ...c.filters, supplierId: e.target.value } }))
-            }
-            className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"
-          >
-            <option value="">Any</option>
-            {supplierChoices.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      <div className="mt-2 grid gap-2 md:grid-cols-5">
-        <label className="text-xs text-zinc-700">Date field
-          <select value={config.dateField} onChange={(e)=>setConfig(c=>({...c,dateField:e.target.value as ReportConfig["dateField"]}))} className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm">
-            <option value="shippedAt">Shipped</option>
-            <option value="receivedAt">Received</option>
-            <option value="bookingEta">Booking ETA</option>
-          </select>
-        </label>
-        <label className="text-xs text-zinc-700">From<input type="date" value={config.dateFrom} onChange={(e)=>setConfig(c=>({...c,dateFrom:e.target.value}))} className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"/></label>
-        <label className="text-xs text-zinc-700">To<input type="date" value={config.dateTo} onChange={(e)=>setConfig(c=>({...c,dateTo:e.target.value}))} className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"/></label>
-        <label className="text-xs text-zinc-700">
-          Top N
-          <select
-            value={String(config.topN)}
-            onChange={(e) => setConfig((c) => ({ ...c, topN: Number(e.target.value) }))}
-            className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"
-          >
-            <option value="5">Top 5</option>
-            <option value="10">Top 10</option>
-            <option value="20">Top 20</option>
-            <option value="50">Top 50</option>
-          </select>
-        </label>
-      </div>
-
-      {msg ? <p className="mt-2 text-xs text-emerald-700">{msg}</p> : null}
+      {msg ? <p className="mt-4 text-xs text-emerald-700">{msg}</p> : null}
       {err ? <p className="mt-2 text-xs text-red-700">{err}</p> : null}
 
       {result ? (

@@ -11,6 +11,16 @@ export type SettingsNavSection = {
 
 export const SETTINGS_SECTIONS: readonly SettingsNavSection[] = [
   {
+    title: "Demo & session",
+    links: [
+      {
+        href: "/settings/demo",
+        label: "Demo session",
+        description: "Switch demo user, optional password login, clear session",
+      },
+    ],
+  },
+  {
     title: "Organization",
     links: [
       {

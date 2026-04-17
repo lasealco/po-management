@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { SearchableSelectField } from "@/components/searchable-select-field";
 
 type TransportMode = "OCEAN" | "AIR" | "ROAD" | "RAIL";
 type ContainerSize = "LCL" | "FCL_20" | "FCL_40" | "FCL_40HC" | "TRUCK_13_6" | "AIR_ULD";
@@ -247,6 +248,14 @@ export function ConsolidationPlanner({
   const supplierOptions = useMemo(
     () => ["all", ...new Set(available.map((r) => r.supplierName).sort())],
     [available],
+  );
+  const supplierFilterOptions = useMemo(
+    () => supplierOptions.map((name) => ({ value: name, label: name === "all" ? "All suppliers" : name })),
+    [supplierOptions],
+  );
+  const presetFilterOptions = useMemo(
+    () => presets.map((preset) => ({ value: preset.id, label: preset.name })),
+    [presets],
   );
   const totals = useMemo(
     () => ({
@@ -917,17 +926,15 @@ export function ConsolidationPlanner({
       <section className="mb-6 grid gap-3 rounded-lg border border-zinc-200 bg-white p-4 sm:grid-cols-3">
         <label className="flex flex-col gap-1 text-sm">
           <span className="font-medium text-zinc-800">Supplier filter</span>
-          <select
+          <SearchableSelectField
             value={supplierFilter}
-            onChange={(e) => setSupplierFilter(e.target.value)}
-            className="rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900"
-          >
-            {supplierOptions.map((name) => (
-              <option key={name} value={name}>
-                {name === "all" ? "All suppliers" : name}
-              </option>
-            ))}
-          </select>
+            onChange={setSupplierFilter}
+            options={supplierFilterOptions}
+            placeholder="Type to filter supplier..."
+            emptyLabel="All suppliers"
+            inputClassName="rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900"
+            listClassName="max-h-36 overflow-auto rounded border border-zinc-200 bg-white"
+          />
         </label>
         <label className="flex flex-col gap-1 text-sm">
           <span className="font-medium text-zinc-800">Shipped from</span>
@@ -951,18 +958,15 @@ export function ConsolidationPlanner({
       <section className="mb-6 grid gap-3 rounded-lg border border-zinc-200 bg-white p-4 sm:grid-cols-3">
         <label className="flex flex-col gap-1 text-sm">
           <span className="font-medium text-zinc-800">Saved filter presets</span>
-          <select
+          <SearchableSelectField
             value={selectedPresetId}
-            onChange={(e) => applyPreset(e.target.value)}
-            className="rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900"
-          >
-            <option value="none">None</option>
-            {presets.map((preset) => (
-              <option key={preset.id} value={preset.id}>
-                {preset.name}
-              </option>
-            ))}
-          </select>
+            onChange={applyPreset}
+            options={presetFilterOptions}
+            placeholder="Type to filter preset..."
+            emptyLabel="None"
+            inputClassName="rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900"
+            listClassName="max-h-36 overflow-auto rounded border border-zinc-200 bg-white"
+          />
         </label>
         <label className="flex flex-col gap-1 text-sm">
           <span className="font-medium text-zinc-800">New preset name</span>

@@ -12,7 +12,7 @@ export default async function NewOrderPage() {
       <div className="min-h-screen bg-zinc-50 px-6 py-16">
         <AccessDenied
           title="Create order"
-          message="Choose an active user in the header to create purchase orders."
+          message="Choose an active demo user: open Settings → Demo session (/settings/demo)."
         />
       </div>
     );
@@ -30,7 +30,11 @@ export default async function NewOrderPage() {
 
   const [suppliers, products, warehouses, forwarders] = await Promise.all([
     prisma.supplier.findMany({
-      where: { tenantId: access.tenant.id, isActive: true },
+      where: {
+        tenantId: access.tenant.id,
+        isActive: true,
+        productSuppliers: { some: {} },
+      },
       orderBy: [{ code: "asc" }, { name: "asc" }],
       select: {
         id: true,
@@ -79,7 +83,11 @@ export default async function NewOrderPage() {
       },
     }),
     prisma.supplier.findMany({
-      where: { tenantId: access.tenant.id, isActive: true },
+      where: {
+        tenantId: access.tenant.id,
+        isActive: true,
+        productSuppliers: { none: {} },
+      },
       orderBy: { name: "asc" },
       select: {
         id: true,

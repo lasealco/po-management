@@ -153,7 +153,7 @@ export async function createLogisticsShipment(
     }
     const [supplier, consignee] = await Promise.all([
       prisma.supplier.findFirst({
-        where: { id: shipperSupplierId, tenantId },
+        where: { id: shipperSupplierId, tenantId, productSuppliers: { none: {} } },
         select: { id: true, name: true },
       }),
       prisma.crmAccount.findFirst({
@@ -215,7 +215,7 @@ export async function createLogisticsShipment(
   const carrierSupplier = carrierSupplierId?.trim() || null;
   if (carrierSupplier) {
     const supplier = await prisma.supplier.findFirst({
-      where: { id: carrierSupplier, tenantId, isActive: true },
+      where: { id: carrierSupplier, tenantId, isActive: true, productSuppliers: { none: {} } },
       select: { id: true, name: true },
     });
     if (!supplier) {
@@ -230,7 +230,7 @@ export async function createLogisticsShipment(
         orderId: resolvedOrderId,
         shipmentNo: input.shipmentNo?.trim() || null,
         shippedAt,
-        status: "BOOKED",
+        status: "BOOKING_DRAFT",
         carrierSupplierId: carrierSupplier ?? null,
         carrier: resolvedCarrier,
         trackingNo: input.trackingNo?.trim() || null,

@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { AccessDenied } from "@/components/access-denied";
 import { SalesOrderStatusActions } from "@/components/sales-order-status-actions";
+import { WorkflowHeader } from "@/components/workflow-header";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
@@ -57,8 +58,19 @@ export default async function SalesOrderDetailPage({
 
   return (
     <main className="mx-auto w-full max-w-5xl px-6 py-8">
-      <h1 className="text-2xl font-semibold text-zinc-900">{row.soNumber}</h1>
-      <p className="mt-1 text-sm text-zinc-600">Status: {row.status}</p>
+      <p className="text-sm">
+        <Link href="/sales-orders" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+          ← Sales orders
+        </Link>
+      </p>
+      <div className="mt-3">
+        <WorkflowHeader
+          eyebrow="Sales order workspace"
+          title={row.soNumber}
+          description={`Status: ${row.status}`}
+          steps={["Step 1: Review customer commitment", "Step 2: Transition SO status", "Step 3: Track linked shipments"]}
+        />
+      </div>
       <SalesOrderStatusActions
         salesOrderId={row.id}
         status={row.status}

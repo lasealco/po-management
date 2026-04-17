@@ -9,7 +9,7 @@ export async function CrmGate({ children }: { children: React.ReactNode }) {
       <div className="px-6 py-16">
         <AccessDenied
           title="CRM"
-          message="Choose an active user in the header to open CRM."
+          message="Choose an active demo user: open Settings → Demo session (/settings/demo)."
         />
       </div>
     );

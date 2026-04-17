@@ -15,11 +15,14 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/*
+ * Do not flip --background/--foreground with prefers-color-scheme: the UI is built as a
+ * light theme (Tailwind zinc surfaces, white tables). OS dark mode would set light text on
+ * body while nested panels keep bg-white → unreadable inherited color on table cells.
+ * A real dark theme would use a .dark class + audited components, not global tokens alone.
+ */
+html {
+  color-scheme: light;
 }
 
 body {

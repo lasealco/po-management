@@ -17,7 +17,7 @@ export default async function CrmAccountPage({
       <div className="px-6 py-16">
         <AccessDenied
           title="Account"
-          message="Choose an active user in the header to open this account."
+          message="Choose an active demo user: open Settings → Demo session (/settings/demo)."
         />
       </div>
     );

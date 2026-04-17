@@ -1,6 +1,8 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { AccessDenied } from "@/components/access-denied";
 import { OrderDetail } from "@/components/order-detail";
+import { WorkflowHeader } from "@/components/workflow-header";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +20,7 @@ export default async function OrderPage({
       <div className="min-h-screen bg-zinc-50 px-6 py-16">
         <AccessDenied
           title="Order detail"
-          message="Choose a demo user in the header to view this order."
+          message="Choose an active demo user: open Settings → Demo session (/settings/demo)."
         />
       </div>
     );
@@ -46,6 +48,20 @@ export default async function OrderPage({
 
   return (
     <div className="min-h-screen bg-zinc-50">
+      <main className="mx-auto w-full max-w-7xl px-6 pt-8">
+        <p className="text-sm">
+          <Link href="/orders" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+            ← Orders
+          </Link>
+        </p>
+        <div className="mt-3">
+          <WorkflowHeader
+            eyebrow="Order execution workspace"
+            title="Purchase order detail"
+            steps={["Step 1: Validate order data", "Step 2: Take transition actions", "Step 3: Confirm shipment flow"]}
+          />
+        </div>
+      </main>
       <Suspense
         fallback={
           <div className="px-6 py-16 text-sm text-zinc-600">Loading order…</div>

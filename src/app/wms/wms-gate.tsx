@@ -9,7 +9,7 @@ export async function WmsGate({ children }: { children: React.ReactNode }) {
       <div className="px-6 py-16">
         <AccessDenied
           title="Warehouse operations"
-          message="Choose an active user in the header to open WMS."
+          message="Choose an active demo user: open Settings → Demo session (/settings/demo)."
         />
       </div>
     );

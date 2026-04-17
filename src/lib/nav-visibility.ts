@@ -5,6 +5,7 @@ export type AppNavLinkVisibility = {
   poManagement: boolean;
   orders: boolean;
   reports: boolean;
+  executive: boolean;
   consolidation: boolean;
   controlTower: boolean;
   wms: boolean;
@@ -12,6 +13,8 @@ export type AppNavLinkVisibility = {
   products: boolean;
   settings: boolean;
   suppliers: boolean;
+  /** Supplier relationship management hub (procurement); same gate as suppliers for now. */
+  srm: boolean;
   salesOrders: boolean;
 };
 
@@ -36,6 +39,7 @@ export async function resolveNavState(access: ViewerAccess | null): Promise<{
       ? (() => {
           const orders = viewerHas(access.grantSet, "org.orders", "view");
           const reports = viewerHas(access.grantSet, "org.reports", "view");
+          const executive = reports;
           const consolidation = orders;
           const wms = viewerHas(access.grantSet, "org.wms", "view");
           const controlTower = viewerHas(access.grantSet, "org.controltower", "view");
@@ -46,12 +50,14 @@ export async function resolveNavState(access: ViewerAccess | null): Promise<{
           const products = viewerHas(access.grantSet, "org.products", "view");
           const settings = viewerHas(access.grantSet, "org.settings", "view");
           const suppliers = viewerHas(access.grantSet, "org.suppliers", "view");
+          const srm = suppliers;
           const salesOrders = orders;
-          const poManagement = orders || consolidation || products || suppliers;
+          const poManagement = orders || consolidation || products;
           return {
             poManagement,
             orders,
             reports,
+            executive,
             consolidation,
             controlTower,
             wms,
@@ -59,6 +65,7 @@ export async function resolveNavState(access: ViewerAccess | null): Promise<{
             products,
             settings,
             suppliers,
+            srm,
             salesOrders,
           };
         })()
@@ -70,6 +77,7 @@ export async function resolveNavState(access: ViewerAccess | null): Promise<{
       !(
       linkVisibility.orders ||
       linkVisibility.reports ||
+      linkVisibility.executive ||
       linkVisibility.consolidation ||
       linkVisibility.controlTower ||
       linkVisibility.wms ||
@@ -77,17 +85,18 @@ export async function resolveNavState(access: ViewerAccess | null): Promise<{
       linkVisibility.products ||
       linkVisibility.settings ||
       linkVisibility.suppliers ||
+      linkVisibility.srm ||
       linkVisibility.salesOrders
     );
 
   const poSubNavVisibility: PoMgmtSubNavVisibility = setupIncomplete
-    ? { orders: true, consolidation: true, products: true, suppliers: true }
+    ? { orders: true, consolidation: true, products: true, suppliers: false }
     : linkVisibility
       ? {
           orders: linkVisibility.orders,
           consolidation: linkVisibility.consolidation && !isSupplierPortalUser,
           products: linkVisibility.products,
-          suppliers: linkVisibility.suppliers,
+          suppliers: false,
         }
       : { orders: false, consolidation: false, products: false, suppliers: false };
 

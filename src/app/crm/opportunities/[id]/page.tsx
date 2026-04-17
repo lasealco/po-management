@@ -15,7 +15,7 @@ export default async function CrmOpportunityDetailPage({
       <div className="px-6 py-16">
         <AccessDenied
           title="Opportunity"
-          message="Choose an active user in the header to open this opportunity."
+          message="Choose an active demo user: open Settings → Demo session (/settings/demo)."
         />
       </div>
     );

@@ -7,6 +7,8 @@ import { startTransition, useCallback, useEffect, useMemo, useState } from "reac
 import { ctSlaState } from "@/lib/control-tower/sla-thresholds";
 import { CT_SHIPMENT_DOCUMENT_TYPES } from "@/lib/control-tower/shipment-document-types";
 import { ControlTowerRouteMap } from "@/components/control-tower-route-map";
+import { FormSearchableSelect } from "@/components/form-searchable-select";
+import { LocationCodePicker } from "@/components/location-code-picker";
 
 type Tab =
   | "details"
@@ -299,6 +301,19 @@ export function ControlTowerShipment360({
   const ctReferences = (data.ctReferences as unknown[]) ?? [];
   const legs = (data.legs as unknown[]) ?? [];
   const containers = (data.containers as unknown[]) ?? [];
+  const milestoneSummary = data.milestoneSummary as
+    | {
+        openCount: number;
+        lateCount: number;
+        next: {
+          code: string;
+          label: string | null;
+          dueAt: string | null;
+          isLate: boolean;
+        } | null;
+      }
+    | null
+    | undefined;
   const routePerformance = data.routePerformance as
     | {
         orderRequestedDeliveryAt: string | null;
@@ -340,6 +355,35 @@ export function ControlTowerShipment360({
       return { pct, hint: `Next action: mark departure updates for ${nextLabel}.` };
     }
     return { pct, hint: `Next action: record arrival for ${nextLabel}.` };
+  })();
+  const shipmentHealth = (() => {
+    const etaIso =
+      routePerformance?.bookingLatestEta ||
+      routePerformance?.bookingEta ||
+      (data.expectedReceiveAt as string | null) ||
+      null;
+    const etaMs = etaIso ? new Date(etaIso).getTime() : Number.NaN;
+    if (data.receivedAt && Number.isFinite(etaMs)) {
+      return {
+        state: new Date(data.receivedAt as string).getTime() <= etaMs ? "good" : "delayed",
+        label: new Date(data.receivedAt as string).getTime() <= etaMs ? "On-time" : "Delayed",
+      };
+    }
+    if (Number.isFinite(etaMs) && etaMs < Date.now()) return { state: "delayed", label: "Delayed" };
+    if (milestoneSummary?.next?.isLate || openExceptionCount > 0) return { state: "at_risk", label: "At risk" };
+    if (legs.length === 0 && !(milestoneSummary?.openCount && milestoneSummary.openCount > 0)) {
+      return { state: "missing", label: "Missing route data" };
+    }
+    return { state: "good", label: "On-time" };
+  })();
+  const positionNow = (() => {
+    if (routeProgress.hint) return routeProgress.hint;
+    if (milestoneSummary?.next) {
+      return `Next checkpoint: ${milestoneSummary.next.code}${
+        milestoneSummary.next.dueAt ? ` by ${new Date(milestoneSummary.next.dueAt).toLocaleString()}` : ""
+      }.`;
+    }
+    return "No legs or planned tracking milestones yet.";
   })();
   const crmAccountChoices =
     (data.crmAccountChoices as Array<{ id: string; name: string }> | undefined) ?? [];
@@ -398,19 +442,6 @@ export function ControlTowerShipment360({
   const restricted = Boolean(
     (data as { view?: { restricted?: boolean } }).view?.restricted,
   );
-  const milestoneSummary = data.milestoneSummary as
-    | {
-        openCount: number;
-        lateCount: number;
-        next: {
-          code: string;
-          label: string | null;
-          dueAt: string | null;
-          isLate: boolean;
-        } | null;
-      }
-    | null
-    | undefined;
   const milestonePackCatalog =
     (data.milestonePackCatalog as
       | Array<{ id: string; title: string; description: string; milestoneCount: number }>
@@ -513,6 +544,25 @@ export function ControlTowerShipment360({
                 </>
               ) : null}
             </p>
+            <div className="mt-2 rounded-lg border border-zinc-200 bg-white/90 p-2.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Shipment health</span>
+                <span
+                  className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${
+                    shipmentHealth.state === "good"
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+                      : shipmentHealth.state === "at_risk"
+                        ? "border-amber-200 bg-amber-50 text-amber-900"
+                        : shipmentHealth.state === "delayed"
+                          ? "border-rose-200 bg-rose-50 text-rose-900"
+                          : "border-zinc-300 bg-zinc-100 text-zinc-700"
+                  }`}
+                >
+                  {shipmentHealth.label}
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-zinc-700">{positionNow}</p>
+            </div>
           </div>
           <div className="flex shrink-0 flex-col items-stretch gap-2 sm:items-end">
             <div className="flex flex-wrap justify-end gap-2">
@@ -592,6 +642,11 @@ export function ControlTowerShipment360({
             <section className="rounded-xl border border-zinc-200/90 bg-white p-4 text-sm shadow-sm">
               <h2 className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Movement</h2>
               <dl className="mt-3 space-y-2.5 text-zinc-800">
+                {legs.length === 0 && !(milestoneSummary?.openCount && milestoneSummary.openCount > 0) ? (
+                  <div className="rounded border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs text-amber-900">
+                    Route legs and dated milestones are missing. Add legs and milestone plan to see live position and ETA risk.
+                  </div>
+                ) : null}
                 <div>
                   <dt className="text-xs text-zinc-500">Carrier · tracking</dt>
                   <dd className="font-medium">
@@ -655,6 +710,33 @@ export function ControlTowerShipment360({
                       <dd className="text-xs">
                         {booking.etd ? new Date(booking.etd as string).toLocaleString() : "—"} →{" "}
                         {booking.eta ? new Date(booking.eta as string).toLocaleString() : "—"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-zinc-500">Booking sent</dt>
+                      <dd className="text-xs">
+                        {booking.bookingSentAt
+                          ? new Date(booking.bookingSentAt as string).toLocaleString()
+                          : "—"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-zinc-500">Forwarder confirm-by (SLA)</dt>
+                      <dd className="text-xs">
+                        {String(booking.status || "") === "SENT" && booking.bookingConfirmSlaDueAt ? (
+                          <>
+                            {new Date(booking.bookingConfirmSlaDueAt as string).toLocaleString()}
+                            {(() => {
+                              const due = new Date(booking.bookingConfirmSlaDueAt as string).getTime();
+                              if (!Number.isFinite(due) || due > Date.now()) return null;
+                              return (
+                                <span className="ml-1 font-semibold text-rose-700">· overdue</span>
+                              );
+                            })()}
+                          </>
+                        ) : (
+                          "—"
+                        )}
                       </dd>
                     </div>
                   </>
@@ -916,46 +998,95 @@ export function ControlTowerShipment360({
                 >
                   <label className="flex flex-col gap-0.5">
                     <span className="text-[11px] text-zinc-500">Forwarder (supplier)</span>
-                    <select
+                    <FormSearchableSelect
                       name="forwarderSupplierId"
                       defaultValue={String(booking?.forwarderSupplierId || "")}
+                      options={forwarderSupplierChoices.map((s) => ({ value: s.id, label: s.name }))}
+                      placeholder="Type to filter forwarder..."
+                      emptyLabel="None"
                       className="min-w-[200px] rounded border px-2 py-1"
-                    >
-                      <option value="">None</option>
-                      {forwarderSupplierChoices.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.name}
-                        </option>
-                      ))}
-                    </select>
+                    />
                   </label>
                   <label className="flex flex-col gap-0.5">
                     <span className="text-[11px] text-zinc-500">Office</span>
-                    <select name="forwarderOfficeId" className="min-w-[180px] rounded border px-2 py-1">
-                      <option value="">—</option>
-                      {forwarderOfficeChoices.map((o) => (
-                        <option key={o.id} value={o.id}>
-                          {o.name}
-                        </option>
-                      ))}
-                    </select>
+                    <FormSearchableSelect
+                      name="forwarderOfficeId"
+                      options={forwarderOfficeChoices.map((o) => ({ value: o.id, label: o.name }))}
+                      placeholder="Type to filter office..."
+                      emptyLabel="—"
+                      className="min-w-[180px] rounded border px-2 py-1"
+                    />
                   </label>
                   <label className="flex flex-col gap-0.5">
                     <span className="text-[11px] text-zinc-500">Contact</span>
-                    <select name="forwarderContactId" className="min-w-[200px] rounded border px-2 py-1">
-                      <option value="">—</option>
-                      {forwarderContactChoices.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                          {c.email ? ` (${c.email})` : ""}
-                        </option>
-                      ))}
-                    </select>
+                    <FormSearchableSelect
+                      name="forwarderContactId"
+                      options={forwarderContactChoices.map((c) => ({
+                        value: c.id,
+                        label: `${c.name}${c.email ? ` (${c.email})` : ""}`,
+                      }))}
+                      placeholder="Type to filter contact..."
+                      emptyLabel="—"
+                      className="min-w-[200px] rounded border px-2 py-1"
+                    />
                   </label>
                   <button type="submit" className="rounded bg-zinc-900 px-3 py-1 text-white">
                     Save forwarder
                   </button>
                 </form>
+              ) : null}
+              {canEdit && booking ? (
+                <div className="mt-3 rounded border border-zinc-200 bg-zinc-50/80 p-3 text-xs text-zinc-800">
+                  <p className="font-semibold text-zinc-900">Booking workflow</p>
+                  <p className="mt-1 leading-relaxed text-zinc-600">
+                    Outbound EDI and email-with-PDF to the forwarder are not wired yet; actions below advance the
+                    in-app booking state and SLA clock.
+                  </p>
+                  {String(booking.status || "") === "SENT" && booking.bookingConfirmSlaDueAt ? (
+                    <p className="mt-2 text-[11px] text-zinc-700">
+                      Forwarder confirm-by:{" "}
+                      <span className="font-medium">
+                        {new Date(booking.bookingConfirmSlaDueAt as string).toLocaleString()}
+                      </span>
+                    </p>
+                  ) : null}
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      disabled={String(booking.status || "") !== "DRAFT"}
+                      className="rounded bg-zinc-900 px-3 py-1.5 text-white disabled:cursor-not-allowed disabled:bg-zinc-300"
+                      onClick={async () => {
+                        if (String(booking.status || "") !== "DRAFT") return;
+                        if (!booking.forwarderSupplierId) {
+                          window.alert("Select a forwarder above before sending the booking.");
+                          return;
+                        }
+                        try {
+                          await postAction({ action: "send_booking_to_forwarder", shipmentId });
+                        } catch (err) {
+                          window.alert(err instanceof Error ? err.message : "Failed");
+                        }
+                      }}
+                    >
+                      Send booking
+                    </button>
+                    <button
+                      type="button"
+                      disabled={String(booking.status || "") !== "SENT"}
+                      className="rounded border border-zinc-300 bg-white px-3 py-1.5 font-medium text-zinc-900 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      onClick={async () => {
+                        if (String(booking.status || "") !== "SENT") return;
+                        try {
+                          await postAction({ action: "confirm_forwarder_booking", shipmentId });
+                        } catch (err) {
+                          window.alert(err instanceof Error ? err.message : "Failed");
+                        }
+                      }}
+                    >
+                      Confirm booking (forwarder)
+                    </button>
+                  </div>
+                </div>
               ) : null}
             </section>
           ) : null}
@@ -1868,16 +1999,29 @@ export function ControlTowerShipment360({
                   }
                 }}
               >
-                <input name="originCode" placeholder="Origin code" className="rounded border px-2 py-1" />
-                <input name="destinationCode" placeholder="Dest code" className="rounded border px-2 py-1" />
-                <select name="carrierSupplierId" className="rounded border px-2 py-1">
-                  <option value="">Carrier (optional)</option>
-                  {forwarderSupplierChoices.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
+                <LocationCodePicker
+                  name="originCode"
+                  defaultValue=""
+                  placeholder="Type origin code or place..."
+                  types={["UN_LOCODE", "PORT", "AIRPORT"]}
+                  emptyLabel="No origin code"
+                  className="rounded border px-2 py-1"
+                />
+                <LocationCodePicker
+                  name="destinationCode"
+                  defaultValue=""
+                  placeholder="Type destination code or place..."
+                  types={["UN_LOCODE", "PORT", "AIRPORT"]}
+                  emptyLabel="No destination code"
+                  className="rounded border px-2 py-1"
+                />
+                <FormSearchableSelect
+                  name="carrierSupplierId"
+                  options={forwarderSupplierChoices.map((s) => ({ value: s.id, label: s.name }))}
+                  placeholder="Type to filter carrier..."
+                  emptyLabel="Carrier (optional)"
+                  className="rounded border px-2 py-1"
+                />
                 <select name="transportMode" className="rounded border px-2 py-1">
                   <option value="">Mode (optional)</option>
                   <option value="OCEAN">OCEAN</option>
@@ -2228,17 +2372,16 @@ export function ControlTowerShipment360({
                 <input name="containerType" placeholder="Type" className="rounded border px-2 py-1" />
                 <input name="status" placeholder="Status" className="rounded border px-2 py-1" />
                 <input name="seal" placeholder="Seal" className="rounded border px-2 py-1" />
-                <select name="legId" className="rounded border px-2 py-1">
-                  <option value="">Leg (optional)</option>
-                  {legs.map((lr) => {
+                <FormSearchableSelect
+                  name="legId"
+                  options={legs.map((lr) => {
                     const lg = lr as Record<string, unknown>;
-                    return (
-                      <option key={String(lg.id)} value={String(lg.id)}>
-                        Leg {String(lg.legNo)}
-                      </option>
-                    );
+                    return { value: String(lg.id), label: `Leg ${String(lg.legNo)}` };
                   })}
-                </select>
+                  placeholder="Type to filter leg..."
+                  emptyLabel="Leg (optional)"
+                  className="rounded border px-2 py-1"
+                />
                 <button type="submit" className="rounded bg-zinc-900 px-3 py-1 text-white">
                   Add container
                 </button>
@@ -2257,7 +2400,7 @@ export function ControlTowerShipment360({
             Packs match the shipment transport mode (from the shipment or booking). Apply is only available before any
             control-tower tracking milestones exist — use{" "}
             <Link className="text-sky-800 underline" href="/control-tower/shipments/new">
-              New logistics shipment
+              New booking
             </Link>{" "}
             to set mode and optional template at create time.
           </p>
@@ -2721,14 +2864,13 @@ export function ControlTowerShipment360({
             >
               <input name="category" placeholder="Category *" className="rounded border px-2 py-1" required />
               <input name="description" placeholder="Description" className="rounded border px-2 py-1" />
-              <select name="vendorSupplierId" className="rounded border px-2 py-1">
-                <option value="">Vendor (optional)</option>
-                {forwarderSupplierChoices.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
+              <FormSearchableSelect
+                name="vendorSupplierId"
+                options={forwarderSupplierChoices.map((s) => ({ value: s.id, label: s.name }))}
+                placeholder="Type to filter vendor..."
+                emptyLabel="Vendor (optional)"
+                className="rounded border px-2 py-1"
+              />
               <input name="invoiceNo" placeholder="Invoice #" className="rounded border px-2 py-1" />
               <input name="invoiceDate" type="date" className="rounded border px-2 py-1" />
               <input name="currency" placeholder="Currency (EUR)" defaultValue="EUR" className="rounded border px-2 py-1" />
@@ -3076,14 +3218,13 @@ export function ControlTowerShipment360({
               {exceptionCodeCatalog.length > 0 ? (
                 <label className="flex max-w-md flex-col gap-0.5">
                   <span className="text-[11px] text-zinc-500">Exception type</span>
-                  <select name="exceptionCode" required className="rounded border px-2 py-1">
-                    <option value="">Select code…</option>
-                    {exceptionCodeCatalog.map((c) => (
-                      <option key={c.code} value={c.code}>
-                        {c.label} ({c.code})
-                      </option>
-                    ))}
-                  </select>
+                  <FormSearchableSelect
+                    name="exceptionCode"
+                    options={exceptionCodeCatalog.map((c) => ({ value: c.code, label: `${c.label} (${c.code})` }))}
+                    placeholder="Type to filter exception code..."
+                    emptyLabel="Select code…"
+                    className="rounded border px-2 py-1"
+                  />
                 </label>
               ) : (
                 <input name="type" placeholder="Exception type *" className="max-w-md rounded border px-2 py-1" />

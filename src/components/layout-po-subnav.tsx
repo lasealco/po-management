@@ -8,7 +8,7 @@ import type { PoMgmtSubNavVisibility } from "@/lib/nav-visibility";
 export function LayoutPoSubnav({ visibility }: { visibility: PoMgmtSubNavVisibility }) {
   const pathname = usePathname();
   const show =
-    pathname === "/" ||
+    pathname === "/orders" ||
     pathname.startsWith("/orders/") ||
     pathname.startsWith("/consolidation") ||
     pathname.startsWith("/products") ||

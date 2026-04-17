@@ -24,6 +24,7 @@ const QUEUE_FILTERS = new Set([
 
 const OPEN_PATH_ALLOWLIST = new Set([
   "/",
+  "/orders",
   "/consolidation",
   "/suppliers",
   "/settings/users",
@@ -117,7 +118,7 @@ export async function executeHelpDoAction(
     if (!path) {
       return { ok: false, error: "That navigation target is not allowed." };
     }
-    if (path === "/") {
+    if (path === "/orders") {
       if (!viewerHas(access.grantSet, "org.orders", "view")) {
         return { ok: false, error: "You do not have permission to view orders." };
       }
@@ -189,7 +190,7 @@ export async function executeHelpDoAction(
     });
     return {
       ok: true,
-      href: withQuery("/", qs),
+      href: withQuery("/orders", qs),
       message:
         queue === "all"
           ? "Opening the full orders board…"

@@ -181,6 +181,7 @@ async function seed() {
     ["org.products", "view"],
     ["org.products", "edit"],
     ["org.suppliers", "view"],
+    ["org.suppliers", "edit"],
     ["org.settings", "view"],
     ["org.reports", "view"],
     ["org.wms", "view"],
@@ -192,7 +193,7 @@ async function seed() {
   ];
   const approverGrants = [
     ...buyerGrants,
-    ["org.suppliers", "edit"],
+    ["org.suppliers", "approve"],
     ["org.settings", "edit"],
   ];
   const supplierGrants = [

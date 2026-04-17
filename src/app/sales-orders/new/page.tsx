@@ -17,7 +17,7 @@ export default async function NewSalesOrderPage({
   if (!access?.user) {
     return (
       <div className="min-h-screen bg-zinc-50 px-6 py-16">
-        <AccessDenied title="Create sales order" message="Choose an active user in the header first." />
+        <AccessDenied title="Create sales order" message="Choose an active demo user: open Settings → Demo session (/settings/demo)." />
       </div>
     );
   }
@@ -55,11 +55,23 @@ export default async function NewSalesOrderPage({
         })
       : Promise.resolve(null),
   ]);
-  const crmAccounts = await prisma.crmAccount.findMany({
-    where: { tenantId: tenant.id, lifecycle: "ACTIVE" },
-    orderBy: { name: "asc" },
-    select: { id: true, name: true, legalName: true },
-  });
+  const [crmAccounts, forwarderSuppliers] = await Promise.all([
+    prisma.crmAccount.findMany({
+      where: { tenantId: tenant.id, lifecycle: "ACTIVE" },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, legalName: true, accountType: true },
+    }),
+    prisma.supplier.findMany({
+      where: {
+        tenantId: tenant.id,
+        isActive: true,
+        approvalStatus: "approved",
+        srmCategory: "logistics",
+      },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, legalName: true },
+    }),
+  ]);
 
   return (
     <div className="min-h-screen bg-zinc-50">
@@ -67,6 +79,7 @@ export default async function NewSalesOrderPage({
         soNumberHint={soNumberHint}
         shipmentHint={shipmentHint}
         crmAccounts={crmAccounts}
+        forwarderSuppliers={forwarderSuppliers}
       />
     </div>
   );

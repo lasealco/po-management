@@ -3,6 +3,8 @@ import type { ShipmentStatus, TransportMode } from "@prisma/client";
 import type { AssistSuggestedFilters } from "@/lib/control-tower/assist";
 
 const VALID_STATUSES = new Set<ShipmentStatus>([
+  "BOOKING_DRAFT",
+  "BOOKING_SUBMITTED",
   "SHIPPED",
   "VALIDATED",
   "BOOKED",
