@@ -1,7 +1,9 @@
 /**
- * Vercel build: prisma generate → P3009 repair if needed → migrate → optional seed → next build.
+ * Vercel build: prisma generate → P3009 repair if needed → migrate → optional seeds → next build.
  * Set SKIP_DB_MIGRATE=1 if you run migrations elsewhere.
- * Set RUN_DB_SEED=1 for a one-time seed from Vercel (useful when local network cannot reach Neon).
+ * Set RUN_DB_SEED=1 for a one-time main seed from Vercel (remove after success).
+ * Set RUN_WMS_DEMO_SEED=1 for a one-time WMS demo seed (~10+ min; requires demo-company — use with
+ * RUN_DB_SEED=1 on first env, or after a prior db:seed; remove after success).
  */
 const { spawnSync } = require("node:child_process");
 
@@ -54,6 +56,13 @@ if (process.env.RUN_DB_SEED === "1") {
     "\n[vercel-build] RUN_DB_SEED=1 — running db seed (remove after successful deploy)\n",
   );
   run("db seed", "npm", ["run", "db:seed"]);
+}
+
+if (process.env.RUN_WMS_DEMO_SEED === "1") {
+  console.log(
+    "\n[vercel-build] RUN_WMS_DEMO_SEED=1 — running WMS demo seed (long; remove after successful deploy)\n",
+  );
+  run("wms demo seed", "npm", ["run", "db:seed:wms-demo"]);
 }
 
 run("next build", "npm", ["run", "build"]);
