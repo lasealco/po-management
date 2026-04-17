@@ -93,7 +93,7 @@ export function ControlTowerSearchClient() {
         sp.set("q", raw);
       }
       if (!sp.toString()) {
-        throw new Error("Enter search text or structured tokens (e.g. shipper:, lane:, overdue).");
+        throw new Error("Enter search text or structured tokens (e.g. lane:, overdue).");
       }
 
       const searchRes = await fetch(`/api/control-tower/search?${sp.toString()}`);
@@ -114,8 +114,6 @@ export function ControlTowerSearchClient() {
         suggested.mode && `mode=${suggested.mode}`,
         suggested.status && `status=${suggested.status}`,
         suggested.onlyOverdueEta && "overdueEta",
-        suggested.shipperName && `shipper=${suggested.shipperName}`,
-        suggested.consigneeName && `consignee=${suggested.consigneeName}`,
         suggested.lane && `lane=${suggested.lane}`,
       ]
         .filter(Boolean)
@@ -129,7 +127,7 @@ export function ControlTowerSearchClient() {
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="PO-…, MEDU1234567, lane:CNSHA, shipper:Acme, overdue SHIPPED…"
+          placeholder="PO-…, MEDU1234567, lane:CNSHA, overdue SHIPPED…"
           className="flex-1 rounded-lg border border-zinc-300 px-3 py-2 text-sm"
           onKeyDown={(e) => {
             if (e.key === "Enter") void run();

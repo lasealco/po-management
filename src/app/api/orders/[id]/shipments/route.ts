@@ -12,7 +12,6 @@ type ShipmentLineInput = {
 type CreateShipmentBody = {
   shipmentNo?: string | null;
   shippedAt?: string | null;
-  carrier?: string | null;
   trackingNo?: string | null;
   transportMode?: "OCEAN" | "AIR" | "ROAD" | "RAIL" | null;
   estimatedVolumeCbm?: string | null;
@@ -139,7 +138,6 @@ export async function POST(
         orderId: order.id,
         shipmentNo: input.shipmentNo?.trim() || null,
         shippedAt,
-        carrier: input.carrier?.trim() || null,
         trackingNo: input.trackingNo?.trim() || null,
         transportMode: input.transportMode ?? null,
         estimatedVolumeCbm: volume != null ? volume.toString() : null,

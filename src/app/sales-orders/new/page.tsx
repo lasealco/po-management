@@ -55,10 +55,19 @@ export default async function NewSalesOrderPage({
         })
       : Promise.resolve(null),
   ]);
+  const crmAccounts = await prisma.crmAccount.findMany({
+    where: { tenantId: tenant.id, lifecycle: "ACTIVE" },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true, legalName: true },
+  });
 
   return (
     <div className="min-h-screen bg-zinc-50">
-      <SalesOrderCreateForm soNumberHint={soNumberHint} shipmentHint={shipmentHint} />
+      <SalesOrderCreateForm
+        soNumberHint={soNumberHint}
+        shipmentHint={shipmentHint}
+        crmAccounts={crmAccounts}
+      />
     </div>
   );
 }

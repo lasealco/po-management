@@ -16,13 +16,13 @@ export type CreateLogisticsShipmentInput = {
   lines?: CreateLogisticsShipmentLine[];
   unlinkedOrder?: {
     referenceNo?: string | null;
-    shipperName?: string | null;
-    consigneeName?: string | null;
+    shipperSupplierId?: string | null;
+    consigneeCrmAccountId?: string | null;
     requestedDeliveryDate?: Date | null;
   } | null;
   shipmentNo?: string | null;
   shippedAt?: Date | null;
-  carrier?: string | null;
+  carrierSupplierId?: string | null;
   trackingNo?: string | null;
   transportMode: TransportMode;
   notes?: string | null;
@@ -62,6 +62,7 @@ export async function createLogisticsShipment(
     unlinkedOrder,
     transportMode,
     milestonePackId,
+    carrierSupplierId,
   } = input;
   const lines = Array.isArray(providedLines) ? providedLines : [];
 
@@ -74,6 +75,7 @@ export async function createLogisticsShipment(
   }
 
   const effectiveOrderId = orderId?.trim() || null;
+  let resolvedCustomerCrmAccountId: string | null = null;
 
   let resolvedOrderId: string;
   let resolvedLineRefs: Array<{ orderItemId: string; quantityShipped: Prisma.Decimal }>;
@@ -108,6 +110,7 @@ export async function createLogisticsShipment(
       };
     });
     resolvedOrderId = order.id;
+    resolvedCustomerCrmAccountId = null;
   } else {
     const defaultWorkflow = await prisma.workflow.findFirst({
       where: { tenantId, isDefault: true },
@@ -143,8 +146,24 @@ export async function createLogisticsShipment(
     }
 
     const refNo = unlinkedOrder?.referenceNo?.trim() || orderNumber;
-    const consignee = unlinkedOrder?.consigneeName?.trim() || null;
-    const shipper = unlinkedOrder?.shipperName?.trim() || null;
+    const shipperSupplierId = unlinkedOrder?.shipperSupplierId?.trim() || null;
+    const consigneeCrmAccountId = unlinkedOrder?.consigneeCrmAccountId?.trim() || null;
+    if (!shipperSupplierId || !consigneeCrmAccountId) {
+      throw new Error("Unlinked shipment requires shipperSupplierId and consigneeCrmAccountId.");
+    }
+    const [supplier, consignee] = await Promise.all([
+      prisma.supplier.findFirst({
+        where: { id: shipperSupplierId, tenantId },
+        select: { id: true, name: true },
+      }),
+      prisma.crmAccount.findFirst({
+        where: { id: consigneeCrmAccountId, tenantId },
+        select: { id: true, name: true },
+      }),
+    ]);
+    if (!supplier) throw new Error("Shipper supplier not found.");
+    if (!consignee) throw new Error("Consignee CRM account not found.");
+    resolvedCustomerCrmAccountId = consignee.id;
     const requestedDeliveryDate =
       unlinkedOrder?.requestedDeliveryDate && !Number.isNaN(unlinkedOrder.requestedDeliveryDate.getTime())
         ? unlinkedOrder.requestedDeliveryDate
@@ -163,10 +182,9 @@ export async function createLogisticsShipment(
         taxAmount: new Prisma.Decimal("0.00"),
         totalAmount: new Prisma.Decimal("0.00"),
         buyerReference: refNo,
-        shipToName: consignee,
-        internalNotes: [shipper ? `Shipper: ${shipper}` : null, "Auto-created for shipment without linked PO."]
-          .filter(Boolean)
-          .join("\n"),
+        supplierId: supplier.id,
+        shipToName: consignee.name,
+        internalNotes: "Auto-created for shipment without linked PO.",
         requestedDeliveryDate,
         items: {
           create: {
@@ -193,6 +211,19 @@ export async function createLogisticsShipment(
     ];
   }
 
+  let resolvedCarrier: string | null = null;
+  const carrierSupplier = carrierSupplierId?.trim() || null;
+  if (carrierSupplier) {
+    const supplier = await prisma.supplier.findFirst({
+      where: { id: carrierSupplier, tenantId, isActive: true },
+      select: { id: true, name: true },
+    });
+    if (!supplier) {
+      throw new Error("Carrier supplier not found.");
+    }
+    resolvedCarrier = supplier.name;
+  }
+
   const shipmentId = await prisma.$transaction(async (tx) => {
     const created = await tx.shipment.create({
       data: {
@@ -200,11 +231,13 @@ export async function createLogisticsShipment(
         shipmentNo: input.shipmentNo?.trim() || null,
         shippedAt,
         status: "BOOKED",
-        carrier: input.carrier?.trim() || null,
+        carrierSupplierId: carrierSupplier ?? null,
+        carrier: resolvedCarrier,
         trackingNo: input.trackingNo?.trim() || null,
         transportMode,
         notes: input.notes?.trim() || null,
         createdById: actorUserId,
+        customerCrmAccountId: resolvedCustomerCrmAccountId,
         items: {
           create: resolvedLineRefs.map((line) => ({
             orderItemId: line.orderItemId,

@@ -1,9 +1,11 @@
 import { prisma } from "@/lib/prisma";
+import { WMS_DEMO_WAREHOUSE_CODE } from "@/lib/wms/demo-warehouse-code";
 
 export async function WmsHomeOverview({ tenantId }: { tenantId: string }) {
   const asOf = new Date();
   const weekAgo = new Date(asOf.getTime() - 7 * 24 * 60 * 60 * 1000);
   const [
+    wmsDemoWarehouse,
     openTasks,
     openPutaway,
     openPick,
@@ -16,6 +18,10 @@ export async function WmsHomeOverview({ tenantId }: { tenantId: string }) {
     unbilledEvents,
     movementsWeek,
   ] = await Promise.all([
+    prisma.warehouse.findFirst({
+      where: { tenantId, code: WMS_DEMO_WAREHOUSE_CODE },
+      select: { id: true },
+    }),
     prisma.wmsTask.count({ where: { tenantId, status: "OPEN" } }),
     prisma.wmsTask.count({ where: { tenantId, status: "OPEN", taskType: "PUTAWAY" } }),
     prisma.wmsTask.count({ where: { tenantId, status: "OPEN", taskType: "PICK" } }),
@@ -58,6 +64,21 @@ export async function WmsHomeOverview({ tenantId }: { tenantId: string }) {
       <p className="mt-1 text-xs text-zinc-600">
         Live counts for this tenant — Operations and Stock tabs hold the detail.
       </p>
+      {!wmsDemoWarehouse ? (
+        <p
+          className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+          role="status"
+        >
+          No WMS demo warehouse ({WMS_DEMO_WAREHOUSE_CODE}) in this database. Purchase orders and CRM data
+          come from the base seed; tasks, bins, and inventory for WMS are loaded by a separate script. Run{" "}
+          <code className="rounded bg-amber-100/80 px-1 py-0.5 text-xs">
+            USE_DOTENV_LOCAL=1 npm run db:seed:wms-demo
+          </code>{" "}
+          against the same <code className="rounded bg-amber-100/80 px-1 py-0.5 text-xs">DATABASE_URL</code>{" "}
+          as your app (e.g. Vercel env must match the Neon DB you seed). Requires{" "}
+          <code className="rounded bg-amber-100/80 px-1 py-0.5 text-xs">npm run db:seed</code> first.
+        </p>
+      ) : null}
       <ul className="mt-4 grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         {tiles.map((t) => (
           <li

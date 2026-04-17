@@ -24,12 +24,10 @@ export type WorkbenchUrlState = {
   page: number;
   onlyOverdueEta: boolean;
   q: string;
-  shipperFilter: string;
-  consigneeFilter: string;
   laneFilter: string;
-  carrierFilter: string;
-  supplierNameFilter: string;
-  customerNameFilter: string;
+  carrierSupplierIdFilter: string;
+  supplierIdFilter: string;
+  customerCrmAccountIdFilter: string;
   originCodeFilter: string;
   destinationCodeFilter: string;
   shipmentSource: "" | "PO" | "UNLINKED";
@@ -90,12 +88,10 @@ export function readWorkbenchUrlState(
     autoRefresh,
     ship360Tab,
     q: sp.get("q") ?? "",
-    shipperFilter: sp.get("shipperName") ?? "",
-    consigneeFilter: sp.get("consigneeName") ?? "",
     laneFilter: sp.get("lane") ?? "",
-    carrierFilter: sp.get("carrier") ?? "",
-    supplierNameFilter: sp.get("supplierName") ?? "",
-    customerNameFilter: sp.get("customerName") ?? "",
+    carrierSupplierIdFilter: sp.get("carrierSupplierId") ?? "",
+    supplierIdFilter: sp.get("supplierId") ?? "",
+    customerCrmAccountIdFilter: sp.get("customerCrmAccountId") ?? "",
     originCodeFilter: sp.get("originCode") ?? "",
     destinationCodeFilter: sp.get("destinationCode") ?? "",
     shipmentSource,
@@ -109,12 +105,10 @@ export function buildWorkbenchSearchString(state: WorkbenchUrlState, restrictedV
   if (state.status) p.set("status", state.status);
   if (state.mode) p.set("mode", state.mode);
   if (state.q.trim()) p.set("q", state.q.trim());
-  if (state.shipperFilter.trim()) p.set("shipperName", state.shipperFilter.trim());
-  if (state.consigneeFilter.trim()) p.set("consigneeName", state.consigneeFilter.trim());
   if (state.laneFilter.trim()) p.set("lane", state.laneFilter.trim());
-  if (state.carrierFilter.trim()) p.set("carrier", state.carrierFilter.trim());
-  if (state.supplierNameFilter.trim()) p.set("supplierName", state.supplierNameFilter.trim());
-  if (state.customerNameFilter.trim()) p.set("customerName", state.customerNameFilter.trim());
+  if (state.carrierSupplierIdFilter.trim()) p.set("carrierSupplierId", state.carrierSupplierIdFilter.trim());
+  if (state.supplierIdFilter.trim()) p.set("supplierId", state.supplierIdFilter.trim());
+  if (state.customerCrmAccountIdFilter.trim()) p.set("customerCrmAccountId", state.customerCrmAccountIdFilter.trim());
   if (state.originCodeFilter.trim()) p.set("originCode", state.originCodeFilter.trim());
   if (state.destinationCodeFilter.trim()) p.set("destinationCode", state.destinationCodeFilter.trim());
   if (state.shipmentSource) p.set("shipmentSource", state.shipmentSource);

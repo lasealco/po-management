@@ -1,9 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { ARSCMPLogo } from "@/components/arscmp-logo";
 import type { AppNavLinkVisibility } from "@/lib/nav-visibility";
 
 type TopNavItem =
@@ -70,18 +70,10 @@ export function AppNav({
       <div className="mx-auto flex min-h-14 max-w-7xl flex-wrap items-center justify-between gap-x-6 gap-y-2 py-2 pl-2 pr-6 sm:pl-3 md:pl-6">
         <Link
           href="/"
-          className="mr-auto flex h-14 max-h-14 shrink-0 items-center"
+          className="mr-auto flex shrink-0 items-center"
           aria-label="ARSCMP home"
         >
-          <Image
-            src="/arscmp-logo.png"
-            alt="ARSCMP"
-            width={810}
-            height={319}
-            className="h-14 w-auto max-h-14 object-contain object-left"
-            sizes="(max-width: 768px) 240px, 320px"
-            priority
-          />
+          <ARSCMPLogo className="py-1" />
         </Link>
         <nav className="flex flex-wrap items-center justify-end gap-x-6 gap-y-1" aria-label="Main">
           {visible.map((item) => {
@@ -109,8 +101,8 @@ export function AppNav({
                 href={item.href}
                 className={`border-b-2 pb-0.5 text-sm font-medium transition-colors ${
                   active
-                    ? "border-zinc-900 text-zinc-900"
-                    : "border-transparent text-zinc-500 hover:border-zinc-300 hover:text-zinc-800"
+                    ? "border-[var(--arscmp-primary)] text-[var(--arscmp-primary)]"
+                    : "border-transparent text-zinc-500 hover:border-zinc-300 hover:text-[var(--arscmp-primary)]"
                 }`}
               >
                 {item.label}

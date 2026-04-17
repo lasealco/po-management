@@ -6,6 +6,19 @@ import { getDemoTenant } from "@/lib/demo-tenant";
 
 export const dynamic = "force-dynamic";
 
+function sanitizeSavedWorkbenchFilters(input: unknown): Record<string, unknown> {
+  const raw =
+    input && typeof input === "object" ? (input as Record<string, unknown>) : {};
+  return {
+    ...raw,
+    shipperFilter: "",
+    consigneeFilter: "",
+    carrierFilter: "",
+    supplierNameFilter: "",
+    customerNameFilter: "",
+  };
+}
+
 export async function GET() {
   const gate = await requireApiGrant("org.controltower", "view");
   if (gate) return gate;
@@ -29,7 +42,7 @@ export async function GET() {
     filters: rows.map((r) => ({
       id: r.id,
       name: r.name,
-      filtersJson: r.filtersJson,
+      filtersJson: sanitizeSavedWorkbenchFilters(r.filtersJson),
       createdAt: r.createdAt.toISOString(),
     })),
   });

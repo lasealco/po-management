@@ -5,6 +5,7 @@ import { getControlTowerReportsSummary } from "@/lib/control-tower/reports-summa
 import { getControlTowerPortalContext } from "@/lib/control-tower/viewer";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { ControlTowerReportBuilder } from "@/components/control-tower-report-builder";
+import { prisma } from "@/lib/prisma";
 
 import { ControlTowerReportsClient } from "./reports-client";
 
@@ -28,6 +29,22 @@ export default async function ControlTowerReportsPage() {
 
   const summary =
     tenant != null ? await getControlTowerReportsSummary({ tenantId: tenant.id, ctx }) : null;
+  const [supplierChoices, crmAccountChoices] = tenant
+    ? await Promise.all([
+        prisma.supplier.findMany({
+          where: { tenantId: tenant.id, isActive: true },
+          orderBy: { name: "asc" },
+          select: { id: true, name: true },
+          take: 500,
+        }),
+        prisma.crmAccount.findMany({
+          where: { tenantId: tenant.id, lifecycle: "ACTIVE" },
+          orderBy: { name: "asc" },
+          select: { id: true, name: true },
+          take: 500,
+        }),
+      ])
+    : [[], []];
 
   return (
     <main className="mx-auto w-full max-w-7xl px-6 py-10">
@@ -51,7 +68,11 @@ export default async function ControlTowerReportsPage() {
       </header>
       {summary ? (
         <div className="space-y-6">
-          <ControlTowerReportBuilder canEdit={canEdit} />
+          <ControlTowerReportBuilder
+            canEdit={canEdit}
+            supplierChoices={supplierChoices}
+            crmAccountChoices={crmAccountChoices}
+          />
           <ControlTowerReportsClient summary={summary} canEdit={canEdit} />
         </div>
       ) : (

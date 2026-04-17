@@ -399,13 +399,32 @@ export async function handleControlTowerPost(
       invoiceDate = parsed;
     }
     const currency = normalizeCurrency(typeof body.currency === "string" ? body.currency : "USD");
+    const vendorSupplierIdRaw =
+      body.vendorSupplierId === null || body.vendorSupplierId === ""
+        ? null
+        : typeof body.vendorSupplierId === "string"
+          ? body.vendorSupplierId.trim()
+          : "";
+    if (vendorSupplierIdRaw === "") return bad("Invalid vendorSupplierId");
+    let vendorSupplierId: string | null = null;
+    let vendor: string | null = null;
+    if (vendorSupplierIdRaw) {
+      const supplier = await prisma.supplier.findFirst({
+        where: { id: vendorSupplierIdRaw, tenantId, isActive: true },
+        select: { id: true, name: true },
+      });
+      if (!supplier) return bad("Invalid vendor supplier", 400);
+      vendorSupplierId = supplier.id;
+      vendor = supplier.name;
+    }
     const row = await prisma.ctShipmentCostLine.create({
       data: {
         tenantId,
         shipmentId,
         category,
         description: typeof body.description === "string" ? body.description.trim() || null : null,
-        vendor: typeof body.vendor === "string" ? body.vendor.trim() || null : null,
+        vendorSupplierId,
+        vendor,
         invoiceNo: typeof body.invoiceNo === "string" ? body.invoiceNo.trim() || null : null,
         invoiceDate,
         amountMinor: amountToMinor(amount),
@@ -946,12 +965,22 @@ export async function handleControlTowerPost(
     if (filtersJson === undefined || typeof filtersJson !== "object" || filtersJson === null) {
       return bad("filtersJson object required");
     }
+    const raw = filtersJson as Record<string, unknown>;
+    // Prevent persisting free-text master-entity filters in saved views.
+    const sanitizedFiltersJson = {
+      ...raw,
+      shipperFilter: "",
+      consigneeFilter: "",
+      carrierFilter: "",
+      supplierNameFilter: "",
+      customerNameFilter: "",
+    } satisfies Record<string, unknown>;
     const row = await prisma.ctSavedFilter.create({
       data: {
         tenantId,
         userId: actorId,
         name,
-        filtersJson: filtersJson as Prisma.InputJsonValue,
+        filtersJson: sanitizedFiltersJson as Prisma.InputJsonValue,
       },
     });
     return NextResponse.json({ ok: true, id: row.id });
@@ -1003,6 +1032,47 @@ export async function handleControlTowerPost(
     return NextResponse.json({ ok: true });
   }
 
+  if (action === "set_shipment_carrier_supplier") {
+    const shipmentId = typeof body.shipmentId === "string" ? body.shipmentId : "";
+    if (!shipmentId) return bad("shipmentId required");
+    if (!(await assertShipmentTenant(shipmentId, tenantId))) return bad("Shipment not found", 404);
+    const raw = body.carrierSupplierId;
+    const carrierSupplierId =
+      raw === null || raw === ""
+        ? null
+        : typeof raw === "string"
+          ? raw.trim() || null
+          : undefined;
+    if (carrierSupplierId === undefined) {
+      return bad("carrierSupplierId required (string or null)");
+    }
+
+    let carrierName: string | null = null;
+    if (carrierSupplierId) {
+      const supplier = await prisma.supplier.findFirst({
+        where: { id: carrierSupplierId, tenantId, isActive: true },
+        select: { id: true, name: true },
+      });
+      if (!supplier) return bad("Carrier supplier not found in tenant", 404);
+      carrierName = supplier.name;
+    }
+
+    await prisma.shipment.update({
+      where: { id: shipmentId },
+      data: { carrierSupplierId, carrier: carrierName },
+    });
+    await writeCtAudit({
+      tenantId,
+      shipmentId,
+      entityType: "Shipment",
+      entityId: shipmentId,
+      action: "set_carrier_supplier",
+      actorUserId: actorId,
+      payload: { carrierSupplierId, carrier: carrierName },
+    });
+    return NextResponse.json({ ok: true });
+  }
+
   if (action === "set_order_external_reference") {
     const shipmentId = typeof body.shipmentId === "string" ? body.shipmentId : "";
     const externalOrderRef = typeof body.externalOrderRef === "string" ? body.externalOrderRef.trim() : "";
@@ -1039,6 +1109,7 @@ export async function handleControlTowerPost(
       select: {
         id: true,
         salesOrderId: true,
+        customerCrmAccountId: true,
         order: {
           select: {
             shipToName: true,
@@ -1050,10 +1121,16 @@ export async function handleControlTowerPost(
     });
     if (!ship) return bad("Shipment not found", 404);
     if (ship.salesOrderId) return bad("Shipment already linked to a sales order", 409);
+    if (!ship.customerCrmAccountId) {
+      return bad("Set shipment customer account before creating a sales order.", 409);
+    }
+    const customerAccount = await prisma.crmAccount.findFirst({
+      where: { id: ship.customerCrmAccountId, tenantId },
+      select: { id: true, name: true },
+    });
+    if (!customerAccount) return bad("Shipment customer account not found.", 404);
     const soNumberRaw = typeof body.soNumber === "string" ? body.soNumber.trim() : "";
     const soNumber = soNumberRaw || (await nextSalesOrderNumber(tenantId));
-    const customerNameRaw = typeof body.customerName === "string" ? body.customerName.trim() : "";
-    const customerName = customerNameRaw || ship.order.shipToName || "Unknown customer";
     const externalRefRaw = typeof body.externalRef === "string" ? body.externalRef.trim() : "";
     const externalRef = externalRefRaw || ship.order.buyerReference || null;
     const requestedDeliveryDate = ship.order.requestedDeliveryDate ?? null;
@@ -1064,7 +1141,8 @@ export async function handleControlTowerPost(
           tenantId,
           soNumber,
           status: "DRAFT",
-          customerName,
+          customerName: customerAccount.name,
+          customerCrmAccountId: customerAccount.id,
           externalRef,
           requestedDeliveryDate,
           createdById: actorId,
@@ -1163,6 +1241,24 @@ export async function handleControlTowerPost(
     ) {
       return bad("Invalid date on leg");
     }
+    const carrierSupplierIdRaw =
+      body.carrierSupplierId === null || body.carrierSupplierId === ""
+        ? null
+        : typeof body.carrierSupplierId === "string"
+          ? body.carrierSupplierId.trim()
+          : "";
+    if (carrierSupplierIdRaw === "") return bad("Invalid carrierSupplierId");
+    let carrierSupplierId: string | null = null;
+    let carrier: string | null = null;
+    if (carrierSupplierIdRaw) {
+      const supplier = await prisma.supplier.findFirst({
+        where: { id: carrierSupplierIdRaw, tenantId, isActive: true },
+        select: { id: true, name: true },
+      });
+      if (!supplier) return bad("Invalid carrier supplier", 400);
+      carrierSupplierId = supplier.id;
+      carrier = supplier.name;
+    }
     const row = await prisma.ctShipmentLeg.create({
       data: {
         tenantId,
@@ -1171,7 +1267,8 @@ export async function handleControlTowerPost(
         originCode: typeof body.originCode === "string" ? body.originCode || null : null,
         destinationCode:
           typeof body.destinationCode === "string" ? body.destinationCode || null : null,
-        carrier: typeof body.carrier === "string" ? body.carrier || null : null,
+        carrierSupplierId,
+        carrier,
         transportMode: mode,
         plannedEtd: plannedEtd === undefined ? null : plannedEtd,
         plannedEta: plannedEta === undefined ? null : plannedEta,
@@ -1224,6 +1321,26 @@ export async function handleControlTowerPost(
     ) {
       return bad("Invalid date on leg");
     }
+    let carrierPatch: { carrierSupplierId: string | null; carrier: string | null } | Record<string, never> = {};
+    if (body.carrierSupplierId !== undefined) {
+      const carrierSupplierIdRaw =
+        body.carrierSupplierId === null || body.carrierSupplierId === ""
+          ? null
+          : typeof body.carrierSupplierId === "string"
+            ? body.carrierSupplierId.trim()
+            : "";
+      if (carrierSupplierIdRaw === "") return bad("Invalid carrierSupplierId");
+      if (!carrierSupplierIdRaw) {
+        carrierPatch = { carrierSupplierId: null, carrier: null };
+      } else {
+        const supplier = await prisma.supplier.findFirst({
+          where: { id: carrierSupplierIdRaw, tenantId, isActive: true },
+          select: { id: true, name: true },
+        });
+        if (!supplier) return bad("Invalid carrier supplier", 400);
+        carrierPatch = { carrierSupplierId: supplier.id, carrier: supplier.name };
+      }
+    }
     await prisma.ctShipmentLeg.update({
       where: { id: legId },
       data: {
@@ -1231,7 +1348,7 @@ export async function handleControlTowerPost(
         ...(typeof body.destinationCode === "string"
           ? { destinationCode: body.destinationCode || null }
           : {}),
-        ...(typeof body.carrier === "string" ? { carrier: body.carrier || null } : {}),
+        ...carrierPatch,
         ...transportModePatch,
         ...(plannedEtd !== undefined ? { plannedEtd } : {}),
         ...(plannedEta !== undefined ? { plannedEta } : {}),

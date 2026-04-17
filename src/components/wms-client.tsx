@@ -1,7 +1,9 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { startTransition, useCallback, useEffect, useMemo, useState } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+import { WMS_DEMO_WAREHOUSE_CODE } from "@/lib/wms/demo-warehouse-code";
 
 type WmsData = {
   warehouses: Array<{ id: string; code: string | null; name: string; type: "CFS" | "WAREHOUSE" }>;
@@ -206,6 +208,8 @@ function downloadMovementLedgerCsv(
 
 export function WmsClient({ canEdit, section }: { canEdit: boolean; section: WmsSection }) {
   const searchParams = useSearchParams();
+  /** Stock: once user picks "All warehouses", do not auto-select demo DC again on refetch. */
+  const stockWarehouseDefaultApplied = useRef(false);
   const [data, setData] = useState<WmsData | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -240,9 +244,6 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
   const [replMax, setReplMax] = useState("");
   const [replQty, setReplQty] = useState("");
   const [outboundRef, setOutboundRef] = useState("");
-  const [outboundShipTo, setOutboundShipTo] = useState("");
-  const [outboundCity, setOutboundCity] = useState("");
-  const [outboundCountry, setOutboundCountry] = useState("");
   const [outboundProductId, setOutboundProductId] = useState("");
   const [outboundLineQty, setOutboundLineQty] = useState("");
   const [outboundCrmAccountId, setOutboundCrmAccountId] = useState("");
@@ -291,7 +292,12 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
     setData(payload);
     setSelectedWarehouseId((prev) => {
       if (section === "stock") {
-        return prev;
+        if (prev) return prev;
+        if (stockWarehouseDefaultApplied.current) return prev;
+        const demoWh = payload.warehouses.find((w) => w.code === WMS_DEMO_WAREHOUSE_CODE);
+        if (!demoWh) return prev;
+        stockWarehouseDefaultApplied.current = true;
+        return demoWh.id;
       }
       if (!prev && payload.warehouses[0]) {
         return payload.warehouses[0].id;
@@ -395,6 +401,8 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
     );
   }
 
+  const wmsDemoDatasetMissing = !data.warehouses.some((w) => w.code === WMS_DEMO_WAREHOUSE_CODE);
+
   const movementsShown = data.recentMovements;
 
   const headerTitle =
@@ -423,6 +431,22 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
           {error}
         </p>
       ) : null}
+      {wmsDemoDatasetMissing ? (
+        <p
+          className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+          role="status"
+        >
+          This environment does not have the WMS demo warehouse ({WMS_DEMO_WAREHOUSE_CODE}), so stock and
+          operations stay empty even when purchase orders look fine. Run{" "}
+          <code className="rounded bg-amber-100/80 px-1 py-0.5 text-xs">
+            USE_DOTENV_LOCAL=1 npm run db:seed:wms-demo
+          </code>{" "}
+          against the same <code className="rounded bg-amber-100/80 px-1 py-0.5 text-xs">DATABASE_URL</code>{" "}
+          the deployed app uses (for example, match Vercel production env to the Neon branch you seed). Base
+          tenant and roles require{" "}
+          <code className="rounded bg-amber-100/80 px-1 py-0.5 text-xs">npm run db:seed</code> first.
+        </p>
+      ) : null}
 
       {section === "setup" || section === "operations" ? (
         <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-zinc-200 bg-white px-4 py-3">
@@ -447,7 +471,11 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
             <span className="text-sm font-medium text-zinc-700">Warehouse</span>
             <select
               value={selectedWarehouseId}
-              onChange={(e) => setSelectedWarehouseId(e.target.value)}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === "") stockWarehouseDefaultApplied.current = true;
+                setSelectedWarehouseId(v);
+              }}
               className="rounded border border-zinc-300 px-3 py-2 text-sm"
             >
               <option value="">All warehouses</option>
@@ -459,6 +487,11 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
               ))}
             </select>
           </label>
+          <p className="w-full text-xs text-zinc-500">
+            WMS demo inventory (balances and most ledger rows) lives in{" "}
+            <span className="font-medium text-zinc-700">{WMS_DEMO_WAREHOUSE_CODE}</span>. CFS rows in this list
+            are mostly empty for stock unless you create balances there.
+          </p>
           <label className="flex flex-wrap items-center gap-2">
             <span className="text-sm font-medium text-zinc-700">Movement type</span>
             <select
@@ -1013,9 +1046,6 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
         </p>
         <div className="mt-2 grid gap-2 sm:grid-cols-6">
           <input value={outboundRef} onChange={(e) => setOutboundRef(e.target.value)} placeholder="Customer ref" className="rounded border border-zinc-300 px-3 py-2 text-sm" />
-          <input value={outboundShipTo} onChange={(e) => setOutboundShipTo(e.target.value)} placeholder="Ship-to name" className="rounded border border-zinc-300 px-3 py-2 text-sm" />
-          <input value={outboundCity} onChange={(e) => setOutboundCity(e.target.value)} placeholder="City" className="rounded border border-zinc-300 px-3 py-2 text-sm" />
-          <input value={outboundCountry} onChange={(e) => setOutboundCountry(e.target.value.toUpperCase())} placeholder="Country" className="rounded border border-zinc-300 px-3 py-2 text-sm" />
           <select value={outboundProductId} onChange={(e)=>setOutboundProductId(e.target.value)} className="rounded border border-zinc-300 px-3 py-2 text-sm">
             <option value="">Product</option>
             {Array.from(new Map(data.balances.map((b)=>[b.product.id,b.product] as const)).values()).map((p)=>(
@@ -1051,9 +1081,6 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                 action: "create_outbound_order",
                 warehouseId: selectedWarehouseId,
                 customerRef: outboundRef,
-                shipToName: outboundShipTo,
-                shipToCity: outboundCity,
-                shipToCountryCode: outboundCountry,
                 crmAccountId: outboundCrmAccountId.trim() || null,
                 lines: outboundProductId
                   ? [{ productId: outboundProductId, quantity: Number(outboundLineQty) }]

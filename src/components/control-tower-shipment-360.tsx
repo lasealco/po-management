@@ -600,6 +600,46 @@ export function ControlTowerShipment360({
                     {(data.trackingNo as string) || "—"}
                   </dd>
                 </div>
+                {canEdit && forwarderSupplierChoices.length > 0 ? (
+                  <form
+                    key={String(data.carrierSupplierId ?? "none")}
+                    className="rounded border border-zinc-200 bg-zinc-50 p-2"
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      const fd = new FormData(e.currentTarget);
+                      const raw = String(fd.get("carrierSupplierId") ?? "");
+                      const carrierSupplierId = raw === "" ? null : raw;
+                      try {
+                        await postAction({
+                          action: "set_shipment_carrier_supplier",
+                          shipmentId,
+                          carrierSupplierId,
+                        });
+                      } catch (err) {
+                        window.alert(err instanceof Error ? err.message : "Failed");
+                      }
+                    }}
+                  >
+                    <label className="flex flex-col gap-1">
+                      <span className="text-xs text-zinc-500">Carrier (master data)</span>
+                      <select
+                        name="carrierSupplierId"
+                        defaultValue={(data.carrierSupplierId as string) || ""}
+                        className="rounded border border-zinc-300 px-2 py-1 text-xs"
+                      >
+                        <option value="">None</option>
+                        {forwarderSupplierChoices.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button type="submit" className="mt-2 rounded bg-zinc-900 px-2 py-1 text-xs text-white">
+                      Save carrier
+                    </button>
+                  </form>
+                ) : null}
                 {booking ? (
                   <>
                     <div>
@@ -1666,7 +1706,7 @@ export function ControlTowerShipment360({
                                   legId: String(leg.id),
                                   originCode: String(fd.get("originCode") || ""),
                                   destinationCode: String(fd.get("destinationCode") || ""),
-                                  carrier: String(fd.get("carrier") || ""),
+                                  carrierSupplierId: String(fd.get("carrierSupplierId") || "") || null,
                                   transportMode: mode || null,
                                   plannedEtd: String(fd.get("plannedEtd") || "") || null,
                                   plannedEta: String(fd.get("plannedEta") || "") || null,
@@ -1691,12 +1731,18 @@ export function ControlTowerShipment360({
                               placeholder="Dest"
                               className="w-24 rounded border px-1 py-0.5"
                             />
-                            <input
-                              name="carrier"
-                              defaultValue={String(leg.carrier || "")}
-                              placeholder="Carrier"
-                              className="w-28 rounded border px-1 py-0.5"
-                            />
+                            <select
+                              name="carrierSupplierId"
+                              defaultValue={String(leg.carrierSupplierId || "")}
+                              className="w-44 rounded border px-1 py-0.5"
+                            >
+                              <option value="">Carrier</option>
+                              {forwarderSupplierChoices.map((s) => (
+                                <option key={s.id} value={s.id}>
+                                  {s.name}
+                                </option>
+                              ))}
+                            </select>
                             <select
                               name="transportMode"
                               defaultValue={String(leg.transportMode || "")}
@@ -1810,7 +1856,7 @@ export function ControlTowerShipment360({
                       shipmentId,
                       originCode: String(fd.get("originCode") || "") || null,
                       destinationCode: String(fd.get("destinationCode") || "") || null,
-                      carrier: String(fd.get("carrier") || "") || null,
+                      carrierSupplierId: String(fd.get("carrierSupplierId") || "") || null,
                       transportMode: mode || null,
                       plannedEtd: String(fd.get("plannedEtd") || "") || null,
                       plannedEta: String(fd.get("plannedEta") || "") || null,
@@ -1824,7 +1870,14 @@ export function ControlTowerShipment360({
               >
                 <input name="originCode" placeholder="Origin code" className="rounded border px-2 py-1" />
                 <input name="destinationCode" placeholder="Dest code" className="rounded border px-2 py-1" />
-                <input name="carrier" placeholder="Carrier" className="rounded border px-2 py-1" />
+                <select name="carrierSupplierId" className="rounded border px-2 py-1">
+                  <option value="">Carrier (optional)</option>
+                  {forwarderSupplierChoices.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
                 <select name="transportMode" className="rounded border px-2 py-1">
                   <option value="">Mode (optional)</option>
                   <option value="OCEAN">OCEAN</option>
@@ -2654,7 +2707,7 @@ export function ControlTowerShipment360({
                     shipmentId,
                     category: String(fd.get("category") || "").trim(),
                     description: String(fd.get("description") || "").trim() || null,
-                    vendor: String(fd.get("vendor") || "").trim() || null,
+                    vendorSupplierId: String(fd.get("vendorSupplierId") || "").trim() || null,
                     invoiceNo: String(fd.get("invoiceNo") || "").trim() || null,
                     invoiceDate: String(fd.get("invoiceDate") || "") || null,
                     currency: String(fd.get("currency") || "USD"),
@@ -2668,7 +2721,14 @@ export function ControlTowerShipment360({
             >
               <input name="category" placeholder="Category *" className="rounded border px-2 py-1" required />
               <input name="description" placeholder="Description" className="rounded border px-2 py-1" />
-              <input name="vendor" placeholder="Vendor" className="rounded border px-2 py-1" />
+              <select name="vendorSupplierId" className="rounded border px-2 py-1">
+                <option value="">Vendor (optional)</option>
+                {forwarderSupplierChoices.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
               <input name="invoiceNo" placeholder="Invoice #" className="rounded border px-2 py-1" />
               <input name="invoiceDate" type="date" className="rounded border px-2 py-1" />
               <input name="currency" placeholder="Currency (EUR)" defaultValue="EUR" className="rounded border px-2 py-1" />

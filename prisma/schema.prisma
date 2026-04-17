@@ -238,6 +238,9 @@ model Supplier {
   contacts         SupplierContact[]
   productSuppliers ProductSupplier[]
   shipmentBookings ShipmentBooking[]
+  shipmentsCarrier Shipment[] @relation("ShipmentCarrierSupplier")
+  ctShipmentLegsCarrier CtShipmentLeg[] @relation("CtLegCarrierSupplier")
+  ctShipmentCostLinesVendor CtShipmentCostLine[] @relation("CtCostLineVendorSupplier")
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -663,6 +666,7 @@ model Shipment {
   asnReference     String?
   /// Expected arrival at CFS / warehouse for receiving planning.
   expectedReceiveAt DateTime?
+  carrierSupplierId String?
   carrier      String?
   trackingNo   String?
   transportMode TransportMode?
@@ -687,6 +691,7 @@ model Shipment {
 
   order     PurchaseOrder  @relation(fields: [orderId], references: [id], onDelete: Cascade)
   salesOrder SalesOrder?   @relation(fields: [salesOrderId], references: [id], onDelete: SetNull)
+  carrierSupplier Supplier? @relation("ShipmentCarrierSupplier", fields: [carrierSupplierId], references: [id], onDelete: SetNull)
   customerCrmAccount CrmAccount? @relation("ShipmentCustomerAccount", fields: [customerCrmAccountId], references: [id], onDelete: SetNull)
   opsAssignee User? @relation("ShipmentOpsAssignee", fields: [opsAssigneeUserId], references: [id], onDelete: SetNull)
   createdBy User           @relation(fields: [createdById], references: [id], onDelete: Restrict)
@@ -710,6 +715,7 @@ model Shipment {
   @@index([orderId, createdAt])
   @@index([status])
   @@index([customerCrmAccountId])
+  @@index([carrierSupplierId])
   @@index([salesOrderId])
   @@index([opsAssigneeUserId])
 }
@@ -1091,6 +1097,7 @@ model CtShipmentCostLine {
   shipmentId  String
   category    String
   description String?
+  vendorSupplierId String?
   vendor      String?
   invoiceNo   String?
   invoiceDate DateTime?
@@ -1102,10 +1109,12 @@ model CtShipmentCostLine {
 
   tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  vendorSupplier Supplier? @relation("CtCostLineVendorSupplier", fields: [vendorSupplierId], references: [id], onDelete: SetNull)
   createdBy User    @relation(fields: [createdById], references: [id], onDelete: Restrict)
 
   @@index([tenantId, shipmentId, createdAt])
   @@index([shipmentId, currency])
+  @@index([vendorSupplierId])
 }
 
 /// Multi-leg routing (ocean/air/truck segments) for Control Tower.
@@ -1116,6 +1125,7 @@ model CtShipmentLeg {
   legNo            Int             @default(1)
   originCode      String?
   destinationCode String?
+  carrierSupplierId String?
   carrier          String?
   transportMode    TransportMode?
   plannedEtd       DateTime?
@@ -1128,10 +1138,12 @@ model CtShipmentLeg {
 
   tenant    Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   shipment  Shipment             @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  carrierSupplier Supplier?      @relation("CtLegCarrierSupplier", fields: [carrierSupplierId], references: [id], onDelete: SetNull)
   containers CtShipmentContainer[]
 
   @@unique([shipmentId, legNo])
   @@index([tenantId, shipmentId])
+  @@index([carrierSupplierId])
 }
 
 model CtShipmentContainer {

@@ -18,7 +18,7 @@ function withShip360Tab(sp: URLSearchParams, ship360Tab?: "milestones") {
 
 /**
  * Maps a Control Tower report dimension + aggregated row to workbench list query params.
- * Uses explicit API params (carrier, supplierName, …) where possible instead of broad `q`.
+ * Uses explicit API params where possible; falls back to broad `q` for name-based buckets.
  * Returns null when there is no sensible workbench filter (e.g. month bucket).
  */
 export function buildControlTowerWorkbenchDrillQuery(params: {
@@ -75,21 +75,21 @@ export function buildControlTowerWorkbenchDrillQuery(params: {
   if (dim === "carrier") {
     const v = label && label !== "Unknown" ? label : key && key !== "Unknown" ? key : "";
     if (!v) return null;
-    sp.set("carrier", v);
+    sp.set("q", v);
     return withShip360Tab(sp, params.ship360Tab);
   }
 
   if (dim === "customer") {
     const v = label && label !== "Unknown" ? label : key && key !== "Unknown" ? key : "";
     if (!v) return null;
-    sp.set("customerName", v);
+    sp.set("q", v);
     return withShip360Tab(sp, params.ship360Tab);
   }
 
   if (dim === "supplier") {
     const v = label && label !== "Unknown" ? label : key && key !== "Unknown" ? key : "";
     if (!v) return null;
-    sp.set("supplierName", v);
+    sp.set("q", v);
     return withShip360Tab(sp, params.ship360Tab);
   }
 

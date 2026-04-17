@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
+
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { getWmsDashboardPayload } from "@/lib/wms/get-wms-payload";
 import { parseMovementLedgerQuery } from "@/lib/wms/movement-ledger-query";
 import { handleWmsPost } from "@/lib/wms/post-actions";
 import type { WmsBody } from "@/lib/wms/wms-body";
+
+export const dynamic = "force-dynamic";
 
 async function getTenant() {
   const tenant = await getDemoTenant();

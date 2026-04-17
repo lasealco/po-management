@@ -248,20 +248,12 @@ export function OrderDetail({
   const [paymentTermsLabel, setPaymentTermsLabel] = useState("");
   const [incoterm, setIncoterm] = useState("");
   const [requestedDeliveryDate, setRequestedDeliveryDate] = useState("");
-  const [shipToName, setShipToName] = useState("");
-  const [shipToLine1, setShipToLine1] = useState("");
-  const [shipToLine2, setShipToLine2] = useState("");
-  const [shipToCity, setShipToCity] = useState("");
-  const [shipToRegion, setShipToRegion] = useState("");
-  const [shipToPostalCode, setShipToPostalCode] = useState("");
-  const [shipToCountryCode, setShipToCountryCode] = useState("");
   const [internalNotes, setInternalNotes] = useState("");
   const [notesToSupplier, setNotesToSupplier] = useState("");
 
   const [newMessageBody, setNewMessageBody] = useState("");
   const [newMessageInternal, setNewMessageInternal] = useState(false);
   const [asnShipmentNo, setAsnShipmentNo] = useState("");
-  const [asnCarrier, setAsnCarrier] = useState("");
   const [asnTrackingNo, setAsnTrackingNo] = useState("");
   const [asnTransportMode, setAsnTransportMode] = useState<
     "OCEAN" | "AIR" | "ROAD" | "RAIL"
@@ -333,7 +325,7 @@ export function OrderDetail({
       }, 4200);
     }, 350);
     return () => window.clearTimeout(timer);
-  }, [data?.order.id, searchParams]);
+  }, [data, searchParams]);
 
   useEffect(() => {
     if (!data) return;
@@ -347,13 +339,6 @@ export function OrderDetail({
       setPaymentTermsLabel(o.paymentTermsLabel ?? "");
       setIncoterm(o.incoterm ?? "");
       setRequestedDeliveryDate(deliveryDateInputValue(o.requestedDeliveryDate));
-      setShipToName(o.shipToName ?? "");
-      setShipToLine1(o.shipToLine1 ?? "");
-      setShipToLine2(o.shipToLine2 ?? "");
-      setShipToCity(o.shipToCity ?? "");
-      setShipToRegion(o.shipToRegion ?? "");
-      setShipToPostalCode(o.shipToPostalCode ?? "");
-      setShipToCountryCode(o.shipToCountryCode ?? "");
       setInternalNotes(o.internalNotes ?? "");
       setNotesToSupplier(o.notesToSupplier ?? "");
       setAsnQtyByItemId((prev) => {
@@ -385,7 +370,7 @@ export function OrderDetail({
         return next;
       });
     });
-  }, [data?.order.updatedAt]);
+  }, [data]);
 
   useEffect(() => {
     if (!data?.items.length) return;
@@ -480,13 +465,6 @@ export function OrderDetail({
         paymentTermsLabel: paymentTermsLabel || null,
         incoterm: incoterm || null,
         requestedDeliveryDate: requestedDeliveryDate.trim() || null,
-        shipToName: shipToName || null,
-        shipToLine1: shipToLine1 || null,
-        shipToLine2: shipToLine2 || null,
-        shipToCity: shipToCity || null,
-        shipToRegion: shipToRegion || null,
-        shipToPostalCode: shipToPostalCode || null,
-        shipToCountryCode: shipToCountryCode.trim().toUpperCase() || null,
         internalNotes: internalNotes || null,
         notesToSupplier: notesToSupplier || null,
       }),
@@ -602,7 +580,6 @@ export function OrderDetail({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         shipmentNo: asnShipmentNo || null,
-        carrier: asnCarrier || null,
         trackingNo: asnTrackingNo || null,
         transportMode: asnTransportMode,
         estimatedVolumeCbm: asnEstimatedVolumeCbm || null,
@@ -619,7 +596,6 @@ export function OrderDetail({
       return;
     }
     setAsnShipmentNo("");
-    setAsnCarrier("");
     setAsnTrackingNo("");
     setAsnEstimatedVolumeCbm("");
     setAsnEstimatedWeightKg("");
@@ -1058,71 +1034,9 @@ export function OrderDetail({
                 />
               </label>
             </div>
-            <div>
-              <p className="text-sm font-medium text-zinc-900">Ship to</p>
-              <div className="mt-2 grid gap-3 sm:grid-cols-2">
-                <label className="flex flex-col text-sm sm:col-span-2">
-                  <span>Name / attention</span>
-                  <input
-                    value={shipToName}
-                    onChange={(e) => setShipToName(e.target.value)}
-                    className={f}
-                  />
-                </label>
-                <label className="flex flex-col text-sm sm:col-span-2">
-                  <span>Address line 1</span>
-                  <input
-                    value={shipToLine1}
-                    onChange={(e) => setShipToLine1(e.target.value)}
-                    className={f}
-                  />
-                </label>
-                <label className="flex flex-col text-sm sm:col-span-2">
-                  <span>Address line 2</span>
-                  <input
-                    value={shipToLine2}
-                    onChange={(e) => setShipToLine2(e.target.value)}
-                    className={f}
-                  />
-                </label>
-                <label className="flex flex-col text-sm">
-                  <span>City</span>
-                  <input
-                    value={shipToCity}
-                    onChange={(e) => setShipToCity(e.target.value)}
-                    className={f}
-                  />
-                </label>
-                <label className="flex flex-col text-sm">
-                  <span>Region</span>
-                  <input
-                    value={shipToRegion}
-                    onChange={(e) => setShipToRegion(e.target.value)}
-                    className={f}
-                  />
-                </label>
-                <label className="flex flex-col text-sm">
-                  <span>Postal code</span>
-                  <input
-                    value={shipToPostalCode}
-                    onChange={(e) => setShipToPostalCode(e.target.value)}
-                    className={f}
-                  />
-                </label>
-                <label className="flex flex-col text-sm">
-                  <span>Country (ISO)</span>
-                  <input
-                    value={shipToCountryCode}
-                    onChange={(e) =>
-                      setShipToCountryCode(e.target.value.toUpperCase())
-                    }
-                    className={f}
-                    maxLength={2}
-                    placeholder="US"
-                  />
-                </label>
-              </div>
-            </div>
+            <p className="rounded border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600">
+              Delivery address is master-data controlled and cannot be edited here.
+            </p>
             <label className="flex flex-col text-sm">
               <span className="font-medium text-zinc-800">Notes to supplier</span>
               <textarea
@@ -1587,14 +1501,6 @@ export function OrderDetail({
                   type="date"
                   value={asnShippedDate}
                   onChange={(e) => setAsnShippedDate(e.target.value)}
-                  className={f}
-                />
-              </label>
-              <label className="flex flex-col text-sm">
-                <span className="text-zinc-700">Carrier</span>
-                <input
-                  value={asnCarrier}
-                  onChange={(e) => setAsnCarrier(e.target.value)}
                   className={f}
                 />
               </label>

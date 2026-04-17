@@ -23,7 +23,12 @@
     "vercel-build": "node scripts/vercel-build.cjs",
     "db:seed": "node prisma/seed.mjs",
     "db:seed:ct-volume": "node prisma/ct-demo-shipments-volume.mjs",
+    "db:seed:ct-volume:balanced": "CT_VOL_BALANCED=1 node prisma/ct-demo-shipments-volume.mjs",
+    "db:seed:ct-volume:balanced:fast": "CT_VOL_BALANCED=1 CT_VOL_BATCH=80 node prisma/ct-demo-shipments-volume.mjs",
+    "db:seed:ct-volume:dry-run": "node prisma/ct-demo-shipments-volume.mjs --dry-run",
+    "db:seed:ct-volume:balanced:dry-run": "CT_VOL_BALANCED=1 node prisma/ct-demo-shipments-volume.mjs --dry-run",
     "db:seed:crm-demo": "node prisma/crm-demo-seed.mjs",
+    "db:seed:wms-demo": "node prisma/wms-demo-seed.mjs",
     "db:seed:demo-full": "node scripts/seed-demo-full.mjs"
   },
   "dependencies": {

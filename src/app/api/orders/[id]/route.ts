@@ -534,12 +534,6 @@ export async function PATCH(
     "supplierReference",
     "paymentTermsLabel",
     "incoterm",
-    "shipToName",
-    "shipToLine1",
-    "shipToLine2",
-    "shipToCity",
-    "shipToRegion",
-    "shipToPostalCode",
   ] as const;
   for (const key of stringKeys) {
     const v = optionalStringField(o, key);
@@ -553,21 +547,6 @@ export async function PATCH(
   if ("notesToSupplier" in o) {
     const v = optionalStringField(o, "notesToSupplier");
     if (v !== undefined) data.notesToSupplier = v;
-  }
-
-  if ("shipToCountryCode" in o) {
-    const v = o.shipToCountryCode;
-    if (v === null) {
-      data.shipToCountryCode = null;
-    } else if (typeof v === "string") {
-      const t = v.trim().toUpperCase();
-      data.shipToCountryCode = t.length === 2 ? t : null;
-    } else {
-      return NextResponse.json(
-        { error: "Invalid shipToCountryCode." },
-        { status: 400 },
-      );
-    }
   }
 
   if ("paymentTermsDays" in o) {

@@ -124,6 +124,9 @@ export async function getShipment360(params: {
       customerCrmAccount: {
         select: { id: true, name: true, legalName: true },
       },
+      carrierSupplier: {
+        select: { id: true, name: true },
+      },
       order: {
         select: {
           id: true,
@@ -321,6 +324,7 @@ export async function getShipment360(params: {
       id: line.id,
       category: line.category,
       description: line.description,
+        vendorSupplierId: line.vendorSupplierId,
       vendor: line.vendor,
       invoiceNo: line.invoiceNo,
       invoiceDate: line.invoiceDate?.toISOString() ?? null,
@@ -583,6 +587,8 @@ export async function getShipment360(params: {
     shipmentNo: s.shipmentNo,
     status: s.status,
     transportMode: s.transportMode,
+    carrierSupplierId: s.carrierSupplierId,
+    carrierSupplierName: s.carrierSupplier?.name ?? null,
     carrier: s.carrier,
     trackingNo: s.trackingNo,
     asnReference: s.asnReference,
@@ -717,6 +723,7 @@ export async function getShipment360(params: {
       legNo: leg.legNo,
       originCode: leg.originCode,
       destinationCode: leg.destinationCode,
+      carrierSupplierId: leg.carrierSupplierId,
       carrier: leg.carrier,
       transportMode: leg.transportMode,
       plannedEtd: leg.plannedEtd?.toISOString() ?? null,

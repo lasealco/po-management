@@ -22,8 +22,10 @@ type Row = {
   transportMode: string | null;
   trackingNo: string | null;
   carrier: string | null;
+  carrierSupplierId: string | null;
   orderId: string;
   orderNumber: string;
+  supplierId: string | null;
   supplierName: string | null;
   externalOrderRef?: string | null;
   shipmentSource?: "PO" | "UNLINKED";
@@ -37,8 +39,6 @@ type Row = {
   receivedAt: string | null;
   routeProgressPct: number | null;
   nextAction: string | null;
-  shipperName: string | null;
-  consigneeName: string | null;
   quantityRef: string | null;
   weightKgRef: string | null;
   cbmRef: string | null;
@@ -54,12 +54,10 @@ function workbenchUrlHasSearchFilters(sp: URLSearchParams): boolean {
     (sp.get("q") ?? "").trim() ||
       (sp.get("status") ?? "").trim() ||
       (sp.get("mode") ?? "").trim() ||
-      (sp.get("shipperName") ?? "").trim() ||
-      (sp.get("consigneeName") ?? "").trim() ||
       (sp.get("lane") ?? "").trim() ||
-      (sp.get("carrier") ?? "").trim() ||
-      (sp.get("supplierName") ?? "").trim() ||
-      (sp.get("customerName") ?? "").trim() ||
+      (sp.get("carrierSupplierId") ?? "").trim() ||
+      (sp.get("supplierId") ?? "").trim() ||
+      (sp.get("customerCrmAccountId") ?? "").trim() ||
       (sp.get("originCode") ?? "").trim() ||
       (sp.get("destinationCode") ?? "").trim() ||
       (sp.get("shipmentSource") ?? "").trim() ||
@@ -82,10 +80,14 @@ function shipment360Href(shipmentId: string, ship360Tab: "" | "milestones") {
 function ControlTowerWorkbenchInner({
   canEdit,
   restrictedView = false,
+  supplierChoices = [],
+  crmAccountChoices = [],
 }: {
   canEdit: boolean;
   /** Supplier portal or CRM-scoped customer — hide internal dispatch triage. */
   restrictedView?: boolean;
+  supplierChoices?: Array<{ id: string; name: string }>;
+  crmAccountChoices?: Array<{ id: string; name: string }>;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -102,12 +104,10 @@ function ControlTowerWorkbenchInner({
   const [onlyOverdueEta, setOnlyOverdueEta] = useState(false);
   const [page, setPage] = useState(1);
   const [q, setQ] = useState("");
-  const [shipperFilter, setShipperFilter] = useState("");
-  const [consigneeFilter, setConsigneeFilter] = useState("");
   const [laneFilter, setLaneFilter] = useState("");
-  const [carrierFilter, setCarrierFilter] = useState("");
-  const [supplierNameFilter, setSupplierNameFilter] = useState("");
-  const [customerNameFilter, setCustomerNameFilter] = useState("");
+  const [carrierSupplierIdFilter, setCarrierSupplierIdFilter] = useState("");
+  const [supplierIdFilter, setSupplierIdFilter] = useState("");
+  const [customerCrmAccountIdFilter, setCustomerCrmAccountIdFilter] = useState("");
   const [originCodeFilter, setOriginCodeFilter] = useState("");
   const [destinationCodeFilter, setDestinationCodeFilter] = useState("");
   const [shipmentSource, setShipmentSource] = useState<"" | "PO" | "UNLINKED">("");
@@ -135,12 +135,10 @@ function ControlTowerWorkbenchInner({
     setPage(s.page);
     setOnlyOverdueEta(s.onlyOverdueEta);
     setQ(s.q);
-    setShipperFilter(s.shipperFilter);
-    setConsigneeFilter(s.consigneeFilter);
     setLaneFilter(s.laneFilter);
-    setCarrierFilter(s.carrierFilter);
-    setSupplierNameFilter(s.supplierNameFilter);
-    setCustomerNameFilter(s.customerNameFilter);
+    setCarrierSupplierIdFilter(s.carrierSupplierIdFilter);
+    setSupplierIdFilter(s.supplierIdFilter);
+    setCustomerCrmAccountIdFilter(s.customerCrmAccountIdFilter);
     setOriginCodeFilter(s.originCodeFilter);
     setDestinationCodeFilter(s.destinationCodeFilter);
     setShipmentSource(s.shipmentSource);
@@ -160,12 +158,10 @@ function ControlTowerWorkbenchInner({
       page,
       onlyOverdueEta,
       q,
-      shipperFilter,
-      consigneeFilter,
       laneFilter,
-      carrierFilter,
-      supplierNameFilter,
-      customerNameFilter,
+      carrierSupplierIdFilter,
+      supplierIdFilter,
+      customerCrmAccountIdFilter,
       originCodeFilter,
       destinationCodeFilter,
       shipmentSource,
@@ -182,12 +178,10 @@ function ControlTowerWorkbenchInner({
       page,
       onlyOverdueEta,
       q,
-      shipperFilter,
-      consigneeFilter,
       laneFilter,
-      carrierFilter,
-      supplierNameFilter,
-      customerNameFilter,
+      carrierSupplierIdFilter,
+      supplierIdFilter,
+      customerCrmAccountIdFilter,
       originCodeFilter,
       destinationCodeFilter,
       shipmentSource,
@@ -228,12 +222,10 @@ function ControlTowerWorkbenchInner({
     setPage(s.page);
     setOnlyOverdueEta(s.onlyOverdueEta);
     setQ(s.q);
-    setShipperFilter(s.shipperFilter);
-    setConsigneeFilter(s.consigneeFilter);
     setLaneFilter(s.laneFilter);
-    setCarrierFilter(s.carrierFilter);
-    setSupplierNameFilter(s.supplierNameFilter);
-    setCustomerNameFilter(s.customerNameFilter);
+    setCarrierSupplierIdFilter(s.carrierSupplierIdFilter);
+    setSupplierIdFilter(s.supplierIdFilter);
+    setCustomerCrmAccountIdFilter(s.customerCrmAccountIdFilter);
     setOriginCodeFilter(s.originCodeFilter);
     setDestinationCodeFilter(s.destinationCodeFilter);
     setShipmentSource(s.shipmentSource);
@@ -252,12 +244,10 @@ function ControlTowerWorkbenchInner({
       if (status) sp.set("status", status);
       if (mode) sp.set("mode", mode);
       if (q.trim()) sp.set("q", q.trim());
-      if (shipperFilter.trim()) sp.set("shipperName", shipperFilter.trim());
-      if (consigneeFilter.trim()) sp.set("consigneeName", consigneeFilter.trim());
       if (laneFilter.trim()) sp.set("lane", laneFilter.trim());
-      if (carrierFilter.trim()) sp.set("carrier", carrierFilter.trim());
-      if (supplierNameFilter.trim()) sp.set("supplierName", supplierNameFilter.trim());
-      if (customerNameFilter.trim()) sp.set("customerName", customerNameFilter.trim());
+      if (carrierSupplierIdFilter.trim()) sp.set("carrierSupplierId", carrierSupplierIdFilter.trim());
+      if (supplierIdFilter.trim()) sp.set("supplierId", supplierIdFilter.trim());
+      if (customerCrmAccountIdFilter.trim()) sp.set("customerCrmAccountId", customerCrmAccountIdFilter.trim());
       if (originCodeFilter.trim()) sp.set("originCode", originCodeFilter.trim());
       if (destinationCodeFilter.trim()) sp.set("destinationCode", destinationCodeFilter.trim());
       if (shipmentSource) sp.set("shipmentSource", shipmentSource);
@@ -292,12 +282,10 @@ function ControlTowerWorkbenchInner({
     status,
     mode,
     q,
-    shipperFilter,
-    consigneeFilter,
     laneFilter,
-    carrierFilter,
-    supplierNameFilter,
-    customerNameFilter,
+    carrierSupplierIdFilter,
+    supplierIdFilter,
+    customerCrmAccountIdFilter,
     originCodeFilter,
     destinationCodeFilter,
     shipmentSource,
@@ -372,8 +360,6 @@ function ControlTowerWorkbenchInner({
       "eta",
       "ata",
       "etaVsAtaDays",
-      "shipper",
-      "consignee",
       "quantityRef",
       "weightKgRef",
       "cbmRef",
@@ -401,8 +387,6 @@ function ControlTowerWorkbenchInner({
               return (deltaMs / 86_400_000).toFixed(1);
             })(),
           ),
-          esc(r.shipperName || ""),
-          esc(r.consigneeName || ""),
           esc(r.quantityRef || ""),
           esc(r.weightKgRef || ""),
           esc(r.cbmRef || ""),
@@ -425,12 +409,10 @@ function ControlTowerWorkbenchInner({
       status?: string;
       mode?: string;
       q?: string;
-      shipperFilter?: string;
-      consigneeFilter?: string;
       laneFilter?: string;
-      carrierFilter?: string;
-      supplierNameFilter?: string;
-      customerNameFilter?: string;
+      carrierSupplierIdFilter?: string;
+      supplierIdFilter?: string;
+      customerCrmAccountIdFilter?: string;
       originCodeFilter?: string;
       destinationCodeFilter?: string;
       shipmentSource?: "" | "PO" | "UNLINKED";
@@ -445,12 +427,12 @@ function ControlTowerWorkbenchInner({
     setStatus(typeof o.status === "string" ? o.status : "");
     setMode(typeof o.mode === "string" ? o.mode : "");
     setQ(typeof o.q === "string" ? o.q : "");
-    setShipperFilter(typeof o.shipperFilter === "string" ? o.shipperFilter : "");
-    setConsigneeFilter(typeof o.consigneeFilter === "string" ? o.consigneeFilter : "");
     setLaneFilter(typeof o.laneFilter === "string" ? o.laneFilter : "");
-    setCarrierFilter(typeof o.carrierFilter === "string" ? o.carrierFilter : "");
-    setSupplierNameFilter(typeof o.supplierNameFilter === "string" ? o.supplierNameFilter : "");
-    setCustomerNameFilter(typeof o.customerNameFilter === "string" ? o.customerNameFilter : "");
+    setCarrierSupplierIdFilter(typeof o.carrierSupplierIdFilter === "string" ? o.carrierSupplierIdFilter : "");
+    setSupplierIdFilter(typeof o.supplierIdFilter === "string" ? o.supplierIdFilter : "");
+    setCustomerCrmAccountIdFilter(
+      typeof o.customerCrmAccountIdFilter === "string" ? o.customerCrmAccountIdFilter : "",
+    );
     setOriginCodeFilter(typeof o.originCodeFilter === "string" ? o.originCodeFilter : "");
     setDestinationCodeFilter(typeof o.destinationCodeFilter === "string" ? o.destinationCodeFilter : "");
     setShipmentSource(o.shipmentSource === "PO" || o.shipmentSource === "UNLINKED" ? o.shipmentSource : "");
@@ -477,12 +459,10 @@ function ControlTowerWorkbenchInner({
           status,
           mode,
           q,
-          shipperFilter,
-          consigneeFilter,
           laneFilter,
-          carrierFilter,
-          supplierNameFilter,
-          customerNameFilter,
+          carrierSupplierIdFilter,
+          supplierIdFilter,
+          customerCrmAccountIdFilter,
           originCodeFilter,
           destinationCodeFilter,
           shipmentSource,
@@ -574,7 +554,7 @@ function ControlTowerWorkbenchInner({
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
 
-  const tableColSpan = restrictedView ? 14 : 15;
+  const tableColSpan = restrictedView ? 13 : 14;
 
   const setExternalOrderRef = useCallback(
     async (row: Row) => {
@@ -657,24 +637,6 @@ function ControlTowerWorkbenchInner({
           />
         </label>
         <label className="text-xs text-zinc-600">
-          Shipper
-          <input
-            value={shipperFilter}
-            onChange={(e) => setShipperFilter(e.target.value)}
-            placeholder="Shipper contains"
-            className="mt-1 block rounded border border-zinc-300 px-2 py-1.5 text-sm"
-          />
-        </label>
-        <label className="text-xs text-zinc-600">
-          Consignee
-          <input
-            value={consigneeFilter}
-            onChange={(e) => setConsigneeFilter(e.target.value)}
-            placeholder="Consignee contains"
-            className="mt-1 block rounded border border-zinc-300 px-2 py-1.5 text-sm"
-          />
-        </label>
-        <label className="text-xs text-zinc-600">
           Lane
           <input
             value={laneFilter}
@@ -685,30 +647,48 @@ function ControlTowerWorkbenchInner({
         </label>
         <label className="text-xs text-zinc-600">
           Carrier
-          <input
-            value={carrierFilter}
-            onChange={(e) => setCarrierFilter(e.target.value)}
-            placeholder="Carrier contains"
+          <select
+            value={carrierSupplierIdFilter}
+            onChange={(e) => setCarrierSupplierIdFilter(e.target.value)}
             className="mt-1 block rounded border border-zinc-300 px-2 py-1.5 text-sm"
-          />
+          >
+            <option value="">Any</option>
+            {supplierChoices.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
         </label>
         <label className="text-xs text-zinc-600">
           Supplier
-          <input
-            value={supplierNameFilter}
-            onChange={(e) => setSupplierNameFilter(e.target.value)}
-            placeholder="PO supplier contains"
+          <select
+            value={supplierIdFilter}
+            onChange={(e) => setSupplierIdFilter(e.target.value)}
             className="mt-1 block rounded border border-zinc-300 px-2 py-1.5 text-sm"
-          />
+          >
+            <option value="">Any</option>
+            {supplierChoices.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
         </label>
         <label className="text-xs text-zinc-600">
           Customer
-          <input
-            value={customerNameFilter}
-            onChange={(e) => setCustomerNameFilter(e.target.value)}
-            placeholder="CRM customer contains"
+          <select
+            value={customerCrmAccountIdFilter}
+            onChange={(e) => setCustomerCrmAccountIdFilter(e.target.value)}
             className="mt-1 block rounded border border-zinc-300 px-2 py-1.5 text-sm"
-          />
+          >
+            <option value="">Any</option>
+            {crmAccountChoices.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
         </label>
         <label className="text-xs text-zinc-600">
           Shipment source
@@ -995,7 +975,6 @@ function ControlTowerWorkbenchInner({
               <th className="px-2 py-2">Lane</th>
               <th className="px-2 py-2">ETA</th>
               <th className="px-2 py-2">ATA / Delay</th>
-              <th className="px-2 py-2">Parties</th>
               <th className="px-2 py-2">Qty / Wt / Cbm</th>
               {!restrictedView ? <th className="px-2 py-2">Owner / Queue</th> : null}
               <th className="px-2 py-2">Route</th>
@@ -1103,14 +1082,6 @@ function ControlTowerWorkbenchInner({
                       );
                     })()}
                   </td>
-                  <td className="max-w-[14rem] px-2 py-2 text-xs text-zinc-600">
-                    <div className="truncate" title={r.shipperName || ""}>
-                      S: {r.shipperName || "—"}
-                    </div>
-                    <div className="truncate" title={r.consigneeName || ""}>
-                      C: {r.consigneeName || "—"}
-                    </div>
-                  </td>
                   <td className="whitespace-nowrap px-2 py-2 text-xs text-zinc-600">
                     {r.quantityRef || "—"} / {r.weightKgRef || "—"}kg / {r.cbmRef || "—"}cbm
                   </td>
@@ -1208,6 +1179,8 @@ function ControlTowerWorkbenchInner({
 export function ControlTowerWorkbench(props: {
   canEdit: boolean;
   restrictedView?: boolean;
+  supplierChoices?: Array<{ id: string; name: string }>;
+  crmAccountChoices?: Array<{ id: string; name: string }>;
 }) {
   return (
     <Suspense fallback={<p className="text-sm text-zinc-500">Loading workbench…</p>}>

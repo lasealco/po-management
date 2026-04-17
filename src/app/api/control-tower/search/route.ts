@@ -37,8 +37,6 @@ export async function GET(request: Request) {
   const statusRaw = searchParams.get("status") ?? "";
   const modeRaw = searchParams.get("mode") ?? "";
   const onlyOverdueEtaRaw = searchParams.get("onlyOverdueEta") ?? "";
-  const shipperName = searchParams.get("shipperName")?.trim() || undefined;
-  const consigneeName = searchParams.get("consigneeName")?.trim() || undefined;
   const lane = searchParams.get("lane")?.trim() || undefined;
   const takeRaw = searchParams.get("take");
   const takeParsed = takeRaw ? Number(takeRaw) : NaN;
@@ -54,12 +52,12 @@ export async function GET(request: Request) {
     onlyOverdueEtaRaw === "1" || onlyOverdueEtaRaw.toLowerCase() === "true" ? true : undefined;
 
   const hasStructured = Boolean(
-    mode || status || onlyOverdueEta || shipperName || consigneeName || lane,
+    mode || status || onlyOverdueEta || lane,
   );
   if (!q && !hasStructured) {
     return NextResponse.json({
       shipments: [],
-      message: "Provide q= text and/or filters: mode, status, onlyOverdueEta, shipperName, consigneeName, lane.",
+      message: "Provide q= text and/or filters: mode, status, onlyOverdueEta, lane.",
     });
   }
 
@@ -72,8 +70,6 @@ export async function GET(request: Request) {
       status: status ?? "",
       mode: mode ?? "",
       onlyOverdueEta: onlyOverdueEta ?? false,
-      shipperName,
-      consigneeName,
       lane,
     },
   });

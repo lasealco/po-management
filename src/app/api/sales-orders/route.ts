@@ -54,9 +54,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
   }
   const o = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
-  const customerName = typeof o.customerName === "string" ? o.customerName.trim() : "";
-  if (!customerName) {
-    return NextResponse.json({ error: "customerName is required." }, { status: 400 });
+  const customerCrmAccountId =
+    typeof o.customerCrmAccountId === "string" ? o.customerCrmAccountId.trim() : "";
+  if (!customerCrmAccountId) {
+    return NextResponse.json({ error: "customerCrmAccountId is required." }, { status: 400 });
+  }
+  const account = await prisma.crmAccount.findFirst({
+    where: { id: customerCrmAccountId, tenantId: tenant.id },
+    select: { id: true, name: true },
+  });
+  if (!account) {
+    return NextResponse.json({ error: "Customer CRM account not found." }, { status: 404 });
   }
   const soNumberRaw = typeof o.soNumber === "string" ? o.soNumber.trim() : "";
   const soNumber = soNumberRaw || (await nextSalesOrderNumber(tenant.id));
@@ -73,7 +81,8 @@ export async function POST(request: Request) {
       data: {
         tenantId: tenant.id,
         soNumber,
-        customerName,
+        customerName: account.name,
+        customerCrmAccountId: account.id,
         externalRef,
         requestedDeliveryDate,
         createdById: actorId,

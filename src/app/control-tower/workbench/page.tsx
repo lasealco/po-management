@@ -3,6 +3,8 @@ import Link from "next/link";
 import { getActorUserId, getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { ControlTowerWorkbench } from "@/components/control-tower-workbench";
 import { getControlTowerPortalContext } from "@/lib/control-tower/viewer";
+import { getDemoTenant } from "@/lib/demo-tenant";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +18,23 @@ export default async function ControlTowerWorkbenchPage() {
     actorId !== null
       ? await getControlTowerPortalContext(actorId)
       : { isRestrictedView: false, isSupplierPortal: false, customerCrmAccountId: null };
+  const tenant = await getDemoTenant();
+  const [supplierChoices, crmAccountChoices] = tenant
+    ? await Promise.all([
+        prisma.supplier.findMany({
+          where: { tenantId: tenant.id, isActive: true },
+          orderBy: { name: "asc" },
+          select: { id: true, name: true },
+          take: 500,
+        }),
+        prisma.crmAccount.findMany({
+          where: { tenantId: tenant.id, lifecycle: "ACTIVE" },
+          orderBy: { name: "asc" },
+          select: { id: true, name: true },
+          take: 500,
+        }),
+      ])
+    : [[], []];
 
   return (
     <main className="mx-auto w-full max-w-7xl px-6 py-10">
@@ -50,7 +69,12 @@ export default async function ControlTowerWorkbenchPage() {
           </div>
         ) : null}
       </header>
-      <ControlTowerWorkbench canEdit={canEdit} restrictedView={ctx.isRestrictedView} />
+      <ControlTowerWorkbench
+        canEdit={canEdit}
+        restrictedView={ctx.isRestrictedView}
+        supplierChoices={supplierChoices}
+        crmAccountChoices={crmAccountChoices}
+      />
     </main>
   );
 }

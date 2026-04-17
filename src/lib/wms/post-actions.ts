@@ -199,11 +199,19 @@ export async function handleWmsPost(
     const crmRaw = input.crmAccountId;
     const crmAccountId =
       crmRaw === null || crmRaw === undefined ? null : String(crmRaw).trim() || null;
-    if (crmAccountId) {
-      const gate = await assertOutboundCrmAccountLinkable(tenantId, actorId, crmAccountId);
-      if (!gate.ok) {
-        return NextResponse.json({ error: gate.error }, { status: gate.status });
-      }
+    if (!crmAccountId) {
+      return NextResponse.json({ error: "crmAccountId is required." }, { status: 400 });
+    }
+    const gate = await assertOutboundCrmAccountLinkable(tenantId, actorId, crmAccountId);
+    if (!gate.ok) {
+      return NextResponse.json({ error: gate.error }, { status: gate.status });
+    }
+    const crmAccount = await prisma.crmAccount.findFirst({
+      where: { id: crmAccountId, tenantId },
+      select: { id: true, name: true },
+    });
+    if (!crmAccount) {
+      return NextResponse.json({ error: "CRM account not found." }, { status: 404 });
     }
     const outboundNo = `OUT-${Date.now().toString().slice(-8)}`;
     const created = await prisma.outboundOrder.create({
@@ -213,10 +221,10 @@ export async function handleWmsPost(
         outboundNo,
         crmAccountId,
         customerRef: input.customerRef?.trim() || null,
-        shipToName: input.shipToName?.trim() || null,
-        shipToLine1: input.shipToLine1?.trim() || null,
-        shipToCity: input.shipToCity?.trim() || null,
-        shipToCountryCode: input.shipToCountryCode?.trim().toUpperCase() || null,
+        shipToName: crmAccount.name,
+        shipToLine1: null,
+        shipToCity: null,
+        shipToCountryCode: null,
         notes: input.note?.trim() || null,
         createdById: actorId,
         lines: {

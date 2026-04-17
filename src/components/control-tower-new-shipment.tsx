@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 type OrderItemRow = {
   id: string;
@@ -21,7 +21,13 @@ type OrderPickRow = {
 
 type PackRow = { id: string; title: string; description: string; milestoneCount: number };
 
-export function ControlTowerNewShipment() {
+export function ControlTowerNewShipment({
+  suppliers,
+  crmAccounts,
+}: {
+  suppliers: Array<{ id: string; name: string }>;
+  crmAccounts: Array<{ id: string; name: string; legalName: string | null }>;
+}) {
   const router = useRouter();
   const [createUnlinked, setCreateUnlinked] = useState(false);
   const [q, setQ] = useState("");
@@ -33,7 +39,7 @@ export function ControlTowerNewShipment() {
   const [packs, setPacks] = useState<PackRow[]>([]);
   const [packId, setPackId] = useState("");
   const [shipmentNo, setShipmentNo] = useState("");
-  const [carrier, setCarrier] = useState("");
+  const [carrierSupplierId, setCarrierSupplierId] = useState("");
   const [trackingNo, setTrackingNo] = useState("");
   const [notes, setNotes] = useState("");
   const [bookingNo, setBookingNo] = useState("");
@@ -42,8 +48,8 @@ export function ControlTowerNewShipment() {
   const [etd, setEtd] = useState("");
   const [eta, setEta] = useState("");
   const [referenceNo, setReferenceNo] = useState("");
-  const [shipperName, setShipperName] = useState("");
-  const [consigneeName, setConsigneeName] = useState("");
+  const [shipperSupplierId, setShipperSupplierId] = useState("");
+  const [consigneeCrmAccountId, setConsigneeCrmAccountId] = useState("");
   const [requestedDeliveryDate, setRequestedDeliveryDate] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -67,7 +73,7 @@ export function ControlTowerNewShipment() {
     return () => clearTimeout(t);
   }, [q]);
 
-  const loadPacks = useCallback((mode: string) => {
+  function loadPacks(mode: string) {
     if (!mode) {
       setPacks([]);
       setPackId("");
@@ -84,11 +90,7 @@ export function ControlTowerNewShipment() {
         setPacks([]);
         setPackId("");
       });
-  }, []);
-
-  useEffect(() => {
-    loadPacks(transportMode);
-  }, [transportMode, loadPacks]);
+  }
 
   function selectOrder(row: OrderPickRow) {
     setSelected(row);
@@ -108,6 +110,14 @@ export function ControlTowerNewShipment() {
     }
     if (!transportMode) {
       setError("Select a transport mode.");
+      return;
+    }
+    if (createUnlinked && !shipperSupplierId) {
+      setError("Select a shipper supplier.");
+      return;
+    }
+    if (createUnlinked && !consigneeCrmAccountId) {
+      setError("Select a consignee customer account.");
       return;
     }
     const lines = createUnlinked
@@ -142,11 +152,11 @@ export function ControlTowerNewShipment() {
           transportMode,
           lines,
           referenceNo: createUnlinked ? referenceNo.trim() || null : null,
-          shipperName: createUnlinked ? shipperName.trim() || null : null,
-          consigneeName: createUnlinked ? consigneeName.trim() || null : null,
+          shipperSupplierId: createUnlinked ? shipperSupplierId : null,
+          consigneeCrmAccountId: createUnlinked ? consigneeCrmAccountId : null,
           requestedDeliveryDate: createUnlinked ? requestedDeliveryDate || null : null,
           shipmentNo: shipmentNo.trim() || null,
-          carrier: carrier.trim() || null,
+          carrierSupplierId: carrierSupplierId || null,
           trackingNo: trackingNo.trim() || null,
           notes: notes.trim() || null,
           booking,
@@ -251,20 +261,35 @@ export function ControlTowerNewShipment() {
               />
             </label>
             <label className="text-xs">
-              Shipper
-              <input
+              Shipper (supplier master)
+              <select
                 className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5"
-                value={shipperName}
-                onChange={(e) => setShipperName(e.target.value)}
-              />
+                value={shipperSupplierId}
+                onChange={(e) => setShipperSupplierId(e.target.value)}
+              >
+                <option value="">Select supplier...</option>
+                {suppliers.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
             </label>
             <label className="text-xs">
-              Consignee
-              <input
+              Consignee (CRM account)
+              <select
                 className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5"
-                value={consigneeName}
-                onChange={(e) => setConsigneeName(e.target.value)}
-              />
+                value={consigneeCrmAccountId}
+                onChange={(e) => setConsigneeCrmAccountId(e.target.value)}
+              >
+                <option value="">Select customer...</option>
+                {crmAccounts.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                    {a.legalName ? ` · ${a.legalName}` : ""}
+                  </option>
+                ))}
+              </select>
             </label>
           </div>
         )}
@@ -321,7 +346,11 @@ export function ControlTowerNewShipment() {
               <select
                 className="mt-1 block w-full max-w-xs rounded border border-zinc-300 px-2 py-2"
                 value={transportMode}
-                onChange={(e) => setTransportMode(e.target.value as typeof transportMode)}
+                onChange={(e) => {
+                  const mode = e.target.value as typeof transportMode;
+                  setTransportMode(mode);
+                  loadPacks(mode);
+                }}
               >
                 <option value="">Select…</option>
                 <option value="OCEAN">Ocean</option>
@@ -344,12 +373,19 @@ export function ControlTowerNewShipment() {
                 />
               </label>
               <label className="text-xs">
-                Carrier (optional)
-                <input
+                Carrier (supplier master)
+                <select
                   className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5"
-                  value={carrier}
-                  onChange={(e) => setCarrier(e.target.value)}
-                />
+                  value={carrierSupplierId}
+                  onChange={(e) => setCarrierSupplierId(e.target.value)}
+                >
+                  <option value="">Select carrier...</option>
+                  {suppliers.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
               </label>
               <label className="text-xs">
                 Tracking / AWB (optional)

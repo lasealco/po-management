@@ -14,7 +14,6 @@ const VALID_STATUSES = new Set<ShipmentStatus>([
 const VALID_MODES = new Set<TransportMode>(["OCEAN", "AIR", "ROAD", "RAIL"]);
 
 const MAX_Q = 240;
-const MAX_NAME = 160;
 const MAX_LANE = 12;
 
 /** Keep only API-safe filter fields from an untrusted object (LLM or client). */
@@ -35,14 +34,6 @@ export function sanitizeAssistSuggestedFilters(input: unknown): AssistSuggestedF
   }
   if (o.onlyOverdueEta === true) {
     out.onlyOverdueEta = true;
-  }
-  if (typeof o.shipperName === "string") {
-    const t = o.shipperName.trim().slice(0, MAX_NAME);
-    if (t) out.shipperName = t;
-  }
-  if (typeof o.consigneeName === "string") {
-    const t = o.consigneeName.trim().slice(0, MAX_NAME);
-    if (t) out.consigneeName = t;
   }
   if (typeof o.lane === "string") {
     const raw = o.lane.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");

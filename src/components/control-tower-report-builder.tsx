@@ -33,9 +33,9 @@ type ReportConfig = {
     status: string;
     mode: string;
     lane: string;
-    carrier: string;
-    customer: string;
-    supplier: string;
+    carrierSupplierId: string;
+    customerCrmAccountId: string;
+    supplierId: string;
     origin: string;
     destination: string;
   };
@@ -91,9 +91,9 @@ const DEFAULT_CONFIG: ReportConfig = {
     status: "",
     mode: "",
     lane: "",
-    carrier: "",
-    customer: "",
-    supplier: "",
+    carrierSupplierId: "",
+    customerCrmAccountId: "",
+    supplierId: "",
     origin: "",
     destination: "",
   },
@@ -127,9 +127,11 @@ function hydrateConfig(input: unknown): ReportConfig {
       status: typeof filters.status === "string" ? filters.status : "",
       mode: typeof filters.mode === "string" ? filters.mode : "",
       lane: typeof filters.lane === "string" ? filters.lane : "",
-      carrier: typeof filters.carrier === "string" ? filters.carrier : "",
-      customer: typeof filters.customer === "string" ? filters.customer : "",
-      supplier: typeof filters.supplier === "string" ? filters.supplier : "",
+      carrierSupplierId:
+        typeof filters.carrierSupplierId === "string" ? filters.carrierSupplierId : "",
+      customerCrmAccountId:
+        typeof filters.customerCrmAccountId === "string" ? filters.customerCrmAccountId : "",
+      supplierId: typeof filters.supplierId === "string" ? filters.supplierId : "",
       origin: typeof filters.origin === "string" ? filters.origin : "",
       destination: typeof filters.destination === "string" ? filters.destination : "",
     },
@@ -334,7 +336,15 @@ function ResultPieChart({
   );
 }
 
-export function ControlTowerReportBuilder({ canEdit }: { canEdit: boolean }) {
+export function ControlTowerReportBuilder({
+  canEdit,
+  supplierChoices = [],
+  crmAccountChoices = [],
+}: {
+  canEdit: boolean;
+  supplierChoices?: Array<{ id: string; name: string }>;
+  crmAccountChoices?: Array<{ id: string; name: string }>;
+}) {
   const [config, setConfig] = useState<ReportConfig>(DEFAULT_CONFIG);
   const [result, setResult] = useState<RunResult | null>(null);
   const [compareResult, setCompareResult] = useState<RunResult | null>(null);
@@ -720,9 +730,57 @@ export function ControlTowerReportBuilder({ canEdit }: { canEdit: boolean }) {
         <label className="text-xs text-zinc-700">Status<input value={config.filters.status} onChange={(e)=>setConfig(c=>({...c,filters:{...c.filters,status:e.target.value}}))} className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"/></label>
         <label className="text-xs text-zinc-700">Mode<input value={config.filters.mode} onChange={(e)=>setConfig(c=>({...c,filters:{...c.filters,mode:e.target.value}}))} className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"/></label>
         <label className="text-xs text-zinc-700">Lane<input value={config.filters.lane} onChange={(e)=>setConfig(c=>({...c,filters:{...c.filters,lane:e.target.value}}))} className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"/></label>
-        <label className="text-xs text-zinc-700">Carrier<input value={config.filters.carrier} onChange={(e)=>setConfig(c=>({...c,filters:{...c.filters,carrier:e.target.value}}))} className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"/></label>
-        <label className="text-xs text-zinc-700">Customer<input value={config.filters.customer} onChange={(e)=>setConfig(c=>({...c,filters:{...c.filters,customer:e.target.value}}))} className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"/></label>
-        <label className="text-xs text-zinc-700">Supplier<input value={config.filters.supplier} onChange={(e)=>setConfig(c=>({...c,filters:{...c.filters,supplier:e.target.value}}))} className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"/></label>
+        <label className="text-xs text-zinc-700">
+          Carrier
+          <select
+            value={config.filters.carrierSupplierId}
+            onChange={(e) =>
+              setConfig((c) => ({ ...c, filters: { ...c.filters, carrierSupplierId: e.target.value } }))
+            }
+            className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"
+          >
+            <option value="">Any</option>
+            {supplierChoices.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="text-xs text-zinc-700">
+          Customer
+          <select
+            value={config.filters.customerCrmAccountId}
+            onChange={(e) =>
+              setConfig((c) => ({ ...c, filters: { ...c.filters, customerCrmAccountId: e.target.value } }))
+            }
+            className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"
+          >
+            <option value="">Any</option>
+            {crmAccountChoices.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="text-xs text-zinc-700">
+          Supplier
+          <select
+            value={config.filters.supplierId}
+            onChange={(e) =>
+              setConfig((c) => ({ ...c, filters: { ...c.filters, supplierId: e.target.value } }))
+            }
+            className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"
+          >
+            <option value="">Any</option>
+            {supplierChoices.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
       <div className="mt-2 grid gap-2 md:grid-cols-5">

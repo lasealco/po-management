@@ -8,23 +8,42 @@ import { prisma } from "@/lib/prisma";
 const grantKey = (resource: string, action: string) =>
   `${resource}\0${action}`;
 
-/** Seeded internal demo accounts; some prod DBs predate CRM RolePermission rows. */
+/** Seeded internal demo accounts; some prod DBs predate CRM/WMS RolePermission rows. */
 const DEMO_INTERNAL_EMAILS = new Set([
   "buyer@demo-company.com",
   "approver@demo-company.com",
 ]);
 
-function mergeDemoCrmGrants(
+/**
+ * Align grants with `prisma/seed.mjs` for Buyer/Approver when the DB was created before
+ * CRM or WMS permissions existed, or rows were missing after a partial migrate.
+ */
+function mergeDemoLegacyGrants(
   grantSet: Set<string>,
   email: string,
 ): Set<string> {
   const e = email.trim().toLowerCase();
   if (!DEMO_INTERNAL_EMAILS.has(e)) return grantSet;
-  if (grantSet.has(grantKey("org.crm", "view"))) return grantSet;
-  const next = new Set(grantSet);
-  next.add(grantKey("org.crm", "view"));
-  next.add(grantKey("org.crm", "edit"));
-  return next;
+
+  let next: Set<string> | null = null;
+  const ensure = (resource: string, action: string) => {
+    const k = grantKey(resource, action);
+    const active = next ?? grantSet;
+    if (active.has(k)) return;
+    if (!next) next = new Set(grantSet);
+    next.add(k);
+  };
+
+  if (!grantSet.has(grantKey("org.crm", "view"))) {
+    ensure("org.crm", "view");
+    ensure("org.crm", "edit");
+  }
+  if (!grantSet.has(grantKey("org.wms", "view"))) {
+    ensure("org.wms", "view");
+    ensure("org.wms", "edit");
+  }
+
+  return next ?? grantSet;
 }
 
 export async function loadGlobalGrantsForUser(userId: string) {
@@ -44,7 +63,7 @@ export async function loadGlobalGrantsForUser(userId: string) {
   ]);
   const base = new Set(perms.map((p) => grantKey(p.resource, p.action)));
   if (!user?.email) return base;
-  return mergeDemoCrmGrants(base, user.email);
+  return mergeDemoLegacyGrants(base, user.email);
 }
 
 export async function userHasGlobalGrant(

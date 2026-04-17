@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { sanitizeCtReportConfig } from "@/lib/control-tower/report-engine";
@@ -7,6 +8,10 @@ import { prisma } from "@/lib/prisma";
 import { getDemoTenant } from "@/lib/demo-tenant";
 
 export const dynamic = "force-dynamic";
+
+function sanitizePersistedReportConfig(input: unknown): Prisma.InputJsonValue {
+  return sanitizeCtReportConfig(input) as Prisma.InputJsonValue;
+}
 
 export async function GET(request: Request) {
   const gate = await requireApiGrant("org.controltower", "view");
@@ -45,7 +50,7 @@ export async function GET(request: Request) {
       description: r.description,
       isShared: r.isShared,
       owner: r.user,
-      config: r.configJson,
+      config: sanitizePersistedReportConfig(r.configJson),
       createdAt: r.createdAt.toISOString(),
       updatedAt: r.updatedAt.toISOString(),
     })),
@@ -73,7 +78,7 @@ export async function POST(request: Request) {
   const description =
     typeof obj.description === "string" && obj.description.trim() ? obj.description.trim() : null;
   const isShared = obj.isShared === true;
-  const config = sanitizeCtReportConfig(obj.config ?? {});
+  const config = sanitizePersistedReportConfig(obj.config ?? {});
 
   const created = await prisma.ctSavedReport.create({
     data: {

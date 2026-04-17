@@ -15,20 +15,10 @@ type CreateOrderBody = {
   supplierId?: string;
   buyerWarehouseId?: string | null;
   cfsWarehouseId?: string | null;
+  deliveryWarehouseId?: string | null;
   forwarderSupplierId?: string | null;
   forwarderOfficeId?: string | null;
   forwarderContactId?: string | null;
-  buyerOffice?: string;
-  deliveryAddress?: {
-    name?: string;
-    line1?: string;
-    line2?: string;
-    city?: string;
-    region?: string;
-    postalCode?: string;
-    countryCode?: string;
-  };
-  forwarder?: string;
   adminNote?: string;
   notesToSupplier?: string;
   requestedDeliveryDate?: string | null;
@@ -384,8 +374,6 @@ export async function POST(request: Request) {
   const taxable = Math.max(0, subtotal - discountTotal);
   const tax = taxable * (taxPercent / 100);
   const total = taxable + tax;
-  const buyerOffice = input.buyerOffice?.trim() || null;
-  const forwarder = input.forwarder?.trim() || null;
   const adminNote = input.adminNote?.trim() || null;
   const transportMode = input.transportMode?.trim() || null;
   const originCode = input.originCode?.trim() || null;
@@ -397,6 +385,7 @@ export async function POST(request: Request) {
     : [];
   const buyerWarehouseId = input.buyerWarehouseId?.trim() || null;
   const cfsWarehouseId = input.cfsWarehouseId?.trim() || null;
+  const deliveryWarehouseId = input.deliveryWarehouseId?.trim() || null;
   const forwarderSupplierId = input.forwarderSupplierId?.trim() || null;
   const forwarderOfficeId = input.forwarderOfficeId?.trim() || null;
   const forwarderContactId = input.forwarderContactId?.trim() || null;
@@ -406,6 +395,13 @@ export async function POST(request: Request) {
   let forwarderSupplierName: string | null = null;
   let forwarderOfficeName: string | null = null;
   let forwarderContactName: string | null = null;
+
+  if (!deliveryWarehouseId) {
+    return NextResponse.json(
+      { error: "deliveryWarehouseId is required and must reference master data." },
+      { status: 400 },
+    );
+  }
 
   if (buyerWarehouseId) {
     const w = await prisma.warehouse.findFirst({
@@ -422,6 +418,19 @@ export async function POST(request: Request) {
     });
     if (!w) return NextResponse.json({ error: "Invalid CFS." }, { status: 400 });
     cfsWarehouseName = w.name;
+  }
+  const deliveryWarehouse = await prisma.warehouse.findFirst({
+    where: { id: deliveryWarehouseId, tenantId: tenant.id, isActive: true },
+    select: {
+      name: true,
+      addressLine1: true,
+      city: true,
+      region: true,
+      countryCode: true,
+    },
+  });
+  if (!deliveryWarehouse) {
+    return NextResponse.json({ error: "Invalid delivery warehouse." }, { status: 400 });
   }
   if (forwarderSupplierId) {
     const fwd = await prisma.supplier.findFirst({
@@ -458,11 +467,9 @@ export async function POST(request: Request) {
   const internalNotesParts = [
     buyerWarehouseName ? `Buyer office location: ${buyerWarehouseName}` : null,
     cfsWarehouseName ? `CFS: ${cfsWarehouseName}` : null,
-    buyerOffice ? `Buyer office: ${buyerOffice}` : null,
     forwarderSupplierName ? `Forwarder company: ${forwarderSupplierName}` : null,
     forwarderOfficeName ? `Forwarder office: ${forwarderOfficeName}` : null,
     forwarderContactName ? `Forwarder contact: ${forwarderContactName}` : null,
-    forwarder ? `Forwarder: ${forwarder}` : null,
     transportMode ? `Transport mode: ${transportMode}` : null,
     originCode ? `Origin code: ${originCode}` : null,
     destinationCode ? `Destination code: ${destinationCode}` : null,
@@ -486,7 +493,7 @@ export async function POST(request: Request) {
       subtotal: new Prisma.Decimal(subtotal.toFixed(2)),
       taxAmount: new Prisma.Decimal(tax.toFixed(2)),
       totalAmount: new Prisma.Decimal(total.toFixed(2)),
-      buyerReference: buyerOffice,
+      buyerReference: buyerWarehouseName,
       paymentTermsDays:
         typeof input.paymentTermsDays === "number" && Number.isFinite(input.paymentTermsDays)
           ? Math.max(0, Math.trunc(input.paymentTermsDays))
@@ -494,13 +501,13 @@ export async function POST(request: Request) {
       paymentTermsLabel: input.paymentTermsLabel?.trim() || supplier.paymentTermsLabel,
       incoterm: input.incoterm?.trim() || supplier.defaultIncoterm,
       requestedDeliveryDate,
-      shipToName: input.deliveryAddress?.name?.trim() || null,
-      shipToLine1: input.deliveryAddress?.line1?.trim() || null,
-      shipToLine2: input.deliveryAddress?.line2?.trim() || null,
-      shipToCity: input.deliveryAddress?.city?.trim() || null,
-      shipToRegion: input.deliveryAddress?.region?.trim() || null,
-      shipToPostalCode: input.deliveryAddress?.postalCode?.trim() || null,
-      shipToCountryCode: input.deliveryAddress?.countryCode?.trim()?.toUpperCase() || null,
+      shipToName: deliveryWarehouse.name,
+      shipToLine1: deliveryWarehouse.addressLine1,
+      shipToLine2: null,
+      shipToCity: deliveryWarehouse.city,
+      shipToRegion: deliveryWarehouse.region,
+      shipToPostalCode: null,
+      shipToCountryCode: deliveryWarehouse.countryCode,
       internalNotes: internalNotesParts.length ? internalNotesParts.join("\n") : null,
       notesToSupplier: input.notesToSupplier?.trim() || null,
       items: {

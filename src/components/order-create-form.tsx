@@ -111,8 +111,6 @@ export function OrderCreateForm({
   const [originCode, setOriginCode] = useState("");
   const [destinationCode, setDestinationCode] = useState("");
   const [tagsInput, setTagsInput] = useState("");
-  const [buyerOffice, setBuyerOffice] = useState("");
-  const [forwarder, setForwarder] = useState("");
   const [requestedDeliveryDate, setRequestedDeliveryDate] = useState("");
   const [shipToName, setShipToName] = useState("");
   const [shipToLine1, setShipToLine1] = useState("");
@@ -214,6 +212,15 @@ export function OrderCreateForm({
   }
 
   async function submit(mode: "draft" | "send") {
+    if (useAlternateDelivery && !alternateDeliveryWarehouse) {
+      setError("Select an alternate delivery address from master data.");
+      return;
+    }
+    const deliveryWarehouse = useAlternateDelivery ? alternateDeliveryWarehouse : buyerWarehouse;
+    if (!deliveryWarehouse) {
+      setError("Select a buyer office / delivery address.");
+      return;
+    }
     if (!supplierId) {
       setError("Select a supplier.");
       return;
@@ -250,11 +257,10 @@ export function OrderCreateForm({
         supplierId,
         buyerWarehouseId: buyerWarehouseId || null,
         cfsWarehouseId: cfsWarehouseId || null,
+        deliveryWarehouseId: deliveryWarehouse.id,
         forwarderSupplierId: forwarderSupplierId || null,
         forwarderOfficeId: forwarderOfficeId || null,
         forwarderContactId: forwarderContactId || null,
-        buyerOffice,
-        forwarder,
         transportMode,
         originCode: originCode.trim() || null,
         destinationCode: destinationCode.trim() || null,
@@ -263,25 +269,6 @@ export function OrderCreateForm({
           .map((s) => s.trim())
           .filter((s) => s.length > 0),
         requestedDeliveryDate: requestedDeliveryDate || null,
-        deliveryAddress: {
-          name: useAlternateDelivery
-            ? alternateDeliveryWarehouse?.name || shipToName
-            : shipToName,
-          line1: useAlternateDelivery
-            ? alternateDeliveryWarehouse?.addressLine1 || shipToLine1
-            : shipToLine1,
-          line2: shipToLine2,
-          city: useAlternateDelivery
-            ? alternateDeliveryWarehouse?.city || shipToCity
-            : shipToCity,
-          region: useAlternateDelivery
-            ? alternateDeliveryWarehouse?.region || shipToRegion
-            : shipToRegion,
-          postalCode: shipToPostalCode,
-          countryCode: useAlternateDelivery
-            ? alternateDeliveryWarehouse?.countryCode || shipToCountryCode
-            : shipToCountryCode,
-        },
         notesToSupplier,
         adminNote,
         currency: currency.trim().toUpperCase(),
@@ -711,18 +698,6 @@ export function OrderCreateForm({
               </option>
             ))}
           </select>
-          <input
-            value={forwarder}
-            onChange={(e) => setForwarder(e.target.value)}
-            placeholder="Free-text forwarder note (optional)"
-            className="rounded-md border border-zinc-300 px-3 py-2 text-sm sm:col-span-3"
-          />
-          <input
-            value={buyerOffice}
-            onChange={(e) => setBuyerOffice(e.target.value)}
-            placeholder="Buyer office free-text note (optional)"
-            className="rounded-md border border-zinc-300 px-3 py-2 text-sm sm:col-span-3"
-          />
         </div>
         <div className="mt-2">
           <button

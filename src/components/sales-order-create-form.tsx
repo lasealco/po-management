@@ -6,6 +6,7 @@ import { useState } from "react";
 export function SalesOrderCreateForm({
   soNumberHint,
   shipmentHint,
+  crmAccounts,
 }: {
   soNumberHint: string;
   shipmentHint: {
@@ -13,10 +14,11 @@ export function SalesOrderCreateForm({
     shipmentNo: string | null;
     order: { shipToName: string | null; requestedDeliveryDate: Date | null };
   } | null;
+  crmAccounts: Array<{ id: string; name: string; legalName: string | null }>;
 }) {
   const router = useRouter();
   const [soNumber, setSoNumber] = useState(soNumberHint);
-  const [customerName, setCustomerName] = useState(shipmentHint?.order.shipToName || "");
+  const [customerCrmAccountId, setCustomerCrmAccountId] = useState("");
   const [externalRef, setExternalRef] = useState("");
   const [requestedDeliveryDate, setRequestedDeliveryDate] = useState(
     shipmentHint?.order.requestedDeliveryDate
@@ -27,8 +29,8 @@ export function SalesOrderCreateForm({
   const [error, setError] = useState<string | null>(null);
 
   async function submit() {
-    if (!customerName.trim()) {
-      setError("Customer name is required.");
+    if (!customerCrmAccountId) {
+      setError("Customer account is required.");
       return;
     }
     setBusy(true);
@@ -38,7 +40,7 @@ export function SalesOrderCreateForm({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         soNumber: soNumber.trim() || null,
-        customerName: customerName.trim(),
+        customerCrmAccountId,
         externalRef: externalRef.trim() || null,
         requestedDeliveryDate: requestedDeliveryDate || null,
         shipmentId: shipmentHint?.id || null,
@@ -78,12 +80,20 @@ export function SalesOrderCreateForm({
           />
         </label>
         <label className="text-sm">
-          Customer name
-          <input
-            value={customerName}
-            onChange={(e) => setCustomerName(e.target.value)}
+          Customer (CRM account)
+          <select
+            value={customerCrmAccountId}
+            onChange={(e) => setCustomerCrmAccountId(e.target.value)}
             className="mt-1 w-full rounded border border-zinc-300 px-3 py-2"
-          />
+          >
+            <option value="">Select customer...</option>
+            {crmAccounts.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+                {a.legalName ? ` · ${a.legalName}` : ""}
+              </option>
+            ))}
+          </select>
         </label>
         <label className="text-sm">
           External reference (ERP/SO)

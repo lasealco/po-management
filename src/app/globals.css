@@ -3,6 +3,9 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --arscmp-primary: #165b67;
+  --arscmp-primary-700: #124a54;
+  --arscmp-primary-50: #eef6f7;
 }
 
 @theme inline {
@@ -22,7 +25,15 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+.arscmp-brand {
+  color: var(--arscmp-primary);
+}
+
+.arscmp-logo-box {
+  background: var(--arscmp-primary);
 }
 
 /* Improve readability across all form fields and editable table cells. */

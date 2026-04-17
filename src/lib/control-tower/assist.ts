@@ -6,8 +6,6 @@ export type AssistSuggestedFilters = {
   mode?: TransportMode;
   status?: ShipmentStatus;
   onlyOverdueEta?: boolean;
-  shipperName?: string;
-  consigneeName?: string;
   lane?: string;
 };
 
@@ -50,28 +48,8 @@ export function assistControlTowerQuery(raw: string): {
   const suggestedFilters: AssistSuggestedFilters = {};
 
   if (!working) {
-    hints.push("Enter a PO number, booking ref, container id, carrier, UN/LOCODE-style port (e.g. CNSHA), or try shipper:/consignee:/lane: tokens.");
+    hints.push("Enter a PO number, booking ref, container id, carrier, or UN/LOCODE-style port (e.g. CNSHA), or try lane: and overdue tokens.");
     return { hints, suggestedFilters };
-  }
-
-  const shipperM = working.match(/\bshipper\s*:\s*([^\n,;]+?)(?=\s+(?:consignee|lane|status)\s*:|$)/i);
-  if (shipperM) {
-    const v = shipperM[1].trim();
-    if (v) {
-      suggestedFilters.shipperName = v;
-      hints.push(`Using shipper filter: "${v}".`);
-      working = stripOnce(working, /\bshipper\s*:\s*[^\n,;]+/i);
-    }
-  }
-
-  const consigneeM = working.match(/\bconsignee\s*:\s*([^\n,;]+?)(?=\s+(?:shipper|lane|status)\s*:|$)/i);
-  if (consigneeM) {
-    const v = consigneeM[1].trim();
-    if (v) {
-      suggestedFilters.consigneeName = v;
-      hints.push(`Using consignee filter: "${v}".`);
-      working = stripOnce(working, /\bconsignee\s*:\s*[^\n,;]+/i);
-    }
   }
 
   const laneM =

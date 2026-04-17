@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { sanitizeCtReportConfig } from "@/lib/control-tower/report-engine";
@@ -6,6 +7,10 @@ import { prisma } from "@/lib/prisma";
 import { getDemoTenant } from "@/lib/demo-tenant";
 
 export const dynamic = "force-dynamic";
+
+function sanitizePersistedReportConfig(input: unknown): Prisma.InputJsonValue {
+  return sanitizeCtReportConfig(input) as Prisma.InputJsonValue;
+}
 
 export async function PATCH(
   request: Request,
@@ -37,7 +42,7 @@ export async function PATCH(
   const description =
     typeof obj.description === "string" ? (obj.description.trim() || null) : undefined;
   const isShared = typeof obj.isShared === "boolean" ? obj.isShared : undefined;
-  const config = obj.config ? sanitizeCtReportConfig(obj.config) : undefined;
+  const config = obj.config ? sanitizePersistedReportConfig(obj.config) : undefined;
 
   await prisma.ctSavedReport.update({
     where: { id },

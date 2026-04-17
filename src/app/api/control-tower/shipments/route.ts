@@ -37,12 +37,10 @@ export async function GET(request: Request) {
   const statusRaw = searchParams.get("status") ?? "";
   const modeRaw = searchParams.get("mode") ?? "";
   const q = searchParams.get("q") ?? undefined;
-  const shipperName = searchParams.get("shipperName") ?? undefined;
-  const consigneeName = searchParams.get("consigneeName") ?? undefined;
   const lane = searchParams.get("lane") ?? undefined;
-  const carrier = searchParams.get("carrier") ?? undefined;
-  const supplierName = searchParams.get("supplierName") ?? undefined;
-  const customerName = searchParams.get("customerName") ?? undefined;
+  const carrierSupplierId = searchParams.get("carrierSupplierId") ?? undefined;
+  const supplierId = searchParams.get("supplierId") ?? undefined;
+  const customerCrmAccountId = searchParams.get("customerCrmAccountId") ?? undefined;
   const originCode = searchParams.get("originCode") ?? undefined;
   const destinationCode = searchParams.get("destinationCode") ?? undefined;
   const shipmentSourceRaw = searchParams.get("shipmentSource") ?? "";
@@ -86,12 +84,10 @@ export async function GET(request: Request) {
       status: status || undefined,
       mode: mode || undefined,
       q,
-      shipperName,
-      consigneeName,
       lane,
-      carrier: carrier?.trim() || undefined,
-      supplierName: supplierName?.trim() || undefined,
-      customerName: customerName?.trim() || undefined,
+      carrierSupplierId: carrierSupplierId?.trim() || undefined,
+      supplierId: supplierId?.trim() || undefined,
+      customerCrmAccountId: customerCrmAccountId?.trim() || undefined,
       originCode: originCode?.trim() || undefined,
       destinationCode: destinationCode?.trim() || undefined,
       shipmentSource: shipmentSource || undefined,
@@ -161,6 +157,10 @@ export async function POST(request: Request) {
 
   const linesRaw = o.lines;
   const lines: { orderItemId: string; quantityShipped: string }[] = [];
+  const shipperSupplierId =
+    typeof o.shipperSupplierId === "string" ? o.shipperSupplierId.trim() : "";
+  const consigneeCrmAccountId =
+    typeof o.consigneeCrmAccountId === "string" ? o.consigneeCrmAccountId.trim() : "";
   if (!createUnlinked) {
     if (!orderId) {
       return NextResponse.json({ error: "orderId is required unless createUnlinked=true." }, { status: 400 });
@@ -188,6 +188,16 @@ export async function POST(request: Request) {
       }
       lines.push({ orderItemId, quantityShipped });
     }
+  } else {
+    if (!shipperSupplierId) {
+      return NextResponse.json({ error: "shipperSupplierId is required for unlinked shipment." }, { status: 400 });
+    }
+    if (!consigneeCrmAccountId) {
+      return NextResponse.json(
+        { error: "consigneeCrmAccountId is required for unlinked shipment." },
+        { status: 400 },
+      );
+    }
   }
 
   const bookingObj =
@@ -206,6 +216,7 @@ export async function POST(request: Request) {
 
   const milestonePackId =
     typeof o.milestonePackId === "string" && o.milestonePackId.trim() ? o.milestonePackId.trim() : null;
+  const carrierSupplierId = typeof o.carrierSupplierId === "string" ? o.carrierSupplierId.trim() : "";
 
   try {
     const { shipmentId, milestonePackWarning } = await createLogisticsShipment({
@@ -216,15 +227,15 @@ export async function POST(request: Request) {
       unlinkedOrder: createUnlinked
         ? {
             referenceNo: typeof o.referenceNo === "string" ? o.referenceNo : null,
-            shipperName: typeof o.shipperName === "string" ? o.shipperName : null,
-            consigneeName: typeof o.consigneeName === "string" ? o.consigneeName : null,
+            shipperSupplierId,
+            consigneeCrmAccountId,
             requestedDeliveryDate: parseIsoDate(o.requestedDeliveryDate),
           }
         : null,
       transportMode,
       shipmentNo: typeof o.shipmentNo === "string" ? o.shipmentNo : null,
       shippedAt: parseIsoDate(o.shippedAt) ?? null,
-      carrier: typeof o.carrier === "string" ? o.carrier : null,
+      carrierSupplierId: carrierSupplierId || null,
       trackingNo: typeof o.trackingNo === "string" ? o.trackingNo : null,
       notes: typeof o.notes === "string" ? o.notes : null,
       booking,

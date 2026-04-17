@@ -28,15 +28,13 @@ export type ListShipmentsQuery = {
   routeActionPrefix?: (typeof ROUTE_ACTION_PREFIXES)[number] | "";
   /** Shipments with at least one open alert or open exception assigned to this user (internal lists). */
   dispatchOwnerUserId?: string;
-  shipperName?: string;
-  consigneeName?: string;
   lane?: string;
-  /** Shipment.carrier contains (case-insensitive). */
-  carrier?: string;
-  /** Purchase order supplier name contains. */
-  supplierName?: string;
-  /** Linked CRM customer account name contains. */
-  customerName?: string;
+  /** Shipment carrier supplier id exact match. */
+  carrierSupplierId?: string;
+  /** Purchase order supplier id exact match. */
+  supplierId?: string;
+  /** Linked CRM customer account id exact match. */
+  customerCrmAccountId?: string;
   /** Booking or leg origin port code contains. */
   originCode?: string;
   /** Booking or leg destination port code contains. */
@@ -53,6 +51,7 @@ const listSelectCore = {
   status: true,
   transportMode: true,
   trackingNo: true,
+  carrierSupplierId: true,
   carrier: true,
   shippedAt: true,
   updatedAt: true,
@@ -67,7 +66,8 @@ const listSelectCore = {
       orderNumber: true,
       title: true,
       buyerReference: true,
-      supplier: { select: { name: true } },
+      supplierId: true,
+      supplier: { select: { id: true, name: true } },
     },
   },
   ctReferences: {
@@ -218,12 +218,14 @@ function mapShipmentListRow(s: ShipmentListCore | ShipmentListInternal) {
     transportMode: s.transportMode ?? s.booking?.mode ?? firstLeg?.transportMode ?? null,
     trackingNo: s.trackingNo,
     carrier: s.carrier,
+    carrierSupplierId: s.carrierSupplierId,
     shippedAt: s.shippedAt.toISOString(),
     updatedAt: s.updatedAt.toISOString(),
     customerCrmAccountId: s.customerCrmAccountId,
     customerCrmAccountName: s.customerCrmAccount?.name ?? null,
     orderId: s.order.id,
     orderNumber: s.order.orderNumber,
+    supplierId: s.order.supplier?.id ?? null,
     supplierName: s.order.supplier?.name ?? null,
     externalOrderRef: s.order.buyerReference ?? null,
     shipmentSource:
@@ -246,10 +248,6 @@ function mapShipmentListRow(s: ShipmentListCore | ShipmentListInternal) {
     trackingMilestoneSummary,
     dispatchOwner,
     openQueueCounts,
-    shipperName:
-      s.ctReferences.find((r) => r.refType === "SHIPPER")?.refValue ?? null,
-    consigneeName:
-      s.ctReferences.find((r) => r.refType === "CONSIGNEE")?.refValue ?? null,
     quantityRef:
       s.ctReferences.find((r) => r.refType === "QTY")?.refValue ?? null,
     weightKgRef:
@@ -335,28 +333,6 @@ export async function listControlTowerShipments(params: {
       ],
     });
   }
-  const shipper = query.shipperName?.trim();
-  if (shipper) {
-    ands.push({
-      ctReferences: {
-        some: {
-          refType: "SHIPPER",
-          refValue: { contains: shipper, mode: "insensitive" },
-        },
-      },
-    });
-  }
-  const consignee = query.consigneeName?.trim();
-  if (consignee) {
-    ands.push({
-      ctReferences: {
-        some: {
-          refType: "CONSIGNEE",
-          refValue: { contains: consignee, mode: "insensitive" },
-        },
-      },
-    });
-  }
   const lane = query.lane?.trim();
   if (lane) {
     ands.push({
@@ -368,20 +344,20 @@ export async function listControlTowerShipments(params: {
       ],
     });
   }
-  const carrier = query.carrier?.trim();
-  if (carrier) {
-    ands.push({ carrier: { contains: carrier, mode: "insensitive" } });
+  const carrierSupplierId = query.carrierSupplierId?.trim();
+  if (carrierSupplierId) {
+    ands.push({ carrierSupplierId });
   }
-  const supplierName = query.supplierName?.trim();
-  if (supplierName) {
+  const supplierId = query.supplierId?.trim();
+  if (supplierId) {
     ands.push({
-      order: { supplier: { is: { name: { contains: supplierName, mode: "insensitive" } } } },
+      order: { supplierId },
     });
   }
-  const customerName = query.customerName?.trim();
-  if (customerName) {
+  const customerCrmAccountId = query.customerCrmAccountId?.trim();
+  if (customerCrmAccountId) {
     ands.push({
-      customerCrmAccount: { is: { name: { contains: customerName, mode: "insensitive" } } },
+      customerCrmAccountId,
     });
   }
   const originCode = query.originCode?.trim();

@@ -51,9 +51,9 @@ export type CtReportConfig = {
     status?: string | null;
     mode?: string | null;
     lane?: string | null;
-    carrier?: string | null;
-    customer?: string | null;
-    supplier?: string | null;
+    carrierSupplierId?: string | null;
+    customerCrmAccountId?: string | null;
+    supplierId?: string | null;
     origin?: string | null;
     destination?: string | null;
   };
@@ -143,9 +143,13 @@ export function sanitizeCtReportConfig(input: unknown): CtReportConfig {
       status: typeof filtersObj.status === "string" ? filtersObj.status : null,
       mode: typeof filtersObj.mode === "string" ? filtersObj.mode : null,
       lane: typeof filtersObj.lane === "string" ? filtersObj.lane : null,
-      carrier: typeof filtersObj.carrier === "string" ? filtersObj.carrier : null,
-      customer: typeof filtersObj.customer === "string" ? filtersObj.customer : null,
-      supplier: typeof filtersObj.supplier === "string" ? filtersObj.supplier : null,
+      carrierSupplierId:
+        typeof filtersObj.carrierSupplierId === "string" ? filtersObj.carrierSupplierId : null,
+      customerCrmAccountId:
+        typeof filtersObj.customerCrmAccountId === "string"
+          ? filtersObj.customerCrmAccountId
+          : null,
+      supplierId: typeof filtersObj.supplierId === "string" ? filtersObj.supplierId : null,
       origin: typeof filtersObj.origin === "string" ? filtersObj.origin : null,
       destination: typeof filtersObj.destination === "string" ? filtersObj.destination : null,
     },
@@ -158,6 +162,7 @@ type ShipmentRow = {
   transportMode: TransportMode | null;
   shippedAt: Date;
   receivedAt: Date | null;
+  carrierSupplierId: string | null;
   carrier: string | null;
   estimatedVolumeCbm: Prisma.Decimal | null;
   estimatedWeightKg: Prisma.Decimal | null;
@@ -251,9 +256,11 @@ export async function runControlTowerReport(params: {
       OR: [{ transportMode: filters.mode as TransportMode }, { booking: { is: { mode: filters.mode as TransportMode } } }],
     });
   }
-  if (nonEmpty(filters.carrier)) ands.push({ carrier: { contains: filters.carrier!.trim(), mode: "insensitive" } });
-  if (nonEmpty(filters.customer)) ands.push({ customerCrmAccount: { is: { name: { contains: filters.customer!.trim(), mode: "insensitive" } } } });
-  if (nonEmpty(filters.supplier)) ands.push({ order: { supplier: { is: { name: { contains: filters.supplier!.trim(), mode: "insensitive" } } } } });
+  if (nonEmpty(filters.carrierSupplierId)) ands.push({ carrierSupplierId: filters.carrierSupplierId!.trim() });
+  if (nonEmpty(filters.customerCrmAccountId)) {
+    ands.push({ customerCrmAccountId: filters.customerCrmAccountId!.trim() });
+  }
+  if (nonEmpty(filters.supplierId)) ands.push({ order: { supplierId: filters.supplierId!.trim() } });
   if (nonEmpty(filters.origin)) ands.push({ booking: { is: { originCode: { contains: filters.origin!.trim(), mode: "insensitive" } } } });
   if (nonEmpty(filters.destination)) ands.push({ booking: { is: { destinationCode: { contains: filters.destination!.trim(), mode: "insensitive" } } } });
   if (nonEmpty(filters.lane)) {
@@ -298,6 +305,7 @@ export async function runControlTowerReport(params: {
       transportMode: true,
       shippedAt: true,
       receivedAt: true,
+      carrierSupplierId: true,
       carrier: true,
       estimatedVolumeCbm: true,
       estimatedWeightKg: true,
