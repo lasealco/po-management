@@ -7,7 +7,7 @@ import { GuideCallout } from "@/components/guide-callout";
 import { HelpAssistant } from "@/components/help-assistant";
 import { LayoutPoSubnav } from "@/components/layout-po-subnav";
 import { SiteLegalStrip } from "@/components/site-legal-strip";
-import { getViewerGrantSet, userHasRoleNamed, viewerHas } from "@/lib/authz";
+import { actorIsSupplierPortalRestricted, getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { pathUsesAppChrome } from "@/lib/app-shell-paths";
 import { resolveNavState } from "@/lib/nav-visibility";
 import "./globals.css";
@@ -42,7 +42,7 @@ export default async function RootLayout({
   const { poSubNavVisibility } = await resolveNavState(access);
   const actorId = access?.user?.id ?? null;
   const isSupplierPortalUser =
-    actorId !== null && (await userHasRoleNamed(actorId, "Supplier portal"));
+    actorId !== null && (await actorIsSupplierPortalRestricted(actorId));
 
   const commandGrants = {
     orders: Boolean(access?.user && viewerHas(access.grantSet, "org.orders", "view")),

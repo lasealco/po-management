@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getActorUserId, requireApiGrant, userHasRoleNamed } from "@/lib/authz";
+import { actorIsSupplierPortalRestricted, getActorUserId, requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
 import { visibleOnBoard } from "@/lib/workflow-actions";
@@ -67,7 +67,7 @@ export async function GET() {
 
   const actorId = await getActorUserId();
   const isSupplierPortalUser =
-    actorId !== null && (await userHasRoleNamed(actorId, "Supplier portal"));
+    actorId !== null && (await actorIsSupplierPortalRestricted(actorId));
   const supplierOnlyActionCodes = new Set([
     "confirm",
     "decline",

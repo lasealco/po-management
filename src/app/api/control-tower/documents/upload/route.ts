@@ -4,7 +4,7 @@ import { join } from "path";
 import { put } from "@vercel/blob";
 import { NextResponse } from "next/server";
 
-import { getActorUserId, requireApiGrant, userHasRoleNamed } from "@/lib/authz";
+import { actorIsSupplierPortalRestricted, getActorUserId, requireApiGrant } from "@/lib/authz";
 import { writeCtAudit } from "@/lib/control-tower/audit";
 import { normalizeUploadDocType } from "@/lib/control-tower/shipment-document-types";
 import { prisma } from "@/lib/prisma";
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
   if (gate) return gate;
 
   const actorId = await getActorUserId();
-  if (!actorId || (await userHasRoleNamed(actorId, "Supplier portal"))) {
+  if (!actorId || (await actorIsSupplierPortalRestricted(actorId))) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
   }
 

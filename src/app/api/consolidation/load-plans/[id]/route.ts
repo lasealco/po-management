@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getActorUserId, requireApiGrant, userHasRoleNamed } from "@/lib/authz";
+import { actorIsSupplierPortalRestricted, getActorUserId, requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
 
@@ -25,7 +25,7 @@ async function gateBuyerConsolidationAccess() {
   if (!actorId) {
     return NextResponse.json({ error: "No active demo actor." }, { status: 403 });
   }
-  const isSupplierPortalUser = await userHasRoleNamed(actorId, "Supplier portal");
+  const isSupplierPortalUser = await actorIsSupplierPortalRestricted(actorId);
   if (isSupplierPortalUser) {
     return NextResponse.json(
       { error: "Supplier users cannot manage buyer consolidation." },

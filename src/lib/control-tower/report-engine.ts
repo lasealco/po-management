@@ -173,6 +173,7 @@ type ShipmentRow = {
   receivedAt: Date | null;
   carrierSupplierId: string | null;
   carrier: string | null;
+  carrierSupplier: { name: string } | null;
   estimatedVolumeCbm: Prisma.Decimal | null;
   estimatedWeightKg: Prisma.Decimal | null;
   customerCrmAccount: { name: string } | null;
@@ -218,9 +219,14 @@ function rowDimensionValue(row: ShipmentRow, dim: CtReportDimension): string {
     case "mode":
       return row.transportMode ?? "Unknown";
     case "lane":
-      return `${row.booking?.originCode ?? "?"}->${row.booking?.destinationCode ?? "?"}`;
-    case "carrier":
-      return row.carrier || "Unknown";
+      return `${row.booking?.originCode ?? "?"}→${row.booking?.destinationCode ?? "?"}`;
+    case "carrier": {
+      const fromParty = row.carrierSupplier?.name?.trim();
+      if (fromParty) return fromParty;
+      const legacy = row.carrier?.trim();
+      if (legacy) return legacy;
+      return "No carrier / forwarder set";
+    }
     case "customer":
       return row.customerCrmAccount?.name || "Unknown";
     case "supplier":
@@ -316,6 +322,7 @@ export async function runControlTowerReport(params: {
       receivedAt: true,
       carrierSupplierId: true,
       carrier: true,
+      carrierSupplier: { select: { name: true } },
       estimatedVolumeCbm: true,
       estimatedWeightKg: true,
       customerCrmAccount: { select: { name: true } },

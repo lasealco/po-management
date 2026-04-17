@@ -78,7 +78,7 @@ async function seed() {
     console.warn("[db:seed] Could not load milestone-packs-seed.json:", e instanceof Error ? e.message : e);
   }
 
-  const [buyer, approver, supplierUser] = await Promise.all([
+  const [buyer, approver, supplierUser, superuser] = await Promise.all([
     prisma.user.upsert({
       where: {
         tenantId_email: { tenantId: tenant.id, email: "buyer@demo-company.com" },
@@ -127,6 +127,23 @@ async function seed() {
         passwordHash: seedPasswordHash("demo12345", "supplier@demo-company.com"),
       },
     }),
+    prisma.user.upsert({
+      where: {
+        tenantId_email: { tenantId: tenant.id, email: "superuser@demo-company.com" },
+      },
+      update: {
+        name: "Superuser",
+        isActive: true,
+        customerCrmAccountId: null,
+        passwordHash: seedPasswordHash("demo12345", "superuser@demo-company.com"),
+      },
+      create: {
+        tenantId: tenant.id,
+        email: "superuser@demo-company.com",
+        name: "Superuser",
+        passwordHash: seedPasswordHash("demo12345", "superuser@demo-company.com"),
+      },
+    }),
   ]);
 
   const roleBuyer = await prisma.role.upsert({
@@ -146,11 +163,17 @@ async function seed() {
     update: {},
     create: { tenantId: tenant.id, name: "Supplier portal", isSystem: true },
   });
+  const roleSuperuser = await prisma.role.upsert({
+    where: { tenantId_name: { tenantId: tenant.id, name: "Superuser" } },
+    update: {},
+    create: { tenantId: tenant.id, name: "Superuser", isSystem: true },
+  });
 
   for (const [userId, roleId] of [
     [buyer.id, roleBuyer.id],
     [approver.id, roleApprover.id],
     [supplierUser.id, roleSupplierPortal.id],
+    [superuser.id, roleSuperuser.id],
   ]) {
     await prisma.userRole.upsert({
       where: { userId_roleId: { userId, roleId } },
@@ -203,10 +226,31 @@ async function seed() {
     ["org.products", "view"],
     ["org.controltower", "view"],
   ];
+  const superuserGrants = [
+    ["org.orders", "view"],
+    ["org.orders", "edit"],
+    ["org.orders", "transition"],
+    ["org.orders", "split"],
+    ["org.products", "view"],
+    ["org.products", "edit"],
+    ["org.suppliers", "view"],
+    ["org.suppliers", "edit"],
+    ["org.suppliers", "approve"],
+    ["org.settings", "view"],
+    ["org.settings", "edit"],
+    ["org.reports", "view"],
+    ["org.wms", "view"],
+    ["org.wms", "edit"],
+    ["org.crm", "view"],
+    ["org.crm", "edit"],
+    ["org.controltower", "view"],
+    ["org.controltower", "edit"],
+  ];
 
   await replaceGlobalRolePermissions(roleBuyer.id, buyerGrants);
   await replaceGlobalRolePermissions(roleApprover.id, approverGrants);
   await replaceGlobalRolePermissions(roleSupplierPortal.id, supplierGrants);
+  await replaceGlobalRolePermissions(roleSuperuser.id, superuserGrants);
 
   const roleCustomerPortal = await prisma.role.upsert({
     where: { tenantId_name: { tenantId: tenant.id, name: "Customer portal" } },

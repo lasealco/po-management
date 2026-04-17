@@ -110,7 +110,8 @@ export function DemoUserPanel({ className = "" }: { className?: string }) {
             <Link href="/login" className="font-medium underline underline-offset-2">
               /login
             </Link>{" "}
-            (buyer@ or approver@ + <span className="font-mono">demo12345</span>).
+            (buyer@, approver@, or <span className="font-mono">superuser@demo-company.com</span> +{" "}
+            <span className="font-mono">demo12345</span>). Superuser has every permission and bypasses supplier/customer portal scoping.
           </>
         ) : (
           <>

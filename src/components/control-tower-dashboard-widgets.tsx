@@ -8,7 +8,9 @@ import {
   CoverageInline,
   MiniBarChart,
   colorFor,
+  dimensionLabel,
   formatMetric,
+  metricLabel,
   metricSummaryValue,
   seriesForCard,
   type CtDashboardWidgetReport,
@@ -79,7 +81,7 @@ export function ControlTowerDashboardWidgets({ canEdit }: { canEdit: boolean }) 
               ) : null}
             </div>
             <p className="mt-1 text-xs text-zinc-500">
-              {w.report.config.measure} by {w.report.config.dimension}
+              {metricLabel(w.report.config.measure)} · {dimensionLabel(w.report.config.dimension ?? "month")}
             </p>
             <p className="mt-2 text-2xl font-semibold text-zinc-950">{metricSummaryValue(w.report)}</p>
             <CoverageInline coverage={w.report.coverage} />
@@ -89,7 +91,7 @@ export function ControlTowerDashboardWidgets({ canEdit }: { canEdit: boolean }) 
               className="mt-2 block w-full text-left"
               title="Open chart, table, export, and AI"
             >
-              <MiniBarChart data={seriesForCard(w.report, 10)} />
+              <MiniBarChart data={seriesForCard(w.report, 10)} measure={w.report.config.measure} />
               <span className="mt-1 inline-block text-[11px] font-medium text-sky-800">
                 Click for chart, full data, CSV, AI
               </span>

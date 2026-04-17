@@ -3,10 +3,21 @@ import { NextResponse } from "next/server";
 
 import { getDemoActorEmail } from "@/lib/demo-actor";
 import { getDemoTenant } from "@/lib/demo-tenant";
+import { GLOBAL_PERMISSION_CATALOG } from "@/lib/permission-catalog";
 import { prisma } from "@/lib/prisma";
 
 const grantKey = (resource: string, action: string) =>
   `${resource}\0${action}`;
+
+/** Seeded system role: full global permissions + bypasses supplier/customer portal scoping. */
+export const SUPERUSER_ROLE_NAME = "Superuser";
+
+function allSuperuserGrantKeys(): string[] {
+  return [
+    ...GLOBAL_PERMISSION_CATALOG.map((r) => grantKey(r.resource, r.action)),
+    grantKey("org.suppliers", "approve"),
+  ];
+}
 
 /** Seeded internal demo accounts; some prod DBs predate CRM/WMS RolePermission rows. */
 const DEMO_INTERNAL_EMAILS = new Set([
@@ -53,8 +64,37 @@ function mergeDemoLegacyGrants(
   return next ?? grantSet;
 }
 
+export async function userHasRoleNamed(userId: string, roleName: string) {
+  const row = await prisma.userRole.findFirst({
+    where: {
+      userId,
+      role: { name: roleName },
+    },
+    select: { id: true },
+  });
+  return Boolean(row);
+}
+
+/** True when the user has the seeded Superuser role (full app + no portal-style restrictions). */
+export const userIsSuperuser = cache(async (userId: string): Promise<boolean> => {
+  const row = await prisma.userRole.findFirst({
+    where: { userId, role: { name: SUPERUSER_ROLE_NAME } },
+    select: { id: true },
+  });
+  return Boolean(row);
+});
+
+/**
+ * Supplier portal users are scoped to supplier workflows; superusers are never treated as portal-restricted
+ * even if they also carry other roles in a test database.
+ */
+export const actorIsSupplierPortalRestricted = cache(async (actorUserId: string): Promise<boolean> => {
+  if (await userIsSuperuser(actorUserId)) return false;
+  return userHasRoleNamed(actorUserId, "Supplier portal");
+});
+
 export async function loadGlobalGrantsForUser(userId: string) {
-  const [perms, user] = await Promise.all([
+  const [perms, user, isSuperuser] = await Promise.all([
     prisma.rolePermission.findMany({
       where: {
         effect: "allow",
@@ -67,10 +107,16 @@ export async function loadGlobalGrantsForUser(userId: string) {
       where: { id: userId },
       select: { email: true },
     }),
+    userIsSuperuser(userId),
   ]);
   const base = new Set(perms.map((p) => grantKey(p.resource, p.action)));
-  if (!user?.email) return base;
-  return mergeDemoLegacyGrants(base, user.email);
+  let merged = !user?.email ? base : mergeDemoLegacyGrants(base, user.email);
+  if (isSuperuser) {
+    const next = new Set(merged);
+    for (const k of allSuperuserGrantKeys()) next.add(k);
+    merged = next;
+  }
+  return merged;
 }
 
 export async function userHasGlobalGrant(
@@ -80,17 +126,6 @@ export async function userHasGlobalGrant(
 ) {
   const set = await loadGlobalGrantsForUser(userId);
   return set.has(grantKey(resource, action));
-}
-
-export async function userHasRoleNamed(userId: string, roleName: string) {
-  const row = await prisma.userRole.findFirst({
-    where: {
-      userId,
-      role: { name: roleName },
-    },
-    select: { id: true },
-  });
-  return Boolean(row);
 }
 
 export async function requireApiGrant(resource: string, action: string) {

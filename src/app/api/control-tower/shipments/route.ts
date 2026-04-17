@@ -1,7 +1,7 @@
 import type { ShipmentStatus, TransportMode } from "@prisma/client";
 import { NextResponse } from "next/server";
 
-import { getActorUserId, requireApiGrant, userHasRoleNamed } from "@/lib/authz";
+import { actorIsSupplierPortalRestricted, getActorUserId, requireApiGrant } from "@/lib/authz";
 import { createLogisticsShipment } from "@/lib/control-tower/create-logistics-shipment";
 import { listControlTowerShipments } from "@/lib/control-tower/list-shipments";
 import { getControlTowerPortalContext } from "@/lib/control-tower/viewer";
@@ -135,7 +135,7 @@ export async function POST(request: Request) {
   if (!actorId) {
     return NextResponse.json({ error: "No active user." }, { status: 403 });
   }
-  if (await userHasRoleNamed(actorId, "Supplier portal")) {
+  if (await actorIsSupplierPortalRestricted(actorId)) {
     return NextResponse.json(
       { error: "Supplier portal users cannot create logistics shipments here." },
       { status: 403 },

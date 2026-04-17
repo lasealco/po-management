@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getActorUserId, requireApiGrant, userHasRoleNamed } from "@/lib/authz";
+import { actorIsSupplierPortalRestricted, getActorUserId, requireApiGrant } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { allocateTotals } from "@/lib/split";
 
@@ -190,7 +190,7 @@ export async function POST(
       { status: 403 },
     );
   }
-  const isSupplierPortalUser = await userHasRoleNamed(actorId, "Supplier portal");
+  const isSupplierPortalUser = await actorIsSupplierPortalRestricted(actorId);
   if (!isSupplierPortalUser) {
     return NextResponse.json(
       { error: "Only supplier users can propose split allocations." },

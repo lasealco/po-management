@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client";
 
-import { userHasRoleNamed } from "@/lib/authz";
+import { userHasRoleNamed, userIsSuperuser } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 
 export type ControlTowerPortalContext = {
@@ -14,6 +14,13 @@ export type ControlTowerPortalContext = {
 export async function getControlTowerPortalContext(
   actorUserId: string,
 ): Promise<ControlTowerPortalContext> {
+  if (await userIsSuperuser(actorUserId)) {
+    return {
+      isRestrictedView: false,
+      isSupplierPortal: false,
+      customerCrmAccountId: null,
+    };
+  }
   const [isSupplierPortal, user] = await Promise.all([
     userHasRoleNamed(actorUserId, "Supplier portal"),
     prisma.user.findUnique({

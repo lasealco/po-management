@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import {
+  actorIsSupplierPortalRestricted,
   getActorUserId,
   requireApiGrant,
   userHasGlobalGrant,
@@ -172,7 +173,7 @@ export async function GET(
 
   const actorId = await getActorUserId();
   const isSupplierPortalUser =
-    actorId !== null && (await userHasRoleNamed(actorId, "Supplier portal"));
+    actorId !== null && (await actorIsSupplierPortalRestricted(actorId));
   const isForwarderUser =
     actorId !== null && (await userHasRoleNamed(actorId, "Forwarder"));
   if (isSupplierPortalUser && !order.workflow.supplierPortalOn) {

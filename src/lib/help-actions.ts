@@ -1,8 +1,4 @@
-import {
-  userHasRoleNamed,
-  viewerHas,
-  type ViewerAccess,
-} from "@/lib/authz";
+import { actorIsSupplierPortalRestricted, viewerHas, type ViewerAccess } from "@/lib/authz";
 import { HELP_PLAYBOOKS, type HelpPlaybookDoAction } from "@/lib/help-playbooks";
 import { prisma } from "@/lib/prisma";
 
@@ -126,7 +122,7 @@ export async function executeHelpDoAction(
       if (!viewerHas(access.grantSet, "org.orders", "view")) {
         return { ok: false, error: "You do not have permission to open consolidation." };
       }
-      if (await userHasRoleNamed(access.user.id, "Supplier portal")) {
+      if (await actorIsSupplierPortalRestricted(access.user.id)) {
         return { ok: false, error: "Consolidation is not available for supplier portal users." };
       }
     } else if (path === "/suppliers") {
@@ -229,7 +225,7 @@ export async function executeHelpDoAction(
     }
 
     const actorId = access.user.id;
-    const isSupplierPortalUser = await userHasRoleNamed(actorId, "Supplier portal");
+    const isSupplierPortalUser = await actorIsSupplierPortalRestricted(actorId);
     if (isSupplierPortalUser && !order.workflow.supplierPortalOn) {
       return {
         ok: false,

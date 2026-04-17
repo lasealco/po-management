@@ -1,9 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  getActorUserId,
-  requireApiGrant,
-  userHasRoleNamed,
-} from "@/lib/authz";
+import { actorIsSupplierPortalRestricted, getActorUserId, requireApiGrant } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 
 type TransitionBody = {
@@ -87,7 +83,7 @@ export async function POST(
     );
   }
 
-  const isSupplierPortalUser = await userHasRoleNamed(actorId, "Supplier portal");
+  const isSupplierPortalUser = await actorIsSupplierPortalRestricted(actorId);
   if (isSupplierPortalUser && !order.workflow.supplierPortalOn) {
     return NextResponse.json(
       { error: "Supplier users can only act on supplier-portal orders." },

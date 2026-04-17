@@ -1,6 +1,11 @@
 import { AccessDenied } from "@/components/access-denied";
 import { ConsolidationPlanner } from "@/components/consolidation-planner";
-import { getActorUserId, getViewerGrantSet, userHasRoleNamed, viewerHas } from "@/lib/authz";
+import {
+  actorIsSupplierPortalRestricted,
+  getActorUserId,
+  getViewerGrantSet,
+  viewerHas,
+} from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -28,7 +33,7 @@ export default async function ConsolidationPage() {
 
   const actorId = await getActorUserId();
   const isSupplierPortalUser =
-    actorId !== null && (await userHasRoleNamed(actorId, "Supplier portal"));
+    actorId !== null && (await actorIsSupplierPortalRestricted(actorId));
   if (isSupplierPortalUser) {
     return (
       <AccessDenied

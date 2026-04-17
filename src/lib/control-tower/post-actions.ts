@@ -1,7 +1,7 @@
 import { Prisma, ShipmentMilestoneCode, type TransportMode } from "@prisma/client";
 import { NextResponse } from "next/server";
 
-import { getActorUserId, userHasRoleNamed } from "@/lib/authz";
+import { actorIsSupplierPortalRestricted, getActorUserId } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { amountToMinor, normalizeCurrency } from "@/lib/control-tower/currency";
 import { nextSalesOrderNumber } from "@/lib/sales-orders";
@@ -73,7 +73,7 @@ export async function handleControlTowerPost(
   if (!actorId) {
     return NextResponse.json({ error: "No active user." }, { status: 403 });
   }
-  if (await userHasRoleNamed(actorId, "Supplier portal")) {
+  if (await actorIsSupplierPortalRestricted(actorId)) {
     return NextResponse.json(
       { error: "Customer users cannot modify control tower data." },
       { status: 403 },

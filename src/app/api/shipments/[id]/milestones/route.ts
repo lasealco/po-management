@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
-import { getActorUserId, requireApiGrant, userHasRoleNamed } from "@/lib/authz";
+import {
+  actorIsSupplierPortalRestricted,
+  getActorUserId,
+  requireApiGrant,
+  userHasRoleNamed,
+  userIsSuperuser,
+} from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
 
@@ -34,14 +40,16 @@ export async function POST(
   if (!actorId) {
     return NextResponse.json({ error: "No active demo actor." }, { status: 403 });
   }
-  const isSupplier = await userHasRoleNamed(actorId, "Supplier portal");
+  const isSupplier = await actorIsSupplierPortalRestricted(actorId);
   if (isSupplier) {
     return NextResponse.json(
       { error: "Supplier users cannot post logistics milestones." },
       { status: 403 },
     );
   }
+  const isSuper = await userIsSuperuser(actorId);
   const isForwarder = await userHasRoleNamed(actorId, "Forwarder");
+  const forwarderMilestoneLimited = isForwarder && !isSuper;
 
   const tenant = await getDemoTenant();
   if (!tenant) {
@@ -70,7 +78,7 @@ export async function POST(
   }
 
   const allowedForForwarder = new Set(["DEPARTED", "ARRIVED", "DELIVERED"]);
-  if (isForwarder && !allowedForForwarder.has(code)) {
+  if (forwarderMilestoneLimited && !allowedForForwarder.has(code)) {
     return NextResponse.json(
       { error: "Forwarder users can only post departed/arrived/delivered milestones." },
       { status: 403 },
@@ -88,7 +96,7 @@ export async function POST(
       data: {
         shipmentId: shipment.id,
         code,
-        source: isForwarder ? "FORWARDER" : "INTERNAL",
+        source: forwarderMilestoneLimited ? "FORWARDER" : "INTERNAL",
         plannedAt: plannedAt || null,
         actualAt: actualAt || null,
         note: input.note?.trim() || null,

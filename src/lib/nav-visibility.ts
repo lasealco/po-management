@@ -1,4 +1,4 @@
-import { userHasRoleNamed, viewerHas, type ViewerAccess } from "@/lib/authz";
+import { actorIsSupplierPortalRestricted, viewerHas, type ViewerAccess } from "@/lib/authz";
 
 export type AppNavLinkVisibility = {
   /** True if any PO Management child is visible. */
@@ -31,8 +31,7 @@ export async function resolveNavState(access: ViewerAccess | null): Promise<{
   poSubNavVisibility: PoMgmtSubNavVisibility;
 }> {
   const isSupplierPortalUser =
-    access?.user != null &&
-    (await userHasRoleNamed(access.user.id, "Supplier portal"));
+    access?.user != null && (await actorIsSupplierPortalRestricted(access.user.id));
 
   const linkVisibility: AppNavLinkVisibility | undefined =
     access?.user != null

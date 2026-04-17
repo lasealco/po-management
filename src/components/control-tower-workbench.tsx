@@ -113,6 +113,104 @@ function ActionTooltipButton({
   );
 }
 
+function CtWorkbenchDemoTools({
+  restrictedView,
+  enrichBusy,
+  setEnrichBusy,
+  timelineBusy,
+  setTimelineBusy,
+  load,
+}: {
+  restrictedView: boolean;
+  enrichBusy: boolean;
+  setEnrichBusy: (v: boolean) => void;
+  timelineBusy: boolean;
+  setTimelineBusy: (v: boolean) => void;
+  load: () => void | Promise<void>;
+}) {
+  if (restrictedView) return null;
+  return (
+    <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-medium text-zinc-900">Demo tracking</p>
+          <p className="mt-0.5 text-xs text-zinc-600">
+            Fill missing route legs and milestones, or rebuild heavier demo timelines. Shown only on the internal
+            workbench (hidden in supplier/customer portal views).
+          </p>
+        </div>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <ActionTooltipButton
+            disabled={enrichBusy}
+            tooltip="Adds missing route legs and tracking milestones for recent shipments without changing existing fully-populated timelines."
+            onClick={async () => {
+              try {
+                setEnrichBusy(true);
+                const res = await fetch("/api/control-tower", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ action: "enrich_ct_demo_tracking", take: 180 }),
+                });
+                const payload = (await res.json()) as {
+                  error?: string;
+                  shipmentsUpdated?: number;
+                  legsCreated?: number;
+                  milestonesCreated?: number;
+                };
+                if (!res.ok) throw new Error(payload.error || "Could not enrich shipments.");
+                window.alert(
+                  `Demo enrichment complete.\nShipments updated: ${payload.shipmentsUpdated ?? 0}\nLegs created: ${payload.legsCreated ?? 0}\nTracking milestones created: ${payload.milestonesCreated ?? 0}`,
+                );
+                await load();
+              } catch (e) {
+                window.alert(e instanceof Error ? e.message : "Could not enrich shipments.");
+              } finally {
+                setEnrichBusy(false);
+              }
+            }}
+            className="rounded border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-900 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {enrichBusy ? "Generating demo tracking..." : "Generate demo tracking"}
+          </ActionTooltipButton>
+          <ActionTooltipButton
+            disabled={timelineBusy}
+            tooltip="Rebuilds route legs and milestone timelines for a larger shipment set, creating a visible mix of on-time, at-risk, and delayed profiles for demos."
+            onClick={async () => {
+              try {
+                setTimelineBusy(true);
+                const res = await fetch("/api/control-tower", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ action: "regenerate_ct_demo_timeline", take: 260 }),
+                });
+                const payload = (await res.json()) as {
+                  error?: string;
+                  updated?: number;
+                  onTime?: number;
+                  atRisk?: number;
+                  delayed?: number;
+                };
+                if (!res.ok) throw new Error(payload.error || "Could not regenerate timeline.");
+                window.alert(
+                  `Timeline regenerated.\nShipments updated: ${payload.updated ?? 0}\nOn-time profile: ${payload.onTime ?? 0}\nAt-risk profile: ${payload.atRisk ?? 0}\nDelayed profile: ${payload.delayed ?? 0}`,
+                );
+                await load();
+              } catch (e) {
+                window.alert(e instanceof Error ? e.message : "Could not regenerate timeline.");
+              } finally {
+                setTimelineBusy(false);
+              }
+            }}
+            className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {timelineBusy ? "Regenerating timeline..." : "Regenerate timeline (heavier)"}
+          </ActionTooltipButton>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function workbenchUrlHasSearchFilters(sp: URLSearchParams): boolean {
   return Boolean(
     (sp.get("q") ?? "").trim() ||
@@ -699,6 +797,14 @@ function ControlTowerWorkbenchInner({
           to your account or supplier scope.
         </p>
       ) : null}
+      <CtWorkbenchDemoTools
+        restrictedView={restrictedView}
+        enrichBusy={enrichBusy}
+        setEnrichBusy={setEnrichBusy}
+        timelineBusy={timelineBusy}
+        setTimelineBusy={setTimelineBusy}
+        load={load}
+      />
       <div className="flex flex-wrap items-end gap-3 rounded-lg border border-zinc-200 bg-white p-4">
         <p className="w-full text-[11px] text-zinc-500">
           Filters update the address bar after you pause typing (~400ms) so you can copy or bookmark the exact list query.
@@ -915,75 +1021,6 @@ function ControlTowerWorkbenchInner({
         >
           Refresh
         </button>
-        {!restrictedView ? (
-          <ActionTooltipButton
-            disabled={enrichBusy}
-            tooltip="Adds missing route legs and tracking milestones for recent shipments without changing existing fully-populated timelines."
-            onClick={async () => {
-              try {
-                setEnrichBusy(true);
-                const res = await fetch("/api/control-tower", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ action: "enrich_ct_demo_tracking", take: 180 }),
-                });
-                const payload = (await res.json()) as {
-                  error?: string;
-                  shipmentsUpdated?: number;
-                  legsCreated?: number;
-                  milestonesCreated?: number;
-                };
-                if (!res.ok) throw new Error(payload.error || "Could not enrich shipments.");
-                window.alert(
-                  `Demo enrichment complete.\nShipments updated: ${payload.shipmentsUpdated ?? 0}\nLegs created: ${payload.legsCreated ?? 0}\nTracking milestones created: ${payload.milestonesCreated ?? 0}`,
-                );
-                await load();
-              } catch (e) {
-                window.alert(e instanceof Error ? e.message : "Could not enrich shipments.");
-              } finally {
-                setEnrichBusy(false);
-              }
-            }}
-            className="rounded border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-900 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {enrichBusy ? "Generating demo tracking..." : "Generate demo tracking"}
-          </ActionTooltipButton>
-        ) : null}
-        {!restrictedView ? (
-          <ActionTooltipButton
-            disabled={timelineBusy}
-            tooltip="Rebuilds route legs and milestone timelines for a larger shipment set, creating a visible mix of on-time, at-risk, and delayed profiles for demos."
-            onClick={async () => {
-              try {
-                setTimelineBusy(true);
-                const res = await fetch("/api/control-tower", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ action: "regenerate_ct_demo_timeline", take: 260 }),
-                });
-                const payload = (await res.json()) as {
-                  error?: string;
-                  updated?: number;
-                  onTime?: number;
-                  atRisk?: number;
-                  delayed?: number;
-                };
-                if (!res.ok) throw new Error(payload.error || "Could not regenerate timeline.");
-                window.alert(
-                  `Timeline regenerated.\nShipments updated: ${payload.updated ?? 0}\nOn-time profile: ${payload.onTime ?? 0}\nAt-risk profile: ${payload.atRisk ?? 0}\nDelayed profile: ${payload.delayed ?? 0}`,
-                );
-                await load();
-              } catch (e) {
-                window.alert(e instanceof Error ? e.message : "Could not regenerate timeline.");
-              } finally {
-                setTimelineBusy(false);
-              }
-            }}
-            className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {timelineBusy ? "Regenerating timeline..." : "Regenerate timeline (heavier)"}
-          </ActionTooltipButton>
-        ) : null}
         <button
           type="button"
           onClick={() => setAutoRefresh((v) => !v)}

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getActorUserId, requireApiGrant, userHasRoleNamed } from "@/lib/authz";
+import { actorIsSupplierPortalRestricted, getActorUserId, requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
 
@@ -23,7 +23,7 @@ async function gate() {
   if (!tenant || !actorId) {
     return NextResponse.json({ error: "No active user." }, { status: 403 });
   }
-  const isSupplier = await userHasRoleNamed(actorId, "Supplier portal");
+  const isSupplier = await actorIsSupplierPortalRestricted(actorId);
   if (isSupplier) {
     return NextResponse.json(
       { error: "Supplier users cannot manage consolidation presets." },

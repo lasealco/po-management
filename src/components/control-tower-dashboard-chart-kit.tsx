@@ -59,9 +59,26 @@ export function formatDecimal(value: number, frac = 2): string {
   }).format(value);
 }
 
+/** Whole units (shipment counts, row counts on axes). */
+export function formatInteger(value: number): string {
+  return new Intl.NumberFormat("de-DE", {
+    maximumFractionDigits: 0,
+    minimumFractionDigits: 0,
+  }).format(Math.round(value));
+}
+
+export function formatAxisTick(measure: string, value: number): string {
+  if (measure === "shipments") return formatInteger(value);
+  if (measure === "onTimePct") return `${formatDecimal(value, 0)}%`;
+  if (measure === "avgDelayDays") return formatDecimal(value, 1);
+  return formatDecimal(value, 0);
+}
+
 export function formatMetric(measure: string, value: number): string {
+  if (measure === "shipments") return formatInteger(value);
   if (measure === "onTimePct") return `${formatDecimal(value, 2)}%`;
   if (measure === "shippingSpend") return formatDecimal(value, 2);
+  if (measure === "avgDelayDays") return formatDecimal(value, 2);
   return formatDecimal(value, 2);
 }
 
@@ -103,6 +120,36 @@ export function tableRowsFromReport(report: CtDashboardWidgetReport) {
   return report.fullSeriesRows?.length ? report.fullSeriesRows : report.rows;
 }
 
+export function metricLabel(measure: string): string {
+  if (measure === "onTimePct") return "On-time %";
+  if (measure === "shippingSpend") return "Shipping spend (est.)";
+  if (measure === "avgDelayDays") return "Avg delay (days)";
+  if (measure === "volumeCbm") return "Volume (CBM)";
+  if (measure === "weightKg") return "Weight (kg)";
+  return "Shipments";
+}
+
+export function dimensionLabel(dimension: string): string {
+  if (dimension === "lane") return "Lane (origin → destination)";
+  if (dimension === "carrier") return "Carrier / forwarder";
+  if (dimension === "customer") return "Customer";
+  if (dimension === "supplier") return "Supplier (PO)";
+  if (dimension === "origin") return "Origin";
+  if (dimension === "destination") return "Destination";
+  if (dimension === "month") return "Month";
+  if (dimension === "mode") return "Mode";
+  if (dimension === "status") return "Status";
+  if (dimension === "none") return "All";
+  return "Category";
+}
+
+/** Line charts are meaningful for time (month); categorical dimensions use bars. */
+function chartViewFromConfig(chartType: string | undefined, dimension: string): ChartViewMode {
+  if (chartType === "pie") return "pie";
+  if (chartType === "line" && dimension === "month") return "line";
+  return "bar";
+}
+
 function csvCell(s: string): string {
   if (/[,"\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
   return s;
@@ -138,45 +185,77 @@ export function MiniBarChart({
   height = 64,
   selectedKey = null,
   onBarSelect,
+  measure = "shippingSpend",
+  variant = "card",
+  xGroupLabel,
 }: {
   data: Array<{ key?: string; label: string; value: number }>;
   height?: number;
   selectedKey?: string | null;
   onBarSelect?: (key: string) => void;
+  /** Drives number formatting (shipments = whole numbers). */
+  measure?: string;
+  /** `modal` draws readable Y ticks and X category labels. */
+  variant?: "card" | "modal";
+  /** X-axis caption in modal layout (e.g. “Month”). */
+  xGroupLabel?: string;
 }) {
   const interactive = Boolean(onBarSelect);
   const max = Math.max(...data.map((d) => d.value), 0);
   if (!data.length || max <= 0) {
     return <div className="rounded border border-zinc-200 bg-zinc-50 px-2 py-2 text-xs text-zinc-500">No chart data</div>;
   }
-  const barW = Math.max(8, Math.floor(220 / data.length));
-  const gap = 3;
-  const width = data.length * (barW + gap) + 48;
-  const axisLeft = 36;
-  const axisBottom = 14;
-  const axisTop = 6;
+  const isModal = variant === "modal";
+  const barW = isModal ? Math.max(10, Math.min(48, Math.floor(560 / Math.max(data.length, 1)))) : Math.max(8, Math.floor(220 / data.length));
+  const gap = isModal ? 4 : 3;
+  const axisLeft = isModal ? 52 : 36;
+  const axisBottom = isModal ? 56 : 14;
+  const axisTop = isModal ? 14 : 6;
+  const axisRight = 8;
+  const width = isModal
+    ? Math.max(480, data.length * (barW + gap) + axisLeft + axisRight)
+    : data.length * (barW + gap) + 48;
   const plotHeight = height - axisBottom - axisTop;
   const ticks = [max, max / 2, 0];
+  const fmt = (v: number) => formatAxisTick(measure, v);
+  const fmtVal = (v: number) => formatMetric(measure, v);
+  const xLabel = (s: string) => (s.length > 11 ? `${s.slice(0, 10)}…` : s);
   return (
     <svg
       viewBox={`0 0 ${width} ${height}`}
-      preserveAspectRatio="none"
+      preserveAspectRatio={isModal ? "xMidYMid meet" : "none"}
       style={{ height: `${height}px` }}
-      className={`w-full rounded border border-zinc-200 bg-white ${interactive ? "[&_rect.bar]:cursor-pointer" : ""}`}
+      className={`w-full rounded-lg border border-zinc-200/90 bg-white shadow-sm ${interactive ? "[&_rect.bar]:cursor-pointer" : ""}`}
       role={interactive ? "img" : undefined}
       aria-label={interactive ? "Bar chart; click a bar to highlight the matching row below." : undefined}
     >
+      {isModal ? (
+        <text x={12} y={axisTop + plotHeight / 2} fontSize="11" fill="#52525b" transform={`rotate(-90 12 ${axisTop + plotHeight / 2})`} textAnchor="middle">
+          {metricLabel(measure)}
+        </text>
+      ) : null}
       {ticks.map((t, idx) => {
         const y = axisTop + (plotHeight * idx) / (ticks.length - 1);
         return (
           <g key={`tick-${idx}`}>
-            <line x1={axisLeft} y1={y} x2={width - 2} y2={y} stroke="#e4e4e7" strokeWidth="1" />
-            <text x={axisLeft - 4} y={y + 3} textAnchor="end" fontSize="8" fill="#71717a">
-              {formatDecimal(t, 0)}
+            <line x1={axisLeft} y1={y} x2={width - axisRight} y2={y} stroke="#e4e4e7" strokeWidth="1" />
+            <text x={axisLeft - 6} y={y + 4} textAnchor="end" fontSize={isModal ? "10" : "8"} fill="#71717a">
+              {fmt(t)}
             </text>
           </g>
         );
       })}
+      {isModal && xGroupLabel ? (
+        <text
+          x={axisLeft + (width - axisLeft - axisRight) / 2}
+          y={height - 8}
+          textAnchor="middle"
+          fontSize="10"
+          fill="#52525b"
+        >
+          {xGroupLabel}
+        </text>
+      ) : null}
       {data.map((d, i) => {
         const h = Math.max(2, Math.round((d.value / max) * plotHeight));
         const x = axisLeft + i * (barW + gap);
@@ -191,13 +270,13 @@ export function MiniBarChart({
               y={y}
               width={barW}
               height={h}
-              rx={1}
+              rx={isModal ? 3 : 1}
               fill={colorFor(i)}
               stroke={sel ? "#0c4a6e" : "none"}
               strokeWidth={sel ? 2 : 0}
               tabIndex={interactive ? 0 : undefined}
               role={interactive ? "button" : undefined}
-              aria-label={`${d.label}: ${formatDecimal(d.value, 2)}${sel ? ", selected" : ""}`}
+              aria-label={`${d.label}: ${fmtVal(d.value)}${sel ? ", selected" : ""}`}
               aria-pressed={interactive ? sel : undefined}
               onClick={
                 interactive
@@ -218,8 +297,20 @@ export function MiniBarChart({
                   : undefined
               }
             >
-              <title>{`${d.label}: ${formatDecimal(d.value, 2)}`}</title>
+              <title>{`${d.label}: ${fmtVal(d.value)}`}</title>
             </rect>
+            {isModal ? (
+              <text
+                x={x + barW / 2}
+                y={height - axisBottom + 14}
+                textAnchor="end"
+                fontSize="9"
+                fill="#52525b"
+                transform={`rotate(-42 ${x + barW / 2} ${height - axisBottom + 14})`}
+              >
+                {xLabel(d.label)}
+              </text>
+            ) : null}
           </g>
         );
       })}
@@ -232,39 +323,79 @@ export function MiniLineChart({
   height = 64,
   selectedKey = null,
   onPointSelect,
+  measure = "shippingSpend",
+  variant = "card",
+  xGroupLabel,
 }: {
   data: Array<{ key?: string; label: string; value: number }>;
   height?: number;
   selectedKey?: string | null;
   onPointSelect?: (key: string) => void;
+  measure?: string;
+  variant?: "card" | "modal";
+  xGroupLabel?: string;
 }) {
   const interactive = Boolean(onPointSelect);
   const max = Math.max(...data.map((d) => d.value), 0);
   if (!data.length || max <= 0) {
     return <div className="rounded border border-zinc-200 bg-zinc-50 px-2 py-2 text-xs text-zinc-500">No chart data</div>;
   }
-  const width = 320;
-  const pad = 18;
-  const plotH = height - pad * 2;
-  const step = data.length > 1 ? (width - pad * 2) / (data.length - 1) : 0;
-  const points = data
-    .map((d, i) => `${pad + i * step},${pad + plotH - (d.value / max) * plotH}`)
-    .join(" ");
+  const isModal = variant === "modal";
+  const width = isModal ? 680 : 320;
+  const padL = isModal ? 56 : 18;
+  const padR = isModal ? 20 : 18;
+  const padT = isModal ? 18 : 18;
+  const padB = isModal ? 62 : 18;
+  const plotW = width - padL - padR;
+  const plotH = height - padT - padB;
+  const n = data.length;
+  const xAt = (i: number) => {
+    if (n <= 1) return padL + plotW / 2;
+    return padL + (i / (n - 1)) * plotW;
+  };
+  const yAt = (v: number) => padT + plotH - (v / max) * plotH;
+  const points = data.map((d, i) => `${xAt(i)},${yAt(d.value)}`).join(" ");
+  const ticks = [max, max / 2, 0];
+  const fmt = (v: number) => formatAxisTick(measure, v);
+  const fmtVal = (v: number) => formatMetric(measure, v);
+  const xLab = (s: string) => (s.length > 9 ? `${s.slice(0, 8)}…` : s);
   return (
     <svg
       viewBox={`0 0 ${width} ${height}`}
-      preserveAspectRatio="none"
+      preserveAspectRatio={isModal ? "xMidYMid meet" : "none"}
       style={{ height: `${height}px` }}
-      className="w-full rounded border border-zinc-200 bg-white"
+      className={`w-full rounded-lg border border-zinc-200/90 bg-white shadow-sm`}
       role={interactive ? "img" : undefined}
       aria-label={interactive ? "Line chart; click a point to highlight the matching row below." : undefined}
     >
-      <line x1={pad} y1={height - pad} x2={width - pad} y2={height - pad} stroke="#e4e4e7" />
-      <polyline fill="none" stroke="#0ea5e9" strokeWidth="2.5" points={points} pointerEvents="none" />
+      {isModal
+        ? ticks.map((t, idx) => {
+            const y = padT + (plotH * idx) / (ticks.length - 1);
+            return (
+              <g key={`yt-${idx}`}>
+                <line x1={padL} y1={y} x2={width - padR} y2={y} stroke="#e4e4e7" strokeWidth="1" />
+                <text x={padL - 8} y={y + 4} textAnchor="end" fontSize="10" fill="#71717a">
+                  {fmt(t)}
+                </text>
+              </g>
+            );
+          })
+        : [<line key="base" x1={padL} y1={padT + plotH} x2={width - padR} y2={padT + plotH} stroke="#e4e4e7" />]}
+      <polyline fill="none" stroke="#0ea5e9" strokeWidth={isModal ? 3 : 2.5} points={points} pointerEvents="none" />
+      {isModal ? (
+        <text x={14} y={padT + plotH / 2} fontSize="11" fill="#52525b" transform={`rotate(-90 14 ${padT + plotH / 2})`} textAnchor="middle">
+          {metricLabel(measure)}
+        </text>
+      ) : null}
+      {isModal && xGroupLabel ? (
+        <text x={padL + plotW / 2} y={height - 10} textAnchor="middle" fontSize="10" fill="#52525b">
+          {xGroupLabel}
+        </text>
+      ) : null}
       {interactive
         ? data.map((d, i) => {
-            const cx = pad + i * step;
-            const cy = pad + plotH - (d.value / max) * plotH;
+            const cx = xAt(i);
+            const cy = yAt(d.value);
             const k = seriesKey(d, i);
             const sel = selectedKey != null && selectedKey === k;
             return (
@@ -272,12 +403,12 @@ export function MiniLineChart({
                 <circle
                   cx={cx}
                   cy={cy}
-                  r={14}
+                  r={isModal ? 16 : 14}
                   fill="transparent"
                   className="cursor-pointer"
                   tabIndex={0}
                   role="button"
-                  aria-label={`${d.label}: ${formatDecimal(d.value, 2)}${sel ? ", selected" : ""}`}
+                  aria-label={`${d.label}: ${fmtVal(d.value)}${sel ? ", selected" : ""}`}
                   aria-pressed={sel}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -290,7 +421,7 @@ export function MiniLineChart({
                     }
                   }}
                 >
-                  <title>{`${d.label}: ${formatDecimal(d.value, 2)}`}</title>
+                  <title>{`${d.label}: ${fmtVal(d.value)}`}</title>
                 </circle>
                 <circle
                   cx={cx}
@@ -301,6 +432,18 @@ export function MiniLineChart({
                   strokeWidth={sel ? 2.5 : 2}
                   pointerEvents="none"
                 />
+                {isModal ? (
+                  <text
+                    x={cx}
+                    y={height - padB + 12}
+                    textAnchor="middle"
+                    fontSize="9"
+                    fill="#52525b"
+                    transform={`rotate(-38 ${cx} ${height - padB + 12})`}
+                  >
+                    {xLab(d.label)}
+                  </text>
+                ) : null}
               </g>
             );
           })
@@ -323,11 +466,13 @@ export function MiniPieChart({
   size = 200,
   selectedKey = null,
   onSliceSelect,
+  measure = "shippingSpend",
 }: {
   data: Array<{ key?: string; label: string; value: number }>;
   size?: number;
   selectedKey?: string | null;
   onSliceSelect?: (key: string) => void;
+  measure?: string;
 }) {
   const interactive = Boolean(onSliceSelect);
   const total = data.reduce((s, d) => s + d.value, 0);
@@ -363,7 +508,7 @@ export function MiniPieChart({
         className={interactive ? "cursor-pointer" : undefined}
         tabIndex={interactive ? 0 : undefined}
         role={interactive ? "button" : undefined}
-        aria-label={`${d.label}: ${formatDecimal(d.value, 2)}${sel ? ", selected" : ""}`}
+        aria-label={`${d.label}: ${formatMetric(measure, d.value)}${sel ? ", selected" : ""}`}
         aria-pressed={interactive ? sel : undefined}
         onClick={
           interactive
@@ -384,7 +529,7 @@ export function MiniPieChart({
             : undefined
         }
       >
-        <title>{`${d.label}: ${formatDecimal(d.value, 2)}`}</title>
+        <title>{`${d.label}: ${formatMetric(measure, d.value)}`}</title>
       </path>
     );
   });
@@ -402,33 +547,6 @@ export function MiniPieChart({
   );
 }
 
-function chartViewFromConfig(chartType: string | undefined): ChartViewMode {
-  if (chartType === "line" || chartType === "pie") return chartType;
-  return "bar";
-}
-
-function metricLabel(measure: CtReportMeasure): string {
-  if (measure === "onTimePct") return "On-time %";
-  if (measure === "shippingSpend") return "Shipping spend";
-  if (measure === "avgDelayDays") return "Avg delay (days)";
-  if (measure === "volumeCbm") return "Volume (CBM)";
-  if (measure === "weightKg") return "Weight (kg)";
-  return "Shipments";
-}
-
-function dimensionLabel(dimension: string): string {
-  if (dimension === "lane") return "Lane";
-  if (dimension === "carrier") return "Carrier";
-  if (dimension === "customer") return "Customer";
-  if (dimension === "supplier") return "Supplier";
-  if (dimension === "origin") return "Origin";
-  if (dimension === "destination") return "Destination";
-  if (dimension === "month") return "Month";
-  if (dimension === "mode") return "Mode";
-  if (dimension === "status") return "Status";
-  return "Dimension";
-}
-
 function CoverageSummary({ coverage }: { coverage?: CtReportCoverage }) {
   if (!coverage) {
     return <p className="text-xs text-zinc-500">Shipment coverage is not available for this widget.</p>;
@@ -436,13 +554,13 @@ function CoverageSummary({ coverage }: { coverage?: CtReportCoverage }) {
   return (
     <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-700">
       <p>
-        <span className="font-semibold text-zinc-900">{formatDecimal(coverage.shipmentsAggregated, 0)}</span> shipments in
+        <span className="font-semibold text-zinc-900">{formatInteger(coverage.shipmentsAggregated)}</span> shipments in
         this report (after filters). Queried up to{" "}
-        <span className="font-medium">{formatDecimal(coverage.totalShipmentsQueried, 0)}</span> matching rows.
+        <span className="font-medium">{formatInteger(coverage.totalShipmentsQueried)}</span> matching rows.
       </p>
       {coverage.excludedByDateOrMissingDateField > 0 ? (
         <p className="mt-1 text-amber-900">
-          <span className="font-semibold">{formatDecimal(coverage.excludedByDateOrMissingDateField, 0)}</span> excluded:
+          <span className="font-semibold">{formatInteger(coverage.excludedByDateOrMissingDateField)}</span> excluded:
           missing the selected date field (shipped / received / booking ETA per report) or outside the configured date
           range.
         </p>
@@ -472,7 +590,10 @@ export function ControlTowerDashboardWidgetModal(props: {
   onDrillKeyChange?: (key: string | null) => void;
 }) {
   const { title, report, savedReportConfig, onClose, initialDrillKey = null, onDrillKeyChange } = props;
-  const [chartView, setChartView] = useState<ChartViewMode>(() => chartViewFromConfig(report.config.chartType));
+  const dimension = report.config.dimension ?? "month";
+  const [chartView, setChartView] = useState<ChartViewMode>(() =>
+    chartViewFromConfig(report.config.chartType, dimension),
+  );
   const tableRows = useMemo(() => tableRowsFromReport(report), [report]);
   const [drillKey, setDrillKey] = useState<string | null>(() => {
     const rows = tableRowsFromReport(report);
@@ -529,6 +650,14 @@ export function ControlTowerDashboardWidgetModal(props: {
     el?.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }, [drillKey]);
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   const fetchInsight = useCallback(async () => {
     if (!savedReportConfig || Object.keys(savedReportConfig).length === 0) {
       setInsightErr("No report configuration loaded for AI.");
@@ -556,72 +685,104 @@ export function ControlTowerDashboardWidgetModal(props: {
     }
   }, [savedReportConfig, insightQuestion]);
 
-  const measure = report.config.measure;
+  const measureKey = report.config.measure;
   const drillRow = drillKey ? tableRows.find((r) => r.key === drillKey) : null;
 
   const onDownload = () => {
     downloadCsv(title, reportToCsv(report));
   };
 
+  const dimLabel = dimensionLabel(dimension);
+  const lineAllowed = dimension === "month";
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      onClick={() => onClose()}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-[1px]"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
       role="presentation"
     >
       <div
-        className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-xl bg-white p-4 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
+        className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-2xl border border-zinc-200/80 bg-white p-5 shadow-2xl"
+        onMouseDown={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-labelledby="ct-widget-modal-title"
       >
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <h3 id="ct-widget-modal-title" className="text-base font-semibold text-zinc-900">
-            {title}
-          </h3>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="inline-flex rounded border border-zinc-300 p-0.5 text-xs">
-              {(["bar", "line", "pie"] as const).map((v) => (
-                <button
-                  key={v}
-                  type="button"
-                  onClick={() => setChartView(v)}
-                  className={`rounded px-2 py-1 capitalize transition ${
-                    chartView === v
-                      ? "bg-[var(--arscmp-primary)] text-white"
-                      : "text-zinc-700 hover:bg-zinc-100"
-                  }`}
-                >
-                  {v}
-                </button>
-              ))}
+        <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 flex-1 pr-2">
+            <h3 id="ct-widget-modal-title" className="text-lg font-semibold tracking-tight text-zinc-900">
+              {title}
+            </h3>
+            <p className="mt-1 text-xs text-zinc-600">
+              {metricLabel(measureKey)} · {dimLabel}
+            </p>
+          </div>
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <div className="inline-flex rounded-lg border border-zinc-200 bg-zinc-50/80 p-0.5 text-xs shadow-sm">
+              {(["bar", "line", "pie"] as const).map((v) => {
+                const lineDisabled = v === "line" && !lineAllowed;
+                return (
+                  <button
+                    key={v}
+                    type="button"
+                    disabled={lineDisabled}
+                    title={
+                      lineDisabled
+                        ? "Line view is for month trends (time on the X-axis). Use bars or pie for categories."
+                        : undefined
+                    }
+                    onClick={() => {
+                      if (lineDisabled) return;
+                      setChartView(v);
+                    }}
+                    className={`rounded-md px-2.5 py-1 capitalize transition ${
+                      chartView === v
+                        ? "bg-[var(--arscmp-primary)] font-medium text-white shadow-sm"
+                        : lineDisabled
+                          ? "cursor-not-allowed text-zinc-400"
+                          : "text-zinc-700 hover:bg-white"
+                    }`}
+                  >
+                    {v}
+                  </button>
+                );
+              })}
             </div>
             <button
               type="button"
+              aria-label="Close"
               onClick={() => onClose()}
-              className="rounded border border-zinc-300 bg-white px-3 py-1 text-sm text-zinc-700 hover:bg-zinc-50"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-zinc-200 bg-white text-lg leading-none text-zinc-600 shadow-sm hover:bg-zinc-50 hover:text-zinc-900"
             >
-              Close
+              ×
             </button>
           </div>
         </div>
-        <p className="mb-2 text-xs text-zinc-600">
-          {metricLabel(report.config.measure)} by {dimensionLabel(report.config.dimension)}
-        </p>
 
         <CoverageSummary coverage={report.coverage} />
 
         <p className="mt-2 text-[11px] text-zinc-500">
-          Tip: click a bar, line point, or pie slice to highlight the matching row in the table below (click again to
-          clear).
+          Tip: click a bar, point, or slice to highlight the row below (click again to clear). Click outside this panel
+          or press Esc to close.
         </p>
 
-        <div className="mt-2">
+        {chartView === "line" && lineAllowed ? (
+          <p className="mt-2 rounded-lg border border-sky-100 bg-sky-50/80 px-3 py-2 text-[11px] text-sky-950">
+            One line = one measure over time: each point is a <strong>month</strong>, not a separate series. Switch to{" "}
+            <strong>Bar</strong> to compare categories side by side.
+          </p>
+        ) : null}
+
+        <div className="mt-3">
           {chartView === "bar" ? (
             <MiniBarChart
               data={chartData}
               height={280}
+              measure={measureKey}
+              variant="modal"
+              xGroupLabel={dimLabel}
               selectedKey={drillKey}
               onBarSelect={toggleDrill}
             />
@@ -629,15 +790,21 @@ export function ControlTowerDashboardWidgetModal(props: {
             <MiniLineChart
               data={chartData}
               height={280}
+              measure={measureKey}
+              variant="modal"
+              xGroupLabel={dimLabel}
               selectedKey={drillKey}
               onPointSelect={toggleDrill}
             />
           ) : (
-            <MiniPieChart data={chartData} size={280} selectedKey={drillKey} onSliceSelect={toggleDrill} />
+            <MiniPieChart
+              data={chartData}
+              size={280}
+              measure={measureKey}
+              selectedKey={drillKey}
+              onSliceSelect={toggleDrill}
+            />
           )}
-        </div>
-        <div className="mt-2 rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1.5 text-[11px] text-zinc-600">
-          X-axis: {dimensionLabel(report.config.dimension)} groups. Y-axis: {metricLabel(report.config.measure)}.
         </div>
 
         {drillRow ? (
@@ -658,7 +825,7 @@ export function ControlTowerDashboardWidgetModal(props: {
             <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-3">
               {CT_REPORT_MEASURES.map((m) => (
                 <div key={m}>
-                  <dt className="text-[10px] uppercase tracking-wide text-zinc-500">{m}</dt>
+                  <dt className="text-[10px] uppercase tracking-wide text-zinc-500">{metricLabel(m)}</dt>
                   <dd className="font-medium tabular-nums">{formatMetric(m, Number(drillRow.metrics[m] ?? 0))}</dd>
                 </div>
               ))}
@@ -675,7 +842,7 @@ export function ControlTowerDashboardWidgetModal(props: {
             Download CSV (all rows)
           </button>
           <span className="text-xs text-zinc-500">
-            {tableRows.length} row{tableRows.length === 1 ? "" : "s"} · {measure} by {report.config.dimension}
+            {tableRows.length} row{tableRows.length === 1 ? "" : "s"} · {metricLabel(measureKey)} by {dimLabel}
           </span>
         </div>
 
@@ -687,7 +854,7 @@ export function ControlTowerDashboardWidgetModal(props: {
                 <th className="border-b border-zinc-200 px-2 py-1.5 font-semibold">{dimensionLabel(report.config.dimension)}</th>
                 {CT_REPORT_MEASURES.map((m) => (
                   <th key={m} className="border-b border-zinc-200 px-2 py-1.5 font-semibold">
-                    {m}
+                    {metricLabel(m)}
                   </th>
                 ))}
               </tr>
@@ -760,13 +927,13 @@ export function CoverageInline({ coverage }: { coverage?: CtReportCoverage }) {
   if (!coverage) return null;
   return (
     <p className="mt-1 text-[11px] leading-snug text-zinc-600">
-      <span className="font-medium text-zinc-800">{formatDecimal(coverage.shipmentsAggregated, 0)}</span> shipments
+      <span className="font-medium text-zinc-800">{formatInteger(coverage.shipmentsAggregated)}</span> shipments
       {coverage.excludedByDateOrMissingDateField > 0 ? (
         <>
           {" "}
           ·{" "}
           <span className="text-amber-800">
-            {formatDecimal(coverage.excludedByDateOrMissingDateField, 0)} excluded (date missing / out of range)
+            {formatInteger(coverage.excludedByDateOrMissingDateField)} excluded (date missing / out of range)
           </span>
         </>
       ) : null}

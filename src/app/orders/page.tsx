@@ -1,6 +1,6 @@
 import { AccessDenied } from "@/components/access-denied";
 import { OrdersBoard } from "@/components/orders-board";
-import { getViewerGrantSet, userHasRoleNamed, viewerHas } from "@/lib/authz";
+import { actorIsSupplierPortalRestricted, getViewerGrantSet, viewerHas } from "@/lib/authz";
 import {
   defaultBoardQueue,
   ORDERS_BOARD_PREF_KEY,
@@ -70,10 +70,7 @@ export default async function OrdersPage({
   const initialSort: BoardSortMode = savedBoard.sortMode ?? "priority";
 
   const { tenant } = access;
-  const isSupplierPortalUser = await userHasRoleNamed(
-    access.user.id,
-    "Supplier portal",
-  );
+  const isSupplierPortalUser = await actorIsSupplierPortalRestricted(access.user.id);
   const viewerMode: "supplier" | "buyer" = isSupplierPortalUser
     ? "supplier"
     : "buyer";
