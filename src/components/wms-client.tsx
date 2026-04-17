@@ -610,7 +610,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
           </label>
           <button
             type="button"
-            className="rounded border border-zinc-900 bg-zinc-900 px-3 py-2 text-sm font-medium text-white"
+            className="rounded border border-arscmp-primary bg-arscmp-primary px-3 py-2 text-sm font-medium text-white"
             onClick={() => {
               const s = ledgerDraftSince.trim();
               const u = ledgerDraftUntil.trim();
@@ -1574,7 +1574,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                 warehouseId: selectedWarehouseId,
               })
             }
-            className="rounded border border-zinc-900 bg-zinc-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-40"
+            className="rounded border border-arscmp-primary bg-arscmp-primary px-3 py-2 text-sm font-medium text-white disabled:opacity-40"
           >
             Create pick wave
           </button>
@@ -1643,7 +1643,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
             type="button"
             disabled={!canEdit || busy || !selectedWarehouseId || !cycleBalanceId}
             onClick={() => void runAction({ action: "create_cycle_count_task", balanceId: cycleBalanceId })}
-            className="rounded border border-zinc-900 bg-zinc-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-40"
+            className="rounded border border-arscmp-primary bg-arscmp-primary px-3 py-2 text-sm font-medium text-white disabled:opacity-40"
           >
             Create cycle count task
           </button>

@@ -69,7 +69,7 @@ export function SettingsOrganizationForm({ initialName, slug }: Props) {
       <button
         type="submit"
         disabled={busy}
-        className="h-9 rounded border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium text-white disabled:opacity-60"
+        className="h-9 rounded border border-arscmp-primary bg-arscmp-primary px-4 text-sm font-medium text-white disabled:opacity-60"
       >
         {busy ? "Saving…" : "Save"}
       </button>

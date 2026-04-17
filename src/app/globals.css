@@ -13,6 +13,10 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  /* Brand: use for primary buttons / key CTAs (was ad-hoc bg-zinc-900). */
+  --color-arscmp-primary: var(--arscmp-primary);
+  --color-arscmp-primary-700: var(--arscmp-primary-700);
+  --color-arscmp-primary-50: var(--arscmp-primary-50);
 }
 
 /*

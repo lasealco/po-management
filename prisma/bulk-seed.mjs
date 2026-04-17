@@ -86,6 +86,7 @@ function orderNumberGen(i) {
  *   };
  *   productIds: string[];
  *   cfsShenzhenId: string;
+ *   demoCustomerCrmAccountId?: string | null;
  * }} ctx
  */
 export async function runBulkSeed(prisma, ctx) {
@@ -106,6 +107,7 @@ export async function runBulkSeed(prisma, ctx) {
     supplier: supSt,
     productIds,
     cfsShenzhenId,
+    demoCustomerCrmAccountId = null,
   } = ctx;
 
   console.log("[db:seed] Bulk volume: upserting suppliers SUP-002…SUP-020…");
@@ -365,6 +367,8 @@ export async function runBulkSeed(prisma, ctx) {
 
   const carriers = ["Maersk Demo", "CMA CGM Demo", "DHL Freight", "FedEx Freight", "Schneider"];
   const modes = ["OCEAN", "AIR", "ROAD", "RAIL"];
+  const laneOrigins = ["CNSHA", "CNNGB", "USNYC", "SGSIN"];
+  const laneDests = ["USLAX", "DEHAM", "NLRTM", "AUMEL"];
 
   const queueOrderIds = shipmentQueue.map((r) => r.orderId);
   const lineRows = await prisma.purchaseOrderItem.findMany({
@@ -439,6 +443,13 @@ export async function runBulkSeed(prisma, ctx) {
           ? new Prisma.Decimal(Number(qShip) * 0.45).toDecimalPlaces(3)
           : new Prisma.Decimal(0);
 
+    const transportMode = pick(modes, rand);
+    const originCode = pick(laneOrigins, rand);
+    const destinationCode = pick(laneDests, rand);
+    const etd = new Date(shippedAt.getTime() - 2 * 86400000);
+    const eta = new Date(shippedAt.getTime() + 10 * 86400000);
+    const expectedReceiveAt = receivedAt ?? eta;
+
     const ship = await prisma.shipment.create({
       data: {
         orderId: row.orderId,
@@ -446,12 +457,16 @@ export async function runBulkSeed(prisma, ctx) {
         status,
         shippedAt,
         receivedAt,
+        expectedReceiveAt,
         carrier: pick(carriers, rand),
         trackingNo: `TRK-GEN-${100000 + asn}`,
-        transportMode: pick(modes, rand),
+        transportMode,
         estimatedVolumeCbm: new Prisma.Decimal((5 + rand() * 25).toFixed(3)),
         estimatedWeightKg: new Prisma.Decimal((800 + rand() * 9000).toFixed(3)),
         createdById: buyerId,
+        ...(demoCustomerCrmAccountId && rand() < 0.4
+          ? { customerCrmAccountId: demoCustomerCrmAccountId }
+          : {}),
         items: {
           create: [
             {
@@ -464,6 +479,117 @@ export async function runBulkSeed(prisma, ctx) {
         },
       },
     });
+
+    const preMovement = ["BOOKING_DRAFT", "BOOKING_SUBMITTED", "BOOKED"].includes(status);
+    const shippedLike = ["SHIPPED", "IN_TRANSIT", "DELIVERED", "RECEIVED"].includes(status);
+    const receivedLike = status === "RECEIVED";
+
+    const leg1Eta = new Date(Math.min(eta.getTime() - 3 * 86400000, etd.getTime() + 3 * 86400000));
+    const leg2Etd = new Date(leg1Eta.getTime() + 6 * 3600000);
+
+    await prisma.shipmentBooking.create({
+      data: {
+        shipmentId: ship.id,
+        status: "CONFIRMED",
+        originCode,
+        destinationCode,
+        mode: transportMode,
+        etd,
+        eta,
+        latestEta: eta,
+        createdById: buyerId,
+        updatedById: buyerId,
+      },
+    });
+
+    await prisma.ctShipmentLeg.createMany({
+      data: [
+        {
+          tenantId,
+          shipmentId: ship.id,
+          legNo: 1,
+          originCode,
+          destinationCode: "HUB",
+          transportMode,
+          carrier: ship.carrier,
+          plannedEtd: etd,
+          plannedEta: leg1Eta,
+          actualAtd: preMovement ? null : etd,
+          actualAta: shippedLike ? leg1Eta : null,
+        },
+        {
+          tenantId,
+          shipmentId: ship.id,
+          legNo: 2,
+          originCode: "HUB",
+          destinationCode,
+          transportMode,
+          plannedEtd: leg2Etd,
+          plannedEta: eta,
+          actualAtd: ["IN_TRANSIT", "DELIVERED", "RECEIVED"].includes(status) ? leg2Etd : null,
+          actualAta: receivedLike ? receivedAt || eta : null,
+        },
+      ],
+    });
+
+    await prisma.ctTrackingMilestone.createMany({
+      data: [
+        {
+          tenantId,
+          shipmentId: ship.id,
+          code: "PICKUP_CONFIRMED",
+          label: "Pickup confirmed",
+          plannedAt: etd,
+          predictedAt: etd,
+          actualAt: preMovement ? null : etd,
+          sourceType: "SIMULATED",
+          confidence: 72,
+          notes: "Bulk seed baseline.",
+          updatedById: buyerId,
+        },
+        {
+          tenantId,
+          shipmentId: ship.id,
+          code: "IN_TRANSIT_MAIN",
+          label: "Main leg in transit",
+          plannedAt: leg2Etd,
+          predictedAt: leg2Etd,
+          actualAt: ["IN_TRANSIT", "DELIVERED", "RECEIVED"].includes(status) ? leg2Etd : null,
+          sourceType: "SIMULATED",
+          confidence: 70,
+          notes: "Bulk seed baseline.",
+          updatedById: buyerId,
+        },
+        {
+          tenantId,
+          shipmentId: ship.id,
+          code: "DELIVERED_FINAL",
+          label: "Final delivery",
+          plannedAt: eta,
+          predictedAt: eta,
+          actualAt: receivedLike ? receivedAt || eta : null,
+          sourceType: "SIMULATED",
+          confidence: 68,
+          notes: "Bulk seed baseline.",
+          updatedById: buyerId,
+        },
+      ],
+    });
+
+    if (rand() < 0.16) {
+      await prisma.ctAlert.create({
+        data: {
+          tenantId,
+          shipmentId: ship.id,
+          type: "TRANSIT_RISK",
+          severity: "WARN",
+          title: "Schedule check",
+          body: `Seeded alert for workbench owner column (${originCode} → ${destinationCode}).`,
+          ownerUserId: buyerId,
+          status: "OPEN",
+        },
+      });
+    }
 
     if (row.loadAssignment === "final") {
       await prisma.loadPlanShipment.upsert({

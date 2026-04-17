@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import type { PoMgmtSubNavVisibility } from "@/lib/nav-visibility";
+import { subNavActiveClass } from "@/lib/subnav-active-class";
 
 const items: { href: string; label: string; key: keyof PoMgmtSubNavVisibility }[] = [
   { href: "/orders", label: "Orders", key: "orders" },
@@ -17,9 +18,9 @@ export function PoMgmtSubNav({ visibility }: { visibility: PoMgmtSubNavVisibilit
   if (visibleItems.length === 0) return null;
 
   return (
-    <div className="border-b border-zinc-200 bg-white">
-      <div className="mx-auto flex max-w-7xl flex-wrap gap-1 px-6 py-2">
-        <span className="mr-2 self-center text-xs font-semibold uppercase tracking-wide text-zinc-400">
+    <div className="border-b border-zinc-200 bg-white shadow-sm">
+      <div className="mx-auto flex max-w-7xl flex-wrap gap-1 px-6 py-2.5">
+        <span className="mr-2 self-center text-xs font-semibold uppercase tracking-wide text-[var(--arscmp-primary)]">
           PO Management
         </span>
         {visibleItems.map(({ href, label }) => {
@@ -33,7 +34,7 @@ export function PoMgmtSubNav({ visibility }: { visibility: PoMgmtSubNavVisibilit
               href={href}
               className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
                 active
-                  ? "bg-violet-100 text-violet-900"
+                  ? subNavActiveClass
                   : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
               }`}
             >

@@ -83,7 +83,7 @@ export default function LoginPage() {
           type="button"
           onClick={() => void submit()}
           disabled={busy}
-          className="rounded bg-zinc-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
+          className="rounded bg-arscmp-primary px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
           {busy ? "Signing in..." : "Sign in"}
         </button>

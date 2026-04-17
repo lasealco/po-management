@@ -26,9 +26,9 @@ function SettingsSidebarLink({
       href={href}
       prefetch
       aria-current={active ? "page" : undefined}
-      className={`block -ml-px rounded-r-md border-l-2 py-1.5 pl-2 text-sm hover:border-zinc-300 hover:text-zinc-900 ${
+      className={`block -ml-px rounded-r-md border-l-2 py-1.5 pl-2 text-sm hover:border-arscmp-primary/40 hover:text-arscmp-primary ${
         active
-          ? "border-zinc-900 font-medium text-zinc-900"
+          ? "border-arscmp-primary font-medium text-arscmp-primary"
           : "border-transparent text-zinc-600"
       }`}
     >

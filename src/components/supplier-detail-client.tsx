@@ -834,7 +834,7 @@ export function SupplierDetailClient({
             type="button"
             disabled={busy}
             onClick={() => void saveSupplierProfile()}
-            className="mt-6 rounded-md bg-zinc-900 px-4 py-2 text-sm text-white disabled:opacity-50"
+            className="mt-6 rounded-md bg-arscmp-primary px-4 py-2 text-sm text-white disabled:opacity-50"
           >
             {busy ? "Saving…" : "Save company & commercial details"}
           </button>
@@ -941,7 +941,7 @@ export function SupplierDetailClient({
                         type="button"
                         disabled={busy}
                         onClick={() => void saveContact(c.id)}
-                        className="rounded-md bg-zinc-900 px-3 py-2 text-sm text-white disabled:opacity-50"
+                        className="rounded-md bg-arscmp-primary px-3 py-2 text-sm text-white disabled:opacity-50"
                       >
                         Save contact
                       </button>

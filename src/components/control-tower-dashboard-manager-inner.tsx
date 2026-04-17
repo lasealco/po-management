@@ -28,6 +28,36 @@ type Widget = {
 
 type Span = 1 | 2 | 3;
 
+function DashboardWidgetsSkeleton() {
+  return (
+    <div
+      className="grid gap-3 md:grid-cols-3"
+      aria-busy="true"
+      aria-live="polite"
+      aria-label="Loading dashboard widgets"
+    >
+      <p className="sr-only">Loading your dashboard…</p>
+      <div className="animate-pulse rounded-lg border border-zinc-200 bg-white p-4 shadow-sm md:col-span-2">
+        <div className="h-4 w-40 rounded bg-zinc-200" />
+        <div className="mt-2 h-3 w-56 rounded bg-zinc-100" />
+        <div className="mt-4 h-9 w-28 rounded bg-zinc-200" />
+        <div className="mt-4 h-20 rounded bg-zinc-100" />
+        <div className="mt-3 space-y-2">
+          <div className="h-3 w-full rounded bg-zinc-100" />
+          <div className="h-3 w-[88%] rounded bg-zinc-100" />
+          <div className="h-3 w-[72%] rounded bg-zinc-100" />
+        </div>
+      </div>
+      <div className="animate-pulse rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
+        <div className="h-4 w-32 rounded bg-zinc-200" />
+        <div className="mt-2 h-3 w-full rounded bg-zinc-100" />
+        <div className="mt-4 h-9 w-24 rounded bg-zinc-200" />
+        <div className="mt-4 h-16 rounded bg-zinc-100" />
+      </div>
+    </div>
+  );
+}
+
 function getSpan(layout: unknown): Span {
   const obj = layout && typeof layout === "object" ? (layout as Record<string, unknown>) : {};
   const n = Number(obj.span);
@@ -40,6 +70,8 @@ export function ControlTowerDashboardManagerInner({ canEdit }: { canEdit: boolea
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [widgets, setWidgets] = useState<Widget[]>([]);
+  /** False only after the first GET /widgets attempt finishes (avoids empty-state flash while charts load). */
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -57,15 +89,19 @@ export function ControlTowerDashboardManagerInner({ canEdit }: { canEdit: boolea
   );
 
   const load = useCallback(async () => {
-    const res = await fetch("/api/control-tower/dashboard/widgets");
-    const data = (await res.json()) as { widgets?: Widget[]; error?: string };
-    if (!res.ok) {
-      setErr(data.error || res.statusText);
-      return;
+    try {
+      const res = await fetch("/api/control-tower/dashboard/widgets");
+      const data = (await res.json()) as { widgets?: Widget[]; error?: string };
+      if (!res.ok) {
+        setErr(data.error || res.statusText);
+        return;
+      }
+      setErr(null);
+      const sorted = [...(data.widgets ?? [])].sort((a, b) => a.sortOrder - b.sortOrder);
+      setWidgets(sorted);
+    } finally {
+      setInitialLoadDone(true);
     }
-    setErr(null);
-    const sorted = [...(data.widgets ?? [])].sort((a, b) => a.sortOrder - b.sortOrder);
-    setWidgets(sorted);
   }, []);
 
   useEffect(() => {
@@ -231,9 +267,13 @@ export function ControlTowerDashboardManagerInner({ canEdit }: { canEdit: boolea
       {msg ? <p className="text-sm text-emerald-700">{msg}</p> : null}
       {err ? <p className="text-sm text-red-700">{err}</p> : null}
 
-      {widgets.length === 0 ? (
+      {!initialLoadDone ? (
+        <DashboardWidgetsSkeleton />
+      ) : widgets.length === 0 ? (
         <p className="rounded border border-zinc-200 bg-white px-3 py-4 text-sm text-zinc-600">
-          No widgets yet. Save and pin reports from the Reports page.
+          {err
+            ? "Could not load pinned widgets. Try again in a moment or open the report builder."
+            : "No widgets yet. Save and pin reports from the Reports page."}
         </p>
       ) : (
         <div className={gridClass}>

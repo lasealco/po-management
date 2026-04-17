@@ -65,6 +65,9 @@ const listSelectCore = {
   shippedAt: true,
   updatedAt: true,
   receivedAt: true,
+  expectedReceiveAt: true,
+  estimatedVolumeCbm: true,
+  estimatedWeightKg: true,
   customerCrmAccountId: true,
   customerCrmAccount: {
     select: { name: true },
@@ -78,6 +81,11 @@ const listSelectCore = {
       supplierId: true,
       supplier: { select: { id: true, name: true } },
     },
+  },
+  items: {
+    orderBy: { id: "asc" as const },
+    take: 1,
+    select: { quantityShipped: true },
   },
   ctReferences: {
     where: {
@@ -165,6 +173,15 @@ const listSelectInternal = {
 
 type ShipmentListCore = Prisma.ShipmentGetPayload<{ select: typeof listSelectCore }>;
 type ShipmentListInternal = Prisma.ShipmentGetPayload<{ select: typeof listSelectInternal }>;
+
+function decDisplay(d: Prisma.Decimal | null | undefined, fracDigits = 2): string | null {
+  if (d == null) return null;
+  const n = Number(d);
+  if (!Number.isFinite(n)) return null;
+  if (fracDigits <= 0) return String(Math.round(n));
+  const rounded = Number(n.toFixed(fracDigits));
+  return String(rounded);
+}
 
 function deriveRouteNextAction(s: ShipmentListCore | ShipmentListInternal): string | null {
   if (!s.ctLegs.length) return null;
@@ -272,8 +289,12 @@ function mapShipmentListRow(s: ShipmentListCore | ShipmentListInternal) {
     originCode: s.booking?.originCode ?? firstLeg?.originCode ?? null,
     destinationCode: s.booking?.destinationCode ?? lastLeg?.destinationCode ?? null,
     etd: s.booking?.etd?.toISOString() ?? null,
-    eta: s.booking?.eta?.toISOString() ?? lastLeg?.plannedEta?.toISOString() ?? null,
-    latestEta: s.booking?.latestEta?.toISOString() ?? null,
+    eta:
+      (s.booking?.eta ?? s.expectedReceiveAt)?.toISOString() ??
+      lastLeg?.plannedEta?.toISOString() ??
+      null,
+    latestEta:
+      (s.booking?.latestEta ?? s.booking?.eta ?? s.expectedReceiveAt)?.toISOString() ?? null,
     routeProgressPct,
     nextAction,
     bookingStatus,
@@ -290,11 +311,13 @@ function mapShipmentListRow(s: ShipmentListCore | ShipmentListInternal) {
     dispatchOwner,
     openQueueCounts,
     quantityRef:
-      s.ctReferences.find((r) => r.refType === "QTY")?.refValue ?? null,
+      s.ctReferences.find((r) => r.refType === "QTY")?.refValue ??
+      (s.items[0] ? String(Number(s.items[0].quantityShipped)) : null),
     weightKgRef:
-      s.ctReferences.find((r) => r.refType === "WEIGHT_KG")?.refValue ?? null,
+      s.ctReferences.find((r) => r.refType === "WEIGHT_KG")?.refValue ??
+      decDisplay(s.estimatedWeightKg, 1),
     cbmRef:
-      s.ctReferences.find((r) => r.refType === "CBM")?.refValue ?? null,
+      s.ctReferences.find((r) => r.refType === "CBM")?.refValue ?? decDisplay(s.estimatedVolumeCbm, 3),
     receivedAt: s.receivedAt?.toISOString() ?? null,
   };
 }

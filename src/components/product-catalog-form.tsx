@@ -769,7 +769,7 @@ export function ProductCatalogForm({
           <button
             type="submit"
             disabled={busy}
-            className="h-8 rounded border border-zinc-900 bg-zinc-900 px-3 text-sm font-medium text-white disabled:opacity-60"
+            className="h-8 rounded border border-arscmp-primary bg-arscmp-primary px-3 text-sm font-medium text-white disabled:opacity-60"
           >
             {busy ? "Saving…" : mode === "create" ? "Create product" : "Save changes"}
           </button>

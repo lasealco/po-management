@@ -191,7 +191,7 @@ export function CatalogAdminClient() {
           <button
             type="submit"
             disabled={busy}
-            className="rounded-md bg-zinc-900 px-3 py-2 text-sm text-white disabled:opacity-50"
+            className="rounded-md bg-arscmp-primary px-3 py-2 text-sm text-white disabled:opacity-50"
           >
             Add category
           </button>
@@ -246,7 +246,7 @@ export function CatalogAdminClient() {
           <button
             type="submit"
             disabled={busy}
-            className="rounded-md bg-zinc-900 px-3 py-2 text-sm text-white disabled:opacity-50"
+            className="rounded-md bg-arscmp-primary px-3 py-2 text-sm text-white disabled:opacity-50"
           >
             Add division
           </button>

@@ -1577,6 +1577,7 @@ async function seed() {
     },
     productIds: [prodPaper.id, prodToner.id, prodCorrugated.id, prodPallet.id],
     cfsShenzhenId: cfsShenzhen.id,
+    demoCustomerCrmAccountId: demoLogisticsCrmAccount.id,
   });
 
   if (process.env.SEED_CRM_DEMO === "1") {

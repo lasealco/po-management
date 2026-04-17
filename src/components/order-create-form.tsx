@@ -646,7 +646,7 @@ export function OrderCreateForm({
             <button
               type="button"
               onClick={() => void quickCreateWarehouse()}
-              className="rounded border border-zinc-900 bg-zinc-900 px-3 py-2 text-sm font-medium text-white"
+              className="rounded border border-arscmp-primary bg-arscmp-primary px-3 py-2 text-sm font-medium text-white"
             >
               Create
             </button>
@@ -921,7 +921,7 @@ export function OrderCreateForm({
             <button
               type="button"
               onClick={() => void quickCreateProduct()}
-              className="rounded border border-zinc-900 bg-zinc-900 px-3 py-2 text-sm font-medium text-white"
+              className="rounded border border-arscmp-primary bg-arscmp-primary px-3 py-2 text-sm font-medium text-white"
             >
               Create product
             </button>

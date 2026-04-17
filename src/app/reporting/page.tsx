@@ -141,7 +141,7 @@ export default async function ReportingHubPage({
             <p className="mt-1 text-sm text-zinc-600">Order and procurement reports with drilldowns and CSV export.</p>
             <Link
               href="/reports"
-              className="mt-5 inline-flex items-center rounded-xl bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-zinc-800"
+              className="mt-5 inline-flex items-center rounded-xl bg-arscmp-primary px-5 py-2.5 text-sm font-semibold text-white hover:bg-arscmp-primary-700"
             >
               Open PO reports
             </Link>

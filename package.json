@@ -20,6 +20,7 @@
     "db:migrate:pg": "node scripts/prisma-migrate-pg.mjs",
     "db:migrate:deploy": "npm run db:migrate",
     "db:repair:supplier-migration": "node scripts/repair-failed-supplier-migration.cjs",
+    "db:repair:gen-workbench": "node scripts/repair-gen-workbench-demo.mjs",
     "vercel-build": "node scripts/vercel-build.cjs",
     "db:seed": "node prisma/seed.mjs",
     "db:seed:ct-volume": "node prisma/ct-demo-shipments-volume.mjs",

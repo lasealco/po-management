@@ -712,7 +712,7 @@ export function ControlTowerShipment360({
                         ))}
                       </select>
                     </label>
-                    <button type="submit" className="mt-2 rounded bg-zinc-900 px-2 py-1 text-xs text-white">
+                    <button type="submit" className="mt-2 rounded bg-arscmp-primary px-2 py-1 text-xs text-white">
                       Save carrier
                     </button>
                   </form>
@@ -917,7 +917,7 @@ export function ControlTowerShipment360({
                             </option>
                           ))}
                         </select>
-                        <button type="submit" className="rounded bg-zinc-900 px-2.5 py-1 text-white">
+                        <button type="submit" className="rounded bg-arscmp-primary px-2.5 py-1 text-white">
                           Save
                         </button>
                       </form>
@@ -956,7 +956,7 @@ export function ControlTowerShipment360({
                             placeholder="ERP SO / external ref"
                             className="w-full rounded border border-zinc-300 px-2 py-1"
                           />
-                          <button type="submit" className="rounded bg-zinc-900 px-2.5 py-1 text-white">
+                          <button type="submit" className="rounded bg-arscmp-primary px-2.5 py-1 text-white">
                             Save
                           </button>
                         </form>
@@ -1052,7 +1052,7 @@ export function ControlTowerShipment360({
                       className="min-w-[200px] rounded border px-2 py-1"
                     />
                   </label>
-                  <button type="submit" className="rounded bg-zinc-900 px-3 py-1 text-white">
+                  <button type="submit" className="rounded bg-arscmp-primary px-3 py-1 text-white">
                     Save forwarder
                   </button>
                 </form>
@@ -1076,7 +1076,7 @@ export function ControlTowerShipment360({
                     <button
                       type="button"
                       disabled={String(booking.status || "") !== "DRAFT"}
-                      className="rounded bg-zinc-900 px-3 py-1.5 text-white disabled:cursor-not-allowed disabled:bg-zinc-300"
+                      className="rounded bg-arscmp-primary px-3 py-1.5 text-white disabled:cursor-not-allowed disabled:bg-zinc-300"
                       onClick={async () => {
                         if (String(booking.status || "") !== "DRAFT") return;
                         if (!booking.forwarderSupplierId) {
@@ -1311,7 +1311,7 @@ export function ControlTowerShipment360({
                     />
                   </label>
                 </div>
-                <button type="submit" className="mt-3 rounded bg-zinc-900 px-3 py-1.5 text-white">
+                <button type="submit" className="mt-3 rounded bg-arscmp-primary px-3 py-1.5 text-white">
                   Save cargo summary
                 </button>
               </form>
@@ -1569,7 +1569,7 @@ export function ControlTowerShipment360({
               >
                 <input name="refType" placeholder="Type (e.g. MASTER_BL)" className="rounded border px-2 py-1 text-xs" />
                 <input name="refValue" placeholder="Value" className="rounded border px-2 py-1 text-xs" />
-                <button type="submit" className="rounded bg-zinc-900 px-2 py-1 text-xs text-white">
+                <button type="submit" className="rounded bg-arscmp-primary px-2 py-1 text-xs text-white">
                   Add reference
                 </button>
               </form>
@@ -1820,7 +1820,7 @@ export function ControlTowerShipment360({
                     ))}
                   </select>
                 </label>
-                <button type="submit" className="rounded bg-zinc-900 px-3 py-1.5 text-white">
+                <button type="submit" className="rounded bg-arscmp-primary px-3 py-1.5 text-white">
                   Save
                 </button>
               </form>
@@ -2110,7 +2110,7 @@ export function ControlTowerShipment360({
                 <input name="plannedEtd" type="datetime-local" className="rounded border px-2 py-1" />
                 <input name="plannedEta" type="datetime-local" className="rounded border px-2 py-1" />
                 <input name="notes" placeholder="Notes" className="rounded border px-2 py-1 md:col-span-3" />
-                <button type="submit" className="rounded bg-zinc-900 px-3 py-1 text-white md:col-span-3">
+                <button type="submit" className="rounded bg-arscmp-primary px-3 py-1 text-white md:col-span-3">
                   Add leg
                 </button>
               </form>
@@ -2460,7 +2460,7 @@ export function ControlTowerShipment360({
                   emptyLabel="Leg (optional)"
                   className="rounded border px-2 py-1"
                 />
-                <button type="submit" className="rounded bg-zinc-900 px-3 py-1 text-white">
+                <button type="submit" className="rounded bg-arscmp-primary px-3 py-1 text-white">
                   Add container
                 </button>
               </form>
@@ -2623,7 +2623,7 @@ export function ControlTowerShipment360({
                 <input name="actualAt" type="datetime-local" className="rounded border px-2 py-1" />
                 <input name="sourceType" placeholder="MANUAL" className="rounded border px-2 py-1" />
                 <input name="notes" placeholder="Notes" className="rounded border px-2 py-1 md:col-span-2" />
-                <button type="submit" className="rounded bg-zinc-900 px-3 py-1 text-white md:col-span-2">
+                <button type="submit" className="rounded bg-arscmp-primary px-3 py-1 text-white md:col-span-2">
                   Add / update by code
                 </button>
               </form>
@@ -2739,7 +2739,7 @@ export function ControlTowerShipment360({
                     <option value="CUSTOMER_SHAREABLE">Customer shareable</option>
                   </select>
                 </label>
-                <button type="submit" className="rounded bg-zinc-900 px-3 py-1 text-white">
+                <button type="submit" className="rounded bg-arscmp-primary px-3 py-1 text-white">
                   Upload
                 </button>
               </div>
@@ -2795,7 +2795,7 @@ export function ControlTowerShipment360({
                   </>
                 )}
               </select>
-              <button type="submit" className="rounded bg-zinc-900 px-3 py-1 text-white">
+              <button type="submit" className="rounded bg-arscmp-primary px-3 py-1 text-white">
                 Post note
               </button>
             </form>
@@ -2911,7 +2911,7 @@ export function ControlTowerShipment360({
               <input name="internalRevenue" placeholder="Internal revenue" className="rounded border px-2 py-1" />
               <input name="internalNet" placeholder="Internal net" className="rounded border px-2 py-1" />
               <input name="internalMarginPct" placeholder="Margin %" className="rounded border px-2 py-1" />
-              <button type="submit" className="rounded bg-zinc-900 px-3 py-1 text-white md:col-span-2">
+              <button type="submit" className="rounded bg-arscmp-primary px-3 py-1 text-white md:col-span-2">
                 Record snapshot
               </button>
             </form>
@@ -2953,7 +2953,7 @@ export function ControlTowerShipment360({
               <input name="invoiceDate" type="date" className="rounded border px-2 py-1" />
               <input name="currency" placeholder="Currency (EUR)" defaultValue="EUR" className="rounded border px-2 py-1" />
               <input name="amount" placeholder="Amount (e.g. 1200,50)" className="rounded border px-2 py-1" required />
-              <button type="submit" className="rounded bg-zinc-900 px-3 py-1 text-white md:col-span-3">
+              <button type="submit" className="rounded bg-arscmp-primary px-3 py-1 text-white md:col-span-3">
                 Add cost line
               </button>
             </form>
@@ -3013,7 +3013,7 @@ export function ControlTowerShipment360({
               <input name="rate" placeholder="Rate (0,92)" className="rounded border px-2 py-1" required />
               <input name="rateDate" type="date" className="rounded border px-2 py-1" required />
               <input name="provider" placeholder="Provider" className="rounded border px-2 py-1" />
-              <button type="submit" className="rounded bg-zinc-900 px-3 py-1 text-white md:col-span-5">
+              <button type="submit" className="rounded bg-arscmp-primary px-3 py-1 text-white md:col-span-5">
                 Save FX rate
               </button>
             </form>
@@ -3165,7 +3165,7 @@ export function ControlTowerShipment360({
                 <option value="CRITICAL">CRITICAL</option>
               </select>
               <textarea name="body" placeholder="Body" className="w-full rounded border px-2 py-1" rows={2} />
-              <button type="submit" className="rounded bg-zinc-900 px-3 py-1 text-white">
+              <button type="submit" className="rounded bg-arscmp-primary px-3 py-1 text-white">
                 Create alert
               </button>
             </form>
@@ -3317,7 +3317,7 @@ export function ControlTowerShipment360({
                     <option value="CRITICAL">CRITICAL</option>
                   </select>
                 </label>
-                <button type="submit" className="rounded bg-zinc-900 px-3 py-1 text-white">
+                <button type="submit" className="rounded bg-arscmp-primary px-3 py-1 text-white">
                   Log exception
                 </button>
               </div>

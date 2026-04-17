@@ -158,7 +158,7 @@ export function HelpAssistant() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="fixed bottom-5 right-5 z-40 rounded-full bg-zinc-900 px-4 py-2 text-sm font-medium text-white shadow-lg"
+        className="fixed bottom-5 right-5 z-40 rounded-full bg-arscmp-primary px-4 py-2 text-sm font-medium text-white shadow-lg"
       >
         {open ? "Close help" : "Help"}
       </button>
@@ -353,7 +353,7 @@ export function HelpAssistant() {
                 type="button"
                 disabled={busy}
                 onClick={() => void ask()}
-                className="h-9 rounded bg-zinc-900 px-3 text-sm font-medium text-white disabled:opacity-50"
+                className="h-9 rounded bg-arscmp-primary px-3 text-sm font-medium text-white disabled:opacity-50"
               >
                 Send
               </button>

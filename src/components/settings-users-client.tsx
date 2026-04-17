@@ -218,7 +218,7 @@ export function SettingsUsersClient({
             type="button"
             disabled={creating}
             onClick={() => void createUser()}
-            className="h-9 rounded bg-zinc-900 px-3 text-sm font-medium text-white disabled:opacity-40"
+            className="h-9 rounded bg-arscmp-primary px-3 text-sm font-medium text-white disabled:opacity-40"
           >
             {creating ? "Creating..." : "Create user"}
           </button>
@@ -310,7 +310,7 @@ export function SettingsUsersClient({
                         type="button"
                         disabled={!dirty || savingId === u.id}
                         onClick={() => void saveRow(u.id)}
-                        className="h-8 rounded border border-zinc-900 bg-zinc-900 px-3 text-xs font-medium text-white disabled:opacity-40"
+                        className="h-8 rounded border border-arscmp-primary bg-arscmp-primary px-3 text-xs font-medium text-white disabled:opacity-40"
                       >
                         {savingId === u.id ? "Saving…" : "Save"}
                       </button>

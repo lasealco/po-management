@@ -140,7 +140,7 @@ export function WmsBillingClient({ canEdit }: { canEdit: boolean }) {
             type="button"
             disabled={!canEdit || busy}
             onClick={() => void postAction({ action: "sync_events_from_movements" })}
-            className="rounded border border-zinc-900 bg-zinc-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-40"
+            className="rounded border border-arscmp-primary bg-arscmp-primary px-3 py-2 text-sm font-medium text-white disabled:opacity-40"
           >
             Sync events from movements
           </button>

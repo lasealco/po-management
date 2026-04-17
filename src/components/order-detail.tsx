@@ -1059,7 +1059,7 @@ export function OrderDetail({
               type="button"
               disabled={busy}
               onClick={() => void saveOrderHeader()}
-              className="rounded-md bg-zinc-900 px-4 py-2 text-sm text-white disabled:opacity-50"
+              className="rounded-md bg-arscmp-primary px-4 py-2 text-sm text-white disabled:opacity-50"
             >
               {busy ? "Saving…" : "Save order details"}
             </button>
@@ -1582,7 +1582,7 @@ export function OrderDetail({
               type="button"
               disabled={busy}
               onClick={() => void createShipment()}
-              className="mt-3 rounded-md bg-zinc-900 px-4 py-2 text-sm text-white disabled:opacity-50"
+              className="mt-3 rounded-md bg-arscmp-primary px-4 py-2 text-sm text-white disabled:opacity-50"
             >
               {busy ? "Saving…" : "Create ASN"}
             </button>
@@ -1660,7 +1660,7 @@ export function OrderDetail({
               type="button"
               disabled={busy || !newMessageBody.trim()}
               onClick={() => void postMessage()}
-              className="mt-3 rounded-md bg-zinc-900 px-4 py-2 text-sm text-white disabled:opacity-50"
+              className="mt-3 rounded-md bg-arscmp-primary px-4 py-2 text-sm text-white disabled:opacity-50"
             >
               {busy ? "Posting…" : "Post message"}
             </button>
@@ -1721,7 +1721,7 @@ export function OrderDetail({
                 type="button"
                 disabled={busy}
                 onClick={() => acceptSplit(data.pendingProposal!.id)}
-                className="rounded-md bg-zinc-900 px-3 py-2 text-sm text-white disabled:opacity-50"
+                className="rounded-md bg-arscmp-primary px-3 py-2 text-sm text-white disabled:opacity-50"
               >
                 Accept split
               </button>
@@ -1841,7 +1841,7 @@ export function OrderDetail({
             type="button"
             disabled={busy}
             onClick={() => void submitSplit()}
-            className="mt-4 rounded-md bg-zinc-900 px-4 py-2 text-sm text-white disabled:opacity-50"
+            className="mt-4 rounded-md bg-arscmp-primary px-4 py-2 text-sm text-white disabled:opacity-50"
           >
             Submit split proposal
           </button>

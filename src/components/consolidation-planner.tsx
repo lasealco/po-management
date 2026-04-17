@@ -732,7 +732,7 @@ export function ConsolidationPlanner({
           onClick={() => setPlanningMode("container")}
           className={`rounded px-3 py-1.5 text-sm ${
             planningMode === "container"
-              ? "bg-zinc-900 text-white"
+              ? "bg-arscmp-primary text-white"
               : "border border-zinc-300 text-zinc-700"
           }`}
         >
@@ -743,7 +743,7 @@ export function ConsolidationPlanner({
           onClick={() => setPlanningMode("demand")}
           className={`rounded px-3 py-1.5 text-sm ${
             planningMode === "demand"
-              ? "bg-zinc-900 text-white"
+              ? "bg-arscmp-primary text-white"
               : "border border-zinc-300 text-zinc-700"
           }`}
         >
@@ -855,7 +855,7 @@ export function ConsolidationPlanner({
             type="button"
             disabled={busy}
             onClick={() => void createLoadPlan()}
-            className="rounded-md bg-zinc-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
+            className="rounded-md bg-arscmp-primary px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
           >
             Create draft
           </button>
@@ -1019,7 +1019,7 @@ export function ConsolidationPlanner({
                 type="button"
                 disabled={busy || !optimizedPlan || optimizedPlan.bins.length === 0}
                 onClick={() => void applyOptimizedPlan()}
-                className="rounded bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+                className="rounded bg-arscmp-primary px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
               >
                 Create optimized drafts
               </button>

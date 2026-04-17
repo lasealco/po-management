@@ -40,7 +40,7 @@ export default async function SalesOrdersPage() {
           <p className="mt-1 text-sm text-zinc-600">Sales Order process v1 for export-linked logistics.</p>
         </div>
         {viewerHas(access.grantSet, "org.orders", "edit") ? (
-          <Link href="/sales-orders/new" className="rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white">
+          <Link href="/sales-orders/new" className="rounded bg-arscmp-primary px-4 py-2 text-sm font-medium text-white">
             New Sales Order
           </Link>
         ) : null}

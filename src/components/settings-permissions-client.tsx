@@ -136,7 +136,7 @@ export function SettingsPermissionsClient({
           type="button"
           disabled={!dirty || saving || loading}
           onClick={() => void save()}
-          className="h-9 rounded border border-zinc-900 bg-zinc-900 px-4 text-sm font-medium text-white disabled:opacity-40"
+          className="h-9 rounded border border-arscmp-primary bg-arscmp-primary px-4 text-sm font-medium text-white disabled:opacity-40"
         >
           {saving ? "Saving…" : "Save permissions"}
         </button>

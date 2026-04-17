@@ -137,7 +137,7 @@ export function ControlTowerSearchClient() {
           type="button"
           disabled={busy || !q.trim()}
           onClick={() => void run()}
-          className="rounded-lg border border-zinc-900 bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
+          className="rounded-lg border border-arscmp-primary bg-arscmp-primary px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
         >
           Search
         </button>

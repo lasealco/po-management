@@ -105,7 +105,7 @@ export default async function ProductCatalogPage() {
           {canEdit ? (
             <Link
               href="/products/new"
-              className="inline-flex w-fit items-center justify-center rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+              className="inline-flex w-fit items-center justify-center rounded-md bg-arscmp-primary px-4 py-2 text-sm font-medium text-white hover:bg-arscmp-primary-700"
             >
               Add product
             </Link>

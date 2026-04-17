@@ -274,7 +274,7 @@ export function OrdersBoard({
           {canCreateOrders ? (
             <Link
               href="/orders/new"
-              className="rounded-full bg-zinc-900 px-2.5 py-1 font-medium text-white"
+              className="rounded-full bg-arscmp-primary px-2.5 py-1 font-medium text-white"
             >
               + New order
             </Link>
@@ -307,7 +307,7 @@ export function OrdersBoard({
             onClick={() => setQueueFilter("all")}
             className={`rounded-md border px-2.5 py-1 text-xs font-medium ${
               queueFilter === "all"
-                ? "border-zinc-900 bg-zinc-900 text-white"
+                ? "border-arscmp-primary bg-arscmp-primary text-white"
                 : "border-zinc-300 text-zinc-700 hover:bg-zinc-50"
             }`}
           >
@@ -376,7 +376,7 @@ export function OrdersBoard({
             onClick={() => setSortMode("priority")}
             className={`rounded-md border px-2.5 py-1 font-medium ${
               sortMode === "priority"
-                ? "border-zinc-900 bg-zinc-900 text-white"
+                ? "border-arscmp-primary bg-arscmp-primary text-white"
                 : "border-zinc-300 text-zinc-700 hover:bg-zinc-50"
             }`}
           >
@@ -387,7 +387,7 @@ export function OrdersBoard({
             onClick={() => setSortMode("newest")}
             className={`rounded-md border px-2.5 py-1 font-medium ${
               sortMode === "newest"
-                ? "border-zinc-900 bg-zinc-900 text-white"
+                ? "border-arscmp-primary bg-arscmp-primary text-white"
                 : "border-zinc-300 text-zinc-700 hover:bg-zinc-50"
             }`}
           >
