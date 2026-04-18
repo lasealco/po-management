@@ -1,13 +1,11 @@
 import {
   InvoiceAuditLineOutcome,
   InvoiceAuditRollupOutcome,
-  InvoiceIntakeStatus,
   InvoiceReviewDecision,
   Prisma,
 } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
-import { DISCREPANCY_CATEGORY } from "@/lib/invoice-audit/discrepancy-categories";
 import { InvoiceAuditError } from "@/lib/invoice-audit/invoice-audit-error";
 import { auditOceanInvoiceLine } from "@/lib/invoice-audit/ocean-line-match";
 import { extractSnapshotPriceCandidates } from "@/lib/invoice-audit/snapshot-candidates";

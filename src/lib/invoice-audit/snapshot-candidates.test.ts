@@ -77,6 +77,28 @@ describe("extractSnapshotPriceCandidates", () => {
     expect(out.candidates[0]!.equipmentHint).toBe("40HC");
   });
 
+  it("returns null contractGrandTotal when contract breakdown omits totals.grand", () => {
+    const out = extractSnapshotPriceCandidates({
+      sourceType: "TARIFF_CONTRACT_VERSION",
+      rateLines: [
+        {
+          id: "r1",
+          rateType: "FCL",
+          equipmentType: "40HC",
+          unitBasis: "PER_CONTAINER",
+          currency: "USD",
+          amount: "100",
+          originScope: null,
+          destinationScope: null,
+        },
+      ],
+      chargeLines: [],
+    });
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+    expect(out.contractGrandTotal).toBeNull();
+  });
+
   it("fails on unknown sourceType", () => {
     const out = extractSnapshotPriceCandidates({ sourceType: "OTHER", rateLines: [] });
     expect(out.ok).toBe(false);
