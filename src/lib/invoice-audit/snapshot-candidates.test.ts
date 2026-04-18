@@ -40,6 +40,7 @@ describe("extractSnapshotPriceCandidates", () => {
     expect(out.sourceType).toBe("TARIFF_CONTRACT_VERSION");
     expect(out.rfqGrandTotal).toBeNull();
     expect(out.contractGrandTotal).toBe(2285);
+    expect(out.rfqRouteLocodes).toBeNull();
     const rates = out.candidates.filter((c) => c.kind === "CONTRACT_RATE");
     const charges = out.candidates.filter((c) => c.kind === "CONTRACT_CHARGE");
     expect(rates).toHaveLength(1);
@@ -76,6 +77,7 @@ describe("extractSnapshotPriceCandidates", () => {
     if (!out.ok) return;
     expect(out.candidates[0]!.originCode).toBe("USNYC");
     expect(out.candidates[0]!.destCode).toBe("DEHAM");
+    expect(out.rfqRouteLocodes).toEqual({ pol: "USNYC", pod: "DEHAM" });
   });
 
   it("parses QUOTE_RESPONSE lines and totals.grand", () => {
@@ -101,6 +103,7 @@ describe("extractSnapshotPriceCandidates", () => {
     expect(out.contractGrandTotal).toBeNull();
     expect(out.candidates[0]!.kind).toBe("RFQ_LINE");
     expect(out.candidates[0]!.equipmentHint).toBe("40HC");
+    expect(out.rfqRouteLocodes).toEqual({ pol: null, pod: null });
   });
 
   it("returns null contractGrandTotal when contract breakdown omits totals.grand", () => {
@@ -123,6 +126,7 @@ describe("extractSnapshotPriceCandidates", () => {
     expect(out.ok).toBe(true);
     if (!out.ok) return;
     expect(out.contractGrandTotal).toBeNull();
+    expect(out.rfqRouteLocodes).toBeNull();
   });
 
   it("fails on unknown sourceType", () => {

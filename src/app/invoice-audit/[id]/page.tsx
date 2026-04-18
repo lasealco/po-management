@@ -9,6 +9,7 @@ import { InvoiceReviewScaffold } from "@/components/invoice-audit/invoice-review
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { getInvoiceIntakeForTenant } from "@/lib/invoice-audit/invoice-intakes";
 import { InvoiceAuditError } from "@/lib/invoice-audit/invoice-audit-error";
+import { formatSnapshotMatchLabel } from "@/lib/invoice-audit/snapshot-match-label";
 import { getDemoTenant } from "@/lib/demo-tenant";
 
 export const dynamic = "force-dynamic";
@@ -131,26 +132,40 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
 
       {intake.auditResults.length > 0 ? (
         <section className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700">
-          <p className="font-semibold text-zinc-900">Snapshot match JSON (per line)</p>
+          <p className="font-semibold text-zinc-900">Stored match payload (per line)</p>
           <p className="mt-1 text-xs text-zinc-500">
-            Each row&apos;s <code className="rounded bg-white px-1">snapshotMatchedJson</code> is stored on the audit
-            result for audit trail.
+            Summary matches the table column; expand JSON for the full audit trail stored on each result.
           </p>
-          <ul className="mt-3 list-inside list-disc space-y-1 font-mono text-xs">
+          <ul className="mt-3 space-y-2">
             {intake.auditResults.map((r) => (
-              <li key={r.id}>
-                Line {r.line?.lineNo ?? "?"}: {JSON.stringify(r.snapshotMatchedJson)}
+              <li key={r.id} className="rounded-xl border border-zinc-200 bg-white p-3">
+                <div className="text-sm text-zinc-800">
+                  <span className="font-semibold">Line {r.line?.lineNo ?? "?"}</span>
+                  <span className="mx-2 text-zinc-400">·</span>
+                  <span>{formatSnapshotMatchLabel(r.snapshotMatchedJson)}</span>
+                </div>
+                <details className="mt-2">
+                  <summary className="cursor-pointer text-xs font-medium text-[var(--arscmp-primary)]">
+                    snapshotMatchedJson
+                  </summary>
+                  <pre className="mt-2 max-h-64 overflow-auto rounded-lg bg-zinc-950 p-3 font-mono text-[11px] leading-relaxed text-zinc-100">
+                    {JSON.stringify(r.snapshotMatchedJson, null, 2)}
+                  </pre>
+                </details>
               </li>
             ))}
           </ul>
         </section>
       ) : null}
 
-      <section className="rounded-2xl border border-dashed border-zinc-300 bg-white p-5 text-sm text-zinc-600">
-        <p className="font-semibold text-zinc-900">Provider escalation</p>
+      <section className="rounded-2xl border border-zinc-200 bg-white p-5 text-sm text-zinc-600 shadow-sm">
+        <p className="font-semibold text-zinc-900">Tolerance rules</p>
         <p className="mt-2">
-          Not implemented in this foundation. Next step: open a Control Tower exception, email template, or supplier
-          case from a RED / OVERRIDDEN line with pre-filled charge context.
+          Amount bands use the active tolerance rule for this tenant (or built-in defaults).{" "}
+          <Link href="/invoice-audit/tolerance-rules" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+            View tolerance rules
+          </Link>
+          .
         </p>
       </section>
 

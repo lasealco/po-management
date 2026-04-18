@@ -72,27 +72,37 @@ export default async function PricingSnapshotDetailPage(props: { params: Promise
         <section className="mb-6 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
           <h2 className="text-sm font-semibold text-zinc-900">Invoice audit</h2>
           {auditExtract.ok ? (
-            <p className="mt-2 text-sm text-zinc-600">
-              This frozen breakdown yields{" "}
-              <span className="font-semibold text-zinc-900">{auditExtract.candidates.length}</span> comparable line
-              {auditExtract.candidates.length === 1 ? "" : "s"} for ocean matching (same extractor as run-audit).
-              {auditExtract.sourceType === "QUOTE_RESPONSE" && auditExtract.rfqGrandTotal != null ? (
-                <>
-                  {" "}
-                  RFQ reference total:{" "}
-                  <span className="font-mono font-semibold text-zinc-800">{auditExtract.rfqGrandTotal}</span>{" "}
-                  {row.currency}.
-                </>
+            <>
+              <p className="mt-2 text-sm text-zinc-600">
+                This frozen breakdown yields{" "}
+                <span className="font-semibold text-zinc-900">{auditExtract.candidates.length}</span> comparable line
+                {auditExtract.candidates.length === 1 ? "" : "s"} for ocean matching (same extractor as run-audit).
+                {auditExtract.sourceType === "QUOTE_RESPONSE" && auditExtract.rfqGrandTotal != null ? (
+                  <>
+                    {" "}
+                    RFQ reference total:{" "}
+                    <span className="font-mono font-semibold text-zinc-800">{auditExtract.rfqGrandTotal}</span>{" "}
+                    {row.currency}.
+                  </>
+                ) : null}
+                {auditExtract.sourceType === "TARIFF_CONTRACT_VERSION" && auditExtract.contractGrandTotal != null ? (
+                  <>
+                    {" "}
+                    Contract frozen grand:{" "}
+                    <span className="font-mono font-semibold text-zinc-800">{auditExtract.contractGrandTotal}</span>{" "}
+                    {row.currency} (used for all-in lines when invoice equipment is not set).
+                  </>
+                ) : null}
+              </p>
+              {auditExtract.sourceType === "QUOTE_RESPONSE" &&
+              auditExtract.rfqRouteLocodes &&
+              (auditExtract.rfqRouteLocodes.pol || auditExtract.rfqRouteLocodes.pod) ? (
+                <p className="mt-2 font-mono text-xs text-zinc-600">
+                  Quote route hints (from RFQ labels): POL {auditExtract.rfqRouteLocodes.pol ?? "—"} → POD{" "}
+                  {auditExtract.rfqRouteLocodes.pod ?? "—"} (used when invoice intakes include POL/POD codes).
+                </p>
               ) : null}
-              {auditExtract.sourceType === "TARIFF_CONTRACT_VERSION" && auditExtract.contractGrandTotal != null ? (
-                <>
-                  {" "}
-                  Contract frozen grand:{" "}
-                  <span className="font-mono font-semibold text-zinc-800">{auditExtract.contractGrandTotal}</span>{" "}
-                  {row.currency} (used for all-in lines when invoice equipment is not set).
-                </>
-              ) : null}
-            </p>
+            </>
           ) : (
             <p className="mt-2 text-sm text-amber-900">
               Invoice audit cannot parse this snapshot: {auditExtract.error}

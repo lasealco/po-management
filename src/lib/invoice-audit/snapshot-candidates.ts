@@ -20,6 +20,9 @@ export type SnapshotPriceCandidate = {
   rateType: string | null;
 };
 
+/** First UN/LOCODE parsed from RFQ quoteRequest origin/destination labels (invoice POL/POD hints). */
+export type RfqRouteLocodes = { pol: string | null; pod: string | null };
+
 export type SnapshotCandidatesResult =
   | {
       ok: true;
@@ -28,6 +31,8 @@ export type SnapshotCandidatesResult =
       rfqGrandTotal: number | null;
       /** Contract snapshot `totals.grand` when present (frozen full stack). */
       contractGrandTotal: number | null;
+      /** Set for `QUOTE_RESPONSE` snapshots; `null` for contract snapshots. */
+      rfqRouteLocodes: RfqRouteLocodes | null;
     }
   | { ok: false; error: string; category: typeof DISCREPANCY_CATEGORY.SNAPSHOT_PARSE_ERROR };
 
@@ -139,7 +144,14 @@ export function extractSnapshotPriceCandidates(breakdownJson: unknown): Snapshot
       const g = num(totals.grand);
       if (g != null) contractGrandTotal = g;
     }
-    return { ok: true, candidates, sourceType, rfqGrandTotal: null, contractGrandTotal };
+    return {
+      ok: true,
+      candidates,
+      sourceType,
+      rfqGrandTotal: null,
+      contractGrandTotal,
+      rfqRouteLocodes: null,
+    };
   }
 
   if (sourceType === "QUOTE_RESPONSE") {
@@ -183,7 +195,14 @@ export function extractSnapshotPriceCandidates(breakdownJson: unknown): Snapshot
       const g = num(totals.grand);
       if (g != null) rfqGrandTotal = g;
     }
-    return { ok: true, candidates, sourceType, rfqGrandTotal, contractGrandTotal: null };
+    return {
+      ok: true,
+      candidates,
+      sourceType,
+      rfqGrandTotal,
+      contractGrandTotal: null,
+      rfqRouteLocodes: { pol: rfqOriginHint, pod: rfqDestHint },
+    };
   }
 
   return {
