@@ -118,11 +118,10 @@ export function PricingSnapshotBreakdownPanel(props: {
                   isRecord(row) ? (
                     <tr key={typeof row.id === "string" ? row.id : idx} className="border-b border-zinc-100">
                       <td className="py-2 pr-3 align-top text-xs text-zinc-500">
-                        {typeof row.id === "string" && row.id.trim() ? (
-                          <RecordIdCopy id={row.id} copyButtonLabel="Copy line id" />
-                        ) : (
-                          "—"
-                        )}
+                        <RecordIdCopy
+                          id={typeof row.id === "string" ? row.id : ""}
+                          copyButtonLabel="Copy line id"
+                        />
                       </td>
                       <td className="py-2 pr-3">{String(row.rateType ?? "")}</td>
                       <td className="py-2 pr-3">{String(row.equipmentType ?? "")}</td>
@@ -158,11 +157,10 @@ export function PricingSnapshotBreakdownPanel(props: {
                   isRecord(row) ? (
                     <tr key={typeof row.id === "string" ? row.id : idx} className="border-b border-zinc-100">
                       <td className="py-2 pr-3 align-top text-xs text-zinc-500">
-                        {typeof row.id === "string" && row.id.trim() ? (
-                          <RecordIdCopy id={row.id} copyButtonLabel="Copy line id" />
-                        ) : (
-                          "—"
-                        )}
+                        <RecordIdCopy
+                          id={typeof row.id === "string" ? row.id : ""}
+                          copyButtonLabel="Copy line id"
+                        />
                       </td>
                       <td className="py-2 pr-3">{String(row.rawChargeName ?? "")}</td>
                       <td className="py-2 pr-3">{String(row.normalizedCode ?? "")}</td>
@@ -197,11 +195,10 @@ export function PricingSnapshotBreakdownPanel(props: {
                   isRecord(row) ? (
                     <tr key={typeof row.id === "string" ? row.id : idx} className="border-b border-zinc-100">
                       <td className="py-2 pr-3 align-top text-xs text-zinc-500">
-                        {typeof row.id === "string" && row.id.trim() ? (
-                          <RecordIdCopy id={row.id} copyButtonLabel="Copy line id" />
-                        ) : (
-                          "—"
-                        )}
+                        <RecordIdCopy
+                          id={typeof row.id === "string" ? row.id : ""}
+                          copyButtonLabel="Copy line id"
+                        />
                       </td>
                       <td className="py-2 pr-3">{String(row.label ?? "")}</td>
                       <td className="py-2 pr-3">{String(row.lineType ?? "")}</td>

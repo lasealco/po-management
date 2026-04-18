@@ -306,11 +306,7 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
           <span className="font-medium text-zinc-800">Source record</span>
         </p>
         <div className="mt-1">
-          {intake.bookingPricingSnapshot.sourceRecordId.trim() ? (
-            <RecordIdCopy id={intake.bookingPricingSnapshot.sourceRecordId} copyButtonLabel="Copy source record id" />
-          ) : (
-            <span className="text-xs text-zinc-400">—</span>
-          )}
+          <RecordIdCopy id={intake.bookingPricingSnapshot.sourceRecordId} copyButtonLabel="Copy source record id" />
         </div>
         <p className="mt-3 text-sm text-zinc-600">
           <span className="font-medium text-zinc-800">Snapshot id</span>

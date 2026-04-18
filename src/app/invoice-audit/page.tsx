@@ -346,14 +346,10 @@ export default async function InvoiceAuditListPage(props: {
                         </div>
                         <div className="mt-1 space-y-1 text-[11px] text-zinc-500">
                           <div>{formatPricingSnapshotSourceType(String(row.bookingPricingSnapshot.sourceType))}</div>
-                          {row.bookingPricingSnapshot.sourceRecordId.trim() ? (
-                            <RecordIdCopy
-                              id={row.bookingPricingSnapshot.sourceRecordId}
-                              copyButtonLabel="Copy source record id"
-                            />
-                          ) : (
-                            <span className="text-zinc-400">—</span>
-                          )}
+                          <RecordIdCopy
+                            id={row.bookingPricingSnapshot.sourceRecordId}
+                            copyButtonLabel="Copy source record id"
+                          />
                         </div>
                       </td>
                     </tr>
