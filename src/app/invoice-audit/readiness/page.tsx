@@ -7,8 +7,16 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export default async function InvoiceAuditReadinessPage() {
-  const check = await checkInvoiceAuditDatabaseSchema();
+export default async function InvoiceAuditReadinessPage(props: {
+  searchParams?: Promise<{ refresh?: string | string[] }>;
+}) {
+  const sp = (await (props.searchParams ?? Promise.resolve({}))) as { refresh?: string | string[] };
+  const refreshRaw = sp.refresh;
+  const refresh =
+    refreshRaw === "1" ||
+    refreshRaw === "true" ||
+    (Array.isArray(refreshRaw) && (refreshRaw.includes("1") || refreshRaw.includes("true")));
+  const check = await checkInvoiceAuditDatabaseSchema({ bypassCache: refresh });
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-10">
@@ -21,9 +29,17 @@ export default async function InvoiceAuditReadinessPage() {
         <h1 className="mt-2 text-2xl font-semibold text-zinc-900">Database readiness</h1>
         <p className="mt-2 text-sm text-zinc-600">
           Verifies Postgres <span className="font-mono text-xs">information_schema</span> for invoice-audit tables and
-          columns (same logic as{" "}
+          columns, and finished rows in <span className="font-mono text-xs">_prisma_migrations</span> for the three
+          Phase 06 folders (same payload as{" "}
           <code className="rounded bg-zinc-100 px-1 py-0.5 font-mono text-[11px]">GET /api/invoice-audit/readiness</code>
           ). Use this before a demo if intakes or audit actions fail with a schema message.
+        </p>
+        <p className="mt-2 text-xs text-zinc-500">
+          After <span className="font-mono">migrate deploy</span>,{" "}
+          <Link href="/invoice-audit/readiness?refresh=1" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+            refresh this check
+          </Link>{" "}
+          (bypasses the short server cache).
         </p>
 
         <div
@@ -42,6 +58,19 @@ export default async function InvoiceAuditReadinessPage() {
             </ul>
           ) : null}
         </div>
+
+        {check.migrationHistoryNote ? (
+          <p className="mt-4 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-700">
+            {check.migrationHistoryNote}
+          </p>
+        ) : null}
+
+        {check.appliedPrismaMigrations && check.appliedPrismaMigrations.length > 0 ? (
+          <p className="mt-4 text-xs text-zinc-600">
+            <span className="font-semibold text-zinc-800">Prisma migrations seen:</span>{" "}
+            <span className="font-mono text-[11px]">{check.appliedPrismaMigrations.join(", ")}</span>
+          </p>
+        ) : null}
 
         <p className="mt-5 text-xs leading-relaxed text-zinc-600">
           <span className="font-semibold text-zinc-800">Expected migrations:</span>{" "}

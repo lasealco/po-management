@@ -62,6 +62,36 @@ async function main() {
     process.exit(1);
   }
 
+  const expectedInvoiceAuditMigrations = [
+    "20260419100000_invoice_audit_foundation",
+    "20260420120000_invoice_audit_ocean_matching",
+    "20260421103000_invoice_intake_accounting_handoff",
+  ];
+  try {
+    const migRows = await prisma.$queryRaw`
+      SELECT migration_name::text AS migration_name
+      FROM _prisma_migrations
+      WHERE finished_at IS NOT NULL
+        AND migration_name IN (
+          '20260419100000_invoice_audit_foundation',
+          '20260420120000_invoice_audit_ocean_matching',
+          '20260421103000_invoice_intake_accounting_handoff'
+        )
+    `;
+    const have = new Set(
+      Array.isArray(migRows) ? migRows.map((r) => (typeof r.migration_name === "string" ? r.migration_name : "")) : [],
+    );
+    const missing = expectedInvoiceAuditMigrations.filter((n) => !have.has(n));
+    if (missing.length > 0) {
+      console.warn(
+        `[db:seed:invoice-audit-demo] Expected ${expectedInvoiceAuditMigrations.length} finished Prisma migrations for invoice audit; missing: ${missing.join(", ")}. Apply migrate deploy if the demo behaves oddly.`,
+      );
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.warn(`[db:seed:invoice-audit-demo] Could not read _prisma_migrations (${msg}). Skipping migration-name check.`);
+  }
+
   const tenant = await prisma.tenant.findUnique({
     where: { slug: DEMO_SLUG },
     select: { id: true },
