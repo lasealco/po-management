@@ -128,7 +128,26 @@ export function SupplierRiskRecordsSection({
                     {r.category} · Identified {new Date(r.identifiedAt).toLocaleDateString()}
                     {r.closedAt ? ` · Closed ${new Date(r.closedAt).toLocaleDateString()}` : ""}
                   </p>
-                  {r.details ? <p className="mt-1 text-xs text-zinc-600">{r.details}</p> : null}
+                  {canEdit ? (
+                    <label className="mt-2 block text-xs text-zinc-600">
+                      Details
+                      <textarea
+                        key={`${r.id}-details-${r.details ?? ""}`}
+                        defaultValue={r.details ?? ""}
+                        disabled={busyId === r.id}
+                        rows={2}
+                        className={f}
+                        onBlur={(e) => {
+                          const v = e.target.value.trim();
+                          const prev = (r.details ?? "").trim();
+                          if (v === prev) return;
+                          void patchRisk(r.id, { details: v || null });
+                        }}
+                      />
+                    </label>
+                  ) : r.details ? (
+                    <p className="mt-1 text-xs text-zinc-600">{r.details}</p>
+                  ) : null}
                 </div>
                 {canEdit ? (
                   <div className="flex flex-col gap-2 sm:w-44">

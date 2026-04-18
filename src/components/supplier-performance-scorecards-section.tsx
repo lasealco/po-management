@@ -177,7 +177,26 @@ export function SupplierPerformanceScorecardsSection({
                   </p>
                 )}
               </div>
-              {r.notes ? <p className="mt-2 text-xs text-zinc-600">{r.notes}</p> : null}
+              {canEdit ? (
+                <label className="mt-2 block text-xs text-zinc-600">
+                  Notes
+                  <textarea
+                    key={`${r.id}-notes-${r.notes ?? ""}`}
+                    defaultValue={r.notes ?? ""}
+                    disabled={busyId === r.id}
+                    rows={2}
+                    className={f}
+                    onBlur={(e) => {
+                      const v = e.target.value.trim();
+                      const prev = (r.notes ?? "").trim();
+                      if (v === prev) return;
+                      void patchScorecard(r.id, { notes: v || null });
+                    }}
+                  />
+                </label>
+              ) : r.notes ? (
+                <p className="mt-2 text-xs text-zinc-600">{r.notes}</p>
+              ) : null}
             </li>
           ))
         )}
