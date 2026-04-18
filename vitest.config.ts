@@ -11,6 +11,7 @@ export default defineConfig({
       "src/lib/tariff/**/*.test.ts",
       "src/app/api/tariffs/**/*.test.ts",
       "src/app/api/rfq/**/*.test.ts",
+      "src/app/api/booking-pricing-snapshots/**/*.test.ts",
     ],
     passWithNoTests: false,
   },
