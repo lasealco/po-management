@@ -49,11 +49,10 @@ export function InvoiceReviewScaffold(props: {
     <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
       <h2 className="text-sm font-semibold text-zinc-900">Manual review</h2>
       <p className="mt-2 text-sm text-zinc-600">
-        Scaffold for finance sign-off. Decisions are persisted on the intake; they do not change parsed lines or audit
-        math.{" "}
-        <span className="font-medium text-zinc-800">
-          Provider escalation (email / case / supplier workflow) is the next integration step — not wired here yet.
-        </span>
+        Finance sign-off for this intake. <span className="font-medium text-zinc-800">Approve</span> when the audit
+        outcome is acceptable; choose <span className="font-medium text-zinc-800">Override</span> to record acceptance
+        with a documented exception (note is recommended). This does not change parsed lines or re-run matching — it
+        only stores the decision on the intake for audit trail.
       </p>
 
       {props.reviewDecision !== "NONE" ? (

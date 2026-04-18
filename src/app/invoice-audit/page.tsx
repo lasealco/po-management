@@ -14,6 +14,12 @@ function rollupBadge(outcome: string) {
   return "bg-zinc-100 text-zinc-700";
 }
 
+function reviewBadge(decision: string) {
+  if (decision === "APPROVED") return "bg-emerald-50 text-emerald-900 ring-1 ring-emerald-200";
+  if (decision === "OVERRIDDEN") return "bg-amber-50 text-amber-950 ring-1 ring-amber-200";
+  return "bg-zinc-50 text-zinc-600 ring-1 ring-zinc-200";
+}
+
 export default async function InvoiceAuditListPage() {
   const tenant = await getDemoTenant();
   const access = await getViewerGrantSet();
@@ -62,6 +68,7 @@ export default async function InvoiceAuditListPage() {
                 <th className="py-2 pr-4">Vendor / ref</th>
                 <th className="py-2 pr-4">Status</th>
                 <th className="py-2 pr-4">Rollup</th>
+                <th className="py-2 pr-4">Review</th>
                 <th className="py-2 pr-4">Lines</th>
                 <th className="py-2 pr-4">Snapshot</th>
               </tr>
@@ -69,7 +76,7 @@ export default async function InvoiceAuditListPage() {
             <tbody>
               {intakes.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-10 text-center text-zinc-500">
+                  <td colSpan={7} className="py-10 text-center text-zinc-500">
                     No intakes yet. Create one with a pricing snapshot id and parsed lines.
                   </td>
                 </tr>
@@ -105,6 +112,13 @@ export default async function InvoiceAuditListPage() {
                       <td className="py-3 pr-4">
                         <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${rollupBadge(row.rollupOutcome)}`}>
                           {row.rollupOutcome}
+                        </span>
+                      </td>
+                      <td className="py-3 pr-4">
+                        <span
+                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${reviewBadge(row.reviewDecision)}`}
+                        >
+                          {row.reviewDecision === "NONE" ? "—" : row.reviewDecision}
                         </span>
                       </td>
                       <td className="py-3 pr-4 tabular-nums text-zinc-700">
