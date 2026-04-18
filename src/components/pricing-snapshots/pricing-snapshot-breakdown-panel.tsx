@@ -110,6 +110,7 @@ export function PricingSnapshotBreakdownPanel(props: {
             <table className="min-w-full border-collapse text-left text-sm">
               <thead>
                 <tr className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500">
+                  <th className="py-2 pr-3">Row id</th>
                   <th className="py-2 pr-3">Type</th>
                   <th className="py-2 pr-3">Equipment</th>
                   <th className="py-2 pr-3">Basis</th>
@@ -120,6 +121,13 @@ export function PricingSnapshotBreakdownPanel(props: {
                 {(bd.rateLines as unknown[]).map((row, idx) =>
                   isRecord(row) ? (
                     <tr key={typeof row.id === "string" ? row.id : idx} className="border-b border-zinc-100">
+                      <td className="py-2 pr-3 align-top text-xs text-zinc-500">
+                        {typeof row.id === "string" && row.id.trim() ? (
+                          <RecordIdCopy id={row.id} copyButtonLabel="Copy line id" />
+                        ) : (
+                          "—"
+                        )}
+                      </td>
                       <td className="py-2 pr-3">{String(row.rateType ?? "")}</td>
                       <td className="py-2 pr-3">{String(row.equipmentType ?? "")}</td>
                       <td className="py-2 pr-3">{String(row.unitBasis ?? "")}</td>
@@ -142,6 +150,7 @@ export function PricingSnapshotBreakdownPanel(props: {
             <table className="min-w-full border-collapse text-left text-sm">
               <thead>
                 <tr className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500">
+                  <th className="py-2 pr-3">Row id</th>
                   <th className="py-2 pr-3">Charge</th>
                   <th className="py-2 pr-3">Code</th>
                   <th className="py-2 pr-3">Basis</th>
@@ -152,6 +161,13 @@ export function PricingSnapshotBreakdownPanel(props: {
                 {(bd.chargeLines as unknown[]).map((row, idx) =>
                   isRecord(row) ? (
                     <tr key={typeof row.id === "string" ? row.id : idx} className="border-b border-zinc-100">
+                      <td className="py-2 pr-3 align-top text-xs text-zinc-500">
+                        {typeof row.id === "string" && row.id.trim() ? (
+                          <RecordIdCopy id={row.id} copyButtonLabel="Copy line id" />
+                        ) : (
+                          "—"
+                        )}
+                      </td>
                       <td className="py-2 pr-3">{String(row.rawChargeName ?? "")}</td>
                       <td className="py-2 pr-3">{String(row.normalizedCode ?? "")}</td>
                       <td className="py-2 pr-3">{String(row.unitBasis ?? "")}</td>
@@ -174,6 +190,7 @@ export function PricingSnapshotBreakdownPanel(props: {
             <table className="min-w-full border-collapse text-left text-sm">
               <thead>
                 <tr className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500">
+                  <th className="py-2 pr-3">Row id</th>
                   <th className="py-2 pr-3">Label</th>
                   <th className="py-2 pr-3">Type</th>
                   <th className="py-2 pr-3">Amount</th>
@@ -183,6 +200,13 @@ export function PricingSnapshotBreakdownPanel(props: {
                 {(bd.lines as unknown[]).map((row, idx) =>
                   isRecord(row) ? (
                     <tr key={typeof row.id === "string" ? row.id : idx} className="border-b border-zinc-100">
+                      <td className="py-2 pr-3 align-top text-xs text-zinc-500">
+                        {typeof row.id === "string" && row.id.trim() ? (
+                          <RecordIdCopy id={row.id} copyButtonLabel="Copy line id" />
+                        ) : (
+                          "—"
+                        )}
+                      </td>
                       <td className="py-2 pr-3">{String(row.label ?? "")}</td>
                       <td className="py-2 pr-3">{String(row.lineType ?? "")}</td>
                       <td className="py-2 pr-3 tabular-nums">
