@@ -312,7 +312,7 @@ export function HelpAssistant() {
                 <div className="flex flex-wrap items-center gap-2">
                   <h2 className="text-base font-bold tracking-tight text-zinc-900">Guide</h2>
                   {llmUsed ? (
-                    <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-900">
+                    <span className="rounded-full bg-[var(--arscmp-primary-50)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--arscmp-primary)] ring-1 ring-[var(--arscmp-primary)]/20">
                       AI assist
                     </span>
                   ) : (
@@ -347,7 +347,7 @@ export function HelpAssistant() {
               <button
                 type="button"
                 onClick={resumeGuide}
-                className="mt-2 w-full rounded-lg border border-violet-200 bg-violet-50/90 px-3 py-2 text-left text-xs font-medium text-violet-950 transition hover:bg-violet-100"
+                className="mt-2 w-full rounded-lg border border-[var(--arscmp-primary)]/25 bg-[var(--arscmp-primary-50)] px-3 py-2 text-left text-xs font-medium text-[var(--arscmp-primary)] transition hover:bg-[var(--arscmp-primary)]/10"
               >
                 Resume your last guide →
               </button>
@@ -428,8 +428,8 @@ export function HelpAssistant() {
               </div>
             ) : null}
             {doActions.length > 0 ? (
-              <div className="space-y-1.5 rounded-xl border border-violet-100 bg-violet-50/50 p-3">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-violet-800">Do it for me</p>
+              <div className="space-y-1.5 rounded-xl border border-[var(--arscmp-primary)]/15 bg-[var(--arscmp-primary-50)]/60 p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--arscmp-primary)]">Do it for me</p>
                 <div className="flex flex-wrap gap-1.5">
                   {doActions.map((action) => {
                     const key = `${action.type}:${action.label}`;
@@ -439,7 +439,7 @@ export function HelpAssistant() {
                         type="button"
                         disabled={doBusyKey !== null}
                         onClick={() => void runDoAction(action)}
-                        className="rounded-lg border border-violet-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-violet-950 shadow-sm transition hover:bg-violet-50 disabled:opacity-50"
+                        className="rounded-lg border border-[var(--arscmp-primary)]/30 bg-white px-2.5 py-1.5 text-xs font-semibold text-[var(--arscmp-primary)] shadow-sm transition hover:bg-[var(--arscmp-primary-50)] disabled:opacity-50"
                       >
                         {doBusyKey === key ? "…" : action.label}
                       </button>
@@ -476,7 +476,7 @@ export function HelpAssistant() {
                         type="button"
                         disabled={doBusyKey !== null}
                         onClick={() => void runDoAction(currentStep.doAction!, "step:")}
-                        className="rounded-lg border border-violet-400 bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-violet-700 disabled:opacity-50"
+                        className="rounded-lg border border-[var(--arscmp-primary)] bg-[var(--arscmp-primary)] px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-[var(--arscmp-primary-700)] disabled:opacity-50"
                       >
                         {doBusyKey === `step:${currentStep.doAction.type}:${currentStep.doAction.label}`
                           ? "…"
@@ -529,7 +529,7 @@ export function HelpAssistant() {
                     key={s}
                     type="button"
                     onClick={() => runSuggestion(s)}
-                    className="rounded-full border border-violet-100 bg-violet-50/80 px-2.5 py-1 text-[11px] font-medium text-violet-900 transition hover:bg-violet-100"
+                    className="rounded-full border border-[var(--arscmp-primary)]/20 bg-[var(--arscmp-primary-50)] px-2.5 py-1 text-[11px] font-medium text-[var(--arscmp-primary)] transition hover:bg-[var(--arscmp-primary)]/10"
                   >
                     {s}
                   </button>

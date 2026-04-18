@@ -29,7 +29,7 @@ export default async function CrmReportingPage() {
   return (
     <main className="mx-auto max-w-7xl px-6 py-10">
       <nav className="mb-4 text-xs text-zinc-500">
-        <Link href="/crm" className="text-violet-800 hover:underline">
+        <Link href="/crm" className="font-medium text-[var(--arscmp-primary)] hover:underline">
           CRM
         </Link>
         <span className="mx-1">/</span>
@@ -59,13 +59,13 @@ export default async function CrmReportingPage() {
         <div className="mt-5 flex flex-wrap gap-3">
           <Link
             href={REPORTING_HUB_FOCUS_CRM_HREF}
-            className="inline-flex items-center rounded-xl bg-violet-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-violet-800"
+            className="inline-flex items-center rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white hover:brightness-95"
           >
             Open reporting hub
           </Link>
           <Link
             href="/crm/pipeline"
-            className="inline-flex items-center rounded-xl border border-violet-300 bg-violet-50 px-5 py-2.5 text-sm font-medium text-violet-900 hover:bg-violet-100"
+            className="inline-flex items-center rounded-xl border border-[var(--arscmp-primary)]/30 bg-[var(--arscmp-primary-50)] px-5 py-2.5 text-sm font-medium text-[var(--arscmp-primary)] hover:bg-[var(--arscmp-primary)]/10"
           >
             Pipeline board
           </Link>

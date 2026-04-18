@@ -444,7 +444,7 @@ export function CommandPalette({ grants }: { grants: CommandPaletteGrants }) {
                   }}
                   onMouseEnter={() => setActiveIdx(idx)}
                   className={`flex w-full flex-col items-start gap-0.5 px-4 py-2.5 text-left text-sm ${
-                    idx === activeIdx ? "bg-violet-50 text-violet-950" : "text-zinc-800 hover:bg-zinc-50"
+                    idx === activeIdx ? "bg-[var(--arscmp-primary-50)] text-[var(--arscmp-primary)]" : "text-zinc-800 hover:bg-zinc-50"
                   }`}
                 >
                   <span className="font-medium">{cmd.label}</span>

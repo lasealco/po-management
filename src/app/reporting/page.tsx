@@ -131,7 +131,7 @@ export default async function ReportingHubPage({
         {canCrm ? (
           <Link
             href="/crm/reporting"
-            className="inline-flex items-center rounded-xl border border-violet-300 bg-violet-50 px-4 py-2.5 text-sm font-medium text-violet-900 hover:bg-violet-100"
+            className="inline-flex items-center rounded-xl border border-[var(--arscmp-primary)]/30 bg-[var(--arscmp-primary-50)] px-4 py-2.5 text-sm font-medium text-[var(--arscmp-primary)] hover:bg-[var(--arscmp-primary)]/10"
           >
             CRM reporting
           </Link>
@@ -139,7 +139,7 @@ export default async function ReportingHubPage({
         {canWms ? (
           <Link
             href="/wms/reporting"
-            className="inline-flex items-center rounded-xl border border-violet-300 bg-violet-50 px-4 py-2.5 text-sm font-medium text-violet-900 hover:bg-violet-100"
+            className="inline-flex items-center rounded-xl border border-[var(--arscmp-primary)]/30 bg-[var(--arscmp-primary-50)] px-4 py-2.5 text-sm font-medium text-[var(--arscmp-primary)] hover:bg-[var(--arscmp-primary)]/10"
           >
             WMS reporting
           </Link>
@@ -206,7 +206,7 @@ export default async function ReportingHubPage({
             </p>
             <Link
               href="/crm/reporting"
-              className="mt-5 inline-flex items-center rounded-xl bg-violet-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-violet-800"
+              className="mt-5 inline-flex items-center rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white hover:brightness-95"
             >
               CRM reporting
             </Link>
@@ -222,7 +222,7 @@ export default async function ReportingHubPage({
             </p>
             <Link
               href="/wms/reporting"
-              className="mt-5 inline-flex items-center rounded-xl bg-violet-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-violet-800"
+              className="mt-5 inline-flex items-center rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white hover:brightness-95"
             >
               WMS reporting
             </Link>

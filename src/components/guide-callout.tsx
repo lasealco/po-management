@@ -62,22 +62,22 @@ export function GuideCallout() {
   }
 
   return (
-    <div className="sticky top-0 z-30 border-b border-violet-200 bg-violet-50 px-4 py-2 text-sm text-violet-950">
+    <div className="sticky top-0 z-30 border-b border-[var(--arscmp-primary)]/20 bg-[var(--arscmp-primary-50)] px-4 py-2 text-sm text-zinc-900">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-2">
-        <span className="rounded bg-violet-200 px-1.5 py-0.5 text-xs font-semibold">
+        <span className="rounded bg-[var(--arscmp-primary)] px-1.5 py-0.5 text-xs font-semibold text-white">
           Guide
         </span>
         <span className="font-medium">{guide.title}</span>
-        <span className="text-xs text-violet-700">
+        <span className="text-xs text-[var(--arscmp-primary)]">
           Step {Math.min(stepIdx, guide.steps.length - 1) + 1}/{guide.steps.length}
         </span>
-        <span className="text-xs text-violet-800">{step.title}</span>
-        <span className="text-xs text-violet-700">{step.description}</span>
+        <span className="text-xs font-medium text-zinc-800">{step.title}</span>
+        <span className="text-xs text-zinc-600">{step.description}</span>
         {step.href ? (
           <button
             type="button"
             onClick={() => (window.location.href = `${step.href}?guide=${guide.id}&step=${stepIdx}`)}
-            className="rounded border border-violet-300 bg-white px-2 py-0.5 text-xs"
+            className="rounded border border-zinc-200 bg-white px-2 py-0.5 text-xs text-zinc-800 hover:border-[var(--arscmp-primary)]/40"
           >
             {onTarget ? "On this step" : "Take me there"}
           </button>
@@ -87,7 +87,7 @@ export function GuideCallout() {
             type="button"
             disabled={doBusy}
             onClick={() => void runStepDoAction(step.doAction!)}
-            className="rounded border border-violet-500 bg-violet-200 px-2 py-0.5 text-xs font-semibold text-violet-950 disabled:opacity-50"
+            className="rounded border border-[var(--arscmp-primary)] bg-[var(--arscmp-primary)] px-2 py-0.5 text-xs font-semibold text-white hover:bg-[var(--arscmp-primary-700)] disabled:opacity-50"
           >
             {doBusy ? "…" : "Do this step"}
           </button>
@@ -96,7 +96,7 @@ export function GuideCallout() {
           type="button"
           disabled={stepIdx <= 0}
           onClick={() => go(stepIdx - 1)}
-          className="rounded border border-violet-300 bg-white px-2 py-0.5 text-xs disabled:opacity-50"
+          className="rounded border border-zinc-200 bg-white px-2 py-0.5 text-xs text-zinc-700 disabled:opacity-50"
         >
           Prev
         </button>
@@ -104,7 +104,7 @@ export function GuideCallout() {
           type="button"
           disabled={stepIdx >= guide.steps.length - 1}
           onClick={() => go(stepIdx + 1)}
-          className="rounded border border-violet-300 bg-white px-2 py-0.5 text-xs disabled:opacity-50"
+          className="rounded border border-zinc-200 bg-white px-2 py-0.5 text-xs text-zinc-700 disabled:opacity-50"
         >
           Next
         </button>
