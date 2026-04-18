@@ -3,7 +3,10 @@
 import type { SupplierComplianceReviewRow } from "@/components/supplier-compliance-reviews-section";
 import type { SupplierDocumentRow } from "@/components/supplier-documents-section";
 import { complianceReviewDueState } from "@/lib/srm/compliance-review-due";
-import { summarizeComplianceDocumentSignals } from "@/lib/srm/supplier-compliance-document-signals";
+import {
+  listComplianceDocumentFindings,
+  summarizeComplianceDocumentSignals,
+} from "@/lib/srm/supplier-compliance-document-signals";
 
 function outcomeLabel(outcome: SupplierComplianceReviewRow["outcome"]): string {
   if (outcome === "satisfactory") return "Satisfactory";
@@ -26,6 +29,7 @@ export function SupplierComplianceDocumentSignals({
   const summary = summarizeComplianceDocumentSignals(documents);
   const issues =
     summary.expired + summary.expiresSoon + summary.missingExpiryControlled;
+  const findings = listComplianceDocumentFindings(documents);
 
   const hasAnyRows = documents.length > 0;
   const latestReview = complianceReviews[0] ?? null;
@@ -100,25 +104,58 @@ export function SupplierComplianceDocumentSignals({
           ).
         </p>
       ) : (
-        <ul className="mt-3 list-inside list-disc space-y-1 text-sm text-zinc-800">
-          {summary.expired > 0 ? (
-            <li>
-              <span className="font-medium text-rose-800">{summary.expired}</span> expired
-            </li>
-          ) : null}
-          {summary.expiresSoon > 0 ? (
-            <li>
-              <span className="font-medium text-amber-900">{summary.expiresSoon}</span> expiring within
-              30 days
-            </li>
-          ) : null}
-          {summary.missingExpiryControlled > 0 ? (
-            <li>
-              <span className="font-medium text-amber-900">{summary.missingExpiryControlled}</span>{" "}
-              insurance / license / certificate without an expiry date
-            </li>
-          ) : null}
-        </ul>
+        <>
+          <ul className="mt-3 list-inside list-disc space-y-1 text-sm text-zinc-800">
+            {summary.expired > 0 ? (
+              <li>
+                <span className="font-medium text-rose-800">{summary.expired}</span> expired
+              </li>
+            ) : null}
+            {summary.expiresSoon > 0 ? (
+              <li>
+                <span className="font-medium text-amber-900">{summary.expiresSoon}</span> expiring within
+                30 days
+              </li>
+            ) : null}
+            {summary.missingExpiryControlled > 0 ? (
+              <li>
+                <span className="font-medium text-amber-900">{summary.missingExpiryControlled}</span>{" "}
+                insurance / license / certificate without an expiry date
+              </li>
+            ) : null}
+          </ul>
+          <div className="mt-3 rounded-md border border-zinc-200 bg-white px-3 py-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+              Rows to fix (Documents tab)
+            </p>
+            <ul className="mt-2 divide-y divide-zinc-100 text-xs text-zinc-800">
+              {findings.map((f) => (
+                <li key={`${f.id}-${f.kind}`} className="flex flex-wrap items-baseline justify-between gap-2 py-2">
+                  <span className="min-w-0 font-medium text-zinc-900">{f.title}</span>
+                  <span className="shrink-0 text-zinc-500">
+                    {f.category.replace(/_/g, " ")}
+                    {" · "}
+                    <span
+                      className={
+                        f.kind === "expired"
+                          ? "text-rose-800"
+                          : f.kind === "expires_soon"
+                            ? "text-amber-900"
+                            : "text-amber-800"
+                      }
+                    >
+                      {f.kind === "expired"
+                        ? "Expired"
+                        : f.kind === "expires_soon"
+                          ? "Expires within 30 days"
+                          : "Missing expiry (controlled category)"}
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </>
       )}
       <div className="mt-4">
         <button

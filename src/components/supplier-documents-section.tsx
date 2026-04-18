@@ -2,8 +2,9 @@
 
 import type { SupplierDocumentCategory } from "@prisma/client";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
+import { activeDocumentNeedsComplianceAttention } from "@/lib/srm/supplier-compliance-document-signals";
 import { supplierDocumentExpiryBadge } from "@/lib/srm/supplier-document-expiry";
 
 export type SupplierDocumentRow = {
@@ -24,6 +25,8 @@ function toDateInputValue(iso: string | null): string {
   if (Number.isNaN(d.getTime())) return "";
   return d.toISOString().slice(0, 10);
 }
+
+type DocumentFilter = "all" | "active" | "archived" | "issues";
 
 const CATEGORIES: { value: SupplierDocumentCategory; label: string }[] = [
   { value: "insurance", label: "Insurance" },
@@ -54,6 +57,19 @@ export function SupplierDocumentsSection({
   const [notes, setNotes] = useState("");
   const [documentDate, setDocumentDate] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
+  const [listFilter, setListFilter] = useState<DocumentFilter>("all");
+
+  const visibleRows = useMemo(() => {
+    if (listFilter === "all") return rows;
+    if (listFilter === "active") return rows.filter((r) => !r.archivedAt);
+    if (listFilter === "archived") return rows.filter((r) => Boolean(r.archivedAt));
+    return rows.filter((r) => activeDocumentNeedsComplianceAttention(r));
+  }, [rows, listFilter]);
+
+  const issueCount = useMemo(
+    () => rows.filter((r) => activeDocumentNeedsComplianceAttention(r)).length,
+    [rows],
+  );
 
   async function addDoc(e: React.FormEvent) {
     e.preventDefault();
@@ -148,11 +164,40 @@ export function SupplierDocumentsSection({
           {error}
         </div>
       ) : null}
+      {rows.length > 0 ? (
+        <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Filter document list">
+          {(
+            [
+              ["all", "All"],
+              ["active", "Active"],
+              ["archived", "Archived"],
+              ["issues", `Needs attention${issueCount ? ` (${issueCount})` : ""}`],
+            ] as const
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setListFilter(id as DocumentFilter)}
+              className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
+                listFilter === id
+                  ? "border-[var(--arscmp-primary)] bg-[var(--arscmp-primary-50)] text-[var(--arscmp-primary)]"
+                  : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      ) : null}
       <ul className="mt-4 divide-y divide-zinc-100 border border-zinc-100 rounded-md">
         {rows.length === 0 ? (
           <li className="px-4 py-6 text-center text-sm text-zinc-500">No documents registered.</li>
+        ) : visibleRows.length === 0 ? (
+          <li className="px-4 py-6 text-center text-sm text-zinc-500">
+            No documents match this filter.
+          </li>
         ) : (
-          rows.map((r) => {
+          visibleRows.map((r) => {
             const isArchived = Boolean(r.archivedAt);
             const expiryBadge = isArchived ? null : supplierDocumentExpiryBadge(r.expiresAt);
             return (

@@ -13,6 +13,7 @@ import type { SupplierRelationshipNoteRow } from "@/components/supplier-relation
 import { SupplierRelationshipNotesSection } from "@/components/supplier-relationship-notes-section";
 import type { SupplierComplianceReviewRow } from "@/components/supplier-compliance-reviews-section";
 import { SupplierComplianceDocumentSignals } from "@/components/supplier-compliance-document-signals";
+import { listComplianceDocumentFindings } from "@/lib/srm/supplier-compliance-document-signals";
 import { SupplierComplianceReviewsSection } from "@/components/supplier-compliance-reviews-section";
 import { SupplierOnboardingSection } from "@/components/supplier-onboarding-section";
 import type { SupplierPerformanceScorecardRow } from "@/components/supplier-performance-scorecards-section";
@@ -281,6 +282,10 @@ export function SupplierDetailClient({
   const showOverviewMain = !isSrmShell || srmTab === "overview";
   const showContactsWorkspace =
     !isSrmShell || srmTab === "overview" || srmTab === "contacts";
+
+  const complianceDocumentAttentionCount = listComplianceDocumentFindings(
+    initial.documents,
+  ).length;
 
   useEffect(() => {
     if (!isSrmShell) return;
@@ -857,6 +862,16 @@ export function SupplierDetailClient({
               initial.onboardingWorkflow.openCount > 0 ? (
                 <span className="ml-1.5 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">
                   {initial.onboardingWorkflow.openCount}
+                </span>
+              ) : null}
+              {t.id === "compliance" && complianceDocumentAttentionCount > 0 ? (
+                <span className="ml-1.5 rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-semibold text-rose-900">
+                  {complianceDocumentAttentionCount}
+                </span>
+              ) : null}
+              {t.id === "documents" && complianceDocumentAttentionCount > 0 ? (
+                <span className="ml-1.5 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-950">
+                  {complianceDocumentAttentionCount}
                 </span>
               ) : null}
             </button>

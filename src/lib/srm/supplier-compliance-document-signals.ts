@@ -19,6 +19,85 @@ export type ComplianceDocumentSignalSummary = {
   missingExpiryControlled: number;
 };
 
+export type ComplianceDocumentFinding = {
+  id: string;
+  title: string;
+  category: SupplierDocumentCategory;
+  kind: "expired" | "expires_soon" | "missing_expiry";
+};
+
+/**
+ * Active rows that need buyer attention (expiry posture or missing expiry on controlled categories).
+ * A single document may appear once per kind; `missing_expiry` is only added when there is no expiry date.
+ */
+export function listComplianceDocumentFindings(
+  documents: Array<{
+    id: string;
+    title: string;
+    category: SupplierDocumentCategory;
+    expiresAt: string | null;
+    archivedAt: string | null;
+  }>,
+  nowMs: number = Date.now(),
+): ComplianceDocumentFinding[] {
+  const findings: ComplianceDocumentFinding[] = [];
+  for (const d of documents) {
+    if (d.archivedAt) continue;
+    const badge = supplierDocumentExpiryBadge(d.expiresAt, nowMs);
+    if (badge === "expired") {
+      findings.push({
+        id: d.id,
+        title: d.title,
+        category: d.category,
+        kind: "expired",
+      });
+    } else if (badge === "expires_soon") {
+      findings.push({
+        id: d.id,
+        title: d.title,
+        category: d.category,
+        kind: "expires_soon",
+      });
+    }
+    if (
+      CONTROLLED_CATEGORIES.includes(d.category) &&
+      (d.expiresAt == null || d.expiresAt === "")
+    ) {
+      findings.push({
+        id: d.id,
+        title: d.title,
+        category: d.category,
+        kind: "missing_expiry",
+      });
+    }
+  }
+  const rank = (k: ComplianceDocumentFinding["kind"]) =>
+    k === "expired" ? 0 : k === "expires_soon" ? 1 : 2;
+  return findings.sort((a, b) => {
+    const dr = rank(a.kind) - rank(b.kind);
+    if (dr !== 0) return dr;
+    return a.title.localeCompare(b.title);
+  });
+}
+
+/** True for non-archived rows that appear in {@link listComplianceDocumentFindings}. */
+export function activeDocumentNeedsComplianceAttention(
+  d: {
+    category: SupplierDocumentCategory;
+    expiresAt: string | null;
+    archivedAt: string | null;
+  },
+  nowMs: number = Date.now(),
+): boolean {
+  if (d.archivedAt) return false;
+  const badge = supplierDocumentExpiryBadge(d.expiresAt, nowMs);
+  if (badge === "expired" || badge === "expires_soon") return true;
+  return (
+    CONTROLLED_CATEGORIES.includes(d.category) &&
+    (d.expiresAt == null || d.expiresAt === "")
+  );
+}
+
 export function summarizeComplianceDocumentSignals(
   documents: Array<{
     category: SupplierDocumentCategory;

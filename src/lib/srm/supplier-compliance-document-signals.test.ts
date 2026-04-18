@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { summarizeComplianceDocumentSignals } from "./supplier-compliance-document-signals";
+import {
+  activeDocumentNeedsComplianceAttention,
+  listComplianceDocumentFindings,
+  summarizeComplianceDocumentSignals,
+} from "./supplier-compliance-document-signals";
 
 describe("summarizeComplianceDocumentSignals", () => {
   const now = Date.UTC(2026, 5, 1);
@@ -43,5 +47,73 @@ describe("summarizeComplianceDocumentSignals", () => {
     expect(s.archivedTotal).toBe(1);
     expect(s.activeTotal).toBe(1);
     expect(s.expired).toBe(1);
+  });
+});
+
+describe("listComplianceDocumentFindings", () => {
+  const now = Date.UTC(2026, 5, 1);
+
+  it("lists expired and missing expiry separately", () => {
+    const past = new Date(now - 86400000).toISOString();
+    const f = listComplianceDocumentFindings(
+      [
+        {
+          id: "1",
+          title: "COI",
+          category: "insurance",
+          expiresAt: past,
+          archivedAt: null,
+        },
+        {
+          id: "2",
+          title: "Permit",
+          category: "license",
+          expiresAt: null,
+          archivedAt: null,
+        },
+      ],
+      now,
+    );
+    expect(f.map((x) => x.kind)).toEqual(["expired", "missing_expiry"]);
+    expect(f[0].title).toBe("COI");
+    expect(f[1].title).toBe("Permit");
+  });
+
+  it("ignores archived rows", () => {
+    const f = listComplianceDocumentFindings(
+      [
+        {
+          id: "1",
+          title: "X",
+          category: "license",
+          expiresAt: null,
+          archivedAt: "2026-01-01T00:00:00.000Z",
+        },
+      ],
+      now,
+    );
+    expect(f).toEqual([]);
+  });
+});
+
+describe("activeDocumentNeedsComplianceAttention", () => {
+  const now = Date.UTC(2026, 5, 1);
+
+  it("returns false for archived", () => {
+    expect(
+      activeDocumentNeedsComplianceAttention(
+        { category: "license", expiresAt: null, archivedAt: "2026-01-01T00:00:00.000Z" },
+        now,
+      ),
+    ).toBe(false);
+  });
+
+  it("returns true for controlled category without expiry", () => {
+    expect(
+      activeDocumentNeedsComplianceAttention(
+        { category: "certificate", expiresAt: null, archivedAt: null },
+        now,
+      ),
+    ).toBe(true);
   });
 });
