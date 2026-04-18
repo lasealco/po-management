@@ -22,7 +22,8 @@ export default async function PricingSnapshotsListPage() {
   const canFreeze =
     Boolean(access?.user && viewerHas(access.grantSet, "org.tariffs", "edit")) ||
     Boolean(access?.user && viewerHas(access.grantSet, "org.rfq", "edit"));
-  const canInvoiceAudit = Boolean(access?.user && viewerHas(access.grantSet, "org.invoice_audit", "edit"));
+  const canInvoiceAuditView = Boolean(access?.user && viewerHas(access.grantSet, "org.invoice_audit", "view"));
+  const canInvoiceAuditEdit = Boolean(access?.user && viewerHas(access.grantSet, "org.invoice_audit", "edit"));
 
   if (!tenant) {
     return (
@@ -44,11 +45,27 @@ export default async function PricingSnapshotsListPage() {
             <p className="mt-2 max-w-2xl text-sm text-zinc-600">
               Immutable copies of estimated ocean economics from a contract version or an RFQ response.
               Totals and line detail stay fixed even if live tariffs or quotes change later.
-              {canInvoiceAudit ? (
+              {canInvoiceAuditView ? (
                 <>
                   {" "}
-                  Open a snapshot, then use <span className="font-medium">New intake with this snapshot</span> to run
-                  invoice audit against the frozen lines.
+                  <Link href="/invoice-audit" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+                    Invoice intakes
+                  </Link>{" "}
+                  run carrier lines against a frozen snapshot;{" "}
+                  <Link
+                    href="/invoice-audit/readiness"
+                    className="font-medium text-[var(--arscmp-primary)] hover:underline"
+                  >
+                    DB readiness
+                  </Link>{" "}
+                  checks migrations before a demo.
+                  {canInvoiceAuditEdit ? (
+                    <span>
+                      {" "}
+                      With edit access, open a row below then <span className="font-medium">New intake</span> from the
+                      snapshot detail (or the last column here).
+                    </span>
+                  ) : null}
                 </>
               ) : null}
             </p>
@@ -72,13 +89,13 @@ export default async function PricingSnapshotsListPage() {
                 <th className="py-2 pr-4">Summary</th>
                 <th className="py-2 pr-4">Total</th>
                 <th className="py-2 pr-4">Booking</th>
-                {canInvoiceAudit ? <th className="py-2 pr-4">Invoice audit</th> : null}
+                {canInvoiceAuditEdit ? <th className="py-2 pr-4">Invoice audit</th> : null}
               </tr>
             </thead>
             <tbody>
               {snapshots.length === 0 ? (
                 <tr>
-                  <td colSpan={canInvoiceAudit ? 6 : 5} className="py-10 text-center text-zinc-500">
+                  <td colSpan={canInvoiceAuditEdit ? 6 : 5} className="py-10 text-center text-zinc-500">
                     No snapshots yet. Freeze one from a contract version or RFQ response.
                   </td>
                 </tr>
@@ -116,7 +133,7 @@ export default async function PricingSnapshotsListPage() {
                         <span className="text-zinc-400">—</span>
                       )}
                     </td>
-                    {canInvoiceAudit ? (
+                    {canInvoiceAuditEdit ? (
                       <td className="py-3 pr-4">
                         <Link
                           href={`/invoice-audit/new?snapshotId=${encodeURIComponent(s.id)}`}

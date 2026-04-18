@@ -83,6 +83,17 @@ export default async function PricingSnapshotDetailPage(props: { params: Promise
       {canInvoiceAuditView ? (
         <section className="mb-6 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
           <h2 className="text-sm font-semibold text-zinc-900">Invoice audit</h2>
+          <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-500">
+            <Link href="/invoice-audit" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+              All intakes
+            </Link>
+            <Link
+              href="/invoice-audit/readiness?refresh=1"
+              className="font-medium text-[var(--arscmp-primary)] hover:underline"
+            >
+              DB readiness (no cache)
+            </Link>
+          </p>
           {auditExtract.ok ? (
             <>
               <p className="mt-2 text-sm text-zinc-600">
