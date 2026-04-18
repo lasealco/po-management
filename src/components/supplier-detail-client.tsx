@@ -67,6 +67,8 @@ export function SupplierDetailClient({
   canEdit = true,
   canApprove = false,
   orderHistory = null,
+  /** `srm` = opened from `/srm/[id]` (directory back-link); `suppliers` = legacy directory. */
+  detailNavContext = "suppliers",
 }: {
   initial: SupplierDetailSnapshot;
   canEdit?: boolean;
@@ -74,6 +76,7 @@ export function SupplierDetailClient({
   canApprove?: boolean;
   /** Present when viewer has org.orders → view. */
   orderHistory?: SupplierOrderAnalytics | null;
+  detailNavContext?: "suppliers" | "srm";
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -433,13 +436,18 @@ export function SupplierDetailClient({
       <div>
         <Link
           href={
-            initial.srmCategory === "logistics"
-              ? "/suppliers?kind=logistics"
-              : "/suppliers?kind=product"
+            detailNavContext === "srm"
+              ? initial.srmCategory === "logistics"
+                ? "/srm?kind=logistics"
+                : "/srm?kind=product"
+              : initial.srmCategory === "logistics"
+                ? "/suppliers?kind=logistics"
+                : "/suppliers?kind=product"
           }
           className="text-sm text-zinc-600 hover:text-zinc-900"
         >
-          ← {initial.srmCategory === "logistics" ? "Logistics" : "Product"} suppliers
+          ← {initial.srmCategory === "logistics" ? "Logistics" : "Product"}{" "}
+          {detailNavContext === "srm" ? "partners (SRM)" : "suppliers"}
         </Link>
         <div className="mt-2 flex items-center justify-between gap-3">
           <h1 className="text-2xl font-semibold text-zinc-900">

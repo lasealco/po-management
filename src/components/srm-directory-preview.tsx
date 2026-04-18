@@ -101,7 +101,7 @@ export function SrmDirectoryPreview({ rows }: { rows: SrmDirectoryRow[] }) {
                   </td>
                   <td className="px-4 py-3">
                     <Link
-                      href={`/suppliers/${r.id}`}
+                      href={`/srm/${r.id}`}
                       className="font-medium text-[var(--arscmp-primary)] underline-offset-2 hover:underline"
                     >
                       Open

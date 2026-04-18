@@ -165,7 +165,7 @@ export default async function SrmPage({
                     </td>
                     <td className="px-4 py-3 text-center tabular-nums">{s.orderCount}</td>
                     <td className="px-4 py-3">
-                      <Link href={`/suppliers/${s.id}`} className="font-medium text-[var(--arscmp-primary)] hover:underline">
+                      <Link href={`/srm/${s.id}`} className="font-medium text-[var(--arscmp-primary)] hover:underline">
                         {canEdit || canApprove ? "Open profile" : "View profile"}
                       </Link>
                     </td>
