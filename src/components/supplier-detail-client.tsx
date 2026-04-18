@@ -6,6 +6,7 @@ import { startTransition, useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   SRM_REGISTER_CATEGORY_QUERY,
+  mergeDocumentsWorkspaceQuery,
   parseRegisterCategorySearchParam,
 } from "@/lib/srm/register-category-url";
 import { SupplierCapabilitiesSection } from "@/components/supplier-capabilities-section";
@@ -343,11 +344,18 @@ export function SupplierDetailClient({
     setDocumentsRegisterCategory(focus ?? null);
     if (isSrmShell) {
       setSrmTabState("documents");
-      const q = new URLSearchParams(searchParams.toString());
-      q.set("tab", "documents");
-      if (focus) q.set(SRM_REGISTER_CATEGORY_QUERY, focus);
-      else q.delete(SRM_REGISTER_CATEGORY_QUERY);
-      const s = q.toString();
+      const s = mergeDocumentsWorkspaceQuery({
+        currentSearch: searchParams.toString(),
+        mode: "srm-documents-tab",
+        focus: focus ?? null,
+      });
+      void router.replace(s ? `${pathname}?${s}` : pathname, { scroll: false });
+    } else if (focus) {
+      const s = mergeDocumentsWorkspaceQuery({
+        currentSearch: searchParams.toString(),
+        mode: "register-only",
+        focus,
+      });
       void router.replace(s ? `${pathname}?${s}` : pathname, { scroll: false });
     } else {
       window.requestAnimationFrame(() =>
