@@ -1325,12 +1325,18 @@ export async function handleControlTowerPost(
   }
 
   if (action === "enrich_ct_demo_tracking") {
+    const singleShipmentId =
+      typeof body.shipmentId === "string" && body.shipmentId.trim() ? body.shipmentId.trim() : "";
+    if (singleShipmentId && !(await assertShipmentTenant(singleShipmentId, tenantId))) {
+      return bad("Shipment not found", 404);
+    }
     const takeRaw = Number(body.take);
     const take = Number.isFinite(takeRaw) ? Math.max(1, Math.min(400, Math.floor(takeRaw))) : 120;
     const shipments = await prisma.shipment.findMany({
-      where: { order: { tenantId } },
-      orderBy: { updatedAt: "desc" },
-      take,
+      where: singleShipmentId
+        ? { id: singleShipmentId, order: { tenantId } }
+        : { order: { tenantId } },
+      ...(singleShipmentId ? {} : { orderBy: { updatedAt: "desc" as const }, take }),
       select: {
         id: true,
         status: true,
@@ -1455,16 +1461,23 @@ export async function handleControlTowerPost(
       shipmentsUpdated,
       legsCreated,
       milestonesCreated,
+      ...(singleShipmentId ? { targetedShipmentId: singleShipmentId } : {}),
     });
   }
 
   if (action === "regenerate_ct_demo_timeline") {
+    const singleShipmentId =
+      typeof body.shipmentId === "string" && body.shipmentId.trim() ? body.shipmentId.trim() : "";
+    if (singleShipmentId && !(await assertShipmentTenant(singleShipmentId, tenantId))) {
+      return bad("Shipment not found", 404);
+    }
     const takeRaw = Number(body.take);
     const take = Number.isFinite(takeRaw) ? Math.max(1, Math.min(500, Math.floor(takeRaw))) : 240;
     const shipments = await prisma.shipment.findMany({
-      where: { order: { tenantId } },
-      orderBy: { updatedAt: "desc" },
-      take,
+      where: singleShipmentId
+        ? { id: singleShipmentId, order: { tenantId } }
+        : { order: { tenantId } },
+      ...(singleShipmentId ? {} : { orderBy: { updatedAt: "desc" as const }, take }),
       select: {
         id: true,
         status: true,
@@ -1483,8 +1496,16 @@ export async function handleControlTowerPost(
       const s = shipments[i];
       const shippedMs = s.shippedAt.getTime();
       const baseEta = s.expectedReceiveAt ?? new Date(shippedMs + 8 * 86_400_000);
-      const bucket = i % 10;
-      const profile: "delayed" | "at_risk" | "on_time" = bucket < 3 ? "delayed" : bucket < 6 ? "at_risk" : "on_time";
+      const dp = body.demoProfile;
+      const profile: "delayed" | "at_risk" | "on_time" = singleShipmentId
+        ? dp === "delayed" || dp === "at_risk" || dp === "on_time"
+          ? dp
+          : "at_risk"
+        : i % 10 < 3
+          ? "delayed"
+          : i % 10 < 6
+            ? "at_risk"
+            : "on_time";
       const etaShiftDays = profile === "delayed" ? 2 : profile === "at_risk" ? 1 : -1;
       const eta = new Date(baseEta.getTime() + etaShiftDays * 86_400_000);
       const leg1Etd = new Date(shippedMs - 8 * 3_600_000);
@@ -1586,7 +1607,15 @@ export async function handleControlTowerPost(
       else if (profile === "at_risk") atRisk += 1;
       else onTime += 1;
     }
-    return NextResponse.json({ ok: true, scanned: shipments.length, updated, delayed, atRisk, onTime });
+    return NextResponse.json({
+      ok: true,
+      scanned: shipments.length,
+      updated,
+      delayed,
+      atRisk,
+      onTime,
+      ...(singleShipmentId ? { targetedShipmentId: singleShipmentId } : {}),
+    });
   }
 
   const TRANSPORT: TransportMode[] = ["OCEAN", "AIR", "ROAD", "RAIL"];

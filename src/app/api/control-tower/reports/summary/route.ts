@@ -7,6 +7,7 @@ import { getDemoTenant } from "@/lib/demo-tenant";
 
 export const dynamic = "force-dynamic";
 
+/** Deep reporting KPIs for `/control-tower/reports` (see `getControlTowerReportsSummary`). Hub tiles use `GET …/overview` instead. */
 export async function GET() {
   const gate = await requireApiGrant("org.controltower", "view");
   if (gate) return gate;

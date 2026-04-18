@@ -1,4 +1,5 @@
 import { getActorUserId } from "@/lib/authz";
+import { ControlTowerReportingHubWorkbenchLinks } from "@/components/control-tower-reporting-hub-workbench-links";
 import { getControlTowerOpsSummary } from "@/lib/control-tower/ops-summary";
 import { getControlTowerPortalContext } from "@/lib/control-tower/viewer";
 import { getDemoTenant } from "@/lib/demo-tenant";
@@ -30,6 +31,7 @@ export default async function ControlTowerOpsPage({
   return (
     <main className="mx-auto w-full max-w-7xl px-6 py-10">
       <header className="mb-6">
+        <ControlTowerReportingHubWorkbenchLinks />
         <h1 className="text-2xl font-semibold text-zinc-900">Ops console</h1>
         <p className="mt-1 text-sm text-zinc-600">
           Guardrails and control-plane view for SLA automation, owner balancing, exception lifecycle, and collaboration

@@ -26,6 +26,14 @@ function isProbableCuid(s: string): boolean {
   return s.length >= 20 && s.length <= 32 && /^c[a-z0-9]+$/i.test(s);
 }
 
+/** Sanitized token for `CtException.type`, `CtAlert.type`, etc. (alphanumeric + `._-`, max 80). */
+function parseControlTowerTokenFilter(raw: string | undefined | null): string | undefined {
+  if (raw == null) return undefined;
+  const t = raw.trim().slice(0, 80);
+  if (!t || !/^[\w.-]+$/i.test(t)) return undefined;
+  return t;
+}
+
 export type ListShipmentsQuery = {
   status?: ShipmentStatus | "";
   mode?: TransportMode | "";
@@ -50,6 +58,10 @@ export type ListShipmentsQuery = {
   destinationCode?: string;
   /** PO-linked operational flow vs ad-hoc export shell order flow. */
   shipmentSource?: "PO" | "UNLINKED" | "";
+  /** Open / in-progress `CtException.type` equals this catalog-style code (case-insensitive). */
+  exceptionCode?: string;
+  /** Open / acknowledged `CtAlert.type` equals this string (case-insensitive). */
+  alertType?: string;
   minRouteProgressPct?: number;
   maxRouteProgressPct?: number;
 };
@@ -322,11 +334,21 @@ function mapShipmentListRow(s: ShipmentListCore | ShipmentListInternal) {
   };
 }
 
+export type ControlTowerShipmentListRow = ReturnType<typeof mapShipmentListRow>;
+
+export type ListControlTowerShipmentsResult = {
+  rows: ControlTowerShipmentListRow[];
+  /** Max rows returned after route-action / progress post-filters (`query.take` clamped 1–200, default 80). */
+  listLimit: number;
+  /** True when the list is full at `listLimit` and more rows may exist. */
+  truncated: boolean;
+};
+
 export async function listControlTowerShipments(params: {
   tenantId: string;
   ctx: ControlTowerPortalContext;
   query: ListShipmentsQuery;
-}) {
+}): Promise<ListControlTowerShipmentsResult> {
   const { tenantId, ctx, query } = params;
   const rawTake = query.take;
   const requestedTake =
@@ -493,6 +515,30 @@ export async function listControlTowerShipments(params: {
     });
   }
 
+  const exceptionCode = parseControlTowerTokenFilter(query.exceptionCode);
+  if (exceptionCode) {
+    ands.push({
+      ctExceptions: {
+        some: {
+          status: { in: ["OPEN", "IN_PROGRESS"] },
+          type: { equals: exceptionCode, mode: "insensitive" },
+        },
+      },
+    });
+  }
+
+  const alertType = parseControlTowerTokenFilter(query.alertType);
+  if (alertType) {
+    ands.push({
+      ctAlerts: {
+        some: {
+          status: { in: ["OPEN", "ACKNOWLEDGED"] },
+          type: { equals: alertType, mode: "insensitive" },
+        },
+      },
+    });
+  }
+
   if (ands.length) {
     where.AND = ands;
   }
@@ -522,7 +568,12 @@ export async function listControlTowerShipments(params: {
       orderBy,
       select: listSelectCore,
     });
-    return postFilter(rows.map(mapShipmentListRow));
+    const mapped = postFilter(rows.map(mapShipmentListRow));
+    return {
+      rows: mapped,
+      listLimit: requestedTake,
+      truncated: mapped.length >= requestedTake,
+    };
   }
 
   const rows = await prisma.shipment.findMany({
@@ -537,5 +588,10 @@ export async function listControlTowerShipments(params: {
     shipmentIds: rows.map((r) => r.id),
   });
 
-  return postFilter(rows.map(mapShipmentListRow));
+  const mapped = postFilter(rows.map(mapShipmentListRow));
+  return {
+    rows: mapped,
+    listLimit: requestedTake,
+    truncated: mapped.length >= requestedTake,
+  };
 }

@@ -1,4 +1,5 @@
 import type { CtRunReportResult } from "@/lib/control-tower/report-engine";
+import { formatReportDateWindowLine, metricLabel } from "@/lib/control-tower/report-labels";
 
 const MEASURE_LABELS: Record<string, string> = {
   shipments: "Shipments",
@@ -24,12 +25,23 @@ export function buildReportInsightContext(result: CtRunReportResult, question: s
     label: truncate(r.label, 80),
     value: Number(r.metrics[m] ?? 0),
   }));
+  const cm = result.config.compareMeasure;
+  const dateWindowLine = formatReportDateWindowLine({
+    dateField: result.config.dateField,
+    dateFrom: result.config.dateFrom,
+    dateTo: result.config.dateTo,
+  });
   return {
     title: result.config.title ?? null,
     dimension: result.config.dimension,
     measure: m,
     measureLabel,
+    compareMeasure: cm,
+    compareMeasureLabel: cm ? metricLabel(cm) : null,
     dateField: result.config.dateField,
+    dateFrom: result.config.dateFrom,
+    dateTo: result.config.dateTo,
+    dateWindowLine,
     topN: result.config.topN,
     rowCount: result.rows.length,
     fullSeriesRowCount: result.fullSeriesRows.length,
@@ -68,6 +80,7 @@ export async function runReportInsightLlm(params: {
     "If data is sparse or zeros dominate, say so and suggest what to filter or check next.",
     "Do not invent numbers; only interpret what is given.",
     "If the user asked a specific question, answer it first, then add brief context.",
+    "When dateWindowLine is present, treat it as the report's date-field filter; do not assume a wider calendar range.",
   ].join(" ");
 
   const user = JSON.stringify(ctx);

@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { WorkbenchDrillLink } from "@/components/workbench-drill-link";
+import { dimensionLabel, metricLabel } from "@/lib/control-tower/report-labels";
+import type { ReportInsightRunSummary } from "@/lib/control-tower/report-run-summary";
 
 const CT_REPORT_MEASURES = [
   "shipments",
@@ -50,6 +52,8 @@ export type CtDashboardWidgetReport = {
   coverage?: CtReportCoverage;
   totals?: Record<string, number>;
   generatedAt: string;
+  /** Present when loaded from `GET …/dashboard/widgets` or aligned run payloads. */
+  runSummary?: ReportInsightRunSummary;
 };
 
 export function formatDecimal(value: number, frac = 2): string {
@@ -120,28 +124,7 @@ export function tableRowsFromReport(report: CtDashboardWidgetReport) {
   return report.fullSeriesRows?.length ? report.fullSeriesRows : report.rows;
 }
 
-export function metricLabel(measure: string): string {
-  if (measure === "onTimePct") return "On-time %";
-  if (measure === "shippingSpend") return "Shipping spend (est.)";
-  if (measure === "avgDelayDays") return "Avg delay (days)";
-  if (measure === "volumeCbm") return "Volume (CBM)";
-  if (measure === "weightKg") return "Weight (kg)";
-  return "Shipments";
-}
-
-export function dimensionLabel(dimension: string): string {
-  if (dimension === "lane") return "Lane (origin → destination)";
-  if (dimension === "carrier") return "Carrier / forwarder";
-  if (dimension === "customer") return "Customer";
-  if (dimension === "supplier") return "Supplier (PO)";
-  if (dimension === "origin") return "Origin";
-  if (dimension === "destination") return "Destination";
-  if (dimension === "month") return "Month";
-  if (dimension === "mode") return "Mode";
-  if (dimension === "status") return "Status";
-  if (dimension === "none") return "All";
-  return "Category";
-}
+export { dimensionLabel, metricLabel };
 
 /** Line charts are meaningful for time (month); categorical dimensions use bars. */
 function chartViewFromConfig(chartType: string | undefined, dimension: string): ChartViewMode {
@@ -601,6 +584,7 @@ export function ControlTowerDashboardWidgetModal(props: {
   });
   const [insightQuestion, setInsightQuestion] = useState("");
   const [insightText, setInsightText] = useState<string | null>(null);
+  const [insightRunSummary, setInsightRunSummary] = useState<ReportInsightRunSummary | null>(null);
   const [insightBusy, setInsightBusy] = useState(false);
   const [insightErr, setInsightErr] = useState<string | null>(null);
   const rowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
@@ -665,6 +649,7 @@ export function ControlTowerDashboardWidgetModal(props: {
     }
     setInsightBusy(true);
     setInsightErr(null);
+    setInsightRunSummary(null);
     try {
       const res = await fetch("/api/control-tower/reports/insight", {
         method: "POST",
@@ -674,12 +659,23 @@ export function ControlTowerDashboardWidgetModal(props: {
           question: insightQuestion.trim() || undefined,
         }),
       });
-      const data = (await res.json()) as { insight?: string; error?: string };
-      if (!res.ok) throw new Error(data.error || res.statusText);
+      const data = (await res.json()) as {
+        insight?: string;
+        error?: string;
+        runSummary?: ReportInsightRunSummary;
+      };
+      if (!res.ok) {
+        setInsightText(null);
+        setInsightRunSummary(data.runSummary ?? null);
+        setInsightErr(data.error || res.statusText);
+        return;
+      }
       setInsightText(data.insight ?? "");
+      setInsightRunSummary(data.runSummary ?? null);
     } catch (e) {
       setInsightErr(e instanceof Error ? e.message : "Insight failed.");
       setInsightText(null);
+      setInsightRunSummary(null);
     } finally {
       setInsightBusy(false);
     }
@@ -718,6 +714,14 @@ export function ControlTowerDashboardWidgetModal(props: {
             <p className="mt-1 text-xs text-zinc-600">
               {metricLabel(measureKey)} · {dimLabel}
             </p>
+            {report.runSummary?.dateWindowLine ? (
+              <p className="mt-1 text-[11px] text-zinc-500">{report.runSummary.dateWindowLine}</p>
+            ) : null}
+            {report.runSummary?.compareMeasureLabel ? (
+              <p className="mt-1 text-[11px] text-zinc-500">
+                Compare: {report.runSummary.compareMeasureLabel}
+              </p>
+            ) : null}
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-2">
             <div className="inline-flex rounded-lg border border-zinc-200 bg-zinc-50/80 p-0.5 text-xs shadow-sm">
@@ -910,6 +914,31 @@ export function ControlTowerDashboardWidgetModal(props: {
             {insightBusy ? "Generating…" : "Get AI insight"}
           </button>
           {insightErr ? <p className="mt-2 text-xs text-red-700">{insightErr}</p> : null}
+          {insightRunSummary ? (
+            <div className="mt-2 space-y-0.5 rounded border border-violet-100/80 bg-white/90 px-2.5 py-2 text-[11px] leading-snug text-violet-950/90">
+              {insightRunSummary.title ? (
+                <p>
+                  <span className="font-semibold">Report:</span> {insightRunSummary.title}
+                </p>
+              ) : null}
+              <p>
+                <span className="font-semibold">Scope:</span> {insightRunSummary.measureLabel} ·{" "}
+                {insightRunSummary.dimensionLabel}
+              </p>
+              {insightRunSummary.dateWindowLine ? <p>{insightRunSummary.dateWindowLine}</p> : null}
+              {insightRunSummary.compareMeasureLabel ? (
+                <p>
+                  <span className="font-semibold">Compare:</span> {insightRunSummary.compareMeasureLabel}
+                </p>
+              ) : null}
+              <p className="text-violet-900/85">
+                <span className="font-semibold">Coverage:</span>{" "}
+                {insightRunSummary.coverage.shipmentsAggregated} aggregated ·{" "}
+                {insightRunSummary.coverage.totalShipmentsQueried} queried ·{" "}
+                {insightRunSummary.coverage.excludedByDateOrMissingDateField} excluded (date / field)
+              </p>
+            </div>
+          ) : null}
           {insightText ? (
             <div className="mt-2 whitespace-pre-wrap rounded border border-violet-100 bg-white px-2 py-2 text-sm text-zinc-800">
               {insightText}

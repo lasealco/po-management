@@ -64,6 +64,7 @@ model Tenant {
   ctContainerCargoLines CtContainerCargoLine[]
   ctExceptionCodes      CtExceptionCode[]
   locationCodes         LocationCode[]
+  ctReportSchedules     CtReportSchedule[]
 }
 
 /// Tenant-scoped milestone template packs (override or extend built-in packs in code).
@@ -130,6 +131,7 @@ model User {
   ctSavedFilters CtSavedFilter[]
   ctSavedReports CtSavedReport[]
   ctDashboardWidgets CtDashboardWidget[]
+  ctReportSchedules CtReportSchedule[]
   ctShipmentCostLinesCreated CtShipmentCostLine[]
   shipmentsOpsAssigned       Shipment[] @relation("ShipmentOpsAssignee")
   /// When set, Control Tower (and similar) list/detail is limited to shipments tagged with this CRM account.
@@ -1064,6 +1066,34 @@ enum ReportDataset {
   WMS
 }
 
+enum CtReportScheduleFrequency {
+  DAILY
+  WEEKLY
+}
+
+model CtReportSchedule {
+  id             String                    @id @default(cuid())
+  tenantId       String
+  userId         String
+  savedReportId  String
+  recipientEmail String                    @db.VarChar(320)
+  frequency      CtReportScheduleFrequency
+  hourUtc        Int
+  /// 0 = Sunday … 6 = Saturday (UTC). Required when frequency is WEEKLY; must be null when DAILY.
+  dayOfWeek      Int?
+  isActive       Boolean                   @default(true)
+  lastRunAt      DateTime?
+  lastError      String?                   @db.Text
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+
+  tenant      Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  savedReport CtSavedReport @relation(fields: [savedReportId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, isActive, hourUtc])
+}
+
 model CtSavedReport {
   id          String         @id @default(cuid())
   tenantId    String
@@ -1079,6 +1109,7 @@ model CtSavedReport {
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   dashboardWidgets CtDashboardWidget[]
+  reportSchedules  CtReportSchedule[]
 
   @@index([tenantId, userId, createdAt])
   @@index([tenantId, isShared, createdAt])

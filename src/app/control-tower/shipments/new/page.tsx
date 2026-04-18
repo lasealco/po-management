@@ -1,8 +1,9 @@
 import Link from "next/link";
 
-import { getViewerGrantSet, viewerHas } from "@/lib/authz";
-import { WorkflowHeader } from "@/components/workflow-header";
 import { ControlTowerNewShipment } from "@/components/control-tower-new-shipment";
+import { ControlTowerReportingHubWorkbenchLinks } from "@/components/control-tower-reporting-hub-workbench-links";
+import { WorkflowHeader } from "@/components/workflow-header";
+import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
 
@@ -55,6 +56,9 @@ export default async function ControlTowerNewShipmentPage() {
   return (
     <main className="mx-auto w-full max-w-3xl px-6 py-10">
       <header className="mb-8">
+        <div className="mb-4">
+          <ControlTowerReportingHubWorkbenchLinks className="flex flex-wrap gap-4 text-sm" />
+        </div>
         <WorkflowHeader
           eyebrow="Control Tower"
           title="New booking request"

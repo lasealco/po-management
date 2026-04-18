@@ -43,6 +43,7 @@ export function AppNav({
   const poActive =
     pathname === "/orders" ||
     pathname.startsWith("/orders/") ||
+    pathname.startsWith("/product-trace") ||
     pathname.startsWith("/consolidation") ||
     pathname.startsWith("/products");
 

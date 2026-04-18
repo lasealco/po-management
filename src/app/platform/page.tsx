@@ -69,7 +69,7 @@ export default async function PlatformHomePage() {
     modules.push({
       href: "/control-tower",
       title: "Control Tower",
-      description: "Shipments, workbench, and logistics visibility.",
+      description: "Shipments, workbench, digest list, alerts, and reporting.",
     });
   }
   if (v?.wms) {

@@ -10,6 +10,10 @@
     {
       "path": "/api/cron/control-tower-fx-refresh",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/control-tower-report-schedules",
+      "schedule": "5 * * * *"
     }
   ]
 }

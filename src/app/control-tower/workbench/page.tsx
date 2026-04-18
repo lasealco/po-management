@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { getActorUserId, getViewerGrantSet, viewerHas } from "@/lib/authz";
+import { ControlTowerReportingHubWorkbenchLinks } from "@/components/control-tower-reporting-hub-workbench-links";
 import { ControlTowerWorkbench } from "@/components/control-tower-workbench";
 import { getControlTowerPortalContext } from "@/lib/control-tower/viewer";
 import { getDemoTenant } from "@/lib/demo-tenant";
@@ -50,24 +51,31 @@ export default async function ControlTowerWorkbenchPage() {
             : null}
           </p>
         </div>
-        {!ctx.isRestrictedView ? (
-          <div className="flex shrink-0 gap-2">
-            <Link
-              href="/sales-orders"
-              className="inline-flex items-center justify-center rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
-            >
-              Sales orders
-            </Link>
-            {canEdit ? (
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <ControlTowerReportingHubWorkbenchLinks
+            variant="button"
+            buttonSize="md"
+            includeWorkbench={false}
+          />
+          {!ctx.isRestrictedView ? (
+            <>
               <Link
-                href="/control-tower/shipments/new"
-                className="inline-flex items-center justify-center rounded-lg bg-arscmp-primary px-4 py-2 text-sm font-medium text-white hover:bg-arscmp-primary-700"
+                href="/sales-orders"
+                className="inline-flex items-center justify-center rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
               >
-                New booking
+                Sales orders
               </Link>
-            ) : null}
-          </div>
-        ) : null}
+              {canEdit ? (
+                <Link
+                  href="/control-tower/shipments/new"
+                  className="inline-flex items-center justify-center rounded-lg bg-arscmp-primary px-4 py-2 text-sm font-medium text-white hover:bg-arscmp-primary-700"
+                >
+                  New booking
+                </Link>
+              ) : null}
+            </>
+          ) : null}
+        </div>
       </header>
       <ControlTowerWorkbench
         canEdit={canEdit}

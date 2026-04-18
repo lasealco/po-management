@@ -25,6 +25,7 @@ const ROUTE_HINTS: HelpAction[] = [
   { label: "Control Tower home", href: "/control-tower" },
   { label: "Control Tower workbench", href: "/control-tower/workbench" },
   { label: "Control Tower reports", href: "/control-tower/reports" },
+  { label: "Product trace", href: "/product-trace" },
   { label: "Reporting hub", href: "/reporting" },
   { label: "Login", href: "/login" },
 ];
@@ -78,12 +79,34 @@ function fallbackReply(message: string): HelpReply {
         label: "Open workbench",
         payload: { path: "/control-tower/workbench", guide: matched.id, step: 1 },
       });
+      doActions.push({
+        type: "open_path",
+        label: "Open shipment digest",
+        payload: { path: "/control-tower/digest", guide: matched.id, step: 5 },
+      });
     }
     if (matched.id === "reporting_hub") {
       doActions.push({
         type: "open_path",
         label: "Open Reporting hub",
         payload: { path: "/reporting", guide: matched.id, step: 0 },
+      });
+      doActions.push({
+        type: "open_path",
+        label: "Reporting hub — Control Tower section",
+        payload: { path: "/reporting", focus: "control-tower", guide: matched.id, step: 0 },
+      });
+    }
+    if (matched.id === "product_trace") {
+      doActions.push({
+        type: "open_path",
+        label: "Open Product trace",
+        payload: { path: "/product-trace", guide: matched.id, step: 0 },
+      });
+      doActions.push({
+        type: "open_path",
+        label: "Open demo SKU on map",
+        payload: { path: "/product-trace", q: "PKG-CORR-ROLL", guide: matched.id, step: 1 },
       });
     }
     return {
@@ -101,7 +124,7 @@ function fallbackReply(message: string): HelpReply {
   }
   return {
     answer:
-      "I can guide you through orders, suppliers, consolidation, Control Tower, the Reporting hub (cockpit, refresh shortcuts), and user administration. Try asking: 'I want to create an order', 'How do I refresh the reporting cockpit?', or 'How do I build a consolidation load?'",
+      "I can guide you through orders, suppliers, consolidation, Control Tower, product trace (SKU → map), the Reporting hub (cockpit, refresh shortcuts), and user administration. Try asking: 'I want to create an order', 'How do I trace a SKU on the map?', or 'How do I build a consolidation load?'",
     playbook: null,
     suggestions: HELP_PLAYBOOKS.map((p) => p.title),
     actions: ROUTE_HINTS.slice(0, 4),
@@ -152,7 +175,10 @@ export async function buildHelpReply(params: {
     "Allowed doActions types:",
     "- open_order: payload { orderNumber: string, focus?: 'workflow'|'asn'|'chat'|'split', guide?: playbook id, step?: number }",
     "- open_orders_queue: payload { queue: 'all'|'needs_my_action'|'waiting_on_me'|'awaiting_supplier'|'overdue'|'split_pending_buyer', guide?, step? }",
-    "- open_path: payload { path: '/platform'|'/orders'|'/consolidation'|'/suppliers'|'/settings/users'|'/settings/warehouses'|'/login'|'/catalog'|'/products'|'/reporting'|'/reports'|'/crm/reporting'|'/wms/reporting'|'/control-tower'|'/control-tower/workbench'|'/control-tower/reports'|'/control-tower/search'|'/control-tower/dashboard'|'/control-tower/command-center'|'/control-tower/ops', guide?, step? }",
+    "- open_path: payload { path: '…', guide?, step?, q?, focus? }",
+    "Paths: '/platform'|'/orders'|'/consolidation'|'/suppliers'|'/settings/users'|'/settings/warehouses'|'/login'|'/catalog'|'/products'|'/product-trace'|'/reporting'|'/reports'|'/crm/reporting'|'/wms/reporting'|'/control-tower'|'/control-tower/workbench'|'/control-tower/digest'|'/control-tower/reports'|'/control-tower/search'|'/control-tower/dashboard'|'/control-tower/command-center'|'/control-tower/ops'.",
+    "For path '/product-trace' only, optional q is a SKU or product code (alphanumeric, dots, underscores, hyphens; max 64 chars).",
+    "For path '/reporting' only, optional focus is 'po'|'control-tower'|'crm'|'wms' (scrolls the hub to that module card).",
     "Use demo PO-1004 only as a known example order number when suggesting open_order.",
     "Do not invent unavailable pages or arbitrary paths.",
     "Reporting hub (/reporting): Cockpit board supports Refresh data, optional Auto-refresh (5/10/15 min, pauses when the tab is hidden, catch-up when returning), R to refresh when focus is not in an input/textarea/select, Shift+R for silent refresh. Command palette lists the Reporting hub with the same shortcut hints.",

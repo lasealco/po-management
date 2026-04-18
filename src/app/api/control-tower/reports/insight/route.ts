@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { runReportInsightLlm } from "@/lib/control-tower/report-insight-llm";
+import { buildReportInsightRunSummary } from "@/lib/control-tower/report-run-summary";
 import { runControlTowerReport, sanitizeCtReportConfig } from "@/lib/control-tower/report-engine";
 import { getControlTowerPortalContext } from "@/lib/control-tower/viewer";
 import { getDemoTenant } from "@/lib/demo-tenant";
@@ -42,7 +43,18 @@ export async function POST(request: Request) {
   });
 
   if ("error" in out) {
-    return NextResponse.json({ error: out.error }, { status: 503 });
+    return NextResponse.json(
+      {
+        error: out.error,
+        generatedAt: result.generatedAt,
+        runSummary: buildReportInsightRunSummary(result),
+      },
+      { status: 503 },
+    );
   }
-  return NextResponse.json({ insight: out.insight, generatedAt: result.generatedAt });
+  return NextResponse.json({
+    insight: out.insight,
+    generatedAt: result.generatedAt,
+    runSummary: buildReportInsightRunSummary(result),
+  });
 }

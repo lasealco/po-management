@@ -2,7 +2,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
 
 import { NextResponse } from "next/server";
 
-import { writeCtAudit } from "@/lib/control-tower/audit";
+import { processControlTowerInboundWebhook } from "@/lib/control-tower/inbound-webhook";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
 
@@ -16,16 +16,22 @@ function constantTimeEqString(a: string, b: string): boolean {
 }
 
 /**
- * Minimal inbound integration stub: verifies a shared secret and appends a
- * tenant-scoped `CtAuditLog` row (optionally tied to a shipment).
+ * Inbound integration: verifies a shared secret, optional **idempotent** processing,
+ * optional **`CtTrackingMilestone`** upsert (`sourceType: INTEGRATION`), and an
+ * `EXTERNAL_WEBHOOK` audit row.
  *
  * Auth: `Authorization: Bearer <CONTROL_TOWER_INBOUND_WEBHOOK_SECRET>` or
  * header `x-ct-inbound-secret: <secret>`.
  *
- * Body JSON:
- * - `event` (string, optional, default "inbound_webhook") — stored as audit action
- * - `shipmentId` (string, optional) — must belong to demo tenant when set
- * - `note` (string, optional) — truncated, stored in audit payload
+ * Body JSON (see `processControlTowerInboundWebhook` in `@/lib/control-tower/inbound-webhook`):
+ * - `idempotencyKey` (optional) — replays return `idempotentReplay: true` and the first response body.
+ * - `payloadFormat` — `canonical` (default), `generic_carrier_v1`, **`carrier_webhook_v1`**, **`tms_event_v1`**, or **`visibility_flat_v1`**.
+ * - `event`, `shipmentId`, `note` — same as the original stub.
+ * - `milestone` (canonical only) — `{ code, actualAt?, plannedAt?, predictedAt?, label?, notes?, sourceRef? }`.
+ * - `carrierPayload` (`generic_carrier_v1`) — `{ shipment_id, event_code, event_time, message?, external_ref? }`.
+ * - `data` (`carrier_webhook_v1`) — non-empty array (default max **50** rows, override env **`CONTROL_TOWER_INBOUND_CARRIER_WEBHOOK_MAX_ROWS`** up to **200**); each element is read like `carrierPayload` (`shipment_id` \| `shipmentId`, `event_code` \| `eventCode`, `event_time` \| `eventTime` \| `occurredAt`, optional `message`, `external_ref` \| `externalRef`). Response includes `rows[]` per index and **`maxBatchRows`** (resolved cap); top-level `shipmentId` / `milestoneId` mirror the first successful row. **400** when every row fails (same spirit as invalid single-row payloads). With `idempotencyKey`, each row uses key suffix `:index` for milestone dedupe; replay is stored only on **200**.
+ * - `tmsPayload` (`tms_event_v1`) — `{ shipmentId|shipment_id, milestoneCode|milestone_code|eventType|event_type, actualAt|event_timestamp|occurred_at, plannedAt?, predictedAt?, label?, remarks|message?, correlationId|transaction_id? }`.
+ * - `visibilityPayload` (`visibility_flat_v1`) — flat partner object: `shipmentId|shipment_id|shipmentCuid`, code via `milestoneCode|event_code|statusCode`, time via `occurredAt|event_time|timestamp|visibilityTimestamp`, optional `plannedAt`, `predictedAt`, `label`, `description|remarks|message`, `trackingId|correlationId` as source ref.
  */
 export async function POST(request: Request) {
   const secret = process.env.CONTROL_TOWER_INBOUND_WEBHOOK_SECRET?.trim();
@@ -56,21 +62,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
   const obj = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
-  const event = typeof obj.event === "string" && obj.event.trim() ? obj.event.trim().slice(0, 120) : "inbound_webhook";
-  const shipmentId = typeof obj.shipmentId === "string" ? obj.shipmentId.trim() : "";
-  const note = typeof obj.note === "string" ? obj.note.trim().slice(0, 4000) : "";
-
-  let shipmentScoped: string | null = null;
-  if (shipmentId) {
-    const row = await prisma.shipment.findFirst({
-      where: { id: shipmentId, order: { tenantId: tenant.id } },
-      select: { id: true },
-    });
-    if (!row) {
-      return NextResponse.json({ error: "Shipment not found for this tenant." }, { status: 404 });
-    }
-    shipmentScoped = row.id;
-  }
 
   const actor = await prisma.user.findFirst({
     where: { tenantId: tenant.id, isActive: true },
@@ -81,19 +72,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No active user in tenant to attribute audit entry." }, { status: 500 });
   }
 
-  const entityId = `wh_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
-  await writeCtAudit({
+  const out = await processControlTowerInboundWebhook({
     tenantId: tenant.id,
-    shipmentId: shipmentScoped,
-    entityType: "EXTERNAL_WEBHOOK",
-    entityId,
-    action: event,
     actorUserId: actor.id,
-    payload: {
-      note: note || undefined,
-      receivedAt: new Date().toISOString(),
-    },
+    body: obj,
   });
-
-  return NextResponse.json({ ok: true, entityId, shipmentId: shipmentScoped });
+  return NextResponse.json(out.body, { status: out.status });
 }

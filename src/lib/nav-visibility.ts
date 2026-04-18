@@ -22,6 +22,8 @@ export type PoMgmtSubNavVisibility = {
   orders: boolean;
   consolidation: boolean;
   products: boolean;
+  /** Same gate as orders (org.orders → view). */
+  productTrace: boolean;
   suppliers: boolean;
 };
 
@@ -89,15 +91,22 @@ export async function resolveNavState(access: ViewerAccess | null): Promise<{
     );
 
   const poSubNavVisibility: PoMgmtSubNavVisibility = setupIncomplete
-    ? { orders: true, consolidation: true, products: true, suppliers: false }
+    ? { orders: true, consolidation: true, products: true, productTrace: true, suppliers: false }
     : linkVisibility
       ? {
           orders: linkVisibility.orders,
           consolidation: linkVisibility.consolidation && !isSupplierPortalUser,
           products: linkVisibility.products,
+          productTrace: linkVisibility.orders,
           suppliers: false,
         }
-      : { orders: false, consolidation: false, products: false, suppliers: false };
+      : {
+          orders: false,
+          consolidation: false,
+          products: false,
+          productTrace: false,
+          suppliers: false,
+        };
 
   return { linkVisibility, setupIncomplete, poSubNavVisibility };
 }

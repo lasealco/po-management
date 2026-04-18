@@ -255,6 +255,8 @@ function workbenchUrlHasSearchFilters(sp: URLSearchParams): boolean {
       (sp.get("customerCrmAccountId") ?? "").trim() ||
       (sp.get("originCode") ?? "").trim() ||
       (sp.get("destinationCode") ?? "").trim() ||
+      (sp.get("exceptionCode") ?? "").trim() ||
+      (sp.get("alertType") ?? "").trim() ||
       (sp.get("shipmentSource") ?? "").trim() ||
       (sp.get("onlyOverdueEta") ?? "").trim() ||
       (sp.get("routeAction") ?? "").trim() ||
@@ -305,10 +307,14 @@ function ControlTowerWorkbenchInner({
   const [customerCrmAccountIdFilter, setCustomerCrmAccountIdFilter] = useState("");
   const [originCodeFilter, setOriginCodeFilter] = useState("");
   const [destinationCodeFilter, setDestinationCodeFilter] = useState("");
+  const [exceptionCodeFilter, setExceptionCodeFilter] = useState("");
+  const [alertTypeFilter, setAlertTypeFilter] = useState("");
   const [shipmentSource, setShipmentSource] = useState<"" | "PO" | "UNLINKED">("");
   /** False until client layout reads `?q=` / filters from the URL (avoids a stale first fetch). */
   const [filtersReady, setFiltersReady] = useState(false);
   const [rows, setRows] = useState<Row[]>([]);
+  const [listTruncated, setListTruncated] = useState(false);
+  const [listLimit, setListLimit] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
@@ -358,6 +364,8 @@ function ControlTowerWorkbenchInner({
     setCustomerCrmAccountIdFilter(s.customerCrmAccountIdFilter);
     setOriginCodeFilter(s.originCodeFilter);
     setDestinationCodeFilter(s.destinationCodeFilter);
+    setExceptionCodeFilter(s.exceptionCodeFilter);
+    setAlertTypeFilter(s.alertTypeFilter);
     setShipmentSource(s.shipmentSource);
     setOwnerFilter(s.ownerFilter);
     setRouteHealth(s.routeHealth);
@@ -381,6 +389,8 @@ function ControlTowerWorkbenchInner({
       customerCrmAccountIdFilter,
       originCodeFilter,
       destinationCodeFilter,
+      exceptionCodeFilter,
+      alertTypeFilter,
       shipmentSource,
       ownerFilter,
       routeHealth,
@@ -401,6 +411,8 @@ function ControlTowerWorkbenchInner({
       customerCrmAccountIdFilter,
       originCodeFilter,
       destinationCodeFilter,
+      exceptionCodeFilter,
+      alertTypeFilter,
       shipmentSource,
       ownerFilter,
       routeHealth,
@@ -445,6 +457,8 @@ function ControlTowerWorkbenchInner({
     setCustomerCrmAccountIdFilter(s.customerCrmAccountIdFilter);
     setOriginCodeFilter(s.originCodeFilter);
     setDestinationCodeFilter(s.destinationCodeFilter);
+    setExceptionCodeFilter(s.exceptionCodeFilter);
+    setAlertTypeFilter(s.alertTypeFilter);
     setShipmentSource(s.shipmentSource);
     setOwnerFilter(s.ownerFilter);
     setRouteHealth(s.routeHealth);
@@ -456,6 +470,8 @@ function ControlTowerWorkbenchInner({
     const myId = ++workbenchRequestId.current;
     setBusy(true);
     setError(null);
+    setListTruncated(false);
+    setListLimit(null);
     try {
       const sp = new URLSearchParams();
       if (status) sp.set("status", status);
@@ -467,6 +483,10 @@ function ControlTowerWorkbenchInner({
       if (customerCrmAccountIdFilter.trim()) sp.set("customerCrmAccountId", customerCrmAccountIdFilter.trim());
       if (originCodeFilter.trim()) sp.set("originCode", originCodeFilter.trim());
       if (destinationCodeFilter.trim()) sp.set("destinationCode", destinationCodeFilter.trim());
+      const excTrim = exceptionCodeFilter.trim();
+      if (excTrim && excTrim.length <= 80 && /^[\w.-]+$/i.test(excTrim)) sp.set("exceptionCode", excTrim);
+      const alertTrim = alertTypeFilter.trim();
+      if (alertTrim && alertTrim.length <= 80 && /^[\w.-]+$/i.test(alertTrim)) sp.set("alertType", alertTrim);
       if (shipmentSource) sp.set("shipmentSource", shipmentSource);
       if (!restrictedView && ownerFilter) sp.set("dispatchOwnerUserId", ownerFilter);
       if (routeHealth === "stalled") {
@@ -483,14 +503,23 @@ function ControlTowerWorkbenchInner({
       if (routeAction) sp.set("routeAction", routeAction);
       sp.set("take", routeAction ? "200" : "150");
       const res = await fetch(`/api/control-tower/shipments?${sp.toString()}`);
-      const data = (await res.json()) as { shipments?: Row[]; error?: string };
+      const data = (await res.json()) as {
+        shipments?: Row[];
+        error?: string;
+        truncated?: boolean;
+        listLimit?: number;
+      };
       if (!res.ok) throw new Error(data.error || res.statusText);
       if (myId !== workbenchRequestId.current) return;
       setRows(data.shipments ?? []);
+      setListTruncated(Boolean(data.truncated));
+      setListLimit(typeof data.listLimit === "number" ? data.listLimit : null);
       setLastRefreshedAt(new Date().toISOString());
     } catch (e) {
       if (myId === workbenchRequestId.current) {
         setError(e instanceof Error ? e.message : "Load failed");
+        setListTruncated(false);
+        setListLimit(null);
       }
     } finally {
       if (myId === workbenchRequestId.current) setBusy(false);
@@ -505,6 +534,8 @@ function ControlTowerWorkbenchInner({
     customerCrmAccountIdFilter,
     originCodeFilter,
     destinationCodeFilter,
+    exceptionCodeFilter,
+    alertTypeFilter,
     shipmentSource,
     ownerFilter,
     routeHealth,
@@ -575,6 +606,8 @@ function ControlTowerWorkbenchInner({
       customerCrmAccountIdFilter?: string;
       originCodeFilter?: string;
       destinationCodeFilter?: string;
+      exceptionCodeFilter?: string;
+      alertTypeFilter?: string;
       shipmentSource?: "" | "PO" | "UNLINKED";
       ownerFilter?: string;
       routeHealth?: string;
@@ -596,6 +629,8 @@ function ControlTowerWorkbenchInner({
     );
     setOriginCodeFilter(typeof o.originCodeFilter === "string" ? o.originCodeFilter : "");
     setDestinationCodeFilter(typeof o.destinationCodeFilter === "string" ? o.destinationCodeFilter : "");
+    setExceptionCodeFilter(typeof o.exceptionCodeFilter === "string" ? o.exceptionCodeFilter : "");
+    setAlertTypeFilter(typeof o.alertTypeFilter === "string" ? o.alertTypeFilter : "");
     setShipmentSource(o.shipmentSource === "PO" || o.shipmentSource === "UNLINKED" ? o.shipmentSource : "");
     setOwnerFilter(typeof o.ownerFilter === "string" ? o.ownerFilter : "");
     setRouteHealth(typeof o.routeHealth === "string" ? o.routeHealth : "");
@@ -632,6 +667,8 @@ function ControlTowerWorkbenchInner({
           customerCrmAccountIdFilter,
           originCodeFilter,
           destinationCodeFilter,
+          exceptionCodeFilter,
+          alertTypeFilter,
           shipmentSource,
           ownerFilter,
           routeHealth,
@@ -814,7 +851,13 @@ function ControlTowerWorkbenchInner({
       return cells.join(",");
     };
 
-    const lines = [hs.join(","), ...filteredRows.map(rowLine)];
+    const meta =
+      listTruncated && listLimit != null
+        ? [
+            `# control-tower-workbench export: list truncated at ${listLimit} rows for current filters; more shipments may match — narrow filters and re-export.`,
+          ]
+        : [];
+    const lines = [...meta, hs.join(","), ...filteredRows.map(rowLine)];
     const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -822,7 +865,7 @@ function ControlTowerWorkbenchInner({
     a.download = `control-tower-shipments-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [filteredRows, colVis, restrictedView]);
+  }, [filteredRows, colVis, restrictedView, listTruncated, listLimit]);
 
   const pageSize = 25;
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
@@ -1033,6 +1076,24 @@ function ControlTowerWorkbenchInner({
             value={destinationCodeFilter}
             onChange={(e) => setDestinationCodeFilter(e.target.value)}
             placeholder="e.g. CLVAP"
+            className="mt-1 block rounded border border-zinc-300 px-2 py-1.5 text-sm"
+          />
+        </label>
+        <label className="text-xs text-zinc-600">
+          Open exception code
+          <input
+            value={exceptionCodeFilter}
+            onChange={(e) => setExceptionCodeFilter(e.target.value)}
+            placeholder="Catalog type on OPEN / IN_PROGRESS"
+            className="mt-1 block rounded border border-zinc-300 px-2 py-1.5 text-sm"
+          />
+        </label>
+        <label className="text-xs text-zinc-600">
+          Open alert type
+          <input
+            value={alertTypeFilter}
+            onChange={(e) => setAlertTypeFilter(e.target.value)}
+            placeholder="e.g. BOOKING_SLA_BREACHED, MANUAL"
             className="mt-1 block rounded border border-zinc-300 px-2 py-1.5 text-sm"
           />
         </label>
@@ -1290,6 +1351,13 @@ function ControlTowerWorkbenchInner({
       <p className="text-xs text-zinc-500">
         Last refreshed: {lastRefreshedAt ? new Date(lastRefreshedAt).toLocaleTimeString() : "—"}
       </p>
+      {listTruncated && listLimit != null ? (
+        <p className="text-xs text-amber-900">
+          Showing up to <strong>{listLimit}</strong> shipments per load; more rows may match these filters. Narrow
+          filters or use <strong>Export CSV</strong> for the visible columns — exports start with a{" "}
+          <code className="rounded bg-amber-100 px-0.5">#</code> comment line when the list is capped.
+        </p>
+      ) : null}
 
       {error ? (
         <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">{error}</p>

@@ -6,6 +6,7 @@ import { ReportsClient } from "@/components/reports-client";
 import { getActorUserId, getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { listReportDefinitions, toReportListItem } from "@/lib/reports/registry";
+import { REPORTING_HUB_FOCUS_PO_HREF } from "@/lib/reporting-hub-paths";
 import { getReportAccessBlocker } from "@/lib/reports/run-report";
 
 export const dynamic = "force-dynamic";
@@ -80,7 +81,7 @@ export default async function ReportsPage({
     <div className="min-h-screen bg-zinc-50">
       <main className="mx-auto max-w-6xl px-6 py-10">
         <p className="mb-3 text-sm">
-          <Link href="/reporting?focus=po" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+          <Link href={REPORTING_HUB_FOCUS_PO_HREF} className="font-medium text-[var(--arscmp-primary)] hover:underline">
             ← All reporting modules
           </Link>
         </p>
@@ -107,7 +108,7 @@ export default async function ReportsPage({
           </div>
           <div className="mt-5 flex flex-wrap gap-3">
             <Link
-              href="/reporting?focus=po"
+              href={REPORTING_HUB_FOCUS_PO_HREF}
               className="inline-flex items-center rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white hover:brightness-95"
             >
               Open reporting hub

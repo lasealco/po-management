@@ -7,6 +7,11 @@ import { getDemoTenant } from "@/lib/demo-tenant";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Control Tower **hub** KPIs for `/control-tower` (see `getControlTowerOverview`).
+ * For the **reports workspace** aggregate (`getControlTowerReportsSummary` — route actions, owner load, ETA lane rollups),
+ * use `GET /api/control-tower/reports/summary`.
+ */
 export async function GET() {
   const gate = await requireApiGrant("org.controltower", "view");
   if (gate) return gate;

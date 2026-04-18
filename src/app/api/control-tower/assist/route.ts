@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 
-import { requireApiGrant } from "@/lib/authz";
+import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { runControlTowerAssist } from "@/lib/control-tower/assist-llm";
+import { getDemoTenant } from "@/lib/demo-tenant";
+import { prisma } from "@/lib/prisma";
 
 export async function POST(request: Request) {
   const gate = await requireApiGrant("org.controltower", "view");
@@ -16,7 +18,42 @@ export async function POST(request: Request) {
   const q =
     typeof (body as { q?: unknown }).q === "string" ? (body as { q: string }).q : "";
 
-  const result = await runControlTowerAssist({ raw: q });
+  const tenant = await getDemoTenant();
+  const actorId = await getActorUserId();
+  let savedReportsBrief: Array<{ name: string; shared: boolean; mine: boolean }> = [];
+  let savedWorkbenchFiltersBrief: Array<{ name: string }> = [];
+  if (tenant && actorId) {
+    const [reportRows, filterRows] = await Promise.all([
+      prisma.ctSavedReport.findMany({
+        where: {
+          tenantId: tenant.id,
+          dataset: "CONTROL_TOWER",
+          OR: [{ userId: actorId }, { isShared: true }],
+        },
+        orderBy: { updatedAt: "desc" },
+        take: 24,
+        select: { name: true, isShared: true, userId: true },
+      }),
+      prisma.ctSavedFilter.findMany({
+        where: { tenantId: tenant.id, userId: actorId },
+        orderBy: { createdAt: "desc" },
+        take: 24,
+        select: { name: true },
+      }),
+    ]);
+    savedReportsBrief = reportRows.map((r) => ({
+      name: r.name,
+      shared: r.isShared,
+      mine: r.userId === actorId,
+    }));
+    savedWorkbenchFiltersBrief = filterRows.map((r) => ({ name: r.name }));
+  }
+
+  const result = await runControlTowerAssist({
+    raw: q,
+    savedReportsBrief,
+    savedWorkbenchFiltersBrief,
+  });
   return NextResponse.json({
     hints: result.hints,
     suggestedFilters: result.suggestedFilters,

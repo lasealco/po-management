@@ -35,6 +35,10 @@ export type WorkbenchUrlState = {
   customerCrmAccountIdFilter: string;
   originCodeFilter: string;
   destinationCodeFilter: string;
+  /** Open / in-progress `CtException.type` (catalog code). */
+  exceptionCodeFilter: string;
+  /** Open / acknowledged `CtAlert.type`. */
+  alertTypeFilter: string;
   shipmentSource: "" | "PO" | "UNLINKED";
   ownerFilter: string;
   routeHealth: string;
@@ -102,6 +106,8 @@ export function readWorkbenchUrlState(
     shipmentSource,
     ownerFilter: restrictedView ? "" : owner,
     routeHealth,
+    exceptionCodeFilter: sp.get("exceptionCode") ?? "",
+    alertTypeFilter: sp.get("alertType") ?? "",
   };
 }
 
@@ -116,6 +122,8 @@ export function buildWorkbenchSearchString(state: WorkbenchUrlState, restrictedV
   if (state.customerCrmAccountIdFilter.trim()) p.set("customerCrmAccountId", state.customerCrmAccountIdFilter.trim());
   if (state.originCodeFilter.trim()) p.set("originCode", state.originCodeFilter.trim());
   if (state.destinationCodeFilter.trim()) p.set("destinationCode", state.destinationCodeFilter.trim());
+  if (state.exceptionCodeFilter.trim()) p.set("exceptionCode", state.exceptionCodeFilter.trim());
+  if (state.alertTypeFilter.trim()) p.set("alertType", state.alertTypeFilter.trim());
   if (state.shipmentSource) p.set("shipmentSource", state.shipmentSource);
   if (!restrictedView && state.ownerFilter.trim()) p.set("dispatchOwnerUserId", state.ownerFilter.trim());
   if (state.onlyOverdueEta) p.set("onlyOverdueEta", "1");

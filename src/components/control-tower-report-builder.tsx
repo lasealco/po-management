@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { WorkbenchDrillLink } from "@/components/workbench-drill-link";
+import { buildControlTowerReportCsv } from "@/lib/control-tower/report-csv";
+import type { ReportInsightRunSummary } from "@/lib/control-tower/report-run-summary";
 
 type Measure = "shipments" | "volumeCbm" | "weightKg" | "shippingSpend" | "onTimePct" | "avgDelayDays";
 type Dimension =
@@ -49,11 +51,23 @@ type RunResult = {
     measure: Measure;
     compareMeasure: Measure | null;
     dateField: "shippedAt" | "receivedAt" | "bookingEta";
+    dateFrom: string | null;
+    dateTo: string | null;
     topN: number;
   };
   rows: Array<{ key: string; label: string; metrics: Record<Measure, number> }>;
+  /** Present on API responses; used for CSV export (same as scheduled email). */
+  fullSeriesRows?: Array<{ key: string; label: string; metrics: Record<Measure, number> }>;
   totals: Record<Measure, number>;
   generatedAt: string;
+  /** Returned by `POST …/reports/run`; used for PDF / parity with scheduled email. */
+  coverage?: {
+    shipmentsAggregated: number;
+    totalShipmentsQueried: number;
+    excludedByDateOrMissingDateField: number;
+  };
+  /** Returned by `POST …/reports/run` (same shape as insight); labeled scope + coverage. */
+  runSummary?: ReportInsightRunSummary;
 };
 
 type SavedReport = {
@@ -65,6 +79,19 @@ type SavedReport = {
   config: unknown;
   createdAt: string;
   updatedAt: string;
+};
+
+type ReportEmailSchedule = {
+  id: string;
+  savedReportId: string;
+  savedReportName: string;
+  recipientEmail: string;
+  frequency: "DAILY" | "WEEKLY";
+  hourUtc: number;
+  dayOfWeek: number | null;
+  isActive: boolean;
+  lastRunAt: string | null;
+  lastError: string | null;
 };
 
 type NamedOption = { id: string; name: string };
@@ -413,10 +440,13 @@ export function ControlTowerReportBuilder({
   canEdit,
   supplierChoices = [],
   crmAccountChoices = [],
+  tenantName,
 }: {
   canEdit: boolean;
   supplierChoices?: Array<{ id: string; name: string }>;
   crmAccountChoices?: Array<{ id: string; name: string }>;
+  /** Shown on downloaded PDF (matches scheduled email attachment branding). */
+  tenantName?: string;
 }) {
   const [config, setConfig] = useState<ReportConfig>(DEFAULT_CONFIG);
   const [result, setResult] = useState<RunResult | null>(null);
@@ -429,8 +459,17 @@ export function ControlTowerReportBuilder({
   const [err, setErr] = useState<string | null>(null);
   const [insightQuestion, setInsightQuestion] = useState("");
   const [insightText, setInsightText] = useState<string | null>(null);
+  const [insightRunSummary, setInsightRunSummary] = useState<ReportInsightRunSummary | null>(null);
   const [insightBusy, setInsightBusy] = useState(false);
   const [insightErr, setInsightErr] = useState<string | null>(null);
+  const [emailSchedules, setEmailSchedules] = useState<ReportEmailSchedule[]>([]);
+  const [schedulePanelReportId, setSchedulePanelReportId] = useState<string | null>(null);
+  const [scheduleRecipient, setScheduleRecipient] = useState("");
+  const [scheduleFrequency, setScheduleFrequency] = useState<"DAILY" | "WEEKLY">("DAILY");
+  const [scheduleHourUtc, setScheduleHourUtc] = useState(8);
+  const [scheduleDayOfWeek, setScheduleDayOfWeek] = useState(1);
+  const [scheduleBusy, setScheduleBusy] = useState(false);
+  const [scheduleErr, setScheduleErr] = useState<string | null>(null);
   const [chartDrillKey, setChartDrillKey] = useState<string | null>(null);
   const resultRowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
 
@@ -455,15 +494,27 @@ export function ControlTowerReportBuilder({
     setSaved(json.reports ?? []);
   }, []);
 
+  const loadEmailSchedules = useCallback(async () => {
+    const res = await fetch("/api/control-tower/reports/schedules");
+    if (!res.ok) return;
+    const json = (await res.json()) as { schedules?: ReportEmailSchedule[] };
+    setEmailSchedules(json.schedules ?? []);
+  }, []);
+
   useEffect(() => {
     void loadSaved();
   }, [loadSaved]);
+
+  useEffect(() => {
+    void loadEmailSchedules();
+  }, [loadEmailSchedules]);
 
   const run = useCallback(async () => {
     setBusy(true);
     setErr(null);
     setMsg(null);
     setInsightText(null);
+    setInsightRunSummary(null);
     setInsightErr(null);
     try {
       const res = await fetch("/api/control-tower/reports/run", {
@@ -506,6 +557,7 @@ export function ControlTowerReportBuilder({
   const fetchInsight = useCallback(async () => {
     setInsightBusy(true);
     setInsightErr(null);
+    setInsightRunSummary(null);
     try {
       const res = await fetch("/api/control-tower/reports/insight", {
         method: "POST",
@@ -515,12 +567,23 @@ export function ControlTowerReportBuilder({
           question: insightQuestion.trim() || undefined,
         }),
       });
-      const data = (await res.json()) as { insight?: string; error?: string };
-      if (!res.ok) throw new Error(data.error || res.statusText);
+      const data = (await res.json()) as {
+        insight?: string;
+        error?: string;
+        runSummary?: ReportInsightRunSummary;
+      };
+      if (!res.ok) {
+        setInsightText(null);
+        setInsightRunSummary(data.runSummary ?? null);
+        setInsightErr(data.error || res.statusText);
+        return;
+      }
       setInsightText(data.insight ?? "");
+      setInsightRunSummary(data.runSummary ?? null);
     } catch (e) {
       setInsightErr(e instanceof Error ? e.message : "Insight failed.");
       setInsightText(null);
+      setInsightRunSummary(null);
     } finally {
       setInsightBusy(false);
     }
@@ -580,6 +643,75 @@ export function ControlTowerReportBuilder({
     [canEdit, loadSaved],
   );
 
+  const downloadReportCsv = useCallback(() => {
+    if (!result) return;
+    const csv = buildControlTowerReportCsv({
+      rows: result.rows,
+      fullSeriesRows: result.fullSeriesRows ?? [],
+      totals: result.totals,
+    });
+    const slug =
+      (config.title || "report")
+        .replace(/[^a-zA-Z0-9]+/g, "-")
+        .replace(/^-|-$/g, "")
+        .slice(0, 48) || "report";
+    const stamp = result.generatedAt.slice(0, 10);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${slug}-${stamp}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [result, config.title]);
+
+  const downloadReportPdf = useCallback(async () => {
+    if (!result) return;
+    const { buildControlTowerReportPdfBytes } = await import("@/lib/control-tower/report-pdf");
+    const title = (config.title || result.config?.title || "report").trim() || "report";
+    const cov = result.coverage;
+    const bytes = await buildControlTowerReportPdfBytes({
+      rows: result.rows,
+      fullSeriesRows: result.fullSeriesRows ?? [],
+      totals: result.totals,
+      title,
+      generatedAt: result.generatedAt,
+      shipmentsAggregated: cov?.shipmentsAggregated ?? 0,
+      totalShipmentsQueried: cov?.totalShipmentsQueried ?? 0,
+      excludedByDateOrMissingDateField: cov?.excludedByDateOrMissingDateField ?? 0,
+      organizationLabel: tenantName,
+      reportMeasure: result.config?.measure ?? config.measure,
+      reportDimension: result.config?.dimension ?? config.dimension,
+      reportDateField: result.config?.dateField ?? config.dateField,
+      reportDateFrom: result.config?.dateFrom ?? config.dateFrom ?? null,
+      reportDateTo: result.config?.dateTo ?? config.dateTo ?? null,
+    });
+    const slug =
+      title
+        .replace(/[^a-zA-Z0-9]+/g, "-")
+        .replace(/^-|-$/g, "")
+        .slice(0, 48) || "report";
+    const stamp = result.generatedAt.slice(0, 10);
+    const pdfCopy = new Uint8Array(bytes.byteLength);
+    pdfCopy.set(bytes);
+    const blob = new Blob([pdfCopy], { type: "application/pdf" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${slug}-${stamp}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [
+    result,
+    config.title,
+    config.measure,
+    config.dimension,
+    config.dateField,
+    config.dateFrom,
+    config.dateTo,
+    tenantName,
+  ]);
+
   const pinReport = useCallback(async (savedReportId: string, title: string) => {
     setBusy(true);
     setErr(null);
@@ -599,6 +731,90 @@ export function ControlTowerReportBuilder({
       setBusy(false);
     }
   }, []);
+
+  const openSchedulePanel = useCallback((reportId: string) => {
+    setScheduleErr(null);
+    setSchedulePanelReportId(reportId);
+    setScheduleRecipient("");
+    setScheduleFrequency("DAILY");
+    setScheduleHourUtc(8);
+    setScheduleDayOfWeek(1);
+  }, []);
+
+  const submitSchedule = useCallback(async () => {
+    if (!schedulePanelReportId) return;
+    setScheduleBusy(true);
+    setScheduleErr(null);
+    try {
+      const res = await fetch("/api/control-tower/reports/schedules", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          savedReportId: schedulePanelReportId,
+          recipientEmail: scheduleRecipient.trim(),
+          frequency: scheduleFrequency,
+          hourUtc: scheduleHourUtc,
+          dayOfWeek: scheduleFrequency === "WEEKLY" ? scheduleDayOfWeek : null,
+        }),
+      });
+      const data = (await res.json()) as { ok?: boolean; error?: string };
+      if (!res.ok) throw new Error(data.error || res.statusText);
+      setMsg("Email schedule created.");
+      setSchedulePanelReportId(null);
+      await loadEmailSchedules();
+    } catch (e) {
+      setScheduleErr(e instanceof Error ? e.message : "Schedule save failed.");
+    } finally {
+      setScheduleBusy(false);
+    }
+  }, [
+    schedulePanelReportId,
+    scheduleRecipient,
+    scheduleFrequency,
+    scheduleHourUtc,
+    scheduleDayOfWeek,
+    loadEmailSchedules,
+  ]);
+
+  const patchScheduleActive = useCallback(
+    async (id: string, isActive: boolean) => {
+      setScheduleBusy(true);
+      setScheduleErr(null);
+      try {
+        const res = await fetch(`/api/control-tower/reports/schedules/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isActive }),
+        });
+        const data = (await res.json()) as { ok?: boolean; error?: string };
+        if (!res.ok) throw new Error(data.error || res.statusText);
+        await loadEmailSchedules();
+      } catch (e) {
+        setScheduleErr(e instanceof Error ? e.message : "Update failed.");
+      } finally {
+        setScheduleBusy(false);
+      }
+    },
+    [loadEmailSchedules],
+  );
+
+  const deleteSchedule = useCallback(
+    async (id: string) => {
+      setScheduleBusy(true);
+      setScheduleErr(null);
+      try {
+        const res = await fetch(`/api/control-tower/reports/schedules/${id}`, { method: "DELETE" });
+        const data = (await res.json()) as { ok?: boolean; error?: string };
+        if (!res.ok) throw new Error(data.error || res.statusText);
+        await loadEmailSchedules();
+      } catch (e) {
+        setScheduleErr(e instanceof Error ? e.message : "Delete failed.");
+      } finally {
+        setScheduleBusy(false);
+      }
+    },
+    [loadEmailSchedules],
+  );
 
   const compareByKey = useMemo(() => {
     const m = new Map<string, number>();
@@ -673,6 +889,24 @@ export function ControlTowerReportBuilder({
           >
             {busy ? "Running..." : "Run report"}
           </button>
+          {result ? (
+            <>
+              <button
+                type="button"
+                onClick={() => downloadReportCsv()}
+                className="rounded-lg border border-slate-400 bg-white px-4 py-2 text-sm font-bold text-slate-800 hover:bg-slate-50"
+              >
+                Download CSV
+              </button>
+              <button
+                type="button"
+                onClick={() => void downloadReportPdf()}
+                className="rounded-lg border border-slate-400 bg-white px-4 py-2 text-sm font-bold text-slate-800 hover:bg-slate-50"
+              >
+                Download PDF
+              </button>
+            </>
+          ) : null}
         </div>
       </div>
 
@@ -1013,6 +1247,33 @@ export function ControlTowerReportBuilder({
           <p className="text-xs text-zinc-500">
             Generated {new Date(result.generatedAt).toLocaleString()} · {result.rows.length} rows
           </p>
+          {result.runSummary ? (
+            <div className="rounded-lg border border-slate-200 bg-slate-50/90 px-3 py-2 text-[11px] leading-snug text-slate-700">
+              {result.runSummary.title ? (
+                <p>
+                  <span className="font-semibold text-slate-800">Report:</span> {result.runSummary.title}
+                </p>
+              ) : null}
+              <p className={result.runSummary.title ? "mt-0.5" : ""}>
+                <span className="font-semibold text-slate-800">Scope:</span> {result.runSummary.measureLabel} ·{" "}
+                {result.runSummary.dimensionLabel}
+              </p>
+              {result.runSummary.dateWindowLine ? (
+                <p className="mt-0.5 text-slate-600">{result.runSummary.dateWindowLine}</p>
+              ) : null}
+              {result.runSummary.compareMeasureLabel ? (
+                <p className="mt-0.5 text-slate-600">
+                  <span className="font-semibold text-slate-800">Compare:</span> {result.runSummary.compareMeasureLabel}
+                </p>
+              ) : null}
+              <p className="mt-0.5 text-slate-600">
+                <span className="font-semibold text-slate-800">Coverage:</span>{" "}
+                {result.runSummary.coverage.shipmentsAggregated} aggregated ·{" "}
+                {result.runSummary.coverage.totalShipmentsQueried} queried ·{" "}
+                {result.runSummary.coverage.excludedByDateOrMissingDateField} excluded (date / field)
+              </p>
+            </div>
+          ) : null}
           {comparisonLine ? (
             <p className="text-xs text-zinc-700">
               Compare ({config.comparePeriod}): current{" "}
@@ -1178,6 +1439,31 @@ export function ControlTowerReportBuilder({
               {insightBusy ? "Generating…" : "Get AI insight"}
             </button>
             {insightErr ? <p className="mt-2 text-xs text-red-700">{insightErr}</p> : null}
+            {insightRunSummary ? (
+              <div className="mt-2 space-y-0.5 rounded border border-violet-100/80 bg-white/90 px-2.5 py-2 text-[11px] leading-snug text-violet-950/90">
+                {insightRunSummary.title ? (
+                  <p>
+                    <span className="font-semibold">Report:</span> {insightRunSummary.title}
+                  </p>
+                ) : null}
+                <p>
+                  <span className="font-semibold">Scope:</span> {insightRunSummary.measureLabel} ·{" "}
+                  {insightRunSummary.dimensionLabel}
+                </p>
+                {insightRunSummary.dateWindowLine ? <p>{insightRunSummary.dateWindowLine}</p> : null}
+                {insightRunSummary.compareMeasureLabel ? (
+                  <p>
+                    <span className="font-semibold">Compare:</span> {insightRunSummary.compareMeasureLabel}
+                  </p>
+                ) : null}
+                <p className="text-violet-900/85">
+                  <span className="font-semibold">Coverage:</span>{" "}
+                  {insightRunSummary.coverage.shipmentsAggregated} aggregated ·{" "}
+                  {insightRunSummary.coverage.totalShipmentsQueried} queried ·{" "}
+                  {insightRunSummary.coverage.excludedByDateOrMissingDateField} excluded (date / field)
+                </p>
+              </div>
+            ) : null}
             {insightText ? (
               <div className="mt-3 whitespace-pre-wrap rounded border border-violet-100 bg-white p-3 text-sm text-zinc-900">
                 {insightText}
@@ -1190,49 +1476,191 @@ export function ControlTowerReportBuilder({
       {saved.length > 0 ? (
         <div className="mt-4 rounded border border-zinc-200 bg-zinc-50 p-3">
           <p className="text-xs font-semibold uppercase text-zinc-600">Saved reports</p>
+          <p className="mt-1 text-xs text-zinc-500">
+            Optional email digests: set{" "}
+            <code className="rounded bg-zinc-100 px-1">RESEND_API_KEY</code> and{" "}
+            <code className="rounded bg-zinc-100 px-1">CONTROL_TOWER_REPORTS_EMAIL_FROM</code> in production. Cron:{" "}
+            <code className="rounded bg-zinc-100 px-1">/api/cron/control-tower-report-schedules</code> (see{" "}
+            <code className="rounded bg-zinc-100 px-1">vercel.json</code>).
+          </p>
+          {scheduleErr ? <p className="mt-2 text-xs text-red-700">{scheduleErr}</p> : null}
           <ul className="mt-2 space-y-2">
-            {saved.slice(0, 20).map((r) => (
-              <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 rounded bg-white px-2 py-1.5">
-                <div>
-                  <p className="text-sm font-medium text-zinc-900">
-                    {r.name}{" "}
-                    <span className={`text-xs ${r.isShared ? "text-emerald-700" : "text-zinc-500"}`}>
-                      {r.isShared ? "· Shared" : "· Private"}
-                    </span>
-                  </p>
-                  <p className="text-xs text-zinc-500">Owner: {r.owner.name}</p>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setConfig(hydrateConfig(r.config))}
-                    className="rounded border border-zinc-300 px-2 py-1 text-xs text-zinc-800"
-                  >
-                    Load
-                  </button>
-                  {canEdit ? (
-                    meUserId === r.owner.id ? (
+            {saved.slice(0, 20).map((r) => {
+              const forReport = emailSchedules.filter((s) => s.savedReportId === r.id);
+              return (
+                <li key={r.id} className="rounded bg-white px-2 py-1.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-medium text-zinc-900">
+                        {r.name}{" "}
+                        <span className={`text-xs ${r.isShared ? "text-emerald-700" : "text-zinc-500"}`}>
+                          {r.isShared ? "· Shared" : "· Private"}
+                        </span>
+                      </p>
+                      <p className="text-xs text-zinc-500">Owner: {r.owner.name}</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
-                        onClick={() => void toggleShare(r)}
+                        onClick={() => setConfig(hydrateConfig(r.config))}
                         className="rounded border border-zinc-300 px-2 py-1 text-xs text-zinc-800"
                       >
-                        {r.isShared ? "Make private" : "Share"}
+                        Load
                       </button>
-                    ) : null
+                      {canEdit ? (
+                        meUserId === r.owner.id ? (
+                          <button
+                            type="button"
+                            onClick={() => void toggleShare(r)}
+                            className="rounded border border-zinc-300 px-2 py-1 text-xs text-zinc-800"
+                          >
+                            {r.isShared ? "Make private" : "Share"}
+                          </button>
+                        ) : null
+                      ) : null}
+                      {canEdit ? (
+                        <button
+                          type="button"
+                          onClick={() => void pinReport(r.id, r.name)}
+                          className="rounded border border-sky-400 px-2 py-1 text-xs text-sky-900"
+                        >
+                          Pin to dashboard
+                        </button>
+                      ) : null}
+                      {canEdit ? (
+                        <button
+                          type="button"
+                          disabled={scheduleBusy}
+                          onClick={() => openSchedulePanel(r.id)}
+                          className="rounded border border-violet-400 px-2 py-1 text-xs text-violet-950 disabled:opacity-40"
+                        >
+                          Email schedule
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                  {forReport.length > 0 ? (
+                    <ul className="mt-2 space-y-1 border-t border-zinc-100 pt-2 text-xs text-zinc-600">
+                      {forReport.map((s) => (
+                        <li key={s.id} className="flex flex-wrap items-center justify-between gap-2">
+                          <span>
+                            <span className="font-medium text-zinc-800">{s.recipientEmail}</span>
+                            {" · "}
+                            {s.frequency === "WEEKLY" ? `weekly (dow ${s.dayOfWeek})` : "daily"}
+                            {" · "}
+                            {String(s.hourUtc).padStart(2, "0")}:00 UTC
+                            {!s.isActive ? (
+                              <span className="ml-1 text-amber-800">· paused</span>
+                            ) : null}
+                            {s.lastRunAt ? (
+                              <span className="ml-1 block text-zinc-400">
+                                Last run {new Date(s.lastRunAt).toISOString().slice(0, 16)}Z
+                                {s.lastError ? ` — ${s.lastError.slice(0, 120)}` : ""}
+                              </span>
+                            ) : null}
+                          </span>
+                          {canEdit ? (
+                            <span className="flex gap-1">
+                              <button
+                                type="button"
+                                disabled={scheduleBusy}
+                                onClick={() => void patchScheduleActive(s.id, !s.isActive)}
+                                className="rounded border border-zinc-300 px-1.5 py-0.5 text-zinc-800 disabled:opacity-40"
+                              >
+                                {s.isActive ? "Pause" : "Resume"}
+                              </button>
+                              <button
+                                type="button"
+                                disabled={scheduleBusy}
+                                onClick={() => void deleteSchedule(s.id)}
+                                className="rounded border border-red-200 px-1.5 py-0.5 text-red-800 disabled:opacity-40"
+                              >
+                                Remove
+                              </button>
+                            </span>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
                   ) : null}
-                  {canEdit ? (
-                    <button
-                      type="button"
-                      onClick={() => void pinReport(r.id, r.name)}
-                      className="rounded border border-sky-400 px-2 py-1 text-xs text-sky-900"
-                    >
-                      Pin to dashboard
-                    </button>
+                  {schedulePanelReportId === r.id ? (
+                    <div className="mt-2 space-y-2 border-t border-violet-100 pt-2">
+                      <p className="text-xs font-medium text-violet-900">New email schedule for this report</p>
+                      <label className="block text-xs text-zinc-600">
+                        Recipient email
+                        <input
+                          type="email"
+                          value={scheduleRecipient}
+                          onChange={(e) => setScheduleRecipient(e.target.value)}
+                          className="mt-0.5 w-full rounded border border-zinc-300 px-2 py-1 text-sm"
+                          placeholder="ops@example.com"
+                        />
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        <label className="text-xs text-zinc-600">
+                          Frequency
+                          <select
+                            value={scheduleFrequency}
+                            onChange={(e) => setScheduleFrequency(e.target.value as "DAILY" | "WEEKLY")}
+                            className="ml-1 rounded border border-zinc-300 px-1 py-0.5 text-sm"
+                          >
+                            <option value="DAILY">Daily</option>
+                            <option value="WEEKLY">Weekly</option>
+                          </select>
+                        </label>
+                        <label className="text-xs text-zinc-600">
+                          Hour (UTC)
+                          <input
+                            type="number"
+                            min={0}
+                            max={23}
+                            value={scheduleHourUtc}
+                            onChange={(e) => setScheduleHourUtc(Number(e.target.value))}
+                            className="ml-1 w-14 rounded border border-zinc-300 px-1 py-0.5 text-sm"
+                          />
+                        </label>
+                        {scheduleFrequency === "WEEKLY" ? (
+                          <label className="text-xs text-zinc-600">
+                            Weekday (UTC)
+                            <select
+                              value={scheduleDayOfWeek}
+                              onChange={(e) => setScheduleDayOfWeek(Number(e.target.value))}
+                              className="ml-1 rounded border border-zinc-300 px-1 py-0.5 text-sm"
+                            >
+                              <option value={0}>Sun</option>
+                              <option value={1}>Mon</option>
+                              <option value={2}>Tue</option>
+                              <option value={3}>Wed</option>
+                              <option value={4}>Thu</option>
+                              <option value={5}>Fri</option>
+                              <option value={6}>Sat</option>
+                            </select>
+                          </label>
+                        ) : null}
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          disabled={scheduleBusy || !scheduleRecipient.trim()}
+                          onClick={() => void submitSchedule()}
+                          className="rounded bg-violet-700 px-3 py-1 text-xs font-medium text-white disabled:opacity-40"
+                        >
+                          Save schedule
+                        </button>
+                        <button
+                          type="button"
+                          disabled={scheduleBusy}
+                          onClick={() => setSchedulePanelReportId(null)}
+                          className="rounded border border-zinc-300 px-3 py-1 text-xs text-zinc-800"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
                   ) : null}
-                </div>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
         </div>
       ) : null}

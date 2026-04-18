@@ -94,6 +94,8 @@ export function ControlTowerCommandCenter({
   restrictedView?: boolean;
 }) {
   const [rows, setRows] = useState<Row[]>([]);
+  const [listTruncated, setListTruncated] = useState(false);
+  const [listLimit, setListLimit] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ownerFilter, setOwnerFilter] = useState("");
@@ -116,6 +118,8 @@ export function ControlTowerCommandCenter({
   const load = useCallback(async () => {
     setBusy(true);
     setError(null);
+    setListTruncated(false);
+    setListLimit(null);
     try {
       const sp = new URLSearchParams();
       if (debouncedQ) sp.set("q", debouncedQ);
@@ -127,10 +131,17 @@ export function ControlTowerCommandCenter({
       }
       sp.set("take", "150");
       const res = await fetch(`/api/control-tower/shipments?${sp.toString()}`);
-      const data = (await res.json()) as { shipments?: Row[]; error?: string };
+      const data = (await res.json()) as {
+        shipments?: Row[];
+        error?: string;
+        truncated?: boolean;
+        listLimit?: number;
+      };
       if (!res.ok) throw new Error(data.error || res.statusText);
       const list = data.shipments ?? [];
       setRows(list);
+      setListTruncated(Boolean(data.truncated));
+      setListLimit(typeof data.listLimit === "number" ? data.listLimit : null);
       setOwnerDirectory((prev) => {
         const next = new Map(prev);
         for (const r of list) {
@@ -140,6 +151,8 @@ export function ControlTowerCommandCenter({
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Load failed");
+      setListTruncated(false);
+      setListLimit(null);
     } finally {
       setBusy(false);
     }
@@ -289,6 +302,12 @@ export function ControlTowerCommandCenter({
         </Link>
         .
       </p>
+      {listTruncated && listLimit != null ? (
+        <p className="text-xs text-amber-900">
+          Showing up to <strong>{listLimit}</strong> shipments; more may match. Open the workbench to scroll the full
+          list or narrow filters.
+        </p>
+      ) : null}
       <div className="flex flex-wrap gap-2 text-xs">
         <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-900">
           On-time: <strong>{healthStats.good}</strong>

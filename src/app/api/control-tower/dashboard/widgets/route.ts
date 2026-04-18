@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { runControlTowerReport, sanitizeCtReportConfig } from "@/lib/control-tower/report-engine";
+import { buildReportInsightRunSummary } from "@/lib/control-tower/report-run-summary";
 import { getControlTowerPortalContext } from "@/lib/control-tower/viewer";
 import { DASHBOARD_PIN_DATASET } from "@/lib/reporting/report-dataset";
 import { prisma } from "@/lib/prisma";
@@ -52,7 +53,7 @@ export async function GET() {
           updatedAt: w.savedReport.updatedAt.toISOString(),
           config: sanitizeCtReportConfig(w.savedReport.configJson) as Record<string, unknown>,
         },
-        report: result,
+        report: { ...result, runSummary: buildReportInsightRunSummary(result) },
       };
     }),
   );

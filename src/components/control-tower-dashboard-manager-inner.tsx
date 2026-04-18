@@ -16,6 +16,7 @@ import {
   seriesForCard,
   type CtDashboardWidgetReport,
 } from "@/components/control-tower-dashboard-chart-kit";
+import { ControlTowerReportingHubWorkbenchLinks } from "@/components/control-tower-reporting-hub-workbench-links";
 
 type Widget = {
   id: string;
@@ -251,7 +252,7 @@ export function ControlTowerDashboardManagerInner({ canEdit }: { canEdit: boolea
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-zinc-900">My dashboard</h1>
           <p className="mt-1 text-sm text-zinc-600">
@@ -259,9 +260,16 @@ export function ControlTowerDashboardManagerInner({ canEdit }: { canEdit: boolea
             widget to copy the URL—chart drill selection is kept in <span className="font-medium">?drill=</span>.
           </p>
         </div>
-        <Link href="/control-tower/reports" className="rounded border border-sky-300 px-3 py-1.5 text-sm text-sky-900">
-          Open report builder
-        </Link>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <ControlTowerReportingHubWorkbenchLinks
+            variant="button"
+            buttonSize="sm"
+            includeWorkbench={false}
+          />
+          <Link href="/control-tower/reports" className="rounded border border-sky-300 px-3 py-1.5 text-sm text-sky-900">
+            Open report builder
+          </Link>
+        </div>
       </div>
 
       {msg ? <p className="text-sm text-emerald-700">{msg}</p> : null}
@@ -316,6 +324,14 @@ export function ControlTowerDashboardManagerInner({ canEdit }: { canEdit: boolea
                 <p className="mt-1 text-xs text-zinc-500">
                   {metricLabel(w.report.config.measure)} · {dimensionLabel(w.report.config.dimension ?? "month")}
                 </p>
+                {w.report.runSummary?.dateWindowLine ? (
+                  <p className="mt-0.5 text-[11px] text-zinc-500">{w.report.runSummary.dateWindowLine}</p>
+                ) : null}
+                {w.report.runSummary?.compareMeasureLabel ? (
+                  <p className="mt-0.5 text-[11px] text-zinc-500">
+                    Compare: {w.report.runSummary.compareMeasureLabel}
+                  </p>
+                ) : null}
                 <p className="mt-2 text-2xl font-semibold text-zinc-950">{metricSummaryValue(w.report)}</p>
                 <CoverageInline coverage={w.report.coverage} />
                 <button

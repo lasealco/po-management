@@ -23,20 +23,52 @@ type Widget = {
   report: CtDashboardWidgetReport;
 };
 
+function HubReportWidgetsSkeleton() {
+  return (
+    <div
+      className="grid gap-3 md:grid-cols-2 xl:grid-cols-3"
+      aria-busy="true"
+      aria-live="polite"
+      aria-label="Loading report widgets"
+    >
+      <p className="sr-only">Loading your pinned reports…</p>
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="animate-pulse rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
+          <div className="h-4 w-36 rounded bg-zinc-200" />
+          <div className="mt-2 h-3 w-48 rounded bg-zinc-100" />
+          <div className="mt-4 h-8 w-24 rounded bg-zinc-200" />
+          <div className="mt-4 h-14 rounded bg-zinc-100" />
+          <div className="mt-3 space-y-2">
+            <div className="h-3 w-full rounded bg-zinc-100" />
+            <div className="h-3 w-[90%] rounded bg-zinc-100" />
+            <div className="h-3 w-[70%] rounded bg-zinc-100" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function ControlTowerDashboardWidgets({ canEdit }: { canEdit: boolean }) {
   const [widgets, setWidgets] = useState<Widget[]>([]);
   const [err, setErr] = useState<string | null>(null);
+  /** After first GET completes — avoids empty flash on hub before pinned widgets resolve. */
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
   const [expanded, setExpanded] = useState<Widget | null>(null);
 
   const load = useCallback(async () => {
-    const res = await fetch("/api/control-tower/dashboard/widgets");
-    const json = (await res.json()) as { widgets?: Widget[]; error?: string };
-    if (!res.ok) {
-      setErr(json.error || res.statusText);
-      return;
+    try {
+      const res = await fetch("/api/control-tower/dashboard/widgets");
+      const json = (await res.json()) as { widgets?: Widget[]; error?: string };
+      if (!res.ok) {
+        setErr(json.error || res.statusText);
+        return;
+      }
+      setErr(null);
+      setWidgets(json.widgets ?? []);
+    } finally {
+      setInitialLoadDone(true);
     }
-    setErr(null);
-    setWidgets(json.widgets ?? []);
   }, []);
 
   useEffect(() => {
@@ -53,7 +85,7 @@ export function ControlTowerDashboardWidgets({ canEdit }: { canEdit: boolean }) 
     [load],
   );
 
-  if (widgets.length === 0 && !err) return null;
+  if (initialLoadDone && widgets.length === 0 && !err) return null;
 
   return (
     <section className="mt-6">
@@ -64,7 +96,11 @@ export function ControlTowerDashboardWidgets({ canEdit }: { canEdit: boolean }) 
       >
         Manage layout →
       </Link>
-      {err ? <p className="mb-3 text-sm text-red-700">{err}</p> : null}
+      {!initialLoadDone ? (
+        <HubReportWidgetsSkeleton />
+      ) : err ? (
+        <p className="mb-3 text-sm text-red-700">{err}</p>
+      ) : (
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {widgets.map((w) => (
           <article key={w.id} className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
@@ -83,6 +119,14 @@ export function ControlTowerDashboardWidgets({ canEdit }: { canEdit: boolean }) 
             <p className="mt-1 text-xs text-zinc-500">
               {metricLabel(w.report.config.measure)} · {dimensionLabel(w.report.config.dimension ?? "month")}
             </p>
+            {w.report.runSummary?.dateWindowLine ? (
+              <p className="mt-0.5 text-[11px] text-zinc-500">{w.report.runSummary.dateWindowLine}</p>
+            ) : null}
+            {w.report.runSummary?.compareMeasureLabel ? (
+              <p className="mt-0.5 text-[11px] text-zinc-500">
+                Compare: {w.report.runSummary.compareMeasureLabel}
+              </p>
+            ) : null}
             <p className="mt-2 text-2xl font-semibold text-zinc-950">{metricSummaryValue(w.report)}</p>
             <CoverageInline coverage={w.report.coverage} />
             <button
@@ -122,6 +166,7 @@ export function ControlTowerDashboardWidgets({ canEdit }: { canEdit: boolean }) 
           </article>
         ))}
       </div>
+      )}
       {expanded ? (
         <ControlTowerDashboardWidgetModal
           key={expanded.id}

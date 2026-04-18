@@ -3,6 +3,8 @@
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { REPORTING_HUB_CONTROL_TOWER_HREF } from "@/lib/reporting-hub-paths";
+
 export type CommandPaletteGrants = {
   orders: boolean;
   reports: boolean;
@@ -161,6 +163,13 @@ export function CommandPalette({ grants }: { grants: CommandPaletteGrants }) {
           action: go("/control-tower/workbench"),
         },
         {
+          id: "control-tower-digest",
+          label: "Control Tower — shipment digest",
+          hint: "Recent shipments table (250 cap); same scope as digest API",
+          searchText: "control tower digest portal list recent shipments csv scope",
+          action: go("/control-tower/digest"),
+        },
+        {
           id: "control-tower-search",
           label: "Control Tower — search & assist",
           searchText: "control tower search assist",
@@ -171,6 +180,13 @@ export function CommandPalette({ grants }: { grants: CommandPaletteGrants }) {
           label: "Control Tower — reports",
           searchText: "control tower kpi reporting",
           action: go("/control-tower/reports"),
+        },
+        {
+          id: "reporting-hub-control-tower",
+          label: "Reporting hub — Control Tower",
+          hint: "Cross-module /reporting with focus on the CT card",
+          searchText: "reporting hub control tower focus cockpit cross module analytics",
+          action: go(REPORTING_HUB_CONTROL_TOWER_HREF),
         },
       );
     }

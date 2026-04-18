@@ -4,6 +4,7 @@ import { AccessDenied } from "@/components/access-denied";
 import { WmsHomeOverview } from "@/components/wms-home-overview";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
+import { REPORTING_HUB_FOCUS_WMS_HREF } from "@/lib/reporting-hub-paths";
 
 export const dynamic = "force-dynamic";
 
@@ -66,7 +67,7 @@ export default async function WmsReportingPage() {
         </div>
         <div className="mt-5 flex flex-wrap gap-3">
           <Link
-            href="/reporting?focus=wms"
+            href={REPORTING_HUB_FOCUS_WMS_HREF}
             className="inline-flex items-center rounded-xl bg-violet-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-violet-800"
           >
             Open reporting hub
@@ -96,6 +97,18 @@ export default async function WmsReportingPage() {
           className="inline-flex items-center rounded-xl border border-sky-300 bg-sky-50 px-4 py-2 text-sky-900 hover:bg-sky-100"
         >
           Control Tower report builder
+        </Link>
+        <Link
+          href="/control-tower/workbench"
+          className="inline-flex items-center rounded-xl border border-sky-200 bg-white px-4 py-2 text-sky-900 hover:bg-sky-50"
+        >
+          Control Tower workbench
+        </Link>
+        <Link
+          href="/control-tower/digest"
+          className="inline-flex items-center rounded-xl border border-sky-200 bg-white px-4 py-2 text-sky-900 hover:bg-sky-50"
+        >
+          Shipment digest
         </Link>
       </div>
     </main>

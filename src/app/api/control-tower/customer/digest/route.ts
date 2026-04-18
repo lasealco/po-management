@@ -1,15 +1,20 @@
 import { NextResponse } from "next/server";
 
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
-import {
-  controlTowerShipmentScopeWhere,
-  getControlTowerPortalContext,
-} from "@/lib/control-tower/viewer";
+import { buildControlTowerDigest } from "@/lib/control-tower/customer-digest";
+import { getControlTowerPortalContext } from "@/lib/control-tower/viewer";
 import { getDemoTenant } from "@/lib/demo-tenant";
-import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Scoped shipment digest (most recently updated first; row cap `DIGEST_MAX_ITEMS` in `customer-digest.ts`).
+ *
+ * JSON: `generatedAt`, `digestLimit`, `itemCount`, `truncated`, `view` (`restricted`, `supplierPortal`,
+ * `customerCrmAccountId`), `items` (id, shipmentNo, status, eta, lane codes, latestMilestone).
+ *
+ * Same `buildControlTowerDigest` data as `/control-tower/digest` (page + optional client CSV with `# control-tower-digest:` metadata).
+ */
 export async function GET() {
   const gate = await requireApiGrant("org.controltower", "view");
   if (gate) return gate;
@@ -23,40 +28,6 @@ export async function GET() {
     return NextResponse.json({ error: "No active user." }, { status: 403 });
   }
   const ctx = await getControlTowerPortalContext(actorId);
-  const scope = controlTowerShipmentScopeWhere(tenant.id, ctx);
-  const shipments = await prisma.shipment.findMany({
-    where: scope,
-    select: {
-      id: true,
-      shipmentNo: true,
-      status: true,
-      booking: { select: { eta: true, latestEta: true, originCode: true, destinationCode: true } },
-      milestones: {
-        orderBy: { createdAt: "desc" },
-        take: 1,
-        select: { code: true, actualAt: true },
-      },
-    },
-    take: 250,
-    orderBy: { updatedAt: "desc" },
-  });
-  return NextResponse.json({
-    generatedAt: new Date().toISOString(),
-    view: {
-      restricted: ctx.isRestrictedView,
-      supplierPortal: ctx.isSupplierPortal,
-      customerCrmAccountId: ctx.customerCrmAccountId,
-    },
-    items: shipments.map((s) => ({
-      id: s.id,
-      shipmentNo: s.shipmentNo,
-      status: s.status,
-      eta: s.booking?.latestEta?.toISOString() ?? s.booking?.eta?.toISOString() ?? null,
-      originCode: s.booking?.originCode ?? null,
-      destinationCode: s.booking?.destinationCode ?? null,
-      latestMilestone: s.milestones[0]
-        ? { code: s.milestones[0].code, hasActual: Boolean(s.milestones[0].actualAt) }
-        : null,
-    })),
-  });
+  const payload = await buildControlTowerDigest({ tenantId: tenant.id, ctx });
+  return NextResponse.json(payload);
 }

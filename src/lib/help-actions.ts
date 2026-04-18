@@ -18,6 +18,15 @@ const QUEUE_FILTERS = new Set([
   "split_pending_buyer",
 ]);
 
+const MAX_PRODUCT_TRACE_OPEN_PATH_Q = 64;
+
+function sanitizeProductTraceOpenPathQuery(raw: string): string | undefined {
+  const m = raw.trim().match(/^([A-Za-z0-9._-]+)/);
+  if (!m) return undefined;
+  const t = m[1].slice(0, MAX_PRODUCT_TRACE_OPEN_PATH_Q);
+  return t || undefined;
+}
+
 const OPEN_PATH_ALLOWLIST = new Set([
   "/",
   "/orders",
@@ -28,8 +37,10 @@ const OPEN_PATH_ALLOWLIST = new Set([
   "/login",
   "/catalog",
   "/products",
+  "/product-trace",
   "/control-tower",
   "/control-tower/workbench",
+  "/control-tower/digest",
   "/control-tower/reports",
   "/control-tower/search",
   "/control-tower/dashboard",
@@ -42,6 +53,12 @@ const OPEN_PATH_ALLOWLIST = new Set([
 ]);
 
 const ORDER_FOCUS = new Set(["workflow", "asn", "chat", "split"]);
+
+/**
+ * Allowed `?focus=` on `/reporting` (scroll-to-section; must match hub section ids).
+ * Composed URLs: `reporting-hub-paths.ts` (`REPORTING_HUB_FOCUS_*_HREF`).
+ */
+const REPORTING_FOCUS = new Set(["po", "control-tower", "crm", "wms"]);
 
 function normalizeOpenPath(raw: unknown): string | null {
   if (typeof raw !== "string") return null;
@@ -137,11 +154,28 @@ export async function executeHelpDoAction(
       if (!viewerHas(access.grantSet, "org.products", "view")) {
         return { ok: false, error: "You do not have permission to view the catalog." };
       }
+    } else if (path === "/product-trace") {
+      if (!viewerHas(access.grantSet, "org.orders", "view")) {
+        return { ok: false, error: "You do not have permission to open product trace." };
+      }
     } else if (path.startsWith("/control-tower")) {
       if (!viewerHas(access.grantSet, "org.controltower", "view")) {
         return { ok: false, error: "You do not have permission to open Control Tower." };
       }
+    } else if (path === "/reporting") {
+      const canReportingHub =
+        viewerHas(access.grantSet, "org.reports", "view") ||
+        viewerHas(access.grantSet, "org.controltower", "view") ||
+        viewerHas(access.grantSet, "org.crm", "view") ||
+        viewerHas(access.grantSet, "org.wms", "view");
+      if (!canReportingHub) {
+        return { ok: false, error: "You do not have permission to open the reporting hub." };
+      }
     }
+    const traceQPayload =
+      path === "/product-trace" && typeof payload.q === "string"
+        ? sanitizeProductTraceOpenPathQuery(payload.q)
+        : undefined;
     const playbookId = typeof payload.guide === "string" ? payload.guide.trim() : "";
     const stepRaw = payload.step;
     const step =
@@ -152,9 +186,26 @@ export async function executeHelpDoAction(
           : undefined;
     const validGuide =
       playbookId && HELP_PLAYBOOKS.some((p) => p.id === playbookId) ? playbookId : undefined;
+    const focusRaw = typeof payload.focus === "string" ? payload.focus.trim().toLowerCase() : "";
+    let reportingFocus =
+      path === "/reporting" && focusRaw && REPORTING_FOCUS.has(focusRaw) ? focusRaw : undefined;
+    if (reportingFocus === "po" && !viewerHas(access.grantSet, "org.reports", "view")) {
+      reportingFocus = undefined;
+    }
+    if (reportingFocus === "control-tower" && !viewerHas(access.grantSet, "org.controltower", "view")) {
+      reportingFocus = undefined;
+    }
+    if (reportingFocus === "crm" && !viewerHas(access.grantSet, "org.crm", "view")) {
+      reportingFocus = undefined;
+    }
+    if (reportingFocus === "wms" && !viewerHas(access.grantSet, "org.wms", "view")) {
+      reportingFocus = undefined;
+    }
     const qs = buildQueryString({
+      focus: reportingFocus,
       guide: validGuide,
       step: validGuide != null && step != null ? step : undefined,
+      q: traceQPayload,
     });
     return {
       ok: true,

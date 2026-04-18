@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { ControlTowerDashboard } from "@/components/control-tower-dashboard";
 import { ControlTowerDashboardWidgets } from "@/components/control-tower-dashboard-widgets";
+import { ControlTowerReportingHubWorkbenchLinks } from "@/components/control-tower-reporting-hub-workbench-links";
 import { getActorUserId, getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { getControlTowerOverview } from "@/lib/control-tower/overview";
 import { getControlTowerPortalContext } from "@/lib/control-tower/viewer";
@@ -43,6 +44,7 @@ export default async function ControlTowerPage() {
             milestones, notes, documents, alerts, and exceptions.
           </p>
         ) : null}
+        <ControlTowerReportingHubWorkbenchLinks className="mt-4 flex flex-wrap gap-4 text-sm" />
       </header>
 
       {!tenant ? (
@@ -55,7 +57,11 @@ export default async function ControlTowerPage() {
       {overview ? <ControlTowerDashboard overview={overview} /> : null}
       <ControlTowerDashboardWidgets canEdit={canEdit} />
 
-      <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div
+        className={`mt-10 grid gap-4 sm:grid-cols-2 ${
+          ctx.isRestrictedView ? "lg:grid-cols-3" : "lg:grid-cols-5"
+        }`}
+      >
         <div className="rounded-xl border border-zinc-200 bg-white shadow-sm transition hover:border-sky-300 hover:shadow-md">
           <Link href="/control-tower/workbench" className="block p-5">
             <span className="text-base font-semibold text-zinc-900">Tracking workbench</span>
@@ -71,6 +77,19 @@ export default async function ControlTowerPage() {
             Overdue ETAs (earliest first) →
           </Link>
         </div>
+        {ctx.isRestrictedView ? (
+          <Link
+            href="/control-tower/digest"
+            className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm transition hover:border-sky-300 hover:shadow-md"
+          >
+            <span className="text-base font-semibold text-zinc-900">Shipment digest</span>
+            <p className="mt-2 text-sm text-zinc-600">
+              Read-only list of your most recently updated shipments (same scope as the Digest tab and digest API,
+              capped at 250 rows).
+            </p>
+            <span className="mt-4 inline-block text-sm font-medium text-sky-800">Open →</span>
+          </Link>
+        ) : null}
         <Link
           href="/control-tower/command-center"
           className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm transition hover:border-sky-300 hover:shadow-md"

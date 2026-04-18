@@ -8,6 +8,7 @@ import { subNavActiveClass } from "@/lib/subnav-active-class";
 
 const items: { href: string; label: string; key: keyof PoMgmtSubNavVisibility }[] = [
   { href: "/orders", label: "Orders", key: "orders" },
+  { href: "/product-trace", label: "Product trace", key: "productTrace" },
   { href: "/consolidation", label: "Consolidations", key: "consolidation" },
   { href: "/products", label: "Products", key: "products" },
 ];
@@ -27,7 +28,9 @@ export function PoMgmtSubNav({ visibility }: { visibility: PoMgmtSubNavVisibilit
           const active =
             href === "/orders"
               ? pathname === "/orders" || pathname.startsWith("/orders/")
-              : pathname === href || pathname.startsWith(`${href}/`);
+              : href === "/product-trace"
+                ? pathname === "/product-trace" || pathname.startsWith("/product-trace/")
+                : pathname === href || pathname.startsWith(`${href}/`);
           return (
             <Link
               key={href}

@@ -25,11 +25,19 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "No active user." }, { status: 403 });
   }
 
-  const modeRaw = new URL(request.url).searchParams.get("mode") ?? "";
-  const mode = MODES.includes(modeRaw as TransportMode) ? (modeRaw as TransportMode) : null;
+  const sp = new URL(request.url).searchParams;
+  const modeRaw = sp.get("mode")?.trim() ?? "";
+  const modeValid = MODES.includes(modeRaw as TransportMode) ? (modeRaw as TransportMode) : null;
+  if (modeRaw && !modeValid) {
+    return NextResponse.json(
+      { error: "Invalid mode. Use OCEAN, AIR, ROAD, RAIL, or omit mode for the full catalog." },
+      { status: 400 },
+    );
+  }
 
   const full = await listMilestonePackCatalogForTenant(tenant.id);
-  const packs = mode ? filterMilestonePackCatalogByTransportMode(full, mode) : [];
+  /** Omit `mode` for the full merged catalog; pass `mode` to restrict built-ins to that lane (tenant packs stay included). */
+  const packs = modeValid ? filterMilestonePackCatalogByTransportMode(full, modeValid) : full;
 
-  return NextResponse.json({ packs });
+  return NextResponse.json({ packs, modeFilter: modeValid });
 }

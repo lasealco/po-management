@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { WorkflowHeader } from "@/components/workflow-header";
 import { getActorUserId, getViewerGrantSet, viewerHas } from "@/lib/authz";
+import { ControlTowerReportingHubWorkbenchLinks } from "@/components/control-tower-reporting-hub-workbench-links";
 import { ControlTowerShipment360 } from "@/components/control-tower-shipment-360";
 import { getControlTowerPortalContext } from "@/lib/control-tower/viewer";
 import { controlTowerWorkbenchPath } from "@/lib/control-tower/workbench-url-sync";
@@ -51,14 +52,15 @@ export default async function ControlTowerShipmentPage({
 
   return (
     <main className="mx-auto w-full max-w-7xl px-6 py-10">
-      <p className="text-sm">
+      <div className="mb-2 flex flex-wrap gap-4 text-sm">
         <Link
           href={controlTowerWorkbenchPath({ q: id })}
           className="font-medium text-[var(--arscmp-primary)] hover:underline"
         >
           ← Control Tower workbench
         </Link>
-      </p>
+        <ControlTowerReportingHubWorkbenchLinks includeWorkbench={false} />
+      </div>
       <div className="mt-3 mb-5">
         <WorkflowHeader
           eyebrow="Shipment 360 workspace"

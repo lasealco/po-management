@@ -74,6 +74,19 @@ export default async function ReportingHubPage({
           Cross-module analytics cockpit plus module-specific workspaces. Start with the shared board for risk and cash
           signals, then move into the module report builders for execution.
         </p>
+        {canCt ? (
+          <div className="mt-4 flex flex-wrap gap-4 border-t border-zinc-100 pt-4 text-sm">
+            <Link href="/control-tower" className="font-medium text-sky-800 hover:underline">
+              Control Tower home
+            </Link>
+            <Link href="/control-tower/workbench" className="font-medium text-sky-800 hover:underline">
+              Workbench
+            </Link>
+            <Link href="/control-tower/digest" className="font-medium text-sky-800 hover:underline">
+              Shipment digest
+            </Link>
+          </div>
+        ) : null}
         <div className="mt-5 grid gap-3 md:grid-cols-3">
           <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Step 1</p>
@@ -167,6 +180,18 @@ export default async function ReportingHubPage({
                 className="inline-flex items-center rounded-xl border border-zinc-300 bg-white px-5 py-2.5 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
               >
                 My dashboard
+              </Link>
+              <Link
+                href="/control-tower/workbench"
+                className="inline-flex items-center rounded-xl border border-zinc-300 bg-white px-5 py-2.5 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
+              >
+                Workbench
+              </Link>
+              <Link
+                href="/control-tower/digest"
+                className="inline-flex items-center rounded-xl border border-zinc-300 bg-white px-5 py-2.5 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
+              >
+                Shipment digest
               </Link>
             </div>
           </section>

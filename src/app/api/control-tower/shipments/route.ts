@@ -52,6 +52,16 @@ export async function GET(request: Request) {
   const onlyOverdueEtaRaw = searchParams.get("onlyOverdueEta") ?? "";
   const routeActionRaw = searchParams.get("routeAction") ?? "";
   const dispatchOwnerUserId = searchParams.get("dispatchOwnerUserId")?.trim() || undefined;
+  const exceptionCodeRaw = searchParams.get("exceptionCode")?.trim() ?? "";
+  const exceptionCode =
+    exceptionCodeRaw.length > 0 && exceptionCodeRaw.length <= 80 && /^[\w.-]+$/i.test(exceptionCodeRaw)
+      ? exceptionCodeRaw
+      : undefined;
+  const alertTypeRaw = searchParams.get("alertType")?.trim() ?? "";
+  const alertType =
+    alertTypeRaw.length > 0 && alertTypeRaw.length <= 80 && /^[\w.-]+$/i.test(alertTypeRaw)
+      ? alertTypeRaw
+      : undefined;
   const minRouteProgressPctRaw = searchParams.get("minRouteProgressPct");
   const maxRouteProgressPctRaw = searchParams.get("maxRouteProgressPct");
   const shipmentSource =
@@ -87,7 +97,7 @@ export async function GET(request: Request) {
   const minRouteProgressPct = parsePct(minRouteProgressPctRaw);
   const maxRouteProgressPct = parsePct(maxRouteProgressPctRaw);
 
-  const rows = await listControlTowerShipments({
+  const listResult = await listControlTowerShipments({
     tenantId: tenant.id,
     ctx,
     query: {
@@ -105,12 +115,19 @@ export async function GET(request: Request) {
       onlyOverdueEta: onlyOverdueEta || undefined,
       routeActionPrefix: routeActionPrefix || undefined,
       dispatchOwnerUserId: dispatchOwnerUserId || undefined,
+      exceptionCode,
+      alertType,
       minRouteProgressPct,
       maxRouteProgressPct,
     },
   });
 
-  return NextResponse.json({ shipments: rows });
+  return NextResponse.json({
+    shipments: listResult.rows,
+    listLimit: listResult.listLimit,
+    itemCount: listResult.rows.length,
+    truncated: listResult.truncated,
+  });
 }
 
 function parseIsoDate(v: unknown): Date | null {

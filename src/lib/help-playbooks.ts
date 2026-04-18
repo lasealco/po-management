@@ -1,3 +1,5 @@
+import { REPORTING_HUB_CONTROL_TOWER_HREF } from "@/lib/reporting-hub-paths";
+
 /** Same contract as server-executed help actions (`/api/help/actions`). */
 export type HelpPlaybookDoAction = {
   type: "open_order" | "open_orders_queue" | "open_path";
@@ -70,6 +72,17 @@ export const HELP_PLAYBOOKS: HelpPlaybook[] = [
         },
       },
       {
+        title: "Jump to Control Tower on the hub",
+        description:
+          "Add ?focus=control-tower to /reporting to scroll straight to the Control Tower card (report builder, My dashboard, workbench, shipment digest). Other focuses: po, crm, wms. Help one-click actions and the command palette use the same deep links; focus is dropped if you lack that module grant.",
+        href: REPORTING_HUB_CONTROL_TOWER_HREF,
+        doAction: {
+          type: "open_path",
+          label: "Reporting hub — Control Tower section",
+          payload: { path: "/reporting", focus: "control-tower", guide: "reporting_hub", step: 4 },
+        },
+      },
+      {
         title: "Chart → table drill-down",
         description:
           "On My dashboard, open a pinned Control Tower widget: click a bar, line point, or pie slice to highlight that row, scroll the table, and copy a shareable URL (?widget=…&drill=…). Use “Open in workbench” for a filtered shipment list (carrier, supplier, customer, origin/destination codes map to dedicated workbench/API params). PO reports: ?report=…&row=… highlights any result row (chart or table click).",
@@ -77,7 +90,7 @@ export const HELP_PLAYBOOKS: HelpPlaybook[] = [
         doAction: {
           type: "open_path",
           label: "Open My dashboard",
-          payload: { path: "/control-tower/dashboard", guide: "reporting_hub", step: 4 },
+          payload: { path: "/control-tower/dashboard", guide: "reporting_hub", step: 5 },
         },
       },
     ],
@@ -247,9 +260,51 @@ export const HELP_PLAYBOOKS: HelpPlaybook[] = [
     ],
   },
   {
+    id: "product_trace",
+    title: "Product trace (SKU → PO → ocean → stock)",
+    summary:
+      "Follow a catalog SKU or buyer code from PO lines through in-transit shipment to warehouse inventory on a map (when you have WMS view).",
+    steps: [
+      {
+        title: "Open Product trace",
+        description:
+          "Search by SKU or code; see PO lines, simulated vessel position along the booking lane, and warehouse dots when permitted.",
+        href: "/product-trace",
+        doAction: {
+          type: "open_path",
+          label: "Open Product trace",
+          payload: { path: "/product-trace", guide: "product_trace", step: 0 },
+        },
+      },
+      {
+        title: "Try the demo SKU",
+        description:
+          "After `npm run db:seed` (and optional `npm run db:seed:product-trace-demo`), open PKG-CORR-ROLL to see PO-1002 in transit and WH-LAX stock.",
+        href: "/product-trace",
+        doAction: {
+          type: "open_path",
+          label: "Open with PKG-CORR-ROLL",
+          payload: { path: "/product-trace", q: "PKG-CORR-ROLL", guide: "product_trace", step: 1 },
+        },
+      },
+      {
+        title: "From Control Tower Search & assist",
+        description:
+          "Type trace:YOUR-CODE or product:YOUR-CODE next to shipment tokens; use “Open product trace →” beside workbench.",
+        href: "/control-tower/search",
+        doAction: {
+          type: "open_path",
+          label: "Open Search & assist",
+          payload: { path: "/control-tower/search", guide: "product_trace", step: 2 },
+        },
+      },
+    ],
+  },
+  {
     id: "control_tower",
     title: "Control Tower (shipments & reports)",
-    summary: "Search shipments, run analytics reports, and manage your dashboard widgets.",
+    summary:
+      "Search shipments, scan a capped digest list, run analytics reports, and manage your dashboard widgets.",
     steps: [
       {
         title: "Open Control Tower home",
@@ -299,6 +354,17 @@ export const HELP_PLAYBOOKS: HelpPlaybook[] = [
           type: "open_path",
           label: "Open My dashboard",
           payload: { path: "/control-tower/dashboard", guide: "control_tower", step: 4 },
+        },
+      },
+      {
+        title: "Shipment digest",
+        description:
+          "Read-only table of the most recently updated shipments in your scope (same contract as GET /api/control-tower/customer/digest). Amber banner when the 250-row cap may hide older rows.",
+        href: "/control-tower/digest",
+        doAction: {
+          type: "open_path",
+          label: "Open digest",
+          payload: { path: "/control-tower/digest", guide: "control_tower", step: 5 },
         },
       },
     ],
@@ -352,6 +418,20 @@ export const HELP_PLAYBOOKS: HelpPlaybook[] = [
 
 export function matchPlaybook(query: string): HelpPlaybook | null {
   const q = query.toLowerCase();
+  if (
+    q.includes("product trace") ||
+    q.includes("product-trace") ||
+    q.includes("producttrace") ||
+    q.includes("trace sku") ||
+    q.includes("track a sku") ||
+    q.includes("track a product") ||
+    q.includes("sku on the map") ||
+    (q.includes("where") &&
+      q.includes("sku") &&
+      (q.includes("stock") || q.includes("inventory") || q.includes("shipment") || q.includes("warehouse")))
+  ) {
+    return HELP_PLAYBOOKS.find((p) => p.id === "product_trace") ?? null;
+  }
   if (
     q.includes("/reporting") ||
     q.includes("reporting hub") ||

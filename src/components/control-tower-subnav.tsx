@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 
+import { REPORTING_HUB_CONTROL_TOWER_HREF } from "@/lib/reporting-hub-paths";
 import { subNavActiveClass } from "@/lib/subnav-active-class";
 
-const items: { href: string; label: string }[] = [
+const baseItems: { href: string; label: string }[] = [
   { href: "/control-tower", label: "Dashboard" },
   { href: "/control-tower/dashboard", label: "My dashboard" },
   { href: "/control-tower/workbench", label: "Workbench" },
@@ -13,11 +14,24 @@ const items: { href: string; label: string }[] = [
   { href: "/control-tower/command-center", label: "Command center" },
   { href: "/control-tower/ops", label: "Ops console" },
   { href: "/control-tower/reports", label: "Reports" },
+  { href: REPORTING_HUB_CONTROL_TOWER_HREF, label: "Reporting hub" },
   { href: "/control-tower/search", label: "Search & assist" },
+  /** Cross-link: SKU → PO lines, in-transit map, warehouse stock (same grants as product trace page). */
+  { href: "/product-trace", label: "Product trace" },
 ];
 
-export function ControlTowerSubNav() {
+const digestItem = { href: "/control-tower/digest", label: "Digest" } as const;
+
+export function ControlTowerSubNav({ includeDigestNav = false }: { includeDigestNav?: boolean }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const items = includeDigestNav
+    ? [
+        ...baseItems.slice(0, 3),
+        digestItem,
+        ...baseItems.slice(3),
+      ]
+    : baseItems;
 
   return (
     <div className="border-b border-zinc-200 bg-white shadow-sm">
@@ -27,18 +41,24 @@ export function ControlTowerSubNav() {
         </span>
         {items.map(({ href, label }) => {
           const active =
-            href === "/control-tower"
-              ? pathname === "/control-tower"
-              : href === "/control-tower/shipments/new"
-                ? pathname === href
-              : href === "/control-tower/workbench"
-                ? pathname === href ||
-                  pathname.startsWith(`${href}/`) ||
-                  (pathname.startsWith("/control-tower/shipments/") &&
-                    pathname !== "/control-tower/shipments/new")
-                : href === "/control-tower/command-center"
-                  ? pathname === href || pathname.startsWith(`${href}/`)
-                  : pathname === href || pathname.startsWith(`${href}/`);
+            href === REPORTING_HUB_CONTROL_TOWER_HREF
+              ? pathname === "/reporting" && searchParams.get("focus") === "control-tower"
+              : href === "/product-trace"
+                ? pathname === "/product-trace" || pathname.startsWith("/product-trace/")
+                : href === "/control-tower"
+                  ? pathname === "/control-tower"
+                  : href === "/control-tower/shipments/new"
+                    ? pathname === href
+                    : href === "/control-tower/workbench"
+                      ? pathname === href ||
+                        pathname.startsWith(`${href}/`) ||
+                        (pathname.startsWith("/control-tower/shipments/") &&
+                          pathname !== "/control-tower/shipments/new")
+                      : href === "/control-tower/digest"
+                        ? pathname === href || pathname.startsWith(`${href}/`)
+                        : href === "/control-tower/command-center"
+                          ? pathname === href || pathname.startsWith(`${href}/`)
+                          : pathname === href || pathname.startsWith(`${href}/`);
           return (
             <Link
               key={href}

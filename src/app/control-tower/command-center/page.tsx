@@ -1,5 +1,6 @@
 import { getActorUserId } from "@/lib/authz";
 import { ControlTowerCommandCenter } from "@/components/control-tower-command-center";
+import { ControlTowerReportingHubWorkbenchLinks } from "@/components/control-tower-reporting-hub-workbench-links";
 import { getControlTowerPortalContext } from "@/lib/control-tower/viewer";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +15,7 @@ export default async function ControlTowerCommandCenterPage() {
   return (
     <main className="mx-auto w-full max-w-7xl px-6 py-10">
       <header className="mb-6">
+        <ControlTowerReportingHubWorkbenchLinks />
         <h1 className="text-2xl font-semibold text-zinc-900">Command center</h1>
         <p className="mt-1 max-w-3xl text-sm text-zinc-600">
           Kanban-style triage by the next route action on each shipment. Filter by the first assigned owner on open

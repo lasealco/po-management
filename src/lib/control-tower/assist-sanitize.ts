@@ -17,6 +17,7 @@ const VALID_STATUSES = new Set<ShipmentStatus>([
 const VALID_MODES = new Set<TransportMode>(["OCEAN", "AIR", "ROAD", "RAIL"]);
 
 const MAX_Q = 240;
+const MAX_PRODUCT_TRACE_Q = 64;
 const MAX_LANE = 12;
 const MAX_PORT_CODE = 10;
 
@@ -39,6 +40,13 @@ export function sanitizeAssistSuggestedFilters(input: unknown): AssistSuggestedF
   if (typeof o.q === "string") {
     const t = o.q.trim().slice(0, MAX_Q);
     if (t) out.q = t;
+  }
+  if (typeof o.productTraceQ === "string") {
+    const m = o.productTraceQ.trim().match(/^([A-Za-z0-9._-]+)/);
+    if (m) {
+      const t = m[1].slice(0, MAX_PRODUCT_TRACE_Q);
+      if (t) out.productTraceQ = t;
+    }
   }
   if (typeof o.mode === "string" && VALID_MODES.has(o.mode as TransportMode)) {
     out.mode = o.mode as TransportMode;
@@ -80,6 +88,14 @@ export function sanitizeAssistSuggestedFilters(input: unknown): AssistSuggestedF
   if (typeof o.dispatchOwnerUserId === "string") {
     const t = o.dispatchOwnerUserId.trim();
     if (isProbableAssistCuid(t)) out.dispatchOwnerUserId = t;
+  }
+  if (typeof o.exceptionCode === "string") {
+    const t = o.exceptionCode.trim().slice(0, 80);
+    if (t && /^[\w.-]+$/i.test(t)) out.exceptionCode = t;
+  }
+  if (typeof o.alertType === "string") {
+    const t = o.alertType.trim().slice(0, 80);
+    if (t && /^[\w.-]+$/i.test(t)) out.alertType = t;
   }
   if (typeof o.shipmentSource === "string") {
     const u = o.shipmentSource.trim().toUpperCase();

@@ -4,6 +4,10 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { startTransition, useCallback, useEffect, useMemo, useState } from "react";
 
+import {
+  ctTrackingMilestoneProvenancePill,
+  workflowMilestoneSourcePill,
+} from "@/lib/control-tower/milestone-provenance";
 import { ctSlaState } from "@/lib/control-tower/sla-thresholds";
 import { CT_SHIPMENT_DOCUMENT_TYPES } from "@/lib/control-tower/shipment-document-types";
 import { controlTowerWorkbenchPath } from "@/lib/control-tower/workbench-url-sync";
@@ -112,6 +116,9 @@ export function ControlTowerShipment360({
   const [data, setData] = useState<Record<string, unknown> | null>(null);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [demoEnrichBusy, setDemoEnrichBusy] = useState(false);
+  const [demoRegenBusy, setDemoRegenBusy] = useState(false);
+  const [demoProfile, setDemoProfile] = useState<"delayed" | "at_risk" | "on_time">("at_risk");
 
   const load = useCallback(async () => {
     setBusy(true);
@@ -2532,14 +2539,107 @@ export function ControlTowerShipment360({
               </div>
             </section>
           ) : null}
+          {!restricted && canEdit ? (
+            <section className="rounded-lg border border-zinc-200 bg-zinc-50/90 p-4 text-sm">
+              <h2 className="font-semibold text-zinc-900">Demo timeline (this shipment)</h2>
+              <p className="mt-1 text-xs text-zinc-600">
+                Internal-only helpers: add missing legs and simulated milestones without touching shipments that already
+                have both, or rebuild this shipment&apos;s legs and tracking rows (destructive). Matches workbench bulk
+                actions with optional <span className="font-mono text-zinc-800">shipmentId</span> scope.
+              </p>
+              <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+                <label className="flex min-w-[11rem] flex-col gap-1 text-xs text-zinc-700">
+                  <span className="font-medium text-zinc-800">Regenerate profile</span>
+                  <select
+                    className="rounded border border-zinc-300 bg-white px-2 py-1.5 text-sm"
+                    value={demoProfile}
+                    onChange={(e) =>
+                      setDemoProfile(e.target.value as "delayed" | "at_risk" | "on_time")
+                    }
+                  >
+                    <option value="on_time">On time</option>
+                    <option value="at_risk">At risk</option>
+                    <option value="delayed">Delayed</option>
+                  </select>
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    disabled={demoEnrichBusy || demoRegenBusy}
+                    className="rounded border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-900 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+                    onClick={async () => {
+                      try {
+                        setDemoEnrichBusy(true);
+                        const json = await postAction({
+                          action: "enrich_ct_demo_tracking",
+                          shipmentId,
+                          take: 1,
+                        });
+                        window.alert(
+                          `Demo enrichment done.\nShipments updated: ${Number(json.shipmentsUpdated ?? 0)}\nLegs created: ${Number(json.legsCreated ?? 0)}\nMilestones created: ${Number(json.milestonesCreated ?? 0)}`,
+                        );
+                      } catch (err) {
+                        window.alert(err instanceof Error ? err.message : "Failed");
+                      } finally {
+                        setDemoEnrichBusy(false);
+                      }
+                    }}
+                  >
+                    {demoEnrichBusy ? "Working…" : "Fill missing demo legs & milestones"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={demoEnrichBusy || demoRegenBusy}
+                    className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-950 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+                    onClick={async () => {
+                      if (
+                        !window.confirm(
+                          "Regenerate demo legs and Control Tower milestones for this shipment? Existing legs and tracking milestones on this shipment will be replaced.",
+                        )
+                      ) {
+                        return;
+                      }
+                      try {
+                        setDemoRegenBusy(true);
+                        const json = await postAction({
+                          action: "regenerate_ct_demo_timeline",
+                          shipmentId,
+                          take: 1,
+                          demoProfile,
+                        });
+                        window.alert(
+                          `Regenerated.\nProfile counts — delayed: ${Number(json.delayed ?? 0)}, at-risk: ${Number(json.atRisk ?? 0)}, on-time: ${Number(json.onTime ?? 0)}`,
+                        );
+                      } catch (err) {
+                        window.alert(err instanceof Error ? err.message : "Failed");
+                      } finally {
+                        setDemoRegenBusy(false);
+                      }
+                    }}
+                  >
+                    {demoRegenBusy ? "Regenerating…" : "Regenerate demo timeline"}
+                  </button>
+                </div>
+              </div>
+            </section>
+          ) : null}
           <section className="rounded-lg border border-zinc-200 bg-white p-4 text-sm">
             <h2 className="font-semibold text-zinc-900">Workflow milestones</h2>
+            <p className="mt-1 text-[11px] text-zinc-500">
+              Shipment workflow codes (supplier / forwarder / internal / system). Distinct from Control Tower tracking
+              rows below.
+            </p>
             <ul className="mt-2 space-y-2 text-xs">
               {milestones.map((m) => {
                 const row = m as Record<string, unknown>;
+                const src = workflowMilestoneSourcePill(String(row.source ?? ""));
                 return (
                   <li key={String(row.id)} className="border-b border-zinc-100 pb-2">
-                    <span className="font-medium">{String(row.code)}</span> · src {String(row.source)} · act{" "}
+                    <span className="font-medium">{String(row.code)}</span>{" "}
+                    <span className="align-middle" title={src.title}>
+                      <span className={src.className}>{src.label}</span>
+                    </span>
+                    <span className="text-zinc-500"> · act </span>
                     {row.actualAt ? new Date(row.actualAt as string).toLocaleString() : "—"}
                   </li>
                 );
@@ -2548,6 +2648,21 @@ export function ControlTowerShipment360({
           </section>
           <section className="rounded-lg border border-zinc-200 bg-white p-4 text-sm">
             <h2 className="font-semibold text-zinc-900">Control tower tracking milestones</h2>
+            <p className="mt-1 text-[11px] text-zinc-600">
+              <span className="font-medium text-zinc-800">Provenance</span> on flexible milestones:{" "}
+              <span title={ctTrackingMilestoneProvenancePill("SIMULATED").title} className="cursor-help underline decoration-dotted">
+                Simulated
+              </span>{" "}
+              = demo timeline;{" "}
+              <span title={ctTrackingMilestoneProvenancePill("INTEGRATION").title} className="cursor-help underline decoration-dotted">
+                Integration
+              </span>{" "}
+              = webhook/API;{" "}
+              <span title={ctTrackingMilestoneProvenancePill("MANUAL").title} className="cursor-help underline decoration-dotted">
+                Manual
+              </span>{" "}
+              = user-edited.
+            </p>
             <div className="mt-2 overflow-x-auto">
               <table className="min-w-full border-collapse text-xs">
                 <thead>
@@ -2578,10 +2693,19 @@ export function ControlTowerShipment360({
                           {row.actualAt ? new Date(row.actualAt as string).toLocaleString() : "—"}
                         </td>
                         <td className="py-2 pr-3">
-                          {String(row.sourceType)}
-                          {row.sourceRef ? (
-                            <span className="text-zinc-500"> · {String(row.sourceRef)}</span>
-                          ) : null}
+                          {(() => {
+                            const pill = ctTrackingMilestoneProvenancePill(String(row.sourceType ?? ""));
+                            return (
+                              <div className="space-y-0.5">
+                                <span title={pill.title} className={pill.className}>
+                                  {pill.label}
+                                </span>
+                                {row.sourceRef ? (
+                                  <div className="font-mono text-[10px] text-zinc-500">{String(row.sourceRef)}</div>
+                                ) : null}
+                              </div>
+                            );
+                          })()}
                         </td>
                         <td className="py-2 whitespace-nowrap text-zinc-500">
                           {row.updatedByName ? String(row.updatedByName) : "—"} ·{" "}

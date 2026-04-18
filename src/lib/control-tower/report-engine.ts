@@ -3,6 +3,8 @@ import type { Prisma, ShipmentStatus, TransportMode } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { convertAmount, minorToAmount, normalizeCurrency } from "@/lib/control-tower/currency";
 
+import { buildControlTowerReportCsv as buildReportCsvSnapshot } from "./report-csv";
+
 import {
   controlTowerShipmentScopeWhere,
   type ControlTowerPortalContext,
@@ -96,6 +98,9 @@ export type CtRunReportResult = {
     measure: CtReportMeasure;
     compareMeasure: CtReportMeasure | null;
     dateField: "shippedAt" | "receivedAt" | "bookingEta";
+    /** Echo of sanitized config; used for PDF / email date window lines. */
+    dateFrom: string | null;
+    dateTo: string | null;
     topN: number;
   };
   /** Chart / builder primary series (Top-N except month, which keeps full timeline). */
@@ -106,6 +111,15 @@ export type CtRunReportResult = {
   totals: Record<CtReportMeasure, number>;
   generatedAt: string;
 };
+
+/** UTF-8 CSV (bucket + all measures + TOTAL row). Prefers `fullSeriesRows` when non-empty. */
+export function buildControlTowerReportCsv(result: CtRunReportResult): string {
+  return buildReportCsvSnapshot({
+    rows: result.rows,
+    fullSeriesRows: result.fullSeriesRows,
+    totals: result.totals,
+  });
+}
 
 function parseIsoDate(v: string | null | undefined): Date | null {
   if (!v) return null;
@@ -463,6 +477,8 @@ export async function runControlTowerReport(params: {
       measure: config.measure ?? "shipments",
       compareMeasure: config.compareMeasure ?? null,
       dateField: config.dateField ?? "shippedAt",
+      dateFrom: config.dateFrom ?? null,
+      dateTo: config.dateTo ?? null,
       topN: config.topN ?? 12,
     },
     rows: sliced,

@@ -130,6 +130,12 @@ export default async function ExecutiveDashboardPage({
               Open control tower workbench
             </Link>
             <Link
+              href="/control-tower/digest"
+              className="rounded-full border border-white/20 bg-white/5 px-3 py-1 text-xs font-medium text-zinc-100 hover:bg-white/10"
+            >
+              Shipment digest
+            </Link>
+            <Link
               href={controlTowerWorkbenchPath({ onlyOverdueEta: "1", sortBy: "eta_asc" })}
               className="rounded-full border border-amber-300/35 bg-amber-300/10 px-3 py-1 text-xs font-medium text-amber-100 hover:bg-amber-300/15"
             >

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { runControlTowerReport } from "@/lib/control-tower/report-engine";
+import { buildReportInsightRunSummary } from "@/lib/control-tower/report-run-summary";
 import { getControlTowerPortalContext } from "@/lib/control-tower/viewer";
 import { getDemoTenant } from "@/lib/demo-tenant";
 
@@ -32,5 +33,8 @@ export async function POST(request: Request) {
     configInput: config,
     actorUserId: actorId,
   });
-  return NextResponse.json(result);
+  return NextResponse.json({
+    ...result,
+    runSummary: buildReportInsightRunSummary(result),
+  });
 }

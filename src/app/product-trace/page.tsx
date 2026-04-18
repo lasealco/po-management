@@ -1,4 +1,5 @@
 import { AccessDenied } from "@/components/access-denied";
+import { ControlTowerReportingHubWorkbenchLinks } from "@/components/control-tower-reporting-hub-workbench-links";
 import { ProductTraceExplorer } from "@/components/product-trace-explorer";
 import {
   getActorUserId,
@@ -93,6 +94,9 @@ export default async function ProductTracePage({
           Customer-safe view: suppliers, simulated in-transit positions along booking lanes, and warehouse stock
           (when permitted) on a map — then list or tile details below.
         </p>
+        {canSeeCt ? (
+          <ControlTowerReportingHubWorkbenchLinks className="mt-4 flex flex-wrap gap-4 text-sm" />
+        ) : null}
       </header>
 
       <form method="get" className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end">

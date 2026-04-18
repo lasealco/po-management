@@ -25,7 +25,29 @@ export type AssistSuggestedFilters = {
   shipmentSource?: "PO" | "UNLINKED";
   /** Open alert/exception owner queue filter from `owner:…` / `assignee:…` / `dispatch:…` (user cuid). */
   dispatchOwnerUserId?: string;
+  /** Open / in-progress exception `type` (catalog code) from `exception:…` or `ex:…`. */
+  exceptionCode?: string;
+  /** Open / acknowledged alert `type` from `alertType:` or `ctAlert:`. */
+  alertType?: string;
+  /** SKU / buyer code for Product trace from `trace:…`, `sku:…`, or `product:…`. */
+  productTraceQ?: string;
 };
+
+const MAX_PRODUCT_TRACE_Q = 64;
+const MAX_LIST_FILTER_TOKEN = 80;
+
+function sanitizeListFilterToken(raw: string): string | undefined {
+  const t = raw.trim().slice(0, MAX_LIST_FILTER_TOKEN);
+  if (!t || !/^[\w.-]+$/i.test(t)) return undefined;
+  return t;
+}
+
+function sanitizeProductTraceQuery(raw: string): string | null {
+  const m = raw.trim().match(/^([A-Za-z0-9._-]+)/);
+  if (!m) return null;
+  const t = m[1].slice(0, MAX_PRODUCT_TRACE_Q);
+  return t || null;
+}
 
 const STATUS_WORDS: ShipmentStatus[] = [
   "BOOKING_DRAFT",
@@ -104,7 +126,7 @@ export function assistControlTowerQuery(raw: string): {
 
   if (!working) {
     hints.push(
-      "Enter a PO number, booking ref, container id, carrier name, or UN/LOCODE-style port (e.g. CNSHA), or try lane:, origin:, dest:, route:plan_leg, source:po|unlinked, owner:, carrier:, supplier:, customer:, and overdue tokens.",
+      "Enter a PO number, booking ref, container id, carrier name, or UN/LOCODE-style port (e.g. CNSHA), or try lane:, origin:, dest:, route:plan_leg, source:po|unlinked, exception:CODE, alertType:TYPE, trace:SKU, product:CODE, owner:, carrier:, supplier:, customer:, and overdue tokens.",
     );
     return { hints, suggestedFilters };
   }
@@ -193,6 +215,32 @@ export function assistControlTowerQuery(raw: string): {
     working = stripOnce(working, /\b(?:owner|assignee|dispatch)\s*:\s*\S+/i);
   }
 
+  const excM = working.match(/\b(?:exception|ex)\s*:\s*([\w.-]+)\b/i);
+  if (excM) {
+    const code = sanitizeListFilterToken(excM[1]);
+    if (code) {
+      suggestedFilters.exceptionCode = code;
+      hints.push(`Open exception filter: ${code} (matches OPEN / IN_PROGRESS CtException.type).`);
+    } else {
+      hints.push("exception: / ex: expects a catalog-style code (letters, digits, . _ -).");
+    }
+    working = stripOnce(working, /\b(?:exception|ex)\s*:\s*[\w.-]+\b/i);
+  }
+
+  const alertTok =
+    working.match(/\balertType\s*:\s*([\w.-]+)\b/i) || working.match(/\bctAlert\s*:\s*([\w.-]+)\b/i);
+  if (alertTok) {
+    const t = sanitizeListFilterToken(alertTok[1]);
+    if (t) {
+      suggestedFilters.alertType = t;
+      hints.push(`Open alert filter: ${t} (matches OPEN / ACKNOWLEDGED CtAlert.type).`);
+    } else {
+      hints.push("alertType: / ctAlert: expects an alert type token (letters, digits, . _ -).");
+    }
+    working = stripOnce(working, /\balertType\s*:\s*[\w.-]+\b/i);
+    working = stripOnce(working, /\bctAlert\s*:\s*[\w.-]+\b/i);
+  }
+
   const routeM = working.match(/\broute\s*:\s*([a-z0-9_-]+)\b/i);
   if (routeM) {
     const slug = routeM[1];
@@ -255,6 +303,9 @@ export function assistControlTowerQuery(raw: string): {
   working = working.replace(/\s+/g, " ").trim();
   if (working.length > 0) {
     suggestedFilters.q = working;
+  }
+  if (suggestedFilters.productTraceQ && !suggestedFilters.q?.trim()) {
+    suggestedFilters.q = suggestedFilters.productTraceQ;
   }
 
   if (hints.length === 0) {

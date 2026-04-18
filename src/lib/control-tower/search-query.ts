@@ -21,6 +21,8 @@ export function appendAssistToSearchParams(
     sp.set("shipmentSource", filters.shipmentSource);
   }
   if (filters.dispatchOwnerUserId?.trim()) sp.set("dispatchOwnerUserId", filters.dispatchOwnerUserId.trim());
+  if (filters.exceptionCode?.trim()) sp.set("exceptionCode", filters.exceptionCode.trim());
+  if (filters.alertType?.trim()) sp.set("alertType", filters.alertType.trim());
   if (opts?.take != null) sp.set("take", String(opts.take));
 }
 
@@ -38,6 +40,9 @@ export function hasStructuredSearchInput(filters: AssistSuggestedFilters): boole
       filters.routeAction?.trim() ||
       filters.shipmentSource === "PO" ||
       filters.shipmentSource === "UNLINKED" ||
-      filters.dispatchOwnerUserId?.trim(),
+      filters.dispatchOwnerUserId?.trim() ||
+      filters.exceptionCode?.trim() ||
+      filters.alertType?.trim() ||
+      filters.productTraceQ?.trim(),
   );
 }

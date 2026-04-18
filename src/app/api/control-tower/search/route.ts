@@ -20,6 +20,9 @@ const STATUSES: ShipmentStatus[] = [
 ];
 const MODES: TransportMode[] = ["OCEAN", "AIR", "ROAD", "RAIL"];
 
+const DEFAULT_SEARCH_TAKE = 60;
+const MAX_SEARCH_TAKE = 200;
+
 const ROUTE_ACTION_ALLOWED = [
   "Send booking",
   "Await booking",
@@ -70,13 +73,24 @@ export async function GET(request: Request) {
     shipmentSourceRaw === "PO" || shipmentSourceRaw === "UNLINKED" ? shipmentSourceRaw : undefined;
   const dispatchOwnerUserIdRaw = searchParams.get("dispatchOwnerUserId")?.trim() ?? "";
   const dispatchOwnerUserId = isProbableCuid(dispatchOwnerUserIdRaw) ? dispatchOwnerUserIdRaw : undefined;
+  const exceptionCodeRaw = searchParams.get("exceptionCode")?.trim() ?? "";
+  const exceptionCode =
+    exceptionCodeRaw.length > 0 && exceptionCodeRaw.length <= 80 && /^[\w.-]+$/i.test(exceptionCodeRaw)
+      ? exceptionCodeRaw
+      : undefined;
+  const alertTypeRaw = searchParams.get("alertType")?.trim() ?? "";
+  const alertType =
+    alertTypeRaw.length > 0 && alertTypeRaw.length <= 80 && /^[\w.-]+$/i.test(alertTypeRaw)
+      ? alertTypeRaw
+      : undefined;
   const routeActionRaw = searchParams.get("routeAction")?.trim() ?? "";
   const routeActionPrefix = ROUTE_ACTION_ALLOWED.find((a) => a === routeActionRaw);
   const takeRaw = searchParams.get("take");
   const takeParsed = takeRaw ? Number(takeRaw) : NaN;
   const take = Number.isFinite(takeParsed)
-    ? Math.min(200, Math.max(1, Math.floor(takeParsed)))
+    ? Math.min(MAX_SEARCH_TAKE, Math.max(1, Math.floor(takeParsed)))
     : undefined;
+  const effectiveTake = take ?? DEFAULT_SEARCH_TAKE;
 
   const status = STATUSES.includes(statusRaw as ShipmentStatus)
     ? (statusRaw as ShipmentStatus)
@@ -97,22 +111,27 @@ export async function GET(request: Request) {
       destinationCode ||
       routeActionPrefix ||
       shipmentSource ||
-      dispatchOwnerUserId,
+      dispatchOwnerUserId ||
+      exceptionCode ||
+      alertType,
   );
   if (!q && !hasStructured) {
     return NextResponse.json({
       shipments: [],
+      searchLimit: DEFAULT_SEARCH_TAKE,
+      itemCount: 0,
+      truncated: false,
       message:
-        "Provide q= text and/or filters: mode, status, onlyOverdueEta, lane, originCode, destinationCode, routeAction, shipmentSource, dispatchOwnerUserId, supplierId, customerCrmAccountId, carrierSupplierId.",
+        "Provide q= text and/or filters: mode, status, onlyOverdueEta, lane, originCode, destinationCode, routeAction, shipmentSource, dispatchOwnerUserId, supplierId, customerCrmAccountId, carrierSupplierId, exceptionCode, alertType.",
     });
   }
 
-  const rows = await listControlTowerShipments({
+  const listResult = await listControlTowerShipments({
     tenantId: tenant.id,
     ctx,
     query: {
       q: q || undefined,
-      take: take ?? 60,
+      take: effectiveTake,
       status: status ?? "",
       mode: mode ?? "",
       onlyOverdueEta: onlyOverdueEta ?? false,
@@ -125,8 +144,16 @@ export async function GET(request: Request) {
       routeActionPrefix,
       shipmentSource: shipmentSource ?? "",
       dispatchOwnerUserId,
+      exceptionCode,
+      alertType,
     },
   });
 
-  return NextResponse.json({ q: q || null, shipments: rows });
+  return NextResponse.json({
+    q: q || null,
+    searchLimit: listResult.listLimit,
+    itemCount: listResult.rows.length,
+    truncated: listResult.truncated,
+    shipments: listResult.rows,
+  });
 }
