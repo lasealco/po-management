@@ -3,10 +3,12 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 import { InvoiceAuditError } from "@/lib/invoice-audit/invoice-audit-error";
+import {
+  INVOICE_CHARGE_ALIAS_TARGET_KINDS,
+  INVOICE_CHARGE_ALIAS_TARGET_KIND_SET,
+} from "@/lib/invoice-audit/invoice-charge-alias-constants";
 
-export const INVOICE_CHARGE_ALIAS_TARGET_KINDS = ["CONTRACT_RATE", "CONTRACT_CHARGE", "RFQ_LINE"] as const;
-
-const TARGET_SET = new Set<string>(INVOICE_CHARGE_ALIAS_TARGET_KINDS);
+export { INVOICE_CHARGE_ALIAS_TARGET_KINDS } from "@/lib/invoice-audit/invoice-charge-alias-constants";
 
 /**
  * Parse API body `canonicalTokens`: JSON array of strings, or a single string split on newlines / commas / semicolons.
@@ -27,7 +29,7 @@ export function parseCanonicalTokensFromBody(v: unknown): string[] | null {
 export function coerceChargeAliasTargetKind(raw: unknown): string | null {
   if (raw == null || raw === "") return null;
   const t = String(raw).trim().toUpperCase();
-  if (!TARGET_SET.has(t)) {
+  if (!INVOICE_CHARGE_ALIAS_TARGET_KIND_SET.has(t)) {
     throw new InvoiceAuditError(
       "BAD_INPUT",
       `Invalid targetKind. Use one of: ${INVOICE_CHARGE_ALIAS_TARGET_KINDS.join(", ")}, or omit for any kind.`,

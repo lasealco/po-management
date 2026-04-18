@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { INVOICE_CHARGE_ALIAS_TARGET_KINDS } from "@/lib/invoice-audit/invoice-charge-aliases";
+import { INVOICE_CHARGE_ALIAS_TARGET_KINDS } from "@/lib/invoice-audit/invoice-charge-alias-constants";
 import { formatInvoiceAuditApiError } from "@/lib/invoice-audit/invoice-audit-api-client-error";
 
 export type SerializedInvoiceChargeAlias = {
