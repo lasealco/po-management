@@ -12,7 +12,8 @@ Apply the **full** migration chain with `npm run db:migrate` / `prisma migrate d
 
 | Folder | Summary |
 |--------|---------|
-| `20260417150000_supplier_srm_category_approval` | `srmCategory`, `approvalStatus`, booking SLA hint on `Supplier`. |
+| `20260417150000_supplier_srm_category_approval` | `srmCategory`, `approvalStatus` on `Supplier`. |
+| `20260417200000_booking_first_lifecycle` | `Supplier.bookingConfirmationSlaHours` (logistics booking confirmation SLA). |
 | `20260418180000_supplier_service_capability` | `SupplierServiceCapability` (scoped capabilities). |
 | `20260418190000_supplier_onboarding_task` | `SupplierOnboardingTask` checklist rows. |
 | `20260418210000_supplier_qualification_srm` | Qualification fields on `Supplier`. |

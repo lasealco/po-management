@@ -656,16 +656,24 @@ async function seed() {
     where: { supplierId_name: { supplierId: supplier.id, name: "Headquarters" } },
     update: {
       addressLine1: "100 Industrial Way",
+      addressLine2: "Suite 200",
       city: "Chicago",
+      region: "IL",
+      postalCode: "60601",
       countryCode: "US",
+      isActive: true,
     },
     create: {
       tenantId: tenant.id,
       supplierId: supplier.id,
       name: "Headquarters",
       addressLine1: "100 Industrial Way",
+      addressLine2: "Suite 200",
       city: "Chicago",
+      region: "IL",
+      postalCode: "60601",
       countryCode: "US",
+      isActive: true,
     },
   });
 
