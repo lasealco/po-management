@@ -13,5 +13,6 @@ describe("jsonFromInvoiceAuditError", () => {
     expect(res!.status).toBe(503);
     expect(body.code).toBe("SCHEMA_NOT_READY");
     expect(body.migrationsHint).toContain("migrate deploy");
+    expect(body.migrationsHint).toMatch(/readiness/i);
   });
 });

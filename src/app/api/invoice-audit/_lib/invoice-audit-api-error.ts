@@ -21,7 +21,7 @@ export function jsonFromInvoiceAuditError(e: unknown): NextResponse | null {
       ...(e.code === "SCHEMA_NOT_READY"
         ? {
             migrationsHint:
-              "Apply prisma migrate deploy (or npm run db:migrate locally). Vercel: unset SKIP_DB_MIGRATE unless you migrate elsewhere.",
+              "Apply npm run db:migrate (or prisma migrate deploy) on this DATABASE_URL. Then GET or open /invoice-audit/readiness?refresh=1. Vercel: do not set SKIP_DB_MIGRATE=1 unless migrations run elsewhere on the same DB.",
           }
         : {}),
     },
