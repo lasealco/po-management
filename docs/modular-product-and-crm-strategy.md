@@ -121,6 +121,18 @@ Keep **one row per customer** (`Tenant`) and add **entitlements** the runtime ch
 - **Org hierarchy + delegated admin:** `docs/icp-and-tenancy.md` (scoped admin / subset rule).
 - **Tenancy baseline:** same file, “What the product does today.”
 
+### 6. Implementation milestones (**defer** — do when prioritizing billing)
+
+Do in roughly this order so each step is shippable:
+
+1. **Prisma + data:** extend `Tenant` and/or add `TenantEntitlement` / `TenantSubscription` rows (`tenantId`, `moduleKey`, `status`, optional `validUntil`, `source`). Seed **all modules on** for existing tenants until Stripe exists.
+2. **Single helper:** e.g. `tenantHasModule(tenantId, moduleKey)` (or `loadTenantEntitlements`) used from server code; cache per request where appropriate.
+3. **Gates:** wire **nav**, **command palette**, and **critical API route handlers** (or middleware segments) so unpurchased modules return **403** / hidden UI — **before** relying only on role checks (entitlements ∩ role grants).
+4. **Stripe:** Checkout + Customer Portal + signed webhooks → upsert entitlement rows; manual **admin override** flag for pilots.
+5. **In-app billing UI:** `/settings/billing` or `/platform/subscribe` — show current modules, link to Checkout/Portal.
+
+*Deferred on purpose; product can ship demos without step 4–5 if entitlements default to “all on” per tenant.*
+
 ## Summary
 
 - **Author CRM in this codebase** behind entitlements and clear module boundaries.
@@ -134,5 +146,6 @@ Keep **one row per customer** (`Tenant`) and add **entitlements** the runtime ch
 
 ## Changelog
 
+- **2026-04-18:** Added **§6 Implementation milestones (defer)** — Prisma entitlements → `tenantHasModule` → nav/API gates → Stripe → billing UI.
 - **2026-04-18:** Added **SaaS plans, bundles, module shop** (Stripe-shaped entitlements, enforcement order, shop UX).
 - **2026-04-16:** Initial modular strategy (Option A vs B, packaging table).
