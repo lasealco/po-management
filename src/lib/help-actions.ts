@@ -43,6 +43,8 @@ const OPEN_PATH_ALLOWLIST = new Set([
   "/tariffs/import/new",
   "/rfq/requests",
   "/rfq/requests/new",
+  "/pricing-snapshots",
+  "/pricing-snapshots/new",
   "/reporting",
   "/reports",
   "/crm/reporting",

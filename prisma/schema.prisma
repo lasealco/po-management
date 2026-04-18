@@ -68,6 +68,7 @@ model Tenant {
   tariffContractHeaders TariffContractHeader[]
   tariffImportBatches   TariffImportBatch[]
   quoteRequests         QuoteRequest[]
+  bookingPricingSnapshots BookingPricingSnapshot[]
 }
 
 /// Tenant-scoped milestone template packs (override or extend built-in packs in code).
@@ -144,6 +145,7 @@ model User {
   tariffAuditLogs            TariffAuditLog[] @relation("TariffAuditLogActor")
   quoteRequestsOwned         QuoteRequest[]         @relation("QuoteRequestOwner")
   quoteClarificationsAuthored QuoteClarificationMessage[] @relation("QuoteClarificationAuthor")
+  bookingPricingSnapshotsCreated BookingPricingSnapshot[] @relation("BookingPricingSnapshotCreator")
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -809,6 +811,7 @@ model ShipmentBooking {
   forwarderContact SupplierContact? @relation(fields: [forwarderContactId], references: [id], onDelete: SetNull)
   createdBy       User            @relation("ShipmentBookingCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
   updatedBy       User            @relation("ShipmentBookingUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  pricingSnapshots  BookingPricingSnapshot[]
 
   @@index([status])
   @@index([forwarderSupplierId])
@@ -2152,6 +2155,11 @@ enum QuoteClarificationVisibility {
   RECIPIENTS
 }
 
+enum PricingSnapshotSourceType {
+  TARIFF_CONTRACT_VERSION
+  QUOTE_RESPONSE
+}
+
 enum TariffGeographyType {
   GLOBAL_REGION
   SUBREGION
@@ -2623,4 +2631,38 @@ model QuoteClarificationMessage {
 
   @@index([quoteRequestId])
   @@map("quote_clarification_messages")
+}
+
+/// Immutable capture of estimated booking economics at a point in time (contract or RFQ basis).
+/// Rows are never updated when underlying tariffs/quotes change — create a new snapshot instead.
+model BookingPricingSnapshot {
+  id                 String                     @id @default(cuid())
+  tenantId           String
+  shipmentBookingId String?
+  sourceType         PricingSnapshotSourceType
+  /// Contract version id or quote response id (matches sourceType).
+  sourceRecordId     String
+  sourceSummary      String?                    @db.Text
+  currency           String                     @db.VarChar(3)
+  totalEstimatedCost Decimal                    @db.Decimal(18, 4)
+  breakdownJson      Json
+  freeTimeBasisJson  Json
+  /// Documents how totalEstimatedCost was derived (MVP: sum of rate + charge amounts).
+  totalDerivation    String                     @default("SUM_RATE_AND_CHARGE_AMOUNTS")
+  frozenAt           DateTime                   @default(now())
+  createdByUserId    String?
+  /// Reserved for buy/sell split, margin, counterparty totals, etc.
+  commercialJson     Json?
+  /// Reserved e.g. BUY | SELL when dual-basis UI exists.
+  basisSide          String?                    @db.VarChar(16)
+
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  shipmentBooking  ShipmentBooking?  @relation(fields: [shipmentBookingId], references: [id], onDelete: SetNull)
+  creator            User?             @relation("BookingPricingSnapshotCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([tenantId, frozenAt])
+  @@index([shipmentBookingId])
+  @@index([sourceType, sourceRecordId])
+  @@map("booking_pricing_snapshots")
 }

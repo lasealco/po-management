@@ -16,6 +16,7 @@ export type CommandPaletteGrants = {
   settings: boolean;
   tariffs: boolean;
   rfq: boolean;
+  pricingSnapshots: boolean;
 };
 
 type CommandItem = {
@@ -199,6 +200,24 @@ export function CommandPalette({ grants }: { grants: CommandPaletteGrants }) {
           hint: "Excel/PDF batches and staging",
           searchText: "tariff import upload excel pdf staging parse",
           action: go("/tariffs/import"),
+        },
+      );
+    }
+
+    if (grants.pricingSnapshots) {
+      list.push(
+        {
+          id: "pricing-snapshots",
+          label: "Pricing snapshots",
+          hint: "Frozen contract or RFQ economics for a booking",
+          searchText: "pricing snapshot freeze booking tariff rfq estimate",
+          action: go("/pricing-snapshots"),
+        },
+        {
+          id: "pricing-snapshots-new",
+          label: "Pricing snapshots — freeze new",
+          searchText: "new pricing snapshot freeze contract version quote response",
+          action: go("/pricing-snapshots/new"),
         },
       );
     }
