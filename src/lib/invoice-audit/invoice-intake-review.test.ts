@@ -56,6 +56,10 @@ describe("setInvoiceIntakeReview", () => {
         reviewDecision: "APPROVED",
         reviewNote: "OK",
         reviewedByUserId: "user1",
+        approvedForAccounting: false,
+        accountingApprovedAt: null,
+        accountingApprovedByUserId: null,
+        accountingApprovalNote: null,
       }),
       include: expect.any(Object),
     });

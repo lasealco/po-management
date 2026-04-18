@@ -107,18 +107,19 @@ describe("serializeInvoiceIntakeListRow", () => {
   const baseRow = {
     id: "in1",
     tenantId: "ten1",
-    status: "REVIEWED",
+    status: "AUDITED",
     bookingPricingSnapshotId: "snap1",
     externalInvoiceNo: "INV-9",
     vendorLabel: "Carrier",
     invoiceDate: new Date("2026-03-20T15:30:00.000Z"),
     currency: "USD",
-    rollupOutcome: "GREEN",
+    rollupOutcome: "PASS",
     greenLineCount: 3,
     amberLineCount: 0,
     redLineCount: 0,
     unknownLineCount: 0,
-    reviewDecision: null,
+    reviewDecision: "NONE",
+    approvedForAccounting: false,
     receivedAt: received,
     lastAuditAt: new Date("2026-04-02T09:00:00.000Z"),
     auditRunError: null,
@@ -151,5 +152,15 @@ describe("serializeInvoiceIntakeListRow", () => {
     } as never);
     expect(out.invoiceDate).toBeNull();
     expect(out.lastAuditAt).toBeNull();
+  });
+
+  it("exposes approvedForAccounting for list badges", () => {
+    const out = serializeInvoiceIntakeListRow({
+      ...baseRow,
+      reviewDecision: "APPROVED",
+      approvedForAccounting: true,
+    } as never);
+    expect(out.approvedForAccounting).toBe(true);
+    expect(out.reviewDecision).toBe("APPROVED");
   });
 });

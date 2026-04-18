@@ -115,6 +115,7 @@ export function serializeInvoiceIntakeListRow(
     unknownLineCount: row.unknownLineCount,
     parsedLineCount: row._count?.lines ?? 0,
     reviewDecision: row.reviewDecision,
+    approvedForAccounting: row.approvedForAccounting,
     receivedAt: row.receivedAt.toISOString(),
     lastAuditAt: row.lastAuditAt?.toISOString() ?? null,
     auditRunError: row.auditRunError,

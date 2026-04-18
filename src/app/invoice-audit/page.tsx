@@ -20,6 +20,11 @@ function reviewBadge(decision: string) {
   return "bg-zinc-50 text-zinc-600 ring-1 ring-zinc-200";
 }
 
+function accountingBadge(ready: boolean) {
+  if (ready) return "bg-sky-50 text-sky-900 ring-1 ring-sky-200";
+  return "bg-zinc-50 text-zinc-500 ring-1 ring-zinc-200";
+}
+
 export default async function InvoiceAuditListPage() {
   const tenant = await getDemoTenant();
   const access = await getViewerGrantSet();
@@ -69,6 +74,7 @@ export default async function InvoiceAuditListPage() {
                 <th className="py-2 pr-4">Status</th>
                 <th className="py-2 pr-4">Rollup</th>
                 <th className="py-2 pr-4">Review</th>
+                <th className="py-2 pr-4">Acct</th>
                 <th className="py-2 pr-4">Lines</th>
                 <th className="py-2 pr-4">Snapshot</th>
               </tr>
@@ -76,7 +82,7 @@ export default async function InvoiceAuditListPage() {
             <tbody>
               {intakes.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-10 text-center text-zinc-500">
+                  <td colSpan={8} className="py-10 text-center text-zinc-500">
                     No intakes yet. Create one with a pricing snapshot id and parsed lines.
                   </td>
                 </tr>
@@ -119,6 +125,14 @@ export default async function InvoiceAuditListPage() {
                           className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${reviewBadge(row.reviewDecision)}`}
                         >
                           {row.reviewDecision === "NONE" ? "—" : row.reviewDecision}
+                        </span>
+                      </td>
+                      <td className="py-3 pr-4">
+                        <span
+                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${accountingBadge(row.approvedForAccounting)}`}
+                          title={row.approvedForAccounting ? "Ready for accounting handoff" : "Not marked for accounting"}
+                        >
+                          {row.approvedForAccounting ? "Ready" : "—"}
                         </span>
                       </td>
                       <td className="py-3 pr-4 tabular-nums text-zinc-700">

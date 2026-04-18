@@ -355,6 +355,10 @@ export async function runInvoiceAuditForIntake(params: {
           reviewNote: null,
           reviewedByUserId: null,
           reviewedAt: null,
+          approvedForAccounting: false,
+          accountingApprovedAt: null,
+          accountingApprovedByUserId: null,
+          accountingApprovalNote: null,
         },
       });
     });
@@ -403,7 +407,67 @@ export async function setInvoiceIntakeReview(params: {
       reviewNote: params.reviewNote?.trim() || null,
       reviewedByUserId: params.reviewedByUserId,
       reviewedAt: new Date(),
+      approvedForAccounting: false,
+      accountingApprovedAt: null,
+      accountingApprovedByUserId: null,
+      accountingApprovalNote: null,
     },
+    include: {
+      bookingPricingSnapshot: {
+        select: {
+          id: true,
+          sourceSummary: true,
+          currency: true,
+          frozenAt: true,
+        },
+      },
+      lines: { orderBy: { lineNo: "asc" } },
+      auditResults: true,
+    },
+  });
+}
+
+export async function setInvoiceIntakeAccountingHandoff(params: {
+  tenantId: string;
+  invoiceIntakeId: string;
+  approvedForAccounting: boolean;
+  accountingApprovalNote?: string | null;
+  actorUserId: string;
+}) {
+  const intake = await prisma.invoiceIntake.findFirst({
+    where: { id: params.invoiceIntakeId, tenantId: params.tenantId },
+    select: { id: true, status: true, reviewDecision: true },
+  });
+  if (!intake) throw new InvoiceAuditError("NOT_FOUND", "Invoice intake not found.");
+  if (intake.status !== "AUDITED") {
+    throw new InvoiceAuditError(
+      "CONFLICT",
+      `Accounting handoff is only allowed after a successful audit (current status: ${intake.status}).`,
+    );
+  }
+  if (intake.reviewDecision === "NONE") {
+    throw new InvoiceAuditError(
+      "CONFLICT",
+      "Record a finance review decision (Approve or Override) before marking accounting handoff.",
+    );
+  }
+
+  const now = new Date();
+  return prisma.invoiceIntake.update({
+    where: { id: intake.id },
+    data: params.approvedForAccounting
+      ? {
+          approvedForAccounting: true,
+          accountingApprovedAt: now,
+          accountingApprovedByUserId: params.actorUserId,
+          accountingApprovalNote: params.accountingApprovalNote?.trim() || null,
+        }
+      : {
+          approvedForAccounting: false,
+          accountingApprovedAt: null,
+          accountingApprovedByUserId: null,
+          accountingApprovalNote: null,
+        },
     include: {
       bookingPricingSnapshot: {
         select: {

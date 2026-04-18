@@ -3,7 +3,11 @@ import { NextResponse } from "next/server";
 import { jsonFromInvoiceAuditError } from "@/app/api/invoice-audit/_lib/invoice-audit-api-error";
 import { serializeAuditResult, serializeInvoiceLine } from "@/app/api/invoice-audit/_lib/serialize";
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
-import { getInvoiceIntakeForTenant, setInvoiceIntakeReview } from "@/lib/invoice-audit/invoice-intakes";
+import {
+  getInvoiceIntakeForTenant,
+  setInvoiceIntakeAccountingHandoff,
+  setInvoiceIntakeReview,
+} from "@/lib/invoice-audit/invoice-intakes";
 import { getDemoTenant } from "@/lib/demo-tenant";
 
 export const dynamic = "force-dynamic";
@@ -43,6 +47,9 @@ export async function GET(_request: Request, ctx: { params: Promise<{ id: string
         reviewDecision: row.reviewDecision,
         reviewNote: row.reviewNote,
         reviewedAt: row.reviewedAt?.toISOString() ?? null,
+        approvedForAccounting: row.approvedForAccounting,
+        accountingApprovedAt: row.accountingApprovedAt?.toISOString() ?? null,
+        accountingApprovalNote: row.accountingApprovalNote,
         receivedAt: row.receivedAt.toISOString(),
         bookingPricingSnapshot: {
           ...row.bookingPricingSnapshot,
@@ -80,29 +87,59 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
     return NextResponse.json({ error: "Expected JSON object." }, { status: 400 });
   }
   const o = body as Record<string, unknown>;
-  const reviewDecision = typeof o.reviewDecision === "string" ? o.reviewDecision.trim().toUpperCase() : "";
-  if (reviewDecision !== "APPROVED" && reviewDecision !== "OVERRIDDEN") {
+  const hasReview = typeof o.reviewDecision === "string" && o.reviewDecision.trim().length > 0;
+  const hasAccounting =
+    Object.prototype.hasOwnProperty.call(o, "approvedForAccounting") && typeof o.approvedForAccounting === "boolean";
+
+  if (!hasReview && !hasAccounting) {
     return NextResponse.json(
-      { error: "reviewDecision must be APPROVED or OVERRIDDEN." },
+      {
+        error:
+          "Provide reviewDecision (APPROVED|OVERRIDDEN) and/or approvedForAccounting (boolean).",
+      },
       { status: 400 },
     );
   }
 
   const { id } = await ctx.params;
   try {
-    const updated = await setInvoiceIntakeReview({
-      tenantId: tenant.id,
-      invoiceIntakeId: id,
-      reviewDecision: reviewDecision === "APPROVED" ? "APPROVED" : "OVERRIDDEN",
-      reviewNote: typeof o.reviewNote === "string" ? o.reviewNote : null,
-      reviewedByUserId: actorId,
-    });
+    if (hasReview) {
+      const reviewDecision = String(o.reviewDecision).trim().toUpperCase();
+      if (reviewDecision !== "APPROVED" && reviewDecision !== "OVERRIDDEN") {
+        return NextResponse.json(
+          { error: "reviewDecision must be APPROVED or OVERRIDDEN." },
+          { status: 400 },
+        );
+      }
+      await setInvoiceIntakeReview({
+        tenantId: tenant.id,
+        invoiceIntakeId: id,
+        reviewDecision: reviewDecision === "APPROVED" ? "APPROVED" : "OVERRIDDEN",
+        reviewNote: typeof o.reviewNote === "string" ? o.reviewNote : null,
+        reviewedByUserId: actorId,
+      });
+    }
+
+    if (hasAccounting) {
+      await setInvoiceIntakeAccountingHandoff({
+        tenantId: tenant.id,
+        invoiceIntakeId: id,
+        approvedForAccounting: o.approvedForAccounting as boolean,
+        accountingApprovalNote: typeof o.accountingApprovalNote === "string" ? o.accountingApprovalNote : null,
+        actorUserId: actorId,
+      });
+    }
+
+    const row = await getInvoiceIntakeForTenant({ tenantId: tenant.id, intakeId: id });
     return NextResponse.json({
       intake: {
-        id: updated.id,
-        reviewDecision: updated.reviewDecision,
-        reviewNote: updated.reviewNote,
-        reviewedAt: updated.reviewedAt?.toISOString() ?? null,
+        id: row.id,
+        reviewDecision: row.reviewDecision,
+        reviewNote: row.reviewNote,
+        reviewedAt: row.reviewedAt?.toISOString() ?? null,
+        approvedForAccounting: row.approvedForAccounting,
+        accountingApprovedAt: row.accountingApprovedAt?.toISOString() ?? null,
+        accountingApprovalNote: row.accountingApprovalNote,
       },
     });
   } catch (e) {

@@ -151,6 +151,7 @@ model User {
   bookingPricingSnapshotsCreated BookingPricingSnapshot[] @relation("BookingPricingSnapshotCreator")
   invoiceIntakesCreated          InvoiceIntake[]          @relation("InvoiceIntakeCreator")
   invoiceIntakesReviewed         InvoiceIntake[]          @relation("InvoiceIntakeReviewer")
+  invoiceIntakesAccountingApproved InvoiceIntake[]         @relation("InvoiceIntakeAccountingApprover")
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -2758,6 +2759,11 @@ model InvoiceIntake {
   reviewNote                 String?                  @db.Text
   reviewedByUserId           String?
   reviewedAt                 DateTime?
+  /// When true, finance has cleared this audited intake for downstream accounting / export (separate from APPROVED/OVERRIDDEN review).
+  approvedForAccounting      Boolean                  @default(false)
+  accountingApprovedAt       DateTime?
+  accountingApprovedByUserId String?
+  accountingApprovalNote     String?                  @db.Text
   createdByUserId            String?
   receivedAt                 DateTime                 @default(now())
   updatedAt                  DateTime                 @updatedAt
@@ -2765,6 +2771,7 @@ model InvoiceIntake {
   tenant                 Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   bookingPricingSnapshot BookingPricingSnapshot @relation(fields: [bookingPricingSnapshotId], references: [id], onDelete: Restrict)
   reviewer               User?                  @relation("InvoiceIntakeReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  accountingApprover     User?                  @relation("InvoiceIntakeAccountingApprover", fields: [accountingApprovedByUserId], references: [id], onDelete: SetNull)
   creator                User?                  @relation("InvoiceIntakeCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
   lines                    InvoiceLine[]
   auditResults             InvoiceAuditResult[]

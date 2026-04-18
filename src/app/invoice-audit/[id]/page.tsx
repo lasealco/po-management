@@ -5,6 +5,7 @@ import { InvoiceIntakeDetailActions } from "@/components/invoice-audit/invoice-i
 import { InvoiceLinesMatchTable } from "@/components/invoice-audit/invoice-lines-match-table";
 import { InvoiceMatchResultPanel } from "@/components/invoice-audit/invoice-match-result-panel";
 import { InvoiceOutcomeBanner } from "@/components/invoice-audit/invoice-outcome-banner";
+import { InvoiceAccountingHandoffScaffold } from "@/components/invoice-audit/invoice-accounting-handoff-scaffold";
 import { InvoiceReviewScaffold } from "@/components/invoice-audit/invoice-review-scaffold";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { getInvoiceIntakeForTenant } from "@/lib/invoice-audit/invoice-intakes";
@@ -242,6 +243,21 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
         disabledReason={
           intake.status === "FAILED"
             ? "Fix audit errors and re-run audit before recording a review decision."
+            : null
+        }
+      />
+
+      <InvoiceAccountingHandoffScaffold
+        intakeId={intake.id}
+        canEdit={canEdit}
+        status={intake.status}
+        reviewDecision={intake.reviewDecision}
+        approvedForAccounting={intake.approvedForAccounting}
+        accountingApprovedAt={intake.accountingApprovedAt?.toISOString() ?? null}
+        accountingApprovalNote={intake.accountingApprovalNote}
+        disabledReason={
+          intake.status === "FAILED"
+            ? "Resolve audit errors before recording accounting handoff."
             : null
         }
       />
