@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { recordTariffAuditLog } from "@/lib/tariff/audit-log";
+import { TARIFF_CONTRACT_VERSION_SOURCE_TYPE_SET } from "@/lib/tariff/contract-version-source-types";
 import { getTariffContractVersionForTenant, updateTariffContractVersion } from "@/lib/tariff/contract-versions";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { jsonFromTariffError } from "@/app/api/tariffs/_lib/tariff-api-error";
@@ -72,6 +73,13 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   const before = await getTariffContractVersionForTenant({ tenantId: tenant.id, versionId });
   if (!before) return NextResponse.json({ error: "Version not found." }, { status: 404 });
 
+  if (typeof o.sourceType === "string") {
+    const st = o.sourceType.trim();
+    if (!TARIFF_CONTRACT_VERSION_SOURCE_TYPE_SET.has(st)) {
+      return NextResponse.json({ error: "Invalid sourceType." }, { status: 400 });
+    }
+  }
+
   try {
     const updated = await updateTariffContractVersion(
       { tenantId: tenant.id, versionId },
@@ -107,6 +115,9 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         status: updated.status,
         validFrom: updated.validFrom,
         validTo: updated.validTo,
+        sourceType: updated.sourceType,
+        sourceReference: updated.sourceReference,
+        sourceFileUrl: updated.sourceFileUrl,
       },
     });
     return NextResponse.json({ version: updated });

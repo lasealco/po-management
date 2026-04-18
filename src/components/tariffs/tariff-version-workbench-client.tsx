@@ -1,7 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+
+import { CopyTextButton } from "@/components/invoice-audit/copy-text-button";
+import { TARIFF_CONTRACT_VERSION_SOURCE_TYPES } from "@/lib/tariff/contract-version-source-types";
 
 const RATE_TYPES = [
   "BASE_RATE",
@@ -77,6 +81,8 @@ export type SerializedVersionMeta = {
   approvalStatus: string;
   status: string;
   sourceType: string;
+  sourceReference: string | null;
+  sourceFileUrl: string | null;
   validFrom: string | null;
   validTo: string | null;
   bookingDateValidFrom: string | null;
@@ -88,6 +94,13 @@ export type SerializedVersionMeta = {
 
 function geoLabel(g: SerializedGeo) {
   return g.code ? `${g.name} (${g.code})` : g.name;
+}
+
+function httpUrlForOpen(raw: string | null): string | null {
+  if (raw == null) return null;
+  const t = raw.trim();
+  if (!t || !/^https?:\/\//i.test(t)) return null;
+  return t;
 }
 
 export function TariffVersionWorkbenchClient({
@@ -138,6 +151,9 @@ export function TariffVersionWorkbenchClient({
       credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        sourceType: meta.sourceType,
+        sourceReference: meta.sourceReference?.trim() ? meta.sourceReference.trim() : null,
+        sourceFileUrl: meta.sourceFileUrl?.trim() ? meta.sourceFileUrl.trim() : null,
         approvalStatus: meta.approvalStatus,
         status: meta.status,
         validFrom: meta.validFrom || null,
@@ -191,8 +207,92 @@ export function TariffVersionWorkbenchClient({
 
       <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
         <h3 className="text-base font-semibold text-zinc-900">Version {meta.versionNo}</h3>
-        <p className="mt-1 text-xs text-zinc-500">Source: {meta.sourceType}</p>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <p className="mt-1 text-xs text-zinc-600">
+          Capture how this version entered the system so snapshots, imports, and disputes can point back to the same
+          record.
+        </p>
+
+        <div className="mt-5 rounded-xl border border-zinc-100 bg-zinc-50/80 p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Record identifiers</p>
+          <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+            <div className="min-w-0">
+              <dt className="text-zinc-500">Contract header id</dt>
+              <dd className="mt-1 flex flex-wrap items-center gap-2">
+                <span className="break-all font-mono text-xs text-zinc-800">{contractId}</span>
+                <CopyTextButton text={contractId} label="Copy" copiedLabel="Copied" />
+              </dd>
+            </div>
+            <div className="min-w-0">
+              <dt className="text-zinc-500">Contract version id</dt>
+              <dd className="mt-1 flex flex-wrap items-center gap-2">
+                <span className="break-all font-mono text-xs text-zinc-800">{meta.id}</span>
+                <CopyTextButton text={meta.id} label="Copy" copiedLabel="Copied" />
+              </dd>
+            </div>
+          </dl>
+          <p className="mt-3 text-xs text-zinc-600">
+            Use the version id when{" "}
+            <Link href="/pricing-snapshots/new" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+              freezing a pricing snapshot
+            </Link>{" "}
+            from this contract.
+          </p>
+        </div>
+
+        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          <label className="grid gap-1 text-sm sm:col-span-2 lg:col-span-1">
+            <span className="font-medium text-zinc-700">Source type</span>
+            <select
+              disabled={!canEdit || frozen}
+              value={meta.sourceType}
+              onChange={(e) => setMeta((m) => ({ ...m, sourceType: e.target.value }))}
+              className="rounded-lg border border-zinc-300 bg-white px-2 py-1.5 text-sm disabled:bg-zinc-100"
+            >
+              {TARIFF_CONTRACT_VERSION_SOURCE_TYPES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="grid gap-1 text-sm sm:col-span-2">
+            <span className="font-medium text-zinc-700">Source reference</span>
+            <input
+              type="text"
+              disabled={!canEdit || frozen}
+              value={meta.sourceReference ?? ""}
+              onChange={(e) => setMeta((m) => ({ ...m, sourceReference: e.target.value || null }))}
+              placeholder="e.g. carrier agreement id, workbook tab, email subject"
+              className="rounded-lg border border-zinc-300 bg-white px-2 py-1.5 text-sm disabled:bg-zinc-100"
+            />
+          </label>
+          <label className="grid gap-1 text-sm sm:col-span-2">
+            <span className="font-medium text-zinc-700">Source file URL</span>
+            <input
+              type="url"
+              disabled={!canEdit || frozen}
+              value={meta.sourceFileUrl ?? ""}
+              onChange={(e) => setMeta((m) => ({ ...m, sourceFileUrl: e.target.value || null }))}
+              placeholder="https://… (stored as text; no file upload in this build)"
+              className="rounded-lg border border-zinc-300 bg-white px-2 py-1.5 text-sm disabled:bg-zinc-100"
+            />
+            {httpUrlForOpen(meta.sourceFileUrl) ? (
+              <span className="text-xs text-zinc-500">
+                <a
+                  href={httpUrlForOpen(meta.sourceFileUrl)!}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-[var(--arscmp-primary)] hover:underline"
+                >
+                  Open URL
+                </a>{" "}
+                (opens in a new tab)
+              </span>
+            ) : null}
+          </label>
+        </div>
+
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <label className="grid gap-1 text-sm">
             <span className="font-medium text-zinc-700">Approval</span>
             <select

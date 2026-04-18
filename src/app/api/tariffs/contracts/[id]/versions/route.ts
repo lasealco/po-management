@@ -5,11 +5,10 @@ import { recordTariffAuditLog } from "@/lib/tariff/audit-log";
 import { createTariffContractVersion, listTariffContractVersionsForHeader } from "@/lib/tariff/contract-versions";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { jsonFromTariffError } from "@/app/api/tariffs/_lib/tariff-api-error";
+import { TARIFF_CONTRACT_VERSION_SOURCE_TYPE_SET } from "@/lib/tariff/contract-version-source-types";
 import type { TariffSourceType } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
-
-const SOURCE_TYPES = new Set<string>(["MANUAL", "EXCEL", "PDF", "API", "EDI", "EMAIL", "SYSTEM"]);
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
   const gate = await requireApiGrant("org.tariffs", "view");
@@ -53,7 +52,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   }
   const o = body as Record<string, unknown>;
   const sourceTypeRaw = typeof o.sourceType === "string" ? o.sourceType.trim() : "MANUAL";
-  if (!SOURCE_TYPES.has(sourceTypeRaw)) {
+  if (!TARIFF_CONTRACT_VERSION_SOURCE_TYPE_SET.has(sourceTypeRaw)) {
     return NextResponse.json({ error: "Invalid sourceType." }, { status: 400 });
   }
 

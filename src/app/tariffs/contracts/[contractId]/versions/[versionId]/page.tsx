@@ -86,6 +86,8 @@ export default async function TariffContractVersionPage({
     approvalStatus: version.approvalStatus,
     status: version.status,
     sourceType: version.sourceType,
+    sourceReference: version.sourceReference,
+    sourceFileUrl: version.sourceFileUrl,
     validFrom: isoDay(version.validFrom),
     validTo: isoDay(version.validTo),
     bookingDateValidFrom: isoDay(version.bookingDateValidFrom),
@@ -184,17 +186,22 @@ export default async function TariffContractVersionPage({
             <li className="py-6 text-center text-zinc-500">No activity recorded yet.</li>
           ) : null}
           {auditLogs.map((row) => (
-            <li key={row.id} className="flex flex-wrap gap-x-4 gap-y-1 py-3">
+            <li key={row.id} className="grid gap-1 py-3 sm:grid-cols-[auto_1fr] sm:gap-x-4 sm:gap-y-1">
               <span className="font-mono text-xs text-zinc-500">
                 {row.createdAt.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
               </span>
-              <span className="text-zinc-800">{row.action}</span>
-              <span className="text-zinc-500">
-                {row.objectType} · {row.objectId.slice(0, 8)}…
-              </span>
-              <span className="text-zinc-600">
-                {row.user ? `${row.user.name} (${row.user.email})` : "System"}
-              </span>
+              <div className="min-w-0 text-sm">
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                  <span className="font-medium text-zinc-800">{row.action}</span>
+                  <span className="text-zinc-500">{row.objectType}</span>
+                  <span className="text-zinc-600">
+                    {row.user ? `${row.user.name} (${row.user.email})` : "System"}
+                  </span>
+                </div>
+                <div className="mt-1 break-all font-mono text-[11px] text-zinc-500" title="Primary key for this audit row">
+                  {row.objectId}
+                </div>
+              </div>
             </li>
           ))}
         </ul>
