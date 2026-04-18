@@ -33,6 +33,7 @@ alwaysApply: true
 
 - **`npm run check:invoice-audit`** — scoped ESLint + Vitest for `src/lib/invoice-audit`, `src/lib/booking-pricing-snapshot` (snapshot JSON serializers), invoice-audit / pricing-snapshot UI + API paths (fast loop).
 - **`npm run verify:tariff-engine`** — same as above, then **`npx tsc --noEmit`** (stricter gate before merge).
+- **`npm test`** — Vitest uses `vitest.config.ts` `include` (tariff-engine lib tests only in this repo); same cases as **`npm run test:invoice-audit`** when you pass explicit paths there.
 
 ## Ship workflow
 
