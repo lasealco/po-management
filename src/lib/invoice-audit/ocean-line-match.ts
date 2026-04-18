@@ -34,7 +34,7 @@ const MIN_CONFIDENCE_SCORE = 5;
 const SCORE_TIE_EPSILON = 1.25;
 
 const ALL_IN_RE =
-  /\b(all[\s-]?in|allin|lump[\s-]?sum|lumpsum|package\s+rate|total\s+ocean|ocean\s+freight\s+only|fcl\s+package|door\s+to\s+port\s+package|sea\s+freight|carrier\s+freight|main\s+leg|freight\s+all\s+inclusive|all\s+inclusive\s+freight)\b/i;
+  /\b(all[\s-]?in|allin|lump[\s-]?sum|lumpsum|package\s+rate|flat\s+rate|port[\s-]to[\s-]port|total\s+ocean|ocean\s+freight\s+only|fcl\s+package|door\s+to\s+port\s+package|sea\s+freight|carrier\s+freight|main\s+leg|freight\s+all\s+inclusive|all\s+inclusive\s+freight)\b/i;
 
 function normalizeText(s: string): string {
   return s
@@ -51,7 +51,11 @@ function normalizeText(s: string): string {
 function expandOceanSynonymAppendix(combined: string): string {
   const lower = combined.toLowerCase();
   const parts: string[] = [];
-  if (/\bthc\b|terminal\s+handling|origin\s+handling|destination\s+handling|\bdthc\b|\bothc\b|wharfage\b/i.test(lower)) {
+  if (
+    /\bthc\b|terminal\s+handling|cargo\s+handling|port\s+handling|wharf\s+handling|stevedor|stevedore|origin\s+handling|destination\s+handling|\bdthc\b|\bothc\b|wharfage\b/i.test(
+      lower,
+    )
+  ) {
     parts.push("thc terminal handling");
   }
   if (/\bbaf\b|bunker\b|baf\s+surcharge/i.test(lower)) {
@@ -187,6 +191,9 @@ function scoreCandidate(
   } else if (c.kind === "CONTRACT_CHARGE") {
     if (invoiceEqKey && c.equipmentHint && eqM === "MISMATCH") score -= 4;
     else if (eqM === "MATCH") score += 2;
+  } else if (c.kind === "RFQ_LINE") {
+    if (invoiceEqKey && c.equipmentHint && eqM === "MISMATCH") score -= 3;
+    else if (invoiceEqKey && c.equipmentHint && eqM === "MATCH") score += 2;
   }
 
   const { delta, suppressGeoSoftFlag } = polPodScore(pol, pod, c);

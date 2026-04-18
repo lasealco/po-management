@@ -44,4 +44,13 @@ describe("formatSnapshotMatchLabel", () => {
   it("summarizes empty scoring pool", () => {
     expect(formatSnapshotMatchLabel({ topScores: [] })).toBe("No viable matches after scoring");
   });
+
+  it("includes invoice equipment on empty-pool summaries", () => {
+    expect(
+      formatSnapshotMatchLabel({
+        invoiceEquipment: "40HC",
+        reason: "EMPTY_POOL_AFTER_FILTERS",
+      }),
+    ).toBe("No eligible lines after filters (invoice equipment 40HC)");
+  });
 });

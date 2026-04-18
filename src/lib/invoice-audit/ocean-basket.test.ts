@@ -60,6 +60,18 @@ describe("buildContractOceanBasket", () => {
     expect(components.map((c) => c.kind).sort()).toEqual(["CONTRACT_CHARGE", "CONTRACT_RATE"]);
   });
 
+  it("includes inland haul style mandatory charges in the basket", () => {
+    const { total, components } = buildContractOceanBasket({
+      equipmentKey: "40HC",
+      candidates: [
+        baseRate({ id: "r1", label: "FAK 40HC", amount: 2000, equipmentHint: "40HC" }),
+        baseCharge({ id: "c1", label: "IHC inland haulage", amount: 120, equipmentHint: null }),
+      ],
+    });
+    expect(total).toBe(2120);
+    expect(components.some((c) => c.label.includes("IHC"))).toBe(true);
+  });
+
   it("skips ancillary charges that do not match equipment scope", () => {
     const { total } = buildContractOceanBasket({
       equipmentKey: "40HC",

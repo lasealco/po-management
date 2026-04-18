@@ -313,6 +313,13 @@ async function seed() {
       priority: 23,
     },
     {
+      name: "Cargo handling → THC",
+      pattern: "cargo handling",
+      tokens: ["thc", "terminal", "handling"],
+      targetKind: "CONTRACT_CHARGE",
+      priority: 22,
+    },
+    {
       name: "LSS / low sulphur",
       pattern: "lss",
       tokens: ["lss", "low", "sulphur", "sulfur"],

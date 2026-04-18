@@ -8,7 +8,8 @@ export function formatSnapshotMatchLabel(json: unknown): string {
     return `Currency mismatch (invoice ${j.invoiceCurrency})`;
   }
   if (typeof j.reason === "string" && j.reason === "EMPTY_POOL_AFTER_FILTERS") {
-    return "No eligible lines after filters";
+    const eq = typeof j.invoiceEquipment === "string" && j.invoiceEquipment.trim() ? j.invoiceEquipment.trim() : null;
+    return eq ? `No eligible lines after filters (invoice equipment ${eq})` : "No eligible lines after filters";
   }
   if (typeof j.mode === "string" && j.reason === "NO_BASKET_COMPONENTS") {
     return `All-in: no basket built (${j.mode})`;
