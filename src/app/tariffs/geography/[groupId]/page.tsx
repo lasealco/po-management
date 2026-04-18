@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { GeographyGroupTraceBar } from "@/components/tariffs/geography-group-trace-bar";
 import { GeographyGroupFormClient, type GeographyGroupFormValues } from "@/components/tariffs/geography-group-form-client";
 import { GeographyMembersClient, type GeoMemberRow } from "@/components/tariffs/geography-members-client";
 import { tariffGeographyTypeLabel } from "@/lib/tariff/geography-labels";
@@ -72,6 +73,7 @@ export default async function TariffGeographyGroupDetailPage({ params }: { param
           Valid {toDateInput(group.validFrom) || "—"} → {toDateInput(group.validTo) || "—"} · Created{" "}
           {group.createdAt.toISOString().slice(0, 10)}
         </p>
+        <GeographyGroupTraceBar groupId={group.id} />
 
         <div className="mt-8">
           <GeographyGroupFormClient
