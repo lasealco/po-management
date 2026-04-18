@@ -5,8 +5,14 @@ import Link from "next/link";
 import { startTransition, useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { SupplierCapabilitiesSection } from "@/components/supplier-capabilities-section";
+import type { SupplierComplianceReviewRow } from "@/components/supplier-compliance-reviews-section";
+import { SupplierComplianceReviewsSection } from "@/components/supplier-compliance-reviews-section";
 import { SupplierOnboardingSection } from "@/components/supplier-onboarding-section";
+import type { SupplierPerformanceScorecardRow } from "@/components/supplier-performance-scorecards-section";
+import { SupplierPerformanceScorecardsSection } from "@/components/supplier-performance-scorecards-section";
 import { SupplierQualificationSection } from "@/components/supplier-qualification-section";
+import type { SupplierRiskRecordRow } from "@/components/supplier-risk-records-section";
+import { SupplierRiskRecordsSection } from "@/components/supplier-risk-records-section";
 import { SupplierOrderHistorySection } from "@/components/supplier-order-history";
 import type { SupplierCapabilityRow } from "@/lib/srm/supplier-capability-types";
 import type { SupplierOnboardingTaskRow } from "@/lib/srm/supplier-onboarding-types";
@@ -72,6 +78,9 @@ export type SupplierDetailSnapshot = {
     lastReviewedAt: string | null;
     suggestedStatus: SupplierQualificationStatus;
   };
+  complianceReviews: SupplierComplianceReviewRow[];
+  performanceScorecards: SupplierPerformanceScorecardRow[];
+  riskRecords: SupplierRiskRecordRow[];
   productLinkCount: number;
   orderCount: number;
 };
@@ -1362,18 +1371,48 @@ export function SupplierDetailClient({
         />
       )}
 
+      {(!isSrmShell || srmTab === "compliance") && (
+        <SupplierComplianceReviewsSection
+          key={`comp-${initial.id}-${initial.updatedAt}`}
+          supplierId={initial.id}
+          canEdit={canEdit}
+          initialRows={initial.complianceReviews}
+        />
+      )}
+
+      {(!isSrmShell || srmTab === "performance") && (
+        <SupplierPerformanceScorecardsSection
+          key={`perf-${initial.id}-${initial.updatedAt}`}
+          supplierId={initial.id}
+          canEdit={canEdit}
+          initialRows={initial.performanceScorecards}
+        />
+      )}
+
+      {(!isSrmShell || srmTab === "risk") && (
+        <SupplierRiskRecordsSection
+          key={`risk-${initial.id}-${initial.updatedAt}`}
+          supplierId={initial.id}
+          canEdit={canEdit}
+          initialRows={initial.riskRecords}
+        />
+      )}
+
       {isSrmShell &&
       srmTab !== "overview" &&
       srmTab !== "capabilities" &&
       srmTab !== "onboarding" &&
-      srmTab !== "qualification" ? (
+      srmTab !== "qualification" &&
+      srmTab !== "compliance" &&
+      srmTab !== "performance" &&
+      srmTab !== "risk" ? (
         <section className="rounded-lg border border-dashed border-zinc-200 bg-zinc-50/80 p-8 text-center shadow-sm">
           <p className="text-sm font-medium text-zinc-800">
             {SRM_SUPPLIER_TABS.find((x) => x.id === srmTab)?.label ?? srmTab}
           </p>
           <p className="mt-2 text-xs text-zinc-600">
-            This workspace is planned in the SRM PRD; implementation follows in later slices (documents,
-            qualification, scorecards, …).
+            This workspace is planned in the SRM PRD; documents, contracts, and alerts connect here in
+            later slices.
           </p>
         </section>
       ) : null}

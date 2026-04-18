@@ -417,6 +417,42 @@ async function seed() {
     })),
   });
 
+  await prisma.supplierComplianceReview.deleteMany({ where: { supplierId: supplier.id } });
+  await prisma.supplierPerformanceScorecard.deleteMany({ where: { supplierId: supplier.id } });
+  await prisma.supplierRiskRecord.deleteMany({ where: { supplierId: supplier.id } });
+  await prisma.supplierComplianceReview.create({
+    data: {
+      tenantId: tenant.id,
+      supplierId: supplier.id,
+      outcome: "satisfactory",
+      summary:
+        "Demo seed: periodic compliance review — policies acknowledged; attach evidence in a later documents slice.",
+      reviewedAt: now,
+      nextReviewDue: new Date(now.getTime() + 180 * 86400000),
+    },
+  });
+  await prisma.supplierPerformanceScorecard.create({
+    data: {
+      tenantId: tenant.id,
+      supplierId: supplier.id,
+      periodKey: "2026-Q1",
+      onTimeDeliveryPct: new Prisma.Decimal("94.50"),
+      qualityRating: 4,
+      notes: "Demo scorecard (seed).",
+    },
+  });
+  await prisma.supplierRiskRecord.create({
+    data: {
+      tenantId: tenant.id,
+      supplierId: supplier.id,
+      title: "Spend concentration — single-region production",
+      category: "Commercial",
+      severity: "medium",
+      status: "open",
+      details: "Demo risk entry for SRM; track mitigation in status below.",
+    },
+  });
+
   await prisma.supplierContact.deleteMany({ where: { supplierId: supplier.id } });
   await prisma.supplierContact.createMany({
     data: [

@@ -23,6 +23,9 @@ model Tenant {
   supplierContacts  SupplierContact[]
   supplierServiceCapabilities SupplierServiceCapability[]
   supplierOnboardingTasks     SupplierOnboardingTask[]
+  supplierComplianceReviews   SupplierComplianceReview[]
+  supplierPerformanceScorecards SupplierPerformanceScorecard[]
+  supplierRiskRecords         SupplierRiskRecord[]
   orders            PurchaseOrder[]
   salesOrders       SalesOrder[]
   warehouses        Warehouse[]
@@ -230,6 +233,25 @@ enum SupplierQualificationStatus {
   disqualified
 }
 
+enum SupplierComplianceReviewOutcome {
+  satisfactory
+  action_required
+  failed
+}
+
+enum SupplierRiskSeverity {
+  low
+  medium
+  high
+  critical
+}
+
+enum SupplierRiskStatus {
+  open
+  mitigating
+  closed
+}
+
 model Supplier {
   id        String   @id @default(cuid())
   tenantId  String
@@ -281,6 +303,9 @@ model Supplier {
   contacts         SupplierContact[]
   serviceCapabilities SupplierServiceCapability[]
   onboardingTasks     SupplierOnboardingTask[]
+  complianceReviews   SupplierComplianceReview[]
+  performanceScorecards SupplierPerformanceScorecard[]
+  riskRecords           SupplierRiskRecord[]
   productSuppliers ProductSupplier[]
   shipmentBookings ShipmentBooking[]
   shipmentsCarrier Shipment[] @relation("ShipmentCarrierSupplier")
@@ -332,6 +357,64 @@ model SupplierOnboardingTask {
   supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
 
   @@unique([supplierId, taskKey])
+  @@index([tenantId, supplierId])
+}
+
+/// Periodic compliance / controls review (SRM — distinct from onboarding checklist).
+model SupplierComplianceReview {
+  id             String                         @id @default(cuid())
+  tenantId       String
+  supplierId     String
+  outcome        SupplierComplianceReviewOutcome
+  summary        String                         @db.Text
+  reviewedAt     DateTime                       @default(now())
+  nextReviewDue  DateTime?
+  createdAt      DateTime                       @default(now())
+  updatedAt      DateTime                       @updatedAt
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, supplierId])
+}
+
+/// Buyer-recorded performance snapshot (e.g. quarterly scorecard).
+model SupplierPerformanceScorecard {
+  id                  String   @id @default(cuid())
+  tenantId            String
+  supplierId          String
+  periodKey           String   @db.VarChar(32)
+  onTimeDeliveryPct   Decimal? @db.Decimal(5, 2)
+  qualityRating       Int?
+  notes               String?  @db.Text
+  recordedAt          DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@unique([supplierId, periodKey])
+  @@index([tenantId, supplierId])
+}
+
+/// Logged supplier risk (operational, financial, concentration, etc.).
+model SupplierRiskRecord {
+  id           String              @id @default(cuid())
+  tenantId     String
+  supplierId   String
+  title        String              @db.VarChar(256)
+  category     String              @db.VarChar(128)
+  severity     SupplierRiskSeverity
+  status       SupplierRiskStatus   @default(open)
+  details      String?             @db.Text
+  identifiedAt DateTime           @default(now())
+  closedAt     DateTime?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
   @@index([tenantId, supplierId])
 }
 

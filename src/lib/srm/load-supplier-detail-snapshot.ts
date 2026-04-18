@@ -71,6 +71,49 @@ export async function loadSupplierDetailSnapshot(
     },
   });
 
+  const [complianceReviews, performanceScorecards, riskRecords] = await Promise.all([
+    prisma.supplierComplianceReview.findMany({
+      where: { supplierId: supplier.id, tenantId },
+      orderBy: { reviewedAt: "desc" },
+      take: 40,
+      select: {
+        id: true,
+        outcome: true,
+        summary: true,
+        reviewedAt: true,
+        nextReviewDue: true,
+      },
+    }),
+    prisma.supplierPerformanceScorecard.findMany({
+      where: { supplierId: supplier.id, tenantId },
+      orderBy: { periodKey: "desc" },
+      take: 24,
+      select: {
+        id: true,
+        periodKey: true,
+        onTimeDeliveryPct: true,
+        qualityRating: true,
+        notes: true,
+        recordedAt: true,
+      },
+    }),
+    prisma.supplierRiskRecord.findMany({
+      where: { supplierId: supplier.id, tenantId },
+      orderBy: { identifiedAt: "desc" },
+      take: 40,
+      select: {
+        id: true,
+        title: true,
+        category: true,
+        severity: true,
+        status: true,
+        details: true,
+        identifiedAt: true,
+        closedAt: true,
+      },
+    }),
+  ]);
+
   return {
     id: supplier.id,
     updatedAt: supplier.updatedAt.toISOString(),
@@ -143,6 +186,31 @@ export async function loadSupplierDetailSnapshot(
         onboardingTasks.map((t) => ({ taskKey: t.taskKey, status: t.status })),
       ),
     },
+    complianceReviews: complianceReviews.map((r) => ({
+      id: r.id,
+      outcome: r.outcome,
+      summary: r.summary,
+      reviewedAt: r.reviewedAt.toISOString(),
+      nextReviewDue: r.nextReviewDue?.toISOString() ?? null,
+    })),
+    performanceScorecards: performanceScorecards.map((s) => ({
+      id: s.id,
+      periodKey: s.periodKey,
+      onTimeDeliveryPct: s.onTimeDeliveryPct?.toString() ?? null,
+      qualityRating: s.qualityRating,
+      notes: s.notes,
+      recordedAt: s.recordedAt.toISOString(),
+    })),
+    riskRecords: riskRecords.map((x) => ({
+      id: x.id,
+      title: x.title,
+      category: x.category,
+      severity: x.severity,
+      status: x.status,
+      details: x.details,
+      identifiedAt: x.identifiedAt.toISOString(),
+      closedAt: x.closedAt?.toISOString() ?? null,
+    })),
     productLinkCount: supplier._count.productSuppliers,
     orderCount: supplier._count.orders,
   };

@@ -35,9 +35,10 @@ These files are derived from the SRM PDF pack created earlier and are intended t
 
 Work for new schema/UI ships on **`feature/srm-foundation`** (not `main`) until review.
 
-1. **Migrate:** `npm run db:migrate` (or `npx prisma migrate deploy`) so SRM tables and columns exist (`SupplierServiceCapability`, `SupplierOnboardingTask`, `Supplier.qualificationStatus` / summary / last reviewed, …).
+1. **Migrate:** `npm run db:migrate` (or `npx prisma migrate deploy`) so SRM tables and columns exist (`SupplierServiceCapability`, `SupplierOnboardingTask`, `Supplier.qualificationStatus` / summary / last reviewed, `SupplierComplianceReview`, `SupplierPerformanceScorecard`, `SupplierRiskRecord`, …).
 2. **Seed:** `npm run db:seed` — demo **SUP-001** gets sample **capabilities** and a full **onboarding checklist** (first three items marked done).
 3. **Tests (SRM lib):** `npm run test:srm` — runs all Vitest files under `src/lib/srm/` (capability payload parsing, onboarding PATCH parsing, default checklist shape).
 4. **Full suite:** `npm run test` — includes the same SRM tests plus the rest of the repo.
 5. **Manual:** `npm run dev` → `/srm` → open **SUP-001** → **Capabilities** and **Onboarding** tabs (SRM shell), or `/suppliers/[id]` for legacy single-page layout with the same blocks.
 6. **URLs:** Supplier 360 under `/srm/[id]` keeps the active workspace in **`?tab=`** (e.g. `onboarding`, `qualification`) so refresh and shared links reopen the same tab. The SRM directory supports **`?q=`** (and legacy `/suppliers`) for name/code search.
+7. **Compliance / performance / risk:** REST under `/api/suppliers/[id]/compliance-reviews`, `…/performance-scorecards`, `…/risk-records` (POST create; PATCH row). Data loads with the supplier snapshot for `/srm/[id]` and legacy detail.
