@@ -5,7 +5,18 @@ import { usePathname } from "next/navigation";
 
 import { subNavActiveClass } from "@/lib/subnav-active-class";
 
-const items: { href: string; label: string }[] = [{ href: "/tariffs/contracts", label: "Contracts" }];
+const items: { href: string; label: string; isActive: (pathname: string) => boolean }[] = [
+  {
+    href: "/tariffs/contracts",
+    label: "Contracts",
+    isActive: (pathname) => pathname.startsWith("/tariffs/contracts"),
+  },
+  {
+    href: "/tariffs/geography",
+    label: "Geography",
+    isActive: (pathname) => pathname.startsWith("/tariffs/geography"),
+  },
+];
 
 export function TariffsSubNav() {
   const pathname = usePathname();
@@ -16,11 +27,8 @@ export function TariffsSubNav() {
         <span className="mr-2 self-center text-xs font-semibold uppercase tracking-wide text-[var(--arscmp-primary)]">
           Tariffs
         </span>
-        {items.map(({ href, label }) => {
-          const active =
-            href === "/tariffs/contracts"
-              ? pathname.startsWith("/tariffs/contracts")
-              : pathname === href || pathname.startsWith(`${href}/`);
+        {items.map(({ href, label, isActive }) => {
+          const active = isActive(pathname);
           return (
             <Link
               key={href}

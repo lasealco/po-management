@@ -75,3 +75,9 @@ export async function updateTariffGeographyGroup(
     },
   });
 }
+
+export async function deleteTariffGeographyGroup(id: string) {
+  const existing = await prisma.tariffGeographyGroup.findUnique({ where: { id }, select: { id: true } });
+  if (!existing) throw new TariffRepoError("NOT_FOUND", "Geography group not found.");
+  await prisma.tariffGeographyGroup.delete({ where: { id } });
+}

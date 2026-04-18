@@ -37,6 +37,8 @@ const OPEN_PATH_ALLOWLIST = new Set([
   "/control-tower/ops",
   "/tariffs",
   "/tariffs/contracts",
+  "/tariffs/geography",
+  "/tariffs/geography/new",
   "/reporting",
   "/reports",
   "/crm/reporting",

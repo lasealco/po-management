@@ -177,13 +177,22 @@ export function CommandPalette({ grants }: { grants: CommandPaletteGrants }) {
     }
 
     if (grants.tariffs) {
-      list.push({
-        id: "tariffs-contracts",
-        label: "Tariffs — contracts",
-        hint: "Ocean contracts, versions, and lines",
-        searchText: "tariff contract rate ocean freight baf surcharges",
-        action: go("/tariffs/contracts"),
-      });
+      list.push(
+        {
+          id: "tariffs-contracts",
+          label: "Tariffs — contracts",
+          hint: "Ocean contracts, versions, and lines",
+          searchText: "tariff contract rate ocean freight baf surcharges",
+          action: go("/tariffs/contracts"),
+        },
+        {
+          id: "tariffs-geography",
+          label: "Tariffs — geography groups",
+          hint: "Ports, regions, carrier label mapping",
+          searchText: "tariff geography locode region port subregion alias",
+          action: go("/tariffs/geography"),
+        },
+      );
     }
 
     if (grants.wms) {
