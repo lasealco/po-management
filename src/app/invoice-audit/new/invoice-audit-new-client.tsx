@@ -186,12 +186,12 @@ export function InvoiceAuditNewClient(props: { initialSnapshotId?: string }) {
   return (
     <main className="mx-auto max-w-3xl px-6 py-10">
       <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Workflow · Step 1</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">New intake · Step 1 of 2</p>
         <h1 className="mt-2 text-2xl font-semibold text-zinc-900">New invoice intake</h1>
         <p className="mt-2 text-sm text-zinc-600">
           Link a booking pricing snapshot, optional POL/POD (UN/LOCODE), then enter parsed lines with equipment and unit
           basis when known. Matching uses ocean rules (equipment, geography, unit basis, alias dictionary, all-in vs
-          separated basket).
+          separated basket). Step 2 is parsed lines below; after save, closeout continues on the intake detail page.
         </p>
         <p className="mt-3 rounded-xl border border-zinc-200 bg-zinc-50/90 px-3 py-2 text-xs text-zinc-700">
           <span className="font-semibold text-zinc-800">Prerequisites:</span> DB migrations applied (
@@ -333,7 +333,8 @@ export function InvoiceAuditNewClient(props: { initialSnapshotId?: string }) {
         </div>
 
         <div className="mt-8">
-          <div className="flex items-center justify-between gap-2">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">New intake · Step 2 of 2</p>
+          <div className="mt-1 flex items-center justify-between gap-2">
             <h2 className="text-sm font-semibold text-zinc-900">Parsed lines</h2>
             <button
               type="button"

@@ -27,6 +27,30 @@ export async function listInvoiceIntakesForTenant(params: { tenantId: string; ta
   });
 }
 
+/** Recent intakes tied to a snapshot (e.g. pricing snapshot detail cross-links). */
+export async function listInvoiceIntakesForSnapshot(params: {
+  tenantId: string;
+  snapshotId: string;
+  previewLimit?: number;
+}) {
+  const limit = Math.min(params.previewLimit ?? 8, 25);
+  const rows = await prisma.invoiceIntake.findMany({
+    where: { tenantId: params.tenantId, bookingPricingSnapshotId: params.snapshotId },
+    orderBy: [{ receivedAt: "desc" }, { id: "desc" }],
+    take: limit + 1,
+    select: {
+      id: true,
+      receivedAt: true,
+      vendorLabel: true,
+      externalInvoiceNo: true,
+      status: true,
+      rollupOutcome: true,
+    },
+  });
+  const hasMore = rows.length > limit;
+  return { items: hasMore ? rows.slice(0, limit) : rows, hasMore };
+}
+
 export async function getInvoiceIntakeForTenant(params: { tenantId: string; intakeId: string }) {
   const row = await prisma.invoiceIntake.findFirst({
     where: { id: params.intakeId, tenantId: params.tenantId },

@@ -68,6 +68,7 @@ export default async function InvoiceAuditListPage() {
                 pricing snapshot
               </Link>
               . Failures and discrepancies are always surfaced with a message or category — never dropped silently.
+              After audit, open an intake for closeout: ops notes, finance review, then accounting handoff.
             </p>
           </div>
           {canEdit ? (

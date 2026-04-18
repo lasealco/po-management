@@ -30,11 +30,12 @@ export default async function InvoiceAuditToleranceRulesPage() {
         ← Invoice intakes
       </Link>
       <section className="mt-4 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Workflow · Step 1</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Invoice audit · Configuration</p>
         <h1 className="mt-2 text-2xl font-semibold text-zinc-900">Tolerance rules</h1>
         <p className="mt-2 text-sm text-zinc-600">
           Audits use the highest-priority <span className="font-medium">active</span> rule for the intake currency (or a
-          global rule with no currency scope). Built-in defaults apply when no rule matches.
+          global rule with no currency scope). Built-in defaults apply when no rule matches. (This is separate from
+          intake closeout Steps 1–3 on each intake detail page.)
         </p>
         {!canEdit ? (
           <p className="mt-3 text-xs text-zinc-500">You have view access only; create and activate rules require edit permission.</p>

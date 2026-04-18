@@ -8,6 +8,7 @@ import {
   extractSnapshotPriceCandidates,
   summarizeContractGeographyFromCandidates,
 } from "@/lib/invoice-audit/snapshot-candidates";
+import { listInvoiceIntakesForSnapshot } from "@/lib/invoice-audit/invoice-intakes";
 import { getDemoTenant } from "@/lib/demo-tenant";
 
 export const dynamic = "force-dynamic";
@@ -49,6 +50,10 @@ export default async function PricingSnapshotDetailPage(props: { params: Promise
     auditExtract.ok && auditExtract.sourceType === "TARIFF_CONTRACT_VERSION"
       ? summarizeContractGeographyFromCandidates(auditExtract.candidates)
       : null;
+
+  const snapshotIntakes = canInvoiceAuditView
+    ? await listInvoiceIntakesForSnapshot({ tenantId: tenant.id, snapshotId: row.id, previewLimit: 8 })
+    : { items: [], hasMore: false };
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
@@ -160,6 +165,45 @@ export default async function PricingSnapshotDetailPage(props: { params: Promise
           ) : (
             <p className="mt-3 text-xs text-zinc-500">You need invoice audit edit permission to create an intake.</p>
           )}
+          {snapshotIntakes.items.length > 0 || snapshotIntakes.hasMore ? (
+            <div className="mt-5 rounded-xl border border-zinc-100 bg-zinc-50/80 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Intakes on this snapshot</p>
+              <p className="mt-1 text-xs text-zinc-600">
+                Reuse the same frozen economics across carrier revisions. Open an intake for closeout (ops notes →
+                finance review → accounting handoff).
+              </p>
+              <ul className="mt-3 space-y-2 text-sm">
+                {snapshotIntakes.items.map((inv) => (
+                  <li key={inv.id} className="flex flex-wrap items-baseline justify-between gap-2">
+                    <Link
+                      href={`/invoice-audit/${inv.id}`}
+                      className="font-medium text-[var(--arscmp-primary)] hover:underline"
+                    >
+                      {inv.vendorLabel ?? inv.externalInvoiceNo ?? inv.id.slice(0, 8)}
+                    </Link>
+                    <span className="text-xs tabular-nums text-zinc-500">
+                      {inv.receivedAt.toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" })} ·{" "}
+                      <span className="font-mono">{inv.status}</span> · {inv.rollupOutcome}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {snapshotIntakes.hasMore ? (
+                <p className="mt-3 text-xs text-zinc-500">
+                  Showing the 8 most recent.{" "}
+                  <Link href="/invoice-audit" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+                    All intakes
+                  </Link>{" "}
+                  lists every row for the tenant.
+                </p>
+              ) : null}
+            </div>
+          ) : canInvoiceAuditView ? (
+            <p className="mt-4 text-xs text-zinc-500">
+              No invoice intakes reference this snapshot yet — create one when a carrier invoice arrives for the same
+              booking economics.
+            </p>
+          ) : null}
         </section>
       ) : null}
 
