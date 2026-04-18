@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { RecordIdCopy } from "@/components/invoice-audit/record-id-copy";
 import { RfqResponseEditClient, type LineDraft } from "@/components/rfq/rfq-response-edit-client";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { getQuoteResponseForTenant } from "@/lib/rfq/quote-responses";
@@ -93,6 +94,17 @@ export default async function RfqResponseEditPage({
         <p className="mt-1 text-sm text-zinc-600">
           Enter totals, validity, charge inclusion lists (JSON), free time object, and optional line breakdown.
         </p>
+        <div className="mt-4 flex flex-col gap-3 rounded-xl border border-zinc-100 bg-zinc-50/80 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Quote request id</span>
+            <RecordIdCopy id={requestId} copyButtonLabel="Copy request id" />
+          </div>
+          <div className="hidden h-4 w-px bg-zinc-200 sm:block" aria-hidden />
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Quote response id</span>
+            <RecordIdCopy id={responseId} copyButtonLabel="Copy response id" />
+          </div>
+        </div>
         <div className="mt-8">
           <RfqResponseEditClient
             key={response.updatedAt.toISOString()}

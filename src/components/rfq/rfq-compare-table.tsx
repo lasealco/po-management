@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { RecordIdCopy } from "@/components/invoice-audit/record-id-copy";
 import type { RfqCompareRow } from "@/lib/rfq/build-compare-rows";
 
 export type { RfqCompareRow };
@@ -33,6 +34,8 @@ export function RfqCompareTable(props: { rows: RfqCompareRow[]; quoteRequestId?:
             >
               Recipient
             </th>
+            <th className="py-3 pr-3">Recipient id</th>
+            <th className="py-3 pr-3">Response id</th>
             <th className="py-3 pr-3">Status</th>
             <th className="py-3 pr-3">Total</th>
             <th
@@ -62,6 +65,12 @@ export function RfqCompareTable(props: { rows: RfqCompareRow[]; quoteRequestId?:
                 ) : (
                   r.recipient
                 )}
+              </td>
+              <td className="py-3 pr-3 align-top">
+                <RecordIdCopy id={r.recipientId} copyButtonLabel="Copy recipient id" />
+              </td>
+              <td className="py-3 pr-3 align-top">
+                <RecordIdCopy id={r.responseId} copyButtonLabel="Copy response id" />
               </td>
               <td className="py-3 pr-3 text-xs text-zinc-600">{r.status}</td>
               <td className="py-3 pr-3 font-mono text-xs">

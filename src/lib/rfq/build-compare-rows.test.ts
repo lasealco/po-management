@@ -33,8 +33,16 @@ describe("buildRfqCompareRows", () => {
   it("flags lowest and delta when two numeric totals share a currency", () => {
     const rows = buildRfqCompareRows(
       mockDetail([
-        { displayName: "Alpha", response: mockResponse({ id: "r1", status: "SUBMITTED", totalAllInAmount: 1000 }) },
-        { displayName: "Beta", response: mockResponse({ id: "r2", status: "SUBMITTED", totalAllInAmount: 1150.5 }) },
+        {
+          id: "rec-a",
+          displayName: "Alpha",
+          response: mockResponse({ id: "r1", status: "SUBMITTED", totalAllInAmount: 1000 }),
+        },
+        {
+          id: "rec-b",
+          displayName: "Beta",
+          response: mockResponse({ id: "r2", status: "SUBMITTED", totalAllInAmount: 1150.5 }),
+        },
       ]),
     );
     expect(rows).toHaveLength(2);
@@ -44,13 +52,20 @@ describe("buildRfqCompareRows", () => {
     expect(alpha?.peerBenchmarkTone).toBe("lowest");
     expect(beta?.peerBenchmarkLabel).toMatch(/^\+150\.5 vs low$/);
     expect(beta?.peerBenchmarkTone).toBe("delta");
+    expect(alpha?.recipientId).toBe("rec-a");
+    expect(beta?.recipientId).toBe("rec-b");
   });
 
   it("does not benchmark when fewer than two numeric totals in a currency", () => {
     const rows = buildRfqCompareRows(
       mockDetail([
-        { displayName: "Alpha", response: mockResponse({ id: "r1", status: "SUBMITTED", totalAllInAmount: 1000 }) },
         {
+          id: "rec-a",
+          displayName: "Alpha",
+          response: mockResponse({ id: "r1", status: "SUBMITTED", totalAllInAmount: 1000 }),
+        },
+        {
+          id: "rec-b",
           displayName: "Beta",
           response: mockResponse({ id: "r2", status: "SUBMITTED", totalAllInAmount: null }),
         },
@@ -63,6 +78,7 @@ describe("buildRfqCompareRows", () => {
     const rows = buildRfqCompareRows(
       mockDetail([
         {
+          id: "rec-e1",
           displayName: "EUR low",
           response: mockResponse({
             id: "e1",
@@ -72,6 +88,7 @@ describe("buildRfqCompareRows", () => {
           }),
         },
         {
+          id: "rec-e2",
           displayName: "EUR high",
           response: mockResponse({
             id: "e2",
@@ -81,6 +98,7 @@ describe("buildRfqCompareRows", () => {
           }),
         },
         {
+          id: "rec-u1",
           displayName: "USD only",
           response: mockResponse({
             id: "u1",

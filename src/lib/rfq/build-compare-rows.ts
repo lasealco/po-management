@@ -11,6 +11,8 @@ const COMPARABLE_RESPONSE_STATUSES = new Set([
 
 export type RfqCompareRow = {
   responseId: string;
+  /** Quote request recipient row id (for API / support references). */
+  recipientId: string;
   recipient: string;
   status: string;
   total: string;
@@ -56,6 +58,7 @@ export function buildRfqCompareRows(detail: Awaited<ReturnType<typeof getQuoteRe
 
     drafts.push({
       responseId: resp.id,
+      recipientId: rec.id,
       recipient: rec.displayName,
       status: resp.status,
       total: resp.totalAllInAmount != null ? String(resp.totalAllInAmount) : "—",
