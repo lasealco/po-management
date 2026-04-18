@@ -1,10 +1,25 @@
 import { describe, expect, it } from "vitest";
 
+import demoInvoiceAuditSnapshotBreakdown from "../../../prisma/invoice-audit-demo-snapshot.breakdown.json";
 import { DISCREPANCY_CATEGORY } from "@/lib/invoice-audit/discrepancy-categories";
 import {
   extractSnapshotPriceCandidates,
   summarizeContractGeographyFromCandidates,
 } from "@/lib/invoice-audit/snapshot-candidates";
+
+describe("invoice audit demo seed snapshot fixture (prisma/invoice-audit-demo-snapshot.breakdown.json)", () => {
+  it("parses for audit pipeline (kept in sync with db:seed:invoice-audit-demo auto-snapshot)", () => {
+    const out = extractSnapshotPriceCandidates(demoInvoiceAuditSnapshotBreakdown);
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+    expect(out.sourceType).toBe("QUOTE_RESPONSE");
+    expect(out.candidates.filter((c) => c.kind === "RFQ_LINE")).toHaveLength(3);
+    expect(out.rfqGrandTotal).toBe(3015);
+    expect(out.contractGrandTotal).toBeNull();
+    expect(out.rfqRouteLocodes?.pol).toBe("USNYC");
+    expect(out.rfqRouteLocodes?.pod).toBe("DEHAM");
+  });
+});
 
 describe("extractSnapshotPriceCandidates", () => {
   it("parses TARIFF_CONTRACT_VERSION rate and charge lines", () => {

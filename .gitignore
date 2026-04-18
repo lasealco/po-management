@@ -43,6 +43,10 @@ yarn-error.log*
 /docs/cursor_session_rules_tariff.md
 /docs/cursor_tariff_prompt_sequence.md
 
+# Local unpacked document packs (optional drops; not tracked by default)
+/docs/srm/pdf/
+/docs/tariff/
+
 # vercel
 .vercel
 

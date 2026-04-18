@@ -5,7 +5,8 @@
  * - DATABASE_URL (same as main seed; optional USE_DOTENV_LOCAL=1 via npm script)
  * - Prisma migrations applied (including invoice audit + accounting handoff columns)
  * - If demo-company has no pricing snapshot yet, this script creates a minimal QUOTE_RESPONSE snapshot
- *   so the intake seed can run without visiting Pricing snapshots first.
+ *   (breakdown: prisma/invoice-audit-demo-snapshot.breakdown.json — covered by Vitest) so the intake seed can run
+ *   without visiting Pricing snapshots first.
  *
  * Re-run safe: deletes prior seed intake by fixed external invoice no, then recreates PARSED intake + lines.
  *
@@ -20,53 +21,21 @@
 import { Prisma, PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { config } from "dotenv";
-import { resolve } from "node:path";
+import { readFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { Pool } from "pg";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+/** Single source of truth with Vitest (see snapshot-candidates.test.ts). */
+const demoQuoteResponseBreakdown = JSON.parse(
+  readFileSync(join(__dirname, "invoice-audit-demo-snapshot.breakdown.json"), "utf8"),
+);
 
 const DEMO_SLUG = "demo-company";
 const DEMO_EXTERNAL_INVOICE_NO = "DEMO-INVOICE-AUDIT-SEED";
 /** Synthetic quote id for auto-created demo snapshot (not a real QuoteResponse row). */
 const DEMO_SNAPSHOT_SOURCE_RECORD_ID = "seed-invoice-audit-demo-synthetic-quote";
-
-const demoQuoteResponseBreakdown = {
-  sourceType: "QUOTE_RESPONSE",
-  quoteRequest: {
-    originLabel: "Port USNYC",
-    destinationLabel: "DEHAM",
-  },
-  lines: [
-    {
-      id: "demo-snap-ln-1",
-      lineType: "FREIGHT",
-      label: "Ocean FCL 40HC base rate",
-      amount: "2500",
-      currency: "USD",
-      unitBasis: "PER_CONTAINER",
-      isIncluded: false,
-      notes: "40HC",
-    },
-    {
-      id: "demo-snap-ln-2",
-      lineType: "ACCESSORIAL",
-      label: "Bunker adjustment factor (BAF)",
-      amount: "330",
-      currency: "USD",
-      isIncluded: false,
-      notes: "",
-    },
-    {
-      id: "demo-snap-ln-3",
-      lineType: "ACCESSORIAL",
-      label: "Terminal handling charge origin",
-      amount: "185",
-      currency: "USD",
-      unitBasis: "PER_CONTAINER",
-      isIncluded: false,
-      notes: "40HC",
-    },
-  ],
-  totals: { grand: 3015 },
-};
 
 const cliDatabaseUrl = process.env.DATABASE_URL?.trim() || null;
 config({ path: resolve(process.cwd(), ".env") });
