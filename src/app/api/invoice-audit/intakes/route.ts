@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { jsonFromInvoiceAuditError } from "@/app/api/invoice-audit/_lib/invoice-audit-api-error";
+import { guardInvoiceAuditSchema } from "@/app/api/invoice-audit/_lib/guard-invoice-audit-schema";
 import { serializeInvoiceIntakeListRow } from "@/app/api/invoice-audit/_lib/serialize";
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { parseInvoiceAuditRecordId } from "@/lib/invoice-audit/invoice-audit-id";
@@ -13,6 +14,8 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const gate = await requireApiGrant("org.invoice_audit", "view");
   if (gate) return gate;
+  const schema = await guardInvoiceAuditSchema();
+  if (schema) return schema;
 
   const tenant = await getDemoTenant();
   if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
@@ -24,6 +27,8 @@ export async function GET() {
 export async function POST(request: Request) {
   const gate = await requireApiGrant("org.invoice_audit", "edit");
   if (gate) return gate;
+  const schema = await guardInvoiceAuditSchema();
+  if (schema) return schema;
 
   const tenant = await getDemoTenant();
   const actorId = await getActorUserId();

@@ -12,6 +12,9 @@
  *   1) Open the printed /invoice-audit/{id} URL as a demo user with org.invoice_audit edit.
  *   2) Run audit vs snapshot — expect line-level GREEN/WARN/FAIL from your snapshot’s breakdown.
  *   3) On the same page: Ops notes (Step 1) → Finance review (Step 2) → Accounting handoff (Step 3).
+ *
+ * If the UI says the database is not ready: GET /api/invoice-audit/readiness (same auth as invoice audit)
+ * returns { ok, issues, requiredMigrationsHint } — run prisma migrate deploy on this DATABASE_URL.
  */
 import { Prisma, PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";

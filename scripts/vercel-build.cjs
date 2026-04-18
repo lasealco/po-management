@@ -40,7 +40,9 @@ run("prisma generate", "npx", ["prisma", "generate"]);
 
 if (process.env.SKIP_DB_MIGRATE === "1") {
   console.log(
-    "\n[vercel-build] SKIP_DB_MIGRATE=1 — skipping prisma migrate deploy\n",
+    "\n[vercel-build] SKIP_DB_MIGRATE=1 — skipping prisma migrate deploy\n" +
+      "[vercel-build] Note: invoice audit requires migrations 20260419100000+ applied on DATABASE_URL; " +
+      "GET /api/invoice-audit/readiness (with view grant) surfaces schema gaps if you migrate out-of-band.\n",
   );
 } else {
   run(

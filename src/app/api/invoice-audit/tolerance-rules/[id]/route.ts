@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { jsonFromInvoiceAuditError } from "@/app/api/invoice-audit/_lib/invoice-audit-api-error";
+import { guardInvoiceAuditSchema } from "@/app/api/invoice-audit/_lib/guard-invoice-audit-schema";
 import { serializeToleranceRule } from "@/app/api/invoice-audit/_lib/serialize";
 import { requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
@@ -23,6 +24,8 @@ function parseNum(v: unknown): number | null | undefined {
 export async function PATCH(request: Request, ctx: { params: Promise<{ id: string }> }) {
   const gate = await requireApiGrant("org.invoice_audit", "edit");
   if (gate) return gate;
+  const schema = await guardInvoiceAuditSchema();
+  if (schema) return schema;
 
   const tenant = await getDemoTenant();
   if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });

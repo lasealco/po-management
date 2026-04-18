@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { guardInvoiceAuditSchema } from "@/app/api/invoice-audit/_lib/guard-invoice-audit-schema";
 import { requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
@@ -12,6 +13,8 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const gate = await requireApiGrant("org.invoice_audit", "view");
   if (gate) return gate;
+  const schema = await guardInvoiceAuditSchema();
+  if (schema) return schema;
 
   const tenant = await getDemoTenant();
   if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
