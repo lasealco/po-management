@@ -60,6 +60,18 @@ describe("buildContractOceanBasket", () => {
     expect(components.map((c) => c.kind).sort()).toEqual(["CONTRACT_CHARGE", "CONTRACT_RATE"]);
   });
 
+  it("includes misc surcharge style mandatory charges in the basket", () => {
+    const { total, components } = buildContractOceanBasket({
+      equipmentKey: "40HC",
+      candidates: [
+        baseRate({ id: "r1", label: "FAK 40HC", amount: 2000, equipmentHint: "40HC" }),
+        baseCharge({ id: "c1", label: "GRI misc surcharge", amount: 75, equipmentHint: null }),
+      ],
+    });
+    expect(total).toBe(2075);
+    expect(components.some((c) => c.label.includes("GRI"))).toBe(true);
+  });
+
   it("includes inland haul style mandatory charges in the basket", () => {
     const { total, components } = buildContractOceanBasket({
       equipmentKey: "40HC",

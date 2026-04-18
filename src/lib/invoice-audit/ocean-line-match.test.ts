@@ -119,6 +119,53 @@ describe("auditOceanInvoiceLine", () => {
     expect(r.expectedAmount?.toString()).toBe("185");
   });
 
+  it("favors snapshot line whose label equals normalizedLabel when raw description is vague", () => {
+    const r = auditOceanInvoiceLine({
+      ...baseParams,
+      invoiceLine: {
+        rawDescription: "Carrier statement line 2",
+        normalizedLabel: "BAF surcharge",
+        currency: "USD",
+        amount: new Prisma.Decimal("150"),
+        unitBasis: null,
+        equipmentType: null,
+        chargeStructureHint: "ITEMIZED",
+      },
+      candidates: [
+        charge({ id: "c1", label: "BAF surcharge", amount: 150, currency: "USD" }),
+        charge({
+          id: "c2",
+          label: "BAF bunker adjustment factor ocean carrier",
+          amount: 150,
+          currency: "USD",
+        }),
+      ],
+    });
+    expect(r.outcome).toBe("GREEN");
+    expect(r.snapshotMatchedJson).toMatchObject({ id: "c1" });
+  });
+
+  it("maps VGM carrier wording toward VGM-style snapshot charges", () => {
+    const r = auditOceanInvoiceLine({
+      ...baseParams,
+      invoiceLine: {
+        rawDescription: "Verified gross mass administration",
+        normalizedLabel: null,
+        currency: "USD",
+        amount: new Prisma.Decimal("50"),
+        unitBasis: null,
+        equipmentType: null,
+        chargeStructureHint: "ITEMIZED",
+      },
+      candidates: [
+        charge({ id: "c1", label: "VGM fee", amount: 50, currency: "USD" }),
+        charge({ id: "c2", label: "Port security ISPS", amount: 50, currency: "USD" }),
+      ],
+    });
+    expect(["GREEN", "AMBER"]).toContain(r.outcome);
+    expect(r.snapshotMatchedJson).toMatchObject({ id: "c1" });
+  });
+
   it("maps carrier wording Terminal handling to THC via synonyms plus charge aliases", () => {
     const r = auditOceanInvoiceLine({
       ...baseParams,

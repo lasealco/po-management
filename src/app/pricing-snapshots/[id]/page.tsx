@@ -116,6 +116,32 @@ export default async function PricingSnapshotDetailPage(props: { params: Promise
                   lines).
                 </p>
               ) : null}
+              {auditExtract.candidates.length > 0 ? (
+                <div className="mt-3 rounded-xl border border-zinc-100 bg-zinc-50/80 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                    Snapshot line labels (demo)
+                  </p>
+                  <p className="mt-2 flex flex-wrap gap-1.5 text-[11px] leading-snug text-zinc-800">
+                    {auditExtract.candidates.slice(0, 12).map((c) => (
+                      <span
+                        key={c.id}
+                        title={`${c.kind}: ${c.label}`}
+                        className="max-w-[14rem] truncate rounded-md border border-zinc-200 bg-white px-2 py-0.5 font-mono"
+                      >
+                        {c.label.length > 44 ? `${c.label.slice(0, 44)}…` : c.label}
+                      </span>
+                    ))}
+                    {auditExtract.candidates.length > 12 ? (
+                      <span className="self-center text-zinc-500">+{auditExtract.candidates.length - 12} more</span>
+                    ) : null}
+                  </p>
+                  <p className="mt-2 text-xs text-zinc-500">
+                    For clearest matches, mirror these labels in invoice text or set{" "}
+                    <span className="font-mono">normalizedLabel</span> to an exact snapshot line title when you import
+                    parsed lines.
+                  </p>
+                </div>
+              ) : null}
             </>
           ) : (
             <p className="mt-2 text-sm text-amber-900">

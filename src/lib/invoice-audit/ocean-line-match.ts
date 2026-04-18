@@ -79,6 +79,15 @@ function expandOceanSynonymAppendix(combined: string): string {
   if (/\b(base\s+rate|sea\s+freight|ocean\s+rate|carrier\s+ocean|main\s+leg|fcl\s+freight)\b/i.test(lower)) {
     parts.push("ocean freight fak base rate");
   }
+  if (/\bvgm\b|verified\s+gross\s+mass|gross\s+mass\s+verification/i.test(lower)) {
+    parts.push("vgm verified gross mass");
+  }
+  if (/\bcontainer\s+seal|seal\s+fee|bullet\s+seal|bolt\s+seal/i.test(lower)) {
+    parts.push("seal container seal fee");
+  }
+  if (/\bmiscellaneous|\bmisc\b|general\s+rate\s+increase|\bgri\b/i.test(lower)) {
+    parts.push("gri general rate increase surcharge");
+  }
   return parts.join(" ");
 }
 
@@ -157,15 +166,24 @@ function polPodScore(
 function scoreCandidate(
   c: SnapshotPriceCandidate,
   augmentedInvoiceText: string,
+  invoiceNormalizedLabel: string | null,
   invoiceUnit: string | null,
   invoiceEqKey: string | null,
   aliases: InvoiceChargeAliasRow[],
   pol: string | null,
   pod: string | null,
 ): { score: number; unitSoftMismatch: boolean; geoSoftPenalty: boolean } {
+  const labNorm = normalizeText(c.label);
   let score = tokenOverlapScore(augmentedInvoiceText, c.label) * 2.8;
 
-  const labNorm = normalizeText(c.label);
+  const invLabNorm = invoiceNormalizedLabel ? normalizeText(invoiceNormalizedLabel) : "";
+  if (invLabNorm.length >= 3 && labNorm.length >= 3 && invLabNorm === labNorm) {
+    score += 8;
+  }
+  const invAugNorm = normalizeText(augmentedInvoiceText);
+  if (labNorm.includes("vgm") && invAugNorm.includes("vgm")) {
+    score += 3;
+  }
   for (const a of aliases) {
     if (a.targetKind && a.targetKind !== c.kind) continue;
     const p = a.pattern.trim().toLowerCase();
@@ -443,6 +461,7 @@ export function auditOceanInvoiceLine(params: {
     const s = scoreCandidate(
       c,
       augmented,
+      params.invoiceLine.normalizedLabel,
       params.invoiceLine.unitBasis,
       invoiceEqKey,
       params.aliases,

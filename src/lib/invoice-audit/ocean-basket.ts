@@ -30,7 +30,7 @@ export function buildContractOceanBasket(params: {
   }
 
   const ANCILLARY =
-    /\b(baf|caf|lss|pss|thc|ihc|inland haul|haulage|wfg|wharf|gate|war risk|documentation|doc fee|isps|pcs|gri|ecc|ebs|ems|dthc|othc|cfs|vgm|seal|bl fee|bill of lading|handling|pier|los|congestion|surcharge)\b/i;
+    /\b(baf|caf|lss|pss|thc|ihc|inland haul|haulage|wfg|wharf|gate|war risk|documentation|doc fee|isps|pcs|gri|misc\s+surcharge|ecc|ebs|ems|dthc|othc|cfs|vgm|seal|bl fee|bill of lading|handling|pier|los|congestion|surcharge)\b/i;
 
   for (const c of params.candidates) {
     if (c.kind !== "CONTRACT_CHARGE") continue;
