@@ -185,7 +185,7 @@ export function ControlTowerReportsClient({
             <div className="rounded border border-rose-100 bg-rose-50 px-3 py-2 text-rose-950">
               Breached exceptions: <strong>{summary.totals.slaBreachedExceptions ?? 0}</strong>
             </div>
-            <div className="rounded border border-violet-100 bg-violet-50 px-3 py-2 text-violet-950">
+            <div className="rounded border border-[var(--arscmp-primary)]/15 bg-[var(--arscmp-primary-50)] px-3 py-2 text-zinc-900">
               Open SLA follow-ups: <strong>{summary.totals.openSlaEscalationAlerts ?? 0}</strong>
             </div>
           </div>

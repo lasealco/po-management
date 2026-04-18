@@ -24,18 +24,23 @@ type CtReportCoverage = {
   dimensionGroupsShown: number;
 };
 
-export const BAR_COLORS = [
-  "#0284c7",
-  "#6366f1",
-  "#059669",
-  "#d97706",
-  "#dc2626",
-  "#7c3aed",
+/**
+ * Category colors — teal / cyan / emerald family aligned with `--arscmp-primary`.
+ * Avoids generic “rainbow SaaS” purples for a more premium, on-brand analytics feel.
+ */
+export const CHART_CATEGORY_FILLS = [
+  "#165b67",
+  "#0e7490",
   "#0f766e",
-  "#c2410c",
-  "#be185d",
-  "#334155",
-];
+  "#0d9488",
+  "#115e59",
+  "#155e75",
+  "#134e4a",
+  "#0891b2",
+] as const;
+
+/** @deprecated Use `CHART_CATEGORY_FILLS`; kept for external imports if any. */
+export const BAR_COLORS = [...CHART_CATEGORY_FILLS];
 
 export type ChartViewMode = "bar" | "line" | "pie";
 
@@ -87,8 +92,11 @@ export function formatMetric(measure: string, value: number): string {
 }
 
 export function colorFor(i: number): string {
-  return BAR_COLORS[i % BAR_COLORS.length];
+  return CHART_CATEGORY_FILLS[i % CHART_CATEGORY_FILLS.length]!;
 }
+
+const CHART_STROKE_PRIMARY = "#165b67";
+const CHART_GRID = "#e7e5e4";
 
 /** Compact series for small cards (first buckets only). */
 export function seriesForCard(report: CtDashboardWidgetReport, max = 10): Array<{ label: string; value: number }> {
@@ -186,7 +194,11 @@ export function MiniBarChart({
   const interactive = Boolean(onBarSelect);
   const max = Math.max(...data.map((d) => d.value), 0);
   if (!data.length || max <= 0) {
-    return <div className="rounded border border-zinc-200 bg-zinc-50 px-2 py-2 text-xs text-zinc-500">No chart data</div>;
+    return (
+      <div className="rounded-xl border border-zinc-200/80 bg-zinc-50/90 px-3 py-4 text-center text-xs text-zinc-500">
+        No chart data
+      </div>
+    );
   }
   const isModal = variant === "modal";
   const barW = isModal ? Math.max(10, Math.min(48, Math.floor(560 / Math.max(data.length, 1)))) : Math.max(8, Math.floor(220 / data.length));
@@ -203,17 +215,37 @@ export function MiniBarChart({
   const fmt = (v: number) => formatAxisTick(measure, v);
   const fmtVal = (v: number) => formatMetric(measure, v);
   const xLabel = (s: string) => (s.length > 11 ? `${s.slice(0, 10)}…` : s);
+  const barRx = isModal ? 5 : 2;
   return (
     <svg
       viewBox={`0 0 ${width} ${height}`}
       preserveAspectRatio={isModal ? "xMidYMid meet" : "none"}
       style={{ height: `${height}px` }}
-      className={`w-full rounded-lg border border-zinc-200/90 bg-white shadow-sm ${interactive ? "[&_rect.bar]:cursor-pointer" : ""}`}
+      className={`w-full rounded-xl border border-zinc-200/70 bg-gradient-to-b from-white to-zinc-50/90 shadow-md ring-1 ring-black/[0.04] ${interactive ? "[&_rect.bar]:cursor-pointer" : ""}`}
       role={interactive ? "img" : undefined}
       aria-label={interactive ? "Bar chart; click a bar to highlight the matching row below." : undefined}
     >
+      <defs>
+        {data.map((d, i) => {
+          const base = colorFor(i);
+          return (
+            <linearGradient key={`g-${seriesKey(d, i)}`} id={`ct-bar-grad-${i}`} x1="0" y1="1" x2="0" y2="0">
+              <stop offset="0%" stopColor={base} stopOpacity="0.82" />
+              <stop offset="100%" stopColor={base} stopOpacity="1" />
+            </linearGradient>
+          );
+        })}
+      </defs>
       {isModal ? (
-        <text x={12} y={axisTop + plotHeight / 2} fontSize="11" fill="#52525b" transform={`rotate(-90 12 ${axisTop + plotHeight / 2})`} textAnchor="middle">
+        <text
+          x={12}
+          y={axisTop + plotHeight / 2}
+          fontSize="11"
+          fill="#57534e"
+          fontWeight="600"
+          transform={`rotate(-90 12 ${axisTop + plotHeight / 2})`}
+          textAnchor="middle"
+        >
           {metricLabel(measure)}
         </text>
       ) : null}
@@ -221,8 +253,8 @@ export function MiniBarChart({
         const y = axisTop + (plotHeight * idx) / (ticks.length - 1);
         return (
           <g key={`tick-${idx}`}>
-            <line x1={axisLeft} y1={y} x2={width - axisRight} y2={y} stroke="#e4e4e7" strokeWidth="1" />
-            <text x={axisLeft - 6} y={y + 4} textAnchor="end" fontSize={isModal ? "10" : "8"} fill="#71717a">
+            <line x1={axisLeft} y1={y} x2={width - axisRight} y2={y} stroke={CHART_GRID} strokeWidth="1" />
+            <text x={axisLeft - 6} y={y + 4} textAnchor="end" fontSize={isModal ? "10" : "8"} fill="#57534e">
               {fmt(t)}
             </text>
           </g>
@@ -234,7 +266,7 @@ export function MiniBarChart({
           y={height - 8}
           textAnchor="middle"
           fontSize="10"
-          fill="#52525b"
+          fill="#57534e"
         >
           {xGroupLabel}
         </text>
@@ -248,15 +280,15 @@ export function MiniBarChart({
         return (
           <g key={k}>
             <rect
-              className="bar"
+              className="bar transition-[opacity] duration-300 motion-reduce:transition-none"
               x={x}
               y={y}
               width={barW}
               height={h}
-              rx={isModal ? 3 : 1}
-              fill={colorFor(i)}
-              stroke={sel ? "#0c4a6e" : "none"}
-              strokeWidth={sel ? 2 : 0}
+              rx={barRx}
+              fill={`url(#ct-bar-grad-${i})`}
+              stroke={sel ? CHART_STROKE_PRIMARY : "rgba(22, 91, 103, 0.12)"}
+              strokeWidth={sel ? 2.5 : 1}
               tabIndex={interactive ? 0 : undefined}
               role={interactive ? "button" : undefined}
               aria-label={`${d.label}: ${fmtVal(d.value)}${sel ? ", selected" : ""}`}
@@ -321,7 +353,11 @@ export function MiniLineChart({
   const interactive = Boolean(onPointSelect);
   const max = Math.max(...data.map((d) => d.value), 0);
   if (!data.length || max <= 0) {
-    return <div className="rounded border border-zinc-200 bg-zinc-50 px-2 py-2 text-xs text-zinc-500">No chart data</div>;
+    return (
+      <div className="rounded-xl border border-zinc-200/80 bg-zinc-50/90 px-3 py-4 text-center text-xs text-zinc-500">
+        No chart data
+      </div>
+    );
   }
   const isModal = variant === "modal";
   const width = isModal ? 680 : 320;
@@ -337,7 +373,12 @@ export function MiniLineChart({
     return padL + (i / (n - 1)) * plotW;
   };
   const yAt = (v: number) => padT + plotH - (v / max) * plotH;
+  const yBottom = padT + plotH;
   const points = data.map((d, i) => `${xAt(i)},${yAt(d.value)}`).join(" ");
+  const areaPoints =
+    n > 0
+      ? `${padL},${yBottom} ${data.map((d, i) => `${xAt(i)},${yAt(d.value)}`).join(" ")} ${xAt(n - 1)},${yBottom}`
+      : "";
   const ticks = [max, max / 2, 0];
   const fmt = (v: number) => formatAxisTick(measure, v);
   const fmtVal = (v: number) => formatMetric(measure, v);
@@ -347,31 +388,56 @@ export function MiniLineChart({
       viewBox={`0 0 ${width} ${height}`}
       preserveAspectRatio={isModal ? "xMidYMid meet" : "none"}
       style={{ height: `${height}px` }}
-      className={`w-full rounded-lg border border-zinc-200/90 bg-white shadow-sm`}
+      className="w-full rounded-xl border border-zinc-200/70 bg-gradient-to-b from-white to-zinc-50/90 shadow-md ring-1 ring-black/[0.04]"
       role={interactive ? "img" : undefined}
       aria-label={interactive ? "Line chart; click a point to highlight the matching row below." : undefined}
     >
+      <defs>
+        <linearGradient id="ct-line-area-fill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={CHART_STROKE_PRIMARY} stopOpacity="0.16" />
+          <stop offset="100%" stopColor={CHART_STROKE_PRIMARY} stopOpacity="0" />
+        </linearGradient>
+      </defs>
       {isModal
         ? ticks.map((t, idx) => {
             const y = padT + (plotH * idx) / (ticks.length - 1);
             return (
               <g key={`yt-${idx}`}>
-                <line x1={padL} y1={y} x2={width - padR} y2={y} stroke="#e4e4e7" strokeWidth="1" />
-                <text x={padL - 8} y={y + 4} textAnchor="end" fontSize="10" fill="#71717a">
+                <line x1={padL} y1={y} x2={width - padR} y2={y} stroke={CHART_GRID} strokeWidth="1" />
+                <text x={padL - 8} y={y + 4} textAnchor="end" fontSize="10" fill="#57534e">
                   {fmt(t)}
                 </text>
               </g>
             );
           })
-        : [<line key="base" x1={padL} y1={padT + plotH} x2={width - padR} y2={padT + plotH} stroke="#e4e4e7" />]}
-      <polyline fill="none" stroke="#0ea5e9" strokeWidth={isModal ? 3 : 2.5} points={points} pointerEvents="none" />
+        : [<line key="base" x1={padL} y1={padT + plotH} x2={width - padR} y2={padT + plotH} stroke={CHART_GRID} />]}
+      {n > 0 ? (
+        <polygon fill="url(#ct-line-area-fill)" points={areaPoints} stroke="none" pointerEvents="none" />
+      ) : null}
+      <polyline
+        fill="none"
+        stroke={CHART_STROKE_PRIMARY}
+        strokeWidth={isModal ? 2.75 : 2.25}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        points={points}
+        pointerEvents="none"
+      />
       {isModal ? (
-        <text x={14} y={padT + plotH / 2} fontSize="11" fill="#52525b" transform={`rotate(-90 14 ${padT + plotH / 2})`} textAnchor="middle">
+        <text
+          x={14}
+          y={padT + plotH / 2}
+          fontSize="11"
+          fill="#57534e"
+          fontWeight="600"
+          transform={`rotate(-90 14 ${padT + plotH / 2})`}
+          textAnchor="middle"
+        >
           {metricLabel(measure)}
         </text>
       ) : null}
       {isModal && xGroupLabel ? (
-        <text x={padL + plotW / 2} y={height - 10} textAnchor="middle" fontSize="10" fill="#52525b">
+        <text x={padL + plotW / 2} y={height - 10} textAnchor="middle" fontSize="10" fill="#57534e">
           {xGroupLabel}
         </text>
       ) : null}
@@ -409,10 +475,11 @@ export function MiniLineChart({
                 <circle
                   cx={cx}
                   cy={cy}
-                  r={sel ? 6 : 4}
+                  r={sel ? 6.5 : 4.5}
                   fill="#fff"
-                  stroke={sel ? "#0c4a6e" : "#0ea5e9"}
-                  strokeWidth={sel ? 2.5 : 2}
+                  stroke={sel ? CHART_STROKE_PRIMARY : CHART_STROKE_PRIMARY}
+                  strokeOpacity={sel ? 1 : 0.45}
+                  strokeWidth={sel ? 2.75 : 2}
                   pointerEvents="none"
                 />
                 {isModal ? (
@@ -421,7 +488,7 @@ export function MiniLineChart({
                     y={height - padB + 12}
                     textAnchor="middle"
                     fontSize="9"
-                    fill="#52525b"
+                    fill="#57534e"
                     transform={`rotate(-38 ${cx} ${height - padB + 12})`}
                   >
                     {xLab(d.label)}
@@ -460,7 +527,11 @@ export function MiniPieChart({
   const interactive = Boolean(onSliceSelect);
   const total = data.reduce((s, d) => s + d.value, 0);
   if (!data.length || total <= 0) {
-    return <div className="rounded border border-zinc-200 bg-zinc-50 px-2 py-6 text-center text-xs text-zinc-500">No chart data</div>;
+    return (
+      <div className="rounded-xl border border-zinc-200/80 bg-zinc-50/90 px-3 py-6 text-center text-xs text-zinc-500">
+        No chart data
+      </div>
+    );
   }
   const cx = size / 2;
   const cy = size / 2;
@@ -486,7 +557,7 @@ export function MiniPieChart({
         key={k}
         d={path}
         fill={colorFor(i)}
-        stroke={sel ? "#0c4a6e" : "#fff"}
+        stroke={sel ? CHART_STROKE_PRIMARY : "#fff"}
         strokeWidth={sel ? 2.5 : 1}
         className={interactive ? "cursor-pointer" : undefined}
         tabIndex={interactive ? 0 : undefined}
@@ -521,7 +592,7 @@ export function MiniPieChart({
       width={size}
       height={size}
       viewBox={`0 0 ${size} ${size}`}
-      className="mx-auto rounded border border-zinc-200 bg-white"
+      className="mx-auto rounded-xl border border-zinc-200/70 bg-gradient-to-br from-white to-zinc-50/90 shadow-md ring-1 ring-black/[0.04]"
       role={interactive ? "img" : undefined}
       aria-label={interactive ? "Pie chart; click a slice to highlight the matching row below." : undefined}
     >
@@ -773,7 +844,7 @@ export function ControlTowerDashboardWidgetModal(props: {
         </p>
 
         {chartView === "line" && lineAllowed ? (
-          <p className="mt-2 rounded-lg border border-sky-100 bg-sky-50/80 px-3 py-2 text-[11px] text-sky-950">
+          <p className="mt-2 rounded-lg border border-[var(--arscmp-primary)]/15 bg-[var(--arscmp-primary-50)]/90 px-3 py-2 text-[11px] text-zinc-800">
             One line = one measure over time: each point is a <strong>month</strong>, not a separate series. Switch to{" "}
             <strong>Bar</strong> to compare categories side by side.
           </p>
@@ -812,9 +883,9 @@ export function ControlTowerDashboardWidgetModal(props: {
         </div>
 
         {drillRow ? (
-          <div className="mt-3 rounded-lg border border-sky-200 bg-sky-50/80 px-3 py-2 text-xs text-zinc-800">
+          <div className="mt-3 rounded-lg border border-[var(--arscmp-primary)]/20 bg-[var(--arscmp-primary-50)]/80 px-3 py-2 text-xs text-zinc-800">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="font-semibold text-sky-950">Selected · {drillRow.label}</p>
+              <p className="font-semibold text-[var(--arscmp-primary)]">Selected · {drillRow.label}</p>
               <WorkbenchDrillLink
                 dimension={report.config.dimension}
                 rowKey={drillRow.key}
@@ -872,7 +943,7 @@ export function ControlTowerDashboardWidgetModal(props: {
                     else rowRefs.current.delete(r.key);
                   }}
                   className={`odd:bg-white even:bg-zinc-50 ${
-                    drillKey === r.key ? "bg-sky-50 ring-1 ring-inset ring-sky-300" : ""
+                    drillKey === r.key ? "bg-[var(--arscmp-primary-50)] ring-1 ring-inset ring-[var(--arscmp-primary)]/25" : ""
                   }`}
                 >
                   <td className="border-b border-zinc-100 px-2 py-1">
@@ -893,13 +964,13 @@ export function ControlTowerDashboardWidgetModal(props: {
           </table>
         </div>
 
-        <div className="mt-4 rounded-lg border border-violet-200 bg-violet-50/60 p-3">
-          <p className="text-xs font-semibold text-violet-950">Ask AI about this report</p>
-          <p className="mt-0.5 text-[11px] text-violet-900/80">
+        <div className="mt-4 rounded-lg border border-zinc-200/90 bg-gradient-to-br from-zinc-50 to-white p-3 shadow-sm">
+          <p className="text-xs font-semibold text-zinc-900">Ask AI about this report</p>
+          <p className="mt-0.5 text-[11px] text-zinc-600">
             Uses the same insight engine as the report builder (aggregated numbers only). Optional question:
           </p>
           <textarea
-            className="mt-2 w-full rounded border border-violet-200 bg-white px-2 py-1.5 text-sm text-zinc-900"
+            className="mt-2 w-full rounded-lg border border-zinc-200 bg-white px-2 py-1.5 text-sm text-zinc-900 shadow-inner outline-none focus:border-[var(--arscmp-primary)] focus:ring-1 focus:ring-[var(--arscmp-primary)]/25"
             rows={2}
             placeholder="e.g. What stands out? Any concentration risk?"
             value={insightQuestion}
@@ -909,13 +980,13 @@ export function ControlTowerDashboardWidgetModal(props: {
             type="button"
             onClick={() => void fetchInsight()}
             disabled={insightBusy}
-            className="mt-2 rounded bg-violet-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-violet-800 disabled:opacity-50"
+            className="mt-2 rounded-lg bg-[var(--arscmp-primary)] px-3 py-1.5 text-sm font-medium text-white hover:brightness-95 disabled:opacity-50"
           >
             {insightBusy ? "Generating…" : "Get AI insight"}
           </button>
           {insightErr ? <p className="mt-2 text-xs text-red-700">{insightErr}</p> : null}
           {insightRunSummary ? (
-            <div className="mt-2 space-y-0.5 rounded border border-violet-100/80 bg-white/90 px-2.5 py-2 text-[11px] leading-snug text-violet-950/90">
+            <div className="mt-2 space-y-0.5 rounded-lg border border-zinc-200/90 bg-zinc-50/90 px-2.5 py-2 text-[11px] leading-snug text-zinc-800">
               {insightRunSummary.title ? (
                 <p>
                   <span className="font-semibold">Report:</span> {insightRunSummary.title}
@@ -931,7 +1002,7 @@ export function ControlTowerDashboardWidgetModal(props: {
                   <span className="font-semibold">Compare:</span> {insightRunSummary.compareMeasureLabel}
                 </p>
               ) : null}
-              <p className="text-violet-900/85">
+              <p className="text-zinc-700">
                 <span className="font-semibold">Coverage:</span>{" "}
                 {insightRunSummary.coverage.shipmentsAggregated} aggregated ·{" "}
                 {insightRunSummary.coverage.totalShipmentsQueried} queried ·{" "}
@@ -940,7 +1011,7 @@ export function ControlTowerDashboardWidgetModal(props: {
             </div>
           ) : null}
           {insightText ? (
-            <div className="mt-2 whitespace-pre-wrap rounded border border-violet-100 bg-white px-2 py-2 text-sm text-zinc-800">
+            <div className="mt-2 whitespace-pre-wrap rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 shadow-inner">
               {insightText}
             </div>
           ) : null}

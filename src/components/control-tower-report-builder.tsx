@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { colorFor } from "@/components/control-tower-dashboard-chart-kit";
 import { WorkbenchDrillLink } from "@/components/workbench-drill-link";
 import { buildControlTowerReportCsv } from "@/lib/control-tower/report-csv";
 import type { ReportInsightRunSummary } from "@/lib/control-tower/report-run-summary";
@@ -306,19 +307,45 @@ function ResultLineChart({
   const y = (v: number) => h - p - (v / max) * (h - p * 2);
   const currentPoints = rows.map((r, i) => `${p + i * step},${y(Number(r.metrics[measure] ?? 0))}`).join(" ");
   const comparePoints = rows.map((r, i) => `${p + i * step},${y(Number(compareByKey.get(r.key) ?? 0))}`).join(" ");
+  const yBottom = h - p;
+  const areaPoints =
+    rows.length > 0
+      ? `${p},${yBottom} ${rows.map((r, i) => `${p + i * step},${y(Number(r.metrics[measure] ?? 0))}`).join(" ")} ${p + (rows.length - 1) * step},${yBottom}`
+      : "";
   return (
     <svg
       viewBox={`0 0 ${w} ${h}`}
-      className="h-56 w-full rounded border border-zinc-200 bg-white"
+      className="h-56 w-full rounded-xl border border-zinc-200/70 bg-gradient-to-b from-white to-zinc-50/90 shadow-md ring-1 ring-black/[0.04]"
       role={interactive ? "img" : undefined}
       aria-label={interactive ? "Line chart; click a point to highlight the row in the table below." : undefined}
     >
-      <line x1={p} y1={h - p} x2={w - p} y2={h - p} stroke="#d4d4d8" />
-      <line x1={p} y1={p} x2={p} y2={h - p} stroke="#d4d4d8" />
+      <defs>
+        <linearGradient id="ct-rb-line-area" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#165b67" stopOpacity="0.14" />
+          <stop offset="100%" stopColor="#165b67" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <line x1={p} y1={h - p} x2={w - p} y2={h - p} stroke="#e7e5e4" />
+      <line x1={p} y1={p} x2={p} y2={h - p} stroke="#e7e5e4" />
+      {[0, 0.5, 1].map((frac, idx) => {
+        const yy = h - p - frac * (h - 2 * p);
+        return <line key={`hg-${idx}`} x1={p} y1={yy} x2={w - p} y2={yy} stroke="#f5f5f4" strokeWidth="1" />;
+      })}
       {compareEnabled ? (
-        <polyline fill="none" stroke="#8b5cf6" strokeWidth="2" points={comparePoints} pointerEvents="none" />
+        <polyline fill="none" stroke="#94a3b8" strokeWidth="2" strokeDasharray="4 3" points={comparePoints} pointerEvents="none" />
       ) : null}
-      <polyline fill="none" stroke="#0ea5e9" strokeWidth="2.5" points={currentPoints} pointerEvents="none" />
+      {rows.length > 0 ? (
+        <polygon fill="url(#ct-rb-line-area)" points={areaPoints} stroke="none" pointerEvents="none" />
+      ) : null}
+      <polyline
+        fill="none"
+        stroke="#165b67"
+        strokeWidth="2.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        points={currentPoints}
+        pointerEvents="none"
+      />
       {interactive
         ? rows.map((r, i) => {
             const cx = p + i * step;
@@ -354,7 +381,8 @@ function ResultLineChart({
                   cy={cy}
                   r={sel ? 7 : 5}
                   fill="#fff"
-                  stroke={sel ? "#0c4a6e" : "#0ea5e9"}
+                  stroke="#165b67"
+                  strokeOpacity={sel ? 1 : 0.5}
                   strokeWidth={sel ? 3 : 2}
                   pointerEvents="none"
                 />
@@ -378,12 +406,11 @@ function ResultPieChart({
   onSliceSelect?: (key: string) => void;
 }) {
   const interactive = Boolean(onSliceSelect);
-  const colors = ["#0ea5e9", "#6366f1", "#10b981", "#f59e0b", "#ef4444", "#a855f7", "#14b8a6", "#f97316"];
   const entries = rows.slice(0, 8).map((r, i) => ({
     key: r.key,
     label: r.label,
     value: Math.max(0, Number(r.metrics[measure] ?? 0)),
-    color: colors[i % colors.length],
+    color: colorFor(i),
   }));
   const total = entries.reduce((a, b) => a + b.value, 0);
   if (total <= 0) return <div className="rounded border border-zinc-200 bg-zinc-50 px-3 py-4 text-xs text-zinc-500">No chart data</div>;
@@ -400,7 +427,7 @@ function ResultPieChart({
   return (
     <div className="flex flex-wrap items-center gap-4">
       <div
-        className="h-40 w-40 shrink-0 rounded-full border border-zinc-200"
+        className="h-40 w-40 shrink-0 rounded-full border border-zinc-200/80 shadow-md ring-1 ring-black/[0.04]"
         style={{ background: `conic-gradient(${gradientParts.join(", ")})` }}
         aria-hidden
       />
@@ -413,8 +440,8 @@ function ResultPieChart({
                 <button
                   type="button"
                   onClick={() => onSliceSelect?.(e.key)}
-                  className={`flex w-full items-center gap-2 rounded px-1 py-0.5 text-left hover:bg-zinc-100 ${
-                    sel ? "bg-sky-50 ring-1 ring-sky-300" : ""
+                  className={`flex w-full items-center gap-2 rounded-lg px-1.5 py-0.5 text-left hover:bg-zinc-100 ${
+                    sel ? "bg-[var(--arscmp-primary-50)] ring-1 ring-[var(--arscmp-primary)]/25" : ""
                   }`}
                 >
                   <span className="inline-block h-2.5 w-2.5 shrink-0 rounded" style={{ backgroundColor: e.color }} />
@@ -1274,6 +1301,36 @@ export function ControlTowerReportBuilder({
               </p>
             </div>
           ) : null}
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            <div className="rounded-xl border border-zinc-200/80 bg-gradient-to-br from-white to-zinc-50/90 px-4 py-3 shadow-sm ring-1 ring-black/[0.03]">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">
+                Total · {MEASURE_LABELS[result.config.measure]}
+              </p>
+              <p className="mt-1 text-2xl font-bold tabular-nums tracking-tight text-[var(--arscmp-primary)]">
+                {formatMetric(result.config.measure, result.totals[result.config.measure] ?? 0)}
+              </p>
+            </div>
+            <div className="rounded-xl border border-zinc-200/80 bg-gradient-to-br from-white to-zinc-50/90 px-4 py-3 shadow-sm ring-1 ring-black/[0.03]">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">Dimension groups</p>
+              <p className="mt-1 text-2xl font-bold tabular-nums tracking-tight text-zinc-900">{result.rows.length}</p>
+              <p className="mt-0.5 text-[11px] text-zinc-500">In this run (after Top-N)</p>
+            </div>
+            <div className="rounded-xl border border-zinc-200/80 bg-gradient-to-br from-white to-zinc-50/90 px-4 py-3 shadow-sm ring-1 ring-black/[0.03]">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">Leading bucket</p>
+              {result.rows[0] ? (
+                <>
+                  <p className="mt-1 truncate text-sm font-semibold text-zinc-900" title={result.rows[0].label}>
+                    {result.rows[0].label}
+                  </p>
+                  <p className="text-xs tabular-nums text-zinc-600">
+                    {formatMetric(result.config.measure, Number(result.rows[0].metrics[result.config.measure] ?? 0))}
+                  </p>
+                </>
+              ) : (
+                <p className="mt-1 text-sm text-zinc-400">—</p>
+              )}
+            </div>
+          </div>
           {comparisonLine ? (
             <p className="text-xs text-zinc-700">
               Compare ({config.comparePeriod}): current{" "}
@@ -1296,11 +1353,11 @@ export function ControlTowerReportBuilder({
               {compareResult ? (
                 <div className="mb-1 flex items-center gap-3 text-[11px] text-zinc-600">
                   <span className="inline-flex items-center gap-1">
-                    <span className="inline-block h-2.5 w-2.5 rounded bg-sky-500" />
+                    <span className="inline-block h-2.5 w-2.5 rounded bg-[var(--arscmp-primary)]" />
                     Current
                   </span>
                   <span className="inline-flex items-center gap-1">
-                    <span className="inline-block h-2.5 w-2.5 rounded bg-violet-500" />
+                    <span className="inline-block h-2.5 w-2.5 rounded bg-slate-400" />
                     Compare
                   </span>
                 </div>
@@ -1338,8 +1395,8 @@ export function ControlTowerReportBuilder({
                         <button
                           type="button"
                           onClick={() => toggleChartDrill(row.key)}
-                          className={`w-full rounded px-1 text-left outline-none ring-offset-2 hover:bg-zinc-50 focus-visible:ring-2 focus-visible:ring-sky-400 ${
-                            sel ? "bg-sky-50 ring-1 ring-sky-300" : ""
+                          className={`w-full rounded-lg px-1 text-left outline-none ring-offset-2 hover:bg-zinc-50 focus-visible:ring-2 focus-visible:ring-[var(--arscmp-primary)]/40 ${
+                            sel ? "bg-[var(--arscmp-primary-50)] ring-1 ring-[var(--arscmp-primary)]/25" : ""
                           }`}
                           aria-pressed={sel}
                         >
@@ -1348,12 +1405,15 @@ export function ControlTowerReportBuilder({
                             <span className="font-medium text-zinc-900">{formatMetric(result.config.measure, val)}</span>
                           </div>
                           <div className="mt-1 space-y-1">
-                            <div className="h-2 rounded bg-zinc-100">
-                              <div className="h-2 rounded bg-sky-500" style={{ width: `${width}%` }} />
+                            <div className="h-2.5 overflow-hidden rounded-full bg-zinc-100">
+                              <div
+                                className="h-full rounded-full bg-gradient-to-r from-[var(--arscmp-primary)] to-teal-600 shadow-sm"
+                                style={{ width: `${width}%` }}
+                              />
                             </div>
                             {compareResult ? (
-                              <div className="h-2 rounded bg-zinc-100">
-                                <div className="h-2 rounded bg-violet-500" style={{ width: `${prevWidth}%` }} />
+                              <div className="h-2 overflow-hidden rounded-full bg-zinc-100">
+                                <div className="h-full rounded-full bg-slate-400/90" style={{ width: `${prevWidth}%` }} />
                               </div>
                             ) : null}
                           </div>
@@ -1366,8 +1426,8 @@ export function ControlTowerReportBuilder({
           )}
 
           {chartDrillRow ? (
-            <div className="flex flex-wrap items-center gap-2 rounded-md border border-sky-100 bg-sky-50/60 px-3 py-2 text-xs text-zinc-700">
-              <span className="font-medium text-sky-950">Drill-down</span>
+            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--arscmp-primary)]/15 bg-[var(--arscmp-primary-50)]/70 px-3 py-2 text-xs text-zinc-700">
+              <span className="font-medium text-[var(--arscmp-primary)]">Drill-down</span>
               <WorkbenchDrillLink
                 dimension={result.config.dimension}
                 rowKey={chartDrillRow.key}
@@ -1398,7 +1458,9 @@ export function ControlTowerReportBuilder({
                       if (el) resultRowRefs.current.set(row.key, el);
                       else resultRowRefs.current.delete(row.key);
                     }}
-                    className={chartDrillKey === row.key ? "bg-sky-50 ring-1 ring-inset ring-sky-200" : ""}
+                    className={
+                      chartDrillKey === row.key ? "bg-[var(--arscmp-primary-50)] ring-1 ring-inset ring-[var(--arscmp-primary)]/20" : ""
+                    }
                   >
                     <td className="px-2 py-2 text-zinc-800">{row.label}</td>
                     <td className="px-2 py-2 font-medium text-zinc-900">
@@ -1415,32 +1477,32 @@ export function ControlTowerReportBuilder({
             </table>
           </div>
 
-          <div className="rounded-lg border border-violet-200 bg-violet-50/80 p-3">
-            <p className="text-xs font-semibold text-violet-950">Optional AI insight</p>
-            <p className="mt-1 text-[11px] text-violet-900/80">
+          <div className="rounded-xl border border-zinc-200/90 bg-gradient-to-br from-zinc-50 to-white p-3 shadow-sm">
+            <p className="text-xs font-semibold text-zinc-900">Optional AI insight</p>
+            <p className="mt-1 text-[11px] text-zinc-600">
               Runs the same report on the server and asks the model to interpret aggregated numbers only. Add
               CONTROL_TOWER_REPORT_INSIGHT_LLM=1 and OPENAI_API_KEY on the server.
             </p>
-            <label className="mt-2 block text-xs text-violet-950">
+            <label className="mt-2 block text-xs font-medium text-zinc-800">
               Focus question (optional)
               <input
                 value={insightQuestion}
                 onChange={(e) => setInsightQuestion(e.target.value)}
                 placeholder="e.g. Which carrier should we watch? Any concentration risk?"
-                className="mt-1 w-full rounded border border-violet-200 bg-white px-2 py-1.5 text-sm text-zinc-900"
+                className="mt-1 w-full rounded-lg border border-zinc-200 bg-white px-2 py-1.5 text-sm text-zinc-900 shadow-inner outline-none focus:border-[var(--arscmp-primary)] focus:ring-1 focus:ring-[var(--arscmp-primary)]/20"
               />
             </label>
             <button
               type="button"
               disabled={insightBusy}
               onClick={() => void fetchInsight()}
-              className="mt-2 rounded border border-violet-700 bg-violet-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+              className="mt-2 rounded-lg bg-[var(--arscmp-primary)] px-3 py-1.5 text-sm font-medium text-white hover:brightness-95 disabled:opacity-50"
             >
               {insightBusy ? "Generating…" : "Get AI insight"}
             </button>
             {insightErr ? <p className="mt-2 text-xs text-red-700">{insightErr}</p> : null}
             {insightRunSummary ? (
-              <div className="mt-2 space-y-0.5 rounded border border-violet-100/80 bg-white/90 px-2.5 py-2 text-[11px] leading-snug text-violet-950/90">
+              <div className="mt-2 space-y-0.5 rounded-lg border border-zinc-200/90 bg-zinc-50/90 px-2.5 py-2 text-[11px] leading-snug text-zinc-800">
                 {insightRunSummary.title ? (
                   <p>
                     <span className="font-semibold">Report:</span> {insightRunSummary.title}
@@ -1456,7 +1518,7 @@ export function ControlTowerReportBuilder({
                     <span className="font-semibold">Compare:</span> {insightRunSummary.compareMeasureLabel}
                   </p>
                 ) : null}
-                <p className="text-violet-900/85">
+                <p className="text-zinc-700">
                   <span className="font-semibold">Coverage:</span>{" "}
                   {insightRunSummary.coverage.shipmentsAggregated} aggregated ·{" "}
                   {insightRunSummary.coverage.totalShipmentsQueried} queried ·{" "}
@@ -1465,7 +1527,7 @@ export function ControlTowerReportBuilder({
               </div>
             ) : null}
             {insightText ? (
-              <div className="mt-3 whitespace-pre-wrap rounded border border-violet-100 bg-white p-3 text-sm text-zinc-900">
+              <div className="mt-3 whitespace-pre-wrap rounded-lg border border-zinc-200 bg-white p-3 text-sm text-zinc-900 shadow-inner">
                 {insightText}
               </div>
             ) : null}
@@ -1522,7 +1584,7 @@ export function ControlTowerReportBuilder({
                         <button
                           type="button"
                           onClick={() => void pinReport(r.id, r.name)}
-                          className="rounded border border-sky-400 px-2 py-1 text-xs text-sky-900"
+                          className="rounded border border-[var(--arscmp-primary)]/40 bg-[var(--arscmp-primary-50)] px-2 py-1 text-xs font-medium text-[var(--arscmp-primary)]"
                         >
                           Pin to dashboard
                         </button>
@@ -1532,7 +1594,7 @@ export function ControlTowerReportBuilder({
                           type="button"
                           disabled={scheduleBusy}
                           onClick={() => openSchedulePanel(r.id)}
-                          className="rounded border border-violet-400 px-2 py-1 text-xs text-violet-950 disabled:opacity-40"
+                          className="rounded border border-[var(--arscmp-primary)]/35 bg-[var(--arscmp-primary-50)] px-2 py-1 text-xs font-medium text-[var(--arscmp-primary)] disabled:opacity-40"
                         >
                           Email schedule
                         </button>
@@ -1584,8 +1646,8 @@ export function ControlTowerReportBuilder({
                     </ul>
                   ) : null}
                   {schedulePanelReportId === r.id ? (
-                    <div className="mt-2 space-y-2 border-t border-violet-100 pt-2">
-                      <p className="text-xs font-medium text-violet-900">New email schedule for this report</p>
+                    <div className="mt-2 space-y-2 border-t border-zinc-200 pt-2">
+                      <p className="text-xs font-medium text-zinc-800">New email schedule for this report</p>
                       <label className="block text-xs text-zinc-600">
                         Recipient email
                         <input
@@ -1643,7 +1705,7 @@ export function ControlTowerReportBuilder({
                           type="button"
                           disabled={scheduleBusy || !scheduleRecipient.trim()}
                           onClick={() => void submitSchedule()}
-                          className="rounded bg-violet-700 px-3 py-1 text-xs font-medium text-white disabled:opacity-40"
+                          className="rounded-lg bg-[var(--arscmp-primary)] px-3 py-1 text-xs font-medium text-white hover:brightness-95 disabled:opacity-40"
                         >
                           Save schedule
                         </button>
