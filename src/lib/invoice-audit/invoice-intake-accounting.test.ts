@@ -36,6 +36,29 @@ describe("setInvoiceIntakeAccountingHandoff", () => {
     expect(prisma.invoiceIntake.update).not.toHaveBeenCalled();
   });
 
+  it("rejects when audit FAILED even if finance review was saved", async () => {
+    vi.mocked(prisma.invoiceIntake.findFirst).mockResolvedValue({
+      id: "in1",
+      status: "FAILED",
+      reviewDecision: "APPROVED",
+    } as never);
+    await expect(
+      setInvoiceIntakeAccountingHandoff({
+        tenantId: "t1",
+        invoiceIntakeId: "in1",
+        approvedForAccounting: true,
+        actorUserId: "u1",
+      }),
+    ).rejects.toSatisfy(
+      (e: unknown) =>
+        e instanceof InvoiceAuditError &&
+        e.code === "CONFLICT" &&
+        e.message.includes("FAILED") &&
+        e.message.includes("Accounting handoff"),
+    );
+    expect(prisma.invoiceIntake.update).not.toHaveBeenCalled();
+  });
+
   it("rejects when finance review is still NONE", async () => {
     vi.mocked(prisma.invoiceIntake.findFirst).mockResolvedValue({
       id: "in1",

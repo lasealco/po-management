@@ -82,4 +82,25 @@ describe("patchInvoiceIntakeReviewAndAccounting", () => {
     ).rejects.toMatchObject({ code: "CONFLICT" });
     expect(invoiceIntake.update).not.toHaveBeenCalled();
   });
+
+  it("throws CONFLICT when audit FAILED (same gate as PARSED)", async () => {
+    vi.mocked(invoiceIntake.findFirst).mockResolvedValue({ id: "in1", status: "FAILED" } as never);
+    await expect(
+      patchInvoiceIntakeReviewAndAccounting({
+        tenantId: "t1",
+        invoiceIntakeId: "in1",
+        actorUserId: "u1",
+        reviewDecision: "APPROVED",
+        reviewNote: null,
+        approvedForAccounting: true,
+        accountingApprovalNote: null,
+      }),
+    ).rejects.toSatisfy(
+      (e: unknown) =>
+        e instanceof InvoiceAuditError &&
+        e.code === "CONFLICT" &&
+        (e as InvoiceAuditError).message.includes("FAILED"),
+    );
+    expect(invoiceIntake.update).not.toHaveBeenCalled();
+  });
 });

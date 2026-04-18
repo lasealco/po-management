@@ -4,6 +4,10 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { formatInvoiceAuditApiError } from "@/lib/invoice-audit/invoice-audit-api-client-error";
+import {
+  accountingHandoffBlockedExplanation,
+  canRecordAccountingHandoff,
+} from "@/lib/invoice-audit/accounting-handoff-eligibility";
 
 export function InvoiceAccountingHandoffScaffold(props: {
   intakeId: string;
@@ -21,17 +25,15 @@ export function InvoiceAccountingHandoffScaffold(props: {
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
 
-  const reviewDone = props.reviewDecision === "APPROVED" || props.reviewDecision === "OVERRIDDEN";
-  const canUse = props.canEdit && props.status === "AUDITED" && reviewDone;
-  const blocked =
-    props.disabledReason ??
-    (!props.canEdit
-      ? null
-      : !reviewDone
-        ? "Save Step 2 — Finance review as Approve or Override before marking ready for accounting."
-        : props.status !== "AUDITED"
-          ? "Run a successful audit before accounting handoff."
-          : null);
+  const gateInput = {
+    status: props.status,
+    reviewDecision: props.reviewDecision,
+    disabledReason:
+      props.disabledReason ??
+      (!props.canEdit ? "View only — accounting handoff requires edit access." : null),
+  };
+  const canUse = props.canEdit && canRecordAccountingHandoff(gateInput);
+  const blocked = accountingHandoffBlockedExplanation(gateInput);
 
   async function submit(next: boolean) {
     setBusy(true);
