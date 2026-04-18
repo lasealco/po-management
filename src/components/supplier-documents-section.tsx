@@ -2,9 +2,12 @@
 
 import type { SupplierDocumentCategory } from "@prisma/client";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-import { activeDocumentNeedsComplianceAttention } from "@/lib/srm/supplier-compliance-document-signals";
+import {
+  activeDocumentNeedsComplianceAttention,
+  supplierHasMissingControlledDocumentSlots,
+} from "@/lib/srm/supplier-compliance-document-signals";
 import { supplierDocumentExpiryBadge } from "@/lib/srm/supplier-document-expiry";
 
 export type SupplierDocumentRow = {
@@ -40,10 +43,15 @@ export function SupplierDocumentsSection({
   supplierId,
   canEdit,
   initialRows,
+  /** When set (e.g. from Compliance “Register …”), pre-select category once then clear via `onConsumedRegisterCategoryFocus`. */
+  registerCategoryFocus = null,
+  onConsumedRegisterCategoryFocus,
 }: {
   supplierId: string;
   canEdit: boolean;
   initialRows: SupplierDocumentRow[];
+  registerCategoryFocus?: SupplierDocumentCategory | null;
+  onConsumedRegisterCategoryFocus?: () => void;
 }) {
   const router = useRouter();
   const [rows, setRows] = useState(initialRows);
@@ -70,6 +78,12 @@ export function SupplierDocumentsSection({
     () => rows.filter((r) => activeDocumentNeedsComplianceAttention(r)).length,
     [rows],
   );
+
+  useEffect(() => {
+    if (!registerCategoryFocus) return;
+    setCategory(registerCategoryFocus);
+    onConsumedRegisterCategoryFocus?.();
+  }, [registerCategoryFocus, onConsumedRegisterCategoryFocus]);
 
   async function addDoc(e: React.FormEvent) {
     e.preventDefault();
@@ -189,6 +203,17 @@ export function SupplierDocumentsSection({
           ))}
         </div>
       ) : null}
+      {listFilter === "issues" &&
+      visibleRows.length === 0 &&
+      rows.length > 0 &&
+      supplierHasMissingControlledDocumentSlots(rows) ? (
+        <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
+          No rows match row-level issues. At least one required category (insurance, license, or
+          certificate) still has <strong className="font-semibold">no document on file</strong> — open the{" "}
+          <strong className="font-semibold">Compliance</strong> tab for gaps and quick links to register
+          here.
+        </p>
+      ) : null}
       <ul className="mt-4 divide-y divide-zinc-100 border border-zinc-100 rounded-md">
         {rows.length === 0 ? (
           <li className="px-4 py-6 text-center text-sm text-zinc-500">No documents registered.</li>
@@ -239,10 +264,16 @@ export function SupplierDocumentsSection({
                         className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
                           expiryBadge === "expired"
                             ? "bg-rose-100 text-rose-800"
-                            : "bg-amber-100 text-amber-900"
+                            : expiryBadge === "expires_critical"
+                              ? "bg-orange-100 text-orange-950"
+                              : "bg-amber-100 text-amber-900"
                         }`}
                       >
-                        {expiryBadge === "expired" ? "Expired" : "Expires within 30 days"}
+                        {expiryBadge === "expired"
+                          ? "Expired"
+                          : expiryBadge === "expires_critical"
+                            ? "Expires within 14 days (critical)"
+                            : "Expires within 30 days"}
                       </span>
                     </p>
                   ) : null}

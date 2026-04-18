@@ -1,6 +1,6 @@
 "use client";
 
-import type { SupplierQualificationStatus } from "@prisma/client";
+import type { SupplierDocumentCategory, SupplierQualificationStatus } from "@prisma/client";
 import Link from "next/link";
 import { startTransition, useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -287,6 +287,9 @@ export function SupplierDetailClient({
     initial.documents,
   ).length;
 
+  const [documentsRegisterCategory, setDocumentsRegisterCategory] =
+    useState<SupplierDocumentCategory | null>(null);
+
   useEffect(() => {
     if (!isSrmShell) return;
     const t = parseSrmTabParam(searchParams.get("tab"));
@@ -302,6 +305,20 @@ export function SupplierDetailClient({
     else q.set("tab", next);
     const s = q.toString();
     void router.replace(s ? `${pathname}?${s}` : pathname, { scroll: false });
+  }
+
+  function openDocumentsWorkspace(focus?: SupplierDocumentCategory) {
+    setDocumentsRegisterCategory(focus ?? null);
+    if (isSrmShell) {
+      selectSrmTab("documents");
+    } else {
+      window.requestAnimationFrame(() =>
+        document.getElementById("supplier-documents-section")?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        }),
+      );
+    }
   }
 
   async function copyAdminField(label: string, text: string) {
@@ -796,7 +813,7 @@ export function SupplierDetailClient({
                 <button
                   type="button"
                   className="rounded-md border border-amber-300 bg-white px-2.5 py-1 text-xs font-medium text-amber-950 hover:bg-amber-100"
-                  onClick={() => selectSrmTab("documents")}
+                  onClick={() => openDocumentsWorkspace()}
                 >
                   Documents
                 </button>
@@ -1751,7 +1768,7 @@ export function SupplierDetailClient({
             documents={initial.documents}
             complianceReviews={initial.complianceReviews}
             isSrmShell={isSrmShell}
-            onOpenDocumentsTab={() => selectSrmTab("documents")}
+            onOpenDocumentsTab={openDocumentsWorkspace}
           />
           <SupplierComplianceReviewsSection
             key={`comp-${initial.id}-${initial.updatedAt}`}
@@ -1795,6 +1812,8 @@ export function SupplierDetailClient({
           supplierId={initial.id}
           canEdit={canEdit}
           initialRows={initial.documents}
+          registerCategoryFocus={documentsRegisterCategory}
+          onConsumedRegisterCategoryFocus={() => setDocumentsRegisterCategory(null)}
         />
       )}
 
