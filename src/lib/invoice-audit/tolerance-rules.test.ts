@@ -15,7 +15,11 @@ vi.mock("@/lib/prisma", () => ({
 import { prisma } from "@/lib/prisma";
 
 import { InvoiceAuditError } from "@/lib/invoice-audit/invoice-audit-error";
-import { getToleranceRuleForTenant, updateToleranceRuleForTenant } from "@/lib/invoice-audit/tolerance-rules";
+import {
+  getToleranceRuleForTenant,
+  pickToleranceRuleForIntake,
+  updateToleranceRuleForTenant,
+} from "@/lib/invoice-audit/tolerance-rules";
 
 const mockRow = {
   id: "rule-1",
@@ -33,6 +37,32 @@ const mockRow = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+});
+
+describe("pickToleranceRuleForIntake", () => {
+  it("returns currency-scoped rule before global fallback", async () => {
+    vi.mocked(prisma.invoiceToleranceRule.findMany).mockResolvedValue([
+      { id: "scoped-usd", currencyScope: "USD", priority: 5, active: true },
+      { id: "global", currencyScope: null, priority: 100, active: true },
+    ] as never);
+    const r = await pickToleranceRuleForIntake({ tenantId: "tenant-1", currency: "usd" });
+    expect(r?.id).toBe("scoped-usd");
+  });
+
+  it("returns global rule when no currency scope matches", async () => {
+    vi.mocked(prisma.invoiceToleranceRule.findMany).mockResolvedValue([
+      { id: "global", currencyScope: null, priority: 10, active: true },
+      { id: "eur-only", currencyScope: "EUR", priority: 99, active: true },
+    ] as never);
+    const r = await pickToleranceRuleForIntake({ tenantId: "tenant-1", currency: "USD" });
+    expect(r?.id).toBe("global");
+  });
+
+  it("returns null when no active rules exist", async () => {
+    vi.mocked(prisma.invoiceToleranceRule.findMany).mockResolvedValue([]);
+    const r = await pickToleranceRuleForIntake({ tenantId: "tenant-1", currency: "USD" });
+    expect(r).toBeNull();
+  });
 });
 
 describe("getToleranceRuleForTenant", () => {
