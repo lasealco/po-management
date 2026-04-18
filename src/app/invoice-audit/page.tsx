@@ -77,6 +77,7 @@ export default async function InvoiceAuditListPage() {
                 intakes.map((row) => {
                   const lineTotal =
                     row.greenLineCount + row.amberLineCount + row.redLineCount + row.unknownLineCount;
+                  const parsedLines = row._count.lines;
                   return (
                     <tr key={row.id} className="border-b border-zinc-100">
                       <td className="py-3 pr-4 text-zinc-700">
@@ -113,6 +114,10 @@ export default async function InvoiceAuditListPage() {
                             <span className="text-amber-700">{row.amberLineCount}</span>/
                             <span className="text-red-700">{row.redLineCount}</span>/
                             <span className="text-zinc-500">{row.unknownLineCount}</span>
+                          </span>
+                        ) : parsedLines > 0 ? (
+                          <span className="text-zinc-500">
+                            {parsedLines} parsed · audit {row.status === "AUDITED" ? "done" : "pending"}
                           </span>
                         ) : (
                           "—"

@@ -1,7 +1,17 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+type SnapshotOption = {
+  id: string;
+  sourceType: string;
+  sourceSummary: string | null;
+  currency: string;
+  totalEstimatedCost: string;
+  frozenAt: string;
+};
 
 type DraftLine = {
   lineNo: number;
@@ -27,6 +37,37 @@ export function InvoiceAuditNewClient() {
   ]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [snapshotOptions, setSnapshotOptions] = useState<SnapshotOption[]>([]);
+  const [snapshotOptionsError, setSnapshotOptionsError] = useState<string | null>(null);
+  const [snapshotsLoading, setSnapshotsLoading] = useState(false);
+  const [runAuditAfterSave, setRunAuditAfterSave] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadSnapshots() {
+      setSnapshotsLoading(true);
+      setSnapshotOptionsError(null);
+      try {
+        const res = await fetch("/api/invoice-audit/pricing-snapshot-options");
+        const data = (await res.json().catch(() => ({}))) as {
+          error?: string;
+          snapshots?: SnapshotOption[];
+        };
+        if (cancelled) return;
+        if (!res.ok) {
+          setSnapshotOptionsError(data.error ?? `Could not load snapshots (${res.status}). Paste an id manually.`);
+          return;
+        }
+        setSnapshotOptions(Array.isArray(data.snapshots) ? data.snapshots : []);
+      } finally {
+        if (!cancelled) setSnapshotsLoading(false);
+      }
+    }
+    void loadSnapshots();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   function addLine() {
     setLines((prev) => {
@@ -79,7 +120,19 @@ export function InvoiceAuditNewClient() {
         setError(data.error ?? `Save failed (${res.status})`);
         return;
       }
-      if (data.intake?.id) router.push(`/invoice-audit/${data.intake.id}`);
+      const intakeId = data.intake?.id;
+      if (!intakeId) {
+        setError("Save succeeded but no intake id was returned.");
+        return;
+      }
+      if (runAuditAfterSave) {
+        await fetch(`/api/invoice-audit/intakes/${intakeId}/run-audit`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: "{}",
+        });
+      }
+      router.push(`/invoice-audit/${intakeId}`);
     } finally {
       setBusy(false);
     }
@@ -98,7 +151,43 @@ export function InvoiceAuditNewClient() {
 
         <div className="mt-6 space-y-4">
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Pricing snapshot id</label>
+            <div className="flex flex-wrap items-end justify-between gap-2">
+              <label className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Pricing snapshot</label>
+              <Link
+                href="/pricing-snapshots"
+                className="text-xs font-medium text-[var(--arscmp-primary)] hover:underline"
+              >
+                Open snapshot library
+              </Link>
+            </div>
+            <select
+              className="mt-1 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm shadow-inner"
+              value=""
+              disabled={snapshotsLoading || snapshotOptions.length === 0}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v) setSnapshotId(v);
+              }}
+            >
+              <option value="">
+                {snapshotsLoading
+                  ? "Loading recent snapshots…"
+                  : snapshotOptions.length === 0
+                    ? "No snapshots in tenant (freeze one first, or paste id below)"
+                    : "Pick a recent snapshot…"}
+              </option>
+              {snapshotOptions.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {(s.sourceSummary ?? s.sourceType).slice(0, 72)}
+                  {" · "}
+                  {s.totalEstimatedCost} {s.currency}
+                </option>
+              ))}
+            </select>
+            {snapshotOptionsError ? <p className="mt-1 text-xs text-amber-800">{snapshotOptionsError}</p> : null}
+            <label className="mt-2 block text-xs font-semibold uppercase tracking-wide text-zinc-500">
+              Snapshot id (paste or pick above)
+            </label>
             <input
               className="mt-1 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 font-mono text-sm shadow-inner"
               value={snapshotId}
@@ -253,13 +342,29 @@ export function InvoiceAuditNewClient() {
           </div>
         </div>
 
+        <label className="mt-8 flex cursor-pointer items-start gap-2 text-sm text-zinc-700">
+          <input
+            type="checkbox"
+            className="mt-1"
+            checked={runAuditAfterSave}
+            onChange={(e) => setRunAuditAfterSave(e.target.checked)}
+          />
+          <span>
+            <span className="font-medium">Run audit after save</span>
+            <span className="mt-0.5 block text-xs text-zinc-500">
+              Matches lines against the snapshot immediately so you can verify outcomes in one step (uncheck to save
+              only).
+            </span>
+          </span>
+        </label>
+
         <button
           type="button"
           disabled={busy}
           onClick={() => void submit()}
-          className="mt-8 rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:brightness-95 disabled:opacity-50"
+          className="mt-4 rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:brightness-95 disabled:opacity-50"
         >
-          {busy ? "Saving…" : "Save intake"}
+          {busy ? (runAuditAfterSave ? "Saving and auditing…" : "Saving…") : runAuditAfterSave ? "Save and run audit" : "Save intake"}
         </button>
         {error ? <p className="mt-4 text-sm text-red-700">{error}</p> : null}
       </section>

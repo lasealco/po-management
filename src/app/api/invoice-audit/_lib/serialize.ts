@@ -73,6 +73,7 @@ export function serializeAuditResult(
 export function serializeInvoiceIntakeListRow(
   row: InvoiceIntake & {
     bookingPricingSnapshot: { id: string; sourceSummary: string | null; currency: string; frozenAt: Date };
+    _count?: { lines: number };
   },
 ) {
   return {
@@ -89,6 +90,7 @@ export function serializeInvoiceIntakeListRow(
     amberLineCount: row.amberLineCount,
     redLineCount: row.redLineCount,
     unknownLineCount: row.unknownLineCount,
+    parsedLineCount: row._count?.lines ?? 0,
     reviewDecision: row.reviewDecision,
     receivedAt: row.receivedAt.toISOString(),
     lastAuditAt: row.lastAuditAt?.toISOString() ?? null,

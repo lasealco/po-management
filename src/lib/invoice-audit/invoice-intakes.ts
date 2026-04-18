@@ -24,6 +24,7 @@ export async function listInvoiceIntakesForTenant(params: { tenantId: string; ta
     take,
     include: {
       bookingPricingSnapshot: { select: { id: true, sourceSummary: true, currency: true, frozenAt: true } },
+      _count: { select: { lines: true } },
     },
   });
 }
