@@ -217,6 +217,8 @@ async function seed() {
     ["org.tariffs", "edit"],
     ["org.rfq", "view"],
     ["org.rfq", "edit"],
+    ["org.invoice_audit", "view"],
+    ["org.invoice_audit", "edit"],
   ];
   const approverGrants = [
     ...buyerGrants,
@@ -253,12 +255,33 @@ async function seed() {
     ["org.tariffs", "edit"],
     ["org.rfq", "view"],
     ["org.rfq", "edit"],
+    ["org.invoice_audit", "view"],
+    ["org.invoice_audit", "edit"],
   ];
 
   await replaceGlobalRolePermissions(roleBuyer.id, buyerGrants);
   await replaceGlobalRolePermissions(roleApprover.id, approverGrants);
   await replaceGlobalRolePermissions(roleSupplierPortal.id, supplierGrants);
   await replaceGlobalRolePermissions(roleSuperuser.id, superuserGrants);
+
+  const existingTol = await prisma.invoiceToleranceRule.findFirst({
+    where: { tenantId: tenant.id, name: "Default freight invoice tolerances" },
+    select: { id: true },
+  });
+  if (!existingTol) {
+    await prisma.invoiceToleranceRule.create({
+      data: {
+        tenantId: tenant.id,
+        name: "Default freight invoice tolerances",
+        priority: 10,
+        active: true,
+        amountAbsTolerance: new Prisma.Decimal("25"),
+        percentTolerance: new Prisma.Decimal("0.015"),
+        currencyScope: null,
+      },
+    });
+    console.log("[db:seed] Default invoice tolerance rule created.");
+  }
 
   const roleCustomerPortal = await prisma.role.upsert({
     where: { tenantId_name: { tenantId: tenant.id, name: "Customer portal" } },

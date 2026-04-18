@@ -69,6 +69,8 @@ model Tenant {
   tariffImportBatches   TariffImportBatch[]
   quoteRequests         QuoteRequest[]
   bookingPricingSnapshots BookingPricingSnapshot[]
+  invoiceIntakes        InvoiceIntake[]
+  invoiceToleranceRules InvoiceToleranceRule[]
 }
 
 /// Tenant-scoped milestone template packs (override or extend built-in packs in code).
@@ -146,6 +148,8 @@ model User {
   quoteRequestsOwned         QuoteRequest[]         @relation("QuoteRequestOwner")
   quoteClarificationsAuthored QuoteClarificationMessage[] @relation("QuoteClarificationAuthor")
   bookingPricingSnapshotsCreated BookingPricingSnapshot[] @relation("BookingPricingSnapshotCreator")
+  invoiceIntakesCreated          InvoiceIntake[]          @relation("InvoiceIntakeCreator")
+  invoiceIntakesReviewed         InvoiceIntake[]          @relation("InvoiceIntakeReviewer")
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -2659,10 +2663,159 @@ model BookingPricingSnapshot {
   tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   shipmentBooking  ShipmentBooking?  @relation(fields: [shipmentBookingId], references: [id], onDelete: SetNull)
   creator            User?             @relation("BookingPricingSnapshotCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  invoiceIntakes      InvoiceIntake[]
+  invoiceAuditResults InvoiceAuditResult[]
 
   @@index([tenantId])
   @@index([tenantId, frozenAt])
   @@index([shipmentBookingId])
   @@index([sourceType, sourceRecordId])
   @@map("booking_pricing_snapshots")
+}
+
+enum InvoiceIntakeStatus {
+  DRAFT
+  RECEIVED
+  PARSED
+  AUDITED
+  FAILED
+}
+
+enum InvoiceAuditRollupOutcome {
+  NONE
+  PENDING
+  PASS
+  WARN
+  FAIL
+}
+
+enum InvoiceAuditLineOutcome {
+  GREEN
+  AMBER
+  RED
+  UNKNOWN
+}
+
+enum InvoiceReviewDecision {
+  NONE
+  APPROVED
+  OVERRIDDEN
+}
+
+/// Tenant-scoped tolerance defaults for invoice vs snapshot amount comparison.
+model InvoiceToleranceRule {
+  id                   String   @id @default(cuid())
+  tenantId             String
+  name                 String
+  priority             Int      @default(0)
+  active               Boolean  @default(true)
+  /// Absolute amount difference allowed (same currency as invoice line).
+  amountAbsTolerance   Decimal? @db.Decimal(18, 4)
+  /// Relative tolerance as ratio, e.g. 0.01 = 1%.
+  percentTolerance     Decimal? @db.Decimal(9, 6)
+  /// When set, rule applies only to intakes in this currency (ISO 4217).
+  currencyScope        String?  @db.VarChar(3)
+  /// Optional JSON list of discrepancy category keys this rule optimizes for (MVP: unused).
+  categoryScope        Json?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  tenant       Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  auditResults InvoiceAuditResult[]
+
+  @@index([tenantId, active, priority])
+  @@map("tolerance_rules")
+}
+
+/// Carrier / forwarder invoice uploaded or keyed in for audit against a frozen pricing snapshot.
+model InvoiceIntake {
+  id                         String                   @id @default(cuid())
+  tenantId                   String
+  status                     InvoiceIntakeStatus      @default(RECEIVED)
+  bookingPricingSnapshotId   String
+  externalInvoiceNo          String?                  @db.VarChar(128)
+  vendorLabel                String?                  @db.VarChar(256)
+  invoiceDate                DateTime?                @db.Date
+  currency                   String                   @default("USD") @db.VarChar(3)
+  rawSourceNotes             String?                  @db.Text
+  /// Parser or importer hard failure — surfaced to UI (no silent failures).
+  parseError                 String?                  @db.Text
+  parseWarnings              Json?
+  /// Last audit engine failure (distinct from line-level RED outcomes).
+  auditRunError              String?                  @db.Text
+  lastAuditAt                DateTime?
+  rollupOutcome              InvoiceAuditRollupOutcome @default(NONE)
+  greenLineCount             Int                      @default(0)
+  amberLineCount             Int                      @default(0)
+  redLineCount               Int                      @default(0)
+  unknownLineCount           Int                      @default(0)
+  reviewDecision             InvoiceReviewDecision    @default(NONE)
+  reviewNote                 String?                  @db.Text
+  reviewedByUserId           String?
+  reviewedAt                 DateTime?
+  createdByUserId            String?
+  receivedAt                 DateTime                 @default(now())
+  updatedAt                  DateTime                 @updatedAt
+
+  tenant                 Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  bookingPricingSnapshot BookingPricingSnapshot @relation(fields: [bookingPricingSnapshotId], references: [id], onDelete: Restrict)
+  reviewer               User?                  @relation("InvoiceIntakeReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  creator                User?                  @relation("InvoiceIntakeCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  lines                    InvoiceLine[]
+  auditResults             InvoiceAuditResult[]
+
+  @@index([tenantId])
+  @@index([tenantId, receivedAt])
+  @@index([bookingPricingSnapshotId])
+  @@map("invoice_intakes")
+}
+
+/// Parsed charge lines from the supplier invoice.
+model InvoiceLine {
+  id               String   @id @default(cuid())
+  invoiceIntakeId  String
+  lineNo           Int
+  rawDescription   String   @db.Text
+  normalizedLabel String? @db.VarChar(512)
+  currency         String   @db.VarChar(3)
+  amount           Decimal  @db.Decimal(18, 4)
+  unitBasis        String?  @db.VarChar(64)
+  quantity         Decimal? @db.Decimal(18, 6)
+  sourceRowJson    Json?
+  parseConfidence  String?  @db.VarChar(32)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  intake       InvoiceIntake        @relation(fields: [invoiceIntakeId], references: [id], onDelete: Cascade)
+  auditResult  InvoiceAuditResult?
+
+  @@unique([invoiceIntakeId, lineNo])
+  @@index([invoiceIntakeId])
+  @@map("invoice_lines")
+}
+
+/// Per invoice-line match against a booking pricing snapshot (immutable audit trail).
+model InvoiceAuditResult {
+  id                         String                 @id @default(cuid())
+  invoiceIntakeId            String
+  invoiceLineId              String                 @unique
+  bookingPricingSnapshotId   String
+  toleranceRuleId            String?
+  outcome                    InvoiceAuditLineOutcome
+  discrepancyCategories      Json
+  expectedAmount             Decimal?               @db.Decimal(18, 4)
+  amountVariance             Decimal?               @db.Decimal(18, 4)
+  percentVariance            Decimal?               @db.Decimal(9, 6)
+  snapshotMatchedJson        Json?
+  explanation                String                 @db.Text
+  createdAt                  DateTime               @default(now())
+
+  intake       InvoiceIntake          @relation(fields: [invoiceIntakeId], references: [id], onDelete: Cascade)
+  line         InvoiceLine            @relation(fields: [invoiceLineId], references: [id], onDelete: Cascade)
+  snapshot     BookingPricingSnapshot @relation(fields: [bookingPricingSnapshotId], references: [id], onDelete: Restrict)
+  toleranceRule InvoiceToleranceRule? @relation(fields: [toleranceRuleId], references: [id], onDelete: SetNull)
+
+  @@index([invoiceIntakeId])
+  @@index([bookingPricingSnapshotId])
+  @@map("audit_results")
 }

@@ -74,6 +74,7 @@ export default async function RootLayout({
         (viewerHas(access.grantSet, "org.tariffs", "view") ||
           viewerHas(access.grantSet, "org.rfq", "view")),
     ),
+    invoiceAudit: Boolean(access?.user && viewerHas(access.grantSet, "org.invoice_audit", "view")),
   };
 
   return (

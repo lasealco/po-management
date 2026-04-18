@@ -17,6 +17,7 @@ export type CommandPaletteGrants = {
   tariffs: boolean;
   rfq: boolean;
   pricingSnapshots: boolean;
+  invoiceAudit: boolean;
 };
 
 type CommandItem = {
@@ -218,6 +219,24 @@ export function CommandPalette({ grants }: { grants: CommandPaletteGrants }) {
           label: "Pricing snapshots — freeze new",
           searchText: "new pricing snapshot freeze contract version quote response",
           action: go("/pricing-snapshots/new"),
+        },
+      );
+    }
+
+    if (grants.invoiceAudit) {
+      list.push(
+        {
+          id: "invoice-audit",
+          label: "Invoice audit — intakes",
+          hint: "Match invoices to pricing snapshots",
+          searchText: "invoice audit freight discrepancy tolerance",
+          action: go("/invoice-audit"),
+        },
+        {
+          id: "invoice-audit-new",
+          label: "Invoice audit — new intake",
+          searchText: "new invoice intake parse lines",
+          action: go("/invoice-audit/new"),
         },
       );
     }

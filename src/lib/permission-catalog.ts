@@ -133,6 +133,18 @@ export const GLOBAL_PERMISSION_CATALOG = [
     label: "Manage RFQs",
     description: "Create RFQs, invite recipients, enter quotes, and run comparison.",
   },
+  {
+    resource: "org.invoice_audit",
+    action: "view",
+    label: "View invoice audit",
+    description: "List freight invoice intakes, parsed lines, and snapshot match outcomes.",
+  },
+  {
+    resource: "org.invoice_audit",
+    action: "edit",
+    label: "Manage invoice audit",
+    description: "Create intakes, run audits vs pricing snapshots, and record approvals or overrides.",
+  },
 ] as const;
 
 export type GlobalPermissionRow = (typeof GLOBAL_PERMISSION_CATALOG)[number];

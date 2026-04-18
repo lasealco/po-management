@@ -20,6 +20,7 @@ export type AppNavLinkVisibility = {
   rfq: boolean;
   /** Pricing snapshots (frozen contract or RFQ economics); visible with tariffs or RFQ access. */
   pricingSnapshots: boolean;
+  invoiceAudit: boolean;
 };
 
 export type PoMgmtSubNavVisibility = {
@@ -58,6 +59,7 @@ export async function resolveNavState(access: ViewerAccess | null): Promise<{
           const tariffs = viewerHas(access.grantSet, "org.tariffs", "view");
           const rfq = viewerHas(access.grantSet, "org.rfq", "view");
           const pricingSnapshots = tariffs || rfq;
+          const invoiceAudit = viewerHas(access.grantSet, "org.invoice_audit", "view");
           const poManagement = orders || consolidation || products;
           return {
             poManagement,
@@ -76,6 +78,7 @@ export async function resolveNavState(access: ViewerAccess | null): Promise<{
             tariffs,
             rfq,
             pricingSnapshots,
+            invoiceAudit,
           };
         })()
       : undefined;
@@ -98,7 +101,8 @@ export async function resolveNavState(access: ViewerAccess | null): Promise<{
       linkVisibility.salesOrders ||
       linkVisibility.tariffs ||
       linkVisibility.rfq ||
-      linkVisibility.pricingSnapshots
+      linkVisibility.pricingSnapshots ||
+      linkVisibility.invoiceAudit
     );
 
   const poSubNavVisibility: PoMgmtSubNavVisibility = setupIncomplete

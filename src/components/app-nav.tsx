@@ -31,6 +31,7 @@ const topNavItems: TopNavItem[] = [
     label: "Snapshots",
     href: "/pricing-snapshots",
   },
+  { kind: "link", key: "invoiceAudit", label: "Invoice audit", href: "/invoice-audit" },
   { kind: "link", key: "rfq", label: "RFQ", href: "/rfq/requests" },
   { kind: "link", key: "settings", label: "Settings", href: "/settings" },
 ];
@@ -110,6 +111,8 @@ export function AppNav({
                           ? pathname.startsWith("/tariffs")
                           : item.href === "/pricing-snapshots"
                           ? pathname.startsWith("/pricing-snapshots")
+                          : item.href === "/invoice-audit"
+                            ? pathname.startsWith("/invoice-audit")
                           : item.href === "/rfq/requests"
                             ? pathname.startsWith("/rfq")
                             : pathname === item.href || pathname.startsWith(`${item.href}/`);
