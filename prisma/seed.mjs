@@ -475,6 +475,21 @@ async function seed() {
     },
   });
 
+  await prisma.supplierContractRecord.deleteMany({ where: { supplierId: supplier.id } });
+  await prisma.supplierContractRecord.create({
+    data: {
+      tenantId: tenant.id,
+      supplierId: supplier.id,
+      title: "Master supply agreement (demo)",
+      externalReference: "MSA-DEMO-001",
+      status: "active",
+      effectiveFrom: new Date(now.getFullYear(), 0, 1),
+      effectiveTo: new Date(now.getFullYear(), 11, 31),
+      notes: "Seed contract row for SRM Contracts tab.",
+      referenceUrl: "https://example.com/demo/msa-placeholder.pdf",
+    },
+  });
+
   await prisma.supplierContact.deleteMany({ where: { supplierId: supplier.id } });
   await prisma.supplierContact.createMany({
     data: [

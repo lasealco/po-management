@@ -35,7 +35,7 @@ These files are derived from the SRM PDF pack created earlier and are intended t
 
 Work for new schema/UI ships on **`feature/srm-foundation`** (not `main`) until review.
 
-1. **Migrate:** `npm run db:migrate` (or `npx prisma migrate deploy`) so SRM tables and columns exist (`SupplierServiceCapability`, `SupplierOnboardingTask`, `Supplier.qualificationStatus` / summary / last reviewed, `SupplierComplianceReview`, `SupplierPerformanceScorecard`, `SupplierRiskRecord`, `SupplierDocument`, `SupplierRelationshipNote`, …).
+1. **Migrate:** `npm run db:migrate` (or `npx prisma migrate deploy`) so SRM tables and columns exist (`SupplierServiceCapability`, `SupplierOnboardingTask`, `Supplier.qualificationStatus` / summary / last reviewed, `SupplierComplianceReview`, `SupplierPerformanceScorecard`, `SupplierRiskRecord`, `SupplierDocument`, `SupplierRelationshipNote`, `SupplierContractRecord`, …).
 2. **Seed:** `npm run db:seed` — demo **SUP-001** gets sample **capabilities** and a full **onboarding checklist** (first three items marked done).
 3. **Tests (SRM lib):** `npm run test:srm` — runs all Vitest files under `src/lib/srm/` (capability payload parsing, onboarding PATCH parsing, default checklist shape).
 4. **Full suite:** `npm run test` — includes the same SRM tests plus the rest of the repo.
@@ -44,3 +44,4 @@ Work for new schema/UI ships on **`feature/srm-foundation`** (not `main`) until 
 7. **Compliance / performance / risk:** REST under `/api/suppliers/[id]/compliance-reviews`, `…/performance-scorecards`, `…/risk-records` (POST create; PATCH row). Data loads with the supplier snapshot for `/srm/[id]` and legacy detail.
 8. **Documents:** `POST/PATCH/DELETE` `/api/suppliers/[id]/documents` — metadata + optional `http(s)` reference URL (evidence index; not file upload, tender, tariff, or sourcing events).
 9. **Relationship notes:** `POST/PATCH/DELETE` `/api/suppliers/[id]/relationship-notes` — chronological account touchpoints (SRM supplier 360 only).
+10. **Contracts:** `POST/PATCH/DELETE` `/api/suppliers/[id]/contract-records` — commercial agreement summary + optional link (not tenders/tariffs/sourcing).

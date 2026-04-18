@@ -28,6 +28,7 @@ model Tenant {
   supplierRiskRecords         SupplierRiskRecord[]
   supplierDocuments           SupplierDocument[]
   supplierRelationshipNotes   SupplierRelationshipNote[]
+  supplierContractRecords     SupplierContractRecord[]
   orders            PurchaseOrder[]
   salesOrders       SalesOrder[]
   warehouses        Warehouse[]
@@ -263,6 +264,14 @@ enum SupplierDocumentCategory {
   commercial_other
 }
 
+/// SRM commercial contract register (summary — not tender/tariff/sourcing).
+enum SupplierContractRecordStatus {
+  draft
+  active
+  expired
+  terminated
+}
+
 model Supplier {
   id        String   @id @default(cuid())
   tenantId  String
@@ -319,6 +328,7 @@ model Supplier {
   riskRecords           SupplierRiskRecord[]
   documents             SupplierDocument[]
   relationshipNotes     SupplierRelationshipNote[]
+  contractRecords         SupplierContractRecord[]
   productSuppliers ProductSupplier[]
   shipmentBookings ShipmentBooking[]
   shipmentsCarrier Shipment[] @relation("ShipmentCarrierSupplier")
@@ -459,6 +469,27 @@ model SupplierRelationshipNote {
   body       String   @db.Text
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, supplierId])
+}
+
+/// Commercial / framework agreement summary linked to supplier master (SRM).
+model SupplierContractRecord {
+  id                 String                        @id @default(cuid())
+  tenantId           String
+  supplierId         String
+  title              String                        @db.VarChar(256)
+  externalReference  String?                       @db.VarChar(128)
+  status             SupplierContractRecordStatus  @default(draft)
+  effectiveFrom      DateTime?
+  effectiveTo        DateTime?
+  notes              String?                       @db.Text
+  referenceUrl       String?                       @db.VarChar(2000)
+  createdAt          DateTime                      @default(now())
+  updatedAt          DateTime                      @updatedAt
 
   tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)

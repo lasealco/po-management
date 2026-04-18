@@ -5,6 +5,8 @@ import Link from "next/link";
 import { startTransition, useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { SupplierCapabilitiesSection } from "@/components/supplier-capabilities-section";
+import type { SupplierContractRecordRow } from "@/components/supplier-contract-records-section";
+import { SupplierContractRecordsSection } from "@/components/supplier-contract-records-section";
 import type { SupplierDocumentRow } from "@/components/supplier-documents-section";
 import { SupplierDocumentsSection } from "@/components/supplier-documents-section";
 import type { SupplierRelationshipNoteRow } from "@/components/supplier-relationship-notes-section";
@@ -87,6 +89,7 @@ export type SupplierDetailSnapshot = {
   riskRecords: SupplierRiskRecordRow[];
   documents: SupplierDocumentRow[];
   relationshipNotes: SupplierRelationshipNoteRow[];
+  contractRecords: SupplierContractRecordRow[];
   productLinkCount: number;
   orderCount: number;
 };
@@ -1387,6 +1390,15 @@ export function SupplierDetailClient({
         />
       )}
 
+      {(!isSrmShell || srmTab === "contracts") && (
+        <SupplierContractRecordsSection
+          key={`ctr-${initial.id}-${initial.updatedAt}`}
+          supplierId={initial.id}
+          canEdit={canEdit}
+          initialRows={initial.contractRecords}
+        />
+      )}
+
       {(!isSrmShell || srmTab === "performance") && (
         <SupplierPerformanceScorecardsSection
           key={`perf-${initial.id}-${initial.updatedAt}`}
@@ -1429,6 +1441,7 @@ export function SupplierDetailClient({
       srmTab !== "onboarding" &&
       srmTab !== "qualification" &&
       srmTab !== "compliance" &&
+      srmTab !== "contracts" &&
       srmTab !== "performance" &&
       srmTab !== "risk" &&
       srmTab !== "documents" &&
@@ -1438,8 +1451,8 @@ export function SupplierDetailClient({
             {SRM_SUPPLIER_TABS.find((x) => x.id === srmTab)?.label ?? srmTab}
           </p>
           <p className="mt-2 text-xs text-zinc-600">
-            Contracts and alerts are still placeholders in this SRM slice (no tender, tariff, or
-            sourcing-event scope).
+            Supplier alerts are not wired in this slice yet (operational notifications only — no tender,
+            tariff, or sourcing-event automation).
           </p>
         </section>
       ) : null}
