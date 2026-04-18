@@ -1682,6 +1682,31 @@ async function seed() {
   }
   console.log("[db:seed] WMS default billing rates ensured.");
 
+  const tariffChargeCodes = [
+    { code: "OCEAN_FREIGHT", displayName: "Ocean Freight", chargeFamily: "MAIN_CARRIAGE", transportMode: "OCEAN", isLocalCharge: false, isSurcharge: false },
+    { code: "ALL_IN_MAIN", displayName: "All-In Main Carriage", chargeFamily: "MAIN_CARRIAGE", transportMode: "OCEAN", isLocalCharge: false, isSurcharge: false },
+    { code: "BAF", displayName: "Bunker Adjustment Factor", chargeFamily: "FUEL_ENVIRONMENTAL", transportMode: "OCEAN", isLocalCharge: false, isSurcharge: true },
+    { code: "PSS", displayName: "Peak Season Surcharge", chargeFamily: "SEASONAL_EMERGENCY", transportMode: "OCEAN", isLocalCharge: false, isSurcharge: true },
+    { code: "OHC", displayName: "Origin Handling Charge", chargeFamily: "ORIGIN_TERMINAL", transportMode: "OCEAN", isLocalCharge: true, isSurcharge: false },
+    { code: "OTHC", displayName: "Origin Terminal Handling Charge", chargeFamily: "ORIGIN_TERMINAL", transportMode: "OCEAN", isLocalCharge: true, isSurcharge: false },
+    { code: "DHC", displayName: "Destination Handling Charge", chargeFamily: "DEST_TERMINAL", transportMode: "OCEAN", isLocalCharge: true, isSurcharge: false },
+    { code: "DTHC", displayName: "Destination Terminal Handling Charge", chargeFamily: "DEST_TERMINAL", transportMode: "OCEAN", isLocalCharge: true, isSurcharge: false },
+    { code: "AMS", displayName: "AMS Filing", chargeFamily: "CUSTOMS_REGULATORY", transportMode: "OCEAN", isLocalCharge: true, isSurcharge: false },
+    { code: "ENS", displayName: "ENS / ICS Filing", chargeFamily: "CUSTOMS_REGULATORY", transportMode: "OCEAN", isLocalCharge: true, isSurcharge: false },
+    { code: "CUSTOMS_CLEARANCE", displayName: "Customs Clearance", chargeFamily: "CUSTOMS_REGULATORY", transportMode: "LOCAL_SERVICE", isLocalCharge: true, isSurcharge: false },
+    { code: "PRE_CARRIAGE", displayName: "Pre-Carriage", chargeFamily: "ORIGIN_INLAND", transportMode: "TRUCK", isLocalCharge: true, isSurcharge: false },
+    { code: "ON_CARRIAGE", displayName: "On-Carriage", chargeFamily: "DEST_INLAND", transportMode: "TRUCK", isLocalCharge: true, isSurcharge: false },
+    { code: "DELIVERY_ORDER", displayName: "Delivery Order", chargeFamily: "DEST_TERMINAL", transportMode: "OCEAN", isLocalCharge: true, isSurcharge: false },
+    { code: "DOC_FEE", displayName: "Documentation Fee", chargeFamily: "ADMIN_OTHER", transportMode: "OCEAN", isLocalCharge: true, isSurcharge: false },
+    { code: "DEMURRAGE", displayName: "Demurrage", chargeFamily: "FREE_TIME_DELAY", transportMode: "OCEAN", isLocalCharge: true, isSurcharge: false },
+    { code: "DETENTION", displayName: "Detention", chargeFamily: "FREE_TIME_DELAY", transportMode: "OCEAN", isLocalCharge: true, isSurcharge: false },
+  ];
+  await prisma.tariffNormalizedChargeCode.createMany({
+    data: tariffChargeCodes,
+    skipDuplicates: true,
+  });
+  console.log("[db:seed] Tariff normalized charge taxonomy ensured (idempotent).");
+
   const userCount = await prisma.user.count({ where: { tenantId: tenant.id } });
   console.log(
     `[db:seed] Finished OK — tenant "${tenant.slug}", ${userCount} user(s). ` +

@@ -64,6 +64,9 @@ model Tenant {
   ctContainerCargoLines CtContainerCargoLine[]
   ctExceptionCodes      CtExceptionCode[]
   locationCodes         LocationCode[]
+  tariffLegalEntities   TariffLegalEntity[]
+  tariffContractHeaders TariffContractHeader[]
+  tariffImportBatches   TariffImportBatch[]
 }
 
 /// Tenant-scoped milestone template packs (override or extend built-in packs in code).
@@ -135,6 +138,9 @@ model User {
   /// When set, Control Tower (and similar) list/detail is limited to shipments tagged with this CRM account.
   customerCrmAccountId String?
   customerCrmAccount   CrmAccount? @relation("UserCustomerPortalScope", fields: [customerCrmAccountId], references: [id], onDelete: SetNull)
+  tariffContractHeadersOwned TariffContractHeader[] @relation("TariffContractHeaderOwner")
+  tariffApprovalRecords      TariffApprovalRecord[] @relation("TariffApprovalApprover")
+  tariffAuditLogs            TariffAuditLog[] @relation("TariffAuditLogActor")
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -2059,4 +2065,403 @@ model CrmQuoteLine {
   quote CrmQuote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
 
   @@index([quoteId])
+}
+
+// --- Tariff engine (Phase 1): tables mapped to starter-pack names; tenant = existing Tenant ---
+
+enum TariffProviderType {
+  OCEAN_CARRIER
+  NVOCC
+  FORWARDER
+  AIRLINE
+  TRUCKER
+  RAIL_OPERATOR
+  WAREHOUSE
+  BROKER
+  COURIER
+  OTHER
+}
+
+/// Distinct from logistics `TransportMode` on Shipment — tariff contract / charge scope.
+enum TariffTransportMode {
+  OCEAN
+  LCL
+  AIR
+  TRUCK
+  RAIL
+  LOCAL_SERVICE
+}
+
+enum TariffContractStatus {
+  DRAFT
+  UNDER_REVIEW
+  APPROVED
+  EXPIRED
+  SUPERSEDED
+  ARCHIVED
+}
+
+enum TariffSourceType {
+  MANUAL
+  EXCEL
+  PDF
+  API
+  EDI
+  EMAIL
+  SYSTEM
+}
+
+enum TariffApprovalStatus {
+  NOT_REQUIRED
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum TariffGeographyType {
+  GLOBAL_REGION
+  SUBREGION
+  COUNTRY
+  PORT
+  INLAND_POINT
+  RAIL_RAMP
+  ZONE
+  ALIAS_GROUP
+}
+
+enum TariffLineRateType {
+  BASE_RATE
+  ALL_IN
+  GATE_IN
+  GATE_IN_ALL_IN
+  GATE_IN_GATE_OUT
+  ADD_ON
+  LOCAL_CHARGE
+  SURCHARGE
+  CUSTOMS
+  PRE_CARRIAGE
+  ON_CARRIAGE
+}
+
+enum TariffChargeFamily {
+  MAIN_CARRIAGE
+  FUEL_ENVIRONMENTAL
+  SEASONAL_EMERGENCY
+  ORIGIN_TERMINAL
+  DEST_TERMINAL
+  ORIGIN_INLAND
+  DEST_INLAND
+  CUSTOMS_REGULATORY
+  HANDLING_SPECIAL
+  FREE_TIME_DELAY
+  ADMIN_OTHER
+}
+
+enum TariffRuleType {
+  DEMURRAGE
+  DETENTION
+  COMBINED_DD
+  STORAGE
+  PLUGIN
+  OTHER
+}
+
+model TariffLegalEntity {
+  id           String   @id @default(cuid())
+  tenantId     String
+  name         String
+  code         String?
+  countryCode  String?  @db.VarChar(2)
+  baseCurrency String?  @db.VarChar(3)
+  status       String   @default("ACTIVE")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant          Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contractHeaders TariffContractHeader[]
+  importBatches   TariffImportBatch[]
+
+  @@index([tenantId])
+  @@map("legal_entities")
+}
+
+model TariffProvider {
+  id           String             @id @default(cuid())
+  legalName    String
+  tradingName  String?
+  providerType TariffProviderType
+  countryCode  String?            @db.VarChar(2)
+  status       String             @default("ACTIVE")
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  chargeAliases   TariffChargeAlias[]
+  contractHeaders TariffContractHeader[]
+
+  @@map("providers")
+}
+
+model TariffGeographyGroup {
+  id            String              @id @default(cuid())
+  geographyType TariffGeographyType
+  name          String
+  code          String?
+  aliasSource   String?
+  validFrom     DateTime?           @db.Date
+  validTo       DateTime?           @db.Date
+  active        Boolean             @default(true)
+  createdAt     DateTime            @default(now())
+
+  members                TariffGeographyMember[]
+  rateLinesAsOrigin      TariffRateLine[]      @relation("TariffRateLineOrigin")
+  rateLinesAsDestination TariffRateLine[]      @relation("TariffRateLineDestination")
+  chargeLines            TariffChargeLine[]
+  freeTimeRules          TariffFreeTimeRule[]
+
+  @@map("geography_groups")
+}
+
+model TariffGeographyMember {
+  id               String              @id @default(cuid())
+  geographyGroupId String
+  memberCode       String
+  memberName       String?
+  memberType       TariffGeographyType
+  validFrom        DateTime?           @db.Date
+  validTo          DateTime?           @db.Date
+
+  geographyGroup TariffGeographyGroup @relation(fields: [geographyGroupId], references: [id], onDelete: Cascade)
+
+  @@index([geographyGroupId])
+  @@map("geography_members")
+}
+
+model TariffNormalizedChargeCode {
+  id              String               @id @default(cuid())
+  code            String               @unique
+  displayName     String
+  chargeFamily    TariffChargeFamily
+  transportMode   TariffTransportMode?
+  isLocalCharge   Boolean              @default(false)
+  isSurcharge     Boolean              @default(false)
+  active          Boolean              @default(true)
+  createdAt       DateTime             @default(now())
+
+  aliases     TariffChargeAlias[]
+  chargeLines TariffChargeLine[]
+
+  @@map("normalized_charge_codes")
+}
+
+model TariffChargeAlias {
+  id                     String @id @default(cuid())
+  normalizedChargeCodeId String
+  aliasText              String
+  providerId             String?
+  notes                  String? @db.Text
+
+  normalizedChargeCode TariffNormalizedChargeCode @relation(fields: [normalizedChargeCodeId], references: [id], onDelete: Cascade)
+  provider               TariffProvider?            @relation(fields: [providerId], references: [id], onDelete: SetNull)
+
+  @@index([normalizedChargeCodeId])
+  @@index([providerId])
+  @@map("charge_aliases")
+}
+
+model TariffContractHeader {
+  id             String              @id @default(cuid())
+  tenantId       String
+  legalEntityId  String?
+  providerId     String
+  transportMode  TariffTransportMode
+  contractNumber String?
+  title          String
+  tradeScope     String?             @db.Text
+  status         TariffContractStatus @default(DRAFT)
+  ownerUserId    String?
+  notes          String?             @db.Text
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  tenant       Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  legalEntity  TariffLegalEntity?  @relation(fields: [legalEntityId], references: [id], onDelete: SetNull)
+  provider     TariffProvider      @relation(fields: [providerId], references: [id], onDelete: Restrict)
+  owner        User?               @relation("TariffContractHeaderOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  versions     TariffContractVersion[]
+
+  @@index([tenantId])
+  @@index([providerId])
+  @@map("contract_headers")
+}
+
+model TariffContractVersion {
+  id                   String               @id @default(cuid())
+  contractHeaderId     String
+  versionNo            Int
+  sourceType           TariffSourceType
+  sourceReference      String?
+  sourceFileUrl        String?
+  approvalStatus       TariffApprovalStatus @default(PENDING)
+  status               TariffContractStatus @default(DRAFT)
+  validFrom            DateTime?            @db.Date
+  validTo              DateTime?            @db.Date
+  bookingDateValidFrom DateTime?            @db.Date
+  bookingDateValidTo   DateTime?            @db.Date
+  sailingDateValidFrom DateTime?            @db.Date
+  sailingDateValidTo   DateTime?            @db.Date
+  comments             String?              @db.Text
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+
+  contractHeader TariffContractHeader @relation(fields: [contractHeaderId], references: [id], onDelete: Cascade)
+  rateLines      TariffRateLine[]
+  chargeLines    TariffChargeLine[]
+  freeTimeRules  TariffFreeTimeRule[]
+
+  @@unique([contractHeaderId, versionNo])
+  @@index([contractHeaderId])
+  @@index([validFrom, validTo])
+  @@map("contract_versions")
+}
+
+model TariffRateLine {
+  id                  String             @id @default(cuid())
+  contractVersionId   String
+  originScopeId       String?
+  destinationScopeId  String?
+  rateType            TariffLineRateType
+  equipmentType       String?
+  commodityScope      String?            @db.Text
+  serviceScope        String?            @db.Text
+  unitBasis           String
+  currency            String             @db.VarChar(3)
+  amount              Decimal            @db.Decimal(18, 4)
+  includedChargeSet Json?
+  excludedChargeSet Json?
+  rawRateDescription  String?            @db.Text
+  validFrom           DateTime?          @db.Date
+  validTo             DateTime?          @db.Date
+  notes               String?            @db.Text
+
+  contractVersion  TariffContractVersion @relation(fields: [contractVersionId], references: [id], onDelete: Cascade)
+  originScope      TariffGeographyGroup? @relation("TariffRateLineOrigin", fields: [originScopeId], references: [id], onDelete: SetNull)
+  destinationScope TariffGeographyGroup? @relation("TariffRateLineDestination", fields: [destinationScopeId], references: [id], onDelete: SetNull)
+
+  @@index([contractVersionId])
+  @@map("rate_lines")
+}
+
+model TariffChargeLine {
+  id                     String  @id @default(cuid())
+  contractVersionId      String
+  normalizedChargeCodeId String?
+  rawChargeName          String
+  geographyScopeId       String?
+  directionScope         String?
+  equipmentScope         String?
+  conditionScope         String?
+  unitBasis              String
+  currency               String  @db.VarChar(3)
+  amount                 Decimal @db.Decimal(18, 4)
+  isIncluded             Boolean @default(false)
+  isMandatory            Boolean @default(true)
+  validFrom              DateTime? @db.Date
+  validTo                DateTime? @db.Date
+  notes                  String?   @db.Text
+
+  contractVersion      TariffContractVersion      @relation(fields: [contractVersionId], references: [id], onDelete: Cascade)
+  normalizedChargeCode TariffNormalizedChargeCode? @relation(fields: [normalizedChargeCodeId], references: [id], onDelete: SetNull)
+  geographyScope       TariffGeographyGroup?      @relation(fields: [geographyScopeId], references: [id], onDelete: SetNull)
+
+  @@index([contractVersionId])
+  @@map("charge_lines")
+}
+
+model TariffFreeTimeRule {
+  id                 String         @id @default(cuid())
+  contractVersionId  String
+  geographyScopeId   String?
+  importExportScope  String?
+  equipmentScope     String?
+  ruleType           TariffRuleType
+  freeDays           Int
+  validFrom          DateTime?      @db.Date
+  validTo            DateTime?      @db.Date
+  notes              String?        @db.Text
+
+  contractVersion TariffContractVersion @relation(fields: [contractVersionId], references: [id], onDelete: Cascade)
+  geographyScope  TariffGeographyGroup? @relation(fields: [geographyScopeId], references: [id], onDelete: SetNull)
+
+  @@index([contractVersionId])
+  @@map("free_time_rules")
+}
+
+model TariffImportBatch {
+  id               String           @id @default(cuid())
+  tenantId         String?
+  legalEntityId    String?
+  sourceType       TariffSourceType
+  uploadedFilename String?
+  sourceReference  String?
+  parseStatus      String           @default("UPLOADED")
+  confidenceScore  Decimal?         @db.Decimal(5, 2)
+  reviewStatus     String           @default("PENDING")
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  tenant       Tenant?            @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  legalEntity  TariffLegalEntity? @relation(fields: [legalEntityId], references: [id], onDelete: SetNull)
+  stagingRows  TariffImportStagingRow[]
+
+  @@index([tenantId])
+  @@map("import_batches")
+}
+
+model TariffImportStagingRow {
+  id                String   @id @default(cuid())
+  importBatchId     String
+  rowType           String
+  rawPayload        Json
+  normalizedPayload Json?
+  confidenceScore   Decimal? @db.Decimal(5, 2)
+  unresolvedFlags   Json?
+  approved          Boolean  @default(false)
+  createdAt         DateTime @default(now())
+
+  importBatch TariffImportBatch @relation(fields: [importBatchId], references: [id], onDelete: Cascade)
+
+  @@index([importBatchId])
+  @@map("import_staging_rows")
+}
+
+model TariffApprovalRecord {
+  id             String               @id @default(cuid())
+  objectType     String
+  objectId       String
+  stepName       String?
+  approverUserId String?
+  decision       TariffApprovalStatus
+  decisionNote   String?              @db.Text
+  decidedAt      DateTime             @default(now())
+
+  approver User? @relation("TariffApprovalApprover", fields: [approverUserId], references: [id], onDelete: SetNull)
+
+  @@index([objectType, objectId])
+  @@map("approval_records")
+}
+
+model TariffAuditLog {
+  id         String   @id @default(cuid())
+  objectType String
+  objectId   String
+  action     String
+  userId     String?
+  oldValue   Json?
+  newValue   Json?
+  createdAt  DateTime @default(now())
+
+  user User? @relation("TariffAuditLogActor", fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([objectType, objectId])
+  @@map("audit_logs")
 }
