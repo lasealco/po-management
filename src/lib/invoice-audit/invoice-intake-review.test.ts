@@ -32,6 +32,24 @@ describe("setInvoiceIntakeReview", () => {
     expect(prisma.invoiceIntake.update).not.toHaveBeenCalled();
   });
 
+  it("rejects review when intake audit FAILED (same gate as PARSED)", async () => {
+    vi.mocked(prisma.invoiceIntake.findFirst).mockResolvedValue({ id: "in1", status: "FAILED" } as never);
+    await expect(
+      setInvoiceIntakeReview({
+        tenantId: "t1",
+        invoiceIntakeId: "in1",
+        reviewDecision: "OVERRIDDEN",
+        reviewedByUserId: "user1",
+      }),
+    ).rejects.toSatisfy(
+      (e: unknown) =>
+        e instanceof InvoiceAuditError &&
+        e.code === "CONFLICT" &&
+        e.message.includes("FAILED"),
+    );
+    expect(prisma.invoiceIntake.update).not.toHaveBeenCalled();
+  });
+
   it("persists APPROVED with reviewer metadata", async () => {
     vi.mocked(prisma.invoiceIntake.findFirst).mockResolvedValue({ id: "in1", status: "AUDITED" } as never);
     vi.mocked(prisma.invoiceIntake.update).mockResolvedValue({
@@ -55,6 +73,39 @@ describe("setInvoiceIntakeReview", () => {
       data: expect.objectContaining({
         reviewDecision: "APPROVED",
         reviewNote: "OK",
+        reviewedByUserId: "user1",
+        approvedForAccounting: false,
+        accountingApprovedAt: null,
+        accountingApprovedByUserId: null,
+        accountingApprovalNote: null,
+      }),
+      include: expect.any(Object),
+    });
+  });
+
+  it("persists OVERRIDDEN and clears accounting handoff like APPROVED", async () => {
+    vi.mocked(prisma.invoiceIntake.findFirst).mockResolvedValue({ id: "in1", status: "AUDITED" } as never);
+    vi.mocked(prisma.invoiceIntake.update).mockResolvedValue({
+      id: "in1",
+      reviewDecision: "OVERRIDDEN",
+      reviewNote: "Variance accepted per carrier credit.",
+      reviewedAt: new Date(),
+    } as never);
+
+    const out = await setInvoiceIntakeReview({
+      tenantId: "t1",
+      invoiceIntakeId: "in1",
+      reviewDecision: "OVERRIDDEN",
+      reviewNote: "Variance accepted per carrier credit.",
+      reviewedByUserId: "user1",
+    });
+
+    expect(out.reviewDecision).toBe("OVERRIDDEN");
+    expect(prisma.invoiceIntake.update).toHaveBeenCalledWith({
+      where: { id: "in1" },
+      data: expect.objectContaining({
+        reviewDecision: "OVERRIDDEN",
+        reviewNote: "Variance accepted per carrier credit.",
         reviewedByUserId: "user1",
         approvedForAccounting: false,
         accountingApprovedAt: null,

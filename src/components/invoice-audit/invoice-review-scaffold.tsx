@@ -4,6 +4,10 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { formatInvoiceAuditApiError } from "@/lib/invoice-audit/invoice-audit-api-client-error";
+import {
+  canRecordFinanceReview,
+  financeReviewBlockedExplanation,
+} from "@/lib/invoice-audit/finance-review-eligibility";
 
 export function InvoiceReviewScaffold(props: {
   intakeId: string;
@@ -19,8 +23,14 @@ export function InvoiceReviewScaffold(props: {
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
 
-  const canUse = props.canEdit && props.status === "AUDITED";
-  const blocked = props.disabledReason ?? (!canUse ? "Run a successful audit before recording approval or override." : null);
+  const gateInput = {
+    status: props.status,
+    disabledReason:
+      props.disabledReason ??
+      (!props.canEdit ? "View only — finance review requires edit access." : null),
+  };
+  const canUse = props.canEdit && canRecordFinanceReview(gateInput);
+  const blocked = financeReviewBlockedExplanation(gateInput);
 
   async function submit() {
     setBusy(true);
