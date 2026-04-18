@@ -359,6 +359,30 @@ async function seed() {
     },
   });
 
+  await prisma.supplierServiceCapability.deleteMany({ where: { supplierId: supplier.id } });
+  await prisma.supplierServiceCapability.createMany({
+    data: [
+      {
+        tenantId: tenant.id,
+        supplierId: supplier.id,
+        mode: "OCEAN",
+        subMode: "FCL",
+        serviceType: "Ocean freight forwarding",
+        geography: "Asia–North America",
+        notes: "Demo seed row for SRM capabilities (SUP-001).",
+      },
+      {
+        tenantId: tenant.id,
+        supplierId: supplier.id,
+        mode: null,
+        subMode: null,
+        serviceType: "Materials consolidation",
+        geography: "US Midwest",
+        notes: null,
+      },
+    ],
+  });
+
   await prisma.supplierContact.deleteMany({ where: { supplierId: supplier.id } });
   await prisma.supplierContact.createMany({
     data: [

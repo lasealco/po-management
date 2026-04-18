@@ -1,26 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
+import { parseCapabilityCreateBody } from "@/lib/srm/supplier-capability-parse";
 import { prisma } from "@/lib/prisma";
-
-const MODES = new Set(["", "OCEAN", "AIR", "ROAD", "RAIL"]);
-
-function normMode(v: unknown): string | null {
-  if (v == null || v === "") return null;
-  if (typeof v !== "string") return "__invalid__";
-  const u = v.trim().toUpperCase();
-  if (!MODES.has(u)) return "__invalid__";
-  return u === "" ? null : u;
-}
-
-function str(v: unknown, max: number, required: boolean): string | "__invalid__" | null {
-  if (v == null) return required ? "__invalid__" : null;
-  if (typeof v !== "string") return "__invalid__";
-  const t = v.trim();
-  if (!t) return required ? "__invalid__" : null;
-  if (t.length > max) return "__invalid__";
-  return t;
-}
 
 export async function POST(
   request: Request,
@@ -53,37 +35,20 @@ export async function POST(
     return NextResponse.json({ error: "Expected object." }, { status: 400 });
   }
 
-  const o = body as Record<string, unknown>;
-  const mode = normMode(o.mode);
-  if (mode === "__invalid__") {
-    return NextResponse.json(
-      { error: "mode must be OCEAN, AIR, ROAD, RAIL, or empty." },
-      { status: 400 },
-    );
+  const parsed = parseCapabilityCreateBody(body as Record<string, unknown>);
+  if (!parsed.ok) {
+    return NextResponse.json({ error: parsed.message }, { status: 400 });
   }
-  const subMode = str(o.subMode, 64, false);
-  if (subMode === "__invalid__") {
-    return NextResponse.json({ error: "Invalid subMode." }, { status: 400 });
-  }
-  const serviceType = str(o.serviceType, 128, true);
-  if (serviceType === "__invalid__" || serviceType == null) {
-    return NextResponse.json({ error: "serviceType is required (max 128 chars)." }, { status: 400 });
-  }
-  const geography = str(o.geography, 256, false);
-  if (geography === "__invalid__") {
-    return NextResponse.json({ error: "Invalid geography." }, { status: 400 });
-  }
-  const notes = typeof o.notes === "string" ? (o.notes.trim() ? o.notes.trim().slice(0, 8000) : null) : null;
 
   const row = await prisma.supplierServiceCapability.create({
     data: {
       tenantId: tenant.id,
       supplierId,
-      mode,
-      subMode,
-      serviceType,
-      geography,
-      notes,
+      mode: parsed.data.mode,
+      subMode: parsed.data.subMode,
+      serviceType: parsed.data.serviceType,
+      geography: parsed.data.geography,
+      notes: parsed.data.notes,
     },
   });
 
