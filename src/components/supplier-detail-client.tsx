@@ -5,6 +5,8 @@ import Link from "next/link";
 import { startTransition, useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { SupplierCapabilitiesSection } from "@/components/supplier-capabilities-section";
+import type { SupplierDocumentRow } from "@/components/supplier-documents-section";
+import { SupplierDocumentsSection } from "@/components/supplier-documents-section";
 import type { SupplierComplianceReviewRow } from "@/components/supplier-compliance-reviews-section";
 import { SupplierComplianceReviewsSection } from "@/components/supplier-compliance-reviews-section";
 import { SupplierOnboardingSection } from "@/components/supplier-onboarding-section";
@@ -81,6 +83,7 @@ export type SupplierDetailSnapshot = {
   complianceReviews: SupplierComplianceReviewRow[];
   performanceScorecards: SupplierPerformanceScorecardRow[];
   riskRecords: SupplierRiskRecordRow[];
+  documents: SupplierDocumentRow[];
   productLinkCount: number;
   orderCount: number;
 };
@@ -239,7 +242,8 @@ export function SupplierDetailClient({
   useEffect(() => {
     if (!isSrmShell) return;
     const t = parseSrmTabParam(searchParams.get("tab"));
-    if (t !== srmTab) setSrmTabState(t);
+    if (t === srmTab) return;
+    startTransition(() => setSrmTabState(t));
   }, [isSrmShell, searchParams, srmTab]);
 
   function selectSrmTab(next: SrmSupplierTabId) {
@@ -1398,6 +1402,15 @@ export function SupplierDetailClient({
         />
       )}
 
+      {(!isSrmShell || srmTab === "documents") && (
+        <SupplierDocumentsSection
+          key={`docs-${initial.id}-${initial.updatedAt}`}
+          supplierId={initial.id}
+          canEdit={canEdit}
+          initialRows={initial.documents}
+        />
+      )}
+
       {isSrmShell &&
       srmTab !== "overview" &&
       srmTab !== "capabilities" &&
@@ -1405,14 +1418,15 @@ export function SupplierDetailClient({
       srmTab !== "qualification" &&
       srmTab !== "compliance" &&
       srmTab !== "performance" &&
-      srmTab !== "risk" ? (
+      srmTab !== "risk" &&
+      srmTab !== "documents" ? (
         <section className="rounded-lg border border-dashed border-zinc-200 bg-zinc-50/80 p-8 text-center shadow-sm">
           <p className="text-sm font-medium text-zinc-800">
             {SRM_SUPPLIER_TABS.find((x) => x.id === srmTab)?.label ?? srmTab}
           </p>
           <p className="mt-2 text-xs text-zinc-600">
-            This workspace is planned in the SRM PRD; documents, contracts, and alerts connect here in
-            later slices.
+            Contracts, relationship notes, and alerts are planned in the SRM PRD; this tab is not wired
+            yet (no tender, tariff, or sourcing-event scope here).
           </p>
         </section>
       ) : null}

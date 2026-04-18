@@ -453,6 +453,19 @@ async function seed() {
     },
   });
 
+  await prisma.supplierDocument.deleteMany({ where: { supplierId: supplier.id } });
+  await prisma.supplierDocument.create({
+    data: {
+      tenantId: tenant.id,
+      supplierId: supplier.id,
+      title: "Certificate of insurance (demo)",
+      category: "insurance",
+      referenceUrl: "https://example.com/demo/co-placeholder.pdf",
+      notes: "Seed row — replace URL with a real controlled link in your environment.",
+      documentDate: now,
+    },
+  });
+
   await prisma.supplierContact.deleteMany({ where: { supplierId: supplier.id } });
   await prisma.supplierContact.createMany({
     data: [

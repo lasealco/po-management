@@ -26,6 +26,7 @@ model Tenant {
   supplierComplianceReviews   SupplierComplianceReview[]
   supplierPerformanceScorecards SupplierPerformanceScorecard[]
   supplierRiskRecords         SupplierRiskRecord[]
+  supplierDocuments           SupplierDocument[]
   orders            PurchaseOrder[]
   salesOrders       SalesOrder[]
   warehouses        Warehouse[]
@@ -252,6 +253,15 @@ enum SupplierRiskStatus {
   closed
 }
 
+/// SRM supplier file register (metadata + link to controlled storage — not tender/tariff/sourcing).
+enum SupplierDocumentCategory {
+  insurance
+  license
+  certificate
+  compliance_other
+  commercial_other
+}
+
 model Supplier {
   id        String   @id @default(cuid())
   tenantId  String
@@ -306,6 +316,7 @@ model Supplier {
   complianceReviews   SupplierComplianceReview[]
   performanceScorecards SupplierPerformanceScorecard[]
   riskRecords           SupplierRiskRecord[]
+  documents             SupplierDocument[]
   productSuppliers ProductSupplier[]
   shipmentBookings ShipmentBooking[]
   shipmentsCarrier Shipment[] @relation("ShipmentCarrierSupplier")
@@ -411,6 +422,26 @@ model SupplierRiskRecord {
   closedAt     DateTime?
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, supplierId])
+}
+
+/// Registered supplier document (evidence trail for onboarding/compliance).
+model SupplierDocument {
+  id             String                   @id @default(cuid())
+  tenantId       String
+  supplierId     String
+  title          String                   @db.VarChar(256)
+  category       SupplierDocumentCategory @default(compliance_other)
+  /// HTTPS link to your DMS / SharePoint / blob portal (no in-app upload in this slice).
+  referenceUrl   String?                  @db.VarChar(2000)
+  notes          String?                  @db.Text
+  documentDate   DateTime?
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
 
   tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
