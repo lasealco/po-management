@@ -29,6 +29,11 @@ alwaysApply: true
 
 - App uses tenant slug **`demo-company`** (`getDemoTenant()` / `DEMO_TENANT_SLUG`). WMS demo warehouse code **`WH-DEMO-DC1`**. PO and WMS share that tenant; WMS tables need the **WMS demo seed**, not only `db:seed`.
 
+## Tariff engine / invoice audit (verify without app)
+
+- **`npm run check:invoice-audit`** — scoped ESLint + Vitest for `src/lib/invoice-audit` plus invoice-audit / API / pricing-snapshot app paths (fast loop).
+- **`npm run verify:tariff-engine`** — same as above, then **`npx tsc --noEmit`** (stricter gate before merge).
+
 ## Ship workflow
 
 - After substantive code changes: commit + push — see **`.cursor/rules/ship-after-changes.mdc`**.
