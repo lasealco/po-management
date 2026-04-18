@@ -73,12 +73,66 @@ Technical packaging options (can be combined):
 
 For **true air-gapped** CRM-only with zero PO/WMS code paths, separate deploy is cleaner — but that is a **commercial packaging** choice, not a requirement to **author** CRM in another repository on day one.
 
+## SaaS plans, bundles, and a “module shop”
+
+**Goal:** One deployed app; customers **subscribe** to **Enterprise (all modules)** or buy **slices** (e.g. WMS only, PO + Control Tower, CRM + PO) — including **packages** at a discount vs à la carte.
+
+### 1. Product model (what you sell)
+
+Define a small **catalog** of **modules** aligned with existing permission families (see `src/lib/permission-catalog.ts`), for example:
+
+| Module key | Typical gate (examples) | Notes |
+|------------|-------------------------|--------|
+| `po` | `org.orders`, consolidation-related grants | Core procurement story |
+| `wms` | `org.wms` | Warehouse |
+| `crm` | `org.crm` | Commercial CRM |
+| `control_tower` | `org.controltower` | Logistics visibility |
+| `srm` / `suppliers` | `org.suppliers` | Often bundled with PO |
+| `platform` | settings, users, roles | Sometimes “base” on every plan |
+
+**Bundles** are just **sets of module keys** (e.g. `logistics_pack` = `po` + `control_tower` + `wms`) with a **price SKU** in billing, not a second codebase.
+
+### 2. Technical model (how the app knows what’s bought)
+
+Keep **one row per customer** (`Tenant`) and add **entitlements** the runtime checks **before** nav + APIs:
+
+- **Option A — columns on `Tenant`:** e.g. `enabledModules String[]` or boolean columns. Simple for v1; gets wide as SKUs grow.
+- **Option B — normalized:** `TenantEntitlement` / `TenantSubscription` rows: `tenantId`, `moduleKey`, `status` (`active` / `trialing` / `canceled`), `validUntil`, optional `source` (`stripe`, `manual`, `trial`).
+
+**Enforcement order:** billing (Stripe) is **source of truth for paid state** → webhook or periodic sync updates DB → **middleware + `getViewerGrantSet` (or a small `tenantHasModule` helper)** strips or denies module **before** role checks, **or** composes “effective modules” ∩ “role grants” so a role cannot unlock an unpurchased module.
+
+**Rule of thumb:** *Subscription unlocks the module; RBAC unlocks actions inside the module.* Both checks matter.
+
+### 3. “Shop” UX (self-serve)
+
+- **In-app `/settings/billing` or `/platform/subscribe`:** list **current plan**, **add-ons**, **upgrade to Enterprise**.
+- **Checkout:** Stripe **Checkout** or **Payment Links** for known SKUs; **Customer Portal** for upgrade/downgrade/cancel.
+- **After pay:** Stripe sends `checkout.session.completed` / `customer.subscription.updated` → server route verifies signature → upserts `Tenant` entitlements.
+
+**Enterprise “get it all”:** one Stripe **Price** that sets all module keys active, or a boolean `isEnterprise` that implies full catalog in code.
+
+### 4. What not to do early
+
+- Don’t tie **every** permission row to Stripe by hand — map **coarse modules** to permission **prefixes**, then keep fine roles inside a purchased module.
+- Don’t implement a custom payment UI before Checkout/Portal — compliance and tax are expensive.
+
+### 5. Related docs
+
+- **Org hierarchy + delegated admin:** `docs/icp-and-tenancy.md` (scoped admin / subset rule).
+- **Tenancy baseline:** same file, “What the product does today.”
+
 ## Summary
 
 - **Author CRM in this codebase** behind entitlements and clear module boundaries.
 - **Sell slices** via flags and UI/API gating; split deploys only when a customer or compliance story **requires** a physically smaller or isolated surface.
 - **Revisit a second app** only when integration pain of staying together exceeds the cost of shared packages + APIs — usually later, not at CRM v1.
+- **Sell Enterprise vs module slices** via **tenant entitlements** + Stripe (or manual overrides for pilots); see **SaaS plans, bundles, and a “module shop”** above.
 
 ---
 
 *Document created for internal planning; update as product packaging and compliance requirements evolve.*
+
+## Changelog
+
+- **2026-04-18:** Added **SaaS plans, bundles, module shop** (Stripe-shaped entitlements, enforcement order, shop UX).
+- **2026-04-16:** Initial modular strategy (Option A vs B, packaging table).
