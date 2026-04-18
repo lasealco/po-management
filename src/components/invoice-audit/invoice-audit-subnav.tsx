@@ -13,12 +13,18 @@ const items = [
       p === "/invoice-audit" ||
       (p.startsWith("/invoice-audit/") &&
         !p.startsWith("/invoice-audit/new") &&
-        !p.startsWith("/invoice-audit/tolerance-rules")),
+        !p.startsWith("/invoice-audit/tolerance-rules") &&
+        !p.startsWith("/invoice-audit/readiness")),
   },
   {
     href: "/invoice-audit/tolerance-rules",
     label: "Tolerance rules",
     match: (p: string) => p.startsWith("/invoice-audit/tolerance-rules"),
+  },
+  {
+    href: "/invoice-audit/readiness",
+    label: "DB readiness",
+    match: (p: string) => p.startsWith("/invoice-audit/readiness"),
   },
 ];
 
