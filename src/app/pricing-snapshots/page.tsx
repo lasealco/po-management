@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { DemoSeedCopyBlock } from "@/components/invoice-audit/demo-seed-copy-block";
-import { PricingSnapshotIdCopy } from "@/components/pricing-snapshots/pricing-snapshot-id-copy";
+import { RecordIdCopy } from "@/components/invoice-audit/record-id-copy";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { listBookingPricingSnapshotsForTenant } from "@/lib/booking-pricing-snapshot";
 import { getDemoTenant } from "@/lib/demo-tenant";
@@ -144,7 +144,7 @@ export default async function PricingSnapshotsListPage() {
                       </div>
                     </td>
                     <td className="py-3 pr-4 align-top">
-                      <PricingSnapshotIdCopy id={s.id} />
+                      <RecordIdCopy id={s.id} />
                     </td>
                     <td className="py-3 pr-4">
                       <Link

@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { DemoSeedCopyBlock } from "@/components/invoice-audit/demo-seed-copy-block";
+import { RecordIdCopy } from "@/components/invoice-audit/record-id-copy";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { listInvoiceIntakesForTenant } from "@/lib/invoice-audit/invoice-intakes";
 import { formatPricingSnapshotSourceType } from "@/lib/invoice-audit/pricing-snapshot-source-nav";
@@ -183,6 +184,7 @@ export default async function InvoiceAuditListPage(props: {
             <thead>
               <tr className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500">
                 <th className="py-2 pr-4">Received</th>
+                <th className="py-2 pr-4">Intake id</th>
                 <th className="py-2 pr-4">Vendor / ref</th>
                 <th className="py-2 pr-4" title="Prioritized Phase 06 action with deep link when applicable">
                   Next
@@ -204,7 +206,7 @@ export default async function InvoiceAuditListPage(props: {
             <tbody>
               {intakes.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-10 text-center text-zinc-500">
+                  <td colSpan={10} className="py-10 text-center text-zinc-500">
                     <p>No intakes yet.</p>
                     <p className="mt-2 text-xs text-zinc-600">
                       Create one from <span className="font-medium">New intake</span> (pick a frozen pricing
@@ -219,7 +221,7 @@ export default async function InvoiceAuditListPage(props: {
                 </tr>
               ) : rowsToShow.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-10 text-center text-sm text-zinc-600">
+                  <td colSpan={10} className="py-10 text-center text-sm text-zinc-600">
                     No intakes in this queue.
                     <div className="mt-2">
                       <Link href="/invoice-audit" className="font-medium text-[var(--arscmp-primary)] hover:underline">
@@ -247,6 +249,9 @@ export default async function InvoiceAuditListPage(props: {
                     <tr key={row.id} className="border-b border-zinc-100">
                       <td className="py-3 pr-4 text-zinc-700">
                         {row.receivedAt.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
+                      </td>
+                      <td className="py-3 pr-4 align-top">
+                        <RecordIdCopy id={row.id} />
                       </td>
                       <td className="py-3 pr-4">
                         <Link

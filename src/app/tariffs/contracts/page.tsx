@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { RecordIdCopy } from "@/components/invoice-audit/record-id-copy";
 import { TariffBadge, tariffContractStatusTone } from "@/components/tariffs/tariff-badges";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { listTariffContractHeadersForTenant } from "@/lib/tariff/contract-headers";
@@ -57,7 +58,7 @@ export default async function TariffContractsDirectoryPage() {
             <tbody>
               {contracts.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-10 text-center text-zinc-500">
+                  <td colSpan={6} className="py-10 text-center text-zinc-500">
                     No contracts yet.
                     {canEdit ? (
                       <>
@@ -80,6 +81,9 @@ export default async function TariffContractsDirectoryPage() {
                     {c.contractNumber ? (
                       <span className="ml-2 text-xs text-zinc-500">#{c.contractNumber}</span>
                     ) : null}
+                  </td>
+                  <td className="py-3 pr-4 align-top">
+                    <RecordIdCopy id={c.id} />
                   </td>
                   <td className="py-3 pr-4 text-zinc-700">
                     {c.provider.tradingName ?? c.provider.legalName}
