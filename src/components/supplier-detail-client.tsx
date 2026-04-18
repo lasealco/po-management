@@ -4,6 +4,10 @@ import type { SupplierDocumentCategory, SupplierQualificationStatus } from "@pri
 import Link from "next/link";
 import { startTransition, useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import {
+  SRM_REGISTER_CATEGORY_QUERY,
+  parseRegisterCategorySearchParam,
+} from "@/lib/srm/register-category-url";
 import { SupplierCapabilitiesSection } from "@/components/supplier-capabilities-section";
 import type { SupplierContractRecordRow } from "@/components/supplier-contract-records-section";
 import { SupplierContractRecordsSection } from "@/components/supplier-contract-records-section";
@@ -291,11 +295,39 @@ export function SupplierDetailClient({
     useState<SupplierDocumentCategory | null>(null);
 
   useEffect(() => {
+    const cat = parseRegisterCategorySearchParam(
+      searchParams.get(SRM_REGISTER_CATEGORY_QUERY),
+    );
+    if (cat) {
+      setDocumentsRegisterCategory(cat);
+      if (isSrmShell) {
+        const q = new URLSearchParams(searchParams.toString());
+        q.delete(SRM_REGISTER_CATEGORY_QUERY);
+        q.set("tab", "documents");
+        const s = q.toString();
+        startTransition(() => {
+          setSrmTabState("documents");
+          void router.replace(s ? `${pathname}?${s}` : pathname, { scroll: false });
+        });
+      } else {
+        window.requestAnimationFrame(() =>
+          document.getElementById("supplier-documents-section")?.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+          }),
+        );
+        const q = new URLSearchParams(searchParams.toString());
+        q.delete(SRM_REGISTER_CATEGORY_QUERY);
+        const s = q.toString();
+        void router.replace(s ? `${pathname}?${s}` : pathname, { scroll: false });
+      }
+      return;
+    }
     if (!isSrmShell) return;
     const t = parseSrmTabParam(searchParams.get("tab"));
     if (t === srmTab) return;
     startTransition(() => setSrmTabState(t));
-  }, [isSrmShell, searchParams, srmTab]);
+  }, [isSrmShell, searchParams, srmTab, pathname, router]);
 
   function selectSrmTab(next: SrmSupplierTabId) {
     setSrmTabState(next);
