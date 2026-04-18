@@ -10,6 +10,7 @@ export default defineConfig({
       "src/lib/rfq/**/*.test.ts",
       "src/lib/tariff/**/*.test.ts",
       "src/app/api/tariffs/**/*.test.ts",
+      "src/app/api/rfq/**/*.test.ts",
     ],
     passWithNoTests: false,
   },

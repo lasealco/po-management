@@ -15,7 +15,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:invoice-audit": "vitest run src/lib/invoice-audit src/lib/booking-pricing-snapshot",
-    "test:tariff-rfq": "vitest run src/lib/rfq src/lib/tariff src/app/api/tariffs",
+    "test:tariff-rfq": "vitest run src/lib/rfq src/lib/tariff src/app/api/tariffs src/app/api/rfq",
     "test:watch": "vitest",
     "check:invoice-audit": "eslint \"src/lib/invoice-audit/**/*.{ts,tsx}\" \"src/lib/booking-pricing-snapshot/**/*.ts\" \"src/app/invoice-audit/**/*.{ts,tsx}\" \"src/app/api/invoice-audit/**/*.{ts,tsx}\" \"src/app/api/booking-pricing-snapshots/**/*.{ts,tsx}\" \"src/components/invoice-audit/**/*.{ts,tsx}\" \"src/components/pricing-snapshots/**/*.{ts,tsx}\" \"src/app/pricing-snapshots/**/*.{ts,tsx}\" && npm run test:invoice-audit",
     "check:tariff-rfq": "eslint \"src/lib/tariff/**/*.ts\" \"src/lib/rfq/**/*.ts\" \"src/components/tariffs/**/*.{ts,tsx}\" \"src/app/tariffs/**/*.{ts,tsx}\" \"src/app/api/tariffs/**/*.{ts,tsx}\" \"src/components/rfq/**/*.{ts,tsx}\" \"src/app/rfq/**/*.{ts,tsx}\" \"src/app/api/rfq/**/*.{ts,tsx}\" && npm run test:tariff-rfq",
