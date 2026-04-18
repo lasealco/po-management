@@ -149,7 +149,7 @@ export default async function RfqRequestDetailPage({ params }: { params: Promise
           least two quotes publish an all-in amount.
         </p>
         <div className="mt-4">
-          <RfqCompareTable rows={compareRows} />
+          <RfqCompareTable rows={compareRows} quoteRequestId={id} />
         </div>
       </section>
 

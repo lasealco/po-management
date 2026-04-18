@@ -52,7 +52,7 @@ export default async function RfqComparePage({ params }: { params: Promise<{ id:
           all-in totals only, grouped by currency — it does not normalize surcharges or validity windows.
         </p>
         <div className="mt-6">
-          <RfqCompareTable rows={rows} />
+          <RfqCompareTable rows={rows} quoteRequestId={id} />
         </div>
       </section>
     </main>

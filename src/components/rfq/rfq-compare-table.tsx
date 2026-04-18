@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import type { RfqCompareRow } from "@/lib/rfq/build-compare-rows";
 
 export type { RfqCompareRow };
@@ -8,7 +10,8 @@ function peerBenchmarkClass(tone: RfqCompareRow["peerBenchmarkTone"]): string {
   return "text-zinc-500";
 }
 
-export function RfqCompareTable({ rows }: { rows: RfqCompareRow[] }) {
+export function RfqCompareTable(props: { rows: RfqCompareRow[]; quoteRequestId?: string }) {
+  const { rows, quoteRequestId } = props;
   if (rows.length === 0) {
     return (
       <p className="rounded-xl border border-zinc-200 bg-white p-8 text-center text-sm text-zinc-500">
@@ -22,7 +25,14 @@ export function RfqCompareTable({ rows }: { rows: RfqCompareRow[] }) {
       <table className="min-w-full border-collapse text-left text-sm">
         <thead>
           <tr className="border-b border-zinc-200 bg-zinc-50 text-xs font-semibold uppercase tracking-wide text-zinc-600">
-            <th className="py-3 pl-4 pr-3">Recipient</th>
+            <th
+              className="py-3 pl-4 pr-3"
+              title={
+                quoteRequestId ? "Recipient names link to the saved quote response for traceability." : undefined
+              }
+            >
+              Recipient
+            </th>
             <th className="py-3 pr-3">Status</th>
             <th className="py-3 pr-3">Total</th>
             <th
@@ -40,7 +50,19 @@ export function RfqCompareTable({ rows }: { rows: RfqCompareRow[] }) {
         <tbody>
           {rows.map((r) => (
             <tr key={r.responseId} className="border-b border-zinc-100 align-top">
-              <td className="py-3 pl-4 pr-3 font-medium text-zinc-900">{r.recipient}</td>
+              <td className="py-3 pl-4 pr-3 font-medium text-zinc-900">
+                {quoteRequestId ? (
+                  <Link
+                    href={`/rfq/requests/${quoteRequestId}/responses/${r.responseId}/edit`}
+                    className="text-[var(--arscmp-primary)] hover:underline"
+                    title="Open quote response for this row"
+                  >
+                    {r.recipient}
+                  </Link>
+                ) : (
+                  r.recipient
+                )}
+              </td>
               <td className="py-3 pr-3 text-xs text-zinc-600">{r.status}</td>
               <td className="py-3 pr-3 font-mono text-xs">
                 {r.total} {r.currency}
