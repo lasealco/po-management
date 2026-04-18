@@ -64,11 +64,7 @@ export function PricingSnapshotBreakdownPanel(props: {
               <div>
                 {props.sourceType === "TARIFF_CONTRACT_VERSION" ? "Tariff contract version" : "RFQ quote response"}
               </div>
-              {props.sourceRecordId.trim() ? (
-                <RecordIdCopy id={props.sourceRecordId} copyButtonLabel="Copy source record id" />
-              ) : (
-                <span className="text-xs text-zinc-400">—</span>
-              )}
+              <RecordIdCopy id={props.sourceRecordId} copyButtonLabel="Copy source record id" />
             </dd>
           </div>
           <div>
@@ -82,9 +78,9 @@ export function PricingSnapshotBreakdownPanel(props: {
                   Open contract version
                 </Link>
               ) : null}
-              {props.sourceType === "QUOTE_RESPONSE" && quoteRequestId ? (
+              {props.sourceType === "QUOTE_RESPONSE" && quoteRequestId && props.sourceRecordId.trim() ? (
                 <Link
-                  href={`/rfq/requests/${quoteRequestId}/responses/${props.sourceRecordId}/edit`}
+                  href={`/rfq/requests/${quoteRequestId}/responses/${props.sourceRecordId.trim()}/edit`}
                   className="text-sm font-medium text-[var(--arscmp-primary)] hover:underline"
                 >
                   Open RFQ response

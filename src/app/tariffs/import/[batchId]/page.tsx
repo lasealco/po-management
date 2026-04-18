@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { RecordIdCopy } from "@/components/invoice-audit/record-id-copy";
 import { TariffImportBatchIdsBar } from "@/components/tariffs/tariff-import-batch-ids-bar";
 import { TariffImportParseBadge, TariffImportReviewBadge } from "@/components/tariffs/tariff-import-badges";
 import { TariffImportBatchWorkflowClient } from "@/components/tariffs/tariff-import-batch-workflow-client";
@@ -53,7 +54,14 @@ export default async function TariffImportBatchDetailPage({ params }: { params: 
           Import center
         </Link>
         <span className="mx-2 text-zinc-400">/</span>
-        <span className="text-zinc-900">{batch.uploadedFilename ?? batch.id}</span>
+        {batch.uploadedFilename ? (
+          <span className="text-zinc-900">{batch.uploadedFilename}</span>
+        ) : (
+          <span className="inline-flex flex-wrap items-center gap-2 text-zinc-900">
+            <span className="text-zinc-500">Untitled upload</span>
+            <RecordIdCopy id={batch.id} copyButtonLabel="Copy batch id" />
+          </span>
+        )}
       </div>
 
       <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">

@@ -14,11 +14,7 @@ export function PricingSnapshotTraceIds(props: { snapshotId: string; sourceRecor
       <div className="min-w-0 flex-1">
         <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Source record id</div>
         <div className="mt-1">
-          {props.sourceRecordId.trim() ? (
-            <RecordIdCopy id={props.sourceRecordId} copyButtonLabel="Copy source record id" />
-          ) : (
-            <span className="text-xs text-zinc-400">—</span>
-          )}
+          <RecordIdCopy id={props.sourceRecordId} copyButtonLabel="Copy source record id" />
         </div>
       </div>
     </div>

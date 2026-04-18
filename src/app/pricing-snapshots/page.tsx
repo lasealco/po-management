@@ -141,11 +141,7 @@ export default async function PricingSnapshotsListPage() {
                         {s.sourceType === "TARIFF_CONTRACT_VERSION" ? "Contract" : "RFQ"}
                       </span>
                       <div className="mt-1">
-                        {s.sourceRecordId.trim() ? (
-                          <RecordIdCopy id={s.sourceRecordId} copyButtonLabel="Copy source record id" />
-                        ) : (
-                          <span className="text-xs text-zinc-400">—</span>
-                        )}
+                        <RecordIdCopy id={s.sourceRecordId} copyButtonLabel="Copy source record id" />
                       </div>
                     </td>
                     <td className="py-3 pr-4 align-top">

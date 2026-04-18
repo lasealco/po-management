@@ -46,14 +46,12 @@ export function InvoiceMatchResultPanel(props: {
             <RecordIdCopy id={props.snapshotId} copyButtonLabel="Copy snapshot id" />
           </div>
         </div>
-        {sourceTrim ? (
-          <div className="min-w-0">
-            <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Source record id</div>
-            <div className="mt-1">
-              <RecordIdCopy id={sourceTrim} copyButtonLabel="Copy source record id" />
-            </div>
+        <div className="min-w-0">
+          <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Source record id</div>
+          <div className="mt-1">
+            <RecordIdCopy id={props.sourceRecordId} copyButtonLabel="Copy source record id" />
           </div>
-        ) : null}
+        </div>
       </div>
       <p className="mt-2 text-sm text-zinc-600">
         Lines are matched to the frozen pricing snapshot
