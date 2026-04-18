@@ -39,6 +39,10 @@ yarn-error.log*
 # Local-only Neon URL notes (see docs/database-neon.md)
 /docs/neon-credentials.local.md
 
+# Local Cursor session notes (keep branch clean; not product docs)
+/docs/cursor_session_rules_tariff.md
+/docs/cursor_tariff_prompt_sequence.md
+
 # vercel
 .vercel
 

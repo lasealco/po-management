@@ -7,6 +7,11 @@
  * - At least one booking_pricing_snapshots row for demo-company (freeze from contract/RFQ UI first)
  *
  * Re-run safe: deletes prior seed intake by fixed external invoice no, then recreates PARSED intake + lines.
+ *
+ * Demo flow (manual, after this script):
+ *   1) Open the printed /invoice-audit/{id} URL as a demo user with org.invoice_audit edit.
+ *   2) Run audit vs snapshot — expect line-level GREEN/WARN/FAIL from your snapshot’s breakdown.
+ *   3) On the same page: Ops notes (Step 1) → Finance review (Step 2) → Accounting handoff (Step 3).
  */
 import { Prisma, PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
@@ -157,8 +162,12 @@ async function main() {
   console.log(
     `[db:seed:invoice-audit-demo] Created intake ${intake.id} (${DEMO_EXTERNAL_INVOICE_NO}) → snapshot ${snapshot.id}`,
   );
+  console.log(`[db:seed:invoice-audit-demo] Demo path:`);
+  console.log(`  (1) Open /invoice-audit/${intake.id} with a demo user that has org.invoice_audit → edit.`);
+  console.log(`  (2) Click "Run audit vs snapshot" (intake is PARSED; lines mirror the new-intake form demo).`);
+  console.log(`  (3) Complete closeout on the same page: ops notes → finance review → accounting handoff.`);
   console.log(
-    `[db:seed:invoice-audit-demo] Open /invoice-audit/${intake.id} (log in as demo user with org.invoice_audit edit) and run audit.`,
+    `[db:seed:invoice-audit-demo] Tip: snapshot "${snapshot.sourceSummary ?? snapshot.id}" — mismatch amounts on lines are OK for testing WARN/FAIL.`,
   );
 }
 
