@@ -7,6 +7,8 @@ import {
   viewerHas,
 } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
+import { ensureSupplierOnboardingTasks } from "@/lib/srm/ensure-supplier-onboarding-tasks";
+import { assertOnboardingCompleteForApprovedActivation } from "@/lib/srm/supplier-onboarding-activation-guard";
 import { parseSupplierQualificationFields } from "@/lib/srm/supplier-qualification-patch";
 import { optionalStringField } from "@/lib/supplier-patch";
 import { prisma } from "@/lib/prisma";
@@ -296,6 +298,36 @@ export async function PATCH(
       { error: "No valid fields to update." },
       { status: 400 },
     );
+  }
+
+  if (canApprove && (data.isActive !== undefined || data.approvalStatus !== undefined)) {
+    const current = await prisma.supplier.findFirst({
+      where: { id, tenantId: tenant.id },
+      select: { isActive: true, approvalStatus: true },
+    });
+    if (current) {
+      const nextActive =
+        data.isActive !== undefined ? Boolean(data.isActive) : current.isActive;
+      const nextApproval: SupplierApprovalStatus =
+        data.approvalStatus !== undefined
+          ? (data.approvalStatus as SupplierApprovalStatus)
+          : current.approvalStatus;
+      const wasFullyActivated =
+        current.isActive && current.approvalStatus === SupplierApprovalStatus.approved;
+      const willBeFullyActivated =
+        nextActive && nextApproval === SupplierApprovalStatus.approved;
+      if (willBeFullyActivated && !wasFullyActivated) {
+        await ensureSupplierOnboardingTasks(prisma, tenant.id, id);
+        const tasks = await prisma.supplierOnboardingTask.findMany({
+          where: { supplierId: id, tenantId: tenant.id },
+          select: { status: true },
+        });
+        const gate = assertOnboardingCompleteForApprovedActivation(tasks);
+        if (!gate.ok) {
+          return NextResponse.json({ error: gate.message }, { status: 409 });
+        }
+      }
+    }
   }
 
   try {

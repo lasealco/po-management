@@ -17,7 +17,7 @@ function isStatus(v: string): v is SupplierOnboardingTaskStatus {
 
 /**
  * Validates JSON body for PATCH `/api/suppliers/[id]/onboarding-tasks/[taskId]`.
- * Caller applies `completedAt` when `status === "done"`.
+ * Caller applies `completedAt` when status becomes `done` or `waived`, and clears it when returning to `pending`.
  */
 export function parseOnboardingTaskPatchBody(
   o: Record<string, unknown>,

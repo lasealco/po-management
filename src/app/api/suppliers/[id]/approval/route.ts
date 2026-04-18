@@ -4,6 +4,8 @@ import { SupplierApprovalStatus } from "@prisma/client";
 import { requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
+import { ensureSupplierOnboardingTasks } from "@/lib/srm/ensure-supplier-onboarding-tasks";
+import { assertOnboardingCompleteForApprovedActivation } from "@/lib/srm/supplier-onboarding-activation-guard";
 
 export async function POST(
   request: Request,
@@ -41,6 +43,18 @@ export async function POST(
   });
   if (!existing) {
     return NextResponse.json({ error: "Not found." }, { status: 404 });
+  }
+
+  if (decision === "approve") {
+    await ensureSupplierOnboardingTasks(prisma, tenant.id, id);
+    const tasks = await prisma.supplierOnboardingTask.findMany({
+      where: { supplierId: id, tenantId: tenant.id },
+      select: { status: true },
+    });
+    const gate = assertOnboardingCompleteForApprovedActivation(tasks);
+    if (!gate.ok) {
+      return NextResponse.json({ error: gate.message }, { status: 409 });
+    }
   }
 
   const supplier = await prisma.supplier.update({

@@ -463,6 +463,7 @@ async function seed() {
       referenceUrl: "https://example.com/demo/co-placeholder.pdf",
       notes: "Seed row — replace URL with a real controlled link in your environment.",
       documentDate: now,
+      expiresAt: new Date(now.getTime() + 365 * 86400000),
     },
   });
 
@@ -487,6 +488,19 @@ async function seed() {
       effectiveTo: new Date(now.getFullYear(), 11, 31),
       notes: "Seed contract row for SRM Contracts tab.",
       referenceUrl: "https://example.com/demo/msa-placeholder.pdf",
+    },
+  });
+
+  await prisma.supplierSrmAlert.deleteMany({ where: { supplierId: supplier.id } });
+  await prisma.supplierSrmAlert.create({
+    data: {
+      tenantId: tenant.id,
+      supplierId: supplier.id,
+      title: "Banking details refresh due",
+      message:
+        "Demo seed: confirm remittance instructions before next payment run; treat as operational follow-up (not a system notification).",
+      severity: "warning",
+      status: "open",
     },
   });
 

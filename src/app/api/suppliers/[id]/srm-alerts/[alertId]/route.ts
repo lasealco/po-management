@@ -1,24 +1,25 @@
 import { NextResponse } from "next/server";
+import { SupplierSrmAlertStatus } from "@prisma/client";
 import { requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
-import { parseSupplierDocumentPatchBody } from "@/lib/srm/supplier-document-parse";
 import { prisma } from "@/lib/prisma";
+import { parseSrmAlertPatchBody } from "@/lib/srm/supplier-srm-alert-parse";
 
 export async function PATCH(
   request: Request,
-  context: { params: Promise<{ id: string; documentId: string }> },
+  context: { params: Promise<{ id: string; alertId: string }> },
 ) {
   const gate = await requireApiGrant("org.suppliers", "edit");
   if (gate) return gate;
 
-  const { id: supplierId, documentId } = await context.params;
+  const { id: supplierId, alertId } = await context.params;
   const tenant = await getDemoTenant();
   if (!tenant) {
     return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
   }
 
-  const existing = await prisma.supplierDocument.findFirst({
-    where: { id: documentId, supplierId, tenantId: tenant.id },
+  const existing = await prisma.supplierSrmAlert.findFirst({
+    where: { id: alertId, supplierId, tenantId: tenant.id },
   });
   if (!existing) {
     return NextResponse.json({ error: "Not found." }, { status: 404 });
@@ -34,26 +35,34 @@ export async function PATCH(
     return NextResponse.json({ error: "Expected object." }, { status: 400 });
   }
 
-  const parsed = parseSupplierDocumentPatchBody(body as Record<string, unknown>);
+  const parsed = parseSrmAlertPatchBody(body as Record<string, unknown>);
   if (!parsed.ok) {
     return NextResponse.json({ error: parsed.message }, { status: 400 });
   }
 
-  const row = await prisma.supplierDocument.update({
-    where: { id: documentId },
-    data: parsed.data,
+  const data = { ...parsed.data };
+  const nextStatus = parsed.data.status ?? existing.status;
+  if (nextStatus === SupplierSrmAlertStatus.resolved) {
+    if (existing.resolvedAt === null && data.resolvedAt === undefined) {
+      data.resolvedAt = new Date();
+    }
+  } else if (parsed.data.status !== undefined) {
+    data.resolvedAt = null;
+  }
+
+  const row = await prisma.supplierSrmAlert.update({
+    where: { id: alertId },
+    data,
   });
 
   return NextResponse.json({
-    document: {
+    alert: {
       id: row.id,
       title: row.title,
-      category: row.category,
-      referenceUrl: row.referenceUrl,
-      notes: row.notes,
-      documentDate: row.documentDate?.toISOString() ?? null,
-      expiresAt: row.expiresAt?.toISOString() ?? null,
-      archivedAt: row.archivedAt?.toISOString() ?? null,
+      message: row.message,
+      severity: row.severity,
+      status: row.status,
+      resolvedAt: row.resolvedAt?.toISOString() ?? null,
       createdAt: row.createdAt.toISOString(),
     },
   });
@@ -61,25 +70,25 @@ export async function PATCH(
 
 export async function DELETE(
   _request: Request,
-  context: { params: Promise<{ id: string; documentId: string }> },
+  context: { params: Promise<{ id: string; alertId: string }> },
 ) {
   const gate = await requireApiGrant("org.suppliers", "edit");
   if (gate) return gate;
 
-  const { id: supplierId, documentId } = await context.params;
+  const { id: supplierId, alertId } = await context.params;
   const tenant = await getDemoTenant();
   if (!tenant) {
     return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
   }
 
-  const existing = await prisma.supplierDocument.findFirst({
-    where: { id: documentId, supplierId, tenantId: tenant.id },
+  const existing = await prisma.supplierSrmAlert.findFirst({
+    where: { id: alertId, supplierId, tenantId: tenant.id },
     select: { id: true },
   });
   if (!existing) {
     return NextResponse.json({ error: "Not found." }, { status: 404 });
   }
 
-  await prisma.supplierDocument.delete({ where: { id: documentId } });
+  await prisma.supplierSrmAlert.delete({ where: { id: alertId } });
   return NextResponse.json({ ok: true });
 }

@@ -81,7 +81,8 @@ export function SupplierOnboardingSection({
               <p className="mt-0.5 font-mono text-[10px] uppercase text-zinc-400">{row.taskKey}</p>
               {row.completedAt ? (
                 <p className="mt-1 text-[11px] text-zinc-500">
-                  Completed {new Date(row.completedAt).toLocaleString()}
+                  {row.status === "waived" ? "Waived" : "Completed"}{" "}
+                  {new Date(row.completedAt).toLocaleString()}
                 </p>
               ) : null}
             </div>

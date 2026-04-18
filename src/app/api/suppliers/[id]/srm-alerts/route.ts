@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
-import { parseSupplierDocumentCreateBody } from "@/lib/srm/supplier-document-parse";
 import { prisma } from "@/lib/prisma";
+import { parseSrmAlertCreateBody } from "@/lib/srm/supplier-srm-alert-parse";
 
 export async function POST(
   request: Request,
@@ -35,34 +35,29 @@ export async function POST(
     return NextResponse.json({ error: "Expected object." }, { status: 400 });
   }
 
-  const parsed = parseSupplierDocumentCreateBody(body as Record<string, unknown>);
+  const parsed = parseSrmAlertCreateBody(body as Record<string, unknown>);
   if (!parsed.ok) {
     return NextResponse.json({ error: parsed.message }, { status: 400 });
   }
 
-  const row = await prisma.supplierDocument.create({
+  const row = await prisma.supplierSrmAlert.create({
     data: {
       tenantId: tenant.id,
       supplierId,
       title: parsed.data.title,
-      category: parsed.data.category,
-      referenceUrl: parsed.data.referenceUrl,
-      notes: parsed.data.notes,
-      documentDate: parsed.data.documentDate,
-      expiresAt: parsed.data.expiresAt,
+      message: parsed.data.message,
+      severity: parsed.data.severity,
     },
   });
 
   return NextResponse.json({
-    document: {
+    alert: {
       id: row.id,
       title: row.title,
-      category: row.category,
-      referenceUrl: row.referenceUrl,
-      notes: row.notes,
-      documentDate: row.documentDate?.toISOString() ?? null,
-      expiresAt: row.expiresAt?.toISOString() ?? null,
-      archivedAt: row.archivedAt?.toISOString() ?? null,
+      message: row.message,
+      severity: row.severity,
+      status: row.status,
+      resolvedAt: row.resolvedAt?.toISOString() ?? null,
       createdAt: row.createdAt.toISOString(),
     },
   });

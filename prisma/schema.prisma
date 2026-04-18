@@ -29,6 +29,7 @@ model Tenant {
   supplierDocuments           SupplierDocument[]
   supplierRelationshipNotes   SupplierRelationshipNote[]
   supplierContractRecords     SupplierContractRecord[]
+  supplierSrmAlerts           SupplierSrmAlert[]
   orders            PurchaseOrder[]
   salesOrders       SalesOrder[]
   warehouses        Warehouse[]
@@ -272,6 +273,18 @@ enum SupplierContractRecordStatus {
   terminated
 }
 
+/// SRM supplier workspace alert (manual log — not automated tender/tariff/sourcing).
+enum SupplierSrmAlertSeverity {
+  info
+  warning
+  critical
+}
+
+enum SupplierSrmAlertStatus {
+  open
+  resolved
+}
+
 model Supplier {
   id        String   @id @default(cuid())
   tenantId  String
@@ -329,6 +342,7 @@ model Supplier {
   documents             SupplierDocument[]
   relationshipNotes     SupplierRelationshipNote[]
   contractRecords         SupplierContractRecord[]
+  srmAlerts               SupplierSrmAlert[]
   productSuppliers ProductSupplier[]
   shipmentBookings ShipmentBooking[]
   shipmentsCarrier Shipment[] @relation("ShipmentCarrierSupplier")
@@ -452,6 +466,10 @@ model SupplierDocument {
   referenceUrl   String?                  @db.VarChar(2000)
   notes          String?                  @db.Text
   documentDate   DateTime?
+  /// Compliance: when the registered evidence is due to lapse (renewal / re-upload reminder).
+  expiresAt      DateTime?
+  /// When set, row is retired from active evidence (readiness counts ignore archived rows).
+  archivedAt     DateTime?
   createdAt      DateTime                 @default(now())
   updatedAt      DateTime                 @updatedAt
 
@@ -459,6 +477,8 @@ model SupplierDocument {
   supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, supplierId])
+  @@index([tenantId, supplierId, expiresAt])
+  @@index([tenantId, supplierId, archivedAt])
 }
 
 /// SRM: chronological relationship / account notes (visits, escalations, exec touchpoints).
@@ -490,6 +510,25 @@ model SupplierContractRecord {
   referenceUrl       String?                       @db.VarChar(2000)
   createdAt          DateTime                      @default(now())
   updatedAt          DateTime                      @updatedAt
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, supplierId])
+}
+
+/// Buyer-logged alert on supplier 360 (follow-ups, data gaps, escalations).
+model SupplierSrmAlert {
+  id          String                 @id @default(cuid())
+  tenantId    String
+  supplierId  String
+  title       String                 @db.VarChar(256)
+  message     String                 @db.Text
+  severity    SupplierSrmAlertSeverity @default(warning)
+  status      SupplierSrmAlertStatus   @default(open)
+  resolvedAt  DateTime?
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
 
   tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)

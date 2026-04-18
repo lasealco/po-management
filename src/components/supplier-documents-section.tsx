@@ -4,6 +4,8 @@ import type { SupplierDocumentCategory } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { supplierDocumentExpiryBadge } from "@/lib/srm/supplier-document-expiry";
+
 export type SupplierDocumentRow = {
   id: string;
   title: string;
@@ -11,8 +13,17 @@ export type SupplierDocumentRow = {
   referenceUrl: string | null;
   notes: string | null;
   documentDate: string | null;
+  expiresAt: string | null;
+  archivedAt: string | null;
   createdAt: string;
 };
+
+function toDateInputValue(iso: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toISOString().slice(0, 10);
+}
 
 const CATEGORIES: { value: SupplierDocumentCategory; label: string }[] = [
   { value: "insurance", label: "Insurance" },
@@ -42,6 +53,7 @@ export function SupplierDocumentsSection({
   const [referenceUrl, setReferenceUrl] = useState("");
   const [notes, setNotes] = useState("");
   const [documentDate, setDocumentDate] = useState("");
+  const [expiresAt, setExpiresAt] = useState("");
 
   async function addDoc(e: React.FormEvent) {
     e.preventDefault();
@@ -58,6 +70,7 @@ export function SupplierDocumentsSection({
     };
     if (referenceUrl.trim()) body.referenceUrl = referenceUrl.trim();
     if (documentDate.trim()) body.documentDate = new Date(documentDate).toISOString();
+    if (expiresAt.trim()) body.expiresAt = new Date(expiresAt).toISOString();
     const res = await fetch(`/api/suppliers/${supplierId}/documents`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -74,6 +87,7 @@ export function SupplierDocumentsSection({
     setReferenceUrl("");
     setNotes("");
     setDocumentDate("");
+    setExpiresAt("");
     setBusy(false);
     router.refresh();
   }
@@ -119,11 +133,15 @@ export function SupplierDocumentsSection({
     "mt-1 w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm text-zinc-900 disabled:opacity-50";
 
   return (
-    <section className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
+    <section
+      id="supplier-documents-section"
+      className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm"
+    >
       <h2 className="text-sm font-semibold text-zinc-900">Documents</h2>
       <p className="mt-1 text-xs text-zinc-500">
-        Register evidence and links (e.g. to your DMS or secure file share). This is a metadata index
-        only — not tender, tariff, or sourcing-event tooling.
+        Register evidence and links (e.g. to your DMS or secure file share). Archive retires a row from
+        active compliance readiness (Compliance tab) without deleting history. Optional expiry highlights
+        overdue or soon-to-lapse rows.
       </p>
       {error ? (
         <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -134,17 +152,55 @@ export function SupplierDocumentsSection({
         {rows.length === 0 ? (
           <li className="px-4 py-6 text-center text-sm text-zinc-500">No documents registered.</li>
         ) : (
-          rows.map((r) => (
-            <li key={r.id} className="px-4 py-3">
+          rows.map((r) => {
+            const isArchived = Boolean(r.archivedAt);
+            const expiryBadge = isArchived ? null : supplierDocumentExpiryBadge(r.expiresAt);
+            return (
+            <li
+              key={r.id}
+              className={`px-4 py-3 ${isArchived ? "bg-zinc-50/80 text-zinc-500" : ""}`}
+            >
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-zinc-900">{r.title}</p>
+                  <p className={`text-sm font-medium ${isArchived ? "text-zinc-600" : "text-zinc-900"}`}>
+                    {r.title}
+                    {isArchived ? (
+                      <span className="ml-2 rounded bg-zinc-200 px-2 py-0.5 text-[10px] font-medium uppercase text-zinc-700">
+                        Archived
+                      </span>
+                    ) : null}
+                  </p>
                   <p className="text-[11px] text-zinc-500">
                     {CATEGORIES.find((c) => c.value === r.category)?.label ?? r.category}
                     {r.documentDate ? ` · Dated ${new Date(r.documentDate).toLocaleDateString()}` : ""}
+                    {r.expiresAt ? (
+                      <>
+                        {" · Expires "}
+                        {new Date(r.expiresAt).toLocaleDateString()}
+                      </>
+                    ) : null}
                     {" · Added "}
                     {new Date(r.createdAt).toLocaleDateString()}
+                    {isArchived && r.archivedAt ? (
+                      <>
+                        {" · Archived "}
+                        {new Date(r.archivedAt).toLocaleDateString()}
+                      </>
+                    ) : null}
                   </p>
+                  {expiryBadge ? (
+                    <p className="mt-1">
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                          expiryBadge === "expired"
+                            ? "bg-rose-100 text-rose-800"
+                            : "bg-amber-100 text-amber-900"
+                        }`}
+                      >
+                        {expiryBadge === "expired" ? "Expired" : "Expires within 30 days"}
+                      </span>
+                    </p>
+                  ) : null}
                   {r.referenceUrl ? (
                     <a
                       href={r.referenceUrl}
@@ -160,20 +216,52 @@ export function SupplierDocumentsSection({
                 <div className="flex shrink-0 flex-col gap-2 sm:w-48">
                   {canEdit ? (
                     <>
-                      <select
-                        value={r.category}
+                      {!isArchived ? (
+                        <>
+                          <label className="text-[11px] font-medium text-zinc-600">
+                            Expiry (optional)
+                            <input
+                              type="date"
+                              key={`exp-${r.id}-${r.expiresAt ?? "none"}`}
+                              defaultValue={toDateInputValue(r.expiresAt)}
+                              disabled={busyId === r.id}
+                              onBlur={(e) => {
+                                const v = e.target.value.trim();
+                                void patchDoc(r.id, {
+                                  expiresAt: v ? new Date(v).toISOString() : null,
+                                });
+                              }}
+                              className={f}
+                            />
+                          </label>
+                          <select
+                            value={r.category}
+                            disabled={busyId === r.id}
+                            onChange={(e) => {
+                              void patchDoc(r.id, {
+                                category: e.target.value as SupplierDocumentCategory,
+                              });
+                            }}
+                            className={f}
+                          >
+                            {CATEGORIES.map((c) => (
+                              <option key={c.value} value={c.value}>
+                                {c.label}
+                              </option>
+                            ))}
+                          </select>
+                        </>
+                      ) : null}
+                      <button
+                        type="button"
                         disabled={busyId === r.id}
-                        onChange={(e) => {
-                          void patchDoc(r.id, { category: e.target.value as SupplierDocumentCategory });
-                        }}
-                        className={f}
+                        onClick={() =>
+                          void patchDoc(r.id, { archived: !isArchived })
+                        }
+                        className="text-left text-xs font-medium text-zinc-700 underline disabled:opacity-50"
                       >
-                        {CATEGORIES.map((c) => (
-                          <option key={c.value} value={c.value}>
-                            {c.label}
-                          </option>
-                        ))}
-                      </select>
+                        {isArchived ? "Restore to active" : "Archive"}
+                      </button>
                       <button
                         type="button"
                         disabled={busyId === r.id}
@@ -187,7 +275,8 @@ export function SupplierDocumentsSection({
                 </div>
               </div>
             </li>
-          ))
+            );
+          })
         )}
       </ul>
       {canEdit ? (
@@ -223,6 +312,10 @@ export function SupplierDocumentsSection({
           <label className="flex flex-col text-sm">
             <span>Document date (optional)</span>
             <input type="date" value={documentDate} onChange={(e) => setDocumentDate(e.target.value)} className={f} />
+          </label>
+          <label className="flex flex-col text-sm">
+            <span>Expiry date (optional)</span>
+            <input type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} className={f} />
           </label>
           <label className="flex flex-col text-sm">
             <span>Notes</span>

@@ -12,6 +12,23 @@ function isCategory(v: string): v is SupplierDocumentCategory {
   return CATEGORIES.includes(v as SupplierDocumentCategory);
 }
 
+function parseOptionalIsoDate(
+  value: unknown,
+  fieldLabel: string,
+): { ok: true; date: Date | null } | { ok: false; message: string } {
+  if (value === null || value === undefined || value === "") {
+    return { ok: true, date: null };
+  }
+  if (typeof value !== "string") {
+    return { ok: false, message: `Invalid ${fieldLabel}.` };
+  }
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) {
+    return { ok: false, message: `Invalid ${fieldLabel} (expected ISO date).` };
+  }
+  return { ok: true, date: d };
+}
+
 function normalizeReferenceUrl(raw: string | null | undefined): string | null | undefined {
   if (raw === undefined) return undefined;
   if (raw === null) return null;
@@ -31,6 +48,7 @@ export type SupplierDocumentCreateData = {
   referenceUrl: string | null;
   notes: string | null;
   documentDate: Date | null;
+  expiresAt: Date | null;
 };
 
 export type ParseSupplierDocumentCreateResult =
@@ -83,19 +101,17 @@ export function parseSupplierDocumentCreateBody(
   }
   let documentDate: Date | null = null;
   if ("documentDate" in o) {
-    if (o.documentDate === null || o.documentDate === undefined || o.documentDate === "") {
-      documentDate = null;
-    } else if (typeof o.documentDate === "string") {
-      const d = new Date(o.documentDate);
-      if (Number.isNaN(d.getTime())) {
-        return { ok: false, message: "Invalid documentDate (expected ISO date)." };
-      }
-      documentDate = d;
-    } else {
-      return { ok: false, message: "Invalid documentDate." };
-    }
+    const p = parseOptionalIsoDate(o.documentDate, "documentDate");
+    if (!p.ok) return p;
+    documentDate = p.date;
   }
-  return { ok: true, data: { title, category, referenceUrl, notes, documentDate } };
+  let expiresAt: Date | null = null;
+  if ("expiresAt" in o) {
+    const p = parseOptionalIsoDate(o.expiresAt, "expiresAt");
+    if (!p.ok) return p;
+    expiresAt = p.date;
+  }
+  return { ok: true, data: { title, category, referenceUrl, notes, documentDate, expiresAt } };
 }
 
 export type SupplierDocumentPatchData = {
@@ -104,6 +120,9 @@ export type SupplierDocumentPatchData = {
   referenceUrl?: string | null;
   notes?: string | null;
   documentDate?: Date | null;
+  expiresAt?: Date | null;
+  /** Set via API body `{ archived: true }` (now) or `{ archived: false }` (clear). */
+  archivedAt?: Date | null;
 };
 
 export type ParseSupplierDocumentPatchResult =
@@ -155,17 +174,20 @@ export function parseSupplierDocumentPatchBody(
     }
   }
   if ("documentDate" in o) {
-    if (o.documentDate === null || o.documentDate === "") {
-      data.documentDate = null;
-    } else if (typeof o.documentDate === "string") {
-      const d = new Date(o.documentDate);
-      if (Number.isNaN(d.getTime())) {
-        return { ok: false, message: "Invalid documentDate." };
-      }
-      data.documentDate = d;
-    } else {
-      return { ok: false, message: "Invalid documentDate." };
+    const p = parseOptionalIsoDate(o.documentDate, "documentDate");
+    if (!p.ok) return p;
+    data.documentDate = p.date;
+  }
+  if ("expiresAt" in o) {
+    const p = parseOptionalIsoDate(o.expiresAt, "expiresAt");
+    if (!p.ok) return p;
+    data.expiresAt = p.date;
+  }
+  if ("archived" in o) {
+    if (typeof o.archived !== "boolean") {
+      return { ok: false, message: "archived must be a boolean." };
     }
+    data.archivedAt = o.archived ? new Date() : null;
   }
   if (Object.keys(data).length === 0) {
     return { ok: false, message: "No fields to update." };

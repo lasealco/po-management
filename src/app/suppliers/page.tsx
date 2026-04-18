@@ -81,6 +81,7 @@ export default async function SuppliersPage({
     include: {
       _count: {
         select: {
+          contacts: true,
           offices: true,
           productSuppliers: true,
           orders: true,
@@ -159,6 +160,7 @@ export default async function SuppliersPage({
                   <th className="px-4 py-3">Contact</th>
                   <th className="px-4 py-3">Terms</th>
                   <th className="px-4 py-3 text-center">Offices</th>
+                  <th className="px-4 py-3 text-center">Contacts</th>
                   {kind === "product" ? (
                     <th className="px-4 py-3 text-center">Products</th>
                   ) : (
@@ -173,7 +175,7 @@ export default async function SuppliersPage({
               <tbody className="divide-y divide-zinc-100 text-zinc-900">
                 {suppliers.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="px-4 py-8 text-center text-sm text-zinc-600">
+                    <td colSpan={11} className="px-4 py-8 text-center text-sm text-zinc-600">
                       {q ? "No suppliers match this search." : "No suppliers in this category yet."}
                     </td>
                   </tr>
@@ -195,6 +197,9 @@ export default async function SuppliersPage({
                     </td>
                     <td className="px-4 py-3 text-center tabular-nums">
                       {s._count.offices}
+                    </td>
+                    <td className="px-4 py-3 text-center tabular-nums">
+                      {s._count.contacts}
                     </td>
                     {kind === "product" ? (
                       <td className="px-4 py-3 text-center tabular-nums">

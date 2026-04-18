@@ -85,7 +85,7 @@ export default async function SrmPage({
       isActive: true,
       srmCategory: true,
       approvalStatus: true,
-      _count: { select: { orders: true } },
+      _count: { select: { orders: true, contacts: true, offices: true } },
     },
   });
 
@@ -97,6 +97,8 @@ export default async function SrmPage({
     phone: s.phone,
     isActive: s.isActive,
     orderCount: s._count.orders,
+    contactCount: s._count.contacts,
+    officeCount: s._count.offices,
     srmCategory: s.srmCategory === "logistics" ? "logistics" as const : "product" as const,
     approvalStatus:
       s.approvalStatus === "pending_approval"
@@ -172,7 +174,9 @@ export default async function SrmPage({
                 <tr>
                   <th className="px-4 py-3">Name</th>
                   <th className="px-4 py-3">Code</th>
-                  <th className="px-4 py-3">Contact</th>
+                  <th className="px-4 py-3">Company</th>
+                  <th className="px-4 py-3 text-center">People</th>
+                  <th className="px-4 py-3 text-center">Sites</th>
                   <th className="px-4 py-3">Approval</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3 text-center">Orders</th>
@@ -182,7 +186,7 @@ export default async function SrmPage({
               <tbody className="divide-y divide-zinc-100 text-zinc-900">
                 {rows.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-sm text-zinc-600">
+                    <td colSpan={9} className="px-4 py-8 text-center text-sm text-zinc-600">
                       {q ? "No suppliers match this search." : "No suppliers in this category yet."}
                     </td>
                   </tr>
@@ -193,6 +197,12 @@ export default async function SrmPage({
                     <td className="px-4 py-3 font-mono text-xs text-zinc-600">{s.code ?? "—"}</td>
                     <td className="px-4 py-3 text-zinc-600">
                       {[s.email, s.phone].filter(Boolean).join(" · ") || "—"}
+                    </td>
+                    <td className="px-4 py-3 text-center tabular-nums text-zinc-600">
+                      {s.contactCount}
+                    </td>
+                    <td className="px-4 py-3 text-center tabular-nums text-zinc-600">
+                      {s.officeCount}
                     </td>
                     <td className="px-4 py-3">
                       <span

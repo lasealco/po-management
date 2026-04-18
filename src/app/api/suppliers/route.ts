@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { SrmSupplierCategory, SupplierApprovalStatus } from "@prisma/client";
+import {
+  SrmSupplierCategory,
+  SupplierApprovalStatus,
+  SupplierQualificationStatus,
+} from "@prisma/client";
 
 import {
   getActorUserId,
@@ -8,6 +12,7 @@ import {
   viewerHas,
 } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
+import { ensureSupplierOnboardingTasks } from "@/lib/srm/ensure-supplier-onboarding-tasks";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
@@ -100,6 +105,10 @@ export async function POST(request: Request) {
     typeof o.defaultIncoterm === "string" && o.defaultIncoterm.trim()
       ? o.defaultIncoterm.trim().toUpperCase()
       : null;
+  const internalNotes =
+    typeof o.internalNotes === "string" && o.internalNotes.trim()
+      ? o.internalNotes.trim().slice(0, 8000)
+      : null;
 
   const srmCategoryRaw =
     typeof o.srmCategory === "string" ? o.srmCategory.trim().toLowerCase() : "";
@@ -132,6 +141,7 @@ export async function POST(request: Request) {
         paymentTermsLabel,
         paymentTermsDays,
         defaultIncoterm,
+        internalNotes,
         srmCategory,
         ...(canApprove
           ? {
@@ -141,6 +151,7 @@ export async function POST(request: Request) {
           : {
               approvalStatus: SupplierApprovalStatus.pending_approval,
               isActive: false,
+              qualificationStatus: SupplierQualificationStatus.in_progress,
             }),
       },
       select: {
@@ -154,6 +165,7 @@ export async function POST(request: Request) {
         approvalStatus: true,
       },
     });
+    await ensureSupplierOnboardingTasks(prisma, tenant.id, supplier.id);
     return NextResponse.json({ supplier });
   } catch (e: unknown) {
     const codeErr =

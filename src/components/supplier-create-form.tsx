@@ -26,6 +26,7 @@ export function SupplierCreateForm({
   const [paymentTermsLabel, setPaymentTermsLabel] = useState("");
   const [paymentTermsDays, setPaymentTermsDays] = useState("");
   const [defaultIncoterm, setDefaultIncoterm] = useState("");
+  const [intakeNotes, setIntakeNotes] = useState("");
   const [srmCategory, setSrmCategory] = useState<"product" | "logistics">(
     defaultSrmCategory,
   );
@@ -61,14 +62,16 @@ export function SupplierCreateForm({
           paymentTermsDays.trim() === "" ? null : Number.parseInt(paymentTermsDays.trim(), 10),
         defaultIncoterm: defaultIncoterm.trim().toUpperCase() || null,
         srmCategory,
+        internalNotes: intakeNotes.trim() || null,
       }),
     });
-    const payload = (await res.json()) as { error?: string };
+    const payload = (await res.json()) as { error?: string; supplier?: { id: string } };
     if (!res.ok) {
       setBusy(false);
       setError(payload.error ?? "Failed.");
       return;
     }
+    const newId = payload.supplier?.id;
     setName("");
     setCode("");
     setEmail("");
@@ -84,8 +87,14 @@ export function SupplierCreateForm({
     setPaymentTermsLabel("");
     setPaymentTermsDays("");
     setDefaultIncoterm("");
+    setIntakeNotes("");
     setBusy(false);
-    router.refresh();
+    if (newId) {
+      router.push(`/srm/${newId}?tab=onboarding`);
+      router.refresh();
+    } else {
+      router.refresh();
+    }
   }
 
   const f =
@@ -99,8 +108,8 @@ export function SupplierCreateForm({
       <WorkflowHeader
         eyebrow="Create supplier"
         title="New supplier"
-        description="Create a full partner profile in SRM. You can still enrich contacts and offices on the detail page."
-        steps={["Step 1: Partner type", "Step 2: Company and address", "Step 3: Commercial defaults"]}
+        description="Intake captures master data; after save you land on the onboarding checklist. Contacts and offices can be added on the profile overview."
+        steps={["Step 1: Partner type", "Step 2: Company and address", "Step 3: Commercial defaults & intake notes"]}
         className="border-0 bg-transparent p-0 shadow-none"
       />
       {error ? (
@@ -198,6 +207,16 @@ export function SupplierCreateForm({
         <label className="flex flex-col text-sm">
           <span className="font-medium text-zinc-700">Default Incoterm</span>
           <input value={defaultIncoterm} onChange={(e) => setDefaultIncoterm(e.target.value)} className={f} maxLength={8} />
+        </label>
+        <label className="flex flex-col text-sm sm:col-span-2">
+          <span className="font-medium text-zinc-700">Intake notes (optional)</span>
+          <textarea
+            value={intakeNotes}
+            onChange={(e) => setIntakeNotes(e.target.value)}
+            rows={3}
+            placeholder="Why we are onboarding this partner, risk flags, or next steps for the buyer team."
+            className={f}
+          />
         </label>
       </div>
       <ActionButton

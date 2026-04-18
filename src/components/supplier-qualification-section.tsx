@@ -2,7 +2,7 @@
 
 import type { SupplierQualificationStatus } from "@prisma/client";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const STATUS_OPTIONS: { value: SupplierQualificationStatus; label: string }[] = [
   { value: "not_started", label: "Not started" },
@@ -36,6 +36,11 @@ export function SupplierQualificationSection({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  useEffect(() => {
+    setStatus(qualification.status);
+    setSummary(qualification.summary ?? "");
+  }, [qualification.status, qualification.summary, qualification.lastReviewedAt]);
+
   async function save() {
     setError(null);
     setBusy(true);
@@ -58,6 +63,30 @@ export function SupplierQualificationSection({
     router.refresh();
   }
 
+  async function applyChecklistSuggestion() {
+    setError(null);
+    setBusy(true);
+    const next = qualification.suggestedStatus;
+    const res = await fetch(`/api/suppliers/${supplierId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        qualificationStatus: next,
+        qualificationSummary: summary.trim() || null,
+        qualificationLastReviewedAt: new Date().toISOString(),
+      }),
+    });
+    const payload = (await res.json()) as { error?: string };
+    if (!res.ok) {
+      setBusy(false);
+      setError(payload.error ?? "Could not apply suggestion.");
+      return;
+    }
+    setStatus(next);
+    setBusy(false);
+    router.refresh();
+  }
+
   const f =
     "mt-1 rounded-md border border-zinc-300 px-2 py-1.5 text-sm text-zinc-900 shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-400";
 
@@ -68,8 +97,21 @@ export function SupplierQualificationSection({
         Record the buyer decision on this supplier. The onboarding checklist suggests a status from task
         completion; it does not overwrite your recorded state.
       </p>
-      <div className="mt-3 rounded-md border border-amber-100 bg-amber-50/80 px-3 py-2 text-xs text-amber-950">
-        <span className="font-medium">Checklist suggests:</span> {statusLabel(qualification.suggestedStatus)}
+      <div className="mt-3 flex flex-col gap-2 rounded-md border border-amber-100 bg-amber-50/80 px-3 py-2 text-xs text-amber-950 sm:flex-row sm:items-center sm:justify-between">
+        <p>
+          <span className="font-medium">Checklist suggests:</span>{" "}
+          {statusLabel(qualification.suggestedStatus)}
+        </p>
+        {canEdit && qualification.suggestedStatus !== qualification.status ? (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void applyChecklistSuggestion()}
+            className="shrink-0 rounded-md border border-amber-300 bg-white px-2 py-1 text-[11px] font-medium text-amber-950 hover:bg-amber-100 disabled:opacity-50"
+          >
+            Apply suggestion
+          </button>
+        ) : null}
       </div>
       {error ? (
         <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">

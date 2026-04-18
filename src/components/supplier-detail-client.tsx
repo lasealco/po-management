@@ -12,6 +12,7 @@ import { SupplierDocumentsSection } from "@/components/supplier-documents-sectio
 import type { SupplierRelationshipNoteRow } from "@/components/supplier-relationship-notes-section";
 import { SupplierRelationshipNotesSection } from "@/components/supplier-relationship-notes-section";
 import type { SupplierComplianceReviewRow } from "@/components/supplier-compliance-reviews-section";
+import { SupplierComplianceDocumentSignals } from "@/components/supplier-compliance-document-signals";
 import { SupplierComplianceReviewsSection } from "@/components/supplier-compliance-reviews-section";
 import { SupplierOnboardingSection } from "@/components/supplier-onboarding-section";
 import type { SupplierPerformanceScorecardRow } from "@/components/supplier-performance-scorecards-section";
@@ -19,6 +20,8 @@ import { SupplierPerformanceScorecardsSection } from "@/components/supplier-perf
 import { SupplierQualificationSection } from "@/components/supplier-qualification-section";
 import type { SupplierRiskRecordRow } from "@/components/supplier-risk-records-section";
 import { SupplierRiskRecordsSection } from "@/components/supplier-risk-records-section";
+import type { SupplierSrmAlertRow } from "@/components/supplier-srm-alerts-section";
+import { SupplierSrmAlertsSection } from "@/components/supplier-srm-alerts-section";
 import { SupplierOrderHistorySection } from "@/components/supplier-order-history";
 import type { SupplierCapabilityRow } from "@/lib/srm/supplier-capability-types";
 import type { SupplierOnboardingTaskRow } from "@/lib/srm/supplier-onboarding-types";
@@ -35,6 +38,18 @@ export type SupplierContactRow = {
   phone: string | null;
   notes: string | null;
   isPrimary: boolean;
+};
+
+export type SupplierOfficeRow = {
+  id: string;
+  name: string;
+  addressLine1: string | null;
+  addressLine2: string | null;
+  city: string | null;
+  region: string | null;
+  postalCode: string | null;
+  countryCode: string | null;
+  isActive: boolean;
 };
 
 export type SupplierDetailSnapshot = {
@@ -63,13 +78,7 @@ export type SupplierDetailSnapshot = {
   defaultIncoterm: string | null;
   internalNotes: string | null;
   contacts: SupplierContactRow[];
-  offices: Array<{
-    id: string;
-    name: string;
-    city: string | null;
-    countryCode: string | null;
-    isActive: boolean;
-  }>;
+  offices: SupplierOfficeRow[];
   capabilities: SupplierCapabilityRow[];
   onboardingTasks: SupplierOnboardingTaskRow[];
   onboardingWorkflow: {
@@ -90,6 +99,7 @@ export type SupplierDetailSnapshot = {
   documents: SupplierDocumentRow[];
   relationshipNotes: SupplierRelationshipNoteRow[];
   contractRecords: SupplierContractRecordRow[];
+  srmAlerts: SupplierSrmAlertRow[];
   productLinkCount: number;
   orderCount: number;
 };
@@ -117,6 +127,16 @@ const SRM_SUPPLIER_TABS = [
 ] as const;
 
 type SrmSupplierTabId = (typeof SRM_SUPPLIER_TABS)[number]["id"];
+
+function supplierOfficeAddressLines(o: SupplierOfficeRow): string[] {
+  const lines: string[] = [];
+  if (o.addressLine1?.trim()) lines.push(o.addressLine1.trim());
+  if (o.addressLine2?.trim()) lines.push(o.addressLine2.trim());
+  const locality = [o.city, o.region, o.postalCode].filter((x) => x?.trim()).join(", ");
+  if (locality) lines.push(locality);
+  if (o.countryCode?.trim()) lines.push(o.countryCode.trim().toUpperCase());
+  return lines.length > 0 ? lines : ["—"];
+}
 
 function parseSrmTabParam(raw: string | null): SrmSupplierTabId {
   if (!raw) return "overview";
@@ -210,6 +230,10 @@ export function SupplierDetailClient({
       setCreditCurrency(initial.creditCurrency ?? "");
       setIncoterm(initial.defaultIncoterm ?? "");
       setInternalNotes(initial.internalNotes ?? "");
+      setEditingContactId(null);
+      setEditC({});
+      setEditingOfficeId(null);
+      setEditO({});
     });
   }, [initial.updatedAt]);
 
@@ -226,7 +250,11 @@ export function SupplierDetailClient({
   }, [clipboardNotice]);
 
   const [officeName, setOfficeName] = useState("");
+  const [officeAddressLine1, setOfficeAddressLine1] = useState("");
+  const [officeAddressLine2, setOfficeAddressLine2] = useState("");
   const [officeCity, setOfficeCity] = useState("");
+  const [officeRegion, setOfficeRegion] = useState("");
+  const [officePostalCode, setOfficePostalCode] = useState("");
   const [officeCountry, setOfficeCountry] = useState("");
 
   const [cName, setCName] = useState("");
@@ -239,6 +267,8 @@ export function SupplierDetailClient({
 
   const [editingContactId, setEditingContactId] = useState<string | null>(null);
   const [editC, setEditC] = useState<Partial<SupplierContactRow>>({});
+  const [editingOfficeId, setEditingOfficeId] = useState<string | null>(null);
+  const [editO, setEditO] = useState<Partial<SupplierOfficeRow>>({});
 
   const isSrmShell = detailNavContext === "srm";
   const [srmTab, setSrmTabState] = useState<SrmSupplierTabId>(() =>
@@ -339,8 +369,12 @@ export function SupplierDetailClient({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name: officeName.trim(),
+        addressLine1: officeAddressLine1.trim() || null,
+        addressLine2: officeAddressLine2.trim() || null,
         city: officeCity.trim() || null,
-        countryCode: officeCountry.trim() || null,
+        region: officeRegion.trim() || null,
+        postalCode: officePostalCode.trim() || null,
+        countryCode: officeCountry.trim().toUpperCase().slice(0, 2) || null,
       }),
     });
     const payload = (await res.json()) as { error?: string };
@@ -350,8 +384,46 @@ export function SupplierDetailClient({
       return;
     }
     setOfficeName("");
+    setOfficeAddressLine1("");
+    setOfficeAddressLine2("");
     setOfficeCity("");
+    setOfficeRegion("");
+    setOfficePostalCode("");
     setOfficeCountry("");
+    setBusy(false);
+    router.refresh();
+  }
+
+  async function saveOffice(officeId: string) {
+    const nm = (editO.name ?? "").trim();
+    if (!nm) {
+      setError("Office name is required.");
+      return;
+    }
+    setError(null);
+    setBusy(true);
+    const res = await fetch(`/api/suppliers/${initial.id}/offices/${officeId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: nm,
+        addressLine1: (editO.addressLine1 ?? "").trim() || null,
+        addressLine2: (editO.addressLine2 ?? "").trim() || null,
+        city: (editO.city ?? "").trim() || null,
+        region: (editO.region ?? "").trim() || null,
+        postalCode: (editO.postalCode ?? "").trim() || null,
+        countryCode: (editO.countryCode ?? "").trim().toUpperCase().slice(0, 2) || null,
+        isActive: Boolean(editO.isActive),
+      }),
+    });
+    const payload = (await res.json()) as { error?: string };
+    if (!res.ok) {
+      setBusy(false);
+      setError(payload.error ?? "Could not update office.");
+      return;
+    }
+    setEditingOfficeId(null);
+    setEditO({});
     setBusy(false);
     router.refresh();
   }
@@ -363,6 +435,10 @@ export function SupplierDetailClient({
       )
     ) {
       return;
+    }
+    if (editingOfficeId === officeId) {
+      setEditingOfficeId(null);
+      setEditO({});
     }
     setBusy(true);
     const res = await fetch(
@@ -653,8 +729,10 @@ export function SupplierDetailClient({
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
           <p className="font-medium">Pending procurement approval</p>
           <p className="mt-1 text-xs text-amber-900/90">
-            This supplier is not active until an approver confirms it. Use Approve &amp; activate to
-            set approval to approved and turn the supplier on, or Reject to block onboarding completion.
+            This supplier is not active until an approver confirms it. Every onboarding checklist item
+            must be <strong className="font-semibold">done</strong> or <strong className="font-semibold">waived</strong>{" "}
+            before Approve &amp; activate will succeed (see the Onboarding tab). Use Reject to block
+            further onboarding completion.
           </p>
           {canApprove ? (
             <div className="mt-3 flex flex-wrap gap-2">
@@ -1278,31 +1356,161 @@ export function SupplierDetailClient({
 
       <section className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
         <h2 className="text-sm font-semibold text-zinc-900">Offices &amp; sites</h2>
+        <p className="mt-1 text-xs text-zinc-500">
+          Ship-from / warehouse locations and regional sites. Names must be unique per supplier; inactive
+          sites stay on record for history.
+        </p>
         <ul className="mt-4 divide-y divide-zinc-100 border border-zinc-100 rounded-md">
           {initial.offices.length === 0 ? (
             <li className="px-4 py-6 text-sm text-zinc-500">No offices yet.</li>
           ) : (
             initial.offices.map((o) => (
-              <li
-                key={o.id}
-                className="flex items-center justify-between gap-4 px-4 py-3 text-sm"
-              >
-                <div>
-                  <p className="font-medium text-zinc-900">{o.name}</p>
-                  <p className="text-zinc-600">
-                    {[o.city, o.countryCode].filter(Boolean).join(", ") || "—"}
-                  </p>
-                </div>
-                {canEdit ? (
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => void removeOffice(o.id)}
-                    className="text-red-700 hover:underline disabled:opacity-50"
-                  >
-                    Delete
-                  </button>
-                ) : null}
+              <li key={o.id} className="px-4 py-4 text-sm">
+                {editingOfficeId === o.id && canEdit ? (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="flex flex-col text-sm sm:col-span-2">
+                      <span className={label}>Name *</span>
+                      <input
+                        value={editO.name ?? ""}
+                        onChange={(e) => setEditO((p) => ({ ...p, name: e.target.value }))}
+                        className={f}
+                      />
+                    </label>
+                    <label className="flex flex-col text-sm sm:col-span-2">
+                      <span className={label}>Address line 1</span>
+                      <input
+                        value={editO.addressLine1 ?? ""}
+                        onChange={(e) =>
+                          setEditO((p) => ({ ...p, addressLine1: e.target.value }))
+                        }
+                        className={f}
+                      />
+                    </label>
+                    <label className="flex flex-col text-sm sm:col-span-2">
+                      <span className={label}>Address line 2</span>
+                      <input
+                        value={editO.addressLine2 ?? ""}
+                        onChange={(e) =>
+                          setEditO((p) => ({ ...p, addressLine2: e.target.value }))
+                        }
+                        className={f}
+                      />
+                    </label>
+                    <label className="flex flex-col text-sm">
+                      <span className={label}>City</span>
+                      <input
+                        value={editO.city ?? ""}
+                        onChange={(e) => setEditO((p) => ({ ...p, city: e.target.value }))}
+                        className={f}
+                      />
+                    </label>
+                    <label className="flex flex-col text-sm">
+                      <span className={label}>Region / state</span>
+                      <input
+                        value={editO.region ?? ""}
+                        onChange={(e) => setEditO((p) => ({ ...p, region: e.target.value }))}
+                        className={f}
+                      />
+                    </label>
+                    <label className="flex flex-col text-sm">
+                      <span className={label}>Postal code</span>
+                      <input
+                        value={editO.postalCode ?? ""}
+                        onChange={(e) =>
+                          setEditO((p) => ({ ...p, postalCode: e.target.value }))
+                        }
+                        className={f}
+                      />
+                    </label>
+                    <label className="flex flex-col text-sm">
+                      <span className={label}>Country (ISO-2)</span>
+                      <input
+                        value={editO.countryCode ?? ""}
+                        onChange={(e) =>
+                          setEditO((p) => ({
+                            ...p,
+                            countryCode: e.target.value.toUpperCase().slice(0, 2),
+                          }))
+                        }
+                        maxLength={2}
+                        className={f}
+                      />
+                    </label>
+                    <label className="flex items-center gap-2 text-sm sm:col-span-2">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(editO.isActive)}
+                        onChange={(e) =>
+                          setEditO((p) => ({ ...p, isActive: e.target.checked }))
+                        }
+                        className="rounded border-zinc-300"
+                      />
+                      Active site
+                    </label>
+                    <div className="flex flex-wrap gap-2 sm:col-span-2">
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void saveOffice(o.id)}
+                        className="rounded-md bg-arscmp-primary px-3 py-2 text-sm text-white disabled:opacity-50"
+                      >
+                        Save office
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => {
+                          setEditingOfficeId(null);
+                          setEditO({});
+                        }}
+                        className="rounded-md border border-zinc-300 px-3 py-2 text-sm"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="font-medium text-zinc-900">
+                        {o.name}
+                        {!o.isActive ? (
+                          <span className="ml-2 rounded bg-zinc-200 px-2 py-0.5 text-xs font-medium text-zinc-700">
+                            Inactive
+                          </span>
+                        ) : null}
+                      </p>
+                      {supplierOfficeAddressLines(o).map((line, i) => (
+                        <p key={`${o.id}-addr-${i}`} className="text-zinc-600">
+                          {line}
+                        </p>
+                      ))}
+                    </div>
+                    {canEdit ? (
+                      <div className="flex gap-3">
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => {
+                            setEditingOfficeId(o.id);
+                            setEditO({ ...o });
+                          }}
+                          className="text-sm text-amber-800 hover:underline"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => void removeOffice(o.id)}
+                          className="text-sm text-red-700 hover:underline"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                )}
               </li>
             ))
           )}
@@ -1314,12 +1522,28 @@ export function SupplierDetailClient({
             className="mt-6 space-y-3 rounded-md border border-dashed border-zinc-300 p-4"
           >
             <p className="text-sm font-medium text-zinc-800">Add office</p>
-            <div className="grid gap-3 sm:grid-cols-3">
-              <label className="flex flex-col text-sm sm:col-span-1">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="flex flex-col text-sm sm:col-span-2">
                 <span>Name *</span>
                 <input
                   value={officeName}
                   onChange={(e) => setOfficeName(e.target.value)}
+                  className={f}
+                />
+              </label>
+              <label className="flex flex-col text-sm sm:col-span-2">
+                <span>Address line 1</span>
+                <input
+                  value={officeAddressLine1}
+                  onChange={(e) => setOfficeAddressLine1(e.target.value)}
+                  className={f}
+                />
+              </label>
+              <label className="flex flex-col text-sm sm:col-span-2">
+                <span>Address line 2</span>
+                <input
+                  value={officeAddressLine2}
+                  onChange={(e) => setOfficeAddressLine2(e.target.value)}
                   className={f}
                 />
               </label>
@@ -1332,10 +1556,29 @@ export function SupplierDetailClient({
                 />
               </label>
               <label className="flex flex-col text-sm">
-                <span>Country</span>
+                <span>Region / state</span>
+                <input
+                  value={officeRegion}
+                  onChange={(e) => setOfficeRegion(e.target.value)}
+                  className={f}
+                />
+              </label>
+              <label className="flex flex-col text-sm">
+                <span>Postal code</span>
+                <input
+                  value={officePostalCode}
+                  onChange={(e) => setOfficePostalCode(e.target.value)}
+                  className={f}
+                />
+              </label>
+              <label className="flex flex-col text-sm">
+                <span>Country (ISO-2)</span>
                 <input
                   value={officeCountry}
-                  onChange={(e) => setOfficeCountry(e.target.value)}
+                  onChange={(e) =>
+                    setOfficeCountry(e.target.value.toUpperCase().slice(0, 2))
+                  }
+                  maxLength={2}
                   className={f}
                 />
               </label>
@@ -1382,12 +1625,21 @@ export function SupplierDetailClient({
       )}
 
       {(!isSrmShell || srmTab === "compliance") && (
-        <SupplierComplianceReviewsSection
-          key={`comp-${initial.id}-${initial.updatedAt}`}
-          supplierId={initial.id}
-          canEdit={canEdit}
-          initialRows={initial.complianceReviews}
-        />
+        <>
+          <SupplierComplianceDocumentSignals
+            key={`comp-signals-${initial.id}-${initial.updatedAt}`}
+            documents={initial.documents}
+            complianceReviews={initial.complianceReviews}
+            isSrmShell={isSrmShell}
+            onOpenDocumentsTab={() => selectSrmTab("documents")}
+          />
+          <SupplierComplianceReviewsSection
+            key={`comp-${initial.id}-${initial.updatedAt}`}
+            supplierId={initial.id}
+            canEdit={canEdit}
+            initialRows={initial.complianceReviews}
+          />
+        </>
       )}
 
       {(!isSrmShell || srmTab === "contracts") && (
@@ -1435,27 +1687,14 @@ export function SupplierDetailClient({
         />
       )}
 
-      {isSrmShell &&
-      srmTab !== "overview" &&
-      srmTab !== "capabilities" &&
-      srmTab !== "onboarding" &&
-      srmTab !== "qualification" &&
-      srmTab !== "compliance" &&
-      srmTab !== "contracts" &&
-      srmTab !== "performance" &&
-      srmTab !== "risk" &&
-      srmTab !== "documents" &&
-      srmTab !== "relationship" ? (
-        <section className="rounded-lg border border-dashed border-zinc-200 bg-zinc-50/80 p-8 text-center shadow-sm">
-          <p className="text-sm font-medium text-zinc-800">
-            {SRM_SUPPLIER_TABS.find((x) => x.id === srmTab)?.label ?? srmTab}
-          </p>
-          <p className="mt-2 text-xs text-zinc-600">
-            Supplier alerts are not wired in this slice yet (operational notifications only — no tender,
-            tariff, or sourcing-event automation).
-          </p>
-        </section>
-      ) : null}
+      {(!isSrmShell || srmTab === "alerts") && (
+        <SupplierSrmAlertsSection
+          key={`alerts-${initial.id}-${initial.updatedAt}`}
+          supplierId={initial.id}
+          canEdit={canEdit}
+          initialRows={initial.srmAlerts}
+        />
+      )}
     </div>
   );
 }

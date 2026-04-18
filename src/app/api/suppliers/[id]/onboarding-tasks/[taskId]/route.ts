@@ -60,7 +60,12 @@ export async function PATCH(
     completedAt?: Date | null;
   };
   if (parsed.data.status !== undefined) {
-    data.completedAt = parsed.data.status === "done" ? new Date() : null;
+    if (parsed.data.status === "pending") {
+      data.completedAt = null;
+    } else {
+      // done or waived: stamp for audit trail
+      data.completedAt = new Date();
+    }
   }
 
   const row = await prisma.supplierOnboardingTask.update({
