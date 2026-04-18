@@ -62,6 +62,12 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
       ? "No in-app link to the original tariff version or RFQ response was resolved (the row may have been removed). The frozen snapshot breakdown and totals remain the audit reference."
       : null;
 
+  const shipmentWorkspaceHref = intake.bookingPricingSnapshot.shipmentBooking
+    ? `/control-tower/shipments/${intake.bookingPricingSnapshot.shipmentBooking.shipmentId}`
+    : null;
+
+  const linesTableBasisFootnote = `Matching uses snapshot ${intake.bookingPricingSnapshot.id} (${formatPricingSnapshotSourceType(snapshotSourceTypeStr)} · source ${intake.bookingPricingSnapshot.sourceRecordId}). Expand per-line snapshotMatchedJson below, or open the pricing snapshot for the full frozen rate-line JSON.`;
+
   const lines = intake.lines.map((l) => ({
     id: l.id,
     lineNo: l.lineNo,
@@ -163,6 +169,11 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
       <InvoiceMatchResultPanel
         snapshotId={intake.bookingPricingSnapshot.id}
         snapshotSummary={intake.bookingPricingSnapshot.sourceSummary}
+        basisLabel={formatPricingSnapshotSourceType(snapshotSourceTypeStr)}
+        sourceRecordId={intake.bookingPricingSnapshot.sourceRecordId}
+        tariffVersionHref={snapshotSourceNav.tariffVersionHref}
+        rfqRequestHref={snapshotSourceNav.rfqRequestHref}
+        shipmentWorkspaceHref={shipmentWorkspaceHref}
         lineCount={intake.lines.length}
         auditResultCount={intake.auditResults.length}
         polCode={intake.polCode}
@@ -173,9 +184,12 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
         <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
           <h2 className="text-sm font-semibold text-zinc-900">Discrepancy categories (rollup)</h2>
           <p className="mt-2 text-sm text-zinc-600">
-            Counts how often each category appears across line audit rows (Phase 06 auditability). Expand per-line
-            JSON below for the full payload. Pure “within tolerance” matches are summarized separately so attention
-            items stand out.
+            Counts how often each category appears across line audit rows (Phase 06 auditability). Categories are
+            always interpreted against the frozen snapshot{" "}
+            <span className="font-mono text-xs text-zinc-700">{intake.bookingPricingSnapshot.id}</span> (
+            {formatPricingSnapshotSourceType(snapshotSourceTypeStr)}) — not against live tariff or RFQ edits after the
+            snapshot was taken. Expand per-line JSON below for the full payload. Pure “within tolerance” matches are
+            summarized separately so attention items stand out.
           </p>
           {discrepancyRollupAttention.length > 0 ? (
             <ul className="mt-3 flex flex-wrap gap-2">
@@ -355,7 +369,7 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
 
       <section id="invoice-audit-lines-match" className="scroll-mt-8">
         <h2 className="mb-3 text-sm font-semibold text-zinc-900">Parsed lines &amp; match results</h2>
-        <InvoiceLinesMatchTable lines={lines} auditResults={auditResults} />
+        <InvoiceLinesMatchTable lines={lines} auditResults={auditResults} basisFootnote={linesTableBasisFootnote} />
       </section>
 
       {intake.auditResults.length > 0 ? (

@@ -8,6 +8,10 @@ import {
   extractSnapshotPriceCandidates,
   summarizeContractGeographyFromCandidates,
 } from "@/lib/invoice-audit/snapshot-candidates";
+import {
+  formatPricingSnapshotSourceType,
+  resolvePricingSnapshotSourceNav,
+} from "@/lib/invoice-audit/pricing-snapshot-source-nav";
 import { listInvoiceIntakesForSnapshot } from "@/lib/invoice-audit/invoice-intakes";
 import { getDemoTenant } from "@/lib/demo-tenant";
 
@@ -55,6 +59,15 @@ export default async function PricingSnapshotDetailPage(props: { params: Promise
     ? await listInvoiceIntakesForSnapshot({ tenantId: tenant.id, snapshotId: row.id, previewLimit: 8 })
     : { items: [], hasMore: false };
 
+  const snapshotSourceNav = await resolvePricingSnapshotSourceNav({
+    tenantId: tenant.id,
+    sourceType: row.sourceType,
+    sourceRecordId: row.sourceRecordId,
+  });
+  const shipmentWorkspaceHref = row.shipmentBooking
+    ? `/control-tower/shipments/${row.shipmentBooking.shipmentId}`
+    : null;
+
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
@@ -79,6 +92,46 @@ export default async function PricingSnapshotDetailPage(props: { params: Promise
           </p>
         </div>
       </div>
+
+      <section className="mb-6 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+        <h2 className="text-sm font-semibold text-zinc-900">Commercial basis &amp; invoice audit</h2>
+        <p className="mt-2 text-sm text-zinc-600">
+          This row is an immutable capture of economics from{" "}
+          <span className="font-medium text-zinc-800">{formatPricingSnapshotSourceType(String(row.sourceType))}</span>{" "}
+          — source record{" "}
+          <span className="break-all font-mono text-xs text-zinc-700">{row.sourceRecordId}</span>. Every invoice intake
+          linked below re-runs ocean matching against <span className="font-medium">this JSON only</span>, so auditors
+          can explain variances without chasing live contract or quote edits.
+        </p>
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2">
+          {snapshotSourceNav.tariffVersionHref ? (
+            <Link
+              href={snapshotSourceNav.tariffVersionHref}
+              className="text-sm font-medium text-[var(--arscmp-primary)] hover:underline"
+            >
+              Open tariff contract version
+            </Link>
+          ) : null}
+          {snapshotSourceNav.rfqRequestHref ? (
+            <Link
+              href={snapshotSourceNav.rfqRequestHref}
+              className="text-sm font-medium text-[var(--arscmp-primary)] hover:underline"
+            >
+              Open RFQ request
+            </Link>
+          ) : null}
+          {shipmentWorkspaceHref ? (
+            <Link href={shipmentWorkspaceHref} className="text-sm font-medium text-[var(--arscmp-primary)] hover:underline">
+              Open Control Tower shipment
+            </Link>
+          ) : null}
+          {canInvoiceAuditView ? (
+            <Link href="/invoice-audit" className="text-sm font-medium text-[var(--arscmp-primary)] hover:underline">
+              Invoice intakes (tenant)
+            </Link>
+          ) : null}
+        </div>
+      </section>
 
       {canInvoiceAuditView ? (
         <section className="mb-6 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
@@ -231,6 +284,14 @@ export default async function PricingSnapshotDetailPage(props: { params: Promise
               </>
             ) : null}
             . When the booking workspace ships, show this row as the economics frozen at quote/contract selection time.
+          </p>
+          <p className="mt-3">
+            <Link
+              href={`/control-tower/shipments/${row.shipmentBooking.shipmentId}`}
+              className="text-sm font-medium text-[var(--arscmp-primary)] hover:underline"
+            >
+              Open shipment workspace
+            </Link>
           </p>
         </section>
       ) : null}

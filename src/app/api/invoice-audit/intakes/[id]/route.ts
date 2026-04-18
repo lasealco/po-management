@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 
 import { jsonFromInvoiceAuditError } from "@/app/api/invoice-audit/_lib/invoice-audit-api-error";
 import { guardInvoiceAuditSchema } from "@/app/api/invoice-audit/_lib/guard-invoice-audit-schema";
-import { serializeAuditResult, serializeInvoiceLine } from "@/app/api/invoice-audit/_lib/serialize";
+import {
+  serializeAuditResult,
+  serializeBookingPricingSnapshotForIntakeApi,
+  serializeInvoiceLine,
+} from "@/app/api/invoice-audit/_lib/serialize";
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { parseInvoiceAuditRecordId } from "@/lib/invoice-audit/invoice-audit-id";
 import { parseInvoiceIntakePatchBody } from "@/lib/invoice-audit/invoice-intake-patch-parse";
@@ -66,11 +70,7 @@ export async function GET(_request: Request, ctx: { params: Promise<{ id: string
         accountingApprovalNote: row.accountingApprovalNote,
         createdByUserId: row.createdByUserId,
         receivedAt: row.receivedAt.toISOString(),
-        bookingPricingSnapshot: {
-          ...row.bookingPricingSnapshot,
-          totalEstimatedCost: row.bookingPricingSnapshot.totalEstimatedCost.toString(),
-          frozenAt: row.bookingPricingSnapshot.frozenAt.toISOString(),
-        },
+        bookingPricingSnapshot: serializeBookingPricingSnapshotForIntakeApi(row.bookingPricingSnapshot),
         lines: row.lines.map(serializeInvoiceLine),
         auditResults: row.auditResults.map(serializeAuditResult),
       },

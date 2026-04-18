@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { listInvoiceIntakesForTenant } from "@/lib/invoice-audit/invoice-intakes";
+import { formatPricingSnapshotSourceType } from "@/lib/invoice-audit/pricing-snapshot-source-nav";
 import { getPhase06WorkflowHint } from "@/lib/invoice-audit/phase06-workflow-hint";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { subNavActiveClass } from "@/lib/subnav-active-class";
@@ -312,8 +313,14 @@ export default async function InvoiceAuditListPage(props: {
                           "—"
                         )}
                       </td>
-                      <td className="max-w-[14rem] truncate py-3 pr-4 text-xs text-zinc-600">
-                        {row.bookingPricingSnapshot.sourceSummary ?? row.bookingPricingSnapshotId}
+                      <td className="max-w-[14rem] py-3 pr-4 text-xs text-zinc-600">
+                        <div className="truncate font-medium text-zinc-800">
+                          {row.bookingPricingSnapshot.sourceSummary ?? row.bookingPricingSnapshotId}
+                        </div>
+                        <div className="mt-0.5 truncate text-[11px] text-zinc-500" title={row.bookingPricingSnapshot.sourceRecordId}>
+                          {formatPricingSnapshotSourceType(String(row.bookingPricingSnapshot.sourceType))} ·{" "}
+                          <span className="font-mono">{row.bookingPricingSnapshot.sourceRecordId}</span>
+                        </div>
                       </td>
                     </tr>
                   );

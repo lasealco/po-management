@@ -39,12 +39,18 @@ export type AuditRow = {
   snapshotMatchedJson: unknown;
 };
 
-export function InvoiceLinesMatchTable(props: { lines: LineRow[]; auditResults: AuditRow[] }) {
+export function InvoiceLinesMatchTable(props: {
+  lines: LineRow[];
+  auditResults: AuditRow[];
+  /** Optional one-line reminder under the table (e.g. snapshot basis for auditors). */
+  basisFootnote?: string | null;
+}) {
   const byLine = new Map(props.auditResults.map((a) => [a.invoiceLineId, a]));
 
   return (
-    <div className="overflow-x-auto rounded-2xl border border-zinc-200 bg-white shadow-sm">
-      <table className="min-w-full border-collapse text-left text-sm">
+    <div>
+      <div className="overflow-x-auto rounded-2xl border border-zinc-200 bg-white shadow-sm">
+        <table className="min-w-full border-collapse text-left text-sm">
         <thead>
           <tr className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500">
             <th className="px-4 py-3">#</th>
@@ -107,6 +113,10 @@ export function InvoiceLinesMatchTable(props: { lines: LineRow[]; auditResults: 
           })}
         </tbody>
       </table>
+      </div>
+      {props.basisFootnote ? (
+        <p className="mt-2 text-xs leading-relaxed text-zinc-500">{props.basisFootnote}</p>
+      ) : null}
     </div>
   );
 }

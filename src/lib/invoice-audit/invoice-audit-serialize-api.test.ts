@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { describe, expect, it } from "vitest";
 
 import {
+  serializeBookingPricingSnapshotForIntakeApi,
   serializeInvoiceIntakeListRow,
   serializeInvoiceLine,
   serializeToleranceRule,
@@ -56,6 +57,42 @@ describe("serializeInvoiceLine", () => {
 
     expect(out.quantity).toBeNull();
     expect(out.normalizedLabel).toBeNull();
+  });
+});
+
+describe("serializeBookingPricingSnapshotForIntakeApi", () => {
+  it("stringifies totals and adds shipment workspace href when booking is present", () => {
+    const frozen = new Date("2026-04-01T12:00:00.000Z");
+    const out = serializeBookingPricingSnapshotForIntakeApi({
+      id: "snap1",
+      sourceType: "QUOTE_RESPONSE",
+      sourceRecordId: "resp1",
+      sourceSummary: "Acme quote",
+      currency: "USD",
+      totalEstimatedCost: new Prisma.Decimal("1200"),
+      frozenAt: frozen,
+      shipmentBookingId: "bk1",
+      shipmentBooking: { id: "bk1", bookingNo: "BKG-1", shipmentId: "ship1" },
+    });
+    expect(out.totalEstimatedCost).toBe("1200");
+    expect(out.sourceType).toBe("QUOTE_RESPONSE");
+    expect(out.shipmentBooking?.shipmentWorkspaceHref).toBe("/control-tower/shipments/ship1");
+  });
+
+  it("returns null shipmentBooking when not linked", () => {
+    const out = serializeBookingPricingSnapshotForIntakeApi({
+      id: "snap2",
+      sourceType: "TARIFF_CONTRACT_VERSION",
+      sourceRecordId: "ver9",
+      sourceSummary: null,
+      currency: "EUR",
+      totalEstimatedCost: new Prisma.Decimal("0"),
+      frozenAt: new Date("2026-01-01T00:00:00.000Z"),
+      shipmentBookingId: null,
+      shipmentBooking: null,
+    });
+    expect(out.shipmentBooking).toBeNull();
+    expect(out.shipmentBookingId).toBeNull();
   });
 });
 
@@ -126,6 +163,8 @@ describe("serializeInvoiceIntakeListRow", () => {
     parseError: null,
     bookingPricingSnapshot: {
       id: "snap1",
+      sourceType: "TARIFF_CONTRACT_VERSION",
+      sourceRecordId: "ver-1",
       sourceSummary: "Contract v3",
       currency: "USD",
       frozenAt: frozen,
@@ -136,6 +175,8 @@ describe("serializeInvoiceIntakeListRow", () => {
     const out = serializeInvoiceIntakeListRow({ ...baseRow, _count: { lines: 3 } } as never);
     expect(out.invoiceDate).toBe("2026-03-20");
     expect(out.bookingPricingSnapshot.frozenAt).toBe("2026-04-01T12:00:00.000Z");
+    expect(out.bookingPricingSnapshot.sourceType).toBe("TARIFF_CONTRACT_VERSION");
+    expect(out.bookingPricingSnapshot.sourceRecordId).toBe("ver-1");
     expect(out.parsedLineCount).toBe(3);
   });
 

@@ -21,7 +21,16 @@ export async function listInvoiceIntakesForTenant(params: { tenantId: string; ta
     orderBy: [{ receivedAt: "desc" }, { id: "desc" }],
     take,
     include: {
-      bookingPricingSnapshot: { select: { id: true, sourceSummary: true, currency: true, frozenAt: true } },
+      bookingPricingSnapshot: {
+        select: {
+          id: true,
+          sourceType: true,
+          sourceRecordId: true,
+          sourceSummary: true,
+          currency: true,
+          frozenAt: true,
+        },
+      },
       _count: { select: { lines: true } },
     },
   });
@@ -208,7 +217,19 @@ export async function createInvoiceIntakeWithLines(input: {
     return tx.invoiceIntake.findFirstOrThrow({
       where: { id: intake.id },
       include: {
-        bookingPricingSnapshot: { select: { id: true, sourceSummary: true, currency: true, frozenAt: true } },
+        bookingPricingSnapshot: {
+          select: {
+            id: true,
+            sourceType: true,
+            sourceRecordId: true,
+            sourceSummary: true,
+            currency: true,
+            totalEstimatedCost: true,
+            frozenAt: true,
+            shipmentBookingId: true,
+            shipmentBooking: { select: { id: true, bookingNo: true, shipmentId: true } },
+          },
+        },
         lines: { orderBy: { lineNo: "asc" } },
       },
     });

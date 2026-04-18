@@ -21,6 +21,37 @@ export function serializeToleranceRule(r: InvoiceToleranceRule) {
   };
 }
 
+/** JSON shape for `intake.bookingPricingSnapshot` on invoice-audit APIs (explicit basis + booking linkage). */
+export function serializeBookingPricingSnapshotForIntakeApi(row: {
+  id: string;
+  sourceType: string;
+  sourceRecordId: string;
+  sourceSummary: string | null;
+  currency: string;
+  totalEstimatedCost: { toString(): string };
+  frozenAt: Date;
+  shipmentBookingId: string | null;
+  shipmentBooking: { id: string; bookingNo: string | null; shipmentId: string } | null;
+}) {
+  return {
+    id: row.id,
+    sourceType: row.sourceType,
+    sourceRecordId: row.sourceRecordId,
+    sourceSummary: row.sourceSummary,
+    currency: row.currency,
+    totalEstimatedCost: row.totalEstimatedCost.toString(),
+    frozenAt: row.frozenAt.toISOString(),
+    shipmentBookingId: row.shipmentBookingId,
+    shipmentBooking: row.shipmentBooking
+      ? {
+          id: row.shipmentBooking.id,
+          bookingNo: row.shipmentBooking.bookingNo,
+          shipmentWorkspaceHref: `/control-tower/shipments/${row.shipmentBooking.shipmentId}`,
+        }
+      : null,
+  };
+}
+
 export function serializeInvoiceLine(l: InvoiceLine) {
   return {
     id: l.id,
@@ -95,7 +126,14 @@ export function serializeAuditResult(
 
 export function serializeInvoiceIntakeListRow(
   row: InvoiceIntake & {
-    bookingPricingSnapshot: { id: string; sourceSummary: string | null; currency: string; frozenAt: Date };
+    bookingPricingSnapshot: {
+      id: string;
+      sourceType: string;
+      sourceRecordId: string;
+      sourceSummary: string | null;
+      currency: string;
+      frozenAt: Date;
+    };
     _count?: { lines: number };
   },
 ) {
@@ -122,6 +160,8 @@ export function serializeInvoiceIntakeListRow(
     parseError: row.parseError,
     bookingPricingSnapshot: {
       id: row.bookingPricingSnapshot.id,
+      sourceType: row.bookingPricingSnapshot.sourceType,
+      sourceRecordId: row.bookingPricingSnapshot.sourceRecordId,
       sourceSummary: row.bookingPricingSnapshot.sourceSummary,
       currency: row.bookingPricingSnapshot.currency,
       frozenAt: row.bookingPricingSnapshot.frozenAt.toISOString(),
