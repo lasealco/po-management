@@ -1,38 +1,63 @@
-# SRM Markdown Sidecar Pack
+# SRM documentation
 
-This pack is the Cursor-readable companion to the SRM PDF documentation set.
+This directory is the **product documentation pack** for Supplier Relationship Management (SRM) in this repo: PDF specifications, Markdown sidecars for tooling, and a **local runnable checklist** for the app under `/srm`.
 
-## Purpose
-Use these markdown files when Cursor cannot reliably read PDFs.
-The PDFs remain the human-readable source package; these markdown files are the agent-friendly sidecars.
+---
 
-## Recommended usage in Cursor
-1. Upload or place these markdown files in `docs/srm/`
-2. Start the session with the SRM session rules
-3. Ask Cursor to inspect the repo first
-4. Build phase by phase:
-   - schema
-   - onboarding/lifecycle
-   - compliance/document control
-   - performance/risk
-   - UI/workflows
-   - integrations
-   - rollout
-
-## Repository layout (this project)
+## Canonical layout
 
 ```text
 docs/srm/
-  README.md                         # This file: Cursor usage + local dev checklist
-  pdf/                              # Versioned PDF pack (human-readable source specs)
-  srm_*.md                          # Markdown sidecars (agent-friendly; same themes as the PDFs)
-  cursor_srm_prompt_sequence.md     # Suggested build prompts for phased delivery
+  README.md                         # This file: layout rules + pairing table + dev checklist
+  cursor_srm_prompt_sequence.md     # Optional phased build prompts (not a PDF sidecar)
+  pdf/                              # Versioned PDF pack — human-readable source specs
+  md/                               # Markdown sidecars — agent/IDE-friendly (stable filenames)
 ```
 
-PDFs are **not** duplicated at `docs/srm/*.pdf`; they live only under **`docs/srm/pdf/`**. Markdown mirrors live next to `README.md` at the `docs/srm/` root for easy discovery.
+### Non-ambiguous rules
 
-## Source alignment
-These markdown files are derived from the SRM PDF pack and are intended to mirror the same structure and intent.
+1. **PDFs** — Only under **`docs/srm/pdf/`**. Never commit `docs/srm/*.pdf` at the SRM docs root.
+2. **Spec sidecars** — Only under **`docs/srm/md/`**, named `srm_<topic>.md` (no date stamp in the basename).
+3. **Pairing** — Each sidecar `md/srm_<topic>.md` corresponds to exactly one PDF  
+   `pdf/srm_<topic>_20260417_063215.pdf`: same `<topic>` segment; the PDF carries a fixed **export timestamp** suffix.
+4. **`cursor_srm_prompt_sequence.md`** — Lives at **`docs/srm/`** root on purpose: workflow helper, not tied 1:1 to a single PDF.
+5. **Truth order** — When docs and code disagree, **code + Prisma schema** win; update docs in a deliberate follow-up.
+
+### PDF ↔ Markdown pairing
+
+| Markdown sidecar | PDF pack file |
+|------------------|---------------|
+| `md/srm_blueprint_and_module_definition.md` | `pdf/srm_blueprint_and_module_definition_20260417_063215.pdf` |
+| `md/srm_compliance_and_document_control_spec.md` | `pdf/srm_compliance_and_document_control_spec_20260417_063215.pdf` |
+| `md/srm_data_model_and_er_spec.md` | `pdf/srm_data_model_and_er_spec_20260417_063215.pdf` |
+| `md/srm_functional_prd.md` | `pdf/srm_functional_prd_20260417_063215.pdf` |
+| `md/srm_integration_and_api_payload_pack.md` | `pdf/srm_integration_and_api_payload_pack_20260417_063215.pdf` |
+| `md/srm_performance_risk_and_kpi_spec.md` | `pdf/srm_performance_risk_and_kpi_spec_20260417_063215.pdf` |
+| `md/srm_permission_and_visibility_matrix.md` | `pdf/srm_permission_and_visibility_matrix_20260417_063215.pdf` |
+| `md/srm_sprint_backlog_and_release_plan.md` | `pdf/srm_sprint_backlog_and_release_plan_20260417_063215.pdf` |
+| `md/srm_supplier_lifecycle_and_onboarding_spec.md` | `pdf/srm_supplier_lifecycle_and_onboarding_spec_20260417_063215.pdf` |
+| `md/srm_ux_ui_design_guideline_and_wireframe_pack.md` | `pdf/srm_ux_ui_design_guideline_and_wireframe_pack_20260417_063215.pdf` |
+| `md/srm_workflow_and_business_rules.md` | `pdf/srm_workflow_and_business_rules_20260417_063215.pdf` |
+
+---
+
+## Who should read what
+
+| Audience | Path |
+|----------|------|
+| Humans (print / legal-style review) | `pdf/*.pdf` |
+| Cursor / agents / ripgrep | `md/*.md` |
+| Shipped app behavior | `src/app/srm`, `src/lib/srm`, `prisma/schema.prisma`, `docs/srm/README.md` (checklist below) |
+
+---
+
+## Using this pack in Cursor
+
+1. Point the session at **`docs/srm/md/`** for spec text; use **`cursor_srm_prompt_sequence.md`** if you want phased build guidance.
+2. Inspect the repo (schema, migrations, `/srm` routes) before large changes.
+3. Build in slices: schema → lifecycle/onboarding → compliance/documents → UI → integrations (see prompt file).
+
+---
 
 ## Development (SRM foundation)
 
