@@ -19,6 +19,10 @@ import { SupplierRelationshipNotesSection } from "@/components/supplier-relation
 import type { SupplierComplianceReviewRow } from "@/components/supplier-compliance-reviews-section";
 import { SupplierComplianceDocumentSignals } from "@/components/supplier-compliance-document-signals";
 import { listComplianceDocumentFindings } from "@/lib/srm/supplier-compliance-document-signals";
+import {
+  countNonClosedSupplierRiskRecords,
+  countScorecardsMissingCoreMetrics,
+} from "@/lib/srm/supplier-performance-risk-tab-counts";
 import { SupplierComplianceReviewsSection } from "@/components/supplier-compliance-reviews-section";
 import { SupplierOnboardingSection } from "@/components/supplier-onboarding-section";
 import type { SupplierPerformanceScorecardRow } from "@/components/supplier-performance-scorecards-section";
@@ -291,6 +295,10 @@ export function SupplierDetailClient({
   const complianceDocumentAttentionCount = listComplianceDocumentFindings(
     initial.documents,
   ).length;
+  const riskOpenCount = countNonClosedSupplierRiskRecords(initial.riskRecords);
+  const performanceIncompleteCount = countScorecardsMissingCoreMetrics(
+    initial.performanceScorecards,
+  );
 
   const [documentsRegisterCategory, setDocumentsRegisterCategory] =
     useState<SupplierDocumentCategory | null>(null);
@@ -935,6 +943,16 @@ export function SupplierDetailClient({
               {t.id === "documents" && complianceDocumentAttentionCount > 0 ? (
                 <span className="ml-1.5 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-950">
                   {complianceDocumentAttentionCount}
+                </span>
+              ) : null}
+              {t.id === "performance" && performanceIncompleteCount > 0 ? (
+                <span className="ml-1.5 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-950">
+                  {performanceIncompleteCount}
+                </span>
+              ) : null}
+              {t.id === "risk" && riskOpenCount > 0 ? (
+                <span className="ml-1.5 rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-semibold text-rose-900">
+                  {riskOpenCount}
                 </span>
               ) : null}
             </button>
