@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { RecordIdCopy } from "@/components/invoice-audit/record-id-copy";
+
 type Tab = "contract" | "rfq";
 
 export function PricingSnapshotsNewClient(props: { canContract: boolean; canRfq: boolean }) {
@@ -110,6 +112,11 @@ export function PricingSnapshotsNewClient(props: { canContract: boolean; canRfq:
             value={shipmentBookingId}
             onChange={(e) => setShipmentBookingId(e.target.value)}
           />
+          {shipmentBookingId.trim() ? (
+            <div className="mt-2">
+              <RecordIdCopy id={shipmentBookingId.trim()} copyButtonLabel="Copy booking id" />
+            </div>
+          ) : null}
         </div>
 
         {tab === "contract" ? (
@@ -135,6 +142,11 @@ export function PricingSnapshotsNewClient(props: { canContract: boolean; canRfq:
                 Open a contract in Tariffs → copy the version id from the URL{" "}
                 <span className="font-mono">/tariffs/contracts/…/versions/[versionId]</span>.
               </p>
+              {contractVersionId.trim() ? (
+                <div className="mt-2">
+                  <RecordIdCopy id={contractVersionId.trim()} copyButtonLabel="Copy version id" />
+                </div>
+              ) : null}
             </div>
             <button
               type="submit"
@@ -166,6 +178,11 @@ export function PricingSnapshotsNewClient(props: { canContract: boolean; canRfq:
               <p className="mt-2 text-xs text-zinc-500">
                 From RFQ → open a response editor; the response id is in the URL path.
               </p>
+              {quoteResponseId.trim() ? (
+                <div className="mt-2">
+                  <RecordIdCopy id={quoteResponseId.trim()} copyButtonLabel="Copy response id" />
+                </div>
+              ) : null}
             </div>
             <button
               type="submit"
