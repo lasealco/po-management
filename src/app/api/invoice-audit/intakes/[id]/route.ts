@@ -8,6 +8,7 @@ import {
   getInvoiceIntakeForTenant,
   patchInvoiceIntakeReviewAndAccounting,
   setInvoiceIntakeAccountingHandoff,
+  setInvoiceIntakeRawSourceNotes,
   setInvoiceIntakeReview,
 } from "@/lib/invoice-audit/invoice-intakes";
 import { getDemoTenant } from "@/lib/demo-tenant";
@@ -96,12 +97,13 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
   const hasReview = typeof o.reviewDecision === "string" && o.reviewDecision.trim().length > 0;
   const hasAccounting =
     Object.prototype.hasOwnProperty.call(o, "approvedForAccounting") && typeof o.approvedForAccounting === "boolean";
+  const hasRawSourceNotes = Object.prototype.hasOwnProperty.call(o, "rawSourceNotes");
 
-  if (!hasReview && !hasAccounting) {
+  if (!hasReview && !hasAccounting && !hasRawSourceNotes) {
     return NextResponse.json(
       {
         error:
-          "Provide reviewDecision (APPROVED|OVERRIDDEN) and/or approvedForAccounting (boolean).",
+          "Provide reviewDecision (APPROVED|OVERRIDDEN), approvedForAccounting (boolean), and/or rawSourceNotes (string|null).",
       },
       { status: 400 },
     );
@@ -154,6 +156,17 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
       });
     }
 
+    if (hasRawSourceNotes) {
+      if (o.rawSourceNotes !== null && typeof o.rawSourceNotes !== "string") {
+        return NextResponse.json({ error: "rawSourceNotes must be a string or null." }, { status: 400 });
+      }
+      await setInvoiceIntakeRawSourceNotes({
+        tenantId: tenant.id,
+        invoiceIntakeId: id,
+        rawSourceNotes: o.rawSourceNotes === null ? null : String(o.rawSourceNotes),
+      });
+    }
+
     const row = await getInvoiceIntakeForTenant({ tenantId: tenant.id, intakeId: id });
     return NextResponse.json({
       intake: {
@@ -164,6 +177,7 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
         approvedForAccounting: row.approvedForAccounting,
         accountingApprovedAt: row.accountingApprovedAt?.toISOString() ?? null,
         accountingApprovalNote: row.accountingApprovalNote,
+        rawSourceNotes: row.rawSourceNotes,
       },
     });
   } catch (e) {

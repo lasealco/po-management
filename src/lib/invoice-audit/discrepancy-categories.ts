@@ -24,3 +24,27 @@ export const DISCREPANCY_CATEGORY = {
 } as const;
 
 export type DiscrepancyCategoryKey = (typeof DISCREPANCY_CATEGORY)[keyof typeof DISCREPANCY_CATEGORY];
+
+/** Short labels for intake-level rollup / demos (keys still stored verbatim on audit rows). */
+const CATEGORY_LABELS: Record<string, string> = {
+  [DISCREPANCY_CATEGORY.AMOUNT_MATCH_WITHIN_TOLERANCE]: "Amount within tolerance",
+  [DISCREPANCY_CATEGORY.AMOUNT_MINOR_DISCREPANCY]: "Amount — minor vs snapshot",
+  [DISCREPANCY_CATEGORY.AMOUNT_MAJOR_DISCREPANCY]: "Amount — major vs snapshot",
+  [DISCREPANCY_CATEGORY.NO_SNAPSHOT_LINE_MATCH]: "No confident snapshot line",
+  [DISCREPANCY_CATEGORY.CURRENCY_MISMATCH]: "Currency mismatch",
+  [DISCREPANCY_CATEGORY.AMBIGUOUS_SNAPSHOT_MATCH]: "Ambiguous snapshot match",
+  [DISCREPANCY_CATEGORY.SNAPSHOT_PARSE_ERROR]: "Snapshot parse error",
+  [DISCREPANCY_CATEGORY.EQUIPMENT_MISMATCH]: "Equipment mismatch",
+  [DISCREPANCY_CATEGORY.GEO_SCOPE_MISMATCH]: "Geography / POL-POD mismatch",
+  [DISCREPANCY_CATEGORY.UNIT_BASIS_MISMATCH]: "Unit basis mismatch",
+  [DISCREPANCY_CATEGORY.ALL_IN_BASKET_MATCH]: "All-in basket match",
+  [DISCREPANCY_CATEGORY.ALL_IN_BASKET_MINOR_VARIANCE]: "All-in basket — minor variance",
+  [DISCREPANCY_CATEGORY.ALL_IN_BASKET_MAJOR_VARIANCE]: "All-in basket — major variance",
+  [DISCREPANCY_CATEGORY.MATCH_CONFIDENCE_LOW]: "Low match confidence",
+  [DISCREPANCY_CATEGORY.MATCH_RESOLVED_WITH_WARNINGS]: "Match with soft warnings",
+};
+
+export function formatDiscrepancyCategoryLabel(key: string): string {
+  if (CATEGORY_LABELS[key]) return CATEGORY_LABELS[key]!;
+  return key.replace(/_/g, " ").toLowerCase();
+}

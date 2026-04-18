@@ -6,10 +6,12 @@ import { InvoiceLinesMatchTable } from "@/components/invoice-audit/invoice-lines
 import { InvoiceMatchResultPanel } from "@/components/invoice-audit/invoice-match-result-panel";
 import { InvoiceOutcomeBanner } from "@/components/invoice-audit/invoice-outcome-banner";
 import { InvoiceAccountingHandoffScaffold } from "@/components/invoice-audit/invoice-accounting-handoff-scaffold";
+import { InvoiceIntakeOpsNotesScaffold } from "@/components/invoice-audit/invoice-intake-ops-notes-scaffold";
 import { InvoiceReviewScaffold } from "@/components/invoice-audit/invoice-review-scaffold";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { getInvoiceIntakeForTenant } from "@/lib/invoice-audit/invoice-intakes";
 import { InvoiceAuditError } from "@/lib/invoice-audit/invoice-audit-error";
+import { DISCREPANCY_CATEGORY, formatDiscrepancyCategoryLabel } from "@/lib/invoice-audit/discrepancy-categories";
 import { formatSnapshotMatchLabel } from "@/lib/invoice-audit/snapshot-match-label";
 import { getDemoTenant } from "@/lib/demo-tenant";
 
@@ -60,6 +62,24 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
 
   const appliedTolerance = intake.auditResults[0]?.toleranceRule ?? null;
 
+  const discrepancyRollup = (() => {
+    const m = new Map<string, number>();
+    for (const r of intake.auditResults) {
+      const cats = r.discrepancyCategories;
+      if (!Array.isArray(cats)) continue;
+      for (const c of cats) {
+        if (typeof c === "string" && c.trim()) m.set(c, (m.get(c) ?? 0) + 1);
+      }
+    }
+    return [...m.entries()].sort((a, b) => b[1] - a[1]);
+  })();
+
+  const rollupAttentionKeys = new Set<string>([
+    DISCREPANCY_CATEGORY.AMOUNT_MATCH_WITHIN_TOLERANCE,
+    DISCREPANCY_CATEGORY.ALL_IN_BASKET_MATCH,
+  ]);
+  const discrepancyRollupAttention = discrepancyRollup.filter(([k]) => !rollupAttentionKeys.has(k));
+
   return (
     <main className="mx-auto max-w-6xl space-y-6 px-6 py-10">
       <div>
@@ -102,6 +122,34 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
         polCode={intake.polCode}
         podCode={intake.podCode}
       />
+
+      {intake.status === "AUDITED" && intake.auditResults.length > 0 ? (
+        <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <h2 className="text-sm font-semibold text-zinc-900">Discrepancy categories (rollup)</h2>
+          <p className="mt-2 text-sm text-zinc-600">
+            Counts how often each category appears across line audit rows (Phase 06 auditability). Expand per-line
+            JSON below for the full payload. Pure “within tolerance” matches are summarized separately so attention
+            items stand out.
+          </p>
+          {discrepancyRollupAttention.length > 0 ? (
+            <ul className="mt-3 flex flex-wrap gap-2">
+              {discrepancyRollupAttention.map(([key, count]) => (
+                <li
+                  key={key}
+                  className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-950"
+                  title={key}
+                >
+                  {formatDiscrepancyCategoryLabel(key)} · {count}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-3 text-sm text-emerald-900">
+              No attention categories beyond successful matches (see per-line JSON for every stored category key).
+            </p>
+          )}
+        </section>
+      ) : null}
 
       <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
         <h2 className="text-sm font-semibold text-zinc-900">Audit run</h2>
@@ -247,13 +295,19 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
         }
       />
 
+      <InvoiceIntakeOpsNotesScaffold
+        intakeId={intake.id}
+        canEdit={canEdit}
+        initialNotes={intake.rawSourceNotes}
+      />
+
       <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
         <h2 className="text-sm font-semibold text-zinc-900">Escalation &amp; carrier comms (MVP)</h2>
         <p className="mt-2 text-sm text-zinc-600">
-          This module does not send email or EDI to carriers. For disputes or clarifications, use your normal carrier or
-          forwarder workflow and keep references in{" "}
-          <span className="font-medium text-zinc-800">raw source notes</span> or your ticket system. Line-level outcomes
-          and stored JSON here remain the audit trail for matched pricing.
+          This module does not send email or EDI to carriers. For disputes or clarifications, use your normal carrier
+          or forwarder workflow and record ticket ids or contact log in{" "}
+          <span className="font-medium text-zinc-800">Ops &amp; escalation notes</span> above. Line-level outcomes and
+          stored JSON remain the audit trail for matched pricing.
         </p>
       </section>
 

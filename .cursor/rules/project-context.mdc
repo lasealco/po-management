@@ -36,6 +36,7 @@ alwaysApply: true
 - **`npm test`** — Vitest uses `vitest.config.ts` `include` (tariff-engine lib tests only in this repo); same cases as **`npm run test:invoice-audit`** when you pass explicit paths there.
 - **Migrations before preview/demo:** run **`npm run db:migrate`** (or deploy) so invoice-audit tables match `schema.prisma`. For the current MVP, ensure at least through **`20260421103000_invoice_intake_accounting_handoff`** (adds `approvedForAccounting` / accounting metadata on `invoice_intakes`); missing columns cause Prisma runtime errors on intake PATCH and related UI.
 - **Invoice audit E2E demo row (optional):** after **`db:seed`** and at least one **pricing snapshot** exists for `demo-company`, run **`USE_DOTENV_LOCAL=1 npm run db:seed:invoice-audit-demo`** — creates/replaces intake **`DEMO-INVOICE-AUDIT-SEED`** (PARSED + sample lines); then open **`/invoice-audit/<id>`** and **Run audit** in the UI.
+- **Ops / escalation notes:** **`PATCH /api/invoice-audit/intakes/[id]`** accepts **`rawSourceNotes`** alone (`string` or `null`, max ~12k) for carrier ticket / dispute context — same field as intake **`rawSourceNotes`**; UI on intake detail under **Ops & escalation notes**.
 
 ## Ship workflow
 

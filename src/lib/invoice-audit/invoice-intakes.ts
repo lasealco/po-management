@@ -431,6 +431,34 @@ export async function setInvoiceIntakeReview(params: {
  * Single transaction when the UI saves finance review and accounting handoff together
  * (avoids a torn state if the second update failed mid-flight).
  */
+const RAW_SOURCE_NOTES_MAX_LEN = 12_000;
+
+export async function setInvoiceIntakeRawSourceNotes(params: {
+  tenantId: string;
+  invoiceIntakeId: string;
+  rawSourceNotes: string | null;
+}) {
+  const intake = await prisma.invoiceIntake.findFirst({
+    where: { id: params.invoiceIntakeId, tenantId: params.tenantId },
+    select: { id: true },
+  });
+  if (!intake) throw new InvoiceAuditError("NOT_FOUND", "Invoice intake not found.");
+
+  const trimmed = typeof params.rawSourceNotes === "string" ? params.rawSourceNotes.trim() : "";
+  const value = trimmed.length === 0 ? null : trimmed;
+  if (value && value.length > RAW_SOURCE_NOTES_MAX_LEN) {
+    throw new InvoiceAuditError(
+      "BAD_INPUT",
+      `rawSourceNotes cannot exceed ${RAW_SOURCE_NOTES_MAX_LEN} characters.`,
+    );
+  }
+
+  await prisma.invoiceIntake.update({
+    where: { id: intake.id },
+    data: { rawSourceNotes: value },
+  });
+}
+
 export async function patchInvoiceIntakeReviewAndAccounting(params: {
   tenantId: string;
   invoiceIntakeId: string;
