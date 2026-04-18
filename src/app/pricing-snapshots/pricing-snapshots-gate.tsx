@@ -14,12 +14,16 @@ export async function PricingSnapshotsGate({ children }: { children: React.React
     );
   }
   const g = access.grantSet;
-  if (!viewerHas(g, "org.tariffs", "view") && !viewerHas(g, "org.rfq", "view")) {
+  if (
+    !viewerHas(g, "org.tariffs", "view") &&
+    !viewerHas(g, "org.rfq", "view") &&
+    !viewerHas(g, "org.invoice_audit", "view")
+  ) {
     return (
       <div className="px-6 py-16">
         <AccessDenied
           title="Pricing snapshots"
-          message="You need org.tariffs → view or org.rfq → view."
+          message="You need org.tariffs → view, org.rfq → view, or org.invoice_audit → view (read-only snapshot access for invoice audit)."
         />
       </div>
     );

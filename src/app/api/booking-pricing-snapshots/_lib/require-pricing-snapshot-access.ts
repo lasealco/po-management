@@ -22,9 +22,16 @@ export async function requirePricingSnapshotRead(): Promise<NextResponse | null>
     );
   }
   const g = access.grantSet;
-  if (!viewerHas(g, "org.tariffs", "view") && !viewerHas(g, "org.rfq", "view")) {
+  if (
+    !viewerHas(g, "org.tariffs", "view") &&
+    !viewerHas(g, "org.rfq", "view") &&
+    !viewerHas(g, "org.invoice_audit", "view")
+  ) {
     return NextResponse.json(
-      { error: "Forbidden: requires org.tariffs → view or org.rfq → view." },
+      {
+        error:
+          "Forbidden: requires org.tariffs → view, org.rfq → view, or org.invoice_audit → view.",
+      },
       { status: 403 },
     );
   }
