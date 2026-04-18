@@ -5,6 +5,7 @@ import { serializeAuditResult, serializeInvoiceLine } from "@/app/api/invoice-au
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import {
   getInvoiceIntakeForTenant,
+  patchInvoiceIntakeReviewAndAccounting,
   setInvoiceIntakeAccountingHandoff,
   setInvoiceIntakeReview,
 } from "@/lib/invoice-audit/invoice-intakes";
@@ -111,16 +112,30 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
           { status: 400 },
         );
       }
-      await setInvoiceIntakeReview({
-        tenantId: tenant.id,
-        invoiceIntakeId: id,
-        reviewDecision: reviewDecision === "APPROVED" ? "APPROVED" : "OVERRIDDEN",
-        reviewNote: typeof o.reviewNote === "string" ? o.reviewNote : null,
-        reviewedByUserId: actorId,
-      });
-    }
+      const rd = reviewDecision === "APPROVED" ? "APPROVED" : "OVERRIDDEN";
+      const reviewNote = typeof o.reviewNote === "string" ? o.reviewNote : null;
 
-    if (hasAccounting) {
+      if (hasAccounting) {
+        await patchInvoiceIntakeReviewAndAccounting({
+          tenantId: tenant.id,
+          invoiceIntakeId: id,
+          actorUserId: actorId,
+          reviewDecision: rd,
+          reviewNote,
+          approvedForAccounting: o.approvedForAccounting as boolean,
+          accountingApprovalNote:
+            typeof o.accountingApprovalNote === "string" ? o.accountingApprovalNote : null,
+        });
+      } else {
+        await setInvoiceIntakeReview({
+          tenantId: tenant.id,
+          invoiceIntakeId: id,
+          reviewDecision: rd,
+          reviewNote,
+          reviewedByUserId: actorId,
+        });
+      }
+    } else if (hasAccounting) {
       await setInvoiceIntakeAccountingHandoff({
         tenantId: tenant.id,
         invoiceIntakeId: id,

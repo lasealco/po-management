@@ -46,7 +46,10 @@ export function InvoiceIntakeDetailActions(props: {
         {busy ? "Running…" : props.status === "AUDITED" ? "Re-run audit" : "Run audit vs snapshot"}
       </button>
       {props.status === "AUDITED" ? (
-        <p className="text-xs text-zinc-500">Re-run clears any prior manual approval on this intake.</p>
+        <p className="text-xs text-zinc-500">
+          Re-run clears finance review, accounting handoff, and line-level audit results before rebuilding them from the
+          snapshot.
+        </p>
       ) : null}
       {error ? <p className="w-full text-sm text-red-700">{error}</p> : null}
     </div>

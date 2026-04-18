@@ -427,6 +427,85 @@ export async function setInvoiceIntakeReview(params: {
   });
 }
 
+/**
+ * Single transaction when the UI saves finance review and accounting handoff together
+ * (avoids a torn state if the second update failed mid-flight).
+ */
+export async function patchInvoiceIntakeReviewAndAccounting(params: {
+  tenantId: string;
+  invoiceIntakeId: string;
+  actorUserId: string;
+  reviewDecision: "APPROVED" | "OVERRIDDEN";
+  reviewNote: string | null;
+  approvedForAccounting: boolean;
+  accountingApprovalNote: string | null;
+}) {
+  const decision: InvoiceReviewDecision =
+    params.reviewDecision === "APPROVED" ? "APPROVED" : "OVERRIDDEN";
+
+  return prisma.$transaction(async (tx) => {
+    const intake = await tx.invoiceIntake.findFirst({
+      where: { id: params.invoiceIntakeId, tenantId: params.tenantId },
+      select: { id: true, status: true },
+    });
+    if (!intake) throw new InvoiceAuditError("NOT_FOUND", "Invoice intake not found.");
+    if (intake.status !== "AUDITED") {
+      throw new InvoiceAuditError(
+        "CONFLICT",
+        `Review is only allowed after a successful audit (current status: ${intake.status}).`,
+      );
+    }
+
+    await tx.invoiceIntake.update({
+      where: { id: intake.id },
+      data: {
+        reviewDecision: decision,
+        reviewNote: params.reviewNote?.trim() || null,
+        reviewedByUserId: params.actorUserId,
+        reviewedAt: new Date(),
+        approvedForAccounting: false,
+        accountingApprovedAt: null,
+        accountingApprovedByUserId: null,
+        accountingApprovalNote: null,
+      },
+    });
+
+    const now = new Date();
+    await tx.invoiceIntake.update({
+      where: { id: intake.id },
+      data: params.approvedForAccounting
+        ? {
+            approvedForAccounting: true,
+            accountingApprovedAt: now,
+            accountingApprovedByUserId: params.actorUserId,
+            accountingApprovalNote: params.accountingApprovalNote?.trim() || null,
+          }
+        : {
+            approvedForAccounting: false,
+            accountingApprovedAt: null,
+            accountingApprovedByUserId: null,
+            accountingApprovalNote: null,
+          },
+    });
+
+    return tx.invoiceIntake.findFirstOrThrow({
+      where: { id: intake.id },
+      include: {
+        bookingPricingSnapshot: {
+          select: {
+            id: true,
+            sourceSummary: true,
+            currency: true,
+            frozenAt: true,
+          },
+        },
+        lines: { orderBy: { lineNo: "asc" } },
+        auditResults: true,
+      },
+    });
+  });
+}
+
 export async function setInvoiceIntakeAccountingHandoff(params: {
   tenantId: string;
   invoiceIntakeId: string;
