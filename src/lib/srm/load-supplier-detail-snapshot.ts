@@ -1,5 +1,7 @@
 import type { SupplierDetailSnapshot } from "@/components/supplier-detail-client";
 import { ensureSupplierOnboardingTasks } from "@/lib/srm/ensure-supplier-onboarding-tasks";
+import { computeOnboardingProgress } from "@/lib/srm/supplier-onboarding-workflow";
+import { suggestedQualificationStatusFromChecklist } from "@/lib/srm/supplier-qualification-suggest";
 import type { PrismaClient } from "@prisma/client";
 
 /**
@@ -118,6 +120,29 @@ export async function loadSupplierDetailSnapshot(
       notes: t.notes,
       completedAt: t.completedAt?.toISOString() ?? null,
     })),
+    onboardingWorkflow: (() => {
+      const wf = computeOnboardingProgress(
+        onboardingTasks.map((t) => ({
+          taskKey: t.taskKey,
+          status: t.status,
+          label: t.label,
+        })),
+      );
+      return {
+        completedCount: wf.doneOrWaived,
+        totalCount: wf.total,
+        nextTaskLabel: wf.firstPending?.label ?? null,
+        nextTaskKey: wf.firstPending?.taskKey ?? null,
+      };
+    })(),
+    qualification: {
+      status: supplier.qualificationStatus,
+      summary: supplier.qualificationSummary,
+      lastReviewedAt: supplier.qualificationLastReviewedAt?.toISOString() ?? null,
+      suggestedStatus: suggestedQualificationStatusFromChecklist(
+        onboardingTasks.map((t) => ({ taskKey: t.taskKey, status: t.status })),
+      ),
+    },
     productLinkCount: supplier._count.productSuppliers,
     orderCount: supplier._count.orders,
   };

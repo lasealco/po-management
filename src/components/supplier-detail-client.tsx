@@ -1,10 +1,12 @@
 "use client";
 
+import type { SupplierQualificationStatus } from "@prisma/client";
 import Link from "next/link";
 import { startTransition, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SupplierCapabilitiesSection } from "@/components/supplier-capabilities-section";
 import { SupplierOnboardingSection } from "@/components/supplier-onboarding-section";
+import { SupplierQualificationSection } from "@/components/supplier-qualification-section";
 import { SupplierOrderHistorySection } from "@/components/supplier-order-history";
 import type { SupplierCapabilityRow } from "@/lib/srm/supplier-capability-types";
 import type { SupplierOnboardingTaskRow } from "@/lib/srm/supplier-onboarding-types";
@@ -58,6 +60,18 @@ export type SupplierDetailSnapshot = {
   }>;
   capabilities: SupplierCapabilityRow[];
   onboardingTasks: SupplierOnboardingTaskRow[];
+  onboardingWorkflow: {
+    completedCount: number;
+    totalCount: number;
+    nextTaskLabel: string | null;
+    nextTaskKey: string | null;
+  };
+  qualification: {
+    status: SupplierQualificationStatus;
+    summary: string | null;
+    lastReviewedAt: string | null;
+    suggestedStatus: SupplierQualificationStatus;
+  };
   productLinkCount: number;
   orderCount: number;
 };
@@ -1236,13 +1250,24 @@ export function SupplierDetailClient({
           supplierId={initial.id}
           canEdit={canEdit}
           initialRows={initial.onboardingTasks}
+          workflowSummary={initial.onboardingWorkflow}
+        />
+      )}
+
+      {(!isSrmShell || srmTab === "qualification") && (
+        <SupplierQualificationSection
+          key={`qual-${initial.id}-${initial.updatedAt}`}
+          supplierId={initial.id}
+          canEdit={canEdit}
+          qualification={initial.qualification}
         />
       )}
 
       {isSrmShell &&
       srmTab !== "overview" &&
       srmTab !== "capabilities" &&
-      srmTab !== "onboarding" ? (
+      srmTab !== "onboarding" &&
+      srmTab !== "qualification" ? (
         <section className="rounded-lg border border-dashed border-zinc-200 bg-zinc-50/80 p-8 text-center shadow-sm">
           <p className="text-sm font-medium text-zinc-800">
             {SRM_SUPPLIER_TABS.find((x) => x.id === srmTab)?.label ?? srmTab}

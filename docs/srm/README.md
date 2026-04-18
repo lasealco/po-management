@@ -35,7 +35,7 @@ These files are derived from the SRM PDF pack created earlier and are intended t
 
 Work for new schema/UI ships on **`feature/srm-foundation`** (not `main`) until review.
 
-1. **Migrate:** `npm run db:migrate` (or `npx prisma migrate deploy`) so SRM tables exist (`SupplierServiceCapability`, `SupplierOnboardingTask`, …).
+1. **Migrate:** `npm run db:migrate` (or `npx prisma migrate deploy`) so SRM tables and columns exist (`SupplierServiceCapability`, `SupplierOnboardingTask`, `Supplier.qualificationStatus` / summary / last reviewed, …).
 2. **Seed:** `npm run db:seed` — demo **SUP-001** gets sample **capabilities** and a full **onboarding checklist** (first three items marked done).
 3. **Tests (SRM lib):** `npm run test:srm` — runs all Vitest files under `src/lib/srm/` (capability payload parsing, onboarding PATCH parsing, default checklist shape).
 4. **Full suite:** `npm run test` — includes the same SRM tests plus the rest of the repo.

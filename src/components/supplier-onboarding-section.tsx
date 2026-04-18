@@ -12,10 +12,17 @@ export function SupplierOnboardingSection({
   supplierId,
   canEdit,
   initialRows,
+  workflowSummary,
 }: {
   supplierId: string;
   canEdit: boolean;
   initialRows: SupplierOnboardingTaskRow[];
+  workflowSummary?: {
+    completedCount: number;
+    totalCount: number;
+    nextTaskLabel: string | null;
+    nextTaskKey: string | null;
+  };
 }) {
   const router = useRouter();
   const [rows, setRows] = useState<SupplierOnboardingTaskRow[]>(initialRows);
@@ -53,6 +60,14 @@ export function SupplierOnboardingSection({
         Default steps from the SRM lifecycle spec. Mark items done or waived as you progress; activation
         still follows supplier approval rules.
       </p>
+      {workflowSummary && workflowSummary.totalCount > 0 ? (
+        <p className="mt-2 text-xs font-medium text-zinc-700">
+          {workflowSummary.completedCount}/{workflowSummary.totalCount} complete
+          {workflowSummary.nextTaskLabel
+            ? ` · Next: ${workflowSummary.nextTaskLabel}`
+            : " · Checklist complete"}
+        </p>
+      ) : null}
       {error ? (
         <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {error}

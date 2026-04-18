@@ -3,6 +3,7 @@ import { requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
 import { parseOnboardingTaskPatchBody } from "@/lib/srm/supplier-onboarding-patch";
+import { assertOnboardingStatusChangeAllowed } from "@/lib/srm/supplier-onboarding-workflow";
 
 export async function PATCH(
   request: Request,
@@ -38,6 +39,21 @@ export async function PATCH(
   const parsed = parseOnboardingTaskPatchBody(o);
   if (!parsed.ok) {
     return NextResponse.json({ error: parsed.message }, { status: 400 });
+  }
+
+  if (parsed.data.status !== undefined) {
+    const siblings = await prisma.supplierOnboardingTask.findMany({
+      where: { supplierId, tenantId: tenant.id },
+      select: { taskKey: true, status: true },
+    });
+    const gate = assertOnboardingStatusChangeAllowed(
+      task.taskKey,
+      parsed.data.status,
+      siblings,
+    );
+    if (!gate.ok) {
+      return NextResponse.json({ error: gate.message }, { status: 400 });
+    }
   }
 
   const data = { ...parsed.data } as typeof parsed.data & {

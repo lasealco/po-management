@@ -7,6 +7,7 @@ import {
   viewerHas,
 } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
+import { parseSupplierQualificationFields } from "@/lib/srm/supplier-qualification-patch";
 import { optionalStringField } from "@/lib/supplier-patch";
 import { prisma } from "@/lib/prisma";
 
@@ -280,6 +281,14 @@ export async function PATCH(
         { status: 400 },
       );
     }
+  }
+
+  const qualParse = parseSupplierQualificationFields(o);
+  if (qualParse.kind === "error") {
+    return NextResponse.json({ error: qualParse.message }, { status: 400 });
+  }
+  if (qualParse.kind === "ok") {
+    Object.assign(data, qualParse.data);
   }
 
   if (Object.keys(data).length === 0) {

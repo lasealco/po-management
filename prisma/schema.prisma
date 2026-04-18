@@ -221,6 +221,15 @@ enum SupplierOnboardingTaskStatus {
   waived
 }
 
+/// Buyer-recorded supplier qualification (SRM master); onboarding checklist suggests status separately.
+enum SupplierQualificationStatus {
+  not_started
+  in_progress
+  qualified
+  conditional
+  disqualified
+}
+
 model Supplier {
   id        String   @id @default(cuid())
   tenantId  String
@@ -255,6 +264,10 @@ model Supplier {
   creditCurrency     String?  @db.VarChar(3)
   defaultIncoterm    String?
   internalNotes      String?  @db.Text
+
+  qualificationStatus         SupplierQualificationStatus @default(not_started)
+  qualificationSummary        String?                     @db.Text
+  qualificationLastReviewedAt DateTime?
 
   /// Hours allowed for booking confirmation after send (logistics partners). Null = tenant default (24h).
   bookingConfirmationSlaHours Int?

@@ -316,6 +316,10 @@ async function seed() {
     update: {
       name: "Acme Industrial Supplies",
       isActive: true,
+      qualificationStatus: "in_progress",
+      qualificationSummary:
+        "Demo seed: first three onboarding items complete; questionnaire and downstream gates still open.",
+      qualificationLastReviewedAt: new Date(),
       phone: "+1 312-555-0100",
       legalName: "Acme Industrial Supplies LLC",
       taxId: "US-EIN-12-3456789",
@@ -338,6 +342,10 @@ async function seed() {
       tenantId: tenant.id,
       code: "SUP-001",
       name: "Acme Industrial Supplies",
+      qualificationStatus: "in_progress",
+      qualificationSummary:
+        "Demo seed: first three onboarding items complete; questionnaire and downstream gates still open.",
+      qualificationLastReviewedAt: new Date(),
       email: "orders@acme.example",
       phone: "+1 312-555-0100",
       legalName: "Acme Industrial Supplies LLC",
