@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { DISCREPANCY_CATEGORY } from "@/lib/invoice-audit/discrepancy-categories";
-import { extractSnapshotPriceCandidates } from "@/lib/invoice-audit/snapshot-candidates";
+import {
+  extractSnapshotPriceCandidates,
+  summarizeContractGeographyFromCandidates,
+} from "@/lib/invoice-audit/snapshot-candidates";
 
 describe("extractSnapshotPriceCandidates", () => {
   it("parses TARIFF_CONTRACT_VERSION rate and charge lines", () => {
@@ -127,6 +130,41 @@ describe("extractSnapshotPriceCandidates", () => {
     if (!out.ok) return;
     expect(out.contractGrandTotal).toBeNull();
     expect(out.rfqRouteLocodes).toBeNull();
+  });
+
+  it("summarizes contract FCL geography from candidates", () => {
+    const out = extractSnapshotPriceCandidates({
+      sourceType: "TARIFF_CONTRACT_VERSION",
+      rateLines: [
+        {
+          id: "r1",
+          rateType: "FCL",
+          equipmentType: "40HC",
+          unitBasis: "PER_CONTAINER",
+          currency: "USD",
+          amount: "100",
+          originScope: { code: "USNYC" },
+          destinationScope: { code: "DEHAM" },
+        },
+        {
+          id: "r2",
+          rateType: "FCL",
+          equipmentType: "20DV",
+          unitBasis: "PER_CONTAINER",
+          currency: "USD",
+          amount: "80",
+          originScope: { code: "USORF" },
+          destinationScope: { code: "DEHAM" },
+        },
+      ],
+      chargeLines: [],
+    });
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+    expect(summarizeContractGeographyFromCandidates(out.candidates)).toEqual({
+      polCodes: ["USNYC", "USORF"],
+      podCodes: ["DEHAM"],
+    });
   });
 
   it("fails on unknown sourceType", () => {

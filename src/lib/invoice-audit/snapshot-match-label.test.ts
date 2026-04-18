@@ -31,4 +31,17 @@ describe("formatSnapshotMatchLabel", () => {
       }),
     ).toBe("All-in vs contract grand (5000)");
   });
+
+  it("summarizes all-in no-basket payloads", () => {
+    expect(
+      formatSnapshotMatchLabel({
+        mode: "CONTRACT_BASKET_SUM",
+        reason: "NO_BASKET_COMPONENTS",
+      }),
+    ).toBe("All-in: no basket built (CONTRACT_BASKET_SUM)");
+  });
+
+  it("summarizes empty scoring pool", () => {
+    expect(formatSnapshotMatchLabel({ topScores: [] })).toBe("No viable matches after scoring");
+  });
 });

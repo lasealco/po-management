@@ -243,6 +243,16 @@ export function InvoiceAuditNewClient(props: { initialSnapshotId?: string }) {
               onChange={(e) => setSnapshotId(e.target.value)}
               placeholder="BookingPricingSnapshot id (cuid)"
             />
+            {snapshotId.trim() ? (
+              <p className="mt-2 text-xs">
+                <Link
+                  href={`/pricing-snapshots/${encodeURIComponent(snapshotId.trim())}`}
+                  className="font-medium text-[var(--arscmp-primary)] hover:underline"
+                >
+                  Open snapshot (audit hints and geography)
+                </Link>
+              </p>
+            ) : null}
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
@@ -285,7 +295,7 @@ export function InvoiceAuditNewClient(props: { initialSnapshotId?: string }) {
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-zinc-500">POL (loading)</label>
+              <label className="text-xs font-semibold uppercase tracking-wide text-zinc-500">POL (origin)</label>
               <input
                 className="mt-1 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 font-mono text-sm shadow-inner"
                 value={polCode}

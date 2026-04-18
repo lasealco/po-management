@@ -20,6 +20,22 @@ export type SnapshotPriceCandidate = {
   rateType: string | null;
 };
 
+/** Unique POL/POD codes appearing on contract FCL rates (for snapshot audit demos). */
+export function summarizeContractGeographyFromCandidates(
+  candidates: SnapshotPriceCandidate[],
+): { polCodes: string[]; podCodes: string[] } | null {
+  const rates = candidates.filter((c) => c.kind === "CONTRACT_RATE");
+  if (rates.length === 0) return null;
+  const pol = new Set<string>();
+  const pod = new Set<string>();
+  for (const r of rates) {
+    if (r.originCode) pol.add(r.originCode);
+    if (r.destCode) pod.add(r.destCode);
+  }
+  if (pol.size === 0 && pod.size === 0) return null;
+  return { polCodes: [...pol].sort(), podCodes: [...pod].sort() };
+}
+
 /** First UN/LOCODE parsed from RFQ quoteRequest origin/destination labels (invoice POL/POD hints). */
 export type RfqRouteLocodes = { pol: string | null; pod: string | null };
 

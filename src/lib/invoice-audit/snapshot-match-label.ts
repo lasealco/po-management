@@ -10,6 +10,9 @@ export function formatSnapshotMatchLabel(json: unknown): string {
   if (typeof j.reason === "string" && j.reason === "EMPTY_POOL_AFTER_FILTERS") {
     return "No eligible lines after filters";
   }
+  if (typeof j.mode === "string" && j.reason === "NO_BASKET_COMPONENTS") {
+    return `All-in: no basket built (${j.mode})`;
+  }
   if (typeof j.mode === "string") {
     const exp = j.expectedAmount;
     if (j.mode === "CONTRACT_BREAKDOWN_GRAND" && (typeof exp === "number" || typeof exp === "string")) {
@@ -33,6 +36,9 @@ export function formatSnapshotMatchLabel(json: unknown): string {
   }
   if (Array.isArray(j.topScores) && j.topScores.length > 0) {
     return "Low confidence (see JSON)";
+  }
+  if (Array.isArray(j.topScores) && j.topScores.length === 0) {
+    return "No viable matches after scoring";
   }
   return "—";
 }

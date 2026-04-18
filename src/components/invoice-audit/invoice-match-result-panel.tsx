@@ -7,6 +7,8 @@ export function InvoiceMatchResultPanel(props: {
   snapshotId: string;
   lineCount: number;
   auditResultCount: number;
+  polCode?: string | null;
+  podCode?: string | null;
 }) {
   return (
     <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
@@ -22,6 +24,11 @@ export function InvoiceMatchResultPanel(props: {
         . Ocean scoring uses equipment, optional POL/POD, unit basis, tenant charge aliases, and all-in vs itemized
         logic; amounts use active tolerance rules (or built-in defaults if none apply).
       </p>
+      {props.polCode || props.podCode ? (
+        <p className="mt-2 font-mono text-xs text-zinc-600">
+          Intake route: POL {props.polCode ?? "—"} → POD {props.podCode ?? "—"}
+        </p>
+      ) : null}
       <div className="mt-4 rounded-xl border border-zinc-100 bg-zinc-50/80 p-3 text-xs text-zinc-700">
         <p className="font-semibold text-zinc-800">Line outcomes (demo legend)</p>
         <ul className="mt-2 list-inside list-disc space-y-1">

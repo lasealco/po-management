@@ -4,7 +4,10 @@ import { notFound } from "next/navigation";
 import { PricingSnapshotBreakdownPanel } from "@/components/pricing-snapshots/pricing-snapshot-breakdown-panel";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { getBookingPricingSnapshotForTenant, SnapshotRepoError } from "@/lib/booking-pricing-snapshot";
-import { extractSnapshotPriceCandidates } from "@/lib/invoice-audit/snapshot-candidates";
+import {
+  extractSnapshotPriceCandidates,
+  summarizeContractGeographyFromCandidates,
+} from "@/lib/invoice-audit/snapshot-candidates";
 import { getDemoTenant } from "@/lib/demo-tenant";
 
 export const dynamic = "force-dynamic";
@@ -42,6 +45,10 @@ export default async function PricingSnapshotDetailPage(props: { params: Promise
   }
 
   const auditExtract = extractSnapshotPriceCandidates(row.breakdownJson);
+  const contractGeo =
+    auditExtract.ok && auditExtract.sourceType === "TARIFF_CONTRACT_VERSION"
+      ? summarizeContractGeographyFromCandidates(auditExtract.candidates)
+      : null;
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
@@ -100,6 +107,13 @@ export default async function PricingSnapshotDetailPage(props: { params: Promise
                 <p className="mt-2 font-mono text-xs text-zinc-600">
                   Quote route hints (from RFQ labels): POL {auditExtract.rfqRouteLocodes.pol ?? "—"} → POD{" "}
                   {auditExtract.rfqRouteLocodes.pod ?? "—"} (used when invoice intakes include POL/POD codes).
+                </p>
+              ) : null}
+              {auditExtract.sourceType === "TARIFF_CONTRACT_VERSION" && contractGeo ? (
+                <p className="mt-2 font-mono text-xs text-zinc-600">
+                  Contract rate geography: POL {contractGeo.polCodes.length ? contractGeo.polCodes.join(", ") : "—"} →
+                  POD {contractGeo.podCodes.length ? contractGeo.podCodes.join(", ") : "—"} (from frozen FCL rate
+                  lines).
                 </p>
               ) : null}
             </>
