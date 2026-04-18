@@ -33,6 +33,15 @@ export default async function InvoiceAuditChargeAliasesPage() {
       <section className="mt-4 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Invoice audit · Configuration</p>
         <h1 className="mt-2 text-2xl font-semibold text-zinc-900">Charge aliases</h1>
+        <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-600">
+          <Link href="/invoice-audit/tolerance-rules" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+            Tolerance rules
+          </Link>
+          <span className="text-zinc-400">·</span>
+          <Link href="/invoice-audit/readiness" className="font-medium text-zinc-600 hover:underline">
+            Database readiness
+          </Link>
+        </p>
         <p className="mt-2 max-w-3xl text-sm text-zinc-600">
           Tenant-specific dictionary entries used during <span className="font-medium">Run audit</span> ocean line
           matching. They do not replace built-in wording expansion; they let operations map recurring carrier invoice

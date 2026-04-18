@@ -33,6 +33,15 @@ export default async function InvoiceAuditToleranceRulesPage() {
       <section className="mt-4 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Invoice audit · Configuration</p>
         <h1 className="mt-2 text-2xl font-semibold text-zinc-900">Tolerance rules</h1>
+        <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-600">
+          <Link href="/invoice-audit/charge-aliases" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+            Charge aliases
+          </Link>
+          <span className="text-zinc-400">·</span>
+          <Link href="/invoice-audit/readiness" className="font-medium text-zinc-600 hover:underline">
+            Database readiness
+          </Link>
+        </p>
         <p className="mt-2 text-sm text-zinc-600">
           When someone runs <span className="font-medium">Run audit</span> on an intake, the engine picks the
           highest-priority <span className="font-medium">active</span> rule for that intake&apos;s currency (or a global
