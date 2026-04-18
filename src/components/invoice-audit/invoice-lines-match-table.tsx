@@ -1,5 +1,10 @@
 import type { InvoiceAuditLineOutcome } from "@prisma/client";
 
+import {
+  discrepancyCategoryTone,
+  formatDiscrepancyCategoryLabel,
+  formatDiscrepancyCategoryReviewHint,
+} from "@/lib/invoice-audit/discrepancy-categories";
 import { formatSnapshotMatchLabel } from "@/lib/invoice-audit/snapshot-match-label";
 
 function outcomeDot(outcome: InvoiceAuditLineOutcome) {
@@ -11,11 +16,6 @@ function outcomeDot(outcome: InvoiceAuditLineOutcome) {
 
 function outcomeLabel(outcome: InvoiceAuditLineOutcome) {
   return outcome;
-}
-
-function fmtCat(raw: unknown): string {
-  if (!Array.isArray(raw)) return "";
-  return raw.map((x) => String(x)).join(", ");
 }
 
 export type LineRow = {
@@ -37,6 +37,9 @@ export type AuditRow = {
   amountVariance: string | null;
   explanation: string;
   snapshotMatchedJson: unknown;
+  /** Tolerance rule applied for this audit row (same run usually repeats). */
+  toleranceRuleName?: string | null;
+  toleranceRuleId?: string | null;
 };
 
 export function InvoiceLinesMatchTable(props: {
@@ -58,7 +61,9 @@ export function InvoiceLinesMatchTable(props: {
             <th className="px-4 py-3">Amount</th>
             <th className="px-4 py-3">Match</th>
             <th className="px-4 py-3">Snapshot match</th>
-            <th className="px-4 py-3">Categories</th>
+            <th className="px-4 py-3" title="Stored discrepancy category keys — hover each chip for reviewer guidance.">
+              Categories
+            </th>
             <th className="px-4 py-3">Expected</th>
             <th className="px-4 py-3">Variance</th>
             <th className="px-4 py-3">Explanation</th>
@@ -91,10 +96,17 @@ export function InvoiceLinesMatchTable(props: {
                 </td>
                 <td className="px-4 py-3">
                   {ar ? (
-                    <span className="inline-flex items-center gap-2 font-semibold">
-                      <span className={`h-2.5 w-2.5 rounded-full ${outcomeDot(ar.outcome)}`} aria-hidden />
-                      {outcomeLabel(ar.outcome)}
-                    </span>
+                    <div>
+                      <span className="inline-flex items-center gap-2 font-semibold">
+                        <span className={`h-2.5 w-2.5 rounded-full ${outcomeDot(ar.outcome)}`} aria-hidden />
+                        {outcomeLabel(ar.outcome)}
+                      </span>
+                      {ar.toleranceRuleName ? (
+                        <p className="mt-1 text-[10px] leading-snug text-zinc-500" title={ar.toleranceRuleId ?? undefined}>
+                          Tolerance: <span className="font-medium text-zinc-700">{ar.toleranceRuleName}</span>
+                        </p>
+                      ) : null}
+                    </div>
                   ) : (
                     <span className="text-zinc-400">—</span>
                   )}
@@ -102,8 +114,33 @@ export function InvoiceLinesMatchTable(props: {
                 <td className="max-w-[12rem] px-4 py-3 text-xs text-zinc-700">
                   {ar ? formatSnapshotMatchLabel(ar.snapshotMatchedJson) : "—"}
                 </td>
-                <td className="max-w-[10rem] px-4 py-3 font-mono text-xs text-zinc-700">
-                  {ar ? fmtCat(ar.discrepancyCategories) : "—"}
+                <td className="max-w-[14rem] px-4 py-3 align-top text-zinc-800">
+                  {ar && Array.isArray(ar.discrepancyCategories) && ar.discrepancyCategories.length ? (
+                    <ul className="flex flex-col gap-1">
+                      {ar.discrepancyCategories.map((raw) => {
+                        const key = String(raw).trim();
+                        if (!key) return null;
+                        const tone = discrepancyCategoryTone(key);
+                        const chip =
+                          tone === "critical"
+                            ? "border-red-200 bg-red-50 text-red-950"
+                            : tone === "attention"
+                              ? "border-amber-200 bg-amber-50 text-amber-950"
+                              : "border-emerald-200 bg-emerald-50/90 text-emerald-950";
+                        return (
+                          <li
+                            key={`${ar.invoiceLineId}-${key}`}
+                            className={`rounded-md border px-2 py-0.5 text-[11px] font-medium leading-snug ${chip}`}
+                            title={`${key}\n\n${formatDiscrepancyCategoryReviewHint(key)}`}
+                          >
+                            {formatDiscrepancyCategoryLabel(key)}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  ) : (
+                    <span className="font-mono text-xs text-zinc-400">—</span>
+                  )}
                 </td>
                 <td className="px-4 py-3 tabular-nums text-zinc-800">{ar?.expectedAmount ?? "—"}</td>
                 <td className="px-4 py-3 tabular-nums text-zinc-800">{ar?.amountVariance ?? "—"}</td>

@@ -13,7 +13,11 @@ import { InvoiceReviewScaffold } from "@/components/invoice-audit/invoice-review
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { getInvoiceIntakeForTenant } from "@/lib/invoice-audit/invoice-intakes";
 import { InvoiceAuditError } from "@/lib/invoice-audit/invoice-audit-error";
-import { DISCREPANCY_CATEGORY, formatDiscrepancyCategoryLabel } from "@/lib/invoice-audit/discrepancy-categories";
+import {
+  DISCREPANCY_CATEGORY,
+  formatDiscrepancyCategoryLabel,
+  formatDiscrepancyCategoryReviewHint,
+} from "@/lib/invoice-audit/discrepancy-categories";
 import {
   formatPricingSnapshotSourceType,
   resolvePricingSnapshotSourceNav,
@@ -87,6 +91,8 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
     amountVariance: r.amountVariance?.toString() ?? null,
     explanation: r.explanation,
     snapshotMatchedJson: r.snapshotMatchedJson,
+    toleranceRuleName: r.toleranceRule?.name ?? null,
+    toleranceRuleId: r.toleranceRule?.id ?? null,
   }));
 
   const appliedTolerance = intake.auditResults[0]?.toleranceRule ?? null;
@@ -197,7 +203,7 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
                 <li
                   key={key}
                   className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-950"
-                  title={key}
+                  title={`${key}\n\n${formatDiscrepancyCategoryReviewHint(key)}`}
                 >
                   {formatDiscrepancyCategoryLabel(key)} · {count}
                 </li>
@@ -208,6 +214,14 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
               No attention categories beyond successful matches (see per-line JSON for every stored category key).
             </p>
           )}
+          <p className="mt-3 text-xs text-zinc-600">
+            <Link
+              href="#invoice-audit-category-reference"
+              className="font-medium text-[var(--arscmp-primary)] hover:underline"
+            >
+              Category reference (meanings &amp; stored keys)
+            </Link>
+          </p>
         </section>
       ) : null}
 
@@ -225,7 +239,7 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
           <p className="mt-2 text-sm text-zinc-600">No audit has been run yet for this intake.</p>
         )}
         {intake.auditResults.length > 0 ? (
-          <p className="mt-2 text-sm text-zinc-600">
+          <div className="mt-2 text-sm text-zinc-600">
             <span className="font-medium text-zinc-800">Tolerance</span>
             {appliedTolerance ? (
               <>
@@ -242,7 +256,10 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
                   </span>
                 ) : null}
                 {appliedTolerance.percentTolerance != null ? (
-                  <span className="tabular-nums text-zinc-700">
+                  <span
+                    className="tabular-nums text-zinc-700"
+                    title={`Stored ratio ${appliedTolerance.percentTolerance.toString()} (line vs snapshot amount)`}
+                  >
                     {" "}
                     · {(Number(appliedTolerance.percentTolerance) * 100).toFixed(2)}%
                   </span>
@@ -250,6 +267,12 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
                 {!appliedTolerance.active ? (
                   <span className="ml-1 text-xs font-medium text-amber-800">(rule inactive at read time)</span>
                 ) : null}
+                <span className="mt-2 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+                  <span className="font-mono text-[11px] text-zinc-600" title="Tolerance rule primary key">
+                    {appliedTolerance.id}
+                  </span>
+                  <CopyTextButton text={appliedTolerance.id} label="Copy rule id" copiedLabel="Rule id copied" />
+                </span>
               </>
             ) : (
               <>
@@ -268,7 +291,7 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
                 </Link>
               </>
             ) : null}
-          </p>
+          </div>
         ) : null}
         {intake.auditResults.length > 0 ? (
           <p className="mt-2 text-xs text-zinc-500">
@@ -386,6 +409,18 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
                   <span className="mx-2 text-zinc-400">·</span>
                   <span>{formatSnapshotMatchLabel(r.snapshotMatchedJson)}</span>
                 </div>
+                {r.toleranceRule ? (
+                  <p className="mt-2 flex flex-wrap items-center gap-2 text-xs text-zinc-600">
+                    <span>
+                      Tolerance applied:{" "}
+                      <span className="font-medium text-zinc-800">{r.toleranceRule.name}</span>
+                    </span>
+                    <span className="font-mono text-[10px] text-zinc-500">{r.toleranceRule.id}</span>
+                    <CopyTextButton text={r.toleranceRule.id} label="Copy rule id" copiedLabel="Copied" />
+                  </p>
+                ) : (
+                  <p className="mt-2 text-xs text-zinc-500">Tolerance applied: built-in defaults (no tenant rule id).</p>
+                )}
                 <details className="mt-2">
                   <summary className="cursor-pointer text-xs font-medium text-[var(--arscmp-primary)]">
                     snapshotMatchedJson
@@ -399,6 +434,23 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
           </ul>
         </section>
       ) : null}
+
+      <section id="invoice-audit-category-reference" className="scroll-mt-8 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+        <h2 className="text-sm font-semibold text-zinc-900">Discrepancy category reference</h2>
+        <p className="mt-2 text-sm text-zinc-600">
+          Keys below are what the engine stores in <span className="font-mono text-xs">discrepancyCategories</span> on
+          each audit row. Hover chips in the lines table for the same hint text.
+        </p>
+        <dl className="mt-4 space-y-3 text-sm">
+          {(Object.values(DISCREPANCY_CATEGORY) as string[]).map((key) => (
+            <div key={key} className="rounded-lg border border-zinc-100 bg-zinc-50/80 px-3 py-2">
+              <dt className="font-medium text-zinc-900">{formatDiscrepancyCategoryLabel(key)}</dt>
+              <dd className="mt-0.5 font-mono text-[11px] text-zinc-500">{key}</dd>
+              <dd className="mt-1 text-xs leading-relaxed text-zinc-600">{formatDiscrepancyCategoryReviewHint(key)}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
 
       <section className="rounded-2xl border border-zinc-200 bg-white p-5 text-sm text-zinc-600 shadow-sm">
         <p className="font-semibold text-zinc-900">Tolerance rules</p>

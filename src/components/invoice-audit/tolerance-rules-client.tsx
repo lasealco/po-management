@@ -90,6 +90,15 @@ export function ToleranceRulesClient(props: { canEdit: boolean; initialRules: Se
     }
   }
 
+  const sortedRules = [...rules].sort((a, b) => b.priority - a.priority || a.name.localeCompare(b.name));
+
+  function percentDisplay(ratio: string | null): { pct: string; title: string } | null {
+    if (ratio == null || ratio === "") return null;
+    const n = Number(ratio);
+    if (!Number.isFinite(n)) return { pct: ratio, title: `Ratio ${ratio}` };
+    return { pct: `${(n * 100).toFixed(2)}%`, title: `Ratio ${ratio} (multiply by line amount)` };
+  }
+
   return (
     <>
       {actionError && props.canEdit ? (
@@ -103,7 +112,8 @@ export function ToleranceRulesClient(props: { canEdit: boolean; initialRules: Se
         next <span className="font-medium">Run audit</span> only. Finance <span className="font-medium">Approve</span> /{" "}
         <span className="font-medium">Override</span> and <span className="font-medium">Mark ready for accounting</span>{" "}
         stay on the intake closeout panel — configure tolerances when you want stricter or looser amount bands before
-        reviewers sign off.
+        reviewers sign off. Rows sort by <span className="font-medium">priority (highest first)</span> — that is the
+        order the engine evaluates when picking a rule for an intake currency.
       </p>
 
       <div className="mt-6 overflow-x-auto">
@@ -111,11 +121,15 @@ export function ToleranceRulesClient(props: { canEdit: boolean; initialRules: Se
           <thead>
             <tr className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500">
               <th className="py-2 pr-4">Name</th>
-              <th className="py-2 pr-4">Priority</th>
+              <th className="py-2 pr-4" title="Higher number wins when multiple rules match.">
+                Priority
+              </th>
               <th className="py-2 pr-4">Active</th>
               <th className="py-2 pr-4">Currency scope</th>
               <th className="py-2 pr-4">Abs Δ</th>
-              <th className="py-2 pr-4">Percent</th>
+              <th className="py-2 pr-4" title="Ratio applied to snapshot vs invoice line amount; shown as percent for readability.">
+                Percent
+              </th>
               {props.canEdit ? <th className="py-2 pr-4">Actions</th> : null}
             </tr>
           </thead>
@@ -128,14 +142,29 @@ export function ToleranceRulesClient(props: { canEdit: boolean; initialRules: Se
                 </td>
               </tr>
             ) : (
-              rules.map((r) => (
+              sortedRules.map((r) => (
                 <tr key={r.id} className="border-b border-zinc-100">
-                  <td className="py-3 pr-4 font-medium text-zinc-900">{r.name}</td>
+                  <td className="max-w-[14rem] py-3 pr-4">
+                    <div className="font-medium text-zinc-900">{r.name}</div>
+                    <div className="mt-0.5 truncate font-mono text-[10px] text-zinc-500" title={r.id}>
+                      {r.id}
+                    </div>
+                  </td>
                   <td className="py-3 pr-4 tabular-nums text-zinc-700">{r.priority}</td>
                   <td className="py-3 pr-4 text-zinc-700">{r.active ? "Yes" : "No"}</td>
                   <td className="py-3 pr-4 font-mono text-xs text-zinc-600">{r.currencyScope ?? "— (any)"}</td>
                   <td className="py-3 pr-4 tabular-nums text-zinc-700">{r.amountAbsTolerance ?? "—"}</td>
-                  <td className="py-3 pr-4 tabular-nums text-zinc-700">{r.percentTolerance ?? "—"}</td>
+                  <td className="py-3 pr-4 tabular-nums text-zinc-700">
+                    {(() => {
+                      const pd = percentDisplay(r.percentTolerance);
+                      if (!pd) return "—";
+                      return (
+                        <span className="font-semibold" title={pd.title}>
+                          {pd.pct}
+                        </span>
+                      );
+                    })()}
+                  </td>
                   {props.canEdit ? (
                     <td className="py-3 pr-4">
                       <button

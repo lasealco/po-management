@@ -48,3 +48,63 @@ export function formatDiscrepancyCategoryLabel(key: string): string {
   if (CATEGORY_LABELS[key]) return CATEGORY_LABELS[key]!;
   return key.replace(/_/g, " ").toLowerCase();
 }
+
+/** One-line reviewer guidance; raw keys still stored on audit rows. */
+const CATEGORY_REVIEW_HINTS: Partial<Record<string, string>> = {
+  [DISCREPANCY_CATEGORY.AMOUNT_MATCH_WITHIN_TOLERANCE]:
+    "Invoice amount aligns with the matched snapshot charge within the active tolerance band.",
+  [DISCREPANCY_CATEGORY.AMOUNT_MINOR_DISCREPANCY]:
+    "Difference vs snapshot is material but still inside the warn band — often acceptable commercially.",
+  [DISCREPANCY_CATEGORY.AMOUNT_MAJOR_DISCREPANCY]:
+    "Difference exceeds the warn band vs the matched snapshot charge — investigate before finance sign-off.",
+  [DISCREPANCY_CATEGORY.NO_SNAPSHOT_LINE_MATCH]:
+    "Engine could not pick a snapshot line with enough confidence — check labels, equipment, and POL/POD hints.",
+  [DISCREPANCY_CATEGORY.CURRENCY_MISMATCH]:
+    "Invoice line currency does not match the comparable snapshot currency for this charge.",
+  [DISCREPANCY_CATEGORY.AMBIGUOUS_SNAPSHOT_MATCH]:
+    "Multiple snapshot candidates scored closely — tie-breakers or manual review may be needed.",
+  [DISCREPANCY_CATEGORY.SNAPSHOT_PARSE_ERROR]:
+    "Frozen snapshot JSON could not be interpreted for this comparison — fix snapshot data, not the invoice text.",
+  [DISCREPANCY_CATEGORY.EQUIPMENT_MISMATCH]:
+    "Invoice equipment (e.g. 40HC) does not fit an eligible snapshot rate bucket for this line.",
+  [DISCREPANCY_CATEGORY.GEO_SCOPE_MISMATCH]:
+    "POL/POD or geography on the invoice does not align with the snapshot rate scope for this match.",
+  [DISCREPANCY_CATEGORY.UNIT_BASIS_MISMATCH]:
+    "Unit basis (e.g. per container vs per BL) differs between invoice wording and the matched snapshot line.",
+  [DISCREPANCY_CATEGORY.ALL_IN_BASKET_MATCH]:
+    "All-in basket comparison to snapshot/RFQ basket landed within tolerance.",
+  [DISCREPANCY_CATEGORY.ALL_IN_BASKET_MINOR_VARIANCE]:
+    "All-in basket total differs slightly from snapshot basket — still in warn band.",
+  [DISCREPANCY_CATEGORY.ALL_IN_BASKET_MAJOR_VARIANCE]:
+    "All-in basket total differs materially from snapshot basket — outside warn band.",
+  [DISCREPANCY_CATEGORY.MATCH_CONFIDENCE_LOW]:
+    "Top scoring snapshot candidate was below the confidence floor — treat as UNKNOWN-style triage.",
+  [DISCREPANCY_CATEGORY.MATCH_RESOLVED_WITH_WARNINGS]:
+    "A best snapshot line was chosen using secondary signals (equipment, geo, unit) — read explanation text.",
+};
+
+export function formatDiscrepancyCategoryReviewHint(key: string): string {
+  if (CATEGORY_REVIEW_HINTS[key]) return CATEGORY_REVIEW_HINTS[key]!;
+  return `Stored key ${key}. Use the line explanation and snapshotMatchedJson for engine detail.`;
+}
+
+export type DiscrepancyCategoryTone = "neutral" | "attention" | "critical";
+
+export function discrepancyCategoryTone(key: string): DiscrepancyCategoryTone {
+  if (
+    key === DISCREPANCY_CATEGORY.AMOUNT_MATCH_WITHIN_TOLERANCE ||
+    key === DISCREPANCY_CATEGORY.ALL_IN_BASKET_MATCH
+  ) {
+    return "neutral";
+  }
+  if (
+    key === DISCREPANCY_CATEGORY.AMOUNT_MAJOR_DISCREPANCY ||
+    key === DISCREPANCY_CATEGORY.ALL_IN_BASKET_MAJOR_VARIANCE ||
+    key === DISCREPANCY_CATEGORY.NO_SNAPSHOT_LINE_MATCH ||
+    key === DISCREPANCY_CATEGORY.CURRENCY_MISMATCH ||
+    key === DISCREPANCY_CATEGORY.SNAPSHOT_PARSE_ERROR
+  ) {
+    return "critical";
+  }
+  return "attention";
+}
