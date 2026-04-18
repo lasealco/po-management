@@ -5,9 +5,12 @@ export type SupplierSrmKind = "product" | "logistics";
 export function SupplierKindTabs({
   active,
   basePath = "/suppliers",
+  /** Appended after `kind=…`, e.g. `q=acme` (no leading `&`). */
+  extraQuery,
 }: {
   active: SupplierSrmKind;
   basePath?: "/suppliers" | "/srm";
+  extraQuery?: string;
 }) {
   const tab =
     "rounded-t-md border border-b-0 px-4 py-2 text-sm font-medium transition-colors";
@@ -20,14 +23,14 @@ export function SupplierKindTabs({
       aria-label="Supplier categories"
     >
       <Link
-        href={`${basePath}?kind=product`}
+        href={`${basePath}?kind=product${extraQuery ? `&${extraQuery}` : ""}`}
         className={active === "product" ? activeTab : idleTab}
         aria-current={active === "product" ? "page" : undefined}
       >
         Product suppliers
       </Link>
       <Link
-        href={`${basePath}?kind=logistics`}
+        href={`${basePath}?kind=logistics${extraQuery ? `&${extraQuery}` : ""}`}
         className={active === "logistics" ? activeTab : idleTab}
         aria-current={active === "logistics" ? "page" : undefined}
       >

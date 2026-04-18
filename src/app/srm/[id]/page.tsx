@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { AccessDenied } from "@/components/access-denied";
 import { SupplierDetailClient } from "@/components/supplier-detail-client";
 import { WorkflowHeader } from "@/components/workflow-header";
@@ -71,14 +72,16 @@ export default async function SrmSupplierDetailPage({
             steps={["Step 1: Profile & contacts", "Step 2: Approve & activate", "Step 3: Commercial & sites"]}
           />
         </div>
-        <SupplierDetailClient
-          key={snapshot.id}
-          initial={snapshot}
-          canEdit={canEdit}
-          canApprove={canApprove}
-          orderHistory={orderHistory}
-          detailNavContext="srm"
-        />
+        <Suspense fallback={<p className="text-sm text-zinc-500">Loading supplier workspace…</p>}>
+          <SupplierDetailClient
+            key={snapshot.id}
+            initial={snapshot}
+            canEdit={canEdit}
+            canApprove={canApprove}
+            orderHistory={orderHistory}
+            detailNavContext="srm"
+          />
+        </Suspense>
       </main>
     </div>
   );

@@ -40,3 +40,4 @@ Work for new schema/UI ships on **`feature/srm-foundation`** (not `main`) until 
 3. **Tests (SRM lib):** `npm run test:srm` — runs all Vitest files under `src/lib/srm/` (capability payload parsing, onboarding PATCH parsing, default checklist shape).
 4. **Full suite:** `npm run test` — includes the same SRM tests plus the rest of the repo.
 5. **Manual:** `npm run dev` → `/srm` → open **SUP-001** → **Capabilities** and **Onboarding** tabs (SRM shell), or `/suppliers/[id]` for legacy single-page layout with the same blocks.
+6. **URLs:** Supplier 360 under `/srm/[id]` keeps the active workspace in **`?tab=`** (e.g. `onboarding`, `qualification`) so refresh and shared links reopen the same tab. The SRM directory supports **`?q=`** (and legacy `/suppliers`) for name/code search.

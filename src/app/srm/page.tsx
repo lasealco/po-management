@@ -14,13 +14,19 @@ function parseKind(raw: string | string[] | undefined): SupplierSrmKind {
   return v === "logistics" ? "logistics" : "product";
 }
 
+function parseSearchQ(raw: string | string[] | undefined): string {
+  const v = Array.isArray(raw) ? raw[0] : raw;
+  return (v ?? "").trim().slice(0, 120);
+}
+
 export default async function SrmPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ kind?: string | string[] }>;
+  searchParams?: Promise<{ kind?: string | string[]; q?: string | string[] }>;
 }) {
   const sp = searchParams ? await searchParams : {};
   const kind = parseKind(sp.kind);
+  const q = parseSearchQ(sp.q);
 
   const access = await getViewerGrantSet();
 
@@ -60,6 +66,14 @@ export default async function SrmPage({
     where: {
       tenantId: tenant.id,
       srmCategory: kind === "logistics" ? "logistics" : "product",
+      ...(q
+        ? {
+            OR: [
+              { name: { contains: q, mode: "insensitive" as const } },
+              { code: { contains: q, mode: "insensitive" as const } },
+            ],
+          }
+        : {}),
     },
     orderBy: { name: "asc" },
     select: {
@@ -95,10 +109,12 @@ export default async function SrmPage({
   const canEdit = viewerHas(access.grantSet, "org.suppliers", "edit");
   const canApprove = viewerHas(access.grantSet, "org.suppliers", "approve");
 
+  const listExtraQuery = q ? `q=${encodeURIComponent(q)}` : undefined;
+
   return (
     <div className="min-h-screen bg-zinc-50">
       <main className="mx-auto max-w-7xl px-6 py-10">
-        <SupplierKindTabs active={kind} basePath="/srm" />
+        <SupplierKindTabs active={kind} basePath="/srm" extraQuery={listExtraQuery} />
 
         <div className="rounded-b-lg rounded-tr-lg border border-t-0 border-zinc-200 bg-white px-6 py-8">
           <WorkflowHeader
@@ -116,6 +132,40 @@ export default async function SrmPage({
             </Link>
           </div>
 
+          <form
+            method="get"
+            className="mt-6 flex max-w-xl flex-wrap items-end gap-2"
+            role="search"
+            aria-label="Filter suppliers by name or code"
+          >
+            <input type="hidden" name="kind" value={kind} />
+            <label className="flex min-w-[12rem] flex-1 flex-col text-sm">
+              <span className="font-medium text-zinc-700">Search name or code</span>
+              <input
+                name="q"
+                type="search"
+                defaultValue={q}
+                placeholder="e.g. Acme or SUP-001"
+                className="mt-1 rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900"
+                autoComplete="off"
+              />
+            </label>
+            <button
+              type="submit"
+              className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-900 hover:bg-zinc-50"
+            >
+              Apply
+            </button>
+            {q ? (
+              <Link
+                href={`/srm?kind=${kind}`}
+                className="rounded-md px-3 py-2 text-sm text-zinc-600 underline hover:text-zinc-900"
+              >
+                Clear
+              </Link>
+            ) : null}
+          </form>
+
           <section className="mt-8 overflow-x-auto rounded-lg border border-zinc-200">
             <table className="min-w-full divide-y divide-zinc-200 text-sm">
               <thead className="bg-zinc-50 text-left text-xs font-medium uppercase text-zinc-500">
@@ -130,6 +180,13 @@ export default async function SrmPage({
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100 text-zinc-900">
+                {rows.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-8 text-center text-sm text-zinc-600">
+                      {q ? "No suppliers match this search." : "No suppliers in this category yet."}
+                    </td>
+                  </tr>
+                ) : null}
                 {rows.map((s) => (
                   <tr key={s.id}>
                     <td className="px-4 py-3 font-medium">{s.name}</td>

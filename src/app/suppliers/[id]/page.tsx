@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { Suspense } from "react";
 import { AccessDenied } from "@/components/access-denied";
 import { WorkflowHeader } from "@/components/workflow-header";
 import { SupplierDetailClient } from "@/components/supplier-detail-client";
@@ -68,14 +69,16 @@ export default async function SupplierDetailPage({
             steps={["Step 1: Verify profile and contacts", "Step 2: Edit and approve", "Step 3: Review order performance"]}
           />
         </div>
-        <SupplierDetailClient
-          key={snapshot.id}
-          initial={snapshot}
-          canEdit={canEdit}
-          canApprove={canApprove}
-          orderHistory={orderHistory}
-          detailNavContext="suppliers"
-        />
+        <Suspense fallback={<p className="text-sm text-zinc-500">Loading supplier…</p>}>
+          <SupplierDetailClient
+            key={snapshot.id}
+            initial={snapshot}
+            canEdit={canEdit}
+            canApprove={canApprove}
+            orderHistory={orderHistory}
+            detailNavContext="suppliers"
+          />
+        </Suspense>
       </main>
     </div>
   );

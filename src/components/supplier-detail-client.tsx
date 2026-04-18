@@ -3,7 +3,7 @@
 import type { SupplierQualificationStatus } from "@prisma/client";
 import Link from "next/link";
 import { startTransition, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { SupplierCapabilitiesSection } from "@/components/supplier-capabilities-section";
 import { SupplierOnboardingSection } from "@/components/supplier-onboarding-section";
 import { SupplierQualificationSection } from "@/components/supplier-qualification-section";
@@ -100,6 +100,11 @@ const SRM_SUPPLIER_TABS = [
 
 type SrmSupplierTabId = (typeof SRM_SUPPLIER_TABS)[number]["id"];
 
+function parseSrmTabParam(raw: string | null): SrmSupplierTabId {
+  if (!raw) return "overview";
+  return SRM_SUPPLIER_TABS.some((t) => t.id === raw) ? (raw as SrmSupplierTabId) : "overview";
+}
+
 export function SupplierDetailClient({
   initial,
   canEdit = true,
@@ -117,8 +122,12 @@ export function SupplierDetailClient({
   detailNavContext?: "suppliers" | "srm";
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [saveNotice, setSaveNotice] = useState<string | null>(null);
+  const [clipboardNotice, setClipboardNotice] = useState<string | null>(null);
 
   const [name, setName] = useState(initial.name);
   const [code, setCode] = useState(initial.code ?? "");
@@ -186,6 +195,18 @@ export function SupplierDetailClient({
     });
   }, [initial.updatedAt]);
 
+  useEffect(() => {
+    if (!saveNotice) return;
+    const t = window.setTimeout(() => setSaveNotice(null), 4000);
+    return () => window.clearTimeout(t);
+  }, [saveNotice]);
+
+  useEffect(() => {
+    if (!clipboardNotice) return;
+    const t = window.setTimeout(() => setClipboardNotice(null), 2500);
+    return () => window.clearTimeout(t);
+  }, [clipboardNotice]);
+
   const [officeName, setOfficeName] = useState("");
   const [officeCity, setOfficeCity] = useState("");
   const [officeCountry, setOfficeCountry] = useState("");
@@ -202,10 +223,39 @@ export function SupplierDetailClient({
   const [editC, setEditC] = useState<Partial<SupplierContactRow>>({});
 
   const isSrmShell = detailNavContext === "srm";
-  const [srmTab, setSrmTab] = useState<SrmSupplierTabId>("overview");
+  const [srmTab, setSrmTabState] = useState<SrmSupplierTabId>(() =>
+    isSrmShell ? parseSrmTabParam(searchParams.get("tab")) : "overview",
+  );
+
+  useEffect(() => {
+    if (!isSrmShell) return;
+    const t = parseSrmTabParam(searchParams.get("tab"));
+    if (t !== srmTab) setSrmTabState(t);
+  }, [isSrmShell, searchParams, srmTab]);
+
+  function selectSrmTab(next: SrmSupplierTabId) {
+    setSrmTabState(next);
+    if (!isSrmShell) return;
+    const q = new URLSearchParams(searchParams.toString());
+    if (next === "overview") q.delete("tab");
+    else q.set("tab", next);
+    const s = q.toString();
+    void router.replace(s ? `${pathname}?${s}` : pathname, { scroll: false });
+  }
+
+  async function copyAdminField(label: string, text: string) {
+    setError(null);
+    try {
+      await navigator.clipboard.writeText(text);
+      setClipboardNotice(`${label} copied to clipboard.`);
+    } catch {
+      setError("Could not copy to clipboard (browser blocked or unavailable).");
+    }
+  }
 
   async function saveSupplierProfile() {
     setError(null);
+    setSaveNotice(null);
     setBusy(true);
     const paymentTermsDaysParsed =
       payDays.trim() === "" ? null : Number.parseInt(payDays.trim(), 10);
@@ -256,6 +306,7 @@ export function SupplierDetailClient({
       return;
     }
     setBusy(false);
+    setSaveNotice("Company & commercial details saved.");
     router.refresh();
   }
 
@@ -327,7 +378,11 @@ export function SupplierDetailClient({
       return;
     }
     setBusy(false);
-    router.push("/suppliers");
+    const listHref =
+      detailNavContext === "srm"
+        ? `/srm?kind=${initial.srmCategory === "logistics" ? "logistics" : "product"}`
+        : `/suppliers?kind=${initial.srmCategory === "logistics" ? "logistics" : "product"}`;
+    router.push(listHref);
     router.refresh();
   }
 
@@ -523,6 +578,34 @@ export function SupplierDetailClient({
           PO row
           {initial.orderCount === 1 ? "" : "s"} (includes split children)
         </p>
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-600">
+          <span className="inline-flex flex-wrap items-center gap-1">
+            <span className="text-zinc-500">System ID</span>
+            <code className="max-w-[min(100%,18rem)] truncate rounded bg-zinc-100 px-1 font-mono text-zinc-800">
+              {initial.id}
+            </code>
+            <button
+              type="button"
+              className="text-[var(--arscmp-primary)] underline"
+              onClick={() => void copyAdminField("System ID", initial.id)}
+            >
+              Copy
+            </button>
+          </span>
+          {initial.code ? (
+            <span className="inline-flex flex-wrap items-center gap-1">
+              <span className="text-zinc-500">Code</span>
+              <code className="rounded bg-zinc-100 px-1 font-mono text-zinc-800">{initial.code}</code>
+              <button
+                type="button"
+                className="text-[var(--arscmp-primary)] underline"
+                onClick={() => void copyAdminField("Code", initial.code!)}
+              >
+                Copy
+              </button>
+            </span>
+          ) : null}
+        </div>
       </div>
 
       {error ? (
@@ -530,13 +613,29 @@ export function SupplierDetailClient({
           {error}
         </div>
       ) : null}
+      {saveNotice ? (
+        <div
+          className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-900"
+          role="status"
+        >
+          {saveNotice}
+        </div>
+      ) : null}
+      {clipboardNotice ? (
+        <div
+          className="rounded-md border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm text-zinc-800"
+          role="status"
+        >
+          {clipboardNotice}
+        </div>
+      ) : null}
 
       {initial.approvalStatus === "pending_approval" ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
           <p className="font-medium">Pending procurement approval</p>
           <p className="mt-1 text-xs text-amber-900/90">
-            This supplier is not active until an approver confirms it. SRM workflow is in
-            development.
+            This supplier is not active until an approver confirms it. Use Approve &amp; activate to
+            set approval to approved and turn the supplier on, or Reject to block onboarding completion.
           </p>
           {canApprove ? (
             <div className="mt-3 flex flex-wrap gap-2">
@@ -570,7 +669,7 @@ export function SupplierDetailClient({
             <button
               key={t.id}
               type="button"
-              onClick={() => setSrmTab(t.id)}
+              onClick={() => selectSrmTab(t.id)}
               className={`rounded-md px-2.5 py-1.5 text-xs font-medium transition sm:text-sm ${
                 srmTab === t.id
                   ? "bg-[var(--arscmp-primary-50)] text-[var(--arscmp-primary)] ring-1 ring-[var(--arscmp-primary)]/20"
