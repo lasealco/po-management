@@ -344,9 +344,16 @@ export default async function InvoiceAuditListPage(props: {
                         <div className="truncate font-medium text-zinc-800">
                           {row.bookingPricingSnapshot.sourceSummary ?? row.bookingPricingSnapshotId}
                         </div>
-                        <div className="mt-0.5 truncate text-[11px] text-zinc-500" title={row.bookingPricingSnapshot.sourceRecordId}>
-                          {formatPricingSnapshotSourceType(String(row.bookingPricingSnapshot.sourceType))} ·{" "}
-                          <span className="font-mono">{row.bookingPricingSnapshot.sourceRecordId}</span>
+                        <div className="mt-1 space-y-1 text-[11px] text-zinc-500">
+                          <div>{formatPricingSnapshotSourceType(String(row.bookingPricingSnapshot.sourceType))}</div>
+                          {row.bookingPricingSnapshot.sourceRecordId.trim() ? (
+                            <RecordIdCopy
+                              id={row.bookingPricingSnapshot.sourceRecordId}
+                              copyButtonLabel="Copy source record id"
+                            />
+                          ) : (
+                            <span className="text-zinc-400">—</span>
+                          )}
                         </div>
                       </td>
                     </tr>

@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { RecordIdCopy } from "@/components/invoice-audit/record-id-copy";
+
 /**
  * Narrative panel summarizing how invoice lines were matched to the pricing snapshot.
  * Detailed per-line outcomes live in `InvoiceLinesMatchTable`.
@@ -19,24 +21,42 @@ export function InvoiceMatchResultPanel(props: {
   polCode?: string | null;
   podCode?: string | null;
 }) {
+  const sourceTrim = props.sourceRecordId.trim();
+
   return (
     <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
       <h2 className="text-sm font-semibold text-zinc-900">Match result</h2>
       <p className="mt-2 rounded-lg border border-sky-100 bg-sky-50/80 px-3 py-2 text-sm text-sky-950">
         <span className="font-semibold text-sky-950">Commercial basis</span> — rates were frozen from{" "}
         <span className="font-medium">{props.basisLabel}</span>
-        {props.sourceRecordId ? (
+        {sourceTrim ? (
           <>
             {" "}
-            (source record <span className="font-mono text-xs">{props.sourceRecordId}</span>)
+            (see <span className="font-medium">source record id</span> below)
           </>
         ) : null}
         . Invoice audit compares each parsed line to the{" "}
         <span className="font-medium">same snapshot payload</span> shown on the pricing snapshot page — not live
-        contract or RFQ edits after <span className="font-mono text-xs">{props.snapshotId}</span> was created.
+        contract or RFQ edits after the snapshot was taken.
       </p>
+      <div className="mt-3 flex flex-col gap-3 rounded-xl border border-zinc-100 bg-zinc-50/80 px-4 py-3 text-sm sm:flex-row sm:flex-wrap sm:items-start sm:gap-6">
+        <div className="min-w-0">
+          <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Snapshot id</div>
+          <div className="mt-1">
+            <RecordIdCopy id={props.snapshotId} copyButtonLabel="Copy snapshot id" />
+          </div>
+        </div>
+        {sourceTrim ? (
+          <div className="min-w-0">
+            <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Source record id</div>
+            <div className="mt-1">
+              <RecordIdCopy id={sourceTrim} copyButtonLabel="Copy source record id" />
+            </div>
+          </div>
+        ) : null}
+      </div>
       <p className="mt-2 text-sm text-zinc-600">
-        Lines are matched to the frozen pricing snapshot <span className="font-mono text-xs">{props.snapshotId}</span>
+        Lines are matched to the frozen pricing snapshot
         {props.snapshotSummary ? (
           <>
             {" "}
