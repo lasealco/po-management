@@ -4,8 +4,36 @@ import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { listInvoiceIntakesForTenant } from "@/lib/invoice-audit/invoice-intakes";
 import { getPhase06WorkflowHint } from "@/lib/invoice-audit/phase06-workflow-hint";
 import { getDemoTenant } from "@/lib/demo-tenant";
+import { subNavActiveClass } from "@/lib/subnav-active-class";
 
 export const dynamic = "force-dynamic";
+
+type InvoiceQueue = "audit" | "finance" | "handoff";
+
+function parseQueueParam(raw: string | string[] | undefined): InvoiceQueue | null {
+  const v = Array.isArray(raw) ? raw[0] : raw;
+  if (v === "audit" || v === "finance" || v === "handoff") return v;
+  return null;
+}
+
+function rowMatchesQueue(
+  row: {
+    status: string;
+    reviewDecision: string;
+    approvedForAccounting: boolean;
+  },
+  queue: InvoiceQueue,
+): boolean {
+  if (queue === "audit") return row.status === "PARSED" || row.status === "FAILED";
+  if (queue === "finance") return row.status === "AUDITED" && row.reviewDecision === "NONE";
+  return row.status === "AUDITED" && row.reviewDecision !== "NONE" && !row.approvedForAccounting;
+}
+
+function queueDescription(q: InvoiceQueue): string {
+  if (q === "audit") return "PARSED or FAILED — run or fix audit from each intake.";
+  if (q === "finance") return "AUDITED with no finance decision yet — Approve or Override on each intake.";
+  return "Finance recorded, accounting handoff not marked — Step 3 on each intake.";
+}
 
 function rollupBadge(outcome: string) {
   if (outcome === "PASS") return "bg-emerald-100 text-emerald-900";
@@ -32,10 +60,14 @@ function reviewCellLabel(decision: string) {
   return "—";
 }
 
-export default async function InvoiceAuditListPage() {
+export default async function InvoiceAuditListPage(props: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const tenant = await getDemoTenant();
   const access = await getViewerGrantSet();
   const canEdit = Boolean(access?.user && viewerHas(access.grantSet, "org.invoice_audit", "edit"));
+  const sp = props.searchParams ? await props.searchParams : {};
+  const queue = parseQueueParam(sp.queue);
 
   if (!tenant) {
     return (
@@ -46,6 +78,7 @@ export default async function InvoiceAuditListPage() {
   }
 
   const intakes = await listInvoiceIntakesForTenant({ tenantId: tenant.id, take: 200 });
+  const rowsToShow = queue ? intakes.filter((r) => rowMatchesQueue(r, queue)) : intakes;
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
@@ -77,6 +110,50 @@ export default async function InvoiceAuditListPage() {
             </Link>
           ) : null}
         </div>
+
+        <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-zinc-100 pt-5">
+          <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Queues</span>
+          <Link
+            href="/invoice-audit"
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium ${
+              queue == null ? subNavActiveClass : "border border-zinc-200 text-zinc-600 hover:bg-zinc-50"
+            }`}
+          >
+            All
+          </Link>
+          <Link
+            href="/invoice-audit?queue=audit"
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium ${
+              queue === "audit" ? subNavActiveClass : "border border-zinc-200 text-zinc-600 hover:bg-zinc-50"
+            }`}
+          >
+            Run audit
+          </Link>
+          <Link
+            href="/invoice-audit?queue=finance"
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium ${
+              queue === "finance" ? subNavActiveClass : "border border-zinc-200 text-zinc-600 hover:bg-zinc-50"
+            }`}
+          >
+            Finance review
+          </Link>
+          <Link
+            href="/invoice-audit?queue=handoff"
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium ${
+              queue === "handoff" ? subNavActiveClass : "border border-zinc-200 text-zinc-600 hover:bg-zinc-50"
+            }`}
+          >
+            Accounting handoff
+          </Link>
+        </div>
+        {queue ? (
+          <p className="mt-2 text-xs text-zinc-600">
+            <span className="font-medium text-zinc-800">Filtered:</span> {queueDescription(queue)}{" "}
+            <Link href="/invoice-audit" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+              Clear filter
+            </Link>
+          </p>
+        ) : null}
 
         <div className="mt-8 overflow-x-auto">
           <table className="min-w-full border-collapse text-left text-sm">
@@ -117,8 +194,19 @@ export default async function InvoiceAuditListPage() {
                     </p>
                   </td>
                 </tr>
+              ) : rowsToShow.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="py-10 text-center text-sm text-zinc-600">
+                    No intakes in this queue.
+                    <div className="mt-2">
+                      <Link href="/invoice-audit" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+                        Show all intakes
+                      </Link>
+                    </div>
+                  </td>
+                </tr>
               ) : (
-                intakes.map((row) => {
+                rowsToShow.map((row) => {
                   const lineTotal =
                     row.greenLineCount + row.amberLineCount + row.redLineCount + row.unknownLineCount;
                   const parsedLines = row._count.lines;
