@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { DemoSeedCopyBlock } from "@/components/invoice-audit/demo-seed-copy-block";
+import { PricingSnapshotIdCopy } from "@/components/pricing-snapshots/pricing-snapshot-id-copy";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { listBookingPricingSnapshotsForTenant } from "@/lib/booking-pricing-snapshot";
 import { getDemoTenant } from "@/lib/demo-tenant";
@@ -96,7 +97,7 @@ export default async function PricingSnapshotsListPage() {
             <tbody>
               {snapshots.length === 0 ? (
                 <tr>
-                  <td colSpan={canInvoiceAuditEdit ? 6 : 5} className="px-4 py-10 text-left text-sm text-zinc-600">
+                  <td colSpan={canInvoiceAuditEdit ? 7 : 6} className="px-4 py-10 text-left text-sm text-zinc-600">
                     <p className="font-medium text-zinc-800">No snapshots in this tenant yet</p>
                     <p className="mt-2 max-w-xl text-sm">
                       Freeze one from a published{" "}
@@ -141,6 +142,9 @@ export default async function PricingSnapshotsListPage() {
                       <div className="mt-1 truncate font-mono text-[10px] text-zinc-500" title={s.sourceRecordId}>
                         {s.sourceRecordId.length > 22 ? `${s.sourceRecordId.slice(0, 20)}…` : s.sourceRecordId}
                       </div>
+                    </td>
+                    <td className="py-3 pr-4 align-top">
+                      <PricingSnapshotIdCopy id={s.id} />
                     </td>
                     <td className="py-3 pr-4">
                       <Link
