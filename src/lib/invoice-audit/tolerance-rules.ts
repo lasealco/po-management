@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 import { InvoiceAuditError } from "@/lib/invoice-audit/invoice-audit-error";
+import { pickToleranceRuleFromOrderedActiveRules } from "@/lib/invoice-audit/tolerance-rule-pick";
 
 export async function listToleranceRulesForTenant(params: { tenantId: string }) {
   return prisma.invoiceToleranceRule.findMany({
@@ -13,15 +14,11 @@ export async function listToleranceRulesForTenant(params: { tenantId: string }) 
 
 /** Picks the highest-priority active rule for the intake currency, or null (caller uses code defaults). */
 export async function pickToleranceRuleForIntake(params: { tenantId: string; currency: string }) {
-  const cur = params.currency.toUpperCase().slice(0, 3);
   const rules = await prisma.invoiceToleranceRule.findMany({
     where: { tenantId: params.tenantId, active: true },
     orderBy: [{ priority: "desc" }, { updatedAt: "desc" }],
   });
-  const scoped = rules.find((r) => r.currencyScope && r.currencyScope.toUpperCase() === cur);
-  if (scoped) return scoped;
-  const global = rules.find((r) => !r.currencyScope);
-  return global ?? rules[0] ?? null;
+  return pickToleranceRuleFromOrderedActiveRules(rules, params.currency);
 }
 
 export async function createToleranceRule(input: {
