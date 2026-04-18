@@ -33,6 +33,21 @@ describe("getPhase06WorkflowHint", () => {
     });
   });
 
+  it("treats Override like Approve for Step 3 routing", () => {
+    const h = getPhase06WorkflowHint({
+      status: "AUDITED",
+      rollupOutcome: "FAIL",
+      reviewDecision: "OVERRIDDEN",
+      approvedForAccounting: false,
+      unknownLineCount: 0,
+      redLineCount: 1,
+    });
+    expect(h).toEqual({
+      label: "Step 3 · Accounting handoff",
+      hash: "#invoice-audit-accounting-handoff",
+    });
+  });
+
   it("nudges ops notes only after handoff when rollup still risky", () => {
     const h = getPhase06WorkflowHint({
       status: "AUDITED",
