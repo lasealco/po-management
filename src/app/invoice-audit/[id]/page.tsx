@@ -324,10 +324,10 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
         </div>
       </section>
 
-      <div>
+      <section id="invoice-audit-lines-match" className="scroll-mt-8">
         <h2 className="mb-3 text-sm font-semibold text-zinc-900">Parsed lines &amp; match results</h2>
         <InvoiceLinesMatchTable lines={lines} auditResults={auditResults} />
-      </div>
+      </section>
 
       {intake.auditResults.length > 0 ? (
         <section className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700">

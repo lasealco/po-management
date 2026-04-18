@@ -35,6 +35,13 @@ export function getPhase06WorkflowHint(row: {
     return null;
   }
 
+  if (row.reviewDecision === "NONE" && row.unknownLineCount > 0) {
+    return {
+      label: `Triage ${row.unknownLineCount} UNKNOWN line${row.unknownLineCount === 1 ? "" : "s"}`,
+      hash: "#invoice-audit-lines-match",
+    };
+  }
+
   if (row.reviewDecision === "NONE") {
     return { label: "Step 2 · Finance review", hash: "#invoice-audit-finance-review" };
   }
@@ -48,6 +55,12 @@ export function getPhase06WorkflowHint(row: {
     row.unknownLineCount > 0 ||
     row.redLineCount > 0;
   if (needsAuditTrail) {
+    if (row.unknownLineCount > 0 && row.redLineCount === 0 && row.rollupOutcome !== "FAIL" && row.rollupOutcome !== "WARN") {
+      return {
+        label: `Re-check ${row.unknownLineCount} UNKNOWN line${row.unknownLineCount === 1 ? "" : "s"} (ops)`,
+        hash: "#invoice-audit-lines-match",
+      };
+    }
     return { label: "Step 1 · Ops notes (recommended)", hash: "#invoice-audit-ops-notes" };
   }
 

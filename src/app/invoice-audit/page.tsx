@@ -279,11 +279,30 @@ export default async function InvoiceAuditListPage(props: {
                       </td>
                       <td className="py-3 pr-4 tabular-nums text-zinc-700">
                         {lineTotal > 0 ? (
-                          <span>
+                          <span
+                            title={
+                              row.unknownLineCount > 0
+                                ? `${row.unknownLineCount} line(s) could not be matched to the snapshot — open intake to triage before finance sign-off.`
+                                : "G/A/R/U = green / amber / red / unknown line counts after last audit."
+                            }
+                          >
                             <span className="text-emerald-700">{row.greenLineCount}</span>/
                             <span className="text-amber-700">{row.amberLineCount}</span>/
                             <span className="text-red-700">{row.redLineCount}</span>/
-                            <span className="text-zinc-500">{row.unknownLineCount}</span>
+                            <span
+                              className={
+                                row.unknownLineCount > 0
+                                  ? "font-semibold text-violet-800 underline decoration-violet-300 decoration-dotted underline-offset-2"
+                                  : "text-zinc-500"
+                              }
+                            >
+                              {row.unknownLineCount}
+                            </span>
+                            {row.unknownLineCount > 0 ? (
+                              <span className="ml-1.5 align-middle text-[10px] font-semibold uppercase tracking-wide text-violet-800">
+                                unknown
+                              </span>
+                            ) : null}
                           </span>
                         ) : parsedLines > 0 ? (
                           <span className="text-zinc-500">

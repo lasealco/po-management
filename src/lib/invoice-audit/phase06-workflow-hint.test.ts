@@ -18,6 +18,34 @@ describe("getPhase06WorkflowHint", () => {
     });
   });
 
+  it("prioritizes UNKNOWN triage before finance when counts show unmatched lines", () => {
+    const h = getPhase06WorkflowHint({
+      status: "AUDITED",
+      rollupOutcome: "PASS",
+      reviewDecision: "NONE",
+      approvedForAccounting: false,
+      unknownLineCount: 2,
+      redLineCount: 0,
+    });
+    expect(h).toEqual({
+      label: "Triage 2 UNKNOWN lines",
+      hash: "#invoice-audit-lines-match",
+    });
+  });
+
+  it("uses singular copy for a single UNKNOWN line", () => {
+    expect(
+      getPhase06WorkflowHint({
+        status: "AUDITED",
+        rollupOutcome: "PASS",
+        reviewDecision: "NONE",
+        approvedForAccounting: false,
+        unknownLineCount: 1,
+        redLineCount: 0,
+      }),
+    ).toEqual({ label: "Triage 1 UNKNOWN line", hash: "#invoice-audit-lines-match" });
+  });
+
   it("sends to accounting handoff after finance signed off", () => {
     const h = getPhase06WorkflowHint({
       status: "AUDITED",
@@ -55,6 +83,36 @@ describe("getPhase06WorkflowHint", () => {
       reviewDecision: "APPROVED",
       approvedForAccounting: true,
       unknownLineCount: 0,
+      redLineCount: 0,
+    });
+    expect(h).toEqual({
+      label: "Step 1 · Ops notes (recommended)",
+      hash: "#invoice-audit-ops-notes",
+    });
+  });
+
+  it("after handoff, UNKNOWN-only rollup points to the lines table", () => {
+    const h = getPhase06WorkflowHint({
+      status: "AUDITED",
+      rollupOutcome: "PASS",
+      reviewDecision: "APPROVED",
+      approvedForAccounting: true,
+      unknownLineCount: 3,
+      redLineCount: 0,
+    });
+    expect(h).toEqual({
+      label: "Re-check 3 UNKNOWN lines (ops)",
+      hash: "#invoice-audit-lines-match",
+    });
+  });
+
+  it("after handoff, UNKNOWN with WARN still prefers ops notes", () => {
+    const h = getPhase06WorkflowHint({
+      status: "AUDITED",
+      rollupOutcome: "WARN",
+      reviewDecision: "APPROVED",
+      approvedForAccounting: true,
+      unknownLineCount: 2,
       redLineCount: 0,
     });
     expect(h).toEqual({
