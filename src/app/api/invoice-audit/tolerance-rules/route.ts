@@ -59,11 +59,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "percentTolerance must be finite." }, { status: 400 });
   }
 
+  const active =
+    typeof o.active === "boolean"
+      ? o.active
+      : typeof o.active === "string"
+        ? o.active.toLowerCase() === "true"
+        : undefined;
+
   try {
     const created = await createToleranceRule({
       tenantId: tenant.id,
       name,
       priority: typeof o.priority === "number" ? o.priority : undefined,
+      active,
       amountAbsTolerance,
       percentTolerance,
       currencyScope: typeof o.currencyScope === "string" ? o.currencyScope : null,
