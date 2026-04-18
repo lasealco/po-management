@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { PricingSnapshotSourceType } from "@prisma/client";
 
+import { RecordIdCopy } from "@/components/invoice-audit/record-id-copy";
+
 function isRecord(v: unknown): v is Record<string, unknown> {
   return Boolean(v) && typeof v === "object" && !Array.isArray(v);
 }
@@ -58,9 +60,15 @@ export function PricingSnapshotBreakdownPanel(props: {
           </div>
           <div>
             <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Source</dt>
-            <dd className="mt-1 text-zinc-800">
-              {props.sourceType === "TARIFF_CONTRACT_VERSION" ? "Tariff contract version" : "RFQ quote response"}{" "}
-              <span className="font-mono text-xs text-zinc-500">({props.sourceRecordId})</span>
+            <dd className="mt-1 space-y-1 text-zinc-800">
+              <div>
+                {props.sourceType === "TARIFF_CONTRACT_VERSION" ? "Tariff contract version" : "RFQ quote response"}
+              </div>
+              {props.sourceRecordId.trim() ? (
+                <RecordIdCopy id={props.sourceRecordId} copyButtonLabel="Copy source record id" />
+              ) : (
+                <span className="text-xs text-zinc-400">—</span>
+              )}
             </dd>
           </div>
           <div>

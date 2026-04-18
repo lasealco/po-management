@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { RecordIdCopy } from "@/components/invoice-audit/record-id-copy";
 import { PricingSnapshotBreakdownPanel } from "@/components/pricing-snapshots/pricing-snapshot-breakdown-panel";
 import { PricingSnapshotTraceIds } from "@/components/pricing-snapshots/pricing-snapshot-trace-ids";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
@@ -98,11 +99,11 @@ export default async function PricingSnapshotDetailPage(props: { params: Promise
         <h2 className="text-sm font-semibold text-zinc-900">Commercial basis &amp; invoice audit</h2>
         <p className="mt-2 text-sm text-zinc-600">
           This row is an immutable capture of economics from{" "}
-          <span className="font-medium text-zinc-800">{formatPricingSnapshotSourceType(String(row.sourceType))}</span>{" "}
-          — source record{" "}
-          <span className="break-all font-mono text-xs text-zinc-700">{row.sourceRecordId}</span>. Every invoice intake
-          linked below re-runs ocean matching against <span className="font-medium">this JSON only</span>, so auditors
-          can explain variances without chasing live contract or quote edits.
+          <span className="font-medium text-zinc-800">{formatPricingSnapshotSourceType(String(row.sourceType))}</span>.
+          Copy the snapshot and source record ids from the header above when you need to paste them into support tickets
+          or APIs. Every invoice intake linked below re-runs ocean matching against{" "}
+          <span className="font-medium">this JSON only</span>, so auditors can explain variances without chasing live
+          contract or quote edits.
         </p>
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2">
           {snapshotSourceNav.tariffVersionHref ? (
@@ -239,17 +240,20 @@ export default async function PricingSnapshotDetailPage(props: { params: Promise
               </p>
               <ul className="mt-3 space-y-2 text-sm">
                 {snapshotIntakes.items.map((inv) => (
-                  <li key={inv.id} className="flex flex-wrap items-baseline justify-between gap-2">
-                    <Link
-                      href={`/invoice-audit/${inv.id}`}
-                      className="font-medium text-[var(--arscmp-primary)] hover:underline"
-                    >
-                      {inv.vendorLabel ?? inv.externalInvoiceNo ?? inv.id.slice(0, 8)}
-                    </Link>
-                    <span className="text-xs tabular-nums text-zinc-500">
-                      {inv.receivedAt.toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" })} ·{" "}
-                      <span className="font-mono">{inv.status}</span> · {inv.rollupOutcome}
-                    </span>
+                  <li key={inv.id} className="space-y-1 border-b border-zinc-100 py-2 last:border-b-0">
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <Link
+                        href={`/invoice-audit/${inv.id}`}
+                        className="font-medium text-[var(--arscmp-primary)] hover:underline"
+                      >
+                        {inv.vendorLabel ?? inv.externalInvoiceNo ?? inv.id.slice(0, 8)}
+                      </Link>
+                      <span className="text-xs tabular-nums text-zinc-500">
+                        {inv.receivedAt.toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" })} ·{" "}
+                        <span className="font-mono">{inv.status}</span> · {inv.rollupOutcome}
+                      </span>
+                    </div>
+                    <RecordIdCopy id={inv.id} copyButtonLabel="Copy intake id" />
                   </li>
                 ))}
               </ul>
@@ -276,16 +280,19 @@ export default async function PricingSnapshotDetailPage(props: { params: Promise
         <section className="mb-6 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
           <h2 className="text-sm font-semibold text-zinc-900">Linked booking</h2>
           <p className="mt-2 text-sm text-zinc-600">
-            This snapshot is associated with shipment booking{" "}
-            <span className="font-mono text-xs">{row.shipmentBooking.id}</span>
+            This snapshot is associated with a shipment booking
             {row.shipmentBooking.bookingNo ? (
               <>
                 {" "}
                 (<span className="font-semibold">{row.shipmentBooking.bookingNo}</span>)
               </>
             ) : null}
-            . When the booking workspace ships, show this row as the economics frozen at quote/contract selection time.
+            . Copy the internal booking record id below for API or support cross-checks. When the booking workspace
+            ships, show this row as the economics frozen at quote/contract selection time.
           </p>
+          <div className="mt-2">
+            <RecordIdCopy id={row.shipmentBooking.id} copyButtonLabel="Copy booking id" />
+          </div>
           <p className="mt-3">
             <Link
               href={`/control-tower/shipments/${row.shipmentBooking.shipmentId}`}
