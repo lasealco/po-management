@@ -342,7 +342,13 @@ export function SupplierDetailClient({
   function openDocumentsWorkspace(focus?: SupplierDocumentCategory) {
     setDocumentsRegisterCategory(focus ?? null);
     if (isSrmShell) {
-      selectSrmTab("documents");
+      setSrmTabState("documents");
+      const q = new URLSearchParams(searchParams.toString());
+      q.set("tab", "documents");
+      if (focus) q.set(SRM_REGISTER_CATEGORY_QUERY, focus);
+      else q.delete(SRM_REGISTER_CATEGORY_QUERY);
+      const s = q.toString();
+      void router.replace(s ? `${pathname}?${s}` : pathname, { scroll: false });
     } else {
       window.requestAnimationFrame(() =>
         document.getElementById("supplier-documents-section")?.scrollIntoView({
