@@ -100,6 +100,24 @@ export function SupplierRiskRecordsSection({
     router.refresh();
   }
 
+  async function deleteRisk(id: string) {
+    if (!globalThis.confirm("Remove this risk record? This cannot be undone.")) return;
+    setError(null);
+    setBusyId(id);
+    const res = await fetch(`/api/suppliers/${supplierId}/risk-records/${id}`, {
+      method: "DELETE",
+    });
+    const payload = (await res.json().catch(() => ({}))) as { error?: string };
+    if (!res.ok) {
+      setBusyId(null);
+      setError(payload.error ?? "Could not remove risk.");
+      return;
+    }
+    setRows((prev) => prev.filter((r) => r.id !== id));
+    setBusyId(null);
+    router.refresh();
+  }
+
   const f =
     "mt-1 w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm text-zinc-900 disabled:opacity-50";
 
@@ -182,6 +200,14 @@ export function SupplierRiskRecordsSection({
                         </option>
                       ))}
                     </select>
+                    <button
+                      type="button"
+                      disabled={busyId === r.id}
+                      onClick={() => void deleteRisk(r.id)}
+                      className="rounded-md border border-rose-200 bg-white px-2 py-1 text-[11px] font-medium text-rose-900 hover:bg-rose-50 disabled:opacity-50"
+                    >
+                      Remove risk
+                    </button>
                   </div>
                 ) : (
                   <p className="text-xs text-zinc-600">

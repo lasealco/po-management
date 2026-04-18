@@ -95,6 +95,24 @@ export function SupplierPerformanceScorecardsSection({
     router.refresh();
   }
 
+  async function deleteScorecard(id: string) {
+    if (!globalThis.confirm("Remove this performance scorecard? This cannot be undone.")) return;
+    setError(null);
+    setBusyId(id);
+    const res = await fetch(`/api/suppliers/${supplierId}/performance-scorecards/${id}`, {
+      method: "DELETE",
+    });
+    const payload = (await res.json().catch(() => ({}))) as { error?: string };
+    if (!res.ok) {
+      setBusyId(null);
+      setError(payload.error ?? "Could not remove scorecard.");
+      return;
+    }
+    setRows((prev) => prev.filter((r) => r.id !== id));
+    setBusyId(null);
+    router.refresh();
+  }
+
   const f =
     "mt-1 w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm text-zinc-900 disabled:opacity-50";
 
@@ -196,6 +214,18 @@ export function SupplierPerformanceScorecardsSection({
                 </label>
               ) : r.notes ? (
                 <p className="mt-2 text-xs text-zinc-600">{r.notes}</p>
+              ) : null}
+              {canEdit ? (
+                <div className="mt-2 flex justify-end">
+                  <button
+                    type="button"
+                    disabled={busyId === r.id}
+                    onClick={() => void deleteScorecard(r.id)}
+                    className="rounded-md border border-rose-200 bg-white px-2 py-1 text-[11px] font-medium text-rose-900 hover:bg-rose-50 disabled:opacity-50"
+                  >
+                    Remove scorecard
+                  </button>
+                </div>
               ) : null}
             </li>
           ))

@@ -69,3 +69,28 @@ export async function PATCH(
     },
   });
 }
+
+export async function DELETE(
+  _request: Request,
+  context: { params: Promise<{ id: string; riskId: string }> },
+) {
+  const gate = await requireApiGrant("org.suppliers", "edit");
+  if (gate) return gate;
+
+  const { id: supplierId, riskId } = await context.params;
+  const tenant = await getDemoTenant();
+  if (!tenant) {
+    return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  }
+
+  const existing = await prisma.supplierRiskRecord.findFirst({
+    where: { id: riskId, supplierId, tenantId: tenant.id },
+    select: { id: true },
+  });
+  if (!existing) {
+    return NextResponse.json({ error: "Not found." }, { status: 404 });
+  }
+
+  await prisma.supplierRiskRecord.delete({ where: { id: riskId } });
+  return NextResponse.json({ ok: true });
+}
