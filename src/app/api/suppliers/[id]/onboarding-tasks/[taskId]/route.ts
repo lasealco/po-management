@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
-import type { SupplierOnboardingTaskStatus } from "@prisma/client";
 import { requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
-
-const STATUSES = new Set<SupplierOnboardingTaskStatus>(["pending", "done", "waived"]);
+import { parseOnboardingTaskPatchBody } from "@/lib/srm/supplier-onboarding-patch";
 
 export async function PATCH(
   request: Request,
@@ -37,33 +35,16 @@ export async function PATCH(
   }
 
   const o = body as Record<string, unknown>;
-  const data: {
-    status?: SupplierOnboardingTaskStatus;
-    notes?: string | null;
+  const parsed = parseOnboardingTaskPatchBody(o);
+  if (!parsed.ok) {
+    return NextResponse.json({ error: parsed.message }, { status: 400 });
+  }
+
+  const data = { ...parsed.data } as typeof parsed.data & {
     completedAt?: Date | null;
-  } = {};
-
-  if (o.status !== undefined) {
-    if (typeof o.status !== "string" || !STATUSES.has(o.status as SupplierOnboardingTaskStatus)) {
-      return NextResponse.json({ error: "status must be pending, done, or waived." }, { status: 400 });
-    }
-    const status = o.status as SupplierOnboardingTaskStatus;
-    data.status = status;
-    data.completedAt = status === "done" ? new Date() : null;
-  }
-
-  if (o.notes !== undefined) {
-    if (o.notes === null) data.notes = null;
-    else if (typeof o.notes === "string") {
-      const t = o.notes.trim();
-      data.notes = t ? t.slice(0, 8000) : null;
-    } else {
-      return NextResponse.json({ error: "Invalid notes." }, { status: 400 });
-    }
-  }
-
-  if (Object.keys(data).length === 0) {
-    return NextResponse.json({ error: "No fields to update." }, { status: 400 });
+  };
+  if (parsed.data.status !== undefined) {
+    data.completedAt = parsed.data.status === "done" ? new Date() : null;
   }
 
   const row = await prisma.supplierOnboardingTask.update({

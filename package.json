@@ -14,6 +14,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
+    "test:srm": "vitest run src/lib/srm",
     "postinstall": "prisma generate",
     "db:migrate": "cross-env PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK=1 prisma migrate deploy",
     "db:migrate:local": "bash scripts/db-migrate-local.sh",

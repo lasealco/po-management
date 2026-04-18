@@ -37,5 +37,6 @@ Work for new schema/UI ships on **`feature/srm-foundation`** (not `main`) until 
 
 1. **Migrate:** `npm run db:migrate` (or `npx prisma migrate deploy`) so SRM tables exist (`SupplierServiceCapability`, `SupplierOnboardingTask`, …).
 2. **Seed:** `npm run db:seed` — demo **SUP-001** gets sample **capabilities** and a full **onboarding checklist** (first three items marked done).
-3. **Tests:** `npm run test -- src/lib/srm/supplier-capability-parse.test.ts` — validation for capability POST/PATCH payloads.
-4. **Manual:** `npm run dev` → `/srm` → open **SUP-001** → **Capabilities** tab (SRM shell) or `/suppliers/[id]` for legacy single-page layout.
+3. **Tests (SRM lib):** `npm run test:srm` — runs all Vitest files under `src/lib/srm/` (capability payload parsing, onboarding PATCH parsing, default checklist shape).
+4. **Full suite:** `npm run test` — includes the same SRM tests plus the rest of the repo.
+5. **Manual:** `npm run dev` → `/srm` → open **SUP-001** → **Capabilities** and **Onboarding** tabs (SRM shell), or `/suppliers/[id]` for legacy single-page layout with the same blocks.
