@@ -94,6 +94,10 @@ try {
     "table SupplierSrmAlert",
     `SELECT to_regclass('public."SupplierSrmAlert"') IS NOT NULL AS ok`,
   );
+  await assertSql(
+    "table SupplierServiceCapability",
+    `SELECT to_regclass('public."SupplierServiceCapability"') IS NOT NULL AS ok`,
+  );
 
   await assertSql(
     "column SupplierDocument.expiresAt",
@@ -132,6 +136,11 @@ try {
     await assertSql(
       "seed SUP-001 has SRM alerts",
       `SELECT EXISTS (SELECT 1 FROM "SupplierSrmAlert" WHERE "supplierId" = $1) AS ok`,
+      [supplierId],
+    );
+    await assertSql(
+      "seed SUP-001 has service capabilities",
+      `SELECT EXISTS (SELECT 1 FROM "SupplierServiceCapability" WHERE "supplierId" = $1) AS ok`,
       [supplierId],
     );
   }
