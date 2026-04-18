@@ -21,6 +21,7 @@ model Tenant {
   productDivisions  ProductDivision[]
   supplierOffices   SupplierOffice[]
   supplierContacts  SupplierContact[]
+  supplierServiceCapabilities SupplierServiceCapability[]
   orders            PurchaseOrder[]
   salesOrders       SalesOrder[]
   warehouses        Warehouse[]
@@ -258,6 +259,7 @@ model Supplier {
   orders           PurchaseOrder[]
   offices          SupplierOffice[]
   contacts         SupplierContact[]
+  serviceCapabilities SupplierServiceCapability[]
   productSuppliers ProductSupplier[]
   shipmentBookings ShipmentBooking[]
   shipmentsCarrier Shipment[] @relation("ShipmentCarrierSupplier")
@@ -266,6 +268,27 @@ model Supplier {
 
   @@unique([tenantId, code])
   @@index([tenantId])
+}
+
+/// SRM: declared transport / service scope (modes, service lines, geography). See PRD “Service capabilities”.
+model SupplierServiceCapability {
+  id          String   @id @default(cuid())
+  tenantId    String
+  supplierId  String
+  /// OCEAN | AIR | ROAD | RAIL when mode-specific; optional.
+  mode        String?  @db.VarChar(16)
+  subMode     String?  @db.VarChar(64)
+  /// Short label, e.g. Freight forwarding, Customs brokerage.
+  serviceType String   @db.VarChar(128)
+  geography   String?  @db.VarChar(256)
+  notes       String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, supplierId])
 }
 
 /// People at the supplier (sales, AP, operations).

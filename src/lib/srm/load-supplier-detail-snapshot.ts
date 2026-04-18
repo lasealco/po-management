@@ -36,6 +36,17 @@ export async function loadSupplierDetailSnapshot(
           isPrimary: true,
         },
       },
+      serviceCapabilities: {
+        orderBy: [{ serviceType: "asc" }, { id: "asc" }],
+        select: {
+          id: true,
+          mode: true,
+          subMode: true,
+          serviceType: true,
+          geography: true,
+          notes: true,
+        },
+      },
       _count: { select: { productSuppliers: true, orders: true } },
     },
   });
@@ -74,6 +85,14 @@ export async function loadSupplierDetailSnapshot(
     internalNotes: supplier.internalNotes,
     contacts: supplier.contacts,
     offices: supplier.offices,
+    capabilities: supplier.serviceCapabilities.map((c) => ({
+      id: c.id,
+      mode: c.mode,
+      subMode: c.subMode,
+      serviceType: c.serviceType,
+      geography: c.geography,
+      notes: c.notes,
+    })),
     productLinkCount: supplier._count.productSuppliers,
     orderCount: supplier._count.orders,
   };

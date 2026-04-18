@@ -3,8 +3,12 @@
 import Link from "next/link";
 import { startTransition, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { SupplierCapabilitiesSection } from "@/components/supplier-capabilities-section";
 import { SupplierOrderHistorySection } from "@/components/supplier-order-history";
+import type { SupplierCapabilityRow } from "@/lib/srm/supplier-capability-types";
 import type { SupplierOrderAnalytics } from "@/lib/supplier-order-analytics";
+
+export type { SupplierCapabilityRow };
 
 export type SupplierContactRow = {
   id: string;
@@ -50,6 +54,7 @@ export type SupplierDetailSnapshot = {
     countryCode: string | null;
     isActive: boolean;
   }>;
+  capabilities: SupplierCapabilityRow[];
   productLinkCount: number;
   orderCount: number;
 };
@@ -61,6 +66,21 @@ const CONTACT_ROLES = [
   "Quality",
   "Other",
 ] as const;
+
+const SRM_SUPPLIER_TABS = [
+  { id: "overview", label: "Overview" },
+  { id: "capabilities", label: "Capabilities" },
+  { id: "qualification", label: "Qualification" },
+  { id: "compliance", label: "Compliance" },
+  { id: "contracts", label: "Contracts" },
+  { id: "performance", label: "Performance" },
+  { id: "risk", label: "Risk" },
+  { id: "relationship", label: "Relationship" },
+  { id: "documents", label: "Documents" },
+  { id: "alerts", label: "Alerts" },
+] as const;
+
+type SrmSupplierTabId = (typeof SRM_SUPPLIER_TABS)[number]["id"];
 
 export function SupplierDetailClient({
   initial,
@@ -162,6 +182,9 @@ export function SupplierDetailClient({
 
   const [editingContactId, setEditingContactId] = useState<string | null>(null);
   const [editC, setEditC] = useState<Partial<SupplierContactRow>>({});
+
+  const isSrmShell = detailNavContext === "srm";
+  const [srmTab, setSrmTab] = useState<SrmSupplierTabId>("overview");
 
   async function saveSupplierProfile() {
     setError(null);
@@ -520,11 +543,35 @@ export function SupplierDetailClient({
         </div>
       ) : null}
 
-      {orderHistory ? (
-        <SupplierOrderHistorySection analytics={orderHistory} />
+      {isSrmShell ? (
+        <nav
+          className="-mx-1 flex flex-wrap gap-1 border-b border-zinc-200 pb-2"
+          aria-label="Supplier workspace"
+        >
+          {SRM_SUPPLIER_TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setSrmTab(t.id)}
+              className={`rounded-md px-2.5 py-1.5 text-xs font-medium transition sm:text-sm ${
+                srmTab === t.id
+                  ? "bg-[var(--arscmp-primary-50)] text-[var(--arscmp-primary)] ring-1 ring-[var(--arscmp-primary)]/20"
+                  : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </nav>
       ) : null}
 
-      <section className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
+      {(!isSrmShell || srmTab === "overview") && (
+        <>
+          {orderHistory ? (
+            <SupplierOrderHistorySection analytics={orderHistory} />
+          ) : null}
+
+          <section className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
         <h2 className="text-sm font-semibold text-zinc-900">Company</h2>
         <p className="mt-1 text-xs text-zinc-500">
           Trade name, identifiers, and main company channels.
@@ -1167,6 +1214,31 @@ export function SupplierDetailClient({
           </form>
         ) : null}
       </section>
+        </>
+      )}
+
+      {(!isSrmShell || srmTab === "capabilities") && (
+        <SupplierCapabilitiesSection
+          key={`${initial.id}-${initial.updatedAt}`}
+          supplierId={initial.id}
+          canEdit={canEdit}
+          initialRows={initial.capabilities}
+        />
+      )}
+
+      {isSrmShell &&
+      srmTab !== "overview" &&
+      srmTab !== "capabilities" ? (
+        <section className="rounded-lg border border-dashed border-zinc-200 bg-zinc-50/80 p-8 text-center shadow-sm">
+          <p className="text-sm font-medium text-zinc-800">
+            {SRM_SUPPLIER_TABS.find((x) => x.id === srmTab)?.label ?? srmTab}
+          </p>
+          <p className="mt-2 text-xs text-zinc-600">
+            This workspace is planned in the SRM PRD; implementation follows in later slices (onboarding,
+            documents, scorecards, …).
+          </p>
+        </section>
+      ) : null}
     </div>
   );
 }
