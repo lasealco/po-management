@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 /**
  * Narrative panel summarizing how invoice lines were matched to the pricing snapshot.
  * Detailed per-line outcomes live in `InvoiceLinesMatchTable`.
@@ -34,6 +36,17 @@ export function InvoiceMatchResultPanel(props: {
           Intake route: POL {props.polCode ?? "—"} → POD {props.podCode ?? "—"}
         </p>
       ) : null}
+      <div className="mt-4">
+        <Link
+          href={`/pricing-snapshots/${encodeURIComponent(props.snapshotId)}`}
+          className="inline-flex items-center rounded-xl bg-[var(--arscmp-primary)] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:brightness-95"
+        >
+          Open pricing snapshot
+        </Link>
+        <p className="mt-2 text-xs text-zinc-500">
+          Opens the frozen breakdown and totals auditors compare against this intake (same tenant).
+        </p>
+      </div>
       <div className="mt-4 rounded-xl border border-zinc-100 bg-zinc-50/80 p-3 text-xs text-zinc-700">
         <p className="font-semibold text-zinc-800">Line outcomes (demo legend)</p>
         <ul className="mt-2 list-inside list-disc space-y-1">
