@@ -4,8 +4,10 @@ import Link from "next/link";
 import { startTransition, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SupplierCapabilitiesSection } from "@/components/supplier-capabilities-section";
+import { SupplierOnboardingSection } from "@/components/supplier-onboarding-section";
 import { SupplierOrderHistorySection } from "@/components/supplier-order-history";
 import type { SupplierCapabilityRow } from "@/lib/srm/supplier-capability-types";
+import type { SupplierOnboardingTaskRow } from "@/lib/srm/supplier-onboarding-types";
 import type { SupplierOrderAnalytics } from "@/lib/supplier-order-analytics";
 
 export type { SupplierCapabilityRow };
@@ -55,6 +57,7 @@ export type SupplierDetailSnapshot = {
     isActive: boolean;
   }>;
   capabilities: SupplierCapabilityRow[];
+  onboardingTasks: SupplierOnboardingTaskRow[];
   productLinkCount: number;
   orderCount: number;
 };
@@ -69,6 +72,7 @@ const CONTACT_ROLES = [
 
 const SRM_SUPPLIER_TABS = [
   { id: "overview", label: "Overview" },
+  { id: "onboarding", label: "Onboarding" },
   { id: "capabilities", label: "Capabilities" },
   { id: "qualification", label: "Qualification" },
   { id: "compliance", label: "Compliance" },
@@ -1226,16 +1230,26 @@ export function SupplierDetailClient({
         />
       )}
 
+      {(!isSrmShell || srmTab === "onboarding") && (
+        <SupplierOnboardingSection
+          key={`onb-${initial.id}-${initial.updatedAt}`}
+          supplierId={initial.id}
+          canEdit={canEdit}
+          initialRows={initial.onboardingTasks}
+        />
+      )}
+
       {isSrmShell &&
       srmTab !== "overview" &&
-      srmTab !== "capabilities" ? (
+      srmTab !== "capabilities" &&
+      srmTab !== "onboarding" ? (
         <section className="rounded-lg border border-dashed border-zinc-200 bg-zinc-50/80 p-8 text-center shadow-sm">
           <p className="text-sm font-medium text-zinc-800">
             {SRM_SUPPLIER_TABS.find((x) => x.id === srmTab)?.label ?? srmTab}
           </p>
           <p className="mt-2 text-xs text-zinc-600">
-            This workspace is planned in the SRM PRD; implementation follows in later slices (onboarding,
-            documents, scorecards, …).
+            This workspace is planned in the SRM PRD; implementation follows in later slices (documents,
+            qualification, scorecards, …).
           </p>
         </section>
       ) : null}

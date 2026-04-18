@@ -1,4 +1,5 @@
 import type { SupplierDetailSnapshot } from "@/components/supplier-detail-client";
+import { ensureSupplierOnboardingTasks } from "@/lib/srm/ensure-supplier-onboarding-tasks";
 import type { PrismaClient } from "@prisma/client";
 
 /**
@@ -53,6 +54,21 @@ export async function loadSupplierDetailSnapshot(
 
   if (!supplier) return null;
 
+  await ensureSupplierOnboardingTasks(prisma, tenantId, supplier.id);
+  const onboardingTasks = await prisma.supplierOnboardingTask.findMany({
+    where: { supplierId: supplier.id, tenantId },
+    orderBy: [{ sortOrder: "asc" }, { taskKey: "asc" }],
+    select: {
+      id: true,
+      taskKey: true,
+      label: true,
+      sortOrder: true,
+      status: true,
+      notes: true,
+      completedAt: true,
+    },
+  });
+
   return {
     id: supplier.id,
     updatedAt: supplier.updatedAt.toISOString(),
@@ -92,6 +108,15 @@ export async function loadSupplierDetailSnapshot(
       serviceType: c.serviceType,
       geography: c.geography,
       notes: c.notes,
+    })),
+    onboardingTasks: onboardingTasks.map((t) => ({
+      id: t.id,
+      taskKey: t.taskKey,
+      label: t.label,
+      sortOrder: t.sortOrder,
+      status: t.status as "pending" | "done" | "waived",
+      notes: t.notes,
+      completedAt: t.completedAt?.toISOString() ?? null,
     })),
     productLinkCount: supplier._count.productSuppliers,
     orderCount: supplier._count.orders,

@@ -22,6 +22,7 @@ model Tenant {
   supplierOffices   SupplierOffice[]
   supplierContacts  SupplierContact[]
   supplierServiceCapabilities SupplierServiceCapability[]
+  supplierOnboardingTasks     SupplierOnboardingTask[]
   orders            PurchaseOrder[]
   salesOrders       SalesOrder[]
   warehouses        Warehouse[]
@@ -214,6 +215,12 @@ enum SupplierApprovalStatus {
   rejected
 }
 
+enum SupplierOnboardingTaskStatus {
+  pending
+  done
+  waived
+}
+
 model Supplier {
   id        String   @id @default(cuid())
   tenantId  String
@@ -260,6 +267,7 @@ model Supplier {
   offices          SupplierOffice[]
   contacts         SupplierContact[]
   serviceCapabilities SupplierServiceCapability[]
+  onboardingTasks     SupplierOnboardingTask[]
   productSuppliers ProductSupplier[]
   shipmentBookings ShipmentBooking[]
   shipmentsCarrier Shipment[] @relation("ShipmentCarrierSupplier")
@@ -288,6 +296,29 @@ model SupplierServiceCapability {
   tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
 
+  @@index([tenantId, supplierId])
+}
+
+/// SRM onboarding checklist row (supplier lifecycle spec — default tasks ensured on first 360 load).
+model SupplierOnboardingTask {
+  id          String                        @id @default(cuid())
+  tenantId    String
+  supplierId  String
+  /// Stable key, e.g. `legal_details_verified`.
+  taskKey     String                        @db.VarChar(64)
+  label       String                        @db.VarChar(256)
+  sortOrder   Int                           @default(0)
+  status      SupplierOnboardingTaskStatus  @default(pending)
+  notes       String?                       @db.Text
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@unique([supplierId, taskKey])
   @@index([tenantId, supplierId])
 }
 

@@ -383,6 +383,32 @@ async function seed() {
     ],
   });
 
+  await prisma.supplierOnboardingTask.deleteMany({ where: { supplierId: supplier.id } });
+  const now = new Date();
+  const onboardingSeed = [
+    ["legal_details_verified", "Supplier legal details verified", 0, "done", now],
+    ["tax_banking_collected", "Tax and banking details collected", 1, "done", now],
+    ["contacts_collected", "Required contacts collected", 2, "done", now],
+    ["service_categories_defined", "Service categories and geographies defined", 3, "pending", null],
+    ["insurance_licenses_uploaded", "Insurance and licenses uploaded", 4, "pending", null],
+    ["sanctions_screening", "Sanctions and watchlist screening completed (where applicable)", 5, "pending", null],
+    ["qualification_questionnaire", "Qualification questionnaire completed", 6, "pending", null],
+    ["commercial_terms_summary", "Commercial terms captured at summary level", 7, "pending", null],
+    ["approval_chain", "Approval chain completed", 8, "pending", null],
+    ["activation_decision", "Activation decision logged", 9, "pending", null],
+  ];
+  await prisma.supplierOnboardingTask.createMany({
+    data: onboardingSeed.map(([taskKey, label, sortOrder, status, completedAt]) => ({
+      tenantId: tenant.id,
+      supplierId: supplier.id,
+      taskKey,
+      label,
+      sortOrder,
+      status,
+      completedAt,
+    })),
+  });
+
   await prisma.supplierContact.deleteMany({ where: { supplierId: supplier.id } });
   await prisma.supplierContact.createMany({
     data: [

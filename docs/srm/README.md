@@ -35,7 +35,7 @@ These files are derived from the SRM PDF pack created earlier and are intended t
 
 Work for new schema/UI ships on **`feature/srm-foundation`** (not `main`) until review.
 
-1. **Migrate:** `npm run db:migrate` (or `npx prisma migrate deploy`) so `SupplierServiceCapability` exists.
-2. **Seed:** `npm run db:seed` — demo supplier **SUP-001** gets two sample capability rows for `/srm/[id]` → **Capabilities**.
+1. **Migrate:** `npm run db:migrate` (or `npx prisma migrate deploy`) so SRM tables exist (`SupplierServiceCapability`, `SupplierOnboardingTask`, …).
+2. **Seed:** `npm run db:seed` — demo **SUP-001** gets sample **capabilities** and a full **onboarding checklist** (first three items marked done).
 3. **Tests:** `npm run test -- src/lib/srm/supplier-capability-parse.test.ts` — validation for capability POST/PATCH payloads.
 4. **Manual:** `npm run dev` → `/srm` → open **SUP-001** → **Capabilities** tab (SRM shell) or `/suppliers/[id]` for legacy single-page layout.
