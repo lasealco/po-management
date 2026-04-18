@@ -31,7 +31,7 @@ alwaysApply: true
 
 ## Tariff engine / invoice audit (verify without app)
 
-- **`npm run check:invoice-audit`** — scoped ESLint + Vitest for `src/lib/invoice-audit` plus invoice-audit / API / pricing-snapshot app paths (fast loop).
+- **`npm run check:invoice-audit`** — scoped ESLint + Vitest for `src/lib/invoice-audit`, `src/lib/booking-pricing-snapshot` (snapshot JSON serializers), invoice-audit / pricing-snapshot UI + API paths (fast loop).
 - **`npm run verify:tariff-engine`** — same as above, then **`npx tsc --noEmit`** (stricter gate before merge).
 
 ## Ship workflow

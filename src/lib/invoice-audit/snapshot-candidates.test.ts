@@ -173,4 +173,47 @@ describe("extractSnapshotPriceCandidates", () => {
     if (out.ok) return;
     expect(out.category).toBe(DISCREPANCY_CATEGORY.SNAPSHOT_PARSE_ERROR);
   });
+
+  it("fails when breakdownJson is not an object", () => {
+    const out = extractSnapshotPriceCandidates(null);
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.category).toBe(DISCREPANCY_CATEGORY.SNAPSHOT_PARSE_ERROR);
+    expect(out.error).toMatch(/not an object/i);
+  });
+
+  it("fails when QUOTE_RESPONSE snapshot has no lines array", () => {
+    const out = extractSnapshotPriceCandidates({
+      sourceType: "QUOTE_RESPONSE",
+      lines: "not-an-array",
+    });
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.category).toBe(DISCREPANCY_CATEGORY.SNAPSHOT_PARSE_ERROR);
+    expect(out.error).toMatch(/lines/i);
+  });
+
+  it("returns null geography summary when only contract charges exist", () => {
+    const out = extractSnapshotPriceCandidates({
+      sourceType: "TARIFF_CONTRACT_VERSION",
+      rateLines: [],
+      chargeLines: [
+        {
+          id: "c1",
+          rawChargeName: "DOC FEE",
+          normalizedCode: null,
+          equipmentScope: null,
+          unitBasis: "PER_SHIPMENT",
+          currency: "USD",
+          amount: "50",
+          isIncluded: false,
+          isMandatory: true,
+          geographyScope: null,
+        },
+      ],
+    });
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+    expect(summarizeContractGeographyFromCandidates(out.candidates)).toBeNull();
+  });
 });
