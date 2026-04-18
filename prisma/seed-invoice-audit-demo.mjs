@@ -223,6 +223,9 @@ async function main() {
     `[db:seed:invoice-audit-demo] Created intake ${intake.id} (${DEMO_EXTERNAL_INVOICE_NO}) → snapshot ${snapshot.id}`,
   );
   console.log(`[db:seed:invoice-audit-demo] Demo path:`);
+  console.log(
+    `  (0) If /invoice-audit shows "database not ready" or APIs 500 with schema errors: run prisma migrate deploy on this DATABASE_URL, then open /invoice-audit/readiness?refresh=1 in the app.`,
+  );
   console.log(`  (1) Open /invoice-audit/${intake.id} with a demo user that has org.invoice_audit → edit.`);
   console.log(`  (2) Click "Run audit vs snapshot" (intake is PARSED; lines mirror the new-intake form demo).`);
   console.log(`  (3) Complete closeout on the same page: ops notes → finance review → accounting handoff.`);

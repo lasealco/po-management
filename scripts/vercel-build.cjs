@@ -27,6 +27,11 @@ function run(label, command, args) {
         "[vercel-build] P3009: ensure DATABASE_URL_UNPOOLED (direct Neon host) is set for migrate.\n" +
           "[vercel-build] Repair runs before migrate deploy; locally: npm run db:repair:supplier-migration\n",
       );
+      console.error(
+        "[vercel-build] Invoice audit (Phase 06): after migrate deploy, confirm folders through\n" +
+          "20260421103000_invoice_intake_accounting_handoff finished; otherwise /invoice-audit may 500.\n" +
+          "[vercel-build] Post-deploy demo row: npm run db:seed:invoice-audit-demo (manual; see docs/database-neon.md).\n",
+      );
     }
     process.exit(result.status);
   }
