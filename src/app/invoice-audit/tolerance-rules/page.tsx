@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { DemoSeedCopyBlock } from "@/components/invoice-audit/demo-seed-copy-block";
 import { serializeToleranceRule } from "@/app/api/invoice-audit/_lib/serialize";
 import { ToleranceRulesClient } from "@/components/invoice-audit/tolerance-rules-client";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
@@ -42,6 +43,20 @@ export default async function InvoiceAuditToleranceRulesPage() {
         {!canEdit ? (
           <p className="mt-3 text-xs text-zinc-500">You have view access only; create and activate rules require edit permission.</p>
         ) : null}
+
+        <div className="mt-4 rounded-xl border border-zinc-100 bg-zinc-50/80 px-4 py-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Try changes on a demo intake</p>
+          <p className="mt-1 text-xs text-zinc-600">
+            Tolerance bands only apply when you <span className="font-medium">Run audit</span>. Re-seed a known-good
+            intake, tweak rules, then re-open the intake and run audit again.
+          </p>
+          <DemoSeedCopyBlock className="mt-2" />
+          <p className="mt-2 text-xs text-zinc-600">
+            <Link href="/invoice-audit" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+              Back to intakes
+            </Link>
+          </p>
+        </div>
 
         <ToleranceRulesClient canEdit={canEdit} initialRules={initialRules} />
       </section>

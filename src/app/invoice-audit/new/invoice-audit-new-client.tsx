@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { DemoSeedCopyBlock } from "@/components/invoice-audit/demo-seed-copy-block";
 import { formatInvoiceAuditApiError } from "@/lib/invoice-audit/invoice-audit-api-client-error";
+import { INVOICE_AUDIT_DEMO_SEED_CLI } from "@/lib/invoice-audit/invoice-audit-demo-constants";
 
 type SnapshotOption = {
   id: string;
@@ -203,9 +205,8 @@ export function InvoiceAuditNewClient(props: { initialSnapshotId?: string }) {
         <p className="mt-3 rounded-xl border border-zinc-200 bg-zinc-50/90 px-3 py-2 text-xs text-zinc-700">
           <span className="font-semibold text-zinc-800">Prerequisites:</span> DB migrations applied (
           <code className="rounded bg-white px-1 py-0.5 font-mono text-[11px]">npm run db:migrate</code>
-          ) and main tenant seed for <span className="font-medium">demo-company</span>. For a repeatable PARSED demo
-          intake, run{" "}
-          <code className="rounded bg-white px-1 py-0.5 font-mono text-[11px]">USE_DOTENV_LOCAL=1 npm run db:seed:invoice-audit-demo</code>{" "}
+          ) and main tenant seed for <span className="font-medium">demo-company</span>.           For a repeatable PARSED demo intake, run{" "}
+          <code className="rounded bg-white px-1 py-0.5 font-mono text-[11px]">{INVOICE_AUDIT_DEMO_SEED_CLI}</code>{" "}
           — it creates a minimal pricing snapshot in the library when none exist, then seeds the intake.
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -257,6 +258,16 @@ export function InvoiceAuditNewClient(props: { initialSnapshotId?: string }) {
               ))}
             </select>
             {snapshotOptionsError ? <p className="mt-1 text-xs text-amber-800">{snapshotOptionsError}</p> : null}
+            {!snapshotsLoading && snapshotOptions.length === 0 && !snapshotOptionsError ? (
+              <div className="mt-3 rounded-lg border border-sky-100 bg-sky-50/80 px-3 py-2">
+                <p className="text-xs font-medium text-sky-950">No snapshots in the library</p>
+                <p className="mt-1 text-xs text-sky-900/90">
+                  Freeze under Pricing snapshots, or run the demo seed (creates a minimal snapshot when the list is
+                  empty).
+                </p>
+                <DemoSeedCopyBlock className="mt-2" />
+              </div>
+            ) : null}
             <label className="mt-2 block text-xs font-semibold uppercase tracking-wide text-zinc-500">
               Snapshot id (paste or pick above)
             </label>
@@ -449,7 +460,21 @@ export function InvoiceAuditNewClient(props: { initialSnapshotId?: string }) {
         >
           {busy ? (runAuditAfterSave ? "Saving and auditing…" : "Saving…") : runAuditAfterSave ? "Save and run audit" : "Save intake"}
         </button>
-        {error ? <p className="mt-4 text-sm text-red-700">{error}</p> : null}
+        {error ? (
+          <div className="mt-4 space-y-2">
+            <p className="text-sm text-red-700">{error}</p>
+            {/\b(schema|migration|migrations|database|not ready|SCHEMA_NOT_READY)\b/i.test(error) ? (
+              <p className="text-xs text-zinc-600">
+                <Link
+                  href="/invoice-audit/readiness?refresh=1"
+                  className="font-medium text-[var(--arscmp-primary)] hover:underline"
+                >
+                  Open invoice audit DB readiness (refreshed check)
+                </Link>
+              </p>
+            ) : null}
+          </div>
+        ) : null}
       </section>
     </main>
   );

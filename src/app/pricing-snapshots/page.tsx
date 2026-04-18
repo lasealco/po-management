@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { DemoSeedCopyBlock } from "@/components/invoice-audit/demo-seed-copy-block";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { listBookingPricingSnapshotsForTenant } from "@/lib/booking-pricing-snapshot";
 import { getDemoTenant } from "@/lib/demo-tenant";
@@ -95,8 +96,33 @@ export default async function PricingSnapshotsListPage() {
             <tbody>
               {snapshots.length === 0 ? (
                 <tr>
-                  <td colSpan={canInvoiceAuditEdit ? 6 : 5} className="py-10 text-center text-zinc-500">
-                    No snapshots yet. Freeze one from a contract version or RFQ response.
+                  <td colSpan={canInvoiceAuditEdit ? 6 : 5} className="px-4 py-10 text-left text-sm text-zinc-600">
+                    <p className="font-medium text-zinc-800">No snapshots in this tenant yet</p>
+                    <p className="mt-2 max-w-xl text-sm">
+                      Freeze one from a published{" "}
+                      <span className="font-medium">tariff contract version</span> or an{" "}
+                      <span className="font-medium">RFQ quote response</span> (requires the usual tariff or RFQ edit
+                      grants). Snapshots are immutable — invoice audit always compares carrier lines to the frozen JSON.
+                    </p>
+                    {canInvoiceAuditView ? (
+                      <div className="mt-4 max-w-xl rounded-xl border border-sky-100 bg-sky-50/90 px-3 py-3">
+                        <p className="text-xs font-semibold text-sky-950">Invoice audit demo shortcut</p>
+                        <p className="mt-1 text-xs text-sky-900/90">
+                          If you only need a walkthrough intake, this command creates a minimal snapshot when the
+                          library is empty, then seeds a PARSED intake for <span className="font-medium">demo-company</span>.
+                        </p>
+                        <DemoSeedCopyBlock className="mt-2" />
+                        <p className="mt-2 text-xs text-sky-900/80">
+                          <Link href="/invoice-audit/readiness?refresh=1" className="font-medium hover:underline">
+                            DB readiness
+                          </Link>
+                          {" · "}
+                          <Link href="/invoice-audit" className="font-medium hover:underline">
+                            Invoice intakes
+                          </Link>
+                        </p>
+                      </div>
+                    ) : null}
                   </td>
                 </tr>
               ) : (
@@ -108,10 +134,13 @@ export default async function PricingSnapshotsListPage() {
                         timeStyle: "short",
                       })}
                     </td>
-                    <td className="py-3 pr-4">
+                    <td className="max-w-[10rem] py-3 pr-4">
                       <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-700">
                         {s.sourceType === "TARIFF_CONTRACT_VERSION" ? "Contract" : "RFQ"}
                       </span>
+                      <div className="mt-1 truncate font-mono text-[10px] text-zinc-500" title={s.sourceRecordId}>
+                        {s.sourceRecordId.length > 22 ? `${s.sourceRecordId.slice(0, 20)}…` : s.sourceRecordId}
+                      </div>
                     </td>
                     <td className="py-3 pr-4">
                       <Link

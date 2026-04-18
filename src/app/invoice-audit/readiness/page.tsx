@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { DemoSeedCopyBlock } from "@/components/invoice-audit/demo-seed-copy-block";
 import {
   checkInvoiceAuditDatabaseSchema,
   INVOICE_AUDIT_MIGRATION_SEQUENCE_HINT,
@@ -88,6 +89,22 @@ export default async function InvoiceAuditReadinessPage(props: {
           <code className="rounded bg-zinc-100 px-1 py-0.5 font-mono text-[11px]">npm run db:migrate</code> locally,{" "}
           <code className="rounded bg-zinc-100 px-1 py-0.5 font-mono text-[11px]">prisma migrate deploy</code> in CI).
         </p>
+
+        <div className="mt-6 rounded-xl border border-zinc-200 bg-zinc-50/90 px-4 py-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-600">After migrations are green</p>
+          <p className="mt-1 text-xs text-zinc-700">
+            Load the Phase 06 demo intake for <span className="font-medium">demo-company</span> (safe to re-run; see
+            script header for prerequisites).
+          </p>
+          <DemoSeedCopyBlock className="mt-2" />
+          <p className="mt-2 text-xs text-zinc-600">
+            Then open{" "}
+            <Link href="/invoice-audit" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+              Invoice intakes
+            </Link>{" "}
+            and run audit from the seeded row.
+          </p>
+        </div>
       </section>
     </main>
   );

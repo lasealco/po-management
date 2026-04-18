@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { DemoSeedCopyBlock } from "@/components/invoice-audit/demo-seed-copy-block";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { listInvoiceIntakesForTenant } from "@/lib/invoice-audit/invoice-intakes";
 import { formatPricingSnapshotSourceType } from "@/lib/invoice-audit/pricing-snapshot-source-nav";
@@ -110,6 +111,27 @@ export default async function InvoiceAuditListPage(props: {
               New intake
             </Link>
           ) : null}
+        </div>
+
+        <div className="mt-5 rounded-xl border border-sky-100 bg-sky-50/90 px-4 py-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-sky-900">Demo &amp; admin shortcuts</p>
+          <p className="mt-1 text-xs text-sky-950/90">
+            Re-seed a PARSED intake (and a minimal snapshot if the library is empty) for <span className="font-medium">demo-company</span>{" "}
+            before walkthroughs. Requires <span className="font-mono text-[11px]">DATABASE_URL</span> in{" "}
+            <span className="font-mono text-[11px]">.env.local</span>.
+          </p>
+          <DemoSeedCopyBlock className="mt-2" />
+          <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs font-medium text-sky-950">
+            <Link href="/invoice-audit/tolerance-rules" className="text-[var(--arscmp-primary)] hover:underline">
+              Tolerance rules
+            </Link>
+            <Link href="/invoice-audit/readiness?refresh=1" className="text-[var(--arscmp-primary)] hover:underline">
+              DB readiness (no cache)
+            </Link>
+            <Link href="/pricing-snapshots" className="text-[var(--arscmp-primary)] hover:underline">
+              Pricing snapshots
+            </Link>
+          </p>
         </div>
 
         <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-zinc-100 pt-5">
