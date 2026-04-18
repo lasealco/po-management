@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { CopyTextButton } from "@/components/invoice-audit/copy-text-button";
 import { RecordIdCopy } from "@/components/invoice-audit/record-id-copy";
 import { InvoiceCloseoutProgressStrip } from "@/components/invoice-audit/invoice-closeout-progress-strip";
 import { InvoiceIntakeDetailActions } from "@/components/invoice-audit/invoice-intake-detail-actions";
@@ -189,10 +188,10 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
           <h2 className="text-sm font-semibold text-zinc-900">Discrepancy categories (rollup)</h2>
           <p className="mt-2 text-sm text-zinc-600">
             Counts how often each category appears across line audit rows (Phase 06 auditability). Categories are
-            always interpreted against the frozen snapshot{" "}
-            <span className="font-mono text-xs text-zinc-700">{intake.bookingPricingSnapshot.id}</span> (
-            {formatPricingSnapshotSourceType(snapshotSourceTypeStr)}) — not against live tariff or RFQ edits after the
-            snapshot was taken. Expand per-line JSON below for the full payload. Pure “within tolerance” matches are
+            always interpreted against the frozen snapshot (
+            {formatPricingSnapshotSourceType(snapshotSourceTypeStr)}; see{" "}
+            <span className="font-medium">Linked snapshot</span> below for ids) — not against live tariff or RFQ edits
+            after the snapshot was taken. Expand per-line JSON below for the full payload. Pure “within tolerance” matches are
             summarized separately so attention items stand out.
           </p>
           {discrepancyRollupAttention.length > 0 ? (
@@ -265,12 +264,9 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
                 {!appliedTolerance.active ? (
                   <span className="ml-1 text-xs font-medium text-amber-800">(rule inactive at read time)</span>
                 ) : null}
-                <span className="mt-2 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
-                  <span className="font-mono text-[11px] text-zinc-600" title="Tolerance rule primary key">
-                    {appliedTolerance.id}
-                  </span>
-                  <CopyTextButton text={appliedTolerance.id} label="Copy rule id" copiedLabel="Rule id copied" />
-                </span>
+                <div className="mt-2 text-xs text-zinc-500">
+                  <RecordIdCopy id={appliedTolerance.id} copyButtonLabel="Copy rule id" />
+                </div>
               </>
             ) : (
               <>
@@ -306,18 +302,22 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
           <span className="font-medium text-zinc-800">Basis</span> —{" "}
           {formatPricingSnapshotSourceType(snapshotSourceTypeStr)}
         </p>
-        <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-zinc-600">
+        <p className="mt-2 text-sm text-zinc-600">
           <span className="font-medium text-zinc-800">Source record</span>
-          <span className="break-all font-mono text-xs text-zinc-700">{intake.bookingPricingSnapshot.sourceRecordId}</span>
-          <CopyTextButton
-            text={intake.bookingPricingSnapshot.sourceRecordId}
-            label="Copy source id"
-            copiedLabel="Source id copied"
-          />
         </p>
-        <p className="mt-2 font-mono text-xs text-zinc-500">
-          Snapshot id <span className="text-zinc-600">{intake.bookingPricingSnapshotId}</span>
+        <div className="mt-1">
+          {intake.bookingPricingSnapshot.sourceRecordId.trim() ? (
+            <RecordIdCopy id={intake.bookingPricingSnapshot.sourceRecordId} copyButtonLabel="Copy source record id" />
+          ) : (
+            <span className="text-xs text-zinc-400">—</span>
+          )}
+        </div>
+        <p className="mt-3 text-sm text-zinc-600">
+          <span className="font-medium text-zinc-800">Snapshot id</span>
         </p>
+        <div className="mt-1">
+          <RecordIdCopy id={intake.bookingPricingSnapshot.id} copyButtonLabel="Copy snapshot id" />
+        </div>
         <p className="mt-2 text-sm text-zinc-600">
           Frozen total (reference):{" "}
           <span className="font-semibold tabular-nums text-zinc-900">
@@ -325,29 +325,40 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
           </span>
         </p>
         {intake.bookingPricingSnapshot.shipmentBooking ? (
-          <p className="mt-2 text-sm text-zinc-600">
-            <span className="font-medium text-zinc-800">Control Tower booking</span> — snapshot was frozen with booking{" "}
-            <span className="font-mono text-xs text-zinc-700">{intake.bookingPricingSnapshot.shipmentBooking.id}</span>
-            {intake.bookingPricingSnapshot.shipmentBooking.bookingNo ? (
-              <>
-                {" "}
-                (<span className="font-semibold">{intake.bookingPricingSnapshot.shipmentBooking.bookingNo}</span>)
-              </>
-            ) : null}
-            .{" "}
-            <Link
-              href={`/control-tower/shipments/${intake.bookingPricingSnapshot.shipmentBooking.shipmentId}`}
-              className="font-medium text-[var(--arscmp-primary)] hover:underline"
-            >
-              Open shipment workspace
-            </Link>
-          </p>
+          <>
+            <p className="mt-2 text-sm text-zinc-600">
+              <span className="font-medium text-zinc-800">Control Tower booking</span> — snapshot was frozen with this
+              booking
+              {intake.bookingPricingSnapshot.shipmentBooking.bookingNo ? (
+                <>
+                  {" "}
+                  (<span className="font-semibold">{intake.bookingPricingSnapshot.shipmentBooking.bookingNo}</span>)
+                </>
+              ) : null}
+              .{" "}
+              <Link
+                href={`/control-tower/shipments/${intake.bookingPricingSnapshot.shipmentBooking.shipmentId}`}
+                className="font-medium text-[var(--arscmp-primary)] hover:underline"
+              >
+                Open shipment workspace
+              </Link>
+            </p>
+            <div className="mt-2">
+              <RecordIdCopy id={intake.bookingPricingSnapshot.shipmentBooking.id} copyButtonLabel="Copy booking id" />
+            </div>
+          </>
         ) : intake.bookingPricingSnapshot.shipmentBookingId ? (
-          <p className="mt-2 text-xs text-zinc-500">
-            Snapshot references booking id{" "}
-            <span className="font-mono text-zinc-600">{intake.bookingPricingSnapshot.shipmentBookingId}</span> (booking
-            row not found — link unavailable).
-          </p>
+          <>
+            <p className="mt-2 text-xs text-zinc-500">
+              Snapshot references a booking id, but the booking row was not found — link unavailable.
+            </p>
+            <div className="mt-1">
+              <RecordIdCopy
+                id={intake.bookingPricingSnapshot.shipmentBookingId}
+                copyButtonLabel="Copy booking id"
+              />
+            </div>
+          </>
         ) : (
           <p className="mt-2 text-xs text-zinc-500">
             No Control Tower shipment booking is linked on this snapshot (tariff-only or ad hoc snapshot).
@@ -408,14 +419,13 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
                   <span>{formatSnapshotMatchLabel(r.snapshotMatchedJson)}</span>
                 </div>
                 {r.toleranceRule ? (
-                  <p className="mt-2 flex flex-wrap items-center gap-2 text-xs text-zinc-600">
-                    <span>
+                  <div className="mt-2 space-y-1 text-xs text-zinc-600">
+                    <p>
                       Tolerance applied:{" "}
                       <span className="font-medium text-zinc-800">{r.toleranceRule.name}</span>
-                    </span>
-                    <span className="font-mono text-[10px] text-zinc-500">{r.toleranceRule.id}</span>
-                    <CopyTextButton text={r.toleranceRule.id} label="Copy rule id" copiedLabel="Copied" />
-                  </p>
+                    </p>
+                    <RecordIdCopy id={r.toleranceRule.id} copyButtonLabel="Copy rule id" />
+                  </div>
                 ) : (
                   <p className="mt-2 text-xs text-zinc-500">Tolerance applied: built-in defaults (no tenant rule id).</p>
                 )}
