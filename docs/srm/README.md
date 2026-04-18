@@ -47,7 +47,7 @@ docs/srm/
 |----------|------|
 | Humans (print / legal-style review) | `pdf/*.pdf` |
 | Cursor / agents / ripgrep | `md/*.md` |
-| Shipped app behavior | `src/app/srm`, `src/lib/srm`, `prisma/schema.prisma`, `docs/srm/README.md` (checklist below) |
+| Shipped app behavior | `src/app/srm`, `src/lib/srm` ([`src/lib/srm/README.md`](../../src/lib/srm/README.md)), `prisma/schema.prisma`, `docs/srm/README.md` (checklist below) |
 
 ---
 
