@@ -315,7 +315,9 @@ async function seed() {
     where: { tenantId_code: { tenantId: tenant.id, code: "SUP-001" } },
     update: {
       name: "Acme Industrial Supplies",
+      approvalStatus: "approved",
       isActive: true,
+      srmCategory: "product",
       qualificationStatus: "in_progress",
       qualificationSummary:
         "Demo seed: first three onboarding items complete; questionnaire and downstream gates still open.",
@@ -342,6 +344,9 @@ async function seed() {
       tenantId: tenant.id,
       code: "SUP-001",
       name: "Acme Industrial Supplies",
+      approvalStatus: "approved",
+      isActive: true,
+      srmCategory: "product",
       qualificationStatus: "in_progress",
       qualificationSummary:
         "Demo seed: first three onboarding items complete; questionnaire and downstream gates still open.",
