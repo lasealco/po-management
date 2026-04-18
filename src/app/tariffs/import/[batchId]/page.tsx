@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { TariffImportBatchIdsBar } from "@/components/tariffs/tariff-import-batch-ids-bar";
 import { TariffImportParseBadge, TariffImportReviewBadge } from "@/components/tariffs/tariff-import-badges";
 import { TariffImportBatchWorkflowClient } from "@/components/tariffs/tariff-import-batch-workflow-client";
 import { TariffImportStagingGridClient, type StagingRowView } from "@/components/tariffs/tariff-import-staging-grid-client";
@@ -67,6 +68,7 @@ export default async function TariffImportBatchDetailPage({ params }: { params: 
                 {batch.sourceType}
               </span>
             </div>
+            <TariffImportBatchIdsBar batchId={batch.id} />
           </div>
         </div>
 
