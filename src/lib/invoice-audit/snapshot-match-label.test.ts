@@ -14,6 +14,19 @@ describe("formatSnapshotMatchLabel", () => {
     ).toBe("CONTRACT_CHARGE: THC origin");
   });
 
+  it("appends invoice vs snapshot amounts when both are present (demo BAF-style rows)", () => {
+    expect(
+      formatSnapshotMatchLabel({
+        kind: "RFQ_LINE",
+        id: "demo-snap-ln-2",
+        label: "Bunker adjustment factor (BAF)",
+        expectedAmount: 330,
+        invoiceAmount: 350,
+        score: 12,
+      }),
+    ).toBe("RFQ_LINE: Bunker adjustment factor (BAF) · inv 350 vs snap 330 (Δ20.00)");
+  });
+
   it("summarizes currency mismatch payloads", () => {
     expect(
       formatSnapshotMatchLabel({

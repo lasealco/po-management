@@ -61,6 +61,7 @@ describe("invoice audit pipeline (no DB)", () => {
 
     expect(r.outcome).toBe("GREEN");
     expect(r.snapshotMatchedJson).toMatchObject({ id: "l1", kind: "RFQ_LINE" });
+    expect(r.explanation).toContain("invoice 2500.00 vs snapshot 2500.00");
   });
 
   it("extracts contract candidates then matches THC charge", () => {

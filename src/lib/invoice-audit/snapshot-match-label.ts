@@ -1,3 +1,14 @@
+function amountCompareSuffix(j: Record<string, unknown>): string {
+  const rawInv = j.invoiceAmount;
+  const rawExp = j.expectedAmount;
+  if (rawInv === undefined || rawExp === undefined) return "";
+  const invN = typeof rawInv === "number" ? rawInv : typeof rawInv === "string" ? Number(rawInv) : NaN;
+  const expN = typeof rawExp === "number" ? rawExp : typeof rawExp === "string" ? Number(rawExp) : NaN;
+  if (!Number.isFinite(invN) || !Number.isFinite(expN)) return "";
+  const delta = Math.abs(invN - expN);
+  return ` · inv ${invN} vs snap ${expN} (Δ${delta.toFixed(2)})`;
+}
+
 /**
  * One-line summary of `snapshotMatchedJson` for tables and intake detail (not a full serializer).
  */
@@ -30,7 +41,8 @@ export function formatSnapshotMatchLabel(json: unknown): string {
   }
   if (typeof j.label === "string" && j.label.trim()) {
     const k = typeof j.kind === "string" ? `${j.kind}: ` : "";
-    return `${k}${j.label}`.slice(0, 96);
+    const base = `${k}${j.label}`;
+    return (base + amountCompareSuffix(j)).slice(0, 132);
   }
   if (Array.isArray(j.ambiguousCandidates) && j.ambiguousCandidates.length > 0) {
     return `Ambiguous (${j.ambiguousCandidates.length} tied)`;

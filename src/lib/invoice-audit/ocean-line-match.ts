@@ -33,6 +33,10 @@ export type InvoiceChargeAliasRow = {
 const MIN_CONFIDENCE_SCORE = 5;
 const SCORE_TIE_EPSILON = 1.25;
 
+function fmtAuditAmount(n: number): string {
+  return Number.isFinite(n) ? n.toFixed(2) : String(n);
+}
+
 const ALL_IN_RE =
   /\b(all[\s-]?in|allin|lump[\s-]?sum|lumpsum|package\s+rate|flat\s+rate|port[\s-]to[\s-]port|total\s+ocean|ocean\s+freight\s+only|fcl\s+package|door\s+to\s+port\s+package|sea\s+freight|carrier\s+freight|main\s+leg|freight\s+all\s+inclusive|all\s+inclusive\s+freight)\b/i;
 
@@ -418,7 +422,7 @@ export function auditOceanInvoiceLine(params: {
         percentVariance:
           expected !== 0 ? new Prisma.Decimal(String(variance / Math.abs(expected))) : new Prisma.Decimal(0),
         snapshotMatchedJson: matchedJson,
-        explanation: `All-in amount matched snapshot basket (${mode}) within tolerance (Δ=${variance.toFixed(4)}).`,
+        explanation: `All-in amount matched snapshot basket (${mode}) within tolerance (invoice ${fmtAuditAmount(actual)} vs snapshot ${fmtAuditAmount(expected)}, Δ=${variance.toFixed(4)}).`,
         toleranceRuleId: params.toleranceRuleId,
       };
     }
@@ -430,7 +434,7 @@ export function auditOceanInvoiceLine(params: {
         amountVariance: new Prisma.Decimal(String(variance)),
         percentVariance: new Prisma.Decimal(String(variance / Math.abs(expected || 1))),
         snapshotMatchedJson: matchedJson,
-        explanation: `All-in vs snapshot basket (${mode}) is in the warn band (Δ=${variance.toFixed(4)}).`,
+        explanation: `All-in vs snapshot basket (${mode}) is in the warn band (invoice ${fmtAuditAmount(actual)} vs snapshot ${fmtAuditAmount(expected)}, Δ=${variance.toFixed(4)}).`,
         toleranceRuleId: params.toleranceRuleId,
       };
     }
@@ -441,7 +445,7 @@ export function auditOceanInvoiceLine(params: {
       amountVariance: new Prisma.Decimal(String(variance)),
       percentVariance: new Prisma.Decimal(String(variance / Math.abs(expected || 1))),
       snapshotMatchedJson: matchedJson,
-      explanation: `All-in vs snapshot basket (${mode}) exceeds warn band (Δ=${variance.toFixed(4)}).`,
+      explanation: `All-in vs snapshot basket (${mode}) exceeds warn band (invoice ${fmtAuditAmount(actual)} vs snapshot ${fmtAuditAmount(expected)}, Δ=${variance.toFixed(4)}).`,
       toleranceRuleId: params.toleranceRuleId,
     };
   }
@@ -596,8 +600,8 @@ export function auditOceanInvoiceLine(params: {
       snapshotMatchedJson: matchedJson,
       explanation:
         outcome === "GREEN"
-          ? `Matched "${match.label}" within tolerance (Δ=${variance.toFixed(4)}).`
-          : `Matched "${match.label}" within amount tolerance but flagged soft commercial mismatches: ${cats.join(", ")}.`,
+          ? `Matched "${match.label}" within tolerance (invoice ${fmtAuditAmount(actual)} vs snapshot ${fmtAuditAmount(expected)}, Δ=${variance.toFixed(4)}).`
+          : `Matched "${match.label}" within amount tolerance (invoice ${fmtAuditAmount(actual)} vs snapshot ${fmtAuditAmount(expected)}, Δ=${variance.toFixed(4)}) but flagged soft commercial mismatches: ${cats.join(", ")}.`,
       toleranceRuleId: params.toleranceRuleId,
     };
   }
@@ -610,7 +614,7 @@ export function auditOceanInvoiceLine(params: {
       amountVariance: new Prisma.Decimal(String(variance)),
       percentVariance: new Prisma.Decimal(String(variance / Math.abs(expected || 1))),
       snapshotMatchedJson: matchedJson,
-      explanation: `Matched "${match.label}"; amount in warn band (Δ=${variance.toFixed(4)}).`,
+      explanation: `Matched "${match.label}"; amount in warn band (invoice ${fmtAuditAmount(actual)} vs snapshot ${fmtAuditAmount(expected)}, Δ=${variance.toFixed(4)}).`,
       toleranceRuleId: params.toleranceRuleId,
     };
   }
@@ -622,7 +626,7 @@ export function auditOceanInvoiceLine(params: {
     amountVariance: new Prisma.Decimal(String(variance)),
     percentVariance: new Prisma.Decimal(String(variance / Math.abs(expected || 1))),
     snapshotMatchedJson: matchedJson,
-    explanation: `Matched "${match.label}" but amount materially differs from snapshot (Δ=${variance.toFixed(4)}).`,
+    explanation: `Matched "${match.label}" but amount materially differs from snapshot (invoice ${fmtAuditAmount(actual)} vs snapshot ${fmtAuditAmount(expected)}, Δ=${variance.toFixed(4)}).`,
     toleranceRuleId: params.toleranceRuleId,
   };
 }
