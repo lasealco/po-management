@@ -375,6 +375,23 @@ export function SupplierDetailClient({
     }
   }
 
+  function navigateComplianceFollowUp(tab: "documents" | "risk") {
+    if (isSrmShell) {
+      selectSrmTab(tab);
+      return;
+    }
+    if (tab === "documents") {
+      openDocumentsWorkspace();
+    } else {
+      window.requestAnimationFrame(() =>
+        document.getElementById("supplier-risk-records-section")?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        }),
+      );
+    }
+  }
+
   async function copyAdminField(label: string, text: string) {
     setError(null);
     try {
@@ -1839,6 +1856,7 @@ export function SupplierDetailClient({
             supplierId={initial.id}
             canEdit={canEdit}
             initialRows={initial.complianceReviews}
+            onWorkspaceNavigate={navigateComplianceFollowUp}
           />
         </>
       )}

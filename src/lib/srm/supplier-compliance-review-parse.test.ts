@@ -34,4 +34,16 @@ describe("parseComplianceReviewPatchBody", () => {
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.data.outcome).toBe("failed");
   });
+
+  it("accepts summary and clearing nextReviewDue", () => {
+    const r = parseComplianceReviewPatchBody({
+      summary: "Corrective narrative",
+      nextReviewDue: null,
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.data.summary).toBe("Corrective narrative");
+      expect(r.data.nextReviewDue).toBeNull();
+    }
+  });
 });

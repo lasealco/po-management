@@ -104,7 +104,10 @@ export function SupplierRiskRecordsSection({
     "mt-1 w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm text-zinc-900 disabled:opacity-50";
 
   return (
-    <section className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
+    <section
+      id="supplier-risk-records-section"
+      className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm"
+    >
       <h2 className="text-sm font-semibold text-zinc-900">Risk records</h2>
       <p className="mt-1 text-xs text-zinc-500">
         Log and track supplier risks (concentration, delivery, financial, compliance). Closing a record

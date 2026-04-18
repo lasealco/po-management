@@ -18,14 +18,35 @@ const OUTCOMES: { value: SupplierComplianceReviewOutcome; label: string }[] = [
   { value: "failed", label: "Failed" },
 ];
 
+function needsComplianceFollowUp(outcome: SupplierComplianceReviewOutcome): boolean {
+  return outcome === "action_required" || outcome === "failed";
+}
+
+function nextReviewDueInputValue(iso: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toISOString().slice(0, 10);
+}
+
+/** Stable remount key for uncontrolled summary fields after PATCH. */
+function complianceReviewSummaryFieldKey(id: string, summary: string, nextDue: string | null): string {
+  let h = 0;
+  for (let i = 0; i < summary.length; i++) h = (h * 31 + summary.charCodeAt(i)) | 0;
+  return `${id}-sm-${h}-${nextDue ?? ""}`;
+}
+
 export function SupplierComplianceReviewsSection({
   supplierId,
   canEdit,
   initialRows,
+  /** When set, follow-up strip can jump to Documents or Risk (SRM tab or legacy scroll). */
+  onWorkspaceNavigate,
 }: {
   supplierId: string;
   canEdit: boolean;
   initialRows: SupplierComplianceReviewRow[];
+  onWorkspaceNavigate?: (tab: "documents" | "risk") => void;
 }) {
   const router = useRouter();
   const [rows, setRows] = useState(initialRows);
@@ -95,11 +116,14 @@ export function SupplierComplianceReviewsSection({
     "mt-1 w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm text-zinc-900 disabled:opacity-50";
 
   return (
-    <section className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
+    <section
+      id="supplier-compliance-reviews-section"
+      className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm"
+    >
       <h2 className="text-sm font-semibold text-zinc-900">Compliance reviews</h2>
       <p className="mt-1 text-xs text-zinc-500">
-        Log periodic controls / compliance reviews (separate from the onboarding checklist). Use for
-        audits, policy attestations, and corrective actions.
+        Periodic controls workspace (separate from onboarding). Record outcomes, dates, and narrative;
+        for <strong className="font-medium">Action required</strong> or <strong className="font-medium">Failed</strong>, use the suggested follow-up steps below — no separate action-plan table in R1.
       </p>
       {error ? (
         <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -113,12 +137,85 @@ export function SupplierComplianceReviewsSection({
           rows.map((r) => (
             <li key={r.id} className="px-4 py-3">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                <div className="min-w-0 flex-1 space-y-1">
-                  <p className="text-sm text-zinc-800">{r.summary}</p>
+                <div className="min-w-0 flex-1 space-y-2">
+                  {canEdit ? (
+                    <label className="block text-xs text-zinc-600">
+                      Summary
+                      <textarea
+                        key={complianceReviewSummaryFieldKey(r.id, r.summary, r.nextReviewDue)}
+                        defaultValue={r.summary}
+                        disabled={busyId === r.id}
+                        rows={3}
+                        className={f}
+                        onBlur={(e) => {
+                          const v = e.target.value.trim();
+                          if (v === r.summary.trim()) return;
+                          if (!v) {
+                            e.target.value = r.summary;
+                            return;
+                          }
+                          void patchReview(r.id, { summary: v });
+                        }}
+                      />
+                    </label>
+                  ) : (
+                    <p className="text-sm text-zinc-800">{r.summary}</p>
+                  )}
                   <p className="text-[11px] text-zinc-500">
                     Reviewed {new Date(r.reviewedAt).toLocaleString()}
-                    {r.nextReviewDue ? ` · Next due ${new Date(r.nextReviewDue).toLocaleDateString()}` : ""}
+                    {!canEdit && r.nextReviewDue
+                      ? ` · Next due ${new Date(r.nextReviewDue).toLocaleDateString()}`
+                      : null}
                   </p>
+                  {canEdit ? (
+                    <label className="block text-xs text-zinc-600">
+                      Next review due
+                      <input
+                        type="date"
+                        key={`${r.id}-due-${r.nextReviewDue ?? "none"}`}
+                        defaultValue={nextReviewDueInputValue(r.nextReviewDue)}
+                        disabled={busyId === r.id}
+                        className={f}
+                        onBlur={(e) => {
+                          const v = e.target.value.trim();
+                          const prev = nextReviewDueInputValue(r.nextReviewDue);
+                          if (v === prev) return;
+                          void patchReview(
+                            r.id,
+                            v ? { nextReviewDue: new Date(v).toISOString() } : { nextReviewDue: null },
+                          );
+                        }}
+                      />
+                    </label>
+                  ) : null}
+                  {needsComplianceFollowUp(r.outcome) ? (
+                    <div className="rounded-md border border-amber-200 bg-amber-50/90 px-3 py-2 text-[11px] text-amber-950">
+                      <p className="font-semibold text-amber-950">Suggested follow-up</p>
+                      <ol className="mt-1 list-decimal space-y-0.5 pl-4">
+                        <li>Update evidence under Documents if the review noted gaps.</li>
+                        <li>Log or adjust a Risk row if exposure or severity changed.</li>
+                        <li>When cleared, set outcome to Satisfactory or add a new review entry.</li>
+                      </ol>
+                      {onWorkspaceNavigate ? (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            className="rounded border border-amber-300 bg-white px-2 py-1 text-[11px] font-medium text-amber-950 hover:bg-amber-100/80"
+                            onClick={() => onWorkspaceNavigate("documents")}
+                          >
+                            Documents
+                          </button>
+                          <button
+                            type="button"
+                            className="rounded border border-amber-300 bg-white px-2 py-1 text-[11px] font-medium text-amber-950 hover:bg-amber-100/80"
+                            onClick={() => onWorkspaceNavigate("risk")}
+                          >
+                            Risk
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
                 {canEdit ? (
                   <select
@@ -137,7 +234,9 @@ export function SupplierComplianceReviewsSection({
                     ))}
                   </select>
                 ) : (
-                  <span className="text-xs font-medium text-zinc-600">{r.outcome}</span>
+                  <span className="text-xs font-medium text-zinc-600">
+                    {OUTCOMES.find((o) => o.value === r.outcome)?.label ?? r.outcome}
+                  </span>
                 )}
               </div>
             </li>
