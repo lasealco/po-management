@@ -25,6 +25,7 @@ const topNavItems: TopNavItem[] = [
   { kind: "link", key: "crm", label: "CRM", href: "/crm" },
   { kind: "link", key: "srm", label: "SRM", href: "/srm" },
   { kind: "link", key: "tariffs", label: "Tariffs", href: "/tariffs/contracts" },
+  { kind: "link", key: "rfq", label: "RFQ", href: "/rfq/requests" },
   { kind: "link", key: "settings", label: "Settings", href: "/settings" },
 ];
 
@@ -101,7 +102,9 @@ export function AppNav({
                         ? pathname === "/control-tower" || pathname.startsWith("/control-tower/")
                         : item.href === "/tariffs/contracts"
                           ? pathname.startsWith("/tariffs")
-                          : pathname === item.href || pathname.startsWith(`${item.href}/`);
+                          : item.href === "/rfq/requests"
+                            ? pathname.startsWith("/rfq")
+                            : pathname === item.href || pathname.startsWith(`${item.href}/`);
             const isSettings = item.key === "settings";
             return (
               <Link

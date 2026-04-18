@@ -41,6 +41,8 @@ const OPEN_PATH_ALLOWLIST = new Set([
   "/tariffs/geography/new",
   "/tariffs/import",
   "/tariffs/import/new",
+  "/rfq/requests",
+  "/rfq/requests/new",
   "/reporting",
   "/reports",
   "/crm/reporting",
@@ -150,6 +152,10 @@ export async function executeHelpDoAction(
     } else if (path.startsWith("/tariffs")) {
       if (!viewerHas(access.grantSet, "org.tariffs", "view")) {
         return { ok: false, error: "You do not have permission to open Tariffs." };
+      }
+    } else if (path.startsWith("/rfq")) {
+      if (!viewerHas(access.grantSet, "org.rfq", "view")) {
+        return { ok: false, error: "You do not have permission to open RFQ." };
       }
     }
     const playbookId = typeof payload.guide === "string" ? payload.guide.trim() : "";

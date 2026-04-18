@@ -67,6 +67,7 @@ model Tenant {
   tariffLegalEntities   TariffLegalEntity[]
   tariffContractHeaders TariffContractHeader[]
   tariffImportBatches   TariffImportBatch[]
+  quoteRequests         QuoteRequest[]
 }
 
 /// Tenant-scoped milestone template packs (override or extend built-in packs in code).
@@ -141,6 +142,8 @@ model User {
   tariffContractHeadersOwned TariffContractHeader[] @relation("TariffContractHeaderOwner")
   tariffApprovalRecords      TariffApprovalRecord[] @relation("TariffApprovalApprover")
   tariffAuditLogs            TariffAuditLog[] @relation("TariffAuditLogActor")
+  quoteRequestsOwned         QuoteRequest[]         @relation("QuoteRequestOwner")
+  quoteClarificationsAuthored QuoteClarificationMessage[] @relation("QuoteClarificationAuthor")
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -267,6 +270,7 @@ model Supplier {
   shipmentsCarrier Shipment[] @relation("ShipmentCarrierSupplier")
   ctShipmentLegsCarrier CtShipmentLeg[] @relation("CtLegCarrierSupplier")
   ctShipmentCostLinesVendor CtShipmentCostLine[] @relation("CtCostLineVendorSupplier")
+  quoteRequestRecipients    QuoteRequestRecipient[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -2118,6 +2122,36 @@ enum TariffApprovalStatus {
   REJECTED
 }
 
+enum QuoteRequestStatus {
+  DRAFT
+  OPEN
+  CLOSED
+  AWARDED
+  CANCELLED
+}
+
+enum QuoteRecipientInvitationStatus {
+  PENDING
+  INVITED
+  DECLINED
+  RESPONDED
+}
+
+enum QuoteResponseStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  SHORTLISTED
+  AWARDED
+  REJECTED
+  WITHDRAWN
+}
+
+enum QuoteClarificationVisibility {
+  INTERNAL
+  RECIPIENTS
+}
+
 enum TariffGeographyType {
   GLOBAL_REGION
   SUBREGION
@@ -2470,4 +2504,123 @@ model TariffAuditLog {
 
   @@index([objectType, objectId])
   @@map("audit_logs")
+}
+
+/// Buyer-initiated ad hoc ocean (or other mode) procurement request.
+model QuoteRequest {
+  id               String              @id @default(cuid())
+  tenantId         String
+  title            String
+  description      String?             @db.Text
+  status           QuoteRequestStatus  @default(DRAFT)
+  transportMode    TariffTransportMode @default(OCEAN)
+  originLabel      String              @db.Text
+  destinationLabel String              @db.Text
+  equipmentSummary String?
+  cargoDescription String?             @db.Text
+  quotesDueAt      DateTime?
+  ownerUserId      String?
+  /// Reserved for future broadcast automation (email / portal).
+  lastBroadcastAt  DateTime?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  tenant         Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  owner          User?                     @relation("QuoteRequestOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  recipients     QuoteRequestRecipient[]
+  responses      QuoteResponse[]
+  clarifications QuoteClarificationMessage[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("quote_requests")
+}
+
+model QuoteRequestRecipient {
+  id                String                         @id @default(cuid())
+  quoteRequestId    String
+  supplierId        String?
+  displayName       String
+  contactEmail      String?                        @db.VarChar(320)
+  invitationStatus  QuoteRecipientInvitationStatus @default(PENDING)
+  invitedAt         DateTime?
+  respondedAt       DateTime?
+  /// Future outbound integration: template id, message id, last error, etc.
+  lastInviteMetadata Json?
+  createdAt         DateTime                       @default(now())
+
+  quoteRequest QuoteRequest  @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
+  supplier     Supplier?     @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  response     QuoteResponse?
+  clarifications QuoteClarificationMessage[]
+
+  @@index([quoteRequestId])
+  @@index([supplierId])
+  @@map("quote_request_recipients")
+}
+
+model QuoteResponse {
+  id                    String             @id @default(cuid())
+  quoteRequestId       String
+  recipientId          String             @unique
+  status                QuoteResponseStatus @default(DRAFT)
+  currency              String             @default("USD") @db.VarChar(3)
+  totalAllInAmount      Decimal?           @db.Decimal(18, 4)
+  validityFrom          DateTime?          @db.Date
+  validityTo            DateTime?          @db.Date
+  includedChargesJson   Json?
+  excludedChargesJson   Json?
+  freeTimeSummaryJson   Json?
+  reviewNotes           String?            @db.Text
+  submittedAt           DateTime?
+  reviewedAt            DateTime?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+
+  quoteRequest QuoteRequest           @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
+  recipient    QuoteRequestRecipient  @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  lines        QuoteResponseLine[]
+  clarifications QuoteClarificationMessage[]
+
+  @@index([quoteRequestId])
+  @@map("quote_responses")
+}
+
+model QuoteResponseLine {
+  id              String   @id @default(cuid())
+  quoteResponseId String
+  sortOrder       Int      @default(0)
+  lineType        String
+  label           String
+  amount          Decimal? @db.Decimal(18, 4)
+  currency        String   @default("USD") @db.VarChar(3)
+  unitBasis       String?
+  isIncluded      Boolean  @default(true)
+  notes           String?  @db.Text
+
+  quoteResponse QuoteResponse @relation(fields: [quoteResponseId], references: [id], onDelete: Cascade)
+
+  @@index([quoteResponseId])
+  @@map("quote_response_lines")
+}
+
+model QuoteClarificationMessage {
+  id              String                       @id @default(cuid())
+  quoteRequestId  String
+  recipientId     String?
+  quoteResponseId String?
+  authorUserId    String?
+  body            String                       @db.Text
+  visibility      QuoteClarificationVisibility @default(INTERNAL)
+  /// Future email drafts: { "subject", "to": [] } — not sent by the app yet.
+  metadata        Json?
+  createdAt       DateTime                     @default(now())
+
+  quoteRequest  QuoteRequest          @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
+  recipient     QuoteRequestRecipient? @relation(fields: [recipientId], references: [id], onDelete: SetNull)
+  quoteResponse QuoteResponse?        @relation(fields: [quoteResponseId], references: [id], onDelete: SetNull)
+  author        User?                 @relation("QuoteClarificationAuthor", fields: [authorUserId], references: [id], onDelete: SetNull)
+
+  @@index([quoteRequestId])
+  @@map("quote_clarification_messages")
 }

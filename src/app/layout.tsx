@@ -68,6 +68,7 @@ export default async function RootLayout({
     products: Boolean(access?.user && viewerHas(access.grantSet, "org.products", "view")),
     settings: Boolean(access?.user && viewerHas(access.grantSet, "org.settings", "view")),
     tariffs: Boolean(access?.user && viewerHas(access.grantSet, "org.tariffs", "view")),
+    rfq: Boolean(access?.user && viewerHas(access.grantSet, "org.rfq", "view")),
   };
 
   return (

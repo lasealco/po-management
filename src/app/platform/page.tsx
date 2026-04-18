@@ -100,6 +100,13 @@ export default async function PlatformHomePage() {
       description: "Ocean tariff contracts, versions, and rate lines.",
     });
   }
+  if (v?.rfq) {
+    modules.push({
+      href: "/rfq/requests",
+      title: "RFQ",
+      description: "Ocean ad hoc quotes, recipients, and comparison.",
+    });
+  }
   if (v?.settings) {
     modules.push({
       href: "/settings",

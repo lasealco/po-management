@@ -215,6 +215,8 @@ async function seed() {
     ["org.controltower", "edit"],
     ["org.tariffs", "view"],
     ["org.tariffs", "edit"],
+    ["org.rfq", "view"],
+    ["org.rfq", "edit"],
   ];
   const approverGrants = [
     ...buyerGrants,
@@ -249,6 +251,8 @@ async function seed() {
     ["org.controltower", "edit"],
     ["org.tariffs", "view"],
     ["org.tariffs", "edit"],
+    ["org.rfq", "view"],
+    ["org.rfq", "edit"],
   ];
 
   await replaceGlobalRolePermissions(roleBuyer.id, buyerGrants);

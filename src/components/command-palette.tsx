@@ -15,6 +15,7 @@ export type CommandPaletteGrants = {
   products: boolean;
   settings: boolean;
   tariffs: boolean;
+  rfq: boolean;
 };
 
 type CommandItem = {
@@ -198,6 +199,24 @@ export function CommandPalette({ grants }: { grants: CommandPaletteGrants }) {
           hint: "Excel/PDF batches and staging",
           searchText: "tariff import upload excel pdf staging parse",
           action: go("/tariffs/import"),
+        },
+      );
+    }
+
+    if (grants.rfq) {
+      list.push(
+        {
+          id: "rfq-requests",
+          label: "RFQ — requests",
+          hint: "Ocean ad hoc quotes and comparison",
+          searchText: "rfq request for quote procurement ocean freight bid",
+          action: go("/rfq/requests"),
+        },
+        {
+          id: "rfq-new",
+          label: "RFQ — new request",
+          searchText: "new rfq quote request",
+          action: go("/rfq/requests/new"),
         },
       );
     }

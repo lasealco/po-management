@@ -121,6 +121,18 @@ export const GLOBAL_PERMISSION_CATALOG = [
     label: "Manage tariffs",
     description: "Create and edit tariff contracts, versions, and pricing lines.",
   },
+  {
+    resource: "org.rfq",
+    action: "view",
+    label: "View RFQs",
+    description: "Ocean RFQs, quote responses, and comparison.",
+  },
+  {
+    resource: "org.rfq",
+    action: "edit",
+    label: "Manage RFQs",
+    description: "Create RFQs, invite recipients, enter quotes, and run comparison.",
+  },
 ] as const;
 
 export type GlobalPermissionRow = (typeof GLOBAL_PERMISSION_CATALOG)[number];
