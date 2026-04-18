@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { RecordIdCopy } from "@/components/invoice-audit/record-id-copy";
 import { TariffImportParseBadge, TariffImportReviewBadge } from "@/components/tariffs/tariff-import-badges";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { listTariffImportBatchesForTenant } from "@/lib/tariff/import-batches";
@@ -55,6 +56,7 @@ export default async function TariffImportDirectoryPage() {
             <thead>
               <tr className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500">
                 <th className="py-2 pr-4">File</th>
+                <th className="py-2 pr-4">Batch id</th>
                 <th className="py-2 pr-4">Source</th>
                 <th className="py-2 pr-4">Size</th>
                 <th className="py-2 pr-4">Parse</th>
@@ -65,7 +67,7 @@ export default async function TariffImportDirectoryPage() {
             <tbody>
               {batches.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-10 text-center text-zinc-500">
+                  <td colSpan={7} className="py-10 text-center text-zinc-500">
                     No import batches yet.
                     {canEdit ? (
                       <>
@@ -88,6 +90,9 @@ export default async function TariffImportDirectoryPage() {
                     {b.legalEntity ? (
                       <p className="mt-0.5 text-xs text-zinc-500">{b.legalEntity.name}</p>
                     ) : null}
+                  </td>
+                  <td className="py-3 pr-4 align-top">
+                    <RecordIdCopy id={b.id} copyButtonLabel="Copy batch id" />
                   </td>
                   <td className="py-3 pr-4 text-zinc-700">{b.sourceType}</td>
                   <td className="py-3 pr-4 text-xs text-zinc-600">{fmtBytes(b.sourceByteSize)}</td>

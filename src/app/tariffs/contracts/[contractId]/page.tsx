@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { RecordIdCopy } from "@/components/invoice-audit/record-id-copy";
 import { TariffContractHeaderIdsBar } from "@/components/tariffs/tariff-contract-header-ids-bar";
 import { TariffContractHeaderClient } from "@/components/tariffs/tariff-contract-header-client";
 import { TariffBadge, tariffApprovalTone, tariffContractStatusTone } from "@/components/tariffs/tariff-badges";
@@ -99,6 +100,7 @@ export default async function TariffContractDetailPage({
             <thead>
               <tr className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500">
                 <th className="py-2 pr-4">#</th>
+                <th className="py-2 pr-4">Version id</th>
                 <th className="py-2 pr-4">Approval</th>
                 <th className="py-2 pr-4">Status</th>
                 <th className="py-2 pr-4">Valid from</th>
@@ -121,6 +123,9 @@ export default async function TariffContractDetailPage({
                       {frozen ? (
                         <span className="ml-2 text-xs font-medium text-emerald-700">Frozen</span>
                       ) : null}
+                    </td>
+                    <td className="py-3 pr-4 align-top">
+                      <RecordIdCopy id={v.id} copyButtonLabel="Copy version id" />
                     </td>
                     <td className="py-3 pr-4">
                       <TariffBadge label={v.approvalStatus} tone={tariffApprovalTone(v.approvalStatus)} />

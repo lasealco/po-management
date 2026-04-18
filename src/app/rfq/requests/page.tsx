@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { RecordIdCopy } from "@/components/invoice-audit/record-id-copy";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { listQuoteRequestsForTenant } from "@/lib/rfq/quote-requests";
 import { getDemoTenant } from "@/lib/demo-tenant";
@@ -48,6 +49,7 @@ export default async function RfqRequestsListPage() {
             <thead>
               <tr className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500">
                 <th className="py-2 pr-4">Title</th>
+                <th className="py-2 pr-4">Request id</th>
                 <th className="py-2 pr-4">Lane</th>
                 <th className="py-2 pr-4">Mode</th>
                 <th className="py-2 pr-4">Status</th>
@@ -58,7 +60,7 @@ export default async function RfqRequestsListPage() {
             <tbody>
               {requests.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-10 text-center text-zinc-500">
+                  <td colSpan={7} className="py-10 text-center text-zinc-500">
                     No RFQs yet.
                     {canEdit ? (
                       <>
@@ -78,6 +80,9 @@ export default async function RfqRequestsListPage() {
                     <Link href={`/rfq/requests/${r.id}`} className="font-medium text-[var(--arscmp-primary)] hover:underline">
                       {r.title}
                     </Link>
+                  </td>
+                  <td className="py-3 pr-4 align-top">
+                    <RecordIdCopy id={r.id} copyButtonLabel="Copy request id" />
                   </td>
                   <td className="max-w-xs py-3 pr-4 text-xs text-zinc-600">
                     {r.originLabel} → {r.destinationLabel}

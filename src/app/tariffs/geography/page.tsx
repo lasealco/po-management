@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { RecordIdCopy } from "@/components/invoice-audit/record-id-copy";
 import { tariffGeographyTypeLabel } from "@/lib/tariff/geography-labels";
 import { listTariffGeographyGroups } from "@/lib/tariff/geography-groups";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
@@ -44,6 +45,7 @@ export default async function TariffGeographyDirectoryPage() {
             <thead>
               <tr className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500">
                 <th className="py-2 pr-4">Name</th>
+                <th className="py-2 pr-4">Group id</th>
                 <th className="py-2 pr-4">Type</th>
                 <th className="py-2 pr-4">Code</th>
                 <th className="py-2 pr-4">Carrier label</th>
@@ -54,7 +56,7 @@ export default async function TariffGeographyDirectoryPage() {
             <tbody>
               {groups.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-10 text-center text-zinc-500">
+                  <td colSpan={7} className="py-10 text-center text-zinc-500">
                     No geography groups yet.
                     {canEdit ? (
                       <>
@@ -74,6 +76,9 @@ export default async function TariffGeographyDirectoryPage() {
                     <Link href={`/tariffs/geography/${g.id}`} className="font-medium text-[var(--arscmp-primary)] hover:underline">
                       {g.name}
                     </Link>
+                  </td>
+                  <td className="py-3 pr-4 align-top">
+                    <RecordIdCopy id={g.id} copyButtonLabel="Copy group id" />
                   </td>
                   <td className="py-3 pr-4 text-zinc-700">{tariffGeographyTypeLabel(g.geographyType)}</td>
                   <td className="py-3 pr-4 font-mono text-xs text-zinc-600">{g.code ?? "—"}</td>
