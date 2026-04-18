@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { RecordIdCopy } from "@/components/invoice-audit/record-id-copy";
 import { TariffVersionWorkbenchClient } from "@/components/tariffs/tariff-version-workbench-client";
 import { TariffBadge, tariffApprovalTone, tariffContractStatusTone } from "@/components/tariffs/tariff-badges";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
@@ -154,6 +155,11 @@ export default async function TariffContractVersionPage({
             Directory
           </Link>
         </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-zinc-100 bg-zinc-50/80 px-4 py-3">
+        <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Contract version id</span>
+        <RecordIdCopy id={version.id} copyButtonLabel="Copy version id" />
       </div>
 
       <TariffVersionWorkbenchClient

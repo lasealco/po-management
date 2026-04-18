@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { CopyTextButton } from "@/components/invoice-audit/copy-text-button";
+import { RecordIdCopy } from "@/components/invoice-audit/record-id-copy";
 import { InvoiceCloseoutProgressStrip } from "@/components/invoice-audit/invoice-closeout-progress-strip";
 import { InvoiceIntakeDetailActions } from "@/components/invoice-audit/invoice-intake-detail-actions";
 import { InvoiceLinesMatchTable } from "@/components/invoice-audit/invoice-lines-match-table";
@@ -140,12 +141,9 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
                 POL {intake.polCode ?? "—"} → POD {intake.podCode ?? "—"}
               </p>
             ) : null}
-            <p className="mt-2 flex flex-wrap items-center gap-2 font-mono text-[11px] text-zinc-500">
-              <span className="break-all" title="Invoice intake primary key">
-                {intake.id}
-              </span>
-              <CopyTextButton text={intake.id} label="Copy ID" copiedLabel="ID copied" />
-            </p>
+            <div className="mt-2">
+              <RecordIdCopy id={intake.id} copyButtonLabel="Copy intake id" />
+            </div>
           </div>
           {canEdit ? <InvoiceIntakeDetailActions intakeId={intake.id} canEdit={canEdit} status={intake.status} /> : null}
         </div>

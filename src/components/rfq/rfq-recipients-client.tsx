@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { RecordIdCopy } from "@/components/invoice-audit/record-id-copy";
+
 export type SupplierOption = { id: string; name: string; code: string | null };
 
 export type RecipientRow = {
@@ -111,6 +113,7 @@ export function RfqRecipientsClient({
           <thead>
             <tr className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500">
               <th className="py-2 pl-4 pr-2">Recipient</th>
+              <th className="py-2 pr-2">Recipient id</th>
               <th className="py-2 pr-2">Email</th>
               <th className="py-2 pr-2">Invite</th>
               <th className="py-2 pr-2">Quote</th>
@@ -120,7 +123,7 @@ export function RfqRecipientsClient({
           <tbody>
             {list.length === 0 ? (
               <tr>
-                <td colSpan={canEdit ? 5 : 4} className="px-4 py-8 text-center text-zinc-500">
+                <td colSpan={canEdit ? 6 : 5} className="px-4 py-8 text-center text-zinc-500">
                   No recipients yet. Add forwarders or carriers below.
                 </td>
               </tr>
@@ -135,6 +138,9 @@ export function RfqRecipientsClient({
                       {r.supplier.code ? ` (${r.supplier.code})` : ""}
                     </div>
                   ) : null}
+                </td>
+                <td className="py-2 pr-2 align-top">
+                  <RecordIdCopy id={r.id} copyButtonLabel="Copy recipient id" />
                 </td>
                 <td className="py-2 pr-2 text-xs text-zinc-600">{r.contactEmail ?? "—"}</td>
                 <td className="py-2 pr-2 text-xs">{r.invitationStatus}</td>

@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { RecordIdCopy } from "@/components/invoice-audit/record-id-copy";
+
 export type ResponsePanelRow = {
   recipientId: string;
   displayName: string;
@@ -71,6 +73,8 @@ export function RfqResponsesPanelClient({
         <thead>
           <tr className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500">
             <th className="py-2 pl-4 pr-2">Recipient</th>
+            <th className="py-2 pr-2">Recipient id</th>
+            <th className="py-2 pr-2">Response id</th>
             <th className="py-2 pr-2">Status</th>
             <th className="py-2 pr-4">Actions</th>
           </tr>
@@ -79,6 +83,16 @@ export function RfqResponsesPanelClient({
           {rows.map((r) => (
             <tr key={r.recipientId} className="border-b border-zinc-100">
               <td className="py-2 pl-4 pr-2 font-medium text-zinc-900">{r.displayName}</td>
+              <td className="py-2 pr-2 align-top">
+                <RecordIdCopy id={r.recipientId} copyButtonLabel="Copy recipient id" />
+              </td>
+              <td className="py-2 pr-2 align-top text-xs text-zinc-500">
+                {r.responseId ? (
+                  <RecordIdCopy id={r.responseId} copyButtonLabel="Copy response id" />
+                ) : (
+                  "—"
+                )}
+              </td>
               <td className="py-2 pr-2 text-xs text-zinc-600">{r.responseId ? (r.status ?? "—") : "No quote"}</td>
               <td className="py-2 pr-4">
                 {!r.responseId ? (
