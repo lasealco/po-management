@@ -23,9 +23,9 @@ type DraftLine = {
   chargeStructureHint: string;
 };
 
-export function InvoiceAuditNewClient() {
+export function InvoiceAuditNewClient(props: { initialSnapshotId?: string }) {
   const router = useRouter();
-  const [snapshotId, setSnapshotId] = useState("");
+  const [snapshotId, setSnapshotId] = useState((props.initialSnapshotId ?? "").trim());
   const [vendorLabel, setVendorLabel] = useState("");
   const [externalInvoiceNo, setExternalInvoiceNo] = useState("");
   const [invoiceDate, setInvoiceDate] = useState("");

@@ -22,6 +22,7 @@ export default async function PricingSnapshotsListPage() {
   const canFreeze =
     Boolean(access?.user && viewerHas(access.grantSet, "org.tariffs", "edit")) ||
     Boolean(access?.user && viewerHas(access.grantSet, "org.rfq", "edit"));
+  const canInvoiceAudit = Boolean(access?.user && viewerHas(access.grantSet, "org.invoice_audit", "edit"));
 
   if (!tenant) {
     return (
@@ -43,6 +44,13 @@ export default async function PricingSnapshotsListPage() {
             <p className="mt-2 max-w-2xl text-sm text-zinc-600">
               Immutable copies of estimated ocean economics from a contract version or an RFQ response.
               Totals and line detail stay fixed even if live tariffs or quotes change later.
+              {canInvoiceAudit ? (
+                <>
+                  {" "}
+                  Open a snapshot, then use <span className="font-medium">New intake with this snapshot</span> to run
+                  invoice audit against the frozen lines.
+                </>
+              ) : null}
             </p>
           </div>
           {canFreeze ? (
@@ -64,12 +72,13 @@ export default async function PricingSnapshotsListPage() {
                 <th className="py-2 pr-4">Summary</th>
                 <th className="py-2 pr-4">Total</th>
                 <th className="py-2 pr-4">Booking</th>
+                {canInvoiceAudit ? <th className="py-2 pr-4">Invoice audit</th> : null}
               </tr>
             </thead>
             <tbody>
               {snapshots.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-10 text-center text-zinc-500">
+                  <td colSpan={canInvoiceAudit ? 6 : 5} className="py-10 text-center text-zinc-500">
                     No snapshots yet. Freeze one from a contract version or RFQ response.
                   </td>
                 </tr>
@@ -107,6 +116,16 @@ export default async function PricingSnapshotsListPage() {
                         <span className="text-zinc-400">—</span>
                       )}
                     </td>
+                    {canInvoiceAudit ? (
+                      <td className="py-3 pr-4">
+                        <Link
+                          href={`/invoice-audit/new?snapshotId=${encodeURIComponent(s.id)}`}
+                          className="text-sm font-medium text-[var(--arscmp-primary)] hover:underline"
+                        >
+                          New intake
+                        </Link>
+                      </td>
+                    ) : null}
                   </tr>
                 ))
               )}

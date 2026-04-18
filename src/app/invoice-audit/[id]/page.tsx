@@ -106,12 +106,22 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
             {intake.bookingPricingSnapshot.totalEstimatedCost.toString()} {intake.bookingPricingSnapshot.currency}
           </span>
         </p>
-        <Link
-          href={`/pricing-snapshots/${intake.bookingPricingSnapshot.id}`}
-          className="mt-3 inline-block text-sm font-medium text-[var(--arscmp-primary)] hover:underline"
-        >
-          Open pricing snapshot
-        </Link>
+        <div className="mt-3 flex flex-wrap gap-4">
+          <Link
+            href={`/pricing-snapshots/${intake.bookingPricingSnapshot.id}`}
+            className="text-sm font-medium text-[var(--arscmp-primary)] hover:underline"
+          >
+            Open pricing snapshot
+          </Link>
+          {canEdit ? (
+            <Link
+              href={`/invoice-audit/new?snapshotId=${encodeURIComponent(intake.bookingPricingSnapshotId)}`}
+              className="text-sm font-medium text-[var(--arscmp-primary)] hover:underline"
+            >
+              New intake with same snapshot
+            </Link>
+          ) : null}
+        </div>
       </section>
 
       <div>
