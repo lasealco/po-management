@@ -47,7 +47,7 @@ export function CommandPalette({ grants }: { grants: CommandPaletteGrants }) {
 
     list.push({
       id: "help",
-      label: "Open Help assistant",
+      label: "Open Guide (help)",
       hint: "Guided tours & chat",
       searchText: "help guide support",
       action: () => {

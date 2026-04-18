@@ -116,3 +116,14 @@ textarea:focus {
     animation: none;
   }
 }
+
+/* Help / Guide floating button — soft attention without layout shift */
+@keyframes guide-pulse {
+  0%,
+  100% {
+    box-shadow: 0 12px 40px -8px rgba(22, 91, 103, 0.5);
+  }
+  50% {
+    box-shadow: 0 16px 44px -6px rgba(22, 91, 103, 0.62);
+  }
+}
