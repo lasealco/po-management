@@ -14,6 +14,10 @@ import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { getInvoiceIntakeForTenant } from "@/lib/invoice-audit/invoice-intakes";
 import { InvoiceAuditError } from "@/lib/invoice-audit/invoice-audit-error";
 import { DISCREPANCY_CATEGORY, formatDiscrepancyCategoryLabel } from "@/lib/invoice-audit/discrepancy-categories";
+import {
+  formatPricingSnapshotSourceType,
+  resolvePricingSnapshotSourceNav,
+} from "@/lib/invoice-audit/pricing-snapshot-source-nav";
 import { formatSnapshotMatchLabel } from "@/lib/invoice-audit/snapshot-match-label";
 import { getDemoTenant } from "@/lib/demo-tenant";
 
@@ -40,6 +44,23 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
     if (e instanceof InvoiceAuditError && e.code === "NOT_FOUND") notFound();
     throw e;
   }
+
+  const snapshotSourceNav = await resolvePricingSnapshotSourceNav({
+    tenantId: tenant.id,
+    sourceType: intake.bookingPricingSnapshot.sourceType,
+    sourceRecordId: intake.bookingPricingSnapshot.sourceRecordId,
+  });
+  const snapshotSourceTypeStr = String(intake.bookingPricingSnapshot.sourceType);
+  const snapshotSourceRecordTrimmed = intake.bookingPricingSnapshot.sourceRecordId.trim();
+  const snapshotCouldDeepLink =
+    Boolean(snapshotSourceRecordTrimmed) &&
+    (snapshotSourceTypeStr === "TARIFF_CONTRACT_VERSION" || snapshotSourceTypeStr === "QUOTE_RESPONSE");
+  const snapshotHasSourceNav =
+    Boolean(snapshotSourceNav.tariffVersionHref) || Boolean(snapshotSourceNav.rfqRequestHref);
+  const snapshotStaleSourceNote =
+    snapshotCouldDeepLink && !snapshotHasSourceNav
+      ? "No in-app link to the original tariff version or RFQ response was resolved (the row may have been removed). The frozen snapshot breakdown and totals remain the audit reference."
+      : null;
 
   const lines = intake.lines.map((l) => ({
     id: l.id,
@@ -246,20 +267,52 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
 
       <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
         <h2 className="text-sm font-semibold text-zinc-900">Linked snapshot</h2>
-        <p className="mt-2 font-mono text-xs text-zinc-600">{intake.bookingPricingSnapshotId}</p>
+        <p className="mt-2 text-sm text-zinc-600">
+          <span className="font-medium text-zinc-800">Basis</span> —{" "}
+          {formatPricingSnapshotSourceType(snapshotSourceTypeStr)}
+        </p>
+        <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-zinc-600">
+          <span className="font-medium text-zinc-800">Source record</span>
+          <span className="break-all font-mono text-xs text-zinc-700">{intake.bookingPricingSnapshot.sourceRecordId}</span>
+          <CopyTextButton
+            text={intake.bookingPricingSnapshot.sourceRecordId}
+            label="Copy source id"
+            copiedLabel="Source id copied"
+          />
+        </p>
+        <p className="mt-2 font-mono text-xs text-zinc-500">
+          Snapshot id <span className="text-zinc-600">{intake.bookingPricingSnapshotId}</span>
+        </p>
         <p className="mt-2 text-sm text-zinc-600">
           Frozen total (reference):{" "}
           <span className="font-semibold tabular-nums text-zinc-900">
             {intake.bookingPricingSnapshot.totalEstimatedCost.toString()} {intake.bookingPricingSnapshot.currency}
           </span>
         </p>
-        <div className="mt-3 flex flex-wrap gap-4">
+        {snapshotStaleSourceNote ? <p className="mt-2 text-xs text-zinc-500">{snapshotStaleSourceNote}</p> : null}
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2">
           <Link
             href={`/pricing-snapshots/${intake.bookingPricingSnapshot.id}`}
             className="text-sm font-medium text-[var(--arscmp-primary)] hover:underline"
           >
             Open pricing snapshot
           </Link>
+          {snapshotSourceNav.tariffVersionHref ? (
+            <Link
+              href={snapshotSourceNav.tariffVersionHref}
+              className="text-sm font-medium text-[var(--arscmp-primary)] hover:underline"
+            >
+              Open tariff contract version
+            </Link>
+          ) : null}
+          {snapshotSourceNav.rfqRequestHref ? (
+            <Link
+              href={snapshotSourceNav.rfqRequestHref}
+              className="text-sm font-medium text-[var(--arscmp-primary)] hover:underline"
+            >
+              Open RFQ request
+            </Link>
+          ) : null}
           {canEdit ? (
             <Link
               href={`/invoice-audit/new?snapshotId=${encodeURIComponent(intake.bookingPricingSnapshotId)}`}
