@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { RecordIdCopy } from "@/components/invoice-audit/record-id-copy";
 import { formatInvoiceAuditApiError } from "@/lib/invoice-audit/invoice-audit-api-client-error";
 
 export type SerializedToleranceRule = {
@@ -121,6 +122,7 @@ export function ToleranceRulesClient(props: { canEdit: boolean; initialRules: Se
           <thead>
             <tr className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500">
               <th className="py-2 pr-4">Name</th>
+              <th className="py-2 pr-4">Rule id</th>
               <th className="py-2 pr-4" title="Higher number wins when multiple rules match.">
                 Priority
               </th>
@@ -136,7 +138,7 @@ export function ToleranceRulesClient(props: { canEdit: boolean; initialRules: Se
           <tbody>
             {rules.length === 0 ? (
               <tr>
-                <td colSpan={props.canEdit ? 7 : 6} className="py-8 text-zinc-500">
+                <td colSpan={props.canEdit ? 8 : 7} className="py-8 text-zinc-500">
                   No rules yet. Run <code className="rounded bg-zinc-100 px-1">npm run db:seed</code> for the demo
                   default rule, or add one below.
                 </td>
@@ -146,9 +148,9 @@ export function ToleranceRulesClient(props: { canEdit: boolean; initialRules: Se
                 <tr key={r.id} className="border-b border-zinc-100">
                   <td className="max-w-[14rem] py-3 pr-4">
                     <div className="font-medium text-zinc-900">{r.name}</div>
-                    <div className="mt-0.5 truncate font-mono text-[10px] text-zinc-500" title={r.id}>
-                      {r.id}
-                    </div>
+                  </td>
+                  <td className="py-3 pr-4 align-top">
+                    <RecordIdCopy id={r.id} copyButtonLabel="Copy rule id" />
                   </td>
                   <td className="py-3 pr-4 tabular-nums text-zinc-700">{r.priority}</td>
                   <td className="py-3 pr-4 text-zinc-700">{r.active ? "Yes" : "No"}</td>

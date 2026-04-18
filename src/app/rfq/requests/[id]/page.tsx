@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { RecordIdCopy } from "@/components/invoice-audit/record-id-copy";
 import { RfqClarificationsClient, type ClarificationRow } from "@/components/rfq/rfq-clarifications-client";
 import { RfqCompareTable } from "@/components/rfq/rfq-compare-table";
 import { RfqRecipientsClient, type RecipientRow } from "@/components/rfq/rfq-recipients-client";
@@ -109,6 +110,11 @@ export default async function RfqRequestDetailPage({ params }: { params: Promise
             ) : null}
           </div>
           <div className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-800">{detail.status}</div>
+        </div>
+
+        <div className="mt-5 flex flex-wrap items-center gap-2 rounded-xl border border-zinc-100 bg-zinc-50/80 px-4 py-3">
+          <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Quote request id</span>
+          <RecordIdCopy id={detail.id} copyButtonLabel="Copy request id" />
         </div>
 
         <div className="mt-6">

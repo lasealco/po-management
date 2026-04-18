@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { RecordIdCopy } from "@/components/invoice-audit/record-id-copy";
 import { INVOICE_CHARGE_ALIAS_TARGET_KINDS } from "@/lib/invoice-audit/invoice-charge-alias-constants";
 import { formatInvoiceAuditApiError } from "@/lib/invoice-audit/invoice-audit-api-client-error";
 
@@ -254,6 +255,7 @@ export function ChargeAliasesClient(props: { canEdit: boolean; initialAliases: S
           <thead>
             <tr className="border-b border-zinc-200 bg-zinc-50 text-xs font-semibold uppercase tracking-wide text-zinc-600">
               <th className="py-3 pl-4 pr-2">Name / pattern</th>
+              <th className="py-3 pr-2">Alias id</th>
               <th className="py-3 pr-2">Tokens</th>
               <th className="py-3 pr-2">Target</th>
               <th className="py-3 pr-2">Pri</th>
@@ -264,7 +266,7 @@ export function ChargeAliasesClient(props: { canEdit: boolean; initialAliases: S
           <tbody>
             {sorted.length === 0 ? (
               <tr>
-                <td colSpan={props.canEdit ? 6 : 5} className="px-4 py-10 text-center text-zinc-500">
+                <td colSpan={props.canEdit ? 7 : 6} className="px-4 py-10 text-center text-zinc-500">
                   No charge aliases yet. Seed data may add examples; otherwise create one above.
                 </td>
               </tr>
@@ -293,11 +295,11 @@ export function ChargeAliasesClient(props: { canEdit: boolean; initialAliases: S
                       <>
                         <div className="font-medium text-zinc-900">{r.name ?? "—"}</div>
                         <div className="mt-0.5 font-mono text-xs text-zinc-600">{r.pattern}</div>
-                        <div className="mt-1 truncate font-mono text-[10px] text-zinc-400" title={r.id}>
-                          {r.id}
-                        </div>
                       </>
                     )}
+                  </td>
+                  <td className="py-3 pr-2 align-top">
+                    <RecordIdCopy id={r.id} copyButtonLabel="Copy alias id" />
                   </td>
                   <td className="max-w-[12rem] py-3 pr-2 text-xs text-zinc-700">
                     {editing ? (
