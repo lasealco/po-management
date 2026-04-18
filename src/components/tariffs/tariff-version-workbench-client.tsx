@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
-import { CopyTextButton } from "@/components/invoice-audit/copy-text-button";
+import { RecordIdCopy } from "@/components/invoice-audit/record-id-copy";
 import { TARIFF_CONTRACT_VERSION_SOURCE_TYPES } from "@/lib/tariff/contract-version-source-types";
 
 const RATE_TYPES = [
@@ -217,16 +217,14 @@ export function TariffVersionWorkbenchClient({
           <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
             <div className="min-w-0">
               <dt className="text-zinc-500">Contract header id</dt>
-              <dd className="mt-1 flex flex-wrap items-center gap-2">
-                <span className="break-all font-mono text-xs text-zinc-800">{contractId}</span>
-                <CopyTextButton text={contractId} label="Copy" copiedLabel="Copied" />
+              <dd className="mt-1">
+                <RecordIdCopy id={contractId} copyButtonLabel="Copy header id" />
               </dd>
             </div>
             <div className="min-w-0">
               <dt className="text-zinc-500">Contract version id</dt>
-              <dd className="mt-1 flex flex-wrap items-center gap-2">
-                <span className="break-all font-mono text-xs text-zinc-800">{meta.id}</span>
-                <CopyTextButton text={meta.id} label="Copy" copiedLabel="Copied" />
+              <dd className="mt-1">
+                <RecordIdCopy id={meta.id} copyButtonLabel="Copy version id" />
               </dd>
             </div>
           </dl>
@@ -445,6 +443,7 @@ function LineSection({
             <tr className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500">
               {kind === "rate" ? (
                 <>
+                  <th className="py-2 pr-3">Row id</th>
                   <th className="py-2 pr-3">Type</th>
                   <th className="py-2 pr-3">Basis</th>
                   <th className="py-2 pr-3">CCY</th>
@@ -456,6 +455,7 @@ function LineSection({
               ) : null}
               {kind === "charge" ? (
                 <>
+                  <th className="py-2 pr-3">Row id</th>
                   <th className="py-2 pr-3">Raw name</th>
                   <th className="py-2 pr-3">Normalized</th>
                   <th className="py-2 pr-3">Basis</th>
@@ -466,6 +466,7 @@ function LineSection({
               ) : null}
               {kind === "freeTime" ? (
                 <>
+                  <th className="py-2 pr-3">Row id</th>
                   <th className="py-2 pr-3">Rule</th>
                   <th className="py-2 pr-3">Days</th>
                   <th className="py-2 pr-3">Geo</th>
@@ -479,6 +480,9 @@ function LineSection({
             {kind === "rate"
               ? (rows as SerializedRateLine[]).map((r) => (
                   <tr key={r.id} className="border-b border-zinc-100">
+                    <td className="py-2 pr-3 align-top">
+                      <RecordIdCopy id={r.id} copyButtonLabel="Copy rate line id" />
+                    </td>
                     <td className="py-2 pr-3 font-medium text-zinc-900">{r.rateType}</td>
                     <td className="py-2 pr-3 text-zinc-700">{r.unitBasis}</td>
                     <td className="py-2 pr-3">{r.currency}</td>
@@ -514,6 +518,9 @@ function LineSection({
             {kind === "charge"
               ? (rows as SerializedChargeLine[]).map((c) => (
                   <tr key={c.id} className="border-b border-zinc-100">
+                    <td className="py-2 pr-3 align-top">
+                      <RecordIdCopy id={c.id} copyButtonLabel="Copy charge line id" />
+                    </td>
                     <td className="py-2 pr-3 font-medium text-zinc-900">{c.rawChargeName}</td>
                     <td className="py-2 pr-3 text-zinc-600">
                       {c.normalizedChargeCode?.code ?? c.normalizedChargeCodeId ?? "—"}
@@ -550,6 +557,9 @@ function LineSection({
             {kind === "freeTime"
               ? (rows as SerializedFreeTime[]).map((f) => (
                   <tr key={f.id} className="border-b border-zinc-100">
+                    <td className="py-2 pr-3 align-top">
+                      <RecordIdCopy id={f.id} copyButtonLabel="Copy free time rule id" />
+                    </td>
                     <td className="py-2 pr-3 font-medium text-zinc-900">{f.ruleType}</td>
                     <td className="py-2 pr-3">{f.freeDays}</td>
                     <td className="py-2 pr-3 text-xs text-zinc-500">{f.geographyScopeId ?? "—"}</td>
