@@ -14,8 +14,15 @@ export function InvoiceIntakeDetailActions(props: {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const canRun =
-    props.canEdit && (props.status === "PARSED" || props.status === "AUDITED" || props.status === "FAILED");
+  if (!props.canEdit) {
+    return (
+      <div className="max-w-md rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-right text-sm text-zinc-600">
+        View only. Running or re-running audit requires invoice audit edit permission.
+      </div>
+    );
+  }
+
+  const canRun = props.status === "PARSED" || props.status === "AUDITED" || props.status === "FAILED";
 
   async function runAudit() {
     setBusy(true);
@@ -42,11 +49,17 @@ export function InvoiceIntakeDetailActions(props: {
       <button
         type="button"
         disabled={!canRun || busy}
+        aria-busy={busy}
         onClick={() => void runAudit()}
         className="rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:brightness-95 disabled:opacity-50"
       >
         {busy ? "Running…" : props.status === "AUDITED" ? "Re-run audit" : "Run audit vs snapshot"}
       </button>
+      {props.status === "PARSED" && !busy ? (
+        <p className="max-w-xs text-xs text-zinc-500">
+          Parsed lines are saved. Run audit to classify each line against the linked snapshot (green / amber / red).
+        </p>
+      ) : null}
       {props.status === "AUDITED" ? (
         <p className="text-xs text-zinc-500">
           Re-run clears finance review, accounting handoff, and line-level audit results before rebuilding them from the

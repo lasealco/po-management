@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { InvoiceCloseoutProgressStrip } from "@/components/invoice-audit/invoice-closeout-progress-strip";
 import { InvoiceIntakeDetailActions } from "@/components/invoice-audit/invoice-intake-detail-actions";
 import { InvoiceLinesMatchTable } from "@/components/invoice-audit/invoice-lines-match-table";
 import { InvoiceMatchResultPanel } from "@/components/invoice-audit/invoice-match-result-panel";
@@ -120,6 +121,15 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
         redLineCount={intake.redLineCount}
         unknownLineCount={intake.unknownLineCount}
         suggestCloseoutDocumentation={suggestCloseoutDocumentation}
+        reviewDecision={intake.reviewDecision}
+        approvedForAccounting={intake.approvedForAccounting}
+      />
+
+      <InvoiceCloseoutProgressStrip
+        auditComplete={intake.status === "AUDITED"}
+        hasOpsNotes={Boolean(intake.rawSourceNotes?.trim())}
+        reviewDecision={intake.reviewDecision}
+        approvedForAccounting={intake.approvedForAccounting}
       />
 
       <InvoiceMatchResultPanel
@@ -299,7 +309,7 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
         </p>
       </section>
 
-      <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+      <section id="invoice-audit-closeout-guide" className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Workflow</p>
         <h2 className="mt-1 text-sm font-semibold text-zinc-900">Closeout: ops → finance → accounting</h2>
         <p className="mt-2 text-sm text-zinc-600">

@@ -59,6 +59,14 @@ export function InvoiceLinesMatchTable(props: { lines: LineRow[]; auditResults: 
           </tr>
         </thead>
         <tbody>
+          {props.lines.length === 0 ? (
+            <tr>
+              <td colSpan={9} className="px-4 py-10 text-center text-sm text-zinc-500">
+                No parsed lines on this intake. If you expected rows here, re-create the intake or add lines from the
+                intake workflow that feeds this table.
+              </td>
+            </tr>
+          ) : null}
           {props.lines.map((ln) => {
             const ar = byLine.get(ln.id);
             return (

@@ -1,4 +1,4 @@
-import type { InvoiceAuditRollupOutcome, InvoiceIntakeStatus } from "@prisma/client";
+import type { InvoiceAuditRollupOutcome, InvoiceIntakeStatus, InvoiceReviewDecision } from "@prisma/client";
 
 export function InvoiceOutcomeBanner(props: {
   status: InvoiceIntakeStatus;
@@ -11,6 +11,8 @@ export function InvoiceOutcomeBanner(props: {
   unknownLineCount: number;
   /** When true, nudges ops to use Step 1 notes + closeout workflow (no schema change). */
   suggestCloseoutDocumentation?: boolean;
+  reviewDecision?: InvoiceReviewDecision;
+  approvedForAccounting?: boolean;
 }) {
   if (props.parseError) {
     return (
@@ -99,6 +101,46 @@ export function InvoiceOutcomeBanner(props: {
           <span className="font-medium">Step 3 — Accounting handoff</span>.
         </p>
       ) : null}
+      {(() => {
+        if (props.status !== "AUDITED" || props.reviewDecision == null || props.approvedForAccounting == null) {
+          return null;
+        }
+        const financeHint =
+          props.reviewDecision === "NONE" && !props.suggestCloseoutDocumentation ? (
+            <p>
+              <span className="font-semibold text-current">Next:</span> record{" "}
+              <a
+                href="#invoice-audit-finance-review"
+                className="font-medium underline decoration-current/40 underline-offset-2"
+              >
+                Step 2 — Finance review
+              </a>{" "}
+              (Approve or Override). Tolerance and line colors do not replace this sign-off.
+            </p>
+          ) : null;
+        const handoffHint =
+          props.reviewDecision !== "NONE" && !props.approvedForAccounting ? (
+            <p>
+              <span className="font-semibold text-current">Next:</span> when posting systems may proceed, complete{" "}
+              <a
+                href="#invoice-audit-accounting-handoff"
+                className="font-medium underline decoration-current/40 underline-offset-2"
+              >
+                Step 3 — Accounting handoff
+              </a>
+              . Finance review is already recorded.
+            </p>
+          ) : null;
+        const doneHint = props.approvedForAccounting ? (
+          <p>
+            <span className="font-semibold text-current">Closeout:</span> finance review and accounting handoff are both
+            recorded for this intake. Ops notes remain editable for the audit trail.
+          </p>
+        ) : null;
+        const block = financeHint ?? handoffHint ?? doneHint;
+        if (!block) return null;
+        return <div className="mt-3 border-t border-black/5 pt-3 text-xs leading-relaxed opacity-90">{block}</div>;
+      })()}
     </div>
   );
 }

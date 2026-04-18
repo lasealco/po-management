@@ -25,6 +25,12 @@ function accountingBadge(ready: boolean) {
   return "bg-zinc-50 text-zinc-500 ring-1 ring-zinc-200";
 }
 
+function reviewCellLabel(decision: string) {
+  if (decision === "APPROVED") return "Approve";
+  if (decision === "OVERRIDDEN") return "Override";
+  return "—";
+}
+
 function needsCloseoutFollowThrough(row: {
   status: string;
   rollupOutcome: string;
@@ -93,9 +99,15 @@ export default async function InvoiceAuditListPage() {
                 <th className="py-2 pr-4">Received</th>
                 <th className="py-2 pr-4">Vendor / ref</th>
                 <th className="py-2 pr-4">Status</th>
-                <th className="py-2 pr-4">Rollup</th>
-                <th className="py-2 pr-4">Review</th>
-                <th className="py-2 pr-4">Acct</th>
+                <th className="py-2 pr-4" title="Worst line outcome after the last audit run">
+                  Rollup
+                </th>
+                <th className="py-2 pr-4" title="Step 2 finance sign-off (separate from tolerance bands)">
+                  Review
+                </th>
+                <th className="py-2 pr-4" title="Step 3 accounting handoff flag">
+                  Acct
+                </th>
                 <th className="py-2 pr-4">Lines</th>
                 <th className="py-2 pr-4">Snapshot</th>
               </tr>
@@ -158,8 +170,9 @@ export default async function InvoiceAuditListPage() {
                       <td className="py-3 pr-4">
                         <span
                           className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${reviewBadge(row.reviewDecision)}`}
+                          title={row.reviewDecision === "NONE" ? "No finance decision yet" : `Stored as ${row.reviewDecision}`}
                         >
-                          {row.reviewDecision === "NONE" ? "—" : row.reviewDecision}
+                          {reviewCellLabel(row.reviewDecision)}
                         </span>
                       </td>
                       <td className="py-3 pr-4">
