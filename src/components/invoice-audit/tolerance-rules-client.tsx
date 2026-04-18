@@ -98,6 +98,14 @@ export function ToleranceRulesClient(props: { canEdit: boolean; initialRules: Se
         </p>
       ) : null}
 
+      <p className="mt-4 max-w-3xl text-xs leading-relaxed text-zinc-600">
+        <span className="font-semibold text-zinc-800">How this ties to an intake:</span> changing rules here affects the
+        next <span className="font-medium">Run audit</span> only. Finance <span className="font-medium">Approve</span> /{" "}
+        <span className="font-medium">Override</span> and <span className="font-medium">Mark ready for accounting</span>{" "}
+        stay on the intake closeout panel — configure tolerances when you want stricter or looser amount bands before
+        reviewers sign off.
+      </p>
+
       <div className="mt-6 overflow-x-auto">
         <table className="min-w-full border-collapse text-left text-sm">
           <thead>
@@ -149,7 +157,7 @@ export function ToleranceRulesClient(props: { canEdit: boolean; initialRules: Se
 
       {props.canEdit ? (
         <section className="mt-8 rounded-2xl border border-zinc-200 bg-zinc-50/80 p-5 shadow-inner">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Workflow · Step 2</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Configuration · New rule</p>
           <h2 className="mt-2 text-sm font-semibold text-zinc-900">Add tolerance rule</h2>
           <p className="mt-1 text-xs text-zinc-600">
             Higher priority wins. Leave currency empty for a global fallback; set a 3-letter code (e.g. USD) to scope

@@ -28,7 +28,7 @@ export function InvoiceAccountingHandoffScaffold(props: {
     (!props.canEdit
       ? null
       : !reviewDone
-        ? "Complete finance review (Approve or Override) before marking ready for accounting."
+        ? "Save Step 2 — Finance review as Approve or Override before marking ready for accounting."
         : props.status !== "AUDITED"
           ? "Run a successful audit before accounting handoff."
           : null);
@@ -64,10 +64,14 @@ export function InvoiceAccountingHandoffScaffold(props: {
       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Closeout · Step 3</p>
       <h2 className="mt-1 text-sm font-semibold text-zinc-900">Accounting handoff</h2>
       <p className="mt-2 text-sm text-zinc-600">
-        Use after <span className="font-medium text-zinc-800">Step 2 — Finance review</span> when the intake should move
-        to posting or ERP export. The flag is separate from Approve/Override — it records that accounting may proceed,
-        with an optional reference (GL, batch id, ticket). Re-running audit or saving a new finance review clears this
-        flag so handoff is never stale.
+        Use only after <span className="font-medium text-zinc-800">Step 2 — Finance review</span> is saved as either{" "}
+        <span className="font-medium text-zinc-800">Approve</span> or <span className="font-medium text-zinc-800">Override</span>{" "}
+        (both unlock this step). This flag means “downstream accounting/posting may proceed” — it does not post to ERP
+        by itself and it is not a substitute for finance sign-off.
+      </p>
+      <p className="mt-2 text-sm text-zinc-600">
+        Optional reference (GL, batch id, ticket) helps your ops handoff. Re-running audit or saving a new finance
+        decision clears the flag so handoff never stays attached to stale review state.
       </p>
 
       {props.approvedForAccounting ? (

@@ -33,9 +33,11 @@ export default async function InvoiceAuditToleranceRulesPage() {
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Invoice audit · Configuration</p>
         <h1 className="mt-2 text-2xl font-semibold text-zinc-900">Tolerance rules</h1>
         <p className="mt-2 text-sm text-zinc-600">
-          Audits use the highest-priority <span className="font-medium">active</span> rule for the intake currency (or a
-          global rule with no currency scope). Built-in defaults apply when no rule matches. (This is separate from
-          intake closeout Steps 1–3 on each intake detail page.)
+          When someone runs <span className="font-medium">Run audit</span> on an intake, the engine picks the
+          highest-priority <span className="font-medium">active</span> rule for that intake&apos;s currency (or a global
+          rule with no currency scope). Built-in defaults apply when nothing matches. Tolerance only affects how line
+          amounts compare to the snapshot (e.g. GREEN vs AMBER) — it does <span className="font-medium">not</span>{" "}
+          replace Step 2 finance review or Step 3 accounting handoff on the intake.
         </p>
         {!canEdit ? (
           <p className="mt-3 text-xs text-zinc-500">You have view access only; create and activate rules require edit permission.</p>

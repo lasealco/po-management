@@ -218,6 +218,13 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
             ) : null}
           </p>
         ) : null}
+        {intake.auditResults.length > 0 ? (
+          <p className="mt-2 text-xs text-zinc-500">
+            Tolerance bands influence per-line GREEN vs AMBER during audit only. They do not set finance{" "}
+            <span className="font-medium text-zinc-700">Approve/Override</span> or accounting handoff — those are Steps
+            2–3 below.
+          </p>
+        ) : null}
       </section>
 
       <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
@@ -283,9 +290,10 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
       <section className="rounded-2xl border border-zinc-200 bg-white p-5 text-sm text-zinc-600 shadow-sm">
         <p className="font-semibold text-zinc-900">Tolerance rules</p>
         <p className="mt-2">
-          Amount bands use the active tolerance rule for this tenant (or built-in defaults).{" "}
+          Amount bands apply when <span className="font-medium text-zinc-800">Run audit</span> compares invoice lines to
+          the snapshot (not when you save finance review or accounting handoff).{" "}
           <Link href="/invoice-audit/tolerance-rules" className="font-medium text-[var(--arscmp-primary)] hover:underline">
-            View tolerance rules
+            View or edit tolerance rules
           </Link>
           .
         </p>
@@ -305,12 +313,18 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
             context.
           </li>
           <li>
-            <span className="font-medium text-zinc-800">Step 2</span> — Finance review for commercial acceptance.
+            <span className="font-medium text-zinc-800">Step 2</span> — Finance review: <span className="font-medium">Approve</span>{" "}
+            or <span className="font-medium">Override</span> with an audit trail (not the same as tolerance bands above).
           </li>
           <li>
-            <span className="font-medium text-zinc-800">Step 3</span> — Accounting handoff when posting may proceed.
+            <span className="font-medium text-zinc-800">Step 3</span> — Accounting handoff after Step 2, when posting
+            may proceed.
           </li>
         </ol>
+        <p className="mt-3 text-xs text-zinc-500">
+          <span className="font-medium text-zinc-700">Tolerance rules</span> (tenant configuration + Audit run summary)
+          only affect line classification when audit runs — they are not Step 2 or Step 3.
+        </p>
       </section>
 
       <InvoiceIntakeOpsNotesScaffold
@@ -338,9 +352,9 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
             .
           </li>
           <li>
-            <span className="font-medium text-zinc-800">Finance review</span> documents acceptance;{" "}
-            <span className="font-medium text-zinc-800">Accounting handoff</span> flags readiness for downstream
-            posting.
+            <span className="font-medium text-zinc-800">Finance review</span> is Approve or Override (commercial
+            acceptance); <span className="font-medium text-zinc-800">Accounting handoff</span> is a separate “ready for
+            posting systems” flag after finance has signed off.
           </li>
           <li>Per-line outcomes and stored JSON remain the technical audit trail for matched pricing.</li>
         </ul>
