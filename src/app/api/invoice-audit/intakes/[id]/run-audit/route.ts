@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { jsonFromInvoiceAuditError } from "@/app/api/invoice-audit/_lib/invoice-audit-api-error";
 import { serializeAuditResult, serializeInvoiceLine } from "@/app/api/invoice-audit/_lib/serialize";
 import { requireApiGrant } from "@/lib/authz";
+import { parseInvoiceAuditRecordId } from "@/lib/invoice-audit/invoice-audit-id";
 import { runInvoiceAuditForIntake } from "@/lib/invoice-audit/invoice-intakes";
 import { getDemoTenant } from "@/lib/demo-tenant";
 
@@ -27,12 +28,20 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
     if (body && typeof body === "object") {
       const o = body as Record<string, unknown>;
       if (typeof o.toleranceRuleId === "string" && o.toleranceRuleId.trim()) {
-        toleranceRuleId = o.toleranceRuleId.trim();
+        const tid = parseInvoiceAuditRecordId(o.toleranceRuleId.trim());
+        if (!tid) {
+          return NextResponse.json({ error: "Invalid toleranceRuleId." }, { status: 400 });
+        }
+        toleranceRuleId = tid;
       }
     }
   }
 
-  const { id } = await ctx.params;
+  const { id: rawId } = await ctx.params;
+  const id = parseInvoiceAuditRecordId(rawId);
+  if (!id) {
+    return NextResponse.json({ error: "Invalid intake id." }, { status: 400 });
+  }
   try {
     const row = await runInvoiceAuditForIntake({
       tenantId: tenant.id,

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { jsonFromInvoiceAuditError } from "@/app/api/invoice-audit/_lib/invoice-audit-api-error";
 import { serializeAuditResult, serializeInvoiceLine } from "@/app/api/invoice-audit/_lib/serialize";
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
+import { parseInvoiceAuditRecordId } from "@/lib/invoice-audit/invoice-audit-id";
 import {
   getInvoiceIntakeForTenant,
   patchInvoiceIntakeReviewAndAccounting,
@@ -20,7 +21,11 @@ export async function GET(_request: Request, ctx: { params: Promise<{ id: string
   const tenant = await getDemoTenant();
   if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
 
-  const { id } = await ctx.params;
+  const { id: rawId } = await ctx.params;
+  const id = parseInvoiceAuditRecordId(rawId);
+  if (!id) {
+    return NextResponse.json({ error: "Invalid intake id." }, { status: 400 });
+  }
   try {
     const row = await getInvoiceIntakeForTenant({ tenantId: tenant.id, intakeId: id });
     return NextResponse.json({
@@ -102,7 +107,11 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
     );
   }
 
-  const { id } = await ctx.params;
+  const { id: rawId } = await ctx.params;
+  const id = parseInvoiceAuditRecordId(rawId);
+  if (!id) {
+    return NextResponse.json({ error: "Invalid intake id." }, { status: 400 });
+  }
   try {
     if (hasReview) {
       const reviewDecision = String(o.reviewDecision).trim().toUpperCase();

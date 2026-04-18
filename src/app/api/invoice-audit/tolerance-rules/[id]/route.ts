@@ -4,6 +4,7 @@ import { jsonFromInvoiceAuditError } from "@/app/api/invoice-audit/_lib/invoice-
 import { serializeToleranceRule } from "@/app/api/invoice-audit/_lib/serialize";
 import { requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
+import { parseInvoiceAuditRecordId } from "@/lib/invoice-audit/invoice-audit-id";
 import { updateToleranceRuleForTenant } from "@/lib/invoice-audit/tolerance-rules";
 
 export const dynamic = "force-dynamic";
@@ -26,7 +27,11 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
   const tenant = await getDemoTenant();
   if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
 
-  const { id: ruleId } = await ctx.params;
+  const { id: rawRuleId } = await ctx.params;
+  const ruleId = parseInvoiceAuditRecordId(rawRuleId);
+  if (!ruleId) {
+    return NextResponse.json({ error: "Invalid rule id." }, { status: 400 });
+  }
 
   let body: unknown;
   try {

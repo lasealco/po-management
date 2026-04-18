@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { jsonFromInvoiceAuditError } from "@/app/api/invoice-audit/_lib/invoice-audit-api-error";
 import { serializeInvoiceIntakeListRow } from "@/app/api/invoice-audit/_lib/serialize";
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
+import { parseInvoiceAuditRecordId } from "@/lib/invoice-audit/invoice-audit-id";
 import { createInvoiceIntakeWithLines, listInvoiceIntakesForTenant } from "@/lib/invoice-audit/invoice-intakes";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import type { Prisma } from "@prisma/client";
@@ -40,10 +41,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Expected JSON object." }, { status: 400 });
   }
   const o = body as Record<string, unknown>;
-  const bookingPricingSnapshotId =
-    typeof o.bookingPricingSnapshotId === "string" ? o.bookingPricingSnapshotId.trim() : "";
-  if (!bookingPricingSnapshotId) {
+  const rawSnapId = typeof o.bookingPricingSnapshotId === "string" ? o.bookingPricingSnapshotId.trim() : "";
+  if (!rawSnapId) {
     return NextResponse.json({ error: "bookingPricingSnapshotId is required." }, { status: 400 });
+  }
+  const bookingPricingSnapshotId = parseInvoiceAuditRecordId(rawSnapId);
+  if (!bookingPricingSnapshotId) {
+    return NextResponse.json({ error: "bookingPricingSnapshotId is invalid." }, { status: 400 });
   }
   const linesRaw = o.lines;
   if (!Array.isArray(linesRaw) || linesRaw.length === 0) {

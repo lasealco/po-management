@@ -38,6 +38,22 @@ const prisma = new PrismaClient({
 });
 
 async function main() {
+  const schemaRows = await prisma.$queryRaw`
+    SELECT 1 AS ok
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'invoice_intakes'
+      AND column_name = 'approvedForAccounting'
+    LIMIT 1
+  `;
+  if (!Array.isArray(schemaRows) || schemaRows.length === 0) {
+    console.error(
+      "[db:seed:invoice-audit-demo] Database is missing column invoice_intakes.approvedForAccounting.\n" +
+        "  Run: npm run db:migrate   (or prisma migrate deploy on the target DB), then retry.",
+    );
+    process.exit(1);
+  }
+
   const tenant = await prisma.tenant.findUnique({
     where: { slug: DEMO_SLUG },
     select: { id: true },
