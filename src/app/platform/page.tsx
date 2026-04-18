@@ -93,6 +93,13 @@ export default async function PlatformHomePage() {
       description: "Supplier relationship management and supplier master data.",
     });
   }
+  if (v?.tariffs) {
+    modules.push({
+      href: "/tariffs/contracts",
+      title: "Tariffs",
+      description: "Ocean tariff contracts, versions, and rate lines.",
+    });
+  }
   if (v?.settings) {
     modules.push({
       href: "/settings",

@@ -1,3 +1,4 @@
+export { listTariffAuditLogsForContractScope, recordTariffAuditLog } from "@/lib/tariff/audit-log";
 export { TariffRepoError, type TariffRepoErrorCode } from "@/lib/tariff/tariff-repo-error";
 export {
   isTariffContractVersionFrozen,

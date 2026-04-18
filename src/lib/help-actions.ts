@@ -35,6 +35,8 @@ const OPEN_PATH_ALLOWLIST = new Set([
   "/control-tower/dashboard",
   "/control-tower/command-center",
   "/control-tower/ops",
+  "/tariffs",
+  "/tariffs/contracts",
   "/reporting",
   "/reports",
   "/crm/reporting",
@@ -140,6 +142,10 @@ export async function executeHelpDoAction(
     } else if (path.startsWith("/control-tower")) {
       if (!viewerHas(access.grantSet, "org.controltower", "view")) {
         return { ok: false, error: "You do not have permission to open Control Tower." };
+      }
+    } else if (path.startsWith("/tariffs")) {
+      if (!viewerHas(access.grantSet, "org.tariffs", "view")) {
+        return { ok: false, error: "You do not have permission to open Tariffs." };
       }
     }
     const playbookId = typeof payload.guide === "string" ? payload.guide.trim() : "";

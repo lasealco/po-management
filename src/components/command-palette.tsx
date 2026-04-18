@@ -14,6 +14,7 @@ export type CommandPaletteGrants = {
   srm: boolean;
   products: boolean;
   settings: boolean;
+  tariffs: boolean;
 };
 
 type CommandItem = {
@@ -173,6 +174,16 @@ export function CommandPalette({ grants }: { grants: CommandPaletteGrants }) {
           action: go("/control-tower/reports"),
         },
       );
+    }
+
+    if (grants.tariffs) {
+      list.push({
+        id: "tariffs-contracts",
+        label: "Tariffs — contracts",
+        hint: "Ocean contracts, versions, and lines",
+        searchText: "tariff contract rate ocean freight baf surcharges",
+        action: go("/tariffs/contracts"),
+      });
     }
 
     if (grants.wms) {

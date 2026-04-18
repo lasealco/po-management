@@ -109,6 +109,18 @@ export const GLOBAL_PERMISSION_CATALOG = [
     description:
       "Post milestones, notes, documents, financial snapshots, alerts, exceptions, and saved views.",
   },
+  {
+    resource: "org.tariffs",
+    action: "view",
+    label: "View tariffs",
+    description: "Ocean tariff contracts, versions, and rate lines.",
+  },
+  {
+    resource: "org.tariffs",
+    action: "edit",
+    label: "Manage tariffs",
+    description: "Create and edit tariff contracts, versions, and pricing lines.",
+  },
 ] as const;
 
 export type GlobalPermissionRow = (typeof GLOBAL_PERMISSION_CATALOG)[number];

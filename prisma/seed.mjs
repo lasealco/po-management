@@ -213,6 +213,8 @@ async function seed() {
     ["org.crm", "edit"],
     ["org.controltower", "view"],
     ["org.controltower", "edit"],
+    ["org.tariffs", "view"],
+    ["org.tariffs", "edit"],
   ];
   const approverGrants = [
     ...buyerGrants,
@@ -245,6 +247,8 @@ async function seed() {
     ["org.crm", "edit"],
     ["org.controltower", "view"],
     ["org.controltower", "edit"],
+    ["org.tariffs", "view"],
+    ["org.tariffs", "edit"],
   ];
 
   await replaceGlobalRolePermissions(roleBuyer.id, buyerGrants);
@@ -1706,6 +1710,18 @@ async function seed() {
     skipDuplicates: true,
   });
   console.log("[db:seed] Tariff normalized charge taxonomy ensured (idempotent).");
+
+  if ((await prisma.tariffProvider.count()) === 0) {
+    await prisma.tariffProvider.create({
+      data: {
+        legalName: "Demo Ocean Carrier LLC",
+        tradingName: "Demo Ocean",
+        providerType: "OCEAN_CARRIER",
+        countryCode: "US",
+      },
+    });
+    console.log("[db:seed] Created default demo tariff provider.");
+  }
 
   const userCount = await prisma.user.count({ where: { tenantId: tenant.id } });
   console.log(
