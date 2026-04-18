@@ -47,6 +47,7 @@ const OPEN_PATH_ALLOWLIST = new Set([
   "/pricing-snapshots/new",
   "/invoice-audit",
   "/invoice-audit/new",
+  "/invoice-audit/tolerance-rules",
   "/reporting",
   "/reports",
   "/crm/reporting",

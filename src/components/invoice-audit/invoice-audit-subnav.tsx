@@ -9,7 +9,16 @@ const items = [
   {
     href: "/invoice-audit",
     label: "Intakes",
-    match: (p: string) => p === "/invoice-audit" || (p.startsWith("/invoice-audit/") && !p.startsWith("/invoice-audit/new")),
+    match: (p: string) =>
+      p === "/invoice-audit" ||
+      (p.startsWith("/invoice-audit/") &&
+        !p.startsWith("/invoice-audit/new") &&
+        !p.startsWith("/invoice-audit/tolerance-rules")),
+  },
+  {
+    href: "/invoice-audit/tolerance-rules",
+    label: "Tolerance rules",
+    match: (p: string) => p.startsWith("/invoice-audit/tolerance-rules"),
   },
 ];
 

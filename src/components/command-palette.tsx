@@ -238,6 +238,12 @@ export function CommandPalette({ grants }: { grants: CommandPaletteGrants }) {
           searchText: "new invoice intake parse lines",
           action: go("/invoice-audit/new"),
         },
+        {
+          id: "invoice-audit-tolerance",
+          label: "Invoice audit — tolerance rules",
+          searchText: "invoice tolerance percent absolute audit thresholds",
+          action: go("/invoice-audit/tolerance-rules"),
+        },
       );
     }
 
