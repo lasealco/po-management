@@ -113,9 +113,9 @@ export function AppNav({
                           ? pathname.startsWith("/pricing-snapshots")
                           : item.href === "/invoice-audit"
                             ? pathname.startsWith("/invoice-audit")
-                          : item.href === "/rfq/requests"
-                            ? pathname.startsWith("/rfq")
-                            : pathname === item.href || pathname.startsWith(`${item.href}/`);
+                            : item.href === "/rfq/requests"
+                              ? pathname.startsWith("/rfq")
+                              : pathname === item.href || pathname.startsWith(`${item.href}/`);
             const isSettings = item.key === "settings";
             return (
               <Link
