@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { formatInvoiceAuditApiError } from "@/lib/invoice-audit/invoice-audit-api-client-error";
+
 export function InvoiceAccountingHandoffScaffold(props: {
   intakeId: string;
   canEdit: boolean;
@@ -44,9 +46,9 @@ export function InvoiceAccountingHandoffScaffold(props: {
           accountingApprovalNote: next ? note.trim() || null : null,
         }),
       });
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      const data = (await res.json().catch(() => ({}))) as Parameters<typeof formatInvoiceAuditApiError>[0];
       if (!res.ok) {
-        setError(data.error ?? `Request failed (${res.status})`);
+        setError(formatInvoiceAuditApiError(data, res.status));
         return;
       }
       setOk(next ? "Marked ready for accounting." : "Accounting handoff cleared.");

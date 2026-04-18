@@ -22,14 +22,15 @@ export async function GET(_request: Request, ctx: { params: Promise<{ id: string
   const schema = await guardInvoiceAuditSchema();
   if (schema) return schema;
 
-  const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
-
   const { id: rawId } = await ctx.params;
   const id = parseInvoiceAuditRecordId(rawId);
   if (!id) {
     return NextResponse.json({ error: "Invalid intake id." }, { status: 400 });
   }
+
+  const tenant = await getDemoTenant();
+  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+
   try {
     const row = await getInvoiceIntakeForTenant({ tenantId: tenant.id, intakeId: id });
     return NextResponse.json({
@@ -89,6 +90,12 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
     return NextResponse.json({ error: "No active user." }, { status: 403 });
   }
 
+  const { id: rawId } = await ctx.params;
+  const id = parseInvoiceAuditRecordId(rawId);
+  if (!id) {
+    return NextResponse.json({ error: "Invalid intake id." }, { status: 400 });
+  }
+
   let body: unknown;
   try {
     body = await request.json();
@@ -114,11 +121,6 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
     );
   }
 
-  const { id: rawId } = await ctx.params;
-  const id = parseInvoiceAuditRecordId(rawId);
-  if (!id) {
-    return NextResponse.json({ error: "Invalid intake id." }, { status: 400 });
-  }
   try {
     if (hasReview) {
       const reviewDecision = String(o.reviewDecision).trim().toUpperCase();

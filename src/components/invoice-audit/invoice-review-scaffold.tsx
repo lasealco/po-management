@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { formatInvoiceAuditApiError } from "@/lib/invoice-audit/invoice-audit-api-client-error";
+
 export function InvoiceReviewScaffold(props: {
   intakeId: string;
   canEdit: boolean;
@@ -33,9 +35,9 @@ export function InvoiceReviewScaffold(props: {
           reviewNote: note.trim() || null,
         }),
       });
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      const data = (await res.json().catch(() => ({}))) as Parameters<typeof formatInvoiceAuditApiError>[0];
       if (!res.ok) {
-        setError(data.error ?? `Request failed (${res.status})`);
+        setError(formatInvoiceAuditApiError(data, res.status));
         return;
       }
       setOk(decision === "APPROVED" ? "Approval recorded." : "Override recorded.");

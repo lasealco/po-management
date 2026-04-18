@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { formatInvoiceAuditApiError } from "@/lib/invoice-audit/invoice-audit-api-client-error";
+
 export function InvoiceIntakeOpsNotesScaffold(props: {
   intakeId: string;
   canEdit: boolean;
@@ -28,9 +30,9 @@ export function InvoiceIntakeOpsNotesScaffold(props: {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ rawSourceNotes: text.trim().length ? text : null }),
       });
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      const data = (await res.json().catch(() => ({}))) as Parameters<typeof formatInvoiceAuditApiError>[0];
       if (!res.ok) {
-        setError(data.error ?? `Save failed (${res.status})`);
+        setError(formatInvoiceAuditApiError(data, res.status));
         return;
       }
       setOk("Ops notes saved.");

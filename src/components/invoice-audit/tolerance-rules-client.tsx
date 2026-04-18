@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { formatInvoiceAuditApiError } from "@/lib/invoice-audit/invoice-audit-api-client-error";
+
 export type SerializedToleranceRule = {
   id: string;
   name: string;
@@ -56,9 +58,9 @@ export function ToleranceRulesClient(props: { canEdit: boolean; initialRules: Se
           currencyScope: currencyScope.trim() ? currencyScope.trim().toUpperCase().slice(0, 3) : null,
         }),
       });
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      const data = (await res.json().catch(() => ({}))) as Parameters<typeof formatInvoiceAuditApiError>[0];
       if (!res.ok) {
-        setActionError(data.error ?? `Create failed (${res.status})`);
+        setActionError(formatInvoiceAuditApiError(data, res.status));
         return;
       }
       setName("");
@@ -77,8 +79,8 @@ export function ToleranceRulesClient(props: { canEdit: boolean; initialRules: Se
         body: JSON.stringify({ active: !rule.active }),
       });
       if (!res.ok) {
-        const data = (await res.json().catch(() => ({}))) as { error?: string };
-        setActionError(data.error ?? `Could not update rule (${res.status}).`);
+        const data = (await res.json().catch(() => ({}))) as Parameters<typeof formatInvoiceAuditApiError>[0];
+        setActionError(formatInvoiceAuditApiError(data, res.status));
         return;
       }
       setActionError(null);

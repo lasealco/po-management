@@ -15,5 +15,6 @@ describe("parseInvoiceAuditRecordId", () => {
     expect(parseInvoiceAuditRecordId("../etc/passwd")).toBeNull();
     expect(parseInvoiceAuditRecordId("a".repeat(41))).toBeNull();
     expect(parseInvoiceAuditRecordId("has-dashes")).toBeNull();
+    expect(parseInvoiceAuditRecordId("short")).toBeNull();
   });
 });

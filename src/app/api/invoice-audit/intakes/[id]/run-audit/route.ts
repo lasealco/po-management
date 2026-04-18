@@ -19,6 +19,12 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
   const tenant = await getDemoTenant();
   if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
 
+  const { id: rawId } = await ctx.params;
+  const id = parseInvoiceAuditRecordId(rawId);
+  if (!id) {
+    return NextResponse.json({ error: "Invalid intake id." }, { status: 400 });
+  }
+
   let toleranceRuleId: string | null = null;
   const raw = await request.text();
   if (raw.trim()) {
@@ -40,11 +46,6 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
     }
   }
 
-  const { id: rawId } = await ctx.params;
-  const id = parseInvoiceAuditRecordId(rawId);
-  if (!id) {
-    return NextResponse.json({ error: "Invalid intake id." }, { status: 400 });
-  }
   try {
     const row = await runInvoiceAuditForIntake({
       tenantId: tenant.id,

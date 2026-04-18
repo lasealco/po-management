@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { formatInvoiceAuditApiError } from "@/lib/invoice-audit/invoice-audit-api-client-error";
+
 export function InvoiceIntakeDetailActions(props: {
   intakeId: string;
   canEdit: boolean;
@@ -24,9 +26,9 @@ export function InvoiceIntakeDetailActions(props: {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
-      const data = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
+      const data = (await res.json().catch(() => ({}))) as Parameters<typeof formatInvoiceAuditApiError>[0];
       if (!res.ok) {
-        setError(data.error ?? `Audit request failed (${res.status})`);
+        setError(formatInvoiceAuditApiError(data, res.status));
         return;
       }
       router.refresh();

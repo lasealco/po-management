@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { formatInvoiceAuditApiError } from "@/lib/invoice-audit/invoice-audit-api-client-error";
+
 type SnapshotOption = {
   id: string;
   sourceType: string;
@@ -152,9 +154,14 @@ export function InvoiceAuditNewClient(props: { initialSnapshotId?: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const data = (await res.json().catch(() => ({}))) as { error?: string; intake?: { id: string } };
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        code?: string;
+        migrationsHint?: string;
+        intake?: { id: string };
+      };
       if (!res.ok) {
-        setError(data.error ?? `Save failed (${res.status})`);
+        setError(formatInvoiceAuditApiError(data, res.status));
         return;
       }
       const intakeId = data.intake?.id;
@@ -168,10 +175,10 @@ export function InvoiceAuditNewClient(props: { initialSnapshotId?: string }) {
           headers: { "Content-Type": "application/json" },
           body: "{}",
         });
-        const auditData = (await auditRes.json().catch(() => ({}))) as { error?: string };
+        const auditData = (await auditRes.json().catch(() => ({}))) as Parameters<typeof formatInvoiceAuditApiError>[0];
         if (!auditRes.ok) {
           setError(
-            `Intake saved, but audit failed (${auditRes.status}): ${auditData.error ?? "Unknown error"}. Open the intake to inspect and re-run audit.`,
+            `Intake saved, but audit failed (${auditRes.status}): ${formatInvoiceAuditApiError(auditData, auditRes.status)} Open the intake to inspect and re-run audit.`,
           );
           router.push(`/invoice-audit/${intakeId}`);
           return;
