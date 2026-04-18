@@ -76,6 +76,7 @@ export async function buildContractVersionSnapshotPayload(params: { tenantId: st
       id: c.id,
       rawChargeName: c.rawChargeName,
       normalizedCode: c.normalizedChargeCode?.code ?? null,
+      equipmentScope: c.equipmentScope,
       unitBasis: c.unitBasis,
       currency: c.currency,
       amount: decString(c.amount),

@@ -104,6 +104,9 @@ function polPodScore(
   if (polU && c.kind === "CONTRACT_CHARGE" && c.originCode) {
     if (c.originCode === polU) delta += 3;
   }
+  if (podU && c.kind === "CONTRACT_CHARGE" && c.originCode && c.originCode === podU) {
+    delta += 2;
+  }
   return { delta, suppressGeoSoftFlag };
 }
 
@@ -320,21 +323,43 @@ export function auditOceanInvoiceLine(params: {
     };
   }
 
-  const pool = filterEligibleRates(params.candidates, invoiceEqKey).filter((c) => {
-    if (c.currency.toUpperCase().slice(0, 3) !== invCur) return false;
-    return true;
-  });
-
-  if (!pool.length) {
+  const inInvoiceCurrency = params.candidates.filter((c) => c.currency.toUpperCase().slice(0, 3) === invCur);
+  if (!inInvoiceCurrency.length) {
     return {
       outcome: "UNKNOWN",
-      discrepancyCategories: [DISCREPANCY_CATEGORY.EQUIPMENT_MISMATCH, DISCREPANCY_CATEGORY.NO_SNAPSHOT_LINE_MATCH],
+      discrepancyCategories: [DISCREPANCY_CATEGORY.CURRENCY_MISMATCH, DISCREPANCY_CATEGORY.NO_SNAPSHOT_LINE_MATCH],
       expectedAmount: null,
       amountVariance: null,
       percentVariance: null,
-      snapshotMatchedJson: null,
-      explanation:
-        "No snapshot candidates in the invoice currency after equipment/POL-aware filtering (check equipment on invoice line vs contract rates).",
+      snapshotMatchedJson: { invoiceCurrency: invCur, snapshotCurrencies: [...new Set(params.candidates.map((c) => c.currency))] },
+      explanation: `No snapshot pricing lines use currency ${invCur} (invoice header/line currency).`,
+      toleranceRuleId: params.toleranceRuleId,
+    };
+  }
+
+  const pool = filterEligibleRates(inInvoiceCurrency, invoiceEqKey);
+
+  if (!pool.length) {
+    const eqKey = invoiceEqKey;
+    const equipmentLikelyCause =
+      Boolean(eqKey) &&
+      inInvoiceCurrency.length > 0 &&
+      inInvoiceCurrency.every((c) => c.kind === "CONTRACT_RATE") &&
+      inInvoiceCurrency.every(
+        (c) => Boolean(c.equipmentHint) && equipmentMatches(eqKey, c.equipmentHint) === "MISMATCH",
+      );
+    return {
+      outcome: "UNKNOWN",
+      discrepancyCategories: equipmentLikelyCause
+        ? [DISCREPANCY_CATEGORY.EQUIPMENT_MISMATCH, DISCREPANCY_CATEGORY.NO_SNAPSHOT_LINE_MATCH]
+        : [DISCREPANCY_CATEGORY.NO_SNAPSHOT_LINE_MATCH],
+      expectedAmount: null,
+      amountVariance: null,
+      percentVariance: null,
+      snapshotMatchedJson: { invoiceEquipment: invoiceEqKey, reason: "EMPTY_POOL_AFTER_FILTERS" },
+      explanation: equipmentLikelyCause
+        ? `No eligible snapshot lines in ${invCur}: every contract rate is for different equipment than the invoice (${invoiceEqKey}), and there are no charges/RFQ lines in this currency to score.`
+        : `No snapshot lines remained in ${invCur} after filters (unexpected empty pool — check snapshot breakdown).`,
       toleranceRuleId: params.toleranceRuleId,
     };
   }

@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 
 import { DISCREPANCY_CATEGORY } from "@/lib/invoice-audit/discrepancy-categories";
+import { parseEquipmentFromText } from "@/lib/invoice-audit/ocean-equipment";
 
 export type SnapshotPriceCandidate = {
   kind: "CONTRACT_RATE" | "CONTRACT_CHARGE" | "RFQ_LINE";
@@ -97,7 +98,9 @@ export function extractSnapshotPriceCandidates(breakdownJson: unknown): Snapshot
         const amount = num(row.amount);
         if (amount == null) continue;
         const cur = typeof row.currency === "string" ? row.currency : "USD";
-        const label = String(row.rawChargeName ?? row.normalizedCode ?? `Charge ${row.id.slice(0, 6)}`);
+        const labelParts = [row.rawChargeName, row.normalizedCode].filter((x) => typeof x === "string" && x.trim());
+        const label =
+          labelParts.length > 0 ? labelParts.join(" · ") : `Charge ${String(row.id).slice(0, 6)}`;
         const geo = row.geographyScope;
         candidates.push({
           kind: "CONTRACT_CHARGE",
@@ -134,6 +137,8 @@ export function extractSnapshotPriceCandidates(breakdownJson: unknown): Snapshot
       if (amount == null) continue;
       const cur = typeof row.currency === "string" ? row.currency : "USD";
       const label = String(row.label ?? row.lineType ?? `Line ${row.id.slice(0, 6)}`);
+      const notes = typeof row.notes === "string" ? row.notes : "";
+      const equipmentHint = parseEquipmentFromText(`${label} ${notes}`);
       candidates.push({
         kind: "RFQ_LINE",
         id: row.id,
@@ -141,7 +146,7 @@ export function extractSnapshotPriceCandidates(breakdownJson: unknown): Snapshot
         currency: cur.toUpperCase().slice(0, 3),
         amount,
         raw: row as unknown as Prisma.JsonValue,
-        equipmentHint: null,
+        equipmentHint,
         unitBasis: typeof row.unitBasis === "string" ? row.unitBasis.trim() : null,
         originCode: null,
         destCode: null,
