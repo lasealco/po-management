@@ -107,6 +107,7 @@ High-level groups: **references** · **tracking milestones** (+ pack apply) · *
 4. **Assist / chatbot** — ~~saved CT reports + saved workbench filter names~~; ~~**keyword doc retrieval** (static corpus, no embeddings) for hints + LLM snippets~~; remaining: embeddings / vector search, fuller tool use vs PDF spec.
 5. **Reporting** — ~~CT schedules + email CSV/PDF + in-app Download CSV/PDF~~ (`pdf-lib` summary PDF); remaining: richer branded templates vs `control_tower_reporting_and_kpi_spec`.
 6. **Workbench** — ~~column prefs persistence~~ (localStorage + CSV respects visible columns); ~~cross-filter deep links~~ from Control Tower dashboard + executive cockpit (`controlTowerWorkbenchPath`, overdue ETA + status chips).
+7. **(Low priority)** **Report builder — exception / “NC” style analytics** — Today exceptions are first-class in workbench, search, Shipment 360, and catalog (`CtException` / `CtExceptionCode`), but **saved reports** only aggregate by logistics dimensions (status, lane, carrier, month, …). Later: extend `report-engine` with dimensions/measures such as **by exception `type`** (with catalog labels), **exception counts**, or **% shipments with open exceptions**; optional report filters mirroring `exceptionCode`. Unstructured **`rootCause`** or external reason/NC codes are better suited to detail export / AI insight unless normalized into a coded field.
 
 ---
 
@@ -114,6 +115,7 @@ High-level groups: **references** · **tracking milestones** (+ pack apply) · *
 
 | Date | Change |
 |------|--------|
+| 2026-04-18 | Backlog **#7 (low priority)**: report builder exception / NC-style analytics (deferred; workbench + 360 already cover triage). |
 | 2026-04-17 | Initial `GAP_MAP.md` + `README.md`. Implemented **Settings → Control Tower exception types** + `exception-codes` GET + `upsert_ct_exception_code` POST action. |
 | 2026-04-17 | Control Tower inbound webhook stub; workbench **table column** prefs + CSV alignment; assist `supplier:` / `customer:` cuid filters + search API support. |
 | 2026-04-17 | Saved workbench views persist **columnVisibility**; search → workbench link omits stray `take=`; assist **carrier:** cuid token + search `carrierSupplierId`. |
