@@ -288,7 +288,7 @@ export function InvoiceAuditNewClient(props: { initialSnapshotId?: string }) {
                     Open snapshot (audit hints and geography)
                   </Link>
                 </p>
-                <RecordIdCopy id={snapshotId.trim()} copyButtonLabel="Copy snapshot id" />
+                <RecordIdCopy id={snapshotId} copyButtonLabel="Copy snapshot id" />
               </div>
             ) : null}
           </div>

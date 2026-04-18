@@ -114,7 +114,7 @@ export function PricingSnapshotsNewClient(props: { canContract: boolean; canRfq:
           />
           {shipmentBookingId.trim() ? (
             <div className="mt-2">
-              <RecordIdCopy id={shipmentBookingId.trim()} copyButtonLabel="Copy booking id" />
+              <RecordIdCopy id={shipmentBookingId} copyButtonLabel="Copy booking id" />
             </div>
           ) : null}
         </div>
@@ -144,7 +144,7 @@ export function PricingSnapshotsNewClient(props: { canContract: boolean; canRfq:
               </p>
               {contractVersionId.trim() ? (
                 <div className="mt-2">
-                  <RecordIdCopy id={contractVersionId.trim()} copyButtonLabel="Copy version id" />
+                  <RecordIdCopy id={contractVersionId} copyButtonLabel="Copy version id" />
                 </div>
               ) : null}
             </div>
@@ -180,7 +180,7 @@ export function PricingSnapshotsNewClient(props: { canContract: boolean; canRfq:
               </p>
               {quoteResponseId.trim() ? (
                 <div className="mt-2">
-                  <RecordIdCopy id={quoteResponseId.trim()} copyButtonLabel="Copy response id" />
+                  <RecordIdCopy id={quoteResponseId} copyButtonLabel="Copy response id" />
                 </div>
               ) : null}
             </div>
