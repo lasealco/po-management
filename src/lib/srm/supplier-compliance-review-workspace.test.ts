@@ -4,6 +4,7 @@ import {
   complianceReviewNextDueInputValue,
   complianceReviewOutcomeNeedsFollowUp,
   complianceReviewSummaryFieldKey,
+  suggestedComplianceReviewNextDueDateInput,
 } from "./supplier-compliance-review-workspace";
 
 describe("complianceReviewOutcomeNeedsFollowUp", () => {
@@ -23,6 +24,14 @@ describe("complianceReviewNextDueInputValue", () => {
 
   it("returns YYYY-MM-DD slice for valid ISO", () => {
     expect(complianceReviewNextDueInputValue("2027-06-15T00:00:00.000Z")).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+});
+
+describe("suggestedComplianceReviewNextDueDateInput", () => {
+  it("returns YYYY-MM-DD offset from anchor time", () => {
+    const anchor = Date.UTC(2026, 0, 1, 0, 0, 0);
+    expect(suggestedComplianceReviewNextDueDateInput(1, anchor)).toBe("2026-01-02");
+    expect(suggestedComplianceReviewNextDueDateInput(180, anchor)).toBe("2026-06-30");
   });
 });
 

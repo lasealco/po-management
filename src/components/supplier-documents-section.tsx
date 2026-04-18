@@ -59,6 +59,7 @@ export function SupplierDocumentsSection({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [copiedDocId, setCopiedDocId] = useState<string | null>(null);
 
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState<SupplierDocumentCategory>("compliance_other");
@@ -145,7 +146,12 @@ export function SupplierDocumentsSection({
   }
 
   async function removeDoc(id: string) {
-    if (!window.confirm("Remove this document record?")) return;
+    if (
+      !window.confirm(
+        "Remove this document from the register? This deletes the row (use Archive first if you only want to hide it from compliance counts).",
+      )
+    )
+      return;
     setBusyId(id);
     setError(null);
     const res = await fetch(`/api/suppliers/${supplierId}/documents/${id}`, { method: "DELETE" });
@@ -158,6 +164,17 @@ export function SupplierDocumentsSection({
     setRows((prev) => prev.filter((r) => r.id !== id));
     setBusyId(null);
     router.refresh();
+  }
+
+  async function copyReferenceUrl(url: string, documentId: string) {
+    setError(null);
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedDocId(documentId);
+      window.setTimeout(() => setCopiedDocId((cur) => (cur === documentId ? null : cur)), 2000);
+    } catch {
+      setError("Could not copy link (browser blocked or unavailable).");
+    }
   }
 
   const f =
@@ -307,31 +324,52 @@ export function SupplierDocumentsSection({
                     </p>
                   ) : null}
                   {canEdit && !isArchived ? (
-                    <label className="mt-2 block text-xs text-zinc-600">
-                      Reference URL (https://…)
-                      <input
-                        key={`${rowEditorKey}-ref`}
-                        defaultValue={r.referenceUrl ?? ""}
-                        disabled={busyId === r.id}
-                        placeholder="https://…"
-                        className={f}
-                        onBlur={(e) => {
-                          const v = e.target.value.trim();
-                          const prev = (r.referenceUrl ?? "").trim();
-                          if (v === prev) return;
-                          void patchDoc(r.id, { referenceUrl: v || null });
-                        }}
-                      />
-                    </label>
+                    <div className="mt-2 space-y-1">
+                      <label className="block text-xs text-zinc-600">
+                        Reference URL (https://…)
+                        <input
+                          key={`${rowEditorKey}-ref`}
+                          defaultValue={r.referenceUrl ?? ""}
+                          disabled={busyId === r.id}
+                          placeholder="https://…"
+                          className={f}
+                          onBlur={(e) => {
+                            const v = e.target.value.trim();
+                            const prev = (r.referenceUrl ?? "").trim();
+                            if (v === prev) return;
+                            void patchDoc(r.id, { referenceUrl: v || null });
+                          }}
+                        />
+                      </label>
+                      {r.referenceUrl ? (
+                        <button
+                          type="button"
+                          disabled={busyId === r.id}
+                          onClick={() => void copyReferenceUrl(r.referenceUrl!, r.id)}
+                          className="text-[11px] font-medium text-[var(--arscmp-primary)] underline disabled:opacity-50"
+                        >
+                          {copiedDocId === r.id ? "Copied" : "Copy saved link"}
+                        </button>
+                      ) : null}
+                    </div>
                   ) : r.referenceUrl ? (
-                    <a
-                      href={r.referenceUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-1 inline-block text-xs text-[var(--arscmp-primary)] underline"
-                    >
-                      Open link
-                    </a>
+                    <span className="mt-1 flex flex-wrap items-center gap-2">
+                      <a
+                        href={r.referenceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-[var(--arscmp-primary)] underline"
+                      >
+                        Open link
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => void copyReferenceUrl(r.referenceUrl!, r.id)}
+                        className="text-[11px] font-medium text-zinc-600 underline hover:text-zinc-900"
+                      >
+                        {copiedDocId === r.id ? "Copied" : "Copy link"}
+                      </button>
+                    </span>
                   ) : null}
                   {canEdit && !isArchived ? (
                     <label className="mt-2 block text-xs text-zinc-600">

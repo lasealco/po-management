@@ -27,3 +27,12 @@ export function complianceReviewSummaryFieldKey(
   for (let i = 0; i < summary.length; i++) h = (h * 31 + summary.charCodeAt(i)) | 0;
   return `${id}-sm-${h}-${nextDueIso ?? ""}`;
 }
+
+/** Default `type="date"` value for “next periodic review” (matches common seed horizon; override in UI). */
+export function suggestedComplianceReviewNextDueDateInput(
+  daysFromNow = 180,
+  nowMs = Date.now(),
+): string {
+  const d = new Date(nowMs + daysFromNow * 86400000);
+  return d.toISOString().slice(0, 10);
+}

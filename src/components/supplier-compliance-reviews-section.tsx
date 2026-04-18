@@ -7,6 +7,7 @@ import {
   complianceReviewNextDueInputValue,
   complianceReviewOutcomeNeedsFollowUp,
   complianceReviewSummaryFieldKey,
+  suggestedComplianceReviewNextDueDateInput,
 } from "@/lib/srm/supplier-compliance-review-workspace";
 
 export type SupplierComplianceReviewRow = {
@@ -43,7 +44,7 @@ export function SupplierComplianceReviewsSection({
 
   const [outcome, setOutcome] = useState<SupplierComplianceReviewOutcome>("satisfactory");
   const [summary, setSummary] = useState("");
-  const [nextDue, setNextDue] = useState("");
+  const [nextDue, setNextDue] = useState(() => suggestedComplianceReviewNextDueDateInput());
 
   async function addReview(e: React.FormEvent) {
     e.preventDefault();
@@ -73,7 +74,7 @@ export function SupplierComplianceReviewsSection({
     }
     if (payload.review) setRows((prev) => [payload.review!, ...prev]);
     setSummary("");
-    setNextDue("");
+    setNextDue(suggestedComplianceReviewNextDueDateInput());
     setBusy(false);
     router.refresh();
   }
@@ -289,6 +290,9 @@ export function SupplierComplianceReviewsSection({
               onChange={(e) => setNextDue(e.target.value)}
               className={f}
             />
+            <span className="mt-0.5 text-[11px] text-zinc-500">
+              Defaults to ~6 months ahead; clear the field if unknown.
+            </span>
           </label>
           <button
             type="submit"

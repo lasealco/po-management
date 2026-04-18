@@ -78,7 +78,10 @@ export function SupplierOnboardingSection({
   const nextKey = liveProgress.firstPending?.taskKey ?? null;
 
   return (
-    <section className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
+    <section
+      id="supplier-onboarding-section"
+      className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm"
+    >
       <h2 className="text-sm font-semibold text-zinc-900">Onboarding checklist</h2>
       <p className="mt-1 text-xs text-zinc-500">
         Default steps from the SRM lifecycle spec. Mark items <strong className="font-medium">done</strong> or{" "}
@@ -105,10 +108,27 @@ export function SupplierOnboardingSection({
               style={{ width: `${pct}%` }}
             />
           </div>
-          {liveProgress.firstPending?.label ? (
-            <p className="mt-2 text-xs text-zinc-600">
-              Next up: <span className="font-medium text-zinc-900">{liveProgress.firstPending.label}</span>
-            </p>
+          {liveProgress.firstPending ? (
+            <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-zinc-600">
+                Next up:{" "}
+                <span className="font-medium text-zinc-900">
+                  {liveProgress.firstPending.label || liveProgress.firstPending.taskKey}
+                </span>
+              </p>
+              <button
+                type="button"
+                onClick={() =>
+                  document.getElementById("supplier-onboarding-next-task")?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "center",
+                  })
+                }
+                className="self-start rounded-md border border-amber-300 bg-white px-2 py-1 text-[11px] font-medium text-amber-950 hover:bg-amber-100/80 sm:self-auto"
+              >
+                Jump to next task
+              </button>
+            </div>
           ) : (
             <p className="mt-2 text-xs font-medium text-emerald-800">All checklist rows are done or waived.</p>
           )}
@@ -149,6 +169,7 @@ export function SupplierOnboardingSection({
           return (
             <li
               key={row.id}
+              id={isNext ? "supplier-onboarding-next-task" : undefined}
               className={`flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-start sm:justify-between ${
                 isNext ? "bg-amber-50/60 ring-1 ring-inset ring-amber-200/80" : ""
               }`}

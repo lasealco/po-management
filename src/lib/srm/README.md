@@ -17,7 +17,7 @@ npm run verify:srm:with-db # verify:srm + optional Postgres SRM table/seed check
 | **Onboarding** | `ensure-supplier-onboarding-tasks.ts`, `supplier-onboarding-workflow.ts`, `supplier-onboarding-patch.ts`, `supplier-onboarding-activation-guard.ts`, `supplier-onboarding-types.ts` |
 | **Qualification** | `supplier-qualification-patch.ts`, `supplier-qualification-suggest.ts` |
 | **Documents** | `supplier-document-parse.ts`, `supplier-document-expiry.ts` (tiered badge: expired / critical ≤14d / soon ≤30d, days-until + summary phrase), `supplier-document-row-key.ts` (remount keys for row editors) |
-| **Compliance signals** | `supplier-compliance-document-signals.ts` (summary, findings, missing-type slots, readiness score, `SRM_CONTROLLED_DOCUMENT_CATEGORIES`), `compliance-review-due.ts`, `supplier-compliance-review-workspace.ts` (follow-up strip + field keys for reviews UI) |
+| **Compliance signals** | `supplier-compliance-document-signals.ts` (summary, findings, missing-type slots, readiness score, `SRM_CONTROLLED_DOCUMENT_CATEGORIES`), `compliance-review-due.ts`, `supplier-compliance-review-workspace.ts` (follow-up strip, field keys, suggested next-review date for add form) |
 | **Other SRM entities** | `supplier-*-parse.ts` (alerts, contracts, relationship notes, scorecards, risk, compliance reviews), `supplier-capability-types.ts` |
 | **360 snapshot** | `load-supplier-detail-snapshot.ts` (server loader; keep Prisma `include` in sync with UI) |
 | **Inbound integration (minimal)** | `srm-supplier-master-upsert-payload.ts`, `srm-supplier-master-upsert-map.ts` — no HTTP/sync here yet |
