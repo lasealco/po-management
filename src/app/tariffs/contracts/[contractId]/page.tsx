@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { TariffContractHeaderIdsBar } from "@/components/tariffs/tariff-contract-header-ids-bar";
 import { TariffContractHeaderClient } from "@/components/tariffs/tariff-contract-header-client";
 import { TariffBadge, tariffApprovalTone, tariffContractStatusTone } from "@/components/tariffs/tariff-badges";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
@@ -78,6 +79,7 @@ export default async function TariffContractDetailPage({
             <dd className="text-zinc-800">{contract.tradeScope ?? "—"}</dd>
           </div>
         </dl>
+        <TariffContractHeaderIdsBar contractId={contract.id} />
       </section>
 
       <TariffContractHeaderClient
