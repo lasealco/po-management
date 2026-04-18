@@ -466,6 +466,15 @@ async function seed() {
     },
   });
 
+  await prisma.supplierRelationshipNote.deleteMany({ where: { supplierId: supplier.id } });
+  await prisma.supplierRelationshipNote.create({
+    data: {
+      tenantId: tenant.id,
+      supplierId: supplier.id,
+      body: "Demo seed: quarterly business review scheduled; relationship stable for core PO lanes.",
+    },
+  });
+
   await prisma.supplierContact.deleteMany({ where: { supplierId: supplier.id } });
   await prisma.supplierContact.createMany({
     data: [

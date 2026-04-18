@@ -71,7 +71,8 @@ export async function loadSupplierDetailSnapshot(
     },
   });
 
-  const [complianceReviews, performanceScorecards, riskRecords, documents] = await Promise.all([
+  const [complianceReviews, performanceScorecards, riskRecords, documents, relationshipNotes] =
+    await Promise.all([
     prisma.supplierComplianceReview.findMany({
       where: { supplierId: supplier.id, tenantId },
       orderBy: { reviewedAt: "desc" },
@@ -123,6 +124,16 @@ export async function loadSupplierDetailSnapshot(
         referenceUrl: true,
         notes: true,
         documentDate: true,
+        createdAt: true,
+      },
+    }),
+    prisma.supplierRelationshipNote.findMany({
+      where: { supplierId: supplier.id, tenantId },
+      orderBy: { createdAt: "desc" },
+      take: 60,
+      select: {
+        id: true,
+        body: true,
         createdAt: true,
       },
     }),
@@ -233,6 +244,11 @@ export async function loadSupplierDetailSnapshot(
       notes: d.notes,
       documentDate: d.documentDate?.toISOString() ?? null,
       createdAt: d.createdAt.toISOString(),
+    })),
+    relationshipNotes: relationshipNotes.map((n) => ({
+      id: n.id,
+      body: n.body,
+      createdAt: n.createdAt.toISOString(),
     })),
     productLinkCount: supplier._count.productSuppliers,
     orderCount: supplier._count.orders,

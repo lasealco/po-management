@@ -27,6 +27,7 @@ model Tenant {
   supplierPerformanceScorecards SupplierPerformanceScorecard[]
   supplierRiskRecords         SupplierRiskRecord[]
   supplierDocuments           SupplierDocument[]
+  supplierRelationshipNotes   SupplierRelationshipNote[]
   orders            PurchaseOrder[]
   salesOrders       SalesOrder[]
   warehouses        Warehouse[]
@@ -317,6 +318,7 @@ model Supplier {
   performanceScorecards SupplierPerformanceScorecard[]
   riskRecords           SupplierRiskRecord[]
   documents             SupplierDocument[]
+  relationshipNotes     SupplierRelationshipNote[]
   productSuppliers ProductSupplier[]
   shipmentBookings ShipmentBooking[]
   shipmentsCarrier Shipment[] @relation("ShipmentCarrierSupplier")
@@ -442,6 +444,21 @@ model SupplierDocument {
   documentDate   DateTime?
   createdAt      DateTime                 @default(now())
   updatedAt      DateTime                 @updatedAt
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, supplierId])
+}
+
+/// SRM: chronological relationship / account notes (visits, escalations, exec touchpoints).
+model SupplierRelationshipNote {
+  id         String   @id @default(cuid())
+  tenantId   String
+  supplierId String
+  body       String   @db.Text
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)

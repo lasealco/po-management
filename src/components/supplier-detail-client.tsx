@@ -7,6 +7,8 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { SupplierCapabilitiesSection } from "@/components/supplier-capabilities-section";
 import type { SupplierDocumentRow } from "@/components/supplier-documents-section";
 import { SupplierDocumentsSection } from "@/components/supplier-documents-section";
+import type { SupplierRelationshipNoteRow } from "@/components/supplier-relationship-notes-section";
+import { SupplierRelationshipNotesSection } from "@/components/supplier-relationship-notes-section";
 import type { SupplierComplianceReviewRow } from "@/components/supplier-compliance-reviews-section";
 import { SupplierComplianceReviewsSection } from "@/components/supplier-compliance-reviews-section";
 import { SupplierOnboardingSection } from "@/components/supplier-onboarding-section";
@@ -84,6 +86,7 @@ export type SupplierDetailSnapshot = {
   performanceScorecards: SupplierPerformanceScorecardRow[];
   riskRecords: SupplierRiskRecordRow[];
   documents: SupplierDocumentRow[];
+  relationshipNotes: SupplierRelationshipNoteRow[];
   productLinkCount: number;
   orderCount: number;
 };
@@ -1411,6 +1414,15 @@ export function SupplierDetailClient({
         />
       )}
 
+      {(!isSrmShell || srmTab === "relationship") && (
+        <SupplierRelationshipNotesSection
+          key={`rel-${initial.id}-${initial.updatedAt}`}
+          supplierId={initial.id}
+          canEdit={canEdit}
+          initialRows={initial.relationshipNotes}
+        />
+      )}
+
       {isSrmShell &&
       srmTab !== "overview" &&
       srmTab !== "capabilities" &&
@@ -1419,14 +1431,15 @@ export function SupplierDetailClient({
       srmTab !== "compliance" &&
       srmTab !== "performance" &&
       srmTab !== "risk" &&
-      srmTab !== "documents" ? (
+      srmTab !== "documents" &&
+      srmTab !== "relationship" ? (
         <section className="rounded-lg border border-dashed border-zinc-200 bg-zinc-50/80 p-8 text-center shadow-sm">
           <p className="text-sm font-medium text-zinc-800">
             {SRM_SUPPLIER_TABS.find((x) => x.id === srmTab)?.label ?? srmTab}
           </p>
           <p className="mt-2 text-xs text-zinc-600">
-            Contracts, relationship notes, and alerts are planned in the SRM PRD; this tab is not wired
-            yet (no tender, tariff, or sourcing-event scope here).
+            Contracts and alerts are still placeholders in this SRM slice (no tender, tariff, or
+            sourcing-event scope).
           </p>
         </section>
       ) : null}
