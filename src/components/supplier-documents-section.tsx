@@ -9,6 +9,7 @@ import {
   supplierHasMissingControlledDocumentSlots,
 } from "@/lib/srm/supplier-compliance-document-signals";
 import { supplierDocumentExpiryBadge } from "@/lib/srm/supplier-document-expiry";
+import { supplierDocumentRowEditorKey } from "@/lib/srm/supplier-document-row-key";
 
 export type SupplierDocumentRow = {
   id: string;
@@ -225,6 +226,13 @@ export function SupplierDocumentsSection({
           visibleRows.map((r) => {
             const isArchived = Boolean(r.archivedAt);
             const expiryBadge = isArchived ? null : supplierDocumentExpiryBadge(r.expiresAt);
+            const rowEditorKey = supplierDocumentRowEditorKey(
+              r.id,
+              r.title,
+              r.referenceUrl,
+              r.documentDate,
+              r.notes,
+            );
             return (
             <li
               key={r.id}
@@ -232,14 +240,35 @@ export function SupplierDocumentsSection({
             >
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0 flex-1">
-                  <p className={`text-sm font-medium ${isArchived ? "text-zinc-600" : "text-zinc-900"}`}>
-                    {r.title}
-                    {isArchived ? (
-                      <span className="ml-2 rounded bg-zinc-200 px-2 py-0.5 text-[10px] font-medium uppercase text-zinc-700">
-                        Archived
-                      </span>
-                    ) : null}
-                  </p>
+                  {canEdit && !isArchived ? (
+                    <label className="block text-xs text-zinc-600">
+                      Title
+                      <input
+                        key={`${rowEditorKey}-title`}
+                        defaultValue={r.title}
+                        disabled={busyId === r.id}
+                        className={f}
+                        onBlur={(e) => {
+                          const v = e.target.value.trim();
+                          if (v === r.title.trim()) return;
+                          if (!v) {
+                            e.target.value = r.title;
+                            return;
+                          }
+                          void patchDoc(r.id, { title: v });
+                        }}
+                      />
+                    </label>
+                  ) : (
+                    <p className={`text-sm font-medium ${isArchived ? "text-zinc-600" : "text-zinc-900"}`}>
+                      {r.title}
+                      {isArchived ? (
+                        <span className="ml-2 rounded bg-zinc-200 px-2 py-0.5 text-[10px] font-medium uppercase text-zinc-700">
+                          Archived
+                        </span>
+                      ) : null}
+                    </p>
+                  )}
                   <p className="text-[11px] text-zinc-500">
                     {CATEGORIES.find((c) => c.value === r.category)?.label ?? r.category}
                     {r.documentDate ? ` · Dated ${new Date(r.documentDate).toLocaleDateString()}` : ""}
@@ -277,7 +306,24 @@ export function SupplierDocumentsSection({
                       </span>
                     </p>
                   ) : null}
-                  {r.referenceUrl ? (
+                  {canEdit && !isArchived ? (
+                    <label className="mt-2 block text-xs text-zinc-600">
+                      Reference URL (https://…)
+                      <input
+                        key={`${rowEditorKey}-ref`}
+                        defaultValue={r.referenceUrl ?? ""}
+                        disabled={busyId === r.id}
+                        placeholder="https://…"
+                        className={f}
+                        onBlur={(e) => {
+                          const v = e.target.value.trim();
+                          const prev = (r.referenceUrl ?? "").trim();
+                          if (v === prev) return;
+                          void patchDoc(r.id, { referenceUrl: v || null });
+                        }}
+                      />
+                    </label>
+                  ) : r.referenceUrl ? (
                     <a
                       href={r.referenceUrl}
                       target="_blank"
@@ -287,7 +333,47 @@ export function SupplierDocumentsSection({
                       Open link
                     </a>
                   ) : null}
-                  {r.notes ? <p className="mt-1 text-xs text-zinc-600">{r.notes}</p> : null}
+                  {canEdit && !isArchived ? (
+                    <label className="mt-2 block text-xs text-zinc-600">
+                      Document date
+                      <input
+                        key={`${rowEditorKey}-docdate`}
+                        type="date"
+                        defaultValue={toDateInputValue(r.documentDate)}
+                        disabled={busyId === r.id}
+                        className={f}
+                        onBlur={(e) => {
+                          const v = e.target.value.trim();
+                          const prev = toDateInputValue(r.documentDate);
+                          if (v === prev) return;
+                          void patchDoc(
+                            r.id,
+                            v ? { documentDate: new Date(v).toISOString() } : { documentDate: null },
+                          );
+                        }}
+                      />
+                    </label>
+                  ) : null}
+                  {canEdit && !isArchived ? (
+                    <label className="mt-2 block text-xs text-zinc-600">
+                      Notes
+                      <textarea
+                        key={`${rowEditorKey}-notes`}
+                        defaultValue={r.notes ?? ""}
+                        disabled={busyId === r.id}
+                        rows={2}
+                        className={f}
+                        onBlur={(e) => {
+                          const v = e.target.value.trim();
+                          const prev = (r.notes ?? "").trim();
+                          if (v === prev) return;
+                          void patchDoc(r.id, { notes: v || null });
+                        }}
+                      />
+                    </label>
+                  ) : r.notes ? (
+                    <p className="mt-1 text-xs text-zinc-600">{r.notes}</p>
+                  ) : null}
                 </div>
                 <div className="flex shrink-0 flex-col gap-2 sm:w-48">
                   {canEdit ? (
@@ -303,6 +389,8 @@ export function SupplierDocumentsSection({
                               disabled={busyId === r.id}
                               onBlur={(e) => {
                                 const v = e.target.value.trim();
+                                const prev = toDateInputValue(r.expiresAt);
+                                if (v === prev) return;
                                 void patchDoc(r.id, {
                                   expiresAt: v ? new Date(v).toISOString() : null,
                                 });

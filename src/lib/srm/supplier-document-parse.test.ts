@@ -71,4 +71,18 @@ describe("parseSupplierDocumentPatchBody", () => {
     expect(cleared.ok).toBe(true);
     if (cleared.ok) expect(cleared.data.archivedAt).toBeNull();
   });
+
+  it("accepts combined metadata patch for row edit workflow", () => {
+    const r = parseSupplierDocumentPatchBody({
+      title: "Updated COI",
+      notes: "Renewed",
+      documentDate: "2026-03-01T00:00:00.000Z",
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.data.title).toBe("Updated COI");
+      expect(r.data.notes).toBe("Renewed");
+      expect(r.data.documentDate?.toISOString().slice(0, 10)).toBe("2026-03-01");
+    }
+  });
 });

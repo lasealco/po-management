@@ -392,6 +392,18 @@ export function SupplierDetailClient({
     }
   }
 
+  function openComplianceReviewsSection() {
+    if (isSrmShell) {
+      selectSrmTab("compliance");
+    }
+    window.requestAnimationFrame(() =>
+      document.getElementById("supplier-compliance-reviews-section")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      }),
+    );
+  }
+
   async function copyAdminField(label: string, text: string) {
     setError(null);
     try {
@@ -1850,6 +1862,7 @@ export function SupplierDetailClient({
             complianceReviews={initial.complianceReviews}
             isSrmShell={isSrmShell}
             onOpenDocumentsTab={openDocumentsWorkspace}
+            onOpenComplianceReviews={openComplianceReviewsSection}
           />
           <SupplierComplianceReviewsSection
             key={`comp-${initial.id}-${initial.updatedAt}`}
