@@ -244,6 +244,13 @@ export function CommandPalette({ grants }: { grants: CommandPaletteGrants }) {
           searchText: "invoice tolerance percent absolute audit thresholds",
           action: go("/invoice-audit/tolerance-rules"),
         },
+        {
+          id: "invoice-audit-readiness",
+          label: "Invoice audit — database readiness",
+          hint: "Verify Phase 06 tables and migrations on Postgres",
+          searchText: "invoice audit database migrate schema readiness",
+          action: go("/invoice-audit/readiness"),
+        },
       );
     }
 

@@ -118,8 +118,9 @@ export default async function InvoiceAuditListPage() {
                   <td colSpan={8} className="py-10 text-center text-zinc-500">
                     <p>No intakes yet.</p>
                     <p className="mt-2 text-xs text-zinc-600">
-                      Create one from <span className="font-medium">New intake</span> (needs a frozen pricing
-                      snapshot). For a repeatable demo row after snapshots exist:{" "}
+                      Create one from <span className="font-medium">New intake</span> (pick a frozen pricing
+                      snapshot), or seed a PARSED demo intake — the demo script creates a minimal snapshot for{" "}
+                      <span className="font-medium">demo-company</span> if none exists yet:{" "}
                       <code className="rounded bg-zinc-100 px-1 py-0.5 font-mono text-[11px]">
                         USE_DOTENV_LOCAL=1 npm run db:seed:invoice-audit-demo
                       </code>

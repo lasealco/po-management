@@ -4,7 +4,8 @@
  * Prerequisites:
  * - DATABASE_URL (same as main seed; optional USE_DOTENV_LOCAL=1 via npm script)
  * - Prisma migrations applied (including invoice audit + accounting handoff columns)
- * - At least one booking_pricing_snapshots row for demo-company (freeze from contract/RFQ UI first)
+ * - If demo-company has no pricing snapshot yet, this script creates a minimal QUOTE_RESPONSE snapshot
+ *   so the intake seed can run without visiting Pricing snapshots first.
  *
  * Re-run safe: deletes prior seed intake by fixed external invoice no, then recreates PARSED intake + lines.
  *
@@ -24,6 +25,48 @@ import { Pool } from "pg";
 
 const DEMO_SLUG = "demo-company";
 const DEMO_EXTERNAL_INVOICE_NO = "DEMO-INVOICE-AUDIT-SEED";
+/** Synthetic quote id for auto-created demo snapshot (not a real QuoteResponse row). */
+const DEMO_SNAPSHOT_SOURCE_RECORD_ID = "seed-invoice-audit-demo-synthetic-quote";
+
+const demoQuoteResponseBreakdown = {
+  sourceType: "QUOTE_RESPONSE",
+  quoteRequest: {
+    originLabel: "Port USNYC",
+    destinationLabel: "DEHAM",
+  },
+  lines: [
+    {
+      id: "demo-snap-ln-1",
+      lineType: "FREIGHT",
+      label: "Ocean FCL 40HC base rate",
+      amount: "2500",
+      currency: "USD",
+      unitBasis: "PER_CONTAINER",
+      isIncluded: false,
+      notes: "40HC",
+    },
+    {
+      id: "demo-snap-ln-2",
+      lineType: "ACCESSORIAL",
+      label: "Bunker adjustment factor (BAF)",
+      amount: "330",
+      currency: "USD",
+      isIncluded: false,
+      notes: "",
+    },
+    {
+      id: "demo-snap-ln-3",
+      lineType: "ACCESSORIAL",
+      label: "Terminal handling charge origin",
+      amount: "185",
+      currency: "USD",
+      unitBasis: "PER_CONTAINER",
+      isIncluded: false,
+      notes: "40HC",
+    },
+  ],
+  totals: { grand: 3015 },
+};
 
 const cliDatabaseUrl = process.env.DATABASE_URL?.trim() || null;
 config({ path: resolve(process.cwd(), ".env") });
@@ -101,17 +144,32 @@ async function main() {
     process.exit(1);
   }
 
-  const snapshot = await prisma.bookingPricingSnapshot.findFirst({
+  let snapshot = await prisma.bookingPricingSnapshot.findFirst({
     where: { tenantId: tenant.id },
     orderBy: [{ frozenAt: "desc" }, { id: "desc" }],
     select: { id: true, sourceSummary: true, currency: true },
   });
 
   if (!snapshot) {
+    const created = await prisma.bookingPricingSnapshot.create({
+      data: {
+        tenantId: tenant.id,
+        shipmentBookingId: null,
+        sourceType: "QUOTE_RESPONSE",
+        sourceRecordId: DEMO_SNAPSHOT_SOURCE_RECORD_ID,
+        sourceSummary: "Auto-seeded demo snapshot (invoice-audit E2E)",
+        currency: "USD",
+        totalEstimatedCost: new Prisma.Decimal("3015"),
+        breakdownJson: demoQuoteResponseBreakdown,
+        freeTimeBasisJson: {},
+        totalDerivation: "SUM_RATE_AND_CHARGE_AMOUNTS",
+      },
+      select: { id: true, sourceSummary: true, currency: true },
+    });
+    snapshot = created;
     console.log(
-      `[db:seed:invoice-audit-demo] No booking pricing snapshot for ${DEMO_SLUG}. Freeze one under Pricing snapshots, then re-run this script.`,
+      `[db:seed:invoice-audit-demo] Created minimal booking pricing snapshot ${snapshot.id} for ${DEMO_SLUG} (no prior snapshot).`,
     );
-    process.exit(0);
   }
 
   const deleted = await prisma.invoiceIntake.deleteMany({
