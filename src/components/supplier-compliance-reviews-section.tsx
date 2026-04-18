@@ -3,6 +3,11 @@
 import type { SupplierComplianceReviewOutcome } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import {
+  complianceReviewNextDueInputValue,
+  complianceReviewOutcomeNeedsFollowUp,
+  complianceReviewSummaryFieldKey,
+} from "@/lib/srm/supplier-compliance-review-workspace";
 
 export type SupplierComplianceReviewRow = {
   id: string;
@@ -17,24 +22,6 @@ const OUTCOMES: { value: SupplierComplianceReviewOutcome; label: string }[] = [
   { value: "action_required", label: "Action required" },
   { value: "failed", label: "Failed" },
 ];
-
-function needsComplianceFollowUp(outcome: SupplierComplianceReviewOutcome): boolean {
-  return outcome === "action_required" || outcome === "failed";
-}
-
-function nextReviewDueInputValue(iso: string | null): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toISOString().slice(0, 10);
-}
-
-/** Stable remount key for uncontrolled summary fields after PATCH. */
-function complianceReviewSummaryFieldKey(id: string, summary: string, nextDue: string | null): string {
-  let h = 0;
-  for (let i = 0; i < summary.length; i++) h = (h * 31 + summary.charCodeAt(i)) | 0;
-  return `${id}-sm-${h}-${nextDue ?? ""}`;
-}
 
 export function SupplierComplianceReviewsSection({
   supplierId,
@@ -112,6 +99,24 @@ export function SupplierComplianceReviewsSection({
     router.refresh();
   }
 
+  async function deleteReview(id: string) {
+    if (!globalThis.confirm("Remove this compliance review? This cannot be undone.")) return;
+    setError(null);
+    setBusyId(id);
+    const res = await fetch(`/api/suppliers/${supplierId}/compliance-reviews/${id}`, {
+      method: "DELETE",
+    });
+    const payload = (await res.json().catch(() => ({}))) as { error?: string };
+    if (!res.ok) {
+      setBusyId(null);
+      setError(payload.error ?? "Could not remove review.");
+      return;
+    }
+    setRows((prev) => prev.filter((r) => r.id !== id));
+    setBusyId(null);
+    router.refresh();
+  }
+
   const f =
     "mt-1 w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm text-zinc-900 disabled:opacity-50";
 
@@ -173,12 +178,12 @@ export function SupplierComplianceReviewsSection({
                       <input
                         type="date"
                         key={`${r.id}-due-${r.nextReviewDue ?? "none"}`}
-                        defaultValue={nextReviewDueInputValue(r.nextReviewDue)}
+                        defaultValue={complianceReviewNextDueInputValue(r.nextReviewDue)}
                         disabled={busyId === r.id}
                         className={f}
                         onBlur={(e) => {
                           const v = e.target.value.trim();
-                          const prev = nextReviewDueInputValue(r.nextReviewDue);
+                          const prev = complianceReviewNextDueInputValue(r.nextReviewDue);
                           if (v === prev) return;
                           void patchReview(
                             r.id,
@@ -188,7 +193,7 @@ export function SupplierComplianceReviewsSection({
                       />
                     </label>
                   ) : null}
-                  {needsComplianceFollowUp(r.outcome) ? (
+                  {complianceReviewOutcomeNeedsFollowUp(r.outcome) ? (
                     <div className="rounded-md border border-amber-200 bg-amber-50/90 px-3 py-2 text-[11px] text-amber-950">
                       <p className="font-semibold text-amber-950">Suggested follow-up</p>
                       <ol className="mt-1 list-decimal space-y-0.5 pl-4">
@@ -218,21 +223,31 @@ export function SupplierComplianceReviewsSection({
                   ) : null}
                 </div>
                 {canEdit ? (
-                  <select
-                    value={r.outcome}
-                    disabled={busyId === r.id}
-                    onChange={(e) => {
-                      const v = e.target.value as SupplierComplianceReviewOutcome;
-                      void patchReview(r.id, { outcome: v });
-                    }}
-                    className={`${f} sm:w-44`}
-                  >
-                    {OUTCOMES.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="flex flex-col items-stretch gap-2 sm:items-end">
+                    <select
+                      value={r.outcome}
+                      disabled={busyId === r.id}
+                      onChange={(e) => {
+                        const v = e.target.value as SupplierComplianceReviewOutcome;
+                        void patchReview(r.id, { outcome: v });
+                      }}
+                      className={`${f} sm:w-44`}
+                    >
+                      {OUTCOMES.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      disabled={busyId === r.id}
+                      onClick={() => void deleteReview(r.id)}
+                      className="rounded-md border border-rose-200 bg-white px-2 py-1 text-[11px] font-medium text-rose-900 hover:bg-rose-50 disabled:opacity-50"
+                    >
+                      Remove review
+                    </button>
+                  </div>
                 ) : (
                   <span className="text-xs font-medium text-zinc-600">
                     {OUTCOMES.find((o) => o.value === r.outcome)?.label ?? r.outcome}
