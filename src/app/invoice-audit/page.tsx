@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { listInvoiceIntakesForTenant } from "@/lib/invoice-audit/invoice-intakes";
+import { getPhase06WorkflowHint } from "@/lib/invoice-audit/phase06-workflow-hint";
 import { getDemoTenant } from "@/lib/demo-tenant";
 
 export const dynamic = "force-dynamic";
@@ -29,21 +30,6 @@ function reviewCellLabel(decision: string) {
   if (decision === "APPROVED") return "Approve";
   if (decision === "OVERRIDDEN") return "Override";
   return "—";
-}
-
-function needsCloseoutFollowThrough(row: {
-  status: string;
-  rollupOutcome: string;
-  unknownLineCount: number;
-  redLineCount: number;
-}) {
-  if (row.status !== "AUDITED") return false;
-  return (
-    row.rollupOutcome === "FAIL" ||
-    row.rollupOutcome === "WARN" ||
-    row.unknownLineCount > 0 ||
-    row.redLineCount > 0
-  );
 }
 
 export default async function InvoiceAuditListPage() {
@@ -98,6 +84,9 @@ export default async function InvoiceAuditListPage() {
               <tr className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500">
                 <th className="py-2 pr-4">Received</th>
                 <th className="py-2 pr-4">Vendor / ref</th>
+                <th className="py-2 pr-4" title="Prioritized Phase 06 action with deep link when applicable">
+                  Next
+                </th>
                 <th className="py-2 pr-4">Status</th>
                 <th className="py-2 pr-4" title="Worst line outcome after the last audit run">
                   Rollup
@@ -115,7 +104,7 @@ export default async function InvoiceAuditListPage() {
             <tbody>
               {intakes.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-10 text-center text-zinc-500">
+                  <td colSpan={9} className="py-10 text-center text-zinc-500">
                     <p>No intakes yet.</p>
                     <p className="mt-2 text-xs text-zinc-600">
                       Create one from <span className="font-medium">New intake</span> (pick a frozen pricing
@@ -133,7 +122,16 @@ export default async function InvoiceAuditListPage() {
                   const lineTotal =
                     row.greenLineCount + row.amberLineCount + row.redLineCount + row.unknownLineCount;
                   const parsedLines = row._count.lines;
-                  const closeoutNudge = needsCloseoutFollowThrough(row);
+                  const nextHint = getPhase06WorkflowHint({
+                    status: row.status,
+                    rollupOutcome: row.rollupOutcome,
+                    reviewDecision: row.reviewDecision,
+                    approvedForAccounting: row.approvedForAccounting,
+                    parseError: row.parseError,
+                    auditRunError: row.auditRunError,
+                    unknownLineCount: row.unknownLineCount,
+                    redLineCount: row.redLineCount,
+                  });
                   return (
                     <tr key={row.id} className="border-b border-zinc-100">
                       <td className="py-3 pr-4 text-zinc-700">
@@ -149,11 +147,18 @@ export default async function InvoiceAuditListPage() {
                         {row.externalInvoiceNo && row.vendorLabel ? (
                           <div className="text-xs text-zinc-500">{row.externalInvoiceNo}</div>
                         ) : null}
-                        {closeoutNudge ? (
-                          <div className="mt-1 text-xs font-medium text-amber-800">
-                            Closeout: finish ops → finance → accounting on detail
-                          </div>
-                        ) : null}
+                      </td>
+                      <td className="py-3 pr-4 align-top">
+                        {nextHint ? (
+                          <Link
+                            href={`/invoice-audit/${row.id}${nextHint.hash}`}
+                            className="text-xs font-medium text-[var(--arscmp-primary)] hover:underline"
+                          >
+                            {nextHint.label}
+                          </Link>
+                        ) : (
+                          <span className="text-xs text-zinc-400">—</span>
+                        )}
                       </td>
                       <td className="py-3 pr-4">
                         <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-800">
