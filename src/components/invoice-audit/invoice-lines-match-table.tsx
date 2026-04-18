@@ -1,5 +1,6 @@
 import type { InvoiceAuditLineOutcome } from "@prisma/client";
 
+import { RecordIdCopy } from "@/components/invoice-audit/record-id-copy";
 import {
   discrepancyCategoryTone,
   formatDiscrepancyCategoryLabel,
@@ -57,6 +58,7 @@ export function InvoiceLinesMatchTable(props: {
         <thead>
           <tr className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500">
             <th className="px-4 py-3">#</th>
+            <th className="px-4 py-3">Line id</th>
             <th className="px-4 py-3">Invoice description</th>
             <th className="px-4 py-3">Amount</th>
             <th className="px-4 py-3">Match</th>
@@ -72,7 +74,7 @@ export function InvoiceLinesMatchTable(props: {
         <tbody>
           {props.lines.length === 0 ? (
             <tr>
-              <td colSpan={9} className="px-4 py-10 text-center text-sm text-zinc-500">
+              <td colSpan={10} className="px-4 py-10 text-center text-sm text-zinc-500">
                 No parsed lines on this intake. If you expected rows here, re-create the intake or add lines from the
                 intake workflow that feeds this table.
               </td>
@@ -83,6 +85,9 @@ export function InvoiceLinesMatchTable(props: {
             return (
               <tr key={ln.id} className="border-b border-zinc-100 align-top">
                 <td className="px-4 py-3 tabular-nums text-zinc-700">{ln.lineNo}</td>
+                <td className="px-4 py-3 align-top">
+                  <RecordIdCopy id={ln.id} copyButtonLabel="Copy line id" />
+                </td>
                 <td className="px-4 py-3 text-zinc-900">
                   <div>{ln.rawDescription}</div>
                   {ln.equipmentType || ln.unitBasis || ln.chargeStructureHint ? (
