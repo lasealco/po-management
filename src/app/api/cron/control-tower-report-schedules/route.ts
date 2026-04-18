@@ -5,14 +5,15 @@ import { runControlTowerReportScheduleCron } from "@/lib/control-tower/report-sc
 export const dynamic = "force-dynamic";
 
 /**
- * Hourly sweep for **Control Tower saved report** email schedules (`CtReportSchedule`).
+ * Daily sweep for **Control Tower saved report** email schedules (`CtReportSchedule`).
+ * Vercel **Hobby** allows at most once-per-day cron jobs; `vercel.json` uses `30 23 * * *` (UTC)
+ * so the run is after every `hourUtc` slot that day. On Pro+, you may switch to an hourly cron.
+ *
  * Secure with `CRON_SECRET`: `Authorization: Bearer <CRON_SECRET>`.
  *
  * Configure outbound mail with `RESEND_API_KEY` + `CONTROL_TOWER_REPORTS_EMAIL_FROM`
  * (verified sender in Resend). Each send attaches **CSV** (full series) and a **PDF** summary.
  * Without mail env, runs still execute the report and set `lastError` to note deferred email.
- *
- * Add to `vercel.json` crons (e.g. `5 * * * *` UTC) so each `hourUtc` is evaluated once per hour.
  */
 async function handleCron(request: Request) {
   const secret = process.env.CRON_SECRET;

@@ -18,13 +18,27 @@ function utcDayStart(d: Date): number {
   return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
 }
 
-/** True once per UTC day (DAILY) or per matching weekday (WEEKLY) in the scheduled hour. */
+/**
+ * True when this schedule should run for the current UTC calendar day.
+ * Uses "slot started" (`hourUtc`:00) instead of exact-hour match so a **once-daily** cron
+ * (required on Vercel Hobby) can sweep after all hours — e.g. `30 23 * * *`.
+ */
 export function isReportScheduleDue(schedule: CtReportSchedule, now: Date): boolean {
-  if (now.getUTCHours() !== schedule.hourUtc) return false;
   if (schedule.frequency === "WEEKLY") {
     if (schedule.dayOfWeek == null) return false;
     if (now.getUTCDay() !== schedule.dayOfWeek) return false;
   }
+  const slotStart = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate(),
+    schedule.hourUtc,
+    0,
+    0,
+    0,
+  );
+  if (now.getTime() < slotStart) return false;
+
   const today = utcDayStart(now);
   if (!schedule.lastRunAt) return true;
   return utcDayStart(schedule.lastRunAt) < today;
