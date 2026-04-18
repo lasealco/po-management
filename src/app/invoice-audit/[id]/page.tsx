@@ -247,6 +247,16 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
         }
       />
 
+      <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+        <h2 className="text-sm font-semibold text-zinc-900">Escalation &amp; carrier comms (MVP)</h2>
+        <p className="mt-2 text-sm text-zinc-600">
+          This module does not send email or EDI to carriers. For disputes or clarifications, use your normal carrier or
+          forwarder workflow and keep references in{" "}
+          <span className="font-medium text-zinc-800">raw source notes</span> or your ticket system. Line-level outcomes
+          and stored JSON here remain the audit trail for matched pricing.
+        </p>
+      </section>
+
       <InvoiceAccountingHandoffScaffold
         intakeId={intake.id}
         canEdit={canEdit}

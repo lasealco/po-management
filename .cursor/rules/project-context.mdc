@@ -34,6 +34,8 @@ alwaysApply: true
 - **`npm run check:invoice-audit`** — scoped ESLint + Vitest for `src/lib/invoice-audit`, `src/lib/booking-pricing-snapshot` (snapshot JSON serializers), invoice-audit / pricing-snapshot UI + API paths (fast loop).
 - **`npm run verify:tariff-engine`** — same as above, then **`npx tsc --noEmit`** (stricter gate before merge).
 - **`npm test`** — Vitest uses `vitest.config.ts` `include` (tariff-engine lib tests only in this repo); same cases as **`npm run test:invoice-audit`** when you pass explicit paths there.
+- **Migrations before preview/demo:** run **`npm run db:migrate`** (or deploy) so invoice-audit tables match `schema.prisma` (including accounting-handoff columns on `invoice_intakes`).
+- **Invoice audit E2E demo row (optional):** after **`db:seed`** and at least one **pricing snapshot** exists for `demo-company`, run **`USE_DOTENV_LOCAL=1 npm run db:seed:invoice-audit-demo`** — creates/replaces intake **`DEMO-INVOICE-AUDIT-SEED`** (PARSED + sample lines); then open **`/invoice-audit/<id>`** and **Run audit** in the UI.
 
 ## Ship workflow
 

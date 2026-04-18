@@ -163,11 +163,19 @@ export function InvoiceAuditNewClient(props: { initialSnapshotId?: string }) {
         return;
       }
       if (runAuditAfterSave) {
-        await fetch(`/api/invoice-audit/intakes/${intakeId}/run-audit`, {
+        const auditRes = await fetch(`/api/invoice-audit/intakes/${intakeId}/run-audit`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: "{}",
         });
+        const auditData = (await auditRes.json().catch(() => ({}))) as { error?: string };
+        if (!auditRes.ok) {
+          setError(
+            `Intake saved, but audit failed (${auditRes.status}): ${auditData.error ?? "Unknown error"}. Open the intake to inspect and re-run audit.`,
+          );
+          router.push(`/invoice-audit/${intakeId}`);
+          return;
+        }
       }
       router.push(`/invoice-audit/${intakeId}`);
     } finally {
@@ -184,6 +192,13 @@ export function InvoiceAuditNewClient(props: { initialSnapshotId?: string }) {
           Link a booking pricing snapshot, optional POL/POD (UN/LOCODE), then enter parsed lines with equipment and unit
           basis when known. Matching uses ocean rules (equipment, geography, unit basis, alias dictionary, all-in vs
           separated basket).
+        </p>
+        <p className="mt-3 rounded-xl border border-zinc-200 bg-zinc-50/90 px-3 py-2 text-xs text-zinc-700">
+          <span className="font-semibold text-zinc-800">Prerequisites:</span> DB migrations applied (
+          <code className="rounded bg-white px-1 py-0.5 font-mono text-[11px]">npm run db:migrate</code>
+          ). For a repeatable demo intake after you have at least one snapshot, run{" "}
+          <code className="rounded bg-white px-1 py-0.5 font-mono text-[11px]">USE_DOTENV_LOCAL=1 npm run db:seed:invoice-audit-demo</code>{" "}
+          from the repo root.
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <button
