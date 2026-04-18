@@ -127,6 +127,39 @@ describe("auditOceanInvoiceLine", () => {
     expect(r.expectedAmount?.toString()).toBe("185");
   });
 
+  it("prefers RFQ line whose POL hint matches intake when labels and amounts are identical", () => {
+    const rfqBase = {
+      kind: "RFQ_LINE" as const,
+      currency: "USD",
+      raw: {},
+      equipmentHint: null,
+      unitBasis: null,
+      isIncluded: false,
+      isMandatory: null as boolean | null,
+      rateType: "FREIGHT" as string | null,
+    };
+    const r = auditOceanInvoiceLine({
+      ...baseParams,
+      snapshotSourceType: "QUOTE_RESPONSE",
+      intake: { polCode: "USNYC", podCode: null },
+      invoiceLine: {
+        rawDescription: "Freight all-in",
+        normalizedLabel: null,
+        currency: "USD",
+        amount: new Prisma.Decimal("3200"),
+        unitBasis: null,
+        equipmentType: null,
+        chargeStructureHint: "ITEMIZED",
+      },
+      candidates: [
+        { ...rfqBase, id: "l-pol-miss", label: "Freight all-in", amount: 3200, originCode: null, destCode: null },
+        { ...rfqBase, id: "l-pol-hit", label: "Freight all-in", amount: 3200, originCode: "USNYC", destCode: null },
+      ],
+    });
+    expect(r.outcome).toBe("GREEN");
+    expect(r.snapshotMatchedJson).toMatchObject({ id: "l-pol-hit" });
+  });
+
   it("all-in single line without equipment uses contract snapshot grand (avoids summing every FCL rate)", () => {
     const r = auditOceanInvoiceLine({
       ...baseParams,

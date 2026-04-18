@@ -52,6 +52,32 @@ describe("extractSnapshotPriceCandidates", () => {
     expect(charges[0]!.originCode).toBe("USNYC");
   });
 
+  it("maps quoteRequest origin/destination labels to RFQ_LINE POL/POD hints (UN/LOCODE)", () => {
+    const out = extractSnapshotPriceCandidates({
+      sourceType: "QUOTE_RESPONSE",
+      quoteRequest: {
+        originLabel: "Export USNYC / PANYNJ",
+        destinationLabel: "DEHAM Hamburg",
+      },
+      lines: [
+        {
+          id: "l1",
+          lineType: "FREIGHT",
+          label: "Ocean FCL",
+          amount: "3200",
+          currency: "USD",
+          unitBasis: "PER_CONTAINER",
+          isIncluded: false,
+        },
+      ],
+      totals: { grand: 3200 },
+    });
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+    expect(out.candidates[0]!.originCode).toBe("USNYC");
+    expect(out.candidates[0]!.destCode).toBe("DEHAM");
+  });
+
   it("parses QUOTE_RESPONSE lines and totals.grand", () => {
     const out = extractSnapshotPriceCandidates({
       sourceType: "QUOTE_RESPONSE",

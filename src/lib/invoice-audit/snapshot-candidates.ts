@@ -51,6 +51,13 @@ function geoCode(g: unknown): string | null {
   return null;
 }
 
+/** Best-effort UN/LOCODE (5-letter) from free-text RFQ origin/destination labels. */
+function locodeFromFreeText(s: unknown): string | null {
+  if (typeof s !== "string" || !s.trim()) return null;
+  const m = s.toUpperCase().match(/\b([A-Z]{2}[A-Z0-9]{3})\b/);
+  return m?.[1] ?? null;
+}
+
 /**
  * Reads frozen `breakdownJson` from a booking pricing snapshot into comparable price lines
  * (ocean-aware fields: equipment, unit basis, POL/POD codes on rates, charge flags).
@@ -144,6 +151,9 @@ export function extractSnapshotPriceCandidates(breakdownJson: unknown): Snapshot
         category: DISCREPANCY_CATEGORY.SNAPSHOT_PARSE_ERROR,
       };
     }
+    const qr = breakdownJson.quoteRequest;
+    const rfqOriginHint = isRecord(qr) ? locodeFromFreeText(qr.originLabel) : null;
+    const rfqDestHint = isRecord(qr) ? locodeFromFreeText(qr.destinationLabel) : null;
     for (const row of lines) {
       if (!isRecord(row) || typeof row.id !== "string") continue;
       const amount = num(row.amount);
@@ -161,8 +171,8 @@ export function extractSnapshotPriceCandidates(breakdownJson: unknown): Snapshot
         raw: row as unknown as Prisma.JsonValue,
         equipmentHint,
         unitBasis: typeof row.unitBasis === "string" ? row.unitBasis.trim() : null,
-        originCode: null,
-        destCode: null,
+        originCode: rfqOriginHint,
+        destCode: rfqDestHint,
         isIncluded: typeof row.isIncluded === "boolean" ? row.isIncluded : null,
         isMandatory: null,
         rateType: typeof row.lineType === "string" ? row.lineType.trim() : null,

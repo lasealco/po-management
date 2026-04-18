@@ -141,6 +141,12 @@ function polPodScore(
   if (podU && c.kind === "CONTRACT_CHARGE" && c.originCode && c.originCode === podU) {
     delta += 2;
   }
+  if (polU && c.kind === "RFQ_LINE" && c.originCode && c.originCode === polU) {
+    delta += 3;
+  }
+  if (podU && c.kind === "RFQ_LINE" && c.destCode && c.destCode === podU) {
+    delta += 2;
+  }
   return { delta, suppressGeoSoftFlag };
 }
 
