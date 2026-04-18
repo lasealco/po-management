@@ -108,7 +108,7 @@ export function SupplierCreateForm({
       <WorkflowHeader
         eyebrow="Create supplier"
         title="New supplier"
-        description="Intake captures master data; after save you land on the onboarding checklist. Contacts and offices can be added on the profile overview."
+        description="Intake captures master data; after save you land on the onboarding checklist. Typical demo: finish checklist → Documents (controlled categories + expiry) → Compliance (readiness strip) → switch demo user to approver and approve. Contacts and offices live on Overview."
         steps={["Step 1: Partner type", "Step 2: Company and address", "Step 3: Commercial defaults & intake notes"]}
         className="border-0 bg-transparent p-0 shadow-none"
       />

@@ -731,9 +731,49 @@ export function SupplierDetailClient({
           <p className="mt-1 text-xs text-amber-900/90">
             This supplier is not active until an approver confirms it. Every onboarding checklist item
             must be <strong className="font-semibold">done</strong> or <strong className="font-semibold">waived</strong>{" "}
-            before Approve &amp; activate will succeed (see the Onboarding tab). Use Reject to block
-            further onboarding completion.
+            before <strong className="font-semibold">Approve and activate</strong> will succeed. Register
+            documents (especially <strong className="font-semibold">insurance</strong>,{" "}
+            <strong className="font-semibold">license</strong>, or{" "}
+            <strong className="font-semibold">certificate</strong> with an expiry) so the Compliance tab
+            readiness strip has something to evaluate. Use Reject to block activation.
           </p>
+          {isSrmShell ? (
+            <div className="mt-3 border-t border-amber-200/70 pt-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-900/85">
+                Demo path — jump to tabs
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="rounded-md border border-amber-300 bg-white px-2.5 py-1 text-xs font-medium text-amber-950 hover:bg-amber-100"
+                  onClick={() => selectSrmTab("onboarding")}
+                >
+                  Onboarding checklist
+                </button>
+                <button
+                  type="button"
+                  className="rounded-md border border-amber-300 bg-white px-2.5 py-1 text-xs font-medium text-amber-950 hover:bg-amber-100"
+                  onClick={() => selectSrmTab("documents")}
+                >
+                  Documents
+                </button>
+                <button
+                  type="button"
+                  className="rounded-md border border-amber-300 bg-white px-2.5 py-1 text-xs font-medium text-amber-950 hover:bg-amber-100"
+                  onClick={() => selectSrmTab("compliance")}
+                >
+                  Compliance signals
+                </button>
+              </div>
+              {!canApprove ? (
+                <p className="mt-2 text-xs text-amber-900/90">
+                  To approve: open <strong className="font-semibold">Settings → Demo session</strong> and act as{" "}
+                  <strong className="font-semibold">approver@demo-company.com</strong> (password{" "}
+                  <code className="rounded bg-amber-100/80 px-1">demo12345</code>), then return here.
+                </p>
+              ) : null}
+            </div>
+          ) : null}
           {canApprove ? (
             <div className="mt-3 flex flex-wrap gap-2">
               <button
@@ -742,7 +782,7 @@ export function SupplierDetailClient({
                 onClick={() => void submitApproval("approve")}
                 className="rounded-md bg-[var(--arscmp-primary)] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
               >
-                Approve &amp; activate
+                Approve and activate
               </button>
               <button
                 type="button"
