@@ -162,11 +162,14 @@ export default async function PricingSnapshotsListPage() {
                     <td className="py-3 pr-4 tabular-nums text-zinc-800">
                       {fmtMoney(s.totalEstimatedCost.toString(), s.currency)}
                     </td>
-                    <td className="py-3 pr-4 text-zinc-600">
+                    <td className="py-3 pr-4 align-top text-zinc-600">
                       {s.shipmentBooking ? (
-                        <span className="font-mono text-xs">
-                          {s.shipmentBooking.bookingNo ?? s.shipmentBooking.id.slice(0, 8)}
-                        </span>
+                        <div className="space-y-1">
+                          {s.shipmentBooking.bookingNo ? (
+                            <div className="text-xs font-medium text-zinc-800">{s.shipmentBooking.bookingNo}</div>
+                          ) : null}
+                          <RecordIdCopy id={s.shipmentBooking.id} copyButtonLabel="Copy booking id" />
+                        </div>
                       ) : (
                         <span className="text-zinc-400">—</span>
                       )}

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { DemoSeedCopyBlock } from "@/components/invoice-audit/demo-seed-copy-block";
+import { RecordIdCopy } from "@/components/invoice-audit/record-id-copy";
 import { formatInvoiceAuditApiError } from "@/lib/invoice-audit/invoice-audit-api-client-error";
 import { INVOICE_AUDIT_DEMO_SEED_CLI } from "@/lib/invoice-audit/invoice-audit-demo-constants";
 
@@ -278,14 +279,17 @@ export function InvoiceAuditNewClient(props: { initialSnapshotId?: string }) {
               placeholder="BookingPricingSnapshot id (cuid)"
             />
             {snapshotId.trim() ? (
-              <p className="mt-2 text-xs">
-                <Link
-                  href={`/pricing-snapshots/${encodeURIComponent(snapshotId.trim())}`}
-                  className="font-medium text-[var(--arscmp-primary)] hover:underline"
-                >
-                  Open snapshot (audit hints and geography)
-                </Link>
-              </p>
+              <div className="mt-2 space-y-2">
+                <p className="text-xs">
+                  <Link
+                    href={`/pricing-snapshots/${encodeURIComponent(snapshotId.trim())}`}
+                    className="font-medium text-[var(--arscmp-primary)] hover:underline"
+                  >
+                    Open snapshot (audit hints and geography)
+                  </Link>
+                </p>
+                <RecordIdCopy id={snapshotId.trim()} copyButtonLabel="Copy snapshot id" />
+              </div>
             ) : null}
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
