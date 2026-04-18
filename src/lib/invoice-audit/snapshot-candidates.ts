@@ -21,7 +21,14 @@ export type SnapshotPriceCandidate = {
 };
 
 export type SnapshotCandidatesResult =
-  | { ok: true; candidates: SnapshotPriceCandidate[]; sourceType: string; rfqGrandTotal: number | null }
+  | {
+      ok: true;
+      candidates: SnapshotPriceCandidate[];
+      sourceType: string;
+      rfqGrandTotal: number | null;
+      /** Contract snapshot `totals.grand` when present (frozen full stack). */
+      contractGrandTotal: number | null;
+    }
   | { ok: false; error: string; category: typeof DISCREPANCY_CATEGORY.SNAPSHOT_PARSE_ERROR };
 
 function num(v: unknown): number | null {
@@ -59,6 +66,7 @@ export function extractSnapshotPriceCandidates(breakdownJson: unknown): Snapshot
   const sourceType = String(breakdownJson.sourceType ?? "");
   const candidates: SnapshotPriceCandidate[] = [];
   let rfqGrandTotal: number | null = null;
+  let contractGrandTotal: number | null = null;
 
   if (sourceType === "TARIFF_CONTRACT_VERSION") {
     const rateLines = breakdownJson.rateLines;
@@ -119,7 +127,12 @@ export function extractSnapshotPriceCandidates(breakdownJson: unknown): Snapshot
         });
       }
     }
-    return { ok: true, candidates, sourceType, rfqGrandTotal: null };
+    const totals = breakdownJson.totals;
+    if (isRecord(totals)) {
+      const g = num(totals.grand);
+      if (g != null) contractGrandTotal = g;
+    }
+    return { ok: true, candidates, sourceType, rfqGrandTotal: null, contractGrandTotal };
   }
 
   if (sourceType === "QUOTE_RESPONSE") {
@@ -160,7 +173,7 @@ export function extractSnapshotPriceCandidates(breakdownJson: unknown): Snapshot
       const g = num(totals.grand);
       if (g != null) rfqGrandTotal = g;
     }
-    return { ok: true, candidates, sourceType, rfqGrandTotal };
+    return { ok: true, candidates, sourceType, rfqGrandTotal, contractGrandTotal: null };
   }
 
   return {

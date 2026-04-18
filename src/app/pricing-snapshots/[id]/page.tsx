@@ -84,6 +84,14 @@ export default async function PricingSnapshotDetailPage(props: { params: Promise
                   {row.currency}.
                 </>
               ) : null}
+              {auditExtract.sourceType === "TARIFF_CONTRACT_VERSION" && auditExtract.contractGrandTotal != null ? (
+                <>
+                  {" "}
+                  Contract frozen grand:{" "}
+                  <span className="font-mono font-semibold text-zinc-800">{auditExtract.contractGrandTotal}</span>{" "}
+                  {row.currency} (used for all-in lines when invoice equipment is not set).
+                </>
+              ) : null}
             </p>
           ) : (
             <p className="mt-2 text-sm text-amber-900">

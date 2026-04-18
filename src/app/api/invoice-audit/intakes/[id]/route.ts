@@ -28,6 +28,8 @@ export async function GET(_request: Request, ctx: { params: Promise<{ id: string
         vendorLabel: row.vendorLabel,
         invoiceDate: row.invoiceDate?.toISOString().slice(0, 10) ?? null,
         currency: row.currency,
+        polCode: row.polCode,
+        podCode: row.podCode,
         rawSourceNotes: row.rawSourceNotes,
         parseError: row.parseError,
         parseWarnings: row.parseWarnings,

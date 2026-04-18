@@ -9,6 +9,7 @@ const baseParams = {
   intake: { polCode: null, podCode: null },
   snapshotSourceType: "TARIFF_CONTRACT_VERSION",
   rfqGrandTotal: null as number | null,
+  contractGrandTotal: null as number | null,
   aliases: [] as { pattern: string; canonicalTokens: string[]; targetKind: string | null; priority: number }[],
   amountAbsTolerance: 25,
   percentTolerance: 0.015,
@@ -30,6 +31,24 @@ function charge(
     isIncluded: false,
     isMandatory: true,
     rateType: null,
+    ...partial,
+  };
+}
+
+function rate(
+  partial: Partial<SnapshotPriceCandidate> & Pick<SnapshotPriceCandidate, "id" | "label" | "amount">,
+): SnapshotPriceCandidate {
+  return {
+    kind: "CONTRACT_RATE",
+    currency: "USD",
+    raw: {},
+    equipmentHint: null,
+    unitBasis: null,
+    originCode: null,
+    destCode: null,
+    isIncluded: null,
+    isMandatory: null,
+    rateType: "FAK",
     ...partial,
   };
 }
@@ -106,5 +125,28 @@ describe("auditOceanInvoiceLine", () => {
     });
     expect(r.outcome).toBe("GREEN");
     expect(r.expectedAmount?.toString()).toBe("185");
+  });
+
+  it("all-in single line without equipment uses contract snapshot grand (avoids summing every FCL rate)", () => {
+    const r = auditOceanInvoiceLine({
+      ...baseParams,
+      invoiceLineCount: 1,
+      contractGrandTotal: 5000,
+      invoiceLine: {
+        rawDescription: "All-in ocean freight lump sum",
+        normalizedLabel: null,
+        currency: "USD",
+        amount: new Prisma.Decimal("5000"),
+        unitBasis: null,
+        equipmentType: null,
+        chargeStructureHint: null,
+      },
+      candidates: [
+        rate({ id: "r20", label: "FAK 20DV", amount: 1800, equipmentHint: "20DV", currency: "USD" }),
+        rate({ id: "r40", label: "FAK 40HC", amount: 3200, equipmentHint: "40HC", currency: "USD" }),
+      ],
+    });
+    expect(r.outcome).toBe("GREEN");
+    expect(r.snapshotMatchedJson).toMatchObject({ mode: "CONTRACT_BREAKDOWN_GRAND", expectedAmount: 5000 });
   });
 });

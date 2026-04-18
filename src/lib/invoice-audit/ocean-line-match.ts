@@ -250,6 +250,8 @@ export function auditOceanInvoiceLine(params: {
   candidates: SnapshotPriceCandidate[];
   snapshotSourceType: string;
   rfqGrandTotal: number | null;
+  /** Frozen contract `totals.grand` when extractor found it; used for all-in without equipment. */
+  contractGrandTotal: number | null;
   aliases: InvoiceChargeAliasRow[];
   amountAbsTolerance: number;
   percentTolerance: number;
@@ -286,6 +288,21 @@ export function auditOceanInvoiceLine(params: {
       expected = rfq.total;
       components = rfq.components;
       mode = "RFQ_ALL_IN_TOTAL";
+    } else if (
+      invoiceEqKey == null &&
+      params.contractGrandTotal != null &&
+      Number.isFinite(params.contractGrandTotal)
+    ) {
+      expected = params.contractGrandTotal;
+      components = [
+        {
+          kind: "CONTRACT_SNAPSHOT_GRAND",
+          id: "totals.grand",
+          label: "Contract snapshot grand total (rates + charges)",
+          amount: expected,
+        },
+      ];
+      mode = "CONTRACT_BREAKDOWN_GRAND";
     } else {
       const basket = buildContractOceanBasket({ candidates: params.candidates, equipmentKey: invoiceEqKey });
       expected = basket.total;

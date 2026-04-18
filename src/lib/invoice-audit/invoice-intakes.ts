@@ -229,7 +229,7 @@ export async function runInvoiceAuditForIntake(params: {
     throw new InvoiceAuditError("BAD_INPUT", extracted.error);
   }
 
-  const { candidates, sourceType, rfqGrandTotal } = extracted;
+  const { candidates, sourceType, rfqGrandTotal, contractGrandTotal } = extracted;
 
   const aliasRows = await prisma.invoiceChargeAlias.findMany({
     where: { tenantId: intake.tenantId, active: true },
@@ -298,6 +298,7 @@ export async function runInvoiceAuditForIntake(params: {
           candidates,
           snapshotSourceType: sourceType,
           rfqGrandTotal,
+          contractGrandTotal,
           aliases,
           amountAbsTolerance,
           percentTolerance,

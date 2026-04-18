@@ -31,6 +31,8 @@ export function serializeInvoiceLine(l: InvoiceLine) {
     currency: l.currency,
     amount: l.amount.toString(),
     unitBasis: l.unitBasis,
+    equipmentType: l.equipmentType,
+    chargeStructureHint: l.chargeStructureHint,
     quantity: l.quantity?.toString() ?? null,
     sourceRowJson: l.sourceRowJson,
     parseConfidence: l.parseConfidence,

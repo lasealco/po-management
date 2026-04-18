@@ -35,6 +35,7 @@ export function auditInvoiceLineAgainstCandidates(params: {
     candidates: params.candidates,
     snapshotSourceType: "TARIFF_CONTRACT_VERSION",
     rfqGrandTotal: null,
+    contractGrandTotal: null,
     aliases: [],
     amountAbsTolerance: params.amountAbsTolerance,
     percentTolerance: params.percentTolerance,

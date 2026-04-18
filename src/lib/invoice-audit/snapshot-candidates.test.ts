@@ -33,11 +33,13 @@ describe("extractSnapshotPriceCandidates", () => {
           geographyScope: { code: "USNYC" },
         },
       ],
+      totals: { grand: 2285 },
     });
     expect(out.ok).toBe(true);
     if (!out.ok) return;
     expect(out.sourceType).toBe("TARIFF_CONTRACT_VERSION");
     expect(out.rfqGrandTotal).toBeNull();
+    expect(out.contractGrandTotal).toBe(2285);
     const rates = out.candidates.filter((c) => c.kind === "CONTRACT_RATE");
     const charges = out.candidates.filter((c) => c.kind === "CONTRACT_CHARGE");
     expect(rates).toHaveLength(1);
@@ -70,6 +72,7 @@ describe("extractSnapshotPriceCandidates", () => {
     expect(out.ok).toBe(true);
     if (!out.ok) return;
     expect(out.rfqGrandTotal).toBe(3250);
+    expect(out.contractGrandTotal).toBeNull();
     expect(out.candidates[0]!.kind).toBe("RFQ_LINE");
     expect(out.candidates[0]!.equipmentHint).toBe("40HC");
   });
