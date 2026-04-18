@@ -14,12 +14,18 @@ const items = [
       (p.startsWith("/invoice-audit/") &&
         !p.startsWith("/invoice-audit/new") &&
         !p.startsWith("/invoice-audit/tolerance-rules") &&
+        !p.startsWith("/invoice-audit/charge-aliases") &&
         !p.startsWith("/invoice-audit/readiness")),
   },
   {
     href: "/invoice-audit/tolerance-rules",
     label: "Tolerance rules",
     match: (p: string) => p.startsWith("/invoice-audit/tolerance-rules"),
+  },
+  {
+    href: "/invoice-audit/charge-aliases",
+    label: "Charge aliases",
+    match: (p: string) => p.startsWith("/invoice-audit/charge-aliases"),
   },
   {
     href: "/invoice-audit/readiness",

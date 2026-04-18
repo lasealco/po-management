@@ -43,7 +43,11 @@ export function InvoiceMatchResultPanel(props: {
             — <span className="font-medium text-zinc-800">{props.snapshotSummary}</span>
           </>
         ) : null}
-        . Ocean scoring uses equipment, optional POL/POD, unit basis, tenant charge aliases, built-in wording expansion
+        . Ocean scoring uses equipment, optional POL/POD, unit basis,{" "}
+        <Link href="/invoice-audit/charge-aliases" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+          tenant charge aliases
+        </Link>
+        , built-in wording expansion
         (for example THC, AMS, demurrage, customs, ETS), and all-in vs itemized logic; amounts use active tolerance
         rules (or built-in defaults if none apply). Per-line outcomes use the{" "}
         <span className="font-medium text-zinc-800">Snapshot match</span> column for a short label; expand stored JSON

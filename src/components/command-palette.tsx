@@ -245,6 +245,13 @@ export function CommandPalette({ grants }: { grants: CommandPaletteGrants }) {
           action: go("/invoice-audit/tolerance-rules"),
         },
         {
+          id: "invoice-audit-charge-aliases",
+          label: "Invoice audit — charge aliases",
+          hint: "Map invoice wording to snapshot matching tokens",
+          searchText: "invoice charge alias dictionary matching ocean line",
+          action: go("/invoice-audit/charge-aliases"),
+        },
+        {
           id: "invoice-audit-readiness",
           label: "Invoice audit — database readiness",
           hint: "Verify Phase 06 tables and migrations on Postgres",

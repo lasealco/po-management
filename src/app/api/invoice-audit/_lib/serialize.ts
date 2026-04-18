@@ -1,9 +1,27 @@
 import type {
   InvoiceAuditResult,
+  InvoiceChargeAlias,
   InvoiceIntake,
   InvoiceLine,
   InvoiceToleranceRule,
 } from "@prisma/client";
+
+export function serializeInvoiceChargeAlias(r: InvoiceChargeAlias) {
+  const raw = r.canonicalTokens;
+  const tokens = Array.isArray(raw) ? raw.map((x) => String(x)) : [];
+  return {
+    id: r.id,
+    tenantId: r.tenantId,
+    name: r.name,
+    pattern: r.pattern,
+    canonicalTokens: tokens,
+    targetKind: r.targetKind,
+    priority: r.priority,
+    active: r.active,
+    createdAt: r.createdAt.toISOString(),
+    updatedAt: r.updatedAt.toISOString(),
+  };
+}
 
 export function serializeToleranceRule(r: InvoiceToleranceRule) {
   return {
