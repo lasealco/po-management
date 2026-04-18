@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { RecordIdCopy } from "@/components/invoice-audit/record-id-copy";
+
 export type StagingRowView = {
   id: string;
   rowType: string;
@@ -52,6 +54,7 @@ export function TariffImportStagingGridClient({
         <thead>
           <tr className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500">
             <th className="py-2 pl-4 pr-2">Row type</th>
+            <th className="py-2 pr-2">Staging row id</th>
             <th className="py-2 pr-2">Summary</th>
             <th className="py-2 pr-2">Approved</th>
             <th className="py-2 pr-4">Payload</th>
@@ -60,7 +63,7 @@ export function TariffImportStagingGridClient({
         <tbody>
           {rows.length === 0 ? (
             <tr>
-              <td colSpan={4} className="px-4 py-10 text-center text-zinc-500">
+              <td colSpan={5} className="px-4 py-10 text-center text-zinc-500">
                 No staging rows yet. Upload completes with parse status &quot;Uploaded&quot;; a future parser will
                 populate this grid. You can load sample rows from the workflow panel to preview columns.
               </td>
@@ -76,6 +79,9 @@ export function TariffImportStagingGridClient({
             return (
               <tr key={r.id} className="border-b border-zinc-100 align-top">
                 <td className="py-2 pl-4 pr-2 font-mono text-xs text-zinc-700">{r.rowType}</td>
+                <td className="py-2 pr-2 align-top">
+                  <RecordIdCopy id={r.id} copyButtonLabel="Copy staging row id" />
+                </td>
                 <td className="max-w-xs py-2 pr-2 text-xs text-zinc-800">{summary}</td>
                 <td className="py-2 pr-2">
                   {canEdit ? (

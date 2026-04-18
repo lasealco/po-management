@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { RecordIdCopy } from "@/components/invoice-audit/record-id-copy";
+
 export type ClarificationRow = {
   id: string;
   body: string;
@@ -67,8 +69,11 @@ export function RfqClarificationsClient({
           <li key={m.id} className="px-4 py-3">
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-500">
               <span>{m.authorName ?? "User"}</span>
-              <span>
-                {m.createdAt} · {m.visibility}
+              <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span>
+                  {m.createdAt} · {m.visibility}
+                </span>
+                <RecordIdCopy id={m.id} copyButtonLabel="Copy message id" />
               </span>
             </div>
             <p className="mt-2 whitespace-pre-wrap text-sm text-zinc-800">{m.body}</p>

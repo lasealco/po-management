@@ -88,6 +88,7 @@ export default async function PricingSnapshotsListPage() {
               <tr className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500">
                 <th className="py-2 pr-4">Frozen</th>
                 <th className="py-2 pr-4">Source</th>
+                <th className="py-2 pr-4">Snapshot id</th>
                 <th className="py-2 pr-4">Summary</th>
                 <th className="py-2 pr-4">Total</th>
                 <th className="py-2 pr-4">Booking</th>
@@ -139,8 +140,12 @@ export default async function PricingSnapshotsListPage() {
                       <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-700">
                         {s.sourceType === "TARIFF_CONTRACT_VERSION" ? "Contract" : "RFQ"}
                       </span>
-                      <div className="mt-1 truncate font-mono text-[10px] text-zinc-500" title={s.sourceRecordId}>
-                        {s.sourceRecordId.length > 22 ? `${s.sourceRecordId.slice(0, 20)}…` : s.sourceRecordId}
+                      <div className="mt-1">
+                        {s.sourceRecordId.trim() ? (
+                          <RecordIdCopy id={s.sourceRecordId} copyButtonLabel="Copy source record id" />
+                        ) : (
+                          <span className="text-xs text-zinc-400">—</span>
+                        )}
                       </div>
                     </td>
                     <td className="py-3 pr-4 align-top">

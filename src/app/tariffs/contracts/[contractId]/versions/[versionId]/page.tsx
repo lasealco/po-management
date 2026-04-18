@@ -204,8 +204,8 @@ export default async function TariffContractVersionPage({
                     {row.user ? `${row.user.name} (${row.user.email})` : "System"}
                   </span>
                 </div>
-                <div className="mt-1 break-all font-mono text-[11px] text-zinc-500" title="Primary key for this audit row">
-                  {row.objectId}
+                <div className="mt-1">
+                  <RecordIdCopy id={row.objectId} copyButtonLabel="Copy object id" />
                 </div>
               </div>
             </li>

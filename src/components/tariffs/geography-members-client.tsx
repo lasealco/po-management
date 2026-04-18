@@ -4,6 +4,7 @@ import type { TariffGeographyType } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { RecordIdCopy } from "@/components/invoice-audit/record-id-copy";
 import { TARIFF_GEOGRAPHY_TYPES_ORDERED, tariffGeographyTypeLabel } from "@/lib/tariff/geography-labels";
 
 export type GeoMemberRow = {
@@ -137,6 +138,7 @@ export function GeographyMembersClient({ groupId, canEdit, members }: Props) {
           <thead>
             <tr className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500">
               <th className="py-2 pl-4 pr-3">Code</th>
+              <th className="py-2 pr-3">Member id</th>
               <th className="py-2 pr-3">Name</th>
               <th className="py-2 pr-3">Member type</th>
               <th className="py-2 pr-3">Valid from</th>
@@ -147,7 +149,7 @@ export function GeographyMembersClient({ groupId, canEdit, members }: Props) {
           <tbody>
             {members.length === 0 ? (
               <tr>
-                <td colSpan={canEdit ? 6 : 5} className="px-4 py-8 text-center text-zinc-500">
+                <td colSpan={canEdit ? 7 : 6} className="px-4 py-8 text-center text-zinc-500">
                   No members yet. Add UN/LOCODEs or other codes below.
                 </td>
               </tr>
@@ -161,6 +163,9 @@ export function GeographyMembersClient({ groupId, canEdit, members }: Props) {
                       value={editDraft.memberCode}
                       onChange={(e) => setEditDraft((d) => ({ ...d, memberCode: e.target.value }))}
                     />
+                  </td>
+                  <td className="py-2 pr-2 align-top">
+                    <RecordIdCopy id={m.id} copyButtonLabel="Copy member id" />
                   </td>
                   <td className="py-2 pr-2">
                     <input
@@ -225,6 +230,9 @@ export function GeographyMembersClient({ groupId, canEdit, members }: Props) {
               ) : (
                 <tr key={m.id} className="border-b border-zinc-100">
                   <td className="py-2 pl-4 pr-3 font-mono text-xs">{m.memberCode}</td>
+                  <td className="py-2 pr-3 align-top">
+                    <RecordIdCopy id={m.id} copyButtonLabel="Copy member id" />
+                  </td>
                   <td className="py-2 pr-3 text-zinc-700">{m.memberName ?? "—"}</td>
                   <td className="py-2 pr-3 text-xs text-zinc-600">{tariffGeographyTypeLabel(m.memberType)}</td>
                   <td className="py-2 pr-3 text-xs text-zinc-500">{m.validFrom ?? "—"}</td>
