@@ -46,13 +46,18 @@ export function InvoiceReviewScaffold(props: {
   }
 
   return (
-    <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-      <h2 className="text-sm font-semibold text-zinc-900">Manual review</h2>
+    <section id="invoice-audit-finance-review" className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Closeout · Step 2</p>
+      <h2 className="mt-1 text-sm font-semibold text-zinc-900">Finance review</h2>
       <p className="mt-2 text-sm text-zinc-600">
         Finance sign-off for this intake. <span className="font-medium text-zinc-800">Approve</span> when the audit
         outcome is acceptable; choose <span className="font-medium text-zinc-800">Override</span> to record acceptance
         with a documented exception (note is recommended). This does not change parsed lines or re-run matching — it
         only stores the decision on the intake for audit trail.
+      </p>
+      <p className="mt-2 text-xs text-zinc-500">
+        Saving a new decision here clears the <span className="font-medium text-zinc-700">accounting handoff</span>{" "}
+        (Step 3) so posting is never tied to an outdated review — re-mark Step 3 when ready.
       </p>
 
       {props.reviewDecision !== "NONE" ? (

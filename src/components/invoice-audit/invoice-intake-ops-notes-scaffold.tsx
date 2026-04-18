@@ -41,12 +41,13 @@ export function InvoiceIntakeOpsNotesScaffold(props: {
   }
 
   return (
-    <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-      <h2 className="text-sm font-semibold text-zinc-900">Ops &amp; escalation notes</h2>
+    <section id="invoice-audit-ops-notes" className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Closeout · Step 1</p>
+      <h2 className="mt-1 text-sm font-semibold text-zinc-900">Ops &amp; escalation notes</h2>
       <p className="mt-2 text-sm text-zinc-600">
-        Free-form context stored on the intake (carrier ticket ids, dispute references, who was contacted). This is
-        separate from parsed invoice lines and from finance review — it exists so escalation and comms work outside
-        the app still leave an audit trail here.
+        Free-form context stored on the intake (carrier ticket ids, dispute references, who was contacted). Use this
+        first when lines look wrong or need a carrier response — it is separate from parsed lines and from finance
+        review, and it stays on the record when escalation happens outside the app.
       </p>
       <textarea
         className="mt-3 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-inner disabled:opacity-50"

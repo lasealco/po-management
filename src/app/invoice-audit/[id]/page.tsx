@@ -80,6 +80,13 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
   ]);
   const discrepancyRollupAttention = discrepancyRollup.filter(([k]) => !rollupAttentionKeys.has(k));
 
+  const suggestCloseoutDocumentation =
+    intake.status === "AUDITED" &&
+    (intake.rollupOutcome === "FAIL" ||
+      intake.rollupOutcome === "WARN" ||
+      intake.unknownLineCount > 0 ||
+      intake.redLineCount > 0);
+
   return (
     <main className="mx-auto max-w-6xl space-y-6 px-6 py-10">
       <div>
@@ -112,6 +119,7 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
         amberLineCount={intake.amberLineCount}
         redLineCount={intake.redLineCount}
         unknownLineCount={intake.unknownLineCount}
+        suggestCloseoutDocumentation={suggestCloseoutDocumentation}
       />
 
       <InvoiceMatchResultPanel
@@ -283,6 +291,61 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
         </p>
       </section>
 
+      <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Workflow</p>
+        <h2 className="mt-1 text-sm font-semibold text-zinc-900">Closeout: ops → finance → accounting</h2>
+        <p className="mt-2 text-sm text-zinc-600">
+          After audit completes, work top to bottom. Intake <span className="font-medium text-zinc-800">status</span>{" "}
+          and <span className="font-medium text-zinc-800">rollup</span> are operational labels for this workspace —
+          they are not sent to carriers or ERP from this screen.
+        </p>
+        <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm text-zinc-600">
+          <li>
+            <span className="font-medium text-zinc-800">Step 1</span> — Ops notes for tickets, contacts, dispute
+            context.
+          </li>
+          <li>
+            <span className="font-medium text-zinc-800">Step 2</span> — Finance review for commercial acceptance.
+          </li>
+          <li>
+            <span className="font-medium text-zinc-800">Step 3</span> — Accounting handoff when posting may proceed.
+          </li>
+        </ol>
+      </section>
+
+      <InvoiceIntakeOpsNotesScaffold
+        intakeId={intake.id}
+        canEdit={canEdit}
+        initialNotes={intake.rawSourceNotes}
+      />
+
+      <section id="invoice-audit-escalation" className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+        <h2 className="text-sm font-semibold text-zinc-900">Escalation &amp; carrier comms (MVP)</h2>
+        <p className="mt-2 text-sm text-zinc-600">
+          This module does not send email or EDI to carriers. Use your normal carrier or forwarder workflow outside the
+          app, then leave an audit trail here.
+        </p>
+        <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-zinc-600">
+          <li>
+            <span className="font-medium text-zinc-800">Status / rollup</span> are placeholders for triage — not
+            integrated carrier or accounting feeds.
+          </li>
+          <li>
+            Put ticket ids and who was contacted in{" "}
+            <a href="#invoice-audit-ops-notes" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+              Step 1 — Ops &amp; escalation notes
+            </a>
+            .
+          </li>
+          <li>
+            <span className="font-medium text-zinc-800">Finance review</span> documents acceptance;{" "}
+            <span className="font-medium text-zinc-800">Accounting handoff</span> flags readiness for downstream
+            posting.
+          </li>
+          <li>Per-line outcomes and stored JSON remain the technical audit trail for matched pricing.</li>
+        </ul>
+      </section>
+
       <InvoiceReviewScaffold
         intakeId={intake.id}
         canEdit={canEdit}
@@ -294,22 +357,6 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
             : null
         }
       />
-
-      <InvoiceIntakeOpsNotesScaffold
-        intakeId={intake.id}
-        canEdit={canEdit}
-        initialNotes={intake.rawSourceNotes}
-      />
-
-      <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-        <h2 className="text-sm font-semibold text-zinc-900">Escalation &amp; carrier comms (MVP)</h2>
-        <p className="mt-2 text-sm text-zinc-600">
-          This module does not send email or EDI to carriers. For disputes or clarifications, use your normal carrier
-          or forwarder workflow and record ticket ids or contact log in{" "}
-          <span className="font-medium text-zinc-800">Ops &amp; escalation notes</span> above. Line-level outcomes and
-          stored JSON remain the audit trail for matched pricing.
-        </p>
-      </section>
 
       <InvoiceAccountingHandoffScaffold
         intakeId={intake.id}

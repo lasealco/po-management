@@ -58,12 +58,14 @@ export function InvoiceAccountingHandoffScaffold(props: {
   }
 
   return (
-    <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-      <h2 className="text-sm font-semibold text-zinc-900">Accounting handoff</h2>
+    <section id="invoice-audit-accounting-handoff" className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Closeout · Step 3</p>
+      <h2 className="mt-1 text-sm font-semibold text-zinc-900">Accounting handoff</h2>
       <p className="mt-2 text-sm text-zinc-600">
-        Use this after finance review when the intake should move to posting or ERP export. The flag is separate from
-        Approve/Override — it records that accounting may proceed, with an optional reference (GL, batch id, ticket).
-        Re-running audit or changing finance review clears this flag so handoff is never stale.
+        Use after <span className="font-medium text-zinc-800">Step 2 — Finance review</span> when the intake should move
+        to posting or ERP export. The flag is separate from Approve/Override — it records that accounting may proceed,
+        with an optional reference (GL, batch id, ticket). Re-running audit or saving a new finance review clears this
+        flag so handoff is never stale.
       </p>
 
       {props.approvedForAccounting ? (

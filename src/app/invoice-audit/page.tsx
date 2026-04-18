@@ -25,6 +25,21 @@ function accountingBadge(ready: boolean) {
   return "bg-zinc-50 text-zinc-500 ring-1 ring-zinc-200";
 }
 
+function needsCloseoutFollowThrough(row: {
+  status: string;
+  rollupOutcome: string;
+  unknownLineCount: number;
+  redLineCount: number;
+}) {
+  if (row.status !== "AUDITED") return false;
+  return (
+    row.rollupOutcome === "FAIL" ||
+    row.rollupOutcome === "WARN" ||
+    row.unknownLineCount > 0 ||
+    row.redLineCount > 0
+  );
+}
+
 export default async function InvoiceAuditListPage() {
   const tenant = await getDemoTenant();
   const access = await getViewerGrantSet();
@@ -99,6 +114,7 @@ export default async function InvoiceAuditListPage() {
                   const lineTotal =
                     row.greenLineCount + row.amberLineCount + row.redLineCount + row.unknownLineCount;
                   const parsedLines = row._count.lines;
+                  const closeoutNudge = needsCloseoutFollowThrough(row);
                   return (
                     <tr key={row.id} className="border-b border-zinc-100">
                       <td className="py-3 pr-4 text-zinc-700">
@@ -113,6 +129,11 @@ export default async function InvoiceAuditListPage() {
                         </Link>
                         {row.externalInvoiceNo && row.vendorLabel ? (
                           <div className="text-xs text-zinc-500">{row.externalInvoiceNo}</div>
+                        ) : null}
+                        {closeoutNudge ? (
+                          <div className="mt-1 text-xs font-medium text-amber-800">
+                            Closeout: finish ops → finance → accounting on detail
+                          </div>
                         ) : null}
                       </td>
                       <td className="py-3 pr-4">

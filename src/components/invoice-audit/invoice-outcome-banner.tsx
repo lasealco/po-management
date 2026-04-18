@@ -9,6 +9,8 @@ export function InvoiceOutcomeBanner(props: {
   amberLineCount: number;
   redLineCount: number;
   unknownLineCount: number;
+  /** When true, nudges ops to use Step 1 notes + closeout workflow (no schema change). */
+  suggestCloseoutDocumentation?: boolean;
 }) {
   if (props.parseError) {
     return (
@@ -89,6 +91,14 @@ export function InvoiceOutcomeBanner(props: {
           <span className="rounded-full bg-zinc-500/15 px-3 py-1 text-zinc-800">Unknown {props.unknownLineCount}</span>
         </div>
       </div>
+      {props.status === "AUDITED" && props.suggestCloseoutDocumentation ? (
+        <p className="mt-3 border-t border-black/5 pt-3 text-xs leading-relaxed opacity-90">
+          <span className="font-semibold text-current">Closeout tip:</span> capture carrier or dispute context under{" "}
+          <span className="font-medium">Step 1 — Ops &amp; escalation notes</span> on this page, then complete{" "}
+          <span className="font-medium">Step 2 — Finance review</span> before{" "}
+          <span className="font-medium">Step 3 — Accounting handoff</span>.
+        </p>
+      ) : null}
     </div>
   );
 }
