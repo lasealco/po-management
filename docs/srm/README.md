@@ -97,3 +97,4 @@ If you create a supplier while already acting as **`approver@demo-company.com`**
 - **Relationship notes:** `POST/PATCH/DELETE` `/api/suppliers/[id]/relationship-notes` — chronological account touchpoints (SRM supplier 360 only).
 - **Contracts:** `POST/PATCH/DELETE` `/api/suppliers/[id]/contract-records` — commercial agreement summary + optional link (not tenders/tariffs/sourcing).
 - **Alerts:** `POST/PATCH/DELETE` `/api/suppliers/[id]/srm-alerts` — manual buyer alerts on supplier 360 (resolve stamps `resolvedAt`; not automated tender/tariff/sourcing feeds).
+- **Inbound supplier master (minimal slice):** `src/lib/srm/srm-supplier-master-upsert-payload.ts` (parse JSON) and `src/lib/srm/srm-supplier-master-upsert-map.ts` (map to `Supplier` field hints). Vitest-covered; **no** sync job, outbox, or public HTTP route yet.

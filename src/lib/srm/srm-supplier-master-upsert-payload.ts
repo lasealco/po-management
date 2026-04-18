@@ -1,7 +1,7 @@
 /**
  * Inbound integration shape for supplier master upserts (control tower / ERP / sync jobs).
  * See `docs/srm/md/srm_integration_and_api_payload_pack.md` — Supplier Master Upsert minimum fields.
- * Parsing only: callers map into Prisma and enforce tenant auth / onboarding rules separately.
+ * Parsing only; see `srm-supplier-master-upsert-map.ts` for a small field mapper (tests only slice — no HTTP ingress).
  */
 
 const MAX_SUPPLIER_CODE_LEN = 64;
