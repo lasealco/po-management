@@ -7,6 +7,7 @@ All **non-UI** SRM logic for this app: parsers, small workflows, snapshot shapin
 ```bash
 npm run test:srm          # Vitest: only this directory
 npm run verify:srm        # prisma validate + tsc + test:srm
+npm run verify:srm:with-db # verify:srm + optional Postgres SRM table/seed checks (needs DATABASE_URL)
 ```
 
 ## Key modules
