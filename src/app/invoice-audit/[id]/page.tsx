@@ -41,6 +41,9 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
     rawDescription: l.rawDescription,
     currency: l.currency,
     amount: l.amount.toString(),
+    unitBasis: l.unitBasis,
+    equipmentType: l.equipmentType,
+    chargeStructureHint: l.chargeStructureHint,
   }));
 
   const auditResults = intake.auditResults.map((r) => ({
@@ -66,6 +69,11 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
               {intake.vendorLabel ?? "Vendor unknown"} · {intake.externalInvoiceNo ?? "No invoice #"} ·{" "}
               {intake.currency}
             </p>
+            {intake.polCode || intake.podCode ? (
+              <p className="mt-1 font-mono text-xs text-zinc-500">
+                POL {intake.polCode ?? "—"} → POD {intake.podCode ?? "—"}
+              </p>
+            ) : null}
           </div>
           {canEdit ? <InvoiceIntakeDetailActions intakeId={intake.id} canEdit={canEdit} status={intake.status} /> : null}
         </div>

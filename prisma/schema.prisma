@@ -71,6 +71,7 @@ model Tenant {
   bookingPricingSnapshots BookingPricingSnapshot[]
   invoiceIntakes        InvoiceIntake[]
   invoiceToleranceRules InvoiceToleranceRule[]
+  invoiceChargeAliases  InvoiceChargeAlias[]
 }
 
 /// Tenant-scoped milestone template packs (override or extend built-in packs in code).
@@ -2737,6 +2738,10 @@ model InvoiceIntake {
   vendorLabel                String?                  @db.VarChar(256)
   invoiceDate                DateTime?                @db.Date
   currency                   String                   @default("USD") @db.VarChar(3)
+  /// Optional port of loading (UN/LOCODE or 5-letter) for geography-aware matching.
+  polCode                    String?                  @db.VarChar(8)
+  /// Optional port of discharge for geography-aware matching.
+  podCode                    String?                  @db.VarChar(8)
   rawSourceNotes             String?                  @db.Text
   /// Parser or importer hard failure — surfaced to UI (no silent failures).
   parseError                 String?                  @db.Text
@@ -2781,6 +2786,10 @@ model InvoiceLine {
   amount           Decimal  @db.Decimal(18, 4)
   unitBasis        String?  @db.VarChar(64)
   quantity         Decimal? @db.Decimal(18, 6)
+  /// e.g. 40HC, 20DV — improves rate-line matching.
+  equipmentType    String?  @db.VarChar(32)
+  /// ALL_IN = compare to snapshot basket / RFQ total; ITEMIZED = per-line; null = auto-detect from description.
+  chargeStructureHint String? @db.VarChar(24)
   sourceRowJson    Json?
   parseConfidence  String?  @db.VarChar(32)
   createdAt        DateTime @default(now())
@@ -2792,6 +2801,28 @@ model InvoiceLine {
   @@unique([invoiceIntakeId, lineNo])
   @@index([invoiceIntakeId])
   @@map("invoice_lines")
+}
+
+/// Tenant dictionary: invoice text patterns → canonical tokens for better snapshot line matching.
+model InvoiceChargeAlias {
+  id               String   @id @default(cuid())
+  tenantId         String
+  name             String?  @db.Text
+  /// Normalized substring match on invoice description (lowercase storage recommended).
+  pattern          String   @db.Text
+  /// JSON string array of tokens that strongly associate with a snapshot charge/rate label.
+  canonicalTokens  Json
+  /// When set, only boost candidates of this kind (CONTRACT_RATE | CONTRACT_CHARGE | RFQ_LINE).
+  targetKind       String?  @db.VarChar(24)
+  priority         Int      @default(0)
+  active           Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, active, priority])
+  @@map("invoice_charge_aliases")
 }
 
 /// Per invoice-line match against a booking pricing snapshot (immutable audit trail).

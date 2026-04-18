@@ -9,10 +9,18 @@ export type SnapshotPriceCandidate = {
   currency: string;
   amount: number;
   raw: Prisma.JsonValue;
+  /** Rate equipment type or charge equipment scope text, for equipment-aware scoring. */
+  equipmentHint: string | null;
+  unitBasis: string | null;
+  originCode: string | null;
+  destCode: string | null;
+  isIncluded: boolean | null;
+  isMandatory: boolean | null;
+  rateType: string | null;
 };
 
 export type SnapshotCandidatesResult =
-  | { ok: true; candidates: SnapshotPriceCandidate[] }
+  | { ok: true; candidates: SnapshotPriceCandidate[]; sourceType: string; rfqGrandTotal: number | null }
   | { ok: false; error: string; category: typeof DISCREPANCY_CATEGORY.SNAPSHOT_PARSE_ERROR };
 
 function num(v: unknown): number | null {
@@ -28,8 +36,16 @@ function isRecord(v: unknown): v is Record<string, unknown> {
   return Boolean(v) && typeof v === "object" && !Array.isArray(v);
 }
 
+function geoCode(g: unknown): string | null {
+  if (!isRecord(g)) return null;
+  const c = g.code;
+  if (typeof c === "string" && c.trim()) return c.trim().toUpperCase().slice(0, 8);
+  return null;
+}
+
 /**
- * Reads frozen `breakdownJson` from a booking pricing snapshot into comparable price lines.
+ * Reads frozen `breakdownJson` from a booking pricing snapshot into comparable price lines
+ * (ocean-aware fields: equipment, unit basis, POL/POD codes on rates, charge flags).
  */
 export function extractSnapshotPriceCandidates(breakdownJson: unknown): SnapshotCandidatesResult {
   if (!isRecord(breakdownJson)) {
@@ -39,8 +55,9 @@ export function extractSnapshotPriceCandidates(breakdownJson: unknown): Snapshot
       category: DISCREPANCY_CATEGORY.SNAPSHOT_PARSE_ERROR,
     };
   }
-  const sourceType = breakdownJson.sourceType;
+  const sourceType = String(breakdownJson.sourceType ?? "");
   const candidates: SnapshotPriceCandidate[] = [];
+  let rfqGrandTotal: number | null = null;
 
   if (sourceType === "TARIFF_CONTRACT_VERSION") {
     const rateLines = breakdownJson.rateLines;
@@ -55,6 +72,7 @@ export function extractSnapshotPriceCandidates(breakdownJson: unknown): Snapshot
           String(row.equipmentType ?? ""),
           String(row.unitBasis ?? ""),
         ].filter(Boolean);
+        const eq = typeof row.equipmentType === "string" ? row.equipmentType.trim() : null;
         candidates.push({
           kind: "CONTRACT_RATE",
           id: row.id,
@@ -62,6 +80,13 @@ export function extractSnapshotPriceCandidates(breakdownJson: unknown): Snapshot
           currency: cur.toUpperCase().slice(0, 3),
           amount,
           raw: row as unknown as Prisma.JsonValue,
+          equipmentHint: eq || null,
+          unitBasis: typeof row.unitBasis === "string" ? row.unitBasis.trim() : null,
+          originCode: geoCode(row.originScope),
+          destCode: geoCode(row.destinationScope),
+          isIncluded: null,
+          isMandatory: null,
+          rateType: typeof row.rateType === "string" ? row.rateType.trim() : null,
         });
       }
     }
@@ -73,6 +98,7 @@ export function extractSnapshotPriceCandidates(breakdownJson: unknown): Snapshot
         if (amount == null) continue;
         const cur = typeof row.currency === "string" ? row.currency : "USD";
         const label = String(row.rawChargeName ?? row.normalizedCode ?? `Charge ${row.id.slice(0, 6)}`);
+        const geo = row.geographyScope;
         candidates.push({
           kind: "CONTRACT_CHARGE",
           id: row.id,
@@ -80,10 +106,17 @@ export function extractSnapshotPriceCandidates(breakdownJson: unknown): Snapshot
           currency: cur.toUpperCase().slice(0, 3),
           amount,
           raw: row as unknown as Prisma.JsonValue,
+          equipmentHint: typeof row.equipmentScope === "string" ? row.equipmentScope.trim() : null,
+          unitBasis: typeof row.unitBasis === "string" ? row.unitBasis.trim() : null,
+          originCode: geoCode(geo),
+          destCode: null,
+          isIncluded: typeof row.isIncluded === "boolean" ? row.isIncluded : null,
+          isMandatory: typeof row.isMandatory === "boolean" ? row.isMandatory : null,
+          rateType: null,
         });
       }
     }
-    return { ok: true, candidates };
+    return { ok: true, candidates, sourceType, rfqGrandTotal: null };
   }
 
   if (sourceType === "QUOTE_RESPONSE") {
@@ -108,9 +141,21 @@ export function extractSnapshotPriceCandidates(breakdownJson: unknown): Snapshot
         currency: cur.toUpperCase().slice(0, 3),
         amount,
         raw: row as unknown as Prisma.JsonValue,
+        equipmentHint: null,
+        unitBasis: typeof row.unitBasis === "string" ? row.unitBasis.trim() : null,
+        originCode: null,
+        destCode: null,
+        isIncluded: typeof row.isIncluded === "boolean" ? row.isIncluded : null,
+        isMandatory: null,
+        rateType: typeof row.lineType === "string" ? row.lineType.trim() : null,
       });
     }
-    return { ok: true, candidates };
+    const totals = breakdownJson.totals;
+    if (isRecord(totals)) {
+      const g = num(totals.grand);
+      if (g != null) rfqGrandTotal = g;
+    }
+    return { ok: true, candidates, sourceType, rfqGrandTotal };
   }
 
   return {

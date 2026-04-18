@@ -57,6 +57,8 @@ export async function POST(request: Request) {
     currency: string;
     amount: string | number;
     unitBasis?: string | null;
+    equipmentType?: string | null;
+    chargeStructureHint?: string | null;
     quantity?: string | number | null;
     sourceRowJson?: Prisma.InputJsonValue | null;
     parseConfidence?: string | null;
@@ -76,6 +78,13 @@ export async function POST(request: Request) {
     if (ln.amount === undefined || ln.amount === null) {
       return NextResponse.json({ error: `Line ${lineNo}: amount is required.` }, { status: 400 });
     }
+    const csh = typeof ln.chargeStructureHint === "string" ? ln.chargeStructureHint.trim().toUpperCase() : "";
+    if (csh && csh !== "ALL_IN" && csh !== "ITEMIZED") {
+      return NextResponse.json(
+        { error: `Line ${lineNo}: chargeStructureHint must be ALL_IN, ITEMIZED, or omitted.` },
+        { status: 400 },
+      );
+    }
     lines.push({
       lineNo,
       rawDescription,
@@ -83,6 +92,8 @@ export async function POST(request: Request) {
       currency,
       amount: typeof ln.amount === "number" || typeof ln.amount === "string" ? ln.amount : String(ln.amount),
       unitBasis: typeof ln.unitBasis === "string" ? ln.unitBasis : null,
+      equipmentType: typeof ln.equipmentType === "string" ? ln.equipmentType : null,
+      chargeStructureHint: csh || null,
       quantity:
         ln.quantity === undefined || ln.quantity === null
           ? null
@@ -112,6 +123,8 @@ export async function POST(request: Request) {
       invoiceDate,
       currency: typeof o.currency === "string" ? o.currency : undefined,
       rawSourceNotes: typeof o.rawSourceNotes === "string" ? o.rawSourceNotes : null,
+      polCode: typeof o.polCode === "string" ? o.polCode : null,
+      podCode: typeof o.podCode === "string" ? o.podCode : null,
       lines,
     });
     return NextResponse.json({

@@ -22,6 +22,9 @@ export type LineRow = {
   rawDescription: string;
   currency: string;
   amount: string;
+  unitBasis?: string | null;
+  equipmentType?: string | null;
+  chargeStructureHint?: string | null;
 };
 
 export type AuditRow = {
@@ -58,7 +61,14 @@ export function InvoiceLinesMatchTable(props: { lines: LineRow[]; auditResults: 
             return (
               <tr key={ln.id} className="border-b border-zinc-100 align-top">
                 <td className="px-4 py-3 tabular-nums text-zinc-700">{ln.lineNo}</td>
-                <td className="px-4 py-3 text-zinc-900">{ln.rawDescription}</td>
+                <td className="px-4 py-3 text-zinc-900">
+                  <div>{ln.rawDescription}</div>
+                  {ln.equipmentType || ln.unitBasis || ln.chargeStructureHint ? (
+                    <div className="mt-1 font-mono text-xs text-zinc-500">
+                      {[ln.equipmentType, ln.unitBasis, ln.chargeStructureHint].filter(Boolean).join(" · ")}
+                    </div>
+                  ) : null}
+                </td>
                 <td className="px-4 py-3 tabular-nums">
                   {ln.amount} {ln.currency}
                 </td>

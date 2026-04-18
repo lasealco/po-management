@@ -9,7 +9,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { DISCREPANCY_CATEGORY } from "@/lib/invoice-audit/discrepancy-categories";
 import { InvoiceAuditError } from "@/lib/invoice-audit/invoice-audit-error";
-import { auditInvoiceLineAgainstCandidates } from "@/lib/invoice-audit/match-line";
+import { auditOceanInvoiceLine } from "@/lib/invoice-audit/ocean-line-match";
 import { extractSnapshotPriceCandidates } from "@/lib/invoice-audit/snapshot-candidates";
 import { pickToleranceRuleForIntake } from "@/lib/invoice-audit/tolerance-rules";
 
@@ -80,6 +80,8 @@ export async function createInvoiceIntakeWithLines(input: {
   invoiceDate?: Date | null;
   currency?: string;
   rawSourceNotes?: string | null;
+  polCode?: string | null;
+  podCode?: string | null;
   lines: Array<{
     lineNo: number;
     rawDescription: string;
@@ -88,6 +90,8 @@ export async function createInvoiceIntakeWithLines(input: {
     amount: string | number;
     unitBasis?: string | null;
     quantity?: string | number | null;
+    equipmentType?: string | null;
+    chargeStructureHint?: string | null;
     sourceRowJson?: Prisma.InputJsonValue | null;
     parseConfidence?: string | null;
   }>;
@@ -128,6 +132,8 @@ export async function createInvoiceIntakeWithLines(input: {
         invoiceDate: input.invoiceDate ?? null,
         currency,
         rawSourceNotes: input.rawSourceNotes?.trim() || null,
+        polCode: input.polCode?.trim().toUpperCase().slice(0, 8) || null,
+        podCode: input.podCode?.trim().toUpperCase().slice(0, 8) || null,
         parseError: null,
         parseWarnings: parseWarnings.length ? parseWarnings : undefined,
         rollupOutcome: "PENDING",
@@ -137,6 +143,9 @@ export async function createInvoiceIntakeWithLines(input: {
 
     for (const ln of input.lines) {
       const amt = typeof ln.amount === "number" ? ln.amount : Number(ln.amount);
+      const hint = ln.chargeStructureHint?.trim().toUpperCase();
+      const chargeStructureHint =
+        hint === "ALL_IN" || hint === "ITEMIZED" ? hint.slice(0, 24) : null;
       await tx.invoiceLine.create({
         data: {
           invoiceIntakeId: intake.id,
@@ -146,6 +155,8 @@ export async function createInvoiceIntakeWithLines(input: {
           currency: ln.currency.toUpperCase().slice(0, 3),
           amount: new Prisma.Decimal(String(amt)),
           unitBasis: ln.unitBasis?.trim() || null,
+          equipmentType: ln.equipmentType?.trim().toUpperCase().slice(0, 32) || null,
+          chargeStructureHint,
           quantity:
             ln.quantity === null || ln.quantity === undefined
               ? null
@@ -217,6 +228,19 @@ export async function runInvoiceAuditForIntake(params: {
     throw new InvoiceAuditError("BAD_INPUT", extracted.error);
   }
 
+  const { candidates, sourceType, rfqGrandTotal } = extracted;
+
+  const aliasRows = await prisma.invoiceChargeAlias.findMany({
+    where: { tenantId: intake.tenantId, active: true },
+    orderBy: [{ priority: "desc" }, { id: "asc" }],
+  });
+  const aliases = aliasRows.map((r) => ({
+    pattern: r.pattern.trim().toLowerCase(),
+    canonicalTokens: Array.isArray(r.canonicalTokens) ? r.canonicalTokens.map((x) => String(x)) : [],
+    targetKind: r.targetKind,
+    priority: r.priority,
+  }));
+
   let rule =
     params.toleranceRuleId != null && params.toleranceRuleId.trim()
       ? await prisma.invoiceToleranceRule.findFirst({
@@ -253,18 +277,31 @@ export async function runInvoiceAuditForIntake(params: {
       let r = 0;
       let u = 0;
 
+      const lineCount = intake.lines.length;
+
       for (const line of intake.lines) {
-        const computed = auditInvoiceLineAgainstCandidates({
+        const computed = auditOceanInvoiceLine({
           invoiceLine: {
             rawDescription: line.rawDescription,
             normalizedLabel: line.normalizedLabel,
             currency: line.currency,
             amount: line.amount,
+            unitBasis: line.unitBasis,
+            equipmentType: line.equipmentType,
+            chargeStructureHint: line.chargeStructureHint,
           },
-          candidates: extracted.candidates,
+          intake: {
+            polCode: intake.polCode,
+            podCode: intake.podCode,
+          },
+          candidates,
+          snapshotSourceType: sourceType,
+          rfqGrandTotal,
+          aliases,
           amountAbsTolerance,
           percentTolerance,
           toleranceRuleId: rule?.id ?? null,
+          invoiceLineCount: lineCount,
         });
 
         const outcome = computed.outcome as InvoiceAuditLineOutcome;

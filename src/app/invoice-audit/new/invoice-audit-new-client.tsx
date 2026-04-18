@@ -3,7 +3,15 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-type DraftLine = { lineNo: number; rawDescription: string; amount: string; currency: string };
+type DraftLine = {
+  lineNo: number;
+  rawDescription: string;
+  amount: string;
+  currency: string;
+  unitBasis: string;
+  equipmentType: string;
+  chargeStructureHint: string;
+};
 
 export function InvoiceAuditNewClient() {
   const router = useRouter();
@@ -12,8 +20,10 @@ export function InvoiceAuditNewClient() {
   const [externalInvoiceNo, setExternalInvoiceNo] = useState("");
   const [invoiceDate, setInvoiceDate] = useState("");
   const [currency, setCurrency] = useState("USD");
+  const [polCode, setPolCode] = useState("");
+  const [podCode, setPodCode] = useState("");
   const [lines, setLines] = useState<DraftLine[]>([
-    { lineNo: 1, rawDescription: "", amount: "", currency: "USD" },
+    { lineNo: 1, rawDescription: "", amount: "", currency: "USD", unitBasis: "", equipmentType: "", chargeStructureHint: "" },
   ]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -22,7 +32,18 @@ export function InvoiceAuditNewClient() {
     setLines((prev) => {
       const nextNo = prev.length ? Math.max(...prev.map((l) => l.lineNo)) + 1 : 1;
       const cur = (currency || "USD").trim().toUpperCase().slice(0, 3) || "USD";
-      return [...prev, { lineNo: nextNo, rawDescription: "", amount: "", currency: cur }];
+      return [
+        ...prev,
+        {
+          lineNo: nextNo,
+          rawDescription: "",
+          amount: "",
+          currency: cur,
+          unitBasis: "",
+          equipmentType: "",
+          chargeStructureHint: "",
+        },
+      ];
     });
   }
 
@@ -36,11 +57,16 @@ export function InvoiceAuditNewClient() {
         externalInvoiceNo: externalInvoiceNo.trim() || null,
         invoiceDate: invoiceDate.trim() || null,
         currency: currency.trim() || "USD",
+        polCode: polCode.trim() || null,
+        podCode: podCode.trim() || null,
         lines: lines.map((l) => ({
           lineNo: l.lineNo,
           rawDescription: l.rawDescription.trim(),
           amount: l.amount.trim(),
           currency: (l.currency || currency).trim() || "USD",
+          unitBasis: l.unitBasis.trim() || null,
+          equipmentType: l.equipmentType.trim() || null,
+          chargeStructureHint: l.chargeStructureHint.trim() || null,
         })),
       };
       const res = await fetch("/api/invoice-audit/intakes", {
@@ -65,8 +91,9 @@ export function InvoiceAuditNewClient() {
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Workflow · Step 1</p>
         <h1 className="mt-2 text-2xl font-semibold text-zinc-900">New invoice intake</h1>
         <p className="mt-2 text-sm text-zinc-600">
-          Link a booking pricing snapshot, then enter parsed charge lines. After saving, open the intake and run audit
-          to generate line-level match results and discrepancy categories.
+          Link a booking pricing snapshot, optional POL/POD (UN/LOCODE), then enter parsed lines with equipment and unit
+          basis when known. Matching uses ocean rules (equipment, geography, unit basis, alias dictionary, all-in vs
+          separated basket).
         </p>
 
         <div className="mt-6 space-y-4">
@@ -118,6 +145,28 @@ export function InvoiceAuditNewClient() {
               />
             </div>
           </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-wide text-zinc-500">POL (loading)</label>
+              <input
+                className="mt-1 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 font-mono text-sm shadow-inner"
+                value={polCode}
+                onChange={(e) => setPolCode(e.target.value)}
+                placeholder="e.g. USNYC"
+                maxLength={8}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-wide text-zinc-500">POD (discharge)</label>
+              <input
+                className="mt-1 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 font-mono text-sm shadow-inner"
+                value={podCode}
+                onChange={(e) => setPodCode(e.target.value)}
+                placeholder="e.g. DEHAM"
+                maxLength={8}
+              />
+            </div>
+          </div>
         </div>
 
         <div className="mt-8">
@@ -163,6 +212,41 @@ export function InvoiceAuditNewClient() {
                       setLines((prev) => prev.map((x, i) => (i === idx ? { ...x, currency: v } : x)));
                     }}
                   />
+                </div>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <input
+                    className="rounded-lg border border-zinc-200 bg-white px-3 py-2 font-mono text-xs shadow-inner"
+                    placeholder="Unit basis (e.g. PER_CONTAINER)"
+                    value={ln.unitBasis}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setLines((prev) => prev.map((x, i) => (i === idx ? { ...x, unitBasis: v } : x)));
+                    }}
+                  />
+                  <input
+                    className="rounded-lg border border-zinc-200 bg-white px-3 py-2 font-mono text-xs shadow-inner"
+                    placeholder="Equipment (e.g. 40HC)"
+                    value={ln.equipmentType}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setLines((prev) => prev.map((x, i) => (i === idx ? { ...x, equipmentType: v } : x)));
+                    }}
+                  />
+                </div>
+                <div className="mt-2">
+                  <label className="text-xs text-zinc-500">Charge structure hint</label>
+                  <select
+                    className="mt-1 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm shadow-inner"
+                    value={ln.chargeStructureHint}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setLines((prev) => prev.map((x, i) => (i === idx ? { ...x, chargeStructureHint: v } : x)));
+                    }}
+                  >
+                    <option value="">Auto (single line may detect all-in)</option>
+                    <option value="ALL_IN">ALL_IN (compare to snapshot basket / RFQ total)</option>
+                    <option value="ITEMIZED">ITEMIZED (per-line vs snapshot)</option>
+                  </select>
                 </div>
               </div>
             ))}

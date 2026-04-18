@@ -283,6 +283,84 @@ async function seed() {
     console.log("[db:seed] Default invoice tolerance rule created.");
   }
 
+  const invoiceAliasSeeds = [
+    {
+      name: "BAF / bunker",
+      pattern: "baf",
+      tokens: ["baf", "bunker", "adjustment", "factor"],
+      targetKind: "CONTRACT_CHARGE",
+      priority: 25,
+    },
+    {
+      name: "CAF / currency",
+      pattern: "caf",
+      tokens: ["caf", "currency", "adjustment"],
+      targetKind: "CONTRACT_CHARGE",
+      priority: 24,
+    },
+    {
+      name: "THC / terminal",
+      pattern: "thc",
+      tokens: ["thc", "terminal", "handling"],
+      targetKind: "CONTRACT_CHARGE",
+      priority: 23,
+    },
+    {
+      name: "LSS / low sulphur",
+      pattern: "lss",
+      tokens: ["lss", "low", "sulphur", "sulfur"],
+      targetKind: "CONTRACT_CHARGE",
+      priority: 22,
+    },
+    {
+      name: "PSS / peak",
+      pattern: "pss",
+      tokens: ["pss", "peak", "season"],
+      targetKind: "CONTRACT_CHARGE",
+      priority: 21,
+    },
+    {
+      name: "Documentation fee",
+      pattern: "doc",
+      tokens: ["documentation", "doc fee", "bl fee"],
+      targetKind: "CONTRACT_CHARGE",
+      priority: 18,
+    },
+    {
+      name: "Ocean base FAK",
+      pattern: "ocean freight",
+      tokens: ["fak", "ocean", "freight", "base"],
+      targetKind: "CONTRACT_RATE",
+      priority: 30,
+    },
+    {
+      name: "ISPS security",
+      pattern: "isps",
+      tokens: ["isps", "security"],
+      targetKind: "CONTRACT_CHARGE",
+      priority: 17,
+    },
+  ];
+  for (const a of invoiceAliasSeeds) {
+    const existingAlias = await prisma.invoiceChargeAlias.findFirst({
+      where: { tenantId: tenant.id, pattern: a.pattern },
+      select: { id: true },
+    });
+    if (!existingAlias) {
+      await prisma.invoiceChargeAlias.create({
+        data: {
+          tenantId: tenant.id,
+          name: a.name,
+          pattern: a.pattern,
+          canonicalTokens: a.tokens,
+          targetKind: a.targetKind,
+          priority: a.priority,
+        },
+      });
+    }
+  }
+  console.log("[db:seed] Invoice charge alias dictionary ensured (ocean matching).");
+
   const roleCustomerPortal = await prisma.role.upsert({
     where: { tenantId_name: { tenantId: tenant.id, name: "Customer portal" } },
     update: {},
