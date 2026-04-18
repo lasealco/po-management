@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { PricingSnapshotBreakdownPanel } from "@/components/pricing-snapshots/pricing-snapshot-breakdown-panel";
+import { PricingSnapshotTraceIds } from "@/components/pricing-snapshots/pricing-snapshot-trace-ids";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { getBookingPricingSnapshotForTenant, SnapshotRepoError } from "@/lib/booking-pricing-snapshot";
 import {
@@ -80,7 +81,7 @@ export default async function PricingSnapshotDetailPage(props: { params: Promise
           </Link>
           <h1 className="mt-2 text-2xl font-semibold text-zinc-900">Pricing snapshot</h1>
           <p className="mt-2 max-w-2xl text-sm text-zinc-600">{row.sourceSummary ?? row.id}</p>
-          <p className="mt-2 font-mono text-xs text-zinc-500">id {row.id}</p>
+          <PricingSnapshotTraceIds snapshotId={row.id} sourceRecordId={row.sourceRecordId} />
         </div>
         <div className="rounded-2xl border border-zinc-200 bg-white px-5 py-4 text-right shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Frozen total</p>
