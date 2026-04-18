@@ -6,13 +6,12 @@ import { useCallback, useEffect, useState } from "react";
 import {
   ControlTowerDashboardWidgetModal,
   CoverageInline,
-  MiniBarChart,
+  WidgetChartThumbnail,
   colorFor,
   dimensionLabel,
   formatMetric,
   metricLabel,
   metricSummaryValue,
-  seriesForCard,
   type CtDashboardWidgetReport,
 } from "@/components/control-tower-dashboard-chart-kit";
 
@@ -135,7 +134,7 @@ export function ControlTowerDashboardWidgets({ canEdit }: { canEdit: boolean }) 
               className="mt-2 block w-full text-left"
               title="Open chart, table, export, and AI"
             >
-              <MiniBarChart data={seriesForCard(w.report, 10)} measure={w.report.config.measure} />
+              <WidgetChartThumbnail report={w.report} barHeight={56} lineHeight={42} />
               <span className="mt-1 inline-block text-[11px] font-medium text-sky-800">
                 Click for chart, full data, CSV, AI
               </span>

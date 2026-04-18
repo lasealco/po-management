@@ -7,13 +7,12 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   ControlTowerDashboardWidgetModal,
   CoverageInline,
-  MiniBarChart,
+  WidgetChartThumbnail,
   colorFor,
   dimensionLabel,
   formatMetric,
   metricLabel,
   metricSummaryValue,
-  seriesForCard,
   type CtDashboardWidgetReport,
 } from "@/components/control-tower-dashboard-chart-kit";
 import { ControlTowerReportingHubWorkbenchLinks } from "@/components/control-tower-reporting-hub-workbench-links";
@@ -340,7 +339,7 @@ export function ControlTowerDashboardManagerInner({ canEdit }: { canEdit: boolea
                   className="mt-2 block w-full text-left"
                   title="Open chart, table, export, and AI"
                 >
-                  <MiniBarChart data={seriesForCard(w.report, 12)} height={72} measure={w.report.config.measure} />
+                  <WidgetChartThumbnail report={w.report} barHeight={72} lineHeight={48} />
                   <span className="mt-1 inline-block text-[11px] font-medium text-sky-800">
                     Click for chart, full data, CSV, AI
                   </span>

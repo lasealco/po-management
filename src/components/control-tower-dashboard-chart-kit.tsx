@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { MouseEvent as ReactMouseEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { WorkbenchDrillLink } from "@/components/workbench-drill-link";
 import { dimensionLabel, metricLabel } from "@/lib/control-tower/report-labels";
@@ -98,6 +99,37 @@ export function colorFor(i: number): string {
 const CHART_STROKE_PRIMARY = "#165b67";
 const CHART_GRID = "#e7e5e4";
 
+function usePrefersReducedMotion(): boolean {
+  return useSyncExternalStore(
+    (on) => {
+      const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+      mq.addEventListener("change", on);
+      return () => mq.removeEventListener("change", on);
+    },
+    () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    () => false,
+  );
+}
+
+type ChartHoverTip = { px: number; py: number; label: string; valueText: string };
+
+function ChartHtmlTooltip({ tip }: { tip: ChartHoverTip | null }) {
+  if (!tip) return null;
+  return (
+    <div
+      className="pointer-events-none absolute z-30 max-w-[220px] rounded-lg border border-zinc-200/90 bg-white/95 px-2.5 py-1.5 shadow-lg ring-1 ring-black/[0.06] backdrop-blur-sm"
+      style={{
+        left: tip.px,
+        top: tip.py,
+        transform: "translate(-50%, calc(-100% - 10px))",
+      }}
+    >
+      <p className="truncate text-[11px] font-semibold leading-tight text-zinc-900">{tip.label}</p>
+      <p className="text-xs font-semibold tabular-nums text-[var(--arscmp-primary)]">{tip.valueText}</p>
+    </div>
+  );
+}
+
 /** Compact series for small cards (first buckets only). */
 export function seriesForCard(report: CtDashboardWidgetReport, max = 10): Array<{ label: string; value: number }> {
   const measure = report.config.measure;
@@ -139,6 +171,39 @@ function chartViewFromConfig(chartType: string | undefined, dimension: string): 
   if (chartType === "pie") return "pie";
   if (chartType === "line" && dimension === "month") return "line";
   return "bar";
+}
+
+/** Card / hub thumbnail: mirrors modal chart mode; used for sparkline vs bar vs mini pie. */
+export function widgetThumbnailChartMode(report: CtDashboardWidgetReport): ChartViewMode {
+  return chartViewFromConfig(report.config.chartType, report.config.dimension ?? "month");
+}
+
+export function WidgetChartThumbnail({
+  report,
+  barHeight = 56,
+  lineHeight = 44,
+}: {
+  report: CtDashboardWidgetReport;
+  /** Height when the thumbnail is a bar chart. */
+  barHeight?: number;
+  /** Height when the thumbnail is a line (sparkline) chart. */
+  lineHeight?: number;
+}) {
+  const mode = widgetThumbnailChartMode(report);
+  const data = seriesForCard(report, 14);
+  const measure = report.config.measure;
+  if (mode === "line") {
+    return <MiniLineChart data={data} height={lineHeight} measure={measure} variant="card" />;
+  }
+  if (mode === "pie" && data.length > 0 && data.length <= 7) {
+    const pieSize = Math.round(Math.max(52, barHeight + 4));
+    return (
+      <div className="flex justify-center py-0.5">
+        <MiniPieChart data={data} size={pieSize} measure={measure} />
+      </div>
+    );
+  }
+  return <MiniBarChart data={data} height={barHeight} measure={measure} variant="card" />;
 }
 
 function csvCell(s: string): string {
@@ -192,6 +257,23 @@ export function MiniBarChart({
   xGroupLabel?: string;
 }) {
   const interactive = Boolean(onBarSelect);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [tip, setTip] = useState<ChartHoverTip | null>(null);
+  const reducedMotion = usePrefersReducedMotion();
+  const updateTip = useCallback(
+    (e: ReactMouseEvent<SVGRectElement>, d: (typeof data)[number]) => {
+      const el = wrapRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      setTip({
+        px: e.clientX - r.left,
+        py: e.clientY - r.top,
+        label: d.label,
+        valueText: formatMetric(measure, d.value),
+      });
+    },
+    [measure],
+  );
   const max = Math.max(...data.map((d) => d.value), 0);
   if (!data.length || max <= 0) {
     return (
@@ -217,13 +299,22 @@ export function MiniBarChart({
   const xLabel = (s: string) => (s.length > 11 ? `${s.slice(0, 10)}…` : s);
   const barRx = isModal ? 5 : 2;
   return (
-    <svg
+    <div ref={wrapRef} className="relative w-full" onMouseLeave={() => setTip(null)}>
+      <ChartHtmlTooltip tip={tip} />
+      <svg
       viewBox={`0 0 ${width} ${height}`}
       preserveAspectRatio={isModal ? "xMidYMid meet" : "none"}
       style={{ height: `${height}px` }}
       className={`w-full rounded-xl border border-zinc-200/70 bg-gradient-to-b from-white to-zinc-50/90 shadow-md ring-1 ring-black/[0.04] ${interactive ? "[&_rect.bar]:cursor-pointer" : ""}`}
-      role={interactive ? "img" : undefined}
-      aria-label={interactive ? "Bar chart; click a bar to highlight the matching row below." : undefined}
+      role="img"
+      aria-label={
+        interactive
+          ? "Bar chart; click a bar to highlight the matching row below."
+          : "Bar chart"
+      }
+      onMouseMove={(ev) => {
+        if (ev.target === ev.currentTarget) setTip(null);
+      }}
     >
       <defs>
         {data.map((d, i) => {
@@ -278,7 +369,11 @@ export function MiniBarChart({
         const k = seriesKey(d, i);
         const sel = selectedKey != null && selectedKey === k;
         return (
-          <g key={k}>
+          <g
+            key={k}
+            className={reducedMotion ? undefined : "ct-chart-bar-enter"}
+            style={reducedMotion ? undefined : { animationDelay: `${Math.min(i, 14) * 22}ms` }}
+          >
             <rect
               className="bar transition-[opacity] duration-300 motion-reduce:transition-none"
               x={x}
@@ -293,6 +388,8 @@ export function MiniBarChart({
               role={interactive ? "button" : undefined}
               aria-label={`${d.label}: ${fmtVal(d.value)}${sel ? ", selected" : ""}`}
               aria-pressed={interactive ? sel : undefined}
+              onMouseEnter={(e) => updateTip(e, d)}
+              onMouseMove={(e) => updateTip(e, d)}
               onClick={
                 interactive
                   ? (e) => {
@@ -311,9 +408,7 @@ export function MiniBarChart({
                     }
                   : undefined
               }
-            >
-              <title>{`${d.label}: ${fmtVal(d.value)}`}</title>
-            </rect>
+            />
             {isModal ? (
               <text
                 x={x + barW / 2}
@@ -330,6 +425,7 @@ export function MiniBarChart({
         );
       })}
     </svg>
+    </div>
   );
 }
 
@@ -351,6 +447,23 @@ export function MiniLineChart({
   xGroupLabel?: string;
 }) {
   const interactive = Boolean(onPointSelect);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [tip, setTip] = useState<ChartHoverTip | null>(null);
+  const reducedMotion = usePrefersReducedMotion();
+  const updateTipPoint = useCallback(
+    (e: ReactMouseEvent<SVGCircleElement>, d: (typeof data)[number]) => {
+      const el = wrapRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      setTip({
+        px: e.clientX - r.left,
+        py: e.clientY - r.top,
+        label: d.label,
+        valueText: formatMetric(measure, d.value),
+      });
+    },
+    [measure],
+  );
   const max = Math.max(...data.map((d) => d.value), 0);
   if (!data.length || max <= 0) {
     return (
@@ -383,14 +496,24 @@ export function MiniLineChart({
   const fmt = (v: number) => formatAxisTick(measure, v);
   const fmtVal = (v: number) => formatMetric(measure, v);
   const xLab = (s: string) => (s.length > 9 ? `${s.slice(0, 8)}…` : s);
+  const hitR = isModal ? 16 : 14;
   return (
-    <svg
+    <div ref={wrapRef} className="relative w-full" onMouseLeave={() => setTip(null)}>
+      <ChartHtmlTooltip tip={tip} />
+      <svg
       viewBox={`0 0 ${width} ${height}`}
       preserveAspectRatio={isModal ? "xMidYMid meet" : "none"}
       style={{ height: `${height}px` }}
       className="w-full rounded-xl border border-zinc-200/70 bg-gradient-to-b from-white to-zinc-50/90 shadow-md ring-1 ring-black/[0.04]"
-      role={interactive ? "img" : undefined}
-      aria-label={interactive ? "Line chart; click a point to highlight the matching row below." : undefined}
+      role="img"
+      aria-label={
+        interactive
+          ? "Line chart; click a point to highlight the matching row below."
+          : "Line chart"
+      }
+      onMouseMove={(ev) => {
+        if (ev.target === ev.currentTarget) setTip(null);
+      }}
     >
       <defs>
         <linearGradient id="ct-line-area-fill" x1="0" y1="0" x2="0" y2="1">
@@ -411,18 +534,20 @@ export function MiniLineChart({
             );
           })
         : [<line key="base" x1={padL} y1={padT + plotH} x2={width - padR} y2={padT + plotH} stroke={CHART_GRID} />]}
-      {n > 0 ? (
-        <polygon fill="url(#ct-line-area-fill)" points={areaPoints} stroke="none" pointerEvents="none" />
-      ) : null}
-      <polyline
-        fill="none"
-        stroke={CHART_STROKE_PRIMARY}
-        strokeWidth={isModal ? 2.75 : 2.25}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        points={points}
-        pointerEvents="none"
-      />
+      <g className={reducedMotion ? undefined : "ct-chart-line-enter"}>
+        {n > 0 ? (
+          <polygon fill="url(#ct-line-area-fill)" points={areaPoints} stroke="none" pointerEvents="none" />
+        ) : null}
+        <polyline
+          fill="none"
+          stroke={CHART_STROKE_PRIMARY}
+          strokeWidth={isModal ? 2.75 : 2.25}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          points={points}
+          pointerEvents="none"
+        />
+      </g>
       {isModal ? (
         <text
           x={14}
@@ -441,43 +566,55 @@ export function MiniLineChart({
           {xGroupLabel}
         </text>
       ) : null}
-      {interactive
-        ? data.map((d, i) => {
-            const cx = xAt(i);
-            const cy = yAt(d.value);
-            const k = seriesKey(d, i);
-            const sel = selectedKey != null && selectedKey === k;
-            return (
-              <g key={k}>
-                <circle
-                  cx={cx}
-                  cy={cy}
-                  r={isModal ? 16 : 14}
-                  fill="transparent"
-                  className="cursor-pointer"
-                  tabIndex={0}
-                  role="button"
-                  aria-label={`${d.label}: ${fmtVal(d.value)}${sel ? ", selected" : ""}`}
-                  aria-pressed={sel}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onPointSelect?.(k);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
+      {data.map((d, i) => {
+        const cx = xAt(i);
+        const cy = yAt(d.value);
+        const k = seriesKey(d, i);
+        const sel = selectedKey != null && selectedKey === k;
+        return (
+          <g key={k}>
+            <circle
+              cx={cx}
+              cy={cy}
+              r={hitR}
+              fill="transparent"
+              className={interactive ? "cursor-pointer" : "cursor-default"}
+              tabIndex={interactive ? 0 : undefined}
+              role={interactive ? "button" : undefined}
+              aria-hidden={interactive ? undefined : true}
+              aria-label={
+                interactive ? `${d.label}: ${fmtVal(d.value)}${sel ? ", selected" : ""}` : undefined
+              }
+              aria-pressed={interactive ? sel : undefined}
+              onMouseEnter={(e) => updateTipPoint(e, d)}
+              onMouseMove={(e) => updateTipPoint(e, d)}
+              onClick={
+                interactive
+                  ? (e) => {
+                      e.stopPropagation();
                       onPointSelect?.(k);
                     }
-                  }}
-                >
-                  <title>{`${d.label}: ${fmtVal(d.value)}`}</title>
-                </circle>
+                  : undefined
+              }
+              onKeyDown={
+                interactive
+                  ? (e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        onPointSelect?.(k);
+                      }
+                    }
+                  : undefined
+              }
+            />
+            {interactive ? (
+              <>
                 <circle
                   cx={cx}
                   cy={cy}
                   r={sel ? 6.5 : 4.5}
                   fill="#fff"
-                  stroke={sel ? CHART_STROKE_PRIMARY : CHART_STROKE_PRIMARY}
+                  stroke={CHART_STROKE_PRIMARY}
                   strokeOpacity={sel ? 1 : 0.45}
                   strokeWidth={sel ? 2.75 : 2}
                   pointerEvents="none"
@@ -494,11 +631,13 @@ export function MiniLineChart({
                     {xLab(d.label)}
                   </text>
                 ) : null}
-              </g>
-            );
-          })
-        : null}
+              </>
+            ) : null}
+          </g>
+        );
+      })}
     </svg>
+    </div>
   );
 }
 
@@ -525,6 +664,22 @@ export function MiniPieChart({
   measure?: string;
 }) {
   const interactive = Boolean(onSliceSelect);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [tip, setTip] = useState<ChartHoverTip | null>(null);
+  const updateTipSlice = useCallback(
+    (e: ReactMouseEvent<SVGPathElement>, d: (typeof data)[number]) => {
+      const el = wrapRef.current;
+      if (!el) return;
+      const rct = el.getBoundingClientRect();
+      setTip({
+        px: e.clientX - rct.left,
+        py: e.clientY - rct.top,
+        label: d.label,
+        valueText: formatMetric(measure, d.value),
+      });
+    },
+    [measure],
+  );
   const total = data.reduce((s, d) => s + d.value, 0);
   if (!data.length || total <= 0) {
     return (
@@ -562,7 +717,12 @@ export function MiniPieChart({
         className={interactive ? "cursor-pointer" : undefined}
         tabIndex={interactive ? 0 : undefined}
         role={interactive ? "button" : undefined}
-        aria-label={`${d.label}: ${formatMetric(measure, d.value)}${sel ? ", selected" : ""}`}
+        aria-hidden={interactive ? undefined : true}
+        aria-label={
+          interactive
+            ? `${d.label}: ${formatMetric(measure, d.value)}${sel ? ", selected" : ""}`
+            : undefined
+        }
         aria-pressed={interactive ? sel : undefined}
         onClick={
           interactive
@@ -582,22 +742,32 @@ export function MiniPieChart({
               }
             : undefined
         }
-      >
-        <title>{`${d.label}: ${formatMetric(measure, d.value)}`}</title>
-      </path>
+        onMouseEnter={(e) => updateTipSlice(e, d)}
+        onMouseMove={(e) => updateTipSlice(e, d)}
+      />
     );
   });
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox={`0 0 ${size} ${size}`}
-      className="mx-auto rounded-xl border border-zinc-200/70 bg-gradient-to-br from-white to-zinc-50/90 shadow-md ring-1 ring-black/[0.04]"
-      role={interactive ? "img" : undefined}
-      aria-label={interactive ? "Pie chart; click a slice to highlight the matching row below." : undefined}
-    >
-      {slices}
-    </svg>
+    <div ref={wrapRef} className="relative mx-auto w-fit" onMouseLeave={() => setTip(null)}>
+      <ChartHtmlTooltip tip={tip} />
+      <svg
+        width={size}
+        height={size}
+        viewBox={`0 0 ${size} ${size}`}
+        className="rounded-xl border border-zinc-200/70 bg-gradient-to-br from-white to-zinc-50/90 shadow-md ring-1 ring-black/[0.04]"
+        role="img"
+        aria-label={
+          interactive
+            ? "Pie chart; click a slice to highlight the matching row below."
+            : "Pie chart"
+        }
+        onMouseMove={(ev) => {
+          if (ev.target === ev.currentTarget) setTip(null);
+        }}
+      >
+        {slices}
+      </svg>
+    </div>
   );
 }
 

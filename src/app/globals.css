@@ -110,9 +110,42 @@ textarea:focus {
   animation: cockpit-insight-in 0.38s ease-out both;
 }
 
+/* Control Tower charts: bar mount (transform origin set per-bar on the <g>). */
+@keyframes ct-chart-bar-enter {
+  from {
+    transform: scaleY(0);
+    opacity: 0.72;
+  }
+  to {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+.ct-chart-bar-enter {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: ct-chart-bar-enter 0.48s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+@keyframes ct-chart-line-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.ct-chart-line-enter {
+  animation: ct-chart-line-fade-in 0.42s ease-out both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .cockpit-card-enter,
-  .cockpit-insight-reveal {
+  .cockpit-insight-reveal,
+  .ct-chart-bar-enter,
+  .ct-chart-line-enter {
     animation: none;
   }
 }
