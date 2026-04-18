@@ -4,7 +4,11 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     environment: "node",
-    include: ["src/lib/invoice-audit/**/*.test.ts", "src/lib/booking-pricing-snapshot/**/*.test.ts"],
+    include: [
+      "src/lib/invoice-audit/**/*.test.ts",
+      "src/lib/booking-pricing-snapshot/**/*.test.ts",
+      "src/lib/rfq/**/*.test.ts",
+    ],
     passWithNoTests: false,
   },
   resolve: {

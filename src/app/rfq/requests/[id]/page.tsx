@@ -2,42 +2,18 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { RfqClarificationsClient, type ClarificationRow } from "@/components/rfq/rfq-clarifications-client";
-import { RfqCompareTable, type RfqCompareRow } from "@/components/rfq/rfq-compare-table";
+import { RfqCompareTable } from "@/components/rfq/rfq-compare-table";
 import { RfqRecipientsClient, type RecipientRow } from "@/components/rfq/rfq-recipients-client";
 import { RfqRequestStatusClient } from "@/components/rfq/rfq-request-status-client";
 import { RfqResponsesPanelClient, type ResponsePanelRow } from "@/components/rfq/rfq-responses-panel-client";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
-import { summarizeFreeTime, summarizeJsonArray } from "@/lib/rfq/compare-helpers";
+import { buildRfqCompareRows } from "@/lib/rfq/build-compare-rows";
 import { getQuoteRequestDetail } from "@/lib/rfq/quote-requests";
 import { RfqRepoError } from "@/lib/rfq/rfq-repo-error";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
-
-function buildCompareRows(
-  detail: Awaited<ReturnType<typeof getQuoteRequestDetail>>,
-): RfqCompareRow[] {
-  const out: RfqCompareRow[] = [];
-  for (const rec of detail.recipients) {
-    const resp = rec.response;
-    if (!resp) continue;
-    if (!["SUBMITTED", "UNDER_REVIEW", "SHORTLISTED", "AWARDED", "REJECTED"].includes(resp.status)) continue;
-    const vf = resp.validityFrom ? resp.validityFrom.toISOString().slice(0, 10) : "";
-    const vt = resp.validityTo ? resp.validityTo.toISOString().slice(0, 10) : "";
-    out.push({
-      recipient: rec.displayName,
-      status: resp.status,
-      total: resp.totalAllInAmount != null ? String(resp.totalAllInAmount) : "—",
-      currency: resp.currency,
-      validity: vf && vt ? `${vf} → ${vt}` : "—",
-      includedSummary: summarizeJsonArray(resp.includedChargesJson),
-      excludedSummary: summarizeJsonArray(resp.excludedChargesJson),
-      freeTimeSummary: summarizeFreeTime(resp.freeTimeSummaryJson),
-    });
-  }
-  return out;
-}
 
 export default async function RfqRequestDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -93,7 +69,7 @@ export default async function RfqRequestDetailPage({ params }: { params: Promise
     authorName: m.author?.name ?? null,
   }));
 
-  const compareRows = buildCompareRows(detail);
+  const compareRows = buildRfqCompareRows(detail);
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
@@ -159,8 +135,19 @@ export default async function RfqRequestDetailPage({ params }: { params: Promise
       </section>
 
       <section className="mt-8 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-zinc-900">Comparison (submitted quotes)</h2>
-        <p className="mt-1 text-sm text-zinc-600">Totals, validity, included/excluded charge lists, and free time summary.</p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <h2 className="text-lg font-semibold text-zinc-900">Comparison (submitted quotes)</h2>
+          <Link
+            href={`/rfq/requests/${id}/compare`}
+            className="shrink-0 text-sm font-medium text-[var(--arscmp-primary)] hover:underline"
+          >
+            Full-width compare
+          </Link>
+        </div>
+        <p className="mt-1 max-w-3xl text-sm text-zinc-600">
+          Totals, validity, included/excluded charge lists, free time summary, and a same-currency peer benchmark when at
+          least two quotes publish an all-in amount.
+        </p>
         <div className="mt-4">
           <RfqCompareTable rows={compareRows} />
         </div>

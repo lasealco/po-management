@@ -1,37 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { RfqCompareTable, type RfqCompareRow } from "@/components/rfq/rfq-compare-table";
-import { summarizeFreeTime, summarizeJsonArray } from "@/lib/rfq/compare-helpers";
+import { RfqCompareTable } from "@/components/rfq/rfq-compare-table";
+import { buildRfqCompareRows } from "@/lib/rfq/build-compare-rows";
 import { getQuoteRequestDetail } from "@/lib/rfq/quote-requests";
 import { RfqRepoError } from "@/lib/rfq/rfq-repo-error";
 import { getDemoTenant } from "@/lib/demo-tenant";
 
 export const dynamic = "force-dynamic";
-
-function buildCompareRows(
-  detail: Awaited<ReturnType<typeof getQuoteRequestDetail>>,
-): RfqCompareRow[] {
-  const out: RfqCompareRow[] = [];
-  for (const rec of detail.recipients) {
-    const resp = rec.response;
-    if (!resp) continue;
-    if (!["SUBMITTED", "UNDER_REVIEW", "SHORTLISTED", "AWARDED", "REJECTED"].includes(resp.status)) continue;
-    const vf = resp.validityFrom ? resp.validityFrom.toISOString().slice(0, 10) : "";
-    const vt = resp.validityTo ? resp.validityTo.toISOString().slice(0, 10) : "";
-    out.push({
-      recipient: rec.displayName,
-      status: resp.status,
-      total: resp.totalAllInAmount != null ? String(resp.totalAllInAmount) : "—",
-      currency: resp.currency,
-      validity: vf && vt ? `${vf} → ${vt}` : "—",
-      includedSummary: summarizeJsonArray(resp.includedChargesJson),
-      excludedSummary: summarizeJsonArray(resp.excludedChargesJson),
-      freeTimeSummary: summarizeFreeTime(resp.freeTimeSummaryJson),
-    });
-  }
-  return out;
-}
 
 export default async function RfqComparePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -52,7 +28,7 @@ export default async function RfqComparePage({ params }: { params: Promise<{ id:
     throw e;
   }
 
-  const rows = buildCompareRows(detail);
+  const rows = buildRfqCompareRows(detail);
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
@@ -72,7 +48,8 @@ export default async function RfqComparePage({ params }: { params: Promise<{ id:
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Comparison</p>
         <h1 className="mt-2 text-2xl font-semibold text-zinc-900">Quotes side by side</h1>
         <p className="mt-2 text-sm text-zinc-600">
-          {detail.originLabel} → {detail.destinationLabel} · {detail.transportMode}
+          {detail.originLabel} → {detail.destinationLabel} · {detail.transportMode}. Peer benchmark uses submitted
+          all-in totals only, grouped by currency — it does not normalize surcharges or validity windows.
         </p>
         <div className="mt-6">
           <RfqCompareTable rows={rows} />

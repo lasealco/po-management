@@ -1,13 +1,12 @@
-export type RfqCompareRow = {
-  recipient: string;
-  status: string;
-  total: string;
-  currency: string;
-  validity: string;
-  includedSummary: string;
-  excludedSummary: string;
-  freeTimeSummary: string;
-};
+import type { RfqCompareRow } from "@/lib/rfq/build-compare-rows";
+
+export type { RfqCompareRow };
+
+function peerBenchmarkClass(tone: RfqCompareRow["peerBenchmarkTone"]): string {
+  if (tone === "lowest") return "font-semibold text-emerald-800";
+  if (tone === "delta") return "tabular-nums text-amber-900";
+  return "text-zinc-500";
+}
 
 export function RfqCompareTable({ rows }: { rows: RfqCompareRow[] }) {
   if (rows.length === 0) {
@@ -26,6 +25,12 @@ export function RfqCompareTable({ rows }: { rows: RfqCompareRow[] }) {
             <th className="py-3 pl-4 pr-3">Recipient</th>
             <th className="py-3 pr-3">Status</th>
             <th className="py-3 pr-3">Total</th>
+            <th
+              className="py-3 pr-3"
+              title="When two or more quotes share a currency and include an all-in total, this column flags the lowest and shows everyone else’s gap vs that benchmark."
+            >
+              Vs peer low
+            </th>
             <th className="py-3 pr-3">Validity</th>
             <th className="py-3 pr-3">Included</th>
             <th className="py-3 pr-3">Excluded</th>
@@ -33,12 +38,21 @@ export function RfqCompareTable({ rows }: { rows: RfqCompareRow[] }) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((r, i) => (
-            <tr key={i} className="border-b border-zinc-100 align-top">
+          {rows.map((r) => (
+            <tr key={r.responseId} className="border-b border-zinc-100 align-top">
               <td className="py-3 pl-4 pr-3 font-medium text-zinc-900">{r.recipient}</td>
               <td className="py-3 pr-3 text-xs text-zinc-600">{r.status}</td>
               <td className="py-3 pr-3 font-mono text-xs">
                 {r.total} {r.currency}
+              </td>
+              <td className="max-w-[10rem] py-3 pr-3 text-xs">
+                {r.peerBenchmarkLabel ? (
+                  <span className={peerBenchmarkClass(r.peerBenchmarkTone)} title={r.peerBenchmarkTitle ?? undefined}>
+                    {r.peerBenchmarkLabel}
+                  </span>
+                ) : (
+                  <span className="text-zinc-400">—</span>
+                )}
               </td>
               <td className="py-3 pr-3 text-xs text-zinc-700">{r.validity}</td>
               <td className="max-w-[14rem] py-3 pr-3 text-xs text-zinc-600">{r.includedSummary}</td>
