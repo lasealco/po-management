@@ -114,6 +114,7 @@ const CONTACT_ROLES = [
 
 const SRM_SUPPLIER_TABS = [
   { id: "overview", label: "Overview" },
+  { id: "contacts", label: "Contacts" },
   { id: "onboarding", label: "Onboarding" },
   { id: "capabilities", label: "Capabilities" },
   { id: "qualification", label: "Qualification" },
@@ -274,6 +275,10 @@ export function SupplierDetailClient({
   const [srmTab, setSrmTabState] = useState<SrmSupplierTabId>(() =>
     isSrmShell ? parseSrmTabParam(searchParams.get("tab")) : "overview",
   );
+
+  const showOverviewMain = !isSrmShell || srmTab === "overview";
+  const showContactsWorkspace =
+    !isSrmShell || srmTab === "overview" || srmTab === "contacts";
 
   useEffect(() => {
     if (!isSrmShell) return;
@@ -819,7 +824,7 @@ export function SupplierDetailClient({
         </nav>
       ) : null}
 
-      {(!isSrmShell || srmTab === "overview") && (
+      {showOverviewMain && (
         <>
           {orderHistory ? (
             <SupplierOrderHistorySection analytics={orderHistory} />
@@ -1149,12 +1154,30 @@ export function SupplierDetailClient({
           </button>
         ) : null}
       </section>
+        </>
+      )}
 
-      <section className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
+      {showContactsWorkspace && (
+        <section className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
         <h2 className="text-sm font-semibold text-zinc-900">Contacts</h2>
         <p className="mt-1 text-xs text-zinc-500">
           People for orders, AP, and operations (separate from the main company phone/email).
+          {isSrmShell && srmTab === "contacts"
+            ? " Use the Overview tab to edit company master data and registered address."
+            : ""}
         </p>
+        {isSrmShell && srmTab === "overview" ? (
+          <p className="mt-2 text-xs text-zinc-500">
+            <button
+              type="button"
+              className="font-medium text-[var(--arscmp-primary)] hover:underline"
+              onClick={() => selectSrmTab("contacts")}
+            >
+              Open full contacts workspace
+            </button>{" "}
+            for a larger form layout and fewer surrounding sections.
+          </p>
+        ) : null}
         <ul className="mt-4 divide-y divide-zinc-100 border border-zinc-100 rounded-md">
           {initial.contacts.length === 0 ? (
             <li className="px-4 py-6 text-sm text-zinc-500">No contacts yet.</li>
@@ -1393,7 +1416,9 @@ export function SupplierDetailClient({
           </form>
         ) : null}
       </section>
+      )}
 
+      {showOverviewMain && (
       <section className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
         <h2 className="text-sm font-semibold text-zinc-900">Offices &amp; sites</h2>
         <p className="mt-1 text-xs text-zinc-500">
@@ -1633,7 +1658,6 @@ export function SupplierDetailClient({
           </form>
         ) : null}
       </section>
-        </>
       )}
 
       {(!isSrmShell || srmTab === "capabilities") && (

@@ -21,6 +21,7 @@ npm run verify:srm:with-db # verify:srm + optional Postgres SRM table/seed check
 | **Other SRM entities** | `supplier-*-parse.ts` (alerts, contracts, relationship notes, scorecards, risk, compliance reviews), `supplier-capability-types.ts` |
 | **360 snapshot** | `load-supplier-detail-snapshot.ts` (server loader; keep Prisma `include` in sync with UI) |
 | **Inbound integration (minimal)** | `srm-supplier-master-upsert-payload.ts`, `srm-supplier-master-upsert-map.ts` — no HTTP/sync here yet |
+| **Directory list (server)** | `supplier-directory-list.ts` — shared `/srm` + `/suppliers` filters (`approval`, `active`, `sort`) and Prisma `where` / `orderBy` |
 
 ## Product docs
 

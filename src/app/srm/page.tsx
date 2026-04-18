@@ -5,28 +5,45 @@ import { AccessDenied } from "@/components/access-denied";
 import { SupplierKindTabs, type SupplierSrmKind } from "@/components/supplier-kind-tabs";
 import { WorkflowHeader } from "@/components/workflow-header";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
+import {
+  buildSupplierDirectoryExtraQuery,
+  parseDirectoryActive,
+  parseDirectoryApproval,
+  parseDirectoryKind,
+  parseDirectorySearchQ,
+  parseDirectorySort,
+  supplierDirectoryOrderBy,
+  supplierDirectoryWhere,
+} from "@/lib/srm/supplier-directory-list";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-function parseKind(raw: string | string[] | undefined): SupplierSrmKind {
-  const v = Array.isArray(raw) ? raw[0] : raw;
-  return v === "logistics" ? "logistics" : "product";
-}
-
-function parseSearchQ(raw: string | string[] | undefined): string {
-  const v = Array.isArray(raw) ? raw[0] : raw;
-  return (v ?? "").trim().slice(0, 120);
+function formatUpdated(d: Date): string {
+  return d.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
 }
 
 export default async function SrmPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ kind?: string | string[]; q?: string | string[] }>;
+  searchParams?: Promise<{
+    kind?: string | string[];
+    q?: string | string[];
+    approval?: string | string[];
+    active?: string | string[];
+    sort?: string | string[];
+  }>;
 }) {
   const sp = searchParams ? await searchParams : {};
-  const kind = parseKind(sp.kind);
-  const q = parseSearchQ(sp.q);
+  const kind: SupplierSrmKind = parseDirectoryKind(sp.kind);
+  const q = parseDirectorySearchQ(sp.q);
+  const approval = parseDirectoryApproval(sp.approval);
+  const active = parseDirectoryActive(sp.active);
+  const sort = parseDirectorySort(sp.sort);
 
   const access = await getViewerGrantSet();
 
@@ -63,19 +80,8 @@ export default async function SrmPage({
   const { tenant } = access;
 
   const suppliers = await prisma.supplier.findMany({
-    where: {
-      tenantId: tenant.id,
-      srmCategory: kind === "logistics" ? "logistics" : "product",
-      ...(q
-        ? {
-            OR: [
-              { name: { contains: q, mode: "insensitive" as const } },
-              { code: { contains: q, mode: "insensitive" as const } },
-            ],
-          }
-        : {}),
-    },
-    orderBy: { name: "asc" },
+    where: supplierDirectoryWhere(tenant.id, kind, q, approval, active),
+    orderBy: supplierDirectoryOrderBy(sort),
     select: {
       id: true,
       name: true,
@@ -85,6 +91,7 @@ export default async function SrmPage({
       isActive: true,
       srmCategory: true,
       approvalStatus: true,
+      updatedAt: true,
       _count: { select: { orders: true, contacts: true, offices: true } },
     },
   });
@@ -96,10 +103,11 @@ export default async function SrmPage({
     email: s.email,
     phone: s.phone,
     isActive: s.isActive,
+    updatedAt: s.updatedAt,
     orderCount: s._count.orders,
     contactCount: s._count.contacts,
     officeCount: s._count.offices,
-    srmCategory: s.srmCategory === "logistics" ? "logistics" as const : "product" as const,
+    srmCategory: s.srmCategory === "logistics" ? ("logistics" as const) : ("product" as const),
     approvalStatus:
       s.approvalStatus === "pending_approval"
         ? ("pending_approval" as const)
@@ -111,7 +119,14 @@ export default async function SrmPage({
   const canEdit = viewerHas(access.grantSet, "org.suppliers", "edit");
   const canApprove = viewerHas(access.grantSet, "org.suppliers", "approve");
 
-  const listExtraQuery = q ? `q=${encodeURIComponent(q)}` : undefined;
+  const listExtraQuery = buildSupplierDirectoryExtraQuery({
+    q,
+    approval,
+    active,
+    sort,
+  });
+
+  const hasListFilters = Boolean(q) || approval !== "all" || active !== "all" || sort !== "name";
 
   return (
     <div className="min-h-screen bg-zinc-50">
@@ -136,36 +151,75 @@ export default async function SrmPage({
 
           <form
             method="get"
-            className="mt-6 flex max-w-xl flex-wrap items-end gap-2"
+            className="mt-6 flex flex-col gap-4"
             role="search"
-            aria-label="Filter suppliers by name or code"
+            aria-label="Filter suppliers"
           >
             <input type="hidden" name="kind" value={kind} />
-            <label className="flex min-w-[12rem] flex-1 flex-col text-sm">
-              <span className="font-medium text-zinc-700">Search name or code</span>
-              <input
-                name="q"
-                type="search"
-                defaultValue={q}
-                placeholder="e.g. Acme or SUP-001"
-                className="mt-1 rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900"
-                autoComplete="off"
-              />
-            </label>
-            <button
-              type="submit"
-              className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-900 hover:bg-zinc-50"
-            >
-              Apply
-            </button>
-            {q ? (
-              <Link
-                href={`/srm?kind=${kind}`}
-                className="rounded-md px-3 py-2 text-sm text-zinc-600 underline hover:text-zinc-900"
+            <div className="flex max-w-4xl flex-wrap items-end gap-3">
+              <label className="flex min-w-[12rem] flex-1 flex-col text-sm">
+                <span className="font-medium text-zinc-700">Search name or code</span>
+                <input
+                  name="q"
+                  type="search"
+                  defaultValue={q}
+                  placeholder="e.g. Acme or SUP-001"
+                  className="mt-1 rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900"
+                  autoComplete="off"
+                />
+              </label>
+              <label className="flex min-w-[9rem] flex-col text-sm">
+                <span className="font-medium text-zinc-700">Approval</span>
+                <select
+                  name="approval"
+                  defaultValue={approval}
+                  className="mt-1 rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900"
+                >
+                  <option value="all">All</option>
+                  <option value="pending">Pending</option>
+                  <option value="approved">Approved</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </label>
+              <label className="flex min-w-[9rem] flex-col text-sm">
+                <span className="font-medium text-zinc-700">Activation</span>
+                <select
+                  name="active"
+                  defaultValue={active}
+                  className="mt-1 rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900"
+                >
+                  <option value="all">All</option>
+                  <option value="active">Active only</option>
+                  <option value="inactive">Inactive only</option>
+                </select>
+              </label>
+              <label className="flex min-w-[10rem] flex-col text-sm">
+                <span className="font-medium text-zinc-700">Sort by</span>
+                <select
+                  name="sort"
+                  defaultValue={sort}
+                  className="mt-1 rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900"
+                >
+                  <option value="name">Name (A–Z)</option>
+                  <option value="code">Code (A–Z)</option>
+                  <option value="updated">Recently updated</option>
+                </select>
+              </label>
+              <button
+                type="submit"
+                className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-900 hover:bg-zinc-50"
               >
-                Clear
-              </Link>
-            ) : null}
+                Apply
+              </button>
+              {hasListFilters ? (
+                <Link
+                  href={`/srm?kind=${kind}`}
+                  className="rounded-md px-3 py-2 text-sm text-zinc-600 underline hover:text-zinc-900"
+                >
+                  Clear filters
+                </Link>
+              ) : null}
+            </div>
           </form>
 
           <section className="mt-8 overflow-x-auto rounded-lg border border-zinc-200">
@@ -180,14 +234,17 @@ export default async function SrmPage({
                   <th className="px-4 py-3">Approval</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3 text-center">Orders</th>
+                  <th className="px-4 py-3">Updated</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100 text-zinc-900">
                 {rows.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-4 py-8 text-center text-sm text-zinc-600">
-                      {q ? "No suppliers match this search." : "No suppliers in this category yet."}
+                    <td colSpan={10} className="px-4 py-8 text-center text-sm text-zinc-600">
+                      {q || approval !== "all" || active !== "all"
+                        ? "No suppliers match these filters."
+                        : "No suppliers in this category yet."}
                     </td>
                   </tr>
                 ) : null}
@@ -231,6 +288,9 @@ export default async function SrmPage({
                       </span>
                     </td>
                     <td className="px-4 py-3 text-center tabular-nums">{s.orderCount}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-xs text-zinc-600">
+                      {formatUpdated(s.updatedAt)}
+                    </td>
                     <td className="px-4 py-3">
                       <Link href={`/srm/${s.id}`} className="font-medium text-[var(--arscmp-primary)] hover:underline">
                         {canEdit || canApprove ? "Open profile" : "View profile"}
