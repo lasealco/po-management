@@ -78,4 +78,33 @@ describe("auditOceanInvoiceLine", () => {
     expect(r.discrepancyCategories).toContain(DISCREPANCY_CATEGORY.AMOUNT_MATCH_WITHIN_TOLERANCE);
     expect(r.expectedAmount?.toString()).toBe("185");
   });
+
+  it("maps carrier wording Terminal handling to THC via synonyms plus charge aliases", () => {
+    const r = auditOceanInvoiceLine({
+      ...baseParams,
+      aliases: [
+        {
+          pattern: "thc",
+          canonicalTokens: ["thc", "terminal", "handling"],
+          targetKind: "CONTRACT_CHARGE",
+          priority: 23,
+        },
+      ],
+      invoiceLine: {
+        rawDescription: "Terminal handling charge origin",
+        normalizedLabel: null,
+        currency: "USD",
+        amount: new Prisma.Decimal("185"),
+        unitBasis: null,
+        equipmentType: null,
+        chargeStructureHint: "ITEMIZED",
+      },
+      candidates: [
+        charge({ id: "c1", label: "THC origin terminal", amount: 185, currency: "USD" }),
+        charge({ id: "c2", label: "Documentation fee", amount: 75, currency: "USD" }),
+      ],
+    });
+    expect(r.outcome).toBe("GREEN");
+    expect(r.expectedAmount?.toString()).toBe("185");
+  });
 });

@@ -69,6 +69,43 @@ export function InvoiceAuditNewClient() {
     };
   }, []);
 
+  function fillDemoExample() {
+    setVendorLabel("Demo carrier");
+    setExternalInvoiceNo("DEMO-OCEAN-001");
+    setPolCode("USNYC");
+    setPodCode("DEHAM");
+    setCurrency("USD");
+    setLines([
+      {
+        lineNo: 1,
+        rawDescription: "Ocean freight FCL 40HC base rate",
+        amount: "2500",
+        currency: "USD",
+        unitBasis: "PER_CONTAINER",
+        equipmentType: "40HC",
+        chargeStructureHint: "",
+      },
+      {
+        lineNo: 2,
+        rawDescription: "Bunker adjustment factor (BAF)",
+        amount: "350",
+        currency: "USD",
+        unitBasis: "",
+        equipmentType: "",
+        chargeStructureHint: "",
+      },
+      {
+        lineNo: 3,
+        rawDescription: "Terminal handling charge origin",
+        amount: "185",
+        currency: "USD",
+        unitBasis: "PER_CONTAINER",
+        equipmentType: "40HC",
+        chargeStructureHint: "",
+      },
+    ]);
+  }
+
   function addLine() {
     setLines((prev) => {
       const nextNo = prev.length ? Math.max(...prev.map((l) => l.lineNo)) + 1 : 1;
@@ -148,6 +185,18 @@ export function InvoiceAuditNewClient() {
           basis when known. Matching uses ocean rules (equipment, geography, unit basis, alias dictionary, all-in vs
           separated basket).
         </p>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={() => fillDemoExample()}
+            className="rounded-lg border border-zinc-300 bg-zinc-50 px-4 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-100"
+          >
+            Fill example lines (demo)
+          </button>
+          <span className="text-xs text-zinc-500">
+            Fills POL/POD and three typical FCL lines (adjust amounts to your snapshot). Then pick a snapshot and save.
+          </span>
+        </div>
 
         <div className="mt-6 space-y-4">
           <div>

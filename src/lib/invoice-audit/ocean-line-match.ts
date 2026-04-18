@@ -34,7 +34,7 @@ const MIN_CONFIDENCE_SCORE = 5;
 const SCORE_TIE_EPSILON = 1.25;
 
 const ALL_IN_RE =
-  /\b(all[\s-]?in|allin|lump[\s-]?sum|lumpsum|package\s+rate|total\s+ocean|ocean\s+freight\s+only|fcl\s+package|door\s+to\s+port\s+package)\b/i;
+  /\b(all[\s-]?in|allin|lump[\s-]?sum|lumpsum|package\s+rate|total\s+ocean|ocean\s+freight\s+only|fcl\s+package|door\s+to\s+port\s+package|sea\s+freight|carrier\s+freight|main\s+leg|freight\s+all\s+inclusive|all\s+inclusive\s+freight)\b/i;
 
 function normalizeText(s: string): string {
   return s
@@ -42,6 +42,40 @@ function normalizeText(s: string): string {
     .replace(/[^a-z0-9]+/g, " ")
     .trim()
     .replace(/\s+/g, " ");
+}
+
+/**
+ * Appends canonical ocean-freight tokens implied by carrier-style wording so token/alias
+ * scoring works when invoices omit standard abbreviations (e.g. "Terminal handling" → THC).
+ */
+function expandOceanSynonymAppendix(combined: string): string {
+  const lower = combined.toLowerCase();
+  const parts: string[] = [];
+  if (/\bthc\b|terminal\s+handling|origin\s+handling|destination\s+handling|\bdthc\b|\bothc\b|wharfage\b/i.test(lower)) {
+    parts.push("thc terminal handling");
+  }
+  if (/\bbaf\b|bunker\b|baf\s+surcharge/i.test(lower)) {
+    parts.push("baf bunker adjustment");
+  }
+  if (/\bcaf\b|currency\s+(adjustment|surcharge)|curr\s+surcharge/i.test(lower)) {
+    parts.push("caf currency adjustment");
+  }
+  if (/\blss\b|low\s+sulphur|low\s+sulfur|\bemo\b/i.test(lower)) {
+    parts.push("lss low sulphur");
+  }
+  if (/\bpss\b|peak\s+season/i.test(lower)) {
+    parts.push("pss peak season");
+  }
+  if (/\bisps\b|security\s+surcharge|port\s+security/i.test(lower)) {
+    parts.push("isps security");
+  }
+  if (/\bbl\s*fee|b\/l\s*fee|bill\s+of\s+lading|documentation\s+fee|doc\s+fee|surrender\s+fee/i.test(lower)) {
+    parts.push("documentation bl fee");
+  }
+  if (/\b(base\s+rate|sea\s+freight|ocean\s+rate|carrier\s+ocean|main\s+leg|fcl\s+freight)\b/i.test(lower)) {
+    parts.push("ocean freight fak base rate");
+  }
+  return parts.join(" ");
 }
 
 function normalizeUnitBasis(s: string | null | undefined): string | null {
@@ -121,13 +155,22 @@ function scoreCandidate(
 ): { score: number; unitSoftMismatch: boolean; geoSoftPenalty: boolean } {
   let score = tokenOverlapScore(augmentedInvoiceText, c.label) * 2.8;
 
+  const labNorm = normalizeText(c.label);
   for (const a of aliases) {
     if (a.targetKind && a.targetKind !== c.kind) continue;
     const p = a.pattern.trim().toLowerCase();
     if (!p || !normalizeText(augmentedInvoiceText).includes(p)) continue;
     for (const t of a.canonicalTokens) {
       if (!t.trim()) continue;
-      if (normalizeText(c.label).includes(normalizeText(t))) score += 3.5;
+      const tn = normalizeText(t);
+      if (!tn) continue;
+      if (labNorm.includes(tn)) {
+        score += 3.5;
+        continue;
+      }
+      for (const w of tn.split(" ").filter((x) => x.length > 2)) {
+        if (labNorm.includes(w)) score += 2.2;
+      }
     }
   }
 
@@ -217,11 +260,13 @@ export function auditOceanInvoiceLine(params: {
   const actual = Number(params.invoiceLine.amount);
   const invoiceEqKey =
     normalizeEquipmentKey(params.invoiceLine.equipmentType) ?? parseEquipmentFromText(params.invoiceLine.rawDescription);
-  const augmented = aliasAugmentedText(
-    params.invoiceLine.rawDescription,
-    params.invoiceLine.normalizedLabel,
-    params.aliases,
-  );
+  const combinedInvoiceText = [params.invoiceLine.normalizedLabel, params.invoiceLine.rawDescription]
+    .filter(Boolean)
+    .join(" ");
+  const invoiceTextForScoring = [combinedInvoiceText, expandOceanSynonymAppendix(combinedInvoiceText)]
+    .filter(Boolean)
+    .join(" ");
+  const augmented = aliasAugmentedText(invoiceTextForScoring, null, params.aliases);
 
   const allIn = isAllInInvoiceLine({
     rawDescription: params.invoiceLine.rawDescription,

@@ -19,9 +19,29 @@ export function InvoiceMatchResultPanel(props: {
             — <span className="font-medium text-zinc-800">{props.snapshotSummary}</span>
           </>
         ) : null}
-        . Text similarity picks a snapshot charge or rate line; amounts are compared using active tolerance rules (or
-        built-in defaults if none apply).
+        . Ocean scoring uses equipment, optional POL/POD, unit basis, tenant charge aliases, and all-in vs itemized
+        logic; amounts use active tolerance rules (or built-in defaults if none apply).
       </p>
+      <div className="mt-4 rounded-xl border border-zinc-100 bg-zinc-50/80 p-3 text-xs text-zinc-700">
+        <p className="font-semibold text-zinc-800">Line outcomes (demo legend)</p>
+        <ul className="mt-2 list-inside list-disc space-y-1">
+          <li>
+            <span className="font-medium text-emerald-800">GREEN</span> — matched snapshot line and within primary
+            tolerance.
+          </li>
+          <li>
+            <span className="font-medium text-amber-800">AMBER</span> — matched with soft commercial flags, warn-band
+            amount, ambiguous tie, or all-in basket in warn band.
+          </li>
+          <li>
+            <span className="font-medium text-red-800">RED</span> — matched but amount outside warn band vs snapshot.
+          </li>
+          <li>
+            <span className="font-medium text-zinc-600">UNKNOWN</span> — no confident snapshot line (currency, empty
+            pool, or low match score).
+          </li>
+        </ul>
+      </div>
       <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
         <div>
           <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Parsed lines</dt>

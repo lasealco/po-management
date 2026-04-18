@@ -292,6 +292,13 @@ async function seed() {
       priority: 25,
     },
     {
+      name: "Bunker wording (no BAF acronym)",
+      pattern: "bunker",
+      tokens: ["baf", "bunker", "adjustment"],
+      targetKind: "CONTRACT_CHARGE",
+      priority: 20,
+    },
+    {
       name: "CAF / currency",
       pattern: "caf",
       tokens: ["caf", "currency", "adjustment"],
