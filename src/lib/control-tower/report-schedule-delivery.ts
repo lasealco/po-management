@@ -20,8 +20,8 @@ function utcDayStart(d: Date): number {
 
 /**
  * True when this schedule should run for the current UTC calendar day.
- * Uses "slot started" (`hourUtc`:00) instead of exact-hour match so a **once-daily** cron
- * (required on Vercel Hobby) can sweep after all hours — e.g. `30 23 * * *`.
+ * Uses "slot started" (`hourUtc`:00) so an **hourly** cron (Pro) can pick up each hour, and a
+ * **once-daily** sweep after all hours (Hobby) still works — see `vercel.json` cron schedule.
  */
 export function isReportScheduleDue(schedule: CtReportSchedule, now: Date): boolean {
   if (schedule.frequency === "WEEKLY") {

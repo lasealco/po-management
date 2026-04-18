@@ -5,9 +5,9 @@ import { runControlTowerReportScheduleCron } from "@/lib/control-tower/report-sc
 export const dynamic = "force-dynamic";
 
 /**
- * Daily sweep for **Control Tower saved report** email schedules (`CtReportSchedule`).
- * Vercel **Hobby** allows at most once-per-day cron jobs; `vercel.json` uses `30 23 * * *` (UTC)
- * so the run is after every `hourUtc` slot that day. On Pro+, you may switch to an hourly cron.
+ * Hourly sweep for **Control Tower saved report** email schedules (`CtReportSchedule`).
+ * `vercel.json` uses `5 * * * *` (UTC); Pro allows sub-daily crons. On Hobby, use a single daily
+ * cron instead (see git history / docs if you downgrade).
  *
  * Secure with `CRON_SECRET`: `Authorization: Bearer <CRON_SECRET>`.
  *
