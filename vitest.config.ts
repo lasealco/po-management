@@ -8,6 +8,7 @@ export default defineConfig({
       "src/lib/invoice-audit/**/*.test.ts",
       "src/lib/booking-pricing-snapshot/**/*.test.ts",
       "src/lib/rfq/**/*.test.ts",
+      "src/lib/tariff/**/*.test.ts",
     ],
     passWithNoTests: false,
   },
