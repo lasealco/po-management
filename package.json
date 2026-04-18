@@ -17,7 +17,7 @@
     "test:invoice-audit": "vitest run src/lib/invoice-audit src/lib/booking-pricing-snapshot",
     "test:watch": "vitest",
     "check:invoice-audit": "eslint \"src/lib/invoice-audit/**/*.{ts,tsx}\" \"src/lib/booking-pricing-snapshot/**/*.ts\" \"src/app/invoice-audit/**/*.{ts,tsx}\" \"src/app/api/invoice-audit/**/*.{ts,tsx}\" \"src/components/invoice-audit/**/*.{ts,tsx}\" \"src/components/pricing-snapshots/**/*.{ts,tsx}\" \"src/app/pricing-snapshots/**/*.{ts,tsx}\" && npm run test:invoice-audit",
-    "check:tariff-rfq": "eslint \"src/components/tariffs/**/*.{ts,tsx}\" \"src/app/tariffs/**/*.{ts,tsx}\" \"src/components/rfq/**/*.{ts,tsx}\" \"src/app/rfq/**/*.{ts,tsx}\"",
+    "check:tariff-rfq": "eslint \"src/lib/tariff/**/*.ts\" \"src/lib/rfq/**/*.ts\" \"src/components/tariffs/**/*.{ts,tsx}\" \"src/app/tariffs/**/*.{ts,tsx}\" \"src/app/api/tariffs/**/*.{ts,tsx}\" \"src/components/rfq/**/*.{ts,tsx}\" \"src/app/rfq/**/*.{ts,tsx}\" \"src/app/api/rfq/**/*.{ts,tsx}\"",
     "verify:tariff-engine": "npm run check:invoice-audit && npm run check:tariff-rfq && npx tsc --noEmit",
     "postinstall": "prisma generate",
     "db:migrate": "cross-env PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK=1 prisma migrate deploy",

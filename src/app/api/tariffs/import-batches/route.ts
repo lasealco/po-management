@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing file field." }, { status: 400 });
   }
 
-  let legalEntityId: string | null =
+  const legalEntityId: string | null =
     typeof form.get("legalEntityId") === "string" ? String(form.get("legalEntityId")).trim() || null : null;
 
   if (legalEntityId) {
