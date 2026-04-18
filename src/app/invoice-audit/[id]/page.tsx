@@ -57,6 +57,8 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
     snapshotMatchedJson: r.snapshotMatchedJson,
   }));
 
+  const appliedTolerance = intake.auditResults[0]?.toleranceRule ?? null;
+
   return (
     <main className="mx-auto max-w-6xl space-y-6 px-6 py-10">
       <div>
@@ -99,6 +101,67 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
         polCode={intake.polCode}
         podCode={intake.podCode}
       />
+
+      <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+        <h2 className="text-sm font-semibold text-zinc-900">Audit run</h2>
+        {intake.lastAuditAt ? (
+          <p className="mt-2 text-sm text-zinc-600">
+            Last completed{" "}
+            <span className="font-medium tabular-nums text-zinc-800">
+              {intake.lastAuditAt.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
+            </span>
+            .
+          </p>
+        ) : (
+          <p className="mt-2 text-sm text-zinc-600">No audit has been run yet for this intake.</p>
+        )}
+        {intake.auditResults.length > 0 ? (
+          <p className="mt-2 text-sm text-zinc-600">
+            <span className="font-medium text-zinc-800">Tolerance</span>
+            {appliedTolerance ? (
+              <>
+                : {appliedTolerance.name}
+                {appliedTolerance.currencyScope ? (
+                  <span className="font-mono text-xs text-zinc-500"> · {appliedTolerance.currencyScope}</span>
+                ) : (
+                  <span className="text-xs text-zinc-500"> · any currency</span>
+                )}
+                {appliedTolerance.amountAbsTolerance != null ? (
+                  <span className="tabular-nums text-zinc-700">
+                    {" "}
+                    · abs Δ {appliedTolerance.amountAbsTolerance.toString()}
+                  </span>
+                ) : null}
+                {appliedTolerance.percentTolerance != null ? (
+                  <span className="tabular-nums text-zinc-700">
+                    {" "}
+                    · {(Number(appliedTolerance.percentTolerance) * 100).toFixed(2)}%
+                  </span>
+                ) : null}
+                {!appliedTolerance.active ? (
+                  <span className="ml-1 text-xs font-medium text-amber-800">(rule inactive at read time)</span>
+                ) : null}
+              </>
+            ) : (
+              <>
+                : <span className="font-medium text-zinc-800">Built-in defaults</span>
+                <span className="text-xs text-zinc-500"> (no tenant rule matched this intake currency.)</span>
+              </>
+            )}
+            {canEdit ? (
+              <>
+                {" "}
+                <Link
+                  href="/invoice-audit/tolerance-rules"
+                  className="text-xs font-medium text-[var(--arscmp-primary)] hover:underline"
+                >
+                  Manage rules
+                </Link>
+              </>
+            ) : null}
+          </p>
+        ) : null}
+      </section>
 
       <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
         <h2 className="text-sm font-semibold text-zinc-900">Linked snapshot</h2>

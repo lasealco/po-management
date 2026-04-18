@@ -44,6 +44,16 @@ export function serializeInvoiceLine(l: InvoiceLine) {
 export function serializeAuditResult(
   r: InvoiceAuditResult & {
     line?: Pick<InvoiceLine, "id" | "lineNo" | "rawDescription" | "amount" | "currency"> | null;
+    toleranceRule?: Pick<
+      InvoiceToleranceRule,
+      | "id"
+      | "name"
+      | "priority"
+      | "active"
+      | "currencyScope"
+      | "amountAbsTolerance"
+      | "percentTolerance"
+    > | null;
   },
 ) {
   return {
@@ -52,6 +62,17 @@ export function serializeAuditResult(
     invoiceLineId: r.invoiceLineId,
     bookingPricingSnapshotId: r.bookingPricingSnapshotId,
     toleranceRuleId: r.toleranceRuleId,
+    toleranceRule: r.toleranceRule
+      ? {
+          id: r.toleranceRule.id,
+          name: r.toleranceRule.name,
+          priority: r.toleranceRule.priority,
+          active: r.toleranceRule.active,
+          currencyScope: r.toleranceRule.currencyScope,
+          amountAbsTolerance: r.toleranceRule.amountAbsTolerance?.toString() ?? null,
+          percentTolerance: r.toleranceRule.percentTolerance?.toString() ?? null,
+        }
+      : null,
     outcome: r.outcome,
     discrepancyCategories: r.discrepancyCategories,
     expectedAmount: r.expectedAmount?.toString() ?? null,

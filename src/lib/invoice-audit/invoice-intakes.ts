@@ -55,6 +55,17 @@ export async function getInvoiceIntakeForTenant(params: { tenantId: string; inta
               currency: true,
             },
           },
+          toleranceRule: {
+            select: {
+              id: true,
+              name: true,
+              priority: true,
+              active: true,
+              currencyScope: true,
+              amountAbsTolerance: true,
+              percentTolerance: true,
+            },
+          },
         },
       },
     },
