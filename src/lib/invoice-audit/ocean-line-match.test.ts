@@ -98,6 +98,48 @@ describe("auditOceanInvoiceLine", () => {
     expect(r.expectedAmount?.toString()).toBe("185");
   });
 
+  it("maps advance manifest carrier wording to AMS-style snapshot charges", () => {
+    const r = auditOceanInvoiceLine({
+      ...baseParams,
+      invoiceLine: {
+        rawDescription: "Advance manifest filing fee",
+        normalizedLabel: null,
+        currency: "USD",
+        amount: new Prisma.Decimal("45"),
+        unitBasis: null,
+        equipmentType: null,
+        chargeStructureHint: "ITEMIZED",
+      },
+      candidates: [
+        charge({ id: "c1", label: "AMS surcharge", amount: 45, currency: "USD" }),
+        charge({ id: "c2", label: "Documentation fee", amount: 75, currency: "USD" }),
+      ],
+    });
+    expect(r.outcome).toBe("GREEN");
+    expect(r.snapshotMatchedJson).toMatchObject({ id: "c1" });
+  });
+
+  it("maps detention wording toward demurrage-style snapshot charges", () => {
+    const r = auditOceanInvoiceLine({
+      ...baseParams,
+      invoiceLine: {
+        rawDescription: "Detention charges at terminal",
+        normalizedLabel: null,
+        currency: "USD",
+        amount: new Prisma.Decimal("200"),
+        unitBasis: null,
+        equipmentType: null,
+        chargeStructureHint: "ITEMIZED",
+      },
+      candidates: [
+        charge({ id: "c1", label: "Demurrage / detention", amount: 200, currency: "USD" }),
+        charge({ id: "c2", label: "THC origin", amount: 185, currency: "USD" }),
+      ],
+    });
+    expect(r.outcome).toBe("GREEN");
+    expect(r.snapshotMatchedJson).toMatchObject({ id: "c1" });
+  });
+
   it("maps cargo handling carrier wording to THC via built-in synonym appendix", () => {
     const r = auditOceanInvoiceLine({
       ...baseParams,

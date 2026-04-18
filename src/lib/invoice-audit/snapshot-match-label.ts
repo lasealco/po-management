@@ -36,6 +36,17 @@ export function formatSnapshotMatchLabel(json: unknown): string {
     return `Ambiguous (${j.ambiguousCandidates.length} tied)`;
   }
   if (Array.isArray(j.topScores) && j.topScores.length > 0) {
+    const first = j.topScores[0];
+    if (first && typeof first === "object" && !Array.isArray(first)) {
+      const row = first as Record<string, unknown>;
+      const lab = typeof row.label === "string" ? row.label.trim() : "";
+      const rawSc = row.score;
+      const sc = typeof rawSc === "number" ? rawSc : typeof rawSc === "string" ? Number(rawSc) : NaN;
+      const short = lab.length > 44 ? `${lab.slice(0, 42)}…` : lab;
+      if (lab && Number.isFinite(sc)) {
+        return `Low confidence — closest "${short}" (score ${sc.toFixed(1)})`;
+      }
+    }
     return "Low confidence (see JSON)";
   }
   if (Array.isArray(j.topScores) && j.topScores.length === 0) {

@@ -21,8 +21,9 @@ export function InvoiceMatchResultPanel(props: {
             — <span className="font-medium text-zinc-800">{props.snapshotSummary}</span>
           </>
         ) : null}
-        . Ocean scoring uses equipment, optional POL/POD, unit basis, tenant charge aliases, and all-in vs itemized
-        logic; amounts use active tolerance rules (or built-in defaults if none apply). Per-line outcomes use the{" "}
+        . Ocean scoring uses equipment, optional POL/POD, unit basis, tenant charge aliases, built-in wording expansion
+        (for example THC, AMS, demurrage, customs, ETS), and all-in vs itemized logic; amounts use active tolerance
+        rules (or built-in defaults if none apply). Per-line outcomes use the{" "}
         <span className="font-medium text-zinc-800">Snapshot match</span> column for a short label; expand stored JSON
         below the table on the intake detail page when you need the full payload. The{" "}
         <span className="font-medium text-zinc-800">Audit run</span> panel (further down) shows the tolerance band that

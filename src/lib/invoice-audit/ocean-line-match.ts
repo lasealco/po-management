@@ -88,6 +88,27 @@ function expandOceanSynonymAppendix(combined: string): string {
   if (/\bmiscellaneous|\bmisc\b|general\s+rate\s+increase|\bgri\b/i.test(lower)) {
     parts.push("gri general rate increase surcharge");
   }
+  if (/\bams\b|advance\s+manifest|24[\s-]?hour\s+rule|aci\s+fee|manifest\s+filing|house\s+manifest/i.test(lower)) {
+    parts.push("ams advance manifest surcharge");
+  }
+  if (/\bdemurrage\b|\bdetention\b|\bper\s+diem\b|storage\s+(charges|fee|at\s+terminal)/i.test(lower)) {
+    parts.push("demurrage detention per diem storage");
+  }
+  if (/\bclean(ing)?\b|wash\s*out|sweep\s*out|container\s+hygiene/i.test(lower)) {
+    parts.push("container cleaning wash");
+  }
+  if (/\bcongestion\b|port\s+(delay|congestion)|transshipment\s+congestion/i.test(lower)) {
+    parts.push("congestion surcharge port delay");
+  }
+  if (/\boverweight\b|\bowt\b|\bheavy\s+lift\b|excess\s+weight|weight\s+surcharge/i.test(lower)) {
+    parts.push("overweight heavy lift surcharge");
+  }
+  if (/\bcustoms\b|brokerage|broker\s+fee|clearance\s+fee|\bccf\b/i.test(lower)) {
+    parts.push("customs clearance brokerage");
+  }
+  if (/\bets\b|\bcarbon\b|emission(s)?\s+trading|eu\s+ets|green\s+fuel/i.test(lower)) {
+    parts.push("ets emission trading carbon");
+  }
   return parts.join(" ");
 }
 
@@ -183,6 +204,15 @@ function scoreCandidate(
   const invAugNorm = normalizeText(augmentedInvoiceText);
   if (labNorm.includes("vgm") && invAugNorm.includes("vgm")) {
     score += 3;
+  }
+  if (labNorm.includes("ams") && /\bams\b/.test(invAugNorm)) {
+    score += 5;
+  }
+  if (
+    (labNorm.includes("demurrage") || labNorm.includes("detention")) &&
+    /\bdemurrage\b|\bdetention\b/.test(invAugNorm)
+  ) {
+    score += 4;
   }
   for (const a of aliases) {
     if (a.targetKind && a.targetKind !== c.kind) continue;
