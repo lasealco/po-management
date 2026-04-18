@@ -167,8 +167,8 @@ describe("SRM supplier API workflow (create → onboarding seed → approval gat
   it("POST /api/suppliers/[id]/approval returns 409 when checklist incomplete", async () => {
     findFirst.mockResolvedValue({ id: "sup-1" } as never);
     taskFindMany.mockResolvedValue([
-      { status: "done" },
-      { status: "pending" },
+      { status: "done", taskKey: "a", label: "A", sortOrder: 0 },
+      { status: "pending", taskKey: "b", label: "B", sortOrder: 1 },
     ] as never);
 
     const res = await postApproval(
@@ -181,8 +181,13 @@ describe("SRM supplier API workflow (create → onboarding seed → approval gat
     );
 
     expect(res.status).toBe(409);
-    const err = (await res.json()) as { error: string };
+    const err = (await res.json()) as {
+      error: string;
+      onboarding?: { pendingCount: number; pendingTasks: { taskKey: string; label: string }[] };
+    };
     expect(err.error).toMatch(/complete or waive/i);
+    expect(err.onboarding?.pendingCount).toBe(1);
+    expect(err.onboarding?.pendingTasks).toEqual([{ taskKey: "b", label: "B" }]);
     expect(update).not.toHaveBeenCalled();
     expect(ensureTasks).toHaveBeenCalledWith(prisma, "tenant-1", "sup-1");
   });
@@ -356,7 +361,9 @@ describe("SRM supplier API workflow (create → onboarding seed → approval gat
         isActive: false,
         approvalStatus: "pending_approval",
       } as never);
-    taskFindMany.mockResolvedValue([{ status: "pending" }] as never);
+    taskFindMany.mockResolvedValue([
+      { status: "pending", taskKey: "legal_details_verified", label: "Legal", sortOrder: 0 },
+    ] as never);
 
     const res = await patchSupplier(
       new Request("http://localhost/api/suppliers/sup-1", {
@@ -371,6 +378,10 @@ describe("SRM supplier API workflow (create → onboarding seed → approval gat
     );
 
     expect(res.status).toBe(409);
+    const body = (await res.json()) as {
+      onboarding?: { pendingTasks: { taskKey: string; label: string }[] };
+    };
+    expect(body.onboarding?.pendingTasks?.[0]?.taskKey).toBe("legal_details_verified");
     expect(ensureTasks).toHaveBeenCalledWith(prisma, "tenant-1", "sup-1");
     expect(update).not.toHaveBeenCalled();
   });

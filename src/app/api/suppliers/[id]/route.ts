@@ -320,11 +320,20 @@ export async function PATCH(
         await ensureSupplierOnboardingTasks(prisma, tenant.id, id);
         const tasks = await prisma.supplierOnboardingTask.findMany({
           where: { supplierId: id, tenantId: tenant.id },
-          select: { status: true },
+          select: { status: true, taskKey: true, label: true, sortOrder: true },
         });
         const gate = assertOnboardingCompleteForApprovedActivation(tasks);
         if (!gate.ok) {
-          return NextResponse.json({ error: gate.message }, { status: 409 });
+          return NextResponse.json(
+            {
+              error: gate.message,
+              onboarding: {
+                pendingCount: gate.pendingCount,
+                pendingTasks: gate.pendingTasks,
+              },
+            },
+            { status: 409 },
+          );
         }
       }
     }

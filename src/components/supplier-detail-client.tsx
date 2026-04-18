@@ -86,6 +86,8 @@ export type SupplierDetailSnapshot = {
     totalCount: number;
     nextTaskLabel: string | null;
     nextTaskKey: string | null;
+    openCount: number;
+    readyForActivation: boolean;
   };
   qualification: {
     status: SupplierQualificationStatus;
@@ -494,10 +496,21 @@ export function SupplierDetailClient({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ decision }),
     });
-    const payload = (await res.json().catch(() => null)) as { error?: string } | null;
+    const payload = (await res.json().catch(() => null)) as {
+      error?: string;
+      onboarding?: { pendingCount: number; pendingTasks: { taskKey: string; label: string }[] };
+    } | null;
     if (!res.ok) {
       setBusy(false);
-      setError(payload?.error ?? "Approval update failed.");
+      const base = payload?.error ?? "Approval update failed.";
+      const pending = payload?.onboarding?.pendingTasks;
+      if (pending?.length) {
+        setError(
+          `${base} Open checklist rows: ${pending.map((p) => p.label).join("; ")}.`,
+        );
+      } else {
+        setError(base);
+      }
       return;
     }
     setBusy(false);
@@ -733,11 +746,31 @@ export function SupplierDetailClient({
       {initial.approvalStatus === "pending_approval" ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
           <p className="font-medium">Pending procurement approval</p>
-          <p className="mt-1 text-xs text-amber-900/90">
+          <p className="mt-2 text-xs font-medium text-amber-900">
+            Onboarding: {initial.onboardingWorkflow.completedCount}/
+            {initial.onboardingWorkflow.totalCount} steps done or waived
+            {initial.onboardingWorkflow.readyForActivation ? (
+              <span className="ml-2 rounded bg-emerald-100 px-2 py-0.5 text-emerald-900">
+                Checklist ready for approval
+              </span>
+            ) : (
+              <span className="ml-2 rounded bg-white/80 px-2 py-0.5 text-amber-950">
+                {initial.onboardingWorkflow.openCount} still open
+              </span>
+            )}
+            {initial.onboardingWorkflow.nextTaskLabel ? (
+              <span className="mt-1 block font-normal text-amber-900/90">
+                Suggested next: {initial.onboardingWorkflow.nextTaskLabel}
+              </span>
+            ) : null}
+          </p>
+          <p className="mt-2 text-xs text-amber-900/90">
             This supplier is not active until an approver confirms it. Every onboarding checklist item
             must be <strong className="font-semibold">done</strong> or <strong className="font-semibold">waived</strong>{" "}
-            before <strong className="font-semibold">Approve and activate</strong> will succeed. Register
-            documents (especially <strong className="font-semibold">insurance</strong>,{" "}
+            before <strong className="font-semibold">Approve and activate</strong> will succeed. Mark{" "}
+            <strong className="font-semibold">Approval chain completed</strong> before{" "}
+            <strong className="font-semibold">Activation decision logged</strong>. Register documents
+            (especially <strong className="font-semibold">insurance</strong>,{" "}
             <strong className="font-semibold">license</strong>, or{" "}
             <strong className="font-semibold">certificate</strong> with an expiry) so the Compliance tab
             readiness strip has something to evaluate. Use Reject to block activation.
@@ -819,6 +852,13 @@ export function SupplierDetailClient({
               }`}
             >
               {t.label}
+              {t.id === "onboarding" &&
+              initial.approvalStatus === "pending_approval" &&
+              initial.onboardingWorkflow.openCount > 0 ? (
+                <span className="ml-1.5 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">
+                  {initial.onboardingWorkflow.openCount}
+                </span>
+              ) : null}
             </button>
           ))}
         </nav>
@@ -1676,6 +1716,7 @@ export function SupplierDetailClient({
           canEdit={canEdit}
           initialRows={initial.onboardingTasks}
           workflowSummary={initial.onboardingWorkflow}
+          supplierApprovalStatus={initial.approvalStatus}
         />
       )}
 

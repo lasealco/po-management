@@ -249,11 +249,14 @@ export async function loadSupplierDetailSnapshot(
           label: t.label,
         })),
       );
+      const openCount = wf.total - wf.doneOrWaived;
       return {
         completedCount: wf.doneOrWaived,
         totalCount: wf.total,
         nextTaskLabel: wf.firstPending?.label ?? null,
         nextTaskKey: wf.firstPending?.taskKey ?? null,
+        openCount,
+        readyForActivation: wf.total > 0 && openCount === 0,
       };
     })(),
     qualification: {
