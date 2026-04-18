@@ -192,6 +192,13 @@ export function CommandPalette({ grants }: { grants: CommandPaletteGrants }) {
           searchText: "tariff geography locode region port subregion alias",
           action: go("/tariffs/geography"),
         },
+        {
+          id: "tariffs-import",
+          label: "Tariffs — import center",
+          hint: "Excel/PDF batches and staging",
+          searchText: "tariff import upload excel pdf staging parse",
+          action: go("/tariffs/import"),
+        },
       );
     }
 

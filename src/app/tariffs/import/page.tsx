@@ -1,0 +1,109 @@
+import Link from "next/link";
+
+import { TariffImportParseBadge, TariffImportReviewBadge } from "@/components/tariffs/tariff-import-badges";
+import { getViewerGrantSet, viewerHas } from "@/lib/authz";
+import { listTariffImportBatchesForTenant } from "@/lib/tariff/import-batches";
+import { getDemoTenant } from "@/lib/demo-tenant";
+
+export const dynamic = "force-dynamic";
+
+function fmtBytes(n: number | null | undefined): string {
+  if (n == null) return "—";
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+export default async function TariffImportDirectoryPage() {
+  const tenant = await getDemoTenant();
+  const access = await getViewerGrantSet();
+  const canEdit = Boolean(access?.user && viewerHas(access.grantSet, "org.tariffs", "edit"));
+
+  if (!tenant) {
+    return (
+      <main className="mx-auto max-w-3xl px-6 py-12">
+        <p className="text-zinc-600">Tenant not found.</p>
+      </main>
+    );
+  }
+
+  const batches = await listTariffImportBatchesForTenant({ tenantId: tenant.id, take: 200 });
+
+  return (
+    <main className="mx-auto max-w-6xl px-6 py-10">
+      <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Workflow</p>
+        <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold text-zinc-900">Tariff import center</h1>
+            <p className="mt-2 max-w-2xl text-sm text-zinc-600">
+              Step 1: upload Excel or PDF sources. Files are stored with metadata; parsing and OCR are wired later.
+            </p>
+          </div>
+          {canEdit ? (
+            <Link
+              href="/tariffs/import/new"
+              className="rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:brightness-95"
+            >
+              New upload
+            </Link>
+          ) : null}
+        </div>
+
+        <div className="mt-8 overflow-x-auto">
+          <table className="min-w-full border-collapse text-left text-sm">
+            <thead>
+              <tr className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500">
+                <th className="py-2 pr-4">File</th>
+                <th className="py-2 pr-4">Source</th>
+                <th className="py-2 pr-4">Size</th>
+                <th className="py-2 pr-4">Parse</th>
+                <th className="py-2 pr-4">Review</th>
+                <th className="py-2 pr-4">Created</th>
+              </tr>
+            </thead>
+            <tbody>
+              {batches.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-10 text-center text-zinc-500">
+                    No import batches yet.
+                    {canEdit ? (
+                      <>
+                        {" "}
+                        <Link href="/tariffs/import/new" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+                          Upload a file
+                        </Link>
+                        .
+                      </>
+                    ) : null}
+                  </td>
+                </tr>
+              ) : null}
+              {batches.map((b) => (
+                <tr key={b.id} className="border-b border-zinc-100">
+                  <td className="py-3 pr-4">
+                    <Link href={`/tariffs/import/${b.id}`} className="font-medium text-[var(--arscmp-primary)] hover:underline">
+                      {b.uploadedFilename ?? b.sourceReference ?? "Untitled batch"}
+                    </Link>
+                    {b.legalEntity ? (
+                      <p className="mt-0.5 text-xs text-zinc-500">{b.legalEntity.name}</p>
+                    ) : null}
+                  </td>
+                  <td className="py-3 pr-4 text-zinc-700">{b.sourceType}</td>
+                  <td className="py-3 pr-4 text-xs text-zinc-600">{fmtBytes(b.sourceByteSize)}</td>
+                  <td className="py-3 pr-4">
+                    <TariffImportParseBadge status={b.parseStatus} />
+                  </td>
+                  <td className="py-3 pr-4">
+                    <TariffImportReviewBadge status={b.reviewStatus} />
+                  </td>
+                  <td className="py-3 pr-4 text-xs text-zinc-600">{b.createdAt.toISOString().slice(0, 19).replace("T", " ")}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  );
+}

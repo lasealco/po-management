@@ -12,6 +12,11 @@ const items: { href: string; label: string; isActive: (pathname: string) => bool
     isActive: (pathname) => pathname.startsWith("/tariffs/contracts"),
   },
   {
+    href: "/tariffs/import",
+    label: "Import",
+    isActive: (pathname) => pathname.startsWith("/tariffs/import"),
+  },
+  {
     href: "/tariffs/geography",
     label: "Geography",
     isActive: (pathname) => pathname.startsWith("/tariffs/geography"),

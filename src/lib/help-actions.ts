@@ -39,6 +39,8 @@ const OPEN_PATH_ALLOWLIST = new Set([
   "/tariffs/contracts",
   "/tariffs/geography",
   "/tariffs/geography/new",
+  "/tariffs/import",
+  "/tariffs/import/new",
   "/reporting",
   "/reports",
   "/crm/reporting",
