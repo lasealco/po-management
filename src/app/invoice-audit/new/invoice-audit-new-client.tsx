@@ -203,9 +203,10 @@ export function InvoiceAuditNewClient(props: { initialSnapshotId?: string }) {
         <p className="mt-3 rounded-xl border border-zinc-200 bg-zinc-50/90 px-3 py-2 text-xs text-zinc-700">
           <span className="font-semibold text-zinc-800">Prerequisites:</span> DB migrations applied (
           <code className="rounded bg-white px-1 py-0.5 font-mono text-[11px]">npm run db:migrate</code>
-          ). For a repeatable demo intake after you have at least one snapshot, run{" "}
+          ) and main tenant seed for <span className="font-medium">demo-company</span>. For a repeatable PARSED demo
+          intake, run{" "}
           <code className="rounded bg-white px-1 py-0.5 font-mono text-[11px]">USE_DOTENV_LOCAL=1 npm run db:seed:invoice-audit-demo</code>{" "}
-          from the repo root.
+          — it creates a minimal pricing snapshot in the library when none exist, then seeds the intake.
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <button
@@ -244,7 +245,7 @@ export function InvoiceAuditNewClient(props: { initialSnapshotId?: string }) {
                 {snapshotsLoading
                   ? "Loading recent snapshots…"
                   : snapshotOptions.length === 0
-                    ? "No snapshots in tenant (freeze one first, or paste id below)"
+                    ? "No snapshots in library — freeze under Pricing snapshots, run demo seed, or paste id"
                     : "Pick a recent snapshot…"}
               </option>
               {snapshotOptions.map((s) => (
