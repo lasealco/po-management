@@ -31,4 +31,16 @@ describe("assertOnboardingCompleteForApprovedActivation", () => {
       expect(r.pendingTasks).toEqual([]);
     }
   });
+
+  it("orders pendingTasks by sortOrder then taskKey", () => {
+    const r = assertOnboardingCompleteForApprovedActivation([
+      { status: "done", taskKey: "done", sortOrder: 0 },
+      { status: "pending", taskKey: "z", label: "Z", sortOrder: 2 },
+      { status: "pending", taskKey: "a", label: "A", sortOrder: 1 },
+    ]);
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.pendingTasks.map((p) => p.taskKey)).toEqual(["a", "z"]);
+    }
+  });
 });

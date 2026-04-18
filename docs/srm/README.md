@@ -75,6 +75,8 @@ Work for new schema/UI ships on **`feature/srm-foundation`** (not `main`) until 
 
 With **migrations applied**, **seed loaded**, **`.env.local`** (or equivalent) pointing at that database, and **`npm run verify:srm`** passing, the current branch is **runnable** for local **`npm run dev`**. Onboarding + approval are **demoable** end-to-end using the script below (buyer → checklist → approver); **SUP-001** remains a stable **approved** 360 demo. Gaps intentionally left for later phases: no public **supplier master upsert** HTTP route yet (parse/map only in `src/lib/srm`), no sync/outbox, and **Prompt 7** document-control depth (e.g. formal “document request” center) is only partially covered by the Compliance readiness strip.
 
+**Phase boundary:** The repo is still **R1 SRM foundation** (this branch, this checklist). A lot of **directory + 360 + onboarding + document register + compliance readiness** is already built for **local demo**, but that is **breadth inside foundation**, not a handoff to **Prompt 9 (integration HTTP / outbox)** or full **Prompt 7** (suspension hooks, formal request center). Treat later prompts as **not started** until scope is explicitly widened.
+
 ### Next planned SRM scope (after this assessment)
 
 Per **`docs/srm/cursor_srm_prompt_sequence.md`**, the next sequential focus is **Prompt 7 — compliance / document control** (expiring-doc workflows, missing-document requests, suspension hooks—beyond the current readiness strip). **Prompt 9 — integration scaffolding** (secured **HTTP** for supplier master upsert + sync/outbox) can proceed in parallel if integration is the higher priority.
