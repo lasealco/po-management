@@ -289,6 +289,35 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
             {intake.bookingPricingSnapshot.totalEstimatedCost.toString()} {intake.bookingPricingSnapshot.currency}
           </span>
         </p>
+        {intake.bookingPricingSnapshot.shipmentBooking ? (
+          <p className="mt-2 text-sm text-zinc-600">
+            <span className="font-medium text-zinc-800">Control Tower booking</span> — snapshot was frozen with booking{" "}
+            <span className="font-mono text-xs text-zinc-700">{intake.bookingPricingSnapshot.shipmentBooking.id}</span>
+            {intake.bookingPricingSnapshot.shipmentBooking.bookingNo ? (
+              <>
+                {" "}
+                (<span className="font-semibold">{intake.bookingPricingSnapshot.shipmentBooking.bookingNo}</span>)
+              </>
+            ) : null}
+            .{" "}
+            <Link
+              href={`/control-tower/shipments/${intake.bookingPricingSnapshot.shipmentBooking.shipmentId}`}
+              className="font-medium text-[var(--arscmp-primary)] hover:underline"
+            >
+              Open shipment workspace
+            </Link>
+          </p>
+        ) : intake.bookingPricingSnapshot.shipmentBookingId ? (
+          <p className="mt-2 text-xs text-zinc-500">
+            Snapshot references booking id{" "}
+            <span className="font-mono text-zinc-600">{intake.bookingPricingSnapshot.shipmentBookingId}</span> (booking
+            row not found — link unavailable).
+          </p>
+        ) : (
+          <p className="mt-2 text-xs text-zinc-500">
+            No Control Tower shipment booking is linked on this snapshot (tariff-only or ad hoc snapshot).
+          </p>
+        )}
         {snapshotStaleSourceNote ? <p className="mt-2 text-xs text-zinc-500">{snapshotStaleSourceNote}</p> : null}
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2">
           <Link

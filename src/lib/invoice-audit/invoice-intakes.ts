@@ -64,6 +64,10 @@ export async function getInvoiceIntakeForTenant(params: { tenantId: string; inta
           currency: true,
           totalEstimatedCost: true,
           frozenAt: true,
+          shipmentBookingId: true,
+          shipmentBooking: {
+            select: { id: true, bookingNo: true, shipmentId: true },
+          },
         },
       },
       lines: { orderBy: { lineNo: "asc" } },

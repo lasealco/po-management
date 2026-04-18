@@ -5,6 +5,7 @@ import { guardInvoiceAuditSchema } from "@/app/api/invoice-audit/_lib/guard-invo
 import { serializeAuditResult, serializeInvoiceLine } from "@/app/api/invoice-audit/_lib/serialize";
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { parseInvoiceAuditRecordId } from "@/lib/invoice-audit/invoice-audit-id";
+import { parseInvoiceIntakePatchBody } from "@/lib/invoice-audit/invoice-intake-patch-parse";
 import {
   getInvoiceIntakeForTenant,
   patchInvoiceIntakeReviewAndAccounting,
@@ -102,75 +103,49 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
   } catch {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
-  if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "Expected JSON object." }, { status: 400 });
-  }
-  const o = body as Record<string, unknown>;
-  const hasReview = typeof o.reviewDecision === "string" && o.reviewDecision.trim().length > 0;
-  const hasAccounting =
-    Object.prototype.hasOwnProperty.call(o, "approvedForAccounting") && typeof o.approvedForAccounting === "boolean";
-  const hasRawSourceNotes = Object.prototype.hasOwnProperty.call(o, "rawSourceNotes");
 
-  if (!hasReview && !hasAccounting && !hasRawSourceNotes) {
-    return NextResponse.json(
-      {
-        error:
-          "Provide reviewDecision (APPROVED|OVERRIDDEN), approvedForAccounting (boolean), and/or rawSourceNotes (string|null).",
-      },
-      { status: 400 },
-    );
+  const parsed = parseInvoiceIntakePatchBody(body);
+  if (!parsed.ok) {
+    return NextResponse.json({ error: parsed.error }, { status: parsed.status });
   }
+  const p = parsed.value;
 
   try {
-    if (hasReview) {
-      const reviewDecision = String(o.reviewDecision).trim().toUpperCase();
-      if (reviewDecision !== "APPROVED" && reviewDecision !== "OVERRIDDEN") {
-        return NextResponse.json(
-          { error: "reviewDecision must be APPROVED or OVERRIDDEN." },
-          { status: 400 },
-        );
-      }
-      const rd = reviewDecision === "APPROVED" ? "APPROVED" : "OVERRIDDEN";
-      const reviewNote = typeof o.reviewNote === "string" ? o.reviewNote : null;
-
-      if (hasAccounting) {
+    if (p.hasReview && p.reviewDecision) {
+      if (p.hasAccounting && p.approvedForAccounting != null) {
         await patchInvoiceIntakeReviewAndAccounting({
           tenantId: tenant.id,
           invoiceIntakeId: id,
           actorUserId: actorId,
-          reviewDecision: rd,
-          reviewNote,
-          approvedForAccounting: o.approvedForAccounting as boolean,
-          accountingApprovalNote:
-            typeof o.accountingApprovalNote === "string" ? o.accountingApprovalNote : null,
+          reviewDecision: p.reviewDecision,
+          reviewNote: p.reviewNote,
+          approvedForAccounting: p.approvedForAccounting,
+          accountingApprovalNote: p.accountingApprovalNote,
         });
       } else {
         await setInvoiceIntakeReview({
           tenantId: tenant.id,
           invoiceIntakeId: id,
-          reviewDecision: rd,
-          reviewNote,
+          reviewDecision: p.reviewDecision,
+          reviewNote: p.reviewNote,
           reviewedByUserId: actorId,
         });
       }
-    } else if (hasAccounting) {
+    } else if (p.hasAccounting && p.approvedForAccounting != null) {
       await setInvoiceIntakeAccountingHandoff({
         tenantId: tenant.id,
         invoiceIntakeId: id,
-        approvedForAccounting: o.approvedForAccounting as boolean,
-        accountingApprovalNote: typeof o.accountingApprovalNote === "string" ? o.accountingApprovalNote : null,
+        approvedForAccounting: p.approvedForAccounting,
+        accountingApprovalNote: p.accountingApprovalNote,
         actorUserId: actorId,
       });
     }
 
-    if (hasRawSourceNotes) {
-      if (o.rawSourceNotes !== null && typeof o.rawSourceNotes !== "string") {
-        return NextResponse.json({ error: "rawSourceNotes must be a string or null." }, { status: 400 });
-      }
+    if (p.hasRawSourceNotes) {
       await setInvoiceIntakeRawSourceNotes({
         tenantId: tenant.id,
         invoiceIntakeId: id,
-        rawSourceNotes: o.rawSourceNotes === null ? null : String(o.rawSourceNotes),
+        rawSourceNotes: p.rawSourceNotes,
       });
     }
 
