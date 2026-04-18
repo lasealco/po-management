@@ -17,6 +17,7 @@
     "test:invoice-audit": "vitest run src/lib/invoice-audit",
     "test:watch": "vitest",
     "check:invoice-audit": "eslint \"src/lib/invoice-audit/**/*.{ts,tsx}\" \"src/app/invoice-audit/**/*.{ts,tsx}\" \"src/app/api/invoice-audit/**/*.{ts,tsx}\" \"src/components/invoice-audit/**/*.{ts,tsx}\" \"src/app/pricing-snapshots/**/*.{ts,tsx}\" && npm run test:invoice-audit",
+    "verify:tariff-engine": "npm run check:invoice-audit",
     "postinstall": "prisma generate",
     "db:migrate": "cross-env PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK=1 prisma migrate deploy",
     "db:migrate:local": "bash scripts/db-migrate-local.sh",
