@@ -1,0 +1,32 @@
+---
+description: Tariff-engine scope only — no SRM or unrelated product areas unless explicitly requested
+alwaysApply: true
+---
+
+# Tariff-engine scope (strict)
+
+When the task is **tariff-engine** work (tariffs, RFQ, booking/pricing snapshots, pricing snapshot UI, or **invoice audit only as it ties to snapshots / intakes / pricing**), keep changes **inside the slice below**. Do not expand into other product modules for “drive-by” fixes or refactors.
+
+## In scope (typical paths)
+
+- `src/lib/tariff/**`, `src/app/tariffs/**`, `src/app/api/tariffs/**`
+- `src/lib/rfq/**`, `src/app/rfq/**`, `src/app/api/rfq/**`
+- `src/lib/booking-pricing-snapshot/**`, `src/app/api/booking-pricing-snapshots/**`
+- `src/components/tariffs/**`, `src/components/rfq/**`
+- `src/components/pricing-snapshots/**`, `src/app/pricing-snapshots/**`
+- `src/lib/invoice-audit/**`, `src/app/invoice-audit/**`, `src/app/api/invoice-audit/**`, `src/components/invoice-audit/**` — **only** when the change is clearly for snapshot/intake/pricing-audit flows that belong to this vertical
+- `package.json` / `vitest.config.ts` **only** for scripts that gate this slice (e.g. `verify:tariff-engine`, `check:tariff-rfq`, `test:tariff-rfq`, `test:invoice-audit` when used as the tariff-engine gate)
+- `prisma/**` **only** when the user explicitly asked for a tariff/RFQ/snapshot/invoice-audit schema change as part of this work
+
+## Out of scope unless the user explicitly asks
+
+- **SRM**, supplier category/approval flows, and unrelated supplier UIs
+- **CRM**, **WMS**, **PO Management** (orders, sales orders), **Control Tower**, **Executive**, **Reporting** hubs — except where a tariff task truly requires a minimal shared touch (rare); if so, call it out in the response and keep the diff minimal
+
+## Quality gate
+
+- After substantive edits in this slice, prefer **`npm run verify:tariff-engine`** (or the narrowest script the change requires) before hand-off.
+
+## Ship / branch
+
+- Follow **`.cursor/rules/ship-after-changes.mdc`** for commits/pushes, but **do not merge to `main`** or broaden deployment scope unless the user asked for that in the current task.
