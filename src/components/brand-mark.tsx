@@ -5,18 +5,10 @@ export const SITE_BRAND_HEX = "#165B67" as const;
 export function BrandMark() {
   return (
     <div className="flex items-center gap-2">
-      <div
-        className="flex items-center justify-center rounded-lg px-[0.6rem] py-[0.4rem]"
-        style={{ backgroundColor: SITE_BRAND_HEX }}
-      >
+      <div className="arscmp-logo-box flex min-h-9 min-w-9 shrink-0 items-center justify-center rounded-lg px-[0.6rem] py-[0.4rem]">
         <span className="text-xl font-black leading-none text-white">AR</span>
       </div>
-      <span
-        className="text-3xl font-black tracking-[-0.02em]"
-        style={{ color: SITE_BRAND_HEX }}
-      >
-        SCMP
-      </span>
+      <span className="arscmp-brand text-3xl font-black tracking-[-0.02em]">SCMP</span>
     </div>
   );
 }
@@ -36,18 +28,10 @@ export function BrandMarkLink({
       className={["flex items-center gap-2", className].filter(Boolean).join(" ")}
       aria-label={ariaLabel}
     >
-      <div
-        className="flex items-center justify-center rounded-lg px-[0.6rem] py-[0.4rem]"
-        style={{ backgroundColor: SITE_BRAND_HEX }}
-      >
+      <div className="arscmp-logo-box flex min-h-9 min-w-9 shrink-0 items-center justify-center rounded-lg px-[0.6rem] py-[0.4rem]">
         <span className="text-xl font-black leading-none text-white">AR</span>
       </div>
-      <span
-        className="text-3xl font-black tracking-[-0.02em]"
-        style={{ color: SITE_BRAND_HEX }}
-      >
-        SCMP
-      </span>
+      <span className="arscmp-brand text-3xl font-black tracking-[-0.02em]">SCMP</span>
     </Link>
   );
 }

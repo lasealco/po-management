@@ -3,11 +3,12 @@
  * - `AppNav` (PO Management, Sales Orders, …)
  * - PO subnav, guide callout, command palette, help assistant, bottom legal strip
  *
- * These routes use page-local layout only (marketing hero, or `LegalSiteNav` on legal pages).
+ * These routes use page-local layout only (marketing hero, pricing, or `LegalSiteNav` on legal pages).
  * Every other path uses the full app chrome when the user is allowed to load it.
  */
 export const PATHS_WITHOUT_APP_CHROME = new Set([
   "/",
+  "/pricing",
   "/privacy",
   "/terms",
   "/cookies",

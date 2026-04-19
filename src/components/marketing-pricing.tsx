@@ -145,13 +145,13 @@ export function MarketingPricingPage() {
                 </ul>
               </div>
               <div className="flex flex-col items-stretch gap-3 lg:w-64">
-                <a
-                  href={`${MAIL_SALES}7-day%20evaluation`}
+                <Link
+                  href="/platform"
                   className="rounded-2xl px-6 py-4 text-center text-lg font-bold text-white shadow-md transition hover:opacity-95"
                   style={{ backgroundColor: SITE_BRAND_HEX }}
                 >
                   Start free evaluation
-                </a>
+                </Link>
                 <p className="text-center text-xs text-slate-500">No obligation. Commercial terms follow separately.</p>
               </div>
             </div>
