@@ -6,8 +6,8 @@ import { usePathname } from "next/navigation";
 import { BrandMarkLink } from "@/components/brand-mark";
 import type { AppNavLinkVisibility } from "@/lib/nav-visibility";
 
-/** Top nav dropdown: tariffs, snapshots, invoice audit, RFQ. Rename here if you pick a final product name. */
-const RATES_WORKSPACE_LABEL = "Rates workspace";
+/** Top nav dropdown: tariffs, snapshots, invoice audit, RFQ. */
+const RATES_WORKSPACE_LABEL = "Rates & Audit";
 
 function isTopNavHrefActive(pathname: string, href: string): boolean {
   if (href === "/settings") return pathname.startsWith("/settings");
@@ -137,7 +137,7 @@ export function AppNav({
                     className={`flex cursor-pointer list-none items-center gap-0.5 rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors sm:px-3 [&::-webkit-details-marker]:hidden ${
                       groupActive ? linkClassActive : linkClassIdle
                     }`}
-                    aria-label={`${RATES_WORKSPACE_LABEL}: Tariffs, pricing snapshots, invoice audit, RFQ`}
+                    aria-label={`${RATES_WORKSPACE_LABEL}: tariffs, pricing snapshots, invoice audit, RFQ`}
                   >
                     {RATES_WORKSPACE_LABEL}
                     <span className="text-[10px] text-zinc-400" aria-hidden>
