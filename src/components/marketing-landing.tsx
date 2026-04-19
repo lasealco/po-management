@@ -6,8 +6,23 @@ export function MarketingLanding() {
   return (
     <div className="min-h-screen bg-white text-slate-800 antialiased">
       <div className="sticky top-0 z-50 border-b border-gray-100 bg-white/95 backdrop-blur-sm">
-        <div className="mx-auto flex h-16 max-w-7xl items-center px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           <BrandMarkLink href="/" className="py-1" aria-label="AR SCMP home" />
+          <nav className="flex items-center gap-4 text-sm font-semibold text-slate-600 sm:gap-5">
+            <Link href="/pricing" className="transition hover:text-slate-900">
+              Plans &amp; pricing
+            </Link>
+            <Link href="/platform" className="hidden transition hover:text-slate-900 sm:inline">
+              Platform
+            </Link>
+            <a
+              href="mailto:sales@arscmp.com?subject=Demo%20request"
+              className="rounded-lg px-3 py-1.5 text-white transition hover:opacity-95"
+              style={{ backgroundColor: SITE_BRAND_HEX }}
+            >
+              Demo
+            </a>
+          </nav>
         </div>
       </div>
       <header className="relative overflow-hidden py-20 lg:py-32">
@@ -21,7 +36,7 @@ export function MarketingLanding() {
               orders, control tower visibility, warehouse operations, reporting, CRM, and supplier
               management — with future-ready extensions for pricing, tenders, and invoice auditing.
             </p>
-            <div className="flex flex-col gap-4 sm:flex-row">
+            <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap">
               <a
                 href="#demo"
                 className="rounded-xl px-8 py-4 text-center text-lg font-bold text-white shadow-lg transition-all hover:opacity-95"
@@ -29,13 +44,19 @@ export function MarketingLanding() {
               >
                 Request a Demo
               </a>
-              <a
-                href="/platform"
+              <Link
+                href="/pricing"
                 className="rounded-xl border-2 border-slate-200 px-8 py-4 text-center text-lg font-bold text-slate-700 transition-all hover:bg-slate-50"
               >
-                Explore the Platform
-              </a>
+                Plans &amp; pricing
+              </Link>
             </div>
+            <p className="mt-4 text-sm text-slate-500">
+              <Link href="/platform" className="font-semibold text-[#165B67] underline-offset-2 hover:underline">
+                Explore the live platform
+              </Link>{" "}
+              when you are ready to click through the demo hub.
+            </p>
           </div>
         </div>
         <div className="pointer-events-none absolute -right-20 top-20 -z-10 h-full w-1/2 rounded-full bg-slate-50 opacity-50 blur-3xl" />
