@@ -3,6 +3,7 @@
  *
  * Prerequisites:
  * - DATABASE_URL (optional USE_DOTENV_LOCAL=1 from repo root)
+ * - `prisma migrate deploy` applied on this database (tariff tables must exist)
  * - Main `npm run db:seed` at least once (demo-company + normalized charge codes + default provider optional)
  *
  * Idempotent: removes prior rows tagged with contractNumber DEMO-FRA-CHI-* and geography code DEMO_SEED_FRA_CHI_*.
@@ -51,6 +52,36 @@ const prisma = new PrismaClient({
 
 function d(s) {
   return new Prisma.Decimal(s);
+}
+
+/** @returns {Promise<boolean>} */
+async function assertTariffTablesPresent() {
+  const rows = await prisma.$queryRaw`
+    SELECT table_name::text AS table_name
+    FROM information_schema.tables
+    WHERE table_schema = 'public'
+      AND table_name IN (
+        'contract_headers',
+        'geography_groups',
+        'normalized_charge_codes',
+        'providers'
+      )
+  `;
+  const required = ["contract_headers", "geography_groups", "normalized_charge_codes", "providers"];
+  const have = new Set(
+    Array.isArray(rows) ? rows.map((r) => (typeof r.table_name === "string" ? r.table_name : "")) : [],
+  );
+  const missing = required.filter((t) => !have.has(t));
+  if (missing.length > 0) {
+    console.error(
+      "[db:seed:tariff-fra-chi-demo] This database is missing tariff tables:\n" +
+        `  missing: ${missing.join(", ")}\n` +
+        "  Fix: run `node --env-file=.env.local ./node_modules/prisma/build/index.js migrate deploy` on this DATABASE_URL,\n" +
+        "  then `USE_DOTENV_LOCAL=1 npm run db:seed`, then retry this script.",
+    );
+    return false;
+  }
+  return true;
 }
 
 async function ensureProviders() {
@@ -106,6 +137,10 @@ async function scrubPriorDemo(tenantId) {
 }
 
 async function main() {
+  if (!(await assertTariffTablesPresent())) {
+    process.exit(1);
+  }
+
   const tenant = await prisma.tenant.findUnique({
     where: { slug: DEMO_SLUG },
     select: { id: true },
