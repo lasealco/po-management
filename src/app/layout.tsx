@@ -6,6 +6,7 @@ import { CommandPalette } from "@/components/command-palette";
 import { GuideCallout } from "@/components/guide-callout";
 import { HelpAssistant } from "@/components/help-assistant";
 import { LayoutPoSubnav } from "@/components/layout-po-subnav";
+import { LayoutRatesAuditSubnav } from "@/components/layout-rates-audit-subnav";
 import { SiteLegalStrip } from "@/components/site-legal-strip";
 import { actorIsSupplierPortalRestricted, getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { pathUsesAppChrome } from "@/lib/app-shell-paths";
@@ -39,7 +40,7 @@ export default async function RootLayout({
   const showAppChrome = pathUsesAppChrome(pathname);
 
   const access = await getViewerGrantSet();
-  const { poSubNavVisibility } = await resolveNavState(access);
+  const { poSubNavVisibility, linkVisibility, setupIncomplete } = await resolveNavState(access);
   const actorId = access?.user?.id ?? null;
   const isSupplierPortalUser =
     actorId !== null && (await actorIsSupplierPortalRestricted(actorId));
@@ -67,6 +68,15 @@ export default async function RootLayout({
     srm: Boolean(access?.user && viewerHas(access.grantSet, "org.suppliers", "view")),
     products: Boolean(access?.user && viewerHas(access.grantSet, "org.products", "view")),
     settings: Boolean(access?.user && viewerHas(access.grantSet, "org.settings", "view")),
+    tariffs: Boolean(access?.user && viewerHas(access.grantSet, "org.tariffs", "view")),
+    rfq: Boolean(access?.user && viewerHas(access.grantSet, "org.rfq", "view")),
+    pricingSnapshots: Boolean(
+      access?.user &&
+        (viewerHas(access.grantSet, "org.tariffs", "view") ||
+          viewerHas(access.grantSet, "org.rfq", "view") ||
+          viewerHas(access.grantSet, "org.invoice_audit", "view")),
+    ),
+    invoiceAudit: Boolean(access?.user && viewerHas(access.grantSet, "org.invoice_audit", "view")),
   };
 
   return (
@@ -82,6 +92,7 @@ export default async function RootLayout({
         {showAppChrome ? (
           <>
             <AppNavWithGrants />
+            <LayoutRatesAuditSubnav linkVisibility={linkVisibility} setupIncomplete={setupIncomplete} />
             <LayoutPoSubnav visibility={poSubNavVisibility} />
             <GuideCallout />
             <div className="flex min-h-0 flex-1 flex-col">

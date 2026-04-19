@@ -48,6 +48,16 @@ npm run db:seed
 
 Do not leave these on permanently: builds become slow and seeds may reset demo data.
 
+## Invoice audit (Phase 06) — migrations + demo row
+
+Use the **same** `DATABASE_URL` the deployed app uses (Neon pooled URL is fine for `prisma migrate deploy` in this repo’s scripts; see Vercel build hints if migrate fails).
+
+1. **Migrations:** Invoice audit expects Prisma folders **`20260419100000_invoice_audit_foundation`**, **`20260420120000_invoice_audit_ocean_matching`**, and **`20260421103000_invoice_intake_accounting_handoff`** under `prisma/migrations/`. If any are missing from `_prisma_migrations`, APIs and pages under `/invoice-audit` can return schema errors at runtime.
+2. **Verify before a demo:** Open **`/invoice-audit/readiness`** in the app (with `org.invoice_audit` view), or call **`GET /api/invoice-audit/readiness`** — same checks as the page (`information_schema` + finished migration rows). Use **`?refresh=1`** on the page after `migrate deploy` to bypass the short server cache.
+3. **Seed the demo intake:** After **`USE_DOTENV_LOCAL=1 npm run db:seed`** (creates `demo-company` and tolerance defaults), run **`USE_DOTENV_LOCAL=1 npm run db:seed:invoice-audit-demo`**. If there is **no** `booking_pricing_snapshots` row yet for that tenant, the script **creates a minimal QUOTE_RESPONSE snapshot** from `prisma/invoice-audit-demo-snapshot.breakdown.json`, then creates/replaces PARSED intake **`DEMO-INVOICE-AUDIT-SEED`**. Open the printed URL ? **Run audit** ? closeout (ops / finance / accounting).
+
+**Vercel:** `scripts/vercel-build.cjs` does **not** run the invoice-audit demo seed automatically. Run **`npm run db:seed:invoice-audit-demo`** manually against Preview/Production `DATABASE_URL` when you need that row on a fresh env.
+
 Optional full CRM demo bulk (in addition to main seed):
 
 ```bash

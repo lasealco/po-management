@@ -66,6 +66,14 @@ model Tenant {
   ctExceptionCodes      CtExceptionCode[]
   locationCodes         LocationCode[]
   ctReportSchedules     CtReportSchedule[]
+  tariffLegalEntities   TariffLegalEntity[]
+  tariffContractHeaders TariffContractHeader[]
+  tariffImportBatches   TariffImportBatch[]
+  quoteRequests         QuoteRequest[]
+  bookingPricingSnapshots BookingPricingSnapshot[]
+  invoiceIntakes        InvoiceIntake[]
+  invoiceToleranceRules InvoiceToleranceRule[]
+  invoiceChargeAliases  InvoiceChargeAlias[]
 }
 
 /// Tenant-scoped milestone template packs (override or extend built-in packs in code).
@@ -138,6 +146,15 @@ model User {
   /// When set, Control Tower (and similar) list/detail is limited to shipments tagged with this CRM account.
   customerCrmAccountId String?
   customerCrmAccount   CrmAccount? @relation("UserCustomerPortalScope", fields: [customerCrmAccountId], references: [id], onDelete: SetNull)
+  tariffContractHeadersOwned TariffContractHeader[] @relation("TariffContractHeaderOwner")
+  tariffApprovalRecords      TariffApprovalRecord[] @relation("TariffApprovalApprover")
+  tariffAuditLogs            TariffAuditLog[] @relation("TariffAuditLogActor")
+  quoteRequestsOwned         QuoteRequest[]         @relation("QuoteRequestOwner")
+  quoteClarificationsAuthored QuoteClarificationMessage[] @relation("QuoteClarificationAuthor")
+  bookingPricingSnapshotsCreated BookingPricingSnapshot[] @relation("BookingPricingSnapshotCreator")
+  invoiceIntakesCreated          InvoiceIntake[]          @relation("InvoiceIntakeCreator")
+  invoiceIntakesReviewed         InvoiceIntake[]          @relation("InvoiceIntakeReviewer")
+  invoiceIntakesAccountingApproved InvoiceIntake[]         @relation("InvoiceIntakeAccountingApprover")
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -265,6 +282,7 @@ model Supplier {
   shipmentsCarrier Shipment[] @relation("ShipmentCarrierSupplier")
   ctShipmentLegsCarrier CtShipmentLeg[] @relation("CtLegCarrierSupplier")
   ctShipmentCostLinesVendor CtShipmentCostLine[] @relation("CtCostLineVendorSupplier")
+  quoteRequestRecipients    QuoteRequestRecipient[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -824,6 +842,7 @@ model ShipmentBooking {
   forwarderContact SupplierContact? @relation(fields: [forwarderContactId], references: [id], onDelete: SetNull)
   createdBy       User            @relation("ShipmentBookingCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
   updatedBy       User            @relation("ShipmentBookingUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  pricingSnapshots  BookingPricingSnapshot[]
 
   @@index([status])
   @@index([forwarderSupplierId])
@@ -2113,4 +2132,786 @@ model CrmQuoteLine {
   quote CrmQuote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
 
   @@index([quoteId])
+}
+
+// --- Tariff engine (Phase 1): tables mapped to starter-pack names; tenant = existing Tenant ---
+
+enum TariffProviderType {
+  OCEAN_CARRIER
+  NVOCC
+  FORWARDER
+  AIRLINE
+  TRUCKER
+  RAIL_OPERATOR
+  WAREHOUSE
+  BROKER
+  COURIER
+  OTHER
+}
+
+/// Distinct from logistics `TransportMode` on Shipment — tariff contract / charge scope.
+enum TariffTransportMode {
+  OCEAN
+  LCL
+  AIR
+  TRUCK
+  RAIL
+  LOCAL_SERVICE
+}
+
+enum TariffContractStatus {
+  DRAFT
+  UNDER_REVIEW
+  APPROVED
+  EXPIRED
+  SUPERSEDED
+  ARCHIVED
+}
+
+enum TariffSourceType {
+  MANUAL
+  EXCEL
+  PDF
+  API
+  EDI
+  EMAIL
+  SYSTEM
+}
+
+enum TariffApprovalStatus {
+  NOT_REQUIRED
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum QuoteRequestStatus {
+  DRAFT
+  OPEN
+  CLOSED
+  AWARDED
+  CANCELLED
+}
+
+enum QuoteRecipientInvitationStatus {
+  PENDING
+  INVITED
+  DECLINED
+  RESPONDED
+}
+
+enum QuoteResponseStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  SHORTLISTED
+  AWARDED
+  REJECTED
+  WITHDRAWN
+}
+
+enum QuoteClarificationVisibility {
+  INTERNAL
+  RECIPIENTS
+}
+
+enum PricingSnapshotSourceType {
+  TARIFF_CONTRACT_VERSION
+  QUOTE_RESPONSE
+  /// Sum of multiple contract versions (e.g. forwarder + pre-carriage + ocean); see breakdownJson.components.
+  COMPOSITE_CONTRACT_VERSION
+}
+
+enum TariffGeographyType {
+  GLOBAL_REGION
+  SUBREGION
+  COUNTRY
+  PORT
+  INLAND_POINT
+  RAIL_RAMP
+  ZONE
+  ALIAS_GROUP
+}
+
+enum TariffLineRateType {
+  BASE_RATE
+  ALL_IN
+  GATE_IN
+  GATE_IN_ALL_IN
+  GATE_IN_GATE_OUT
+  ADD_ON
+  LOCAL_CHARGE
+  SURCHARGE
+  CUSTOMS
+  PRE_CARRIAGE
+  ON_CARRIAGE
+}
+
+enum TariffChargeFamily {
+  MAIN_CARRIAGE
+  FUEL_ENVIRONMENTAL
+  SEASONAL_EMERGENCY
+  ORIGIN_TERMINAL
+  DEST_TERMINAL
+  ORIGIN_INLAND
+  DEST_INLAND
+  CUSTOMS_REGULATORY
+  HANDLING_SPECIAL
+  FREE_TIME_DELAY
+  ADMIN_OTHER
+}
+
+enum TariffRuleType {
+  DEMURRAGE
+  DETENTION
+  COMBINED_DD
+  STORAGE
+  PLUGIN
+  OTHER
+}
+
+model TariffLegalEntity {
+  id           String   @id @default(cuid())
+  tenantId     String
+  name         String
+  code         String?
+  countryCode  String?  @db.VarChar(2)
+  baseCurrency String?  @db.VarChar(3)
+  status       String   @default("ACTIVE")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant          Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contractHeaders TariffContractHeader[]
+  importBatches   TariffImportBatch[]
+
+  @@index([tenantId])
+  @@map("legal_entities")
+}
+
+model TariffProvider {
+  id           String             @id @default(cuid())
+  legalName    String
+  tradingName  String?
+  providerType TariffProviderType
+  countryCode  String?            @db.VarChar(2)
+  status       String             @default("ACTIVE")
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  chargeAliases   TariffChargeAlias[]
+  contractHeaders TariffContractHeader[]
+
+  @@map("providers")
+}
+
+model TariffGeographyGroup {
+  id            String              @id @default(cuid())
+  geographyType TariffGeographyType
+  name          String
+  code          String?
+  aliasSource   String?
+  validFrom     DateTime?           @db.Date
+  validTo       DateTime?           @db.Date
+  active        Boolean             @default(true)
+  createdAt     DateTime            @default(now())
+
+  members                TariffGeographyMember[]
+  rateLinesAsOrigin      TariffRateLine[]      @relation("TariffRateLineOrigin")
+  rateLinesAsDestination TariffRateLine[]      @relation("TariffRateLineDestination")
+  chargeLines            TariffChargeLine[]
+  freeTimeRules          TariffFreeTimeRule[]
+
+  @@map("geography_groups")
+}
+
+model TariffGeographyMember {
+  id               String              @id @default(cuid())
+  geographyGroupId String
+  memberCode       String
+  memberName       String?
+  memberType       TariffGeographyType
+  validFrom        DateTime?           @db.Date
+  validTo          DateTime?           @db.Date
+
+  geographyGroup TariffGeographyGroup @relation(fields: [geographyGroupId], references: [id], onDelete: Cascade)
+
+  @@index([geographyGroupId])
+  @@map("geography_members")
+}
+
+model TariffNormalizedChargeCode {
+  id              String               @id @default(cuid())
+  code            String               @unique
+  displayName     String
+  chargeFamily    TariffChargeFamily
+  transportMode   TariffTransportMode?
+  isLocalCharge   Boolean              @default(false)
+  isSurcharge     Boolean              @default(false)
+  active          Boolean              @default(true)
+  createdAt       DateTime             @default(now())
+
+  aliases     TariffChargeAlias[]
+  chargeLines TariffChargeLine[]
+
+  @@map("normalized_charge_codes")
+}
+
+model TariffChargeAlias {
+  id                     String @id @default(cuid())
+  normalizedChargeCodeId String
+  aliasText              String
+  providerId             String?
+  notes                  String? @db.Text
+
+  normalizedChargeCode TariffNormalizedChargeCode @relation(fields: [normalizedChargeCodeId], references: [id], onDelete: Cascade)
+  provider               TariffProvider?            @relation(fields: [providerId], references: [id], onDelete: SetNull)
+
+  @@index([normalizedChargeCodeId])
+  @@index([providerId])
+  @@map("charge_aliases")
+}
+
+model TariffContractHeader {
+  id             String              @id @default(cuid())
+  tenantId       String
+  legalEntityId  String?
+  providerId     String
+  transportMode  TariffTransportMode
+  contractNumber String?
+  title          String
+  tradeScope     String?             @db.Text
+  status         TariffContractStatus @default(DRAFT)
+  ownerUserId    String?
+  notes          String?             @db.Text
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  tenant       Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  legalEntity  TariffLegalEntity?  @relation(fields: [legalEntityId], references: [id], onDelete: SetNull)
+  provider     TariffProvider      @relation(fields: [providerId], references: [id], onDelete: Restrict)
+  owner        User?               @relation("TariffContractHeaderOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  versions     TariffContractVersion[]
+
+  @@index([tenantId])
+  @@index([providerId])
+  @@map("contract_headers")
+}
+
+model TariffContractVersion {
+  id                   String               @id @default(cuid())
+  contractHeaderId     String
+  versionNo            Int
+  sourceType           TariffSourceType
+  sourceReference      String?
+  sourceFileUrl        String?
+  approvalStatus       TariffApprovalStatus @default(PENDING)
+  status               TariffContractStatus @default(DRAFT)
+  validFrom            DateTime?            @db.Date
+  validTo              DateTime?            @db.Date
+  bookingDateValidFrom DateTime?            @db.Date
+  bookingDateValidTo   DateTime?            @db.Date
+  sailingDateValidFrom DateTime?            @db.Date
+  sailingDateValidTo   DateTime?            @db.Date
+  comments             String?              @db.Text
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+
+  contractHeader TariffContractHeader @relation(fields: [contractHeaderId], references: [id], onDelete: Cascade)
+  rateLines      TariffRateLine[]
+  chargeLines    TariffChargeLine[]
+  freeTimeRules  TariffFreeTimeRule[]
+
+  @@unique([contractHeaderId, versionNo])
+  @@index([contractHeaderId])
+  @@index([validFrom, validTo])
+  @@map("contract_versions")
+}
+
+model TariffRateLine {
+  id                  String             @id @default(cuid())
+  contractVersionId   String
+  originScopeId       String?
+  destinationScopeId  String?
+  rateType            TariffLineRateType
+  equipmentType       String?
+  commodityScope      String?            @db.Text
+  serviceScope        String?            @db.Text
+  unitBasis           String
+  currency            String             @db.VarChar(3)
+  amount              Decimal            @db.Decimal(18, 4)
+  includedChargeSet Json?
+  excludedChargeSet Json?
+  rawRateDescription  String?            @db.Text
+  validFrom           DateTime?          @db.Date
+  validTo             DateTime?          @db.Date
+  notes               String?            @db.Text
+
+  contractVersion  TariffContractVersion @relation(fields: [contractVersionId], references: [id], onDelete: Cascade)
+  originScope      TariffGeographyGroup? @relation("TariffRateLineOrigin", fields: [originScopeId], references: [id], onDelete: SetNull)
+  destinationScope TariffGeographyGroup? @relation("TariffRateLineDestination", fields: [destinationScopeId], references: [id], onDelete: SetNull)
+
+  @@index([contractVersionId])
+  @@map("rate_lines")
+}
+
+model TariffChargeLine {
+  id                     String  @id @default(cuid())
+  contractVersionId      String
+  normalizedChargeCodeId String?
+  rawChargeName          String
+  geographyScopeId       String?
+  directionScope         String?
+  equipmentScope         String?
+  conditionScope         String?
+  unitBasis              String
+  currency               String  @db.VarChar(3)
+  amount                 Decimal @db.Decimal(18, 4)
+  isIncluded             Boolean @default(false)
+  isMandatory            Boolean @default(true)
+  validFrom              DateTime? @db.Date
+  validTo                DateTime? @db.Date
+  notes                  String?   @db.Text
+
+  contractVersion      TariffContractVersion      @relation(fields: [contractVersionId], references: [id], onDelete: Cascade)
+  normalizedChargeCode TariffNormalizedChargeCode? @relation(fields: [normalizedChargeCodeId], references: [id], onDelete: SetNull)
+  geographyScope       TariffGeographyGroup?      @relation(fields: [geographyScopeId], references: [id], onDelete: SetNull)
+
+  @@index([contractVersionId])
+  @@map("charge_lines")
+}
+
+model TariffFreeTimeRule {
+  id                 String         @id @default(cuid())
+  contractVersionId  String
+  geographyScopeId   String?
+  importExportScope  String?
+  equipmentScope     String?
+  ruleType           TariffRuleType
+  freeDays           Int
+  validFrom          DateTime?      @db.Date
+  validTo            DateTime?      @db.Date
+  notes              String?        @db.Text
+
+  contractVersion TariffContractVersion @relation(fields: [contractVersionId], references: [id], onDelete: Cascade)
+  geographyScope  TariffGeographyGroup? @relation(fields: [geographyScopeId], references: [id], onDelete: SetNull)
+
+  @@index([contractVersionId])
+  @@map("free_time_rules")
+}
+
+model TariffImportBatch {
+  id               String           @id @default(cuid())
+  tenantId         String?
+  legalEntityId    String?
+  sourceType       TariffSourceType
+  uploadedFilename String?
+  sourceReference  String?
+  /** Stored file URL (Vercel Blob or dev /uploads/tariffs/...). */
+  sourceFileUrl    String?          @db.Text
+  sourceMimeType   String?
+  sourceByteSize   Int?
+  /** Original client metadata: checksum, headers, uploader id, etc. */
+  sourceMetadata   Json?
+  parseStatus      String           @default("UPLOADED")
+  confidenceScore  Decimal?         @db.Decimal(5, 2)
+  reviewStatus     String           @default("PENDING")
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  tenant       Tenant?            @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  legalEntity  TariffLegalEntity? @relation(fields: [legalEntityId], references: [id], onDelete: SetNull)
+  stagingRows  TariffImportStagingRow[]
+
+  @@index([tenantId])
+  @@map("import_batches")
+}
+
+model TariffImportStagingRow {
+  id                String   @id @default(cuid())
+  importBatchId     String
+  rowType           String
+  rawPayload        Json
+  normalizedPayload Json?
+  confidenceScore   Decimal? @db.Decimal(5, 2)
+  unresolvedFlags   Json?
+  approved          Boolean  @default(false)
+  createdAt         DateTime @default(now())
+
+  importBatch TariffImportBatch @relation(fields: [importBatchId], references: [id], onDelete: Cascade)
+
+  @@index([importBatchId])
+  @@map("import_staging_rows")
+}
+
+model TariffApprovalRecord {
+  id             String               @id @default(cuid())
+  objectType     String
+  objectId       String
+  stepName       String?
+  approverUserId String?
+  decision       TariffApprovalStatus
+  decisionNote   String?              @db.Text
+  decidedAt      DateTime             @default(now())
+
+  approver User? @relation("TariffApprovalApprover", fields: [approverUserId], references: [id], onDelete: SetNull)
+
+  @@index([objectType, objectId])
+  @@map("approval_records")
+}
+
+model TariffAuditLog {
+  id         String   @id @default(cuid())
+  objectType String
+  objectId   String
+  action     String
+  userId     String?
+  oldValue   Json?
+  newValue   Json?
+  createdAt  DateTime @default(now())
+
+  user User? @relation("TariffAuditLogActor", fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([objectType, objectId])
+  @@map("audit_logs")
+}
+
+/// Buyer-initiated ad hoc ocean (or other mode) procurement request.
+model QuoteRequest {
+  id               String              @id @default(cuid())
+  tenantId         String
+  title            String
+  description      String?             @db.Text
+  status           QuoteRequestStatus  @default(DRAFT)
+  transportMode    TariffTransportMode @default(OCEAN)
+  originLabel      String              @db.Text
+  destinationLabel String              @db.Text
+  equipmentSummary String?
+  cargoDescription String?             @db.Text
+  quotesDueAt      DateTime?
+  ownerUserId      String?
+  /// Reserved for future broadcast automation (email / portal).
+  lastBroadcastAt  DateTime?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  tenant         Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  owner          User?                     @relation("QuoteRequestOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  recipients     QuoteRequestRecipient[]
+  responses      QuoteResponse[]
+  clarifications QuoteClarificationMessage[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("quote_requests")
+}
+
+model QuoteRequestRecipient {
+  id                String                         @id @default(cuid())
+  quoteRequestId    String
+  supplierId        String?
+  displayName       String
+  contactEmail      String?                        @db.VarChar(320)
+  invitationStatus  QuoteRecipientInvitationStatus @default(PENDING)
+  invitedAt         DateTime?
+  respondedAt       DateTime?
+  /// Future outbound integration: template id, message id, last error, etc.
+  lastInviteMetadata Json?
+  createdAt         DateTime                       @default(now())
+
+  quoteRequest QuoteRequest  @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
+  supplier     Supplier?     @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  response     QuoteResponse?
+  clarifications QuoteClarificationMessage[]
+
+  @@index([quoteRequestId])
+  @@index([supplierId])
+  @@map("quote_request_recipients")
+}
+
+model QuoteResponse {
+  id                    String             @id @default(cuid())
+  quoteRequestId       String
+  recipientId          String             @unique
+  status                QuoteResponseStatus @default(DRAFT)
+  currency              String             @default("USD") @db.VarChar(3)
+  totalAllInAmount      Decimal?           @db.Decimal(18, 4)
+  validityFrom          DateTime?          @db.Date
+  validityTo            DateTime?          @db.Date
+  includedChargesJson   Json?
+  excludedChargesJson   Json?
+  freeTimeSummaryJson   Json?
+  reviewNotes           String?            @db.Text
+  submittedAt           DateTime?
+  reviewedAt            DateTime?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+
+  quoteRequest QuoteRequest           @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
+  recipient    QuoteRequestRecipient  @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  lines        QuoteResponseLine[]
+  clarifications QuoteClarificationMessage[]
+
+  @@index([quoteRequestId])
+  @@map("quote_responses")
+}
+
+model QuoteResponseLine {
+  id              String   @id @default(cuid())
+  quoteResponseId String
+  sortOrder       Int      @default(0)
+  lineType        String
+  label           String
+  amount          Decimal? @db.Decimal(18, 4)
+  currency        String   @default("USD") @db.VarChar(3)
+  unitBasis       String?
+  isIncluded      Boolean  @default(true)
+  notes           String?  @db.Text
+
+  quoteResponse QuoteResponse @relation(fields: [quoteResponseId], references: [id], onDelete: Cascade)
+
+  @@index([quoteResponseId])
+  @@map("quote_response_lines")
+}
+
+model QuoteClarificationMessage {
+  id              String                       @id @default(cuid())
+  quoteRequestId  String
+  recipientId     String?
+  quoteResponseId String?
+  authorUserId    String?
+  body            String                       @db.Text
+  visibility      QuoteClarificationVisibility @default(INTERNAL)
+  /// Future email drafts: { "subject", "to": [] } — not sent by the app yet.
+  metadata        Json?
+  createdAt       DateTime                     @default(now())
+
+  quoteRequest  QuoteRequest          @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
+  recipient     QuoteRequestRecipient? @relation(fields: [recipientId], references: [id], onDelete: SetNull)
+  quoteResponse QuoteResponse?        @relation(fields: [quoteResponseId], references: [id], onDelete: SetNull)
+  author        User?                 @relation("QuoteClarificationAuthor", fields: [authorUserId], references: [id], onDelete: SetNull)
+
+  @@index([quoteRequestId])
+  @@map("quote_clarification_messages")
+}
+
+/// Immutable capture of estimated booking economics at a point in time (contract or RFQ basis).
+/// Rows are never updated when underlying tariffs/quotes change — create a new snapshot instead.
+model BookingPricingSnapshot {
+  id                 String                     @id @default(cuid())
+  tenantId           String
+  shipmentBookingId String?
+  sourceType         PricingSnapshotSourceType
+  /// Contract version id or quote response id (matches sourceType).
+  sourceRecordId     String
+  sourceSummary      String?                    @db.Text
+  currency           String                     @db.VarChar(3)
+  totalEstimatedCost Decimal                    @db.Decimal(18, 4)
+  breakdownJson      Json
+  freeTimeBasisJson  Json
+  /// Documents how totalEstimatedCost was derived (MVP: sum of rate + charge amounts).
+  totalDerivation    String                     @default("SUM_RATE_AND_CHARGE_AMOUNTS")
+  frozenAt           DateTime                   @default(now())
+  createdByUserId    String?
+  /// Reserved for buy/sell split, margin, counterparty totals, etc.
+  commercialJson     Json?
+  /// Reserved e.g. BUY | SELL when dual-basis UI exists.
+  basisSide          String?                    @db.VarChar(16)
+  /// Commercial term label (FOB, EXW, DDP, …) captured at freeze; drives which legs you include in practice.
+  incoterm           String?                    @db.VarChar(16)
+
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  shipmentBooking  ShipmentBooking?  @relation(fields: [shipmentBookingId], references: [id], onDelete: SetNull)
+  creator            User?             @relation("BookingPricingSnapshotCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  invoiceIntakes      InvoiceIntake[]
+  invoiceAuditResults InvoiceAuditResult[]
+
+  @@index([tenantId])
+  @@index([tenantId, frozenAt])
+  @@index([shipmentBookingId])
+  @@index([sourceType, sourceRecordId])
+  @@map("booking_pricing_snapshots")
+}
+
+enum InvoiceIntakeStatus {
+  DRAFT
+  RECEIVED
+  PARSED
+  AUDITED
+  FAILED
+}
+
+enum InvoiceAuditRollupOutcome {
+  NONE
+  PENDING
+  PASS
+  WARN
+  FAIL
+}
+
+enum InvoiceAuditLineOutcome {
+  GREEN
+  AMBER
+  RED
+  UNKNOWN
+}
+
+enum InvoiceReviewDecision {
+  NONE
+  APPROVED
+  OVERRIDDEN
+}
+
+/// Tenant-scoped tolerance defaults for invoice vs snapshot amount comparison.
+model InvoiceToleranceRule {
+  id                   String   @id @default(cuid())
+  tenantId             String
+  name                 String
+  priority             Int      @default(0)
+  active               Boolean  @default(true)
+  /// Absolute amount difference allowed (same currency as invoice line).
+  amountAbsTolerance   Decimal? @db.Decimal(18, 4)
+  /// Relative tolerance as ratio, e.g. 0.01 = 1%.
+  percentTolerance     Decimal? @db.Decimal(9, 6)
+  /// When set, rule applies only to intakes in this currency (ISO 4217).
+  currencyScope        String?  @db.VarChar(3)
+  /// Optional JSON list of discrepancy category keys this rule optimizes for (MVP: unused).
+  categoryScope        Json?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  tenant       Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  auditResults InvoiceAuditResult[]
+
+  @@index([tenantId, active, priority])
+  @@map("tolerance_rules")
+}
+
+/// Carrier / forwarder invoice uploaded or keyed in for audit against a frozen pricing snapshot.
+model InvoiceIntake {
+  id                         String                   @id @default(cuid())
+  tenantId                   String
+  status                     InvoiceIntakeStatus      @default(RECEIVED)
+  bookingPricingSnapshotId   String
+  externalInvoiceNo          String?                  @db.VarChar(128)
+  vendorLabel                String?                  @db.VarChar(256)
+  invoiceDate                DateTime?                @db.Date
+  currency                   String                   @default("USD") @db.VarChar(3)
+  /// Optional port of loading (UN/LOCODE or 5-letter) for geography-aware matching.
+  polCode                    String?                  @db.VarChar(8)
+  /// Optional port of discharge for geography-aware matching.
+  podCode                    String?                  @db.VarChar(8)
+  rawSourceNotes             String?                  @db.Text
+  /// Parser or importer hard failure — surfaced to UI (no silent failures).
+  parseError                 String?                  @db.Text
+  parseWarnings              Json?
+  /// Last audit engine failure (distinct from line-level RED outcomes).
+  auditRunError              String?                  @db.Text
+  lastAuditAt                DateTime?
+  rollupOutcome              InvoiceAuditRollupOutcome @default(NONE)
+  greenLineCount             Int                      @default(0)
+  amberLineCount             Int                      @default(0)
+  redLineCount               Int                      @default(0)
+  unknownLineCount           Int                      @default(0)
+  reviewDecision             InvoiceReviewDecision    @default(NONE)
+  reviewNote                 String?                  @db.Text
+  reviewedByUserId           String?
+  reviewedAt                 DateTime?
+  /// When true, finance has cleared this audited intake for downstream accounting / export (separate from APPROVED/OVERRIDDEN review).
+  approvedForAccounting      Boolean                  @default(false)
+  accountingApprovedAt       DateTime?
+  accountingApprovedByUserId String?
+  accountingApprovalNote     String?                  @db.Text
+  createdByUserId            String?
+  receivedAt                 DateTime                 @default(now())
+  updatedAt                  DateTime                 @updatedAt
+
+  tenant                 Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  bookingPricingSnapshot BookingPricingSnapshot @relation(fields: [bookingPricingSnapshotId], references: [id], onDelete: Restrict)
+  reviewer               User?                  @relation("InvoiceIntakeReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  accountingApprover     User?                  @relation("InvoiceIntakeAccountingApprover", fields: [accountingApprovedByUserId], references: [id], onDelete: SetNull)
+  creator                User?                  @relation("InvoiceIntakeCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  lines                    InvoiceLine[]
+  auditResults             InvoiceAuditResult[]
+
+  @@index([tenantId])
+  @@index([tenantId, receivedAt])
+  @@index([bookingPricingSnapshotId])
+  @@map("invoice_intakes")
+}
+
+/// Parsed charge lines from the supplier invoice.
+model InvoiceLine {
+  id               String   @id @default(cuid())
+  invoiceIntakeId  String
+  lineNo           Int
+  rawDescription   String   @db.Text
+  normalizedLabel String? @db.VarChar(512)
+  currency         String   @db.VarChar(3)
+  amount           Decimal  @db.Decimal(18, 4)
+  unitBasis        String?  @db.VarChar(64)
+  quantity         Decimal? @db.Decimal(18, 6)
+  /// e.g. 40HC, 20DV — improves rate-line matching.
+  equipmentType    String?  @db.VarChar(32)
+  /// ALL_IN = compare to snapshot basket / RFQ total; ITEMIZED = per-line; null = auto-detect from description.
+  chargeStructureHint String? @db.VarChar(24)
+  sourceRowJson    Json?
+  parseConfidence  String?  @db.VarChar(32)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  intake       InvoiceIntake        @relation(fields: [invoiceIntakeId], references: [id], onDelete: Cascade)
+  auditResult  InvoiceAuditResult?
+
+  @@unique([invoiceIntakeId, lineNo])
+  @@index([invoiceIntakeId])
+  @@map("invoice_lines")
+}
+
+/// Tenant dictionary: invoice text patterns → canonical tokens for better snapshot line matching.
+model InvoiceChargeAlias {
+  id               String   @id @default(cuid())
+  tenantId         String
+  name             String?  @db.Text
+  /// Normalized substring match on invoice description (lowercase storage recommended).
+  pattern          String   @db.Text
+  /// JSON string array of tokens that strongly associate with a snapshot charge/rate label.
+  canonicalTokens  Json
+  /// When set, only boost candidates of this kind (CONTRACT_RATE | CONTRACT_CHARGE | RFQ_LINE).
+  targetKind       String?  @db.VarChar(24)
+  priority         Int      @default(0)
+  active           Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, active, priority])
+  @@map("invoice_charge_aliases")
+}
+
+/// Per invoice-line match against a booking pricing snapshot (immutable audit trail).
+model InvoiceAuditResult {
+  id                         String                 @id @default(cuid())
+  invoiceIntakeId            String
+  invoiceLineId              String                 @unique
+  bookingPricingSnapshotId   String
+  toleranceRuleId            String?
+  outcome                    InvoiceAuditLineOutcome
+  discrepancyCategories      Json
+  expectedAmount             Decimal?               @db.Decimal(18, 4)
+  amountVariance             Decimal?               @db.Decimal(18, 4)
+  percentVariance            Decimal?               @db.Decimal(9, 6)
+  snapshotMatchedJson        Json?
+  explanation                String                 @db.Text
+  createdAt                  DateTime               @default(now())
+
+  intake       InvoiceIntake          @relation(fields: [invoiceIntakeId], references: [id], onDelete: Cascade)
+  line         InvoiceLine            @relation(fields: [invoiceLineId], references: [id], onDelete: Cascade)
+  snapshot     BookingPricingSnapshot @relation(fields: [bookingPricingSnapshotId], references: [id], onDelete: Restrict)
+  toleranceRule InvoiceToleranceRule? @relation(fields: [toleranceRuleId], references: [id], onDelete: SetNull)
+
+  @@index([invoiceIntakeId])
+  @@index([bookingPricingSnapshotId])
+  @@map("audit_results")
 }

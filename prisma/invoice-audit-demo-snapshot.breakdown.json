@@ -1,0 +1,39 @@
+{
+  "sourceType": "QUOTE_RESPONSE",
+  "quoteRequest": {
+    "originLabel": "Port USNYC",
+    "destinationLabel": "DEHAM"
+  },
+  "lines": [
+    {
+      "id": "demo-snap-ln-1",
+      "lineType": "FREIGHT",
+      "label": "Ocean FCL 40HC base rate",
+      "amount": "2500",
+      "currency": "USD",
+      "unitBasis": "PER_CONTAINER",
+      "isIncluded": false,
+      "notes": "40HC"
+    },
+    {
+      "id": "demo-snap-ln-2",
+      "lineType": "ACCESSORIAL",
+      "label": "Bunker adjustment factor (BAF)",
+      "amount": "330",
+      "currency": "USD",
+      "isIncluded": false,
+      "notes": ""
+    },
+    {
+      "id": "demo-snap-ln-3",
+      "lineType": "ACCESSORIAL",
+      "label": "Terminal handling charge origin",
+      "amount": "185",
+      "currency": "USD",
+      "unitBasis": "PER_CONTAINER",
+      "isIncluded": false,
+      "notes": "40HC"
+    }
+  ],
+  "totals": { "grand": 3015 }
+}

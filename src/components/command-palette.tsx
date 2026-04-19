@@ -16,6 +16,10 @@ export type CommandPaletteGrants = {
   srm: boolean;
   products: boolean;
   settings: boolean;
+  tariffs: boolean;
+  rfq: boolean;
+  pricingSnapshots: boolean;
+  invoiceAudit: boolean;
 };
 
 type CommandItem = {
@@ -187,6 +191,113 @@ export function CommandPalette({ grants }: { grants: CommandPaletteGrants }) {
           hint: "Cross-module /reporting with focus on the CT card",
           searchText: "reporting hub control tower focus cockpit cross module analytics",
           action: go(REPORTING_HUB_CONTROL_TOWER_HREF),
+        },
+      );
+    }
+
+    if (grants.tariffs) {
+      list.push(
+        {
+          id: "tariffs-contracts",
+          label: "Tariffs — contracts",
+          hint: "Ocean contracts, versions, and lines",
+          searchText: "tariff contract rate ocean freight baf surcharges",
+          action: go("/tariffs/contracts"),
+        },
+        {
+          id: "tariffs-geography",
+          label: "Tariffs — geography groups",
+          hint: "Ports, regions, carrier label mapping",
+          searchText: "tariff geography locode region port subregion alias",
+          action: go("/tariffs/geography"),
+        },
+        {
+          id: "tariffs-import",
+          label: "Tariffs — import center",
+          hint: "Excel/PDF batches and staging",
+          searchText: "tariff import upload excel pdf staging parse",
+          action: go("/tariffs/import"),
+        },
+        {
+          id: "tariffs-charge-codes",
+          label: "Tariffs — charge codes",
+          hint: "Normalized charge taxonomy for contract lines",
+          searchText: "tariff charge code normalized catalog thc baf",
+          action: go("/tariffs/charge-codes"),
+        },
+      );
+    }
+
+    if (grants.pricingSnapshots) {
+      list.push(
+        {
+          id: "pricing-snapshots",
+          label: "Pricing snapshots",
+          hint: "Frozen contract or RFQ economics for a booking",
+          searchText: "pricing snapshot freeze booking tariff rfq estimate",
+          action: go("/pricing-snapshots"),
+        },
+        {
+          id: "pricing-snapshots-new",
+          label: "Pricing snapshots — freeze new",
+          searchText: "new pricing snapshot freeze contract version quote response",
+          action: go("/pricing-snapshots/new"),
+        },
+      );
+    }
+
+    if (grants.invoiceAudit) {
+      list.push(
+        {
+          id: "invoice-audit",
+          label: "Invoice audit — intakes",
+          hint: "Match invoices to pricing snapshots",
+          searchText: "invoice audit freight discrepancy tolerance",
+          action: go("/invoice-audit"),
+        },
+        {
+          id: "invoice-audit-new",
+          label: "Invoice audit — new intake",
+          searchText: "new invoice intake parse lines",
+          action: go("/invoice-audit/new"),
+        },
+        {
+          id: "invoice-audit-tolerance",
+          label: "Invoice audit — tolerance rules",
+          searchText: "invoice tolerance percent absolute audit thresholds",
+          action: go("/invoice-audit/tolerance-rules"),
+        },
+        {
+          id: "invoice-audit-charge-aliases",
+          label: "Invoice audit — charge aliases",
+          hint: "Map invoice wording to snapshot matching tokens",
+          searchText: "invoice charge alias dictionary matching ocean line",
+          action: go("/invoice-audit/charge-aliases"),
+        },
+        {
+          id: "invoice-audit-readiness",
+          label: "Invoice audit — database readiness",
+          hint: "Verify Phase 06 tables and migrations on Postgres",
+          searchText: "invoice audit database migrate schema readiness",
+          action: go("/invoice-audit/readiness"),
+        },
+      );
+    }
+
+    if (grants.rfq) {
+      list.push(
+        {
+          id: "rfq-requests",
+          label: "RFQ — requests",
+          hint: "Ocean ad hoc quotes and comparison",
+          searchText: "rfq request for quote procurement ocean freight bid",
+          action: go("/rfq/requests"),
+        },
+        {
+          id: "rfq-new",
+          label: "RFQ — new request",
+          searchText: "new rfq quote request",
+          action: go("/rfq/requests/new"),
         },
       );
     }

@@ -27,6 +27,11 @@ function run(label, command, args) {
         "[vercel-build] P3009: ensure DATABASE_URL_UNPOOLED (direct Neon host) is set for migrate.\n" +
           "[vercel-build] Repair runs before migrate deploy; locally: npm run db:repair:supplier-migration\n",
       );
+      console.error(
+        "[vercel-build] Invoice audit (Phase 06): after migrate deploy, confirm folders through\n" +
+          "20260421103000_invoice_intake_accounting_handoff finished; otherwise /invoice-audit may 500.\n" +
+          "[vercel-build] Post-deploy demo row: npm run db:seed:invoice-audit-demo (manual; see docs/database-neon.md).\n",
+      );
     }
     process.exit(result.status);
   }
@@ -40,7 +45,9 @@ run("prisma generate", "npx", ["prisma", "generate"]);
 
 if (process.env.SKIP_DB_MIGRATE === "1") {
   console.log(
-    "\n[vercel-build] SKIP_DB_MIGRATE=1 — skipping prisma migrate deploy\n",
+    "\n[vercel-build] SKIP_DB_MIGRATE=1 — skipping prisma migrate deploy\n" +
+      "[vercel-build] Note: invoice audit requires migrations 20260419100000+ applied on DATABASE_URL; " +
+      "GET /api/invoice-audit/readiness (with view grant) surfaces schema gaps if you migrate out-of-band.\n",
   );
 } else {
   run(

@@ -46,6 +46,20 @@ const OPEN_PATH_ALLOWLIST = new Set([
   "/control-tower/dashboard",
   "/control-tower/command-center",
   "/control-tower/ops",
+  "/tariffs",
+  "/tariffs/contracts",
+  "/tariffs/geography",
+  "/tariffs/geography/new",
+  "/tariffs/import",
+  "/tariffs/import/new",
+  "/rfq/requests",
+  "/rfq/requests/new",
+  "/pricing-snapshots",
+  "/pricing-snapshots/new",
+  "/invoice-audit",
+  "/invoice-audit/new",
+  "/invoice-audit/tolerance-rules",
+  "/invoice-audit/readiness",
   "/reporting",
   "/reports",
   "/crm/reporting",
@@ -170,6 +184,14 @@ export async function executeHelpDoAction(
         viewerHas(access.grantSet, "org.wms", "view");
       if (!canReportingHub) {
         return { ok: false, error: "You do not have permission to open the reporting hub." };
+      }
+    } else if (path.startsWith("/tariffs")) {
+      if (!viewerHas(access.grantSet, "org.tariffs", "view")) {
+        return { ok: false, error: "You do not have permission to open Tariffs." };
+      }
+    } else if (path.startsWith("/rfq")) {
+      if (!viewerHas(access.grantSet, "org.rfq", "view")) {
+        return { ok: false, error: "You do not have permission to open RFQ." };
       }
     }
     const traceQPayload =

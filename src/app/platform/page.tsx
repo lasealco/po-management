@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { getViewerGrantSet } from "@/lib/authz";
+import type { AppNavLinkVisibility } from "@/lib/nav-visibility";
 import { resolveNavState } from "@/lib/nav-visibility";
+import { ratesAuditTopNavHref } from "@/lib/rates-audit-nav";
 
 export const dynamic = "force-dynamic";
 
@@ -91,6 +93,14 @@ export default async function PlatformHomePage() {
       href: "/srm",
       title: "SRM",
       description: "Supplier relationship management and supplier master data.",
+    });
+  }
+  if (v?.pricingSnapshots) {
+    modules.push({
+      href: ratesAuditTopNavHref(v as AppNavLinkVisibility, false),
+      title: "Rates & Audit",
+      description:
+        "Contracts, charge-code catalog, geography groups, import staging, frozen pricing snapshots, RFQ comparison, and invoice audit against snapshots.",
     });
   }
   if (v?.settings) {

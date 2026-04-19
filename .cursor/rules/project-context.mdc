@@ -29,6 +29,16 @@ alwaysApply: true
 
 - App uses tenant slug **`demo-company`** (`getDemoTenant()` / `DEMO_TENANT_SLUG`). WMS demo warehouse code **`WH-DEMO-DC1`**. PO and WMS share that tenant; WMS tables need the **WMS demo seed**, not only `db:seed`.
 
+## Tariff engine / invoice audit (verify without app)
+
+- **`npm run check:invoice-audit`** — scoped ESLint + Vitest for `src/lib/invoice-audit`, `src/lib/booking-pricing-snapshot` (snapshot JSON serializers), invoice-audit / pricing-snapshot UI + API paths (fast loop).
+- **`npm run verify:tariff-engine`** — same as above, then **`npx tsc --noEmit`** (stricter gate before merge).
+- **`npm test`** — Vitest uses `vitest.config.ts` `include` (tariff-engine lib tests only in this repo); same cases as **`npm run test:invoice-audit`** when you pass explicit paths there.
+- **Migrations before preview/demo:** run **`npm run db:migrate`** (or deploy) so invoice-audit tables match `schema.prisma`. For the current MVP, ensure at least through **`20260421103000_invoice_intake_accounting_handoff`** (adds `approvedForAccounting` / accounting metadata on `invoice_intakes`); missing columns cause Prisma runtime errors on intake PATCH and related UI. If the app shows a “database not ready” gate, open **`/invoice-audit/readiness`** (or `GET /api/invoice-audit/readiness`) after migrate.
+- **Invoice audit E2E demo row (optional):** after **`db:seed`** for `demo-company`, run **`USE_DOTENV_LOCAL=1 npm run db:seed:invoice-audit-demo`** — if no pricing snapshot exists yet, the script **creates a minimal snapshot** (JSON under `prisma/invoice-audit-demo-snapshot.breakdown.json`), then creates/replaces PARSED intake **`DEMO-INVOICE-AUDIT-SEED`**; open **`/invoice-audit/<id>`** and **Run audit** in the UI. On Vercel, this seed is **manual** (not part of `vercel-build` by default); see **`docs/database-neon.md`**.
+- **Tariff demo (FRA warehouse → CHI warehouse, 40HC composite path):** after **`db:seed`**, run **`USE_DOTENV_LOCAL=1 npm run db:seed:tariff-fra-chi-demo`** — idempotent geography + four **`DEMO-FRA-CHI-*`** contracts; the script prints **contract version UUIDs** for **`/pricing-snapshots/new`** → Composite freeze (see `prisma/seed-tariff-fra-chi-demo.mjs` header).
+- **Ops / escalation notes:** **`PATCH /api/invoice-audit/intakes/[id]`** accepts **`rawSourceNotes`** alone (`string` or `null`, max ~12k) for carrier ticket / dispute context — same field as intake **`rawSourceNotes`**; UI on intake detail under **Ops & escalation notes**.
+
 ## Ship workflow
 
 - After substantive code changes: commit + push — see **`.cursor/rules/ship-after-changes.mdc`**.

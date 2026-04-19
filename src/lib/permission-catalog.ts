@@ -109,6 +109,42 @@ export const GLOBAL_PERMISSION_CATALOG = [
     description:
       "Post milestones, notes, documents, financial snapshots, alerts, exceptions, and saved views.",
   },
+  {
+    resource: "org.tariffs",
+    action: "view",
+    label: "View tariffs",
+    description: "Ocean tariff contracts, versions, and rate lines.",
+  },
+  {
+    resource: "org.tariffs",
+    action: "edit",
+    label: "Manage tariffs",
+    description: "Create and edit tariff contracts, versions, and pricing lines.",
+  },
+  {
+    resource: "org.rfq",
+    action: "view",
+    label: "View RFQs",
+    description: "Ocean RFQs, quote responses, and comparison.",
+  },
+  {
+    resource: "org.rfq",
+    action: "edit",
+    label: "Manage RFQs",
+    description: "Create RFQs, invite recipients, enter quotes, and run comparison.",
+  },
+  {
+    resource: "org.invoice_audit",
+    action: "view",
+    label: "View invoice audit",
+    description: "List freight invoice intakes, parsed lines, and snapshot match outcomes.",
+  },
+  {
+    resource: "org.invoice_audit",
+    action: "edit",
+    label: "Manage invoice audit",
+    description: "Create intakes, run audits vs pricing snapshots, and record approvals or overrides.",
+  },
 ] as const;
 
 export type GlobalPermissionRow = (typeof GLOBAL_PERMISSION_CATALOG)[number];

@@ -213,6 +213,12 @@ async function seed() {
     ["org.crm", "edit"],
     ["org.controltower", "view"],
     ["org.controltower", "edit"],
+    ["org.tariffs", "view"],
+    ["org.tariffs", "edit"],
+    ["org.rfq", "view"],
+    ["org.rfq", "edit"],
+    ["org.invoice_audit", "view"],
+    ["org.invoice_audit", "edit"],
   ];
   const approverGrants = [
     ...buyerGrants,
@@ -245,12 +251,129 @@ async function seed() {
     ["org.crm", "edit"],
     ["org.controltower", "view"],
     ["org.controltower", "edit"],
+    ["org.tariffs", "view"],
+    ["org.tariffs", "edit"],
+    ["org.rfq", "view"],
+    ["org.rfq", "edit"],
+    ["org.invoice_audit", "view"],
+    ["org.invoice_audit", "edit"],
   ];
 
   await replaceGlobalRolePermissions(roleBuyer.id, buyerGrants);
   await replaceGlobalRolePermissions(roleApprover.id, approverGrants);
   await replaceGlobalRolePermissions(roleSupplierPortal.id, supplierGrants);
   await replaceGlobalRolePermissions(roleSuperuser.id, superuserGrants);
+
+  const existingTol = await prisma.invoiceToleranceRule.findFirst({
+    where: { tenantId: tenant.id, name: "Default freight invoice tolerances" },
+    select: { id: true },
+  });
+  if (!existingTol) {
+    await prisma.invoiceToleranceRule.create({
+      data: {
+        tenantId: tenant.id,
+        name: "Default freight invoice tolerances",
+        priority: 10,
+        active: true,
+        amountAbsTolerance: new Prisma.Decimal("25"),
+        percentTolerance: new Prisma.Decimal("0.015"),
+        currencyScope: null,
+      },
+    });
+    console.log("[db:seed] Default invoice tolerance rule created.");
+  }
+
+  const invoiceAliasSeeds = [
+    {
+      name: "BAF / bunker",
+      pattern: "baf",
+      tokens: ["baf", "bunker", "adjustment", "factor"],
+      targetKind: "CONTRACT_CHARGE",
+      priority: 25,
+    },
+    {
+      name: "Bunker wording (no BAF acronym)",
+      pattern: "bunker",
+      tokens: ["baf", "bunker", "adjustment"],
+      targetKind: "CONTRACT_CHARGE",
+      priority: 20,
+    },
+    {
+      name: "CAF / currency",
+      pattern: "caf",
+      tokens: ["caf", "currency", "adjustment"],
+      targetKind: "CONTRACT_CHARGE",
+      priority: 24,
+    },
+    {
+      name: "THC / terminal",
+      pattern: "thc",
+      tokens: ["thc", "terminal", "handling"],
+      targetKind: "CONTRACT_CHARGE",
+      priority: 23,
+    },
+    {
+      name: "Cargo handling → THC",
+      pattern: "cargo handling",
+      tokens: ["thc", "terminal", "handling"],
+      targetKind: "CONTRACT_CHARGE",
+      priority: 22,
+    },
+    {
+      name: "LSS / low sulphur",
+      pattern: "lss",
+      tokens: ["lss", "low", "sulphur", "sulfur"],
+      targetKind: "CONTRACT_CHARGE",
+      priority: 22,
+    },
+    {
+      name: "PSS / peak",
+      pattern: "pss",
+      tokens: ["pss", "peak", "season"],
+      targetKind: "CONTRACT_CHARGE",
+      priority: 21,
+    },
+    {
+      name: "Documentation fee",
+      pattern: "doc",
+      tokens: ["documentation", "doc fee", "bl fee"],
+      targetKind: "CONTRACT_CHARGE",
+      priority: 18,
+    },
+    {
+      name: "Ocean base FAK",
+      pattern: "ocean freight",
+      tokens: ["fak", "ocean", "freight", "base"],
+      targetKind: "CONTRACT_RATE",
+      priority: 30,
+    },
+    {
+      name: "ISPS security",
+      pattern: "isps",
+      tokens: ["isps", "security"],
+      targetKind: "CONTRACT_CHARGE",
+      priority: 17,
+    },
+  ];
+  for (const a of invoiceAliasSeeds) {
+    const existingAlias = await prisma.invoiceChargeAlias.findFirst({
+      where: { tenantId: tenant.id, pattern: a.pattern },
+      select: { id: true },
+    });
+    if (!existingAlias) {
+      await prisma.invoiceChargeAlias.create({
+        data: {
+          tenantId: tenant.id,
+          name: a.name,
+          pattern: a.pattern,
+          canonicalTokens: a.tokens,
+          targetKind: a.targetKind,
+          priority: a.priority,
+        },
+      });
+    }
+  }
+  console.log("[db:seed] Invoice charge alias dictionary ensured (ocean matching).");
 
   const roleCustomerPortal = await prisma.role.upsert({
     where: { tenantId_name: { tenantId: tenant.id, name: "Customer portal" } },
@@ -1681,6 +1804,43 @@ async function seed() {
     });
   }
   console.log("[db:seed] WMS default billing rates ensured.");
+
+  const tariffChargeCodes = [
+    { code: "OCEAN_FREIGHT", displayName: "Ocean Freight", chargeFamily: "MAIN_CARRIAGE", transportMode: "OCEAN", isLocalCharge: false, isSurcharge: false },
+    { code: "ALL_IN_MAIN", displayName: "All-In Main Carriage", chargeFamily: "MAIN_CARRIAGE", transportMode: "OCEAN", isLocalCharge: false, isSurcharge: false },
+    { code: "BAF", displayName: "Bunker Adjustment Factor", chargeFamily: "FUEL_ENVIRONMENTAL", transportMode: "OCEAN", isLocalCharge: false, isSurcharge: true },
+    { code: "PSS", displayName: "Peak Season Surcharge", chargeFamily: "SEASONAL_EMERGENCY", transportMode: "OCEAN", isLocalCharge: false, isSurcharge: true },
+    { code: "OHC", displayName: "Origin Handling Charge", chargeFamily: "ORIGIN_TERMINAL", transportMode: "OCEAN", isLocalCharge: true, isSurcharge: false },
+    { code: "OTHC", displayName: "Origin Terminal Handling Charge", chargeFamily: "ORIGIN_TERMINAL", transportMode: "OCEAN", isLocalCharge: true, isSurcharge: false },
+    { code: "DHC", displayName: "Destination Handling Charge", chargeFamily: "DEST_TERMINAL", transportMode: "OCEAN", isLocalCharge: true, isSurcharge: false },
+    { code: "DTHC", displayName: "Destination Terminal Handling Charge", chargeFamily: "DEST_TERMINAL", transportMode: "OCEAN", isLocalCharge: true, isSurcharge: false },
+    { code: "AMS", displayName: "AMS Filing", chargeFamily: "CUSTOMS_REGULATORY", transportMode: "OCEAN", isLocalCharge: true, isSurcharge: false },
+    { code: "ENS", displayName: "ENS / ICS Filing", chargeFamily: "CUSTOMS_REGULATORY", transportMode: "OCEAN", isLocalCharge: true, isSurcharge: false },
+    { code: "CUSTOMS_CLEARANCE", displayName: "Customs Clearance", chargeFamily: "CUSTOMS_REGULATORY", transportMode: "LOCAL_SERVICE", isLocalCharge: true, isSurcharge: false },
+    { code: "PRE_CARRIAGE", displayName: "Pre-Carriage", chargeFamily: "ORIGIN_INLAND", transportMode: "TRUCK", isLocalCharge: true, isSurcharge: false },
+    { code: "ON_CARRIAGE", displayName: "On-Carriage", chargeFamily: "DEST_INLAND", transportMode: "TRUCK", isLocalCharge: true, isSurcharge: false },
+    { code: "DELIVERY_ORDER", displayName: "Delivery Order", chargeFamily: "DEST_TERMINAL", transportMode: "OCEAN", isLocalCharge: true, isSurcharge: false },
+    { code: "DOC_FEE", displayName: "Documentation Fee", chargeFamily: "ADMIN_OTHER", transportMode: "OCEAN", isLocalCharge: true, isSurcharge: false },
+    { code: "DEMURRAGE", displayName: "Demurrage", chargeFamily: "FREE_TIME_DELAY", transportMode: "OCEAN", isLocalCharge: true, isSurcharge: false },
+    { code: "DETENTION", displayName: "Detention", chargeFamily: "FREE_TIME_DELAY", transportMode: "OCEAN", isLocalCharge: true, isSurcharge: false },
+  ];
+  await prisma.tariffNormalizedChargeCode.createMany({
+    data: tariffChargeCodes,
+    skipDuplicates: true,
+  });
+  console.log("[db:seed] Tariff normalized charge taxonomy ensured (idempotent).");
+
+  if ((await prisma.tariffProvider.count()) === 0) {
+    await prisma.tariffProvider.create({
+      data: {
+        legalName: "Demo Ocean Carrier LLC",
+        tradingName: "Demo Ocean",
+        providerType: "OCEAN_CARRIER",
+        countryCode: "US",
+      },
+    });
+    console.log("[db:seed] Created default demo tariff provider.");
+  }
 
   const userCount = await prisma.user.count({ where: { tenantId: tenant.id } });
   console.log(
