@@ -5,6 +5,7 @@ import { getTariffContractVersionForTenant } from "@/lib/tariff/contract-version
 export function formatPricingSnapshotSourceType(sourceType: string): string {
   if (sourceType === "TARIFF_CONTRACT_VERSION") return "Tariff contract version";
   if (sourceType === "QUOTE_RESPONSE") return "RFQ quote response";
+  if (sourceType === "COMPOSITE_CONTRACT_VERSION") return "Composite (multi-contract)";
   return sourceType.trim() ? sourceType : "Unknown source";
 }
 
@@ -26,7 +27,7 @@ export async function resolvePricingSnapshotSourceNav(params: {
   const id = params.sourceRecordId.trim();
   if (!id) return { tariffVersionHref: null, rfqRequestHref: null };
 
-  if (params.sourceType === "TARIFF_CONTRACT_VERSION") {
+  if (params.sourceType === "TARIFF_CONTRACT_VERSION" || params.sourceType === "COMPOSITE_CONTRACT_VERSION") {
     const v = await getTariffContractVersionForTenant({ tenantId: params.tenantId, versionId: id });
     if (!v) return { tariffVersionHref: null, rfqRequestHref: null };
     return {

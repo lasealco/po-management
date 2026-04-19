@@ -7,6 +7,7 @@ import {
   requirePricingSnapshotWriteForSource,
 } from "@/app/api/booking-pricing-snapshots/_lib/require-pricing-snapshot-access";
 import {
+  freezeSnapshotFromCompositeContractVersions,
   freezeSnapshotFromContractVersion,
   freezeSnapshotFromQuoteResponse,
   listBookingPricingSnapshotsForTenant,
@@ -44,9 +45,16 @@ export async function POST(request: Request) {
   }
   const o = body as Record<string, unknown>;
   const sourceTypeRaw = typeof o.sourceType === "string" ? o.sourceType.trim() : "";
-  if (sourceTypeRaw !== "TARIFF_CONTRACT_VERSION" && sourceTypeRaw !== "QUOTE_RESPONSE") {
+  if (
+    sourceTypeRaw !== "TARIFF_CONTRACT_VERSION" &&
+    sourceTypeRaw !== "QUOTE_RESPONSE" &&
+    sourceTypeRaw !== "COMPOSITE_CONTRACT_VERSION"
+  ) {
     return NextResponse.json(
-      { error: "sourceType must be TARIFF_CONTRACT_VERSION or QUOTE_RESPONSE." },
+      {
+        error:
+          "sourceType must be TARIFF_CONTRACT_VERSION, QUOTE_RESPONSE, or COMPOSITE_CONTRACT_VERSION.",
+      },
       { status: 400 },
     );
   }
@@ -66,6 +74,42 @@ export async function POST(request: Request) {
       : null;
 
   try {
+    if (sourceTypeRaw === "COMPOSITE_CONTRACT_VERSION") {
+      const componentsRaw = o.components;
+      if (!Array.isArray(componentsRaw) || componentsRaw.length === 0) {
+        return NextResponse.json(
+          { error: "components must be a non-empty array of { role, contractVersionId }." },
+          { status: 400 },
+        );
+      }
+      const components: { role: string; contractVersionId: string }[] = [];
+      for (const item of componentsRaw) {
+        if (!item || typeof item !== "object") {
+          return NextResponse.json({ error: "Each component must be an object." }, { status: 400 });
+        }
+        const it = item as Record<string, unknown>;
+        const role = typeof it.role === "string" ? it.role.trim() : "";
+        const contractVersionId =
+          typeof it.contractVersionId === "string" ? it.contractVersionId.trim() : "";
+        if (!role || !contractVersionId) {
+          return NextResponse.json(
+            { error: "Each component needs role and contractVersionId." },
+            { status: 400 },
+          );
+        }
+        components.push({ role, contractVersionId });
+      }
+      const incoterm = typeof o.incoterm === "string" ? o.incoterm.trim() : null;
+      const created = await freezeSnapshotFromCompositeContractVersions({
+        tenantId: tenant.id,
+        incoterm,
+        components,
+        shipmentBookingId,
+        createdByUserId: actorId,
+      });
+      return NextResponse.json({ snapshot: serializeBookingPricingSnapshot(created) });
+    }
+
     if (sourceTypeRaw === "TARIFF_CONTRACT_VERSION") {
       const contractVersionId =
         typeof o.contractVersionId === "string" ? o.contractVersionId.trim() : "";

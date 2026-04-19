@@ -76,6 +76,7 @@ describe("serializeBookingPricingSnapshotForIntakeApi", () => {
     });
     expect(out.totalEstimatedCost).toBe("1200");
     expect(out.sourceType).toBe("QUOTE_RESPONSE");
+    expect(out.incoterm).toBeNull();
     expect(out.shipmentBooking?.shipmentWorkspaceHref).toBe("/control-tower/shipments/ship1");
   });
 
@@ -93,6 +94,23 @@ describe("serializeBookingPricingSnapshotForIntakeApi", () => {
     });
     expect(out.shipmentBooking).toBeNull();
     expect(out.shipmentBookingId).toBeNull();
+    expect(out.incoterm).toBeNull();
+  });
+
+  it("includes incoterm when present on the snapshot", () => {
+    const out = serializeBookingPricingSnapshotForIntakeApi({
+      id: "snap3",
+      sourceType: "COMPOSITE_CONTRACT_VERSION",
+      sourceRecordId: "verAnchor",
+      sourceSummary: "Composite",
+      currency: "USD",
+      totalEstimatedCost: new Prisma.Decimal("5000"),
+      frozenAt: new Date("2026-01-02T00:00:00.000Z"),
+      shipmentBookingId: null,
+      shipmentBooking: null,
+      incoterm: "FOB",
+    });
+    expect(out.incoterm).toBe("FOB");
   });
 });
 

@@ -28,9 +28,19 @@ export function PricingSnapshotBreakdownPanel(props: {
   freeTimeBasisJson: unknown;
   commercialJson: unknown | null;
   basisSide: string | null;
+  /** Set for composite snapshots (FOB, EXW, DDP, …). */
+  incoterm?: string | null;
 }) {
   const bd = props.breakdownJson;
   const ft = props.freeTimeBasisJson;
+
+  const isComposite =
+    props.sourceType === "COMPOSITE_CONTRACT_VERSION" &&
+    isRecord(bd) &&
+    bd.composite === true &&
+    String(bd.compositeKind ?? "") === "MULTI_CONTRACT_VERSION" &&
+    Array.isArray(bd.components);
+  const compositeComponents = isComposite ? (bd!.components as unknown[]) : [];
 
   const contractId = isRecord(bd) && typeof bd.contract === "object" && bd.contract && isRecord(bd.contract as object)
     ? String((bd.contract as Record<string, unknown>).id ?? "")
@@ -58,13 +68,29 @@ export function PricingSnapshotBreakdownPanel(props: {
             <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Derivation</dt>
             <dd className="mt-1 font-mono text-xs text-zinc-700">{props.totalDerivation}</dd>
           </div>
+          {props.incoterm?.trim() ? (
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Incoterm (at freeze)</dt>
+              <dd className="mt-1 font-semibold text-zinc-900">{props.incoterm.trim().toUpperCase()}</dd>
+            </div>
+          ) : null}
           <div>
             <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Source</dt>
             <dd className="mt-1 space-y-1 text-zinc-800">
               <div>
-                {props.sourceType === "TARIFF_CONTRACT_VERSION" ? "Tariff contract version" : "RFQ quote response"}
+                {props.sourceType === "COMPOSITE_CONTRACT_VERSION"
+                  ? "Composite — multiple tariff contract versions"
+                  : props.sourceType === "TARIFF_CONTRACT_VERSION"
+                    ? "Tariff contract version"
+                    : "RFQ quote response"}
               </div>
-              <RecordIdCopy id={props.sourceRecordId} copyButtonLabel="Copy source record id" />
+              <RecordIdCopy id={props.sourceRecordId} copyButtonLabel="Copy anchor source record id" />
+              {isComposite ? (
+                <p className="text-xs text-zinc-500">
+                  Anchor id is the first component version (deep link below). Invoice audit flattens all component rate
+                  and charge lines.
+                </p>
+              ) : null}
             </dd>
           </div>
           <div>
@@ -78,6 +104,30 @@ export function PricingSnapshotBreakdownPanel(props: {
                   Open contract version
                 </Link>
               ) : null}
+              {isComposite
+                ? compositeComponents.map((raw, idx) => {
+                    if (!isRecord(raw)) return null;
+                    const cid =
+                      isRecord(raw.contract) && typeof (raw.contract as Record<string, unknown>).id === "string"
+                        ? String((raw.contract as Record<string, unknown>).id)
+                        : "";
+                    const vid =
+                      isRecord(raw.version) && typeof (raw.version as Record<string, unknown>).id === "string"
+                        ? String((raw.version as Record<string, unknown>).id)
+                        : "";
+                    const role = String(raw.role ?? `Part ${idx + 1}`);
+                    if (!cid || !vid) return null;
+                    return (
+                      <Link
+                        key={`${role}-${vid}`}
+                        href={`/tariffs/contracts/${cid}/versions/${vid}`}
+                        className="text-sm text-zinc-600 hover:text-[var(--arscmp-primary)] hover:underline"
+                      >
+                        Open {role}
+                      </Link>
+                    );
+                  })
+                : null}
               {props.sourceType === "QUOTE_RESPONSE" && quoteRequestId && props.sourceRecordId.trim() ? (
                 <Link
                   href={`/rfq/requests/${quoteRequestId}/responses/${props.sourceRecordId.trim()}/edit`}
@@ -99,7 +149,94 @@ export function PricingSnapshotBreakdownPanel(props: {
         </dl>
       </section>
 
-      {props.sourceType === "TARIFF_CONTRACT_VERSION" && isRecord(bd) && Array.isArray(bd.rateLines) ? (
+      {isComposite
+        ? compositeComponents.map((compRaw, cidx) => {
+            if (!isRecord(compRaw)) return null;
+            const role = String(compRaw.role ?? `Part ${cidx + 1}`);
+            const rateLines = compRaw.rateLines;
+            const chargeLines = compRaw.chargeLines;
+            if (!Array.isArray(rateLines) && !Array.isArray(chargeLines)) return null;
+            return (
+              <section key={`${role}-${cidx}`} className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+                <h2 className="text-sm font-semibold text-zinc-900">Component: {role}</h2>
+                {Array.isArray(rateLines) && rateLines.length > 0 ? (
+                  <div className="mt-4 overflow-x-auto">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">Rate lines</p>
+                    <table className="min-w-full border-collapse text-left text-sm">
+                      <thead>
+                        <tr className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500">
+                          <th className="py-2 pr-3">Row id</th>
+                          <th className="py-2 pr-3">Type</th>
+                          <th className="py-2 pr-3">Equipment</th>
+                          <th className="py-2 pr-3">Basis</th>
+                          <th className="py-2 pr-3">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rateLines.map((row, idx) =>
+                          isRecord(row) ? (
+                            <tr key={typeof row.id === "string" ? row.id : idx} className="border-b border-zinc-100">
+                              <td className="py-2 pr-3 align-top text-xs text-zinc-500">
+                                <RecordIdCopy id={typeof row.id === "string" ? row.id : ""} copyButtonLabel="Copy line id" />
+                              </td>
+                              <td className="py-2 pr-3">{String(row.rateType ?? "")}</td>
+                              <td className="py-2 pr-3">{String(row.equipmentType ?? "")}</td>
+                              <td className="py-2 pr-3">{String(row.unitBasis ?? "")}</td>
+                              <td className="py-2 pr-3 tabular-nums">
+                                {fmtMoney(
+                                  row.amount != null ? String(row.amount) : null,
+                                  String(row.currency ?? props.currency),
+                                )}
+                              </td>
+                            </tr>
+                          ) : null,
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : null}
+                {Array.isArray(chargeLines) && chargeLines.length > 0 ? (
+                  <div className="mt-6 overflow-x-auto">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">Charge lines</p>
+                    <table className="min-w-full border-collapse text-left text-sm">
+                      <thead>
+                        <tr className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500">
+                          <th className="py-2 pr-3">Row id</th>
+                          <th className="py-2 pr-3">Charge</th>
+                          <th className="py-2 pr-3">Code</th>
+                          <th className="py-2 pr-3">Basis</th>
+                          <th className="py-2 pr-3">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {chargeLines.map((row, idx) =>
+                          isRecord(row) ? (
+                            <tr key={typeof row.id === "string" ? row.id : idx} className="border-b border-zinc-100">
+                              <td className="py-2 pr-3 align-top text-xs text-zinc-500">
+                                <RecordIdCopy id={typeof row.id === "string" ? row.id : ""} copyButtonLabel="Copy line id" />
+                              </td>
+                              <td className="py-2 pr-3">{String(row.rawChargeName ?? "")}</td>
+                              <td className="py-2 pr-3">{String(row.normalizedCode ?? "")}</td>
+                              <td className="py-2 pr-3">{String(row.unitBasis ?? "")}</td>
+                              <td className="py-2 pr-3 tabular-nums">
+                                {fmtMoney(
+                                  row.amount != null ? String(row.amount) : null,
+                                  String(row.currency ?? props.currency),
+                                )}
+                              </td>
+                            </tr>
+                          ) : null,
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : null}
+              </section>
+            );
+          })
+        : null}
+
+      {!isComposite && props.sourceType === "TARIFF_CONTRACT_VERSION" && isRecord(bd) && Array.isArray(bd.rateLines) ? (
         <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
           <h2 className="text-sm font-semibold text-zinc-900">Rate lines (frozen)</h2>
           <div className="mt-4 overflow-x-auto">
@@ -138,7 +275,7 @@ export function PricingSnapshotBreakdownPanel(props: {
         </section>
       ) : null}
 
-      {props.sourceType === "TARIFF_CONTRACT_VERSION" && isRecord(bd) && Array.isArray(bd.chargeLines) ? (
+      {!isComposite && props.sourceType === "TARIFF_CONTRACT_VERSION" && isRecord(bd) && Array.isArray(bd.chargeLines) ? (
         <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
           <h2 className="text-sm font-semibold text-zinc-900">Charge lines (frozen)</h2>
           <div className="mt-4 overflow-x-auto">
@@ -217,9 +354,11 @@ export function PricingSnapshotBreakdownPanel(props: {
       <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
         <h2 className="text-sm font-semibold text-zinc-900">Free time basis (frozen)</h2>
         <p className="mt-2 text-xs text-zinc-500">
-          {props.sourceType === "TARIFF_CONTRACT_VERSION"
-            ? "Contract free-time rules copied at freeze time."
-            : "RFQ free-time summary copied at freeze time."}
+          {props.sourceType === "COMPOSITE_CONTRACT_VERSION"
+            ? "Merged free-time rules from all contract versions (tagged by component role)."
+            : props.sourceType === "TARIFF_CONTRACT_VERSION"
+              ? "Contract free-time rules copied at freeze time."
+              : "RFQ free-time summary copied at freeze time."}
         </p>
         <pre className="mt-4 max-h-80 overflow-auto rounded-xl bg-zinc-950 p-4 text-xs leading-relaxed text-zinc-100">
           {JSON.stringify(ft, null, 2)}

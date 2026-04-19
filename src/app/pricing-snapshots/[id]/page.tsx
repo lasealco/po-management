@@ -99,7 +99,10 @@ export default async function PricingSnapshotDetailPage(props: { params: Promise
         <h2 className="text-sm font-semibold text-zinc-900">Commercial basis &amp; invoice audit</h2>
         <p className="mt-2 text-sm text-zinc-600">
           This row is an immutable capture of economics from{" "}
-          <span className="font-medium text-zinc-800">{formatPricingSnapshotSourceType(String(row.sourceType))}</span>.
+          <span className="font-medium text-zinc-800">{formatPricingSnapshotSourceType(String(row.sourceType))}</span>
+          {row.sourceType === "COMPOSITE_CONTRACT_VERSION"
+            ? "; multiple tariff contract versions are summed into one frozen total (same currency)."
+            : "."}{" "}
           Copy the snapshot and source record ids from the header above when you need to paste them into support tickets
           or APIs. Every invoice intake linked below re-runs ocean matching against{" "}
           <span className="font-medium">this JSON only</span>, so auditors can explain variances without chasing live
@@ -314,6 +317,7 @@ export default async function PricingSnapshotDetailPage(props: { params: Promise
         freeTimeBasisJson={row.freeTimeBasisJson}
         commercialJson={row.commercialJson}
         basisSide={row.basisSide}
+        incoterm={row.incoterm}
       />
     </main>
   );

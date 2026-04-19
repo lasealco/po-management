@@ -1,6 +1,10 @@
 import { Prisma, type PricingSnapshotSourceType } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import {
+  buildCompositeContractVersionsSnapshotPayload,
+  type CompositeContractComponentInput,
+} from "@/lib/booking-pricing-snapshot/freeze-composite-contract-versions";
 import { buildContractVersionSnapshotPayload } from "@/lib/booking-pricing-snapshot/freeze-from-contract-version";
 import { buildQuoteResponseSnapshotPayload } from "@/lib/booking-pricing-snapshot/freeze-from-quote-response";
 import { SnapshotRepoError } from "@/lib/booking-pricing-snapshot/snapshot-repo-error";
@@ -51,6 +55,7 @@ export async function createBookingPricingSnapshot(input: {
   createdByUserId?: string | null;
   commercialJson?: Prisma.InputJsonValue | null;
   basisSide?: string | null;
+  incoterm?: string | null;
 }) {
   if (input.shipmentBookingId) {
     await assertShipmentBookingForTenant({
@@ -74,6 +79,7 @@ export async function createBookingPricingSnapshot(input: {
       createdByUserId: input.createdByUserId ?? null,
       commercialJson: input.commercialJson ?? undefined,
       basisSide: input.basisSide?.trim() || null,
+      incoterm: input.incoterm?.trim() ? input.incoterm.trim().toUpperCase().slice(0, 16) : null,
     },
   });
 }
@@ -100,6 +106,34 @@ export async function freezeSnapshotFromContractVersion(params: {
     freeTimeBasisJson: built.freeTimeBasis,
     totalDerivation: built.totalDerivation,
     createdByUserId: params.createdByUserId ?? null,
+  });
+}
+
+export async function freezeSnapshotFromCompositeContractVersions(params: {
+  tenantId: string;
+  incoterm?: string | null;
+  components: CompositeContractComponentInput[];
+  shipmentBookingId?: string | null;
+  createdByUserId?: string | null;
+}) {
+  const built = await buildCompositeContractVersionsSnapshotPayload({
+    tenantId: params.tenantId,
+    incoterm: params.incoterm ?? null,
+    components: params.components,
+  });
+  return createBookingPricingSnapshot({
+    tenantId: params.tenantId,
+    shipmentBookingId: params.shipmentBookingId ?? null,
+    sourceType: "COMPOSITE_CONTRACT_VERSION",
+    sourceRecordId: built.anchorContractVersionId,
+    sourceSummary: built.sourceSummary,
+    currency: built.currency,
+    totalEstimatedCost: built.totalEstimatedCost,
+    breakdownJson: built.breakdown,
+    freeTimeBasisJson: built.freeTimeBasis,
+    totalDerivation: built.totalDerivation,
+    createdByUserId: params.createdByUserId ?? null,
+    incoterm: built.incoterm,
   });
 }
 

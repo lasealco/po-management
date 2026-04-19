@@ -96,6 +96,84 @@ export function extractSnapshotPriceCandidates(breakdownJson: unknown): Snapshot
   let rfqGrandTotal: number | null = null;
   let contractGrandTotal: number | null = null;
 
+  if (breakdownJson.composite === true && breakdownJson.compositeKind === "MULTI_CONTRACT_VERSION" && Array.isArray(breakdownJson.components)) {
+    for (const comp of breakdownJson.components) {
+      if (!isRecord(comp)) continue;
+      const role = String(comp.role ?? "LEG").trim() || "LEG";
+      const rateLines = comp.rateLines;
+      if (Array.isArray(rateLines)) {
+        for (const row of rateLines) {
+          if (!isRecord(row) || typeof row.id !== "string") continue;
+          const amount = num(row.amount);
+          if (amount == null) continue;
+          const cur = typeof row.currency === "string" ? row.currency : "USD";
+          const labelParts = [`[${role}]`, String(row.rateType ?? ""), String(row.equipmentType ?? ""), String(row.unitBasis ?? "")].filter(
+            (x) => typeof x === "string" && x.trim(),
+          );
+          const eq = typeof row.equipmentType === "string" ? row.equipmentType.trim() : null;
+          candidates.push({
+            kind: "CONTRACT_RATE",
+            id: row.id,
+            label: labelParts.filter(Boolean).join(" ") || `Rate ${row.id.slice(0, 6)}`,
+            currency: cur.toUpperCase().slice(0, 3),
+            amount,
+            raw: row as unknown as Prisma.JsonValue,
+            equipmentHint: eq || null,
+            unitBasis: typeof row.unitBasis === "string" ? row.unitBasis.trim() : null,
+            originCode: geoCode(row.originScope),
+            destCode: geoCode(row.destinationScope),
+            isIncluded: null,
+            isMandatory: null,
+            rateType: typeof row.rateType === "string" ? row.rateType.trim() : null,
+          });
+        }
+      }
+      const chargeLines = comp.chargeLines;
+      if (Array.isArray(chargeLines)) {
+        for (const row of chargeLines) {
+          if (!isRecord(row) || typeof row.id !== "string") continue;
+          const amount = num(row.amount);
+          if (amount == null) continue;
+          const cur = typeof row.currency === "string" ? row.currency : "USD";
+          const labelParts = [`[${role}]`, row.rawChargeName, row.normalizedCode].filter(
+            (x) => typeof x === "string" && x.trim(),
+          );
+          const label =
+            labelParts.length > 1 ? labelParts.join(" · ") : `[${role}] · Charge ${String(row.id).slice(0, 6)}`;
+          const geo = row.geographyScope;
+          candidates.push({
+            kind: "CONTRACT_CHARGE",
+            id: row.id,
+            label,
+            currency: cur.toUpperCase().slice(0, 3),
+            amount,
+            raw: row as unknown as Prisma.JsonValue,
+            equipmentHint: typeof row.equipmentScope === "string" ? row.equipmentScope.trim() : null,
+            unitBasis: typeof row.unitBasis === "string" ? row.unitBasis.trim() : null,
+            originCode: geoCode(geo),
+            destCode: null,
+            isIncluded: typeof row.isIncluded === "boolean" ? row.isIncluded : null,
+            isMandatory: typeof row.isMandatory === "boolean" ? row.isMandatory : null,
+            rateType: null,
+          });
+        }
+      }
+    }
+    const merged = breakdownJson.mergedTotals;
+    if (isRecord(merged)) {
+      const g = num(merged.grand);
+      if (g != null) contractGrandTotal = g;
+    }
+    return {
+      ok: true,
+      candidates,
+      sourceType: "TARIFF_CONTRACT_VERSION",
+      rfqGrandTotal: null,
+      contractGrandTotal,
+      rfqRouteLocodes: null,
+    };
+  }
+
   if (sourceType === "TARIFF_CONTRACT_VERSION") {
     const rateLines = breakdownJson.rateLines;
     if (Array.isArray(rateLines)) {

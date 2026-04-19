@@ -39,7 +39,7 @@ export async function requirePricingSnapshotRead(): Promise<NextResponse | null>
 }
 
 export async function requirePricingSnapshotWriteForSource(params: {
-  sourceType: "TARIFF_CONTRACT_VERSION" | "QUOTE_RESPONSE";
+  sourceType: "TARIFF_CONTRACT_VERSION" | "QUOTE_RESPONSE" | "COMPOSITE_CONTRACT_VERSION";
 }): Promise<NextResponse | null> {
   const readGate = await requirePricingSnapshotRead();
   if (readGate) return readGate;
@@ -49,7 +49,7 @@ export async function requirePricingSnapshotWriteForSource(params: {
     return NextResponse.json({ error: "No active user." }, { status: 403 });
   }
   const g = access.grantSet;
-  if (params.sourceType === "TARIFF_CONTRACT_VERSION") {
+  if (params.sourceType === "TARIFF_CONTRACT_VERSION" || params.sourceType === "COMPOSITE_CONTRACT_VERSION") {
     if (!viewerHas(g, "org.tariffs", "edit")) {
       return NextResponse.json({ error: "Forbidden: requires org.tariffs → edit." }, { status: 403 });
     }

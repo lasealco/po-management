@@ -6,3 +6,6 @@ export const TOTAL_DERIVATION_SUM_RATE_AND_CHARGES = "SUM_RATE_AND_CHARGE_AMOUNT
 
 /** RFQ: prefer stored all-in total when present, else sum line amounts. */
 export const TOTAL_DERIVATION_QUOTE_RESPONSE = "QUOTE_RESPONSE_TOTAL_OR_LINE_SUM";
+
+/** Multi-contract: sum each contract version’s frozen grand total (same currency required). */
+export const TOTAL_DERIVATION_COMPOSITE_CONTRACT_VERSIONS = "SUM_COMPONENT_CONTRACT_TOTALS";

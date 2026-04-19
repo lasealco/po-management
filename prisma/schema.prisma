@@ -2164,6 +2164,8 @@ enum QuoteClarificationVisibility {
 enum PricingSnapshotSourceType {
   TARIFF_CONTRACT_VERSION
   QUOTE_RESPONSE
+  /// Sum of multiple contract versions (e.g. forwarder + pre-carriage + ocean); see breakdownJson.components.
+  COMPOSITE_CONTRACT_VERSION
 }
 
 enum TariffGeographyType {
@@ -2661,6 +2663,8 @@ model BookingPricingSnapshot {
   commercialJson     Json?
   /// Reserved e.g. BUY | SELL when dual-basis UI exists.
   basisSide          String?                    @db.VarChar(16)
+  /// Commercial term label (FOB, EXW, DDP, …) captured at freeze; drives which legs you include in practice.
+  incoterm           String?                    @db.VarChar(16)
 
   tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   shipmentBooking  ShipmentBooking?  @relation(fields: [shipmentBookingId], references: [id], onDelete: SetNull)

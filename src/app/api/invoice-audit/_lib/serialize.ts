@@ -50,6 +50,7 @@ export function serializeBookingPricingSnapshotForIntakeApi(row: {
   frozenAt: Date;
   shipmentBookingId: string | null;
   shipmentBooking: { id: string; bookingNo: string | null; shipmentId: string } | null;
+  incoterm?: string | null;
 }) {
   return {
     id: row.id,
@@ -57,6 +58,7 @@ export function serializeBookingPricingSnapshotForIntakeApi(row: {
     sourceRecordId: row.sourceRecordId,
     sourceSummary: row.sourceSummary,
     currency: row.currency,
+    incoterm: row.incoterm ?? null,
     totalEstimatedCost: row.totalEstimatedCost.toString(),
     frozenAt: row.frozenAt.toISOString(),
     shipmentBookingId: row.shipmentBookingId,

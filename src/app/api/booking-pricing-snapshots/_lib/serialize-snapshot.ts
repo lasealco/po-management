@@ -17,5 +17,6 @@ export function serializeBookingPricingSnapshot(row: BookingPricingSnapshot) {
     createdByUserId: row.createdByUserId,
     commercialJson: row.commercialJson,
     basisSide: row.basisSide,
+    incoterm: row.incoterm,
   };
 }
