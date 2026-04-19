@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { BrandMarkLink } from "@/components/brand-mark";
 import { getViewerGrantSet } from "@/lib/authz";
 import type { AppNavLinkVisibility } from "@/lib/nav-visibility";
 import { resolveNavState } from "@/lib/nav-visibility";
@@ -26,6 +27,7 @@ export default async function PlatformHomePage() {
   if (!access) {
     return (
       <main className="mx-auto flex min-h-[70vh] max-w-2xl flex-col justify-center px-6 py-16">
+        <BrandMarkLink href="/" className="mb-8 py-1" aria-label="AR SCMP home" />
         <h1 className="text-3xl font-semibold tracking-tight text-zinc-900">Welcome</h1>
         <p className="mt-4 text-zinc-600">
           Demo tenant not found. Run{" "}
@@ -114,10 +116,13 @@ export default async function PlatformHomePage() {
   return (
     <main className="min-h-[calc(100vh-8rem)] bg-gradient-to-b from-zinc-50 via-white to-zinc-50">
       <div className="mx-auto max-w-5xl px-6 pb-20 pt-12 sm:pt-16">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--arscmp-primary)]">
-          {tenantName}
-        </p>
-        <h1 className="mt-3 max-w-2xl text-4xl font-semibold tracking-tight text-zinc-900 sm:text-5xl">
+        <div className="flex flex-col gap-4 border-b border-zinc-200/80 pb-8 sm:flex-row sm:items-center sm:justify-between">
+          <BrandMarkLink href="/platform" className="py-1" aria-label="AR SCMP — platform home" />
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500 sm:text-right">
+            {tenantName}
+          </p>
+        </div>
+        <h1 className="mt-8 max-w-2xl text-4xl font-semibold tracking-tight text-zinc-900 sm:text-5xl">
           Run procurement and logistics in one place.
         </h1>
         <p className="mt-4 max-w-2xl text-lg text-zinc-600">
