@@ -202,6 +202,13 @@ export function CommandPalette({ grants }: { grants: CommandPaletteGrants }) {
           searchText: "tariff import upload excel pdf staging parse",
           action: go("/tariffs/import"),
         },
+        {
+          id: "tariffs-charge-codes",
+          label: "Tariffs — charge codes",
+          hint: "Normalized charge taxonomy for contract lines",
+          searchText: "tariff charge code normalized catalog thc baf",
+          action: go("/tariffs/charge-codes"),
+        },
       );
     }
 

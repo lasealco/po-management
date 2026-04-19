@@ -21,6 +21,11 @@ const items: { href: string; label: string; isActive: (pathname: string) => bool
     label: "Geography",
     isActive: (pathname) => pathname.startsWith("/tariffs/geography"),
   },
+  {
+    href: "/tariffs/charge-codes",
+    label: "Charge codes",
+    isActive: (pathname) => pathname.startsWith("/tariffs/charge-codes"),
+  },
 ];
 
 export function TariffsSubNav() {

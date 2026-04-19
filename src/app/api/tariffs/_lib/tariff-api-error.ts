@@ -11,6 +11,8 @@ export function jsonFromTariffError(e: unknown): NextResponse | null {
         ? 403
         : e.code === "VERSION_FROZEN" || e.code === "CONFLICT"
           ? 409
-          : 400;
+          : e.code === "BAD_INPUT"
+            ? 400
+            : 400;
   return NextResponse.json({ error: e.message }, { status });
 }

@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { getViewerGrantSet } from "@/lib/authz";
+import type { AppNavLinkVisibility } from "@/lib/nav-visibility";
 import { resolveNavState } from "@/lib/nav-visibility";
+import { ratesAuditTopNavHref } from "@/lib/rates-audit-nav";
 
 export const dynamic = "force-dynamic";
 
@@ -93,18 +95,12 @@ export default async function PlatformHomePage() {
       description: "Supplier relationship management and supplier master data.",
     });
   }
-  if (v?.tariffs) {
+  if (v?.pricingSnapshots) {
     modules.push({
-      href: "/tariffs/contracts",
-      title: "Tariffs",
-      description: "Ocean tariff contracts, versions, and rate lines.",
-    });
-  }
-  if (v?.rfq) {
-    modules.push({
-      href: "/rfq/requests",
-      title: "RFQ",
-      description: "Ocean ad hoc quotes, recipients, and comparison.",
+      href: ratesAuditTopNavHref(v as AppNavLinkVisibility, false),
+      title: "Rates & Audit",
+      description:
+        "Tariff contracts and charge codes, frozen pricing snapshots, RFQ comparison, and invoice audit against snapshots.",
     });
   }
   if (v?.settings) {

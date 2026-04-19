@@ -1,5 +1,6 @@
 export type TariffRepoErrorCode =
   | "NOT_FOUND"
+  | "BAD_INPUT"
   | "TENANT_MISMATCH"
   | "VERSION_FROZEN"
   | "CONFLICT";

@@ -13,6 +13,7 @@ describe("jsonFromTariffError", () => {
 
   it.each([
     ["NOT_FOUND", 404],
+    ["BAD_INPUT", 400],
     ["TENANT_MISMATCH", 403],
     ["VERSION_FROZEN", 409],
     ["CONFLICT", 409],

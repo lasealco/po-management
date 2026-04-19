@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { RecordIdCopy } from "@/components/invoice-audit/record-id-copy";
+import { compositeIncotermRoleHints } from "@/lib/booking-pricing-snapshot/composite-incoterm-suggestions";
 
 type Tab = "contract" | "composite" | "rfq";
 
@@ -32,6 +33,8 @@ export function PricingSnapshotsNewClient(props: { canContract: boolean; canRfq:
   ]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const compositeIncotermHint = compositeIncotermRoleHints(compositeIncoterm);
 
   async function submitContract() {
     setBusy(true);
@@ -246,6 +249,12 @@ export function PricingSnapshotsNewClient(props: { canContract: boolean; canRfq:
                 Stored on the snapshot for audit; which legs you include is your choice here (e.g. FOB may be only
                 forwarder handling + pre-carriage, without ocean if the carrier bills the buyer separately).
               </p>
+              {compositeIncotermHint ? (
+                <p className="mt-2 rounded-lg border border-sky-100 bg-sky-50/90 px-3 py-2 text-xs text-sky-950">
+                  <span className="font-semibold">Suggested roles for this Incoterm: </span>
+                  {compositeIncotermHint}
+                </p>
+              ) : null}
             </div>
 
             <div className="space-y-3">
