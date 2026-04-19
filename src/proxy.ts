@@ -2,7 +2,15 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { PO_AUTH_USER_COOKIE, PO_DEMO_USER_COOKIE } from "@/lib/demo-actor";
 
-const PUBLIC_PATHS = new Set(["/", "/privacy", "/terms", "/cookies", "/login", "/settings/demo"]);
+const PUBLIC_PATHS = new Set([
+  "/",
+  "/pricing",
+  "/privacy",
+  "/terms",
+  "/cookies",
+  "/login",
+  "/settings/demo",
+]);
 
 /** When `1`, skip redirect to /login and use default demo actor (see getDemoActorEmail). */
 function allowUnauthenticated() {

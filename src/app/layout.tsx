@@ -1,15 +1,7 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
-import { AppNavWithGrants } from "@/components/app-nav-with-grants";
-import { CommandPalette } from "@/components/command-palette";
-import { GuideCallout } from "@/components/guide-callout";
-import { HelpAssistant } from "@/components/help-assistant";
-import { LayoutPoSubnav } from "@/components/layout-po-subnav";
-import { LayoutRatesAuditSubnav } from "@/components/layout-rates-audit-subnav";
-import { SiteLegalStrip } from "@/components/site-legal-strip";
+import { RootChrome } from "@/components/root-chrome";
 import { actorIsSupplierPortalRestricted, getViewerGrantSet, viewerHas } from "@/lib/authz";
-import { pathUsesAppChrome } from "@/lib/app-shell-paths";
 import { resolveNavState } from "@/lib/nav-visibility";
 import "./globals.css";
 
@@ -38,9 +30,6 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const pathname = (await headers()).get("x-pathname") ?? "";
-  const showAppChrome = pathUsesAppChrome(pathname);
-
   const access = await getViewerGrantSet();
   const { poSubNavVisibility, linkVisibility, setupIncomplete } = await resolveNavState(access);
   const actorId = access?.user?.id ?? null;
@@ -86,27 +75,15 @@ export default async function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full scroll-smooth antialiased`}
     >
-      <body
-        className={
-          showAppChrome ? "flex min-h-full flex-col bg-zinc-50" : "min-h-full bg-white"
-        }
-      >
-        {showAppChrome ? (
-          <>
-            <AppNavWithGrants />
-            <LayoutRatesAuditSubnav linkVisibility={linkVisibility} setupIncomplete={setupIncomplete} />
-            <LayoutPoSubnav visibility={poSubNavVisibility} />
-            <GuideCallout />
-            <div className="flex min-h-0 flex-1 flex-col">
-              <div className="min-h-0 flex-1">{children}</div>
-              <SiteLegalStrip />
-            </div>
-            <CommandPalette grants={commandGrants} />
-            <HelpAssistant />
-          </>
-        ) : (
-          children
-        )}
+      <body className="min-h-full">
+        <RootChrome
+          linkVisibility={linkVisibility}
+          setupIncomplete={setupIncomplete}
+          poSubNavVisibility={poSubNavVisibility}
+          commandGrants={commandGrants}
+        >
+          {children}
+        </RootChrome>
       </body>
     </html>
   );
