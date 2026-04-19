@@ -1,44 +1,25 @@
 import { Prisma, type TariffChargeFamily, type TariffTransportMode } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import {
+  TARIFF_CHARGE_FAMILY_OPTIONS,
+  TARIFF_TRANSPORT_MODE_OPTIONS,
+  assertValidChargeCatalogCode,
+  normalizeChargeCatalogCode,
+} from "@/lib/tariff/normalized-charge-catalog-shared";
 import { TariffRepoError } from "@/lib/tariff/tariff-repo-error";
 
-export const TARIFF_CHARGE_FAMILY_OPTIONS: TariffChargeFamily[] = [
-  "MAIN_CARRIAGE",
-  "FUEL_ENVIRONMENTAL",
-  "SEASONAL_EMERGENCY",
-  "ORIGIN_TERMINAL",
-  "DEST_TERMINAL",
-  "ORIGIN_INLAND",
-  "DEST_INLAND",
-  "CUSTOMS_REGULATORY",
-  "HANDLING_SPECIAL",
-  "FREE_TIME_DELAY",
-  "ADMIN_OTHER",
-];
-
-export const TARIFF_TRANSPORT_MODE_OPTIONS: TariffTransportMode[] = [
-  "OCEAN",
-  "LCL",
-  "AIR",
-  "TRUCK",
-  "RAIL",
-  "LOCAL_SERVICE",
-];
-
-export function normalizeChargeCatalogCode(raw: string): string {
-  return raw.trim().toUpperCase().replace(/\s+/g, "_");
-}
-
-export function assertValidChargeCatalogCode(code: string) {
-  if (!/^[A-Z0-9_]{2,32}$/.test(code)) {
-    throw new TariffRepoError("BAD_INPUT", "Code must be 2–32 uppercase letters, digits, or underscores.");
-  }
-}
+export {
+  TARIFF_CHARGE_FAMILY_OPTIONS,
+  TARIFF_TRANSPORT_MODE_OPTIONS,
+  assertValidChargeCatalogCode,
+  normalizeChargeCatalogCode,
+} from "@/lib/tariff/normalized-charge-catalog-shared";
 
 function parseChargeFamily(raw: unknown): TariffChargeFamily {
   const s = typeof raw === "string" ? raw.trim() : "";
-  if (!TARIFF_CHARGE_FAMILY_OPTIONS.includes(s as TariffChargeFamily)) {
+  const allowed = TARIFF_CHARGE_FAMILY_OPTIONS as readonly string[];
+  if (!allowed.includes(s)) {
     throw new TariffRepoError(
       "BAD_INPUT",
       `Invalid chargeFamily. Use one of: ${TARIFF_CHARGE_FAMILY_OPTIONS.join(", ")}.`,
@@ -50,7 +31,8 @@ function parseChargeFamily(raw: unknown): TariffChargeFamily {
 function parseTransportMode(raw: unknown): TariffTransportMode | null {
   if (raw === null || raw === undefined || raw === "") return null;
   const s = typeof raw === "string" ? raw.trim() : "";
-  if (!TARIFF_TRANSPORT_MODE_OPTIONS.includes(s as TariffTransportMode)) {
+  const allowed = TARIFF_TRANSPORT_MODE_OPTIONS as readonly string[];
+  if (!allowed.includes(s)) {
     throw new TariffRepoError(
       "BAD_INPUT",
       `Invalid transportMode. Use one of: ${TARIFF_TRANSPORT_MODE_OPTIONS.join(", ")}, or omit.`,

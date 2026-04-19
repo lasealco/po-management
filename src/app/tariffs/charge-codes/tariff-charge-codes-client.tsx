@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import type { TariffChargeFamily, TariffTransportMode } from "@prisma/client";
 
-import { TARIFF_CHARGE_FAMILY_OPTIONS, TARIFF_TRANSPORT_MODE_OPTIONS } from "@/lib/tariff/normalized-charge-codes";
+import { TARIFF_CHARGE_FAMILY_OPTIONS, TARIFF_TRANSPORT_MODE_OPTIONS } from "@/lib/tariff/normalized-charge-catalog-shared";
 
 export type SerializedChargeCatalogRow = {
   id: string;

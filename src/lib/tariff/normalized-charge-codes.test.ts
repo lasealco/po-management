@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { TariffRepoError } from "@/lib/tariff/tariff-repo-error";
 
-import { assertValidChargeCatalogCode, normalizeChargeCatalogCode } from "./normalized-charge-codes";
+import { assertValidChargeCatalogCode, normalizeChargeCatalogCode } from "./normalized-charge-catalog-shared";
 
 describe("normalizeChargeCatalogCode", () => {
   it("uppercases and collapses spaces to underscores", () => {
