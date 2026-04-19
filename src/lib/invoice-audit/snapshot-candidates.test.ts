@@ -231,4 +231,58 @@ describe("extractSnapshotPriceCandidates", () => {
     if (!out.ok) return;
     expect(summarizeContractGeographyFromCandidates(out.candidates)).toBeNull();
   });
+
+  it("flattens COMPOSITE_CONTRACT_VERSION components into contract candidates", () => {
+    const out = extractSnapshotPriceCandidates({
+      composite: true,
+      compositeKind: "MULTI_CONTRACT_VERSION",
+      mergedTotals: { grand: 2150 },
+      components: [
+        {
+          role: "PRE_CARRIAGE",
+          rateLines: [],
+          chargeLines: [
+            {
+              id: "chg1",
+              rawChargeName: "Pickup",
+              normalizedCode: "PRE_CARRIAGE",
+              equipmentScope: null,
+              unitBasis: "PER_CONTAINER",
+              currency: "USD",
+              amount: "150",
+              isIncluded: false,
+              isMandatory: true,
+              geographyScope: { code: "USNYC" },
+            },
+          ],
+        },
+        {
+          role: "MAIN_OCEAN",
+          rateLines: [
+            {
+              id: "r1",
+              rateType: "FCL",
+              equipmentType: "40HC",
+              unitBasis: "PER_CONTAINER",
+              currency: "USD",
+              amount: "2000",
+              originScope: { code: "USNYC" },
+              destinationScope: { code: "DEHAM" },
+            },
+          ],
+          chargeLines: [],
+        },
+      ],
+    });
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+    expect(out.sourceType).toBe("TARIFF_CONTRACT_VERSION");
+    expect(out.contractGrandTotal).toBe(2150);
+    const charges = out.candidates.filter((c) => c.kind === "CONTRACT_CHARGE");
+    const rates = out.candidates.filter((c) => c.kind === "CONTRACT_RATE");
+    expect(charges).toHaveLength(1);
+    expect(charges[0]!.label).toContain("PRE_CARRIAGE");
+    expect(rates).toHaveLength(1);
+    expect(rates[0]!.label).toContain("MAIN_OCEAN");
+  });
 });

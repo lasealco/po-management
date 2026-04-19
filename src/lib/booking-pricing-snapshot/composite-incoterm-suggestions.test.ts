@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { compositeIncotermRoleHints } from "./composite-incoterm-suggestions";
+import { compositeIncotermRoleHints, suggestedCompositeRolesFromIncoterm } from "./composite-incoterm-suggestions";
 
 describe("compositeIncotermRoleHints", () => {
   it("returns null for blank", () => {
@@ -16,5 +16,15 @@ describe("compositeIncotermRoleHints", () => {
 
   it("returns null for unknown terms", () => {
     expect(compositeIncotermRoleHints("ZZZ")).toBeNull();
+  });
+});
+
+describe("suggestedCompositeRolesFromIncoterm", () => {
+  it("returns FOB handling stack", () => {
+    expect(suggestedCompositeRolesFromIncoterm("FOB")).toEqual(["FORWARDER_HANDLING", "PRE_CARRIAGE"]);
+  });
+
+  it("returns empty for unknown", () => {
+    expect(suggestedCompositeRolesFromIncoterm("ZZZ")).toEqual([]);
   });
 });

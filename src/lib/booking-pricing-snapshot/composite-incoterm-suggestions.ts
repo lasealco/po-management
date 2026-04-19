@@ -22,3 +22,22 @@ export function compositeIncotermRoleHints(incotermRaw: string): string | null {
 
   return hints[t] ?? null;
 }
+
+/** Short role tokens to prefill composite snapshot rows (version ids stay blank for you to paste). */
+export function suggestedCompositeRolesFromIncoterm(incotermRaw: string): string[] {
+  const t = incotermRaw.trim().toUpperCase();
+  const map: Record<string, string[]> = {
+    EXW: ["FORWARDER_HANDLING", "PRE_CARRIAGE", "MAIN_OCEAN"],
+    FCA: ["FORWARDER_HANDLING", "PRE_CARRIAGE", "MAIN_OCEAN"],
+    FAS: ["FORWARDER_HANDLING", "PRE_CARRIAGE", "MAIN_OCEAN"],
+    FOB: ["FORWARDER_HANDLING", "PRE_CARRIAGE"],
+    CFR: ["MAIN_OCEAN"],
+    CIF: ["MAIN_OCEAN"],
+    CPT: ["PRE_CARRIAGE", "MAIN_OCEAN", "DESTINATION_HANDLING"],
+    CIP: ["PRE_CARRIAGE", "MAIN_OCEAN", "DESTINATION_HANDLING"],
+    DAP: ["MAIN_OCEAN", "ON_CARRIAGE", "DESTINATION_HANDLING"],
+    DPU: ["MAIN_OCEAN", "ON_CARRIAGE"],
+    DDP: ["MAIN_OCEAN", "ON_CARRIAGE", "DESTINATION_HANDLING", "CUSTOMS_CLEARANCE"],
+  };
+  return map[t] ?? [];
+}

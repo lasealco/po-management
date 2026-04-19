@@ -65,3 +65,16 @@ export async function listTariffAuditLogsForContractScope(params: {
     },
   });
 }
+
+/** e.g. global `normalized_charge_code` maintenance outside a single contract version. */
+export async function listTariffAuditLogsByObjectType(params: { objectType: string; take?: number }) {
+  const take = params.take ?? 40;
+  return prisma.tariffAuditLog.findMany({
+    where: { objectType: params.objectType },
+    orderBy: { createdAt: "desc" },
+    take,
+    include: {
+      user: { select: { id: true, name: true, email: true } },
+    },
+  });
+}

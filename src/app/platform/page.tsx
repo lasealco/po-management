@@ -100,7 +100,7 @@ export default async function PlatformHomePage() {
       href: ratesAuditTopNavHref(v as AppNavLinkVisibility, false),
       title: "Rates & Audit",
       description:
-        "Tariff contracts and charge codes, frozen pricing snapshots, RFQ comparison, and invoice audit against snapshots.",
+        "Contracts, charge-code catalog, geography groups, import staging, frozen pricing snapshots, RFQ comparison, and invoice audit against snapshots.",
     });
   }
   if (v?.settings) {

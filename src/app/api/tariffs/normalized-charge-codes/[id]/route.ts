@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 
 import { jsonFromTariffError } from "@/app/api/tariffs/_lib/tariff-api-error";
-import { parsePatchNormalizedChargeCodeBody, updateNormalizedChargeCode } from "@/lib/tariff/normalized-charge-codes";
-import { requireApiGrant } from "@/lib/authz";
+import {
+  parsePatchNormalizedChargeCodeBody,
+  toChargeCatalogRowJson,
+  updateNormalizedChargeCode,
+} from "@/lib/tariff/normalized-charge-codes";
+import { getActorUserId, requireApiGrant } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
 
@@ -22,9 +26,13 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     return NextResponse.json({ error: "Expected object body." }, { status: 400 });
   }
   try {
+    const actorId = await getActorUserId();
+    if (!actorId) {
+      return NextResponse.json({ error: "No active user." }, { status: 403 });
+    }
     const patch = parsePatchNormalizedChargeCodeBody(body as Record<string, unknown>);
-    const updated = await updateNormalizedChargeCode({ id: id.trim() }, patch);
-    return NextResponse.json({ chargeCode: updated });
+    const updated = await updateNormalizedChargeCode({ id: id.trim(), actorUserId: actorId }, patch);
+    return NextResponse.json({ chargeCode: toChargeCatalogRowJson(updated) });
   } catch (e) {
     const j = jsonFromTariffError(e);
     if (j) return j;

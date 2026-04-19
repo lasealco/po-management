@@ -5,8 +5,9 @@ import {
   createNormalizedChargeCode,
   listNormalizedChargeCodes,
   parseCreateNormalizedChargeCodeBody,
+  toChargeCatalogRowJson,
 } from "@/lib/tariff/normalized-charge-codes";
-import { requireApiGrant } from "@/lib/authz";
+import { getActorUserId, requireApiGrant } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,7 @@ export async function GET() {
   if (gate) return gate;
   try {
     const rows = await listNormalizedChargeCodes();
-    return NextResponse.json({ chargeCodes: rows });
+    return NextResponse.json({ chargeCodes: rows.map(toChargeCatalogRowJson) });
   } catch (e) {
     const j = jsonFromTariffError(e);
     if (j) return j;
@@ -36,9 +37,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Expected object body." }, { status: 400 });
   }
   try {
+    const actorId = await getActorUserId();
+    if (!actorId) {
+      return NextResponse.json({ error: "No active user." }, { status: 403 });
+    }
     const parsed = parseCreateNormalizedChargeCodeBody(body as Record<string, unknown>);
-    const created = await createNormalizedChargeCode(parsed);
-    return NextResponse.json({ chargeCode: created });
+    const created = await createNormalizedChargeCode(parsed, { actorUserId: actorId });
+    return NextResponse.json({ chargeCode: toChargeCatalogRowJson(created) });
   } catch (e) {
     const j = jsonFromTariffError(e);
     if (j) return j;

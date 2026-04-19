@@ -4,7 +4,10 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { RecordIdCopy } from "@/components/invoice-audit/record-id-copy";
-import { compositeIncotermRoleHints } from "@/lib/booking-pricing-snapshot/composite-incoterm-suggestions";
+import {
+  compositeIncotermRoleHints,
+  suggestedCompositeRolesFromIncoterm,
+} from "@/lib/booking-pricing-snapshot/composite-incoterm-suggestions";
 
 type Tab = "contract" | "composite" | "rfq";
 
@@ -255,6 +258,23 @@ export function PricingSnapshotsNewClient(props: { canContract: boolean; canRfq:
                   {compositeIncotermHint}
                 </p>
               ) : null}
+              <div className="mt-3">
+                <button
+                  type="button"
+                  disabled={busy || !compositeIncoterm.trim()}
+                  onClick={() => {
+                    const roles = suggestedCompositeRolesFromIncoterm(compositeIncoterm);
+                    if (roles.length === 0) return;
+                    setCompositeRows(roles.map((role) => ({ role, contractVersionId: "" })));
+                  }}
+                  className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 disabled:opacity-40"
+                >
+                  Prefill leg row names from Incoterm
+                </button>
+                <p className="mt-1 text-xs text-zinc-500">
+                  Fills role labels only; paste a contract version id on each row. Unknown Incoterms do nothing.
+                </p>
+              </div>
             </div>
 
             <div className="space-y-3">

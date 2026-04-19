@@ -17,8 +17,30 @@ export type SerializedChargeCatalogRow = {
   active: boolean;
 };
 
+export type ChargeCatalogAuditEntry = {
+  id: string;
+  action: string;
+  objectId: string;
+  at: string;
+  actor: string;
+};
+
+function mergeUpdatedRow(c: SerializedChargeCatalogRow): SerializedChargeCatalogRow {
+  return {
+    id: c.id,
+    code: c.code,
+    displayName: c.displayName,
+    chargeFamily: c.chargeFamily,
+    transportMode: c.transportMode ?? null,
+    isLocalCharge: Boolean(c.isLocalCharge),
+    isSurcharge: Boolean(c.isSurcharge),
+    active: Boolean(c.active),
+  };
+}
+
 export function TariffChargeCodesClient(props: {
   initialRows: SerializedChargeCatalogRow[];
+  auditTail: ChargeCatalogAuditEntry[];
   canEdit: boolean;
 }) {
   const [rows, setRows] = useState(props.initialRows);
@@ -31,7 +53,28 @@ export function TariffChargeCodesClient(props: {
   const [isLocalCharge, setIsLocalCharge] = useState(false);
   const [isSurcharge, setIsSurcharge] = useState(false);
 
-  async function patchRow(id: string, patch: Record<string, unknown>) {
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDisplayName, setEditDisplayName] = useState("");
+  const [editChargeFamily, setEditChargeFamily] = useState<TariffChargeFamily>("ADMIN_OTHER");
+  const [editTransportMode, setEditTransportMode] = useState("");
+  const [editIsLocalCharge, setEditIsLocalCharge] = useState(false);
+  const [editIsSurcharge, setEditIsSurcharge] = useState(false);
+
+  function beginEdit(r: SerializedChargeCatalogRow) {
+    setEditingId(r.id);
+    setEditDisplayName(r.displayName);
+    setEditChargeFamily(r.chargeFamily);
+    setEditTransportMode(r.transportMode ?? "");
+    setEditIsLocalCharge(r.isLocalCharge);
+    setEditIsSurcharge(r.isSurcharge);
+    setError(null);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+  }
+
+  async function patchRow(id: string, patch: Record<string, unknown>, opts?: { closeEdit?: boolean }) {
     setBusy(true);
     setError(null);
     try {
@@ -46,11 +89,27 @@ export function TariffChargeCodesClient(props: {
         return;
       }
       if (data.chargeCode) {
-        setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...data.chargeCode } : r)));
+        const next = mergeUpdatedRow(data.chargeCode);
+        setRows((prev) => prev.map((r) => (r.id === id ? next : r)));
+        if (opts?.closeEdit) setEditingId(null);
       }
     } finally {
       setBusy(false);
     }
+  }
+
+  async function saveEdit(id: string) {
+    await patchRow(
+      id,
+      {
+        displayName: editDisplayName.trim(),
+        chargeFamily: editChargeFamily,
+        transportMode: editTransportMode.trim() ? editTransportMode.trim() : null,
+        isLocalCharge: editIsLocalCharge,
+        isSurcharge: editIsSurcharge,
+      },
+      { closeEdit: true },
+    );
   }
 
   async function createRow(e: React.FormEvent) {
@@ -76,7 +135,8 @@ export function TariffChargeCodesClient(props: {
         return;
       }
       if (data.chargeCode) {
-        setRows((prev) => [...prev, data.chargeCode!].sort((a, b) => a.code.localeCompare(b.code)));
+        const row = mergeUpdatedRow(data.chargeCode);
+        setRows((prev) => [...prev, row].sort((a, b) => a.code.localeCompare(b.code)));
         setCode("");
         setDisplayName("");
         setChargeFamily("ADMIN_OTHER");
@@ -115,30 +175,133 @@ export function TariffChargeCodesClient(props: {
               {rows.map((r) => (
                 <tr key={r.id} className="border-b border-zinc-100">
                   <td className="py-2 pr-3 font-mono text-xs text-zinc-800">{r.code}</td>
-                  <td className="py-2 pr-3 text-zinc-800">{r.displayName}</td>
-                  <td className="py-2 pr-3 text-xs text-zinc-600">{r.chargeFamily}</td>
-                  <td className="py-2 pr-3 text-xs text-zinc-600">{r.transportMode ?? "—"}</td>
-                  <td className="py-2 pr-3">{r.isLocalCharge ? "Yes" : "—"}</td>
-                  <td className="py-2 pr-3">{r.isSurcharge ? "Yes" : "—"}</td>
-                  <td className="py-2 pr-3">{r.active ? "Yes" : "No"}</td>
-                  {props.canEdit ? (
-                    <td className="py-2 pr-3">
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() => void patchRow(r.id, { active: !r.active })}
-                        className="text-xs font-semibold text-[var(--arscmp-primary)] hover:underline disabled:opacity-40"
-                      >
-                        {r.active ? "Deactivate" : "Activate"}
-                      </button>
-                    </td>
-                  ) : null}
+                  {editingId === r.id ? (
+                    <>
+                      <td className="py-2 pr-3">
+                        <input
+                          className="w-full min-w-[8rem] rounded border border-zinc-200 px-2 py-1 text-xs"
+                          value={editDisplayName}
+                          onChange={(e) => setEditDisplayName(e.target.value)}
+                        />
+                      </td>
+                      <td className="py-2 pr-3">
+                        <select
+                          className="w-full min-w-[8rem] rounded border border-zinc-200 px-2 py-1 text-xs"
+                          value={editChargeFamily}
+                          onChange={(e) => setEditChargeFamily(e.target.value as TariffChargeFamily)}
+                        >
+                          {TARIFF_CHARGE_FAMILY_OPTIONS.map((f) => (
+                            <option key={f} value={f}>
+                              {f}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="py-2 pr-3">
+                        <select
+                          className="w-full min-w-[6rem] rounded border border-zinc-200 px-2 py-1 text-xs"
+                          value={editTransportMode}
+                          onChange={(e) => setEditTransportMode(e.target.value)}
+                        >
+                          <option value="">—</option>
+                          {TARIFF_TRANSPORT_MODE_OPTIONS.map((m) => (
+                            <option key={m} value={m}>
+                              {m}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="py-2 pr-3">
+                        <input
+                          type="checkbox"
+                          checked={editIsLocalCharge}
+                          onChange={(e) => setEditIsLocalCharge(e.target.checked)}
+                        />
+                      </td>
+                      <td className="py-2 pr-3">
+                        <input
+                          type="checkbox"
+                          checked={editIsSurcharge}
+                          onChange={(e) => setEditIsSurcharge(e.target.checked)}
+                        />
+                      </td>
+                      <td className="py-2 pr-3">{r.active ? "Yes" : "No"}</td>
+                      <td className="py-2 pr-3">
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            disabled={busy || !editDisplayName.trim()}
+                            onClick={() => void saveEdit(r.id)}
+                            className="text-xs font-semibold text-[var(--arscmp-primary)] hover:underline disabled:opacity-40"
+                          >
+                            Save
+                          </button>
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={cancelEdit}
+                            className="text-xs font-semibold text-zinc-600 hover:underline disabled:opacity-40"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="py-2 pr-3 text-zinc-800">{r.displayName}</td>
+                      <td className="py-2 pr-3 text-xs text-zinc-600">{r.chargeFamily}</td>
+                      <td className="py-2 pr-3 text-xs text-zinc-600">{r.transportMode ?? "—"}</td>
+                      <td className="py-2 pr-3">{r.isLocalCharge ? "Yes" : "—"}</td>
+                      <td className="py-2 pr-3">{r.isSurcharge ? "Yes" : "—"}</td>
+                      <td className="py-2 pr-3">{r.active ? "Yes" : "No"}</td>
+                      {props.canEdit ? (
+                        <td className="py-2 pr-3">
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => beginEdit(r)}
+                              className="text-xs font-semibold text-[var(--arscmp-primary)] hover:underline disabled:opacity-40"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => void patchRow(r.id, { active: !r.active })}
+                              className="text-xs font-semibold text-zinc-600 hover:underline disabled:opacity-40"
+                            >
+                              {r.active ? "Deactivate" : "Activate"}
+                            </button>
+                          </div>
+                        </td>
+                      ) : null}
+                    </>
+                  )}
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </section>
+
+      {props.auditTail.length > 0 ? (
+        <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+          <h2 className="text-sm font-semibold text-zinc-900">Recent changes</h2>
+          <p className="mt-2 text-xs text-zinc-500">Last writes to charge codes (create / update). Reload page to refresh.</p>
+          <ul className="mt-4 divide-y divide-zinc-100 text-sm">
+            {props.auditTail.map((a) => (
+              <li key={a.id} className="flex flex-wrap gap-x-3 py-2 text-zinc-700">
+                <span className="font-mono text-xs text-zinc-500">{a.at.replace("T", " ").slice(0, 19)}</span>
+                <span className="text-xs font-semibold uppercase text-zinc-500">{a.action}</span>
+                <span className="text-xs">{a.actor}</span>
+                <span className="font-mono text-xs text-zinc-500">{a.objectId.slice(0, 12)}…</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       {props.canEdit ? (
         <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">

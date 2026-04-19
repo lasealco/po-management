@@ -51,6 +51,33 @@ export default async function TariffImportDirectoryPage() {
           ) : null}
         </div>
 
+        <div className="mt-8 rounded-xl border border-zinc-100 bg-zinc-50/80 p-5 text-sm text-zinc-700">
+          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Rates workspace checklist</p>
+          <ol className="mt-3 list-decimal space-y-2 pl-5">
+            <li>
+              Maintain{" "}
+              <Link href="/tariffs/charge-codes" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+                charge codes
+              </Link>{" "}
+              so imported lines can map to a stable taxonomy.
+            </li>
+            <li>
+              Configure{" "}
+              <Link href="/tariffs/geography" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+                geography groups
+              </Link>{" "}
+              for POL/POD and inland scopes your contracts use.
+            </li>
+            <li>
+              Publish carrier / forwarder rates under{" "}
+              <Link href="/tariffs/contracts" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+                contracts
+              </Link>
+              . Import batches here feed staging until mapping and promotion are extended.
+            </li>
+          </ol>
+        </div>
+
         <div className="mt-8 overflow-x-auto">
           <table className="min-w-full border-collapse text-left text-sm">
             <thead>

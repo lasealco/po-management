@@ -1,5 +1,6 @@
-import { Prisma, type TariffChargeFamily, type TariffTransportMode } from "@prisma/client";
+import { Prisma, type TariffChargeFamily, type TariffNormalizedChargeCode, type TariffTransportMode } from "@prisma/client";
 
+import { recordTariffAuditLog } from "@/lib/tariff/audit-log";
 import { prisma } from "@/lib/prisma";
 import {
   TARIFF_CHARGE_FAMILY_OPTIONS,
@@ -8,6 +9,20 @@ import {
   normalizeChargeCatalogCode,
 } from "@/lib/tariff/normalized-charge-catalog-shared";
 import { TariffRepoError } from "@/lib/tariff/tariff-repo-error";
+
+/** Plain JSON for API + Client Components (no Prisma model instances / Decimals). */
+export function toChargeCatalogRowJson(row: TariffNormalizedChargeCode) {
+  return {
+    id: row.id,
+    code: row.code,
+    displayName: row.displayName,
+    chargeFamily: row.chargeFamily,
+    transportMode: row.transportMode,
+    isLocalCharge: row.isLocalCharge,
+    isSurcharge: row.isSurcharge,
+    active: row.active,
+  };
+}
 
 export {
   TARIFF_CHARGE_FAMILY_OPTIONS,
@@ -48,20 +63,23 @@ export async function listNormalizedChargeCodes() {
   });
 }
 
-export async function createNormalizedChargeCode(input: {
-  code: string;
-  displayName: string;
-  chargeFamily: TariffChargeFamily;
-  transportMode?: TariffTransportMode | null;
-  isLocalCharge?: boolean;
-  isSurcharge?: boolean;
-}) {
+export async function createNormalizedChargeCode(
+  input: {
+    code: string;
+    displayName: string;
+    chargeFamily: TariffChargeFamily;
+    transportMode?: TariffTransportMode | null;
+    isLocalCharge?: boolean;
+    isSurcharge?: boolean;
+  },
+  ctx: { actorUserId: string | null },
+) {
   const code = normalizeChargeCatalogCode(input.code);
   assertValidChargeCatalogCode(code);
   const displayName = input.displayName.trim();
   if (!displayName) throw new TariffRepoError("BAD_INPUT", "Display name is required.");
   try {
-    return await prisma.tariffNormalizedChargeCode.create({
+    const created = await prisma.tariffNormalizedChargeCode.create({
       data: {
         code,
         displayName,
@@ -72,6 +90,14 @@ export async function createNormalizedChargeCode(input: {
         active: true,
       },
     });
+    await recordTariffAuditLog({
+      objectType: "normalized_charge_code",
+      objectId: created.id,
+      action: "CREATE",
+      userId: ctx.actorUserId,
+      newValue: toChargeCatalogRowJson(created),
+    });
+    return created;
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
       throw new TariffRepoError("BAD_INPUT", "A charge code with that code already exists.");
@@ -81,7 +107,10 @@ export async function createNormalizedChargeCode(input: {
 }
 
 export async function updateNormalizedChargeCode(
-  params: { id: string },
+  params: {
+    id: string;
+    actorUserId: string | null;
+  },
   patch: Partial<{
     displayName: string;
     chargeFamily: TariffChargeFamily;
@@ -93,6 +122,7 @@ export async function updateNormalizedChargeCode(
 ) {
   const row = await prisma.tariffNormalizedChargeCode.findUnique({ where: { id: params.id } });
   if (!row) throw new TariffRepoError("NOT_FOUND", "Charge code not found.");
+  const oldJson = toChargeCatalogRowJson(row);
 
   const data: Prisma.TariffNormalizedChargeCodeUpdateInput = {};
   if (patch.displayName !== undefined) {
@@ -106,10 +136,19 @@ export async function updateNormalizedChargeCode(
   if (patch.isSurcharge !== undefined) data.isSurcharge = patch.isSurcharge;
   if (patch.active !== undefined) data.active = patch.active;
 
-  return prisma.tariffNormalizedChargeCode.update({
+  const updated = await prisma.tariffNormalizedChargeCode.update({
     where: { id: params.id },
     data,
   });
+  await recordTariffAuditLog({
+    objectType: "normalized_charge_code",
+    objectId: params.id,
+    action: "UPDATE",
+    userId: params.actorUserId,
+    oldValue: oldJson,
+    newValue: toChargeCatalogRowJson(updated),
+  });
+  return updated;
 }
 
 export function parseCreateNormalizedChargeCodeBody(o: Record<string, unknown>) {
