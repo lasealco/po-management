@@ -76,6 +76,10 @@ const ROUTE_ACTION_FILTER = [
   "Route complete",
 ] as const;
 
+function laneSectionDomId(lane: string) {
+  return `cc-lane-${lane.replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "").toLowerCase()}`;
+}
+
 function laneKey(nextAction: string | null): (typeof LANES)[number] {
   if (!nextAction) return "No route legs";
   if (nextAction.startsWith("Send booking")) return "Booking: send";
@@ -215,6 +219,23 @@ export function ControlTowerCommandCenter({
   const workbenchDrillHref = controlTowerWorkbenchPath(workbenchDrillQuery);
   const hasWorkbenchDrillFilters = Object.keys(workbenchDrillQuery).length > 0;
 
+  const [showEmptyLanes, setShowEmptyLanes] = useState(false);
+
+  const laneStats = useMemo(() => {
+    let nonEmpty = 0;
+    let empty = 0;
+    for (const lane of LANES) {
+      if ((byLane.get(lane)?.length ?? 0) > 0) nonEmpty += 1;
+      else empty += 1;
+    }
+    return { nonEmpty, empty };
+  }, [byLane]);
+
+  const visibleLanes = useMemo(() => {
+    if (showEmptyLanes) return [...LANES];
+    return LANES.filter((lane) => (byLane.get(lane)?.length ?? 0) > 0);
+  }, [byLane, showEmptyLanes]);
+
   return (
     <div className="space-y-4">
       {restrictedView ? (
@@ -326,101 +347,142 @@ export function ControlTowerCommandCenter({
         <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">{error}</div>
       ) : null}
 
-      <div className="flex gap-3 overflow-x-auto pb-2">
-        {LANES.map((lane) => {
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <p className="text-xs text-zinc-600">
+          {laneStats.nonEmpty} lane{laneStats.nonEmpty === 1 ? "" : "s"} with shipments
+          {!showEmptyLanes && laneStats.empty > 0 ? (
+            <>
+              {" "}
+              · <span className="text-zinc-500">{laneStats.empty} empty lane{laneStats.empty === 1 ? "" : "s"} hidden</span>
+            </>
+          ) : null}
+        </p>
+        {laneStats.empty > 0 ? (
+          <button
+            type="button"
+            onClick={() => setShowEmptyLanes((v) => !v)}
+            className="self-start rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-800 hover:bg-zinc-50 sm:self-auto"
+          >
+            {showEmptyLanes ? "Hide empty lanes" : `Show all ${LANES.length} lanes (incl. empty)`}
+          </button>
+        ) : null}
+      </div>
+
+      <div className="space-y-5">
+        {visibleLanes.length === 0 ? (
+          <p className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-8 text-center text-sm text-zinc-600">
+            No shipments match the current filters. Try clearing search or status, or{" "}
+            <button type="button" className="font-medium text-sky-800 underline" onClick={() => void load()}>
+              refresh
+            </button>
+            .
+          </p>
+        ) : null}
+        {visibleLanes.map((lane) => {
           const cards = byLane.get(lane) ?? [];
           return (
-            <div
+            <section
               key={lane}
-              className="flex w-72 shrink-0 flex-col rounded-lg border border-zinc-200 bg-zinc-50/80"
+              className="overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50/80 shadow-sm"
+              aria-labelledby={laneSectionDomId(lane)}
             >
-              <div className="border-b border-zinc-200 bg-white px-3 py-2">
-                <h2 className="text-sm font-semibold text-zinc-900">{lane}</h2>
-                <p className="text-xs text-zinc-500">{cards.length} shipment{cards.length === 1 ? "" : "s"}</p>
+              <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-zinc-200 bg-white px-4 py-3">
+                <div>
+                  <h2 id={laneSectionDomId(lane)} className="text-sm font-semibold text-zinc-900">
+                    {lane}
+                  </h2>
+                  <p className="text-xs text-zinc-500">
+                    {cards.length} shipment{cards.length === 1 ? "" : "s"} · next route action
+                  </p>
+                </div>
               </div>
-              <ul className="max-h-[70vh] space-y-2 overflow-y-auto p-2">
-                {cards.map((r) => (
-                  <li key={r.id}>
-                    <Link
-                      href={`/control-tower/shipments/${r.id}`}
-                      className="block rounded-md border border-zinc-200 bg-white p-2.5 text-sm shadow-sm transition hover:border-sky-300 hover:bg-sky-50/40"
-                    >
-                      <div className="font-medium text-zinc-900">
-                        {controlTowerListPrimaryTitle({
-                          orderNumber: r.orderNumber,
-                          shipmentNo: r.shipmentNo,
-                          id: r.id,
-                        })}
-                      </div>
-                      {(() => {
-                        const sub = controlTowerListSecondaryRef({
-                          orderNumber: r.orderNumber,
-                          shipmentNo: r.shipmentNo,
-                          id: r.id,
-                        });
-                        return sub ? (
-                          <div className="mt-0.5 text-[11px] font-normal text-zinc-700">{sub}</div>
-                        ) : null;
-                      })()}
-                      <div className="mt-0.5 text-xs text-zinc-700">
-                        {r.originCode ?? "—"} → {r.destinationCode ?? "—"}
-                      </div>
-                      {(() => {
-                        const health = classifyShipmentHealth(r, Date.now());
-                        return (
-                          <div className="mt-1">
-                            <span
-                              className={`rounded-full border px-1.5 py-0.5 text-[11px] ${
-                                health === "good"
-                                  ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+              {cards.length === 0 ? (
+                <p className="px-4 py-6 text-center text-xs text-zinc-500">No shipments in this lane.</p>
+              ) : (
+                <ul className="grid gap-2 p-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {cards.map((r) => (
+                    <li key={r.id}>
+                      <Link
+                        href={`/control-tower/shipments/${r.id}`}
+                        className="flex h-full min-h-[8.5rem] flex-col rounded-md border border-zinc-200 bg-white p-2.5 text-sm shadow-sm transition hover:border-sky-300 hover:bg-sky-50/40"
+                      >
+                        <div className="font-medium text-zinc-900">
+                          {controlTowerListPrimaryTitle({
+                            orderNumber: r.orderNumber,
+                            shipmentNo: r.shipmentNo,
+                            id: r.id,
+                          })}
+                        </div>
+                        {(() => {
+                          const sub = controlTowerListSecondaryRef({
+                            orderNumber: r.orderNumber,
+                            shipmentNo: r.shipmentNo,
+                            id: r.id,
+                          });
+                          return sub ? (
+                            <div className="mt-0.5 text-[11px] font-normal text-zinc-700">{sub}</div>
+                          ) : null;
+                        })()}
+                        <div className="mt-0.5 text-xs text-zinc-700">
+                          {r.originCode ?? "—"} → {r.destinationCode ?? "—"}
+                        </div>
+                        {(() => {
+                          const health = classifyShipmentHealth(r, Date.now());
+                          return (
+                            <div className="mt-1">
+                              <span
+                                className={`rounded-full border px-1.5 py-0.5 text-[11px] ${
+                                  health === "good"
+                                    ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+                                    : health === "at_risk"
+                                      ? "border-amber-200 bg-amber-50 text-amber-900"
+                                      : health === "delayed"
+                                        ? "border-rose-200 bg-rose-50 text-rose-900"
+                                        : "border-zinc-300 bg-zinc-100 text-zinc-700"
+                                }`}
+                              >
+                                {health === "good"
+                                  ? "On-time"
                                   : health === "at_risk"
-                                    ? "border-amber-200 bg-amber-50 text-amber-900"
+                                    ? "At risk"
                                     : health === "delayed"
-                                      ? "border-rose-200 bg-rose-50 text-rose-900"
-                                      : "border-zinc-300 bg-zinc-100 text-zinc-700"
-                              }`}
-                            >
-                              {health === "good"
-                                ? "On-time"
-                                : health === "at_risk"
-                                  ? "At risk"
-                                  : health === "delayed"
-                                    ? "Delayed"
-                                    : "Missing route plan"}
+                                      ? "Delayed"
+                                      : "Missing route plan"}
+                              </span>
+                            </div>
+                          );
+                        })()}
+                        {r.routeProgressPct != null ? (
+                          <div className="mt-1 text-xs text-zinc-500">Route {r.routeProgressPct}%</div>
+                        ) : null}
+                        <div className="mt-auto flex flex-wrap gap-1 pt-1 text-[11px] text-zinc-600">
+                          {r.dispatchOwner ? (
+                            <span className="rounded bg-amber-50 px-1.5 py-0.5 text-amber-900">
+                              {r.dispatchOwner.name}
                             </span>
-                          </div>
-                        );
-                      })()}
-                      {r.routeProgressPct != null ? (
-                        <div className="mt-1 text-xs text-zinc-500">Route {r.routeProgressPct}%</div>
-                      ) : null}
-                      <div className="mt-1 flex flex-wrap gap-1 text-[11px] text-zinc-600">
-                        {r.dispatchOwner ? (
-                          <span className="rounded bg-amber-50 px-1.5 py-0.5 text-amber-900">
-                            {r.dispatchOwner.name}
-                          </span>
-                        ) : (
-                          <span className="rounded bg-zinc-200 px-1.5 py-0.5 text-zinc-900">Unassigned</span>
-                        )}
-                        {r.openQueueCounts.openAlerts > 0 ? (
-                          <span className="rounded bg-rose-50 px-1.5 py-0.5 text-rose-900">
-                            {r.openQueueCounts.openAlerts} alert{r.openQueueCounts.openAlerts === 1 ? "" : "s"}
-                          </span>
+                          ) : (
+                            <span className="rounded bg-zinc-200 px-1.5 py-0.5 text-zinc-900">Unassigned</span>
+                          )}
+                          {r.openQueueCounts.openAlerts > 0 ? (
+                            <span className="rounded bg-rose-50 px-1.5 py-0.5 text-rose-900">
+                              {r.openQueueCounts.openAlerts} alert{r.openQueueCounts.openAlerts === 1 ? "" : "s"}
+                            </span>
+                          ) : null}
+                          {r.openQueueCounts.openExceptions > 0 ? (
+                            <span className="rounded bg-orange-50 px-1.5 py-0.5 text-orange-900">
+                              {r.openQueueCounts.openExceptions} exc.
+                            </span>
+                          ) : null}
+                        </div>
+                        {r.customerCrmAccountName ? (
+                          <div className="mt-1 truncate text-[11px] text-zinc-500">{r.customerCrmAccountName}</div>
                         ) : null}
-                        {r.openQueueCounts.openExceptions > 0 ? (
-                          <span className="rounded bg-orange-50 px-1.5 py-0.5 text-orange-900">
-                            {r.openQueueCounts.openExceptions} exc.
-                          </span>
-                        ) : null}
-                      </div>
-                      {r.customerCrmAccountName ? (
-                        <div className="mt-1 truncate text-[11px] text-zinc-500">{r.customerCrmAccountName}</div>
-                      ) : null}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
           );
         })}
       </div>
