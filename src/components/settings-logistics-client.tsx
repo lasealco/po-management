@@ -17,7 +17,6 @@ type LocationRow = {
 };
 
 export function SettingsLogisticsClient({
-  initialLocations,
   initialLocationCodes,
 }: {
   initialLocations: LocationRow[];
@@ -32,7 +31,6 @@ export function SettingsLogisticsClient({
   }>;
 }) {
   const router = useRouter();
-  const [locations] = useState(initialLocations);
   const [error, setError] = useState<string | null>(null);
   const [codes, setCodes] = useState(initialLocationCodes);
   const [q, setQ] = useState("");

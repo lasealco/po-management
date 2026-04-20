@@ -69,10 +69,7 @@ export function coordinatesFromCityCountry(
 ): { lat: number; lng: number } | null {
   const k = normKey(city, country);
   if (CITY_COUNTRY_KEY[k]) return CITY_COUNTRY_KEY[k];
-  if (city && country) {
-    const k2 = normKey(`${city} ${region ?? ""}`.trim(), country);
-    if (CITY_COUNTRY_KEY[normKey(city, country)]) return CITY_COUNTRY_KEY[normKey(city, country)];
-  }
+  void region;
   const cc = (country ?? "").trim().toUpperCase();
   if (cc === "US") return { lat: 39.8283, lng: -98.5795 };
   if (cc === "CN") return { lat: 35.0, lng: 105.0 };
