@@ -69,6 +69,7 @@ export type CtReportConfig = {
     supplierId?: string | null;
     origin?: string | null;
     destination?: string | null;
+    exceptionCode?: string | null;
     onlyOpenExceptions?: boolean;
   };
   topN?: number;
@@ -198,6 +199,7 @@ export function sanitizeCtReportConfig(input: unknown): CtReportConfig {
       supplierId: typeof filtersObj.supplierId === "string" ? filtersObj.supplierId : null,
       origin: typeof filtersObj.origin === "string" ? filtersObj.origin : null,
       destination: typeof filtersObj.destination === "string" ? filtersObj.destination : null,
+      exceptionCode: typeof filtersObj.exceptionCode === "string" ? filtersObj.exceptionCode : null,
       onlyOpenExceptions: filtersObj.onlyOpenExceptions === true,
     },
   };
@@ -320,6 +322,16 @@ export async function runControlTowerReport(params: {
   if (nonEmpty(filters.supplierId)) ands.push({ order: { supplierId: filters.supplierId!.trim() } });
   if (nonEmpty(filters.origin)) ands.push({ booking: { is: { originCode: { contains: filters.origin!.trim(), mode: "insensitive" } } } });
   if (nonEmpty(filters.destination)) ands.push({ booking: { is: { destinationCode: { contains: filters.destination!.trim(), mode: "insensitive" } } } });
+  if (nonEmpty(filters.exceptionCode)) {
+    ands.push({
+      ctExceptions: {
+        some: {
+          status: { in: [CtExceptionStatus.OPEN, CtExceptionStatus.IN_PROGRESS] },
+          type: { equals: filters.exceptionCode!.trim(), mode: "insensitive" },
+        },
+      },
+    });
+  }
   if (nonEmpty(filters.lane)) {
     const lane = filters.lane!.trim();
     ands.push({
