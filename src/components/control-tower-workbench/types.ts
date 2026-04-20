@@ -1,0 +1,41 @@
+import type { CtMilestoneSummary } from "@/lib/control-tower/milestone-summary";
+
+export type WorkbenchRow = {
+  id: string;
+  shipmentNo: string | null;
+  status: string;
+  transportMode: string | null;
+  trackingNo: string | null;
+  carrier: string | null;
+  carrierSupplierId: string | null;
+  orderId: string;
+  orderNumber: string;
+  supplierId: string | null;
+  supplierName: string | null;
+  externalOrderRef?: string | null;
+  shipmentSource?: "PO" | "UNLINKED";
+  customerCrmAccountId: string | null;
+  customerCrmAccountName: string | null;
+  originCode: string | null;
+  destinationCode: string | null;
+  etd: string | null;
+  eta: string | null;
+  latestEta: string | null;
+  receivedAt: string | null;
+  routeProgressPct: number | null;
+  nextAction: string | null;
+  bookingStatus?: string | null;
+  bookingSlaBreached?: boolean;
+  bookingSentAt?: string | null;
+  bookingConfirmSlaDueAt?: string | null;
+  quantityRef: string | null;
+  weightKgRef: string | null;
+  cbmRef: string | null;
+  updatedAt: string;
+  latestMilestone: { code: string; hasActual: boolean } | null;
+  trackingMilestoneSummary: CtMilestoneSummary | null;
+  dispatchOwner: { id: string; name: string } | null;
+  openQueueCounts: { openAlerts: number; openExceptions: number };
+};
+
+export type ShipmentHealthState = "good" | "at_risk" | "delayed" | "missing_data";
