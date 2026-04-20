@@ -179,7 +179,7 @@ export default async function PlatformHomePage() {
         )}
 
         {user && modules.length > 0 ? (
-          <ul className="mt-12 grid gap-4 sm:grid-cols-2">
+          <ul className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {modules.map((m) => (
               <li key={m.href}>
                 <Link
