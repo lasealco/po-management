@@ -1,6 +1,7 @@
 const ACTIVE_SHIPMENT_STATUSES = new Set(["SHIPPED", "VALIDATED", "BOOKED", "IN_TRANSIT"]);
 
 export type SalesOrderHeaderStatus = "DRAFT" | "OPEN" | "CLOSED";
+export type SalesOrderStatusTransitionErrorCode = "INVALID_TRANSITION" | "ACTIVE_SHIPMENTS";
 
 const SALES_ORDER_STATUSES: readonly SalesOrderHeaderStatus[] = ["DRAFT", "OPEN", "CLOSED"];
 
@@ -61,6 +62,7 @@ export type SalesOrderStatusTransitionResult =
   | {
       ok: false;
       status: 409;
+      code: SalesOrderStatusTransitionErrorCode;
       error: string;
       activeShipments?: Array<{ id: string; shipmentNo: string | null; status: string }>;
     };
@@ -76,6 +78,7 @@ export function evaluateSalesOrderStatusTransition(input: {
     return {
       ok: false,
       status: 409,
+      code: "INVALID_TRANSITION",
       error: `Cannot change status from ${current} to ${target}.`,
     };
   }
@@ -86,6 +89,7 @@ export function evaluateSalesOrderStatusTransition(input: {
       return {
         ok: false,
         status: 409,
+        code: "ACTIVE_SHIPMENTS",
         error: "Cannot close sales order while linked shipments are active.",
         activeShipments: active.map((s) => ({
           id: s.id,

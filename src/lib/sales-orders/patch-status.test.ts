@@ -114,6 +114,7 @@ describe("evaluateSalesOrderStatusTransition", () => {
     ).toEqual({
       ok: false,
       status: 409,
+      code: "INVALID_TRANSITION",
       error: "Cannot change status from DRAFT to DRAFT.",
     });
   });
@@ -127,6 +128,7 @@ describe("evaluateSalesOrderStatusTransition", () => {
     expect(r).toEqual({
       ok: false,
       status: 409,
+      code: "ACTIVE_SHIPMENTS",
       error: "Cannot close sales order while linked shipments are active.",
       activeShipments: [{ id: "s1", shipmentNo: "S-1", status: "IN_TRANSIT" }],
     });

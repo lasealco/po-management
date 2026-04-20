@@ -105,7 +105,12 @@ export async function PATCH(
     shipments: row.shipments,
   });
   if (!transition.ok) {
-    const payload: { error: string; activeShipments?: typeof transition.activeShipments } = {
+    const payload: {
+      code: typeof transition.code;
+      error: string;
+      activeShipments?: typeof transition.activeShipments;
+    } = {
+      code: transition.code,
       error: transition.error,
     };
     if (transition.activeShipments) {
