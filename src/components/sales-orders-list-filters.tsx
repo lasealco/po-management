@@ -7,7 +7,7 @@ import {
   buildSalesOrdersListSearch,
   normalizeSalesOrderStatusFilter,
   parseSalesOrdersListQuery,
-} from "@/lib/sales-orders";
+} from "@/lib/sales-orders/list-filters";
 
 const SEARCH_DEBOUNCE_MS = 400;
 
