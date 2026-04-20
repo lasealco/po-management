@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 import { BrandMarkLink } from "@/components/brand-mark";
 import { getViewerGrantSet } from "@/lib/authz";
@@ -23,11 +22,7 @@ type ModuleCard = {
   description: string;
 };
 
-export default async function PlatformHomePage({
-  searchParams,
-}: {
-  searchParams?: Promise<Record<string, string | string[] | undefined>>;
-}) {
+export default async function PlatformHomePage() {
   const access = await getViewerGrantSet();
   const { linkVisibility } = await resolveNavState(access);
 
@@ -48,12 +43,6 @@ export default async function PlatformHomePage({
   const tenantName = access.tenant.name;
   const user = access.user;
   const v = linkVisibility;
-  const search = (await searchParams) ?? {};
-  const forceHub = search.hub === "1" || search.hub === "true";
-
-  if (user && v?.executive && !forceHub) {
-    redirect("/executive");
-  }
 
   const modules: ModuleCard[] = [];
   if (v?.poManagement) {
