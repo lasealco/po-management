@@ -2128,7 +2128,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
           <div className="min-w-[16rem] flex-1">
             <h2 className="text-sm font-semibold text-zinc-900">Saved views</h2>
             <p className="mt-1 text-xs text-zinc-600">
-              Save ledger filter combinations for faster review and consistent investor/demo walkthroughs.
+              Save ledger filter combinations for faster operational review and repeatable stakeholder walkthroughs.
             </p>
           </div>
           <button
@@ -2170,7 +2170,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
               const found = savedViews.find((v) => v.id === selectedSavedViewId);
               if (found) applySavedView(found);
             }}
-            className="rounded border border-zinc-300 px-3 py-2 text-xs font-medium text-zinc-800 disabled:opacity-40"
+            className="rounded border border-[var(--arscmp-primary)] bg-[var(--arscmp-primary)] px-3 py-2 text-xs font-semibold text-white disabled:opacity-40"
           >
             Apply
           </button>
@@ -2206,7 +2206,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
           <p className="mt-2 text-xs text-zinc-500">Loading saved views…</p>
         ) : null}
         {savedViews.length === 0 && !savedViewsLoading ? (
-          <p className="mt-2 text-xs text-zinc-500">No saved views yet.</p>
+          <p className="mt-2 text-xs text-zinc-500">No saved views yet. Save your current filter scope to create one.</p>
         ) : null}
         {savedViewsError ? (
           <p className="mt-2 rounded border border-rose-200 bg-rose-50 px-2 py-1 text-xs text-rose-700">
