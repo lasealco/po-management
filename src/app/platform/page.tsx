@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { BrandMarkLink } from "@/components/brand-mark";
 import { getViewerGrantSet } from "@/lib/authz";
@@ -43,6 +44,10 @@ export default async function PlatformHomePage() {
   const tenantName = access.tenant.name;
   const user = access.user;
   const v = linkVisibility;
+
+  if (user && v?.executive) {
+    redirect("/executive");
+  }
 
   const modules: ModuleCard[] = [];
   if (v?.poManagement) {
