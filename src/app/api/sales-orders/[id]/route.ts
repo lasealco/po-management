@@ -3,6 +3,11 @@ import { NextResponse } from "next/server";
 import { requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
+import {
+  canTransitionSalesOrderStatus,
+  parseSalesOrderPatchPayload,
+  type SalesOrderStatus,
+} from "@/lib/sales-orders";
 
 export async function GET(
   _request: Request,
@@ -14,6 +19,8 @@ export async function GET(
   const tenant = await getDemoTenant();
   if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
   const { id } = await context.params;
+
+  if (!id) return NextResponse.json({ error: "Sales order id is required." }, { status: 400 });
 
   const row = await prisma.salesOrder.findFirst({
     where: { id, tenantId: tenant.id },
@@ -31,7 +38,10 @@ export async function GET(
         },
       },
     },
-  });
+  }).catch(() => undefined);
+  if (row === undefined) {
+    return NextResponse.json({ error: "Could not load sales order." }, { status: 500 });
+  }
   if (!row) return NextResponse.json({ error: "Sales order not found." }, { status: 404 });
 
   return NextResponse.json({
@@ -56,6 +66,7 @@ export async function PATCH(
   const tenant = await getDemoTenant();
   if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
   const { id } = await context.params;
+  if (!id) return NextResponse.json({ error: "Sales order id is required." }, { status: 400 });
 
   let body: unknown = {};
   try {
@@ -63,10 +74,9 @@ export async function PATCH(
   } catch {
     return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
   }
-  const o = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
-  const targetStatus = typeof o.status === "string" ? o.status.trim().toUpperCase() : "";
-  if (!["DRAFT", "OPEN", "CLOSED"].includes(targetStatus)) {
-    return NextResponse.json({ error: "status must be DRAFT | OPEN | CLOSED" }, { status: 400 });
+  const parsed = parseSalesOrderPatchPayload(body);
+  if (!parsed.ok) {
+    return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
 
   const row = await prisma.salesOrder.findFirst({
@@ -76,20 +86,16 @@ export async function PATCH(
       status: true,
       shipments: { select: { id: true, status: true, shipmentNo: true } },
     },
-  });
+  }).catch(() => undefined);
+  if (row === undefined) {
+    return NextResponse.json({ error: "Could not load sales order." }, { status: 500 });
+  }
   if (!row) return NextResponse.json({ error: "Sales order not found." }, { status: 404 });
 
-  const current = row.status;
-  const allowed: Record<string, string[]> = {
-    DRAFT: ["OPEN", "CLOSED"],
-    OPEN: ["DRAFT", "CLOSED"],
-    CLOSED: ["OPEN"],
-  };
-  if (!allowed[current]?.includes(targetStatus)) {
-    return NextResponse.json(
-      { error: `Cannot change status from ${current} to ${targetStatus}.` },
-      { status: 409 },
-    );
+  const targetStatus = parsed.status;
+  const transition = canTransitionSalesOrderStatus(row.status as SalesOrderStatus, targetStatus);
+  if (!transition.ok) {
+    return NextResponse.json({ error: transition.error }, { status: 409 });
   }
 
   if (targetStatus === "CLOSED") {
@@ -111,9 +117,13 @@ export async function PATCH(
 
   const updated = await prisma.salesOrder.update({
     where: { id: row.id },
-    data: { status: targetStatus as "DRAFT" | "OPEN" | "CLOSED" },
+    data: { status: targetStatus },
     select: { id: true, status: true },
-  });
+  }).catch(() => null);
+
+  if (!updated) {
+    return NextResponse.json({ error: "Could not update sales order status." }, { status: 500 });
+  }
 
   return NextResponse.json({ ok: true, id: updated.id, status: updated.status });
 }
