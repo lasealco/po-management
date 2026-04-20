@@ -13,7 +13,6 @@ import {
   readWorkbenchUrlState,
   type WorkbenchUrlState,
 } from "@/lib/control-tower/workbench-url-sync";
-import type { CtMilestoneSummary } from "@/lib/control-tower/milestone-summary";
 import {
   WORKBENCH_COLUMN_LABELS,
   WORKBENCH_COLUMN_STORAGE_KEY,
@@ -23,79 +22,14 @@ import {
   workbenchVisibleColumnCount,
   type WorkbenchTogglableColumn,
 } from "@/lib/control-tower/workbench-column-prefs";
-
-type Row = {
-  id: string;
-  shipmentNo: string | null;
-  status: string;
-  transportMode: string | null;
-  trackingNo: string | null;
-  carrier: string | null;
-  carrierSupplierId: string | null;
-  orderId: string;
-  orderNumber: string;
-  supplierId: string | null;
-  supplierName: string | null;
-  externalOrderRef?: string | null;
-  shipmentSource?: "PO" | "UNLINKED";
-  customerCrmAccountId: string | null;
-  customerCrmAccountName: string | null;
-  originCode: string | null;
-  destinationCode: string | null;
-  etd: string | null;
-  eta: string | null;
-  latestEta: string | null;
-  receivedAt: string | null;
-  routeProgressPct: number | null;
-  nextAction: string | null;
-  bookingStatus?: string | null;
-  bookingSlaBreached?: boolean;
-  bookingSentAt?: string | null;
-  bookingConfirmSlaDueAt?: string | null;
-  quantityRef: string | null;
-  weightKgRef: string | null;
-  cbmRef: string | null;
-  updatedAt: string;
-  latestMilestone: { code: string; hasActual: boolean } | null;
-  trackingMilestoneSummary: CtMilestoneSummary | null;
-  dispatchOwner: { id: string; name: string } | null;
-  openQueueCounts: { openAlerts: number; openExceptions: number };
-};
-
-type HealthState = "good" | "at_risk" | "delayed" | "missing_data";
-
-function classifyShipmentHealth(r: Row, nowMs: number): HealthState {
-  if (r.bookingSlaBreached) return "at_risk";
-  const na = r.nextAction || "";
-  if (na.startsWith("Escalate booking")) return "at_risk";
-  if (na.startsWith("Send booking")) return "missing_data";
-  const etaIso = r.latestEta || r.eta;
-  const etaMs = etaIso ? new Date(etaIso).getTime() : Number.NaN;
-  const hasTracking = Boolean(r.trackingMilestoneSummary?.next || (r.trackingMilestoneSummary?.openCount ?? 0) > 0);
-  const hasRoutePlan = Boolean(r.nextAction);
-  if (!hasTracking && !hasRoutePlan) return "missing_data";
-  if (r.receivedAt && Number.isFinite(etaMs)) {
-    return new Date(r.receivedAt).getTime() <= etaMs ? "good" : "delayed";
-  }
-  if (Number.isFinite(etaMs) && etaMs < nowMs) return "delayed";
-  if ((r.openQueueCounts?.openAlerts ?? 0) > 0 || (r.openQueueCounts?.openExceptions ?? 0) > 0) return "at_risk";
-  if (r.trackingMilestoneSummary?.next?.isLate) return "at_risk";
-  return "good";
-}
-
-function healthBadgeClass(health: HealthState): string {
-  if (health === "good") return "border-emerald-200 bg-emerald-50 text-emerald-900";
-  if (health === "at_risk") return "border-amber-200 bg-amber-50 text-amber-950";
-  if (health === "delayed") return "border-rose-200 bg-rose-50 text-rose-900";
-  return "border-zinc-300 bg-zinc-100 text-zinc-700";
-}
-
-function healthLabel(health: HealthState): string {
-  if (health === "good") return "On-time";
-  if (health === "at_risk") return "At risk";
-  if (health === "delayed") return "Delayed";
-  return "Missing plan/tracking";
-}
+import { buildWorkbenchCsv } from "@/components/control-tower-workbench/csv";
+import { classifyShipmentHealth, healthBadgeClass, healthLabel } from "@/components/control-tower-workbench/health";
+import {
+  createRouteActionCounts,
+  ROUTE_ACTION_OPTIONS,
+} from "@/components/control-tower-workbench/route-actions";
+import type { ShipmentHealthState as HealthState, WorkbenchRow as Row } from "@/components/control-tower-workbench/types";
+import type { RouteActionName } from "@/components/control-tower-workbench/route-actions";
 
 function ActionTooltipButton({
   disabled,
@@ -708,41 +642,8 @@ function ControlTowerWorkbenchInner({
     [],
   );
   const modeOptions = useMemo(() => ["", "OCEAN", "AIR", "ROAD", "RAIL"], []);
-  const routeActionOptions = useMemo(
-    () => [
-      "",
-      "Send booking",
-      "Await booking",
-      "Escalate booking",
-      "Plan leg",
-      "Mark departure",
-      "Record arrival",
-      "Route complete",
-    ],
-    [],
-  );
-  const routeActionCounts = useMemo(() => {
-    const out: Record<string, number> = {
-      "Send booking": 0,
-      "Await booking": 0,
-      "Escalate booking": 0,
-      "Plan leg": 0,
-      "Mark departure": 0,
-      "Record arrival": 0,
-      "Route complete": 0,
-    };
-    for (const r of rows) {
-      const action = r.nextAction || "";
-      if (action.startsWith("Send booking")) out["Send booking"] += 1;
-      else if (action.startsWith("Await booking")) out["Await booking"] += 1;
-      else if (action.startsWith("Escalate booking")) out["Escalate booking"] += 1;
-      else if (action.startsWith("Plan leg")) out["Plan leg"] += 1;
-      else if (action.startsWith("Mark departure")) out["Mark departure"] += 1;
-      else if (action.startsWith("Record arrival")) out["Record arrival"] += 1;
-      else if (action.startsWith("Route complete")) out["Route complete"] += 1;
-    }
-    return out;
-  }, [rows]);
+  const routeActionOptions = useMemo(() => [...ROUTE_ACTION_OPTIONS], []);
+  const routeActionCounts = useMemo(() => createRouteActionCounts(rows), [rows]);
   const ownerChoices = useMemo(() => {
     const m = new Map<string, string>();
     for (const r of rows) {
@@ -776,99 +677,15 @@ function ControlTowerWorkbenchInner({
   }, [filteredRows, healthQuickFilter]);
 
   const exportCsv = useCallback(() => {
-    const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
-    const colOn = (k: WorkbenchTogglableColumn) => {
-      if (k === "owner" && restrictedView) return false;
-      return colVis[k] !== false;
-    };
-
-    const hs: string[] = ["shipmentId", "orderNumber", "shipmentNo"];
-    if (colOn("status")) hs.push("status");
-    if (colOn("mode")) hs.push("mode");
-    if (colOn("health")) hs.push("health");
-    if (colOn("customer")) hs.push("customer");
-    if (colOn("lane")) hs.push("lane");
-    if (colOn("eta")) hs.push("eta");
-    if (colOn("ataDelay")) {
-      hs.push("ata", "etaVsAtaDays");
-    }
-    if (colOn("qtyWt")) {
-      hs.push("quantityRef", "weightKgRef", "cbmRef");
-    }
-    if (colOn("owner")) {
-      hs.push("owner", "openAlerts", "openExceptions");
-    }
-    if (colOn("route")) hs.push("routeProgressPct");
-    if (colOn("nextAction")) hs.push("nextAction");
-    if (colOn("milestone")) hs.push("milestoneSummary");
-    if (colOn("updated")) hs.push("updatedAt");
-
-    const rowLine = (r: Row) => {
-      const cells: string[] = [esc(r.id), esc(r.orderNumber), esc(r.shipmentNo || "")];
-      if (colOn("status")) cells.push(esc(r.status));
-      if (colOn("mode")) cells.push(esc(r.transportMode || ""));
-      if (colOn("health")) {
-        const health = classifyShipmentHealth(r, Date.now());
-        cells.push(esc(healthLabel(health)));
-      }
-      if (colOn("customer")) {
-        cells.push(esc(r.customerCrmAccountName || r.customerCrmAccountId || ""));
-      }
-      if (colOn("lane")) {
-        cells.push(esc(`${r.originCode || ""} → ${r.destinationCode || ""}`));
-      }
-      if (colOn("eta")) {
-        cells.push(esc(r.eta || r.latestEta || ""));
-      }
-      if (colOn("ataDelay")) {
-        cells.push(esc(r.receivedAt || ""));
-        cells.push(
-          esc(
-            (() => {
-              const etaIso = r.latestEta || r.eta;
-              if (!etaIso || !r.receivedAt) return "";
-              const deltaMs = new Date(r.receivedAt).getTime() - new Date(etaIso).getTime();
-              return (deltaMs / 86_400_000).toFixed(1);
-            })(),
-          ),
-        );
-      }
-      if (colOn("qtyWt")) {
-        cells.push(esc(r.quantityRef || ""));
-        cells.push(esc(r.weightKgRef || ""));
-        cells.push(esc(r.cbmRef || ""));
-      }
-      if (colOn("owner")) {
-        cells.push(esc(r.dispatchOwner?.name || "Unassigned"));
-        cells.push(esc(String(r.openQueueCounts?.openAlerts ?? 0)));
-        cells.push(esc(String(r.openQueueCounts?.openExceptions ?? 0)));
-      }
-      if (colOn("route")) {
-        cells.push(esc(r.routeProgressPct == null ? "" : String(r.routeProgressPct)));
-      }
-      if (colOn("nextAction")) cells.push(esc(r.nextAction || ""));
-      if (colOn("milestone")) {
-        const parts: string[] = [];
-        if (r.latestMilestone) {
-          parts.push(`${r.latestMilestone.code}${r.latestMilestone.hasActual ? " ✓" : ""}`);
-        }
-        if (r.trackingMilestoneSummary?.next?.code) {
-          parts.push(`next:${r.trackingMilestoneSummary.next.code}`);
-        }
-        cells.push(esc(parts.length ? parts.join("; ") : ""));
-      }
-      if (colOn("updated")) cells.push(esc(r.updatedAt));
-      return cells.join(",");
-    };
-
-    const meta =
-      listTruncated && listLimit != null
-        ? [
-            `# control-tower-workbench export: list truncated at ${listLimit} rows for current filters; more shipments may match — narrow filters and re-export.`,
-          ]
-        : [];
-    const lines = [...meta, hs.join(","), ...chipFilteredRows.map(rowLine)];
-    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const csv = buildWorkbenchCsv({
+      rows: chipFilteredRows,
+      colVis,
+      restrictedView,
+      listTruncated,
+      listLimit,
+      nowMs: Date.now(),
+    });
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -1325,7 +1142,7 @@ function ControlTowerWorkbenchInner({
           Any ({rows.length})
         </button>
         {routeActionOptions
-          .filter((o) => o)
+          .filter((o): o is RouteActionName => Boolean(o))
           .map((opt) => (
             <button
               key={opt}
