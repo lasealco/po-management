@@ -5,20 +5,24 @@ import type { Prisma } from "@prisma/client";
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
-import { nextSalesOrderNumber } from "@/lib/sales-orders";
+import { nextSalesOrderNumber, parseSalesOrdersListQuery, salesOrdersListPrismaWhere } from "@/lib/sales-orders";
 
 /** Matches `SalesOrderCreateForm` option values for logistics-only SRM suppliers. */
 const SUPPLIER_CUSTOMER_PREFIX = "__supplier__:";
 
-export async function GET() {
+export async function GET(request: Request) {
   const gate = await requireApiGrant("org.orders", "view");
   if (gate) return gate;
 
   const tenant = await getDemoTenant();
   if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
 
+  const url = new URL(request.url);
+  const listQuery = parseSalesOrdersListQuery(url.searchParams);
+  const where = salesOrdersListPrismaWhere(tenant.id, listQuery);
+
   const rows = await prisma.salesOrder.findMany({
-    where: { tenantId: tenant.id },
+    where,
     orderBy: { createdAt: "desc" },
     take: 200,
     select: {

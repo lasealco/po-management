@@ -1,13 +1,24 @@
 import Link from "next/link";
+import { Suspense } from "react";
 
 import { AccessDenied } from "@/components/access-denied";
+import { SalesOrdersListFilters } from "@/components/sales-orders-list-filters";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
+import {
+  parseSalesOrdersListQueryFromNext,
+  salesOrdersListPrismaWhere,
+  salesOrdersListQueryString,
+} from "@/lib/sales-orders";
 
 export const dynamic = "force-dynamic";
 
-export default async function SalesOrdersPage() {
+export default async function SalesOrdersPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const access = await getViewerGrantSet();
   if (!access?.user || !viewerHas(access.grantSet, "org.orders", "view")) {
     return (
@@ -25,12 +36,22 @@ export default async function SalesOrdersPage() {
     );
   }
 
+  const rawSearch = await searchParams;
+  const listQuery = parseSalesOrdersListQueryFromNext(rawSearch);
+  const where = salesOrdersListPrismaWhere(tenant.id, listQuery);
+  const listQs = salesOrdersListQueryString(listQuery);
+
   const rows = await prisma.salesOrder.findMany({
-    where: { tenantId: tenant.id },
+    where,
     orderBy: { createdAt: "desc" },
     take: 200,
     include: { _count: { select: { shipments: true } } },
   });
+
+  const hasFilters = Boolean(listQuery.status.trim() || listQuery.q.trim());
+  const emptyCopy = hasFilters
+    ? "No sales orders match these filters. Try clearing search or choosing a different status."
+    : "No sales orders yet.";
 
   return (
     <main className="mx-auto w-full max-w-6xl bg-zinc-50 px-6 py-8">
@@ -40,13 +61,26 @@ export default async function SalesOrdersPage() {
           <p className="mt-1 text-sm text-zinc-600">Sales Order process v1 for export-linked logistics.</p>
         </div>
         {viewerHas(access.grantSet, "org.orders", "edit") ? (
-          <Link href="/sales-orders/new" className="rounded bg-arscmp-primary px-4 py-2 text-sm font-medium text-white">
+          <Link
+            href="/sales-orders/new"
+            className="rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white shadow-sm"
+          >
             New Sales Order
           </Link>
         ) : null}
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white">
+      <Suspense
+        fallback={
+          <section className="mb-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+            <p className="text-sm text-zinc-500">Loading filters…</p>
+          </section>
+        }
+      >
+        <SalesOrdersListFilters />
+      </Suspense>
+
+      <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm">
         <table className="min-w-full text-sm">
           <thead className="bg-zinc-100 text-left text-xs uppercase tracking-wide text-zinc-700">
             <tr>
@@ -62,14 +96,17 @@ export default async function SalesOrdersPage() {
             {rows.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-3 py-8 text-center text-zinc-500">
-                  No sales orders yet.
+                  {emptyCopy}
                 </td>
               </tr>
             ) : (
               rows.map((r) => (
                 <tr key={r.id}>
                   <td className="px-3 py-2">
-                    <Link href={`/sales-orders/${r.id}`} className="font-medium text-sky-800 hover:underline">
+                    <Link
+                      href={`/sales-orders/${r.id}${listQs ? `?${listQs}` : ""}`}
+                      className="font-medium text-sky-800 hover:underline"
+                    >
                       {r.soNumber}
                     </Link>
                   </td>
