@@ -41,6 +41,8 @@ Create labels if you want filtering:
 
 Use **Issues → New issue → “Agent task”** as a starting point.
 
+Per-module checkbox queues live under **[`agent-todos/`](./agent-todos/README.md)** — pick a row (or a few), file an issue with allowed paths, then start an agent.
+
 ## Multiple Cursor sessions
 
 You **can** open several chats/sessions (local or cloud). Same rules as multiple people:
