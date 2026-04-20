@@ -1,6 +1,6 @@
 # AI-assisted ingestion — integration / API hub spec (v1 draft)
 
-**Status:** Draft for engineering + product alignment. **Source docs home:** [`README.md`](./README.md).
+**Status:** Draft for engineering + product alignment. **Source docs home:** [`README.md`](./README.md). **Docs on GitHub (public tree):** [`docs/apihub/`](https://github.com/lasealco/po-management/tree/main/docs/apihub).
 
 ---
 
@@ -94,7 +94,7 @@ Exact Prisma names and relations are **P1+**; this table is the conceptual contr
 
 | Phase | Scope (summary) |
 |-------|------------------|
-| **P0** | Docs home (`docs/apihub/`), **GAP_MAP**, read-only **app shell** (`/apihub`), health API stub, cross-links from integration-hub todos; no Prisma migrations unless explicitly approved. |
+| **P0** | Docs home (`docs/apihub/`), **GAP_MAP**, read-only **app shell** ([`/apihub`](https://github.com/lasealco/po-management/tree/main/src/app/apihub)), [`GET /api/apihub/health`](https://github.com/lasealco/po-management/tree/main/src/app/api/apihub/health), cross-links from integration-hub todos; no Prisma migrations unless explicitly approved. |
 | **P1** | Prisma models for connector + template + batch + staging (minimal); CRUD API stubs; empty list UIs. |
 | **P2** | Async “analysis job” pipeline + mapping editor UI + staging preview. |
 | **P3** | Deterministic apply to production paths (per scenario); idempotent API; wire to CT/PO/SO as agreed. |
@@ -115,3 +115,4 @@ Exact Prisma names and relations are **P1+**; this table is the conceptual contr
 
 - Control Tower inbound: `docs/controltower/GAP_MAP.md` (R4).
 - Engineering agent list: `docs/engineering/agent-todos/integration-hub.md`.
+- **P0 implementation pointers:** app shell `src/app/apihub/`, health route `src/app/api/apihub/health/route.ts`, shared constants `src/lib/apihub/`.
