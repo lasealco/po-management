@@ -9,6 +9,7 @@ export const REPORT_CSV_MEASURES = [
   "shippingSpend",
   "onTimePct",
   "avgDelayDays",
+  "openExceptions",
 ] as const;
 
 export type ReportCsvRow = { label: string; metrics: Record<string, number> };

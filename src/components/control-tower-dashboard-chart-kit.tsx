@@ -14,6 +14,7 @@ const CT_REPORT_MEASURES = [
   "shippingSpend",
   "onTimePct",
   "avgDelayDays",
+  "openExceptions",
 ] as const;
 type CtReportMeasure = (typeof CT_REPORT_MEASURES)[number];
 
@@ -79,6 +80,7 @@ export function formatInteger(value: number): string {
 
 export function formatAxisTick(measure: string, value: number): string {
   if (measure === "shipments") return formatInteger(value);
+  if (measure === "openExceptions") return formatInteger(value);
   if (measure === "onTimePct") return `${formatDecimal(value, 0)}%`;
   if (measure === "avgDelayDays") return formatDecimal(value, 1);
   return formatDecimal(value, 0);
@@ -86,6 +88,7 @@ export function formatAxisTick(measure: string, value: number): string {
 
 export function formatMetric(measure: string, value: number): string {
   if (measure === "shipments") return formatInteger(value);
+  if (measure === "openExceptions") return formatInteger(value);
   if (measure === "onTimePct") return `${formatDecimal(value, 2)}%`;
   if (measure === "shippingSpend") return formatDecimal(value, 2);
   if (measure === "avgDelayDays") return formatDecimal(value, 2);
@@ -1061,7 +1064,9 @@ export function ControlTowerDashboardWidgetModal(props: {
                 rowKey={drillRow.key}
                 rowLabel={drillRow.label}
                 ship360Tab={
-                  report.config.measure === "onTimePct" || report.config.measure === "avgDelayDays"
+                  report.config.measure === "onTimePct" ||
+                  report.config.measure === "avgDelayDays" ||
+                  report.config.dimension === "exceptionCatalog"
                     ? "milestones"
                     : undefined
                 }
