@@ -10,8 +10,9 @@ These markdown files are the **source bodies** for fat issues meant for **~2+ ho
 | CRM | [#10](https://github.com/lasealco/po-management/issues/10) | [`_gh-issue-body-crm-meeting.md`](./_gh-issue-body-crm-meeting.md) |
 | WMS | [#11](https://github.com/lasealco/po-management/issues/11) | [`_gh-issue-body-wms-meeting.md`](./_gh-issue-body-wms-meeting.md) |
 | Tariff | [#12](https://github.com/lasealco/po-management/issues/12) | [`_gh-issue-body-tariff-meeting.md`](./_gh-issue-body-tariff-meeting.md) |
+| SRM | [#13](https://github.com/lasealco/po-management/issues/13) | [`_gh-issue-body-srm-meeting.md`](./_gh-issue-body-srm-meeting.md) |
 
-**Parallel rule:** start **at most one agent per issue**, each on **different module paths** (these four are designed **not** to overlap).
+**Parallel rule:** start **at most one agent per issue**, each on **different module paths** (these five are designed **not** to overlap).
 
 ## Copy-paste agent starter (per window)
 
@@ -23,4 +24,4 @@ Do not run db:seed or db:migrate unless the issue explicitly says so — if bloc
 If a step is larger than expected, finish the current checkbox, commit, push, then continue on the same branch in the same chat with "continue with the next checkbox".
 ```
 
-Replace `#___` with **9**, **10**, **11**, or **12**.
+Replace `#___` with **9**, **10**, **11**, **12**, or **13** (SRM).
