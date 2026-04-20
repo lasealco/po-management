@@ -114,6 +114,51 @@ describe("processControlTowerInboundWebhook", () => {
       expect(prismaMock.shipment.findFirst.mock.calls.length).toBe(shipmentCallsAfterFirst);
       expect(prismaMock.ctTrackingMilestone.create.mock.calls.length).toBe(milestoneCreatesAfterFirst);
     });
+
+    it("returns 200 with idempotentReplay for carrier_webhook_v1 on second POST with same key", async () => {
+      const data = [
+        rowTemplate(),
+        rowTemplate({
+          event_code: "DELIVERED",
+          event_time: "2026-01-11T14:00:00.000Z",
+        }),
+      ];
+      const body: Record<string, unknown> = {
+        idempotencyKey: "idem-carrier-batch-1",
+        payloadFormat: "carrier_webhook_v1",
+        data,
+      };
+
+      const first = await processControlTowerInboundWebhook({ tenantId, actorUserId, body });
+      expect(first.status).toBe(200);
+      expect(first.body.idempotentReplay).toBeUndefined();
+      expect(first.body).toMatchObject({
+        ok: true,
+        maxBatchRows: 50,
+        rowCount: 2,
+        milestonesProcessed: 2,
+      });
+      expect(storedIdempotentReplay.current).toBeTruthy();
+      expect(storedIdempotentReplay.current).toMatchObject({
+        ok: true,
+        rowCount: 2,
+        maxBatchRows: 50,
+      });
+
+      const shipmentCallsAfterFirst = prismaMock.shipment.findFirst.mock.calls.length;
+      const milestoneCreatesAfterFirst = prismaMock.ctTrackingMilestone.create.mock.calls.length;
+
+      idempotencyReplayMode = true;
+      const second = await processControlTowerInboundWebhook({ tenantId, actorUserId, body });
+      expect(second.status).toBe(200);
+      expect(second.body.idempotentReplay).toBe(true);
+      expect(second.body).toEqual({
+        ...(storedIdempotentReplay.current as Record<string, unknown>),
+        idempotentReplay: true,
+      });
+      expect(prismaMock.shipment.findFirst.mock.calls.length).toBe(shipmentCallsAfterFirst);
+      expect(prismaMock.ctTrackingMilestone.create.mock.calls.length).toBe(milestoneCreatesAfterFirst);
+    });
   });
 
   describe("carrier_webhook_v1 batch cap", () => {
@@ -147,6 +192,57 @@ describe("processControlTowerInboundWebhook", () => {
         maxBatchRows: 3,
         payloadFormat: "carrier_webhook_v1",
       });
+    });
+
+    it("accepts carrier_webhook_v1 when data.length equals resolved maxBatchRows", async () => {
+      process.env.CONTROL_TOWER_INBOUND_CARRIER_WEBHOOK_MAX_ROWS = "4";
+      const data = Array.from({ length: 4 }, (_, i) =>
+        rowTemplate({
+          event_code: i === 0 ? "PICKUP" : "IN_TRANSIT",
+          event_time: `2026-01-10T1${i}:00:00.000Z`,
+        }),
+      );
+      const res = await processControlTowerInboundWebhook({
+        tenantId,
+        actorUserId,
+        body: { payloadFormat: "carrier_webhook_v1", data },
+      });
+      expect(res.status).toBe(200);
+      expect(res.body).toMatchObject({
+        ok: true,
+        maxBatchRows: 4,
+        rowCount: 4,
+        milestonesProcessed: 4,
+        milestonesFailed: 0,
+      });
+    });
+
+    it("clamps CONTROL_TOWER_INBOUND_CARRIER_WEBHOOK_MAX_ROWS to 200 when env is higher", async () => {
+      process.env.CONTROL_TOWER_INBOUND_CARRIER_WEBHOOK_MAX_ROWS = "500";
+      const data = Array.from({ length: 201 }, () => rowTemplate());
+      const res = await processControlTowerInboundWebhook({
+        tenantId,
+        actorUserId,
+        body: { payloadFormat: "carrier_webhook_v1", data },
+      });
+      expect(res.status).toBe(400);
+      expect(res.body).toMatchObject({
+        error: expect.stringContaining("at most 200"),
+        maxBatchRows: 200,
+        payloadFormat: "carrier_webhook_v1",
+      });
+      expect(prismaMock.shipment.findFirst).not.toHaveBeenCalled();
+    });
+
+    it("returns 400 for empty data array without shipment reads", async () => {
+      const res = await processControlTowerInboundWebhook({
+        tenantId,
+        actorUserId,
+        body: { payloadFormat: "carrier_webhook_v1", data: [] },
+      });
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain("non-empty array");
+      expect(prismaMock.shipment.findFirst).not.toHaveBeenCalled();
     });
   });
 
