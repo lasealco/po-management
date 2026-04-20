@@ -2,7 +2,7 @@ import type { InventoryMovementType } from "@prisma/client";
 
 import { MOVEMENT_LEDGER_TYPES } from "@/lib/wms/movement-ledger-query";
 
-const LEDGER_PARAM_KEYS = ["mvWarehouse", "mvType", "mvSince", "mvUntil", "mvLimit"] as const;
+const LEDGER_PARAM_KEYS = ["mvWarehouse", "mvType", "mvSince", "mvUntil", "mvLimit", "mvSortBy", "mvSortDir"] as const;
 const LEDGER_PARAM_KEY_SET = new Set<string>(LEDGER_PARAM_KEYS);
 
 export type StockLedgerUrlState = {
@@ -11,6 +11,8 @@ export type StockLedgerUrlState = {
   sinceIso: string;
   untilIso: string;
   limit: string;
+  sortBy: "" | "quantity" | "createdAt";
+  sortDir: "" | "asc" | "desc";
 };
 
 const isMovementType = (v: string): v is InventoryMovementType =>
@@ -30,12 +32,18 @@ export function normalizeMovementLedgerQueryString(searchParams: URLSearchParams
 export function readStockLedgerUrlState(searchParams: URLSearchParams): StockLedgerUrlState {
   const rawType = searchParams.get("mvType")?.trim() ?? "";
   const movementType = rawType && isMovementType(rawType) ? rawType : "";
+  const rawSortBy = searchParams.get("mvSortBy")?.trim() ?? "";
+  const sortBy = rawSortBy === "quantity" || rawSortBy === "createdAt" ? rawSortBy : "";
+  const rawSortDir = searchParams.get("mvSortDir")?.trim() ?? "";
+  const sortDir = rawSortDir === "asc" || rawSortDir === "desc" ? rawSortDir : "";
   return {
     warehouseId: searchParams.get("mvWarehouse")?.trim() ?? "",
     movementType,
     sinceIso: searchParams.get("mvSince")?.trim() ?? "",
     untilIso: searchParams.get("mvUntil")?.trim() ?? "",
     limit: searchParams.get("mvLimit")?.trim() ?? "",
+    sortBy,
+    sortDir,
   };
 }
 
@@ -53,6 +61,8 @@ export function mergeStockLedgerSearchParams(
   if (ledger.sinceIso) next.set("mvSince", ledger.sinceIso);
   if (ledger.untilIso) next.set("mvUntil", ledger.untilIso);
   if (ledger.limit) next.set("mvLimit", ledger.limit);
+  if (ledger.sortBy) next.set("mvSortBy", ledger.sortBy);
+  if (ledger.sortDir) next.set("mvSortDir", ledger.sortDir);
   return next;
 }
 
