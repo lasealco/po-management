@@ -6,13 +6,16 @@ import { WorkflowHeader } from "@/components/workflow-header";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
+import { parseSalesOrdersListQueryFromNext, salesOrdersListQueryString } from "@/lib/sales-orders";
 
 export const dynamic = "force-dynamic";
 
 export default async function SalesOrderDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const access = await getViewerGrantSet();
   if (!access?.user || !viewerHas(access.grantSet, "org.orders", "view")) {
@@ -31,6 +34,10 @@ export default async function SalesOrderDetailPage({
     );
   }
   const { id } = await params;
+  const rawList = searchParams ? await searchParams : {};
+  const listBackQs = salesOrdersListQueryString(parseSalesOrdersListQueryFromNext(rawList));
+  const listHref = listBackQs ? `/sales-orders?${listBackQs}` : "/sales-orders";
+
   const row = await prisma.salesOrder.findFirst({
     where: { id, tenantId: tenant.id },
     include: {
@@ -59,7 +66,7 @@ export default async function SalesOrderDetailPage({
   return (
     <main className="mx-auto w-full max-w-5xl px-6 py-8">
       <p className="text-sm">
-        <Link href="/sales-orders" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+        <Link href={listHref} className="font-medium text-[var(--arscmp-primary)] hover:underline">
           ← Sales orders
         </Link>
       </p>
@@ -100,13 +107,18 @@ export default async function SalesOrderDetailPage({
       </div>
 
       <h2 className="mt-6 text-base font-semibold text-zinc-900">Linked shipments</h2>
+      <p className="mt-1 text-xs text-zinc-500">Shipment links open the Control Tower shipment workspace.</p>
       <ul className="mt-2 space-y-2">
         {row.shipments.length === 0 ? (
           <li className="rounded border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-500">No shipments linked.</li>
         ) : (
           row.shipments.map((s) => (
             <li key={s.id} className="rounded border border-zinc-200 bg-white px-3 py-2 text-sm">
-              <Link href={`/control-tower/shipments/${s.id}`} className="font-medium text-sky-800 hover:underline">
+              <Link
+                href={`/control-tower/shipments/${s.id}`}
+                className="font-medium text-sky-800 hover:underline"
+                title="Open in Control Tower"
+              >
                 {s.shipmentNo || s.id}
               </Link>
               <span className="ml-2 text-zinc-500">
