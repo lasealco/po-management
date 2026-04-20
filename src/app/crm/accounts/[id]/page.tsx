@@ -1,8 +1,9 @@
 import { Suspense } from "react";
 
 import { AccessDenied } from "@/components/access-denied";
-import { CrmAccountDetail } from "@/components/crm-account-detail";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
+
+import { CrmAccountWorkspace } from "../crm-account-workspace";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +28,7 @@ export default async function CrmAccountPage({
       <div className="px-6 py-16">
         <AccessDenied
           title="Account"
-          message="You need org.crm → view permission."
+          message="You need org.crm → view permission (enable in Settings → Roles after deploy)."
         />
       </div>
     );
@@ -41,7 +42,7 @@ export default async function CrmAccountPage({
         <div className="px-6 py-16 text-sm text-zinc-500">Loading account…</div>
       }
     >
-      <CrmAccountDetail
+      <CrmAccountWorkspace
         accountId={id}
         actorUserId={access.user.id}
         canEditAll={viewerHas(access.grantSet, "org.crm", "edit")}
