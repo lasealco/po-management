@@ -77,6 +77,7 @@ model Tenant {
   invoiceChargeAliases  InvoiceChargeAlias[]
   apiHubConnectors      ApiHubConnector[]
   apiHubConnectorAuditLogs ApiHubConnectorAuditLog[]
+  apiHubIngestionRuns   ApiHubIngestionRun[]
 }
 
 /// Integration / API hub — registry row for an external or internal data source (Phase 1 stub).
@@ -86,6 +87,12 @@ model ApiHubConnector {
   name      String
   /// High-level source label until taxonomy lands (e.g. `stub`, `file`, `api`).
   sourceKind String  @default("unspecified")
+  /// Auth mode metadata only (no credential values in this table).
+  authMode  String   @default("none")
+  /// Secret manager / vault reference, never plaintext credentials.
+  authConfigRef String?
+  /// Operator-facing configuration readiness state.
+  authState String   @default("not_configured")
   status    String   @default("draft")
   /// Populated when sync jobs exist; nullable for stub rows.
   lastSyncAt DateTime?
@@ -96,6 +103,7 @@ model ApiHubConnector {
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   auditLogs ApiHubConnectorAuditLog[]
+  ingestionRuns ApiHubIngestionRun[]
 
   @@index([tenantId])
   @@index([tenantId, createdAt])
@@ -117,6 +125,39 @@ model ApiHubConnectorAuditLog {
   @@index([tenantId, createdAt])
   @@index([connectorId, createdAt])
   @@index([actorUserId, createdAt])
+}
+
+model ApiHubIngestionRun {
+  id                String   @id @default(cuid())
+  tenantId          String
+  connectorId       String?
+  requestedByUserId String
+  idempotencyKey    String?
+  status            String   @default("queued")
+  attempt           Int      @default(1)
+  maxAttempts       Int      @default(3)
+  resultSummary     String?
+  errorCode         String?
+  errorMessage      String?
+  enqueuedAt        DateTime @default(now())
+  startedAt         DateTime?
+  finishedAt        DateTime?
+  retryOfRunId      String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  tenant      Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  connector   ApiHubConnector?  @relation(fields: [connectorId], references: [id], onDelete: SetNull)
+  requestedBy User              @relation(fields: [requestedByUserId], references: [id], onDelete: Restrict)
+  retryOf     ApiHubIngestionRun? @relation("ApiHubIngestionRunRetryChain", fields: [retryOfRunId], references: [id], onDelete: SetNull)
+  retries     ApiHubIngestionRun[] @relation("ApiHubIngestionRunRetryChain")
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, status, createdAt])
+  @@index([connectorId, createdAt])
+  @@index([requestedByUserId, createdAt])
+  @@index([retryOfRunId, createdAt])
+  @@unique([tenantId, idempotencyKey])
 }
 
 /// Tenant-scoped milestone template packs (override or extend built-in packs in code).
@@ -198,6 +239,7 @@ model User {
   invoiceIntakesCreated          InvoiceIntake[]          @relation("InvoiceIntakeCreator")
   invoiceIntakesReviewed         InvoiceIntake[]          @relation("InvoiceIntakeReviewer")
   apiHubConnectorAuditLogs       ApiHubConnectorAuditLog[]
+  apiHubIngestionRunsRequested   ApiHubIngestionRun[]
   invoiceIntakesAccountingApproved InvoiceIntake[]         @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated TariffShipmentApplication[] @relation("TariffShipmentApplicationCreator")
 
