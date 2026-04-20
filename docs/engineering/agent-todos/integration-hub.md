@@ -1,19 +1,25 @@
 # Integration hub / API hub — agent todo list (greenfield)
 
-**GitHub label:** `module:integration-hub`  
-**Live spec + docs:** **[`docs/apihub/README.md`](../../apihub/README.md)** — ingestion / integration API hub; full draft: [`integrations-ai-assisted-ingestion.md`](../../apihub/integrations-ai-assisted-ingestion.md).  
-**Gap map:** [`docs/apihub/GAP_MAP.md`](../../apihub/GAP_MAP.md).
+**GitHub label:** `module:integration-hub`
 
-**Suggested allowed paths (P0):** `docs/apihub/**`, `docs/engineering/agent-todos/integration-hub.md`, `src/app/apihub/**`, `src/app/api/apihub/**`, optional tiny `src/lib/apihub/**`
+## Live spec home (use this instead of one-off “product one-pager” todos)
+
+- **Documentation home:** [`docs/apihub/README.md`](../../apihub/README.md) — ingestion / integration API hub overview, GitHub links, in-app entry.
+- **Full draft spec:** [`docs/apihub/integrations-ai-assisted-ingestion.md`](../../apihub/integrations-ai-assisted-ingestion.md) — product + technical contract (supersedes informal one-pager requests; iterate here and in PRs).
+- **Gap map:** [`docs/apihub/GAP_MAP.md`](../../apihub/GAP_MAP.md) — what is shipped vs stub vs not started.
+
+**P0 (meeting batch):** docs polish + read-only **`/apihub`** shell + **`GET /api/apihub/health`** — no Prisma / migrations unless explicitly approved. **P1+:** connector registry, jobs, mapping editor, deterministic apply — see spec phased delivery §8.
+
+**Suggested allowed paths (P0 PRs):** `docs/apihub/**`, `docs/engineering/agent-todos/integration-hub.md`, `src/app/apihub/**`, `src/app/api/apihub/**`, optional tiny `src/lib/apihub/**`
 
 ---
 
 ## Phase 0 — skeleton (safe, no backend contract yet)
 
 - [x] **Product / technical spec** — [`docs/apihub/integrations-ai-assisted-ingestion.md`](../../apihub/integrations-ai-assisted-ingestion.md) (v1 draft; iterate in PRs).
-- [ ] **Route shell** — `/apihub` landing + step placeholders — GitHub [#16](https://github.com/lasealco/po-management/issues/16) (meeting batch P0).
-- [ ] **Health API** — `GET /api/apihub/health` stub (same issue).
-- [ ] **Nav / command palette** — optional single entry (minimal diff; see #16).
+- [x] **Route shell** — `/apihub` landing + step placeholders — GitHub [#16](https://github.com/lasealco/po-management/issues/16) (meeting batch P0).
+- [x] **Health API** — `GET /api/apihub/health` stub (same issue).
+- [x] **Nav / command palette** — command palette entry → `/apihub` for signed-in demo users (minimal; see #16).
 
 ---
 
@@ -27,4 +33,4 @@
 
 ## Hygiene
 
-- [ ] Keep [`docs/apihub/GAP_MAP.md`](../../apihub/GAP_MAP.md) current when merging API hub PRs.
+- [x] Keep [`docs/apihub/GAP_MAP.md`](../../apihub/GAP_MAP.md) current when merging API hub PRs (P0 row updated 2026-04-20).

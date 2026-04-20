@@ -2,14 +2,14 @@
 
 **Legend:** ✅ shipped · 🟡 partial / stub · ❌ not started
 
-**Last updated:** (set when the first API hub PR merges)
+**Last updated:** 2026-04-20 (P0 shell + health stub)
 
 | Area | Repo reality | Notes |
 |------|--------------|--------|
-| Docs home | 🟡 `docs/apihub/README.md`, specs | This folder |
+| Docs home | ✅ `docs/apihub/README.md`, specs | Cross-linked README + spec |
 | Ingestion spec | 🟡 `integrations-ai-assisted-ingestion.md` | Draft; evolves with P0–P4 |
-| App route `/apihub` | ❌ | P0 shell target |
-| Health / discovery API | ❌ | e.g. `GET /api/apihub/health` |
+| App route `/apihub` | ✅ `src/app/apihub/**` | Read-only shell; demo session required |
+| Health / discovery API | ✅ `GET /api/apihub/health` | `{ ok, service, phase }`; no secrets |
 | Prisma: connector / template / batch | ❌ | P1 |
 | AI job + mapping editor | ❌ | P2 |
 | Deterministic apply + idempotent API | ❌ | P3 |
