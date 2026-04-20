@@ -23,6 +23,28 @@ describe("GET /api/apihub/ingestion-jobs", () => {
     const { GET } = await import("./route");
     const response = await GET(new Request("http://localhost/api/apihub/ingestion-jobs?status=bad"));
     expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      ok: false,
+      error: {
+        code: "VALIDATION_ERROR",
+        message: "Run query validation failed.",
+        details: {
+          issues: [
+            {
+              field: "status",
+              code: "INVALID_ENUM",
+              message: "status must be one of: queued, running, succeeded, failed.",
+            },
+          ],
+          summary: {
+            totalErrors: 1,
+            byCode: {
+              INVALID_ENUM: 1,
+            },
+          },
+        },
+      },
+    });
   });
 
   it("lists runs with filters", async () => {
