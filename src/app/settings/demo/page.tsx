@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { DemoUserPanel } from "@/components/demo-user-panel";
 import { getViewerGrantSet } from "@/lib/authz";
+import { PLATFORM_HUB_PATH } from "@/lib/marketing-public-paths";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +13,7 @@ export default async function SettingsDemoSessionPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
       <p className="text-sm text-zinc-600">
-        <Link href="/platform" className="text-[var(--arscmp-primary)] hover:underline">
+        <Link href={PLATFORM_HUB_PATH} className="text-[var(--arscmp-primary)] hover:underline">
           Home
         </Link>
         {hasUser ? (

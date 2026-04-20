@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { TARIFF_NEW_CONTRACT_PATH, tariffContractHeaderPath } from "@/lib/tariff/tariff-workbench-urls";
+
 import { RecordIdCopy } from "@/components/invoice-audit/record-id-copy";
 import { TariffBadge, tariffContractStatusTone } from "@/components/tariffs/tariff-badges";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
@@ -36,7 +38,7 @@ export default async function TariffContractsDirectoryPage() {
           </div>
           {canEdit ? (
             <Link
-              href="/tariffs/contracts/new"
+              href={TARIFF_NEW_CONTRACT_PATH}
               className="rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:brightness-95"
             >
               New contract
@@ -63,7 +65,7 @@ export default async function TariffContractsDirectoryPage() {
                     {canEdit ? (
                       <>
                         {" "}
-                        <Link href="/tariffs/contracts/new" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+                        <Link href={TARIFF_NEW_CONTRACT_PATH} className="font-medium text-[var(--arscmp-primary)] hover:underline">
                           Create the first contract
                         </Link>
                         .
@@ -75,7 +77,7 @@ export default async function TariffContractsDirectoryPage() {
               {contracts.map((c) => (
                 <tr key={c.id} className="border-b border-zinc-100">
                   <td className="py-3 pr-4">
-                    <Link href={`/tariffs/contracts/${c.id}`} className="font-medium text-[var(--arscmp-primary)] hover:underline">
+                    <Link href={tariffContractHeaderPath(c.id)} className="font-medium text-[var(--arscmp-primary)] hover:underline">
                       {c.title}
                     </Link>
                     {c.contractNumber ? (

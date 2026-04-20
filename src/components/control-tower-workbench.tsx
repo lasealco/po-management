@@ -326,6 +326,8 @@ function ControlTowerWorkbenchInner({
   const [ownerFilter, setOwnerFilter] = useState("");
   const [routeHealth, setRouteHealth] = useState("");
   const [ship360Tab, setShip360Tab] = useState<"" | "milestones">("");
+  /** Client-only slice on the loaded rows; not stored in the URL. */
+  const [healthQuickFilter, setHealthQuickFilter] = useState<HealthState | null>(null);
   const [colVis, setColVis] = useState<Record<WorkbenchTogglableColumn, boolean>>(defaultWorkbenchColumnVisibility);
 
   useLayoutEffect(() => {
@@ -646,6 +648,7 @@ function ControlTowerWorkbenchInner({
       }
     }
     setPage(1);
+    setHealthQuickFilter(null);
   };
 
   const saveCurrentFilter = async () => {
@@ -765,6 +768,12 @@ function ControlTowerWorkbenchInner({
     return sorted;
   }, [rows, sortBy]);
 
+  const chipFilteredRows = useMemo(() => {
+    if (!healthQuickFilter) return filteredRows;
+    const now = Date.now();
+    return filteredRows.filter((r) => classifyShipmentHealth(r, now) === healthQuickFilter);
+  }, [filteredRows, healthQuickFilter]);
+
   const exportCsv = useCallback(() => {
     const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
     const colOn = (k: WorkbenchTogglableColumn) => {
@@ -857,7 +866,7 @@ function ControlTowerWorkbenchInner({
             `# control-tower-workbench export: list truncated at ${listLimit} rows for current filters; more shipments may match — narrow filters and re-export.`,
           ]
         : [];
-    const lines = [...meta, hs.join(","), ...filteredRows.map(rowLine)];
+    const lines = [...meta, hs.join(","), ...chipFilteredRows.map(rowLine)];
     const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -865,13 +874,13 @@ function ControlTowerWorkbenchInner({
     a.download = `control-tower-shipments-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [filteredRows, colVis, restrictedView, listTruncated, listLimit]);
+  }, [chipFilteredRows, colVis, restrictedView, listTruncated, listLimit]);
 
   const pageSize = 25;
-  const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+  const totalPages = Math.max(1, Math.ceil(chipFilteredRows.length / pageSize));
   const pagedRows = useMemo(
-    () => filteredRows.slice((page - 1) * pageSize, page * pageSize),
-    [filteredRows, page],
+    () => chipFilteredRows.slice((page - 1) * pageSize, page * pageSize),
+    [chipFilteredRows, page],
   );
   const triageStats = useMemo(
     () => ({
@@ -1199,7 +1208,7 @@ function ControlTowerWorkbenchInner({
         </button>
         <button
           type="button"
-          disabled={filteredRows.length === 0}
+          disabled={chipFilteredRows.length === 0}
           onClick={exportCsv}
           className="rounded border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-800 disabled:opacity-40"
         >
@@ -1285,8 +1294,12 @@ function ControlTowerWorkbenchInner({
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
-          onClick={() => setRouteAction("")}
-          className={`rounded-full border px-3 py-1 text-xs ${
+          onClick={() => {
+            setHealthQuickFilter(null);
+            setRouteAction("");
+            setPage(1);
+          }}
+          className={`cursor-pointer rounded-full border px-3 py-1 text-xs ${
             routeAction === "" ? "border-sky-300 bg-sky-50 text-sky-900" : "border-zinc-300 text-zinc-700"
           }`}
         >
@@ -1298,8 +1311,12 @@ function ControlTowerWorkbenchInner({
             <button
               key={opt}
               type="button"
-              onClick={() => setRouteAction(opt)}
-              className={`rounded-full border px-3 py-1 text-xs ${
+              onClick={() => {
+                setHealthQuickFilter(null);
+                setRouteAction((cur) => (cur === opt ? "" : opt));
+                setPage(1);
+              }}
+              className={`cursor-pointer rounded-full border px-3 py-1 text-xs ${
                 routeAction === opt
                   ? "border-sky-300 bg-sky-50 text-sky-900"
                   : "border-zinc-300 text-zinc-700"
@@ -1310,44 +1327,188 @@ function ControlTowerWorkbenchInner({
           ))}
       </div>
       <p className="text-xs text-zinc-500">
-        Route bucket counts use the shipments returned for your filters (see Visible). Use Refresh after changing
-        filters.
+        Route buckets and colored chips are clickable: they set the same filters as the toolbar (route action, overdue
+        ETA, health slice on the table). Counts use the current API result; use Refresh after server filters change.
       </p>
       <div className="flex flex-wrap gap-2 text-xs">
-        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-900">
+        <button
+          type="button"
+          onClick={() => {
+            setHealthQuickFilter((cur) => (cur === "good" ? null : "good"));
+            setPage(1);
+          }}
+          aria-pressed={healthQuickFilter === "good"}
+          className={`cursor-pointer rounded-full border px-3 py-1 transition ${
+            healthQuickFilter === "good"
+              ? "border-emerald-700 bg-emerald-700 text-white ring-2 ring-emerald-900/15"
+              : "border-emerald-200 bg-emerald-50 text-emerald-900 hover:bg-emerald-100"
+          }`}
+        >
           On-time: <strong>{healthStats.good}</strong>
-        </span>
-        <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-amber-900">
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setHealthQuickFilter((cur) => (cur === "at_risk" ? null : "at_risk"));
+            setPage(1);
+          }}
+          aria-pressed={healthQuickFilter === "at_risk"}
+          className={`cursor-pointer rounded-full border px-3 py-1 transition ${
+            healthQuickFilter === "at_risk"
+              ? "border-amber-700 bg-amber-700 text-white ring-2 ring-amber-900/15"
+              : "border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100"
+          }`}
+        >
           At risk: <strong>{healthStats.at_risk}</strong>
-        </span>
-        <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-rose-900">
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setHealthQuickFilter((cur) => (cur === "delayed" ? null : "delayed"));
+            setPage(1);
+          }}
+          aria-pressed={healthQuickFilter === "delayed"}
+          className={`cursor-pointer rounded-full border px-3 py-1 transition ${
+            healthQuickFilter === "delayed"
+              ? "border-rose-700 bg-rose-700 text-white ring-2 ring-rose-900/15"
+              : "border-rose-200 bg-rose-50 text-rose-900 hover:bg-rose-100"
+          }`}
+        >
           Delayed: <strong>{healthStats.delayed}</strong>
-        </span>
-        <span className="rounded-full border border-zinc-300 bg-zinc-100 px-3 py-1 text-zinc-700">
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setHealthQuickFilter((cur) => (cur === "missing_data" ? null : "missing_data"));
+            setPage(1);
+          }}
+          aria-pressed={healthQuickFilter === "missing_data"}
+          className={`cursor-pointer rounded-full border px-3 py-1 transition ${
+            healthQuickFilter === "missing_data"
+              ? "border-zinc-600 bg-zinc-600 text-white ring-2 ring-zinc-900/15"
+              : "border-zinc-300 bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
+          }`}
+        >
           Missing plan/tracking: <strong>{healthStats.missing_data}</strong>
-        </span>
-        <span className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-zinc-700">
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setHealthQuickFilter(null);
+            setPage(1);
+          }}
+          title="Clear on-table health slice (does not change server filters)"
+          className={`cursor-pointer rounded-full border px-3 py-1 transition ${
+            healthQuickFilter != null
+              ? "border-sky-400 bg-sky-50 text-sky-950 ring-2 ring-sky-300/60 hover:bg-sky-100"
+              : "border-zinc-200 bg-zinc-50 text-zinc-700 hover:bg-zinc-100"
+          }`}
+        >
           Visible: <strong>{filteredRows.length}</strong>
-        </span>
-        <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-amber-900">
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setHealthQuickFilter(null);
+            setOnlyOverdueEta((v) => !v);
+            setPage(1);
+          }}
+          aria-pressed={onlyOverdueEta}
+          className={`cursor-pointer rounded-full border px-3 py-1 transition ${
+            onlyOverdueEta
+              ? "border-amber-700 bg-amber-700 text-white ring-2 ring-amber-900/15"
+              : "border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100"
+          }`}
+        >
           Overdue ETA: <strong>{triageStats.overdue}</strong>
-        </span>
-        <span className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-violet-900">
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setHealthQuickFilter(null);
+            setRouteAction((cur) => (cur === "Send booking" ? "" : "Send booking"));
+            setPage(1);
+          }}
+          aria-pressed={routeAction === "Send booking"}
+          className={`cursor-pointer rounded-full border px-3 py-1 transition ${
+            routeAction === "Send booking"
+              ? "border-violet-700 bg-violet-700 text-white ring-2 ring-violet-900/15"
+              : "border-violet-200 bg-violet-50 text-violet-900 hover:bg-violet-100"
+          }`}
+        >
           Send booking: <strong>{triageStats.needsSendBooking}</strong>
-        </span>
-        <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-800">
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setHealthQuickFilter(null);
+            setRouteAction((cur) => (cur === "Await booking" ? "" : "Await booking"));
+            setPage(1);
+          }}
+          aria-pressed={routeAction === "Await booking"}
+          className={`cursor-pointer rounded-full border px-3 py-1 transition ${
+            routeAction === "Await booking"
+              ? "border-slate-600 bg-slate-600 text-white ring-2 ring-slate-900/15"
+              : "border-slate-200 bg-slate-50 text-slate-800 hover:bg-slate-100"
+          }`}
+        >
           Await confirm: <strong>{triageStats.awaitingBooking}</strong>
-        </span>
-        <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-rose-900">
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setHealthQuickFilter(null);
+            setRouteAction((cur) => (cur === "Escalate booking" ? "" : "Escalate booking"));
+            setPage(1);
+          }}
+          aria-pressed={routeAction === "Escalate booking"}
+          className={`cursor-pointer rounded-full border px-3 py-1 transition ${
+            routeAction === "Escalate booking"
+              ? "border-rose-700 bg-rose-700 text-white ring-2 ring-rose-900/15"
+              : "border-rose-200 bg-rose-50 text-rose-900 hover:bg-rose-100"
+          }`}
+        >
           Booking SLA overdue: <strong>{triageStats.bookingSlaOverdue}</strong>
-        </span>
-        <span className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-sky-900">
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setHealthQuickFilter(null);
+            setRouteAction((cur) => (cur === "Mark departure" ? "" : "Mark departure"));
+            setPage(1);
+          }}
+          aria-pressed={routeAction === "Mark departure"}
+          className={`cursor-pointer rounded-full border px-3 py-1 transition ${
+            routeAction === "Mark departure"
+              ? "border-sky-700 bg-sky-700 text-white ring-2 ring-sky-900/15"
+              : "border-sky-200 bg-sky-50 text-sky-900 hover:bg-sky-100"
+          }`}
+        >
           Needs departure: <strong>{triageStats.needsDeparture}</strong>
-        </span>
-        <span className="rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-orange-900">
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setHealthQuickFilter(null);
+            setRouteAction((cur) => (cur === "Record arrival" ? "" : "Record arrival"));
+            setPage(1);
+          }}
+          aria-pressed={routeAction === "Record arrival"}
+          className={`cursor-pointer rounded-full border px-3 py-1 transition ${
+            routeAction === "Record arrival"
+              ? "border-orange-700 bg-orange-700 text-white ring-2 ring-orange-900/15"
+              : "border-orange-200 bg-orange-50 text-orange-900 hover:bg-orange-100"
+          }`}
+        >
           Needs arrival: <strong>{triageStats.needsArrival}</strong>
-        </span>
+        </button>
       </div>
+      {healthQuickFilter ? (
+        <p className="text-xs text-zinc-600">
+          Table and export use <strong>{healthLabel(healthQuickFilter)}</strong> only ({chipFilteredRows.length} of{" "}
+          {filteredRows.length} loaded rows). Chip counts above still reflect the full loaded list.
+        </p>
+      ) : null}
       <p className="text-xs text-zinc-500">
         Last refreshed: {lastRefreshedAt ? new Date(lastRefreshedAt).toLocaleTimeString() : "—"}
       </p>
@@ -1601,6 +1762,11 @@ function ControlTowerWorkbenchInner({
       <div className="flex items-center justify-between rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm">
         <span className="text-zinc-600">
           Page {page} / {totalPages}
+          {healthQuickFilter ? (
+            <span className="ml-2 text-xs text-zinc-500">
+              ({chipFilteredRows.length} row{chipFilteredRows.length === 1 ? "" : "s"} in view)
+            </span>
+          ) : null}
         </span>
         <div className="flex gap-2">
           <button

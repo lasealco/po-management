@@ -69,6 +69,7 @@ model Tenant {
   tariffLegalEntities   TariffLegalEntity[]
   tariffContractHeaders TariffContractHeader[]
   tariffImportBatches   TariffImportBatch[]
+  tariffShipmentApplications TariffShipmentApplication[]
   quoteRequests         QuoteRequest[]
   bookingPricingSnapshots BookingPricingSnapshot[]
   invoiceIntakes        InvoiceIntake[]
@@ -155,6 +156,7 @@ model User {
   invoiceIntakesCreated          InvoiceIntake[]          @relation("InvoiceIntakeCreator")
   invoiceIntakesReviewed         InvoiceIntake[]          @relation("InvoiceIntakeReviewer")
   invoiceIntakesAccountingApproved InvoiceIntake[]         @relation("InvoiceIntakeAccountingApprover")
+  tariffShipmentApplicationsCreated TariffShipmentApplication[] @relation("TariffShipmentApplicationCreator")
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -780,6 +782,7 @@ model Shipment {
   ctLegs     CtShipmentLeg[]
   ctContainers CtShipmentContainer[]
   ctCostLines CtShipmentCostLine[]
+  tariffShipmentApplications TariffShipmentApplication[]
 
   @@index([orderId, createdAt])
   @@index([status])
@@ -2421,6 +2424,7 @@ model TariffContractVersion {
   rateLines      TariffRateLine[]
   chargeLines    TariffChargeLine[]
   freeTimeRules  TariffFreeTimeRule[]
+  shipmentApplications TariffShipmentApplication[]
 
   @@unique([contractHeaderId, versionNo])
   @@index([contractHeaderId])
@@ -2574,6 +2578,34 @@ model TariffAuditLog {
 
   @@index([objectType, objectId])
   @@map("audit_logs")
+}
+
+/// Links a logistics shipment to the tariff contract version used for quoting / audit (product glue).
+model TariffShipmentApplication {
+  id                String   @id @default(cuid())
+  tenantId          String
+  shipmentId        String
+  contractVersionId String
+  isPrimary         Boolean  @default(true)
+  /// MANUAL | RATING_ENGINE | SNAPSHOT
+  source            String   @default("MANUAL")
+  polCode           String?  @db.VarChar(16)
+  podCode           String?  @db.VarChar(16)
+  equipmentType     String?  @db.VarChar(32)
+  appliedNotes      String?  @db.Text
+  createdById       String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  tenant            Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  shipment          Shipment                @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  contractVersion   TariffContractVersion   @relation(fields: [contractVersionId], references: [id], onDelete: Restrict)
+  createdBy         User?                   @relation("TariffShipmentApplicationCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([shipmentId, contractVersionId])
+  @@index([tenantId, shipmentId])
+  @@index([contractVersionId])
+  @@map("tariff_shipment_applications")
 }
 
 /// Buyer-initiated ad hoc ocean (or other mode) procurement request.
@@ -2914,4 +2946,60 @@ model InvoiceAuditResult {
   @@index([invoiceIntakeId])
   @@index([bookingPricingSnapshotId])
   @@map("audit_results")
+}
+
+// ---------------------------------------------------------------------------
+// Global reference catalogs (not tenant-scoped): ISO countries, SCAC ocean
+// carriers, IATA airlines + AWB prefixes. Seeded from public datasets; edit
+// under Settings → Reference data. Downstream modules should gradually FK or
+// validate against these instead of unconstrained free text.
+// ---------------------------------------------------------------------------
+
+/// ISO 3166-1 country/territory (alpha-2 + alpha-3 + common English name).
+model ReferenceCountry {
+  id         String   @id @default(cuid())
+  isoAlpha2 String   @unique @db.VarChar(2)
+  isoAlpha3 String   @unique @db.VarChar(3)
+  name      String
+  /// Optional macro-region for tariffs / lanes (e.g. EU, NA, APAC, LATAM, MEA, OCE).
+  regionCode String? @db.VarChar(16)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([regionCode, isActive])
+  @@map("reference_countries")
+}
+
+/// Ocean mainline / VOCC identifiers (SCAC-style codes used in contracts and EDI).
+model ReferenceOceanCarrier {
+  id       String   @id @default(cuid())
+  /// Standard Carrier Alpha Code or equivalent 2–4 letter code.
+  scac     String   @unique @db.VarChar(4)
+  name     String
+  notes    String?  @db.Text
+  isActive Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("reference_ocean_carriers")
+}
+
+/// Passenger / cargo airline (IATA designator + optional ICAO + AWB prefix).
+model ReferenceAirline {
+  id         String   @id @default(cuid())
+  /// IATA airline designator (usually 2 letters; 3 chars allowed for edge cases).
+  iataCode   String   @unique @db.VarChar(3)
+  /// ICAO airline designator (3 letters), when known.
+  icaoCode   String?  @unique @db.VarChar(3)
+  /// IATA three-digit AWB accounting prefix (Resolution 670).
+  awbPrefix3 String   @db.VarChar(3)
+  name       String
+  notes      String?  @db.Text
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([awbPrefix3])
+  @@map("reference_airlines")
 }

@@ -4,27 +4,58 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { subNavActiveClass } from "@/lib/subnav-active-class";
+import {
+  TARIFF_CHARGE_CODES_PATH,
+  TARIFF_CONTRACTS_DIRECTORY_PATH,
+  TARIFF_GEOGRAPHY_PATH,
+  TARIFF_IMPORT_PATH,
+  TARIFF_LEGAL_ENTITIES_PATH,
+  TARIFF_PROVIDERS_PATH,
+  TARIFF_RATE_LOOKUP_PATH,
+  TARIFF_RATING_PATH,
+  tariffLaneRatingPath,
+} from "@/lib/tariff/tariff-workbench-urls";
 
 const items: { href: string; label: string; isActive: (pathname: string) => boolean }[] = [
   {
-    href: "/tariffs/contracts",
+    href: TARIFF_RATE_LOOKUP_PATH,
+    label: "Rate lookup",
+    isActive: (pathname) => pathname.startsWith(TARIFF_RATE_LOOKUP_PATH),
+  },
+  {
+    href: tariffLaneRatingPath(),
+    label: "Rating",
+    isActive: (pathname) => pathname.startsWith(TARIFF_RATING_PATH),
+  },
+  {
+    href: TARIFF_CONTRACTS_DIRECTORY_PATH,
     label: "Contracts",
-    isActive: (pathname) => pathname.startsWith("/tariffs/contracts"),
+    isActive: (pathname) => pathname.startsWith(TARIFF_CONTRACTS_DIRECTORY_PATH),
   },
   {
-    href: "/tariffs/import",
+    href: TARIFF_PROVIDERS_PATH,
+    label: "Providers",
+    isActive: (pathname) => pathname.startsWith(TARIFF_PROVIDERS_PATH),
+  },
+  {
+    href: TARIFF_LEGAL_ENTITIES_PATH,
+    label: "Legal entities",
+    isActive: (pathname) => pathname.startsWith(TARIFF_LEGAL_ENTITIES_PATH),
+  },
+  {
+    href: TARIFF_IMPORT_PATH,
     label: "Import",
-    isActive: (pathname) => pathname.startsWith("/tariffs/import"),
+    isActive: (pathname) => pathname.startsWith(TARIFF_IMPORT_PATH),
   },
   {
-    href: "/tariffs/geography",
+    href: TARIFF_GEOGRAPHY_PATH,
     label: "Geography",
-    isActive: (pathname) => pathname.startsWith("/tariffs/geography"),
+    isActive: (pathname) => pathname.startsWith(TARIFF_GEOGRAPHY_PATH),
   },
   {
-    href: "/tariffs/charge-codes",
+    href: TARIFF_CHARGE_CODES_PATH,
     label: "Charge codes",
-    isActive: (pathname) => pathname.startsWith("/tariffs/charge-codes"),
+    isActive: (pathname) => pathname.startsWith(TARIFF_CHARGE_CODES_PATH),
   },
 ];
 

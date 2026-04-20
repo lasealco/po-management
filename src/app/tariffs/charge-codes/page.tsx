@@ -4,6 +4,7 @@ import { TariffChargeCodesClient } from "@/app/tariffs/charge-codes/tariff-charg
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { listTariffAuditLogsByObjectType } from "@/lib/tariff/audit-log";
 import { listNormalizedChargeCodes, toChargeCatalogRowJson } from "@/lib/tariff/normalized-charge-codes";
+import { TARIFF_CONTRACTS_DIRECTORY_PATH } from "@/lib/tariff/tariff-workbench-urls";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +27,7 @@ export default async function TariffChargeCodesPage() {
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
       <div className="mb-6">
-        <Link href="/tariffs/contracts" className="text-sm font-medium text-[var(--arscmp-primary)] hover:underline">
+        <Link href={TARIFF_CONTRACTS_DIRECTORY_PATH} className="text-sm font-medium text-[var(--arscmp-primary)] hover:underline">
           ← Contracts
         </Link>
         <h1 className="mt-2 text-2xl font-semibold text-zinc-900">Charge codes</h1>

@@ -8,6 +8,7 @@ import {
   compositeIncotermRoleHints,
   suggestedCompositeRolesFromIncoterm,
 } from "@/lib/booking-pricing-snapshot/composite-incoterm-suggestions";
+import { TARIFF_CONTRACTS_DIRECTORY_PATH } from "@/lib/tariff/tariff-workbench-urls";
 
 type Tab = "contract" | "composite" | "rfq";
 
@@ -213,7 +214,7 @@ export function PricingSnapshotsNewClient(props: { canContract: boolean; canRfq:
               />
               <p className="mt-2 text-xs text-zinc-500">
                 Open a contract in Tariffs → copy the version id from the URL{" "}
-                <span className="font-mono">/tariffs/contracts/…/versions/[versionId]</span>.
+                <span className="font-mono">{TARIFF_CONTRACTS_DIRECTORY_PATH}/…/versions/[versionId]</span>.
               </p>
               {contractVersionId.trim() ? (
                 <div className="mt-2">

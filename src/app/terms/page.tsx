@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 
-import { LegalSiteFooter, LegalSiteNav } from "@/components/legal-site-chrome";
 import { SITE_BRAND_HEX } from "@/components/brand-mark";
+import { LegalSiteFooter, LegalSiteNav } from "@/components/legal-site-chrome";
+import { LEGAL_TERMS_PATH } from "@/lib/legal-public-paths";
 
 export const metadata: Metadata = {
   title: "Terms of Use | AR SCMP",
   description: "Terms governing access to the AR SCMP research and evaluation environment.",
+  alternates: { canonical: LEGAL_TERMS_PATH },
 };
 
 const legalEmail = "legal@arscmp.com";

@@ -5,6 +5,13 @@ import { TariffImportParseBadge, TariffImportReviewBadge } from "@/components/ta
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { listTariffImportBatchesForTenant } from "@/lib/tariff/import-batches";
 import { getDemoTenant } from "@/lib/demo-tenant";
+import {
+  TARIFF_CHARGE_CODES_PATH,
+  TARIFF_CONTRACTS_DIRECTORY_PATH,
+  TARIFF_GEOGRAPHY_PATH,
+  TARIFF_IMPORT_NEW_PATH,
+  tariffImportBatchPath,
+} from "@/lib/tariff/tariff-workbench-urls";
 
 export const dynamic = "force-dynamic";
 
@@ -43,7 +50,7 @@ export default async function TariffImportDirectoryPage() {
           </div>
           {canEdit ? (
             <Link
-              href="/tariffs/import/new"
+              href={TARIFF_IMPORT_NEW_PATH}
               className="rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:brightness-95"
             >
               New upload
@@ -56,21 +63,21 @@ export default async function TariffImportDirectoryPage() {
           <ol className="mt-3 list-decimal space-y-2 pl-5">
             <li>
               Maintain{" "}
-              <Link href="/tariffs/charge-codes" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+              <Link href={TARIFF_CHARGE_CODES_PATH} className="font-medium text-[var(--arscmp-primary)] hover:underline">
                 charge codes
               </Link>{" "}
               so imported lines can map to a stable taxonomy.
             </li>
             <li>
               Configure{" "}
-              <Link href="/tariffs/geography" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+              <Link href={TARIFF_GEOGRAPHY_PATH} className="font-medium text-[var(--arscmp-primary)] hover:underline">
                 geography groups
               </Link>{" "}
               for POL/POD and inland scopes your contracts use.
             </li>
             <li>
               Publish carrier / forwarder rates under{" "}
-              <Link href="/tariffs/contracts" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+              <Link href={TARIFF_CONTRACTS_DIRECTORY_PATH} className="font-medium text-[var(--arscmp-primary)] hover:underline">
                 contracts
               </Link>
               . Import batches here feed staging until mapping and promotion are extended.
@@ -99,7 +106,7 @@ export default async function TariffImportDirectoryPage() {
                     {canEdit ? (
                       <>
                         {" "}
-                        <Link href="/tariffs/import/new" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+                        <Link href={TARIFF_IMPORT_NEW_PATH} className="font-medium text-[var(--arscmp-primary)] hover:underline">
                           Upload a file
                         </Link>
                         .
@@ -111,7 +118,7 @@ export default async function TariffImportDirectoryPage() {
               {batches.map((b) => (
                 <tr key={b.id} className="border-b border-zinc-100">
                   <td className="py-3 pr-4">
-                    <Link href={`/tariffs/import/${b.id}`} className="font-medium text-[var(--arscmp-primary)] hover:underline">
+                    <Link href={tariffImportBatchPath(b.id)} className="font-medium text-[var(--arscmp-primary)] hover:underline">
                       {b.uploadedFilename ?? b.sourceReference ?? "Untitled batch"}
                     </Link>
                     {b.legalEntity ? (

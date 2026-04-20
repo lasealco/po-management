@@ -1,6 +1,9 @@
 import { actorIsSupplierPortalRestricted, viewerHas, type ViewerAccess } from "@/lib/authz";
 import { HELP_PLAYBOOKS, type HelpPlaybookDoAction } from "@/lib/help-playbooks";
+import { LEGAL_PUBLIC_HELP_PATHS } from "@/lib/legal-public-paths";
+import { MARKETING_PUBLIC_HELP_PATHS } from "@/lib/marketing-public-paths";
 import { prisma } from "@/lib/prisma";
+import { TARIFF_HELP_OPEN_PATHS, TARIFFS_MODULE_BASE_PATH } from "@/lib/tariff/tariff-workbench-urls";
 
 /** Client-safe "do" actions the help assistant may offer; execution is always validated server-side. */
 export type HelpDoAction = HelpPlaybookDoAction;
@@ -35,6 +38,8 @@ const OPEN_PATH_ALLOWLIST = new Set([
   "/settings/users",
   "/settings/warehouses",
   "/login",
+  ...MARKETING_PUBLIC_HELP_PATHS,
+  ...LEGAL_PUBLIC_HELP_PATHS,
   "/catalog",
   "/products",
   "/product-trace",
@@ -46,12 +51,7 @@ const OPEN_PATH_ALLOWLIST = new Set([
   "/control-tower/dashboard",
   "/control-tower/command-center",
   "/control-tower/ops",
-  "/tariffs",
-  "/tariffs/contracts",
-  "/tariffs/geography",
-  "/tariffs/geography/new",
-  "/tariffs/import",
-  "/tariffs/import/new",
+  ...TARIFF_HELP_OPEN_PATHS,
   "/rfq/requests",
   "/rfq/requests/new",
   "/pricing-snapshots",
@@ -185,7 +185,7 @@ export async function executeHelpDoAction(
       if (!canReportingHub) {
         return { ok: false, error: "You do not have permission to open the reporting hub." };
       }
-    } else if (path.startsWith("/tariffs")) {
+    } else if (path.startsWith(TARIFFS_MODULE_BASE_PATH)) {
       if (!viewerHas(access.grantSet, "org.tariffs", "view")) {
         return { ok: false, error: "You do not have permission to open Tariffs." };
       }

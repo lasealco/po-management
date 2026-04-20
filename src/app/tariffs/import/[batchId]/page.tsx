@@ -5,11 +5,14 @@ import { RecordIdCopy } from "@/components/invoice-audit/record-id-copy";
 import { TariffImportBatchIdsBar } from "@/components/tariffs/tariff-import-batch-ids-bar";
 import { TariffImportParseBadge, TariffImportReviewBadge } from "@/components/tariffs/tariff-import-badges";
 import { TariffImportBatchWorkflowClient } from "@/components/tariffs/tariff-import-batch-workflow-client";
+import { TariffImportPromotePanel } from "@/components/tariffs/tariff-import-promote-panel";
 import { TariffImportStagingGridClient, type StagingRowView } from "@/components/tariffs/tariff-import-staging-grid-client";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
+import { listTariffContractHeadersForTenant } from "@/lib/tariff/contract-headers";
 import { getTariffImportBatchForTenant } from "@/lib/tariff/import-batches";
 import { TariffRepoError } from "@/lib/tariff/tariff-repo-error";
 import { getDemoTenant } from "@/lib/demo-tenant";
+import { TARIFF_IMPORT_PATH } from "@/lib/tariff/tariff-workbench-urls";
 
 export const dynamic = "force-dynamic";
 
@@ -47,10 +50,18 @@ export default async function TariffImportBatchDetailPage({ params }: { params: 
 
   const fileHref = batch.sourceFileUrl?.startsWith("http") ? batch.sourceFileUrl : batch.sourceFileUrl ?? null;
 
+  const contractHeaders = await listTariffContractHeadersForTenant({ tenantId: tenant.id, take: 200 });
+  const headerOptions = contractHeaders.map((h) => ({
+    id: h.id,
+    title: h.title,
+    contractNumber: h.contractNumber,
+    providerLabel: h.provider.tradingName ?? h.provider.legalName,
+  }));
+
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
       <div className="mb-6 text-sm text-zinc-600">
-        <Link href="/tariffs/import" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+        <Link href={TARIFF_IMPORT_PATH} className="font-medium text-[var(--arscmp-primary)] hover:underline">
           Import center
         </Link>
         <span className="mx-2 text-zinc-400">/</span>
@@ -131,6 +142,7 @@ export default async function TariffImportBatchDetailPage({ params }: { params: 
             initialReviewStatus={batch.reviewStatus}
             canEdit={canEdit}
           />
+          <TariffImportPromotePanel batchId={batch.id} contractHeaders={headerOptions} canEdit={canEdit} />
         </div>
       </section>
 

@@ -3,13 +3,16 @@ import { Prisma } from "@prisma/client";
 import {
   actorIsSupplierPortalRestricted,
   getActorUserId,
+  getViewerGrantSet,
   requireApiGrant,
   userHasGlobalGrant,
   userHasRoleNamed,
+  viewerHas,
 } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { optionalStringField } from "@/lib/supplier-patch";
 import { prisma } from "@/lib/prisma";
+import { addTariffShipmentApplicationSourceLabel } from "@/lib/tariff/tariff-shipment-application-labels";
 
 function parseRequestedDeliveryDate(
   v: unknown,
@@ -315,6 +318,76 @@ export async function GET(
     },
   });
 
+  const access = await getViewerGrantSet();
+  const canViewTariffGlue = Boolean(access?.user && viewerHas(access.grantSet, "org.tariffs", "view"));
+  const canEditTariffGlue = Boolean(access?.user && viewerHas(access.grantSet, "org.tariffs", "edit"));
+
+  const shipmentIds = order.shipments.map((s) => s.id);
+  const tariffAppsByShipment = new Map<
+    string,
+    {
+      id: string;
+      isPrimary: boolean;
+      source: string;
+      sourceLabel: string;
+      polCode: string | null;
+      podCode: string | null;
+      equipmentType: string | null;
+      contractVersionId: string;
+      versionNo: number;
+      contractHeaderId: string;
+      contractNumber: string | null;
+      contractTitle: string;
+      providerLegalName: string;
+      providerTradingName: string | null;
+    }[]
+  >();
+
+  if (canViewTariffGlue && shipmentIds.length > 0) {
+    const apps = await prisma.tariffShipmentApplication.findMany({
+      where: { tenantId: tenant.id, shipmentId: { in: shipmentIds } },
+      orderBy: [{ isPrimary: "desc" }, { updatedAt: "desc" }],
+      include: {
+        contractVersion: {
+          select: {
+            id: true,
+            versionNo: true,
+            contractHeader: {
+              select: {
+                id: true,
+                contractNumber: true,
+                title: true,
+                provider: { select: { legalName: true, tradingName: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+    for (const a of apps) {
+      const h = a.contractVersion.contractHeader;
+      const list = tariffAppsByShipment.get(a.shipmentId) ?? [];
+      list.push(
+        addTariffShipmentApplicationSourceLabel({
+          id: a.id,
+          isPrimary: a.isPrimary,
+          source: a.source,
+          polCode: a.polCode,
+          podCode: a.podCode,
+          equipmentType: a.equipmentType,
+          contractVersionId: a.contractVersionId,
+          versionNo: a.contractVersion.versionNo,
+          contractHeaderId: h.id,
+          contractNumber: h.contractNumber,
+          contractTitle: h.title,
+          providerLegalName: h.provider.legalName,
+          providerTradingName: h.provider.tradingName,
+        }),
+      );
+      tariffAppsByShipment.set(a.shipmentId, list);
+    }
+  }
+
   return NextResponse.json({
     order: {
       id: order.id,
@@ -396,6 +469,9 @@ export async function GET(
       estimatedWeightKg: shipment.estimatedWeightKg?.toString() ?? null,
       notes: shipment.notes,
       createdBy: shipment.createdBy,
+      ...(canViewTariffGlue
+        ? { tariffApplications: tariffAppsByShipment.get(shipment.id) ?? [] }
+        : {}),
       booking: shipment.booking
         ? {
             status: shipment.booking.status,
@@ -484,6 +560,10 @@ export async function GET(
       canValidate: canManageBooking,
       canBook: canManageBooking,
       canUpdateMilestones,
+    },
+    tariffShipmentCapabilities: {
+      canView: canViewTariffGlue,
+      canEdit: canEditTariffGlue,
     },
     forwarders,
   });

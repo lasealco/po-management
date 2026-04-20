@@ -4,10 +4,11 @@ import { notFound } from "next/navigation";
 import { GeographyGroupTraceBar } from "@/components/tariffs/geography-group-trace-bar";
 import { GeographyGroupFormClient, type GeographyGroupFormValues } from "@/components/tariffs/geography-group-form-client";
 import { GeographyMembersClient, type GeoMemberRow } from "@/components/tariffs/geography-members-client";
+import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { tariffGeographyTypeLabel } from "@/lib/tariff/geography-labels";
 import { getTariffGeographyGroupById } from "@/lib/tariff/geography-groups";
 import { TariffRepoError } from "@/lib/tariff/tariff-repo-error";
-import { getViewerGrantSet, viewerHas } from "@/lib/authz";
+import { TARIFF_GEOGRAPHY_PATH } from "@/lib/tariff/tariff-workbench-urls";
 
 export const dynamic = "force-dynamic";
 
@@ -51,7 +52,7 @@ export default async function TariffGeographyGroupDetailPage({ params }: { param
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
       <div className="mb-6 text-sm text-zinc-600">
-        <Link href="/tariffs/geography" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+        <Link href={TARIFF_GEOGRAPHY_PATH} className="font-medium text-[var(--arscmp-primary)] hover:underline">
           Geography groups
         </Link>
         <span className="mx-2 text-zinc-400">/</span>

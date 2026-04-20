@@ -4,6 +4,8 @@ export const BOARD_QUEUE_FILTERS = [
   "all",
   "needs_my_action",
   "waiting_on_me",
+  "sla_warning",
+  "sla_critical",
   "awaiting_supplier",
   "overdue",
   "split_pending_buyer",

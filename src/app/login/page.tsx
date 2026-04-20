@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 
+import { PLATFORM_HUB_PATH } from "@/lib/marketing-public-paths";
+
 function safeNextPath(raw: string | null): string {
-  if (!raw) return "/platform";
+  if (!raw) return PLATFORM_HUB_PATH;
   const decoded = decodeURIComponent(raw);
-  if (!decoded.startsWith("/") || decoded.startsWith("//")) return "/platform";
+  if (!decoded.startsWith("/") || decoded.startsWith("//")) return PLATFORM_HUB_PATH;
   return decoded;
 }
 

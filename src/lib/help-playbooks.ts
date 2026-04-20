@@ -1,4 +1,19 @@
+import { LEGAL_COOKIES_PATH, LEGAL_PRIVACY_PATH, LEGAL_TERMS_PATH } from "@/lib/legal-public-paths";
+import { MARKETING_PRICING_PATH, PLATFORM_HUB_PATH } from "@/lib/marketing-public-paths";
 import { REPORTING_HUB_CONTROL_TOWER_HREF } from "@/lib/reporting-hub-paths";
+import {
+  TARIFF_CHARGE_CODES_PATH,
+  TARIFF_CONTRACTS_DIRECTORY_PATH,
+  TARIFF_GEOGRAPHY_NEW_PATH,
+  TARIFF_GEOGRAPHY_PATH,
+  TARIFF_IMPORT_NEW_PATH,
+  TARIFF_IMPORT_PATH,
+  TARIFF_LEGAL_ENTITIES_PATH,
+  TARIFF_NEW_CONTRACT_PATH,
+  TARIFF_PROVIDERS_PATH,
+  TARIFF_RATE_LOOKUP_PATH,
+  TARIFF_RATING_PATH,
+} from "@/lib/tariff/tariff-workbench-urls";
 
 /** Same contract as server-executed help actions (`/api/help/actions`). */
 export type HelpPlaybookDoAction = {
@@ -370,6 +385,186 @@ export const HELP_PLAYBOOKS: HelpPlaybook[] = [
     ],
   },
   {
+    id: "tariffs",
+    title: "Tariffs (contracts, rating & import)",
+    summary:
+      "Browse contracts, start wizards (new contract, import upload, geography group), run rate lookup and lane rating, manage providers and legal entities, import batches, geography directory, and charge codes.",
+    steps: [
+      {
+        title: "Contract directory",
+        description:
+          "Lists tariff contract headers; open a header for metadata and jump into published or draft versions from there.",
+        href: TARIFF_CONTRACTS_DIRECTORY_PATH,
+        doAction: {
+          type: "open_path",
+          label: "Open contracts",
+          payload: { path: TARIFF_CONTRACTS_DIRECTORY_PATH, guide: "tariffs", step: 0 },
+        },
+      },
+      {
+        title: "New contract wizard",
+        description: "Create a contract header and first version when you have org.tariffs edit access.",
+        href: TARIFF_NEW_CONTRACT_PATH,
+        doAction: {
+          type: "open_path",
+          label: "Open new contract",
+          payload: { path: TARIFF_NEW_CONTRACT_PATH, guide: "tariffs", step: 1 },
+        },
+      },
+      {
+        title: "Rate lookup",
+        description: "Quick table-style lookup against published contract data (read-only explorer in this build).",
+        href: TARIFF_RATE_LOOKUP_PATH,
+        doAction: {
+          type: "open_path",
+          label: "Open rate lookup",
+          payload: { path: TARIFF_RATE_LOOKUP_PATH, guide: "tariffs", step: 2 },
+        },
+      },
+      {
+        title: "Lane rating",
+        description:
+          "Try POL/POD, equipment, and mode against a contract version; optional shipment context links back to logistics.",
+        href: TARIFF_RATING_PATH,
+        doAction: {
+          type: "open_path",
+          label: "Open lane rating",
+          payload: { path: TARIFF_RATING_PATH, guide: "tariffs", step: 3 },
+        },
+      },
+      {
+        title: "Providers",
+        description: "Carriers and providers referenced when creating or editing contract headers.",
+        href: TARIFF_PROVIDERS_PATH,
+        doAction: {
+          type: "open_path",
+          label: "Open providers",
+          payload: { path: TARIFF_PROVIDERS_PATH, guide: "tariffs", step: 4 },
+        },
+      },
+      {
+        title: "Legal entities",
+        description: "Contracting parties used on contract headers and optional import batch metadata.",
+        href: TARIFF_LEGAL_ENTITIES_PATH,
+        doAction: {
+          type: "open_path",
+          label: "Open legal entities",
+          payload: { path: TARIFF_LEGAL_ENTITIES_PATH, guide: "tariffs", step: 5 },
+        },
+      },
+      {
+        title: "Import center",
+        description: "Upload batches, review staging rows, and promote into contract versions when your role allows.",
+        href: TARIFF_IMPORT_PATH,
+        doAction: {
+          type: "open_path",
+          label: "Open import",
+          payload: { path: TARIFF_IMPORT_PATH, guide: "tariffs", step: 6 },
+        },
+      },
+      {
+        title: "New import upload",
+        description: "Start a fresh batch with a PDF or Excel file when you have org.tariffs edit access.",
+        href: TARIFF_IMPORT_NEW_PATH,
+        doAction: {
+          type: "open_path",
+          label: "Open new import upload",
+          payload: { path: TARIFF_IMPORT_NEW_PATH, guide: "tariffs", step: 7 },
+        },
+      },
+      {
+        title: "Geography groups",
+        description: "Reusable geography scopes referenced from rate and charge lines.",
+        href: TARIFF_GEOGRAPHY_PATH,
+        doAction: {
+          type: "open_path",
+          label: "Open geography",
+          payload: { path: TARIFF_GEOGRAPHY_PATH, guide: "tariffs", step: 8 },
+        },
+      },
+      {
+        title: "New geography group",
+        description: "Define a new group type and name before adding member location codes.",
+        href: TARIFF_GEOGRAPHY_NEW_PATH,
+        doAction: {
+          type: "open_path",
+          label: "Open new geography group",
+          payload: { path: TARIFF_GEOGRAPHY_NEW_PATH, guide: "tariffs", step: 9 },
+        },
+      },
+      {
+        title: "Charge codes",
+        description: "Normalized charge codes shared across contracts and invoice audit.",
+        href: TARIFF_CHARGE_CODES_PATH,
+        doAction: {
+          type: "open_path",
+          label: "Open charge codes",
+          payload: { path: TARIFF_CHARGE_CODES_PATH, guide: "tariffs", step: 10 },
+        },
+      },
+    ],
+  },
+  {
+    id: "public_marketing",
+    title: "Plans, pricing, legal & platform entry",
+    summary:
+      "Open the public pricing page, read privacy/terms/cookies on standalone pages, or return to the signed-in platform hub that lists your workspaces.",
+    steps: [
+      {
+        title: "Plans & pricing",
+        description:
+          "Marketing page describing packages and evaluation; it renders without the full app chrome for a clean read.",
+        href: MARKETING_PRICING_PATH,
+        doAction: {
+          type: "open_path",
+          label: "Open plans & pricing",
+          payload: { path: MARKETING_PRICING_PATH, guide: "public_marketing", step: 0 },
+        },
+      },
+      {
+        title: "Platform hub",
+        description:
+          "After sign-in, pick PO Management, Control Tower, Rates & Audit, and other modules you have access to.",
+        href: PLATFORM_HUB_PATH,
+        doAction: {
+          type: "open_path",
+          label: "Open platform hub",
+          payload: { path: PLATFORM_HUB_PATH, guide: "public_marketing", step: 1 },
+        },
+      },
+      {
+        title: "Privacy policy",
+        description: "How we handle personal data; public page without full app chrome.",
+        href: LEGAL_PRIVACY_PATH,
+        doAction: {
+          type: "open_path",
+          label: "Open privacy policy",
+          payload: { path: LEGAL_PRIVACY_PATH, guide: "public_marketing", step: 2 },
+        },
+      },
+      {
+        title: "Terms of service",
+        description: "Site and service terms; public page without full app chrome.",
+        href: LEGAL_TERMS_PATH,
+        doAction: {
+          type: "open_path",
+          label: "Open terms of service",
+          payload: { path: LEGAL_TERMS_PATH, guide: "public_marketing", step: 3 },
+        },
+      },
+      {
+        title: "Cookie policy",
+        description: "Cookies and similar technologies; public page without full app chrome.",
+        href: LEGAL_COOKIES_PATH,
+        doAction: {
+          type: "open_path",
+          label: "Open cookie policy",
+          payload: { path: LEGAL_COOKIES_PATH, guide: "public_marketing", step: 4 },
+        },
+      },
+    ],
+  },
+  {
     id: "user_admin",
     title: "User Administration & Login",
     summary: "Create users, assign roles, set passwords, and sign in.",
@@ -454,10 +649,43 @@ export function matchPlaybook(query: string): HelpPlaybook | null {
   ) {
     return HELP_PLAYBOOKS.find((p) => p.id === "control_tower") ?? null;
   }
+  if (
+    q.includes("tariff") ||
+    q.includes("freight contract") ||
+    q.includes("lane rating") ||
+    q.includes("rate lookup") ||
+    q.includes("tariff import") ||
+    (q.includes("import batch") && (q.includes("tariff") || q.includes("contract")))
+  ) {
+    return HELP_PLAYBOOKS.find((p) => p.id === "tariffs") ?? null;
+  }
   if (q.includes("order")) return HELP_PLAYBOOKS.find((p) => p.id === "create_order") ?? null;
   if (q.includes("supplier")) return HELP_PLAYBOOKS.find((p) => p.id === "create_supplier") ?? null;
   if (q.includes("consol") || q.includes("load") || q.includes("container")) {
     return HELP_PLAYBOOKS.find((p) => p.id === "consolidation") ?? null;
+  }
+  if (
+    !q.includes("tariff") &&
+    !(q.includes("snapshot") && (q.includes("pricing") || q.includes("pric"))) &&
+    (q.includes(MARKETING_PRICING_PATH) ||
+      q.includes("platform hub") ||
+      q.includes("module picker") ||
+      (q.includes("plans") && (q.includes("pricing") || q.includes("prices"))) ||
+      (q.includes("marketing") && (q.includes("pricing") || q.includes("package"))) ||
+      (q.includes("evaluation") && (q.includes("pricing") || q.includes("package"))) ||
+      q.includes(LEGAL_PRIVACY_PATH) ||
+      q.includes(LEGAL_TERMS_PATH) ||
+      q.includes(LEGAL_COOKIES_PATH) ||
+      q.includes("privacy") ||
+      q.includes("gdpr") ||
+      q.includes("cookie policy") ||
+      q.includes("cookies policy") ||
+      (q.includes("cookie") &&
+        (q.includes("consent") || q.includes("legal") || q.includes("privacy") || q.includes("site"))) ||
+      q.includes("terms of service") ||
+      q.includes("terms and conditions"))
+  ) {
+    return HELP_PLAYBOOKS.find((p) => p.id === "public_marketing") ?? null;
   }
   if (q.includes("user") || q.includes("login") || q.includes("password") || q.includes("role")) {
     return HELP_PLAYBOOKS.find((p) => p.id === "user_admin") ?? null;

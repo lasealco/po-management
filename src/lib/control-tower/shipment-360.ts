@@ -1,3 +1,5 @@
+import { userHasGlobalGrant } from "@/lib/authz";
+import { addTariffShipmentApplicationSourceLabel } from "@/lib/tariff/tariff-shipment-application-labels";
 import { prisma } from "@/lib/prisma";
 import { convertAmount, minorToAmount, normalizeCurrency } from "@/lib/control-tower/currency";
 
@@ -499,6 +501,58 @@ export async function getShipment360(params: {
         requestedDeliveryDate: s.order.requestedDeliveryDate?.toISOString() ?? null,
       };
 
+  const canViewTariffGlueCT =
+    !restricted && (await userHasGlobalGrant(actorUserId, "org.tariffs", "view"));
+  const canEditTariffGlueCT =
+    !restricted && (await userHasGlobalGrant(actorUserId, "org.tariffs", "edit"));
+
+  const tariffGlue = canViewTariffGlueCT
+    ? await (async () => {
+        const apps = await prisma.tariffShipmentApplication.findMany({
+          where: { tenantId, shipmentId },
+          orderBy: [{ isPrimary: "desc" }, { updatedAt: "desc" }],
+          include: {
+            contractVersion: {
+              select: {
+                id: true,
+                versionNo: true,
+                contractHeader: {
+                  select: {
+                    id: true,
+                    contractNumber: true,
+                    title: true,
+                    provider: { select: { legalName: true, tradingName: true } },
+                  },
+                },
+              },
+            },
+          },
+        });
+        return {
+          canView: true as const,
+          canEdit: canEditTariffGlueCT,
+          applications: apps.map((a) => {
+            const h = a.contractVersion.contractHeader;
+            return addTariffShipmentApplicationSourceLabel({
+              id: a.id,
+              isPrimary: a.isPrimary,
+              source: a.source,
+              polCode: a.polCode,
+              podCode: a.podCode,
+              equipmentType: a.equipmentType,
+              contractVersionId: a.contractVersionId,
+              versionNo: a.contractVersion.versionNo,
+              contractHeaderId: h.id,
+              contractNumber: h.contractNumber,
+              contractTitle: h.title,
+              providerLegalName: h.provider.legalName,
+              providerTradingName: h.provider.tradingName,
+            });
+          }),
+        };
+      })()
+    : null;
+
   const bolDocumentParties = buildBolDocumentParties(s, restricted);
   const documentRouting = {
     originCode: s.booking?.originCode ?? null,
@@ -814,5 +868,6 @@ export async function getShipment360(params: {
           actorName: a.actor.name,
           createdAt: a.createdAt.toISOString(),
         })),
+    tariff: tariffGlue,
   };
 }

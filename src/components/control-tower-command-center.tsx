@@ -92,6 +92,88 @@ function laneKey(nextAction: string | null): (typeof LANES)[number] {
   return "Other";
 }
 
+function healthBucketTitle(h: HealthState): string {
+  if (h === "good") return "On-time";
+  if (h === "at_risk") return "At risk";
+  if (h === "delayed") return "Delayed";
+  return "Missing legs / route";
+}
+
+function CommandCenterShipmentCard({ r, nowMs }: { r: Row; nowMs: number }) {
+  const health = classifyShipmentHealth(r, nowMs);
+  return (
+    <li>
+      <Link
+        href={`/control-tower/shipments/${r.id}`}
+        className="flex h-full min-h-[8.5rem] flex-col rounded-md border border-zinc-200 bg-white p-2.5 text-sm shadow-sm transition hover:border-sky-300 hover:bg-sky-50/40"
+      >
+        <div className="font-medium text-zinc-900">
+          {controlTowerListPrimaryTitle({
+            orderNumber: r.orderNumber,
+            shipmentNo: r.shipmentNo,
+            id: r.id,
+          })}
+        </div>
+        {(() => {
+          const sub = controlTowerListSecondaryRef({
+            orderNumber: r.orderNumber,
+            shipmentNo: r.shipmentNo,
+            id: r.id,
+          });
+          return sub ? <div className="mt-0.5 text-[11px] font-normal text-zinc-700">{sub}</div> : null;
+        })()}
+        <div className="mt-0.5 text-xs text-zinc-700">
+          {r.originCode ?? "—"} → {r.destinationCode ?? "—"}
+        </div>
+        <div className="mt-1">
+          <span
+            className={`rounded-full border px-1.5 py-0.5 text-[11px] ${
+              health === "good"
+                ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+                : health === "at_risk"
+                  ? "border-amber-200 bg-amber-50 text-amber-900"
+                  : health === "delayed"
+                    ? "border-rose-200 bg-rose-50 text-rose-900"
+                    : "border-zinc-300 bg-zinc-100 text-zinc-700"
+            }`}
+          >
+            {health === "good"
+              ? "On-time"
+              : health === "at_risk"
+                ? "At risk"
+                : health === "delayed"
+                  ? "Delayed"
+                  : "Missing route plan"}
+          </span>
+        </div>
+        {r.routeProgressPct != null ? (
+          <div className="mt-1 text-xs text-zinc-500">Route {r.routeProgressPct}%</div>
+        ) : null}
+        <div className="mt-auto flex flex-wrap gap-1 pt-1 text-[11px] text-zinc-600">
+          {r.dispatchOwner ? (
+            <span className="rounded bg-amber-50 px-1.5 py-0.5 text-amber-900">{r.dispatchOwner.name}</span>
+          ) : (
+            <span className="rounded bg-zinc-200 px-1.5 py-0.5 text-zinc-900">Unassigned</span>
+          )}
+          {r.openQueueCounts.openAlerts > 0 ? (
+            <span className="rounded bg-rose-50 px-1.5 py-0.5 text-rose-900">
+              {r.openQueueCounts.openAlerts} alert{r.openQueueCounts.openAlerts === 1 ? "" : "s"}
+            </span>
+          ) : null}
+          {r.openQueueCounts.openExceptions > 0 ? (
+            <span className="rounded bg-orange-50 px-1.5 py-0.5 text-orange-900">
+              {r.openQueueCounts.openExceptions} exc.
+            </span>
+          ) : null}
+        </div>
+        {r.customerCrmAccountName ? (
+          <div className="mt-1 truncate text-[11px] text-zinc-500">{r.customerCrmAccountName}</div>
+        ) : null}
+      </Link>
+    </li>
+  );
+}
+
 export function ControlTowerCommandCenter({
   restrictedView = false,
 }: {
@@ -109,6 +191,9 @@ export function ControlTowerCommandCenter({
   const [routeAction, setRouteAction] = useState("");
   const [onlyOverdueEta, setOnlyOverdueEta] = useState(false);
   const [ownerDirectory, setOwnerDirectory] = useState(() => new Map<string, string>());
+  /** Client-side slice on loaded rows; lane board switches to a flat list while active. */
+  const [healthChipFilter, setHealthChipFilter] = useState<HealthState | null>(null);
+  const [showEmptyLanes, setShowEmptyLanes] = useState(false);
 
   useEffect(() => {
     const t = window.setTimeout(() => setDebouncedQ(qInput.trim()), 400);
@@ -118,6 +203,10 @@ export function ControlTowerCommandCenter({
   useEffect(() => {
     if (restrictedView) setOwnerFilter("");
   }, [restrictedView]);
+
+  useEffect(() => {
+    if (healthChipFilter) setShowEmptyLanes(false);
+  }, [healthChipFilter]);
 
   const load = useCallback(async () => {
     setBusy(true);
@@ -185,17 +274,23 @@ export function ControlTowerCommandCenter({
     return list;
   }, [rows, ownerFilter]);
 
+  const rowsForLanes = useMemo(() => {
+    if (!healthChipFilter) return filtered;
+    const now = Date.now();
+    return filtered.filter((r) => classifyShipmentHealth(r, now) === healthChipFilter);
+  }, [filtered, healthChipFilter]);
+
   const byLane = useMemo(() => {
     const map = new Map<string, Row[]>();
     for (const lane of LANES) {
       map.set(lane, []);
     }
-    for (const r of filtered) {
+    for (const r of rowsForLanes) {
       const k = laneKey(r.nextAction);
       map.get(k)!.push(r);
     }
     return map;
-  }, [filtered]);
+  }, [rowsForLanes]);
   const healthStats = useMemo(() => {
     const now = Date.now();
     const stats = { good: 0, at_risk: 0, delayed: 0, missing_data: 0 };
@@ -219,8 +314,6 @@ export function ControlTowerCommandCenter({
   const workbenchDrillHref = controlTowerWorkbenchPath(workbenchDrillQuery);
   const hasWorkbenchDrillFilters = Object.keys(workbenchDrillQuery).length > 0;
 
-  const [showEmptyLanes, setShowEmptyLanes] = useState(false);
-
   const laneStats = useMemo(() => {
     let nonEmpty = 0;
     let empty = 0;
@@ -235,6 +328,8 @@ export function ControlTowerCommandCenter({
     if (showEmptyLanes) return [...LANES];
     return LANES.filter((lane) => (byLane.get(lane)?.length ?? 0) > 0);
   }, [byLane, showEmptyLanes]);
+
+  const shipmentHealthNowMs = Date.now();
 
   return (
     <div className="space-y-4">
@@ -329,47 +424,135 @@ export function ControlTowerCommandCenter({
           list or narrow filters.
         </p>
       ) : null}
-      <div className="flex flex-wrap gap-2 text-xs">
-        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-900">
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        <button
+          type="button"
+          onClick={() =>
+            setHealthChipFilter((cur) => (cur === "good" ? null : "good"))
+          }
+          aria-pressed={healthChipFilter === "good"}
+          className={`cursor-pointer rounded-full border px-3 py-1 transition ${
+            healthChipFilter === "good"
+              ? "border-emerald-700 bg-emerald-700 text-white ring-2 ring-emerald-900/15"
+              : "border-emerald-200 bg-emerald-50 text-emerald-900 hover:bg-emerald-100"
+          }`}
+        >
           On-time: <strong>{healthStats.good}</strong>
-        </span>
-        <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-amber-900">
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            setHealthChipFilter((cur) => (cur === "at_risk" ? null : "at_risk"))
+          }
+          aria-pressed={healthChipFilter === "at_risk"}
+          className={`cursor-pointer rounded-full border px-3 py-1 transition ${
+            healthChipFilter === "at_risk"
+              ? "border-amber-700 bg-amber-700 text-white ring-2 ring-amber-900/15"
+              : "border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100"
+          }`}
+        >
           At risk: <strong>{healthStats.at_risk}</strong>
-        </span>
-        <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-rose-900">
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            setHealthChipFilter((cur) => (cur === "delayed" ? null : "delayed"))
+          }
+          aria-pressed={healthChipFilter === "delayed"}
+          className={`cursor-pointer rounded-full border px-3 py-1 transition ${
+            healthChipFilter === "delayed"
+              ? "border-rose-700 bg-rose-700 text-white ring-2 ring-rose-900/15"
+              : "border-rose-200 bg-rose-50 text-rose-900 hover:bg-rose-100"
+          }`}
+        >
           Delayed: <strong>{healthStats.delayed}</strong>
-        </span>
-        <span className="rounded-full border border-zinc-300 bg-zinc-100 px-3 py-1 text-zinc-700">
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            setHealthChipFilter((cur) => (cur === "missing_data" ? null : "missing_data"))
+          }
+          aria-pressed={healthChipFilter === "missing_data"}
+          className={`cursor-pointer rounded-full border px-3 py-1 transition ${
+            healthChipFilter === "missing_data"
+              ? "border-zinc-600 bg-zinc-600 text-white ring-2 ring-zinc-900/15"
+              : "border-zinc-300 bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
+          }`}
+        >
           Missing legs/route: <strong>{healthStats.missing_data}</strong>
-        </span>
+        </button>
+        {healthChipFilter ? (
+          <button
+            type="button"
+            onClick={() => setHealthChipFilter(null)}
+            className="cursor-pointer rounded-full border border-zinc-300 bg-white px-3 py-1 font-medium text-zinc-800 hover:bg-zinc-50"
+          >
+            Clear health filter
+          </button>
+        ) : null}
       </div>
+      {healthChipFilter ? (
+        <p className="text-xs text-zinc-600">
+          Showing a <strong>flat list</strong> of {healthBucketTitle(healthChipFilter).toLowerCase()} shipments loaded
+          above (same scope as the lane board). Chip counts still reflect the full filtered set. Click the same chip
+          again or use Clear to return to lanes.
+        </p>
+      ) : null}
       {error ? (
         <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">{error}</div>
       ) : null}
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-        <p className="text-xs text-zinc-600">
-          {laneStats.nonEmpty} lane{laneStats.nonEmpty === 1 ? "" : "s"} with shipments
-          {!showEmptyLanes && laneStats.empty > 0 ? (
-            <>
-              {" "}
-              · <span className="text-zinc-500">{laneStats.empty} empty lane{laneStats.empty === 1 ? "" : "s"} hidden</span>
-            </>
+      {!healthChipFilter ? (
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+          <p className="text-xs text-zinc-600">
+            {laneStats.nonEmpty} lane{laneStats.nonEmpty === 1 ? "" : "s"} with shipments
+            {!showEmptyLanes && laneStats.empty > 0 ? (
+              <>
+                {" "}
+                ·{" "}
+                <span className="text-zinc-500">
+                  {laneStats.empty} empty lane{laneStats.empty === 1 ? "" : "s"} hidden
+                </span>
+              </>
+            ) : null}
+          </p>
+          {laneStats.empty > 0 ? (
+            <button
+              type="button"
+              onClick={() => setShowEmptyLanes((v) => !v)}
+              className="cursor-pointer self-start rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-800 hover:bg-zinc-50 sm:self-auto"
+            >
+              {showEmptyLanes ? "Hide empty lanes" : `Show all ${LANES.length} lanes (incl. empty)`}
+            </button>
           ) : null}
-        </p>
-        {laneStats.empty > 0 ? (
-          <button
-            type="button"
-            onClick={() => setShowEmptyLanes((v) => !v)}
-            className="self-start rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-800 hover:bg-zinc-50 sm:self-auto"
-          >
-            {showEmptyLanes ? "Hide empty lanes" : `Show all ${LANES.length} lanes (incl. empty)`}
-          </button>
-        ) : null}
-      </div>
+        </div>
+      ) : (
+        <p className="text-xs text-zinc-500">Lane controls are hidden in health-filter view.</p>
+      )}
 
       <div className="space-y-5">
-        {visibleLanes.length === 0 ? (
+        {healthChipFilter ? (
+          rowsForLanes.length === 0 ? (
+            <p className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-8 text-center text-sm text-zinc-600">
+              No shipments in this health bucket for the current filters.
+            </p>
+          ) : (
+            <section className="overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50/80 shadow-sm">
+              <div className="border-b border-zinc-200 bg-white px-4 py-3">
+                <h2 className="text-sm font-semibold text-zinc-900">
+                  {healthBucketTitle(healthChipFilter)} — {rowsForLanes.length} shipment
+                  {rowsForLanes.length === 1 ? "" : "s"}
+                </h2>
+                <p className="text-xs text-zinc-500">Flat list (not grouped by next route lane)</p>
+              </div>
+              <ul className="grid gap-2 p-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {rowsForLanes.map((r) => (
+                  <CommandCenterShipmentCard key={r.id} r={r} nowMs={shipmentHealthNowMs} />
+                ))}
+              </ul>
+            </section>
+          )
+        ) : visibleLanes.length === 0 ? (
           <p className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-8 text-center text-sm text-zinc-600">
             No shipments match the current filters. Try clearing search or status, or{" "}
             <button type="button" className="font-medium text-sky-800 underline" onClick={() => void load()}>
@@ -377,114 +560,38 @@ export function ControlTowerCommandCenter({
             </button>
             .
           </p>
-        ) : null}
-        {visibleLanes.map((lane) => {
-          const cards = byLane.get(lane) ?? [];
-          return (
-            <section
-              key={lane}
-              className="overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50/80 shadow-sm"
-              aria-labelledby={laneSectionDomId(lane)}
-            >
-              <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-zinc-200 bg-white px-4 py-3">
-                <div>
-                  <h2 id={laneSectionDomId(lane)} className="text-sm font-semibold text-zinc-900">
-                    {lane}
-                  </h2>
-                  <p className="text-xs text-zinc-500">
-                    {cards.length} shipment{cards.length === 1 ? "" : "s"} · next route action
-                  </p>
+        ) : (
+          visibleLanes.map((lane) => {
+            const cards = byLane.get(lane) ?? [];
+            return (
+              <section
+                key={lane}
+                className="overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50/80 shadow-sm"
+                aria-labelledby={laneSectionDomId(lane)}
+              >
+                <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-zinc-200 bg-white px-4 py-3">
+                  <div>
+                    <h2 id={laneSectionDomId(lane)} className="text-sm font-semibold text-zinc-900">
+                      {lane}
+                    </h2>
+                    <p className="text-xs text-zinc-500">
+                      {cards.length} shipment{cards.length === 1 ? "" : "s"} · next route action
+                    </p>
+                  </div>
                 </div>
-              </div>
-              {cards.length === 0 ? (
-                <p className="px-4 py-6 text-center text-xs text-zinc-500">No shipments in this lane.</p>
-              ) : (
-                <ul className="grid gap-2 p-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {cards.map((r) => (
-                    <li key={r.id}>
-                      <Link
-                        href={`/control-tower/shipments/${r.id}`}
-                        className="flex h-full min-h-[8.5rem] flex-col rounded-md border border-zinc-200 bg-white p-2.5 text-sm shadow-sm transition hover:border-sky-300 hover:bg-sky-50/40"
-                      >
-                        <div className="font-medium text-zinc-900">
-                          {controlTowerListPrimaryTitle({
-                            orderNumber: r.orderNumber,
-                            shipmentNo: r.shipmentNo,
-                            id: r.id,
-                          })}
-                        </div>
-                        {(() => {
-                          const sub = controlTowerListSecondaryRef({
-                            orderNumber: r.orderNumber,
-                            shipmentNo: r.shipmentNo,
-                            id: r.id,
-                          });
-                          return sub ? (
-                            <div className="mt-0.5 text-[11px] font-normal text-zinc-700">{sub}</div>
-                          ) : null;
-                        })()}
-                        <div className="mt-0.5 text-xs text-zinc-700">
-                          {r.originCode ?? "—"} → {r.destinationCode ?? "—"}
-                        </div>
-                        {(() => {
-                          const health = classifyShipmentHealth(r, Date.now());
-                          return (
-                            <div className="mt-1">
-                              <span
-                                className={`rounded-full border px-1.5 py-0.5 text-[11px] ${
-                                  health === "good"
-                                    ? "border-emerald-200 bg-emerald-50 text-emerald-900"
-                                    : health === "at_risk"
-                                      ? "border-amber-200 bg-amber-50 text-amber-900"
-                                      : health === "delayed"
-                                        ? "border-rose-200 bg-rose-50 text-rose-900"
-                                        : "border-zinc-300 bg-zinc-100 text-zinc-700"
-                                }`}
-                              >
-                                {health === "good"
-                                  ? "On-time"
-                                  : health === "at_risk"
-                                    ? "At risk"
-                                    : health === "delayed"
-                                      ? "Delayed"
-                                      : "Missing route plan"}
-                              </span>
-                            </div>
-                          );
-                        })()}
-                        {r.routeProgressPct != null ? (
-                          <div className="mt-1 text-xs text-zinc-500">Route {r.routeProgressPct}%</div>
-                        ) : null}
-                        <div className="mt-auto flex flex-wrap gap-1 pt-1 text-[11px] text-zinc-600">
-                          {r.dispatchOwner ? (
-                            <span className="rounded bg-amber-50 px-1.5 py-0.5 text-amber-900">
-                              {r.dispatchOwner.name}
-                            </span>
-                          ) : (
-                            <span className="rounded bg-zinc-200 px-1.5 py-0.5 text-zinc-900">Unassigned</span>
-                          )}
-                          {r.openQueueCounts.openAlerts > 0 ? (
-                            <span className="rounded bg-rose-50 px-1.5 py-0.5 text-rose-900">
-                              {r.openQueueCounts.openAlerts} alert{r.openQueueCounts.openAlerts === 1 ? "" : "s"}
-                            </span>
-                          ) : null}
-                          {r.openQueueCounts.openExceptions > 0 ? (
-                            <span className="rounded bg-orange-50 px-1.5 py-0.5 text-orange-900">
-                              {r.openQueueCounts.openExceptions} exc.
-                            </span>
-                          ) : null}
-                        </div>
-                        {r.customerCrmAccountName ? (
-                          <div className="mt-1 truncate text-[11px] text-zinc-500">{r.customerCrmAccountName}</div>
-                        ) : null}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-          );
-        })}
+                {cards.length === 0 ? (
+                  <p className="px-4 py-6 text-center text-xs text-zinc-500">No shipments in this lane.</p>
+                ) : (
+                  <ul className="grid gap-2 p-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    {cards.map((r) => (
+                      <CommandCenterShipmentCard key={r.id} r={r} nowMs={shipmentHealthNowMs} />
+                    ))}
+                  </ul>
+                )}
+              </section>
+            );
+          })
+        )}
       </div>
     </div>
   );

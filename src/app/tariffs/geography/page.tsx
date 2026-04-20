@@ -1,9 +1,10 @@
 import Link from "next/link";
 
 import { RecordIdCopy } from "@/components/invoice-audit/record-id-copy";
+import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { tariffGeographyTypeLabel } from "@/lib/tariff/geography-labels";
 import { listTariffGeographyGroups } from "@/lib/tariff/geography-groups";
-import { getViewerGrantSet, viewerHas } from "@/lib/authz";
+import { TARIFF_GEOGRAPHY_NEW_PATH, tariffGeographyGroupPath } from "@/lib/tariff/tariff-workbench-urls";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +33,7 @@ export default async function TariffGeographyDirectoryPage() {
           </div>
           {canEdit ? (
             <Link
-              href="/tariffs/geography/new"
+              href={TARIFF_GEOGRAPHY_NEW_PATH}
               className="rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:brightness-95"
             >
               New group
@@ -61,7 +62,7 @@ export default async function TariffGeographyDirectoryPage() {
                     {canEdit ? (
                       <>
                         {" "}
-                        <Link href="/tariffs/geography/new" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+                        <Link href={TARIFF_GEOGRAPHY_NEW_PATH} className="font-medium text-[var(--arscmp-primary)] hover:underline">
                           Create one
                         </Link>
                         .
@@ -73,7 +74,7 @@ export default async function TariffGeographyDirectoryPage() {
               {groups.map((g) => (
                 <tr key={g.id} className="border-b border-zinc-100">
                   <td className="py-3 pr-4">
-                    <Link href={`/tariffs/geography/${g.id}`} className="font-medium text-[var(--arscmp-primary)] hover:underline">
+                    <Link href={tariffGeographyGroupPath(g.id)} className="font-medium text-[var(--arscmp-primary)] hover:underline">
                       {g.name}
                     </Link>
                   </td>

@@ -3,7 +3,22 @@
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { LEGAL_COOKIES_PATH, LEGAL_PRIVACY_PATH, LEGAL_TERMS_PATH } from "@/lib/legal-public-paths";
+import { MARKETING_PRICING_PATH, PLATFORM_HUB_PATH } from "@/lib/marketing-public-paths";
 import { REPORTING_HUB_CONTROL_TOWER_HREF } from "@/lib/reporting-hub-paths";
+import {
+  TARIFF_CHARGE_CODES_PATH,
+  TARIFF_CONTRACTS_DIRECTORY_PATH,
+  TARIFF_GEOGRAPHY_NEW_PATH,
+  TARIFF_GEOGRAPHY_PATH,
+  TARIFF_IMPORT_NEW_PATH,
+  TARIFF_IMPORT_PATH,
+  TARIFF_LEGAL_ENTITIES_PATH,
+  TARIFF_NEW_CONTRACT_PATH,
+  TARIFF_PROVIDERS_PATH,
+  TARIFF_RATE_LOOKUP_PATH,
+  tariffLaneRatingPath,
+} from "@/lib/tariff/tariff-workbench-urls";
 
 export type CommandPaletteGrants = {
   orders: boolean;
@@ -60,6 +75,44 @@ export function CommandPalette({ grants }: { grants: CommandPaletteGrants }) {
         openHelp();
       },
     });
+
+    list.push(
+      {
+        id: "marketing-pricing",
+        label: "Plans & pricing",
+        hint: "Public marketing page (leaves full-screen app chrome)",
+        searchText: "pricing plans marketing commercial packages evaluation investor",
+        action: go(MARKETING_PRICING_PATH),
+      },
+      {
+        id: "platform-hub",
+        label: "Platform hub",
+        hint: "Module picker and signed-in workspace entry",
+        searchText: "platform home hub workspaces modules landing start",
+        action: go(PLATFORM_HUB_PATH),
+      },
+      {
+        id: "legal-privacy",
+        label: "Privacy policy",
+        hint: "Public legal page (leaves full-screen app chrome)",
+        searchText: "privacy gdpr data protection personal information",
+        action: go(LEGAL_PRIVACY_PATH),
+      },
+      {
+        id: "legal-terms",
+        label: "Terms of service",
+        hint: "Public legal page (leaves full-screen app chrome)",
+        searchText: "terms conditions legal agreement use policy",
+        action: go(LEGAL_TERMS_PATH),
+      },
+      {
+        id: "legal-cookies",
+        label: "Cookie policy",
+        hint: "Public legal page (leaves full-screen app chrome)",
+        searchText: "cookies tracking consent browser storage",
+        action: go(LEGAL_COOKIES_PATH),
+      },
+    );
 
     if (grants.reports || grants.controlTower || grants.crm || grants.wms) {
       list.push({
@@ -198,32 +251,81 @@ export function CommandPalette({ grants }: { grants: CommandPaletteGrants }) {
     if (grants.tariffs) {
       list.push(
         {
+          id: "tariffs-rate-lookup",
+          label: "Tariffs — rate lookup",
+          hint: "Published contract lookup grid",
+          searchText: "tariff rate lookup table pol pod equipment",
+          action: go(TARIFF_RATE_LOOKUP_PATH),
+        },
+        {
+          id: "tariffs-lane-rating",
+          label: "Tariffs — lane rating",
+          hint: "Try lanes against a version; optional shipment context",
+          searchText: "tariff lane rating explorer pol pod quote estimate",
+          action: go(tariffLaneRatingPath()),
+        },
+        {
           id: "tariffs-contracts",
           label: "Tariffs — contracts",
           hint: "Ocean contracts, versions, and lines",
           searchText: "tariff contract rate ocean freight baf surcharges",
-          action: go("/tariffs/contracts"),
+          action: go(TARIFF_CONTRACTS_DIRECTORY_PATH),
         },
         {
-          id: "tariffs-geography",
-          label: "Tariffs — geography groups",
-          hint: "Ports, regions, carrier label mapping",
-          searchText: "tariff geography locode region port subregion alias",
-          action: go("/tariffs/geography"),
+          id: "tariffs-new-contract",
+          label: "Tariffs — new contract",
+          hint: "Wizard for a new header and version",
+          searchText: "tariff new contract wizard create header version",
+          action: go(TARIFF_NEW_CONTRACT_PATH),
+        },
+        {
+          id: "tariffs-providers",
+          label: "Tariffs — providers",
+          hint: "Carriers and providers linked to contracts",
+          searchText: "tariff provider carrier steamship line nvo",
+          action: go(TARIFF_PROVIDERS_PATH),
+        },
+        {
+          id: "tariffs-legal-entities",
+          label: "Tariffs — legal entities",
+          hint: "Contracting parties for headers and imports",
+          searchText: "tariff legal entity contracting party inc ltd",
+          action: go(TARIFF_LEGAL_ENTITIES_PATH),
         },
         {
           id: "tariffs-import",
           label: "Tariffs — import center",
           hint: "Excel/PDF batches and staging",
           searchText: "tariff import upload excel pdf staging parse",
-          action: go("/tariffs/import"),
+          action: go(TARIFF_IMPORT_PATH),
+        },
+        {
+          id: "tariffs-import-new",
+          label: "Tariffs — new import upload",
+          hint: "Start a new import batch file upload",
+          searchText: "tariff import new upload batch xlsx pdf",
+          action: go(TARIFF_IMPORT_NEW_PATH),
+        },
+        {
+          id: "tariffs-geography",
+          label: "Tariffs — geography groups",
+          hint: "Ports, regions, carrier label mapping",
+          searchText: "tariff geography locode region port subregion alias",
+          action: go(TARIFF_GEOGRAPHY_PATH),
+        },
+        {
+          id: "tariffs-geography-new",
+          label: "Tariffs — new geography group",
+          hint: "Create a reusable geography scope",
+          searchText: "tariff geography new group port cluster subregion",
+          action: go(TARIFF_GEOGRAPHY_NEW_PATH),
         },
         {
           id: "tariffs-charge-codes",
           label: "Tariffs — charge codes",
           hint: "Normalized charge taxonomy for contract lines",
           searchText: "tariff charge code normalized catalog thc baf",
-          action: go("/tariffs/charge-codes"),
+          action: go(TARIFF_CHARGE_CODES_PATH),
         },
       );
     }

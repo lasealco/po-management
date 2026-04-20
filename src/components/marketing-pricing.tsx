@@ -1,6 +1,8 @@
 import Link from "next/link";
 
 import { BrandMarkLink, SITE_BRAND_HEX } from "@/components/brand-mark";
+import { LEGAL_COOKIES_PATH, LEGAL_PRIVACY_PATH, LEGAL_TERMS_PATH } from "@/lib/legal-public-paths";
+import { PLATFORM_HUB_PATH } from "@/lib/marketing-public-paths";
 
 const MAIL_SALES = "mailto:sales@arscmp.com?subject=AR%20SCMP%20—%20";
 
@@ -81,7 +83,7 @@ export function MarketingPricingPage() {
             <span className="text-slate-900" aria-current="page">
               Plans
             </span>
-            <Link href="/platform" className="transition hover:text-slate-900">
+            <Link href={PLATFORM_HUB_PATH} className="transition hover:text-slate-900">
               Platform
             </Link>
             <a
@@ -146,7 +148,7 @@ export function MarketingPricingPage() {
               </div>
               <div className="flex flex-col items-stretch gap-3 lg:w-64">
                 <Link
-                  href="/platform"
+                  href={PLATFORM_HUB_PATH}
                   className="rounded-2xl px-6 py-4 text-center text-lg font-bold text-white shadow-md transition hover:opacity-95"
                   style={{ backgroundColor: SITE_BRAND_HEX }}
                 >
@@ -261,7 +263,7 @@ export function MarketingPricingPage() {
             After you review plans, open the live platform hub for the demo tenant experience.
           </p>
           <Link
-            href="/platform"
+            href={PLATFORM_HUB_PATH}
             className="mt-5 inline-flex items-center justify-center rounded-xl px-6 py-3 text-sm font-bold text-white transition hover:opacity-95"
             style={{ backgroundColor: SITE_BRAND_HEX }}
           >
@@ -283,11 +285,14 @@ export function MarketingPricingPage() {
             <Link href="/" className="transition hover:text-slate-700">
               Home
             </Link>
-            <Link href="/privacy" className="transition hover:text-slate-700">
+            <Link href={LEGAL_PRIVACY_PATH} className="transition hover:text-slate-700">
               Privacy
             </Link>
-            <Link href="/terms" className="transition hover:text-slate-700">
+            <Link href={LEGAL_TERMS_PATH} className="transition hover:text-slate-700">
               Terms
+            </Link>
+            <Link href={LEGAL_COOKIES_PATH} className="transition hover:text-slate-700">
+              Cookies
             </Link>
             <Link href="/login" className="transition hover:text-slate-700">
               Sign in

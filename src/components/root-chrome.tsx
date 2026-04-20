@@ -29,7 +29,13 @@ export function RootChrome({
   const showAppChrome = pathUsesAppChrome(pathname);
 
   if (!showAppChrome) {
-    return <div className="min-h-full bg-white">{children}</div>;
+    return (
+      <div className="min-h-full bg-white">
+        <GuideCallout />
+        {children}
+        <CommandPalette grants={commandGrants} />
+      </div>
+    );
   }
 
   return (

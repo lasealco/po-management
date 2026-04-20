@@ -1,5 +1,7 @@
 "use client";
 
+import { labelTariffShipmentApplicationSource } from "@/lib/tariff/tariff-shipment-application-labels";
+import { tariffContractVersionPath, tariffLaneRatingPath } from "@/lib/tariff/tariff-workbench-urls";
 import Link from "next/link";
 import { startTransition, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -136,6 +138,22 @@ type OrderDetailResponse = {
       quantityReceived: string;
       plannedShipDate: string | null;
     }>;
+    tariffApplications?: Array<{
+      id: string;
+      isPrimary: boolean;
+      source: string;
+      sourceLabel?: string;
+      polCode: string | null;
+      podCode: string | null;
+      equipmentType: string | null;
+      contractVersionId: string;
+      versionNo: number;
+      contractHeaderId: string;
+      contractNumber: string | null;
+      contractTitle: string;
+      providerLegalName: string;
+      providerTradingName: string | null;
+    }>;
   }>;
   pendingProposal: null | {
     id: string;
@@ -185,6 +203,10 @@ type OrderDetailResponse = {
     canValidate: boolean;
     canBook: boolean;
     canUpdateMilestones: boolean;
+  };
+  tariffShipmentCapabilities: {
+    canView: boolean;
+    canEdit: boolean;
   };
   forwarders: Array<{
     id: string;
@@ -1205,6 +1227,60 @@ export function OrderDetail({
                   </ul>
                   {shipment.notes ? (
                     <p className="mt-2 text-xs text-zinc-700">{shipment.notes}</p>
+                  ) : null}
+                  {data.tariffShipmentCapabilities.canView ? (
+                    <div className="mt-3 rounded-md border border-violet-200 bg-violet-50/80 p-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-violet-900">Tariff</p>
+                      {(shipment.tariffApplications ?? []).length === 0 ? (
+                        <p className="mt-1 text-xs text-violet-900">No contract version linked to this shipment.</p>
+                      ) : (
+                        <ul className="mt-2 space-y-1.5 text-xs text-violet-950">
+                          {(shipment.tariffApplications ?? []).map((app) => (
+                            <li key={app.id}>
+                              <span className="font-medium">
+                                {app.isPrimary ? "Primary · " : ""}
+                                {app.contractTitle}
+                              </span>
+                              {app.contractNumber ? (
+                                <span className="ml-1 font-mono text-[10px] text-violet-800">{app.contractNumber}</span>
+                              ) : null}
+                              <span className="text-violet-800">
+                                {" "}
+                                · v{app.versionNo} · {app.providerTradingName ?? app.providerLegalName}
+                              </span>
+                              <Link
+                                href={tariffContractVersionPath(app.contractHeaderId, app.contractVersionId, {
+                                  shipmentId: shipment.id,
+                                })}
+                                className="ml-2 font-medium text-[var(--arscmp-primary)] hover:underline"
+                              >
+                                Open
+                              </Link>
+                              <div className="mt-0.5 text-[11px] font-normal text-violet-800">
+                                {app.polCode || app.podCode
+                                  ? `${app.polCode ?? "—"} → ${app.podCode ?? "—"}`
+                                  : "Lane (POL/POD) not recorded on application"}
+                                {app.equipmentType ? ` · ${app.equipmentType}` : ""}
+                                <span className="text-violet-700">
+                                  {" "}
+                                  · {app.sourceLabel ?? labelTariffShipmentApplicationSource(app.source)}
+                                </span>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      <div className="mt-2">
+                        <Link
+                          href={tariffLaneRatingPath({ shipmentId: shipment.id })}
+                          className="text-xs font-semibold text-[var(--arscmp-primary)] hover:underline"
+                        >
+                          {data.tariffShipmentCapabilities.canEdit
+                            ? "Rate lane & apply version →"
+                            : "Open lane rating (read-only) →"}
+                        </Link>
+                      </div>
+                    </div>
                   ) : null}
                   <div className="mt-3 flex flex-wrap gap-2">
                     {data.shipmentCapabilities.canValidate && shipment.status === "SHIPPED" ? (

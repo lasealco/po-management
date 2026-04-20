@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { PricingSnapshotSourceType } from "@prisma/client";
 
 import { RecordIdCopy } from "@/components/invoice-audit/record-id-copy";
+import { tariffContractVersionPath } from "@/lib/tariff/tariff-workbench-urls";
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return Boolean(v) && typeof v === "object" && !Array.isArray(v);
@@ -98,7 +99,7 @@ export function PricingSnapshotBreakdownPanel(props: {
             <dd className="mt-1 flex flex-wrap gap-2">
               {props.sourceType === "TARIFF_CONTRACT_VERSION" && contractId && versionId ? (
                 <Link
-                  href={`/tariffs/contracts/${contractId}/versions/${versionId}`}
+                  href={tariffContractVersionPath(contractId, versionId)}
                   className="text-sm font-medium text-[var(--arscmp-primary)] hover:underline"
                 >
                   Open contract version
@@ -120,7 +121,7 @@ export function PricingSnapshotBreakdownPanel(props: {
                     return (
                       <Link
                         key={`${role}-${vid}`}
-                        href={`/tariffs/contracts/${cid}/versions/${vid}`}
+                        href={tariffContractVersionPath(cid, vid)}
                         className="text-sm text-zinc-600 hover:text-[var(--arscmp-primary)] hover:underline"
                       >
                         Open {role}

@@ -5,6 +5,7 @@ import { BrandMarkLink } from "@/components/brand-mark";
 import { getViewerGrantSet } from "@/lib/authz";
 import type { AppNavLinkVisibility } from "@/lib/nav-visibility";
 import { resolveNavState } from "@/lib/nav-visibility";
+import { MARKETING_PRICING_PATH, PLATFORM_HUB_PATH } from "@/lib/marketing-public-paths";
 import { ratesAuditTopNavHref } from "@/lib/rates-audit-nav";
 
 export const dynamic = "force-dynamic";
@@ -12,6 +13,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "ARSCMP — Platform",
   description: "Choose a workspace: POs, Control Tower, WMS, CRM, SRM, and more.",
+  alternates: { canonical: PLATFORM_HUB_PATH },
 };
 
 type ModuleCard = {
@@ -117,7 +119,7 @@ export default async function PlatformHomePage() {
     <main className="min-h-[calc(100vh-8rem)] bg-gradient-to-b from-zinc-50 via-white to-zinc-50">
       <div className="mx-auto max-w-5xl px-6 pb-20 pt-12 sm:pt-16">
         <div className="flex flex-col gap-4 border-b border-zinc-200/80 pb-8 sm:flex-row sm:items-center sm:justify-between">
-          <BrandMarkLink href="/platform" className="py-1" aria-label="AR SCMP — platform home" />
+          <BrandMarkLink href={PLATFORM_HUB_PATH} className="py-1" aria-label="AR SCMP — platform home" />
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500 sm:text-right">
             {tenantName}
           </p>
@@ -135,7 +137,7 @@ export default async function PlatformHomePage() {
           <kbd className="rounded border border-zinc-200 bg-zinc-100 px-1.5 py-0.5 font-mono text-xs text-zinc-700">
             ⌘K
           </kbd>
-          ).
+          ) for quick jumps, including plans & pricing and the public privacy, terms, and cookie pages.
         </p>
 
         {!user ? (
@@ -204,6 +206,18 @@ export default async function PlatformHomePage() {
             ← Back to overview
           </Link>
         </p>
+
+        <nav
+          className="mt-8 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 border-t border-zinc-200/80 pt-8 text-xs text-zinc-500"
+          aria-label="Public site"
+        >
+          <Link href="/" className="underline-offset-2 hover:text-zinc-800 hover:underline">
+            Home
+          </Link>
+          <Link href={MARKETING_PRICING_PATH} className="underline-offset-2 hover:text-zinc-800 hover:underline">
+            Plans & pricing
+          </Link>
+        </nav>
       </div>
     </main>
   );
