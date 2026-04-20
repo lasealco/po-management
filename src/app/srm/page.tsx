@@ -4,9 +4,10 @@ import { ActionLink } from "@/components/action-button";
 import { AccessDenied } from "@/components/access-denied";
 import { SupplierKindTabs } from "@/components/supplier-kind-tabs";
 import { WorkflowHeader } from "@/components/workflow-header";
-import { getViewerGrantSet, viewerHas } from "@/lib/authz";
+import { getViewerGrantSet } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { parseSrmListQuery } from "@/lib/srm/list-query";
+import { resolveSrmPermissions } from "@/lib/srm/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +40,9 @@ export default async function SrmPage({
     );
   }
 
-  if (!viewerHas(access.grantSet, "org.suppliers", "view")) {
+  const permissions = resolveSrmPermissions(access.grantSet);
+
+  if (!permissions.canViewSuppliers) {
     return (
       <div className="min-h-screen bg-zinc-50 px-6 py-16">
         <AccessDenied
@@ -76,7 +79,7 @@ export default async function SrmPage({
       isActive: true,
       srmCategory: true,
       approvalStatus: true,
-      _count: { select: { orders: true } },
+      ...(permissions.canViewOrders ? { _count: { select: { orders: true } } } : {}),
     },
   });
 
@@ -87,7 +90,7 @@ export default async function SrmPage({
     email: s.email,
     phone: s.phone,
     isActive: s.isActive,
-    orderCount: s._count.orders,
+    orderCount: permissions.canViewOrders && "_count" in s ? s._count.orders : null,
     srmCategory: s.srmCategory === "logistics" ? "logistics" as const : "product" as const,
     approvalStatus:
       s.approvalStatus === "pending_approval"
@@ -97,8 +100,9 @@ export default async function SrmPage({
           : ("approved" as const),
   }));
 
-  const canEdit = viewerHas(access.grantSet, "org.suppliers", "edit");
-  const canApprove = viewerHas(access.grantSet, "org.suppliers", "approve");
+  const canEdit = permissions.canEditSuppliers;
+  const canApprove = permissions.canApproveSuppliers;
+  const canViewOrders = permissions.canViewOrders;
 
   return (
     <div className="min-h-screen bg-zinc-50">
@@ -157,7 +161,7 @@ export default async function SrmPage({
                     <th className="px-4 py-3">Contact</th>
                     <th className="px-4 py-3">Approval</th>
                     <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3 text-center">Orders</th>
+                    {canViewOrders ? <th className="px-4 py-3 text-center">Orders</th> : null}
                     <th className="px-4 py-3" />
                   </tr>
                 </thead>
@@ -195,7 +199,7 @@ export default async function SrmPage({
                           {s.isActive ? "Active" : "Inactive"}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-center tabular-nums">{s.orderCount}</td>
+                      {canViewOrders ? <td className="px-4 py-3 text-center tabular-nums">{s.orderCount}</td> : null}
                       <td className="px-4 py-3">
                         <Link href={`/srm/${s.id}`} className="font-medium text-[var(--arscmp-primary)] hover:underline">
                           {canEdit || canApprove ? "Open profile" : "View profile"}
@@ -219,7 +223,10 @@ export default async function SrmPage({
             </section>
           )}
 
-          {!canEdit ? <p className="mt-8 text-sm text-zinc-500">View-only for your role.</p> : null}
+          {!canViewOrders ? (
+            <p className="mt-6 text-sm text-zinc-500">Order metrics are hidden for your role (requires org.orders → view).</p>
+          ) : null}
+          {!canEdit ? <p className="mt-2 text-sm text-zinc-500">View-only for your role.</p> : null}
         </div>
       </main>
     </div>

@@ -12,7 +12,7 @@
 
 | Surface | Path | Grants (typical) | Notes |
 |---------|------|------------------|--------|
-| SRM partner list | `/srm` | `org.suppliers` → **view** | Query: `kind=` (`product` \| `logistics`, default product), **`q=`** search on name / code / email (case-insensitive contains). |
+| SRM partner list | `/srm` | `org.suppliers` → **view** | Query: `kind=` (`product` \| `logistics`, default product), **`q=`** search on name / code / email (case-insensitive contains). Order count column is visible only with `org.orders` → **view**. |
 | Create partner | `/srm/new` | `org.suppliers` → **edit** | `kind=` selects default `srmCategory` on create. |
 | Supplier 360 | `/srm/[id]` | `org.suppliers` → **view**; **edit** / **approve** for mutations | Uses `loadSupplierDetailSnapshot`; order analytics if `org.orders` → view. |
 | Legacy directory | `/suppliers`, `/suppliers/[id]` | Same grants | Alternate list/detail chrome; not deprecated in code. |
@@ -28,7 +28,7 @@
 | `srm_data_model_and_er_spec_20260417_063215.pdf` | Data model / ER | 🟡 | `Supplier`, `SupplierOffice`, `SupplierContact`, `SupplierServiceCapability`, links to PO / bookings / CT as in Prisma; not every ER relationship exposed in UI. |
 | `srm_supplier_lifecycle_and_onboarding_spec_20260417_063215.pdf` | Lifecycle & onboarding | 🟡 | `approvalStatus`, activation, buyer create path; full staged onboarding / portal flows ❌. |
 | `srm_workflow_and_business_rules_20260417_063215.pdf` | Workflows & rules | 🟡 | Approval + category split; deep workflow engine / rule builder ❌. |
-| `srm_permission_and_visibility_matrix_20260417_063215.pdf` | Permissions matrix | 🟡 | `org.suppliers` view / edit / approve (+ orders view for history); field-level matrix ❌. |
+| `srm_permission_and_visibility_matrix_20260417_063215.pdf` | Permissions matrix | 🟡 | `org.suppliers` view / edit / approve mapped through shared SRM permission resolver; order metrics/history gated by `org.orders` view. Field-level matrix ❌. |
 | `srm_ux_ui_design_guideline_and_wireframe_pack_20260417_063215.pdf` | UX / wireframes | 🟡 | Workflow headers, tables, 360 client; pixel parity with pack ❌. |
 | `srm_compliance_and_document_control_spec_20260417_063215.pdf` | Compliance & doc control | ❌ | No dedicated document-control vault for SRM yet. |
 | `srm_performance_risk_and_kpi_spec_20260417_063215.pdf` | Performance / KPI | ❌ | No SRM KPI dashboard slice yet. |
@@ -55,10 +55,10 @@ Numbered for engineering slices; refresh when shipped behavior changes.
 1. **Hygiene & planning** — Keep this `GAP_MAP` current; link each merged SRM slice PR to the relevant row (see `docs/engineering/agent-todos/srm.md`).
 2. **Operator list quality** — **Done in meeting batch:** URL **`q=`** search + no-results state on `/srm` (server-side filter, `kind=` preserved).
 3. **Lifecycle / onboarding** — Next steps from `srm_supplier_lifecycle_and_onboarding_spec` (tasks, notifications, staged data capture) as separate issues.
-4. **Permissions depth** — Map `srm_permission_and_visibility_matrix` to `org.*` grants and API guards incrementally.
+4. **Permissions depth** — In progress: shared SRM grant resolver now gates list/detail and hides order metrics unless `org.orders` → view. Continue with API and field-level guards.
 5. **Compliance & documents** — Read-only hooks or attachments from `srm_compliance_and_document_control_spec` before write-heavy vault.
 6. **KPI / risk** — One chart or table from `srm_performance_risk_and_kpi_spec` (supplier health, concentration, SLA) scoped to demo data.
 7. **Integration pack** — One payload type + tests from `srm_integration_and_api_payload_pack` (inbound or outbound).
 8. **Workflow rules** — Explicit validations / transitions from `srm_workflow_and_business_rules` where they exceed today's approval + active flags.
 
-_Last updated: SRM list search (`?q=`), GAP_MAP introduction._
+_Last updated: SRM permissions slice (shared resolver + order-metrics visibility), SRM list search (`?q=`), GAP_MAP introduction._

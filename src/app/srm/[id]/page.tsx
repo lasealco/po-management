@@ -3,8 +3,9 @@ import { notFound } from "next/navigation";
 import { AccessDenied } from "@/components/access-denied";
 import { SupplierDetailClient } from "@/components/supplier-detail-client";
 import { WorkflowHeader } from "@/components/workflow-header";
-import { getViewerGrantSet, viewerHas } from "@/lib/authz";
+import { getViewerGrantSet } from "@/lib/authz";
 import { loadSupplierDetailSnapshot } from "@/lib/srm/load-supplier-detail-snapshot";
+import { resolveSrmPermissions } from "@/lib/srm/permissions";
 import { fetchSupplierOrderAnalytics } from "@/lib/supplier-order-analytics";
 import { prisma } from "@/lib/prisma";
 
@@ -30,7 +31,9 @@ export default async function SrmSupplierDetailPage({
     );
   }
 
-  if (!viewerHas(access.grantSet, "org.suppliers", "view")) {
+  const permissions = resolveSrmPermissions(access.grantSet);
+
+  if (!permissions.canViewSuppliers) {
     return (
       <div className="min-h-screen bg-zinc-50 px-6 py-16">
         <AccessDenied
@@ -46,9 +49,9 @@ export default async function SrmSupplierDetailPage({
   if (!snapshot) notFound();
 
   const kind = snapshot.srmCategory === "logistics" ? "logistics" : "product";
-  const canEdit = viewerHas(access.grantSet, "org.suppliers", "edit");
-  const canApprove = viewerHas(access.grantSet, "org.suppliers", "approve");
-  const canViewOrders = viewerHas(access.grantSet, "org.orders", "view");
+  const canEdit = permissions.canEditSuppliers;
+  const canApprove = permissions.canApproveSuppliers;
+  const canViewOrders = permissions.canViewOrders;
   const orderHistory = canViewOrders
     ? await fetchSupplierOrderAnalytics(prisma, tenant.id, snapshot.id)
     : null;

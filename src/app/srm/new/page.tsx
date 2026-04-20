@@ -2,7 +2,8 @@ import Link from "next/link";
 
 import { AccessDenied } from "@/components/access-denied";
 import { SupplierCreateForm } from "@/components/supplier-create-form";
-import { getViewerGrantSet, viewerHas } from "@/lib/authz";
+import { getViewerGrantSet } from "@/lib/authz";
+import { resolveSrmPermissions } from "@/lib/srm/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +32,9 @@ export default async function SrmNewSupplierPage({
     );
   }
 
-  if (!viewerHas(access.grantSet, "org.suppliers", "edit")) {
+  const permissions = resolveSrmPermissions(access.grantSet);
+
+  if (!permissions.canEditSuppliers) {
     return (
       <div className="min-h-screen bg-zinc-50 px-6 py-16">
         <AccessDenied
