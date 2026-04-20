@@ -4,6 +4,15 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import {
+  ACCOUNT_WORKSPACE_TABS,
+  parseAccountWorkspaceTab,
+  validateAccountSummaryInput,
+  validateContactCreateInput,
+  validateQuoteDraftInput,
+  type AccountWorkspaceTabId,
+} from "@/lib/crm/account-workspace";
+
 type AccountDetail = {
   id: string;
   name: string;
@@ -55,22 +64,20 @@ type QuoteRow = {
   updatedAt: string;
 };
 
-const TABS = [
+const TABS: ReadonlyArray<{ id: AccountWorkspaceTabId; label: string }> = [
   { id: "overview" as const, label: "Overview" },
   { id: "contacts" as const, label: "Contacts" },
   { id: "opportunities" as const, label: "Opportunities" },
   { id: "quotes" as const, label: "Quotes" },
   { id: "shipments" as const, label: "Shipments" },
   { id: "finance" as const, label: "Finance" },
-] as const;
-
-type AccountTabId = (typeof TABS)[number]["id"];
+];
 
 const WORKSPACE_ZONES: {
   step: string;
   title: string;
   blurb: string;
-  tabs: readonly AccountTabId[];
+  tabs: readonly AccountWorkspaceTabId[];
 }[] = [
   {
     step: "Step 1",
@@ -112,36 +119,39 @@ export function CrmAccountWorkspace({
   const pathname = usePathname();
 
   const initialTab = useMemo(() => {
-    const t = searchParams.get("tab");
-    if (t && TABS.some((x) => x.id === t)) return t as AccountTabId;
-    return "overview";
+    return parseAccountWorkspaceTab(searchParams.get("tab"));
   }, [searchParams]);
 
-  const [tab, setTab] = useState<AccountTabId>(initialTab);
+  const [tab, setTab] = useState<AccountWorkspaceTabId>(initialTab);
   useEffect(() => {
     setTab(initialTab);
   }, [initialTab]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
-    const current = params.get("tab") ?? "";
+    const params = new URLSearchParams(searchParams.toString());
+    const currentRaw = params.get("tab");
+    const current = currentRaw && ACCOUNT_WORKSPACE_TABS.includes(currentRaw as AccountWorkspaceTabId)
+      ? currentRaw
+      : "";
     const want = tab === "overview" ? "" : tab;
     if (current === want) return;
-    const nextParams = new URLSearchParams(window.location.search);
+    const nextParams = new URLSearchParams(searchParams.toString());
     if (tab === "overview") nextParams.delete("tab");
     else nextParams.set("tab", tab);
     const q = nextParams.toString();
     router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false });
-  }, [tab, pathname, router]);
+  }, [tab, pathname, router, searchParams]);
 
   const [account, setAccount] = useState<AccountDetail | null>(null);
   const [contacts, setContacts] = useState<ContactRow[]>([]);
   const [opportunities, setOpportunities] = useState<OppRow[]>([]);
   const [activities, setActivities] = useState<ActRow[]>([]);
   const [quotes, setQuotes] = useState<QuoteRow[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const [name, setName] = useState("");
   const [industry, setIndustry] = useState("");
@@ -153,8 +163,10 @@ export function CrmAccountWorkspace({
 
   const [quoteTitle, setQuoteTitle] = useState("");
 
-  const load = useCallback(async () => {
-    setError(null);
+  const load = useCallback(async (opts?: { refresh?: boolean }) => {
+    if (opts?.refresh) setRefreshing(true);
+    else setLoading(true);
+    setLoadError(null);
     try {
       const res = await fetch(`/api/crm/accounts/${accountId}`);
       const data = await res.json();
@@ -168,7 +180,10 @@ export function CrmAccountWorkspace({
       setActivities(data.activities ?? []);
       setQuotes(data.quotes ?? []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Load failed");
+      setLoadError(e instanceof Error ? e.message : "Load failed");
+    } finally {
+      if (opts?.refresh) setRefreshing(false);
+      else setLoading(false);
     }
   }, [accountId]);
 
@@ -178,9 +193,13 @@ export function CrmAccountWorkspace({
 
   async function saveAccount(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim()) return;
+    const validation = validateAccountSummaryInput({ name, industry });
+    if (!validation.ok) {
+      setActionError(validation.error);
+      return;
+    }
     setBusy(true);
-    setError(null);
+    setActionError(null);
     try {
       const res = await fetch(`/api/crm/accounts/${accountId}`, {
         method: "PATCH",
@@ -195,7 +214,7 @@ export function CrmAccountWorkspace({
       if (!res.ok) throw new Error(data.error ?? "Save failed");
       setAccount(data.account);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Save failed");
+      setActionError(err instanceof Error ? err.message : "Save failed");
     } finally {
       setBusy(false);
     }
@@ -203,9 +222,17 @@ export function CrmAccountWorkspace({
 
   async function addContact(e: React.FormEvent) {
     e.preventDefault();
-    if (!cFirst.trim() || !cLast.trim()) return;
+    const validation = validateContactCreateInput({
+      firstName: cFirst,
+      lastName: cLast,
+      email: cEmail,
+    });
+    if (!validation.ok) {
+      setActionError(validation.error);
+      return;
+    }
     setBusy(true);
-    setError(null);
+    setActionError(null);
     try {
       const res = await fetch("/api/crm/contacts", {
         method: "POST",
@@ -222,9 +249,9 @@ export function CrmAccountWorkspace({
       setCFirst("");
       setCLast("");
       setCEmail("");
-      await load();
+      await load({ refresh: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Save failed");
+      setActionError(err instanceof Error ? err.message : "Save failed");
     } finally {
       setBusy(false);
     }
@@ -232,9 +259,13 @@ export function CrmAccountWorkspace({
 
   async function createQuote(e: React.FormEvent) {
     e.preventDefault();
-    if (!quoteTitle.trim()) return;
+    const validation = validateQuoteDraftInput({ title: quoteTitle });
+    if (!validation.ok) {
+      setActionError(validation.error);
+      return;
+    }
     setBusy(true);
-    setError(null);
+    setActionError(null);
     try {
       const res = await fetch("/api/crm/quotes", {
         method: "POST",
@@ -247,22 +278,22 @@ export function CrmAccountWorkspace({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Save failed");
       setQuoteTitle("");
-      await load();
+      await load({ refresh: true });
       setTab("quotes");
       if (data.quote?.id) {
-        window.location.href = `/crm/quotes/${data.quote.id}`;
+        router.push(`/crm/quotes/${data.quote.id}`);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Save failed");
+      setActionError(err instanceof Error ? err.message : "Save failed");
     } finally {
       setBusy(false);
     }
   }
 
-  if (error && !account) {
+  if (loadError && !account) {
     return (
       <div className="mx-auto max-w-3xl px-6 py-16">
-        <p className="text-sm text-red-700">{error}</p>
+        <p className="text-sm text-red-700">{loadError}</p>
         <Link
           href="/crm"
           className="mt-4 inline-block text-sm font-medium text-[var(--arscmp-primary)] hover:underline"
@@ -273,7 +304,7 @@ export function CrmAccountWorkspace({
     );
   }
 
-  if (!account) {
+  if (!account && loading) {
     return (
       <div className="mx-auto max-w-3xl px-6 py-16 text-sm text-zinc-500">
         Loading…
@@ -281,7 +312,58 @@ export function CrmAccountWorkspace({
     );
   }
 
+  if (!account) {
+    return (
+      <div className="mx-auto max-w-3xl px-6 py-16">
+        <p className="text-sm text-zinc-700">
+          Account context is unavailable right now. Try reloading this workspace.
+        </p>
+        <Link
+          href="/crm/accounts"
+          className="mt-4 inline-block text-sm font-medium text-[var(--arscmp-primary)] hover:underline"
+        >
+          ← Back to Accounts
+        </Link>
+      </div>
+    );
+  }
+
   const canPatch = canEditAll || account.ownerUserId === actorUserId;
+  const panelLoading = loading || refreshing;
+  const canSaveAccountDraft = !!name.trim() && name.trim().length >= 2;
+  const canAddContactDraft =
+    !!cFirst.trim() &&
+    !!cLast.trim() &&
+    cFirst.trim().length >= 2 &&
+    cLast.trim().length >= 2;
+  const canCreateQuoteDraft = quoteTitle.trim().length >= 6;
+
+  const tabMeta: Record<AccountWorkspaceTabId, { description: string; empty: string }> = {
+    overview: {
+      description: "Track profile context and account timeline at a glance.",
+      empty: "No activities linked to this account yet.",
+    },
+    contacts: {
+      description: "Maintain key stakeholders and roles.",
+      empty: "No contacts are linked to this account yet.",
+    },
+    opportunities: {
+      description: "Review pipeline tied to this account.",
+      empty: "No opportunities are linked to this account yet.",
+    },
+    quotes: {
+      description: "Start and monitor commercial proposals.",
+      empty: "No quotes are linked to this account yet.",
+    },
+    shipments: {
+      description: "Execution placeholder for future shipment integrations.",
+      empty: "Shipment data is not available yet.",
+    },
+    finance: {
+      description: "Financial placeholder for ERP/accounting integrations.",
+      empty: "Financial account data is not available yet.",
+    },
+  };
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-8">
@@ -357,11 +439,23 @@ export function CrmAccountWorkspace({
         ))}
       </div>
 
-      {error ? (
+      {loadError ? (
         <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-900">
-          {error}
+          {loadError}
         </div>
       ) : null}
+      {actionError ? (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-900">
+          {actionError}
+        </div>
+      ) : null}
+      <section className="mb-4 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
+        <h2 className="text-sm font-semibold text-zinc-900">{TABS.find((x) => x.id === tab)?.label}</h2>
+        <p className="mt-1 text-sm text-zinc-600">{tabMeta[tab].description}</p>
+        {panelLoading ? (
+          <p className="mt-2 text-xs font-medium text-zinc-500">Refreshing account context…</p>
+        ) : null}
+      </section>
 
       {tab === "overview" ? (
         <>
@@ -397,7 +491,7 @@ export function CrmAccountWorkspace({
                   <span className="text-zinc-700">Strategic account</span>
                 </label>
                 <div className="sm:col-span-2">
-                  <button type="submit" disabled={busy || !name.trim()} className={primaryBtn}>
+                  <button type="submit" disabled={busy || !canSaveAccountDraft} className={primaryBtn}>
                     Save changes
                   </button>
                 </div>
@@ -409,8 +503,10 @@ export function CrmAccountWorkspace({
           <section className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
             <h2 className="text-lg font-semibold text-zinc-900">Recent activities</h2>
             <ul className="mt-4 divide-y divide-zinc-100 text-sm">
-              {activities.length === 0 ? (
-                <li className="py-3 text-zinc-500">No activities linked to this account.</li>
+              {panelLoading ? (
+                <li className="py-3 text-zinc-500">Loading activities…</li>
+              ) : activities.length === 0 ? (
+                <li className="py-3 text-zinc-500">{tabMeta.overview.empty}</li>
               ) : (
                 activities.map((a) => (
                   <li key={a.id} className="py-2">
@@ -452,7 +548,7 @@ export function CrmAccountWorkspace({
               />
               <button
                 type="submit"
-                disabled={busy || !cFirst.trim() || !cLast.trim()}
+                disabled={busy || !canAddContactDraft}
                 className={`${secondaryOutlineBtn} sm:col-span-3`}
               >
                 Add contact
@@ -464,8 +560,10 @@ export function CrmAccountWorkspace({
             </p>
           )}
           <ul className="mt-4 divide-y divide-zinc-100 text-sm">
-            {contacts.length === 0 ? (
-              <li className="py-3 text-zinc-500">No contacts yet.</li>
+            {panelLoading ? (
+              <li className="py-3 text-zinc-500">Loading contacts…</li>
+            ) : contacts.length === 0 ? (
+              <li className="py-3 text-zinc-500">{tabMeta.contacts.empty}</li>
             ) : (
               contacts.map((c) => (
                 <li key={c.id} className="py-2">
@@ -485,8 +583,10 @@ export function CrmAccountWorkspace({
         <section className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
           <h2 className="text-lg font-semibold text-zinc-900">Opportunities</h2>
           <ul className="mt-4 divide-y divide-zinc-100 text-sm">
-            {opportunities.length === 0 ? (
-              <li className="py-3 text-zinc-500">No opportunities on this account.</li>
+            {panelLoading ? (
+              <li className="py-3 text-zinc-500">Loading opportunities…</li>
+            ) : opportunities.length === 0 ? (
+              <li className="py-3 text-zinc-500">{tabMeta.opportunities.empty}</li>
             ) : (
               opportunities.map((o) => (
                 <li key={o.id} className="py-2">
@@ -523,7 +623,7 @@ export function CrmAccountWorkspace({
               </label>
               <button
                 type="submit"
-                disabled={busy || !quoteTitle.trim()}
+                disabled={busy || !canCreateQuoteDraft}
                 className={primaryBtn}
               >
                 Create & open
@@ -531,8 +631,10 @@ export function CrmAccountWorkspace({
             </form>
           ) : null}
           <ul className="mt-6 divide-y divide-zinc-100 text-sm">
-            {quotes.length === 0 ? (
-              <li className="py-3 text-zinc-500">No quotes for this account yet.</li>
+            {panelLoading ? (
+              <li className="py-3 text-zinc-500">Loading quotes…</li>
+            ) : quotes.length === 0 ? (
+              <li className="py-3 text-zinc-500">{tabMeta.quotes.empty}</li>
             ) : (
               quotes.map((q) => (
                 <li key={q.id} className="py-2">
@@ -557,10 +659,14 @@ export function CrmAccountWorkspace({
         <section className="rounded-2xl border border-amber-200 bg-amber-50/60 p-6 text-sm text-amber-950 shadow-sm">
           <h2 className="text-lg font-semibold text-amber-950">Shipments (placeholder)</h2>
           <p className="mt-2 leading-relaxed">
-            This panel will show milestones, bookings, and execution status when the{" "}
-            <strong>control tower / shipment</strong> integration is connected (after the
-            integration portal ships). Until then, use pipeline and activities tabs for manual
-            coordination notes.
+            This panel will show milestones, bookings, and execution status when shipment
+            integrations are connected.
+          </p>
+          <p className="mt-2 text-xs font-medium uppercase tracking-wide text-amber-800">
+            Current state: empty integration feed
+          </p>
+          <p className="mt-1 text-xs text-amber-900/90">
+            Use opportunities and activities for manual coordination until connectors are enabled.
           </p>
         </section>
       ) : null}
@@ -569,9 +675,14 @@ export function CrmAccountWorkspace({
         <section className="rounded-2xl border border-sky-200 bg-sky-50/60 p-6 text-sm text-sky-950 shadow-sm">
           <h2 className="text-lg font-semibold text-sky-950">Finance (placeholder)</h2>
           <p className="mt-2 leading-relaxed">
-            Invoices, payments, and DSO-style snapshots will appear here when an{" "}
-            <strong>ERP / accounting</strong> connector is available. No financial data is
-            synced for this account yet.
+            Invoices, payments, and account health snapshots appear here once ERP/accounting
+            connectors are enabled.
+          </p>
+          <p className="mt-2 text-xs font-medium uppercase tracking-wide text-sky-800">
+            Current state: empty integration feed
+          </p>
+          <p className="mt-1 text-xs text-sky-900/90">
+            No finance records are synced for this account yet.
           </p>
         </section>
       ) : null}
