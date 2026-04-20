@@ -85,7 +85,7 @@
 
 Handlers live in `src/lib/control-tower/post-actions.ts` (thin `src/app/api/control-tower/route.ts`).
 
-High-level groups: **references** · **tracking milestones** (+ pack apply) · **notes** · **documents** · **financial snapshots** · **cost lines** · **FX / display currency** · **alerts** · **exceptions** · **booking / forwarder** · **saved filters** · **shipment customer & carrier** · **sales order link / create** · **booking send/confirm** · **demo enrich/timeline** (optional **`shipmentId`**, regenerate + **`demoProfile`**: `delayed` \| `at_risk` \| `on_time`) · **legs** · **containers** · **cargo lines** · **exception code upsert** (catalog).
+High-level groups: **references** · **tracking milestones** (+ pack apply) · **notes** · **documents** · **financial snapshots** · **cost lines** · **FX / display currency** · **alerts** (single + **bulk acknowledge open alerts**) · **exceptions** · **booking / forwarder** · **saved filters** · **shipment customer & carrier** · **sales order link / create** · **booking send/confirm** · **demo enrich/timeline** (optional **`shipmentId`**, regenerate + **`demoProfile`**: `delayed` \| `at_risk` \| `on_time`) · **legs** · **containers** · **cargo lines** · **exception code upsert** (catalog).
 
 *(When adding actions, extend this list in the same PR.)*
 
@@ -133,9 +133,9 @@ Use this list when slicing PRs; refresh it whenever Control Tower behavior or `r
    - **Partial:** layout is still a **single tabular narrative** (`pdf-lib` + Helvetica), not a **logo-driven template pack**, multi-section executive KPI story, or pixel-faithful spec layouts from the PDF.
    - **Next smallest slice:** **raster logo hook** (tenant URL or upload) + typography / spacing tokens on the same PDF builder, reused by schedule + Download PDF — then add sections incrementally instead of a layout engine rewrite.
 6. **Workbench**
-   - **Done:** filters (incl. **open exception code** + **open alert type**), **saved views** (`CtSavedFilter`), **column visibility** (browser `localStorage` + optional **`columnVisibility` on saved view**), CSV export aligned to visible columns + **`# …` cap line** when truncated, **list cap** surfaced in UI, **deep links** from hub + executive + reports → `controlTowerWorkbenchPath` (status, overdue ETA, drills).
-   - **Partial / gap:** no **row multi-select** or **bulk** alert/exception/assign from the grid; no **server-stored default column visibility** per actor outside **`columnVisibility` inside saved-view JSON**.
-   - **Next smallest slice:** **multi-select + one bulk action** (e.g. acknowledge alerts or assign ops owner) with the same tenant scoping as single-row POST actions — **or** **server-stored default column visibility** per actor if ops consistency matters more than throughput.
+   - **Done:** filters (incl. **open exception code** + **open alert type**), **saved views** (`CtSavedFilter`), **column visibility** (browser `localStorage` + optional **`columnVisibility` on saved view**), CSV export aligned to visible columns + **`# …` cap line** when truncated, **list cap** surfaced in UI, **deep links** from hub + executive + reports → `controlTowerWorkbenchPath` (status, overdue ETA, drills), **row multi-select + bulk acknowledge open alerts** (`bulk_acknowledge_ct_alerts`) from the workbench list.
+   - **Partial / gap:** bulk operators remain narrow (alerts acknowledge only today); no bulk exception action or bulk ops-owner assignment yet; no **server-stored default column visibility** per actor outside **`columnVisibility` inside saved-view JSON**.
+   - **Next smallest slice:** add one more scoped bulk operator (`assign_ct_exception_owner` or shipment ops assignee) with the same tenant scoping/audit approach as existing single-row actions — **or** add **server-stored default column visibility** per actor if ops consistency matters more than throughput.
 7. **(Low priority)** **Report builder — exception / “NC” style analytics**
    - **Done elsewhere:** exceptions are first-class in **workbench**, **search**, **Shipment 360**, and **exception catalog** (`CtException` / `CtExceptionCode`); list/search APIs accept **`exceptionCode`** / **`alertType`** for open-queue style cuts.
    - **Now in `report-engine`:** `CT_REPORT_DIMENSIONS` includes **`exceptionCatalog`** and `CT_REPORT_MEASURES` includes **`openExceptions`** (`report-engine.ts`), with catalog label mapping in report rows.
@@ -160,6 +160,7 @@ File **one GitHub issue per bullet** when scheduling (titles are suggestions; ke
 
 | Date | Change |
 |------|--------|
+| 2026-04-20 | **Workbench bulk operator:** added row multi-select and **Acknowledge open alerts** action on `/control-tower/workbench`, backed by `POST /api/control-tower` action **`bulk_acknowledge_ct_alerts`** (tenant-scoped OPEN → ACKNOWLEDGED only, per-alert audit writes). |
 | 2026-04-20 | **Reporting phase 2:** report builder + engine now accept **`filters.exceptionCode`** (case-insensitive open/in-progress filter), and backlog **#7** reflects that exception analytics are live (`exceptionCatalog` + `openExceptions`). |
 | 2026-04-20 | Clarified **R3 Assist / chatbot** parity section as an explicit **docs-only** handoff artifact (no runtime changes) to match [issue #6](https://github.com/lasealco/po-management/issues/6) scope. |
 | 2026-04-20 | Near-term **4–7** re-checked against code (`report-engine` dimensions, `report-pdf` org line, workbench single-select); tightened Done/Partial/Next; **Suggested next PRs** aligned to **#4–7**; tracking [issue #3](https://github.com/lasealco/po-management/issues/3). |
