@@ -39,10 +39,31 @@ export default async function WmsPage() {
   return (
     <main className="mx-auto w-full max-w-7xl px-6 py-10">
       <header className="mb-8">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">WMS workspace</p>
         <h1 className="text-2xl font-semibold text-zinc-900">Warehouse operations</h1>
-        <p className="mt-2 max-w-2xl text-sm text-zinc-600">
-          Use the tabs above or the cards below to move between WMS areas. Each area is its own page so
-          the app stays organized as we add more from the blueprint.
+        <p className="mt-2 max-w-3xl text-sm text-zinc-600">
+          Use this page as your daily command center: confirm floor workload, scan stock confidence signals,
+          and jump straight into Setup, Operations, Stock, or Billing for action-level detail.
+        </p>
+        <div className="mt-4 grid gap-2 sm:grid-cols-3">
+          <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Step 1</p>
+            <p className="mt-1 text-sm font-medium text-zinc-900">Check floor health</p>
+            <p className="text-xs text-zinc-600">Review open tasks, waves, and outbound pressure.</p>
+          </div>
+          <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Step 2</p>
+            <p className="mt-1 text-sm font-medium text-zinc-900">Validate stock confidence</p>
+            <p className="text-xs text-zinc-600">Watch holds, movement velocity, and balance coverage.</p>
+          </div>
+          <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Step 3</p>
+            <p className="mt-1 text-sm font-medium text-zinc-900">Execute next action</p>
+            <p className="text-xs text-zinc-600">Use cards below to move into the right WMS workflow.</p>
+          </div>
+        </div>
+        <p className="mt-4 text-xs text-zinc-500">
+          Confidence note: counts below are live from this tenant and intended for operational triage, not month-end finance close.
         </p>
         {!canEdit ? (
           <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
@@ -63,7 +84,7 @@ export default async function WmsPage() {
             >
               <span className="text-base font-semibold text-zinc-900">{a.title}</span>
               <span className="mt-2 flex-1 text-sm text-zinc-600">{a.description}</span>
-              <span className="mt-4 text-sm font-medium text-violet-700">Open →</span>
+              <span className="mt-4 text-sm font-semibold text-[var(--arscmp-primary)]">Open area →</span>
             </Link>
           </li>
         ))}

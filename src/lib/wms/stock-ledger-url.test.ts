@@ -10,10 +10,12 @@ import {
 describe("normalizeMovementLedgerQueryString", () => {
   it("keeps only mv* keys, drops empties, and sorts", () => {
     const sp = new URLSearchParams(
-      "onHold=1&mvLimit=&mvType=PICK&foo=bar&mvWarehouse=w1&mvSince=&mvUntil=2024-01-02T00:00:00.000Z",
+      "onHold=1&mvLimit=&mvType=PICK&foo=bar&mvWarehouse=w1&mvSince=&mvUntil=2024-01-02T00:00:00.000Z&mvSortBy=quantity&mvSortDir=desc",
     );
     expect(normalizeMovementLedgerQueryString(sp)).toBe(
-      "mvType=PICK&mvUntil=" + encodeURIComponent("2024-01-02T00:00:00.000Z") + "&mvWarehouse=w1",
+      "mvSortBy=quantity&mvSortDir=desc&mvType=PICK&mvUntil=" +
+        encodeURIComponent("2024-01-02T00:00:00.000Z") +
+        "&mvWarehouse=w1",
     );
   });
 
@@ -25,12 +27,16 @@ describe("normalizeMovementLedgerQueryString", () => {
 
 describe("readStockLedgerUrlState", () => {
   it("reads known movement types and clears unknown mvType", () => {
-    const ok = new URLSearchParams("mvType=PICK&mvWarehouse=wh");
+    const ok = new URLSearchParams("mvType=PICK&mvWarehouse=wh&mvSortBy=quantity&mvSortDir=asc");
     expect(readStockLedgerUrlState(ok).movementType).toBe("PICK");
     expect(readStockLedgerUrlState(ok).warehouseId).toBe("wh");
+    expect(readStockLedgerUrlState(ok).sortBy).toBe("quantity");
+    expect(readStockLedgerUrlState(ok).sortDir).toBe("asc");
 
-    const bad = new URLSearchParams("mvType=NOT_A_TYPE");
+    const bad = new URLSearchParams("mvType=NOT_A_TYPE&mvSortBy=nope&mvSortDir=sideways");
     expect(readStockLedgerUrlState(bad).movementType).toBe("");
+    expect(readStockLedgerUrlState(bad).sortBy).toBe("");
+    expect(readStockLedgerUrlState(bad).sortDir).toBe("");
   });
 });
 
@@ -43,12 +49,16 @@ describe("mergeStockLedgerSearchParams", () => {
       sinceIso: "",
       untilIso: "",
       limit: "120",
+      sortBy: "quantity",
+      sortDir: "desc",
     });
     expect(merged.get("onHold")).toBe("1");
     expect(merged.get("taskType")).toBe("PICK");
     expect(merged.get("mvWarehouse")).toBe("w99");
     expect(merged.get("mvType")).toBe("PICK");
     expect(merged.get("mvLimit")).toBe("120");
+    expect(merged.get("mvSortBy")).toBe("quantity");
+    expect(merged.get("mvSortDir")).toBe("desc");
     expect(merged.has("mvSince")).toBe(false);
   });
 
@@ -60,10 +70,14 @@ describe("mergeStockLedgerSearchParams", () => {
       sinceIso: "",
       untilIso: "",
       limit: "",
+      sortBy: "",
+      sortDir: "",
     });
     expect(merged.get("onHold")).toBe("1");
     expect(merged.has("mvType")).toBe(false);
     expect(merged.has("mvWarehouse")).toBe(false);
+    expect(merged.has("mvSortBy")).toBe(false);
+    expect(merged.has("mvSortDir")).toBe(false);
   });
 });
 

@@ -45,25 +45,55 @@ export async function WmsHomeOverview({ tenantId }: { tenantId: string }) {
   ]);
 
   const tiles = [
-    { label: "Open WMS tasks", value: openTasks, hint: "All types (see breakdown below)" },
-    { label: "Open putaway", value: openPutaway, hint: "Inbound to bin" },
-    { label: "Open picks", value: openPick, hint: "Wave or ad-hoc" },
-    { label: "Open replenishments", value: openReplenish, hint: "From REPLENISH rules" },
-    { label: "Open cycle counts", value: openCycleCount, hint: "Awaiting count entry" },
-    { label: "Outbound in flight", value: outboundActive, hint: "Draft through packed" },
-    { label: "Active waves", value: wavesActive, hint: "Open or released" },
-    { label: "Balance rows", value: balanceRows, hint: "Bin × product" },
-    { label: "On-hold balances", value: balancesOnHold, hint: "QC / quarantine flags" },
-    { label: "Unbilled charges", value: unbilledEvents, hint: "Billing events not invoiced" },
-    { label: "Movements (7d)", value: movementsWeek, hint: "All movement types" },
+    { label: "Open WMS tasks", value: openTasks, hint: "All task types pending execution" },
+    { label: "Open putaway", value: openPutaway, hint: "Inbound stock waiting for final bin" },
+    { label: "Open picks", value: openPick, hint: "Order demand not fully picked yet" },
+    { label: "Open replenishments", value: openReplenish, hint: "Pick-face refill tasks pending" },
+    { label: "Open cycle counts", value: openCycleCount, hint: "Count tasks awaiting entry" },
+    { label: "Outbound in flight", value: outboundActive, hint: "Draft through packed outbound flow" },
+    { label: "Active waves", value: wavesActive, hint: "Wave batches open or released" },
+    { label: "Balance rows", value: balanceRows, hint: "Tracked bin × product rows" },
+    { label: "On-hold balances", value: balancesOnHold, hint: "QC or quarantine constrained stock" },
+    { label: "Unbilled charges", value: unbilledEvents, hint: "Billing events not yet invoiced" },
+    { label: "Movements (7d)", value: movementsWeek, hint: "Recorded stock ledger activity" },
+  ];
+  const confidenceSignals = [
+    {
+      label: "Task pressure",
+      value: openTasks,
+      status:
+        openTasks > 120 ? "High" : openTasks > 40 ? "Moderate" : "Stable",
+    },
+    {
+      label: "Stock quality holds",
+      value: balancesOnHold,
+      status:
+        balancesOnHold > 0 ? "Needs review" : "Clear",
+    },
+    {
+      label: "Ledger velocity (7d)",
+      value: movementsWeek,
+      status:
+        movementsWeek > 0 ? "Active" : "No movement",
+    },
   ];
 
   return (
     <section className="mb-10">
       <h2 className="text-sm font-semibold text-zinc-900">At a glance</h2>
       <p className="mt-1 text-xs text-zinc-600">
-        Live counts for this tenant — Operations and Stock tabs hold the detail.
+        Live operational counts for this tenant. Use these as triage signals, then open Operations/Stock/Billing for execution detail.
       </p>
+      <div className="mt-4 grid gap-2 sm:grid-cols-3">
+        {confidenceSignals.map((signal) => (
+          <div key={signal.label} className="rounded-lg border border-zinc-200 bg-white px-3 py-2 shadow-sm">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">{signal.label}</p>
+            <p className="mt-1 text-base font-semibold text-zinc-900">
+              {signal.status} · <span className="tabular-nums">{signal.value}</span>
+            </p>
+          </div>
+        ))}
+      </div>
       {!wmsDemoWarehouse ? (
         <p
           className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"

@@ -98,21 +98,52 @@ export function WmsBillingClient({ canEdit }: { canEdit: boolean }) {
   return (
     <main className="mx-auto w-full max-w-7xl px-6 py-8">
       <header className="mb-6">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">WMS billing workspace</p>
         <h1 className="text-2xl font-semibold text-zinc-900">WMS billing</h1>
         <p className="mt-1 max-w-3xl text-sm text-zinc-600">
-          Phase B: immutable billing events materialized from inventory movements, simple rate cards, and
-          draft invoice runs with CSV export. Ops truth stays in <span className="font-medium">InventoryMovement</span>; this layer is for charging only.
+          Review unbilled activity, validate rates, and issue draft invoices from recorded inventory movements.
+          Operational source data remains in <span className="font-medium">InventoryMovement</span>; this page is the
+          charging layer.
         </p>
+        <div className="mt-3 grid gap-2 sm:grid-cols-3">
+          <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Step 1</p>
+            <p className="mt-1 text-sm font-medium text-zinc-900">Sync charge events</p>
+            <p className="text-xs text-zinc-600">Pull eligible movement events into billing scope.</p>
+          </div>
+          <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Step 2</p>
+            <p className="mt-1 text-sm font-medium text-zinc-900">Create draft invoice</p>
+            <p className="text-xs text-zinc-600">Select an inclusive period and generate a draft run.</p>
+          </div>
+          <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Step 3</p>
+            <p className="mt-1 text-sm font-medium text-zinc-900">Post and export</p>
+            <p className="text-xs text-zinc-600">Post approved drafts and export CSV for downstream use.</p>
+          </div>
+        </div>
         {data.profileSourceNote ? (
           <p className="mt-2 text-xs text-zinc-500">{data.profileSourceNote}</p>
         ) : null}
         <p className="mt-3 text-sm text-zinc-600">
           Commercial profiles (Phase C) will feed rates later. For now you can cross-check commercial work in{" "}
-          <Link href="/crm/quotes" className="font-medium text-violet-700 underline-offset-2 hover:underline">
+          <Link
+            href="/crm/quotes"
+            className="font-medium text-[var(--arscmp-primary)] underline-offset-2 hover:underline"
+          >
             CRM → Quotes
           </Link>
           .
         </p>
+        <p className="mt-2 text-xs text-zinc-500">
+          Confidence note: totals are intended for operational invoicing readiness and should be reconciled in finance systems before external reporting.
+        </p>
+        {!canEdit ? (
+          <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            You have view-only billing access. Invoice create/post actions are disabled until{" "}
+            <span className="font-medium">org.wms → edit</span> is granted.
+          </p>
+        ) : null}
       </header>
 
       {error ? (
@@ -183,7 +214,7 @@ export function WmsBillingClient({ canEdit }: { canEdit: boolean }) {
                 periodTo: to.toISOString(),
               });
             }}
-            className="rounded border border-emerald-700 bg-emerald-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-40"
+            className="rounded border border-[var(--arscmp-primary)] bg-[var(--arscmp-primary)] px-3 py-2 text-sm font-medium text-white disabled:opacity-40"
           >
             Create draft invoice
           </button>
@@ -266,7 +297,7 @@ export function WmsBillingClient({ canEdit }: { canEdit: boolean }) {
                       {r.hasCsv ? (
                         <a
                           href={`/api/wms/billing?csvRun=${encodeURIComponent(r.id)}`}
-                          className="text-violet-700 underline-offset-2 hover:underline"
+                          className="text-[var(--arscmp-primary)] underline-offset-2 hover:underline"
                         >
                           Download
                         </a>

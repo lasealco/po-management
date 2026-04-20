@@ -162,6 +162,22 @@ type WmsData = {
   recentMovementsMeta: { limit: number; matchedCount: number; truncated: boolean };
 };
 
+type SavedLedgerView = {
+  id: string;
+  name: string;
+  filters: {
+    warehouseId?: string | null;
+    movementType?: string | null;
+    sinceIso?: string | null;
+    untilIso?: string | null;
+    limit?: string | null;
+    sortBy?: string | null;
+    sortDir?: string | null;
+  };
+  createdAt?: string;
+  updatedAt?: string;
+};
+
 export type WmsSection = "setup" | "operations" | "stock";
 
 const STOCK_LEDGER_MV_TYPE_PRESETS: Array<{ label: string; value: "" | InventoryMovementType }> = [
@@ -240,6 +256,8 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
   const lastLedgerUrlNormalized = useRef("");
   const [data, setData] = useState<WmsData | null>(null);
   const [busy, setBusy] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [selectedWarehouseId, setSelectedWarehouseId] = useState("");
   const [movementTypeFilter, setMovementTypeFilter] = useState<
@@ -296,6 +314,17 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
     "" | "PUTAWAY" | "PICK" | "REPLENISH" | "CYCLE_COUNT"
   >("");
   const [balanceTextFilter, setBalanceTextFilter] = useState("");
+  const [movementSort, setMovementSort] = useState<
+    "newest" | "oldest" | "type" | "qtyDesc" | "qtyAsc"
+  >("newest");
+  const [balanceSort, setBalanceSort] = useState<
+    "bin" | "product" | "availableDesc" | "availableAsc"
+  >("bin");
+  const [savedViews, setSavedViews] = useState<SavedLedgerView[]>([]);
+  const [savedViewsLoading, setSavedViewsLoading] = useState(false);
+  const [savedViewsError, setSavedViewsError] = useState<string | null>(null);
+  const [selectedSavedViewId, setSelectedSavedViewId] = useState("");
+  const [newSavedViewName, setNewSavedViewName] = useState("");
   const onHoldOnly = searchParams.get("onHold") === "1";
 
   useEffect(() => {
@@ -319,6 +348,15 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
       if (from.warehouseId) stockWarehouseDefaultApplied.current = true;
       setSelectedWarehouseId(from.warehouseId);
       setMovementTypeFilter(from.movementType);
+      if (from.sortBy === "quantity" && from.sortDir === "asc") {
+        setMovementSort("qtyAsc");
+      } else if (from.sortBy === "quantity" && from.sortDir === "desc") {
+        setMovementSort("qtyDesc");
+      } else if (from.sortBy === "createdAt" && from.sortDir === "asc") {
+        setMovementSort("oldest");
+      } else if (from.sortBy === "createdAt" && from.sortDir === "desc") {
+        setMovementSort("newest");
+      }
       setLedgerSince(from.sinceIso);
       setLedgerUntil(from.untilIso);
       setLedgerLimit(from.limit);
@@ -331,12 +369,24 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
 
   useEffect(() => {
     if (section !== "stock") return;
+    const urlSort =
+      movementSort === "qtyAsc"
+        ? { sortBy: "quantity" as const, sortDir: "asc" as const }
+        : movementSort === "qtyDesc"
+          ? { sortBy: "quantity" as const, sortDir: "desc" as const }
+          : movementSort === "oldest"
+            ? { sortBy: "createdAt" as const, sortDir: "asc" as const }
+            : movementSort === "newest"
+              ? { sortBy: "createdAt" as const, sortDir: "desc" as const }
+              : { sortBy: "" as const, sortDir: "" as const };
     const ledgerState = {
       warehouseId: selectedWarehouseId,
       movementType: movementTypeFilter,
       sinceIso: ledgerSince,
       untilIso: ledgerUntil,
       limit: ledgerLimit,
+      sortBy: urlSort.sortBy,
+      sortDir: urlSort.sortDir,
     };
     const desiredNorm = normalizeMovementLedgerQueryString(
       mergeStockLedgerSearchParams(new URLSearchParams(), ledgerState),
@@ -358,46 +408,69 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
     searchParams,
     selectedWarehouseId,
     movementTypeFilter,
+    movementSort,
     ledgerSince,
     ledgerUntil,
     ledgerLimit,
   ]);
 
   const load = useCallback(async () => {
-    const params = new URLSearchParams();
-    if (section === "stock") {
-      if (selectedWarehouseId) params.set("mvWarehouse", selectedWarehouseId);
-      if (movementTypeFilter) params.set("mvType", movementTypeFilter);
-      if (ledgerSince) params.set("mvSince", ledgerSince);
-      if (ledgerUntil) params.set("mvUntil", ledgerUntil);
-      if (ledgerLimit) params.set("mvLimit", ledgerLimit);
-    }
-    const url = params.toString() ? `/api/wms?${params.toString()}` : "/api/wms";
-    const res = await fetch(url, { cache: "no-store" });
-    const payload = (await res.json()) as WmsData & { error?: string };
-    if (!res.ok) {
-      setError(payload.error ?? "Could not load WMS.");
-      return;
-    }
-    setData(payload);
-    setSelectedWarehouseId((prev) => {
+    setIsRefreshing(true);
+    try {
+      const params = new URLSearchParams();
       if (section === "stock") {
-        if (prev) return prev;
-        if (stockWarehouseDefaultApplied.current) return prev;
-        const demoWh = payload.warehouses.find((w) => w.code === WMS_DEMO_WAREHOUSE_CODE);
-        if (!demoWh) return prev;
-        stockWarehouseDefaultApplied.current = true;
-        return demoWh.id;
+        if (selectedWarehouseId) params.set("mvWarehouse", selectedWarehouseId);
+        if (movementTypeFilter) params.set("mvType", movementTypeFilter);
+        if (ledgerSince) params.set("mvSince", ledgerSince);
+        if (ledgerUntil) params.set("mvUntil", ledgerUntil);
+        if (ledgerLimit) params.set("mvLimit", ledgerLimit);
+        if (movementSort === "qtyAsc") {
+          params.set("mvSort", "quantity");
+          params.set("mvDir", "asc");
+        } else if (movementSort === "qtyDesc") {
+          params.set("mvSort", "quantity");
+          params.set("mvDir", "desc");
+        } else if (movementSort === "oldest") {
+          params.set("mvSort", "createdAt");
+          params.set("mvDir", "asc");
+        } else if (movementSort === "newest") {
+          params.set("mvSort", "createdAt");
+          params.set("mvDir", "desc");
+        }
       }
-      if (!prev && payload.warehouses[0]) {
-        return payload.warehouses[0].id;
+      const url = params.toString() ? `/api/wms?${params.toString()}` : "/api/wms";
+      const res = await fetch(url, { cache: "no-store" });
+      const payload = (await res.json()) as WmsData & { error?: string };
+      if (!res.ok) {
+        setError(payload.error ?? "Could not load WMS.");
+        return;
       }
-      return prev;
-    });
+      setData(payload);
+      setLastRefreshedAt(new Date().toISOString());
+      setSelectedWarehouseId((prev) => {
+        if (section === "stock") {
+          if (prev) return prev;
+          if (stockWarehouseDefaultApplied.current) return prev;
+          const demoWh = payload.warehouses.find((w) => w.code === WMS_DEMO_WAREHOUSE_CODE);
+          if (!demoWh) return prev;
+          stockWarehouseDefaultApplied.current = true;
+          return demoWh.id;
+        }
+        if (!prev && payload.warehouses[0]) {
+          return payload.warehouses[0].id;
+        }
+        return prev;
+      });
+    } catch {
+      setError("Could not load WMS.");
+    } finally {
+      setIsRefreshing(false);
+    }
   }, [
     section,
     selectedWarehouseId,
     movementTypeFilter,
+    movementSort,
     ledgerSince,
     ledgerUntil,
     ledgerLimit,
@@ -512,6 +585,167 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
     });
   }, [balancesShown, balanceTextFilter]);
 
+  const sortedMovementsShown = useMemo(() => {
+    const rows = [...(data?.recentMovements ?? [])];
+    if (movementSort === "newest") {
+      rows.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    } else if (movementSort === "oldest") {
+      rows.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    } else if (movementSort === "type") {
+      rows.sort((a, b) => a.movementType.localeCompare(b.movementType));
+    } else if (movementSort === "qtyAsc") {
+      rows.sort((a, b) => Number(a.quantity) - Number(b.quantity));
+    } else {
+      rows.sort((a, b) => Number(b.quantity) - Number(a.quantity));
+    }
+    return rows;
+  }, [data?.recentMovements, movementSort]);
+
+  const sortedBalancesTableRows = useMemo(() => {
+    const rows = [...balancesTableRows];
+    if (balanceSort === "product") {
+      rows.sort((a, b) =>
+        `${a.product.productCode || a.product.sku || ""}${a.product.name}`.localeCompare(
+          `${b.product.productCode || b.product.sku || ""}${b.product.name}`,
+        ),
+      );
+    } else if (balanceSort === "availableAsc") {
+      rows.sort((a, b) => Number(a.availableQty) - Number(b.availableQty));
+    } else if (balanceSort === "availableDesc") {
+      rows.sort((a, b) => Number(b.availableQty) - Number(a.availableQty));
+    } else {
+      rows.sort((a, b) => a.bin.code.localeCompare(b.bin.code));
+    }
+    return rows;
+  }, [balanceSort, balancesTableRows]);
+
+  const loadSavedViews = useCallback(async () => {
+    if (section !== "stock") return;
+    setSavedViewsLoading(true);
+    setSavedViewsError(null);
+    try {
+      const res = await fetch("/api/wms/saved-ledger-views", { cache: "no-store" });
+      const payload = (await res.json()) as
+        | { items?: SavedLedgerView[]; views?: SavedLedgerView[]; error?: string }
+        | SavedLedgerView[];
+      if (!res.ok) {
+        setSavedViewsError(
+          (typeof payload === "object" && payload && "error" in payload && payload.error) ||
+            "Could not load saved views.",
+        );
+        return;
+      }
+      if (Array.isArray(payload)) {
+        setSavedViews(payload);
+      } else {
+        setSavedViews(payload.items ?? payload.views ?? []);
+      }
+    } catch {
+      setSavedViewsError("Could not load saved views.");
+    } finally {
+      setSavedViewsLoading(false);
+    }
+  }, [section]);
+
+  useEffect(() => {
+    if (section !== "stock") return;
+    startTransition(() => {
+      void loadSavedViews();
+    });
+  }, [section, loadSavedViews]);
+
+  function applySavedView(view: SavedLedgerView) {
+    const filters = view.filters ?? {};
+    const warehouseId = typeof filters.warehouseId === "string" ? filters.warehouseId : "";
+    const movementType = typeof filters.movementType === "string" ? filters.movementType : "";
+    const sinceIso = typeof filters.sinceIso === "string" ? filters.sinceIso : "";
+    const untilIso = typeof filters.untilIso === "string" ? filters.untilIso : "";
+    const limit = typeof filters.limit === "string" ? filters.limit : "";
+    const sortBy = filters.sortBy;
+    const sortDir = filters.sortDir;
+    if (!warehouseId) stockWarehouseDefaultApplied.current = true;
+    setSelectedWarehouseId(warehouseId);
+    setMovementTypeFilter(
+      movementType as "" | "RECEIPT" | "PUTAWAY" | "PICK" | "ADJUSTMENT" | "SHIPMENT",
+    );
+    setLedgerSince(sinceIso);
+    setLedgerUntil(untilIso);
+    setLedgerLimit(limit);
+    setLedgerDraftSince(sinceIso ? isoToDatetimeLocalValue(sinceIso) : "");
+    setLedgerDraftUntil(untilIso ? isoToDatetimeLocalValue(untilIso) : "");
+    setLedgerDraftLimit(limit);
+    if (sortBy === "quantity" && sortDir === "asc") {
+      setMovementSort("qtyAsc");
+    } else if (sortBy === "quantity" && sortDir === "desc") {
+      setMovementSort("qtyDesc");
+    } else if (sortBy === "createdAt" && sortDir === "asc") {
+      setMovementSort("oldest");
+    } else {
+      setMovementSort("newest");
+    }
+  }
+
+  async function createSavedView() {
+    const trimmed = newSavedViewName.trim();
+    if (!trimmed) return;
+    setSavedViewsError(null);
+    try {
+      const urlSort =
+        movementSort === "qtyAsc"
+          ? { sortBy: "quantity", sortDir: "asc" }
+          : movementSort === "qtyDesc"
+            ? { sortBy: "quantity", sortDir: "desc" }
+            : movementSort === "oldest"
+              ? { sortBy: "createdAt", sortDir: "asc" }
+              : { sortBy: "createdAt", sortDir: "desc" };
+      const body = {
+        name: trimmed,
+        filters: {
+          warehouseId: selectedWarehouseId || null,
+          movementType: movementTypeFilter || null,
+          sinceIso: ledgerSince || null,
+          untilIso: ledgerUntil || null,
+          limit: ledgerLimit || null,
+          sortBy: urlSort.sortBy,
+          sortDir: urlSort.sortDir,
+        },
+      };
+      const res = await fetch("/api/wms/saved-ledger-views", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const payload = (await res.json()) as { error?: string; item?: SavedLedgerView };
+      if (!res.ok) {
+        setSavedViewsError(payload.error ?? "Could not create saved view.");
+        return;
+      }
+      setNewSavedViewName("");
+      await loadSavedViews();
+      if (payload.item?.id) setSelectedSavedViewId(payload.item.id);
+    } catch {
+      setSavedViewsError("Could not create saved view.");
+    }
+  }
+
+  async function deleteSavedView(viewId: string) {
+    setSavedViewsError(null);
+    try {
+      const res = await fetch(`/api/wms/saved-ledger-views/${encodeURIComponent(viewId)}`, {
+        method: "DELETE",
+      });
+      const payload = (await res.json()) as { error?: string };
+      if (!res.ok) {
+        setSavedViewsError(payload.error ?? "Could not delete saved view.");
+        return;
+      }
+      if (selectedSavedViewId === viewId) setSelectedSavedViewId("");
+      await loadSavedViews();
+    } catch {
+      setSavedViewsError("Could not delete saved view.");
+    }
+  }
+
   async function runAction(body: Record<string, unknown>) {
     setBusy(true);
     setError(null);
@@ -538,13 +772,19 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
 
   const wmsDemoDatasetMissing = !data.warehouses.some((w) => w.code === WMS_DEMO_WAREHOUSE_CODE);
 
-  const movementsShown = data.recentMovements;
+  const movementsShown = sortedMovementsShown;
   const movementsMeta = data.recentMovementsMeta;
   const ledgerScopeActive = Boolean(
     selectedWarehouseId || movementTypeFilter || ledgerSince || ledgerUntil || ledgerLimit,
   );
   const ledgerEmptyNoMatch =
     movementsShown.length === 0 && movementsMeta.matchedCount === 0 && ledgerScopeActive;
+  const ledgerFilterCount =
+    (selectedWarehouseId ? 1 : 0) +
+    (movementTypeFilter ? 1 : 0) +
+    (ledgerSince ? 1 : 0) +
+    (ledgerUntil ? 1 : 0) +
+    (ledgerLimit ? 1 : 0);
 
   const headerTitle =
     section === "setup"
@@ -580,7 +820,18 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
           className="mb-4 rounded border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700"
           role="alert"
         >
-          {error}
+          {error}{" "}
+          <button
+            type="button"
+            className="ml-2 inline-flex rounded border border-rose-300 px-2 py-0.5 text-xs font-medium text-rose-800"
+            onClick={() => {
+              startTransition(() => {
+                void load();
+              });
+            }}
+          >
+            Retry load
+          </button>
         </p>
       ) : null}
       {wmsDemoDatasetMissing ? (
@@ -1873,6 +2124,98 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
       {section === "stock" ? (
         <>
       <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="min-w-[16rem] flex-1">
+            <h2 className="text-sm font-semibold text-zinc-900">Saved views</h2>
+            <p className="mt-1 text-xs text-zinc-600">
+              Save ledger filter combinations for faster operational review and repeatable stakeholder walkthroughs.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              startTransition(() => {
+                void loadSavedViews();
+              });
+            }}
+            disabled={savedViewsLoading}
+            className="rounded border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-800 disabled:opacity-40"
+          >
+            Refresh list
+          </button>
+        </div>
+        <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(14rem,1fr)_auto_auto]">
+          <select
+            value={selectedSavedViewId}
+            onChange={(e) => {
+              const id = e.target.value;
+              setSelectedSavedViewId(id);
+              if (!id) return;
+              const found = savedViews.find((v) => v.id === id);
+              if (found) applySavedView(found);
+            }}
+            className="rounded border border-zinc-300 px-3 py-2 text-sm"
+          >
+            <option value="">Select saved view</option>
+            {savedViews.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.name}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            disabled={!selectedSavedViewId}
+            onClick={() => {
+              const found = savedViews.find((v) => v.id === selectedSavedViewId);
+              if (found) applySavedView(found);
+            }}
+            className="rounded border border-[var(--arscmp-primary)] bg-[var(--arscmp-primary)] px-3 py-2 text-xs font-semibold text-white disabled:opacity-40"
+          >
+            Apply
+          </button>
+          <button
+            type="button"
+            disabled={!selectedSavedViewId}
+            onClick={() => {
+              if (!selectedSavedViewId) return;
+              void deleteSavedView(selectedSavedViewId);
+            }}
+            className="rounded border border-rose-300 px-3 py-2 text-xs font-medium text-rose-700 disabled:opacity-40"
+          >
+            Delete
+          </button>
+        </div>
+        <div className="mt-2 grid gap-2 sm:grid-cols-[minmax(14rem,1fr)_auto]">
+          <input
+            value={newSavedViewName}
+            onChange={(e) => setNewSavedViewName(e.target.value)}
+            placeholder="New view name (e.g. Daily receiving snapshot)"
+            className="rounded border border-zinc-300 px-3 py-2 text-sm"
+          />
+          <button
+            type="button"
+            disabled={!newSavedViewName.trim()}
+            onClick={() => void createSavedView()}
+            className="rounded border border-[var(--arscmp-primary)] bg-[var(--arscmp-primary)] px-3 py-2 text-xs font-semibold text-white disabled:opacity-40"
+          >
+            Save current filters
+          </button>
+        </div>
+        {savedViewsLoading ? (
+          <p className="mt-2 text-xs text-zinc-500">Loading saved views…</p>
+        ) : null}
+        {savedViews.length === 0 && !savedViewsLoading ? (
+          <p className="mt-2 text-xs text-zinc-500">No saved views yet. Save your current filter scope to create one.</p>
+        ) : null}
+        {savedViewsError ? (
+          <p className="mt-2 rounded border border-rose-200 bg-rose-50 px-2 py-1 text-xs text-rose-700">
+            {savedViewsError}
+          </p>
+        ) : null}
+      </section>
+
+      <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
         <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
           <div>
             <h2 className="text-sm font-semibold text-zinc-900">Recent stock movements</h2>
@@ -1884,17 +2227,69 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
               <span className="font-medium">Apply date / cap</span>; warehouse and movement type refetch automatically.
               CSV export downloads exactly the rows in the table below.
             </p>
+            <p className="mt-1 text-xs text-zinc-500">
+              Active filters: {ledgerFilterCount > 0 ? ledgerFilterCount : "none"} · Sort: {movementSort}
+            </p>
           </div>
-          <button
-            type="button"
-            disabled={movementsShown.length === 0}
-            title="Exports the same rows as the ledger table (current filters and row cap)."
-            onClick={() => downloadMovementLedgerCsv(movementsShown)}
-            className="shrink-0 rounded border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-800 disabled:opacity-40"
-          >
-            Export CSV
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="text-xs text-zinc-600">
+              Sort
+              <select
+                value={movementSort}
+                onChange={(e) =>
+                  setMovementSort(
+                    e.target.value as "newest" | "oldest" | "type" | "qtyDesc" | "qtyAsc",
+                  )
+                }
+                className="ml-1 rounded border border-zinc-300 px-2 py-1 text-xs"
+              >
+                <option value="newest">Newest first</option>
+                <option value="oldest">Oldest first</option>
+                <option value="type">Type A-Z</option>
+                <option value="qtyDesc">Qty high-low</option>
+                <option value="qtyAsc">Qty low-high</option>
+              </select>
+            </label>
+            <button
+              type="button"
+              onClick={() => {
+                stockWarehouseDefaultApplied.current = true;
+                setSelectedWarehouseId("");
+                setMovementTypeFilter("");
+                setMovementSort("newest");
+                setLedgerDraftSince("");
+                setLedgerDraftUntil("");
+                setLedgerDraftLimit("");
+                setLedgerSince("");
+                setLedgerUntil("");
+                setLedgerLimit("");
+              }}
+              className="shrink-0 rounded border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-800"
+              disabled={isRefreshing}
+            >
+              Reset filters
+            </button>
+            <button
+              type="button"
+              disabled={movementsShown.length === 0}
+              title="Exports the same rows as the ledger table (current filters and row cap)."
+              onClick={() => downloadMovementLedgerCsv(movementsShown)}
+              className="shrink-0 rounded border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-800 disabled:opacity-40"
+            >
+              Export CSV
+            </button>
+          </div>
         </div>
+        {lastRefreshedAt ? (
+          <p className="mb-2 text-xs text-zinc-500">
+            Last refreshed: {new Date(lastRefreshedAt).toLocaleString()}
+          </p>
+        ) : null}
+        {isRefreshing ? (
+          <p className="mb-2 rounded border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-900" role="status">
+            Refreshing stock ledger view…
+          </p>
+        ) : null}
         {movementsMeta.truncated ? (
           <p
             className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950"
@@ -1922,7 +2317,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                 <tr>
                   <td colSpan={7} className="px-2 py-3 text-zinc-500">
                     {ledgerEmptyNoMatch
-                      ? "No movements match these filters."
+                      ? "No movements match these filters. Reset filters or broaden date range."
                       : "No movements yet in this view."}
                   </td>
                 </tr>
@@ -1956,16 +2351,35 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
       <section className="rounded-lg border border-zinc-200 bg-white p-4">
         <div className="mb-2 flex flex-wrap items-end justify-between gap-2">
           <h2 className="text-sm font-semibold text-zinc-900">Stock balances</h2>
-          <label className="flex min-w-[12rem] flex-1 flex-col gap-1 text-xs text-zinc-600 sm:max-w-sm">
-            Filter by product or bin
-            <input
-              type="search"
-              value={balanceTextFilter}
-              onChange={(e) => setBalanceTextFilter(e.target.value)}
-              placeholder="Code, SKU, name, bin…"
-              className="rounded border border-zinc-300 px-2 py-1.5 text-sm"
-            />
-          </label>
+          <div className="flex min-w-[12rem] flex-1 flex-wrap items-end justify-end gap-2 sm:max-w-2xl">
+            <label className="flex min-w-[12rem] flex-1 flex-col gap-1 text-xs text-zinc-600 sm:max-w-sm">
+              Filter by product or bin
+              <input
+                type="search"
+                value={balanceTextFilter}
+                onChange={(e) => setBalanceTextFilter(e.target.value)}
+                placeholder="Code, SKU, name, bin…"
+                className="rounded border border-zinc-300 px-2 py-1.5 text-sm"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-xs text-zinc-600">
+              Sort
+              <select
+                value={balanceSort}
+                onChange={(e) =>
+                  setBalanceSort(
+                    e.target.value as "bin" | "product" | "availableDesc" | "availableAsc",
+                  )
+                }
+                className="rounded border border-zinc-300 px-2 py-1.5 text-sm"
+              >
+                <option value="bin">Bin A-Z</option>
+                <option value="product">Product A-Z</option>
+                <option value="availableDesc">Available high-low</option>
+                <option value="availableAsc">Available low-high</option>
+              </select>
+            </label>
+          </div>
         </div>
         {onHoldOnly ? (
           <p className="mb-2 rounded border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-900">
@@ -1995,11 +2409,11 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                   <td colSpan={8} className="px-2 py-3 text-zinc-500">
                     {balancesShown.length === 0
                       ? "No balances in this view."
-                      : "No balances match this filter."}
+                      : `No balances match this filter${balanceTextFilter.trim() ? `: "${balanceTextFilter.trim()}"` : "."}`}
                   </td>
                 </tr>
               ) : (
-                balancesTableRows.map((b) => (
+                sortedBalancesTableRows.map((b) => (
                   <tr key={b.id} className={Boolean(b.onHold) ? "bg-amber-50/80" : undefined}>
                     <td className="px-2 py-1">{b.warehouse.code || b.warehouse.name}</td>
                     <td className="px-2 py-1">
