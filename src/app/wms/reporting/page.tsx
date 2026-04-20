@@ -79,6 +79,9 @@ export default async function WmsReportingPage() {
             Operations workspace
           </Link>
         </div>
+        <p className="mt-3 text-xs text-zinc-500">
+          Confidence note: this workspace highlights operational trend signals and should be paired with ledger/accounting systems for formal external reporting.
+        </p>
       </section>
 
       <section className="mt-6 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
@@ -88,7 +91,7 @@ export default async function WmsReportingPage() {
       <div className="mt-6 flex flex-wrap gap-3 text-sm">
         <Link
           href="/wms/stock"
-          className="inline-flex items-center rounded-xl border border-zinc-300 bg-white px-4 py-2 text-zinc-700 hover:bg-zinc-50"
+          className="inline-flex items-center rounded-xl border border-[var(--arscmp-primary)]/30 bg-[var(--arscmp-primary-50)] px-4 py-2 font-medium text-[var(--arscmp-primary)] hover:bg-[var(--arscmp-primary)]/10"
         >
           Stock & ledger
         </Link>
