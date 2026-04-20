@@ -33,20 +33,12 @@ export type AssistSuggestedFilters = {
   productTraceQ?: string;
 };
 
-const MAX_PRODUCT_TRACE_Q = 64;
 const MAX_LIST_FILTER_TOKEN = 80;
 
 function sanitizeListFilterToken(raw: string): string | undefined {
   const t = raw.trim().slice(0, MAX_LIST_FILTER_TOKEN);
   if (!t || !/^[\w.-]+$/i.test(t)) return undefined;
   return t;
-}
-
-function sanitizeProductTraceQuery(raw: string): string | null {
-  const m = raw.trim().match(/^([A-Za-z0-9._-]+)/);
-  if (!m) return null;
-  const t = m[1].slice(0, MAX_PRODUCT_TRACE_Q);
-  return t || null;
 }
 
 const STATUS_WORDS: ShipmentStatus[] = [
