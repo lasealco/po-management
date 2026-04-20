@@ -40,7 +40,7 @@ export function TariffImportUploadFormClient({
       if (!res.ok) {
         const fromServer = typeof data.error === "string" ? data.error.trim() : "";
         const detail = fromServer || "The server did not accept this upload.";
-        setError(`${detail} If this keeps happening, note HTTP ${res.status} for support.");
+        setError(`${detail} If this keeps happening, note HTTP ${res.status} for support.`);
         return;
       }
       if (data.batch?.id) {

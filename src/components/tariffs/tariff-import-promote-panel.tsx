@@ -37,7 +37,7 @@ export function TariffImportPromotePanel({
       if (!res.ok) {
         const fromServer = typeof data.error === "string" ? data.error.trim() : "";
         const detail = fromServer || "The fixture request was rejected.";
-        setError(`${detail} (HTTP ${res.status})");
+        setError(`${detail} (HTTP ${res.status})`);
         return;
       }
       router.refresh();
@@ -69,7 +69,7 @@ export function TariffImportPromotePanel({
       if (!res.ok) {
         const fromServer = typeof data.error === "string" ? data.error.trim() : "";
         const detail = fromServer || "Promote was rejected.";
-        setError(`${detail} (HTTP ${res.status})");
+        setError(`${detail} (HTTP ${res.status})`);
         return;
       }
       router.refresh();
