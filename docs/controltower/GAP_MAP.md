@@ -117,37 +117,39 @@ High-level groups: **references** · **tracking milestones** (+ pack apply) · *
 
 ## Near-term build order (engineering backlog)
 
+Use this list when slicing PRs; refresh it whenever Control Tower behavior or `report-engine` contracts change ([issue #3](https://github.com/lasealco/po-management/issues/3)). **1–3** are hygiene plus already-shipped foundations; **4–7** are the active near-term product gaps.
+
 1. **Keep this file current** when merging Control Tower PRs (checkbox discipline).
 2. ~~**Exception catalog admin**~~ — ✅ Settings page + `GET /api/control-tower/exception-codes` + `upsert_ct_exception_code` POST action.
 3. ~~**Integration stub**~~ — 🟡 `POST /api/integrations/control-tower/inbound` + audit; **idempotent replays** (`idempotencyKey` + `INBOUND_WEBHOOK_EVENT` audit), **`generic_carrier_v1` / `carrier_webhook_v1` / `tms_event_v1` / `visibility_flat_v1`** + canonical milestone mapping, **`CtTrackingMilestone`** upsert — extend with carrier-specific mappers as needed (`carrier_webhook_v1` batch cap: env up to 200).
-4. **Assist / chatbot** (vs **`control_tower_search_and_chatbot_spec_*.pdf`** — **§ Assist / chatbot — gap vs PDF** in **R3** + [issue #6](https://github.com/lasealco/po-management/issues/6))
-   - **Done:** rule-based routing + optional LLM merge; **keyword** doc retrieval (`assist-retrieval.ts`, static corpus, no embeddings) feeding hints + `retrievedDocSnippets`; saved **CT report** names + saved **workbench filter** names in assist payload; broad snippet set (search, schedules, cron routes, digest, parties, legs/cargo, etc.) — see **R3 Assist** row above; **gap checklist** for the next implementer lives in the **R3** subsection (issue **#6**).
-   - **Partial:** “narrow assistant” — no embedding / vector stage; no first-class **tool** layer (safe `POST /api/control-tower` actions from the model with guardrails) as in a full chatbot product.
-   - **Next smallest slice:** pick one vertical first — e.g. **vector or hosted embedding index** over the same doc corpus, **or** a minimal **tool schema** (read-only list + one or two audited mutations) behind a feature flag — before trying full spec parity.
+4. **Assist / chatbot** (vs **`control_tower_search_and_chatbot_spec_*.pdf`** — **Assist / chatbot — gap vs PDF** subsection under **R3** + [issue #6](https://github.com/lasealco/po-management/issues/6))
+   - **Done:** rule-based routing + optional LLM merge; **keyword-only** doc retrieval (`assist-retrieval.ts` — no embedding index in this vertical) feeding hints + `retrievedDocSnippets`; saved **CT report** names + saved **workbench filter** names in assist payload; broad snippet set (search, schedules, cron routes, digest, parties, legs/cargo, etc.) — see **R3 Assist** row above; **gap checklist** for the next implementer lives in the **R3** subsection (issue **#6**).
+   - **Partial:** **per-request** assistant, not threaded chat sessions; no **semantic / vector** retrieval stage; no allowlisted **tool-calling** loop that executes `POST /api/control-tower` actions with operator confirmation — today the model path is mostly **suggestive** (deep links + hints), not autonomous agent loops.
+   - **Next smallest slice:** pick **one** vertical first — **embedding-backed retrieval** over the same corpus (feature-flagged, keyword fallback) **or** a **minimal tool schema** (read-only list + one or two audited mutations with explicit UI confirm) — before chasing full PDF parity.
 5. **Reporting templates** (vs `control_tower_reporting_and_kpi_spec`)
-   - **Done:** builder **run** + **runSummary** scope strip; **saved reports** + dashboard widgets + modal insight (**503** still returns scope); **email schedules** (cron + Resend) with **CSV + PDF** attachments; in-app **Download CSV / PDF**; shared **labels** (`report-labels.ts`) in PDF + plain-text email (measure · dimension, date window, compare).
-   - **Partial:** PDF/email are **tabular summary** layouts (`pdf-lib`), not marketing-grade branded packs or multi-section narrative KPI pages from the PDF.
-   - **Next smallest slice:** one **branded** PDF path (cover, typography, tenant logo hook) reused by schedule + Download PDF, then iterate sections — rather than a big-bang layout engine.
+   - **Done:** builder **run** + **runSummary** scope strip; **saved reports** + dashboard widgets + modal insight (**503** still returns scope); **email schedules** (cron + Resend) with **CSV + PDF** attachments; in-app **Download CSV / PDF**; shared **labels** (`report-labels.ts`) in PDF + plain-text email (measure · dimension, date window, compare); PDF **`organizationLabel`** path (`report-pdf.ts`) — tenant/org line on cover + footer tagline + per-page corner (builder + schedule cron pass tenant name when known).
+   - **Partial:** layout is still a **single tabular narrative** (`pdf-lib` + Helvetica), not a **logo-driven template pack**, multi-section executive KPI story, or pixel-faithful spec layouts from the PDF.
+   - **Next smallest slice:** **raster logo hook** (tenant URL or upload) + typography / spacing tokens on the same PDF builder, reused by schedule + Download PDF — then add sections incrementally instead of a layout engine rewrite.
 6. **Workbench**
    - **Done:** filters (incl. **open exception code** + **open alert type**), **saved views** (`CtSavedFilter`), **column visibility** (browser `localStorage` + optional **`columnVisibility` on saved view**), CSV export aligned to visible columns + **`# …` cap line** when truncated, **list cap** surfaced in UI, **deep links** from hub + executive + reports → `controlTowerWorkbenchPath` (status, overdue ETA, drills).
-   - **Partial / gap:** no **row multi-select** or **bulk** alert/exception/assign from the grid; column defaults do not sync as a first-class **per-user server profile** outside saved-view JSON.
-   - **Next smallest slice:** **multi-select + one bulk action** (e.g. acknowledge alerts or assign ops owner) with the same tenant scoping as single-row POST actions — or **server-stored default column visibility** per actor if ops consistency matters more than throughput.
+   - **Partial / gap:** no **row multi-select** or **bulk** alert/exception/assign from the grid; no **server-stored default column visibility** per actor outside **`columnVisibility` inside saved-view JSON**.
+   - **Next smallest slice:** **multi-select + one bulk action** (e.g. acknowledge alerts or assign ops owner) with the same tenant scoping as single-row POST actions — **or** **server-stored default column visibility** per actor if ops consistency matters more than throughput.
 7. **(Low priority)** **Report builder — exception / “NC” style analytics**
    - **Done elsewhere:** exceptions are first-class in **workbench**, **search**, **Shipment 360**, and **exception catalog** (`CtException` / `CtExceptionCode`); list/search APIs accept **`exceptionCode`** / **`alertType`** for open-queue style cuts.
-   - **Not in `report-engine` today:** dimensions are **`none` · status · mode · lane · carrier · customer · supplier · origin · destination · month`** only (`CT_REPORT_DIMENSIONS` in `report-engine.ts`) — no **exception code / type** bucket, no **% with open exception** measure.
+   - **Not in `report-engine` today:** `CT_REPORT_DIMENSIONS` is exactly **`none` · `status` · `mode` · `lane` · `carrier` · `customer` · `supplier` · `origin` · `destination` · `month`** (`report-engine.ts`) — no **exception code / type** dimension, no **open-exception rate** or **shipments-with-open-exception** measure in `CT_REPORT_MEASURES`.
    - **Next smallest slice:** add **`exceptionCode`** (catalog label join) as a **dimension** *or* one aggregate measure (**open exception count** / **shipments with open exception**), plus optional **report filter** mirroring workbench `exceptionCode` — before unstructured **rootCause** / external NC codes (better for export + AI insight unless normalized).
 
 ---
 
 ## Suggested next PRs
 
-File each bullet as its own GitHub issue when you pull it into a sprint (titles are suggestions; scope should stay one vertical per PR).
+File **one GitHub issue per bullet** when scheduling (titles are suggestions; keep each PR to a single vertical). Order mirrors backlog **#4 → #7** above.
 
-- **`[tower] Assist: embedding-backed retrieval`** — Vector or managed embeddings over the existing assist corpus + feature flag; keep keyword retrieval as fallback.
+- **`[tower] Assist: embedding-backed retrieval`** — Vector or managed embeddings over the existing assist corpus + feature flag; keep keyword retrieval as fallback (closes the largest **Assist / chatbot** retrieval gap).
 - **`[tower] Assist: audited tool calls for Control Tower POST actions`** — Small allowlisted mutation set + schema for the LLM path; explicit operator confirmation in UI where needed.
-- **`[tower] Reporting: branded PDF / email template pass`** — First branded layout pass shared by schedule attachment + Download PDF (logo/tenant line, typography), then iterate toward KPI spec sections.
+- **`[tower] Reporting: logo + typography pass on tabular PDF`** — Raster logo hook + spacing/typography tokens on `report-pdf.ts`, shared by schedule attachment + Download PDF; then iterate KPI spec sections.
 - **`[tower] Workbench: multi-select + bulk operator action`** — e.g. bulk alert ack or bulk assignee, reusing tenant scope and existing `POST /api/control-tower` patterns.
-- **`[tower] Report engine: exception-aware dimensions / measures`** — Extend `report-engine` + builder UI with exception catalog labels and/or “open exception rate” style measures; optional `exceptionCode` filter parity with workbench.
+- **`[tower] Report engine: exception-aware dimensions / measures`** — Extend `report-engine.ts` + builder UI with exception catalog labels and/or “open exception rate” style measures; optional `exceptionCode` filter parity with workbench.
 
 ---
 
@@ -155,8 +157,8 @@ File each bullet as its own GitHub issue when you pull it into a sprint (titles 
 
 | Date | Change |
 |------|--------|
-| 2026-04-20 | Near-term **4–7** refreshed (done / partial / next slice); added **Suggested next PRs**; tracking issue [#3](https://github.com/lasealco/po-management/issues/3). |
-| 2026-04-20 | **R3 Assist / chatbot:** gap narrative + **spec parity checklist** vs **`control_tower_search_and_chatbot_spec_*.pdf`** (rows + **§** subsection); [issue #6](https://github.com/lasealco/po-management/issues/6). |
+| 2026-04-20 | Near-term **4–7** re-checked against code (`report-engine` dimensions, `report-pdf` org line, workbench single-select); tightened Done/Partial/Next; **Suggested next PRs** aligned to **#4–7**; tracking [issue #3](https://github.com/lasealco/po-management/issues/3). |
+| 2026-04-20 | **R3 Assist / chatbot:** gap narrative + **spec parity checklist** vs **`control_tower_search_and_chatbot_spec_*.pdf`** (rows + dedicated subsection); [issue #6](https://github.com/lasealco/po-management/issues/6). |
 | 2026-04-18 | Backlog **#7 (low priority)**: report builder exception / NC-style analytics (deferred; workbench + 360 already cover triage). |
 | 2026-04-17 | Initial `GAP_MAP.md` + `README.md`. Implemented **Settings → Control Tower exception types** + `exception-codes` GET + `upsert_ct_exception_code` POST action. |
 | 2026-04-17 | Control Tower inbound webhook stub; workbench **table column** prefs + CSV alignment; assist `supplier:` / `customer:` cuid filters + search API support. |
