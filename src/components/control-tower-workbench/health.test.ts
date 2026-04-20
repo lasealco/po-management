@@ -55,6 +55,7 @@ describe("classifyShipmentHealth", () => {
 
   it("marks queue alerts as at risk", () => {
     const row = buildRow({
+      eta: "2099-01-01T00:00:00.000Z",
       openQueueCounts: { openAlerts: 2, openExceptions: 0 },
       trackingMilestoneSummary: { openCount: 2, lateCount: 0, next: null },
     });

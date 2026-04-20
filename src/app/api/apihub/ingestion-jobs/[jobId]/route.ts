@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getActorUserId } from "@/lib/authz";
 import { APIHUB_INGESTION_JOB_STATUSES } from "@/lib/apihub/constants";
+import { apiHubError, apiHubValidationError } from "@/lib/apihub/api-error";
 import { toApiHubIngestionRunDto } from "@/lib/apihub/ingestion-run-dto";
 import { getApiHubIngestionRunById, transitionApiHubIngestionRun } from "@/lib/apihub/ingestion-runs-repo";
 import { ApiHubRunStatus, canTransitionRunStatus, isValidRunStatus } from "@/lib/apihub/run-lifecycle";
@@ -71,10 +72,13 @@ export async function PATCH(request: Request, context: { params: Promise<{ jobId
 
   const rawStatus = typeof body.status === "string" ? body.status.trim().toLowerCase() : "";
   if (!isValidRunStatus(rawStatus)) {
-    return NextResponse.json(
-      { error: `status must be one of: ${APIHUB_INGESTION_JOB_STATUSES.join(", ")}.` },
-      { status: 400 },
-    );
+    return apiHubValidationError(400, "VALIDATION_ERROR", "Run payload validation failed.", [
+      {
+        field: "status",
+        code: "INVALID_ENUM",
+        message: `status must be one of: ${APIHUB_INGESTION_JOB_STATUSES.join(", ")}.`,
+      },
+    ]);
   }
 
   const existing = await getApiHubIngestionRunById({ tenantId: tenant.id, runId: jobId });
@@ -85,10 +89,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ jobId
     return NextResponse.json({ error: "Run has invalid persisted status." }, { status: 409 });
   }
   if (!canTransitionRunStatus(existing.status as ApiHubRunStatus, rawStatus)) {
-    return NextResponse.json(
-      { error: `Invalid status transition: ${existing.status} -> ${rawStatus}.` },
-      { status: 409 },
-    );
+    return apiHubError(409, "INVALID_STATUS_TRANSITION", `Invalid status transition: ${existing.status} -> ${rawStatus}.`);
   }
 
   const resultSummary =

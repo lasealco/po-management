@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getActorUserId } from "@/lib/authz";
 import { APIHUB_INGESTION_JOB_STATUSES } from "@/lib/apihub/constants";
+import { apiHubValidationError } from "@/lib/apihub/api-error";
 import { toApiHubIngestionRunDto } from "@/lib/apihub/ingestion-run-dto";
 import { createApiHubIngestionRun, listApiHubIngestionRuns } from "@/lib/apihub/ingestion-runs-repo";
 import { isValidRunStatus } from "@/lib/apihub/run-lifecycle";
@@ -37,10 +38,13 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const rawStatus = (url.searchParams.get("status") ?? "").trim().toLowerCase();
   if (rawStatus.length > 0 && !isValidRunStatus(rawStatus)) {
-    return NextResponse.json(
-      { error: `status must be one of: ${APIHUB_INGESTION_JOB_STATUSES.join(", ")}.` },
-      { status: 400 },
-    );
+    return apiHubValidationError(400, "VALIDATION_ERROR", "Run query validation failed.", [
+      {
+        field: "status",
+        code: "INVALID_ENUM",
+        message: `status must be one of: ${APIHUB_INGESTION_JOB_STATUSES.join(", ")}.`,
+      },
+    ]);
   }
 
   const rawLimit = Number(url.searchParams.get("limit") ?? "20");

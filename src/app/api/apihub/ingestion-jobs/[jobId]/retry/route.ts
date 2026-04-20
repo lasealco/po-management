@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getActorUserId } from "@/lib/authz";
+import { apiHubError } from "@/lib/apihub/api-error";
 import { toApiHubIngestionRunDto } from "@/lib/apihub/ingestion-run-dto";
 import { retryApiHubIngestionRun } from "@/lib/apihub/ingestion-runs-repo";
 import { getDemoTenant } from "@/lib/demo-tenant";
@@ -59,10 +60,10 @@ export async function POST(request: Request, context: { params: Promise<{ jobId:
     return NextResponse.json({ run: toApiHubIngestionRunDto(retried) }, { status: 201 });
   } catch (error) {
     if (error instanceof Error && error.message === "retry_requires_failed_status") {
-      return NextResponse.json({ error: "Only failed runs can be retried." }, { status: 409 });
+      return apiHubError(409, "RETRY_REQUIRES_FAILED", "Only failed runs can be retried.");
     }
     if (error instanceof Error && error.message === "retry_limit_reached") {
-      return NextResponse.json({ error: "Run has reached its max retry attempts." }, { status: 409 });
+      return apiHubError(409, "RETRY_LIMIT_REACHED", "Run has reached its max retry attempts.");
     }
     throw error;
   }
