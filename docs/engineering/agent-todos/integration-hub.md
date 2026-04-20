@@ -1,21 +1,23 @@
-# Integration hub — agent todo list (greenfield)
+# Integration hub / API hub — agent todo list (greenfield)
 
-**GitHub label:** `module:integration-hub` (create label when first issue ships, or reuse `module:system` until then)  
-**Status:** Module **not started** — there is no `docs/integration-hub/` pack in-repo yet. Treat this file as **first slices** until a spec lands.
+**GitHub label:** `module:integration-hub`  
+**Live spec + docs:** **[`docs/apihub/README.md`](../../apihub/README.md)** — ingestion / integration API hub; full draft: [`integrations-ai-assisted-ingestion.md`](../../apihub/integrations-ai-assisted-ingestion.md).  
+**Gap map:** [`docs/apihub/GAP_MAP.md`](../../apihub/GAP_MAP.md).
 
-**Suggested allowed paths (v0):** `src/app/integration/**` (new segment), `src/lib/integration/**`, `src/app/api/integration/**` — adjust when product picks names.
+**Suggested allowed paths (P0):** `docs/apihub/**`, `docs/engineering/agent-todos/integration-hub.md`, `src/app/apihub/**`, `src/app/api/apihub/**`, optional tiny `src/lib/apihub/**`
 
 ---
 
 ## Phase 0 — skeleton (safe, no backend contract yet)
 
-- [ ] **Product one-pager** — what “hub” connects (CT, CRM, WMS, tariff, external webhooks); link from issue or add `docs/integration-hub/README.md`.
-- [ ] **Route shell** — read-only page: title, steps 1–3 placeholder, links to existing module hubs (no new secrets).
-- [ ] **Nav / command palette** — single entry behind entitlement flag (reuse pattern from other modules; coordinate in issue if touching `app-nav`).
+- [x] **Product / technical spec** — [`docs/apihub/integrations-ai-assisted-ingestion.md`](../../apihub/integrations-ai-assisted-ingestion.md) (v1 draft; iterate in PRs).
+- [ ] **Route shell** — `/apihub` landing + step placeholders — GitHub [#16](https://github.com/lasealco/po-management/issues/16) (meeting batch P0).
+- [ ] **Health API** — `GET /api/apihub/health` stub (same issue).
+- [ ] **Nav / command palette** — optional single entry (minimal diff; see #16).
 
 ---
 
-## Phase 1 — contracts (after one-pager)
+## Phase 1 — contracts (after P0)
 
 - [ ] **Connector registry** — DB table + CRUD API stub + empty UI list (issue must include Prisma scope).
 - [ ] **Health / last sync** — display-only fields on registry rows (mock data ok until integrations exist).
@@ -25,4 +27,4 @@
 
 ## Hygiene
 
-- [ ] When PDF/spec exists, add `docs/integration-hub/GAP_MAP.md` and trim this file so checkboxes map 1:1 to spec sections.
+- [ ] Keep [`docs/apihub/GAP_MAP.md`](../../apihub/GAP_MAP.md) current when merging API hub PRs.

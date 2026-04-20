@@ -12,6 +12,7 @@ These markdown files are the **source bodies** for fat issues meant for **~2+ ho
 | Tariff | [#12](https://github.com/lasealco/po-management/issues/12) | [`_gh-issue-body-tariff-meeting.md`](./_gh-issue-body-tariff-meeting.md) |
 | SRM | [#13](https://github.com/lasealco/po-management/issues/13) | [`_gh-issue-body-srm-meeting.md`](./_gh-issue-body-srm-meeting.md) |
 | Sales orders | [#14](https://github.com/lasealco/po-management/issues/14) | [`_gh-issue-body-sales-orders-meeting.md`](./_gh-issue-body-sales-orders-meeting.md) |
+| API hub (ingestion P0) | [#16](https://github.com/lasealco/po-management/issues/16) | [`_gh-issue-body-apihub-p0.md`](./_gh-issue-body-apihub-p0.md) |
 
 **Parallel rule:** start **at most one agent per issue**, each on **different module paths**. **Tariff** ([#12](https://github.com/lasealco/po-management/issues/12)) and **sales orders** ([#14](https://github.com/lasealco/po-management/issues/14)) are different modules — OK in parallel; do **not** mix tariff paths into #14.
 
@@ -25,4 +26,4 @@ Do not run db:seed or db:migrate unless the issue explicitly says so — if bloc
 If a step is larger than expected, finish the current checkbox, commit, push, then continue on the same branch in the same chat with "continue with the next checkbox".
 ```
 
-Replace `#___` with **9**–**14** (see table; **12** = tariff, **14** = sales orders).
+Replace `#___` with **9**–**14** or **16** (see table; **12** = tariff, **14** = sales orders, **16** = API hub P0).
