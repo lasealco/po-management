@@ -27,6 +27,7 @@ These files turn **module backlogs** into **checkbox queues** for Cursor (or clo
 | [tariff.md](./tariff.md) | Tariff / rates audit | `src/lib/tariff`, `src/app/tariffs`, rules in `.cursor/rules/tariff-engine-scope.mdc` |
 | [system.md](./system.md) | Cross-cutting (tenancy, RBAC, org) | `docs/icp-and-tenancy.md` |
 | [integration-hub.md](./integration-hub.md) | Integration hub (not started) | Placeholder slices until a spec doc exists |
+| [sales-orders.md](./sales-orders.md) | Sales orders (`org.orders`) | `SalesOrder` hub + APIs (not tariff pricing) |
 
 ## Related
 
