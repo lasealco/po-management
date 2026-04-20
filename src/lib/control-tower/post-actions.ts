@@ -65,6 +65,19 @@ function parseOptText(v: unknown): string | null | undefined | "invalid" {
   return t;
 }
 
+export function parseBulkShipmentIds(v: unknown): string[] | "invalid" {
+  if (!Array.isArray(v)) return "invalid";
+  const ids = Array.from(
+    new Set(
+      v
+        .map((entry) => (typeof entry === "string" ? entry.trim() : ""))
+        .filter((entry) => entry.length > 0),
+    ),
+  );
+  if (ids.length === 0 || ids.length > 100) return "invalid";
+  return ids;
+}
+
 export async function handleControlTowerPost(
   tenantId: string,
   body: Json,
@@ -587,6 +600,66 @@ export async function handleControlTowerPost(
       payload: { fromStatus: alert.status },
     });
     return NextResponse.json({ ok: true });
+  }
+
+  if (action === "bulk_acknowledge_ct_alerts") {
+    const shipmentIds = parseBulkShipmentIds(body.shipmentIds);
+    if (shipmentIds === "invalid") {
+      return bad("shipmentIds must contain 1-100 IDs");
+    }
+    const openAlerts = await prisma.ctAlert.findMany({
+      where: {
+        tenantId,
+        status: "OPEN",
+        shipmentId: { in: shipmentIds },
+      },
+      select: {
+        id: true,
+        shipmentId: true,
+        status: true,
+      },
+    });
+    if (openAlerts.length === 0) {
+      return NextResponse.json({
+        ok: true,
+        acknowledgedAlertCount: 0,
+        selectedShipmentCount: shipmentIds.length,
+        affectedShipmentCount: 0,
+      });
+    }
+    const alertIds = openAlerts.map((alert) => alert.id);
+    const touchedShipmentIds = new Set(openAlerts.map((alert) => alert.shipmentId));
+    const now = new Date();
+    await prisma.ctAlert.updateMany({
+      where: {
+        id: { in: alertIds },
+        status: "OPEN",
+      },
+      data: {
+        status: "ACKNOWLEDGED",
+        acknowledgedAt: now,
+        acknowledgedById: actorId,
+      },
+    });
+    await Promise.all(
+      openAlerts.map((alert) =>
+        writeCtAudit({
+          tenantId,
+          shipmentId: alert.shipmentId,
+          entityType: "CtAlert",
+          entityId: alert.id,
+          action: "acknowledge",
+          actorUserId: actorId,
+          payload: { fromStatus: alert.status, via: "bulk_workbench" },
+        }),
+      ),
+    );
+    return NextResponse.json({
+      ok: true,
+      acknowledgedAlertCount: openAlerts.length,
+      selectedShipmentCount: shipmentIds.length,
+      affectedShipmentCount: touchedShipmentIds.size,
+    });
   }
 
   if (action === "close_ct_alert") {

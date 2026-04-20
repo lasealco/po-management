@@ -329,6 +329,7 @@ function ControlTowerWorkbenchInner({
   /** Client-only slice on the loaded rows; not stored in the URL. */
   const [healthQuickFilter, setHealthQuickFilter] = useState<HealthState | null>(null);
   const [colVis, setColVis] = useState<Record<WorkbenchTogglableColumn, boolean>>(defaultWorkbenchColumnVisibility);
+  const [selectedShipmentIds, setSelectedShipmentIds] = useState<string[]>([]);
 
   useLayoutEffect(() => {
     const patch = parseWorkbenchColumnVisibility(window.localStorage.getItem(WORKBENCH_COLUMN_STORAGE_KEY));
@@ -911,9 +912,27 @@ function ControlTowerWorkbenchInner({
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
 
+  const canUseBulkAlertAck = canEdit && !restrictedView;
+  useEffect(() => {
+    setSelectedShipmentIds((prev) => {
+      if (prev.length === 0) return prev;
+      const visibleRowIds = new Set(rows.map((r) => r.id));
+      const next = prev.filter((id) => visibleRowIds.has(id));
+      return next.length === prev.length ? prev : next;
+    });
+  }, [rows]);
+  const selectedShipmentSet = useMemo(() => new Set(selectedShipmentIds), [selectedShipmentIds]);
+  const selectedEligibleShipmentIds = useMemo(
+    () => rows.filter((r) => selectedShipmentSet.has(r.id) && (r.openQueueCounts?.openAlerts ?? 0) > 0).map((r) => r.id),
+    [rows, selectedShipmentSet],
+  );
+  const pagedRowIds = useMemo(() => pagedRows.map((r) => r.id), [pagedRows]);
+  const allRowsOnPageSelected =
+    pagedRowIds.length > 0 && pagedRowIds.every((shipmentId) => selectedShipmentSet.has(shipmentId));
+
   const tableColSpan = useMemo(
-    () => workbenchVisibleColumnCount(colVis, Boolean(restrictedView)),
-    [colVis, restrictedView],
+    () => workbenchVisibleColumnCount(colVis, Boolean(restrictedView)) + (canUseBulkAlertAck ? 1 : 0),
+    [canUseBulkAlertAck, colVis, restrictedView],
   );
 
   const setExternalOrderRef = useCallback(
@@ -1554,11 +1573,86 @@ function ControlTowerWorkbenchInner({
           </button>
         </div>
       </details>
+      {canUseBulkAlertAck ? (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-700">
+          <button
+            type="button"
+            className="rounded border border-zinc-300 bg-white px-2 py-1 hover:bg-zinc-100"
+            onClick={() => {
+              setSelectedShipmentIds((prev) => {
+                if (allRowsOnPageSelected) {
+                  const pageSet = new Set(pagedRowIds);
+                  return prev.filter((id) => !pageSet.has(id));
+                }
+                const next = new Set(prev);
+                for (const rowId of pagedRowIds) next.add(rowId);
+                return Array.from(next);
+              });
+            }}
+          >
+            {allRowsOnPageSelected ? "Clear page selection" : "Select page"}
+          </button>
+          <button
+            type="button"
+            disabled={selectedEligibleShipmentIds.length === 0}
+            className="rounded border border-arscmp-primary bg-arscmp-primary px-2 py-1 font-medium text-white disabled:cursor-not-allowed disabled:opacity-40"
+            onClick={async () => {
+              const shipmentIds = selectedEligibleShipmentIds;
+              if (shipmentIds.length === 0) {
+                window.alert("Select at least one shipment with open alerts.");
+                return;
+              }
+              const res = await fetch("/api/control-tower", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  action: "bulk_acknowledge_ct_alerts",
+                  shipmentIds,
+                }),
+              });
+              const payload = (await res.json()) as { error?: string; acknowledgedAlertCount?: number };
+              if (!res.ok) {
+                window.alert(payload.error || "Could not acknowledge alerts.");
+                return;
+              }
+              window.alert(`Acknowledged ${payload.acknowledgedAlertCount ?? 0} open alerts.`);
+              setSelectedShipmentIds([]);
+              await load();
+            }}
+          >
+            Acknowledge open alerts
+          </button>
+          <span>
+            Selected shipments: <strong>{selectedShipmentIds.length}</strong> · with open alerts:{" "}
+            <strong>{selectedEligibleShipmentIds.length}</strong>
+          </span>
+        </div>
+      ) : null}
 
       <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white">
         <table className="min-w-full text-sm">
           <thead className="bg-zinc-100 text-left text-xs font-semibold uppercase text-zinc-800">
             <tr>
+              {canUseBulkAlertAck ? (
+                <th className="w-10 px-2 py-2 text-center">
+                  <input
+                    type="checkbox"
+                    aria-label={allRowsOnPageSelected ? "Clear page selection" : "Select rows on page"}
+                    checked={allRowsOnPageSelected}
+                    onChange={() => {
+                      setSelectedShipmentIds((prev) => {
+                        if (allRowsOnPageSelected) {
+                          const pageSet = new Set(pagedRowIds);
+                          return prev.filter((id) => !pageSet.has(id));
+                        }
+                        const next = new Set(prev);
+                        for (const rowId of pagedRowIds) next.add(rowId);
+                        return Array.from(next);
+                      });
+                    }}
+                  />
+                </th>
+              ) : null}
               <th className="px-2 py-2" title="Opens Shipment 360. Prefers PO when shipment no looks like an ASN ref.">
                 PO / shipment
               </th>
@@ -1602,6 +1696,21 @@ function ControlTowerWorkbenchInner({
                         : ""
                   }`}
                 >
+                  {canUseBulkAlertAck ? (
+                    <td className="px-2 py-2 text-center align-top">
+                      <input
+                        type="checkbox"
+                        aria-label={`Select shipment ${r.orderNumber}`}
+                        checked={selectedShipmentSet.has(r.id)}
+                        onChange={(e) => {
+                          setSelectedShipmentIds((prev) => {
+                            if (e.target.checked) return Array.from(new Set([...prev, r.id]));
+                            return prev.filter((id) => id !== r.id);
+                          });
+                        }}
+                      />
+                    </td>
+                  ) : null}
                   <td className="px-2 py-2 font-medium">
                     <Link href={shipment360Href(r.id, ship360Tab)} className="block text-sky-800 hover:underline">
                       <span className="text-zinc-900">
