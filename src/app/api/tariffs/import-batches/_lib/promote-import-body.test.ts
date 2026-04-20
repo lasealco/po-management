@@ -36,10 +36,10 @@ describe("parsePromoteImportRequestBody", () => {
     });
   });
 
-  it("treats array bodies like empty objects (no string id)", () => {
+  it("rejects array bodies as invalid payload shape", () => {
     expect(parsePromoteImportRequestBody([])).toEqual({
       ok: false,
-      error: "contractHeaderId is required.",
+      error: "Expected object body.",
     });
   });
 });
