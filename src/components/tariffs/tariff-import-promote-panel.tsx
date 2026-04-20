@@ -35,7 +35,9 @@ export function TariffImportPromotePanel({
       });
       const data = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
-        setError(data.error ?? "Fixture failed.");
+        const fromServer = typeof data.error === "string" ? data.error.trim() : "";
+        const detail = fromServer || "The fixture request was rejected.";
+        setError(`${detail} (HTTP ${res.status})");
         return;
       }
       router.refresh();
@@ -65,7 +67,9 @@ export function TariffImportPromotePanel({
         chargeLineCount?: number;
       };
       if (!res.ok) {
-        setError(data.error ?? "Promote failed.");
+        const fromServer = typeof data.error === "string" ? data.error.trim() : "";
+        const detail = fromServer || "Promote was rejected.";
+        setError(`${detail} (HTTP ${res.status})");
         return;
       }
       router.refresh();
@@ -88,7 +92,17 @@ export function TariffImportPromotePanel({
         a new <strong>draft</strong> version).
       </p>
 
-      {error ? <p className="mt-2 text-sm text-red-800">{error}</p> : null}
+      {error ? (
+        <div
+          className="mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+          role="alert"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          <p className="font-semibold text-red-900">Action blocked</p>
+          <p className="mt-1">{error}</p>
+        </div>
+      ) : null}
 
       <div className="mt-3 flex flex-wrap gap-2">
         <button
@@ -123,7 +137,7 @@ export function TariffImportPromotePanel({
           type="button"
           disabled={pendingPromote || !headerId}
           onClick={() => void promote()}
-          className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:brightness-95 disabled:opacity-50"
+          className="rounded-xl bg-[var(--arscmp-primary)] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:brightness-95 disabled:opacity-50"
         >
           {pendingPromote ? "Promoting…" : "Promote → new draft version"}
         </button>

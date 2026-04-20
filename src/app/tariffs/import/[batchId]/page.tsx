@@ -78,7 +78,8 @@ export default async function TariffImportBatchDetailPage({ params }: { params: 
       <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Import batch</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Workflow · Step 2</p>
+            <p className="mt-1 text-xs font-medium uppercase tracking-wide text-zinc-400">Import batch</p>
             <h1 className="mt-2 text-2xl font-semibold text-zinc-900">{batch.uploadedFilename ?? "Untitled file"}</h1>
             <div className="mt-3 flex flex-wrap gap-2">
               <TariffImportParseBadge status={batch.parseStatus} />

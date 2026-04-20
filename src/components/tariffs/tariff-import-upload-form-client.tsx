@@ -38,7 +38,9 @@ export function TariffImportUploadFormClient({
       const res = await fetch("/api/tariffs/import-batches", { method: "POST", body: up });
       const data = (await res.json().catch(() => ({}))) as { error?: string; batch?: { id: string } };
       if (!res.ok) {
-        setError(data.error ?? "Upload failed.");
+        const fromServer = typeof data.error === "string" ? data.error.trim() : "";
+        const detail = fromServer || "The server did not accept this upload.";
+        setError(`${detail} If this keeps happening, note HTTP ${res.status} for support.");
         return;
       }
       if (data.batch?.id) {
@@ -55,9 +57,15 @@ export function TariffImportUploadFormClient({
   return (
     <form className="space-y-6" onSubmit={(ev) => void onSubmit(ev)}>
       {error ? (
-        <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">
-          {error}
-        </p>
+        <div
+          className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+          role="alert"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          <p className="font-semibold text-red-900">Upload could not complete</p>
+          <p className="mt-1 text-red-800">{error}</p>
+        </div>
       ) : null}
 
       <label className="block text-sm">

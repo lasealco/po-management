@@ -24,4 +24,22 @@ describe("parsePromoteImportRequestBody", () => {
       error: "contractHeaderId is required.",
     });
   });
+
+  it("rejects whitespace-only contractHeaderId", () => {
+    expect(parsePromoteImportRequestBody({ contractHeaderId: "   " })).toEqual({
+      ok: false,
+      error: "contractHeaderId is required.",
+    });
+    expect(parsePromoteImportRequestBody({ contractHeaderId: "\t\n" })).toEqual({
+      ok: false,
+      error: "contractHeaderId is required.",
+    });
+  });
+
+  it("treats array bodies like empty objects (no string id)", () => {
+    expect(parsePromoteImportRequestBody([])).toEqual({
+      ok: false,
+      error: "contractHeaderId is required.",
+    });
+  });
 });
