@@ -1,4 +1,4 @@
-import type { TariffLineRateType } from "@prisma/client";
+import { TariffLineRateType } from "@prisma/client";
 
 import { recordTariffAuditLog } from "@/lib/tariff/audit-log";
 import { createTariffChargeLine } from "@/lib/tariff/charge-lines";
@@ -11,6 +11,7 @@ import { prisma } from "@/lib/prisma";
 
 const RATE_ROW = "RATE_LINE_CANDIDATE";
 const CHARGE_ROW = "CHARGE_LINE_CANDIDATE";
+const TARIFF_LINE_RATE_TYPE_SET = new Set<string>(Object.values(TariffLineRateType));
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return v != null && typeof v === "object" && !Array.isArray(v);
@@ -30,6 +31,32 @@ function pickOptionalString(o: Record<string, unknown>, key: string): string | n
   if (typeof v !== "string") return undefined;
   const t = v.trim();
   return t ? t : null;
+}
+
+function buildNormalizedPromoteRowKey(rowType: string, payload: Record<string, unknown>): string {
+  const keys = Object.keys(payload).sort();
+  const normalizedPayload = keys
+    .map((key) => [key, payload[key]] as const)
+    .filter(([, value]) => value !== undefined);
+  return JSON.stringify([rowType, normalizedPayload]);
+}
+
+export function findDuplicatePromotableRows(
+  rows: Array<{ id: string; rowType: string; normalizedPayload: unknown }>,
+): { duplicateRowId: string; firstRowId: string } | null {
+  const seen = new Map<string, string>();
+  for (const row of rows) {
+    if (!isRecord(row.normalizedPayload)) continue;
+    const key = buildNormalizedPromoteRowKey(row.rowType, row.normalizedPayload);
+    const first = seen.get(key);
+    if (first) return { duplicateRowId: row.id, firstRowId: first };
+    seen.set(key, row.id);
+  }
+  return null;
+}
+
+export function isSupportedPromoteRateType(rateType: unknown): rateType is TariffLineRateType {
+  return typeof rateType === "string" && TARIFF_LINE_RATE_TYPE_SET.has(rateType);
 }
 
 /** Whether a staging row `normalizedPayload.amount` is acceptable for Excel promote (exported for tests). */
@@ -59,6 +86,10 @@ export async function promoteApprovedStagingRowsToNewVersion(params: {
     batchId: params.importBatchId,
   });
 
+  if (batch.reviewStatus === "APPLIED") {
+    throw new TariffRepoError("CONFLICT", "Batch is already promoted.");
+  }
+
   if (batch.reviewStatus !== "READY_TO_APPLY") {
     throw new TariffRepoError(
       "BAD_INPUT",
@@ -78,6 +109,14 @@ export async function promoteApprovedStagingRowsToNewVersion(params: {
       (r.rowType === RATE_ROW || r.rowType === CHARGE_ROW) &&
       TARIFF_IMPORT_STAGING_ROW_TYPE_SET.has(r.rowType),
   );
+
+  const duplicateRows = findDuplicatePromotableRows(rows);
+  if (duplicateRows) {
+    throw new TariffRepoError(
+      "BAD_INPUT",
+      `Duplicate approved staging row payloads detected (${duplicateRows.firstRowId} and ${duplicateRows.duplicateRowId}).`,
+    );
+  }
 
   if (rows.length === 0) {
     throw new TariffRepoError(
@@ -111,6 +150,9 @@ export async function promoteApprovedStagingRowsToNewVersion(params: {
         const unitBasis = pickString(norm, "unitBasis");
         const currency = pickString(norm, "currency");
         const amount = norm.amount;
+        if (rateType && !isSupportedPromoteRateType(rateType)) {
+          throw new TariffRepoError("BAD_INPUT", `Rate staging row ${row.id} has unsupported rateType '${rateType}'.`);
+        }
         if (!rateType || !unitBasis || !currency || !promoteStagingImportAmountPresent(amount)) {
           throw new TariffRepoError(
             "BAD_INPUT",

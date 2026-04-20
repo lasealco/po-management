@@ -2,6 +2,15 @@ import { NextResponse } from "next/server";
 
 import { TariffRepoError } from "@/lib/tariff/tariff-repo-error";
 
+export type TariffApiErrorBody = { error: string; code: TariffRepoError["code"] | "BAD_INPUT" };
+
+export function toTariffApiErrorBody(
+  error: string,
+  code: TariffRepoError["code"] | "BAD_INPUT",
+): TariffApiErrorBody {
+  return { error, code };
+}
+
 export function jsonFromTariffError(e: unknown): NextResponse | null {
   if (!(e instanceof TariffRepoError)) return null;
   const status =
@@ -14,5 +23,5 @@ export function jsonFromTariffError(e: unknown): NextResponse | null {
           : e.code === "BAD_INPUT"
             ? 400
             : 400;
-  return NextResponse.json({ error: e.message }, { status });
+  return NextResponse.json(toTariffApiErrorBody(e.message, e.code), { status });
 }

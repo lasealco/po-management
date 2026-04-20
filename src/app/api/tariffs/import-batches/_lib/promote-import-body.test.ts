@@ -42,4 +42,15 @@ describe("parsePromoteImportRequestBody", () => {
       error: "Expected object body.",
     });
   });
+
+  it("rejects primitive payload shapes", () => {
+    expect(parsePromoteImportRequestBody("abc")).toEqual({
+      ok: false,
+      error: "Expected object body.",
+    });
+    expect(parsePromoteImportRequestBody(42)).toEqual({
+      ok: false,
+      error: "Expected object body.",
+    });
+  });
 });

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { parsePromoteImportRequestBody } from "@/app/api/tariffs/import-batches/_lib/promote-import-body";
-import { jsonFromTariffError } from "@/app/api/tariffs/_lib/tariff-api-error";
+import { jsonFromTariffError, toTariffApiErrorBody } from "@/app/api/tariffs/_lib/tariff-api-error";
 import { promoteApprovedStagingRowsToNewVersion } from "@/lib/tariff/promote-staging-import";
 
 export const dynamic = "force-dynamic";
@@ -24,11 +24,11 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
+    return NextResponse.json(toTariffApiErrorBody("Invalid JSON.", "BAD_INPUT"), { status: 400 });
   }
   const parsed = parsePromoteImportRequestBody(body);
   if (!parsed.ok) {
-    return NextResponse.json({ error: parsed.error }, { status: 400 });
+    return NextResponse.json(toTariffApiErrorBody(parsed.error, "BAD_INPUT"), { status: 400 });
   }
   const { contractHeaderId } = parsed;
 
