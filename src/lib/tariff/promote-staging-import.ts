@@ -36,7 +36,11 @@ function pickOptionalString(o: Record<string, unknown>, key: string): string | n
 export function promoteStagingImportAmountPresent(amount: unknown): boolean {
   if (amount === 0 || amount === "0") return true;
   if (typeof amount === "number") return Number.isFinite(amount);
-  if (typeof amount === "string") return amount.trim().length > 0;
+  if (typeof amount === "string") {
+    const normalized = amount.trim();
+    if (!normalized) return false;
+    return Number.isFinite(Number(normalized));
+  }
   return false;
 }
 
