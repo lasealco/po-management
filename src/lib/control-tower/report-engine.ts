@@ -1,4 +1,4 @@
-import type { Prisma, ShipmentStatus, TransportMode } from "@prisma/client";
+import { CtExceptionStatus, type Prisma, type ShipmentStatus, type TransportMode } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { convertAmount, minorToAmount, normalizeCurrency } from "@/lib/control-tower/currency";
@@ -21,6 +21,7 @@ export const CT_REPORT_DIMENSIONS = [
   "origin",
   "destination",
   "month",
+  "exceptionCatalog",
 ] as const;
 export type CtReportDimension = (typeof CT_REPORT_DIMENSIONS)[number];
 
@@ -31,6 +32,7 @@ export const CT_REPORT_MEASURES = [
   "shippingSpend",
   "onTimePct",
   "avgDelayDays",
+  "openExceptions",
 ] as const;
 export type CtReportMeasure = (typeof CT_REPORT_MEASURES)[number];
 
@@ -67,6 +69,7 @@ export type CtReportConfig = {
     supplierId?: string | null;
     origin?: string | null;
     destination?: string | null;
+    onlyOpenExceptions?: boolean;
   };
   topN?: number;
 };
@@ -132,6 +135,25 @@ function nonEmpty(v: string | null | undefined): string | null {
   return t ? t : null;
 }
 
+export function normalizeExceptionTypeKey(type: string): string {
+  return type.trim().toLowerCase();
+}
+
+export function exceptionCatalogBucket(params: {
+  rawType: string;
+  catalogByNormalizedCode: Map<string, { code: string; label: string }>;
+}): { rowKey: string; rowLabel: string } {
+  const t = params.rawType.trim();
+  if (!t) {
+    return { rowKey: "(blank)", rowLabel: "Blank type" };
+  }
+  const hit = params.catalogByNormalizedCode.get(normalizeExceptionTypeKey(t));
+  if (hit) {
+    return { rowKey: hit.code, rowLabel: `${hit.label} (${hit.code})` };
+  }
+  return { rowKey: t, rowLabel: `Unlisted (${t})` };
+}
+
 export function sanitizeCtReportConfig(input: unknown): CtReportConfig {
   const o = input && typeof input === "object" ? (input as Record<string, unknown>) : {};
   const chartType = CT_REPORT_CHARTS.includes(o.chartType as CtReportChartType)
@@ -140,9 +162,10 @@ export function sanitizeCtReportConfig(input: unknown): CtReportConfig {
   const dimension = CT_REPORT_DIMENSIONS.includes(o.dimension as CtReportDimension)
     ? (o.dimension as CtReportDimension)
     : "month";
-  const measure = CT_REPORT_MEASURES.includes(o.measure as CtReportMeasure)
+  let measure = CT_REPORT_MEASURES.includes(o.measure as CtReportMeasure)
     ? (o.measure as CtReportMeasure)
     : "shipments";
+  if (dimension === "exceptionCatalog") measure = "openExceptions";
   const compareMeasure = CT_REPORT_MEASURES.includes(o.compareMeasure as CtReportMeasure)
     ? (o.compareMeasure as CtReportMeasure)
     : null;
@@ -175,6 +198,7 @@ export function sanitizeCtReportConfig(input: unknown): CtReportConfig {
       supplierId: typeof filtersObj.supplierId === "string" ? filtersObj.supplierId : null,
       origin: typeof filtersObj.origin === "string" ? filtersObj.origin : null,
       destination: typeof filtersObj.destination === "string" ? filtersObj.destination : null,
+      onlyOpenExceptions: filtersObj.onlyOpenExceptions === true,
     },
   };
 }
@@ -206,6 +230,7 @@ type ShipmentRow = {
     amountMinor: bigint;
     currency: string;
   }>;
+  ctExceptions: Array<{ type: string }>;
 };
 
 function decimalToNumber(v: Prisma.Decimal | null | undefined): number {
@@ -251,6 +276,8 @@ function rowDimensionValue(row: ShipmentRow, dim: CtReportDimension): string {
       return row.booking?.destinationCode || "Unknown";
     case "month":
       return monthKey(row.shippedAt);
+    case "exceptionCatalog":
+      return "—";
   }
 }
 
@@ -262,6 +289,7 @@ function makeZeroMetrics(): Record<CtReportMeasure, number> {
     shippingSpend: 0,
     onTimePct: 0,
     avgDelayDays: 0,
+    openExceptions: 0,
   };
 }
 
@@ -299,6 +327,13 @@ export async function runControlTowerReport(params: {
         { booking: { is: { originCode: { contains: lane, mode: "insensitive" } } } },
         { booking: { is: { destinationCode: { contains: lane, mode: "insensitive" } } } },
       ],
+    });
+  }
+  if (filters.onlyOpenExceptions === true) {
+    ands.push({
+      ctExceptions: {
+        some: { status: { in: [CtExceptionStatus.OPEN, CtExceptionStatus.IN_PROGRESS] } },
+      },
     });
   }
   const dateField = config.dateField ?? "shippedAt";
@@ -350,8 +385,29 @@ export async function runControlTowerReport(params: {
       ctCostLines: {
         select: { amountMinor: true, currency: true },
       },
+      ctExceptions: {
+        where: { status: { in: [CtExceptionStatus.OPEN, CtExceptionStatus.IN_PROGRESS] } },
+        select: { type: true },
+      },
     },
   })) as ShipmentRow[];
+
+  const dim = config.dimension ?? "month";
+  const catalogByNorm =
+    dim === "exceptionCatalog"
+      ? new Map(
+          (
+            await prisma.ctExceptionCode.findMany({
+              where: { tenantId: params.tenantId, isActive: true },
+              select: { code: true, label: true },
+              orderBy: [{ sortOrder: "asc" }, { code: "asc" }],
+            })
+          ).map((c) => [
+            normalizeExceptionTypeKey(c.code),
+            { code: c.code.trim(), label: c.label.trim() },
+          ]),
+        )
+      : null;
 
   let displayCurrency = "USD";
   if (params.actorUserId) {
@@ -409,9 +465,27 @@ export async function runControlTowerReport(params: {
       continue;
     }
     shipmentsAggregated += 1;
-    const key = rowDimensionValue(r, config.dimension ?? "month");
+
+    if (dim === "exceptionCatalog" && catalogByNorm) {
+      for (const exc of r.ctExceptions) {
+        const raw = exc.type?.trim() ?? "";
+        if (!raw) continue;
+        const { rowKey, rowLabel } = exceptionCatalogBucket({
+          rawType: raw,
+          catalogByNormalizedCode: catalogByNorm,
+        });
+        const existing = grouped.get(rowKey) ?? { key: rowKey, label: rowLabel, metrics: makeZeroMetrics() };
+        existing.label = rowLabel;
+        existing.metrics.openExceptions += 1;
+        grouped.set(rowKey, existing);
+      }
+      continue;
+    }
+
+    const key = rowDimensionValue(r, dim);
     const existing = grouped.get(key) ?? { key, label: key, metrics: makeZeroMetrics() };
     existing.metrics.shipments += 1;
+    existing.metrics.openExceptions += r.ctExceptions.length;
     existing.metrics.volumeCbm += decimalToNumber(r.estimatedVolumeCbm);
     existing.metrics.weightKg += decimalToNumber(r.estimatedWeightKg);
     if (r.ctCostLines.length > 0) {
@@ -450,12 +524,12 @@ export async function runControlTowerReport(params: {
   });
 
   normalized.sort((a, b) => {
-    if (config.dimension === "month") return a.key.localeCompare(b.key);
+    if (dim === "month") return a.key.localeCompare(b.key);
     const m = config.measure ?? "shipments";
     return (b.metrics[m] ?? 0) - (a.metrics[m] ?? 0);
   });
 
-  const sliced = config.dimension === "month" ? normalized : normalized.slice(0, config.topN ?? 12);
+  const sliced = dim === "month" ? normalized : normalized.slice(0, config.topN ?? 12);
   const coverage: CtReportCoverage = {
     totalShipmentsQueried: rows.length,
     shipmentsAggregated,
@@ -473,7 +547,7 @@ export async function runControlTowerReport(params: {
     config: {
       title: config.title,
       chartType: config.chartType ?? "bar",
-      dimension: config.dimension ?? "month",
+      dimension: dim,
       measure: config.measure ?? "shipments",
       compareMeasure: config.compareMeasure ?? null,
       dateField: config.dateField ?? "shippedAt",

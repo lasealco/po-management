@@ -80,7 +80,7 @@ export function formatReportRunForEmail(
     ...(dateWindowLine ? [dateWindowLine] : []),
     ...(compareLine ? [compareLine] : []),
     "",
-    `Totals — shipments: ${result.totals.shipments}, volume cbm: ${result.totals.volumeCbm.toFixed(2)}, weight kg: ${result.totals.weightKg.toFixed(1)}, shipping spend: ${result.totals.shippingSpend.toFixed(2)}`,
+    `Totals — shipments: ${result.totals.shipments}, open exceptions: ${result.totals.openExceptions}, volume cbm: ${result.totals.volumeCbm.toFixed(2)}, weight kg: ${result.totals.weightKg.toFixed(1)}, shipping spend: ${result.totals.shippingSpend.toFixed(2)}`,
     "",
     "Top rows:",
   ];

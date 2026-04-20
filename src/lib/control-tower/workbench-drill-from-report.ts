@@ -107,6 +107,13 @@ export function buildControlTowerWorkbenchDrillQuery(params: {
     return withShip360Tab(sp, params.ship360Tab);
   }
 
+  if (dim === "exceptionCatalog") {
+    if (!key || key === "(blank)") return null;
+    if (key.length > 80 || !/^[\w.-]+$/i.test(key)) return null;
+    sp.set("exceptionCode", key);
+    return withShip360Tab(sp, params.ship360Tab);
+  }
+
   return null;
 }
 

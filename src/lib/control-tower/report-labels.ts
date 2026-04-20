@@ -9,6 +9,7 @@ export function metricLabel(measure: string): string {
   if (measure === "avgDelayDays") return "Avg delay (days)";
   if (measure === "volumeCbm") return "Volume (CBM)";
   if (measure === "weightKg") return "Weight (kg)";
+  if (measure === "openExceptions") return "Open exceptions (count)";
   return "Shipments";
 }
 
@@ -23,6 +24,7 @@ export function dimensionLabel(dimension: string): string {
   if (dimension === "mode") return "Mode";
   if (dimension === "status") return "Status";
   if (dimension === "none") return "All";
+  if (dimension === "exceptionCatalog") return "Exception catalog (code)";
   return "Category";
 }
 

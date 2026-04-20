@@ -43,6 +43,8 @@ function abbrevMeasure(key: (typeof REPORT_CSV_MEASURES)[number]): string {
       return "OT%";
     case "avgDelayDays":
       return "Dly";
+    case "openExceptions":
+      return "Exc";
     default:
       return key;
   }
@@ -55,6 +57,7 @@ function fmtCell(key: (typeof REPORT_CSV_MEASURES)[number], n: number): string {
   if (key === "volumeCbm") return n.toFixed(1);
   if (key === "weightKg") return n.toFixed(0);
   if (key === "avgDelayDays") return n.toFixed(1);
+  if (key === "openExceptions") return String(Math.round(n));
   return String(Math.round(n));
 }
 

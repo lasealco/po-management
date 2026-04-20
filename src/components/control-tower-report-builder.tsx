@@ -7,7 +7,14 @@ import { WorkbenchDrillLink } from "@/components/workbench-drill-link";
 import { buildControlTowerReportCsv } from "@/lib/control-tower/report-csv";
 import type { ReportInsightRunSummary } from "@/lib/control-tower/report-run-summary";
 
-type Measure = "shipments" | "volumeCbm" | "weightKg" | "shippingSpend" | "onTimePct" | "avgDelayDays";
+type Measure =
+  | "shipments"
+  | "volumeCbm"
+  | "weightKg"
+  | "shippingSpend"
+  | "onTimePct"
+  | "avgDelayDays"
+  | "openExceptions";
 type Dimension =
   | "none"
   | "status"
@@ -18,7 +25,8 @@ type Dimension =
   | "supplier"
   | "origin"
   | "destination"
-  | "month";
+  | "month"
+  | "exceptionCatalog";
 type ChartType = "table" | "bar" | "line" | "pie";
 
 type ReportConfig = {
@@ -41,6 +49,7 @@ type ReportConfig = {
     supplierId: string;
     origin: string;
     destination: string;
+    onlyOpenExceptions: boolean;
   };
 };
 
@@ -104,6 +113,7 @@ const MEASURE_LABELS: Record<Measure, string> = {
   shippingSpend: "Shipping spend",
   onTimePct: "On-time %",
   avgDelayDays: "Avg delay (days)",
+  openExceptions: "Open exceptions",
 };
 
 const DEFAULT_CONFIG: ReportConfig = {
@@ -126,6 +136,7 @@ const DEFAULT_CONFIG: ReportConfig = {
     supplierId: "",
     origin: "",
     destination: "",
+    onlyOpenExceptions: false,
   },
 };
 
@@ -164,6 +175,7 @@ function hydrateConfig(input: unknown): ReportConfig {
       supplierId: typeof filters.supplierId === "string" ? filters.supplierId : "",
       origin: typeof filters.origin === "string" ? filters.origin : "",
       destination: typeof filters.destination === "string" ? filters.destination : "",
+      onlyOpenExceptions: filters.onlyOpenExceptions === true,
     },
   };
 }
@@ -193,13 +205,22 @@ function compareRange(config: ReportConfig): { from: string; to: string } | null
 }
 
 function toRunPayload(config: ReportConfig) {
+  const f = config.filters;
   return {
     ...config,
     dateFrom: config.dateFrom || null,
     dateTo: config.dateTo || null,
-    filters: Object.fromEntries(
-      Object.entries(config.filters).map(([k, v]) => [k, v.trim() || null]),
-    ),
+    filters: {
+      status: f.status.trim() || null,
+      mode: f.mode.trim() || null,
+      lane: f.lane.trim() || null,
+      carrierSupplierId: f.carrierSupplierId.trim() || null,
+      customerCrmAccountId: f.customerCrmAccountId.trim() || null,
+      supplierId: f.supplierId.trim() || null,
+      origin: f.origin.trim() || null,
+      destination: f.destination.trim() || null,
+      ...(f.onlyOpenExceptions ? { onlyOpenExceptions: true as const } : {}),
+    },
   };
 }
 
@@ -207,6 +228,7 @@ function formatMetric(measure: Measure, value: number): string {
   if (measure === "onTimePct") return `${value.toFixed(2)}%`;
   if (measure === "shippingSpend") return `$${value.toFixed(2)}`;
   if (measure === "avgDelayDays") return `${value.toFixed(2)}d`;
+  if (measure === "openExceptions") return String(Math.round(value));
   return value.toLocaleString();
 }
 
@@ -1050,10 +1072,29 @@ export function ControlTowerReportBuilder({
                 Group by
                 <select
                   value={config.dimension}
-                  onChange={(e) => setConfig((c) => ({ ...c, dimension: e.target.value as Dimension }))}
+                  onChange={(e) => {
+                    const dimension = e.target.value as Dimension;
+                    setConfig((c) => ({
+                      ...c,
+                      dimension,
+                      measure: dimension === "exceptionCatalog" ? "openExceptions" : c.measure,
+                    }));
+                  }}
                   className="mt-1.5 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-800"
                 >
-                  {["month", "lane", "carrier", "customer", "supplier", "status", "mode", "origin", "destination", "none"].map((d) => (
+                  {[
+                    "month",
+                    "lane",
+                    "carrier",
+                    "customer",
+                    "supplier",
+                    "status",
+                    "mode",
+                    "origin",
+                    "destination",
+                    "exceptionCatalog",
+                    "none",
+                  ].map((d) => (
                     <option key={d} value={d}>
                       {d}
                     </option>
@@ -1210,6 +1251,21 @@ export function ControlTowerReportBuilder({
                 </select>
               </label>
             </div>
+
+            <label className="mt-3 flex cursor-pointer items-center gap-2 text-xs text-zinc-700">
+              <input
+                type="checkbox"
+                checked={config.filters.onlyOpenExceptions}
+                onChange={(e) =>
+                  setConfig((c) => ({
+                    ...c,
+                    filters: { ...c.filters, onlyOpenExceptions: e.target.checked },
+                  }))
+                }
+                className="h-4 w-4 rounded border-zinc-300 text-[var(--arscmp-primary)] focus:ring-[var(--arscmp-primary)]"
+              />
+              <span>Only shipments with open exceptions (OPEN / IN_PROGRESS)</span>
+            </label>
           </div>
         </div>
 
@@ -1433,7 +1489,9 @@ export function ControlTowerReportBuilder({
                 rowKey={chartDrillRow.key}
                 rowLabel={chartDrillRow.label}
                 ship360Tab={
-                  result.config.measure === "onTimePct" || result.config.measure === "avgDelayDays"
+                  result.config.measure === "onTimePct" ||
+                  result.config.measure === "avgDelayDays" ||
+                  result.config.dimension === "exceptionCatalog"
                     ? "milestones"
                     : undefined
                 }
