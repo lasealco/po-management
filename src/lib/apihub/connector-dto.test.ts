@@ -10,6 +10,9 @@ describe("toApiHubConnectorDto", () => {
       id: "c1",
       name: "Test",
       sourceKind: "stub",
+      authMode: "none",
+      authConfigRef: null,
+      authState: "not_configured",
       status: "draft",
       lastSyncAt: null,
       healthSummary: "ok",
@@ -20,6 +23,9 @@ describe("toApiHubConnectorDto", () => {
     expect(out.createdAt).toBe("2026-04-20T12:00:00.000Z");
     expect(out.updatedAt).toBe("2026-04-20T15:30:00.000Z");
     expect(out.healthSummary).toBe("ok");
+    expect(out.authMode).toBe("none");
+    expect(out.authConfigRef).toBeNull();
+    expect(out.authState).toBe("not_configured");
     expect(out.auditTrail).toEqual([]);
   });
 
@@ -28,6 +34,9 @@ describe("toApiHubConnectorDto", () => {
       id: "c2",
       name: "ERP feed",
       sourceKind: "api",
+      authMode: "api_key_ref",
+      authConfigRef: "secret://tenant/erp",
+      authState: "configured",
       status: "active",
       lastSyncAt: new Date("2026-04-21T09:00:00.000Z"),
       healthSummary: "Healthy",

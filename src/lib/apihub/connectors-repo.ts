@@ -6,6 +6,9 @@ export type ApiHubConnectorListRow = {
   id: string;
   name: string;
   sourceKind: string;
+  authMode: string;
+  authConfigRef: string | null;
+  authState: string;
   status: string;
   lastSyncAt: Date | null;
   healthSummary: string | null;
@@ -30,6 +33,9 @@ export async function listApiHubConnectors(tenantId: string): Promise<ApiHubConn
       id: true,
       name: true,
       sourceKind: true,
+      authMode: true,
+      authConfigRef: true,
+      authState: true,
       status: true,
       lastSyncAt: true,
       healthSummary: true,
@@ -43,6 +49,9 @@ export async function createStubApiHubConnector(opts: {
   tenantId: string;
   actorUserId: string;
   name: string;
+  authMode: string;
+  authConfigRef: string | null;
+  authState: string;
 }): Promise<ApiHubConnectorListRow> {
   return prisma.$transaction(async (tx) => {
     const created = await tx.apiHubConnector.create({
@@ -50,6 +59,9 @@ export async function createStubApiHubConnector(opts: {
         tenantId: opts.tenantId,
         name: opts.name,
         sourceKind: "stub",
+        authMode: opts.authMode,
+        authConfigRef: opts.authConfigRef,
+        authState: opts.authState,
         status: "draft",
         healthSummary: DEFAULT_STUB_HEALTH,
       },
@@ -57,6 +69,9 @@ export async function createStubApiHubConnector(opts: {
         id: true,
         name: true,
         sourceKind: true,
+        authMode: true,
+        authConfigRef: true,
+        authState: true,
         status: true,
         lastSyncAt: true,
         healthSummary: true,
@@ -83,14 +98,17 @@ export async function updateApiHubConnectorLifecycle(opts: {
   tenantId: string;
   connectorId: string;
   actorUserId: string;
-  status: string;
+  status: string | null;
   syncNow: boolean;
+  authMode: string | null;
+  authConfigRef: string | null | undefined;
+  authState: string | null;
   note: string | null;
 }): Promise<ApiHubConnectorListRow | null> {
   return prisma.$transaction(async (tx) => {
     const existing = await tx.apiHubConnector.findFirst({
       where: { id: opts.connectorId, tenantId: opts.tenantId },
-      select: { id: true, status: true },
+      select: { id: true, status: true, authMode: true, authConfigRef: true, authState: true },
     });
     if (!existing) {
       return null;
@@ -99,13 +117,19 @@ export async function updateApiHubConnectorLifecycle(opts: {
     const updated = await tx.apiHubConnector.update({
       where: { id: existing.id },
       data: {
-        status: opts.status,
+        ...(opts.status ? { status: opts.status } : {}),
+        ...(opts.authMode ? { authMode: opts.authMode } : {}),
+        ...(opts.authConfigRef !== undefined ? { authConfigRef: opts.authConfigRef } : {}),
+        ...(opts.authState ? { authState: opts.authState } : {}),
         ...(opts.syncNow ? { lastSyncAt: new Date() } : {}),
       },
       select: {
         id: true,
         name: true,
         sourceKind: true,
+        authMode: true,
+        authConfigRef: true,
+        authState: true,
         status: true,
         lastSyncAt: true,
         healthSummary: true,
@@ -122,7 +146,7 @@ export async function updateApiHubConnectorLifecycle(opts: {
         action: "connector.lifecycle.updated",
         note:
           opts.note ??
-          `Status ${existing.status} -> ${opts.status}${opts.syncNow ? " (sync timestamp set)" : ""}`,
+          `Status ${existing.status} -> ${opts.status ?? existing.status}; auth ${existing.authMode}/${existing.authState} -> ${opts.authMode ?? existing.authMode}/${opts.authState ?? existing.authState}${opts.syncNow ? " (sync timestamp set)" : ""}`,
       },
     });
 

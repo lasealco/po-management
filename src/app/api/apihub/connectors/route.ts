@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { APIHUB_CONNECTOR_AUTH_MODES, APIHUB_CONNECTOR_AUTH_STATES } from "@/lib/apihub/constants";
 import { toApiHubConnectorDto } from "@/lib/apihub/connector-dto";
 import {
   createStubApiHubConnector,
@@ -46,6 +47,9 @@ export async function GET() {
 
 type PostBody = {
   name?: unknown;
+  authMode?: unknown;
+  authConfigRef?: unknown;
+  authState?: unknown;
 };
 
 export async function POST(request: Request) {
@@ -80,7 +84,37 @@ export async function POST(request: Request) {
 
   const rawName = typeof body.name === "string" ? body.name.trim() : "";
   const name = rawName.length > 0 ? rawName.slice(0, 128) : "Stub connector";
+  const rawAuthMode = typeof body.authMode === "string" ? body.authMode.trim().toLowerCase() : "none";
+  if (!APIHUB_CONNECTOR_AUTH_MODES.includes(rawAuthMode as (typeof APIHUB_CONNECTOR_AUTH_MODES)[number])) {
+    return NextResponse.json(
+      {
+        error: `authMode must be one of: ${APIHUB_CONNECTOR_AUTH_MODES.join(", ")}.`,
+      },
+      { status: 400 },
+    );
+  }
+  const rawAuthState =
+    typeof body.authState === "string" ? body.authState.trim().toLowerCase() : "not_configured";
+  if (!APIHUB_CONNECTOR_AUTH_STATES.includes(rawAuthState as (typeof APIHUB_CONNECTOR_AUTH_STATES)[number])) {
+    return NextResponse.json(
+      {
+        error: `authState must be one of: ${APIHUB_CONNECTOR_AUTH_STATES.join(", ")}.`,
+      },
+      { status: 400 },
+    );
+  }
+  const authConfigRef =
+    typeof body.authConfigRef === "string" && body.authConfigRef.trim().length > 0
+      ? body.authConfigRef.trim().slice(0, 280)
+      : null;
 
-  const created = await createStubApiHubConnector({ tenantId: tenant.id, actorUserId: actorId, name });
+  const created = await createStubApiHubConnector({
+    tenantId: tenant.id,
+    actorUserId: actorId,
+    name,
+    authMode: rawAuthMode,
+    authConfigRef,
+    authState: rawAuthState,
+  });
   return NextResponse.json({ connector: toApiHubConnectorDto(created) }, { status: 201 });
 }

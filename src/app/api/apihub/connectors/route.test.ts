@@ -60,6 +60,9 @@ describe("GET /api/apihub/connectors", () => {
       id: "connector-1",
       name: "Carrier feed",
       sourceKind: "stub",
+      authMode: "none",
+      authConfigRef: null,
+      authState: "not_configured",
       status: "draft",
       lastSyncAt: null,
       healthSummary: "ok",
@@ -111,6 +114,9 @@ describe("POST /api/apihub/connectors", () => {
       id: "connector-1",
       name: "New connector",
       sourceKind: "stub",
+      authMode: "none",
+      authConfigRef: null,
+      authState: "not_configured",
       status: "draft",
       lastSyncAt: null,
       healthSummary: null,
@@ -133,8 +139,73 @@ describe("POST /api/apihub/connectors", () => {
       tenantId: "tenant-1",
       actorUserId: "actor-1",
       name: "New connector",
+      authMode: "none",
+      authConfigRef: null,
+      authState: "not_configured",
     });
     expect(await response.json()).toEqual({ connector: { id: "dto-1" } });
+  });
+
+  it("accepts auth metadata without storing secrets", async () => {
+    getDemoTenantMock.mockResolvedValue({ id: "tenant-1" });
+    getActorUserIdMock.mockResolvedValue("actor-1");
+    createStubApiHubConnectorMock.mockResolvedValue({
+      id: "connector-1",
+      name: "ERP feed",
+      sourceKind: "stub",
+      authMode: "api_key_ref",
+      authConfigRef: "secret://demo-company/apihub/erp",
+      authState: "configured",
+      status: "draft",
+      lastSyncAt: null,
+      healthSummary: null,
+      createdAt: new Date("2026-04-20T10:00:00.000Z"),
+      updatedAt: new Date("2026-04-20T10:00:00.000Z"),
+    });
+    toApiHubConnectorDtoMock.mockReturnValue({ id: "dto-1" });
+
+    const { POST } = await import("./route");
+    const response = await POST(
+      new Request("http://localhost/api/apihub/connectors", {
+        method: "POST",
+        body: JSON.stringify({
+          name: "ERP feed",
+          authMode: "api_key_ref",
+          authConfigRef: " secret://demo-company/apihub/erp ",
+          authState: "configured",
+        }),
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    expect(response.status).toBe(201);
+    expect(createStubApiHubConnectorMock).toHaveBeenCalledWith({
+      tenantId: "tenant-1",
+      actorUserId: "actor-1",
+      name: "ERP feed",
+      authMode: "api_key_ref",
+      authConfigRef: "secret://demo-company/apihub/erp",
+      authState: "configured",
+    });
+  });
+
+  it("returns 400 for unsupported auth mode", async () => {
+    getDemoTenantMock.mockResolvedValue({ id: "tenant-1" });
+    getActorUserIdMock.mockResolvedValue("actor-1");
+
+    const { POST } = await import("./route");
+    const response = await POST(
+      new Request("http://localhost/api/apihub/connectors", {
+        method: "POST",
+        body: JSON.stringify({ authMode: "plaintext_token" }),
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: "authMode must be one of: none, api_key_ref, oauth_client_ref, basic_ref.",
+    });
   });
 
   it("uses default name when payload is invalid json", async () => {
@@ -144,6 +215,9 @@ describe("POST /api/apihub/connectors", () => {
       id: "connector-1",
       name: "Stub connector",
       sourceKind: "stub",
+      authMode: "none",
+      authConfigRef: null,
+      authState: "not_configured",
       status: "draft",
       lastSyncAt: null,
       healthSummary: null,
@@ -165,6 +239,9 @@ describe("POST /api/apihub/connectors", () => {
       tenantId: "tenant-1",
       actorUserId: "actor-1",
       name: "Stub connector",
+      authMode: "none",
+      authConfigRef: null,
+      authState: "not_configured",
     });
   });
 });

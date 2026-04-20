@@ -86,6 +86,12 @@ model ApiHubConnector {
   name      String
   /// High-level source label until taxonomy lands (e.g. `stub`, `file`, `api`).
   sourceKind String  @default("unspecified")
+  /// Auth mode metadata only (no credential values in this table).
+  authMode  String   @default("none")
+  /// Secret manager / vault reference, never plaintext credentials.
+  authConfigRef String?
+  /// Operator-facing configuration readiness state.
+  authState String   @default("not_configured")
   status    String   @default("draft")
   /// Populated when sync jobs exist; nullable for stub rows.
   lastSyncAt DateTime?

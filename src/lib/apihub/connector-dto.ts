@@ -2,6 +2,9 @@ export type ApiHubConnectorDto = {
   id: string;
   name: string;
   sourceKind: string;
+  authMode: string;
+  authConfigRef: string | null;
+  authState: string;
   status: string;
   lastSyncAt: string | null;
   healthSummary: string | null;
@@ -22,6 +25,9 @@ type Row = {
   id: string;
   name: string;
   sourceKind: string;
+  authMode: string;
+  authConfigRef: string | null;
+  authState: string;
   status: string;
   lastSyncAt: Date | null;
   healthSummary: string | null;
@@ -41,6 +47,9 @@ export function toApiHubConnectorDto(row: Row): ApiHubConnectorDto {
     id: row.id,
     name: row.name,
     sourceKind: row.sourceKind,
+    authMode: row.authMode,
+    authConfigRef: row.authConfigRef,
+    authState: row.authState,
     status: row.status,
     lastSyncAt: row.lastSyncAt ? row.lastSyncAt.toISOString() : null,
     healthSummary: row.healthSummary,

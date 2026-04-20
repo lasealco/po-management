@@ -46,6 +46,26 @@ describe("PATCH /api/apihub/connectors/:id", () => {
     });
   });
 
+  it("returns 400 when no update fields are provided", async () => {
+    getDemoTenantMock.mockResolvedValue({ id: "tenant-1" });
+    getActorUserIdMock.mockResolvedValue("actor-1");
+
+    const { PATCH } = await import("./route");
+    const response = await PATCH(
+      new Request("http://localhost/api/apihub/connectors/connector-1", {
+        method: "PATCH",
+        body: JSON.stringify({ note: "only note" }),
+        headers: { "Content-Type": "application/json" },
+      }),
+      { params: Promise.resolve({ connectorId: "connector-1" }) },
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: "Provide at least one update field: status, authMode, authState, authConfigRef, or markSyncedNow.",
+    });
+  });
+
   it("returns 404 when connector is missing", async () => {
     getDemoTenantMock.mockResolvedValue({ id: "tenant-1" });
     getActorUserIdMock.mockResolvedValue("actor-1");
@@ -67,6 +87,9 @@ describe("PATCH /api/apihub/connectors/:id", () => {
       actorUserId: "actor-1",
       status: "active",
       syncNow: true,
+      authMode: null,
+      authConfigRef: undefined,
+      authState: null,
       note: "synced",
     });
     expect(response.status).toBe(404);
@@ -78,6 +101,9 @@ describe("PATCH /api/apihub/connectors/:id", () => {
       id: "connector-1",
       name: "ERP feed",
       sourceKind: "stub",
+      authMode: "none",
+      authConfigRef: null,
+      authState: "not_configured",
       status: "paused",
       lastSyncAt: null,
       healthSummary: "Not connected",
@@ -102,5 +128,51 @@ describe("PATCH /api/apihub/connectors/:id", () => {
     expect(response.status).toBe(200);
     expect(toApiHubConnectorDtoMock).toHaveBeenCalledWith(updatedRow);
     expect(await response.json()).toEqual({ connector: { id: "dto-1", status: "paused" } });
+  });
+
+  it("accepts auth config metadata updates", async () => {
+    getDemoTenantMock.mockResolvedValue({ id: "tenant-1" });
+    getActorUserIdMock.mockResolvedValue("actor-1");
+    updateApiHubConnectorLifecycleMock.mockResolvedValue({
+      id: "connector-1",
+      name: "ERP feed",
+      sourceKind: "stub",
+      authMode: "api_key_ref",
+      authConfigRef: "secret://demo-company/apihub/erp",
+      authState: "configured",
+      status: "paused",
+      lastSyncAt: null,
+      healthSummary: "Not connected",
+      createdAt: new Date("2026-04-20T10:00:00.000Z"),
+      updatedAt: new Date("2026-04-20T11:00:00.000Z"),
+    });
+    toApiHubConnectorDtoMock.mockReturnValue({ id: "dto-1", authState: "configured" });
+
+    const { PATCH } = await import("./route");
+    const response = await PATCH(
+      new Request("http://localhost/api/apihub/connectors/connector-1", {
+        method: "PATCH",
+        body: JSON.stringify({
+          authMode: "api_key_ref",
+          authConfigRef: " secret://demo-company/apihub/erp ",
+          authState: "configured",
+        }),
+        headers: { "Content-Type": "application/json" },
+      }),
+      { params: Promise.resolve({ connectorId: "connector-1" }) },
+    );
+
+    expect(response.status).toBe(200);
+    expect(updateApiHubConnectorLifecycleMock).toHaveBeenCalledWith({
+      tenantId: "tenant-1",
+      connectorId: "connector-1",
+      actorUserId: "actor-1",
+      status: null,
+      syncNow: false,
+      authMode: "api_key_ref",
+      authConfigRef: "secret://demo-company/apihub/erp",
+      authState: "configured",
+      note: null,
+    });
   });
 });
