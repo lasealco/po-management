@@ -241,6 +241,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
   const [data, setData] = useState<WmsData | null>(null);
   const [busy, setBusy] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [selectedWarehouseId, setSelectedWarehouseId] = useState("");
   const [movementTypeFilter, setMovementTypeFilter] = useState<
@@ -424,6 +425,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
         return;
       }
       setData(payload);
+      setLastRefreshedAt(new Date().toISOString());
       setSelectedWarehouseId((prev) => {
         if (section === "stock") {
           if (prev) return prev;
@@ -2011,7 +2013,10 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
             <button
               type="button"
               onClick={() => {
+                stockWarehouseDefaultApplied.current = true;
+                setSelectedWarehouseId("");
                 setMovementTypeFilter("");
+                setMovementSort("newest");
                 setLedgerDraftSince("");
                 setLedgerDraftUntil("");
                 setLedgerDraftLimit("");
@@ -2020,6 +2025,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                 setLedgerLimit("");
               }}
               className="shrink-0 rounded border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-800"
+              disabled={isRefreshing}
             >
               Reset filters
             </button>
@@ -2034,6 +2040,11 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
             </button>
           </div>
         </div>
+        {lastRefreshedAt ? (
+          <p className="mb-2 text-xs text-zinc-500">
+            Last refreshed: {new Date(lastRefreshedAt).toLocaleString()}
+          </p>
+        ) : null}
         {isRefreshing ? (
           <p className="mb-2 rounded border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-900" role="status">
             Refreshing stock ledger view…
@@ -2158,7 +2169,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                   <td colSpan={8} className="px-2 py-3 text-zinc-500">
                     {balancesShown.length === 0
                       ? "No balances in this view."
-                      : "No balances match this filter."}
+                      : `No balances match this filter${balanceTextFilter.trim() ? `: "${balanceTextFilter.trim()}"` : "."}`}
                   </td>
                 </tr>
               ) : (
