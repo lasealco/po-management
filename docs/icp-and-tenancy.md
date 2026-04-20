@@ -32,6 +32,30 @@ This document captures **who we want to sell to** and how that maps to **today�
 | 3PL customer isolation | Partial (CRM tree; CT user scope) | Consistent **customer dimension** on ops entities + portal roles |
 | Reporting / cockpit | Aggregates by `tenantId` | Scoped and roll-up queries by org / customer when models exist |
 
+## System tenancy representation decision
+
+**Decision (Wave 3):** use a **single tenant as the hard isolation boundary** and add **org units inside the tenant** for hierarchy and scoped access.
+
+**Why this decision:**
+
+- Preserves today's proven `tenantId` isolation model and avoids high-risk cross-tenant joins for core operations.
+- Matches current user/account assumptions (`User.tenantId` = one tenant membership) while enabling HQ/region/country/site hierarchy.
+- Supports both ICP segments: enterprise internal hierarchy and 3PL customer scoping, without turning each customer into a separate tenant.
+- Keeps migration path incremental: introduce scoped models first, then evolve per-module visibility/reporting.
+
+**Non-goals in this phase:**
+
+- No parent/child tenant federation model.
+- No per-customer tenant split as the default architecture.
+- No claim that scoped org RBAC is already shipped; this remains roadmap implementation.
+
+**Target model shape (design intent):**
+
+- `Tenant` remains the top-level isolation container.
+- `OrgUnit` tree (within tenant) models internal hierarchy.
+- Membership and grants become scope-aware (user assignment to org subtree + permission checks on assigner scope).
+- Operational entities add optional org/customer dimensions as required by module rollout.
+
 ## Scoped admin and delegation (“cannot give what you don’t have”)
 
 For **global → regional → country** (and similar) admin patterns, product intent is:
@@ -65,5 +89,6 @@ For **global → regional → country** (and similar) admin patterns, product in
 
 ## Changelog
 
+- **2026-04-20:** Chose tenancy representation for system scope: keep **single tenant isolation** and model hierarchy with **in-tenant org units**; documented rationale and non-goals.
 - **2026-04-18:** Added **scoped admin / delegation subset rule** (cannot grant permissions or scope you don’t hold) and matching engineering todo.
 - **2026-04-16:** Initial write-up from architecture discussion (ICP (a)/(b) vs current tenancy).
