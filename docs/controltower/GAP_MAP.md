@@ -55,6 +55,8 @@
 
 **What exists today (runtime unchanged):** `POST /api/control-tower/assist` is a **tenant-scoped, grant-gated narrow assistant** — deterministic hints, optional LLM merge, **keyword** (non-embedding) retrieval assembled in `assist-retrieval.ts`, and help playbooks. Useful for operators; not, by itself, a full **multi-channel conversational chatbot** as enterprise PDFs often describe.
 
+**Issue scope guardrail:** this parity note is intentionally **docs-only** for planning handoff. It does **not** change `assist.ts`, `assist-llm.ts`, retrieval runtime, or API behavior.
+
 **Spec parity checklist** (read the PDF for authoritative requirements; use this as a **triage list**, not a substitute):
 
 - **Retrieval** — Expect PDF-level depth to include **semantic / vector** retrieval (embeddings, chunking, re-ranking) over **approved** corpora plus operational data. Repo today: **keyword-scored** snippets from a curated map; no embedding index in this vertical yet.
@@ -157,6 +159,7 @@ File **one GitHub issue per bullet** when scheduling (titles are suggestions; ke
 
 | Date | Change |
 |------|--------|
+| 2026-04-20 | Clarified **R3 Assist / chatbot** parity section as an explicit **docs-only** handoff artifact (no runtime changes) to match [issue #6](https://github.com/lasealco/po-management/issues/6) scope. |
 | 2026-04-20 | Near-term **4–7** re-checked against code (`report-engine` dimensions, `report-pdf` org line, workbench single-select); tightened Done/Partial/Next; **Suggested next PRs** aligned to **#4–7**; tracking [issue #3](https://github.com/lasealco/po-management/issues/3). |
 | 2026-04-20 | **R3 Assist / chatbot:** gap narrative + **spec parity checklist** vs **`control_tower_search_and_chatbot_spec_*.pdf`** (rows + dedicated subsection); [issue #6](https://github.com/lasealco/po-management/issues/6). |
 | 2026-04-18 | Backlog **#7 (low priority)**: report builder exception / NC-style analytics (deferred; workbench + 360 already cover triage). |
