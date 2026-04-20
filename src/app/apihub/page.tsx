@@ -1,5 +1,11 @@
 import Link from "next/link";
 
+import { toApiHubConnectorDto } from "@/lib/apihub/connector-dto";
+import { listApiHubConnectors } from "@/lib/apihub/connectors-repo";
+import { getViewerGrantSet } from "@/lib/authz";
+
+import { ConnectorsSection } from "./connectors-section";
+
 export const dynamic = "force-dynamic";
 
 const GITHUB_DOCS_APIHUB_TREE =
@@ -35,7 +41,13 @@ const STEP_PLACEHOLDERS = [
   },
 ] as const;
 
-export default function ApihubHomePage() {
+export default async function ApihubHomePage() {
+  const access = await getViewerGrantSet();
+  const canCreate = Boolean(access?.user);
+  const connectorRows =
+    access?.user && access.tenant ? await listApiHubConnectors(access.tenant.id) : [];
+  const initialConnectors = connectorRows.map(toApiHubConnectorDto);
+
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
       <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
@@ -45,9 +57,10 @@ export default function ApihubHomePage() {
             <h2 className="text-2xl font-semibold text-zinc-900">Integration and ingestion hub</h2>
             <p className="mt-2 max-w-2xl text-sm text-zinc-600">
               Single place for AI-assisted mapping proposals, human confirmation, and repeatable runs across file
-              upload and server-to-server APIs. This page is a{" "}
-              <span className="font-medium text-zinc-800">Phase P0</span> shell: documentation and UX scaffolding only
-              — no connector database or live ingestion yet.
+              upload and server-to-server APIs. The workflow cards below remain{" "}
+              <span className="font-medium text-zinc-800">placeholders</span>;{" "}
+              <span className="font-medium text-zinc-800">Phase 1</span> adds a tenant-scoped connector registry (stub
+              rows, no live ingestion).
             </p>
           </div>
           <div className="flex flex-col gap-2 sm:items-end">
@@ -96,6 +109,8 @@ export default function ApihubHomePage() {
           .
         </div>
       </section>
+
+      <ConnectorsSection initialConnectors={initialConnectors} canCreate={canCreate} />
     </main>
   );
 }

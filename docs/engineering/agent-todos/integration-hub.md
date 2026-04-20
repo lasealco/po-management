@@ -25,7 +25,7 @@
 
 ## Phase 1 — contracts (after P0)
 
-- [ ] **Connector registry** — DB table + CRUD API stub + empty UI list (issue must include Prisma scope).
+- [x] **Connector registry** — `ApiHubConnector` + migration `20260420183000_apihub_connector_registry`; `GET`/`POST` `src/app/api/apihub/connectors/route.ts`; Connectors section on `/apihub` (Session 8 / Phase 1 stub).
 - [ ] **Health / last sync** — display-only fields on registry rows (mock data ok until integrations exist).
 - [ ] **Audit log slice** — who changed connector config (may reuse existing audit patterns).
 

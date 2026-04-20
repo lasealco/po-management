@@ -75,6 +75,28 @@ model Tenant {
   invoiceIntakes        InvoiceIntake[]
   invoiceToleranceRules InvoiceToleranceRule[]
   invoiceChargeAliases  InvoiceChargeAlias[]
+  apiHubConnectors      ApiHubConnector[]
+}
+
+/// Integration / API hub — registry row for an external or internal data source (Phase 1 stub).
+model ApiHubConnector {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  /// High-level source label until taxonomy lands (e.g. `stub`, `file`, `api`).
+  sourceKind String  @default("unspecified")
+  status    String   @default("draft")
+  /// Populated when sync jobs exist; nullable for stub rows.
+  lastSyncAt DateTime?
+  /// Operator-facing health / connectivity summary (no secrets).
+  healthSummary String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, createdAt])
 }
 
 /// Tenant-scoped milestone template packs (override or extend built-in packs in code).
