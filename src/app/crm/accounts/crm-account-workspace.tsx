@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 type AccountDetail = {
@@ -62,9 +62,43 @@ const TABS = [
   { id: "quotes" as const, label: "Quotes" },
   { id: "shipments" as const, label: "Shipments" },
   { id: "finance" as const, label: "Finance" },
+] as const;
+
+type AccountTabId = (typeof TABS)[number]["id"];
+
+const WORKSPACE_ZONES: {
+  step: string;
+  title: string;
+  blurb: string;
+  tabs: readonly AccountTabId[];
+}[] = [
+  {
+    step: "Step 1",
+    title: "Profile",
+    blurb: "Summary, ownership, and recent CRM activity.",
+    tabs: ["overview"],
+  },
+  {
+    step: "Step 2",
+    title: "Relationships",
+    blurb: "People, pipeline, and commercial quotes.",
+    tabs: ["contacts", "opportunities", "quotes"],
+  },
+  {
+    step: "Step 3",
+    title: "Execution & finance",
+    blurb: "Shipments and ledger context when integrations are on.",
+    tabs: ["shipments", "finance"],
+  },
 ];
 
-export function CrmAccountDetail({
+const primaryBtn =
+  "rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:brightness-95 disabled:opacity-50";
+
+const secondaryOutlineBtn =
+  "rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-800 shadow-sm hover:bg-zinc-50 disabled:opacity-50";
+
+export function CrmAccountWorkspace({
   accountId,
   actorUserId,
   canEditAll,
@@ -74,16 +108,32 @@ export function CrmAccountDetail({
   canEditAll: boolean;
 }) {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
   const initialTab = useMemo(() => {
     const t = searchParams.get("tab");
-    if (t && TABS.some((x) => x.id === t)) return t as (typeof TABS)[number]["id"];
+    if (t && TABS.some((x) => x.id === t)) return t as AccountTabId;
     return "overview";
   }, [searchParams]);
 
-  const [tab, setTab] = useState<(typeof TABS)[number]["id"]>(initialTab);
+  const [tab, setTab] = useState<AccountTabId>(initialTab);
   useEffect(() => {
     setTab(initialTab);
   }, [initialTab]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const current = params.get("tab") ?? "";
+    const want = tab === "overview" ? "" : tab;
+    if (current === want) return;
+    const nextParams = new URLSearchParams(window.location.search);
+    if (tab === "overview") nextParams.delete("tab");
+    else nextParams.set("tab", tab);
+    const q = nextParams.toString();
+    router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false });
+  }, [tab, pathname, router]);
 
   const [account, setAccount] = useState<AccountDetail | null>(null);
   const [contacts, setContacts] = useState<ContactRow[]>([]);
@@ -213,7 +263,10 @@ export function CrmAccountDetail({
     return (
       <div className="mx-auto max-w-3xl px-6 py-16">
         <p className="text-sm text-red-700">{error}</p>
-        <Link href="/crm" className="mt-4 inline-block text-sm text-violet-700">
+        <Link
+          href="/crm"
+          className="mt-4 inline-block text-sm font-medium text-[var(--arscmp-primary)] hover:underline"
+        >
           ← Back to CRM
         </Link>
       </div>
@@ -235,7 +288,7 @@ export function CrmAccountDetail({
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <Link
           href="/crm/accounts"
-          className="text-sm font-medium text-violet-700 hover:text-violet-900"
+          className="text-sm font-medium text-[var(--arscmp-primary)] hover:underline"
         >
           ← Accounts
         </Link>
@@ -251,7 +304,41 @@ export function CrmAccountDetail({
             Strategic
           </span>
         ) : null}
+        <span className="rounded-full border border-zinc-200 bg-white px-2 py-0.5 text-xs font-medium text-zinc-600">
+          Account 360
+        </span>
       </div>
+
+      <section className="mb-6 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Workflow</p>
+        <p className="mt-1 text-sm text-zinc-600">
+          Move across profile, relationships, and execution tabs. Shipments and finance are
+          placeholders until integrations land.
+        </p>
+        <div className="mt-4 grid gap-2 sm:grid-cols-3">
+          {WORKSPACE_ZONES.map((zone) => {
+            const active = zone.tabs.includes(tab);
+            return (
+              <button
+                key={zone.step}
+                type="button"
+                onClick={() => setTab(zone.tabs[0])}
+                className={`rounded-xl border p-4 text-left transition-shadow ${
+                  active
+                    ? "border-[var(--arscmp-primary)] bg-[color-mix(in_srgb,var(--arscmp-primary)_8%,white)] shadow-sm ring-1 ring-[var(--arscmp-primary)]/25"
+                    : "border-zinc-200 bg-zinc-50/80 hover:border-zinc-300 hover:bg-white"
+                }`}
+              >
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                  {zone.step}
+                </p>
+                <p className="mt-1 text-sm font-semibold text-zinc-900">{zone.title}</p>
+                <p className="mt-1 text-xs leading-relaxed text-zinc-600">{zone.blurb}</p>
+              </button>
+            );
+          })}
+        </div>
+      </section>
 
       <div className="mb-6 flex flex-wrap gap-1 border-b border-zinc-200 pb-2">
         {TABS.map(({ id, label }) => (
@@ -261,7 +348,7 @@ export function CrmAccountDetail({
             onClick={() => setTab(id)}
             className={`rounded-md px-3 py-1.5 text-sm font-medium ${
               tab === id
-                ? "bg-violet-100 text-violet-900"
+                ? "bg-[color-mix(in_srgb,var(--arscmp-primary)_14%,white)] text-[var(--arscmp-primary)]"
                 : "text-zinc-600 hover:bg-zinc-100"
             }`}
           >
@@ -310,11 +397,7 @@ export function CrmAccountDetail({
                   <span className="text-zinc-700">Strategic account</span>
                 </label>
                 <div className="sm:col-span-2">
-                  <button
-                    type="submit"
-                    disabled={busy || !name.trim()}
-                    className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
-                  >
+                  <button type="submit" disabled={busy || !name.trim()} className={primaryBtn}>
                     Save changes
                   </button>
                 </div>
@@ -370,7 +453,7 @@ export function CrmAccountDetail({
               <button
                 type="submit"
                 disabled={busy || !cFirst.trim() || !cLast.trim()}
-                className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-sm font-medium text-violet-900 disabled:opacity-50 sm:col-span-3"
+                className={`${secondaryOutlineBtn} sm:col-span-3`}
               >
                 Add contact
               </button>
@@ -409,7 +492,7 @@ export function CrmAccountDetail({
                 <li key={o.id} className="py-2">
                   <Link
                     href={`/crm/opportunities/${o.id}`}
-                    className="font-medium text-violet-700 hover:underline"
+                    className="font-medium text-[var(--arscmp-primary)] hover:underline"
                   >
                     {o.name}
                   </Link>
@@ -441,7 +524,7 @@ export function CrmAccountDetail({
               <button
                 type="submit"
                 disabled={busy || !quoteTitle.trim()}
-                className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
+                className={primaryBtn}
               >
                 Create & open
               </button>
@@ -455,7 +538,7 @@ export function CrmAccountDetail({
                 <li key={q.id} className="py-2">
                   <Link
                     href={`/crm/quotes/${q.id}`}
-                    className="font-medium text-violet-700 hover:underline"
+                    className="font-medium text-[var(--arscmp-primary)] hover:underline"
                   >
                     {q.title}
                   </Link>
@@ -471,22 +554,24 @@ export function CrmAccountDetail({
       ) : null}
 
       {tab === "shipments" ? (
-        <section className="rounded-xl border border-amber-200 bg-amber-50/60 p-6 text-sm text-amber-950">
-          <h2 className="text-lg font-semibold text-amber-950">Shipments</h2>
+        <section className="rounded-2xl border border-amber-200 bg-amber-50/60 p-6 text-sm text-amber-950 shadow-sm">
+          <h2 className="text-lg font-semibold text-amber-950">Shipments (placeholder)</h2>
           <p className="mt-2 leading-relaxed">
             This panel will show milestones, bookings, and execution status when the{" "}
             <strong>control tower / shipment</strong> integration is connected (after the
-            integration portal ships).
+            integration portal ships). Until then, use pipeline and activities tabs for manual
+            coordination notes.
           </p>
         </section>
       ) : null}
 
       {tab === "finance" ? (
-        <section className="rounded-xl border border-sky-200 bg-sky-50/60 p-6 text-sm text-sky-950">
-          <h2 className="text-lg font-semibold text-sky-950">Finance</h2>
+        <section className="rounded-2xl border border-sky-200 bg-sky-50/60 p-6 text-sm text-sky-950 shadow-sm">
+          <h2 className="text-lg font-semibold text-sky-950">Finance (placeholder)</h2>
           <p className="mt-2 leading-relaxed">
             Invoices, payments, and DSO-style snapshots will appear here when an{" "}
-            <strong>ERP / accounting</strong> connector is available.
+            <strong>ERP / accounting</strong> connector is available. No financial data is
+            synced for this account yet.
           </p>
         </section>
       ) : null}
