@@ -2,7 +2,7 @@
 
 **Legend:** ✅ shipped · 🟡 partial / stub · ❌ not started
 
-**Last updated:** 2026-04-20 (Phase 1 connector registry stub + docs runbook)
+**Last updated:** 2026-04-20 (Phase 2 connector lifecycle + audit trail slice)
 
 | Area | Repo reality | Notes |
 |------|--------------|--------|
@@ -11,7 +11,7 @@
 | Ingestion spec | 🟡 `integrations-ai-assisted-ingestion.md` | Draft; evolves with P0–P4 |
 | App route `/apihub` | ✅ `src/app/apihub/**` | Shell + **Connectors** section (DB-backed list); demo session required |
 | Health / discovery API | ✅ `GET /api/apihub/health` | `{ ok, service, phase }`; no secrets |
-| Prisma: **connector registry** | 🟡 `ApiHubConnector` + `GET/POST /api/apihub/connectors` | Phase 1 stub rows only; no secrets / OAuth / workers |
+| Prisma: **connector registry** | 🟡 `ApiHubConnector` + `ApiHubConnectorAuditLog`; `GET/POST /api/apihub/connectors`; `PATCH /api/apihub/connectors/:id` | Status updates + optional sync timestamp + lightweight audit rows; still no secrets / OAuth / workers |
 | Prisma: template / batch / staging | ❌ | P1+ (remaining spec tables) |
 | AI job + mapping editor | ❌ | P2 |
 | Deterministic apply + idempotent API | ❌ | P3 |

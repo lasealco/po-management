@@ -17,7 +17,7 @@ This folder is the **documentation home** for **integration / ingestion APIs and
 
 - Authenticated demo session: **`/apihub`** — workflow placeholders + **Connectors** registry (Phase 1 stub list with health + last-sync display; see [GAP_MAP](./GAP_MAP.md)).
 - **Health stub:** `GET /api/apihub/health` — JSON `{ ok, service, phase }` for discovery and deploy checks (no auth).
-- **Connector registry (Phase 1):** `GET` / `POST` **`/api/apihub/connectors`** — demo tenant + active demo actor (same session gate as `/apihub`); returns metadata only (no secrets).
+- **Connector registry (Phase 2 slice):** `GET` / `POST` **`/api/apihub/connectors`** + `PATCH` **`/api/apihub/connectors/:id`** — demo tenant + active demo actor; supports status updates, optional `lastSyncAt` stamp, and lightweight audit rows (no secrets).
 
 ## Related material elsewhere
 
