@@ -9,6 +9,7 @@ This folder is the **documentation home** for **integration / ingestion APIs and
 | Document | Purpose |
 |----------|---------|
 | [integrations-ai-assisted-ingestion.md](./integrations-ai-assisted-ingestion.md) | End-to-end product + technical spec: AI-assisted ingestion, templates, API + file parity, guardrails, phased delivery |
+| [RUNBOOK.md](./RUNBOOK.md) | Docs-only execution runbook for API Hub updates, scope boundaries, and PR checklist |
 
 **Gap map (spec ↔ code):** [GAP_MAP.md](./GAP_MAP.md)
 
