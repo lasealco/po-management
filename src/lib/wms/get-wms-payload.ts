@@ -39,6 +39,7 @@ export async function getWmsDashboardPayload(
     inboundShipments,
     movementRows,
     recentMovements,
+    recentMovementMatchedCount,
   ] = await Promise.all([
     prisma.warehouse.findMany({
       where: { tenantId, isActive: true },
@@ -189,6 +190,7 @@ export async function getWmsDashboardPayload(
         createdBy: { select: { id: true, name: true, email: true } },
       },
     }),
+    prisma.inventoryMovement.count({ where: recentMovementWhere }),
   ]);
 
   const putawayByShipmentItem = new Map<string, number>();
@@ -376,5 +378,10 @@ export async function getWmsDashboardPayload(
       product: m.product,
       createdBy: m.createdBy,
     })),
+    recentMovementsMeta: {
+      limit: recentMovementTake,
+      matchedCount: recentMovementMatchedCount,
+      truncated: recentMovementMatchedCount > recentMovementTake,
+    },
   };
 }
