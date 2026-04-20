@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { promoteStagingImportAmountPresent } from "@/lib/tariff/promote-staging-import";
+import {
+  findDuplicatePromotableRows,
+  isSupportedPromoteRateType,
+  promoteStagingImportAmountPresent,
+} from "@/lib/tariff/promote-staging-import";
 
 describe("promoteStagingImportAmountPresent", () => {
   it("treats numeric zero and string zero as present", () => {
@@ -27,5 +31,68 @@ describe("promoteStagingImportAmountPresent", () => {
     expect(promoteStagingImportAmountPresent(null)).toBe(false);
     expect(promoteStagingImportAmountPresent(undefined)).toBe(false);
     expect(promoteStagingImportAmountPresent({})).toBe(false);
+  });
+});
+
+describe("findDuplicatePromotableRows", () => {
+  it("flags duplicate normalized payloads for equivalent approved rows", () => {
+    const duplicate = findDuplicatePromotableRows([
+      {
+        id: "row-1",
+        rowType: "RATE_LINE_CANDIDATE",
+        normalizedPayload: { rateType: "BASE_RATE", currency: "USD", unitBasis: "CONTAINER", amount: "100" },
+      },
+      {
+        id: "row-2",
+        rowType: "RATE_LINE_CANDIDATE",
+        normalizedPayload: { unitBasis: "CONTAINER", amount: "100", currency: "USD", rateType: "BASE_RATE" },
+      },
+    ]);
+    expect(duplicate).toEqual({ firstRowId: "row-1", duplicateRowId: "row-2" });
+  });
+
+  it("treats different row types or payload values as non-duplicates", () => {
+    expect(
+      findDuplicatePromotableRows([
+        {
+          id: "row-1",
+          rowType: "RATE_LINE_CANDIDATE",
+          normalizedPayload: { rateType: "BASE_RATE", currency: "USD", unitBasis: "CONTAINER", amount: "100" },
+        },
+        {
+          id: "row-2",
+          rowType: "CHARGE_LINE_CANDIDATE",
+          normalizedPayload: { rawChargeName: "BAF", currency: "USD", unitBasis: "CONTAINER", amount: "100" },
+        },
+        {
+          id: "row-3",
+          rowType: "RATE_LINE_CANDIDATE",
+          normalizedPayload: { rateType: "BASE_RATE", currency: "USD", unitBasis: "CONTAINER", amount: "101" },
+        },
+      ]),
+    ).toBeNull();
+  });
+
+  it("ignores malformed normalized payload objects", () => {
+    expect(
+      findDuplicatePromotableRows([
+        { id: "row-1", rowType: "RATE_LINE_CANDIDATE", normalizedPayload: null },
+        { id: "row-2", rowType: "RATE_LINE_CANDIDATE", normalizedPayload: [] },
+      ]),
+    ).toBeNull();
+  });
+});
+
+describe("isSupportedPromoteRateType", () => {
+  it("accepts known tariff line rate type enums", () => {
+    expect(isSupportedPromoteRateType("BASE_RATE")).toBe(true);
+    expect(isSupportedPromoteRateType("ALL_IN")).toBe(true);
+  });
+
+  it("rejects unsupported or malformed values", () => {
+    expect(isSupportedPromoteRateType("NOT_A_REAL_RATE_TYPE")).toBe(false);
+    expect(isSupportedPromoteRateType("base_rate")).toBe(false);
+    expect(isSupportedPromoteRateType(123)).toBe(false);
+    expect(isSupportedPromoteRateType(null)).toBe(false);
   });
 });
