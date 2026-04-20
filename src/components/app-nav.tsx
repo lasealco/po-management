@@ -32,6 +32,7 @@ function isTopNavHrefActive(pathname: string, href: string): boolean {
   if (href === "/pricing-snapshots") return pathname.startsWith("/pricing-snapshots");
   if (href === "/invoice-audit") return pathname.startsWith("/invoice-audit");
   if (href === "/rfq/requests") return pathname.startsWith("/rfq");
+  if (href === "/apihub") return pathname === "/apihub" || pathname.startsWith("/apihub/");
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -47,15 +48,16 @@ type TopNavItem =
   | { kind: "ratesAudit" };
 
 const topNavItems: TopNavItem[] = [
-  { kind: "po", key: "poManagement", label: "PO Management", href: "/orders" },
-  { kind: "link", key: "salesOrders", label: "Sales Orders", href: "/sales-orders" },
   { kind: "link", key: "executive", label: "Executive", href: "/executive" },
-  { kind: "link", key: "reports", label: "Reporting", href: "/reporting" },
   { kind: "link", key: "controlTower", label: "Control Tower", href: "/control-tower" },
-  { kind: "link", key: "wms", label: "WMS", href: "/wms" },
   { kind: "link", key: "crm", label: "CRM", href: "/crm" },
   { kind: "link", key: "srm", label: "SRM", href: "/srm" },
+  { kind: "link", key: "wms", label: "WMS", href: "/wms" },
+  { kind: "po", key: "poManagement", label: "PO Management", href: "/orders" },
+  { kind: "link", key: "salesOrders", label: "Sales Orders", href: "/sales-orders" },
+  { kind: "link", key: "reports", label: "Reporting", href: "/reporting" },
   { kind: "ratesAudit" },
+  { kind: "link", key: "apihub", label: "API Hub", href: "/apihub" },
   { kind: "link", key: "settings", label: "Settings", href: "/settings" },
 ];
 
