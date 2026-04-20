@@ -9,6 +9,9 @@ export function ApihubHeader() {
           <h1 className="text-base font-semibold text-zinc-900">API hub</h1>
         </div>
         <nav className="flex flex-wrap items-center justify-end gap-3 text-sm">
+          <Link href="/apihub#demo-sync" className="font-medium text-zinc-600 hover:text-zinc-900">
+            Demo sync
+          </Link>
           <Link href="/apihub#connectors" className="font-medium text-zinc-600 hover:text-zinc-900">
             Connectors
           </Link>

@@ -5,6 +5,7 @@ import { listApiHubConnectors } from "@/lib/apihub/connectors-repo";
 import { getViewerGrantSet } from "@/lib/authz";
 
 import { ConnectorsSection } from "./connectors-section";
+import { DemoSyncShowcase } from "./demo-sync-showcase";
 
 export const dynamic = "force-dynamic";
 
@@ -110,6 +111,7 @@ export default async function ApihubHomePage() {
         </div>
       </section>
 
+      <DemoSyncShowcase />
       <ConnectorsSection initialConnectors={initialConnectors} canCreate={canCreate} />
     </main>
   );
