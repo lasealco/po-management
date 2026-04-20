@@ -54,54 +54,61 @@ export default async function PlatformHomePage() {
     modules.push({
       href: "/orders",
       title: "PO Management",
-      description: "Orders, consolidations, and products.",
+      description: "Manage purchase orders, supplier coordination, and product-level execution queues.",
     });
   }
   if (v?.salesOrders) {
     modules.push({
       href: "/sales-orders",
       title: "Sales Orders",
-      description: "Customer orders and fulfillment handoff.",
+      description: "Track customer demand, status transitions, and fulfillment handoff readiness.",
     });
   }
   if (v?.reports) {
     modules.push({
       href: "/executive",
       title: "Executive Dashboard",
-      description: "CEO command center for demand, risk, and capital exposure.",
+      description: "Board-level snapshot for demand, risk, throughput, and capital exposure.",
     });
     modules.push({
       href: "/reporting",
       title: "Reporting",
-      description: "Analytics hub across modules.",
+      description: "Cross-module analytics hub for KPI drilldowns and trend monitoring.",
     });
   }
   if (v?.controlTower) {
     modules.push({
       href: "/control-tower",
       title: "Control Tower",
-      description: "Shipments, workbench, digest list, alerts, and reporting.",
+      description: "End-to-end shipment visibility, exceptions, and operational command workflows.",
     });
   }
   if (v?.wms) {
     modules.push({
       href: "/wms",
       title: "WMS",
-      description: "Warehouse operations and inventory.",
+      description: "Warehouse execution, stock ledger, tasks, and fulfillment operations.",
     });
   }
   if (v?.crm) {
     modules.push({
       href: "/crm",
       title: "CRM",
-      description: "Pipeline, accounts, and quotes.",
+      description: "Pipeline, account intelligence, opportunity tracking, and commercial workflows.",
     });
   }
   if (v?.srm) {
     modules.push({
       href: "/srm",
       title: "SRM",
-      description: "Supplier relationship management and supplier master data.",
+      description: "Supplier lifecycle, onboarding controls, and relationship management.",
+    });
+  }
+  if (v?.apihub) {
+    modules.push({
+      href: "/apihub",
+      title: "API Hub",
+      description: "Integration control center for connector runs, mapping previews, and ingestion health.",
     });
   }
   if (v?.pricingSnapshots) {
@@ -124,7 +131,7 @@ export default async function PlatformHomePage() {
     <main className="min-h-[calc(100vh-8rem)] bg-gradient-to-b from-zinc-50 via-white to-zinc-50">
       <div className="mx-auto max-w-5xl px-6 pb-20 pt-12 sm:pt-16">
         <div className="flex flex-col gap-4 border-b border-zinc-200/80 pb-8 sm:flex-row sm:items-center sm:justify-between">
-          <BrandMarkLink href={PLATFORM_HUB_PATH} className="py-1" aria-label="AR SCMP — platform home" />
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Platform workspace hub</p>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500 sm:text-right">
             {tenantName}
           </p>
@@ -182,7 +189,7 @@ export default async function PlatformHomePage() {
               <li key={m.href}>
                 <Link
                   href={m.href}
-                  className="group flex h-full flex-col rounded-2xl border border-zinc-200/90 bg-white p-6 shadow-sm transition-all hover:border-[var(--arscmp-primary)]/35 hover:shadow-md"
+                  className="group flex h-full flex-col rounded-2xl border border-zinc-200/90 border-l-4 border-l-[var(--arscmp-primary)] bg-gradient-to-br from-[var(--arscmp-primary-50)]/40 to-white p-6 shadow-sm transition-all hover:border-[var(--arscmp-primary)]/35 hover:shadow-md"
                 >
                   <span className="text-lg font-semibold text-zinc-900 group-hover:text-[var(--arscmp-primary)]">
                     {m.title}
