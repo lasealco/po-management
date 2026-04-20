@@ -162,6 +162,22 @@ type WmsData = {
   recentMovementsMeta: { limit: number; matchedCount: number; truncated: boolean };
 };
 
+type SavedLedgerView = {
+  id: string;
+  name: string;
+  filters: {
+    warehouseId?: string | null;
+    movementType?: string | null;
+    sinceIso?: string | null;
+    untilIso?: string | null;
+    limit?: string | null;
+    sortBy?: string | null;
+    sortDir?: string | null;
+  };
+  createdAt?: string;
+  updatedAt?: string;
+};
+
 export type WmsSection = "setup" | "operations" | "stock";
 
 const STOCK_LEDGER_MV_TYPE_PRESETS: Array<{ label: string; value: "" | InventoryMovementType }> = [
@@ -304,6 +320,11 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
   const [balanceSort, setBalanceSort] = useState<
     "bin" | "product" | "availableDesc" | "availableAsc"
   >("bin");
+  const [savedViews, setSavedViews] = useState<SavedLedgerView[]>([]);
+  const [savedViewsLoading, setSavedViewsLoading] = useState(false);
+  const [savedViewsError, setSavedViewsError] = useState<string | null>(null);
+  const [selectedSavedViewId, setSelectedSavedViewId] = useState("");
+  const [newSavedViewName, setNewSavedViewName] = useState("");
   const onHoldOnly = searchParams.get("onHold") === "1";
 
   useEffect(() => {
@@ -597,6 +618,133 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
     }
     return rows;
   }, [balanceSort, balancesTableRows]);
+
+  const loadSavedViews = useCallback(async () => {
+    if (section !== "stock") return;
+    setSavedViewsLoading(true);
+    setSavedViewsError(null);
+    try {
+      const res = await fetch("/api/wms/saved-ledger-views", { cache: "no-store" });
+      const payload = (await res.json()) as
+        | { items?: SavedLedgerView[]; views?: SavedLedgerView[]; error?: string }
+        | SavedLedgerView[];
+      if (!res.ok) {
+        setSavedViewsError(
+          (typeof payload === "object" && payload && "error" in payload && payload.error) ||
+            "Could not load saved views.",
+        );
+        return;
+      }
+      if (Array.isArray(payload)) {
+        setSavedViews(payload);
+      } else {
+        setSavedViews(payload.items ?? payload.views ?? []);
+      }
+    } catch {
+      setSavedViewsError("Could not load saved views.");
+    } finally {
+      setSavedViewsLoading(false);
+    }
+  }, [section]);
+
+  useEffect(() => {
+    if (section !== "stock") return;
+    startTransition(() => {
+      void loadSavedViews();
+    });
+  }, [section, loadSavedViews]);
+
+  function applySavedView(view: SavedLedgerView) {
+    const filters = view.filters ?? {};
+    const warehouseId = typeof filters.warehouseId === "string" ? filters.warehouseId : "";
+    const movementType = typeof filters.movementType === "string" ? filters.movementType : "";
+    const sinceIso = typeof filters.sinceIso === "string" ? filters.sinceIso : "";
+    const untilIso = typeof filters.untilIso === "string" ? filters.untilIso : "";
+    const limit = typeof filters.limit === "string" ? filters.limit : "";
+    const sortBy = filters.sortBy;
+    const sortDir = filters.sortDir;
+    if (!warehouseId) stockWarehouseDefaultApplied.current = true;
+    setSelectedWarehouseId(warehouseId);
+    setMovementTypeFilter(
+      movementType as "" | "RECEIPT" | "PUTAWAY" | "PICK" | "ADJUSTMENT" | "SHIPMENT",
+    );
+    setLedgerSince(sinceIso);
+    setLedgerUntil(untilIso);
+    setLedgerLimit(limit);
+    setLedgerDraftSince(sinceIso ? isoToDatetimeLocalValue(sinceIso) : "");
+    setLedgerDraftUntil(untilIso ? isoToDatetimeLocalValue(untilIso) : "");
+    setLedgerDraftLimit(limit);
+    if (sortBy === "quantity" && sortDir === "asc") {
+      setMovementSort("qtyAsc");
+    } else if (sortBy === "quantity" && sortDir === "desc") {
+      setMovementSort("qtyDesc");
+    } else if (sortBy === "createdAt" && sortDir === "asc") {
+      setMovementSort("oldest");
+    } else {
+      setMovementSort("newest");
+    }
+  }
+
+  async function createSavedView() {
+    const trimmed = newSavedViewName.trim();
+    if (!trimmed) return;
+    setSavedViewsError(null);
+    try {
+      const urlSort =
+        movementSort === "qtyAsc"
+          ? { sortBy: "quantity", sortDir: "asc" }
+          : movementSort === "qtyDesc"
+            ? { sortBy: "quantity", sortDir: "desc" }
+            : movementSort === "oldest"
+              ? { sortBy: "createdAt", sortDir: "asc" }
+              : { sortBy: "createdAt", sortDir: "desc" };
+      const body = {
+        name: trimmed,
+        filters: {
+          warehouseId: selectedWarehouseId || null,
+          movementType: movementTypeFilter || null,
+          sinceIso: ledgerSince || null,
+          untilIso: ledgerUntil || null,
+          limit: ledgerLimit || null,
+          sortBy: urlSort.sortBy,
+          sortDir: urlSort.sortDir,
+        },
+      };
+      const res = await fetch("/api/wms/saved-ledger-views", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const payload = (await res.json()) as { error?: string; item?: SavedLedgerView };
+      if (!res.ok) {
+        setSavedViewsError(payload.error ?? "Could not create saved view.");
+        return;
+      }
+      setNewSavedViewName("");
+      await loadSavedViews();
+      if (payload.item?.id) setSelectedSavedViewId(payload.item.id);
+    } catch {
+      setSavedViewsError("Could not create saved view.");
+    }
+  }
+
+  async function deleteSavedView(viewId: string) {
+    setSavedViewsError(null);
+    try {
+      const res = await fetch(`/api/wms/saved-ledger-views/${encodeURIComponent(viewId)}`, {
+        method: "DELETE",
+      });
+      const payload = (await res.json()) as { error?: string };
+      if (!res.ok) {
+        setSavedViewsError(payload.error ?? "Could not delete saved view.");
+        return;
+      }
+      if (selectedSavedViewId === viewId) setSelectedSavedViewId("");
+      await loadSavedViews();
+    } catch {
+      setSavedViewsError("Could not delete saved view.");
+    }
+  }
 
   async function runAction(body: Record<string, unknown>) {
     setBusy(true);
@@ -1975,6 +2123,98 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
 
       {section === "stock" ? (
         <>
+      <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="min-w-[16rem] flex-1">
+            <h2 className="text-sm font-semibold text-zinc-900">Saved views</h2>
+            <p className="mt-1 text-xs text-zinc-600">
+              Save ledger filter combinations for faster review and consistent investor/demo walkthroughs.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              startTransition(() => {
+                void loadSavedViews();
+              });
+            }}
+            disabled={savedViewsLoading}
+            className="rounded border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-800 disabled:opacity-40"
+          >
+            Refresh list
+          </button>
+        </div>
+        <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(14rem,1fr)_auto_auto]">
+          <select
+            value={selectedSavedViewId}
+            onChange={(e) => {
+              const id = e.target.value;
+              setSelectedSavedViewId(id);
+              if (!id) return;
+              const found = savedViews.find((v) => v.id === id);
+              if (found) applySavedView(found);
+            }}
+            className="rounded border border-zinc-300 px-3 py-2 text-sm"
+          >
+            <option value="">Select saved view</option>
+            {savedViews.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.name}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            disabled={!selectedSavedViewId}
+            onClick={() => {
+              const found = savedViews.find((v) => v.id === selectedSavedViewId);
+              if (found) applySavedView(found);
+            }}
+            className="rounded border border-zinc-300 px-3 py-2 text-xs font-medium text-zinc-800 disabled:opacity-40"
+          >
+            Apply
+          </button>
+          <button
+            type="button"
+            disabled={!selectedSavedViewId}
+            onClick={() => {
+              if (!selectedSavedViewId) return;
+              void deleteSavedView(selectedSavedViewId);
+            }}
+            className="rounded border border-rose-300 px-3 py-2 text-xs font-medium text-rose-700 disabled:opacity-40"
+          >
+            Delete
+          </button>
+        </div>
+        <div className="mt-2 grid gap-2 sm:grid-cols-[minmax(14rem,1fr)_auto]">
+          <input
+            value={newSavedViewName}
+            onChange={(e) => setNewSavedViewName(e.target.value)}
+            placeholder="New view name (e.g. Daily receiving snapshot)"
+            className="rounded border border-zinc-300 px-3 py-2 text-sm"
+          />
+          <button
+            type="button"
+            disabled={!newSavedViewName.trim()}
+            onClick={() => void createSavedView()}
+            className="rounded border border-[var(--arscmp-primary)] bg-[var(--arscmp-primary)] px-3 py-2 text-xs font-semibold text-white disabled:opacity-40"
+          >
+            Save current filters
+          </button>
+        </div>
+        {savedViewsLoading ? (
+          <p className="mt-2 text-xs text-zinc-500">Loading saved views…</p>
+        ) : null}
+        {savedViews.length === 0 && !savedViewsLoading ? (
+          <p className="mt-2 text-xs text-zinc-500">No saved views yet.</p>
+        ) : null}
+        {savedViewsError ? (
+          <p className="mt-2 rounded border border-rose-200 bg-rose-50 px-2 py-1 text-xs text-rose-700">
+            {savedViewsError}
+          </p>
+        ) : null}
+      </section>
+
       <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
         <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
           <div>
