@@ -60,4 +60,55 @@ describe("POST /api/apihub/ingestion-jobs/:jobId/mapping-preview", () => {
       ],
     });
   });
+
+  it("returns structured validation errors for invalid payload", async () => {
+    getApiHubIngestionRunByIdMock.mockResolvedValue({ id: "run-1" });
+    const { POST } = await import("./route");
+    const response = await POST(
+      new Request("http://localhost/api/apihub/ingestion-jobs/run-1/mapping-preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          records: 42,
+          rules: [{ sourcePath: "", targetField: "" }],
+        }),
+      }),
+      { params: Promise.resolve({ jobId: "run-1" }) },
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      ok: false,
+      error: {
+        code: "VALIDATION_ERROR",
+        message: "Mapping preview payload validation failed.",
+        details: {
+          issues: [
+            {
+              field: "rules[0].sourcePath",
+              code: "REQUIRED",
+              message: "sourcePath is required.",
+            },
+            {
+              field: "rules[0].targetField",
+              code: "REQUIRED",
+              message: "targetField is required.",
+            },
+            {
+              field: "records",
+              code: "INVALID_TYPE",
+              message: "records must be an object or array of objects.",
+            },
+          ],
+          summary: {
+            totalErrors: 3,
+            byCode: {
+              REQUIRED: 2,
+              INVALID_TYPE: 1,
+            },
+          },
+        },
+      },
+    });
+  });
 });

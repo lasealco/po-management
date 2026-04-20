@@ -41,6 +41,26 @@ describe("PATCH /api/apihub/ingestion-jobs/:jobId", () => {
       { params: Promise.resolve({ jobId: "job-1" }) },
     );
     expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      ok: false,
+      error: {
+        code: "VALIDATION_ERROR",
+        message: "Run payload validation failed.",
+        details: {
+          issues: [
+            {
+              field: "status",
+              code: "INVALID_ENUM",
+              message: "status must be one of: queued, running, succeeded, failed.",
+            },
+          ],
+          summary: {
+            totalErrors: 1,
+            byCode: { INVALID_ENUM: 1 },
+          },
+        },
+      },
+    });
   });
 
   it("transitions run", async () => {
