@@ -31,3 +31,4 @@ These files turn **module backlogs** into **checkbox queues** for Cursor (or clo
 ## Related
 
 - [Multi-session and agents](../multi-session-and-agents.md) — branches, seeds, CI checks.
+- [Meeting-batch epics](../meeting-epics/README.md) — **~2h+** scoped GitHub issues for parallel agents.
