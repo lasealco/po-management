@@ -2,24 +2,15 @@ import type { CrmOpportunityStage } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { getActorUserId, requireApiGrant, userHasGlobalGrant } from "@/lib/authz";
+import {
+  buildInvalidStageMessage,
+  isCrmOpportunityStage,
+  validateOpportunityStageChange,
+} from "@/lib/crm/opportunity-stage-change";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
-
-const STAGES: CrmOpportunityStage[] = [
-  "IDENTIFIED",
-  "QUALIFIED",
-  "DISCOVERY",
-  "SOLUTION_DESIGN",
-  "PROPOSAL_SUBMITTED",
-  "NEGOTIATION",
-  "VERBAL_AGREEMENT",
-  "WON_IMPLEMENTATION_PENDING",
-  "WON_LIVE",
-  "LOST",
-  "ON_HOLD",
-];
 
 async function loadOpportunity(tenantId: string, oppId: string, actorId: string) {
   const canEditAll = await userHasGlobalGrant(actorId, "org.crm", "edit");
@@ -125,8 +116,12 @@ export async function PATCH(
   const data: Record<string, unknown> = {};
   if (body.name !== undefined) data.name = body.name.trim();
   if (body.stage !== undefined) {
-    if (!STAGES.includes(body.stage)) {
-      return NextResponse.json({ error: "Invalid stage." }, { status: 400 });
+    if (!isCrmOpportunityStage(body.stage)) {
+      return NextResponse.json({ error: buildInvalidStageMessage(body.stage) }, { status: 400 });
+    }
+    const stageValidation = validateOpportunityStageChange(existing.stage, body.stage);
+    if (!stageValidation.ok) {
+      return NextResponse.json({ error: stageValidation.error }, { status: 400 });
     }
     data.stage = body.stage;
   }
