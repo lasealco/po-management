@@ -3,7 +3,7 @@ export type ParsePromoteImportBodyResult =
   | { ok: false; error: string };
 
 export function parsePromoteImportRequestBody(body: unknown): ParsePromoteImportBodyResult {
-  if (!body || typeof body !== "object") {
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
     return { ok: false, error: "Expected object body." };
   }
   const contractHeaderId =

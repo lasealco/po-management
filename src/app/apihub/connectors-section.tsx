@@ -10,6 +10,8 @@ type Props = {
   canCreate: boolean;
 };
 
+type BadgeTone = "green" | "amber" | "red" | "zinc";
+
 function formatWhen(iso: string) {
   try {
     return new Date(iso).toLocaleString(undefined, {
@@ -19,6 +21,60 @@ function formatWhen(iso: string) {
   } catch {
     return iso;
   }
+}
+
+function parseIso(iso: string) {
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatRelativeFromNow(iso: string) {
+  const date = parseIso(iso);
+  if (!date) {
+    return null;
+  }
+
+  const diffMs = date.getTime() - Date.now();
+  const absSeconds = Math.abs(diffMs / 1000);
+  const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+  if (absSeconds < 60) {
+    return rtf.format(Math.round(diffMs / 1000), "second");
+  }
+  if (absSeconds < 60 * 60) {
+    return rtf.format(Math.round(diffMs / (60 * 1000)), "minute");
+  }
+  if (absSeconds < 60 * 60 * 24) {
+    return rtf.format(Math.round(diffMs / (60 * 60 * 1000)), "hour");
+  }
+  return rtf.format(Math.round(diffMs / (24 * 60 * 60 * 1000)), "day");
+}
+
+function toneClass(tone: BadgeTone) {
+  switch (tone) {
+    case "green":
+      return "border-emerald-200 bg-emerald-50 text-emerald-800";
+    case "amber":
+      return "border-amber-200 bg-amber-50 text-amber-800";
+    case "red":
+      return "border-red-200 bg-red-50 text-red-800";
+    default:
+      return "border-zinc-200 bg-zinc-100 text-zinc-700";
+  }
+}
+
+function getHealthDisplay(status: string, healthSummary: string | null): { label: string; tone: BadgeTone } {
+  const summary = (healthSummary ?? "").trim();
+  const haystack = `${status} ${summary}`.toLowerCase();
+  if (/(error|fail|down|degrad|outage|unhealthy)/.test(haystack)) {
+    return { label: summary || "Error", tone: "red" };
+  }
+  if (/(ok|healthy|up|good)/.test(haystack)) {
+    return { label: summary || "Healthy", tone: "green" };
+  }
+  if (/(draft|stub|not connected|pending)/.test(haystack)) {
+    return { label: summary || "Not connected", tone: "amber" };
+  }
+  return { label: summary || "Unknown", tone: "zinc" };
 }
 
 export function ConnectorsSection({ initialConnectors, canCreate }: Props) {
@@ -114,8 +170,32 @@ export function ConnectorsSection({ initialConnectors, canCreate }: Props) {
                   <td className="px-4 py-3 font-medium">{c.name}</td>
                   <td className="px-4 py-3 font-mono text-xs text-zinc-600">{c.sourceKind}</td>
                   <td className="px-4 py-3">{c.status}</td>
-                  <td className="px-4 py-3 text-zinc-600">{c.lastSyncAt ? formatWhen(c.lastSyncAt) : "—"}</td>
-                  <td className="px-4 py-3 text-zinc-600">{c.healthSummary ?? "—"}</td>
+                  <td className="px-4 py-3">
+                    {c.lastSyncAt ? (
+                      <div className="flex flex-col gap-1 text-xs">
+                        <span className="font-medium text-zinc-800">{formatRelativeFromNow(c.lastSyncAt) ?? "Unknown"}</span>
+                        <span className="text-zinc-500">{formatWhen(c.lastSyncAt)}</span>
+                      </div>
+                    ) : (
+                      <span
+                        className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${toneClass("amber")}`}
+                      >
+                        Never synced
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {(() => {
+                      const health = getHealthDisplay(c.status, c.healthSummary);
+                      return (
+                        <span
+                          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${toneClass(health.tone)}`}
+                        >
+                          {health.label}
+                        </span>
+                      );
+                    })()}
+                  </td>
                   <td className="px-4 py-3 text-zinc-600">{formatWhen(c.updatedAt)}</td>
                 </tr>
               ))}

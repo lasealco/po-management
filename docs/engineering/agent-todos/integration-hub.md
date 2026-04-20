@@ -7,6 +7,7 @@
 - **Documentation home:** [`docs/apihub/README.md`](../../apihub/README.md) — ingestion / integration API hub overview, GitHub links, in-app entry.
 - **Full draft spec:** [`docs/apihub/integrations-ai-assisted-ingestion.md`](../../apihub/integrations-ai-assisted-ingestion.md) — product + technical contract (supersedes informal one-pager requests; iterate here and in PRs).
 - **Gap map:** [`docs/apihub/GAP_MAP.md`](../../apihub/GAP_MAP.md) — what is shipped vs stub vs not started.
+- **Docs runbook:** [`docs/apihub/RUNBOOK.md`](../../apihub/RUNBOOK.md) — docs-only execution flow, scope guardrails, and PR checklist.
 
 **P0 (meeting batch):** docs polish + read-only **`/apihub`** shell + **`GET /api/apihub/health`** — no Prisma / migrations unless explicitly approved. **P1+:** connector registry, jobs, mapping editor, deterministic apply — see spec phased delivery §8.
 

@@ -3,6 +3,12 @@ import { NextResponse } from "next/server";
 import { requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
+import {
+  evaluateSalesOrderStatusTransition,
+  parseSalesOrderPatchRequestBody,
+  parseSalesOrderRouteId,
+  parseTargetSalesOrderStatus,
+} from "@/lib/sales-orders/patch-status";
 
 export async function GET(
   _request: Request,
@@ -13,7 +19,12 @@ export async function GET(
 
   const tenant = await getDemoTenant();
   if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
-  const { id } = await context.params;
+  const { id: rawId } = await context.params;
+  const idParsed = parseSalesOrderRouteId(rawId);
+  if (!idParsed.ok) {
+    return NextResponse.json({ error: idParsed.error }, { status: idParsed.status });
+  }
+  const { id } = idParsed;
 
   const row = await prisma.salesOrder.findFirst({
     where: { id, tenantId: tenant.id },
@@ -44,8 +55,6 @@ export async function GET(
   });
 }
 
-const ACTIVE_SHIPMENT_STATUSES = new Set(["SHIPPED", "VALIDATED", "BOOKED", "IN_TRANSIT"]);
-
 export async function PATCH(
   request: Request,
   context: { params: Promise<{ id: string }> },
@@ -55,19 +64,30 @@ export async function PATCH(
 
   const tenant = await getDemoTenant();
   if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
-  const { id } = await context.params;
+  const { id: rawId } = await context.params;
+  const idParsed = parseSalesOrderRouteId(rawId);
+  if (!idParsed.ok) {
+    return NextResponse.json({ error: idParsed.error }, { status: idParsed.status });
+  }
+  const { id } = idParsed;
 
-  let body: unknown = {};
+  let body: unknown;
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
   }
-  const o = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
-  const targetStatus = typeof o.status === "string" ? o.status.trim().toUpperCase() : "";
-  if (!["DRAFT", "OPEN", "CLOSED"].includes(targetStatus)) {
-    return NextResponse.json({ error: "status must be DRAFT | OPEN | CLOSED" }, { status: 400 });
+
+  const parsedBody = parseSalesOrderPatchRequestBody(body);
+  if (!parsedBody.ok) {
+    return NextResponse.json({ error: parsedBody.error }, { status: parsedBody.status });
   }
+
+  const parsedStatus = parseTargetSalesOrderStatus(parsedBody.record);
+  if (!parsedStatus.ok) {
+    return NextResponse.json({ error: parsedStatus.error }, { status: 400 });
+  }
+  const targetStatus = parsedStatus.status;
 
   const row = await prisma.salesOrder.findFirst({
     where: { id, tenantId: tenant.id },
@@ -79,39 +99,24 @@ export async function PATCH(
   });
   if (!row) return NextResponse.json({ error: "Sales order not found." }, { status: 404 });
 
-  const current = row.status;
-  const allowed: Record<string, string[]> = {
-    DRAFT: ["OPEN", "CLOSED"],
-    OPEN: ["DRAFT", "CLOSED"],
-    CLOSED: ["OPEN"],
-  };
-  if (!allowed[current]?.includes(targetStatus)) {
-    return NextResponse.json(
-      { error: `Cannot change status from ${current} to ${targetStatus}.` },
-      { status: 409 },
-    );
-  }
-
-  if (targetStatus === "CLOSED") {
-    const active = row.shipments.filter((s) => ACTIVE_SHIPMENT_STATUSES.has(s.status));
-    if (active.length > 0) {
-      return NextResponse.json(
-        {
-          error: "Cannot close sales order while linked shipments are active.",
-          activeShipments: active.map((s) => ({
-            id: s.id,
-            shipmentNo: s.shipmentNo,
-            status: s.status,
-          })),
-        },
-        { status: 409 },
-      );
+  const transition = evaluateSalesOrderStatusTransition({
+    current: row.status,
+    target: targetStatus,
+    shipments: row.shipments,
+  });
+  if (!transition.ok) {
+    const payload: { error: string; activeShipments?: typeof transition.activeShipments } = {
+      error: transition.error,
+    };
+    if (transition.activeShipments) {
+      payload.activeShipments = transition.activeShipments;
     }
+    return NextResponse.json(payload, { status: transition.status });
   }
 
   const updated = await prisma.salesOrder.update({
     where: { id: row.id },
-    data: { status: targetStatus as "DRAFT" | "OPEN" | "CLOSED" },
+    data: { status: targetStatus },
     select: { id: true, status: true },
   });
 

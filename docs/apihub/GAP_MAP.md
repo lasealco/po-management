@@ -2,11 +2,12 @@
 
 **Legend:** ✅ shipped · 🟡 partial / stub · ❌ not started
 
-**Last updated:** 2026-04-20 (Phase 1 connector registry stub)
+**Last updated:** 2026-04-20 (Phase 1 connector registry stub + docs runbook)
 
 | Area | Repo reality | Notes |
 |------|--------------|--------|
 | Docs home | ✅ `docs/apihub/README.md`, specs | Cross-linked README + spec |
+| Docs runbook | ✅ `docs/apihub/RUNBOOK.md` | Docs-only workflow/checklist for API Hub issues |
 | Ingestion spec | 🟡 `integrations-ai-assisted-ingestion.md` | Draft; evolves with P0–P4 |
 | App route `/apihub` | ✅ `src/app/apihub/**` | Shell + **Connectors** section (DB-backed list); demo session required |
 | Health / discovery API | ✅ `GET /api/apihub/health` | `{ ok, service, phase }`; no secrets |

@@ -10,7 +10,7 @@
 
 ## Engineering todos (from doc — one GitHub issue per major bullet)
 
-- [ ] **Decide representation** — org units inside one tenant vs multi-tenant vs hybrid; document outcome in `docs/icp-and-tenancy.md`.
+- [x] **Decide representation** — decision captured: keep single-tenant isolation and model hierarchy with in-tenant org units (`docs/icp-and-tenancy.md`).
 - [ ] **Enterprise hierarchy** — model sketch (`OrgUnit`, `UserOrgUnit`, links); no UI until model approved.
 - [ ] **Scoped permissions** — extend RBAC; audit `tenantId` query patterns (issue must list first modules to audit).
 - [ ] **Delegation guardrails** — subset-of-assigner on role assignment APIs (once org model direction exists).

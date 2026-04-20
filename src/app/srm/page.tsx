@@ -2,25 +2,22 @@ import Link from "next/link";
 
 import { ActionLink } from "@/components/action-button";
 import { AccessDenied } from "@/components/access-denied";
-import { SupplierKindTabs, type SupplierSrmKind } from "@/components/supplier-kind-tabs";
+import { SupplierKindTabs } from "@/components/supplier-kind-tabs";
 import { WorkflowHeader } from "@/components/workflow-header";
-import { getViewerGrantSet, viewerHas } from "@/lib/authz";
+import { getViewerGrantSet } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
+import { parseSrmListQuery } from "@/lib/srm/list-query";
+import { resolveSrmPermissions } from "@/lib/srm/permissions";
 
 export const dynamic = "force-dynamic";
-
-function parseKind(raw: string | string[] | undefined): SupplierSrmKind {
-  const v = Array.isArray(raw) ? raw[0] : raw;
-  return v === "logistics" ? "logistics" : "product";
-}
 
 export default async function SrmPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ kind?: string | string[] }>;
+  searchParams?: Promise<{ kind?: string | string[]; q?: string | string[] }>;
 }) {
   const sp = searchParams ? await searchParams : {};
-  const kind = parseKind(sp.kind);
+  const { kind, q } = parseSrmListQuery(sp);
 
   const access = await getViewerGrantSet();
 
@@ -43,7 +40,9 @@ export default async function SrmPage({
     );
   }
 
-  if (!viewerHas(access.grantSet, "org.suppliers", "view")) {
+  const permissions = resolveSrmPermissions(access.grantSet);
+
+  if (!permissions.canViewSuppliers) {
     return (
       <div className="min-h-screen bg-zinc-50 px-6 py-16">
         <AccessDenied
@@ -60,6 +59,15 @@ export default async function SrmPage({
     where: {
       tenantId: tenant.id,
       srmCategory: kind === "logistics" ? "logistics" : "product",
+      ...(q
+        ? {
+            OR: [
+              { name: { contains: q, mode: "insensitive" } },
+              { code: { contains: q, mode: "insensitive" } },
+              { email: { contains: q, mode: "insensitive" } },
+            ],
+          }
+        : {}),
     },
     orderBy: { name: "asc" },
     select: {
@@ -71,7 +79,7 @@ export default async function SrmPage({
       isActive: true,
       srmCategory: true,
       approvalStatus: true,
-      _count: { select: { orders: true } },
+      ...(permissions.canViewOrders ? { _count: { select: { orders: true } } } : {}),
     },
   });
 
@@ -82,7 +90,7 @@ export default async function SrmPage({
     email: s.email,
     phone: s.phone,
     isActive: s.isActive,
-    orderCount: s._count.orders,
+    orderCount: permissions.canViewOrders && "_count" in s ? s._count.orders : null,
     srmCategory: s.srmCategory === "logistics" ? "logistics" as const : "product" as const,
     approvalStatus:
       s.approvalStatus === "pending_approval"
@@ -92,8 +100,9 @@ export default async function SrmPage({
           : ("approved" as const),
   }));
 
-  const canEdit = viewerHas(access.grantSet, "org.suppliers", "edit");
-  const canApprove = viewerHas(access.grantSet, "org.suppliers", "approve");
+  const canEdit = permissions.canEditSuppliers;
+  const canApprove = permissions.canApproveSuppliers;
+  const canViewOrders = permissions.canViewOrders;
 
   return (
     <div className="min-h-screen bg-zinc-50">
@@ -116,66 +125,108 @@ export default async function SrmPage({
             </Link>
           </div>
 
-          <section className="mt-8 overflow-x-auto rounded-lg border border-zinc-200">
-            <table className="min-w-full divide-y divide-zinc-200 text-sm">
-              <thead className="bg-zinc-50 text-left text-xs font-medium uppercase text-zinc-500">
-                <tr>
-                  <th className="px-4 py-3">Name</th>
-                  <th className="px-4 py-3">Code</th>
-                  <th className="px-4 py-3">Contact</th>
-                  <th className="px-4 py-3">Approval</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3 text-center">Orders</th>
-                  <th className="px-4 py-3" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-100 text-zinc-900">
-                {rows.map((s) => (
-                  <tr key={s.id}>
-                    <td className="px-4 py-3 font-medium">{s.name}</td>
-                    <td className="px-4 py-3 font-mono text-xs text-zinc-600">{s.code ?? "—"}</td>
-                    <td className="px-4 py-3 text-zinc-600">
-                      {[s.email, s.phone].filter(Boolean).join(" · ") || "—"}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                          s.approvalStatus === "approved"
-                            ? "bg-emerald-100 text-emerald-800"
-                            : s.approvalStatus === "pending_approval"
-                              ? "bg-amber-100 text-amber-900"
-                              : "bg-rose-100 text-rose-800"
-                        }`}
-                      >
-                        {s.approvalStatus === "pending_approval"
-                          ? "Pending"
-                          : s.approvalStatus === "approved"
-                            ? "Approved"
-                            : "Rejected"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                          s.isActive ? "bg-emerald-100 text-emerald-800" : "bg-zinc-200 text-zinc-600"
-                        }`}
-                      >
-                        {s.isActive ? "Active" : "Inactive"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-center tabular-nums">{s.orderCount}</td>
-                    <td className="px-4 py-3">
-                      <Link href={`/srm/${s.id}`} className="font-medium text-[var(--arscmp-primary)] hover:underline">
-                        {canEdit || canApprove ? "Open profile" : "View profile"}
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <section className="mt-6 rounded-lg border border-zinc-200 bg-zinc-50 p-4">
+            <form method="get" className="flex flex-wrap items-end gap-3">
+              <input type="hidden" name="kind" value={kind} />
+              <label className="flex min-w-[260px] flex-1 flex-col gap-1 text-sm">
+                <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Search partners</span>
+                <input
+                  name="q"
+                  defaultValue={q}
+                  placeholder="Search by name, code, or email"
+                  className="h-10 rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-900 shadow-sm outline-none focus:border-[var(--arscmp-primary)] focus:ring-2 focus:ring-[var(--arscmp-primary)]/20"
+                />
+              </label>
+              <button
+                type="submit"
+                className="h-10 rounded-lg bg-[var(--arscmp-primary)] px-4 text-sm font-semibold text-white transition hover:brightness-95"
+              >
+                Search
+              </button>
+              {q ? (
+                <Link href={`/srm?kind=${kind}`} className="h-10 rounded-lg border border-zinc-300 px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-100">
+                  Reset
+                </Link>
+              ) : null}
+            </form>
           </section>
 
-          {!canEdit ? <p className="mt-8 text-sm text-zinc-500">View-only for your role.</p> : null}
+          {rows.length > 0 ? (
+            <section className="mt-8 overflow-x-auto rounded-lg border border-zinc-200">
+              <table className="min-w-full divide-y divide-zinc-200 text-sm">
+                <thead className="bg-zinc-50 text-left text-xs font-medium uppercase text-zinc-500">
+                  <tr>
+                    <th className="px-4 py-3">Name</th>
+                    <th className="px-4 py-3">Code</th>
+                    <th className="px-4 py-3">Contact</th>
+                    <th className="px-4 py-3">Approval</th>
+                    <th className="px-4 py-3">Status</th>
+                    {canViewOrders ? <th className="px-4 py-3 text-center">Orders</th> : null}
+                    <th className="px-4 py-3" />
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-100 text-zinc-900">
+                  {rows.map((s) => (
+                    <tr key={s.id}>
+                      <td className="px-4 py-3 font-medium">{s.name}</td>
+                      <td className="px-4 py-3 font-mono text-xs text-zinc-600">{s.code ?? "—"}</td>
+                      <td className="px-4 py-3 text-zinc-600">
+                        {[s.email, s.phone].filter(Boolean).join(" · ") || "—"}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                            s.approvalStatus === "approved"
+                              ? "bg-emerald-100 text-emerald-800"
+                              : s.approvalStatus === "pending_approval"
+                                ? "bg-amber-100 text-amber-900"
+                                : "bg-rose-100 text-rose-800"
+                          }`}
+                        >
+                          {s.approvalStatus === "pending_approval"
+                            ? "Pending"
+                            : s.approvalStatus === "approved"
+                              ? "Approved"
+                              : "Rejected"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                            s.isActive ? "bg-emerald-100 text-emerald-800" : "bg-zinc-200 text-zinc-600"
+                          }`}
+                        >
+                          {s.isActive ? "Active" : "Inactive"}
+                        </span>
+                      </td>
+                      {canViewOrders ? <td className="px-4 py-3 text-center tabular-nums">{s.orderCount}</td> : null}
+                      <td className="px-4 py-3">
+                        <Link href={`/srm/${s.id}`} className="font-medium text-[var(--arscmp-primary)] hover:underline">
+                          {canEdit || canApprove ? "Open profile" : "View profile"}
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+          ) : (
+            <section className="mt-8 rounded-lg border border-dashed border-zinc-300 bg-zinc-50 px-6 py-10 text-center">
+              <h2 className="text-base font-semibold text-zinc-900">No partners match your search</h2>
+              <p className="mt-2 text-sm text-zinc-600">
+                No {kind === "logistics" ? "logistics" : "product"} partners match
+                {q ? ` "${q}"` : " your current filters"}.
+              </p>
+              <Link href={`/srm?kind=${kind}`} className="mt-4 inline-flex text-sm font-medium text-[var(--arscmp-primary)] hover:underline">
+                Reset and show all partners
+              </Link>
+            </section>
+          )}
+
+          {!canViewOrders ? (
+            <p className="mt-6 text-sm text-zinc-500">Order metrics are hidden for your role (requires org.orders → view).</p>
+          ) : null}
+          {!canEdit ? <p className="mt-2 text-sm text-zinc-500">View-only for your role.</p> : null}
         </div>
       </main>
     </div>
