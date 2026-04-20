@@ -136,8 +136,9 @@ Use this list when slicing PRs; refresh it whenever Control Tower behavior or `r
    - **Next smallest slice:** **multi-select + one bulk action** (e.g. acknowledge alerts or assign ops owner) with the same tenant scoping as single-row POST actions — **or** **server-stored default column visibility** per actor if ops consistency matters more than throughput.
 7. **(Low priority)** **Report builder — exception / “NC” style analytics**
    - **Done elsewhere:** exceptions are first-class in **workbench**, **search**, **Shipment 360**, and **exception catalog** (`CtException` / `CtExceptionCode`); list/search APIs accept **`exceptionCode`** / **`alertType`** for open-queue style cuts.
-   - **Not in `report-engine` today:** `CT_REPORT_DIMENSIONS` is exactly **`none` · `status` · `mode` · `lane` · `carrier` · `customer` · `supplier` · `origin` · `destination` · `month`** (`report-engine.ts`) — no **exception code / type** dimension, no **open-exception rate** or **shipments-with-open-exception** measure in `CT_REPORT_MEASURES`.
-   - **Next smallest slice:** add **`exceptionCode`** (catalog label join) as a **dimension** *or* one aggregate measure (**open exception count** / **shipments with open exception**), plus optional **report filter** mirroring workbench `exceptionCode` — before unstructured **rootCause** / external NC codes (better for export + AI insight unless normalized).
+   - **Now in `report-engine`:** `CT_REPORT_DIMENSIONS` includes **`exceptionCatalog`** and `CT_REPORT_MEASURES` includes **`openExceptions`** (`report-engine.ts`), with catalog label mapping in report rows.
+   - **Now in report filters:** builder + run config support **`filters.exceptionCode`** (case-insensitive OPEN / IN_PROGRESS match), so operators can scope any report to a specific exception type.
+   - **Next smallest slice:** add one rate-style metric (e.g. **shipments with open exception %**) and optional grouped trends (e.g. exception by lane/month) before unstructured **rootCause** / external NC codes.
 
 ---
 
@@ -157,6 +158,7 @@ File **one GitHub issue per bullet** when scheduling (titles are suggestions; ke
 
 | Date | Change |
 |------|--------|
+| 2026-04-20 | **Reporting phase 2:** report builder + engine now accept **`filters.exceptionCode`** (case-insensitive open/in-progress filter), and backlog **#7** reflects that exception analytics are live (`exceptionCatalog` + `openExceptions`). |
 | 2026-04-20 | Near-term **4–7** re-checked against code (`report-engine` dimensions, `report-pdf` org line, workbench single-select); tightened Done/Partial/Next; **Suggested next PRs** aligned to **#4–7**; tracking [issue #3](https://github.com/lasealco/po-management/issues/3). |
 | 2026-04-20 | **R3 Assist / chatbot:** gap narrative + **spec parity checklist** vs **`control_tower_search_and_chatbot_spec_*.pdf`** (rows + dedicated subsection); [issue #6](https://github.com/lasealco/po-management/issues/6). |
 | 2026-04-18 | Backlog **#7 (low priority)**: report builder exception / NC-style analytics (deferred; workbench + 360 already cover triage). |

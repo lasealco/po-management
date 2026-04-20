@@ -49,6 +49,7 @@ type ReportConfig = {
     supplierId: string;
     origin: string;
     destination: string;
+    exceptionCode: string;
     onlyOpenExceptions: boolean;
   };
 };
@@ -136,6 +137,7 @@ const DEFAULT_CONFIG: ReportConfig = {
     supplierId: "",
     origin: "",
     destination: "",
+    exceptionCode: "",
     onlyOpenExceptions: false,
   },
 };
@@ -175,6 +177,7 @@ function hydrateConfig(input: unknown): ReportConfig {
       supplierId: typeof filters.supplierId === "string" ? filters.supplierId : "",
       origin: typeof filters.origin === "string" ? filters.origin : "",
       destination: typeof filters.destination === "string" ? filters.destination : "",
+      exceptionCode: typeof filters.exceptionCode === "string" ? filters.exceptionCode : "",
       onlyOpenExceptions: filters.onlyOpenExceptions === true,
     },
   };
@@ -219,6 +222,7 @@ function toRunPayload(config: ReportConfig) {
       supplierId: f.supplierId.trim() || null,
       origin: f.origin.trim() || null,
       destination: f.destination.trim() || null,
+      exceptionCode: f.exceptionCode.trim() || null,
       ...(f.onlyOpenExceptions ? { onlyOpenExceptions: true as const } : {}),
     },
   };
@@ -1206,7 +1210,7 @@ export function ControlTowerReportBuilder({
               </label>
             </div>
 
-            <div className="mt-3 grid gap-3 md:grid-cols-4">
+            <div className="mt-3 grid gap-3 md:grid-cols-5">
               <label className="text-xs text-zinc-700">
                 Status
                 <input
@@ -1234,6 +1238,17 @@ export function ControlTowerReportBuilder({
                   onChange={(e) =>
                     setConfig((c) => ({ ...c, filters: { ...c.filters, lane: e.target.value } }))
                   }
+                  className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"
+                />
+              </label>
+              <label className="text-xs text-zinc-700">
+                Exception code
+                <input
+                  value={config.filters.exceptionCode}
+                  onChange={(e) =>
+                    setConfig((c) => ({ ...c, filters: { ...c.filters, exceptionCode: e.target.value } }))
+                  }
+                  placeholder="e.g. LATE_DOC"
                   className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"
                 />
               </label>
