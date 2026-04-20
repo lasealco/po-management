@@ -33,4 +33,4 @@ These files turn **module backlogs** into **checkbox queues** for Cursor (or clo
 
 - [Multi-session and agents](../multi-session-and-agents.md) — branches, seeds, CI checks.
 - [Meeting-batch epics](../meeting-epics/README.md) — **~2h+** scoped GitHub issues for parallel agents.
-- [Next seven agent sessions](../agent-sessions-next-7.md) — **follow-on** 45–75 min slices + copy-paste prompts (after meeting batches).
+- [Next agent sessions (eight slices)](../agent-sessions-next-7.md) — follow-on 45–75 min work + **Session 8 API hub Phase 1** + copy-paste prompts.

@@ -1,6 +1,8 @@
-# Next seven agent sessions (longer slices)
+# Next agent sessions (eight slices: seven verticals + API hub)
 
-Use these as **seven separate Cursor chats** (or cloud agents), **one session = one branch = one PR**. Target **~45–75 minutes of focused implementation** per session (wall time varies with CI and how much you expand scope).
+Use these as **separate Cursor chats** (or cloud agents), **one session = one branch = one PR**. Target **~45–75 minutes of focused implementation** per session (wall time varies with CI and how much you expand scope).
+
+**Sessions 1–7** are follow-ons in SRM, Control Tower, CRM, WMS, Tariff, and Sales orders. **Session 8** continues the **Integration / API hub** module (**Phase 1** after P0 — merged as [#16](https://github.com/lasealco/po-management/issues/16)).
 
 **Parallel rule:** only run sessions **in parallel** when they touch **different module paths** (see each session’s allowed paths). Do not run two sessions that both edit the same hot files (for example `prisma/schema.prisma`).
 
@@ -35,7 +37,7 @@ Done when:
 Push + open PR with a clear title. If CI is red, fix or report the failing log snippet.
 ```
 
-Replace `<branch-name>` with something like `session/13-srm-meeting`, `session/5-tower-reports`, etc.
+Replace `<branch-name>` with something like `session/13-srm-meeting`, `session/5-tower-reports`, `session/8-apihub-connectors`, etc.
 
 ---
 
@@ -213,13 +215,62 @@ Tighten `GET/PATCH` behavior for `src/app/api/sales-orders/[id]/route.ts`: consi
 
 ---
 
+## Session 8 — Integration / API hub: Phase 1 connector registry (stub)
+
+**Continues:** [`docs/engineering/agent-todos/integration-hub.md`](./agent-todos/integration-hub.md) **Phase 1** (after **#16** P0: `/apihub`, health API, docs). Spec home: [`docs/apihub/README.md`](../apihub/README.md); gap map: [`docs/apihub/GAP_MAP.md`](../apihub/GAP_MAP.md).
+
+**GitHub:** file a **new** issue first (Agent task). This session is **not** #16 (already merged).
+
+**Suggested issue title:** `feat(apihub): connector registry v1 (Prisma + list UI stub)`
+
+**Suggested body (paste into GitHub):**
+
+```markdown
+## Goal
+Phase 1 kickoff: **connector registry** — tenant-scoped table + minimal CRUD API + read-only **list** UI under `/apihub` (empty state ok). Align field names with `docs/apihub/integrations-ai-assisted-ingestion.md` (phased delivery / registry sections) where practical; stub extra columns if needed.
+
+## Allowed paths
+- `docs/apihub/**`, `docs/engineering/agent-todos/integration-hub.md`
+- `src/app/apihub/**`, `src/app/api/apihub/**`, `src/lib/apihub/**`
+- `prisma/schema.prisma` + `prisma/migrations/**` **only** for the agreed model (this issue explicitly allows `db:migrate`)
+
+## Out of scope (v1)
+- Real inbound job workers, secrets storage, OAuth token flows, mapping editor
+- Client bundles importing Prisma: **server-only** data access; in `"use client"` files import **pure** helpers from leaf modules only (do not re-export Prisma through barrels consumed by the client — same pattern as `@/lib/sales-orders/list-filters` vs `next-number`).
+
+## Acceptance
+- [ ] Prisma model + migration applied in dev (document migration name in PR)
+- [ ] `GET` (list) + `POST` (create stub row) API routes under `src/app/api/apihub/**` with demo-tenant / auth pattern consistent with existing `apihub` health route
+- [ ] `/apihub` shows a **Connectors** section or subpage listing rows from DB (or clear empty state + copy if create is gated)
+- [ ] `docs/apihub/GAP_MAP.md` updated for Phase 1 row(s)
+
+## Database
+This issue **authorizes** `npm run db:migrate` (or project equivalent) for the migration added here — **no** `db:seed` unless a separate seed issue exists.
+
+## Verify
+`npm run lint && npx tsc --noEmit && npm run test`
+```
+
+| Field | Value |
+|--------|--------|
+| **Time target** | ~60–90 min (migrations + UI + API; narrow scope if over). |
+| **Typical paths** | As in issue body above |
+| **Verify** | `npm run lint && npx tsc --noEmit && npm run test` |
+
+**Starter prompt:** master block with `GitHub issue: #<your new issue number>` and repeat: **migration allowed only as written in this issue**; no heavy seed.
+
+**Later (separate issues):** Phase 1 — **Health / last sync** on rows, then **Audit log slice** — one issue each ([`integration-hub.md`](./agent-todos/integration-hub.md)).
+
+---
+
 ## Quick start order (suggested)
 
-1. **File GitHub issues** for sessions **4–7** (paste bodies above).  
+1. **File GitHub issues** for sessions **4–8** (paste bodies above).  
 2. Run **Session 2** early if you want noise cleared (#4 vs existing tests).  
 3. Run **#13** when you have bandwidth (largest).  
 4. Keep **#5** as its own chat (easy to underestimate).  
-5. **CRM / WMS / Tariff / Sales orders** sessions can run **in parallel** only in pairs that do not overlap paths (for example **Session 4 + Session 6** OK; **Session 6 + anything in tariff + invoice-audit** — stay in tariff scope only).
+5. **Session 8 (API hub)** uses **Prisma** — do **not** run in parallel with another session that edits `schema.prisma` / migrations.  
+6. **CRM / WMS / Tariff / Sales orders** sessions can run **in parallel** only in pairs that do not overlap paths (for example **Session 4 + Session 6** OK; **Session 6** — stay in tariff scope only).
 
 ---
 
@@ -228,3 +279,4 @@ Tighten `GET/PATCH` behavior for `src/app/api/sales-orders/[id]/route.ts`: consi
 - [`multi-session-and-agents.md`](./multi-session-and-agents.md) — branches, seeds, CI vs `next build`  
 - [`meeting-epics/README.md`](./meeting-epics/README.md) — original meeting-batch table  
 - [`agent-todos/README.md`](./agent-todos/README.md) — per-module checkbox queues  
+- [`agent-todos/integration-hub.md`](./agent-todos/integration-hub.md) — API hub Phase 0 ✓ / Phase 1 checkboxes  
