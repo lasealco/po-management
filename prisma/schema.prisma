@@ -76,6 +76,7 @@ model Tenant {
   invoiceToleranceRules InvoiceToleranceRule[]
   invoiceChargeAliases  InvoiceChargeAlias[]
   apiHubConnectors      ApiHubConnector[]
+  apiHubConnectorAuditLogs ApiHubConnectorAuditLog[]
 }
 
 /// Integration / API hub — registry row for an external or internal data source (Phase 1 stub).
@@ -94,9 +95,28 @@ model ApiHubConnector {
   updatedAt DateTime @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  auditLogs ApiHubConnectorAuditLog[]
 
   @@index([tenantId])
   @@index([tenantId, createdAt])
+}
+
+model ApiHubConnectorAuditLog {
+  id          String   @id @default(cuid())
+  tenantId    String
+  connectorId String
+  actorUserId String
+  action      String
+  note        String?
+  createdAt   DateTime @default(now())
+
+  tenant    Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  connector ApiHubConnector @relation(fields: [connectorId], references: [id], onDelete: Cascade)
+  actorUser User            @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, createdAt])
+  @@index([connectorId, createdAt])
+  @@index([actorUserId, createdAt])
 }
 
 /// Tenant-scoped milestone template packs (override or extend built-in packs in code).
@@ -177,6 +197,7 @@ model User {
   bookingPricingSnapshotsCreated BookingPricingSnapshot[] @relation("BookingPricingSnapshotCreator")
   invoiceIntakesCreated          InvoiceIntake[]          @relation("InvoiceIntakeCreator")
   invoiceIntakesReviewed         InvoiceIntake[]          @relation("InvoiceIntakeReviewer")
+  apiHubConnectorAuditLogs       ApiHubConnectorAuditLog[]
   invoiceIntakesAccountingApproved InvoiceIntake[]         @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated TariffShipmentApplication[] @relation("TariffShipmentApplicationCreator")
 

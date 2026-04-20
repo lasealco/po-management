@@ -80,6 +80,7 @@ function getHealthDisplay(status: string, healthSummary: string | null): { label
 export function ConnectorsSection({ initialConnectors, canCreate }: Props) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  const [rowBusyId, setRowBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function addStub() {
@@ -102,6 +103,26 @@ export function ConnectorsSection({ initialConnectors, canCreate }: Props) {
     }
   }
 
+  async function applyLifecycle(connectorId: string, status: string, markSyncedNow: boolean) {
+    setError(null);
+    setRowBusyId(connectorId);
+    try {
+      const res = await fetch(`/api/apihub/connectors/${connectorId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status, markSyncedNow }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        setError(typeof data.error === "string" ? data.error : "Could not update connector.");
+        return;
+      }
+      router.refresh();
+    } finally {
+      setRowBusyId(null);
+    }
+  }
+
   return (
     <section
       id="connectors"
@@ -113,7 +134,8 @@ export function ConnectorsSection({ initialConnectors, canCreate }: Props) {
           <h2 className="mt-1 text-xl font-semibold text-zinc-900">Connectors</h2>
           <p className="mt-2 max-w-2xl text-sm text-zinc-600">
             Registry rows for partner or internal sources. This build stores{" "}
-            <span className="font-medium">metadata only</span> — no secrets, OAuth, or background sync yet.
+            <span className="font-medium">metadata + lifecycle events</span> — no secrets, OAuth, or background sync
+            worker yet.
           </p>
         </div>
         {canCreate ? (
@@ -161,6 +183,8 @@ export function ConnectorsSection({ initialConnectors, canCreate }: Props) {
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Last sync</th>
                 <th className="px-4 py-3">Health</th>
+                <th className="px-4 py-3">Actions</th>
+                <th className="px-4 py-3">Audit</th>
                 <th className="px-4 py-3">Updated</th>
               </tr>
             </thead>
@@ -196,6 +220,37 @@ export function ConnectorsSection({ initialConnectors, canCreate }: Props) {
                       );
                     })()}
                   </td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        disabled={!canCreate || rowBusyId === c.id}
+                        onClick={() => void applyLifecycle(c.id, "active", true)}
+                        className="inline-flex items-center rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800 disabled:opacity-50"
+                      >
+                        {rowBusyId === c.id ? "Saving..." : "Set active + sync now"}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!canCreate || rowBusyId === c.id}
+                        onClick={() => void applyLifecycle(c.id, "paused", false)}
+                        className="inline-flex items-center rounded-lg border border-zinc-300 bg-zinc-50 px-2.5 py-1 text-xs font-medium text-zinc-700 disabled:opacity-50"
+                      >
+                        Pause
+                      </button>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    {c.auditTrail.length > 0 ? (
+                      <div className="text-xs text-zinc-600">
+                        <p className="font-medium text-zinc-800">{c.auditTrail[0].action}</p>
+                        <p className="mt-1">{c.auditTrail[0].note ?? "No note"}</p>
+                        <p className="mt-1 text-zinc-500">{formatWhen(c.auditTrail[0].createdAt)}</p>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-zinc-500">No events yet</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-zinc-600">{formatWhen(c.updatedAt)}</td>
                 </tr>
               ))}
@@ -207,7 +262,9 @@ export function ConnectorsSection({ initialConnectors, canCreate }: Props) {
       <p className="mt-4 text-xs text-zinc-500">
         API: <code className="rounded bg-zinc-100 px-1.5 py-0.5 font-mono">GET /api/apihub/connectors</code>,{" "}
         <code className="rounded bg-zinc-100 px-1.5 py-0.5 font-mono">POST /api/apihub/connectors</code> (demo tenant +
-        demo actor required; same gate as listing above).
+        demo actor required),{" "}
+        <code className="rounded bg-zinc-100 px-1.5 py-0.5 font-mono">PATCH /api/apihub/connectors/:id</code> for status
+        + sync timestamp updates with audit rows.
       </p>
     </section>
   );

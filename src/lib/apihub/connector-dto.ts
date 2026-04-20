@@ -7,6 +7,15 @@ export type ApiHubConnectorDto = {
   healthSummary: string | null;
   createdAt: string;
   updatedAt: string;
+  auditTrail: ApiHubConnectorAuditTrailDto[];
+};
+
+export type ApiHubConnectorAuditTrailDto = {
+  id: string;
+  actorUserId: string;
+  action: string;
+  note: string | null;
+  createdAt: string;
 };
 
 type Row = {
@@ -18,6 +27,13 @@ type Row = {
   healthSummary: string | null;
   createdAt: Date;
   updatedAt: Date;
+  auditLogs?: {
+    id: string;
+    actorUserId: string;
+    action: string;
+    note: string | null;
+    createdAt: Date;
+  }[];
 };
 
 export function toApiHubConnectorDto(row: Row): ApiHubConnectorDto {
@@ -30,5 +46,12 @@ export function toApiHubConnectorDto(row: Row): ApiHubConnectorDto {
     healthSummary: row.healthSummary,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
+    auditTrail: (row.auditLogs ?? []).map((audit) => ({
+      id: audit.id,
+      actorUserId: audit.actorUserId,
+      action: audit.action,
+      note: audit.note,
+      createdAt: audit.createdAt.toISOString(),
+    })),
   };
 }
