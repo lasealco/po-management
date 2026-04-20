@@ -62,6 +62,9 @@ export default async function SalesOrderDetailPage({
       </div>
     );
   }
+  const activeShipmentCount = row.shipments.filter((s) =>
+    ["SHIPPED", "VALIDATED", "BOOKED", "IN_TRANSIT"].includes(s.status),
+  ).length;
 
   return (
     <main className="mx-auto w-full max-w-5xl px-6 py-8">
@@ -78,6 +81,20 @@ export default async function SalesOrderDetailPage({
           steps={["Step 1: Review customer commitment", "Step 2: Transition SO status", "Step 3: Track linked shipments"]}
         />
       </div>
+      <section className="mt-4 grid gap-3 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:grid-cols-3">
+        <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3">
+          <p className="text-xs uppercase tracking-wide text-zinc-500">Current status</p>
+          <p className="mt-1 text-sm font-semibold text-zinc-900">{row.status}</p>
+        </div>
+        <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3">
+          <p className="text-xs uppercase tracking-wide text-zinc-500">Linked shipments</p>
+          <p className="mt-1 text-sm font-semibold text-zinc-900">{row.shipments.length}</p>
+        </div>
+        <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3">
+          <p className="text-xs uppercase tracking-wide text-zinc-500">Active shipments</p>
+          <p className="mt-1 text-sm font-semibold text-zinc-900">{activeShipmentCount}</p>
+        </div>
+      </section>
       <SalesOrderStatusActions
         salesOrderId={row.id}
         status={row.status}
@@ -107,23 +124,28 @@ export default async function SalesOrderDetailPage({
       </div>
 
       <h2 className="mt-6 text-base font-semibold text-zinc-900">Linked shipments</h2>
-      <p className="mt-1 text-xs text-zinc-500">Shipment links open the Control Tower shipment workspace.</p>
+      <p className="mt-1 text-xs text-zinc-500">Review shipment state and jump into the shipment workspace when needed.</p>
       <ul className="mt-2 space-y-2">
         {row.shipments.length === 0 ? (
           <li className="rounded border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-500">No shipments linked.</li>
         ) : (
           row.shipments.map((s) => (
-            <li key={s.id} className="rounded border border-zinc-200 bg-white px-3 py-2 text-sm">
-              <Link
-                href={`/control-tower/shipments/${s.id}`}
-                className="font-medium text-sky-800 hover:underline"
-                title="Open in Control Tower"
-              >
-                {s.shipmentNo || s.id}
-              </Link>
-              <span className="ml-2 text-zinc-500">
-                {s.status} · {s.transportMode || "—"} · {s.carrier || "—"} · {s.trackingNo || "—"}
-              </span>
+            <li key={s.id} className="rounded-lg border border-zinc-200 bg-white px-3 py-3 text-sm shadow-sm">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <p className="font-medium text-zinc-900">{s.shipmentNo || s.id}</p>
+                  <p className="text-xs text-zinc-500">
+                    {s.status} · {s.transportMode || "—"} · {s.carrier || "—"} · {s.trackingNo || "—"}
+                  </p>
+                </div>
+                <Link
+                  href={`/control-tower/shipments/${s.id}`}
+                  className="rounded-lg border border-zinc-300 px-2.5 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
+                  title="Open in Control Tower"
+                >
+                  Open shipment
+                </Link>
+              </div>
             </li>
           ))
         )}
