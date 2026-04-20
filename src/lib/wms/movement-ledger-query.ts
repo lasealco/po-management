@@ -1,6 +1,6 @@
 import type { InventoryMovementType, Prisma } from "@prisma/client";
 
-const MV_TYPES: InventoryMovementType[] = [
+export const MOVEMENT_LEDGER_TYPES: InventoryMovementType[] = [
   "RECEIPT",
   "PUTAWAY",
   "PICK",
@@ -31,7 +31,7 @@ export function parseMovementLedgerQuery(
   const warehouseId = searchParams.get("mvWarehouse")?.trim() || undefined;
   const rawType = searchParams.get("mvType")?.trim();
   const movementType =
-    rawType && (MV_TYPES as string[]).includes(rawType)
+    rawType && (MOVEMENT_LEDGER_TYPES as string[]).includes(rawType)
       ? (rawType as InventoryMovementType)
       : undefined;
   let since: Date | undefined;

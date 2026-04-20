@@ -35,6 +35,7 @@ export type CommandPaletteGrants = {
   rfq: boolean;
   pricingSnapshots: boolean;
   invoiceAudit: boolean;
+  apihub: boolean;
 };
 
 type CommandItem = {
@@ -75,6 +76,16 @@ export function CommandPalette({ grants }: { grants: CommandPaletteGrants }) {
         openHelp();
       },
     });
+
+    if (grants.apihub) {
+      list.push({
+        id: "apihub",
+        label: "API hub",
+        hint: "Integration and ingestion hub (P0 shell)",
+        searchText: "api hub integration ingestion connector webhook ingest",
+        action: go("/apihub"),
+      });
+    }
 
     list.push(
       {

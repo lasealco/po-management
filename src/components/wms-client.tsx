@@ -1,11 +1,18 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
-import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { InventoryMovementType } from "@prisma/client";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { ActionButton } from "@/components/action-button";
 import { WorkflowHeader } from "@/components/workflow-header";
 import { WMS_DEMO_WAREHOUSE_CODE } from "@/lib/wms/demo-warehouse-code";
+import {
+  isoToDatetimeLocalValue,
+  mergeStockLedgerSearchParams,
+  normalizeMovementLedgerQueryString,
+  readStockLedgerUrlState,
+} from "@/lib/wms/stock-ledger-url";
 
 type WmsData = {
   warehouses: Array<{ id: string; code: string | null; name: string; type: "CFS" | "WAREHOUSE" }>;
@@ -152,9 +159,19 @@ type WmsData = {
     product: { id: string; productCode: string | null; sku: string | null; name: string };
     createdBy: { id: string; name: string; email: string };
   }>;
+  recentMovementsMeta: { limit: number; matchedCount: number; truncated: boolean };
 };
 
 export type WmsSection = "setup" | "operations" | "stock";
+
+const STOCK_LEDGER_MV_TYPE_PRESETS: Array<{ label: string; value: "" | InventoryMovementType }> = [
+  { label: "All types", value: "" },
+  { label: "Receipt", value: "RECEIPT" },
+  { label: "Putaway", value: "PUTAWAY" },
+  { label: "Pick", value: "PICK" },
+  { label: "Adjustment", value: "ADJUSTMENT" },
+  { label: "Shipment", value: "SHIPMENT" },
+];
 
 const INBOUND_MILESTONE_LOG_OPTIONS: Array<{ value: string; label: string }> = [
   { value: "ASN_SUBMITTED", label: "ASN submitted" },
@@ -214,9 +231,13 @@ function downloadMovementLedgerCsv(
 }
 
 export function WmsClient({ canEdit, section }: { canEdit: boolean; section: WmsSection }) {
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   /** Stock: once user picks "All warehouses", do not auto-select demo DC again on refetch. */
   const stockWarehouseDefaultApplied = useRef(false);
+  const pushingLedgerUrl = useRef(false);
+  const lastLedgerUrlNormalized = useRef("");
   const [data, setData] = useState<WmsData | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -285,6 +306,62 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
       });
     }
   }, [searchParams]);
+
+  useLayoutEffect(() => {
+    if (section !== "stock") return;
+    if (pushingLedgerUrl.current) {
+      const n = normalizeMovementLedgerQueryString(searchParams);
+      if (n === lastLedgerUrlNormalized.current) pushingLedgerUrl.current = false;
+      return;
+    }
+    const from = readStockLedgerUrlState(searchParams);
+    startTransition(() => {
+      if (from.warehouseId) stockWarehouseDefaultApplied.current = true;
+      setSelectedWarehouseId(from.warehouseId);
+      setMovementTypeFilter(from.movementType);
+      setLedgerSince(from.sinceIso);
+      setLedgerUntil(from.untilIso);
+      setLedgerLimit(from.limit);
+      setLedgerDraftSince(from.sinceIso ? isoToDatetimeLocalValue(from.sinceIso) : "");
+      setLedgerDraftUntil(from.untilIso ? isoToDatetimeLocalValue(from.untilIso) : "");
+      setLedgerDraftLimit(from.limit);
+    });
+    lastLedgerUrlNormalized.current = normalizeMovementLedgerQueryString(searchParams);
+  }, [section, searchParams]);
+
+  useEffect(() => {
+    if (section !== "stock") return;
+    const ledgerState = {
+      warehouseId: selectedWarehouseId,
+      movementType: movementTypeFilter,
+      sinceIso: ledgerSince,
+      untilIso: ledgerUntil,
+      limit: ledgerLimit,
+    };
+    const desiredNorm = normalizeMovementLedgerQueryString(
+      mergeStockLedgerSearchParams(new URLSearchParams(), ledgerState),
+    );
+    const currentNorm = normalizeMovementLedgerQueryString(searchParams);
+    if (desiredNorm === currentNorm) {
+      lastLedgerUrlNormalized.current = currentNorm;
+      return;
+    }
+    pushingLedgerUrl.current = true;
+    lastLedgerUrlNormalized.current = desiredNorm;
+    const merged = mergeStockLedgerSearchParams(new URLSearchParams(searchParams.toString()), ledgerState);
+    const qs = merged.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }, [
+    section,
+    pathname,
+    router,
+    searchParams,
+    selectedWarehouseId,
+    movementTypeFilter,
+    ledgerSince,
+    ledgerUntil,
+    ledgerLimit,
+  ]);
 
   const load = useCallback(async () => {
     const params = new URLSearchParams();
@@ -462,6 +539,12 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
   const wmsDemoDatasetMissing = !data.warehouses.some((w) => w.code === WMS_DEMO_WAREHOUSE_CODE);
 
   const movementsShown = data.recentMovements;
+  const movementsMeta = data.recentMovementsMeta;
+  const ledgerScopeActive = Boolean(
+    selectedWarehouseId || movementTypeFilter || ledgerSince || ledgerUntil || ledgerLimit,
+  );
+  const ledgerEmptyNoMatch =
+    movementsShown.length === 0 && movementsMeta.matchedCount === 0 && ledgerScopeActive;
 
   const headerTitle =
     section === "setup"
@@ -493,7 +576,10 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
         />
       </header>
       {error ? (
-        <p className="mb-4 rounded border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+        <p
+          className="mb-4 rounded border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700"
+          role="alert"
+        >
           {error}
         </p>
       ) : null}
@@ -556,7 +642,8 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
           <p className="w-full text-xs text-zinc-500">
             WMS demo inventory (balances and most ledger rows) lives in{" "}
             <span className="font-medium text-zinc-700">{WMS_DEMO_WAREHOUSE_CODE}</span>. CFS rows in this list
-            are mostly empty for stock unless you create balances there.
+            are mostly empty for stock unless you create balances there. Ledger filters (warehouse, type, dates, row
+            cap) sync to the URL so you can bookmark or share an exact view.
           </p>
           <label className="flex flex-wrap items-center gap-2">
             <span className="text-sm font-medium text-zinc-700">Movement type</span>
@@ -577,6 +664,32 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
               <option value="SHIPMENT">SHIPMENT</option>
             </select>
           </label>
+          <div className="w-full">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Quick filters</p>
+            <div className="mt-1.5 flex flex-wrap gap-2">
+              {STOCK_LEDGER_MV_TYPE_PRESETS.map((p) => {
+                const active = movementTypeFilter === p.value;
+                return (
+                  <button
+                    key={p.label}
+                    type="button"
+                    onClick={() =>
+                      setMovementTypeFilter(
+                        p.value as "" | "RECEIPT" | "PUTAWAY" | "PICK" | "ADJUSTMENT" | "SHIPMENT",
+                      )
+                    }
+                    className={`rounded-full border px-3 py-1 text-xs font-medium ${
+                      active
+                        ? "border-[var(--arscmp-primary)] bg-[var(--arscmp-primary)] text-white"
+                        : "border-zinc-300 text-zinc-800 hover:bg-zinc-50"
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
           <label className="flex flex-wrap items-center gap-2">
             <span className="text-sm font-medium text-zinc-700">From</span>
             <input
@@ -1765,20 +1878,32 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
             <h2 className="text-sm font-semibold text-zinc-900">Recent stock movements</h2>
             <p className="mt-1 text-xs text-zinc-500">
               Showing {movementsShown.length} ledger row{movementsShown.length === 1 ? "" : "s"}
-              {selectedWarehouseId || movementTypeFilter ? " for the warehouse / type filters above" : ""}. Date range
-              and row cap apply after you click <span className="font-medium">Apply date / cap</span>; warehouse and
-              movement type refetch automatically.
+              {selectedWarehouseId || movementTypeFilter ? " for the warehouse / type filters above" : ""} (
+              {movementsMeta.matchedCount} match{movementsMeta.matchedCount === 1 ? "" : "es"} in the database for this
+              scope). Date range and row cap apply after you click{" "}
+              <span className="font-medium">Apply date / cap</span>; warehouse and movement type refetch automatically.
+              CSV export downloads exactly the rows in the table below.
             </p>
           </div>
           <button
             type="button"
             disabled={movementsShown.length === 0}
+            title="Exports the same rows as the ledger table (current filters and row cap)."
             onClick={() => downloadMovementLedgerCsv(movementsShown)}
             className="shrink-0 rounded border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-800 disabled:opacity-40"
           >
             Export CSV
           </button>
         </div>
+        {movementsMeta.truncated ? (
+          <p
+            className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950"
+            role="status"
+          >
+            Results are capped at {movementsMeta.limit} rows; {movementsMeta.matchedCount} movements match this scope.
+            Narrow the date range, add filters, or raise the row cap to reduce truncation.
+          </p>
+        ) : null}
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead className="bg-zinc-100 text-left text-xs uppercase text-zinc-700">
@@ -1796,7 +1921,9 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
               {movementsShown.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-2 py-3 text-zinc-500">
-                    No movements yet.
+                    {ledgerEmptyNoMatch
+                      ? "No movements match these filters."
+                      : "No movements yet in this view."}
                   </td>
                 </tr>
               ) : (
