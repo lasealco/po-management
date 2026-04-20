@@ -1,25 +1,26 @@
 import { NextResponse } from "next/server";
 
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 
 export async function requirePricingSnapshotRead(): Promise<NextResponse | null> {
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json(
-      { error: "Demo tenant not found. Run `npm run db:seed` to create starter data." },
-      { status: 404 },
-    );
+    return toApiErrorResponse({
+      error: "Demo tenant not found. Run `npm run db:seed` to create starter data.",
+      code: "TENANT_NOT_FOUND",
+      status: 404,
+    });
   }
   const access = await getViewerGrantSet();
   if (!access?.user) {
-    return NextResponse.json(
-      {
-        error:
-          "No active demo user for this session. Open Settings → Demo session (/settings/demo) to choose who you are acting as.",
-      },
-      { status: 403 },
-    );
+    return toApiErrorResponse({
+      error:
+        "No active demo user for this session. Open Settings → Demo session (/settings/demo) to choose who you are acting as.",
+      code: "NO_ACTIVE_USER",
+      status: 403,
+    });
   }
   const g = access.grantSet;
   if (
@@ -27,13 +28,11 @@ export async function requirePricingSnapshotRead(): Promise<NextResponse | null>
     !viewerHas(g, "org.rfq", "view") &&
     !viewerHas(g, "org.invoice_audit", "view")
   ) {
-    return NextResponse.json(
-      {
-        error:
-          "Forbidden: requires org.tariffs → view, org.rfq → view, or org.invoice_audit → view.",
-      },
-      { status: 403 },
-    );
+    return toApiErrorResponse({
+      error: "Forbidden: requires org.tariffs → view, org.rfq → view, or org.invoice_audit → view.",
+      code: "FORBIDDEN",
+      status: 403,
+    });
   }
   return null;
 }
@@ -46,16 +45,24 @@ export async function requirePricingSnapshotWriteForSource(params: {
 
   const access = await getViewerGrantSet();
   if (!access?.user) {
-    return NextResponse.json({ error: "No active user." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active user.", code: "NO_ACTIVE_USER", status: 403 });
   }
   const g = access.grantSet;
   if (params.sourceType === "TARIFF_CONTRACT_VERSION" || params.sourceType === "COMPOSITE_CONTRACT_VERSION") {
     if (!viewerHas(g, "org.tariffs", "edit")) {
-      return NextResponse.json({ error: "Forbidden: requires org.tariffs → edit." }, { status: 403 });
+      return toApiErrorResponse({
+        error: "Forbidden: requires org.tariffs → edit.",
+        code: "FORBIDDEN",
+        status: 403,
+      });
     }
   } else {
     if (!viewerHas(g, "org.rfq", "edit")) {
-      return NextResponse.json({ error: "Forbidden: requires org.rfq → edit." }, { status: 403 });
+      return toApiErrorResponse({
+        error: "Forbidden: requires org.rfq → edit.",
+        code: "FORBIDDEN",
+        status: 403,
+      });
     }
   }
   return null;

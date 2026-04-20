@@ -18,6 +18,6 @@ describe("jsonFromRfqError", () => {
     const res = jsonFromRfqError(new RfqRepoError(code, "msg"));
     expect(res).not.toBeNull();
     expect(res!.status).toBe(expectedStatus);
-    expect(await res!.json()).toEqual({ error: "msg" });
+    expect(await res!.json()).toEqual({ error: "msg", code });
   });
 });
