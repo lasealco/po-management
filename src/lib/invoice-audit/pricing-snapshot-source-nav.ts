@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getTariffContractVersionForTenant } from "@/lib/tariff/contract-versions";
+import { tariffContractVersionPath } from "@/lib/tariff/tariff-workbench-urls";
 
 /** Human label for `BookingPricingSnapshot.sourceType` (audit UI). */
 export function formatPricingSnapshotSourceType(sourceType: string): string {
@@ -31,7 +32,7 @@ export async function resolvePricingSnapshotSourceNav(params: {
     const v = await getTariffContractVersionForTenant({ tenantId: params.tenantId, versionId: id });
     if (!v) return { tariffVersionHref: null, rfqRequestHref: null };
     return {
-      tariffVersionHref: `/tariffs/contracts/${v.contractHeaderId}/versions/${v.id}`,
+      tariffVersionHref: tariffContractVersionPath(v.contractHeaderId, v.id),
       rfqRequestHref: null,
     };
   }

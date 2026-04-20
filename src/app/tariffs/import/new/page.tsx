@@ -4,6 +4,7 @@ import { TariffImportUploadFormClient } from "@/components/tariffs/tariff-import
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
+import { TARIFF_IMPORT_PATH } from "@/lib/tariff/tariff-workbench-urls";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,7 @@ export default async function TariffImportNewPage() {
   return (
     <main className="mx-auto max-w-3xl px-6 py-10">
       <div className="mb-6 text-sm text-zinc-600">
-        <Link href="/tariffs/import" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+        <Link href={TARIFF_IMPORT_PATH} className="font-medium text-[var(--arscmp-primary)] hover:underline">
           Import center
         </Link>
         <span className="mx-2 text-zinc-400">/</span>

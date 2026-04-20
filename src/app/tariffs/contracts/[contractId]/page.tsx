@@ -7,6 +7,7 @@ import { TariffContractHeaderClient } from "@/components/tariffs/tariff-contract
 import { TariffBadge, tariffApprovalTone, tariffContractStatusTone } from "@/components/tariffs/tariff-badges";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { getTariffContractHeaderForTenant } from "@/lib/tariff/contract-headers";
+import { TARIFF_CONTRACTS_DIRECTORY_PATH, tariffContractVersionPath } from "@/lib/tariff/tariff-workbench-urls";
 import { getDemoTenant } from "@/lib/demo-tenant";
 
 export const dynamic = "force-dynamic";
@@ -56,7 +57,7 @@ export default async function TariffContractDetailPage({
             </div>
           </div>
           <Link
-            href="/tariffs/contracts"
+            href={TARIFF_CONTRACTS_DIRECTORY_PATH}
             className="text-sm font-medium text-[var(--arscmp-primary)] hover:underline"
           >
             ← Directory
@@ -115,7 +116,7 @@ export default async function TariffContractDetailPage({
                   <tr key={v.id} className="border-b border-zinc-100">
                     <td className="py-3 pr-4">
                       <Link
-                        href={`/tariffs/contracts/${contract.id}/versions/${v.id}`}
+                        href={tariffContractVersionPath(contract.id, v.id)}
                         className="font-medium text-[var(--arscmp-primary)] hover:underline"
                       >
                         v{v.versionNo}

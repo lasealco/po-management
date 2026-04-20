@@ -5,11 +5,13 @@ import { usePathname } from "next/navigation";
 
 import { BrandMarkLink } from "@/components/brand-mark";
 import type { AppNavLinkVisibility } from "@/lib/nav-visibility";
+import { PLATFORM_HUB_PATH } from "@/lib/marketing-public-paths";
 import {
   RATES_AUDIT_NAV_LABEL,
   isRatesAuditSectionPath,
   ratesAuditTopNavHref,
 } from "@/lib/rates-audit-nav";
+import { TARIFF_CONTRACTS_DIRECTORY_PATH, TARIFFS_MODULE_BASE_PATH } from "@/lib/tariff/tariff-workbench-urls";
 
 function isTopNavHrefActive(pathname: string, href: string): boolean {
   if (href === "/settings") return pathname.startsWith("/settings");
@@ -26,7 +28,7 @@ function isTopNavHrefActive(pathname: string, href: string): boolean {
   }
   if (href === "/crm") return pathname === "/crm" || pathname.startsWith("/crm/");
   if (href === "/control-tower") return pathname === "/control-tower" || pathname.startsWith("/control-tower/");
-  if (href === "/tariffs/contracts") return pathname.startsWith("/tariffs");
+  if (href === TARIFF_CONTRACTS_DIRECTORY_PATH) return pathname.startsWith(TARIFFS_MODULE_BASE_PATH);
   if (href === "/pricing-snapshots") return pathname.startsWith("/pricing-snapshots");
   if (href === "/invoice-audit") return pathname.startsWith("/invoice-audit");
   if (href === "/rfq/requests") return pathname.startsWith("/rfq");
@@ -106,7 +108,7 @@ export function AppNav({
       ) : null}
       <div className="mx-auto flex min-h-14 max-w-7xl flex-nowrap items-center gap-3 py-2 pl-2 pr-6 sm:gap-4 sm:pl-3 md:pl-6">
         <BrandMarkLink
-          href="/platform"
+          href={PLATFORM_HUB_PATH}
           className="shrink-0 py-1"
           aria-label="AR SCMP — platform home"
         />

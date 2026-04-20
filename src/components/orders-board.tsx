@@ -156,6 +156,20 @@ export function OrdersBoard({
         (o) => o.conversationSla.awaitingReplyFrom === data.viewerMode,
       );
     }
+    if (queueFilter === "sla_warning") {
+      return data.orders.filter((o) => {
+        if (o.conversationSla.awaitingReplyFrom !== data.viewerMode) return false;
+        const days = o.conversationSla.daysSinceLastShared ?? 0;
+        return days >= 2 && days < 5;
+      });
+    }
+    if (queueFilter === "sla_critical") {
+      return data.orders.filter((o) => {
+        if (o.conversationSla.awaitingReplyFrom !== data.viewerMode) return false;
+        const days = o.conversationSla.daysSinceLastShared ?? 0;
+        return days >= 5;
+      });
+    }
     if (queueFilter === "awaiting_supplier") {
       return data.orders.filter((o) => o.status.code === "SENT");
     }
@@ -279,27 +293,90 @@ export function OrdersBoard({
               + New order
             </Link>
           ) : null}
-          <span className="rounded-full bg-emerald-100 px-2.5 py-1 font-medium text-emerald-900">
+          <button
+            type="button"
+            onClick={() => setQueueFilter("needs_my_action")}
+            aria-pressed={queueFilter === "needs_my_action"}
+            className={`rounded-full px-2.5 py-1 font-medium transition ${
+              queueFilter === "needs_my_action"
+                ? "bg-emerald-700 text-white ring-2 ring-emerald-900/20"
+                : "bg-emerald-100 text-emerald-900 hover:bg-emerald-200"
+            }`}
+          >
             Needs my action: {queueSummary.needsMyAction}
-          </span>
-          <span className="rounded-full bg-violet-100 px-2.5 py-1 font-medium text-violet-900">
+          </button>
+          <button
+            type="button"
+            onClick={() => setQueueFilter("waiting_on_me")}
+            aria-pressed={queueFilter === "waiting_on_me"}
+            className={`rounded-full px-2.5 py-1 font-medium transition ${
+              queueFilter === "waiting_on_me"
+                ? "bg-violet-700 text-white ring-2 ring-violet-900/20"
+                : "bg-violet-100 text-violet-900 hover:bg-violet-200"
+            }`}
+          >
             Waiting on me: {queueSummary.waitingOnMe}
-          </span>
-          <span className="rounded-full bg-amber-100 px-2.5 py-1 font-medium text-amber-900">
+          </button>
+          <button
+            type="button"
+            onClick={() => setQueueFilter("sla_warning")}
+            aria-pressed={queueFilter === "sla_warning"}
+            className={`rounded-full px-2.5 py-1 font-medium transition ${
+              queueFilter === "sla_warning"
+                ? "bg-amber-700 text-white ring-2 ring-amber-900/20"
+                : "bg-amber-100 text-amber-900 hover:bg-amber-200"
+            }`}
+          >
             SLA warning (2+d): {queueSummary.waitingOnMeWarn}
-          </span>
-          <span className="rounded-full bg-rose-100 px-2.5 py-1 font-medium text-rose-900">
+          </button>
+          <button
+            type="button"
+            onClick={() => setQueueFilter("sla_critical")}
+            aria-pressed={queueFilter === "sla_critical"}
+            className={`rounded-full px-2.5 py-1 font-medium transition ${
+              queueFilter === "sla_critical"
+                ? "bg-rose-700 text-white ring-2 ring-rose-900/20"
+                : "bg-rose-100 text-rose-900 hover:bg-rose-200"
+            }`}
+          >
             SLA critical (5+d): {queueSummary.waitingOnMeCritical}
-          </span>
-          <span className="rounded-full bg-sky-100 px-2.5 py-1 font-medium text-sky-900">
+          </button>
+          <button
+            type="button"
+            onClick={() => setQueueFilter("awaiting_supplier")}
+            aria-pressed={queueFilter === "awaiting_supplier"}
+            className={`rounded-full px-2.5 py-1 font-medium transition ${
+              queueFilter === "awaiting_supplier"
+                ? "bg-sky-700 text-white ring-2 ring-sky-900/20"
+                : "bg-sky-100 text-sky-900 hover:bg-sky-200"
+            }`}
+          >
             Awaiting supplier response: {queueSummary.awaitingSupplier}
-          </span>
-          <span className="rounded-full bg-amber-100 px-2.5 py-1 font-medium text-amber-900">
+          </button>
+          <button
+            type="button"
+            onClick={() => setQueueFilter("split_pending_buyer")}
+            aria-pressed={queueFilter === "split_pending_buyer"}
+            className={`rounded-full px-2.5 py-1 font-medium transition ${
+              queueFilter === "split_pending_buyer"
+                ? "bg-amber-800 text-white ring-2 ring-amber-900/20"
+                : "bg-amber-100 text-amber-900 hover:bg-amber-200"
+            }`}
+          >
             Split pending buyer decision: {queueSummary.splitPendingBuyer}
-          </span>
-          <span className="rounded-full bg-rose-100 px-2.5 py-1 font-medium text-rose-900">
+          </button>
+          <button
+            type="button"
+            onClick={() => setQueueFilter("overdue")}
+            aria-pressed={queueFilter === "overdue"}
+            className={`rounded-full px-2.5 py-1 font-medium transition ${
+              queueFilter === "overdue"
+                ? "bg-rose-700 text-white ring-2 ring-rose-900/20"
+                : "bg-rose-100 text-rose-900 hover:bg-rose-200"
+            }`}
+          >
             Overdue: {queueSummary.overdue}
-          </span>
+          </button>
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
           <button
@@ -334,6 +411,28 @@ export function OrdersBoard({
             }`}
           >
             Waiting on Me ({queueSummary.waitingOnMe})
+          </button>
+          <button
+            type="button"
+            onClick={() => setQueueFilter("sla_warning")}
+            className={`rounded-md border px-2.5 py-1 text-xs font-medium ${
+              queueFilter === "sla_warning"
+                ? "border-amber-700 bg-amber-700 text-white"
+                : "border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100"
+            }`}
+          >
+            SLA 2–4d ({queueSummary.waitingOnMeWarn})
+          </button>
+          <button
+            type="button"
+            onClick={() => setQueueFilter("sla_critical")}
+            className={`rounded-md border px-2.5 py-1 text-xs font-medium ${
+              queueFilter === "sla_critical"
+                ? "border-rose-700 bg-rose-700 text-white"
+                : "border-rose-200 bg-rose-50 text-rose-900 hover:bg-rose-100"
+            }`}
+          >
+            SLA 5+d ({queueSummary.waitingOnMeCritical})
           </button>
           <button
             type="button"

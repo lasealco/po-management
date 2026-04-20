@@ -11,6 +11,7 @@ vi.mock("@/lib/tariff/contract-versions", () => ({
 }));
 
 import { resolvePricingSnapshotSourceNav } from "@/lib/invoice-audit/pricing-snapshot-source-nav";
+import { tariffContractVersionPath } from "@/lib/tariff/tariff-workbench-urls";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -26,7 +27,7 @@ describe("resolvePricingSnapshotSourceNav", () => {
         sourceRecordId: "ver1",
       }),
     ).resolves.toEqual({
-      tariffVersionHref: "/tariffs/contracts/hdr1/versions/ver1",
+      tariffVersionHref: tariffContractVersionPath("hdr1", "ver1"),
       rfqRequestHref: null,
     });
   });

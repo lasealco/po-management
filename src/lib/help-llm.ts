@@ -3,6 +3,8 @@ import {
   type HelpDoAction,
 } from "@/lib/help-actions";
 import { HELP_PLAYBOOKS, matchPlaybook, type HelpPlaybook } from "@/lib/help-playbooks";
+import { LEGAL_COOKIES_PATH, LEGAL_PRIVACY_PATH, LEGAL_TERMS_PATH } from "@/lib/legal-public-paths";
+import { MARKETING_PRICING_PATH, PLATFORM_HUB_PATH } from "@/lib/marketing-public-paths";
 
 type HelpAction = { label: string; href: string };
 
@@ -17,6 +19,8 @@ export type HelpReply = {
 };
 
 const ROUTE_HINTS: HelpAction[] = [
+  { label: "Platform hub", href: PLATFORM_HUB_PATH },
+  { label: "Plans & pricing", href: MARKETING_PRICING_PATH },
   { label: "Open Orders", href: "/orders" },
   { label: "Open Consolidation", href: "/consolidation" },
   { label: "Open Suppliers", href: "/suppliers" },
@@ -28,6 +32,9 @@ const ROUTE_HINTS: HelpAction[] = [
   { label: "Product trace", href: "/product-trace" },
   { label: "Reporting hub", href: "/reporting" },
   { label: "Login", href: "/login" },
+  { label: "Privacy policy", href: LEGAL_PRIVACY_PATH },
+  { label: "Terms of service", href: LEGAL_TERMS_PATH },
+  { label: "Cookie policy", href: LEGAL_COOKIES_PATH },
 ];
 
 function fallbackReply(message: string): HelpReply {
@@ -109,6 +116,33 @@ function fallbackReply(message: string): HelpReply {
         payload: { path: "/product-trace", q: "PKG-CORR-ROLL", guide: matched.id, step: 1 },
       });
     }
+    if (matched.id === "public_marketing") {
+      doActions.push({
+        type: "open_path",
+        label: "Open plans & pricing",
+        payload: { path: MARKETING_PRICING_PATH, guide: matched.id, step: 0 },
+      });
+      doActions.push({
+        type: "open_path",
+        label: "Open platform hub",
+        payload: { path: PLATFORM_HUB_PATH, guide: matched.id, step: 1 },
+      });
+      doActions.push({
+        type: "open_path",
+        label: "Open privacy policy",
+        payload: { path: LEGAL_PRIVACY_PATH, guide: matched.id, step: 2 },
+      });
+      doActions.push({
+        type: "open_path",
+        label: "Open terms of service",
+        payload: { path: LEGAL_TERMS_PATH, guide: matched.id, step: 3 },
+      });
+      doActions.push({
+        type: "open_path",
+        label: "Open cookie policy",
+        payload: { path: LEGAL_COOKIES_PATH, guide: matched.id, step: 4 },
+      });
+    }
     return {
       answer: `${matched.title}: ${matched.summary}`,
       playbook: matched,
@@ -124,7 +158,7 @@ function fallbackReply(message: string): HelpReply {
   }
   return {
     answer:
-      "I can guide you through orders, suppliers, consolidation, Control Tower, product trace (SKU → map), the Reporting hub (cockpit, refresh shortcuts), and user administration. Try asking: 'I want to create an order', 'How do I trace a SKU on the map?', or 'How do I build a consolidation load?'",
+      "I can guide you through orders, suppliers, consolidation, Control Tower, product trace (SKU → map), the Reporting hub (cockpit, refresh shortcuts), and user administration. Privacy, terms, and cookies are on their own public pages (also in the command palette). Try asking: 'I want to create an order', 'How do I trace a SKU on the map?', or 'How do I build a consolidation load?'",
     playbook: null,
     suggestions: HELP_PLAYBOOKS.map((p) => p.title),
     actions: ROUTE_HINTS.slice(0, 4),
@@ -176,7 +210,7 @@ export async function buildHelpReply(params: {
     "- open_order: payload { orderNumber: string, focus?: 'workflow'|'asn'|'chat'|'split', guide?: playbook id, step?: number }",
     "- open_orders_queue: payload { queue: 'all'|'needs_my_action'|'waiting_on_me'|'awaiting_supplier'|'overdue'|'split_pending_buyer', guide?, step? }",
     "- open_path: payload { path: '…', guide?, step?, q?, focus? }",
-    "Paths: '/platform'|'/orders'|'/consolidation'|'/suppliers'|'/settings/users'|'/settings/warehouses'|'/login'|'/catalog'|'/products'|'/product-trace'|'/reporting'|'/reports'|'/crm/reporting'|'/wms/reporting'|'/control-tower'|'/control-tower/workbench'|'/control-tower/digest'|'/control-tower/reports'|'/control-tower/search'|'/control-tower/dashboard'|'/control-tower/command-center'|'/control-tower/ops'.",
+    `Paths: '${PLATFORM_HUB_PATH}'|'${MARKETING_PRICING_PATH}'|'${LEGAL_PRIVACY_PATH}'|'${LEGAL_TERMS_PATH}'|'${LEGAL_COOKIES_PATH}'|'/orders'|'/consolidation'|'/suppliers'|'/settings/users'|'/settings/warehouses'|'/login'|'/catalog'|'/products'|'/product-trace'|'/reporting'|'/reports'|'/crm/reporting'|'/wms/reporting'|'/control-tower'|'/control-tower/workbench'|'/control-tower/digest'|'/control-tower/reports'|'/control-tower/search'|'/control-tower/dashboard'|'/control-tower/command-center'|'/control-tower/ops'.`,
     "For path '/product-trace' only, optional q is a SKU or product code (alphanumeric, dots, underscores, hyphens; max 64 chars).",
     "For path '/reporting' only, optional focus is 'po'|'control-tower'|'crm'|'wms' (scrolls the hub to that module card).",
     "Use demo PO-1004 only as a known example order number when suggesting open_order.",

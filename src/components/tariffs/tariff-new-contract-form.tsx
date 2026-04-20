@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
+import { TARIFF_CONTRACTS_DIRECTORY_PATH, tariffContractHeaderPath } from "@/lib/tariff/tariff-workbench-urls";
+
 const TRANSPORT_MODES = ["OCEAN", "LCL", "AIR", "TRUCK", "RAIL", "LOCAL_SERVICE"] as const;
 
 type ProviderOpt = { id: string; legalName: string; tradingName: string | null };
@@ -55,7 +57,7 @@ export function TariffNewContractForm({
         return;
       }
       if (data?.contract?.id) {
-        router.push(`/tariffs/contracts/${data.contract.id}`);
+        router.push(tariffContractHeaderPath(data.contract.id));
         router.refresh();
       }
     });
@@ -154,7 +156,7 @@ export function TariffNewContractForm({
         </button>
         <button
           type="button"
-          onClick={() => router.push("/tariffs/contracts")}
+          onClick={() => router.push(TARIFF_CONTRACTS_DIRECTORY_PATH)}
           className="rounded-xl border border-zinc-300 bg-white px-5 py-2.5 text-sm font-semibold text-zinc-800 shadow-sm hover:bg-zinc-50"
         >
           Cancel

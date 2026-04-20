@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { TARIFF_GEOGRAPHY_TYPES_ORDERED, tariffGeographyTypeLabel } from "@/lib/tariff/geography-labels";
+import { TARIFF_GEOGRAPHY_PATH, tariffGeographyGroupPath } from "@/lib/tariff/tariff-workbench-urls";
 
 export type GeographyGroupFormValues = {
   geographyType: TariffGeographyType;
@@ -59,8 +60,8 @@ export function GeographyGroupFormClient({ mode, canEdit, groupId, initial }: Pr
           setError(data.error ?? "Save failed.");
           return;
         }
-        if (data.group?.id) router.push(`/tariffs/geography/${data.group.id}`);
-        else router.push("/tariffs/geography");
+        if (data.group?.id) router.push(tariffGeographyGroupPath(data.group.id));
+        else router.push(TARIFF_GEOGRAPHY_PATH);
         router.refresh();
         return;
       }
@@ -104,7 +105,7 @@ export function GeographyGroupFormClient({ mode, canEdit, groupId, initial }: Pr
         setError(data.error ?? "Delete failed.");
         return;
       }
-      router.push("/tariffs/geography");
+      router.push(TARIFF_GEOGRAPHY_PATH);
       router.refresh();
     } finally {
       setPending(false);
@@ -216,7 +217,7 @@ export function GeographyGroupFormClient({ mode, canEdit, groupId, initial }: Pr
           </button>
         ) : null}
         <Link
-          href="/tariffs/geography"
+          href={TARIFF_GEOGRAPHY_PATH}
           className="rounded-xl border border-zinc-300 bg-white px-5 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
         >
           Back to list

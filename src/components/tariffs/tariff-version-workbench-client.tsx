@@ -143,6 +143,24 @@ export function TariffVersionWorkbenchClient({
 
   const base = `/api/tariffs/contracts/${contractId}/versions/${versionId}`;
 
+  async function patchLifecycle(partial: Record<string, string>): Promise<void> {
+    setError(null);
+    if (!canEdit || frozen) return;
+    const res = await fetch(`${base}`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(partial),
+    });
+    const data = (await res.json().catch(() => null)) as { error?: string } | null;
+    if (!res.ok) {
+      setError(data?.error ?? `Update failed (${res.status})`);
+      return;
+    }
+    setMeta((m) => ({ ...m, ...partial }));
+    router.refresh();
+  }
+
   async function saveMeta() {
     setError(null);
     if (!canEdit || frozen) return;
@@ -352,6 +370,40 @@ export function TariffVersionWorkbenchClient({
             />
           </label>
         </div>
+        {canEdit && !frozen ? (
+          <div className="mt-5 border-t border-zinc-100 pt-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Lifecycle shortcuts</p>
+            <p className="mt-1 text-xs text-zinc-600">
+              Same PATCH as manual dropdowns — use after internal review. Frozen versions cannot be changed.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => startTransition(() => void patchLifecycle({ status: "UNDER_REVIEW", approvalStatus: "PENDING" }))}
+                className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-800 shadow-sm hover:bg-zinc-50 disabled:opacity-50"
+              >
+                Submit for review
+              </button>
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => startTransition(() => void patchLifecycle({ approvalStatus: "APPROVED", status: "APPROVED" }))}
+                className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-900 shadow-sm hover:bg-emerald-100 disabled:opacity-50"
+              >
+                Approve & freeze
+              </button>
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => startTransition(() => void patchLifecycle({ status: "DRAFT", approvalStatus: "PENDING" }))}
+                className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-800 shadow-sm hover:bg-zinc-50 disabled:opacity-50"
+              >
+                Return to draft
+              </button>
+            </div>
+          </div>
+        ) : null}
         {canEdit && !frozen ? (
           <button
             type="button"

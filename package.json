@@ -40,7 +40,8 @@
     "db:seed:demo-full": "node scripts/seed-demo-full.mjs",
     "db:seed:product-trace-demo": "node prisma/product-trace-demo-repair.mjs",
     "db:seed:invoice-audit-demo": "node prisma/seed-invoice-audit-demo.mjs",
-    "db:seed:tariff-fra-chi-demo": "node prisma/seed-tariff-fra-chi-demo.mjs"
+    "db:seed:tariff-fra-chi-demo": "node prisma/seed-tariff-fra-chi-demo.mjs",
+    "db:seed:tariff-deham-uschi-investor-demo": "node prisma/seed-tariff-deham-uschi-investor-demo.mjs"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.7.0",

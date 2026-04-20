@@ -41,6 +41,16 @@ export const SETTINGS_SECTIONS: readonly SettingsNavSection[] = [
     ],
   },
   {
+    title: "Reference & standards",
+    links: [
+      {
+        href: "/settings/reference-data",
+        label: "Countries & transport codes",
+        description: "ISO list, ocean SCACs, airline IATA + AWB prefixes for tariffs and ops",
+      },
+    ],
+  },
+  {
     title: "People",
     links: [
       {

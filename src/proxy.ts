@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+
 import { PO_AUTH_USER_COOKIE, PO_DEMO_USER_COOKIE } from "@/lib/demo-actor";
+import { LEGAL_PUBLIC_HELP_PATHS } from "@/lib/legal-public-paths";
+import { MARKETING_PRICING_PATH } from "@/lib/marketing-public-paths";
 
 const PUBLIC_PATHS = new Set([
   "/",
-  "/pricing",
-  "/privacy",
-  "/terms",
-  "/cookies",
+  MARKETING_PRICING_PATH,
+  ...LEGAL_PUBLIC_HELP_PATHS,
   "/login",
   "/settings/demo",
 ]);

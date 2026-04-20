@@ -5,10 +5,11 @@ import { usePathname } from "next/navigation";
 
 import type { AppNavLinkVisibility } from "@/lib/nav-visibility";
 import { RATES_AUDIT_NAV_LABEL, isRatesAuditSectionPath, ratesAuditSubNavItems } from "@/lib/rates-audit-nav";
+import { TARIFF_CONTRACTS_DIRECTORY_PATH, TARIFFS_MODULE_BASE_PATH } from "@/lib/tariff/tariff-workbench-urls";
 import { subNavActiveClass } from "@/lib/subnav-active-class";
 
 function subNavLinkActive(pathname: string, href: string): boolean {
-  if (href === "/tariffs/contracts") return pathname.startsWith("/tariffs");
+  if (href === TARIFF_CONTRACTS_DIRECTORY_PATH) return pathname.startsWith(TARIFFS_MODULE_BASE_PATH);
   if (href === "/pricing-snapshots") return pathname.startsWith("/pricing-snapshots");
   if (href === "/invoice-audit") return pathname.startsWith("/invoice-audit");
   if (href === "/rfq/requests") return pathname.startsWith("/rfq");

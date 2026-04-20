@@ -1,6 +1,7 @@
 import { Prisma, PrismaClient } from "@prisma/client";
 import { DEFAULT_WMS_BILLING_RATES } from "./billing-default-rates.mjs";
 import { runBulkSeed } from "./bulk-seed.mjs";
+import { seedReferenceCatalog } from "./reference-catalog-seed.mjs";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { config } from "dotenv";
 import { readFileSync } from "node:fs";
@@ -1841,6 +1842,8 @@ async function seed() {
     });
     console.log("[db:seed] Created default demo tariff provider.");
   }
+
+  await seedReferenceCatalog(prisma);
 
   const userCount = await prisma.user.count({ where: { tenantId: tenant.id } });
   console.log(

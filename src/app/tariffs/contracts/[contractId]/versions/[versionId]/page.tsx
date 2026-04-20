@@ -6,6 +6,11 @@ import { TariffVersionWorkbenchClient } from "@/components/tariffs/tariff-versio
 import { TariffBadge, tariffApprovalTone, tariffContractStatusTone } from "@/components/tariffs/tariff-badges";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { listTariffAuditLogsForContractScope } from "@/lib/tariff/audit-log";
+import {
+  TARIFF_CONTRACTS_DIRECTORY_PATH,
+  tariffContractHeaderPath,
+  tariffLaneRatingPath,
+} from "@/lib/tariff/tariff-workbench-urls";
 import { isTariffContractVersionFrozen } from "@/lib/tariff/version-guards";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
@@ -19,10 +24,21 @@ function isoDay(d: Date | null) {
 
 export default async function TariffContractVersionPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ contractId: string; versionId: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { contractId, versionId } = await params;
+  const [{ contractId, versionId }, spRaw] = await Promise.all([
+    params,
+    searchParams ?? Promise.resolve({} as Record<string, string | string[] | undefined>),
+  ]);
+  const rawSid = spRaw.shipmentId;
+  const shipmentIdParam = Array.isArray(rawSid) ? rawSid[0] : rawSid;
+  const shipmentContextId =
+    typeof shipmentIdParam === "string" && shipmentIdParam.trim().length > 0
+      ? shipmentIdParam.trim()
+      : null;
   const tenant = await getDemoTenant();
   const access = await getViewerGrantSet();
   const canEdit = Boolean(access?.user && viewerHas(access.grantSet, "org.tariffs", "edit"));
@@ -148,10 +164,10 @@ export default async function TariffContractVersionPage({
           </div>
         </div>
         <div className="flex flex-wrap gap-3 text-sm">
-          <Link href={`/tariffs/contracts/${contractId}`} className="font-medium text-[var(--arscmp-primary)] hover:underline">
+          <Link href={tariffContractHeaderPath(contractId)} className="font-medium text-[var(--arscmp-primary)] hover:underline">
             ← Contract header
           </Link>
-          <Link href="/tariffs/contracts" className="font-medium text-zinc-600 hover:underline">
+          <Link href={TARIFF_CONTRACTS_DIRECTORY_PATH} className="font-medium text-zinc-600 hover:underline">
             Directory
           </Link>
         </div>
@@ -161,6 +177,23 @@ export default async function TariffContractVersionPage({
         <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Contract version id</span>
         <RecordIdCopy id={version.id} copyButtonLabel="Copy version id" />
       </div>
+
+      {shipmentContextId ? (
+        <div className="rounded-xl border border-sky-200 bg-sky-50/80 px-4 py-3 text-sm text-sky-950">
+          <p className="font-semibold text-sky-900">Shipment context</p>
+          <p className="mt-1 text-xs text-sky-900">
+            Opened from logistics for shipment{" "}
+            <code className="rounded bg-white/80 px-1.5 py-0.5 font-mono text-[11px]">{shipmentContextId}</code>.
+            Use lane rating to quote this corridor and apply this version to the shipment.
+          </p>
+          <Link
+            href={tariffLaneRatingPath({ shipmentId: shipmentContextId })}
+            className="mt-2 inline-block text-sm font-semibold text-[var(--arscmp-primary)] hover:underline"
+          >
+            Open lane rating for this shipment →
+          </Link>
+        </div>
+      ) : null}
 
       <TariffVersionWorkbenchClient
         key={version.updatedAt.toISOString()}

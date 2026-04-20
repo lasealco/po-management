@@ -50,6 +50,12 @@ export function reviewStatusLabel(s: string): string {
  * Documented keys for `TariffImportStagingRow.rawPayload` (future parser / mapper).
  * Keep values in JSON until dedicated columns are justified.
  */
+export {
+  TARIFF_IMPORT_STAGING_ROW_TYPES,
+  TARIFF_IMPORT_STAGING_ROW_TYPE_SET,
+  TARIFF_IMPORT_NORMALIZED_PAYLOAD_KEYS,
+} from "@/lib/tariff/import-pipeline";
+
 export const STAGING_RAW_PAYLOAD_KEYS = {
   /** Raw carrier / sheet charge label before normalization. */
   rawChargeName: "rawChargeName",

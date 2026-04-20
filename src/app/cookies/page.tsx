@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 
-import { LegalSiteFooter, LegalSiteNav } from "@/components/legal-site-chrome";
 import { SITE_BRAND_HEX } from "@/components/brand-mark";
+import { LegalSiteFooter, LegalSiteNav } from "@/components/legal-site-chrome";
+import { LEGAL_COOKIES_PATH } from "@/lib/legal-public-paths";
 
 export const metadata: Metadata = {
   title: "Cookie Notice | AR SCMP",
   description: "How AR SCMP uses cookies and similar technologies during the research phase.",
+  alternates: { canonical: LEGAL_COOKIES_PATH },
 };
 
 const privacyEmail = "privacy@arscmp.com";

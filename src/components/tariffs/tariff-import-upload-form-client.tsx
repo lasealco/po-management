@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { TARIFF_IMPORT_PATH, tariffImportBatchPath } from "@/lib/tariff/tariff-workbench-urls";
+
 type LegalEntityOption = { id: string; name: string; code: string | null };
 
 export function TariffImportUploadFormClient({
@@ -40,7 +42,7 @@ export function TariffImportUploadFormClient({
         return;
       }
       if (data.batch?.id) {
-        router.push(`/tariffs/import/${data.batch.id}`);
+        router.push(tariffImportBatchPath(data.batch.id));
         router.refresh();
         return;
       }
@@ -100,7 +102,7 @@ export function TariffImportUploadFormClient({
           </button>
         ) : null}
         <Link
-          href="/tariffs/import"
+          href={TARIFF_IMPORT_PATH}
           className="rounded-xl border border-zinc-300 bg-white px-5 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
         >
           Cancel

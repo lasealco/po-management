@@ -1,0 +1,48 @@
+import { NextResponse } from "next/server";
+
+import { getActorUserId, requireApiGrant } from "@/lib/authz";
+import { getDemoTenant } from "@/lib/demo-tenant";
+import { parsePromoteImportRequestBody } from "@/app/api/tariffs/import-batches/_lib/promote-import-body";
+import { jsonFromTariffError } from "@/app/api/tariffs/_lib/tariff-api-error";
+import { promoteApprovedStagingRowsToNewVersion } from "@/lib/tariff/promote-staging-import";
+
+export const dynamic = "force-dynamic";
+
+export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
+  const gate = await requireApiGrant("org.tariffs", "edit");
+  if (gate) return gate;
+
+  const tenant = await getDemoTenant();
+  const actorId = await getActorUserId();
+  if (!tenant || !actorId) {
+    return NextResponse.json({ error: "No active user." }, { status: 403 });
+  }
+
+  const { id: batchId } = await context.params;
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
+  }
+  const parsed = parsePromoteImportRequestBody(body);
+  if (!parsed.ok) {
+    return NextResponse.json({ error: parsed.error }, { status: 400 });
+  }
+  const { contractHeaderId } = parsed;
+
+  try {
+    const result = await promoteApprovedStagingRowsToNewVersion({
+      tenantId: tenant.id,
+      importBatchId: batchId,
+      contractHeaderId,
+      actorUserId: actorId,
+    });
+    return NextResponse.json(result);
+  } catch (e) {
+    const j = jsonFromTariffError(e);
+    if (j) return j;
+    throw e;
+  }
+}

@@ -1,6 +1,8 @@
 import Link from "next/link";
 
 import { BrandMarkLink, SITE_BRAND_HEX } from "@/components/brand-mark";
+import { LEGAL_COOKIES_PATH, LEGAL_PRIVACY_PATH, LEGAL_TERMS_PATH } from "@/lib/legal-public-paths";
+import { MARKETING_PRICING_PATH, PLATFORM_HUB_PATH } from "@/lib/marketing-public-paths";
 
 export function MarketingLanding() {
   return (
@@ -9,10 +11,10 @@ export function MarketingLanding() {
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           <BrandMarkLink href="/" className="py-1" aria-label="AR SCMP home" />
           <nav className="flex items-center gap-4 text-sm font-semibold text-slate-600 sm:gap-5">
-            <Link href="/pricing" className="transition hover:text-slate-900">
-              Plans &amp; pricing
+            <Link href={MARKETING_PRICING_PATH} className="transition hover:text-slate-900">
+              Plans & pricing
             </Link>
-            <Link href="/platform" className="hidden transition hover:text-slate-900 sm:inline">
+            <Link href={PLATFORM_HUB_PATH} className="hidden transition hover:text-slate-900 sm:inline">
               Platform
             </Link>
             <a
@@ -45,14 +47,14 @@ export function MarketingLanding() {
                 Request a Demo
               </a>
               <Link
-                href="/pricing"
+                href={MARKETING_PRICING_PATH}
                 className="rounded-xl border-2 border-slate-200 px-8 py-4 text-center text-lg font-bold text-slate-700 transition-all hover:bg-slate-50"
               >
-                Plans &amp; pricing
+                Plans & pricing
               </Link>
             </div>
             <p className="mt-4 text-sm text-slate-500">
-              <Link href="/platform" className="font-semibold text-[#165B67] underline-offset-2 hover:underline">
+              <Link href={PLATFORM_HUB_PATH} className="font-semibold text-[#165B67] underline-offset-2 hover:underline">
                 Explore the live platform
               </Link>{" "}
               when you are ready to click through the demo hub.
@@ -391,7 +393,7 @@ export function MarketingLanding() {
           </div>
           <p className="mt-8 text-sm text-slate-500">
             Already exploring?{" "}
-            <a href="/platform" className="font-semibold text-[#165B67] underline-offset-2 hover:underline">
+            <a href={PLATFORM_HUB_PATH} className="font-semibold text-[#165B67] underline-offset-2 hover:underline">
               Open the platform hub
             </a>
           </p>
@@ -403,13 +405,13 @@ export function MarketingLanding() {
           <BrandMarkLink href="/" />
           <div className="text-sm text-slate-400">© 2026 AR SCMP. All rights reserved.</div>
           <div className="flex gap-8">
-            <Link href="/privacy" className="text-sm text-slate-400 transition-colors hover:text-[#165B67]">
+            <Link href={LEGAL_PRIVACY_PATH} className="text-sm text-slate-400 transition-colors hover:text-[#165B67]">
               Privacy
             </Link>
-            <Link href="/terms" className="text-sm text-slate-400 transition-colors hover:text-[#165B67]">
+            <Link href={LEGAL_TERMS_PATH} className="text-sm text-slate-400 transition-colors hover:text-[#165B67]">
               Terms
             </Link>
-            <Link href="/cookies" className="text-sm text-slate-400 transition-colors hover:text-[#165B67]">
+            <Link href={LEGAL_COOKIES_PATH} className="text-sm text-slate-400 transition-colors hover:text-[#165B67]">
               Cookies
             </Link>
             <Link href="/login" className="text-sm text-slate-400 transition-colors hover:text-[#165B67]">

@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
+import { TARIFF_CONTRACTS_DIRECTORY_PATH, tariffContractVersionPath } from "@/lib/tariff/tariff-workbench-urls";
+
 export function TariffContractHeaderClient({
   contractId,
   canEdit,
@@ -58,7 +60,7 @@ export function TariffContractHeaderClient({
       return;
     }
     if (data?.version?.id) {
-      router.push(`/tariffs/contracts/${contractId}/versions/${data.version.id}`);
+      router.push(tariffContractVersionPath(contractId, data.version.id));
       router.refresh();
     }
   }
@@ -133,7 +135,7 @@ export function TariffContractHeaderClient({
           </button>
         ) : null}
         <Link
-          href="/tariffs/contracts"
+          href={TARIFF_CONTRACTS_DIRECTORY_PATH}
           className="inline-flex items-center rounded-xl border border-zinc-300 bg-white px-5 py-2.5 text-sm font-semibold text-zinc-800 shadow-sm hover:bg-zinc-50"
         >
           Back to directory

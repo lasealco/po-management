@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { BrandMark, BrandMarkLink, SITE_BRAND_HEX } from "@/components/brand-mark";
+import { LEGAL_COOKIES_PATH, LEGAL_PRIVACY_PATH, LEGAL_TERMS_PATH } from "@/lib/legal-public-paths";
 
 export function LegalSiteNav() {
   return (
@@ -49,16 +50,16 @@ export function LegalSiteFooter({
             Home
           </Link>
           <Link
-            href="/privacy"
+            href={LEGAL_PRIVACY_PATH}
             className={highlight === "privacy" ? legalFooterActive : legalFooterLink}
           >
             Privacy
           </Link>
-          <Link href="/terms" className={highlight === "terms" ? legalFooterActive : legalFooterLink}>
+          <Link href={LEGAL_TERMS_PATH} className={highlight === "terms" ? legalFooterActive : legalFooterLink}>
             Terms
           </Link>
           <Link
-            href="/cookies"
+            href={LEGAL_COOKIES_PATH}
             className={highlight === "cookies" ? legalFooterActive : legalFooterLink}
           >
             Cookies
