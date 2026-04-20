@@ -23,7 +23,11 @@ type ModuleCard = {
   description: string;
 };
 
-export default async function PlatformHomePage() {
+export default async function PlatformHomePage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const access = await getViewerGrantSet();
   const { linkVisibility } = await resolveNavState(access);
 
@@ -44,8 +48,10 @@ export default async function PlatformHomePage() {
   const tenantName = access.tenant.name;
   const user = access.user;
   const v = linkVisibility;
+  const search = (await searchParams) ?? {};
+  const forceHub = search.hub === "1" || search.hub === "true";
 
-  if (user && v?.executive) {
+  if (user && v?.executive && !forceHub) {
     redirect("/executive");
   }
 
