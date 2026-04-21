@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 
 import { encodeIngestionRunListCursor } from "@/lib/apihub/ingestion-run-list-cursor";
 import { apiHubIngestionMaxAttemptsForTrigger, type ApiHubIngestionTriggerKind } from "@/lib/apihub/constants";
-import { ApiHubRunStatus } from "./run-lifecycle";
+import { allowedSourceStatusesForTransitionTo, ApiHubRunStatus } from "./run-lifecycle";
 
 export type ApiHubIngestionRunRow = {
   id: string;
@@ -157,24 +157,46 @@ export async function transitionApiHubIngestionRun(opts: {
   errorCode: string | null;
   errorMessage: string | null;
 }): Promise<ApiHubIngestionRunRow | null> {
-  const existing = await prisma.apiHubIngestionRun.findFirst({
-    where: { tenantId: opts.tenantId, id: opts.runId },
-    select: { id: true },
-  });
-  if (!existing) return null;
+  const allowedFrom = allowedSourceStatusesForTransitionTo(opts.nextStatus);
+  if (allowedFrom.length === 0) {
+    throw new Error("run_invalid_transition_target");
+  }
 
   const now = new Date();
-  return prisma.apiHubIngestionRun.update({
-    where: { id: existing.id },
-    data: {
-      status: opts.nextStatus,
-      resultSummary: opts.resultSummary,
-      errorCode: opts.errorCode,
-      errorMessage: opts.errorMessage,
-      ...(opts.nextStatus === "running" ? { startedAt: now, finishedAt: null } : {}),
-      ...(opts.nextStatus === "succeeded" || opts.nextStatus === "failed" ? { finishedAt: now } : {}),
-    },
-    select: RUN_SELECT,
+  return prisma.$transaction(async (tx) => {
+    const updated = await tx.apiHubIngestionRun.updateMany({
+      where: {
+        tenantId: opts.tenantId,
+        id: opts.runId,
+        status: { in: allowedFrom },
+      },
+      data: {
+        status: opts.nextStatus,
+        resultSummary: opts.resultSummary,
+        errorCode: opts.errorCode,
+        errorMessage: opts.errorMessage,
+        ...(opts.nextStatus === "running" ? { startedAt: now, finishedAt: null } : {}),
+        ...(opts.nextStatus === "succeeded" || opts.nextStatus === "failed" ? { finishedAt: now } : {}),
+      },
+    });
+
+    if (updated.count === 0) {
+      const exists = await tx.apiHubIngestionRun.findFirst({
+        where: { tenantId: opts.tenantId, id: opts.runId },
+        select: { id: true },
+      });
+      if (!exists) return null;
+      throw new Error("run_transition_stale");
+    }
+
+    const row = await tx.apiHubIngestionRun.findFirst({
+      where: { tenantId: opts.tenantId, id: opts.runId },
+      select: RUN_SELECT,
+    });
+    if (!row) {
+      throw new Error("run_transition_missing_row");
+    }
+    return row;
   });
 }
 

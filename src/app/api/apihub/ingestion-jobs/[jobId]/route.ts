@@ -128,16 +128,34 @@ export async function PATCH(request: Request, context: { params: Promise<{ jobId
       ? body.errorMessage.trim().slice(0, 500)
       : null;
 
-  const updated = await transitionApiHubIngestionRun({
-    tenantId: tenant.id,
-    runId: jobId,
-    nextStatus: rawStatus,
-    resultSummary,
-    errorCode,
-    errorMessage,
-  });
-  if (!updated) {
-    return apiHubError(404, "RUN_NOT_FOUND", "Run not found.", requestId);
+  try {
+    const updated = await transitionApiHubIngestionRun({
+      tenantId: tenant.id,
+      runId: jobId,
+      nextStatus: rawStatus,
+      resultSummary,
+      errorCode,
+      errorMessage,
+    });
+    if (!updated) {
+      return apiHubError(404, "RUN_NOT_FOUND", "Run not found.", requestId);
+    }
+    return apiHubJson({ run: toApiHubIngestionRunDto(updated) }, requestId);
+  } catch (error) {
+    if (error instanceof Error && error.message === "run_transition_stale") {
+      return apiHubError(
+        409,
+        "RUN_TRANSITION_STALE",
+        "Run status changed before this update applied; fetch the latest run and retry if appropriate.",
+        requestId,
+      );
+    }
+    if (error instanceof Error && error.message === "run_invalid_transition_target") {
+      return apiHubError(409, "INVALID_STATUS_TRANSITION", "That status is not a valid transition target.", requestId);
+    }
+    if (error instanceof Error && error.message === "run_transition_missing_row") {
+      return apiHubError(500, "RUN_TRANSITION_INTERNAL", "Run row missing after status update.", requestId);
+    }
+    throw error;
   }
-  return apiHubJson({ run: toApiHubIngestionRunDto(updated) }, requestId);
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { canTransitionRunStatus, isValidRunStatus } from "./run-lifecycle";
+import { allowedSourceStatusesForTransitionTo, canTransitionRunStatus, isValidRunStatus } from "./run-lifecycle";
 
 describe("run lifecycle", () => {
   it("accepts only supported statuses", () => {
@@ -18,5 +18,12 @@ describe("run lifecycle", () => {
     expect(canTransitionRunStatus("running", "failed")).toBe(true);
     expect(canTransitionRunStatus("queued", "succeeded")).toBe(false);
     expect(canTransitionRunStatus("failed", "queued")).toBe(false);
+  });
+
+  it("lists allowed source statuses for atomic transition targets", () => {
+    expect(allowedSourceStatusesForTransitionTo("running")).toEqual(["queued"]);
+    expect(allowedSourceStatusesForTransitionTo("succeeded")).toEqual(["running"]);
+    expect(allowedSourceStatusesForTransitionTo("failed")).toEqual(["queued", "running"]);
+    expect(allowedSourceStatusesForTransitionTo("queued")).toEqual([]);
   });
 });

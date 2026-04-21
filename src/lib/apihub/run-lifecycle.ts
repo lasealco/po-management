@@ -16,3 +16,8 @@ export function isValidRunStatus(value: string): value is ApiHubRunStatus {
 export function canTransitionRunStatus(from: ApiHubRunStatus, to: ApiHubRunStatus): boolean {
   return ALLOWED_STATUS_TRANSITIONS[from].includes(to);
 }
+
+/** Status values that may atomically transition to `to` (inverse of the transition matrix). */
+export function allowedSourceStatusesForTransitionTo(to: ApiHubRunStatus): ApiHubRunStatus[] {
+  return APIHUB_INGESTION_JOB_STATUSES.filter((from) => canTransitionRunStatus(from, to));
+}

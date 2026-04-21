@@ -169,4 +169,29 @@ describe("PATCH /api/apihub/ingestion-jobs/:jobId", () => {
       errorMessage: null,
     });
   });
+
+  it("returns 409 RUN_TRANSITION_STALE when atomic transition conflicts", async () => {
+    getDemoTenantMock.mockResolvedValue({ id: "tenant-1" });
+    getActorUserIdMock.mockResolvedValue("user-1");
+    getApiHubIngestionRunByIdMock.mockResolvedValue({ id: "run-1", status: "queued" });
+    transitionApiHubIngestionRunMock.mockRejectedValue(new Error("run_transition_stale"));
+    const { PATCH } = await import("./route");
+    const response = await PATCH(
+      new Request("http://localhost/api/apihub/ingestion-jobs/job-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", [APIHUB_REQUEST_ID_HEADER]: "job-patch-stale" },
+        body: JSON.stringify({ status: "running" }),
+      }),
+      { params: Promise.resolve({ jobId: "job-1" }) },
+    );
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      ok: false,
+      error: {
+        code: "RUN_TRANSITION_STALE",
+        message:
+          "Run status changed before this update applied; fetch the latest run and retry if appropriate.",
+      },
+    });
+  });
 });
