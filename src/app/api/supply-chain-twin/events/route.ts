@@ -6,11 +6,12 @@ import { getViewerGrantSet } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { resolveNavState } from "@/lib/nav-visibility";
 
+import { twinEventsListResponseSchema } from "@/lib/supply-chain-twin/schemas/twin-api-responses";
 import {
   decodeTwinEventsCursor,
   encodeTwinEventsCursor,
   parseTwinEventsQuery,
-} from "./events-query";
+} from "@/lib/supply-chain-twin/schemas/twin-events-query";
 
 export const dynamic = "force-dynamic";
 
@@ -122,9 +123,9 @@ export async function GET(request: Request) {
     }));
 
     if (nextCursor) {
-      return NextResponse.json({ events, nextCursor });
+      return NextResponse.json(twinEventsListResponseSchema.parse({ events, nextCursor }));
     }
-    return NextResponse.json({ events });
+    return NextResponse.json(twinEventsListResponseSchema.parse({ events }));
   } catch (caught) {
     const name = caught instanceof Error ? caught.name : "non_error_throw";
     logSctwinApiError({

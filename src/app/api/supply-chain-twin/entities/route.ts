@@ -3,7 +3,8 @@ import { NextResponse } from "next/server";
 import { logSctwinApiError, logSctwinApiWarn } from "../_lib/sctwin-api-log";
 import { getViewerGrantSet } from "@/lib/authz";
 import { resolveNavState } from "@/lib/nav-visibility";
-import { decodeTwinEntitiesCursor, parseTwinEntitiesQuery } from "@/lib/supply-chain-twin/entities-catalog";
+import { twinEntitiesListResponseSchema } from "@/lib/supply-chain-twin/schemas/twin-api-responses";
+import { decodeTwinEntitiesCursor, parseTwinEntitiesQuery } from "@/lib/supply-chain-twin/schemas/twin-entities-query";
 import { listForTenantPage } from "@/lib/supply-chain-twin/repo";
 
 export const dynamic = "force-dynamic";
@@ -69,9 +70,9 @@ export async function GET(request: Request) {
     });
 
     if (nextCursor) {
-      return NextResponse.json({ items, nextCursor });
+      return NextResponse.json(twinEntitiesListResponseSchema.parse({ items, nextCursor }));
     }
-    return NextResponse.json({ items });
+    return NextResponse.json(twinEntitiesListResponseSchema.parse({ items }));
   } catch (caught) {
     if (caught instanceof RangeError && caught.message === "INVALID_TWIN_ENTITIES_CURSOR") {
       logSctwinApiWarn({

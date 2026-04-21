@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { TwinEntityListItem } from "@/lib/supply-chain-twin/entities-catalog";
-import { decodeTwinEntitiesCursor, encodeTwinEntitiesCursor } from "@/lib/supply-chain-twin/entities-catalog";
+import { decodeTwinEntitiesCursor, encodeTwinEntitiesCursor } from "@/lib/supply-chain-twin/schemas/twin-entities-query";
 import { TWIN_ENTITY_KINDS, type TwinEntityKind } from "@/lib/supply-chain-twin/types";
 
 function toTwinEntityKind(value: string): TwinEntityKind {

@@ -5,7 +5,8 @@ import { getViewerGrantSet } from "@/lib/authz";
 import { resolveNavState } from "@/lib/nav-visibility";
 import { listEdgesForEntity, listEdgesForTenant } from "@/lib/supply-chain-twin/edges-repo";
 
-import { parseTwinEdgesQuery } from "./edges-query";
+import { twinEdgesListResponseSchema } from "@/lib/supply-chain-twin/schemas/twin-api-responses";
+import { parseTwinEdgesQuery } from "@/lib/supply-chain-twin/schemas/twin-edges-query";
 
 export const dynamic = "force-dynamic";
 
@@ -64,7 +65,7 @@ export async function GET(request: Request) {
           take: q.take,
         });
 
-    return NextResponse.json({ edges });
+    return NextResponse.json(twinEdgesListResponseSchema.parse({ edges }));
   } catch (caught) {
     const name = caught instanceof Error ? caught.name : "non_error_throw";
     logSctwinApiError({
