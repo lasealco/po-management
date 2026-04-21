@@ -6,9 +6,10 @@ import {
   apiHubValidationError,
 } from "@/lib/apihub/api-error";
 import { getActorUserId } from "@/lib/authz";
-import { APIHUB_CONNECTOR_STATUSES } from "@/lib/apihub/constants";
+import { APIHUB_CONNECTOR_DISABLE_FORCE_NOTE_MIN, APIHUB_CONNECTOR_STATUSES } from "@/lib/apihub/constants";
 import { toApiHubConnectorDto } from "@/lib/apihub/connector-dto";
-import { updateApiHubConnectorLifecycle } from "@/lib/apihub/connectors-repo";
+import { getApiHubConnectorInTenant, updateApiHubConnectorLifecycle } from "@/lib/apihub/connectors-repo";
+import { countInFlightApiHubIngestionRunsForConnector } from "@/lib/apihub/ingestion-runs-repo";
 import { resolveApiHubRequestId } from "@/lib/apihub/request-id";
 import { getDemoTenant } from "@/lib/demo-tenant";
 
@@ -62,6 +63,30 @@ export async function PATCH(
 
   const markSyncedNow = body.markSyncedNow === true;
   const note = typeof body.note === "string" ? body.note.trim().slice(0, 280) : null;
+
+  const existing = await getApiHubConnectorInTenant(tenant.id, connectorId);
+  if (!existing) {
+    return apiHubError(404, "CONNECTOR_NOT_FOUND", "Connector not found.", requestId);
+  }
+
+  const isLeavingActive = existing.status === "active" && rawStatus !== "active";
+  if (isLeavingActive) {
+    const inFlight = await countInFlightApiHubIngestionRunsForConnector({
+      tenantId: tenant.id,
+      connectorId,
+    });
+    if (inFlight > 0) {
+      const trimmed = (note ?? "").trim();
+      if (trimmed.length < APIHUB_CONNECTOR_DISABLE_FORCE_NOTE_MIN) {
+        return apiHubError(
+          409,
+          "ACTIVE_CONNECTOR_HAS_RUNNING_JOBS",
+          `Cannot change status away from active while ${inFlight} ingestion job(s) are queued or running. Add an ops note with at least ${APIHUB_CONNECTOR_DISABLE_FORCE_NOTE_MIN} characters to acknowledge.`,
+          requestId,
+        );
+      }
+    }
+  }
 
   const updated = await updateApiHubConnectorLifecycle({
     tenantId: tenant.id,

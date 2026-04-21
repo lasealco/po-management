@@ -23,7 +23,7 @@ describe("GET /api/apihub/connectors/:connectorId/audit", () => {
     vi.clearAllMocks();
     getDemoTenantMock.mockResolvedValue({ id: "tenant-1" });
     getActorUserIdMock.mockResolvedValue("user-1");
-    getApiHubConnectorInTenantMock.mockResolvedValue({ id: "conn-1" });
+    getApiHubConnectorInTenantMock.mockResolvedValue({ id: "conn-1", status: "draft" });
   });
 
   it("returns 404 when connector is not in tenant", async () => {

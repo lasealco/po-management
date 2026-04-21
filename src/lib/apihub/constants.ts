@@ -8,6 +8,12 @@ export const APIHUB_PHASE = "P2" as const;
 export const APIHUB_CONNECTOR_STATUSES = ["draft", "active", "paused", "error"] as const;
 export type ApiHubConnectorStatus = (typeof APIHUB_CONNECTOR_STATUSES)[number];
 
+/**
+ * Minimum trimmed `note` length when forcing a status change away from `active` while ingestion
+ * jobs are still `queued` or `running` for that connector (Slice 16 guardrail).
+ */
+export const APIHUB_CONNECTOR_DISABLE_FORCE_NOTE_MIN = 12;
+
 /** Allowlisted `sort` query values for `GET /api/apihub/connectors`. */
 export const APIHUB_CONNECTOR_LIST_SORT_FIELDS = ["createdAt", "updatedAt", "name"] as const;
 export type ApiHubConnectorListSortField = (typeof APIHUB_CONNECTOR_LIST_SORT_FIELDS)[number];

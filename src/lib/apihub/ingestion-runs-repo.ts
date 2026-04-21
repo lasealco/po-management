@@ -179,3 +179,16 @@ export async function retryApiHubIngestionRun(opts: {
     });
   });
 }
+
+export async function countInFlightApiHubIngestionRunsForConnector(opts: {
+  tenantId: string;
+  connectorId: string;
+}): Promise<number> {
+  return prisma.apiHubIngestionRun.count({
+    where: {
+      tenantId: opts.tenantId,
+      connectorId: opts.connectorId,
+      status: { in: ["queued", "running"] },
+    },
+  });
+}

@@ -205,10 +205,10 @@ export async function listApiHubConnectorAuditLogs(
 export async function getApiHubConnectorInTenant(
   tenantId: string,
   connectorId: string,
-): Promise<{ id: string } | null> {
+): Promise<{ id: string; status: string } | null> {
   return prisma.apiHubConnector.findFirst({
     where: { id: connectorId, tenantId },
-    select: { id: true },
+    select: { id: true, status: true },
   });
 }
 
