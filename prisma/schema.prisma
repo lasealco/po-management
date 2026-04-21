@@ -78,6 +78,7 @@ model Tenant {
   apiHubConnectors      ApiHubConnector[]
   apiHubConnectorAuditLogs ApiHubConnectorAuditLog[]
   apiHubIngestionRuns   ApiHubIngestionRun[]
+  apiHubIngestionApplyIdempotencies ApiHubIngestionApplyIdempotency[]
   apiHubMappingTemplates ApiHubMappingTemplate[]
   apiHubMappingTemplateAuditLogs ApiHubMappingTemplateAuditLog[]
   supplyChainTwinEntitySnapshots SupplyChainTwinEntitySnapshot[]
@@ -172,6 +173,23 @@ model ApiHubIngestionRun {
   @@index([requestedByUserId, createdAt])
   @@index([retryOfRunId, createdAt])
   @@unique([tenantId, idempotencyKey])
+}
+
+/// Cached apply POST outcomes for safe client retries (Slice 42).
+model ApiHubIngestionApplyIdempotency {
+  id               String   @id @default(cuid())
+  tenantId         String
+  idempotencyKey   String
+  ingestionRunId   String
+  dryRun           Boolean
+  responseStatus   Int
+  responseBody     Json
+  createdAt        DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, ingestionRunId])
 }
 
 /// Tenant-scoped field mapping rule sets for ingestion / integration hub (Slice 35).
