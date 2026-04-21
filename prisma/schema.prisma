@@ -3177,12 +3177,16 @@ model SupplyChainTwinIngestEvent {
   type        String
   /// JSON body; keep small — hard cap enforced in application code, not in the database.
   payloadJson Json     @default("{}")
+  /// When set (via `Idempotency-Key` on POST), duplicate appends for the same tenant return the first row (no second insert).
+  idempotencyKey String?
   createdAt   DateTime @default(now())
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+  @@unique([tenantId, idempotencyKey])
   @@index([tenantId])
   @@index([tenantId, createdAt])
+  @@index([tenantId, createdAt, type])
   @@index([tenantId, type, createdAt])
 }
 
