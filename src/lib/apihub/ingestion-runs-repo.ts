@@ -171,12 +171,17 @@ export async function transitionApiHubIngestionRun(opts: {
   });
 }
 
+export type RetryApiHubIngestionRunResult = {
+  run: ApiHubIngestionRunRow;
+  idempotentReplay: boolean;
+};
+
 export async function retryApiHubIngestionRun(opts: {
   tenantId: string;
   actorUserId: string;
   runId: string;
   idempotencyKey: string | null;
-}): Promise<ApiHubIngestionRunRow | null> {
+}): Promise<RetryApiHubIngestionRunResult | null> {
   return prisma.$transaction(async (tx) => {
     const base = await tx.apiHubIngestionRun.findFirst({
       where: { tenantId: opts.tenantId, id: opts.runId },
@@ -201,10 +206,19 @@ export async function retryApiHubIngestionRun(opts: {
         where: { tenantId: opts.tenantId, idempotencyKey: opts.idempotencyKey },
         select: RUN_SELECT,
       });
-      if (existing) return existing;
+      if (existing) {
+        const sameReplay =
+          existing.retryOfRunId === base.id &&
+          existing.attempt === base.attempt + 1 &&
+          (existing.connectorId ?? null) === (base.connectorId ?? null);
+        if (sameReplay) {
+          return { run: existing, idempotentReplay: true };
+        }
+        throw new Error("retry_idempotency_key_conflict");
+      }
     }
 
-    return tx.apiHubIngestionRun.create({
+    const created = await tx.apiHubIngestionRun.create({
       data: {
         tenantId: opts.tenantId,
         connectorId: base.connectorId,
@@ -218,6 +232,7 @@ export async function retryApiHubIngestionRun(opts: {
       },
       select: RUN_SELECT,
     });
+    return { run: created, idempotentReplay: false };
   });
 }
 

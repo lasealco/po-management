@@ -53,13 +53,25 @@ export async function POST(request: Request, context: { params: Promise<{ jobId:
     if (!retried) {
       return apiHubError(404, "RUN_NOT_FOUND", "Run not found.", requestId);
     }
-    return apiHubJson({ run: toApiHubIngestionRunDto(retried) }, requestId, 201);
+    return apiHubJson(
+      { run: toApiHubIngestionRunDto(retried.run), idempotentReplay: retried.idempotentReplay },
+      requestId,
+      retried.idempotentReplay ? 200 : 201,
+    );
   } catch (error) {
     if (error instanceof Error && error.message === "retry_requires_failed_status") {
       return apiHubError(409, "RETRY_REQUIRES_FAILED", "Only failed runs can be retried.", requestId);
     }
     if (error instanceof Error && error.message === "retry_limit_reached") {
       return apiHubError(409, "RETRY_LIMIT_REACHED", "Run has reached its max retry attempts.", requestId);
+    }
+    if (error instanceof Error && error.message === "retry_idempotency_key_conflict") {
+      return apiHubError(
+        409,
+        "RETRY_IDEMPOTENCY_KEY_CONFLICT",
+        "This idempotency key is already used for a different ingestion run.",
+        requestId,
+      );
     }
     throw error;
   }
