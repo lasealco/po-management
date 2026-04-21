@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { AccessDenied } from "@/components/access-denied";
+import { TwinSubNav } from "@/components/supply-chain-twin/twin-subnav";
 import { getViewerGrantSet } from "@/lib/authz";
 import { PLATFORM_HUB_PATH } from "@/lib/marketing-public-paths";
 import { resolveNavState } from "@/lib/nav-visibility";
@@ -56,6 +57,8 @@ export default async function SupplyChainTwinHomePage() {
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
+      <TwinSubNav />
+
       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Module preview</p>
       <h1 className="mt-3 text-3xl font-semibold tracking-tight text-zinc-900">Supply Chain Twin</h1>
       <p className="mt-3 max-w-2xl text-base text-zinc-600">
