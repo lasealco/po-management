@@ -30,7 +30,8 @@ Use this as the single source for Twin operator/dev commands; other docs should 
 - **`npm run verify:sctwin:program`**: final program gate (runs prerelease + full and prints step-by-step pass/fail summary).
 - **`npm run smoke:sctwin:e2e`**: sequential runtime smoke path with JSON summary.
 - **`USE_DOTENV_LOCAL=1 npm run db:seed`**: base demo tenant seed.
-- **`USE_DOTENV_LOCAL=1 npm run db:seed:supply-chain-twin-demo`**: Twin demo seed.
+- **`USE_DOTENV_LOCAL=1 npm run db:seed:supply-chain-twin-demo`**: Twin demo seed (customer-ready graph, edges, risks, scenarios, ingest events).
+- **`npm run db:seed:customer-showcase`**: runs main `db:seed` then Twin demo seed (same DB the app uses).
 - **`USE_DOTENV_LOCAL=1 npm run db:seed:supply-chain-twin-large-fixture`**: large fixture seed (opt-in).
 
 ## Canonical Route Map

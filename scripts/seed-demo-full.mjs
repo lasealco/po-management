@@ -5,6 +5,7 @@
  * 2) db:seed with SEED_CRM_DEMO=1 (tower base + CRM bulk demo)
  * 3) db:seed:ct-volume (Control Tower shipment volume)
  * 4) db:seed:wms-demo (WMS DC layout, inventory, outbound demo)
+ * 5) db:seed:supply-chain-twin-demo (Twin customer showcase graph + scenarios + risks)
  *
  * DATABASE_URL: use shell env, else first `postgresql://...` line in
  * docs/neon-credentials.local.md (gitignored).
@@ -52,26 +53,29 @@ const baseEnv = {
 };
 
 if (!skipMigrate) {
-  console.log("[seed-demo-full] 1/3 migrate deploy…");
+  console.log("[seed-demo-full] 1/5 migrate deploy…");
   execSync("npm run db:migrate", { stdio: "inherit", env: baseEnv });
 } else {
-  console.log("[seed-demo-full] 1/4 migrate deploy skipped (--skip-migrate)");
+  console.log("[seed-demo-full] 1/5 migrate deploy skipped (--skip-migrate)");
 }
 
-console.log("[seed-demo-full] 2/4 seed + CRM demo bulk (SEED_CRM_DEMO=1)…");
+console.log("[seed-demo-full] 2/5 seed + CRM demo bulk (SEED_CRM_DEMO=1)…");
 execSync("npm run db:seed", {
   stdio: "inherit",
   env: { ...baseEnv, SEED_CRM_DEMO: "1" },
 });
 
-console.log("[seed-demo-full] 3/4 Control Tower volume shipments…");
+console.log("[seed-demo-full] 3/5 Control Tower volume shipments…");
 const ctVolumeEnv = { ...baseEnv };
 if (!String(process.env.CT_VOL_BATCH ?? "").trim()) {
   ctVolumeEnv.CT_VOL_BATCH = "80";
 }
 execSync("npm run db:seed:ct-volume", { stdio: "inherit", env: ctVolumeEnv });
 
-console.log("[seed-demo-full] 4/4 WMS demo warehouse…");
+console.log("[seed-demo-full] 4/5 WMS demo warehouse…");
 execSync("npm run db:seed:wms-demo", { stdio: "inherit", env: baseEnv });
+
+console.log("[seed-demo-full] 5/5 Supply Chain Twin customer demo…");
+execSync("npm run db:seed:supply-chain-twin-demo", { stdio: "inherit", env: baseEnv });
 
 console.log("[seed-demo-full] Done. Logins: buyer@ / approver@ / … @demo-company.com — password demo12345");

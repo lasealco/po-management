@@ -50,6 +50,7 @@
     "db:seed:invoice-audit-demo": "node prisma/seed-invoice-audit-demo.mjs",
     "db:seed:tariff-fra-chi-demo": "node prisma/seed-tariff-fra-chi-demo.mjs",
     "db:seed:tariff-deham-uschi-investor-demo": "node prisma/seed-tariff-deham-uschi-investor-demo.mjs",
+    "db:seed:customer-showcase": "npm run db:seed && npm run db:seed:supply-chain-twin-demo",
     "db:seed:supply-chain-twin-demo": "node prisma/seed-supply-chain-twin-demo.mjs",
     "db:seed:supply-chain-twin-large-fixture": "node prisma/seed-supply-chain-twin-large-tenant-fixture.mjs"
   },

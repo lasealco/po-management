@@ -4,6 +4,7 @@ This pack is the developer-ready documentation set for building the **AI-Driven 
 
 **Terms:** [Twin glossary](./glossary.md) (entity snapshot, edge, ingest event, scenario draft, risk signal, readiness).
 **Ops:** [Twin runbook](./runbook.md) (canonical command map, route map, troubleshooting matrix, seed flow, logging pointers).
+**Customer demo data:** `USE_DOTENV_LOCAL=1 npm run db:seed` then `USE_DOTENV_LOCAL=1 npm run db:seed:supply-chain-twin-demo` (or `npm run db:seed:customer-showcase` from repo root) — populates `demo-company` with a small multi-node twin graph, risks, ingest timeline, scenarios + compare URLs.
 **Smoke pack:** `npm run smoke:sctwin:e2e` (sequential readiness -> explorer -> scenarios -> risks -> exports checks with JSON summary).
 **Governance:** [Twin governance runbook](./governance_runbook.md) (escalation path, approval levels, rollback guidance for maintenance actions).
 **Large fixture validation:** [Twin large fixture checklist](./large_fixture_validation_checklist.md) (expected minimum counts, smoke endpoints, troubleshooting).
