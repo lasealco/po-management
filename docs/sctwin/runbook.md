@@ -10,6 +10,7 @@ Governance companion: `docs/sctwin/governance_runbook.md`.
 - Run `npm run verify:sctwin` from the repo root.
 - This checks TypeScript (`npx tsc --noEmit`) and runs twin-scoped Vitest suites.
 - Run `npm run verify:sctwin:full` for release-gate validation on slices 88-107 (verify + contract tests).
+- Run `npm run smoke:sctwin:e2e` for sequential endpoint smoke checks (readiness -> explorer -> scenarios -> risks -> exports) with machine-readable JSON summary output.
 
 ## Seed Commands (Twin-Focused)
 

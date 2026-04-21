@@ -17,7 +17,11 @@
     "test:invoice-audit": "vitest run src/lib/invoice-audit src/lib/booking-pricing-snapshot src/app/api/booking-pricing-snapshots",
     "test:tariff-rfq": "vitest run src/lib/rfq src/lib/tariff src/app/api/tariffs src/app/api/rfq",
     "test:sctwin": "vitest run src/lib/supply-chain-twin src/app/api/supply-chain-twin",
+    "test:sctwin:contracts": "vitest run src/app/api/supply-chain-twin/happy-path.contract.test.ts src/app/api/supply-chain-twin/schema-conformance.contract.test.ts",
+    "smoke:sctwin:e2e": "node scripts/sctwin-smoke-pack.mjs",
     "verify:sctwin": "npx tsc --noEmit && npm run test:sctwin",
+    "check:sctwin:lint": "eslint \"src/lib/supply-chain-twin/**/*.{ts,tsx}\" \"src/app/api/supply-chain-twin/**/*.{ts,tsx}\" \"src/app/supply-chain-twin/**/*.{ts,tsx}\" \"src/components/supply-chain-twin/**/*.{ts,tsx}\"",
+    "verify:sctwin:full": "npm run verify:sctwin && npm run test:sctwin:contracts && npm run check:sctwin:lint",
     "test:watch": "vitest",
     "check:invoice-audit": "eslint \"src/lib/invoice-audit/**/*.{ts,tsx}\" \"src/lib/booking-pricing-snapshot/**/*.ts\" \"src/app/invoice-audit/**/*.{ts,tsx}\" \"src/app/api/invoice-audit/**/*.{ts,tsx}\" \"src/app/api/booking-pricing-snapshots/**/*.{ts,tsx}\" \"src/components/invoice-audit/**/*.{ts,tsx}\" \"src/components/pricing-snapshots/**/*.{ts,tsx}\" \"src/app/pricing-snapshots/**/*.{ts,tsx}\" && npm run test:invoice-audit",
     "check:tariff-rfq": "eslint \"src/lib/tariff/**/*.ts\" \"src/lib/rfq/**/*.ts\" \"src/components/tariffs/**/*.{ts,tsx}\" \"src/app/tariffs/**/*.{ts,tsx}\" \"src/app/api/tariffs/**/*.{ts,tsx}\" \"src/components/rfq/**/*.{ts,tsx}\" \"src/app/rfq/**/*.{ts,tsx}\" \"src/app/api/rfq/**/*.{ts,tsx}\" && npm run test:tariff-rfq",
@@ -44,7 +48,8 @@
     "db:seed:invoice-audit-demo": "node prisma/seed-invoice-audit-demo.mjs",
     "db:seed:tariff-fra-chi-demo": "node prisma/seed-tariff-fra-chi-demo.mjs",
     "db:seed:tariff-deham-uschi-investor-demo": "node prisma/seed-tariff-deham-uschi-investor-demo.mjs",
-    "db:seed:supply-chain-twin-demo": "node prisma/seed-supply-chain-twin-demo.mjs"
+    "db:seed:supply-chain-twin-demo": "node prisma/seed-supply-chain-twin-demo.mjs",
+    "db:seed:supply-chain-twin-large-fixture": "node prisma/seed-supply-chain-twin-large-tenant-fixture.mjs"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.7.0",
