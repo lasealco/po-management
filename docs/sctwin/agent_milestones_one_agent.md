@@ -1,6 +1,6 @@
 # Supply Chain Twin — one-agent milestones (1–2 h slices)
 
-Use this doc as the **single source of truth** for Cursor/Codex agents: paste or `@`-reference this file, then say **which slice number** to implement (**Slices 1–27**).
+Use this doc as the **single source of truth** for Cursor/Codex agents: paste or `@`-reference this file, then say **which slice number** to implement (**Slices 1–47**).
 
 **Rules for the agent**
 
@@ -396,6 +396,301 @@ While another workstream owns **global chrome / nav / product-trace UX**, the tw
 - [ ] No secrets / env values.
 
 **Paths:** `docs/sctwin/**` only.
+
+---
+
+## Slice 28 — Explorer: entity detail route shell (~1 h)
+
+**Goal:** Deep-link target for a single twin entity (structure only).
+
+**Milestones**
+
+- [ ] App route `/supply-chain-twin/explorer/[entityId]` with layout aligned to existing explorer shell (`twin-subnav`).
+- [ ] Back link to `/supply-chain-twin/explorer`; placeholder body (no heavy client graph required).
+
+**Paths:** `src/app/supply-chain-twin/explorer/[entityId]/**`, `src/components/supply-chain-twin/**` if shared chrome only.
+
+**Done when:** URL with a real demo `entityId` renders without 500.
+
+---
+
+## Slice 29 — API + repo: `GET …/entities/[id]` (~1.5 h)
+
+**Goal:** Fetch one `SupplyChainTwinEntitySnapshot` by primary key, tenant-scoped.
+
+**Milestones**
+
+- [ ] `getEntitySnapshotByIdForTenant` (or equivalent) in `src/lib/supply-chain-twin/**` + Vitest (mock Prisma or existing test style).
+- [ ] `GET /api/supply-chain-twin/entities/[id]` — 404 when wrong tenant / missing; same access guard as list route.
+
+**Paths:** `src/app/api/supply-chain-twin/entities/[id]/**`, `src/lib/supply-chain-twin/**`, tests.
+
+**Done when:** Network tab shows stable JSON shape documented in code comment.
+
+---
+
+## Slice 30 — Explorer table → detail deep links (~1 h)
+
+**Goal:** Rows (or id column) link to Slice 28 route.
+
+**Milestones**
+
+- [ ] `Link` or router push using snapshot `id` (cuid), not business key, unless spec says otherwise.
+- [ ] Keyboard-focusable hit target; no `AppNav` edits.
+
+**Paths:** `src/components/supply-chain-twin/**` (explorer table), optionally tiny type export from lib.
+
+**Done when:** Clicking a row opens `/supply-chain-twin/explorer/[entityId]`.
+
+---
+
+## Slice 31 — Entity detail UI: read-only summary (~1.5 h)
+
+**Goal:** Detail page shows kind, key, timestamps, bounded JSON preview (Slice 29 API or RSC fetch).
+
+**Milestones**
+
+- [ ] Guard payload size in UI (truncate with “show more” stub acceptable).
+- [ ] Loading + error states; no PII in error strings.
+
+**Paths:** `src/app/supply-chain-twin/explorer/[entityId]/**`, `src/components/supply-chain-twin/**`.
+
+**Done when:** Demo entity renders meaningful fields.
+
+---
+
+## Slice 32 — Repo + API: `GET …/scenarios` list (~1.5 h)
+
+**Goal:** Paginated (or capped) list of `SupplyChainTwinScenarioDraft` for tenant.
+
+**Milestones**
+
+- [ ] Zod query (`limit`, optional `cursor`); response DTO matches existing scenario create response style where possible.
+- [ ] `requireTwinApiAccess` on route; tests for empty list + 403 portal pattern.
+
+**Paths:** `src/app/api/supply-chain-twin/scenarios/route.ts` (add `GET` next to existing `POST`), `src/lib/supply-chain-twin/scenarios-draft-repo.ts`, schemas, tests.
+
+**Done when:** `GET` returns `{ items: [...] }` without breaking existing `POST`.
+
+---
+
+## Slice 33 — Scenarios workspace: drafts table (~1.5 h)
+
+**Goal:** `/supply-chain-twin/scenarios` lists drafts from Slice 32 API (client or RSC).
+
+**Milestones**
+
+- [ ] Empty state + link to “create draft” (existing POST flow).
+- [ ] Row links forward to Slice 40 detail route when that route exists (stub `href` + TODO acceptable until Slice 40 lands).
+
+**Paths:** `src/app/supply-chain-twin/scenarios/**`, `src/components/supply-chain-twin/**`.
+
+**Done when:** After creating a draft, it appears in the table after refresh or mutate.
+
+---
+
+## Slice 34 — API: `GET …/scenarios/[id]` (~1.5 h)
+
+**Goal:** Single draft by id; 404 cross-tenant.
+
+**Milestones**
+
+- [ ] Zod response; never log `draftJson` to structured logs.
+- [ ] Vitest for happy path + 404.
+
+**Paths:** `src/app/api/supply-chain-twin/scenarios/[id]/**`, `src/lib/supply-chain-twin/**`, tests.
+
+**Done when:** Matches list item ids from Slice 32.
+
+---
+
+## Slice 35 — API: `PATCH …/scenarios/[id]` (~2 h)
+
+**Goal:** Partial update `title` and/or `draftJson` (validated JSON).
+
+**Milestones**
+
+- [ ] Zod body; optimistic concurrency optional (defer with comment if skipped).
+- [ ] 400 on invalid JSON; tests.
+
+**Paths:** `src/app/api/supply-chain-twin/scenarios/[id]/route.ts` (add `PATCH`), repo helper, schemas, tests.
+
+**Done when:** UI or curl can rename a draft.
+
+---
+
+## Slice 36 — API: `DELETE …/scenarios/[id]` (~1–1.5 h)
+
+**Goal:** Hard delete draft row (tenant-scoped) **or** soft-delete flag — pick one and document in route JSDoc.
+
+**Milestones**
+
+- [ ] 404 when missing; no cascade surprises (document Prisma `onDelete` behavior).
+- [ ] Tests.
+
+**Paths:** same as Slice 35 handler file + repo + `prisma/**` only if schema adds `deletedAt`.
+
+**Done when:** Deleted id no longer appears on `GET` list.
+
+---
+
+## Slice 37 — Repo + API: `GET …/risk-signals` (~1.5 h)
+
+**Goal:** List `SupplyChainTwinRiskSignal` rows for tenant (newest first, capped).
+
+**Milestones**
+
+- [ ] Zod query + response; align with `TwinRiskSeverity` TS type.
+- [ ] Tests; no PII.
+
+**Paths:** `src/app/api/supply-chain-twin/risk-signals/**`, `src/lib/supply-chain-twin/**`, schemas, tests.
+
+**Done when:** Demo seed risk (if present) visible via API.
+
+---
+
+## Slice 38 — Twin overview: risk callout (~1 h)
+
+**Goal:** `/supply-chain-twin` shows top N risk signals (fetch Slice 37 API or RSC server fetch to lib).
+
+**Milestones**
+
+- [ ] Link to explorer or placeholder “Details coming” — no new top-nav entry.
+
+**Paths:** `src/app/supply-chain-twin/page.tsx`, `src/components/supply-chain-twin/**`.
+
+**Done when:** Empty + non-empty states handled.
+
+---
+
+## Slice 39 — API: `POST …/events` append (~2 h)
+
+**Goal:** Authenticated append to ingest spine using existing `appendIngestEvent` / size cap (reuse writer from Slice 15).
+
+**Milestones**
+
+- [ ] Zod body (`type`, `payload`); reject oversize with stable error code.
+- [ ] `GET` on same resource unchanged; Vitest for 400/201.
+
+**Paths:** `src/app/api/supply-chain-twin/events/route.ts` (add `POST`) or split handler per Next conventions; `src/lib/supply-chain-twin/**`, tests.
+
+**Done when:** New row appears on `GET /api/supply-chain-twin/events`.
+
+---
+
+## Slice 40 — App route: `/supply-chain-twin/scenarios/[id]` (~1.5 h)
+
+**Goal:** Read-only scenario draft view (title, status, updatedAt, JSON preview).
+
+**Milestones**
+
+- [ ] Uses Slice 34 fetch; 404 page friendly.
+- [ ] Link back to scenarios list.
+
+**Paths:** `src/app/supply-chain-twin/scenarios/[id]/**`, components under twin only.
+
+**Done when:** Deep-link from list works.
+
+---
+
+## Slice 41 — Explorer: recent ingest events strip (~1.5 h)
+
+**Goal:** Thin panel on explorer (or detail page) showing last N events from existing `GET /events`.
+
+**Milestones**
+
+- [ ] Truncate type/payload display; no raw payload in logs from client.
+
+**Paths:** `src/app/supply-chain-twin/explorer/**`, `src/components/supply-chain-twin/**`.
+
+**Done when:** Works with empty events list.
+
+---
+
+## Slice 42 — Graph panel: live edges for selection (~2 h)
+
+**Goal:** Replace or augment mock graph data with `GET /api/supply-chain-twin/edges?snapshotId=…&direction=both` when user selects an entity in explorer.
+
+**Milestones**
+
+- [ ] Loading/error on refetch; debounce optional.
+- [ ] No new npm dependency unless unavoidable (justify in handoff).
+
+**Paths:** `src/components/supply-chain-twin/twin-graph-stub-panel.tsx` (rename later if needed), explorer client/parent props.
+
+**Done when:** Demo tenant shows edges matching DB.
+
+---
+
+## Slice 43 — Scenarios compare: route shell (~1 h)
+
+**Goal:** `/supply-chain-twin/scenarios/compare` static shell + instructions.
+
+**Milestones**
+
+- [ ] Linked from scenarios page only (inline link), not global nav.
+
+**Paths:** `src/app/supply-chain-twin/scenarios/compare/**`.
+
+**Done when:** Route renders under twin layout.
+
+---
+
+## Slice 44 — Scenarios compare: dual draft fetch (~1.5–2 h)
+
+**Goal:** Query params `left`, `right` (cuid) load two drafts via Slice 34 API (client) and render side-by-side read-only JSON + diff stub (e.g. `===` highlight or textual “same/different root keys”).
+
+**Milestones**
+
+- [ ] Mismatched tenant returns user-safe error (403/404 per existing patterns).
+- [ ] No solver — narrative/compare only.
+
+**Paths:** `src/app/supply-chain-twin/scenarios/compare/**`, `src/components/supply-chain-twin/**`.
+
+**Done when:** Two known demo ids render without crash.
+
+---
+
+## Slice 45 — API: twin catalog metrics (~1.5 h)
+
+**Goal:** `GET /api/supply-chain-twin/metrics` (or `/summary`) returns **counts only** — entities, edges, events, scenario drafts, risk signals — single JSON, cheap queries (`count`).
+
+**Milestones**
+
+- [ ] Strict caps / timeouts comment; no unbounded scans.
+- [ ] Tests for shape + auth denial.
+
+**Paths:** `src/app/api/supply-chain-twin/metrics/**`, `src/lib/supply-chain-twin/**`, schemas, tests.
+
+**Done when:** Overview page can optionally consume in a later slice without schema change.
+
+---
+
+## Slice 46 — Observability: request id in twin logs (~1 h)
+
+**Goal:** If client sends `x-request-id` (or similar), include stable id in `logSctwinApiWarn` / `logSctwinApiError` context; else generate once per request and optionally echo in response header.
+
+**Milestones**
+
+- [ ] No PII; twin API routes only (do not widen to whole app).
+
+**Paths:** `src/app/api/supply-chain-twin/_lib/sctwin-api-log.ts`, `src/app/api/supply-chain-twin/**/*.ts` as needed, tests if log helpers are unit-tested.
+
+**Done when:** Two failing requests produce distinguishable ids in log output (manual verify ok).
+
+---
+
+## Slice 47 — Doc sync: R2 staging (~1 h)
+
+**Goal:** Update `docs/sctwin/supply_chain_twin_sprint_backlog_and_release_plan.md` with a short **“R2 staging (slices 28–47)”** subsection: bullets mapping themes (entity drill-in, scenarios CRUD+compare, risk read path, ingest write, metrics, observability) to repo areas — no secrets.
+
+**Milestones**
+
+- [ ] Cross-link back to this milestone file.
+
+**Paths:** `docs/sctwin/**` only.
+
+**Done when:** Product readers see what the next tranche unlocks.
 
 ---
 
