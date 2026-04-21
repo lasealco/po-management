@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { AccessDenied } from "@/components/access-denied";
+import { PageTitleWithHint } from "@/components/page-title-with-hint";
 import { SalesOrdersListFilters } from "@/components/sales-orders-list-filters";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
@@ -57,7 +58,7 @@ export default async function SalesOrdersPage({
     <main className="mx-auto w-full max-w-6xl bg-zinc-50 px-6 py-8">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-zinc-900">Sales Orders</h1>
+          <PageTitleWithHint title="Sales Orders" titleClassName="text-2xl font-semibold text-zinc-900" />
           <p className="mt-1 text-sm text-zinc-600">Sales Order process v1 for export-linked logistics.</p>
         </div>
         {viewerHas(access.grantSet, "org.orders", "edit") ? (

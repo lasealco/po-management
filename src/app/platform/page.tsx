@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { BrandMarkLink } from "@/components/brand-mark";
+import { PageTitleWithHint } from "@/components/page-title-with-hint";
 import { getViewerGrantSet } from "@/lib/authz";
 import type { AppNavLinkVisibility } from "@/lib/nav-visibility";
 import { resolveNavState } from "@/lib/nav-visibility";
@@ -132,9 +133,10 @@ export default async function PlatformHomePage() {
   return (
     <main className="min-h-[calc(100vh-8rem)] bg-gradient-to-b from-zinc-50 via-white to-zinc-50">
       <div className="mx-auto max-w-5xl px-6 pb-20 pt-8 sm:pt-10">
-        <h1 className="max-w-2xl text-4xl font-semibold tracking-tight text-zinc-900 sm:text-5xl">
-          Run procurement and logistics in one place.
-        </h1>
+        <PageTitleWithHint
+          title="Run procurement and logistics in one place."
+          titleClassName="max-w-2xl text-4xl font-semibold tracking-tight text-zinc-900 sm:text-5xl"
+        />
         <p className="mt-4 max-w-2xl text-lg text-zinc-600">
           PO workflow, Control Tower, warehouse, and CRM — pick a workspace below or use the top
           navigation and command palette (

@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { PageTitleWithHint } from "@/components/page-title-with-hint";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { WmsHomeOverview } from "@/components/wms-home-overview";
 import { getDemoTenant } from "@/lib/demo-tenant";
@@ -40,7 +41,7 @@ export default async function WmsPage() {
     <main className="mx-auto w-full max-w-7xl px-6 py-10">
       <header className="mb-8">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">WMS workspace</p>
-        <h1 className="text-2xl font-semibold text-zinc-900">Warehouse operations</h1>
+        <PageTitleWithHint title="Warehouse operations" titleClassName="text-2xl font-semibold text-zinc-900" />
         <p className="mt-2 max-w-3xl text-sm text-zinc-600">
           Use this page as your daily command center: confirm floor workload, scan stock confidence signals,
           and jump straight into Setup, Operations, Stock, or Billing for action-level detail.

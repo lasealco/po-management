@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { AccessDenied } from "@/components/access-denied";
+import { PageTitleWithHint } from "@/components/page-title-with-hint";
 import { TwinReadinessBanner } from "@/components/supply-chain-twin/twin-readiness-banner";
 import { TwinSubNav } from "@/components/supply-chain-twin/twin-subnav";
 import { getViewerGrantSet } from "@/lib/authz";
@@ -58,7 +59,9 @@ export default async function SupplyChainTwinHomePage() {
       <TwinSubNav />
 
       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Module preview</p>
-      <h1 className="mt-3 text-3xl font-semibold tracking-tight text-zinc-900">Supply Chain Twin</h1>
+      <div className="mt-3">
+        <PageTitleWithHint title="Supply Chain Twin" titleClassName="text-3xl font-semibold tracking-tight text-zinc-900" />
+      </div>
       <p className="mt-3 max-w-2xl text-base text-zinc-600">
         A cross-module intelligence layer — not a separate transactional system. It is the live digital model of
         supply, demand, inventory, transport, cost, and risk, with AI services on top. Implementation follows the

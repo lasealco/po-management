@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { ControlTowerDashboard } from "@/components/control-tower-dashboard";
+import { PageTitleWithHint } from "@/components/page-title-with-hint";
 import { ControlTowerDashboardWidgets } from "@/components/control-tower-dashboard-widgets";
 import { ControlTowerReportingHubWorkbenchLinks } from "@/components/control-tower-reporting-hub-workbench-links";
 import { getActorUserId, getViewerGrantSet, viewerHas } from "@/lib/authz";
@@ -33,7 +34,7 @@ export default async function ControlTowerPage() {
   return (
     <main className="mx-auto w-full max-w-7xl px-6 py-10">
       <header className="mb-8">
-        <h1 className="text-2xl font-semibold text-zinc-900">Control Tower</h1>
+        <PageTitleWithHint title="Control Tower" titleClassName="text-2xl font-semibold text-zinc-900" />
         <p className="mt-2 max-w-2xl text-sm text-zinc-600">
           Shipment-level visibility across modes: dashboard, workbench, shipment workspace, alerts, reporting, and
           search. Customer-facing users see a reduced dataset; internal users see operational depth where permitted.

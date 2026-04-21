@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+import { PageTitleWithHint } from "@/components/page-title-with-hint";
 import {
   defaultBoardQueue,
   type BoardQueueFilter,
@@ -259,9 +261,7 @@ export function OrdersBoard({
       <header className="mb-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-4">
           <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
-            <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
-              Orders
-            </h1>
+            <PageTitleWithHint title="Orders" titleClassName="text-2xl font-semibold tracking-tight text-zinc-900" />
             <span className="text-zinc-300 select-none" aria-hidden>
               ·
             </span>
