@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { AccessDenied } from "@/components/access-denied";
 import { TwinExplorerEntitiesTable } from "@/components/supply-chain-twin/twin-explorer-entities-table";
+import { TwinGraphStubPanel } from "@/components/supply-chain-twin/twin-graph-stub-panel";
 import { TwinSubNav } from "@/components/supply-chain-twin/twin-subnav";
 import { getViewerGrantSet } from "@/lib/authz";
 import { resolveNavState } from "@/lib/nav-visibility";
@@ -90,6 +91,10 @@ export default async function SupplyChainTwinExplorerPage({
       </section>
 
       <TwinExplorerEntitiesTable key={q} searchQ={q} />
+
+      <section className="mt-6">
+        <TwinGraphStubPanel key={q} searchQ={q} />
+      </section>
     </main>
   );
 }
