@@ -151,3 +151,15 @@ export async function patchScenarioDraftForTenant(
   }
   return getScenarioDraftByIdForTenant(tenantId, draftId);
 }
+
+/**
+ * Hard-deletes one draft row for `tenantId` + `draftId`. Other tables do not reference this model today, so Prisma
+ * performs no further cascades from this delete. The `tenant` relation on the model uses `onDelete: Cascade` from
+ * `Tenant` → drafts (tenant removal wipes drafts), not the reverse.
+ */
+export async function deleteScenarioDraftForTenant(tenantId: string, draftId: string): Promise<boolean> {
+  const result = await prisma.supplyChainTwinScenarioDraft.deleteMany({
+    where: { id: draftId, tenantId },
+  });
+  return result.count > 0;
+}

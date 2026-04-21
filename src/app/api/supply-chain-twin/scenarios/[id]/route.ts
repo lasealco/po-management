@@ -6,6 +6,7 @@ import { parseTwinScenarioDraftPatchBody } from "@/lib/supply-chain-twin/schemas
 import { twinScenarioDraftDetailResponseSchema } from "@/lib/supply-chain-twin/schemas/twin-api-responses";
 import { requireTwinApiAccess } from "@/lib/supply-chain-twin/sctwin-api-access";
 import {
+  deleteScenarioDraftForTenant,
   getScenarioDraftByIdForTenant,
   patchScenarioDraftForTenant,
   type PatchScenarioDraftInput,
@@ -15,6 +16,7 @@ export const dynamic = "force-dynamic";
 
 const ROUTE_GET = "GET /api/supply-chain-twin/scenarios/[id]";
 const ROUTE_PATCH = "PATCH /api/supply-chain-twin/scenarios/[id]";
+const ROUTE_DELETE = "DELETE /api/supply-chain-twin/scenarios/[id]";
 
 /**
  * Single tenant-scoped `SupplyChainTwinScenarioDraft` by primary key.
@@ -144,6 +146,52 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     const name = caught instanceof Error ? caught.name : "non_error_throw";
     logSctwinApiError({
       route: ROUTE_PATCH,
+      phase: "scenarios",
+      errorCode: "UNHANDLED_EXCEPTION",
+      detail: name,
+    });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
+/**
+ * **Hard delete** — removes the `SupplyChainTwinScenarioDraft` row for this tenant and id.
+ *
+ * No other Prisma models reference scenario drafts today, so deleting a draft does not cascade into child rows.
+ * The draft→tenant FK uses `onDelete: Cascade` from `Tenant` to drafts (deleting a tenant removes its drafts), not
+ * the reverse.
+ *
+ * **204:** Deleted. **404:** No row for tenant + id. **400:** Invalid path id. Same auth gate as `GET` / `PATCH`.
+ */
+export async function DELETE(_request: Request, context: { params: Promise<{ id: string }> }) {
+  try {
+    const gate = await requireTwinApiAccess();
+    if (!gate.ok) {
+      return NextResponse.json({ error: gate.denied.error }, { status: gate.denied.status });
+    }
+    const { access } = gate;
+
+    const { id: rawId } = await context.params;
+    const draftId = rawId.trim();
+    if (!draftId || draftId.length > 128) {
+      logSctwinApiWarn({
+        route: ROUTE_DELETE,
+        phase: "validation",
+        errorCode: "PATH_ID_INVALID",
+      });
+      return NextResponse.json({ error: "Invalid scenario draft id." }, { status: 400 });
+    }
+
+    const deleted = await deleteScenarioDraftForTenant(access.tenant.id, draftId);
+    if (!deleted) {
+      return NextResponse.json({ error: "Not found." }, { status: 404 });
+    }
+
+    return new NextResponse(null, { status: 204 });
+  } catch (caught) {
+    const name = caught instanceof Error ? caught.name : "non_error_throw";
+    logSctwinApiError({
+      route: ROUTE_DELETE,
       phase: "scenarios",
       errorCode: "UNHANDLED_EXCEPTION",
       detail: name,
