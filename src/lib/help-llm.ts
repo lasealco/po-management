@@ -3,6 +3,7 @@ import {
   type HelpDoAction,
 } from "@/lib/help-actions";
 import { HELP_PLAYBOOKS, matchPlaybook, type HelpPlaybook } from "@/lib/help-playbooks";
+import { extractProductTraceOpenPathQueryFromUserMessage } from "@/lib/help-product-trace-intent";
 import { LEGAL_COOKIES_PATH, LEGAL_PRIVACY_PATH, LEGAL_TERMS_PATH } from "@/lib/legal-public-paths";
 import { MARKETING_PRICING_PATH, PLATFORM_HUB_PATH } from "@/lib/marketing-public-paths";
 
@@ -105,6 +106,14 @@ function fallbackReply(message: string): HelpReply {
       });
     }
     if (matched.id === "product_trace") {
+      const extracted = extractProductTraceOpenPathQueryFromUserMessage(message);
+      if (extracted) {
+        doActions.push({
+          type: "open_path",
+          label: `Open product trace for ${extracted}`,
+          payload: { path: "/product-trace", q: extracted, guide: matched.id, step: 1 },
+        });
+      }
       doActions.push({
         type: "open_path",
         label: "Open Product trace",
@@ -158,7 +167,7 @@ function fallbackReply(message: string): HelpReply {
   }
   return {
     answer:
-      "I can guide you through orders, suppliers, consolidation, Control Tower, product trace (SKU → map), the Reporting hub (cockpit, refresh shortcuts), and user administration. Privacy, terms, and cookies are on their own public pages (also in the command palette). Try asking: 'I want to create an order', 'How do I trace a SKU on the map?', or 'How do I build a consolidation load?'",
+      "I can guide you through orders, suppliers, consolidation, Control Tower, product trace (SKU → map), the Reporting hub (cockpit, refresh shortcuts), and user administration. Privacy, terms, and cookies are on their own public pages (also in the command palette). Try asking: 'I want to create an order', 'I am looking for product corr-roll', 'How do I trace a SKU on the map?', or 'How do I build a consolidation load?'",
     playbook: null,
     suggestions: HELP_PLAYBOOKS.map((p) => p.title),
     actions: ROUTE_HINTS.slice(0, 4),
@@ -212,17 +221,21 @@ export async function buildHelpReply(params: {
     "- open_path: payload { path: '…', guide?, step?, q?, focus? }",
     `Paths: '${PLATFORM_HUB_PATH}'|'${MARKETING_PRICING_PATH}'|'${LEGAL_PRIVACY_PATH}'|'${LEGAL_TERMS_PATH}'|'${LEGAL_COOKIES_PATH}'|'/orders'|'/consolidation'|'/suppliers'|'/settings/users'|'/settings/warehouses'|'/login'|'/catalog'|'/products'|'/product-trace'|'/reporting'|'/reports'|'/crm/reporting'|'/wms/reporting'|'/control-tower'|'/control-tower/workbench'|'/control-tower/digest'|'/control-tower/reports'|'/control-tower/search'|'/control-tower/dashboard'|'/control-tower/command-center'|'/control-tower/ops'.`,
     "For path '/product-trace' only, optional q is a SKU or product code (alphanumeric, dots, underscores, hyphens; max 64 chars).",
+    "If the user says they are looking for a product by name or code (e.g. 'looking for product corr-roll' or 'SKU PKG-CORR-ROLL'), set doActions to include open_path with path '/product-trace' and payload.q set to that code so one click opens trace with search prefilled.",
     "For path '/reporting' only, optional focus is 'po'|'control-tower'|'crm'|'wms' (scrolls the hub to that module card).",
     "Use demo PO-1004 only as a known example order number when suggesting open_order.",
     "Do not invent unavailable pages or arbitrary paths.",
     "Reporting hub (/reporting): Cockpit board supports Refresh data, optional Auto-refresh (5/10/15 min, pauses when the tab is hidden, catch-up when returning), R to refresh when focus is not in an input/textarea/select, Shift+R for silent refresh. Command palette lists the Reporting hub with the same shortcut hints.",
   ].join(" ");
 
+  const extractedProductTraceCode = extractProductTraceOpenPathQueryFromUserMessage(params.message);
+
   const user = JSON.stringify({
     message: params.message,
     currentPath: params.currentPath ?? null,
     availableRoutes: ROUTE_HINTS,
     playbookHint,
+    extractedProductTraceCode: extractedProductTraceCode ?? null,
     reportingCockpitHints:
       "On /reporting: R = refresh snapshot (not while typing in a field). Shift+R = silent refresh. Auto-refresh checkbox + interval; status line shows last auto result (timer, returned to tab, or on enable).",
   });
@@ -262,7 +275,28 @@ export async function buildHelpReply(params: {
       .filter((a) => a?.label && a?.href && a.href.startsWith("/"))
       .map((a) => ({ label: a.label!, href: a.href! }))
       .slice(0, 4);
-    const doActions = sanitizeHelpDoActions(parsed.doActions);
+    let doActions = sanitizeHelpDoActions(parsed.doActions);
+    if (extractedProductTraceCode) {
+      const hasTraceWithQ = doActions.some(
+        (a) =>
+          a.type === "open_path" &&
+          (a.payload as Record<string, unknown> | undefined)?.path === "/product-trace" &&
+          typeof (a.payload as Record<string, unknown> | undefined)?.q === "string",
+      );
+      if (!hasTraceWithQ) {
+        const injected: HelpDoAction = {
+          type: "open_path",
+          label: `Open product trace for ${extractedProductTraceCode}`,
+          payload: {
+            path: "/product-trace",
+            q: extractedProductTraceCode,
+            guide: "product_trace",
+            step: 1,
+          },
+        };
+        doActions = [injected, ...doActions].slice(0, 4);
+      }
+    }
     return {
       answer: parsed.answer,
       playbook: matched ?? null,

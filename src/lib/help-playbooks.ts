@@ -1,5 +1,6 @@
 import { LEGAL_COOKIES_PATH, LEGAL_PRIVACY_PATH, LEGAL_TERMS_PATH } from "@/lib/legal-public-paths";
 import { MARKETING_PRICING_PATH, PLATFORM_HUB_PATH } from "@/lib/marketing-public-paths";
+import { extractProductTraceOpenPathQueryFromUserMessage } from "@/lib/help-product-trace-intent";
 import { REPORTING_HUB_CONTROL_TOWER_HREF } from "@/lib/reporting-hub-paths";
 import {
   TARIFF_CHARGE_CODES_PATH,
@@ -613,6 +614,8 @@ export const HELP_PLAYBOOKS: HelpPlaybook[] = [
 
 export function matchPlaybook(query: string): HelpPlaybook | null {
   const q = query.toLowerCase();
+  const traceCodeFromPhrase = extractProductTraceOpenPathQueryFromUserMessage(query);
+
   if (
     q.includes("product trace") ||
     q.includes("product-trace") ||
@@ -621,6 +624,7 @@ export function matchPlaybook(query: string): HelpPlaybook | null {
     q.includes("track a sku") ||
     q.includes("track a product") ||
     q.includes("sku on the map") ||
+    traceCodeFromPhrase != null ||
     (q.includes("where") &&
       q.includes("sku") &&
       (q.includes("stock") || q.includes("inventory") || q.includes("shipment") || q.includes("warehouse")))

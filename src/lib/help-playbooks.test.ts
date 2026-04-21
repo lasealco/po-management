@@ -93,4 +93,9 @@ describe("matchPlaybook", () => {
   it("does not map pricing snapshot questions to public_marketing", () => {
     expect(matchPlaybook("freeze a pricing snapshot")?.id).not.toBe("public_marketing");
   });
+
+  it("matches product_trace when user names a product code in natural language", () => {
+    expect(matchPlaybook("I am looking for product corr-roll")?.id).toBe("product_trace");
+    expect(matchPlaybook("find sku ABC-99 for me")?.id).toBe("product_trace");
+  });
 });
