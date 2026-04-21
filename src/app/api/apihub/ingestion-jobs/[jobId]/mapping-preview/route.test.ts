@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { APIHUB_MAPPING_PREVIEW_SAMPLE_MAX } from "@/lib/apihub/constants";
 import { APIHUB_REQUEST_ID_HEADER } from "@/lib/apihub/request-id";
 
 const getDemoTenantMock = vi.fn();
@@ -59,6 +60,14 @@ describe("POST /api/apihub/ingestion-jobs/:jobId/mapping-preview", () => {
     expect(response.headers.get(APIHUB_REQUEST_ID_HEADER)).toBe("map-preview-ok-1");
     expect(await response.json()).toEqual({
       runId: "run-1",
+      sampling: {
+        totalRecords: 1,
+        previewedRecords: 1,
+        maxSampleSize: APIHUB_MAPPING_PREVIEW_SAMPLE_MAX,
+        requestedSampleSize: null,
+        sampleSizeCapped: false,
+        truncated: false,
+      },
       preview: [
         {
           recordIndex: 0,
@@ -67,6 +76,107 @@ describe("POST /api/apihub/ingestion-jobs/:jobId/mapping-preview", () => {
         },
       ],
     });
+  });
+
+  it("limits preview rows when sampleSize is set", async () => {
+    getApiHubIngestionRunByIdMock.mockResolvedValue({ id: "run-1" });
+    const { POST } = await import("./route");
+    const records = [{ n: 1 }, { n: 2 }, { n: 3 }, { n: 4 }];
+    const response = await POST(
+      new Request("http://localhost/api/apihub/ingestion-jobs/run-1/mapping-preview", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          [APIHUB_REQUEST_ID_HEADER]: "map-preview-sample-1",
+        },
+        body: JSON.stringify({
+          records,
+          sampleSize: 2,
+          rules: [{ sourcePath: "n", targetField: "n", transform: "number" }],
+        }),
+      }),
+      { params: Promise.resolve({ jobId: "run-1" }) },
+    );
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      sampling: Record<string, unknown>;
+      preview: { recordIndex: number; mapped: { n: number } }[];
+    };
+    expect(body.sampling).toEqual({
+      totalRecords: 4,
+      previewedRecords: 2,
+      maxSampleSize: APIHUB_MAPPING_PREVIEW_SAMPLE_MAX,
+      requestedSampleSize: 2,
+      sampleSizeCapped: false,
+      truncated: true,
+    });
+    expect(body.preview).toEqual([
+      { recordIndex: 0, mapped: { n: 1 }, issues: [] },
+      { recordIndex: 1, mapped: { n: 2 }, issues: [] },
+    ]);
+  });
+
+  it("clamps sampleSize to maxSampleSize", async () => {
+    getApiHubIngestionRunByIdMock.mockResolvedValue({ id: "run-1" });
+    const { POST } = await import("./route");
+    const records = Array.from({ length: APIHUB_MAPPING_PREVIEW_SAMPLE_MAX + 3 }, (_, i) => ({ i }));
+    const response = await POST(
+      new Request("http://localhost/api/apihub/ingestion-jobs/run-1/mapping-preview", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          [APIHUB_REQUEST_ID_HEADER]: "map-preview-cap-1",
+        },
+        body: JSON.stringify({
+          records,
+          sampleSize: APIHUB_MAPPING_PREVIEW_SAMPLE_MAX + 1,
+          rules: [{ sourcePath: "i", targetField: "i", transform: "number" }],
+        }),
+      }),
+      { params: Promise.resolve({ jobId: "run-1" }) },
+    );
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      sampling: Record<string, unknown>;
+      preview: unknown[];
+    };
+    expect(body.preview).toHaveLength(APIHUB_MAPPING_PREVIEW_SAMPLE_MAX);
+    expect(body.sampling).toEqual({
+      totalRecords: APIHUB_MAPPING_PREVIEW_SAMPLE_MAX + 3,
+      previewedRecords: APIHUB_MAPPING_PREVIEW_SAMPLE_MAX,
+      maxSampleSize: APIHUB_MAPPING_PREVIEW_SAMPLE_MAX,
+      requestedSampleSize: APIHUB_MAPPING_PREVIEW_SAMPLE_MAX + 1,
+      sampleSizeCapped: true,
+      truncated: true,
+    });
+  });
+
+  it("returns 400 for invalid sampleSize", async () => {
+    getApiHubIngestionRunByIdMock.mockResolvedValue({ id: "run-1" });
+    const { POST } = await import("./route");
+    const response = await POST(
+      new Request("http://localhost/api/apihub/ingestion-jobs/run-1/mapping-preview", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          [APIHUB_REQUEST_ID_HEADER]: "map-preview-bad-ss",
+        },
+        body: JSON.stringify({
+          records: [{ x: 1 }],
+          sampleSize: 0,
+          rules: [{ sourcePath: "x", targetField: "out", transform: "number" }],
+        }),
+      }),
+      { params: Promise.resolve({ jobId: "run-1" }) },
+    );
+    expect(response.status).toBe(400);
+    const body = (await response.json()) as {
+      ok: false;
+      error: { details?: { issues: Array<{ field: string; code: string }> } };
+    };
+    expect(body.error.details?.issues).toEqual(
+      expect.arrayContaining([expect.objectContaining({ field: "sampleSize", code: "OUT_OF_RANGE" })]),
+    );
   });
 
   it("returns 400 when rules have duplicate targetField", async () => {

@@ -84,3 +84,9 @@ export function apiHubIngestionMaxAttemptsForTrigger(triggerKind: ApiHubIngestio
 
 /** Inclusive upper bound for `attempt` in `attemptRange` list filter (`min-max` or single digit). */
 export const APIHUB_INGESTION_ATTEMPT_RANGE_MAX = 99;
+
+/**
+ * Upper bound for `sampleSize` on mapping preview: larger requests are clamped to this many records
+ * so preview work stays bounded (Slice 34).
+ */
+export const APIHUB_MAPPING_PREVIEW_SAMPLE_MAX = 500;
