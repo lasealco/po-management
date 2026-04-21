@@ -1,16 +1,15 @@
 import type { Metadata } from "next";
 
-import { AccessDenied } from "@/components/access-denied";
 import { TwinExplorerEntitiesTable } from "@/components/supply-chain-twin/twin-explorer-entities-table";
 import { TwinExplorerRecentEventsStrip } from "@/components/supply-chain-twin/twin-explorer-recent-events-strip";
+import { TwinEventsExportAction } from "@/components/supply-chain-twin/twin-events-export-action";
 import { TwinGraphStubPanel } from "@/components/supply-chain-twin/twin-graph-stub-panel";
 import { TwinSubNav } from "@/components/supply-chain-twin/twin-subnav";
-import { getViewerGrantSet } from "@/lib/authz";
 import {
   parseExplorerSnapshotFocusQuery,
   parseExplorerSnapshotQueryParam,
 } from "@/lib/supply-chain-twin/explorer-focus-query";
-import { resolveNavState } from "@/lib/nav-visibility";
+import { requireTwinPageAccess } from "../_lib/require-twin-page-access";
 
 export const dynamic = "force-dynamic";
 
@@ -24,25 +23,9 @@ export default async function SupplyChainTwinExplorerPage({
 }: {
   searchParams?: Promise<{ q?: string | string[]; snapshot?: string | string[]; focus?: string | string[] }>;
 }) {
-  const access = await getViewerGrantSet();
-  const { linkVisibility } = await resolveNavState(access);
-
-  if (!access?.user) {
-    return (
-      <AccessDenied
-        title="Supply Chain Twin"
-        message="Choose an active demo user in Settings → Demo session, then return here."
-      />
-    );
-  }
-
-  if (!linkVisibility?.supplyChainTwin) {
-    return (
-      <AccessDenied
-        title="Supply Chain Twin"
-        message="This preview is available for workspace sessions with cross-module access. Try a broader demo role or open the platform hub."
-      />
-    );
+  const gate = await requireTwinPageAccess();
+  if (!gate.ok) {
+    return gate.deniedUi;
   }
 
   const sp = searchParams ? await searchParams : {};
@@ -68,7 +51,10 @@ export default async function SupplyChainTwinExplorerPage({
 
       <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Twin explorer</p>
-        <h1 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-900">Entity explorer</h1>
+        <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
+          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Entity explorer</h1>
+          <TwinEventsExportAction />
+        </div>
         <p className="mt-2 max-w-2xl text-sm text-zinc-600">
           Entity rows are loaded from <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">GET /api/supply-chain-twin/entities</code>{" "}
           (same contract as the overview catalog). Filters below are placeholders except search, which sets query{" "}

@@ -1,15 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { AccessDenied } from "@/components/access-denied";
 import { PageTitleWithHint } from "@/components/page-title-with-hint";
 import { TwinCatalogMetricsStrip } from "@/components/supply-chain-twin/twin-catalog-metrics-strip";
 import { TwinReadinessBanner } from "@/components/supply-chain-twin/twin-readiness-banner";
 import { TwinRiskSignalsCallout } from "@/components/supply-chain-twin/twin-risk-signals-callout";
 import { TwinSubNav } from "@/components/supply-chain-twin/twin-subnav";
-import { getViewerGrantSet } from "@/lib/authz";
 import { PLATFORM_HUB_PATH } from "@/lib/marketing-public-paths";
-import { resolveNavState } from "@/lib/nav-visibility";
+import { requireTwinPageAccess } from "./_lib/require-twin-page-access";
 
 import { TwinEntitiesSection } from "./twin-entities-section";
 
@@ -35,25 +33,9 @@ const PLANNED_SURFACES = [
 ] as const;
 
 export default async function SupplyChainTwinHomePage() {
-  const access = await getViewerGrantSet();
-  const { linkVisibility } = await resolveNavState(access);
-
-  if (!access?.user) {
-    return (
-      <AccessDenied
-        title="Supply Chain Twin"
-        message="Choose an active demo user in Settings → Demo session, then return here."
-      />
-    );
-  }
-
-  if (!linkVisibility?.supplyChainTwin) {
-    return (
-      <AccessDenied
-        title="Supply Chain Twin"
-        message="This preview is available for workspace sessions with cross-module access. Try a broader demo role or open the platform hub."
-      />
-    );
+  const gate = await requireTwinPageAccess();
+  if (!gate.ok) {
+    return gate.deniedUi;
   }
 
   return (

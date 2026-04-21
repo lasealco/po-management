@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { AccessDenied } from "@/components/access-denied";
 import { TwinScenariosDraftsPanel } from "@/components/supply-chain-twin/twin-scenarios-drafts-panel";
 import { TwinSubNav } from "@/components/supply-chain-twin/twin-subnav";
-import { getViewerGrantSet } from "@/lib/authz";
-import { resolveNavState } from "@/lib/nav-visibility";
+import { requireTwinPageAccess } from "../_lib/require-twin-page-access";
 
 export const dynamic = "force-dynamic";
 
@@ -15,25 +13,9 @@ export const metadata: Metadata = {
 };
 
 export default async function SupplyChainTwinScenariosPage() {
-  const access = await getViewerGrantSet();
-  const { linkVisibility } = await resolveNavState(access);
-
-  if (!access?.user) {
-    return (
-      <AccessDenied
-        title="Supply Chain Twin"
-        message="Choose an active demo user in Settings → Demo session, then return here."
-      />
-    );
-  }
-
-  if (!linkVisibility?.supplyChainTwin) {
-    return (
-      <AccessDenied
-        title="Supply Chain Twin"
-        message="This preview is available for workspace sessions with cross-module access. Try a broader demo role or open the platform hub."
-      />
-    );
+  const gate = await requireTwinPageAccess();
+  if (!gate.ok) {
+    return gate.deniedUi;
   }
 
   return (
