@@ -13,8 +13,15 @@ describe("firstZodFieldError", () => {
     expect(parsed.success).toBe(false);
     if (parsed.success) return;
 
-    expect(firstZodFieldError(parsed.error, ["two", "one"])).toMatch(/expected int/i);
-    expect(firstZodFieldError(parsed.error, ["one", "two"])).toMatch(/>=2 characters/i);
+    const flat = parsed.error.flatten().fieldErrors as Record<string, string[] | undefined>;
+    const oneMessage = flat.one?.[0];
+    const twoMessage = flat.two?.[0];
+    expect(typeof oneMessage).toBe("string");
+    expect(typeof twoMessage).toBe("string");
+    if (!oneMessage || !twoMessage) return;
+
+    expect(firstZodFieldError(parsed.error, ["two", "one"])).toBe(twoMessage);
+    expect(firstZodFieldError(parsed.error, ["one", "two"])).toBe(oneMessage);
   });
 
   it("falls back to generic zod message when keys are absent", () => {
