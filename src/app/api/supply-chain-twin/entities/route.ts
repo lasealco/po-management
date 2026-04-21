@@ -10,7 +10,8 @@ const ROUTE = "GET /api/supply-chain-twin/entities";
 
 /**
  * Entity catalog backed by `SupplyChainTwinEntitySnapshot`.
- * Query: zod-validated `q`, `limit` (1..100, default 100), optional opaque `cursor` (keyset).
+ * Query: zod-validated `q`, `limit` (1..100, default 100), optional opaque `cursor` (keyset), optional **`entityKind`**
+ * (strict allowlist — unknown values **400**; composes with `q` + cursor).
  * Response: `{ items, nextCursor? }` — each item includes snapshot `id` (Prisma PK) plus `ref`; `nextCursor` omitted when there is no following page.
  */
 export async function GET(request: Request) {
@@ -51,6 +52,7 @@ export async function GET(request: Request) {
       q: parsed.query.q,
       limit: parsed.query.limit,
       cursor: parsed.query.cursor ?? null,
+      ...(parsed.query.entityKind !== undefined ? { entityKind: parsed.query.entityKind } : {}),
     });
 
     if (nextCursor) {

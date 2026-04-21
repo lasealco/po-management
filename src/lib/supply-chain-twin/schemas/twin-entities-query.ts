@@ -1,9 +1,15 @@
 import { z } from "zod";
 
+import { TWIN_ENTITY_KINDS, type TwinEntityKind } from "@/lib/supply-chain-twin/types";
+
 const twinEntitiesCursorPayloadSchema = z.object({
   u: z.string().datetime(),
   i: z.string().min(1),
 });
+
+const twinEntityKindEnumSchema = z.enum(
+  TWIN_ENTITY_KINDS as unknown as [TwinEntityKind, ...TwinEntityKind[]],
+);
 
 /** GET `/api/supply-chain-twin/entities` — search + pagination (API caps `limit` at 100). */
 export const twinEntitiesQuerySchema = z.object({
@@ -20,6 +26,18 @@ export const twinEntitiesQuerySchema = z.object({
     .max(512)
     .optional()
     .transform((value) => (value && value.length > 0 ? value : undefined)),
+  /**
+   * Optional strict filter on stored `entityKind` (must match {@link TWIN_ENTITY_KINDS}). Composes with `q` and
+   * `cursor`; unknown values → **400**.
+   */
+  entityKind: z.preprocess((val) => {
+    if (val === undefined || val === null || val === "") return undefined;
+    if (typeof val === "string") {
+      const t = val.trim();
+      return t.length === 0 ? undefined : t;
+    }
+    return val;
+  }, twinEntityKindEnumSchema.optional()),
 });
 
 export type TwinEntitiesQuery = z.infer<typeof twinEntitiesQuerySchema>;
@@ -60,6 +78,7 @@ export function parseTwinEntitiesQuery(searchParams: URLSearchParams): {
       flat.q?.[0] ??
       flat.limit?.[0] ??
       flat.cursor?.[0] ??
+      flat.entityKind?.[0] ??
       parsed.error.issues[0]?.message ??
       parsed.error.message;
     return { ok: false, error: first };

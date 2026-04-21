@@ -100,6 +100,27 @@ describe("Supply Chain Twin entities route", () => {
     expect(response.status).toBe(400);
   });
 
+  it("returns 400 when entityKind is not in allowlist", async () => {
+    getViewerGrantSetMock.mockResolvedValue({
+      tenant: { id: "t1", name: "Demo", slug: "demo-company" },
+      user: { id: "u1", email: "x@y.com", name: "X" },
+      grantSet: new Set(),
+    });
+    resolveNavStateMock.mockResolvedValue({
+      linkVisibility: { supplyChainTwin: true },
+      setupIncomplete: false,
+      poSubNavVisibility: {},
+    });
+
+    const { GET } = await import("./route");
+    const response = await GET(
+      new Request("http://localhost/api/supply-chain-twin/entities?entityKind=invalid_kind_xyz"),
+    );
+
+    expect(response.status).toBe(400);
+    expect(listForTenantPageMock).not.toHaveBeenCalled();
+  });
+
   it("returns 400 when cursor is invalid", async () => {
     getViewerGrantSetMock.mockResolvedValue({
       tenant: { id: "t1", name: "Demo", slug: "demo-company" },
@@ -136,6 +157,33 @@ describe("Supply Chain Twin entities route", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ items: [] });
     expect(listForTenantPageMock).toHaveBeenCalledWith("t1", { q: "test", limit: 100, cursor: null });
+  });
+
+  it("passes entityKind with q to listForTenantPage", async () => {
+    getViewerGrantSetMock.mockResolvedValue({
+      tenant: { id: "t1", name: "Demo", slug: "demo-company" },
+      user: { id: "u1", email: "x@y.com", name: "X" },
+      grantSet: new Set(),
+    });
+    resolveNavStateMock.mockResolvedValue({
+      linkVisibility: { supplyChainTwin: true },
+      setupIncomplete: false,
+      poSubNavVisibility: {},
+    });
+
+    const { GET } = await import("./route");
+    const response = await GET(
+      new Request("http://localhost/api/supply-chain-twin/entities?q=acme&entityKind=supplier"),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ items: [] });
+    expect(listForTenantPageMock).toHaveBeenCalledWith("t1", {
+      q: "acme",
+      limit: 100,
+      cursor: null,
+      entityKind: "supplier",
+    });
   });
 
   it("returns rows and optional nextCursor from listForTenantPage", async () => {

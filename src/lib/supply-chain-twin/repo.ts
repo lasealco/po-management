@@ -18,6 +18,8 @@ export type ListForTenantPageOptions = {
   /** Hard-clamped to 1..500 inside the repo (API route uses ≤100). */
   limit: number;
   cursor?: string | null;
+  /** When set, restricts rows to this stored `entityKind` (exact match). */
+  entityKind?: TwinEntityKind;
 };
 
 /**
@@ -50,6 +52,8 @@ export async function listForTenantPage(
         }
       : {};
 
+  const kindFilter = options.entityKind ? { entityKind: options.entityKind } : {};
+
   const cursorFilter = cursorPos
     ? {
         OR: [
@@ -61,7 +65,7 @@ export async function listForTenantPage(
       }
     : {};
 
-  const filters = [qFilter, cursorFilter].filter((part) => Object.keys(part).length > 0);
+  const filters = [qFilter, cursorFilter, kindFilter].filter((part) => Object.keys(part).length > 0);
   const where =
     filters.length === 0 ? { tenantId } : { tenantId, AND: filters };
 
