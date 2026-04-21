@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 
 import { AccessDenied } from "@/components/access-denied";
 import { TwinEntityJsonPreview } from "@/components/supply-chain-twin/twin-entity-json-preview";
+import { TwinScenarioTitleInlineEditor } from "@/components/supply-chain-twin/twin-scenario-title-inline-editor";
 import { TwinSubNav } from "@/components/supply-chain-twin/twin-subnav";
 import { requireTwinApiAccess } from "@/lib/supply-chain-twin/sctwin-api-access";
 import { getScenarioDraftByIdForTenant } from "@/lib/supply-chain-twin/scenarios-draft-repo";
@@ -66,8 +67,6 @@ export default async function SupplyChainTwinScenarioDraftPage({
     notFound();
   }
 
-  const titleLabel = draft.title?.trim() ? draft.title : "Untitled draft";
-
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
       <TwinSubNav />
@@ -83,10 +82,9 @@ export default async function SupplyChainTwinScenarioDraftPage({
 
       <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Twin scenarios</p>
-        <h1 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-900">{titleLabel}</h1>
+        <TwinScenarioTitleInlineEditor draftId={draft.id} initialTitle={draft.title} />
         <p className="mt-2 max-w-2xl text-sm text-zinc-600">
-          Read-only draft row for your workspace session. Editing uses the API in later slices; this view matches the
-          Slice 34 detail contract.
+          Rename this draft inline using the existing scenario patch API. The JSON body remains unchanged in this view.
         </p>
 
         <dl className="mt-6 grid gap-4 border-t border-zinc-100 pt-6 sm:grid-cols-2">
