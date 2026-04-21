@@ -4,12 +4,15 @@ import { toApiHubConnectorDto } from "@/lib/apihub/connector-dto";
 import { listApiHubConnectors } from "@/lib/apihub/connectors-repo";
 import type { ApiHubIngestionRunDto } from "@/lib/apihub/ingestion-run-dto";
 import { toApiHubIngestionRunDto } from "@/lib/apihub/ingestion-run-dto";
+import type { ApiHubApplyConflictListItemDto } from "@/lib/apihub/ingestion-apply-conflict-dto";
+import { listApiHubApplyConflicts } from "@/lib/apihub/ingestion-apply-conflicts-repo";
 import { getApiHubIngestionRunOpsSummary, listApiHubIngestionRuns } from "@/lib/apihub/ingestion-runs-repo";
 import type { ApiHubMappingTemplateDto } from "@/lib/apihub/mapping-template-dto";
 import { toApiHubMappingTemplateDto } from "@/lib/apihub/mapping-template-dto";
 import { listApiHubMappingTemplates } from "@/lib/apihub/mapping-templates-repo";
 import { getViewerGrantSet } from "@/lib/authz";
 
+import { ApplyConflictsPanel } from "./apply-conflicts-panel";
 import { ConnectorsSection } from "./connectors-section";
 import { DemoSyncShowcase } from "./demo-sync-showcase";
 import { IngestionOpsPanel, type IngestionOpsSummaryPayload } from "./ingestion-ops-panel";
@@ -61,8 +64,10 @@ export default async function ApihubHomePage() {
   let ingestionInitialSummary: IngestionOpsSummaryPayload | null = null;
   let ingestionInitialRuns: ApiHubIngestionRunDto[] = [];
   let initialMappingTemplates: ApiHubMappingTemplateDto[] = [];
+  let initialApplyConflicts: ApiHubApplyConflictListItemDto[] = [];
+  let initialApplyConflictsNextCursor: string | null = null;
   if (access?.user && access.tenant) {
-    const [ops, listed, mappingRows] = await Promise.all([
+    const [ops, listed, mappingRows, applyConflicts] = await Promise.all([
       getApiHubIngestionRunOpsSummary({ tenantId: access.tenant.id }),
       listApiHubIngestionRuns({
         tenantId: access.tenant.id,
@@ -74,6 +79,7 @@ export default async function ApihubHomePage() {
         attemptRange: null,
       }),
       listApiHubMappingTemplates(access.tenant.id, 50),
+      listApiHubApplyConflicts({ tenantId: access.tenant.id, limit: 20, cursor: null }),
     ]);
     ingestionInitialSummary = {
       totals: ops.totals,
@@ -84,6 +90,8 @@ export default async function ApihubHomePage() {
     };
     ingestionInitialRuns = listed.items.map(toApiHubIngestionRunDto);
     initialMappingTemplates = mappingRows.map(toApiHubMappingTemplateDto);
+    initialApplyConflicts = applyConflicts.items;
+    initialApplyConflictsNextCursor = applyConflicts.nextCursor;
   }
 
   return (
@@ -153,6 +161,11 @@ export default async function ApihubHomePage() {
         canView={canCreate}
         initialSummary={ingestionInitialSummary}
         initialRuns={ingestionInitialRuns}
+      />
+      <ApplyConflictsPanel
+        canView={canCreate}
+        initialItems={initialApplyConflicts}
+        initialNextCursor={initialApplyConflictsNextCursor}
       />
       <MappingTemplatesSection initialTemplates={initialMappingTemplates} canManage={canCreate} />
       <MappingPreviewExportPanel canUse={canCreate} />

@@ -1,22 +1,10 @@
 import { Prisma } from "@prisma/client";
 
 import { encodeApplyConflictListCursor } from "@/lib/apihub/apply-conflict-list-cursor";
+import type { ApiHubApplyConflictListItemDto } from "@/lib/apihub/ingestion-apply-conflict-dto";
 import { prisma } from "@/lib/prisma";
 
-export type ApiHubApplyConflictListItemDto = {
-  id: string;
-  ingestionRunId: string;
-  actorUserId: string;
-  createdAt: string;
-  resultCode: string;
-  httpStatus: number;
-  dryRun: boolean;
-  idempotencyKeyPresent: boolean;
-  idempotentReplay: boolean;
-  runStatusAtDecision: string | null;
-  connectorId: string | null;
-  requestId: string | null;
-};
+export type { ApiHubApplyConflictListItemDto } from "@/lib/apihub/ingestion-apply-conflict-dto";
 
 type RawApplyConflictRow = {
   id: string;
