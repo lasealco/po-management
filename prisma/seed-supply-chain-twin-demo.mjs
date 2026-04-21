@@ -23,6 +23,9 @@ const DEMO_ENTITY_KIND = "supplier";
 const DEMO_ENTITY_KEY = "DEMO-SCTWIN-SEED-SUPPLIER";
 /** Must match `src/lib/supply-chain-twin/demo-seed.ts` (`SCTWIN_DEMO_SEED_RISK_CODE`). */
 const DEMO_RISK_CODE = "DEMO-SCTWIN-SEED-RISK";
+const DEMO_RISK_HIGH_CODE = "DEMO-SCTWIN-SEED-RISK-HIGH";
+const DEMO_INGEST_EVENT_1_KEY = "seed-sctwin-event-entity-upsert-v1";
+const DEMO_INGEST_EVENT_2_KEY = "seed-sctwin-event-risk-signal-v1";
 
 /**
  * Slice 67 — stable primary keys for compare demos (`TwinScenarioDraft` / compare URL validation: lowercase
@@ -56,7 +59,7 @@ async function main() {
     SELECT table_name::text AS table_name
     FROM information_schema.tables
     WHERE table_schema = 'public'
-      AND table_name IN ('SupplyChainTwinEntitySnapshot', 'SupplyChainTwinRiskSignal', 'SupplyChainTwinScenarioDraft')
+      AND table_name IN ('SupplyChainTwinEntitySnapshot', 'SupplyChainTwinRiskSignal', 'SupplyChainTwinScenarioDraft', 'SupplyChainTwinIngestEvent')
   `;
   const found = new Set((Array.isArray(tableRows) ? tableRows : []).map((r) => r.table_name));
   if (!found.has("SupplyChainTwinEntitySnapshot")) {
@@ -76,6 +79,13 @@ async function main() {
   if (!found.has("SupplyChainTwinScenarioDraft")) {
     console.error(
       "[db:seed:supply-chain-twin-demo] Table SupplyChainTwinScenarioDraft is missing.\n" +
+        "  Run: npm run db:migrate   then retry.",
+    );
+    process.exit(1);
+  }
+  if (!found.has("SupplyChainTwinIngestEvent")) {
+    console.error(
+      "[db:seed:supply-chain-twin-demo] Table SupplyChainTwinIngestEvent is missing.\n" +
         "  Run: npm run db:migrate   then retry.",
     );
     process.exit(1);
@@ -110,6 +120,27 @@ async function main() {
       severity: "MEDIUM",
       title: "Demo Twin — seeded latency watch (non-production)",
       detail: "Slice-22 placeholder risk row for investor demos; not evaluated from live KPIs.",
+    },
+  });
+
+  await prisma.supplyChainTwinRiskSignal.upsert({
+    where: {
+      tenantId_code: {
+        tenantId: tenant.id,
+        code: DEMO_RISK_HIGH_CODE,
+      },
+    },
+    create: {
+      tenantId: tenant.id,
+      code: DEMO_RISK_HIGH_CODE,
+      severity: "HIGH",
+      title: "Demo Twin — seeded disruption alert (non-production)",
+      detail: "Slice-84 demo risk row for severity filtering and overview callouts.",
+    },
+    update: {
+      severity: "HIGH",
+      title: "Demo Twin — seeded disruption alert (non-production)",
+      detail: "Slice-84 demo risk row for severity filtering and overview callouts.",
     },
   });
 
@@ -168,6 +199,60 @@ async function main() {
     },
   });
 
+  await prisma.supplyChainTwinIngestEvent.upsert({
+    where: {
+      tenantId_idempotencyKey: {
+        tenantId: tenant.id,
+        idempotencyKey: DEMO_INGEST_EVENT_1_KEY,
+      },
+    },
+    create: {
+      tenantId: tenant.id,
+      type: "entity_upsert",
+      idempotencyKey: DEMO_INGEST_EVENT_1_KEY,
+      payloadJson: {
+        entityKind: DEMO_ENTITY_KIND,
+        entityKey: DEMO_ENTITY_KEY,
+        source: "seed-supply-chain-twin-demo",
+      },
+    },
+    update: {
+      type: "entity_upsert",
+      payloadJson: {
+        entityKind: DEMO_ENTITY_KIND,
+        entityKey: DEMO_ENTITY_KEY,
+        source: "seed-supply-chain-twin-demo",
+      },
+    },
+  });
+
+  await prisma.supplyChainTwinIngestEvent.upsert({
+    where: {
+      tenantId_idempotencyKey: {
+        tenantId: tenant.id,
+        idempotencyKey: DEMO_INGEST_EVENT_2_KEY,
+      },
+    },
+    create: {
+      tenantId: tenant.id,
+      type: "risk_signal",
+      idempotencyKey: DEMO_INGEST_EVENT_2_KEY,
+      payloadJson: {
+        code: DEMO_RISK_HIGH_CODE,
+        severity: "HIGH",
+        source: "seed-supply-chain-twin-demo",
+      },
+    },
+    update: {
+      type: "risk_signal",
+      payloadJson: {
+        code: DEMO_RISK_HIGH_CODE,
+        severity: "HIGH",
+        source: "seed-supply-chain-twin-demo",
+      },
+    },
+  });
+
   await prisma.supplyChainTwinScenarioDraft.upsert({
     where: { id: DEMO_SCENARIO_COMPARE_RIGHT_ID },
     create: {
@@ -191,7 +276,8 @@ async function main() {
 
   console.log(
     `[db:seed:supply-chain-twin-demo] OK — tenant "${tenant.name}" (${DEMO_SLUG}): ` +
-      `${DEMO_ENTITY_KIND} / ${DEMO_ENTITY_KEY}; risk ${DEMO_RISK_CODE} (MEDIUM); ` +
+      `${DEMO_ENTITY_KIND} / ${DEMO_ENTITY_KEY}; risks ${DEMO_RISK_CODE} (MEDIUM) + ${DEMO_RISK_HIGH_CODE} (HIGH); ` +
+      `events entity_upsert + risk_signal; ` +
       `compare drafts ${DEMO_SCENARIO_COMPARE_LEFT_ID} / ${DEMO_SCENARIO_COMPARE_RIGHT_ID}.`,
   );
   console.log(`[db:seed:supply-chain-twin-demo] Compare demo URL: ${compareUrl}`);
