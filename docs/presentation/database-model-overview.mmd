@@ -1,0 +1,55 @@
+%% High-level ERD for stakeholder decks — not every Prisma model.
+%% Export PNG/SVG: https://mermaid.live (paste this file) or `npx @mermaid-js/mermaid-cli -i ... -o ...png`
+%% Canonical source of truth: prisma/schema.prisma (PostgreSQL via Prisma)
+
+erDiagram
+  Tenant ||--o{ User : "scopes"
+  Tenant ||--o{ Role : "RBAC"
+  Tenant ||--o{ Workflow : "PO state machines"
+  Tenant ||--o{ Supplier : "SRM"
+  Tenant ||--o{ Product : "catalog"
+  Tenant ||--o{ PurchaseOrder : "PO"
+  Tenant ||--o{ SalesOrder : "SO"
+  Tenant ||--o{ Warehouse : "WMS sites"
+  Tenant ||--o{ LoadPlan : "consolidation"
+  Tenant ||--o{ TariffContractHeader : "contracts"
+  Tenant ||--o{ BookingPricingSnapshot : "frozen economics"
+  Tenant ||--o{ SupplyChainTwinEntitySnapshot : "twin graph"
+
+  Workflow ||--o{ PurchaseOrder : "uses"
+
+  User ||--o{ PurchaseOrder : "requester"
+  User ||--o{ UserRole : "membership"
+
+  Supplier ||--o{ PurchaseOrder : "vendor"
+  Product ||--o{ PurchaseOrderItem : "SKU lines"
+
+  PurchaseOrder ||--o{ PurchaseOrderItem : "lines"
+  PurchaseOrder ||--o{ Shipment : "executions"
+
+  SalesOrder ||--o{ Shipment : "optional link"
+  CrmAccount ||--o{ SalesOrder : "customer"
+
+  Shipment ||--o{ ShipmentItem : "cargo lines"
+  PurchaseOrderItem ||--o{ ShipmentItem : "allocated qty"
+
+  Shipment ||--o{ CtShipmentReference : "CT refs"
+  Shipment ||--o{ CtAlert : "ops signals"
+  Shipment ||--o{ TariffShipmentApplication : "rated moves"
+
+  Warehouse ||--o{ InventoryBalance : "stock"
+  Warehouse ||--o{ WmsTask : "floor work"
+  Warehouse ||--o{ LoadPlan : "plan origin"
+  Shipment ||--o{ WmsTask : "receiving etc"
+
+  LoadPlan ||--o{ LoadPlanShipment : "assignments"
+  Shipment ||--o| LoadPlanShipment : "on plan"
+
+  TariffContractHeader ||--o{ TariffContractVersion : "versions"
+  TariffContractVersion ||--o{ TariffRateLine : "rates"
+
+  BookingPricingSnapshot ||--o{ InvoiceIntake : "audit baseline"
+  InvoiceIntake ||--o{ InvoiceLine : "parsed charges"
+  InvoiceLine ||--o| InvoiceAuditResult : "match outcome"
+
+  SupplyChainTwinEntitySnapshot ||--o{ SupplyChainTwinEntityEdge : "twin edges"
