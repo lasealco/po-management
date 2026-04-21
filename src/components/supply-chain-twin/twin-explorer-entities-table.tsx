@@ -1,7 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, use, useMemo } from "react";
+import { Suspense, use, useCallback, useMemo } from "react";
+
+/** Matches `limit` on `fetchEntitiesCatalog` — exports never include rows beyond this page. */
+const CATALOG_TABLE_PAGE_LIMIT = 50;
+
+/**
+ * Slice 60: show a courtesy “many rows” hint above this count (N = 25).
+ * The on-screen catalog is still capped at {@link CATALOG_TABLE_PAGE_LIMIT} rows per request.
+ */
+const EXPORT_SIZE_HINT_ABOVE_ROW_COUNT = 25;
 
 type CatalogRow = { id: string; ref: { kind: string; id: string } };
 
@@ -12,7 +21,7 @@ type CatalogResult =
 async function fetchEntitiesCatalog(searchQ: string): Promise<CatalogResult> {
   const params = new URLSearchParams();
   params.set("q", searchQ);
-  params.set("limit", "50");
+  params.set("limit", String(CATALOG_TABLE_PAGE_LIMIT));
   try {
     const res = await fetch(`/api/supply-chain-twin/entities?${params.toString()}`, { cache: "no-store" });
     const body = (await res.json()) as unknown;
@@ -105,8 +114,37 @@ function TwinExplorerEntitiesTableSkeleton() {
   );
 }
 
+function downloadVisibleEntitiesJson(searchQ: string, items: CatalogRow[]) {
+  const body = {
+    exportedAt: new Date().toISOString(),
+    source: "supply-chain-twin/explorer",
+    searchQuery: searchQ,
+    /** Same as `items.length`; capped by {@link CATALOG_TABLE_PAGE_LIMIT} on fetch. */
+    rowCount: items.length,
+    items,
+  };
+  const json = JSON.stringify(body, null, 2);
+  const blob = new Blob([json], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  const stamp = new Date().toISOString().replaceAll(":", "").slice(0, 15);
+  a.download = `twin-explorer-entities-${stamp}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 function TwinExplorerEntitiesTableInner({ searchQ }: { searchQ: string }) {
   const data = use(useMemo(() => fetchEntitiesCatalog(searchQ), [searchQ]));
+
+  const onExportJson = useCallback(() => {
+    if (data.ok !== true || data.items.length === 0) {
+      return;
+    }
+    downloadVisibleEntitiesJson(searchQ, data.items);
+  }, [data, searchQ]);
 
   if (data.ok === false) {
     return (
@@ -118,11 +156,32 @@ function TwinExplorerEntitiesTableInner({ searchQ }: { searchQ: string }) {
 
   const count = data.items.length;
 
+  const showExportSizeHint = count > EXPORT_SIZE_HINT_ABOVE_ROW_COUNT;
+
   return (
     <>
-      <p className="mt-0.5 px-5 pt-3 text-xs text-zinc-500">
-        {count} row{count === 1 ? "" : "s"} · <code className="text-[11px]">GET /api/supply-chain-twin/entities</code>
-      </p>
+      <div className="mt-0.5 flex flex-col gap-2 px-5 pt-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+        <p className="text-xs text-zinc-500">
+          {count} row{count === 1 ? "" : "s"} · <code className="text-[11px]">GET /api/supply-chain-twin/entities</code>
+        </p>
+        {count > 0 ? (
+          <div className="flex min-w-[200px] flex-col items-stretch gap-2 sm:items-end">
+            {showExportSizeHint ? (
+              <p className="max-w-md text-right text-xs text-amber-900">
+                Large export: JSON includes all {count} rows currently shown (catalog requests are capped at{" "}
+                {CATALOG_TABLE_PAGE_LIMIT} per page).
+              </p>
+            ) : null}
+            <button
+              type="button"
+              onClick={onExportJson}
+              className="rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-800 shadow-sm hover:bg-zinc-50"
+            >
+              Download JSON
+            </button>
+          </div>
+        ) : null}
+      </div>
       {count === 0 ? (
         <div className="px-5 py-10 text-center text-sm text-zinc-600">No entities match this view.</div>
       ) : (

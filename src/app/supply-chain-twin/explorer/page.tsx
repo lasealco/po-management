@@ -64,7 +64,9 @@ export default async function SupplyChainTwinExplorerPage({
         <p className="mt-2 max-w-2xl text-sm text-zinc-600">
           Entity rows are loaded from <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">GET /api/supply-chain-twin/entities</code>{" "}
           (same contract as the overview catalog). Filters below are placeholders except search, which sets query{" "}
-          <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">q</code>.
+          <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">q</code>. Use{" "}
+          <span className="font-medium text-zinc-700">Download JSON</span> in the entities table to export the rows currently on screen (up to 50 per
+          request; a hint appears above 25 rows).
         </p>
       </section>
 
