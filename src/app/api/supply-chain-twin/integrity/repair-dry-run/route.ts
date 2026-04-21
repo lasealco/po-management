@@ -1,7 +1,7 @@
 import { logSctwinApiError, resolveSctwinRequestId, twinApiJson } from "../../_lib/sctwin-api-log";
 import { getTwinIntegrityRepairDryRunForTenant } from "@/lib/supply-chain-twin/integrity-repair-dry-run";
 import { twinIntegrityRepairDryRunSummarySchema } from "@/lib/supply-chain-twin/schemas/twin-integrity-repair-dry-run";
-import { requireTwinApiAccess } from "@/lib/supply-chain-twin/sctwin-api-access";
+import { requireTwinMaintenanceAccess } from "@/lib/supply-chain-twin/sctwin-api-access";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +14,7 @@ const ROUTE = "GET /api/supply-chain-twin/integrity/repair-dry-run";
 export async function GET(request: Request) {
   const requestId = resolveSctwinRequestId(request);
   try {
-    const gate = await requireTwinApiAccess();
+    const gate = await requireTwinMaintenanceAccess();
     if (!gate.ok) {
       return twinApiJson({ error: gate.denied.error }, { status: gate.denied.status }, requestId);
     }

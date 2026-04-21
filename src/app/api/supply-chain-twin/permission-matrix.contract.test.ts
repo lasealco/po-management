@@ -2,11 +2,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   requireTwinApiAccessMock,
+  requireTwinMaintenanceAccessMock,
   getSupplyChainTwinReadinessSnapshotMock,
   getTwinCatalogMetricsForTenantMock,
   getTwinIntegrityRepairDryRunForTenantMock,
 } = vi.hoisted(() => ({
   requireTwinApiAccessMock: vi.fn(),
+  requireTwinMaintenanceAccessMock: vi.fn(),
   getSupplyChainTwinReadinessSnapshotMock: vi.fn(),
   getTwinCatalogMetricsForTenantMock: vi.fn(),
   getTwinIntegrityRepairDryRunForTenantMock: vi.fn(),
@@ -14,6 +16,7 @@ const {
 
 vi.mock("@/lib/supply-chain-twin/sctwin-api-access", () => ({
   requireTwinApiAccess: requireTwinApiAccessMock,
+  requireTwinMaintenanceAccess: requireTwinMaintenanceAccessMock,
 }));
 
 vi.mock("@/lib/supply-chain-twin/readiness", () => ({
@@ -202,6 +205,7 @@ describe("Supply Chain Twin permission matrix regression", () => {
 
   it.each(matrix)("returns 403 when access gate denies: $name", async ({ invoke }) => {
     requireTwinApiAccessMock.mockResolvedValue(denied);
+    requireTwinMaintenanceAccessMock.mockResolvedValue(denied);
 
     const response = await invoke();
     expect(response.status).toBe(403);
@@ -210,6 +214,7 @@ describe("Supply Chain Twin permission matrix regression", () => {
 
   it.each(matrix)("proceeds past permission gate when allowed: $name", async ({ invoke, expectAllowedStatus }) => {
     requireTwinApiAccessMock.mockResolvedValue(accessOk);
+    requireTwinMaintenanceAccessMock.mockResolvedValue(accessOk);
 
     const response = await invoke();
     expect(response.status).toBe(expectAllowedStatus);

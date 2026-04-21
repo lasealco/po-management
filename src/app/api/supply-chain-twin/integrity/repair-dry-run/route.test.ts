@@ -46,7 +46,7 @@ describe("GET /api/supply-chain-twin/integrity/repair-dry-run", () => {
     getViewerGrantSetMock.mockResolvedValue({
       tenant: { id: "t1", name: "Demo", slug: "demo-company" },
       user: { id: "u1", email: "x@y.com", name: "X" },
-      grantSet: new Set(),
+      grantSet: new Set(["org.settings\0edit"]),
     });
     resolveNavStateMock.mockResolvedValue({
       linkVisibility: { supplyChainTwin: true },
@@ -105,5 +105,27 @@ describe("GET /api/supply-chain-twin/integrity/repair-dry-run", () => {
       ],
     });
     expect(getTwinIntegrityRepairDryRunForTenantMock).toHaveBeenCalledWith("t1");
+  });
+
+  it("returns 403 when maintenance admin grant is missing", async () => {
+    getViewerGrantSetMock.mockResolvedValue({
+      tenant: { id: "t1", name: "Demo", slug: "demo-company" },
+      user: { id: "u1", email: "x@y.com", name: "X" },
+      grantSet: new Set(),
+    });
+    resolveNavStateMock.mockResolvedValue({
+      linkVisibility: { supplyChainTwin: true },
+      setupIncomplete: false,
+      poSubNavVisibility: {},
+    });
+
+    const { GET } = await import("./route");
+    const response = await GET(new Request("http://localhost/api/supply-chain-twin/integrity/repair-dry-run"));
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({
+      error: "Forbidden: Supply Chain Twin maintenance routes require org.settings edit permission.",
+    });
+    expect(getTwinIntegrityRepairDryRunForTenantMock).not.toHaveBeenCalled();
   });
 });
