@@ -2,14 +2,35 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { createContext, useContext, type ReactNode } from "react";
 
 const BASE = "/supply-chain-twin";
 
+type TwinSubNavVisibilityValue = { supplyChainTwin: boolean };
+
+const TwinSubNavVisibilityContext = createContext<TwinSubNavVisibilityValue>({
+  supplyChainTwin: false,
+});
+
+/**
+ * Wraps `/supply-chain-twin/*` so {@link TwinSubNav} can show the **Compare** tab only when twin preview is allowed
+ * for this session (same gate as `linkVisibility.supplyChainTwin`).
+ */
+export function TwinSubNavProvider(props: { supplyChainTwin: boolean; children: ReactNode }) {
+  return (
+    <TwinSubNavVisibilityContext.Provider value={{ supplyChainTwin: props.supplyChainTwin }}>
+      {props.children}
+    </TwinSubNavVisibilityContext.Provider>
+  );
+}
+
 export function TwinSubNav() {
   const pathname = usePathname() ?? "";
+  const { supplyChainTwin } = useContext(TwinSubNavVisibilityContext);
   const isOverview = pathname === BASE;
   const isExplorer = pathname.startsWith(`${BASE}/explorer`);
-  const isScenarios = pathname.startsWith(`${BASE}/scenarios`);
+  const isCompare = pathname.startsWith(`${BASE}/scenarios/compare`);
+  const isScenarios = pathname.startsWith(`${BASE}/scenarios`) && !isCompare;
 
   const tabClass = (active: boolean) =>
     `rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
@@ -30,6 +51,11 @@ export function TwinSubNav() {
       <Link href={`${BASE}/scenarios`} className={tabClass(isScenarios)}>
         Scenarios
       </Link>
+      {supplyChainTwin ? (
+        <Link href={`${BASE}/scenarios/compare`} className={tabClass(isCompare)}>
+          Compare
+        </Link>
+      ) : null}
     </nav>
   );
 }
