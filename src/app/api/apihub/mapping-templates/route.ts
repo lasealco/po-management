@@ -6,14 +6,13 @@ import {
   type ApiHubValidationIssue,
 } from "@/lib/apihub/api-error";
 import {
-  APIHUB_MAPPING_TEMPLATE_DESCRIPTION_MAX,
-  APIHUB_MAPPING_TEMPLATE_NAME_MAX,
   APIHUB_MAPPING_TEMPLATE_RULES_MAX_COUNT,
 } from "@/lib/apihub/constants";
 import type { ApiHubMappingRule } from "@/lib/apihub/mapping-engine";
 import { toApiHubMappingTemplateDto } from "@/lib/apihub/mapping-template-dto";
 import { validateApiHubMappingRulesInput } from "@/lib/apihub/mapping-engine";
 import { normalizeApiHubMappingRulesBody } from "@/lib/apihub/mapping-rules-body";
+import { collectMappingTemplateCreateMetaIssues } from "@/lib/apihub/mapping-templates-payload";
 import {
   createApiHubMappingTemplate,
   listApiHubMappingTemplates,
@@ -34,75 +33,6 @@ type PostBody = {
   description?: unknown;
   rules?: unknown;
 };
-
-function collectTemplateMetaIssues(body: PostBody): ApiHubValidationIssue[] {
-  const issues: ApiHubValidationIssue[] = [];
-
-  if (typeof body.name !== "string" || body.name.trim().length === 0) {
-    issues.push({
-      field: "name",
-      code: "REQUIRED",
-      message: "name must be a non-empty string.",
-      severity: "error",
-    });
-  } else if (body.name.trim().length > APIHUB_MAPPING_TEMPLATE_NAME_MAX) {
-    issues.push({
-      field: "name",
-      code: "MAX_LENGTH",
-      message: `name must be at most ${APIHUB_MAPPING_TEMPLATE_NAME_MAX} characters.`,
-      severity: "error",
-    });
-  }
-
-  const rawDesc = body.description;
-  if (rawDesc !== undefined && rawDesc !== null) {
-    if (typeof rawDesc !== "string") {
-      issues.push({
-        field: "description",
-        code: "INVALID_TYPE",
-        message: "description must be a string when provided.",
-        severity: "error",
-      });
-    } else if (rawDesc.length > APIHUB_MAPPING_TEMPLATE_DESCRIPTION_MAX) {
-      issues.push({
-        field: "description",
-        code: "MAX_LENGTH",
-        message: `description must be at most ${APIHUB_MAPPING_TEMPLATE_DESCRIPTION_MAX} characters.`,
-        severity: "error",
-      });
-    }
-  }
-
-  if (!Array.isArray(body.rules)) {
-    issues.push({
-      field: "rules",
-      code: "INVALID_TYPE",
-      message: "rules must be an array.",
-      severity: "error",
-    });
-    return issues;
-  }
-  if (body.rules.length === 0) {
-    issues.push({
-      field: "rules",
-      code: "REQUIRED",
-      message: "rules must contain at least one rule.",
-      severity: "error",
-    });
-    return issues;
-  }
-  if (body.rules.length > APIHUB_MAPPING_TEMPLATE_RULES_MAX_COUNT) {
-    issues.push({
-      field: "rules",
-      code: "MAX_ITEMS",
-      message: `rules must contain at most ${APIHUB_MAPPING_TEMPLATE_RULES_MAX_COUNT} rules.`,
-      severity: "error",
-    });
-    return issues;
-  }
-
-  return issues;
-}
 
 export async function GET(request: Request) {
   const requestId = resolveApiHubRequestId(request);
@@ -149,7 +79,7 @@ export async function POST(request: Request) {
     body = {};
   }
 
-  const metaIssues = collectTemplateMetaIssues(body);
+  const metaIssues = collectMappingTemplateCreateMetaIssues(body);
   const rulesArray = Array.isArray(body.rules) ? body.rules : [];
   const normalizedRules =
     rulesArray.length > 0 && rulesArray.length <= APIHUB_MAPPING_TEMPLATE_RULES_MAX_COUNT

@@ -99,3 +99,6 @@ export const APIHUB_MAPPING_TEMPLATE_DESCRIPTION_MAX = 2000;
 
 /** Max rule rows stored on a single mapping template. */
 export const APIHUB_MAPPING_TEMPLATE_RULES_MAX_COUNT = 200;
+
+/** Optional operator note stored on mapping template audit rows (PATCH/DELETE). */
+export const APIHUB_MAPPING_TEMPLATE_AUDIT_NOTE_MAX = 500;

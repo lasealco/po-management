@@ -79,6 +79,7 @@ model Tenant {
   apiHubConnectorAuditLogs ApiHubConnectorAuditLog[]
   apiHubIngestionRuns   ApiHubIngestionRun[]
   apiHubMappingTemplates ApiHubMappingTemplate[]
+  apiHubMappingTemplateAuditLogs ApiHubMappingTemplateAuditLog[]
   supplyChainTwinEntitySnapshots SupplyChainTwinEntitySnapshot[]
   supplyChainTwinEntityEdges     SupplyChainTwinEntityEdge[]
   supplyChainTwinIngestEvents    SupplyChainTwinIngestEvent[]
@@ -190,6 +191,26 @@ model ApiHubMappingTemplate {
   @@index([tenantId, createdAt])
 }
 
+/**
+ * Append-only audit for mapping templates (Slice 36). `templateId` is not a foreign key so rows
+ * remain after the template is deleted.
+ */
+model ApiHubMappingTemplateAuditLog {
+  id          String   @id @default(cuid())
+  tenantId    String
+  templateId  String
+  actorUserId String
+  action      String
+  note        String?
+  createdAt   DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actor  User   @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, templateId, createdAt])
+  @@index([tenantId, createdAt])
+}
+
 /// Tenant-scoped milestone template packs (override or extend built-in packs in code).
 model CtMilestoneTemplatePack {
   id          String   @id @default(cuid())
@@ -271,6 +292,7 @@ model User {
   apiHubConnectorAuditLogs       ApiHubConnectorAuditLog[]
   apiHubIngestionRunsRequested   ApiHubIngestionRun[]
   apiHubMappingTemplatesCreated  ApiHubMappingTemplate[] @relation("ApiHubMappingTemplateCreatedBy")
+  apiHubMappingTemplateAuditLogs ApiHubMappingTemplateAuditLog[]
   invoiceIntakesAccountingApproved InvoiceIntake[]         @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated TariffShipmentApplication[] @relation("TariffShipmentApplicationCreator")
 
