@@ -21,6 +21,12 @@ Release handoff companion: `docs/sctwin/release_checklist.md`.
 - Post-seed fast validation checklist:
   - `docs/sctwin/large_fixture_validation_checklist.md`
 
+## Retention (Dry-Run Scaffold)
+
+- Dry-run utility: `src/lib/supply-chain-twin/retention-dry-run.ts`
+- Policy/env + deferrals: `docs/sctwin/retention_policy_scaffold.md`
+- Current state is read-only reporting only (no delete/apply path in this slice).
+
 ### Seed Determinism Notes (Slice 219)
 
 - Re-running `db:seed:supply-chain-twin-demo` is idempotent:
