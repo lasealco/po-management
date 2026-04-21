@@ -100,3 +100,12 @@ export const twinRiskSignalsListResponseSchema = z.object({
   items: z.array(twinRiskSignalListItemSchema),
   nextCursor: z.string().min(1).optional(),
 });
+
+/** Success body for `GET /api/supply-chain-twin/metrics` — counts only, tenant-scoped. */
+export const twinCatalogMetricsResponseSchema = z.object({
+  entities: z.number().int().min(0),
+  edges: z.number().int().min(0),
+  events: z.number().int().min(0),
+  scenarioDrafts: z.number().int().min(0),
+  riskSignals: z.number().int().min(0),
+});
