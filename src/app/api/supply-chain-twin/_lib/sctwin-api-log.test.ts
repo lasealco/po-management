@@ -3,7 +3,9 @@ import { describe, expect, it, vi } from "vitest";
 import {
   isSafeSctwinRequestId,
   resolveSctwinRequestId,
+  SCTWIN_MODULE_REQUEST_ID_HEADER,
   SCTWIN_REQUEST_ID_HEADER,
+  twinApiJson,
 } from "./sctwin-api-log";
 
 describe("isSafeSctwinRequestId", () => {
@@ -42,5 +44,14 @@ describe("resolveSctwinRequestId", () => {
     } finally {
       uuidSpy.mockRestore();
     }
+  });
+});
+
+describe("twinApiJson", () => {
+  it("sets x-request-id and x-sctwin-request-id to the same resolved id", async () => {
+    const res = twinApiJson({ ok: true }, { status: 200 }, "gateway-req-abc12");
+    expect(res.headers.get(SCTWIN_REQUEST_ID_HEADER)).toBe("gateway-req-abc12");
+    expect(res.headers.get(SCTWIN_MODULE_REQUEST_ID_HEADER)).toBe("gateway-req-abc12");
+    await expect(res.json()).resolves.toEqual({ ok: true });
   });
 });

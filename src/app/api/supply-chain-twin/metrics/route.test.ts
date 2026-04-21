@@ -95,7 +95,9 @@ describe("GET /api/supply-chain-twin/metrics", () => {
     expect(typeof json.generatedAt).toBe("string");
     expect(Number.isNaN(Date.parse(String(json.generatedAt)))).toBe(false);
     expect(getTwinCatalogMetricsForTenantMock).toHaveBeenCalledWith("t1");
-    expect(response.headers.get("x-request-id")).toMatch(/^[0-9a-f-]{36}$/i);
+    const rid = response.headers.get("x-request-id");
+    expect(rid).toMatch(/^[0-9a-f-]{36}$/i);
+    expect(response.headers.get("x-sctwin-request-id")).toBe(rid);
   });
 
   it("echoes a safe client x-request-id on success responses", async () => {
@@ -126,6 +128,7 @@ describe("GET /api/supply-chain-twin/metrics", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("x-request-id")).toBe("gateway-req-0001");
+    expect(response.headers.get("x-sctwin-request-id")).toBe("gateway-req-0001");
   });
 
   it("returns 403 when twin visibility is off for the session", async () => {

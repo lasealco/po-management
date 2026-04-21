@@ -21,7 +21,14 @@ type SctwinApiLogBase = {
 
 const INCOMING_REQUEST_ID_HEADERS = ["x-request-id", "x-correlation-id"] as const;
 
+/** Standard correlation header (may overlap with other gateways). */
 export const SCTWIN_REQUEST_ID_HEADER = "x-request-id";
+
+/**
+ * Twin-namespaced echo of the same resolved id (Slice 64). Always equals {@link SCTWIN_REQUEST_ID_HEADER} on twin
+ * `NextResponse` bodies built via {@link twinApiJson}; use either header in DevTools when tracing preview calls.
+ */
+export const SCTWIN_MODULE_REQUEST_ID_HEADER = "x-sctwin-request-id";
 
 /**
  * Accepts only compact, non-whitespace ids suitable for log fields (no PII, no JSON-breaking characters).
@@ -51,6 +58,7 @@ export function resolveSctwinRequestId(request: Request): string {
 /** Echo the resolved id on twin API responses (success or error). */
 export function withSctwinRequestId(response: NextResponse, requestId: string): NextResponse {
   response.headers.set(SCTWIN_REQUEST_ID_HEADER, requestId);
+  response.headers.set(SCTWIN_MODULE_REQUEST_ID_HEADER, requestId);
   return response;
 }
 
