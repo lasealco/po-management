@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 
 import { AccessDenied } from "@/components/access-denied";
+import { TwinExplorerEntitiesTable } from "@/components/supply-chain-twin/twin-explorer-entities-table";
 import { TwinSubNav } from "@/components/supply-chain-twin/twin-subnav";
 import { getViewerGrantSet } from "@/lib/authz";
 import { resolveNavState } from "@/lib/nav-visibility";
-import { listForTenant } from "@/lib/supply-chain-twin/repo";
 
 export const dynamic = "force-dynamic";
 
@@ -43,8 +43,6 @@ export default async function SupplyChainTwinExplorerPage({
   const rawQ = sp.q;
   const q = typeof rawQ === "string" ? rawQ : Array.isArray(rawQ) ? rawQ[0] ?? "" : "";
 
-  const items = await listForTenant(access.tenant.id, { q });
-
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
       <TwinSubNav />
@@ -53,9 +51,9 @@ export default async function SupplyChainTwinExplorerPage({
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Twin explorer</p>
         <h1 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-900">Entity explorer</h1>
         <p className="mt-2 max-w-2xl text-sm text-zinc-600">
-          Same catalog as the overview module preview, with room for graph and timeline views later. Filters below are
-          placeholders except search, which passes <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">q</code>{" "}
-          to the list query.
+          Entity rows are loaded from <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">GET /api/supply-chain-twin/entities</code>{" "}
+          (same contract as the overview catalog). Filters below are placeholders except search, which sets query{" "}
+          <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">q</code>.
         </p>
       </section>
 
@@ -91,34 +89,7 @@ export default async function SupplyChainTwinExplorerPage({
         </form>
       </section>
 
-      <section className="mt-6 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
-        <div className="border-b border-zinc-200 px-5 py-3">
-          <h2 className="text-sm font-semibold text-zinc-900">Entities</h2>
-          <p className="mt-0.5 text-xs text-zinc-500">{items.length} row{items.length === 1 ? "" : "s"}</p>
-        </div>
-        {items.length === 0 ? (
-          <div className="px-5 py-10 text-center text-sm text-zinc-600">No entities match this view.</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[480px] text-left text-sm">
-              <thead className="bg-zinc-50 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                <tr>
-                  <th className="px-5 py-3">Kind</th>
-                  <th className="px-5 py-3">Entity key</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-200 text-zinc-800">
-                {items.map((row) => (
-                  <tr key={`${row.ref.kind}:${row.ref.id}`} className="hover:bg-zinc-50/80">
-                    <td className="px-5 py-3 font-mono text-xs text-zinc-600">{row.ref.kind}</td>
-                    <td className="px-5 py-3">{row.ref.id}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+      <TwinExplorerEntitiesTable key={q} searchQ={q} />
     </main>
   );
 }
