@@ -6,6 +6,7 @@ import {
   apiHubValidationError,
 } from "@/lib/apihub/api-error";
 import { APIHUB_INGESTION_JOB_STATUSES } from "@/lib/apihub/constants";
+import { decodeIngestionRunListCursor } from "@/lib/apihub/ingestion-run-list-cursor";
 import { toApiHubIngestionRunDto } from "@/lib/apihub/ingestion-run-dto";
 import { createApiHubIngestionRun, listApiHubIngestionRuns } from "@/lib/apihub/ingestion-runs-repo";
 import {
@@ -60,12 +61,25 @@ export async function GET(request: Request) {
     ], requestId);
   }
 
-  const rows = await listApiHubIngestionRuns({
+  const rawCursor = (url.searchParams.get("cursor") ?? "").trim();
+  let listCursor: { createdAt: Date; id: string } | null = null;
+  if (rawCursor.length > 0) {
+    const decoded = decodeIngestionRunListCursor(rawCursor);
+    if (!decoded.ok) {
+      return apiHubValidationError(400, "VALIDATION_ERROR", "Run query validation failed.", [
+        { field: "cursor", code: "INVALID_CURSOR", message: decoded.message },
+      ], requestId);
+    }
+    listCursor = decoded.cursor;
+  }
+
+  const { items, nextCursor } = await listApiHubIngestionRuns({
     tenantId: tenant.id,
     status: rawStatus.length > 0 ? rawStatus : null,
     limit: limitParsed.limit,
+    cursor: listCursor,
   });
-  return apiHubJson({ runs: rows.map(toApiHubIngestionRunDto) }, requestId);
+  return apiHubJson({ runs: items.map(toApiHubIngestionRunDto), nextCursor }, requestId);
 }
 
 export async function POST(request: Request) {

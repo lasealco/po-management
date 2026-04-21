@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 
+import { encodeIngestionRunListCursor } from "@/lib/apihub/ingestion-run-list-cursor";
 import { ApiHubRunStatus } from "./run-lifecycle";
 
 export type ApiHubIngestionRunRow = {
@@ -40,17 +41,45 @@ const RUN_SELECT = {
   updatedAt: true,
 } as const;
 
+export type ListApiHubIngestionRunsResult = {
+  items: ApiHubIngestionRunRow[];
+  /** Opaque keyset cursor for the next page, or `null` when there is no next page. */
+  nextCursor: string | null;
+};
+
 export async function listApiHubIngestionRuns(opts: {
   tenantId: string;
   status: string | null;
   limit: number;
-}): Promise<ApiHubIngestionRunRow[]> {
-  return prisma.apiHubIngestionRun.findMany({
-    where: { tenantId: opts.tenantId, ...(opts.status ? { status: opts.status } : {}) },
-    orderBy: { createdAt: "desc" },
-    take: opts.limit,
+  /** Keyset position (exclusive): rows older than this `(createdAt, id)` pair in `desc` order. */
+  cursor?: { createdAt: Date; id: string } | null;
+}): Promise<ListApiHubIngestionRunsResult> {
+  const take = opts.limit + 1;
+  const rows = await prisma.apiHubIngestionRun.findMany({
+    where: {
+      tenantId: opts.tenantId,
+      ...(opts.status ? { status: opts.status } : {}),
+      ...(opts.cursor
+        ? {
+            OR: [
+              { createdAt: { lt: opts.cursor.createdAt } },
+              { AND: [{ createdAt: opts.cursor.createdAt }, { id: { lt: opts.cursor.id } }] },
+            ],
+          }
+        : {}),
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take,
     select: RUN_SELECT,
   });
+  const hasMore = rows.length > opts.limit;
+  const items = hasMore ? rows.slice(0, opts.limit) : rows;
+  let nextCursor: string | null = null;
+  if (hasMore && items.length > 0) {
+    const tail = items[items.length - 1]!;
+    nextCursor = encodeIngestionRunListCursor(tail.createdAt, tail.id);
+  }
+  return { items, nextCursor };
 }
 
 export async function getApiHubIngestionRunById(opts: {

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { encodeIngestionRunListCursor } from "@/lib/apihub/ingestion-run-list-cursor";
 import { APIHUB_REQUEST_ID_HEADER } from "@/lib/apihub/request-id";
 
 const getDemoTenantMock = vi.fn();
@@ -87,7 +88,7 @@ describe("GET /api/apihub/ingestion-jobs", () => {
   it("lists runs with filters", async () => {
     getDemoTenantMock.mockResolvedValue({ id: "tenant-1" });
     getActorUserIdMock.mockResolvedValue("user-1");
-    listApiHubIngestionRunsMock.mockResolvedValue([{ id: "run-1" }]);
+    listApiHubIngestionRunsMock.mockResolvedValue({ items: [{ id: "run-1" }], nextCursor: null });
     toApiHubIngestionRunDtoMock.mockReturnValue({ id: "run-dto-1" });
     const { GET } = await import("./route");
     const response = await GET(
@@ -101,8 +102,85 @@ describe("GET /api/apihub/ingestion-jobs", () => {
       tenantId: "tenant-1",
       status: "queued",
       limit: 5,
+      cursor: null,
     });
-    expect(await response.json()).toEqual({ runs: [{ id: "run-dto-1" }] });
+    expect(await response.json()).toEqual({ runs: [{ id: "run-dto-1" }], nextCursor: null });
+  });
+
+  it("returns nextCursor from the list repo result", async () => {
+    getDemoTenantMock.mockResolvedValue({ id: "tenant-1" });
+    getActorUserIdMock.mockResolvedValue("user-1");
+    listApiHubIngestionRunsMock.mockResolvedValue({
+      items: [{ id: "run-1" }],
+      nextCursor: "opaque-next",
+    });
+    toApiHubIngestionRunDtoMock.mockReturnValue({ id: "run-dto-1" });
+    const { GET } = await import("./route");
+    const response = await GET(
+      new Request("http://localhost/api/apihub/ingestion-jobs?limit=2", {
+        headers: { [APIHUB_REQUEST_ID_HEADER]: "ingest-list-cursor-out" },
+      }),
+    );
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { runs: unknown[]; nextCursor: string | null };
+    expect(body.nextCursor).toBe("opaque-next");
+  });
+
+  it("returns 400 for invalid cursor", async () => {
+    getDemoTenantMock.mockResolvedValue({ id: "tenant-1" });
+    getActorUserIdMock.mockResolvedValue("user-1");
+    const { GET } = await import("./route");
+    const response = await GET(
+      new Request("http://localhost/api/apihub/ingestion-jobs?cursor=not-valid", {
+        headers: { [APIHUB_REQUEST_ID_HEADER]: "ingest-cursor-bad" },
+      }),
+    );
+    expect(response.status).toBe(400);
+    expect(listApiHubIngestionRunsMock).not.toHaveBeenCalled();
+    const body = (await response.json()) as {
+      error: { details?: { issues: { field: string; code: string }[] } };
+    };
+    expect(body.error.details?.issues?.[0]?.field).toBe("cursor");
+    expect(body.error.details?.issues?.[0]?.code).toBe("INVALID_CURSOR");
+  });
+
+  it("forwards decoded cursor to list", async () => {
+    getDemoTenantMock.mockResolvedValue({ id: "tenant-1" });
+    getActorUserIdMock.mockResolvedValue("user-1");
+    listApiHubIngestionRunsMock.mockResolvedValue({ items: [], nextCursor: null });
+    const cursor = encodeIngestionRunListCursor(new Date("2026-04-22T08:00:00.000Z"), "clcursor1234567890abcd");
+    const { GET } = await import("./route");
+    const response = await GET(
+      new Request(`http://localhost/api/apihub/ingestion-jobs?cursor=${encodeURIComponent(cursor)}`, {
+        headers: { [APIHUB_REQUEST_ID_HEADER]: "ingest-cursor-ok" },
+      }),
+    );
+    expect(response.status).toBe(200);
+    expect(listApiHubIngestionRunsMock).toHaveBeenCalledTimes(1);
+    const listArg = listApiHubIngestionRunsMock.mock.calls[0]![0];
+    expect(listArg.tenantId).toBe("tenant-1");
+    expect(listArg.status).toBeNull();
+    expect(listArg.limit).toBe(20);
+    expect(listArg.cursor?.id).toBe("clcursor1234567890abcd");
+    expect(listArg.cursor?.createdAt.toISOString()).toBe("2026-04-22T08:00:00.000Z");
+  });
+
+  it("combines status filter with cursor", async () => {
+    getDemoTenantMock.mockResolvedValue({ id: "tenant-1" });
+    getActorUserIdMock.mockResolvedValue("user-1");
+    listApiHubIngestionRunsMock.mockResolvedValue({ items: [], nextCursor: null });
+    const cursor = encodeIngestionRunListCursor(new Date("2026-04-22T09:00:00.000Z"), "clcursor2234567890abcd");
+    const { GET } = await import("./route");
+    const response = await GET(
+      new Request(
+        `http://localhost/api/apihub/ingestion-jobs?status=queued&cursor=${encodeURIComponent(cursor)}`,
+        { headers: { [APIHUB_REQUEST_ID_HEADER]: "ingest-cursor-status" } },
+      ),
+    );
+    expect(response.status).toBe(200);
+    const listArg = listApiHubIngestionRunsMock.mock.calls[0]![0];
+    expect(listArg.status).toBe("queued");
+    expect(listArg.cursor?.id).toBe("clcursor2234567890abcd");
   });
 });
 
