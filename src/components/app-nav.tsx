@@ -66,6 +66,9 @@ function TopNavLinkLabel({ item }: { item: Exclude<TopNavItem, { kind: "ratesAud
   if (item.kind === "po") return "Purchase";
   if (item.key === "controlTower") return "Tower";
   if (item.key === "salesOrders") return "Sales";
+  if (item.key === "executive") return "Exec";
+  if (item.key === "reports") return "Reports";
+  if (item.key === "apihub") return "API";
   return item.label;
 }
 
