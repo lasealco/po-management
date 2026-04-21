@@ -15,6 +15,9 @@ export function ApihubHeader() {
           <Link href="/apihub#ingestion-ops" className="font-medium text-zinc-600 hover:text-zinc-900">
             Ingestion runs
           </Link>
+          <Link href="/apihub#ingestion-alerts" className="font-medium text-zinc-600 hover:text-zinc-900">
+            Alerts
+          </Link>
           <Link href="/apihub#apply-conflicts" className="font-medium text-zinc-600 hover:text-zinc-900">
             Apply conflicts
           </Link>
