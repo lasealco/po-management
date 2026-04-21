@@ -10,6 +10,7 @@ vi.mock("@/lib/prisma", () => ({
   prisma: prismaMock,
 }));
 
+import { TWIN_HEALTH_INDEX_STUB } from "@/lib/supply-chain-twin/kpi-stub";
 import {
   clearSupplyChainTwinReadinessCacheForTests,
   getSupplyChainTwinReadinessSnapshot,
@@ -30,7 +31,7 @@ describe("getSupplyChainTwinReadinessSnapshot", () => {
 
     const out = await getSupplyChainTwinReadinessSnapshot();
 
-    expect(out).toEqual({ ok: true, reasons: [] });
+    expect(out).toEqual({ ok: true, reasons: [], healthIndex: TWIN_HEALTH_INDEX_STUB });
   });
 
   it("returns not ok with a reason per missing table", async () => {
@@ -39,6 +40,7 @@ describe("getSupplyChainTwinReadinessSnapshot", () => {
     const out = await getSupplyChainTwinReadinessSnapshot();
 
     expect(out.ok).toBe(false);
+    expect(out.healthIndex).toEqual(TWIN_HEALTH_INDEX_STUB);
     expect(out.reasons).toHaveLength(2);
     expect(out.reasons.some((r) => r.includes("SupplyChainTwinEntityEdge"))).toBe(true);
     expect(out.reasons.some((r) => r.includes("SupplyChainTwinIngestEvent"))).toBe(true);
@@ -51,6 +53,7 @@ describe("getSupplyChainTwinReadinessSnapshot", () => {
     const out = await getSupplyChainTwinReadinessSnapshot();
 
     expect(out.ok).toBe(false);
+    expect(out.healthIndex).toEqual(TWIN_HEALTH_INDEX_STUB);
     expect(out.reasons.length).toBeGreaterThanOrEqual(1);
     expect(out.reasons[0]).toMatch(/Could not verify/i);
   });

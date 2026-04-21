@@ -1,12 +1,15 @@
 import { prisma } from "@/lib/prisma";
 
+import { TWIN_HEALTH_INDEX_STUB, type TwinHealthIndexStub } from "@/lib/supply-chain-twin/kpi-stub";
+
 /**
  * Environment / dependency readiness for the Supply Chain Twin module.
- * Keep the JSON shape stable for clients (`ok`, `reasons` only — operator-safe strings, no PII).
+ * `reasons` are operator-safe strings only (no PII). `healthIndex` is a **non-production** stub; see `kpi-stub.ts`.
  */
 export type SupplyChainTwinReadiness = {
   ok: boolean;
   reasons: string[];
+  healthIndex: TwinHealthIndexStub;
 };
 
 const REQUIRED_PUBLIC_TABLES = [
@@ -44,15 +47,17 @@ async function computeSupplyChainTwinReadiness(): Promise<SupplyChainTwinReadine
           (name) =>
             `Supply Chain Twin requires Postgres table "${name}". Run \`npm run db:migrate\` (or \`npx prisma migrate deploy\`) on this database.`,
         ),
+        healthIndex: TWIN_HEALTH_INDEX_STUB,
       };
     }
-    return { ok: true, reasons: [] };
+    return { ok: true, reasons: [], healthIndex: TWIN_HEALTH_INDEX_STUB };
   } catch {
     return {
       ok: false,
       reasons: [
         "Could not verify Supply Chain Twin database tables. Confirm Postgres connectivity and that migrations have been applied.",
       ],
+      healthIndex: TWIN_HEALTH_INDEX_STUB,
     };
   }
 }

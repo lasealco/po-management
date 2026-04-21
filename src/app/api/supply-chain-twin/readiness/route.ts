@@ -4,13 +4,14 @@ import { logSctwinApiError } from "../_lib/sctwin-api-log";
 import { getViewerGrantSet } from "@/lib/authz";
 import { resolveNavState } from "@/lib/nav-visibility";
 import { getSupplyChainTwinReadinessSnapshot } from "@/lib/supply-chain-twin/readiness";
+import { twinReadinessResponseSchema } from "@/lib/supply-chain-twin/schemas/twin-readiness-response";
 
 export const dynamic = "force-dynamic";
 
 const ROUTE = "GET /api/supply-chain-twin/readiness";
 
 /**
- * JSON contract: `{ ok, reasons }`. Same visibility as the Twin preview (cross-module demo grants).
+ * JSON contract: `{ ok, reasons, healthIndex }`. Same visibility as the Twin preview (cross-module demo grants).
  * Reasons are operator-facing strings only (no PII). `?refresh=1` bypasses the short readiness cache.
  */
 export async function GET(request: Request) {
@@ -42,7 +43,7 @@ export async function GET(request: Request) {
       url.searchParams.get("refresh") === "1" || url.searchParams.get("refresh") === "true";
 
     const readiness = await getSupplyChainTwinReadinessSnapshot({ bypassCache });
-    return NextResponse.json(readiness);
+    return NextResponse.json(twinReadinessResponseSchema.parse(readiness));
   } catch (caught) {
     const name = caught instanceof Error ? caught.name : "non_error_throw";
     logSctwinApiError({

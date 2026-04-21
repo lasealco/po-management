@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { TWIN_HEALTH_INDEX_STUB } from "@/lib/supply-chain-twin/kpi-stub";
+
 const getViewerGrantSetMock = vi.fn();
 const resolveNavStateMock = vi.fn();
 const getSupplyChainTwinReadinessSnapshotMock = vi.fn();
@@ -69,6 +71,7 @@ describe("Supply Chain Twin readiness route contract", () => {
     getSupplyChainTwinReadinessSnapshotMock.mockResolvedValue({
       ok: false,
       reasons: ["Twin datastore not migrated"],
+      healthIndex: TWIN_HEALTH_INDEX_STUB,
     });
 
     const { GET } = await import("./route");
@@ -78,6 +81,7 @@ describe("Supply Chain Twin readiness route contract", () => {
     expect(await response.json()).toEqual({
       ok: false,
       reasons: ["Twin datastore not migrated"],
+      healthIndex: TWIN_HEALTH_INDEX_STUB,
     });
   });
 
@@ -92,7 +96,11 @@ describe("Supply Chain Twin readiness route contract", () => {
       setupIncomplete: false,
       poSubNavVisibility: {},
     });
-    getSupplyChainTwinReadinessSnapshotMock.mockResolvedValue({ ok: true, reasons: [] });
+    getSupplyChainTwinReadinessSnapshotMock.mockResolvedValue({
+      ok: true,
+      reasons: [],
+      healthIndex: TWIN_HEALTH_INDEX_STUB,
+    });
 
     const { GET } = await import("./route");
     await GET(new Request("http://localhost/api/supply-chain-twin/readiness?refresh=true"));
