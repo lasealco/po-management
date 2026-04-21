@@ -27,7 +27,7 @@ const digestItem: SubNavItem = { href: "/control-tower/digest", label: "Digest" 
 
 /** Cross-link: SKU → PO lines, in-transit map, warehouse stock (same grants as product trace page). */
 const productTraceItem = {
-  href: "/product-trace",
+  href: "/control-tower/product-trace",
   label: "Product Trace",
   ariaLabel: "Product trace",
 } as const;
@@ -49,10 +49,17 @@ export function ControlTowerSubNav({ includeDigestNav = false }: { includeDigest
   const secondaryItems = secondaryBase;
 
   function isItemActive(href: string): boolean {
+    const productTracePaths =
+      pathname === "/product-trace" ||
+      pathname.startsWith("/product-trace/") ||
+      pathname === "/control-tower/product-trace" ||
+      pathname.startsWith("/control-tower/product-trace/") ||
+      pathname === "/sales-orders/product-trace" ||
+      pathname.startsWith("/sales-orders/product-trace/");
     return href === REPORTING_HUB_CONTROL_TOWER_HREF
       ? pathname === "/reporting" && searchParams.get("focus") === "control-tower"
-      : href === "/product-trace"
-        ? pathname === "/product-trace" || pathname.startsWith("/product-trace/")
+      : href === productTraceItem.href
+        ? productTracePaths
         : href === "/control-tower"
           ? pathname === "/control-tower"
           : href === "/control-tower/shipments/new"

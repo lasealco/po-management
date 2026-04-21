@@ -9,6 +9,14 @@ type ChatEntry = { role: "user" | "assistant"; text: string };
 type HelpAction = { label: string; href: string };
 
 function contextFromPath(pathname: string): { title: string; hint: string } {
+  if (
+    pathname === "/product-trace" ||
+    pathname.startsWith("/product-trace/") ||
+    pathname.startsWith("/control-tower/product-trace") ||
+    pathname.startsWith("/sales-orders/product-trace")
+  ) {
+    return { title: "Product trace", hint: "SKU and shipment lineage — ask how to search or drill in." };
+  }
   if (pathname.startsWith("/control-tower")) {
     return {
       title: "Control Tower",
@@ -36,8 +44,11 @@ function contextFromPath(pathname: string): { title: string; hint: string } {
   if (pathname.startsWith("/reporting") || pathname.startsWith("/reports")) {
     return { title: "Reporting", hint: "Cross-module reporting hub — Control Tower has its own reports too." };
   }
-  if (pathname.startsWith("/product-trace")) {
-    return { title: "Product trace", hint: "SKU and shipment lineage — ask how to search or drill in." };
+  if (pathname.startsWith("/sales-orders")) {
+    return {
+      title: "Sales orders",
+      hint: "Customer demand and fulfillment handoff — list, detail, and product trace from here.",
+    };
   }
   if (pathname.startsWith("/supply-chain-twin")) {
     return {
@@ -52,6 +63,18 @@ function contextFromPath(pathname: string): { title: string; hint: string } {
 }
 
 function quickPromptsForPath(pathname: string): string[] {
+  if (
+    pathname === "/product-trace" ||
+    pathname.startsWith("/product-trace/") ||
+    pathname.startsWith("/control-tower/product-trace") ||
+    pathname.startsWith("/sales-orders/product-trace")
+  ) {
+    return [
+      "How do I search by SKU?",
+      "What does product trace include for a customer?",
+      "Open the sales orders list",
+    ];
+  }
   if (pathname.startsWith("/control-tower")) {
     return [
       "Open the shipment workbench",
@@ -69,6 +92,13 @@ function quickPromptsForPath(pathname: string): string[] {
   }
   if (pathname.startsWith("/reporting")) {
     return ["Open Control Tower in the reporting hub", "What can I do on this page?"];
+  }
+  if (pathname.startsWith("/sales-orders")) {
+    return [
+      "Show open sales orders",
+      "How do I create a new sales order?",
+      "Open product trace for a SKU",
+    ];
   }
   if (pathname.startsWith("/supply-chain-twin")) {
     return [

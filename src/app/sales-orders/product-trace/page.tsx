@@ -2,7 +2,7 @@ import { ProductTraceWorkspace } from "@/components/product-trace/product-trace-
 
 export const dynamic = "force-dynamic";
 
-export default function ProductTracePage({
+export default function SalesOrdersProductTracePage({
   searchParams,
 }: {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;

@@ -52,7 +52,7 @@ export function ControlTowerSearchClient() {
   const productTraceHref = useMemo(() => {
     const code = suggested?.productTraceQ?.trim();
     if (!code) return null;
-    return `/product-trace?q=${encodeURIComponent(code)}`;
+    return `/control-tower/product-trace?q=${encodeURIComponent(code)}`;
   }, [suggested?.productTraceQ]);
 
   const run = useCallback(async () => {

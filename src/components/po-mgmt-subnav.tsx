@@ -29,7 +29,10 @@ export function PoMgmtSubNav({ visibility }: { visibility: PoMgmtSubNavVisibilit
             href === "/orders"
               ? pathname === "/orders" || pathname.startsWith("/orders/")
               : href === "/product-trace"
-                ? pathname === "/product-trace" || pathname.startsWith("/product-trace/")
+                ? pathname === "/product-trace" ||
+                  pathname.startsWith("/product-trace/") ||
+                  pathname.startsWith("/control-tower/product-trace") ||
+                  pathname.startsWith("/sales-orders/product-trace")
                 : pathname === href || pathname.startsWith(`${href}/`);
           return (
             <Link
