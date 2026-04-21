@@ -135,6 +135,7 @@ export async function createApiHubIngestionRun(opts: {
       requestedByUserId: opts.actorUserId,
       idempotencyKey: opts.idempotencyKey,
       status: "queued",
+      triggerKind: "api",
     },
     select: RUN_SELECT,
   });

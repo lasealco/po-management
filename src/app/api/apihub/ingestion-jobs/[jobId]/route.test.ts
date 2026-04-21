@@ -22,6 +22,83 @@ vi.mock("@/lib/apihub/run-lifecycle", () => ({
   isValidRunStatus: isValidRunStatusMock,
 }));
 
+describe("GET /api/apihub/ingestion-jobs/:jobId", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getDemoTenantMock.mockResolvedValue({ id: "tenant-1" });
+    getActorUserIdMock.mockResolvedValue("user-1");
+  });
+
+  it("returns 404 when run is missing", async () => {
+    getApiHubIngestionRunByIdMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const response = await GET(
+      new Request("http://localhost/api/apihub/ingestion-jobs/missing", {
+        headers: { [APIHUB_REQUEST_ID_HEADER]: "job-get-404" },
+      }),
+      { params: Promise.resolve({ jobId: "missing" }) },
+    );
+    expect(response.status).toBe(404);
+  });
+
+  it("returns run with derived observability timings and retry counters", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-04-22T10:00:50.000Z"));
+
+    // Current run is a retry of r1 (depth 1); r1 has no parent.
+    getApiHubIngestionRunByIdMock.mockImplementation(async ({ runId }: { runId: string }) => {
+      if (runId === "r2") {
+        return {
+          id: "r2",
+          attempt: 2,
+          maxAttempts: 3,
+          enqueuedAt: new Date("2026-04-22T10:00:00.000Z"),
+          startedAt: new Date("2026-04-22T10:00:10.000Z"),
+          finishedAt: new Date("2026-04-22T10:00:40.000Z"),
+          retryOfRunId: "r1",
+        };
+      }
+      if (runId === "r1") {
+        return {
+          id: "r1",
+          attempt: 1,
+          maxAttempts: 3,
+          enqueuedAt: new Date("2026-04-22T09:59:00.000Z"),
+          startedAt: null,
+          finishedAt: null,
+          retryOfRunId: null,
+        };
+      }
+      return null;
+    });
+    toApiHubIngestionRunDtoMock.mockReturnValue({ id: "dto-r2" });
+
+    const { GET } = await import("./route");
+    const response = await GET(
+      new Request("http://localhost/api/apihub/ingestion-jobs/r2", {
+        headers: { [APIHUB_REQUEST_ID_HEADER]: "job-get-metrics" },
+      }),
+      { params: Promise.resolve({ jobId: "r2" }) },
+    );
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      run: { id: string };
+      observability: {
+        timings: { queueWaitMs: number | null; runMs: number | null; totalMs: number | null; ageMs: number };
+        retries: { retryDepth: number; rootRunId: string; remainingAttempts: number };
+      };
+    };
+    expect(body.run.id).toBe("dto-r2");
+    expect(body.observability.retries).toEqual({ retryDepth: 1, rootRunId: "r1", remainingAttempts: 1 });
+    expect(body.observability.timings.queueWaitMs).toBe(10_000);
+    expect(body.observability.timings.runMs).toBe(30_000);
+    expect(body.observability.timings.totalMs).toBe(40_000);
+    expect(body.observability.timings.ageMs).toBe(40_000);
+
+    vi.useRealTimers();
+  });
+});
+
 describe("PATCH /api/apihub/ingestion-jobs/:jobId", () => {
   beforeEach(() => {
     vi.clearAllMocks();

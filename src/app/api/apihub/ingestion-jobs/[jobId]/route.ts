@@ -8,6 +8,7 @@ import {
 import { APIHUB_INGESTION_JOB_STATUSES } from "@/lib/apihub/constants";
 import { toApiHubIngestionRunDto } from "@/lib/apihub/ingestion-run-dto";
 import { getApiHubIngestionRunById, transitionApiHubIngestionRun } from "@/lib/apihub/ingestion-runs-repo";
+import { buildApiHubRunObservability } from "@/lib/apihub/run-observability";
 import { resolveApiHubRequestId } from "@/lib/apihub/request-id";
 import { ApiHubRunStatus, canTransitionRunStatus, isValidRunStatus } from "@/lib/apihub/run-lifecycle";
 import { getActorUserId } from "@/lib/authz";
@@ -37,7 +38,35 @@ export async function GET(request: Request, context: { params: Promise<{ jobId: 
   if (!run) {
     return apiHubError(404, "RUN_NOT_FOUND", "Run not found.", requestId);
   }
-  return apiHubJson({ run: toApiHubIngestionRunDto(run) }, requestId);
+  // Retry chain context (bounded walk: maxAttempts is small).
+  let retryDepth = 0;
+  let rootRunId = run.id;
+  let cursor = run.retryOfRunId;
+  while (cursor && retryDepth < 25) {
+    const parent = await getApiHubIngestionRunById({ tenantId: tenant.id, runId: cursor });
+    if (!parent) {
+      break;
+    }
+    retryDepth += 1;
+    rootRunId = parent.id;
+    cursor = parent.retryOfRunId;
+  }
+
+  const observability = buildApiHubRunObservability({
+    row: {
+      id: run.id,
+      attempt: run.attempt,
+      maxAttempts: run.maxAttempts,
+      enqueuedAt: run.enqueuedAt,
+      startedAt: run.startedAt,
+      finishedAt: run.finishedAt,
+    },
+    retryDepth,
+    rootRunId,
+    now: new Date(),
+  });
+
+  return apiHubJson({ run: toApiHubIngestionRunDto(run), observability }, requestId);
 }
 
 export async function PATCH(request: Request, context: { params: Promise<{ jobId: string }> }) {
