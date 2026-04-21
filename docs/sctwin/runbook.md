@@ -18,6 +18,8 @@ Release handoff companion: `docs/sctwin/release_checklist.md`.
   - `USE_DOTENV_LOCAL=1 npm run db:seed:supply-chain-twin-demo`
 - Optional large-tenant Twin perf fixture (opt-in, 1k+ entities):
   - `USE_DOTENV_LOCAL=1 npm run db:seed:supply-chain-twin-large-fixture`
+- Post-seed fast validation checklist:
+  - `docs/sctwin/large_fixture_validation_checklist.md`
 
 ### Seed Determinism Notes (Slice 219)
 
