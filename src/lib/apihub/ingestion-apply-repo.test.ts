@@ -41,6 +41,11 @@ const fullRow = {
   updatedAt: new Date("2026-04-22T10:00:11.000Z"),
 };
 
+const fullRowEligible = {
+  ...fullRow,
+  appliedAt: null,
+};
+
 describe("applyApiHubIngestionRun", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -66,6 +71,26 @@ describe("applyApiHubIngestionRun", () => {
     });
     const out = await applyApiHubIngestionRun({ tenantId: "t1", runId: "run-1" });
     expect(out).toEqual({ kind: "blocked", reason: "connector_not_found" });
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("dry-run returns preview when connector is missing (no transaction)", async () => {
+    h.anchorFind
+      .mockResolvedValueOnce({
+        id: "run-1",
+        connectorId: "c1",
+        status: "succeeded",
+        appliedAt: null,
+        connector: null,
+      })
+      .mockResolvedValueOnce(fullRowEligible);
+    const out = await applyApiHubIngestionRun({ tenantId: "t1", runId: "run-1", dryRun: true });
+    expect(out).toEqual({
+      kind: "dry_run",
+      wouldApply: false,
+      run: fullRowEligible,
+      gate: { type: "blocked", reason: "connector_not_found" },
+    });
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
@@ -127,6 +152,21 @@ describe("applyApiHubIngestionRun", () => {
         where: { tenantId: "t1", id: "run-1", status: "succeeded", appliedAt: null },
       }),
     );
+  });
+
+  it("dry-run would apply loads full row and skips transaction", async () => {
+    h.anchorFind
+      .mockResolvedValueOnce({
+        id: "run-1",
+        connectorId: null,
+        status: "succeeded",
+        appliedAt: null,
+        connector: null,
+      })
+      .mockResolvedValueOnce(fullRowEligible);
+    const out = await applyApiHubIngestionRun({ tenantId: "t1", runId: "run-1", dryRun: true });
+    expect(out).toEqual({ kind: "dry_run", wouldApply: true, run: fullRowEligible });
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
   it("returns not_succeeded when status changes before conditional update", async () => {

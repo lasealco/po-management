@@ -12,6 +12,23 @@ import { getDemoTenant } from "@/lib/demo-tenant";
 
 export const dynamic = "force-dynamic";
 
+async function resolveApplyDryRun(request: Request): Promise<boolean> {
+  const url = new URL(request.url);
+  const q = url.searchParams.get("dryRun")?.trim().toLowerCase();
+  if (q === "1" || q === "true" || q === "yes") {
+    return true;
+  }
+  if (!request.headers.get("content-type")?.toLowerCase().includes("application/json")) {
+    return false;
+  }
+  try {
+    const body = (await request.clone().json()) as { dryRun?: unknown };
+    return body.dryRun === true;
+  } catch {
+    return false;
+  }
+}
+
 export async function POST(request: Request, context: { params: Promise<{ jobId: string }> }) {
   const requestId = resolveApiHubRequestId(request);
   const tenant = await getDemoTenant();
@@ -24,9 +41,27 @@ export async function POST(request: Request, context: { params: Promise<{ jobId:
   }
 
   const { jobId } = await context.params;
-  const outcome = await applyApiHubIngestionRun({ tenantId: tenant.id, runId: jobId });
+  const dryRun = await resolveApplyDryRun(request);
+  const outcome = await applyApiHubIngestionRun({ tenantId: tenant.id, runId: jobId, dryRun });
   if (!outcome) {
     return apiHubError(404, "RUN_NOT_FOUND", "Run not found.", requestId);
+  }
+
+  if (outcome.kind === "dry_run") {
+    const writeSummary = {
+      wouldApply: outcome.wouldApply,
+      wouldSetAppliedAt: outcome.wouldApply,
+      ...(outcome.gate ? { gate: outcome.gate } : {}),
+    };
+    return apiHubJson(
+      {
+        dryRun: true,
+        writeSummary,
+        run: toApiHubIngestionRunDto(outcome.run),
+      },
+      requestId,
+      200,
+    );
   }
 
   if (outcome.kind === "not_succeeded") {

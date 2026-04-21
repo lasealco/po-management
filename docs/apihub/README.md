@@ -55,7 +55,7 @@ All mapping routes below require the **demo tenant** and an **active demo actor*
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| `POST` | `/api/apihub/ingestion-jobs/:jobId/apply` | Marks apply outcome for a **succeeded** run (conflict codes for not succeeded / already applied / blocked — see repo tests and `ingestion-apply-repo`). |
+| `POST` | `/api/apihub/ingestion-jobs/:jobId/apply` | Marks apply outcome for a **succeeded** run (409 conflict codes for not succeeded / already applied / blocked). **`dryRun`:** query `?dryRun=1` (or JSON body `{ "dryRun": true }`) returns **200** with `{ dryRun, writeSummary, run }` only (no `appliedAt` write). |
 
 Validation errors use the shared **`VALIDATION_ERROR`** envelope with `details.issues` and `details.summary` (including `bySeverity` where applicable).
 

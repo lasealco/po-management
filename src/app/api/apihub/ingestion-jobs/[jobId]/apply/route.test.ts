@@ -50,6 +50,71 @@ describe("POST /api/apihub/ingestion-jobs/:jobId/apply", () => {
       applied: true,
       run: { id: "dto-1", appliedAt: "2026-04-22T10:00:11.000Z" },
     });
+    expect(applyApiHubIngestionRunMock).toHaveBeenCalledWith({
+      tenantId: "tenant-1",
+      runId: "run-1",
+      dryRun: false,
+    });
+  });
+
+  it("returns 200 dry-run write summary when dryRun=1", async () => {
+    applyApiHubIngestionRunMock.mockResolvedValue({
+      kind: "dry_run",
+      wouldApply: true,
+      run: { id: "run-1" },
+    });
+    toApiHubIngestionRunDtoMock.mockReturnValue({ id: "dto-1", appliedAt: null });
+    const { POST } = await import("./route");
+    const response = await POST(
+      new Request("http://localhost/api/apihub/ingestion-jobs/run-1/apply?dryRun=1", {
+        method: "POST",
+        headers: { [APIHUB_REQUEST_ID_HEADER]: "apply-dry" },
+      }),
+      { params: Promise.resolve({ jobId: "run-1" }) },
+    );
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      dryRun: true,
+      writeSummary: { wouldApply: true, wouldSetAppliedAt: true },
+      run: { id: "dto-1", appliedAt: null },
+    });
+    expect(applyApiHubIngestionRunMock).toHaveBeenCalledWith({
+      tenantId: "tenant-1",
+      runId: "run-1",
+      dryRun: true,
+    });
+  });
+
+  it("returns 200 dry-run with gate when apply would be blocked", async () => {
+    applyApiHubIngestionRunMock.mockResolvedValue({
+      kind: "dry_run",
+      wouldApply: false,
+      run: { id: "run-1" },
+      gate: { type: "not_succeeded", status: "queued" },
+    });
+    toApiHubIngestionRunDtoMock.mockReturnValue({ id: "dto-1", status: "queued" });
+    const { POST } = await import("./route");
+    const response = await POST(
+      new Request("http://localhost/api/apihub/ingestion-jobs/run-1/apply", {
+        method: "POST",
+        headers: {
+          [APIHUB_REQUEST_ID_HEADER]: "apply-dry-gate",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ dryRun: true }),
+      }),
+      { params: Promise.resolve({ jobId: "run-1" }) },
+    );
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      dryRun: true,
+      writeSummary: {
+        wouldApply: false,
+        wouldSetAppliedAt: false,
+        gate: { type: "not_succeeded", status: "queued" },
+      },
+      run: { id: "dto-1", status: "queued" },
+    });
   });
 
   it("returns 409 APPLY_RUN_NOT_SUCCEEDED", async () => {
