@@ -188,6 +188,53 @@ describe("GET /api/supply-chain-twin/events/export", () => {
     expect(text).toContain('"{""msg"":""hello,world""}"');
   });
 
+  it("redacts sensitive payload fields in export output", async () => {
+    getViewerGrantSetMock.mockResolvedValue({
+      tenant: { id: "t1", name: "Demo", slug: "demo-company" },
+      user: { id: "u1", email: "x@y.com", name: "X" },
+      grantSet: new Set(),
+    });
+    resolveNavStateMock.mockResolvedValue({
+      linkVisibility: { supplyChainTwin: true },
+      setupIncomplete: false,
+      poSubNavVisibility: {},
+    });
+    vi.mocked(prismaMock.supplyChainTwinIngestEvent.findMany).mockResolvedValue([
+      {
+        id: "e1",
+        type: "risk_signal",
+        createdAt: new Date("2026-01-01T00:00:00.000Z"),
+        payloadJson: {
+          token: "secret-value",
+          nested: { apiKey: "abc", safe: "ok" },
+        },
+      },
+    ]);
+
+    const { GET } = await import("./route");
+    const jsonResponse = await GET(new Request("http://localhost/api/supply-chain-twin/events/export?format=json"));
+    expect(jsonResponse.status).toBe(200);
+    expect(await jsonResponse.json()).toEqual({
+      events: [
+        {
+          id: "e1",
+          type: "risk_signal",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          payload: {
+            token: "[REDACTED]",
+            nested: { apiKey: "[REDACTED]", safe: "ok" },
+          },
+        },
+      ],
+    });
+
+    const csvResponse = await GET(new Request("http://localhost/api/supply-chain-twin/events/export?format=csv"));
+    expect(csvResponse.status).toBe(200);
+    const csv = await csvResponse.text();
+    expect(csv).toContain('"{""token"":""[REDACTED]"",""nested"":{""apiKey"":""[REDACTED]"",""safe"":""ok""}}"');
+    expect(csv).not.toContain("secret-value");
+  });
+
   it("returns 400 when export row cap is exceeded", async () => {
     getViewerGrantSetMock.mockResolvedValue({
       tenant: { id: "t1", name: "Demo", slug: "demo-company" },

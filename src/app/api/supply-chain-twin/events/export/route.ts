@@ -5,6 +5,7 @@ import { logSctwinApiError, logSctwinApiWarn, resolveSctwinRequestId, withSctwin
 import { prisma } from "@/lib/prisma";
 import { TWIN_API_ERROR_CODES } from "@/lib/supply-chain-twin/error-codes";
 import { runTwinExportJobWithRetry } from "@/lib/supply-chain-twin/events-export-job";
+import { redactTwinSensitivePayload } from "@/lib/supply-chain-twin/redact-sensitive-payload";
 import { TWIN_EVENTS_EXPORT_MAX_ROWS } from "@/lib/supply-chain-twin/request-budgets";
 import { requireTwinApiAccess } from "@/lib/supply-chain-twin/sctwin-api-access";
 import { parseTwinEventsQuery, twinEventsTypePrismaFilter } from "@/lib/supply-chain-twin/schemas/twin-events-query";
@@ -124,7 +125,7 @@ export async function GET(request: Request) {
             id: row.id,
             type: row.type,
             createdAt: row.createdAt.toISOString(),
-            ...(includePayload && "payloadJson" in row ? { payload: row.payloadJson } : {}),
+            ...(includePayload && "payloadJson" in row ? { payload: redactTwinSensitivePayload(row.payloadJson) } : {}),
           })),
         }),
         requestId,
@@ -139,7 +140,7 @@ export async function GET(request: Request) {
       ...rows.map((row) => {
         const base = [csvEscape(row.id), csvEscape(row.type), csvEscape(row.createdAt.toISOString())];
         if (includePayload && "payloadJson" in row) {
-          base.push(csvEscape(JSON.stringify(row.payloadJson)));
+          base.push(csvEscape(JSON.stringify(redactTwinSensitivePayload(row.payloadJson))));
         }
         return base.join(",");
       }),
