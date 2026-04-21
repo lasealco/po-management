@@ -66,6 +66,45 @@ async function fetchEntitiesCatalog(searchQ: string): Promise<CatalogResult> {
   }
 }
 
+const SKELETON_ROW_COUNT = 8;
+
+function TwinExplorerEntitiesTableSkeleton() {
+  return (
+    <div role="status" aria-live="polite" aria-busy="true">
+      <p className="sr-only">Loading entity catalog…</p>
+      <p className="mt-0.5 px-5 pt-3 text-xs text-zinc-500" aria-hidden>
+        <span className="inline-block h-3.5 w-36 max-w-[60%] animate-pulse rounded bg-zinc-200" />
+      </p>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[520px] text-left text-sm" aria-hidden>
+          <thead className="bg-zinc-50 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+            <tr>
+              <th className="px-5 py-3">Kind</th>
+              <th className="px-5 py-3">Entity key</th>
+              <th className="px-5 py-3">Open</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-zinc-200">
+            {Array.from({ length: SKELETON_ROW_COUNT }, (_, i) => (
+              <tr key={i}>
+                <td className="px-5 py-3">
+                  <span className="block h-4 w-28 max-w-[90%] animate-pulse rounded bg-zinc-200" />
+                </td>
+                <td className="px-5 py-3">
+                  <span className="block h-4 w-44 max-w-[95%] animate-pulse rounded bg-zinc-200" />
+                </td>
+                <td className="px-5 py-3">
+                  <span className="inline-block h-9 w-16 animate-pulse rounded-lg bg-zinc-200" />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function TwinExplorerEntitiesTableInner({ searchQ }: { searchQ: string }) {
   const data = use(useMemo(() => fetchEntitiesCatalog(searchQ), [searchQ]));
 
@@ -130,11 +169,7 @@ export function TwinExplorerEntitiesTable({ searchQ }: { searchQ: string }) {
       <div className="border-b border-zinc-200 px-5 py-3">
         <h2 className="text-sm font-semibold text-zinc-900">Entities</h2>
       </div>
-      <Suspense
-        fallback={
-          <div className="px-5 py-10 text-center text-sm text-zinc-500">Loading entity catalog from the API…</div>
-        }
-      >
+      <Suspense fallback={<TwinExplorerEntitiesTableSkeleton />}>
         <TwinExplorerEntitiesTableInner searchQ={searchQ} />
       </Suspense>
     </section>
