@@ -1,6 +1,4 @@
-import { NextResponse } from "next/server";
-
-import { logSctwinApiError, logSctwinApiWarn } from "../_lib/sctwin-api-log";
+import { logSctwinApiError, logSctwinApiWarn, resolveSctwinRequestId, twinApiJson } from "../_lib/sctwin-api-log";
 import { listRiskSignalsForTenantPage } from "@/lib/supply-chain-twin/risk-signals-repo";
 import { requireTwinApiAccess } from "@/lib/supply-chain-twin/sctwin-api-access";
 import { twinRiskSignalsListResponseSchema } from "@/lib/supply-chain-twin/schemas/twin-api-responses";
@@ -18,10 +16,11 @@ const ROUTE = "GET /api/supply-chain-twin/risk-signals";
  * matches Prisma `TwinRiskSeverity`. Titles and details are returned to the client only — not written to structured logs.
  */
 export async function GET(request: Request) {
+  const requestId = resolveSctwinRequestId(request);
   try {
     const gate = await requireTwinApiAccess();
     if (!gate.ok) {
-      return NextResponse.json({ error: gate.denied.error }, { status: gate.denied.status });
+      return twinApiJson({ error: gate.denied.error }, { status: gate.denied.status }, requestId);
     }
     const { access } = gate;
 
@@ -32,8 +31,9 @@ export async function GET(request: Request) {
         route: ROUTE,
         phase: "validation",
         errorCode: "QUERY_VALIDATION_FAILED",
+        requestId,
       });
-      return NextResponse.json({ error: parsed.error }, { status: 400 });
+      return twinApiJson({ error: parsed.error }, { status: 400 }, requestId);
     }
 
     let cursorPosition: { createdAt: Date; id: string } | null = null;
@@ -44,8 +44,9 @@ export async function GET(request: Request) {
           route: ROUTE,
           phase: "validation",
           errorCode: "INVALID_CURSOR",
+          requestId,
         });
-        return NextResponse.json({ error: "Invalid cursor" }, { status: 400 });
+        return twinApiJson({ error: "Invalid cursor" }, { status: 400 }, requestId);
       }
       cursorPosition = { createdAt: decoded.createdAt, id: decoded.id };
     }
@@ -69,7 +70,7 @@ export async function GET(request: Request) {
       ...(nextCursor ? { nextCursor } : {}),
     };
 
-    return NextResponse.json(twinRiskSignalsListResponseSchema.parse(body));
+    return twinApiJson(twinRiskSignalsListResponseSchema.parse(body), undefined, requestId);
   } catch (caught) {
     const name = caught instanceof Error ? caught.name : "non_error_throw";
     logSctwinApiError({
@@ -77,7 +78,8 @@ export async function GET(request: Request) {
       phase: "risk-signals",
       errorCode: "UNHANDLED_EXCEPTION",
       detail: name,
+      requestId,
     });
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return twinApiJson({ error: "Internal server error" }, { status: 500 }, requestId);
   }
 }

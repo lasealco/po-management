@@ -1,6 +1,4 @@
-import { NextResponse } from "next/server";
-
-import { logSctwinApiError } from "../_lib/sctwin-api-log";
+import { logSctwinApiError, resolveSctwinRequestId, twinApiJson } from "../_lib/sctwin-api-log";
 import { twinCatalogMetricsResponseSchema } from "@/lib/supply-chain-twin/schemas/twin-api-responses";
 import { requireTwinApiAccess } from "@/lib/supply-chain-twin/sctwin-api-access";
 import { getTwinCatalogMetricsForTenant } from "@/lib/supply-chain-twin/twin-catalog-metrics";
@@ -14,15 +12,16 @@ const ROUTE = "GET /api/supply-chain-twin/metrics";
  * risk signals). Each value comes from an indexed `COUNT` — no payload reads, no unbounded scans (see
  * `getTwinCatalogMetricsForTenant` JSDoc).
  */
-export async function GET(_request: Request) {
+export async function GET(request: Request) {
+  const requestId = resolveSctwinRequestId(request);
   try {
     const gate = await requireTwinApiAccess();
     if (!gate.ok) {
-      return NextResponse.json({ error: gate.denied.error }, { status: gate.denied.status });
+      return twinApiJson({ error: gate.denied.error }, { status: gate.denied.status }, requestId);
     }
 
     const counts = await getTwinCatalogMetricsForTenant(gate.access.tenant.id);
-    return NextResponse.json(twinCatalogMetricsResponseSchema.parse(counts));
+    return twinApiJson(twinCatalogMetricsResponseSchema.parse(counts), undefined, requestId);
   } catch (caught) {
     const name = caught instanceof Error ? caught.name : "non_error_throw";
     logSctwinApiError({
@@ -30,7 +29,8 @@ export async function GET(_request: Request) {
       phase: "metrics",
       errorCode: "UNHANDLED_EXCEPTION",
       detail: name,
+      requestId,
     });
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return twinApiJson({ error: "Internal server error" }, { status: 500 }, requestId);
   }
 }

@@ -1,7 +1,13 @@
 import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
-import { logSctwinApiError, logSctwinApiWarn } from "../../_lib/sctwin-api-log";
+import {
+  logSctwinApiError,
+  logSctwinApiWarn,
+  resolveSctwinRequestId,
+  twinApiJson,
+  withSctwinRequestId,
+} from "../../_lib/sctwin-api-log";
 import { parseTwinScenarioDraftPatchBody } from "@/lib/supply-chain-twin/schemas/twin-scenario-draft-patch";
 import { twinScenarioDraftDetailResponseSchema } from "@/lib/supply-chain-twin/schemas/twin-api-responses";
 import { requireTwinApiAccess } from "@/lib/supply-chain-twin/sctwin-api-access";
@@ -25,11 +31,12 @@ const ROUTE_DELETE = "DELETE /api/supply-chain-twin/scenarios/[id]";
  * **404:** No row for this tenant + id (includes other tenants; same error body).
  * **400:** Malformed path `id` (empty / too long).
  */
-export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
+export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
+  const requestId = resolveSctwinRequestId(request);
   try {
     const gate = await requireTwinApiAccess();
     if (!gate.ok) {
-      return NextResponse.json({ error: gate.denied.error }, { status: gate.denied.status });
+      return twinApiJson({ error: gate.denied.error }, { status: gate.denied.status }, requestId);
     }
     const { access } = gate;
 
@@ -40,13 +47,14 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
         route: ROUTE_GET,
         phase: "validation",
         errorCode: "PATH_ID_INVALID",
+        requestId,
       });
-      return NextResponse.json({ error: "Invalid scenario draft id." }, { status: 400 });
+      return twinApiJson({ error: "Invalid scenario draft id." }, { status: 400 }, requestId);
     }
 
     const row = await getScenarioDraftByIdForTenant(access.tenant.id, draftId);
     if (!row) {
-      return NextResponse.json({ error: "Not found." }, { status: 404 });
+      return twinApiJson({ error: "Not found." }, { status: 404 }, requestId);
     }
 
     const body = {
@@ -57,7 +65,7 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
       updatedAt: row.updatedAt.toISOString(),
       draft: row.draftJson,
     };
-    return NextResponse.json(twinScenarioDraftDetailResponseSchema.parse(body));
+    return twinApiJson(twinScenarioDraftDetailResponseSchema.parse(body), undefined, requestId);
   } catch (caught) {
     const name = caught instanceof Error ? caught.name : "non_error_throw";
     logSctwinApiError({
@@ -65,8 +73,9 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
       phase: "scenarios",
       errorCode: "UNHANDLED_EXCEPTION",
       detail: name,
+      requestId,
     });
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return twinApiJson({ error: "Internal server error" }, { status: 500 }, requestId);
   }
 }
 
@@ -80,10 +89,11 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
  * id, invalid JSON body, or empty patch.
  */
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
+  const requestId = resolveSctwinRequestId(request);
   try {
     const gate = await requireTwinApiAccess();
     if (!gate.ok) {
-      return NextResponse.json({ error: gate.denied.error }, { status: gate.denied.status });
+      return twinApiJson({ error: gate.denied.error }, { status: gate.denied.status }, requestId);
     }
     const { access } = gate;
 
@@ -94,8 +104,9 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         route: ROUTE_PATCH,
         phase: "validation",
         errorCode: "PATH_ID_INVALID",
+        requestId,
       });
-      return NextResponse.json({ error: "Invalid scenario draft id." }, { status: 400 });
+      return twinApiJson({ error: "Invalid scenario draft id." }, { status: 400 }, requestId);
     }
 
     let raw: unknown;
@@ -106,8 +117,9 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         route: ROUTE_PATCH,
         phase: "validation",
         errorCode: "BODY_JSON_INVALID",
+        requestId,
       });
-      return NextResponse.json({ error: "Request body must be valid JSON." }, { status: 400 });
+      return twinApiJson({ error: "Request body must be valid JSON." }, { status: 400 }, requestId);
     }
 
     const parsed = parseTwinScenarioDraftPatchBody(raw);
@@ -116,8 +128,9 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         route: ROUTE_PATCH,
         phase: "validation",
         errorCode: "BODY_VALIDATION_FAILED",
+        requestId,
       });
-      return NextResponse.json({ error: parsed.error }, { status: 400 });
+      return twinApiJson({ error: parsed.error }, { status: 400 }, requestId);
     }
 
     const patchInput: PatchScenarioDraftInput = {};
@@ -130,7 +143,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
 
     const row = await patchScenarioDraftForTenant(access.tenant.id, draftId, patchInput);
     if (!row) {
-      return NextResponse.json({ error: "Not found." }, { status: 404 });
+      return twinApiJson({ error: "Not found." }, { status: 404 }, requestId);
     }
 
     const body = {
@@ -141,7 +154,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       updatedAt: row.updatedAt.toISOString(),
       draft: row.draftJson,
     };
-    return NextResponse.json(twinScenarioDraftDetailResponseSchema.parse(body));
+    return twinApiJson(twinScenarioDraftDetailResponseSchema.parse(body), undefined, requestId);
   } catch (caught) {
     const name = caught instanceof Error ? caught.name : "non_error_throw";
     logSctwinApiError({
@@ -149,8 +162,9 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       phase: "scenarios",
       errorCode: "UNHANDLED_EXCEPTION",
       detail: name,
+      requestId,
     });
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return twinApiJson({ error: "Internal server error" }, { status: 500 }, requestId);
   }
 }
 
@@ -163,11 +177,12 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
  *
  * **204:** Deleted. **404:** No row for tenant + id. **400:** Invalid path id. Same auth gate as `GET` / `PATCH`.
  */
-export async function DELETE(_request: Request, context: { params: Promise<{ id: string }> }) {
+export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {
+  const requestId = resolveSctwinRequestId(request);
   try {
     const gate = await requireTwinApiAccess();
     if (!gate.ok) {
-      return NextResponse.json({ error: gate.denied.error }, { status: gate.denied.status });
+      return twinApiJson({ error: gate.denied.error }, { status: gate.denied.status }, requestId);
     }
     const { access } = gate;
 
@@ -178,16 +193,17 @@ export async function DELETE(_request: Request, context: { params: Promise<{ id:
         route: ROUTE_DELETE,
         phase: "validation",
         errorCode: "PATH_ID_INVALID",
+        requestId,
       });
-      return NextResponse.json({ error: "Invalid scenario draft id." }, { status: 400 });
+      return twinApiJson({ error: "Invalid scenario draft id." }, { status: 400 }, requestId);
     }
 
     const deleted = await deleteScenarioDraftForTenant(access.tenant.id, draftId);
     if (!deleted) {
-      return NextResponse.json({ error: "Not found." }, { status: 404 });
+      return twinApiJson({ error: "Not found." }, { status: 404 }, requestId);
     }
 
-    return new NextResponse(null, { status: 204 });
+    return withSctwinRequestId(new NextResponse(null, { status: 204 }), requestId);
   } catch (caught) {
     const name = caught instanceof Error ? caught.name : "non_error_throw";
     logSctwinApiError({
@@ -195,7 +211,8 @@ export async function DELETE(_request: Request, context: { params: Promise<{ id:
       phase: "scenarios",
       errorCode: "UNHANDLED_EXCEPTION",
       detail: name,
+      requestId,
     });
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return twinApiJson({ error: "Internal server error" }, { status: 500 }, requestId);
   }
 }

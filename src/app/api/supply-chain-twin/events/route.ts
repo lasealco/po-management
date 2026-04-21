@@ -1,7 +1,11 @@
 import type { Prisma } from "@prisma/client";
-import { NextResponse } from "next/server";
 
-import { logSctwinApiError, logSctwinApiWarn } from "../_lib/sctwin-api-log";
+import {
+  logSctwinApiError,
+  logSctwinApiWarn,
+  resolveSctwinRequestId,
+  twinApiJson,
+} from "../_lib/sctwin-api-log";
 import {
   appendIngestEvent,
   TWIN_INGEST_PAYLOAD_TOO_LARGE,
@@ -38,10 +42,11 @@ export type TwinIngestEventListItem = {
  * Payloads are returned to the client but never written to structured logs.
  */
 export async function GET(request: Request) {
+  const requestId = resolveSctwinRequestId(request);
   try {
     const gate = await requireTwinApiAccess();
     if (!gate.ok) {
-      return NextResponse.json({ error: gate.denied.error }, { status: gate.denied.status });
+      return twinApiJson({ error: gate.denied.error }, { status: gate.denied.status }, requestId);
     }
     const { access } = gate;
 
@@ -52,8 +57,9 @@ export async function GET(request: Request) {
         route: ROUTE_GET,
         phase: "validation",
         errorCode: "QUERY_VALIDATION_FAILED",
+        requestId,
       });
-      return NextResponse.json({ error: parsed.error }, { status: 400 });
+      return twinApiJson({ error: parsed.error }, { status: 400 }, requestId);
     }
 
     let cursorPos: { createdAt: Date; id: string } | null = null;
@@ -64,8 +70,9 @@ export async function GET(request: Request) {
           route: ROUTE_GET,
           phase: "validation",
           errorCode: "INVALID_CURSOR",
+          requestId,
         });
-        return NextResponse.json({ error: "Invalid cursor" }, { status: 400 });
+        return twinApiJson({ error: "Invalid cursor" }, { status: 400 }, requestId);
       }
       cursorPos = { createdAt: decoded.createdAt, id: decoded.id };
     }
@@ -116,9 +123,9 @@ export async function GET(request: Request) {
     }));
 
     if (nextCursor) {
-      return NextResponse.json(twinEventsListResponseSchema.parse({ events, nextCursor }));
+      return twinApiJson(twinEventsListResponseSchema.parse({ events, nextCursor }), undefined, requestId);
     }
-    return NextResponse.json(twinEventsListResponseSchema.parse({ events }));
+    return twinApiJson(twinEventsListResponseSchema.parse({ events }), undefined, requestId);
   } catch (caught) {
     const name = caught instanceof Error ? caught.name : "non_error_throw";
     logSctwinApiError({
@@ -126,8 +133,9 @@ export async function GET(request: Request) {
       phase: "events",
       errorCode: "UNHANDLED_EXCEPTION",
       detail: name,
+      requestId,
     });
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return twinApiJson({ error: "Internal server error" }, { status: 500 }, requestId);
   }
 }
 
@@ -137,10 +145,11 @@ export async function GET(request: Request) {
  * **201:** `{ id, type }`. **400:** Invalid JSON, Zod validation, oversize payload (`code: TWIN_INGEST_PAYLOAD_TOO_LARGE`), or invalid type from writer.
  */
 export async function POST(request: Request) {
+  const requestId = resolveSctwinRequestId(request);
   try {
     const gate = await requireTwinApiAccess();
     if (!gate.ok) {
-      return NextResponse.json({ error: gate.denied.error }, { status: gate.denied.status });
+      return twinApiJson({ error: gate.denied.error }, { status: gate.denied.status }, requestId);
     }
     const { access } = gate;
 
@@ -152,8 +161,9 @@ export async function POST(request: Request) {
         route: ROUTE_POST,
         phase: "validation",
         errorCode: "BODY_JSON_INVALID",
+        requestId,
       });
-      return NextResponse.json({ error: "Request body must be valid JSON." }, { status: 400 });
+      return twinApiJson({ error: "Request body must be valid JSON." }, { status: 400 }, requestId);
     }
 
     const parsed = parseTwinIngestEventAppendBody(raw);
@@ -163,17 +173,19 @@ export async function POST(request: Request) {
         route: ROUTE_POST,
         phase: "validation",
         errorCode,
+        requestId,
       });
       if (parsed.payloadTooLarge) {
-        return NextResponse.json(
+        return twinApiJson(
           {
             error: "Ingest payload exceeds maximum size.",
             code: TWIN_INGEST_PAYLOAD_TOO_LARGE,
           },
           { status: 400 },
+          requestId,
         );
       }
-      return NextResponse.json({ error: parsed.error }, { status: 400 });
+      return twinApiJson({ error: parsed.error }, { status: 400 }, requestId);
     }
 
     try {
@@ -182,22 +194,22 @@ export async function POST(request: Request) {
         type: parsed.body.type,
         payload: parsed.body.payload as Prisma.InputJsonValue,
       });
-      return NextResponse.json(twinIngestEventAppendResponseSchema.parse({ id, type: parsed.body.type }), {
-        status: 201,
-      });
+      return twinApiJson(twinIngestEventAppendResponseSchema.parse({ id, type: parsed.body.type }), { status: 201 }, requestId);
     } catch (caught) {
       if (caught instanceof TwinIngestPayloadTooLargeError) {
         logSctwinApiWarn({
           route: ROUTE_POST,
           phase: "validation",
           errorCode: TWIN_INGEST_PAYLOAD_TOO_LARGE,
+          requestId,
         });
-        return NextResponse.json(
+        return twinApiJson(
           {
             error: "Ingest payload exceeds maximum size.",
             code: TWIN_INGEST_PAYLOAD_TOO_LARGE,
           },
           { status: 400 },
+          requestId,
         );
       }
       if (caught instanceof RangeError && caught.message === "INVALID_TWIN_INGEST_TYPE") {
@@ -205,8 +217,9 @@ export async function POST(request: Request) {
           route: ROUTE_POST,
           phase: "validation",
           errorCode: "INVALID_TWIN_INGEST_TYPE",
+          requestId,
         });
-        return NextResponse.json({ error: "Invalid ingest event type." }, { status: 400 });
+        return twinApiJson({ error: "Invalid ingest event type." }, { status: 400 }, requestId);
       }
       throw caught;
     }
@@ -217,7 +230,8 @@ export async function POST(request: Request) {
       phase: "events",
       errorCode: "UNHANDLED_EXCEPTION",
       detail: name,
+      requestId,
     });
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return twinApiJson({ error: "Internal server error" }, { status: 500 }, requestId);
   }
 }

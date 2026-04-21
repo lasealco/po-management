@@ -1,7 +1,6 @@
 import type { Prisma } from "@prisma/client";
-import { NextResponse } from "next/server";
 
-import { logSctwinApiError, logSctwinApiWarn } from "../_lib/sctwin-api-log";
+import { logSctwinApiError, logSctwinApiWarn, resolveSctwinRequestId, twinApiJson } from "../_lib/sctwin-api-log";
 import { requireTwinApiAccess } from "@/lib/supply-chain-twin/sctwin-api-access";
 import { parseTwinScenarioDraftCreateBody } from "@/lib/supply-chain-twin/schemas/twin-scenario-draft-create";
 import { twinScenariosListResponseSchema } from "@/lib/supply-chain-twin/schemas/twin-api-responses";
@@ -20,10 +19,11 @@ const ROUTE_GET = "GET /api/supply-chain-twin/scenarios";
  * Tenant-scoped scenario drafts (newest `updatedAt` first), keyset-paged. Same auth as other twin APIs.
  */
 export async function GET(request: Request) {
+  const requestId = resolveSctwinRequestId(request);
   try {
     const gate = await requireTwinApiAccess();
     if (!gate.ok) {
-      return NextResponse.json({ error: gate.denied.error }, { status: gate.denied.status });
+      return twinApiJson({ error: gate.denied.error }, { status: gate.denied.status }, requestId);
     }
     const { access } = gate;
 
@@ -34,8 +34,9 @@ export async function GET(request: Request) {
         route: ROUTE_GET,
         phase: "validation",
         errorCode: "QUERY_VALIDATION_FAILED",
+        requestId,
       });
-      return NextResponse.json({ error: parsed.error }, { status: 400 });
+      return twinApiJson({ error: parsed.error }, { status: 400 }, requestId);
     }
 
     let cursorPosition: { updatedAt: Date; id: string } | null = null;
@@ -46,8 +47,9 @@ export async function GET(request: Request) {
           route: ROUTE_GET,
           phase: "validation",
           errorCode: "INVALID_CURSOR",
+          requestId,
         });
-        return NextResponse.json({ error: "Invalid cursor" }, { status: 400 });
+        return twinApiJson({ error: "Invalid cursor" }, { status: 400 }, requestId);
       }
       cursorPosition = { updatedAt: decoded.updatedAt, id: decoded.id };
     }
@@ -67,7 +69,7 @@ export async function GET(request: Request) {
       ...(nextCursor ? { nextCursor } : {}),
     };
 
-    return NextResponse.json(twinScenariosListResponseSchema.parse(body));
+    return twinApiJson(twinScenariosListResponseSchema.parse(body), undefined, requestId);
   } catch (caught) {
     const name = caught instanceof Error ? caught.name : "non_error_throw";
     logSctwinApiError({
@@ -75,8 +77,9 @@ export async function GET(request: Request) {
       phase: "scenarios",
       errorCode: "UNHANDLED_EXCEPTION",
       detail: name,
+      requestId,
     });
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return twinApiJson({ error: "Internal server error" }, { status: 500 }, requestId);
   }
 }
 
@@ -85,10 +88,11 @@ export async function GET(request: Request) {
  * Request body is validated with Zod and never written to structured logs.
  */
 export async function POST(request: Request) {
+  const requestId = resolveSctwinRequestId(request);
   try {
     const gate = await requireTwinApiAccess();
     if (!gate.ok) {
-      return NextResponse.json({ error: gate.denied.error }, { status: gate.denied.status });
+      return twinApiJson({ error: gate.denied.error }, { status: gate.denied.status }, requestId);
     }
     const { access } = gate;
 
@@ -100,8 +104,9 @@ export async function POST(request: Request) {
         route: ROUTE_POST,
         phase: "validation",
         errorCode: "BODY_JSON_INVALID",
+        requestId,
       });
-      return NextResponse.json({ error: "Request body must be valid JSON." }, { status: 400 });
+      return twinApiJson({ error: "Request body must be valid JSON." }, { status: 400 }, requestId);
     }
 
     const parsed = parseTwinScenarioDraftCreateBody(raw);
@@ -110,8 +115,9 @@ export async function POST(request: Request) {
         route: ROUTE_POST,
         phase: "validation",
         errorCode: "BODY_VALIDATION_FAILED",
+        requestId,
       });
-      return NextResponse.json({ error: parsed.error }, { status: 400 });
+      return twinApiJson({ error: parsed.error }, { status: 400 }, requestId);
     }
 
     const row = await createScenarioDraft(access.tenant.id, {
@@ -119,7 +125,7 @@ export async function POST(request: Request) {
       draft: parsed.body.draft as Prisma.InputJsonValue,
     });
 
-    return NextResponse.json(
+    return twinApiJson(
       {
         id: row.id,
         title: row.title,
@@ -127,6 +133,7 @@ export async function POST(request: Request) {
         updatedAt: row.updatedAt.toISOString(),
       },
       { status: 201 },
+      requestId,
     );
   } catch (caught) {
     const name = caught instanceof Error ? caught.name : "non_error_throw";
@@ -135,7 +142,8 @@ export async function POST(request: Request) {
       phase: "scenarios",
       errorCode: "UNHANDLED_EXCEPTION",
       detail: name,
+      requestId,
     });
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return twinApiJson({ error: "Internal server error" }, { status: 500 }, requestId);
   }
 }

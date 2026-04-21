@@ -1,3 +1,5 @@
+import { NextResponse } from "next/server";
+
 type SctwinApiLogLevel = "error" | "warn";
 
 type SctwinApiLogBase = {
@@ -13,7 +15,48 @@ type SctwinApiLogBase = {
   errorCode: string;
   /** Safe hint only (e.g. Error.name). No emails, ids, or request payloads. */
   detail?: string;
+  /** Correlate client + server logs; from `x-request-id` / `x-correlation-id` or generated per request. */
+  requestId: string;
 };
+
+const INCOMING_REQUEST_ID_HEADERS = ["x-request-id", "x-correlation-id"] as const;
+
+export const SCTWIN_REQUEST_ID_HEADER = "x-request-id";
+
+/**
+ * Accepts only compact, non-whitespace ids suitable for log fields (no PII, no JSON-breaking characters).
+ * Length 4–128; allows UUIDs, ULIDs, and common gateway formats.
+ */
+export function isSafeSctwinRequestId(value: string): boolean {
+  if (value.length < 4 || value.length > 128) {
+    return false;
+  }
+  return /^[A-Za-z0-9_.:-]+$/.test(value);
+}
+
+/**
+ * Prefer client `x-request-id` or `x-correlation-id` when safe; otherwise a fresh UUID.
+ * Never throws; never returns empty.
+ */
+export function resolveSctwinRequestId(request: Request): string {
+  for (const name of INCOMING_REQUEST_ID_HEADERS) {
+    const raw = request.headers.get(name)?.trim();
+    if (raw && isSafeSctwinRequestId(raw)) {
+      return raw.length > 128 ? raw.slice(0, 128) : raw;
+    }
+  }
+  return crypto.randomUUID();
+}
+
+/** Echo the resolved id on twin API responses (success or error). */
+export function withSctwinRequestId(response: NextResponse, requestId: string): NextResponse {
+  response.headers.set(SCTWIN_REQUEST_ID_HEADER, requestId);
+  return response;
+}
+
+export function twinApiJson(data: unknown, init: ResponseInit | undefined, requestId: string): NextResponse {
+  return withSctwinRequestId(NextResponse.json(data, init), requestId);
+}
 
 function emit(payload: SctwinApiLogBase) {
   const line = JSON.stringify(payload);

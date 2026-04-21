@@ -92,6 +92,37 @@ describe("GET /api/supply-chain-twin/metrics", () => {
       riskSignals: 1,
     });
     expect(getTwinCatalogMetricsForTenantMock).toHaveBeenCalledWith("t1");
+    expect(response.headers.get("x-request-id")).toMatch(/^[0-9a-f-]{36}$/i);
+  });
+
+  it("echoes a safe client x-request-id on success responses", async () => {
+    getViewerGrantSetMock.mockResolvedValue({
+      tenant: { id: "t1", name: "Demo", slug: "demo-company" },
+      user: { id: "u1", email: "x@y.com", name: "X" },
+      grantSet: new Set(),
+    });
+    resolveNavStateMock.mockResolvedValue({
+      linkVisibility: { supplyChainTwin: true },
+      setupIncomplete: false,
+      poSubNavVisibility: {},
+    });
+    getTwinCatalogMetricsForTenantMock.mockResolvedValue({
+      entities: 0,
+      edges: 0,
+      events: 0,
+      scenarioDrafts: 0,
+      riskSignals: 0,
+    });
+
+    const { GET } = await import("./route");
+    const response = await GET(
+      new Request("http://localhost/api/supply-chain-twin/metrics", {
+        headers: { "x-request-id": "gateway-req-0001" },
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-request-id")).toBe("gateway-req-0001");
   });
 
   it("returns 403 when twin visibility is off for the session", async () => {

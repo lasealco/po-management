@@ -1,6 +1,4 @@
-import { NextResponse } from "next/server";
-
-import { logSctwinApiError, logSctwinApiWarn } from "../../_lib/sctwin-api-log";
+import { logSctwinApiError, logSctwinApiWarn, resolveSctwinRequestId, twinApiJson } from "../../_lib/sctwin-api-log";
 import { getEntitySnapshotByIdForTenant } from "@/lib/supply-chain-twin/repo";
 import { twinEntitySnapshotDetailResponseSchema } from "@/lib/supply-chain-twin/schemas/twin-api-responses";
 import { requireTwinApiAccess } from "@/lib/supply-chain-twin/sctwin-api-access";
@@ -16,11 +14,12 @@ const ROUTE = "GET /api/supply-chain-twin/entities/[id]";
  * **404:** No row for this tenant + id (includes wrong-tenant access; do not distinguish in the response body).
  * **400:** Malformed path `id` (empty / too long).
  */
-export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
+export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
+  const requestId = resolveSctwinRequestId(request);
   try {
     const gate = await requireTwinApiAccess();
     if (!gate.ok) {
-      return NextResponse.json({ error: gate.denied.error }, { status: gate.denied.status });
+      return twinApiJson({ error: gate.denied.error }, { status: gate.denied.status }, requestId);
     }
     const { access } = gate;
 
@@ -31,13 +30,14 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
         route: ROUTE,
         phase: "validation",
         errorCode: "PATH_ID_INVALID",
+        requestId,
       });
-      return NextResponse.json({ error: "Invalid entity id." }, { status: 400 });
+      return twinApiJson({ error: "Invalid entity id." }, { status: 400 }, requestId);
     }
 
     const row = await getEntitySnapshotByIdForTenant(access.tenant.id, snapshotId);
     if (!row) {
-      return NextResponse.json({ error: "Not found." }, { status: 404 });
+      return twinApiJson({ error: "Not found." }, { status: 404 }, requestId);
     }
 
     const body = {
@@ -47,7 +47,7 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
       updatedAt: row.updatedAt.toISOString(),
       payload: row.payload,
     };
-    return NextResponse.json(twinEntitySnapshotDetailResponseSchema.parse(body));
+    return twinApiJson(twinEntitySnapshotDetailResponseSchema.parse(body), undefined, requestId);
   } catch (caught) {
     const name = caught instanceof Error ? caught.name : "non_error_throw";
     logSctwinApiError({
@@ -55,7 +55,8 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
       phase: "catalog",
       errorCode: "UNHANDLED_EXCEPTION",
       detail: name,
+      requestId,
     });
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return twinApiJson({ error: "Internal server error" }, { status: 500 }, requestId);
   }
 }
