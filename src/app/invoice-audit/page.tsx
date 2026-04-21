@@ -139,33 +139,41 @@ export default async function InvoiceAuditListPage(props: {
           <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Queues</span>
           <Link
             href="/invoice-audit"
-            className={`rounded-lg px-3 py-1.5 text-xs font-medium ${
-              queue == null ? subNavActiveClass : "border border-zinc-200 text-zinc-600 hover:bg-zinc-50"
-            }`}
+            className={
+              queue == null
+                ? subNavActiveClass
+                : "rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-50"
+            }
           >
             All
           </Link>
           <Link
             href="/invoice-audit?queue=audit"
-            className={`rounded-lg px-3 py-1.5 text-xs font-medium ${
-              queue === "audit" ? subNavActiveClass : "border border-zinc-200 text-zinc-600 hover:bg-zinc-50"
-            }`}
+            className={
+              queue === "audit"
+                ? subNavActiveClass
+                : "rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-50"
+            }
           >
             Run audit
           </Link>
           <Link
             href="/invoice-audit?queue=finance"
-            className={`rounded-lg px-3 py-1.5 text-xs font-medium ${
-              queue === "finance" ? subNavActiveClass : "border border-zinc-200 text-zinc-600 hover:bg-zinc-50"
-            }`}
+            className={
+              queue === "finance"
+                ? subNavActiveClass
+                : "rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-50"
+            }
           >
             Finance review
           </Link>
           <Link
             href="/invoice-audit?queue=handoff"
-            className={`rounded-lg px-3 py-1.5 text-xs font-medium ${
-              queue === "handoff" ? subNavActiveClass : "border border-zinc-200 text-zinc-600 hover:bg-zinc-50"
-            }`}
+            className={
+              queue === "handoff"
+                ? subNavActiveClass
+                : "rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-50"
+            }
           >
             Accounting handoff
           </Link>

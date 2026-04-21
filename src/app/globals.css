@@ -6,6 +6,8 @@
   --arscmp-primary: #165b67;
   --arscmp-primary-700: #124a54;
   --arscmp-primary-50: #eef6f7;
+  /* Muted strip under AppNav so the active module “flows” into secondary nav (see moduleSubNavShellClass). */
+  --arscmp-nav-substrip: color-mix(in srgb, var(--arscmp-primary) 14%, white);
 }
 
 @theme inline {

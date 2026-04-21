@@ -3,7 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { subNavActiveClass } from "@/lib/subnav-active-class";
+import {
+  moduleSubNavLinkInactiveClass,
+  moduleSubNavShellClass,
+  subNavActiveClass,
+} from "@/lib/subnav-active-class";
 
 const items: { href: string; label: string }[] = [
   { href: "/wms", label: "Overview" },
@@ -18,13 +22,13 @@ export function WmsSubNav() {
   const pathname = usePathname();
 
   return (
-    <div className="border-b border-zinc-200 bg-white shadow-sm">
+    <div className={moduleSubNavShellClass}>
       <div className="mx-auto flex max-w-7xl flex-wrap gap-1 px-6 py-2.5">
         <div className="mr-3 flex items-center gap-2">
           <span className="self-center text-xs font-semibold uppercase tracking-wide text-[var(--arscmp-primary)]">
             WMS
           </span>
-          <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-600">
+          <span className="rounded-full border border-[var(--arscmp-primary)]/20 bg-white/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-700">
             Live workspace
           </span>
         </div>
@@ -35,11 +39,7 @@ export function WmsSubNav() {
             <Link
               key={href}
               href={href}
-              className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                active
-                  ? subNavActiveClass
-                  : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
-              }`}
+              className={active ? subNavActiveClass : moduleSubNavLinkInactiveClass}
             >
               {label}
             </Link>

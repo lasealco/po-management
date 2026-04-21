@@ -3,7 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { subNavActiveClass } from "@/lib/subnav-active-class";
+import {
+  moduleSubNavLinkInactiveClass,
+  moduleSubNavShellClass,
+  subNavActiveClass,
+} from "@/lib/subnav-active-class";
 
 const items = [
   { href: "/rfq/requests", label: "Requests", match: (p: string) => p === "/rfq/requests" || p.startsWith("/rfq/requests/") },
@@ -12,7 +16,7 @@ const items = [
 export function RfqSubNav() {
   const pathname = usePathname();
   return (
-    <div className="border-b border-zinc-200 bg-white shadow-sm">
+    <div className={moduleSubNavShellClass}>
       <div className="mx-auto flex max-w-7xl flex-wrap gap-1 px-6 py-2.5">
         <span className="mr-2 self-center text-xs font-semibold uppercase tracking-wide text-[var(--arscmp-primary)]">
           RFQ
@@ -23,9 +27,7 @@ export function RfqSubNav() {
             <Link
               key={href}
               href={href}
-              className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                active ? subNavActiveClass : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
-              }`}
+              className={active ? subNavActiveClass : moduleSubNavLinkInactiveClass}
             >
               {label}
             </Link>
@@ -33,10 +35,10 @@ export function RfqSubNav() {
         })}
         <Link
           href="/rfq/requests/new"
-          className={`ml-auto rounded-md px-3 py-1.5 text-sm font-semibold ${
+          className={`ml-auto ${
             pathname === "/rfq/requests/new"
               ? subNavActiveClass
-              : "text-[var(--arscmp-primary)] hover:bg-[var(--arscmp-primary-50)]"
+              : "rounded-lg px-2.5 py-1.5 text-sm font-semibold text-[var(--arscmp-primary)] transition-colors hover:bg-white/55 sm:px-3"
           }`}
         >
           New request

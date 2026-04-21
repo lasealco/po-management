@@ -11,6 +11,7 @@ import {
   isRatesAuditSectionPath,
   ratesAuditTopNavHref,
 } from "@/lib/rates-audit-nav";
+import { appNavActiveClass, appNavInactiveClass } from "@/lib/subnav-active-class";
 import { TARIFF_CONTRACTS_DIRECTORY_PATH, TARIFFS_MODULE_BASE_PATH } from "@/lib/tariff/tariff-workbench-urls";
 
 function isTopNavHrefActive(pathname: string, href: string): boolean {
@@ -143,11 +144,7 @@ export function AppNav({
                     href={ratesAuditHref}
                     aria-label={RATES_AUDIT_NAV_LABEL}
                     title={RATES_AUDIT_NAV_LABEL}
-                    className={`shrink-0 rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors sm:px-3 ${
-                      active
-                        ? "bg-[var(--arscmp-primary-50)] text-[var(--arscmp-primary)] ring-1 ring-[var(--arscmp-primary)]/20"
-                        : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
-                    }`}
+                    className={`shrink-0 ${active ? appNavActiveClass : appNavInactiveClass}`}
                   >
                     Rates
                   </Link>
@@ -163,12 +160,8 @@ export function AppNav({
                   href={item.href}
                   aria-label={item.label}
                   title={item.label}
-                  className={`shrink-0 rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors sm:px-3 ${
-                    isSettings ? "ml-1 border-l border-zinc-200 pl-3 sm:ml-2 sm:pl-4" : ""
-                  } ${
-                    active
-                      ? "bg-[var(--arscmp-primary-50)] text-[var(--arscmp-primary)] ring-1 ring-[var(--arscmp-primary)]/20"
-                      : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
+                  className={`shrink-0 ${isSettings ? "ml-1 border-l border-zinc-200 pl-3 sm:ml-2 sm:pl-4" : ""} ${
+                    active ? appNavActiveClass : appNavInactiveClass
                   }`}
                 >
                   <TopNavLinkLabel item={item} />

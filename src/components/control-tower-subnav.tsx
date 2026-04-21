@@ -4,7 +4,11 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
 import { REPORTING_HUB_CONTROL_TOWER_HREF } from "@/lib/reporting-hub-paths";
-import { subNavActiveClass } from "@/lib/subnav-active-class";
+import {
+  moduleSubNavLinkInactiveClass,
+  moduleSubNavShellClass,
+  subNavActiveClass,
+} from "@/lib/subnav-active-class";
 
 type SubNavItem = { href: string; label: string; ariaLabel?: string };
 
@@ -33,11 +37,7 @@ const productTraceItem = {
 } as const;
 
 function chipClasses(active: boolean) {
-  return `rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors sm:px-3 ${
-    active
-      ? subNavActiveClass
-      : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
-  }`;
+  return active ? subNavActiveClass : moduleSubNavLinkInactiveClass;
 }
 
 export function ControlTowerSubNav({ includeDigestNav = false }: { includeDigestNav?: boolean }) {
@@ -78,7 +78,7 @@ export function ControlTowerSubNav({ includeDigestNav = false }: { includeDigest
   const productTraceActive = isItemActive(productTraceItem.href);
 
   return (
-    <div className="border-b border-zinc-200 bg-white shadow-sm">
+    <div className={moduleSubNavShellClass}>
       <nav
         className="mx-auto max-w-7xl px-4 py-2 sm:px-6"
         aria-label="Control Tower sections"
