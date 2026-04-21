@@ -10,7 +10,17 @@ import {
 } from "@/lib/subnav-active-class";
 
 const items = [
-  { href: "/rfq/requests", label: "Requests", match: (p: string) => p === "/rfq/requests" || p.startsWith("/rfq/requests/") },
+  {
+    href: "/rfq/requests",
+    label: "Requests",
+    match: (p: string) =>
+      p === "/rfq/requests" || (p.startsWith("/rfq/requests/") && !p.startsWith("/rfq/requests/new")),
+  },
+  {
+    href: "/rfq/requests/new",
+    label: "New request",
+    match: (p: string) => p.startsWith("/rfq/requests/new"),
+  },
 ];
 
 export function RfqSubNav() {
@@ -33,16 +43,6 @@ export function RfqSubNav() {
             </Link>
           );
         })}
-        <Link
-          href="/rfq/requests/new"
-          className={`ml-auto ${
-            pathname === "/rfq/requests/new"
-              ? subNavActiveClass
-              : "rounded-lg px-2.5 py-1.5 text-sm font-semibold text-[var(--arscmp-primary)] transition-colors hover:bg-white/55 sm:px-3"
-          }`}
-        >
-          New request
-        </Link>
       </div>
     </div>
   );

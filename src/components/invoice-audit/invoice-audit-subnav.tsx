@@ -36,6 +36,11 @@ const items = [
     label: "DB readiness",
     match: (p: string) => p.startsWith("/invoice-audit/readiness"),
   },
+  {
+    href: "/invoice-audit/new",
+    label: "New intake",
+    match: (p: string) => p.startsWith("/invoice-audit/new"),
+  },
 ];
 
 export function InvoiceAuditSubNav() {
@@ -58,16 +63,6 @@ export function InvoiceAuditSubNav() {
             </Link>
           );
         })}
-        <Link
-          href="/invoice-audit/new"
-          className={`ml-auto ${
-            pathname === "/invoice-audit/new"
-              ? subNavActiveClass
-              : "rounded-lg px-2.5 py-1.5 text-sm font-semibold text-[var(--arscmp-primary)] transition-colors hover:bg-zinc-100 sm:px-3"
-          }`}
-        >
-          New intake
-        </Link>
       </div>
     </div>
   );
