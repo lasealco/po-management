@@ -14,6 +14,9 @@ export type ApiHubConnectorStatus = (typeof APIHUB_CONNECTOR_STATUSES)[number];
  */
 export const APIHUB_CONNECTOR_DISABLE_FORCE_NOTE_MIN = 12;
 
+/** Max persisted length for `opsNote` on `ApiHubConnector` (PATCH `opsNote`). */
+export const APIHUB_CONNECTOR_OPS_NOTE_MAX = 2000;
+
 /** Allowlisted `sort` query values for `GET /api/apihub/connectors`. */
 export const APIHUB_CONNECTOR_LIST_SORT_FIELDS = ["createdAt", "updatedAt", "name"] as const;
 export type ApiHubConnectorListSortField = (typeof APIHUB_CONNECTOR_LIST_SORT_FIELDS)[number];

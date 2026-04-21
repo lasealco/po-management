@@ -6,6 +6,8 @@ export type ApiHubConnectorDto = {
   authMode: string;
   lastSyncAt: string | null;
   healthSummary: string | null;
+  /** Operator metadata; persisted on the connector row (non-secret). */
+  opsNote: string | null;
   createdAt: string;
   updatedAt: string;
   auditTrail: ApiHubConnectorAuditTrailDto[];
@@ -45,6 +47,7 @@ type Row = {
   authMode: string;
   lastSyncAt: Date | null;
   healthSummary: string | null;
+  opsNote?: string | null;
   createdAt: Date;
   updatedAt: Date;
   auditLogs?: {
@@ -65,6 +68,7 @@ export function toApiHubConnectorDto(row: Row): ApiHubConnectorDto {
     authMode: row.authMode,
     lastSyncAt: row.lastSyncAt ? row.lastSyncAt.toISOString() : null,
     healthSummary: row.healthSummary,
+    opsNote: row.opsNote ?? null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     auditTrail: (row.auditLogs ?? []).map((audit) => ({

@@ -104,6 +104,8 @@ model ApiHubConnector {
   lastSyncAt DateTime?
   /// Operator-facing health / connectivity summary (no secrets).
   healthSummary String?
+  /// Operator-written metadata (non-secret); capped in API layer.
+  opsNote   String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

@@ -33,10 +33,12 @@ describe("toApiHubConnectorDto", () => {
       authMode: "none",
       lastSyncAt: null,
       healthSummary: "ok",
+      opsNote: null,
       createdAt: created,
       updatedAt: updated,
     });
     expect(out.lastSyncAt).toBeNull();
+    expect(out.opsNote).toBeNull();
     expect(out.createdAt).toBe("2026-04-20T12:00:00.000Z");
     expect(out.updatedAt).toBe("2026-04-20T15:30:00.000Z");
     expect(out.healthSummary).toBe("ok");
@@ -52,6 +54,7 @@ describe("toApiHubConnectorDto", () => {
       authMode: "api_key_ref",
       lastSyncAt: new Date("2026-04-21T09:00:00.000Z"),
       healthSummary: "Healthy",
+      opsNote: "Hold until ERP cutover.",
       createdAt: new Date("2026-04-21T08:00:00.000Z"),
       updatedAt: new Date("2026-04-21T09:01:00.000Z"),
       auditLogs: [
@@ -64,6 +67,7 @@ describe("toApiHubConnectorDto", () => {
         },
       ],
     });
+    expect(out.opsNote).toBe("Hold until ERP cutover.");
     expect(out.auditTrail).toEqual([
       {
         id: "a1",

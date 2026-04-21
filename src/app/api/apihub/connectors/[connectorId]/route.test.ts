@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { APIHUB_CONNECTOR_DISABLE_FORCE_NOTE_MIN } from "@/lib/apihub/constants";
+import { APIHUB_CONNECTOR_DISABLE_FORCE_NOTE_MIN, APIHUB_CONNECTOR_OPS_NOTE_MAX } from "@/lib/apihub/constants";
 import { APIHUB_REQUEST_ID_HEADER } from "@/lib/apihub/request-id";
 
 const getDemoTenantMock = vi.fn();
@@ -104,5 +104,58 @@ describe("PATCH /api/apihub/connectors/:connectorId", () => {
     );
     expect(response.status).toBe(200);
     expect(countInFlightMock).not.toHaveBeenCalled();
+  });
+
+  it("updates opsNote without sending status (uses stored status)", async () => {
+    getApiHubConnectorInTenantMock.mockResolvedValue({ id: "c1", status: "paused" });
+    const { PATCH } = await import("./route");
+    const response = await PATCH(
+      new Request("http://localhost/api/apihub/connectors/c1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", [APIHUB_REQUEST_ID_HEADER]: "patch-ops" },
+        body: JSON.stringify({ opsNote: "  line1\nline2  " }),
+      }),
+      { params: Promise.resolve({ connectorId: "c1" }) },
+    );
+    expect(response.status).toBe(200);
+    expect(updateApiHubConnectorLifecycleMock).toHaveBeenCalledWith({
+      tenantId: "tenant-1",
+      connectorId: "c1",
+      actorUserId: "user-1",
+      status: "paused",
+      syncNow: false,
+      note: null,
+      opsNote: "line1\nline2",
+    });
+  });
+
+  it("returns 400 when opsNote is not a string or null", async () => {
+    getApiHubConnectorInTenantMock.mockResolvedValue({ id: "c1", status: "draft" });
+    const { PATCH } = await import("./route");
+    const response = await PATCH(
+      new Request("http://localhost/api/apihub/connectors/c1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", [APIHUB_REQUEST_ID_HEADER]: "patch-ops-type" },
+        body: JSON.stringify({ opsNote: 99 }),
+      }),
+      { params: Promise.resolve({ connectorId: "c1" }) },
+    );
+    expect(response.status).toBe(400);
+    expect(updateApiHubConnectorLifecycleMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 when opsNote exceeds max length after trim", async () => {
+    getApiHubConnectorInTenantMock.mockResolvedValue({ id: "c1", status: "draft" });
+    const { PATCH } = await import("./route");
+    const response = await PATCH(
+      new Request("http://localhost/api/apihub/connectors/c1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", [APIHUB_REQUEST_ID_HEADER]: "patch-ops-len" },
+        body: JSON.stringify({ opsNote: "x".repeat(APIHUB_CONNECTOR_OPS_NOTE_MAX + 1) }),
+      }),
+      { params: Promise.resolve({ connectorId: "c1" }) },
+    );
+    expect(response.status).toBe(400);
+    expect(updateApiHubConnectorLifecycleMock).not.toHaveBeenCalled();
   });
 });

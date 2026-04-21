@@ -6,7 +6,11 @@ import {
   apiHubValidationError,
 } from "@/lib/apihub/api-error";
 import { getActorUserId } from "@/lib/authz";
-import { APIHUB_CONNECTOR_DISABLE_FORCE_NOTE_MIN, APIHUB_CONNECTOR_STATUSES } from "@/lib/apihub/constants";
+import {
+  APIHUB_CONNECTOR_DISABLE_FORCE_NOTE_MIN,
+  APIHUB_CONNECTOR_OPS_NOTE_MAX,
+  APIHUB_CONNECTOR_STATUSES,
+} from "@/lib/apihub/constants";
 import { toApiHubConnectorDto } from "@/lib/apihub/connector-dto";
 import { getApiHubConnectorInTenant, updateApiHubConnectorLifecycle } from "@/lib/apihub/connectors-repo";
 import { countInFlightApiHubIngestionRunsForConnector } from "@/lib/apihub/ingestion-runs-repo";
@@ -17,6 +21,7 @@ type PatchBody = {
   status?: unknown;
   markSyncedNow?: unknown;
   note?: unknown;
+  opsNote?: unknown;
 };
 
 export const dynamic = "force-dynamic";
@@ -50,26 +55,86 @@ export async function PATCH(
     body = {};
   }
 
-  const rawStatus = typeof body.status === "string" ? body.status.trim().toLowerCase() : "";
-  if (!APIHUB_CONNECTOR_STATUSES.includes(rawStatus as (typeof APIHUB_CONNECTOR_STATUSES)[number])) {
-    return apiHubValidationError(400, "VALIDATION_ERROR", "Connector lifecycle validation failed.", [
-      {
-        field: "status",
-        code: "INVALID_ENUM",
-        message: `status must be one of: ${APIHUB_CONNECTOR_STATUSES.join(", ")}.`,
-      },
-    ], requestId);
-  }
-
-  const markSyncedNow = body.markSyncedNow === true;
-  const note = typeof body.note === "string" ? body.note.trim().slice(0, 280) : null;
-
   const existing = await getApiHubConnectorInTenant(tenant.id, connectorId);
   if (!existing) {
     return apiHubError(404, "CONNECTOR_NOT_FOUND", "Connector not found.", requestId);
   }
 
-  const isLeavingActive = existing.status === "active" && rawStatus !== "active";
+  const hasStatus = Object.prototype.hasOwnProperty.call(body, "status");
+  let rawStatus: string;
+  if (hasStatus) {
+    if (typeof body.status !== "string") {
+      return apiHubValidationError(400, "VALIDATION_ERROR", "Connector lifecycle validation failed.", [
+        {
+          field: "status",
+          code: "INVALID_TYPE",
+          message: "status must be a string when provided.",
+        },
+      ], requestId);
+    }
+    rawStatus = body.status.trim().toLowerCase();
+    if (rawStatus.length === 0) {
+      return apiHubValidationError(400, "VALIDATION_ERROR", "Connector lifecycle validation failed.", [
+        {
+          field: "status",
+          code: "REQUIRED",
+          message: "status cannot be empty.",
+        },
+      ], requestId);
+    }
+    if (!APIHUB_CONNECTOR_STATUSES.includes(rawStatus as (typeof APIHUB_CONNECTOR_STATUSES)[number])) {
+      return apiHubValidationError(400, "VALIDATION_ERROR", "Connector lifecycle validation failed.", [
+        {
+          field: "status",
+          code: "INVALID_ENUM",
+          message: `status must be one of: ${APIHUB_CONNECTOR_STATUSES.join(", ")}.`,
+        },
+      ], requestId);
+    }
+  } else {
+    rawStatus = existing.status.trim().toLowerCase();
+    if (!APIHUB_CONNECTOR_STATUSES.includes(rawStatus as (typeof APIHUB_CONNECTOR_STATUSES)[number])) {
+      return apiHubError(
+        409,
+        "CONNECTOR_STATUS_INVALID",
+        "Stored connector status is not a recognized lifecycle value.",
+        requestId,
+      );
+    }
+  }
+
+  let opsNoteUpdate: string | null | undefined = undefined;
+  if (Object.prototype.hasOwnProperty.call(body, "opsNote")) {
+    if (body.opsNote === null) {
+      opsNoteUpdate = null;
+    } else if (typeof body.opsNote === "string") {
+      const trimmed = body.opsNote.trim();
+      if (trimmed.length > APIHUB_CONNECTOR_OPS_NOTE_MAX) {
+        return apiHubValidationError(400, "VALIDATION_ERROR", "Connector metadata validation failed.", [
+          {
+            field: "opsNote",
+            code: "MAX_LENGTH",
+            message: `opsNote must be at most ${APIHUB_CONNECTOR_OPS_NOTE_MAX} characters after trimming.`,
+          },
+        ], requestId);
+      }
+      opsNoteUpdate = trimmed.length === 0 ? null : trimmed;
+    } else {
+      return apiHubValidationError(400, "VALIDATION_ERROR", "Connector metadata validation failed.", [
+        {
+          field: "opsNote",
+          code: "INVALID_TYPE",
+          message: "opsNote must be a string, null, or omitted.",
+        },
+      ], requestId);
+    }
+  }
+
+  const markSyncedNow = body.markSyncedNow === true;
+  const note = typeof body.note === "string" ? body.note.trim().slice(0, 280) : null;
+
+  const existingStatusLower = existing.status.trim().toLowerCase();
+  const isLeavingActive = existingStatusLower === "active" && rawStatus !== "active";
   if (isLeavingActive) {
     const inFlight = await countInFlightApiHubIngestionRunsForConnector({
       tenantId: tenant.id,
@@ -95,6 +160,7 @@ export async function PATCH(
     status: rawStatus,
     syncNow: markSyncedNow,
     note,
+    ...(opsNoteUpdate !== undefined ? { opsNote: opsNoteUpdate } : {}),
   });
 
   if (!updated) {

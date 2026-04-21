@@ -14,6 +14,7 @@ export type ApiHubConnectorListRow = {
   authMode: string;
   lastSyncAt: Date | null;
   healthSummary: string | null;
+  opsNote: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -78,6 +79,7 @@ export async function listApiHubConnectors(
       authMode: true,
       lastSyncAt: true,
       healthSummary: true,
+      opsNote: true,
       createdAt: true,
       updatedAt: true,
     },
@@ -111,6 +113,7 @@ export async function createStubApiHubConnector(opts: {
         authMode: true,
         lastSyncAt: true,
         healthSummary: true,
+        opsNote: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -137,46 +140,100 @@ export async function updateApiHubConnectorLifecycle(opts: {
   status: string;
   syncNow: boolean;
   note: string | null;
+  /** When not `undefined`, sets or clears `opsNote` on the connector row. */
+  opsNote?: string | null;
 }): Promise<ApiHubConnectorListRow | null> {
   return prisma.$transaction(async (tx) => {
     const existing = await tx.apiHubConnector.findFirst({
       where: { id: opts.connectorId, tenantId: opts.tenantId },
-      select: { id: true, status: true },
+      select: { id: true, status: true, opsNote: true },
     });
     if (!existing) {
       return null;
     }
 
-    const updated = await tx.apiHubConnector.update({
-      where: { id: existing.id },
-      data: {
-        status: opts.status,
-        ...(opts.syncNow ? { lastSyncAt: new Date() } : {}),
-      },
-      select: {
-        id: true,
-        name: true,
-        sourceKind: true,
-        status: true,
-        authMode: true,
-        lastSyncAt: true,
-        healthSummary: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
+    const lifecycleChanged = existing.status !== opts.status || opts.syncNow;
+    const oldOps = existing.opsNote ?? "";
+    const newOps = opts.opsNote !== undefined ? (opts.opsNote ?? "") : oldOps;
+    const opsChanged = opts.opsNote !== undefined && newOps !== oldOps;
 
-    await tx.apiHubConnectorAuditLog.create({
-      data: {
-        tenantId: opts.tenantId,
-        connectorId: existing.id,
-        actorUserId: opts.actorUserId,
-        action: "connector.lifecycle.updated",
-        note:
-          opts.note ??
-          `Status ${existing.status} -> ${opts.status}${opts.syncNow ? " (sync timestamp set)" : ""}`,
-      },
-    });
+    const data: {
+      status?: string;
+      lastSyncAt?: Date;
+      opsNote?: string | null;
+    } = {};
+    if (existing.status !== opts.status) {
+      data.status = opts.status;
+    }
+    if (opts.syncNow) {
+      data.lastSyncAt = new Date();
+    }
+    if (opts.opsNote !== undefined) {
+      data.opsNote = opts.opsNote;
+    }
+
+    const updated =
+      Object.keys(data).length > 0
+        ? await tx.apiHubConnector.update({
+            where: { id: existing.id },
+            data,
+            select: {
+              id: true,
+              name: true,
+              sourceKind: true,
+              status: true,
+              authMode: true,
+              lastSyncAt: true,
+              healthSummary: true,
+              opsNote: true,
+              createdAt: true,
+              updatedAt: true,
+            },
+          })
+        : await tx.apiHubConnector.findFirstOrThrow({
+            where: { id: existing.id },
+            select: {
+              id: true,
+              name: true,
+              sourceKind: true,
+              status: true,
+              authMode: true,
+              lastSyncAt: true,
+              healthSummary: true,
+              opsNote: true,
+              createdAt: true,
+              updatedAt: true,
+            },
+          });
+
+    if (lifecycleChanged) {
+      await tx.apiHubConnectorAuditLog.create({
+        data: {
+          tenantId: opts.tenantId,
+          connectorId: existing.id,
+          actorUserId: opts.actorUserId,
+          action: "connector.lifecycle.updated",
+          note:
+            opts.note ??
+            `Status ${existing.status} -> ${opts.status}${opts.syncNow ? " (sync timestamp set)" : ""}`,
+        },
+      });
+    }
+
+    if (opsChanged) {
+      await tx.apiHubConnectorAuditLog.create({
+        data: {
+          tenantId: opts.tenantId,
+          connectorId: existing.id,
+          actorUserId: opts.actorUserId,
+          action: "connector.ops_note.updated",
+          note:
+            newOps.length === 0
+              ? "Ops note cleared."
+              : `Ops note updated (${newOps.length} characters).`,
+        },
+      });
+    }
 
     return updated;
   });
