@@ -28,6 +28,14 @@ const digestItem = { href: "/control-tower/digest", label: "Digest" } as const;
 /** Cross-link: SKU → PO lines, in-transit map, warehouse stock (same grants as product trace page). */
 const productTraceItem = { href: "/product-trace", label: "Product trace" } as const;
 
+function chipClasses(active: boolean) {
+  return `rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors sm:px-3 ${
+    active
+      ? subNavActiveClass
+      : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
+  }`;
+}
+
 export function ControlTowerSubNav({ includeDigestNav = false }: { includeDigestNav?: boolean }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -59,71 +67,52 @@ export function ControlTowerSubNav({ includeDigestNav = false }: { includeDigest
   const productTraceActive = isItemActive(productTraceItem.href);
 
   return (
-    <div className="border-b border-zinc-200 bg-gradient-to-b from-white to-zinc-50/40 shadow-sm">
-      <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
-          <div className="shrink-0 lg:pt-0.5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--arscmp-primary)]">
-              Control Tower
-            </p>
-            <Link
-              href={productTraceItem.href}
-              className={`mt-1 inline-flex text-xs font-medium transition-colors ${
-                productTraceActive ? "text-[var(--arscmp-primary)]" : "text-zinc-500 hover:text-zinc-800"
-              }`}
-            >
-              {productTraceItem.label}
-            </Link>
-          </div>
+    <div className="border-b border-zinc-200 bg-white shadow-sm">
+      <nav
+        className="mx-auto max-w-7xl px-4 py-2 sm:px-6"
+        aria-label="Control Tower sections"
+      >
+        <div className="flex flex-wrap items-center gap-x-1 gap-y-1.5 sm:gap-x-1.5">
+          <span className="mr-1 shrink-0 self-center text-xs font-semibold uppercase tracking-wide text-[var(--arscmp-primary)] sm:mr-2">
+            Control Tower
+          </span>
 
-          <div className="min-w-0 flex-1 space-y-2">
-            <div className="flex flex-wrap items-center gap-1 sm:gap-1.5">
-              {primaryItems.map(({ href, label }) => {
-                const active = isItemActive(href);
-                return (
-                  <Link
-                    key={href}
-                    href={href}
-                    className={`rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors sm:px-3 ${
-                      active
-                        ? subNavActiveClass
-                        : "text-zinc-600 hover:bg-white hover:text-zinc-900 hover:ring-1 hover:ring-zinc-200/80"
-                    }`}
-                  >
-                    {label}
-                  </Link>
-                );
-              })}
-            </div>
+          {primaryItems.map(({ href, label }) => {
+            const active = isItemActive(href);
+            return (
+              <Link key={href} href={href} className={`shrink-0 ${chipClasses(active)}`}>
+                {label}
+              </Link>
+            );
+          })}
 
-            <div className="h-px w-full bg-zinc-200/80" aria-hidden />
+          <Link
+            href={productTraceItem.href}
+            className={`shrink-0 rounded-lg px-2 py-1.5 text-xs font-medium transition-colors sm:px-2.5 ${
+              productTraceActive
+                ? "bg-[var(--arscmp-primary-50)] text-[var(--arscmp-primary)] ring-1 ring-[var(--arscmp-primary)]/20"
+                : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800"
+            }`}
+          >
+            {productTraceItem.label}
+          </Link>
 
-            <div>
-              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
-                Operations &amp; insight
-              </p>
-              <div className="flex flex-wrap items-center gap-1 sm:gap-1.5">
-                {secondaryItems.map(({ href, label }) => {
-                  const active = isItemActive(href);
-                  return (
-                    <Link
-                      key={href}
-                      href={href}
-                      className={`rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors sm:px-3 ${
-                        active
-                          ? subNavActiveClass
-                          : "text-zinc-600 hover:bg-white hover:text-zinc-900 hover:ring-1 hover:ring-zinc-200/80"
-                      }`}
-                    >
-                      {label}
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
+          <span
+            className="mx-0.5 hidden h-5 w-px shrink-0 self-center bg-zinc-200 sm:block"
+            aria-hidden
+          />
+
+          {secondaryItems.map(({ href, label }, index) => {
+            const active = isItemActive(href);
+            const groupStart = index === 0 ? "ml-1 border-l border-zinc-200 pl-2 sm:ml-0 sm:border-l-0 sm:pl-0" : "";
+            return (
+              <Link key={href} href={href} className={`shrink-0 ${groupStart} ${chipClasses(active)}`}>
+                {label}
+              </Link>
+            );
+          })}
         </div>
-      </div>
+      </nav>
     </div>
   );
 }
