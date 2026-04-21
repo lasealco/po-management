@@ -34,6 +34,63 @@ export async function createScenarioDraft(
   });
 }
 
+export type DuplicateScenarioDraftForTenantInput = {
+  /** Appended after trimmed source title; omit to reuse the source title as stored. */
+  titleSuffix?: string;
+};
+
+function buildDuplicatedScenarioTitle(
+  sourceTitle: string | null,
+  titleSuffix: string | undefined,
+): string | null {
+  if (titleSuffix === undefined) {
+    return sourceTitle;
+  }
+  const base = sourceTitle?.trim() ?? "";
+  const merged = base.length > 0 ? `${base}${titleSuffix}` : titleSuffix;
+  if (merged.length === 0) {
+    return null;
+  }
+  return merged.length > 200 ? merged.slice(0, 200) : merged;
+}
+
+/**
+ * Inserts a new `draft` row for `tenantId` with the same `draftJson` as the source. Returns `null` when no source row
+ * exists for this tenant + id (including other tenants’ ids — **404**, do not leak).
+ */
+export async function duplicateScenarioDraftForTenant(
+  tenantId: string,
+  sourceDraftId: string,
+  input: DuplicateScenarioDraftForTenantInput = {},
+): Promise<{ id: string; title: string | null; status: string; updatedAt: Date } | null> {
+  const source = await prisma.supplyChainTwinScenarioDraft.findFirst({
+    where: { id: sourceDraftId, tenantId },
+    select: { title: true, draftJson: true },
+  });
+  if (!source) {
+    return null;
+  }
+
+  const mergedTitle = buildDuplicatedScenarioTitle(source.title, input.titleSuffix);
+  const title = mergedTitle?.trim() ? mergedTitle.trim() : null;
+  const draft = source.draftJson as Prisma.InputJsonValue;
+
+  return prisma.supplyChainTwinScenarioDraft.create({
+    data: {
+      tenantId,
+      title,
+      status: "draft",
+      draftJson: draft,
+    },
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      updatedAt: true,
+    },
+  });
+}
+
 export type ScenarioDraftListItem = {
   id: string;
   title: string | null;
