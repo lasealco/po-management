@@ -12,6 +12,9 @@ export function ApihubHeader() {
           <Link href="/apihub#demo-sync" className="font-medium text-zinc-600 hover:text-zinc-900">
             Demo sync
           </Link>
+          <Link href="/apihub#ingestion-ops" className="font-medium text-zinc-600 hover:text-zinc-900">
+            Ingestion runs
+          </Link>
           <Link href="/apihub#connectors" className="font-medium text-zinc-600 hover:text-zinc-900">
             Connectors
           </Link>

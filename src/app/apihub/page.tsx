@@ -2,10 +2,14 @@ import Link from "next/link";
 
 import { toApiHubConnectorDto } from "@/lib/apihub/connector-dto";
 import { listApiHubConnectors } from "@/lib/apihub/connectors-repo";
+import type { ApiHubIngestionRunDto } from "@/lib/apihub/ingestion-run-dto";
+import { toApiHubIngestionRunDto } from "@/lib/apihub/ingestion-run-dto";
+import { getApiHubIngestionRunOpsSummary, listApiHubIngestionRuns } from "@/lib/apihub/ingestion-runs-repo";
 import { getViewerGrantSet } from "@/lib/authz";
 
 import { ConnectorsSection } from "./connectors-section";
 import { DemoSyncShowcase } from "./demo-sync-showcase";
+import { IngestionOpsPanel, type IngestionOpsSummaryPayload } from "./ingestion-ops-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +52,31 @@ export default async function ApihubHomePage() {
   const connectorRows =
     access?.user && access.tenant ? await listApiHubConnectors(access.tenant.id) : [];
   const initialConnectors = connectorRows.map(toApiHubConnectorDto);
+
+  let ingestionInitialSummary: IngestionOpsSummaryPayload | null = null;
+  let ingestionInitialRuns: ApiHubIngestionRunDto[] = [];
+  if (access?.user && access.tenant) {
+    const [ops, listed] = await Promise.all([
+      getApiHubIngestionRunOpsSummary({ tenantId: access.tenant.id }),
+      listApiHubIngestionRuns({
+        tenantId: access.tenant.id,
+        status: null,
+        limit: 20,
+        cursor: null,
+        connectorId: null,
+        triggerKind: null,
+        attemptRange: null,
+      }),
+    ]);
+    ingestionInitialSummary = {
+      totals: ops.totals,
+      windows: ops.windows,
+      inFlight: ops.inFlight,
+      totalRuns: ops.totalRuns,
+      asOf: ops.asOf.toISOString(),
+    };
+    ingestionInitialRuns = listed.items.map(toApiHubIngestionRunDto);
+  }
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
@@ -112,6 +141,11 @@ export default async function ApihubHomePage() {
       </section>
 
       <DemoSyncShowcase />
+      <IngestionOpsPanel
+        canView={canCreate}
+        initialSummary={ingestionInitialSummary}
+        initialRuns={ingestionInitialRuns}
+      />
       <ConnectorsSection initialConnectors={initialConnectors} canCreate={canCreate} />
     </main>
   );
