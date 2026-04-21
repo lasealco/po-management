@@ -41,8 +41,13 @@ export type ScenarioDraftListItem = {
 };
 
 /**
- * Keyset-paged scenario drafts for a tenant (`updatedAt` desc, `id` desc). `limit` is clamped to 1..100.
- * Decode the opaque `cursor` string in the API route; pass `cursorPosition` here.
+ * Keyset-paged scenario drafts for a tenant (`updatedAt` desc, `id` desc). **No `OFFSET`** — stable under inserts.
+ *
+ * - **`limit`** is clamped to 1..100; Prisma `take` is **`limit + 1`** to detect a following page without a second
+ *   query.
+ * - **`cursorPosition`**: rows strictly “after” this `(updatedAt, id)` pair in sort order (ties on `updatedAt` broken
+ *   by `id`). Matches `@@index([tenantId, updatedAt])` on `SupplyChainTwinScenarioDraft` for tenant-scoped scans.
+ * - Decode the opaque `cursor` string in the API route; pass `cursorPosition` here only.
  */
 export async function listScenarioDraftsForTenantPage(
   tenantId: string,

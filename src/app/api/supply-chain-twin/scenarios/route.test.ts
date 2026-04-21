@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { encodeTwinScenariosListCursor } from "@/lib/supply-chain-twin/schemas/twin-scenarios-list-query";
+
 const getViewerGrantSetMock = vi.fn();
 const resolveNavStateMock = vi.fn();
 const createScenarioDraftMock = vi.fn();
@@ -294,6 +296,88 @@ describe("GET /api/supply-chain-twin/scenarios", () => {
 
     expect(response.status).toBe(400);
     expect(listScenarioDraftsForTenantPageMock).not.toHaveBeenCalled();
+  });
+
+  it("passes decoded cursorPosition to the repo when cursor is valid", async () => {
+    getViewerGrantSetMock.mockResolvedValue({
+      tenant: { id: "t1", name: "Demo", slug: "demo-company" },
+      user: { id: "u1", email: "x@y.com", name: "X" },
+      grantSet: new Set(),
+    });
+    resolveNavStateMock.mockResolvedValue({
+      linkVisibility: { supplyChainTwin: true },
+      setupIncomplete: false,
+      poSubNavVisibility: {},
+    });
+    const updatedAt = new Date("2026-04-01T10:00:00.000Z");
+    const cursor = encodeTwinScenariosListCursor({ updatedAt, id: "row-99" });
+
+    const { GET } = await import("./route");
+    const response = await GET(
+      new Request(
+        `http://localhost/api/supply-chain-twin/scenarios?limit=10&cursor=${encodeURIComponent(cursor)}`,
+      ),
+    );
+
+    expect(response.status).toBe(200);
+    expect(listScenarioDraftsForTenantPageMock).toHaveBeenCalledWith("t1", {
+      limit: 10,
+      cursorPosition: { updatedAt, id: "row-99" },
+    });
+  });
+
+  it("fetches page 2 using nextCursor from page 1 (keyset, no offset in API contract)", async () => {
+    getViewerGrantSetMock.mockResolvedValue({
+      tenant: { id: "t1", name: "Demo", slug: "demo-company" },
+      user: { id: "u1", email: "x@y.com", name: "X" },
+      grantSet: new Set(),
+    });
+    resolveNavStateMock.mockResolvedValue({
+      linkVisibility: { supplyChainTwin: true },
+      setupIncomplete: false,
+      poSubNavVisibility: {},
+    });
+    const rowA = { id: "a", title: "One", status: "draft", updatedAt: new Date("2026-01-10T00:00:00.000Z") };
+    const rowB = { id: "b", title: null, status: "draft", updatedAt: new Date("2026-01-09T00:00:00.000Z") };
+    const page2Cursor = encodeTwinScenariosListCursor({ updatedAt: rowB.updatedAt, id: rowB.id });
+    const rowC = { id: "c", title: null, status: "draft", updatedAt: new Date("2026-01-08T00:00:00.000Z") };
+
+    listScenarioDraftsForTenantPageMock
+      .mockResolvedValueOnce({
+        items: [rowA, rowB],
+        nextCursor: page2Cursor,
+      })
+      .mockResolvedValueOnce({
+        items: [rowC],
+        nextCursor: null,
+      });
+
+    const { GET } = await import("./route");
+    const page1 = await GET(new Request("http://localhost/api/supply-chain-twin/scenarios?limit=2"));
+    expect(page1.status).toBe(200);
+    const body1 = (await page1.json()) as { items: unknown[]; nextCursor?: string };
+    expect(body1.nextCursor).toBe(page2Cursor);
+
+    const page2 = await GET(
+      new Request(
+        `http://localhost/api/supply-chain-twin/scenarios?limit=2&cursor=${encodeURIComponent(body1.nextCursor!)}`,
+      ),
+    );
+    expect(page2.status).toBe(200);
+    expect(await page2.json()).toEqual({
+      items: [
+        { id: "c", title: null, status: "draft", updatedAt: "2026-01-08T00:00:00.000Z" },
+      ],
+    });
+
+    expect(listScenarioDraftsForTenantPageMock).toHaveBeenNthCalledWith(1, "t1", {
+      limit: 2,
+      cursorPosition: null,
+    });
+    expect(listScenarioDraftsForTenantPageMock).toHaveBeenNthCalledWith(2, "t1", {
+      limit: 2,
+      cursorPosition: { updatedAt: rowB.updatedAt, id: rowB.id },
+    });
   });
 
   it("returns items and nextCursor when repo reports a next page", async () => {

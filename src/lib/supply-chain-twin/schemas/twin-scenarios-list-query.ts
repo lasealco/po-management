@@ -5,7 +5,7 @@ const twinScenariosListCursorPayloadSchema = z.object({
   i: z.string().min(1),
 });
 
-/** GET `/api/supply-chain-twin/scenarios` — list drafts (newest `updatedAt` first). */
+/** GET `/api/supply-chain-twin/scenarios` — list drafts (newest `updatedAt` first, keyset `cursor`, no offset). */
 export const twinScenariosListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional().default(50),
   cursor: z

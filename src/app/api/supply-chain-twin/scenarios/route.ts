@@ -16,7 +16,12 @@ const ROUTE_POST = "POST /api/supply-chain-twin/scenarios";
 const ROUTE_GET = "GET /api/supply-chain-twin/scenarios";
 
 /**
- * Tenant-scoped scenario drafts (newest `updatedAt` first), keyset-paged. Same auth as other twin APIs.
+ * Tenant-scoped scenario drafts (newest `updatedAt` first), **keyset-paged** (no offset scan).
+ *
+ * **Query:** `limit` integer 1–100 (default 50). Optional opaque `cursor` from a prior response’s `nextCursor`
+ * (base64url JSON `{ u: ISO8601, i: id }`).
+ *
+ * **Response:** `{ items, nextCursor? }` — `nextCursor` omitted when there is no further page.
  */
 export async function GET(request: Request) {
   const requestId = resolveSctwinRequestId(request);
