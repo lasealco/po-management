@@ -35,4 +35,21 @@ describe("parseTwinEntitiesQuery", () => {
       expect(r.query.cursor).toBe("abc");
     }
   });
+
+  it("defaults fields to summary when omitted", () => {
+    const r = parseTwinEntitiesQuery(new URLSearchParams("q=hi"));
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.query.fields).toBe("summary");
+  });
+
+  it("accepts fields=full case-insensitively", () => {
+    const r = parseTwinEntitiesQuery(new URLSearchParams("fields=FuLl"));
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.query.fields).toBe("full");
+  });
+
+  it("rejects unknown fields", () => {
+    const r = parseTwinEntitiesQuery(new URLSearchParams("fields=nope"));
+    expect(r.ok).toBe(false);
+  });
 });

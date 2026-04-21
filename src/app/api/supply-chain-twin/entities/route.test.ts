@@ -156,7 +156,12 @@ describe("Supply Chain Twin entities route", () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ items: [] });
-    expect(listForTenantPageMock).toHaveBeenCalledWith("t1", { q: "test", limit: 100, cursor: null });
+    expect(listForTenantPageMock).toHaveBeenCalledWith("t1", {
+      q: "test",
+      limit: 100,
+      cursor: null,
+      fields: "summary",
+    });
   });
 
   it("passes entityKind with q to listForTenantPage", async () => {
@@ -182,6 +187,7 @@ describe("Supply Chain Twin entities route", () => {
       q: "acme",
       limit: 100,
       cursor: null,
+      fields: "summary",
       entityKind: "supplier",
     });
   });
@@ -210,6 +216,61 @@ describe("Supply Chain Twin entities route", () => {
       items: [{ id: "snap-acme", ref: { kind: "supplier", id: "ACME" } }],
       nextCursor: "next-page-token",
     });
-    expect(listForTenantPageMock).toHaveBeenCalledWith("t1", { q: "", limit: 10, cursor: null });
+    expect(listForTenantPageMock).toHaveBeenCalledWith("t1", {
+      q: "",
+      limit: 10,
+      cursor: null,
+      fields: "summary",
+    });
+  });
+
+  it("returns 400 when fields is not summary or full", async () => {
+    getViewerGrantSetMock.mockResolvedValue({
+      tenant: { id: "t1", name: "Demo", slug: "demo-company" },
+      user: { id: "u1", email: "x@y.com", name: "X" },
+      grantSet: new Set(),
+    });
+    resolveNavStateMock.mockResolvedValue({
+      linkVisibility: { supplyChainTwin: true },
+      setupIncomplete: false,
+      poSubNavVisibility: {},
+    });
+
+    const { GET } = await import("./route");
+    const response = await GET(new Request("http://localhost/api/supply-chain-twin/entities?fields=compact"));
+
+    expect(response.status).toBe(400);
+    expect(listForTenantPageMock).not.toHaveBeenCalled();
+  });
+
+  it("passes fields=full to listForTenantPage and returns payload on items", async () => {
+    getViewerGrantSetMock.mockResolvedValue({
+      tenant: { id: "t1", name: "Demo", slug: "demo-company" },
+      user: { id: "u1", email: "x@y.com", name: "X" },
+      grantSet: new Set(),
+    });
+    resolveNavStateMock.mockResolvedValue({
+      linkVisibility: { supplyChainTwin: true },
+      setupIncomplete: false,
+      poSubNavVisibility: {},
+    });
+    listForTenantPageMock.mockResolvedValue({
+      items: [{ id: "snap-acme", ref: { kind: "supplier", id: "ACME" }, payload: { k: 1 } }],
+      nextCursor: null,
+    });
+
+    const { GET } = await import("./route");
+    const response = await GET(new Request("http://localhost/api/supply-chain-twin/entities?fields=full"));
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      items: [{ id: "snap-acme", ref: { kind: "supplier", id: "ACME" }, payload: { k: 1 } }],
+    });
+    expect(listForTenantPageMock).toHaveBeenCalledWith("t1", {
+      q: "",
+      limit: 100,
+      cursor: null,
+      fields: "full",
+    });
   });
 });

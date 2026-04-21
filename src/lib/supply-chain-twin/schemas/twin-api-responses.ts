@@ -3,12 +3,13 @@ import { z } from "zod";
 
 import { twinEntityRefSchema } from "./twin-entity-ref";
 
-/** Success body for `GET /api/supply-chain-twin/entities`. */
+/** Success body for `GET /api/supply-chain-twin/entities`. `payload` present when `fields=full` (Slice 70). */
 export const twinEntitiesListResponseSchema = z.object({
   items: z.array(
     z.object({
       id: z.string().min(1),
       ref: twinEntityRefSchema,
+      payload: z.unknown().optional(),
     }),
   ),
   nextCursor: z.string().min(1).optional(),

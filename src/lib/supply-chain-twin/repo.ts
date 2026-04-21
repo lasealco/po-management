@@ -20,6 +20,11 @@ export type ListForTenantPageOptions = {
   cursor?: string | null;
   /** When set, restricts rows to this stored `entityKind` (exact match). */
   entityKind?: TwinEntityKind;
+  /**
+   * Slice 70: `summary` (default) selects only list columns — no `payload` in rows. `full` selects JSON `payload`
+   * per row (caller should keep `limit` small; no truncation).
+   */
+  fields?: "summary" | "full";
 };
 
 /**
@@ -30,6 +35,7 @@ export async function listForTenantPage(
   tenantId: string,
   options: ListForTenantPageOptions,
 ): Promise<{ items: TwinEntityListItem[]; nextCursor: string | null }> {
+  const mode = options.fields ?? "summary";
   const limit = Math.min(Math.max(options.limit, 1), 500);
   const q = (options.q ?? "").trim();
 
@@ -69,9 +75,14 @@ export async function listForTenantPage(
   const where =
     filters.length === 0 ? { tenantId } : { tenantId, AND: filters };
 
+  const select =
+    mode === "full"
+      ? ({ id: true, entityKind: true, entityKey: true, updatedAt: true, payload: true } as const)
+      : ({ id: true, entityKind: true, entityKey: true, updatedAt: true } as const);
+
   const rows = await prisma.supplyChainTwinEntitySnapshot.findMany({
     where,
-    select: { id: true, entityKind: true, entityKey: true, updatedAt: true },
+    select,
     orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
     take: limit + 1,
   });
@@ -84,10 +95,16 @@ export async function listForTenantPage(
       ? encodeTwinEntitiesCursor({ updatedAt: last.updatedAt, id: last.id })
       : null;
 
-  const items = pageRows.map((row) => ({
-    id: row.id,
-    ref: { kind: toTwinEntityKind(row.entityKind), id: row.entityKey },
-  }));
+  const items = pageRows.map((row) => {
+    const base: TwinEntityListItem = {
+      id: row.id,
+      ref: { kind: toTwinEntityKind(row.entityKind), id: row.entityKey },
+    };
+    if (mode === "full" && "payload" in row) {
+      return { ...base, payload: row.payload };
+    }
+    return base;
+  });
 
   return { items, nextCursor };
 }
@@ -104,6 +121,7 @@ export async function listForTenant(
     q: options.q,
     limit,
     cursor: null,
+    fields: "summary",
   });
   return items;
 }
