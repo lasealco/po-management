@@ -4,6 +4,7 @@ export * from "./twin-entities-query";
 export * from "./twin-entity-ref";
 export * from "./twin-events-query";
 export * from "./twin-readiness-response";
+export * from "./twin-risk-signals-list-query";
 export * from "./twin-scenario-draft-create";
 export * from "./twin-scenario-draft-patch";
 export * from "./twin-scenarios-list-query";

@@ -1,3 +1,4 @@
+import { TwinRiskSeverity } from "@prisma/client";
 import { z } from "zod";
 
 import { twinEntityRefSchema } from "./twin-entity-ref";
@@ -73,4 +74,23 @@ export const twinScenarioDraftDetailResponseSchema = z.object({
   updatedAt: z.string(),
   /** Stored document; same semantics as `draft` on create/update APIs. */
   draft: z.unknown(),
+});
+
+const twinRiskSeverityResponseSchema = z.nativeEnum(TwinRiskSeverity);
+
+/** One row from `GET /api/supply-chain-twin/risk-signals` (aligns with Prisma `TwinRiskSeverity`). */
+export const twinRiskSignalListItemSchema = z.object({
+  id: z.string(),
+  code: z.string(),
+  severity: twinRiskSeverityResponseSchema,
+  title: z.string(),
+  detail: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+/** Success body for `GET /api/supply-chain-twin/risk-signals`. */
+export const twinRiskSignalsListResponseSchema = z.object({
+  items: z.array(twinRiskSignalListItemSchema),
+  nextCursor: z.string().min(1).optional(),
 });
