@@ -16,6 +16,7 @@ const REQUIRED_PUBLIC_TABLES = [
   "SupplyChainTwinEntitySnapshot",
   "SupplyChainTwinEntityEdge",
   "SupplyChainTwinIngestEvent",
+  "SupplyChainTwinRiskSignal",
 ] as const;
 
 let cache: { checkedAtMs: number; value: SupplyChainTwinReadiness } | null = null;
@@ -35,7 +36,8 @@ async function computeSupplyChainTwinReadiness(): Promise<SupplyChainTwinReadine
         AND table_name IN (
           'SupplyChainTwinEntitySnapshot',
           'SupplyChainTwinEntityEdge',
-          'SupplyChainTwinIngestEvent'
+          'SupplyChainTwinIngestEvent',
+          'SupplyChainTwinRiskSignal'
         )
     `;
     const found = new Set(rows.map((r) => r.table_name));

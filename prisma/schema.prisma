@@ -81,6 +81,7 @@ model Tenant {
   supplyChainTwinEntitySnapshots SupplyChainTwinEntitySnapshot[]
   supplyChainTwinEntityEdges     SupplyChainTwinEntityEdge[]
   supplyChainTwinIngestEvents    SupplyChainTwinIngestEvent[]
+  supplyChainTwinRiskSignals     SupplyChainTwinRiskSignal[]
 }
 
 /// Integration / API hub — registry row for an external or internal data source (Phase 1 stub).
@@ -3090,6 +3091,34 @@ model ReferenceAirline {
 
   @@index([awbPrefix3])
   @@map("reference_airlines")
+}
+
+/// Twin risk / alert severity (PRD-aligned vocabulary; extend with care).
+enum TwinRiskSeverity {
+  INFO
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+/// Tenant-scoped risk or alert signal row (minimal slice-22 foundation).
+model SupplyChainTwinRiskSignal {
+  id        String           @id @default(cuid())
+  tenantId  String
+  /// Stable code for upserts and routing (e.g. `DEMO-SCTWIN-SEED-RISK`).
+  code      String
+  severity  TwinRiskSeverity
+  title     String
+  detail    String?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@index([tenantId, severity])
 }
 
 /// Tenant-scoped Supply Chain Twin entity node (materialized snapshot + JSON payload).

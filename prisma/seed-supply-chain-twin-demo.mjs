@@ -5,7 +5,7 @@
  *
  * Prerequisites:
  * - DATABASE_URL
- * - Migrations through `20260424120000_supply_chain_twin_entity_snapshots`
+ * - Migrations through `20260427100000_supply_chain_twin_risk_signal` (twin snapshots + edges + ingest + risk)
  * - Main `npm run db:seed` at least once (tenant `demo-company`)
  *
  * After run: open `/supply-chain-twin` — Twin entity catalog lists one supplier node.
@@ -20,6 +20,8 @@ const DEMO_SLUG = "demo-company";
 /** Must match `src/lib/supply-chain-twin/demo-seed.ts`. */
 const DEMO_ENTITY_KIND = "supplier";
 const DEMO_ENTITY_KEY = "DEMO-SCTWIN-SEED-SUPPLIER";
+/** Must match `src/lib/supply-chain-twin/demo-seed.ts` (`SCTWIN_DEMO_SEED_RISK_CODE`). */
+const DEMO_RISK_CODE = "DEMO-SCTWIN-SEED-RISK";
 
 const cliDatabaseUrl = process.env.DATABASE_URL?.trim() || null;
 config({ path: resolve(process.cwd(), ".env") });
@@ -43,15 +45,22 @@ const prisma = new PrismaClient({
 
 async function main() {
   const tableRows = await prisma.$queryRaw`
-    SELECT 1 AS ok
+    SELECT table_name::text AS table_name
     FROM information_schema.tables
     WHERE table_schema = 'public'
-      AND table_name = 'SupplyChainTwinEntitySnapshot'
-    LIMIT 1
+      AND table_name IN ('SupplyChainTwinEntitySnapshot', 'SupplyChainTwinRiskSignal')
   `;
-  if (!Array.isArray(tableRows) || tableRows.length === 0) {
+  const found = new Set((Array.isArray(tableRows) ? tableRows : []).map((r) => r.table_name));
+  if (!found.has("SupplyChainTwinEntitySnapshot")) {
     console.error(
       "[db:seed:supply-chain-twin-demo] Table SupplyChainTwinEntitySnapshot is missing.\n" +
+        "  Run: npm run db:migrate   then retry.",
+    );
+    process.exit(1);
+  }
+  if (!found.has("SupplyChainTwinRiskSignal")) {
+    console.error(
+      "[db:seed:supply-chain-twin-demo] Table SupplyChainTwinRiskSignal is missing.\n" +
         "  Run: npm run db:migrate   then retry.",
     );
     process.exit(1);
@@ -67,6 +76,27 @@ async function main() {
     );
     process.exit(1);
   }
+
+  await prisma.supplyChainTwinRiskSignal.upsert({
+    where: {
+      tenantId_code: {
+        tenantId: tenant.id,
+        code: DEMO_RISK_CODE,
+      },
+    },
+    create: {
+      tenantId: tenant.id,
+      code: DEMO_RISK_CODE,
+      severity: "MEDIUM",
+      title: "Demo Twin — seeded latency watch (non-production)",
+      detail: "Slice-22 placeholder risk row for investor demos; not evaluated from live KPIs.",
+    },
+    update: {
+      severity: "MEDIUM",
+      title: "Demo Twin — seeded latency watch (non-production)",
+      detail: "Slice-22 placeholder risk row for investor demos; not evaluated from live KPIs.",
+    },
+  });
 
   await prisma.supplyChainTwinEntitySnapshot.upsert({
     where: {
@@ -95,7 +125,7 @@ async function main() {
 
   console.log(
     `[db:seed:supply-chain-twin-demo] OK — tenant "${tenant.name}" (${DEMO_SLUG}): ` +
-      `${DEMO_ENTITY_KIND} / ${DEMO_ENTITY_KEY}. Open /supply-chain-twin to see the catalog.`,
+      `${DEMO_ENTITY_KIND} / ${DEMO_ENTITY_KEY}; risk ${DEMO_RISK_CODE} (MEDIUM). Open /supply-chain-twin.`,
   );
 }
 

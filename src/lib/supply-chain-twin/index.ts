@@ -3,4 +3,5 @@
  */
 export * from "./constants";
 export * from "./dto";
+export * from "./risk";
 export * from "./types";
