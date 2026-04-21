@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { AccessDenied } from "@/components/access-denied";
 import { TwinScenariosDraftsPanel } from "@/components/supply-chain-twin/twin-scenarios-drafts-panel";
@@ -66,6 +67,14 @@ export default async function SupplyChainTwinScenariosPage() {
         <p className="mt-2 max-w-2xl text-sm text-zinc-600">
           Drafts are tenant-scoped rows from the twin API. Open links target the detail route planned in Slice 40 (404 until that
           page exists).
+        </p>
+        <p className="mt-4">
+          <Link
+            href="/supply-chain-twin/scenarios/compare"
+            className="text-sm font-semibold text-[var(--arscmp-primary)] underline-offset-2 hover:underline"
+          >
+            Compare drafts (preview shell)
+          </Link>
         </p>
       </section>
 

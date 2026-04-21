@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { getActorUserId } from "@/lib/authz";
+import { actorIsSupplierPortalRestricted, getActorUserId, getViewerGrantSet } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
+import { buildHelpAssistantGrantSnapshot } from "@/lib/help-assistant-grants";
 import { HELP_PLAYBOOKS } from "@/lib/help-playbooks";
 import { buildHelpReply } from "@/lib/help-llm";
 
@@ -31,9 +32,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "message is required." }, { status: 400 });
   }
 
+  const access = await getViewerGrantSet();
+  const supplierPortalRestricted =
+    access?.user != null ? await actorIsSupplierPortalRestricted(access.user.id) : false;
+  const grantSnapshot = buildHelpAssistantGrantSnapshot(access, { supplierPortalRestricted });
+
   const reply = await buildHelpReply({
     message,
     currentPath: input.currentPath,
+    grantSnapshot,
   });
 
   return NextResponse.json({

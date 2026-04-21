@@ -3,6 +3,12 @@ import {
   type HelpDoAction,
 } from "@/lib/help-actions";
 import { HELP_PLAYBOOKS, matchPlaybook, type HelpPlaybook } from "@/lib/help-playbooks";
+import {
+  filterHelpDoActionsByGrants,
+  filterRouteHintsForGrants,
+  type HelpAssistantGrantSnapshot,
+  helpAssistantOpenPathAllowed,
+} from "@/lib/help-assistant-grants";
 import { extractProductTraceOpenPathQueryFromUserMessage } from "@/lib/help-product-trace-intent";
 import { LEGAL_COOKIES_PATH, LEGAL_PRIVACY_PATH, LEGAL_TERMS_PATH } from "@/lib/legal-public-paths";
 import { MARKETING_PRICING_PATH, PLATFORM_HUB_PATH } from "@/lib/marketing-public-paths";
@@ -38,7 +44,24 @@ const ROUTE_HINTS: HelpAction[] = [
   { label: "Cookie policy", href: LEGAL_COOKIES_PATH },
 ];
 
-function fallbackReply(message: string): HelpReply {
+function applyGrantFilteringToReply(
+  reply: HelpReply,
+  grantSnapshot: HelpAssistantGrantSnapshot | null | undefined,
+): HelpReply {
+  if (!grantSnapshot) return reply;
+  return {
+    ...reply,
+    actions: reply.actions.filter((a) =>
+      helpAssistantOpenPathAllowed(a.href.split("?")[0] ?? a.href, grantSnapshot),
+    ),
+    doActions: filterHelpDoActionsByGrants(reply.doActions, grantSnapshot),
+  };
+}
+
+function fallbackReply(
+  message: string,
+  grantSnapshot?: HelpAssistantGrantSnapshot | null,
+): HelpReply {
   const matched = matchPlaybook(message);
   if (matched) {
     const firstHref = matched.steps.find((s) => s.href)?.href;
@@ -152,28 +175,44 @@ function fallbackReply(message: string): HelpReply {
         payload: { path: LEGAL_COOKIES_PATH, guide: matched.id, step: 4 },
       });
     }
-    return {
-      answer: `${matched.title}: ${matched.summary}`,
-      playbook: matched,
-      suggestions: [
-        "Show me the next step",
-        "Navigate me to the first page",
-        "Explain common mistakes",
-      ],
-      actions: firstHref ? [{ label: "Start guide", href: firstHref }] : [],
-      doActions,
-      llmUsed: false,
-    };
+    const startGuide =
+      firstHref &&
+      (!grantSnapshot ||
+        helpAssistantOpenPathAllowed(firstHref.split("?")[0] ?? firstHref, grantSnapshot))
+        ? [{ label: "Start guide", href: firstHref }]
+        : [];
+
+    return applyGrantFilteringToReply(
+      {
+        answer: `${matched.title}: ${matched.summary}`,
+        playbook: matched,
+        suggestions: [
+          "Show me the next step",
+          "Navigate me to the first page",
+          "Explain common mistakes",
+        ],
+        actions: startGuide,
+        doActions,
+        llmUsed: false,
+      },
+      grantSnapshot,
+    );
   }
-  return {
-    answer:
-      "I can guide you through orders, suppliers, consolidation, Control Tower, product trace (SKU → map), the Reporting hub (cockpit, refresh shortcuts), and user administration. Privacy, terms, and cookies are on their own public pages (also in the command palette). Try asking: 'I want to create an order', 'I am looking for product corr-roll', 'How do I trace a SKU on the map?', or 'How do I build a consolidation load?'",
-    playbook: null,
-    suggestions: HELP_PLAYBOOKS.map((p) => p.title),
-    actions: ROUTE_HINTS.slice(0, 4),
-    doActions: [],
-    llmUsed: false,
-  };
+  const defaultActions = grantSnapshot
+    ? filterRouteHintsForGrants(ROUTE_HINTS, grantSnapshot).slice(0, 4)
+    : ROUTE_HINTS.slice(0, 4);
+  return applyGrantFilteringToReply(
+    {
+      answer:
+        "I can guide you through orders, suppliers, consolidation, Control Tower, product trace (SKU → map), the Reporting hub (cockpit, refresh shortcuts), and user administration. Privacy, terms, and cookies are on their own public pages (also in the command palette). Try asking: 'I want to create an order', 'I am looking for product corr-roll', 'How do I trace a SKU on the map?', or 'How do I build a consolidation load?'",
+      playbook: null,
+      suggestions: HELP_PLAYBOOKS.map((p) => p.title),
+      actions: defaultActions,
+      doActions: [],
+      llmUsed: false,
+    },
+    grantSnapshot,
+  );
 }
 
 function safeJsonParse<T>(raw: string): T | null {
@@ -197,10 +236,11 @@ function extractJsonObject(raw: string): string | null {
 export async function buildHelpReply(params: {
   message: string;
   currentPath?: string;
+  grantSnapshot?: HelpAssistantGrantSnapshot | null;
 }): Promise<HelpReply> {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   const llmDisabled = process.env.HELP_LLM === "0" || process.env.OPENAI_HELP_DISABLED === "1";
-  if (!apiKey || llmDisabled) return fallbackReply(params.message);
+  if (!apiKey || llmDisabled) return fallbackReply(params.message, params.grantSnapshot);
 
   const matched = matchPlaybook(params.message);
   const playbookHint = matched
@@ -232,14 +272,20 @@ export async function buildHelpReply(params: {
     "Use demo PO-1004 only as a known example order number when suggesting open_order.",
     "Do not invent unavailable pages or arbitrary paths.",
     "Reporting hub (/reporting): Cockpit board supports Refresh data, optional Auto-refresh (5/10/15 min, pauses when the tab is hidden, catch-up when returning), R to refresh when focus is not in an input/textarea/select, Shift+R for silent refresh. Command palette lists the Reporting hub with the same shortcut hints.",
+    "User JSON includes helpCapabilities: booleans for the active viewer (e.g. ordersView, controlTowerView, reportingHub, tariffsView). Only suggest actions and doActions for routes they are allowed to open; omit the rest. If signedIn is false, tell them to pick a demo user in Settings → Demo session.",
   ].join(" ");
 
   const extractedProductTraceCode = extractProductTraceOpenPathQueryFromUserMessage(params.message);
 
+  const availableRoutes = params.grantSnapshot
+    ? filterRouteHintsForGrants(ROUTE_HINTS, params.grantSnapshot)
+    : ROUTE_HINTS;
+
   const user = JSON.stringify({
     message: params.message,
     currentPath: params.currentPath ?? null,
-    availableRoutes: ROUTE_HINTS,
+    availableRoutes,
+    helpCapabilities: params.grantSnapshot ?? null,
     playbookHint,
     extractedProductTraceCode: extractedProductTraceCode ?? null,
     reportingCockpitHints:
@@ -263,7 +309,7 @@ export async function buildHelpReply(params: {
         ],
       }),
     });
-    if (!res.ok) return fallbackReply(params.message);
+    if (!res.ok) return fallbackReply(params.message, params.grantSnapshot);
     const payload = (await res.json()) as {
       choices?: Array<{ message?: { content?: string | null } }>;
     };
@@ -275,7 +321,7 @@ export async function buildHelpReply(params: {
       actions?: Array<{ label?: string; href?: string }>;
       doActions?: unknown;
     }>(jsonSlice);
-    if (!parsed?.answer) return fallbackReply(params.message);
+    if (!parsed?.answer) return fallbackReply(params.message, params.grantSnapshot);
 
     const actions = (parsed.actions ?? [])
       .filter((a) => a?.label && a?.href && a.href.startsWith("/"))
@@ -303,17 +349,24 @@ export async function buildHelpReply(params: {
         doActions = [injected, ...doActions].slice(0, 4);
       }
     }
+    if (params.grantSnapshot) {
+      doActions = filterHelpDoActionsByGrants(doActions, params.grantSnapshot);
+    }
+    const grantSnap = params.grantSnapshot;
+    const actionsFiltered = grantSnap
+      ? actions.filter((a) => helpAssistantOpenPathAllowed(a.href.split("?")[0] ?? a.href, grantSnap))
+      : actions;
     return {
       answer: parsed.answer,
       playbook: matched ?? null,
       suggestions: Array.isArray(parsed.suggestions)
         ? parsed.suggestions.slice(0, 5)
         : [],
-      actions,
+      actions: actionsFiltered,
       doActions,
       llmUsed: true,
     };
   } catch {
-    return fallbackReply(params.message);
+    return fallbackReply(params.message, params.grantSnapshot);
   }
 }
