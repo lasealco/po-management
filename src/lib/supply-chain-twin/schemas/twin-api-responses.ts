@@ -63,3 +63,14 @@ export const twinScenariosListResponseSchema = z.object({
   items: z.array(twinScenarioDraftListItemSchema),
   nextCursor: z.string().min(1).optional(),
 });
+
+/** Success body for `GET /api/supply-chain-twin/scenarios/[id]` — full draft JSON (never logged server-side). */
+export const twinScenarioDraftDetailResponseSchema = z.object({
+  id: z.string(),
+  title: z.string().nullable(),
+  status: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  /** Stored document; same semantics as `draft` on create/update APIs. */
+  draft: z.unknown(),
+});

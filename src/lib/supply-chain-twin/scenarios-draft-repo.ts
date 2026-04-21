@@ -89,3 +89,31 @@ export async function listScenarioDraftsForTenantPage(
 
   return { items: pageRows, nextCursor };
 }
+
+export type ScenarioDraftDetailRow = {
+  id: string;
+  title: string | null;
+  status: string;
+  draftJson: Prisma.JsonValue;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+/** Returns the row only when `id` belongs to `tenantId` (cross-tenant id yields `null`). */
+export async function getScenarioDraftByIdForTenant(
+  tenantId: string,
+  draftId: string,
+): Promise<ScenarioDraftDetailRow | null> {
+  const row = await prisma.supplyChainTwinScenarioDraft.findFirst({
+    where: { id: draftId, tenantId },
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      draftJson: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+  return row;
+}
