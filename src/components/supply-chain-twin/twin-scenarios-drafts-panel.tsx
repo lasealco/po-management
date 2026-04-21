@@ -3,80 +3,10 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
-type DraftRow = {
-  id: string;
-  title: string | null;
-  status: string;
-  updatedAt: string;
-};
-
-type ListResult =
-  | { ok: true; items: DraftRow[]; nextCursor: string | null }
-  | { ok: false; message: string };
-
-function parseListPayload(body: unknown): ListResult {
-  if (typeof body !== "object" || body == null || !("items" in body) || !Array.isArray((body as { items: unknown }).items)) {
-    return { ok: false, message: "Unexpected response from scenarios API." };
-  }
-  const rawItems = (body as { items: unknown[] }).items;
-  const items: DraftRow[] = [];
-  for (const row of rawItems) {
-    if (
-      typeof row === "object" &&
-      row != null &&
-      "id" in row &&
-      typeof (row as { id: unknown }).id === "string" &&
-      (row as { id: string }).id.length > 0 &&
-      "title" in row &&
-      ((row as { title: unknown }).title === null || typeof (row as { title: unknown }).title === "string") &&
-      "status" in row &&
-      typeof (row as { status: unknown }).status === "string" &&
-      "updatedAt" in row &&
-      typeof (row as { updatedAt: unknown }).updatedAt === "string"
-    ) {
-      items.push({
-        id: (row as { id: string }).id,
-        title: (row as { title: string | null }).title,
-        status: (row as { status: string }).status,
-        updatedAt: (row as { updatedAt: string }).updatedAt,
-      });
-    }
-  }
-  if (items.length !== rawItems.length) {
-    return { ok: false, message: "Unexpected response from scenarios API." };
-  }
-  let nextCursor: string | null = null;
-  if ("nextCursor" in body && (body as { nextCursor?: unknown }).nextCursor != null) {
-    const c = (body as { nextCursor: unknown }).nextCursor;
-    if (typeof c !== "string" || c.length === 0) {
-      return { ok: false, message: "Unexpected response from scenarios API." };
-    }
-    nextCursor = c;
-  }
-  return { ok: true, items, nextCursor };
-}
-
-async function fetchScenarioDraftsPage(cursor?: string): Promise<ListResult> {
-  const params = new URLSearchParams();
-  params.set("limit", "50");
-  if (cursor) {
-    params.set("cursor", cursor);
-  }
-  try {
-    const res = await fetch(`/api/supply-chain-twin/scenarios?${params.toString()}`, { cache: "no-store" });
-    const body = (await res.json()) as unknown;
-    if (!res.ok) {
-      const message =
-        typeof body === "object" && body != null && "error" in body && typeof (body as { error: unknown }).error === "string"
-          ? (body as { error: string }).error
-          : "Scenario drafts could not be loaded.";
-      return { ok: false, message };
-    }
-    return parseListPayload(body);
-  } catch {
-    return { ok: false, message: "Network error while loading scenario drafts." };
-  }
-}
+import {
+  fetchTwinScenarioDraftsPage,
+  type TwinScenarioDraftListRow,
+} from "@/lib/supply-chain-twin/twin-scenarios-drafts-client";
 
 function formatUpdatedAt(iso: string): string {
   const d = new Date(iso);
@@ -87,7 +17,7 @@ function formatUpdatedAt(iso: string): string {
 }
 
 export function TwinScenariosDraftsPanel() {
-  const [rows, setRows] = useState<DraftRow[]>([]);
+  const [rows, setRows] = useState<TwinScenarioDraftListRow[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [listError, setListError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -98,7 +28,7 @@ export function TwinScenariosDraftsPanel() {
   const reloadFirstPage = useCallback(async () => {
     setListError(null);
     setLoading(true);
-    const result = await fetchScenarioDraftsPage();
+    const result = await fetchTwinScenarioDraftsPage(undefined);
     setLoading(false);
     if (!result.ok) {
       setListError(result.message);
@@ -120,7 +50,7 @@ export function TwinScenariosDraftsPanel() {
     }
     setLoadingMore(true);
     setListError(null);
-    const result = await fetchScenarioDraftsPage(nextCursor);
+    const result = await fetchTwinScenarioDraftsPage(nextCursor);
     setLoadingMore(false);
     if (!result.ok) {
       setListError(result.message);
@@ -164,8 +94,9 @@ export function TwinScenariosDraftsPanel() {
           <h2 className="mt-2 text-lg font-semibold text-zinc-900">Drafts</h2>
           <p className="mt-2 max-w-2xl text-sm text-zinc-600">
             Rows load from{" "}
-            <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">GET /api/supply-chain-twin/scenarios</code>.{" "}
-            <span className="text-zinc-500">Create</span> uses the existing{" "}
+            <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">GET /api/supply-chain-twin/scenarios</code>{" "}
+            (keyset pages of 50; <span className="text-zinc-500">Load more</span> uses the API <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">cursor</code>
+            ). <span className="text-zinc-500">Create</span> uses the existing{" "}
             <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">POST</code> draft endpoint; the list refreshes after a
             successful create.
           </p>
@@ -188,7 +119,9 @@ export function TwinScenariosDraftsPanel() {
       ) : null}
 
       {loading ? (
-        <p className="mt-6 text-sm text-zinc-500">Loading drafts…</p>
+        <p className="mt-6 text-sm text-zinc-500" aria-live="polite">
+          Loading drafts…
+        </p>
       ) : null}
 
       {!loading && !listError && rows.length === 0 ? (
@@ -209,8 +142,8 @@ export function TwinScenariosDraftsPanel() {
       {!loading && rows.length > 0 ? (
         <>
           <p className="mt-4 text-xs text-zinc-500">
-            {rows.length} draft{rows.length === 1 ? "" : "s"} shown
-            {nextCursor ? " · more available below" : ""}
+            Showing {rows.length} draft{rows.length === 1 ? "" : "s"}
+            {nextCursor ? " · more below" : ""}
           </p>
           <div className="mt-3 overflow-x-auto rounded-xl border border-zinc-200">
             <table className="w-full min-w-[520px] text-left text-sm">
@@ -259,6 +192,14 @@ export function TwinScenariosDraftsPanel() {
               </button>
             </div>
           ) : null}
+          <div className="mt-4" aria-live="polite">
+            {loadingMore ? (
+              <p className="text-center text-xs text-zinc-500">Loading more drafts…</p>
+            ) : null}
+            {!loading && !loadingMore && rows.length > 0 && !nextCursor ? (
+              <p className="text-center text-xs text-zinc-500">All drafts in this workspace are shown.</p>
+            ) : null}
+          </div>
         </>
       ) : null}
     </section>
