@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 
 import { encodeIngestionRunListCursor } from "@/lib/apihub/ingestion-run-list-cursor";
+import { apiHubIngestionMaxAttemptsForTrigger, type ApiHubIngestionTriggerKind } from "@/lib/apihub/constants";
 import { ApiHubRunStatus } from "./run-lifecycle";
 
 export type ApiHubIngestionRunRow = {
@@ -107,7 +108,12 @@ export async function createApiHubIngestionRun(opts: {
   actorUserId: string;
   connectorId: string | null;
   idempotencyKey: string | null;
+  /** Defaults to `api` when omitted (HTTP create path). */
+  triggerKind?: ApiHubIngestionTriggerKind;
 }): Promise<{ run: ApiHubIngestionRunRow; idempotentReplay: boolean }> {
+  const triggerKind = opts.triggerKind ?? "api";
+  const maxAttempts = apiHubIngestionMaxAttemptsForTrigger(triggerKind);
+
   if (opts.connectorId) {
     const connector = await prisma.apiHubConnector.findFirst({
       where: { id: opts.connectorId, tenantId: opts.tenantId },
@@ -135,7 +141,8 @@ export async function createApiHubIngestionRun(opts: {
       requestedByUserId: opts.actorUserId,
       idempotencyKey: opts.idempotencyKey,
       status: "queued",
-      triggerKind: "api",
+      triggerKind,
+      maxAttempts,
     },
     select: RUN_SELECT,
   });

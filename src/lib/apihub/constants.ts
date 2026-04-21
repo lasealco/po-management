@@ -54,5 +54,33 @@ export type ApiHubIngestionJobStatus = (typeof APIHUB_INGESTION_JOB_STATUSES)[nu
 export const APIHUB_INGESTION_TRIGGER_KINDS = ["manual", "api", "scheduled"] as const;
 export type ApiHubIngestionTriggerKind = (typeof APIHUB_INGESTION_TRIGGER_KINDS)[number];
 
+export function isApiHubIngestionTriggerKind(value: string): value is ApiHubIngestionTriggerKind {
+  return (APIHUB_INGESTION_TRIGGER_KINDS as readonly string[]).includes(value);
+}
+
+/**
+ * Per-trigger retry budget for new ingestion runs (`maxAttempts` on the row). Retries inherit the
+ * root run's `maxAttempts` so the chain stays consistent.
+ */
+export const APIHUB_INGESTION_RETRY_MAX_ATTEMPTS_BY_TRIGGER = {
+  api: 3,
+  manual: 5,
+  scheduled: 2,
+} as const satisfies Record<ApiHubIngestionTriggerKind, number>;
+
+/** Hard lower bound applied after per-trigger policy (Slice 25). */
+export const APIHUB_INGESTION_RETRY_MAX_ATTEMPTS_MIN = 1;
+
+/** Hard upper bound applied after per-trigger policy (Slice 25). */
+export const APIHUB_INGESTION_RETRY_MAX_ATTEMPTS_CAP = 10;
+
+export function apiHubIngestionMaxAttemptsForTrigger(triggerKind: ApiHubIngestionTriggerKind): number {
+  const configured = APIHUB_INGESTION_RETRY_MAX_ATTEMPTS_BY_TRIGGER[triggerKind];
+  return Math.min(
+    APIHUB_INGESTION_RETRY_MAX_ATTEMPTS_CAP,
+    Math.max(APIHUB_INGESTION_RETRY_MAX_ATTEMPTS_MIN, configured),
+  );
+}
+
 /** Inclusive upper bound for `attempt` in `attemptRange` list filter (`min-max` or single digit). */
 export const APIHUB_INGESTION_ATTEMPT_RANGE_MAX = 99;

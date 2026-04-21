@@ -7,7 +7,12 @@ import {
   type ApiHubValidationIssue,
 } from "@/lib/apihub/api-error";
 import { getApiHubConnectorInTenant } from "@/lib/apihub/connectors-repo";
-import { APIHUB_INGESTION_JOB_STATUSES } from "@/lib/apihub/constants";
+import {
+  APIHUB_INGESTION_JOB_STATUSES,
+  APIHUB_INGESTION_TRIGGER_KINDS,
+  type ApiHubIngestionTriggerKind,
+  isApiHubIngestionTriggerKind,
+} from "@/lib/apihub/constants";
 import { decodeIngestionRunListCursor } from "@/lib/apihub/ingestion-run-list-cursor";
 import {
   parseIngestionRunListAttemptRangeParam,
@@ -31,6 +36,7 @@ export const dynamic = "force-dynamic";
 type PostBody = {
   connectorId?: unknown;
   idempotencyKey?: unknown;
+  triggerKind?: unknown;
 };
 
 export async function GET(request: Request) {
@@ -153,12 +159,42 @@ export async function POST(request: Request) {
   const rawHeaderIdempotencyKey = request.headers.get("idempotency-key")?.trim() ?? null;
   const idempotencyKey = (rawHeaderIdempotencyKey || rawBodyIdempotencyKey)?.slice(0, 128) ?? null;
 
+  const rawTriggerKind = body.triggerKind;
+  let triggerKind: ApiHubIngestionTriggerKind | undefined;
+  if (rawTriggerKind === undefined || rawTriggerKind === null) {
+    triggerKind = undefined;
+  } else if (typeof rawTriggerKind !== "string") {
+    return apiHubValidationError(400, "VALIDATION_ERROR", "Run create validation failed.", [
+      {
+        field: "triggerKind",
+        code: "INVALID_TYPE",
+        message: "triggerKind must be a string when provided.",
+      },
+    ], requestId);
+  } else {
+    const trimmed = rawTriggerKind.trim();
+    if (trimmed.length === 0) {
+      triggerKind = undefined;
+    } else if (!isApiHubIngestionTriggerKind(trimmed)) {
+      return apiHubValidationError(400, "VALIDATION_ERROR", "Run create validation failed.", [
+        {
+          field: "triggerKind",
+          code: "INVALID_ENUM",
+          message: `triggerKind must be one of: ${APIHUB_INGESTION_TRIGGER_KINDS.join(", ")}.`,
+        },
+      ], requestId);
+    } else {
+      triggerKind = trimmed;
+    }
+  }
+
   try {
     const created = await createApiHubIngestionRun({
       tenantId: tenant.id,
       actorUserId: actorId,
       connectorId,
       idempotencyKey,
+      ...(triggerKind ? { triggerKind } : {}),
     });
     return apiHubJson(
       { run: toApiHubIngestionRunDto(created.run), idempotentReplay: created.idempotentReplay },

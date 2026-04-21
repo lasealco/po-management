@@ -63,7 +63,12 @@ export async function POST(request: Request, context: { params: Promise<{ jobId:
       return apiHubError(409, "RETRY_REQUIRES_FAILED", "Only failed runs can be retried.", requestId);
     }
     if (error instanceof Error && error.message === "retry_limit_reached") {
-      return apiHubError(409, "RETRY_LIMIT_REACHED", "Run has reached its max retry attempts.", requestId);
+      return apiHubError(
+        409,
+        "RETRY_LIMIT_REACHED",
+        "Run has reached the max retry attempts allowed for this job (maxAttempts budget from job creation).",
+        requestId,
+      );
     }
     if (error instanceof Error && error.message === "retry_idempotency_key_conflict") {
       return apiHubError(

@@ -291,4 +291,65 @@ describe("POST /api/apihub/ingestion-jobs", () => {
       idempotencyKey: "abc",
     });
   });
+
+  it("passes triggerKind for retry budget policy", async () => {
+    getDemoTenantMock.mockResolvedValue({ id: "tenant-1" });
+    getActorUserIdMock.mockResolvedValue("user-1");
+    createApiHubIngestionRunMock.mockResolvedValue({ run: { id: "run-1" }, idempotentReplay: false });
+    toApiHubIngestionRunDtoMock.mockReturnValue({ id: "run-dto-1" });
+    const { POST } = await import("./route");
+    const response = await POST(
+      new Request("http://localhost/api/apihub/ingestion-jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", [APIHUB_REQUEST_ID_HEADER]: "ingest-create-tk" },
+        body: JSON.stringify({ connectorId: null, triggerKind: "manual" }),
+      }),
+    );
+    expect(response.status).toBe(201);
+    expect(createApiHubIngestionRunMock).toHaveBeenCalledWith({
+      tenantId: "tenant-1",
+      actorUserId: "user-1",
+      connectorId: null,
+      idempotencyKey: null,
+      triggerKind: "manual",
+    });
+  });
+
+  it("returns validation error for invalid triggerKind", async () => {
+    getDemoTenantMock.mockResolvedValue({ id: "tenant-1" });
+    getActorUserIdMock.mockResolvedValue("user-1");
+    const { POST } = await import("./route");
+    const response = await POST(
+      new Request("http://localhost/api/apihub/ingestion-jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", [APIHUB_REQUEST_ID_HEADER]: "ingest-create-bad-tk" },
+        body: JSON.stringify({ triggerKind: "webhook" }),
+      }),
+    );
+    expect(response.status).toBe(400);
+    expect(createApiHubIngestionRunMock).not.toHaveBeenCalled();
+    expect(await response.json()).toMatchObject({
+      ok: false,
+      error: { code: "VALIDATION_ERROR", details: { issues: [{ field: "triggerKind", code: "INVALID_ENUM" }] } },
+    });
+  });
+
+  it("returns validation error when triggerKind is not a string", async () => {
+    getDemoTenantMock.mockResolvedValue({ id: "tenant-1" });
+    getActorUserIdMock.mockResolvedValue("user-1");
+    const { POST } = await import("./route");
+    const response = await POST(
+      new Request("http://localhost/api/apihub/ingestion-jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", [APIHUB_REQUEST_ID_HEADER]: "ingest-create-tk-type" },
+        body: JSON.stringify({ triggerKind: 99 }),
+      }),
+    );
+    expect(response.status).toBe(400);
+    expect(createApiHubIngestionRunMock).not.toHaveBeenCalled();
+    expect(await response.json()).toMatchObject({
+      ok: false,
+      error: { code: "VALIDATION_ERROR", details: { issues: [{ field: "triggerKind", code: "INVALID_TYPE" }] } },
+    });
+  });
 });
