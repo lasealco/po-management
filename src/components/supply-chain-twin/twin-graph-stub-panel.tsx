@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useId } from "react";
 import { useTwinCachedAsync } from "./use-twin-cached-async";
 
 type Ref = { kind: string; id: string };
@@ -24,6 +25,84 @@ type GraphEdgeVm = {
 type GraphBundle =
   | { ok: true; nodes: GraphNodeVm[]; edges: GraphEdgeVm[]; pickList: { id: string; ref: Ref }[] }
   | { ok: false; message: string };
+
+/** Preview-only palette so kinds read at a glance (not persisted). */
+function kindNodeClasses(kind: string): { circle: string; kindText: string; idText: string; edgeStroke: string } {
+  const k = kind.toLowerCase();
+  const map: Record<string, { circle: string; kindText: string; idText: string; edgeStroke: string }> = {
+    supplier: {
+      circle: "fill-violet-50 stroke-violet-400",
+      kindText: "fill-violet-950",
+      idText: "fill-violet-800",
+      edgeStroke: "#8b5cf6",
+    },
+    warehouse: {
+      circle: "fill-amber-50 stroke-amber-500",
+      kindText: "fill-amber-950",
+      idText: "fill-amber-900",
+      edgeStroke: "#d97706",
+    },
+    site: {
+      circle: "fill-emerald-50 stroke-emerald-500",
+      kindText: "fill-emerald-950",
+      idText: "fill-emerald-900",
+      edgeStroke: "#059669",
+    },
+    sku: {
+      circle: "fill-sky-50 stroke-sky-500",
+      kindText: "fill-sky-950",
+      idText: "fill-sky-900",
+      edgeStroke: "#0284c7",
+    },
+    shipment: {
+      circle: "fill-rose-50 stroke-rose-500",
+      kindText: "fill-rose-950",
+      idText: "fill-rose-900",
+      edgeStroke: "#e11d48",
+    },
+    purchase_order: {
+      circle: "fill-indigo-50 stroke-indigo-500",
+      kindText: "fill-indigo-950",
+      idText: "fill-indigo-900",
+      edgeStroke: "#6366f1",
+    },
+  };
+  return (
+    map[k] ?? {
+      circle: "fill-zinc-50 stroke-zinc-400",
+      kindText: "fill-zinc-900",
+      idText: "fill-zinc-600",
+      edgeStroke: "#71717a",
+    }
+  );
+}
+
+function formatKindLabel(kind: string): string {
+  const t = kind.replace(/_/g, " ").trim();
+  if (!t) return "unknown";
+  return t.length > 12 ? `${t.slice(0, 11)}…` : t;
+}
+
+function shortenEdgeEndpoints(
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+  radiusFrom: number,
+  radiusTo: number,
+): { x1: number; y1: number; x2: number; y2: number } {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const len = Math.hypot(dx, dy) || 1;
+  const ux = dx / len;
+  const uy = dy / len;
+  return {
+    x1: ax + ux * radiusFrom,
+    y1: ay + uy * radiusFrom,
+    x2: bx - ux * radiusTo,
+    y2: by - uy * radiusTo,
+  };
+}
 
 function refKey(ref: Ref): string {
   return `${ref.kind}:${ref.id}`;
@@ -276,10 +355,12 @@ function ExplorerSnapshotChips({
   }
   return (
     <div className="mt-3 flex flex-wrap gap-2">
-      <span className="w-full text-[11px] font-medium uppercase tracking-wide text-zinc-500">Focus edges on snapshot</span>
+      <span className="w-full text-[11px] font-medium uppercase tracking-wide text-zinc-500">Open in graph</span>
       {pickList.map((row) => {
         const label = `${row.ref.kind}:${row.ref.id}`;
-        const short = label.length > 28 ? `${label.slice(0, 27)}…` : label;
+        const shortKind = formatKindLabel(row.ref.kind);
+        const idShort = row.ref.id.length > 18 ? `${row.ref.id.slice(0, 17)}…` : row.ref.id;
+        const short = `${shortKind} · ${idShort}`;
         const href = `/supply-chain-twin/explorer?${new URLSearchParams({ q: searchQ, focus: row.id }).toString()}`;
         return (
           <button
@@ -289,7 +370,7 @@ function ExplorerSnapshotChips({
             onClick={() => {
               router.push(href);
             }}
-            className="max-w-[220px] truncate rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-left font-mono text-[11px] text-zinc-800 shadow-sm hover:border-zinc-300 hover:bg-zinc-50"
+            className="max-w-[240px] truncate rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-left text-[11px] font-medium text-zinc-800 shadow-sm hover:border-zinc-300 hover:bg-zinc-50"
           >
             {short}
           </button>
@@ -306,6 +387,7 @@ function TwinGraphStubPanelInner({
   searchQ: string;
   selectedSnapshotId: string | null;
 }) {
+  const arrowMarkerId = useId().replace(/:/g, "");
   const snapshot = useTwinCachedAsync(`sctwin:graph-bundle:v1:${searchQ}::${selectedSnapshotId ?? ""}`, () =>
     fetchGraphBundle(searchQ, selectedSnapshotId),
   );
@@ -333,66 +415,101 @@ function TwinGraphStubPanelInner({
   if (data.nodes.length === 0) {
     return (
       <p className="text-center text-sm text-zinc-600">
-        No nodes to plot yet — seed entities/edges or pick a snapshot above. APIs: entities + edges.
+        Nothing to draw yet. Add twin entities and edges for this workspace, or choose an entity from the table above.
       </p>
     );
   }
 
   const pos = new Map(data.nodes.map((n) => [n.key, n] as const));
+  const NODE_R = 24;
 
   return (
     <div className="relative">
       {!selectedSnapshotId && data.pickList.length > 0 ? <ExplorerSnapshotChips searchQ={searchQ} pickList={data.pickList} /> : null}
 
-      <svg viewBox="0 0 400 264" className="mt-4 h-auto w-full max-w-full text-zinc-400" aria-hidden="true">
+      <svg viewBox="0 0 400 264" className="mt-4 h-auto w-full max-w-full" aria-hidden="true">
+        <defs>
+          <marker
+            id={arrowMarkerId}
+            markerWidth="7"
+            markerHeight="7"
+            refX="6"
+            refY="3.5"
+            orient="auto"
+            markerUnits="strokeWidth"
+          >
+            <path d="M0,0 L7,3.5 L0,7 z" fill="#71717a" />
+          </marker>
+        </defs>
         {data.edges.map((e) => {
           const a = pos.get(e.fromKey);
           const b = pos.get(e.toKey);
           if (!a || !b) return null;
+          const fromStyle = kindNodeClasses(a.kind);
+          const { x1, y1, x2, y2 } = shortenEdgeEndpoints(a.x, a.y, b.x, b.y, NODE_R, NODE_R);
           return (
             <line
               key={e.id}
-              x1={a.x}
-              y1={a.y}
-              x2={b.x}
-              y2={b.y}
-              stroke="currentColor"
-              strokeWidth={1.25}
-              strokeOpacity={0.55}
+              x1={x1}
+              y1={y1}
+              x2={x2}
+              y2={y2}
+              stroke={fromStyle.edgeStroke}
+              strokeWidth={2}
+              strokeOpacity={0.75}
+              strokeLinecap="round"
+              markerEnd={`url(#${arrowMarkerId})`}
             />
           );
         })}
-        {data.nodes.map((n) => (
-          <g key={n.key}>
-            <circle cx={n.x} cy={n.y} r={22} className="fill-white stroke-zinc-300" strokeWidth={1.5} />
-            <text x={n.x} y={n.y - 4} textAnchor="middle" className="fill-zinc-700 text-[9px] font-mono">
-              {n.kind.length > 10 ? `${n.kind.slice(0, 9)}…` : n.kind}
-            </text>
-            <text x={n.x} y={n.y + 8} textAnchor="middle" className="fill-zinc-600 text-[8px]">
-              {n.id.length > 12 ? `${n.id.slice(0, 11)}…` : n.id}
-            </text>
-          </g>
-        ))}
+        {data.nodes.map((n) => {
+          const st = kindNodeClasses(n.kind);
+          return (
+            <g key={n.key}>
+              <circle cx={n.x} cy={n.y} r={NODE_R} className={`${st.circle}`} strokeWidth={2} />
+              <text x={n.x} y={n.y - 5} textAnchor="middle" className={`text-[10px] font-semibold capitalize ${st.kindText}`}>
+                {formatKindLabel(n.kind)}
+              </text>
+              <text x={n.x} y={n.y + 9} textAnchor="middle" className={`text-[8px] font-mono ${st.idText}`}>
+                {n.id.length > 14 ? `${n.id.slice(0, 13)}…` : n.id}
+              </text>
+            </g>
+          );
+        })}
       </svg>
       <p className="mt-2 text-center text-xs text-zinc-500">
         {selectedSnapshotId ? (
           <>
-            Live edges for <code className="text-[11px]">GET /api/supply-chain-twin/edges?snapshotId=…&amp;direction=both</code>.{" "}
+            Showing directed links for the selected entity.{" "}
             <Link
               href={`/supply-chain-twin/explorer${searchQ.trim() ? `?${new URLSearchParams({ q: searchQ }).toString()}` : ""}`}
               className="font-medium text-[var(--arscmp-primary)] underline-offset-2 hover:underline"
             >
-              Clear snapshot focus
+              Back to catalog view
             </Link>
           </>
         ) : (
           <>
-            Catalog mode: edges from <code className="text-[11px]">GET /api/supply-chain-twin/edges</code> (no{" "}
-            <code className="text-[11px]">snapshotId</code>). {data.nodes.length} node{data.nodes.length === 1 ? "" : "s"},{" "}
-            {data.edges.length} edge{data.edges.length === 1 ? "" : "s"}.
+            Preview: {data.nodes.length} node{data.nodes.length === 1 ? "" : "s"}, {data.edges.length} directed link
+            {data.edges.length === 1 ? "" : "s"} (sample from your workspace).
           </>
         )}
       </p>
+      <details className="mt-2 text-center text-[11px] text-zinc-500">
+        <summary className="cursor-pointer font-medium text-zinc-600">API details</summary>
+        <p className="mt-1 px-2">
+          {selectedSnapshotId ? (
+            <>
+              <code className="rounded bg-zinc-100 px-1">GET /api/supply-chain-twin/edges?snapshotId=…&amp;direction=both</code>
+            </>
+          ) : (
+            <>
+              <code className="rounded bg-zinc-100 px-1">GET /api/supply-chain-twin/entities</code> +{" "}
+              <code className="rounded bg-zinc-100 px-1">GET /api/supply-chain-twin/edges</code> (catalog sample)
+            </>
+          )}
+        </p>
+      </details>
     </div>
   );
 }
@@ -409,16 +526,15 @@ export function TwinGraphStubPanel({
   return (
     <section className="mt-6 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
       <h2 className="text-sm font-semibold text-zinc-900">Graph preview</h2>
-      <p className="mt-1 text-xs text-zinc-500">
+      <p className="mt-1 text-xs text-zinc-600">
         {snap ? (
           <>
-            Showing edges linked to snapshot <code className="text-[11px]">{snap}</code> (tenant-scoped). Center node is
-            that snapshot; neighbors come from edge endpoints.
+            Links for the entity you opened. Arrows follow the direction stored on each edge. Colors match entity type.
           </>
         ) : (
           <>
-            Pick a catalog row below to load <code className="text-[11px]">snapshotId</code> edges, or stay in catalog mode
-            (entities + global edge sample). Layout stays fixed-geometry (no new layout dependency).
+            A quick map of entities and how they connect in this workspace. Pick a row in the table to zoom the graph on
+            one entity, or use the chips below to jump there.
           </>
         )}
       </p>
