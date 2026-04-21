@@ -8,6 +8,14 @@ export const APIHUB_PHASE = "P2" as const;
 export const APIHUB_CONNECTOR_STATUSES = ["draft", "active", "paused", "error"] as const;
 export type ApiHubConnectorStatus = (typeof APIHUB_CONNECTOR_STATUSES)[number];
 
+/** Allowlisted `sort` query values for `GET /api/apihub/connectors`. */
+export const APIHUB_CONNECTOR_LIST_SORT_FIELDS = ["createdAt", "updatedAt", "name"] as const;
+export type ApiHubConnectorListSortField = (typeof APIHUB_CONNECTOR_LIST_SORT_FIELDS)[number];
+
+/** Allowlisted `order` query values (paired with `sort`). */
+export const APIHUB_CONNECTOR_LIST_SORT_ORDERS = ["asc", "desc"] as const;
+export type ApiHubConnectorListSortOrder = (typeof APIHUB_CONNECTOR_LIST_SORT_ORDERS)[number];
+
 /** Non-secret auth mode metadata for connector setup. */
 export const APIHUB_CONNECTOR_AUTH_MODES = [
   "none",

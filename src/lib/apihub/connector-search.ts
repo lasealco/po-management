@@ -1,3 +1,8 @@
+import type {
+  ApiHubConnectorListSortField,
+  ApiHubConnectorListSortOrder,
+} from "@/lib/apihub/constants";
+
 /** Max length for `q` on connector list (abuse guard). */
 export const APIHUB_CONNECTOR_SEARCH_Q_MAX_LEN = 128;
 
@@ -5,7 +10,30 @@ export type ConnectorNameSearchSortable = {
   id: string;
   name: string;
   createdAt: Date;
+  updatedAt: Date;
 };
+
+export type ConnectorListSortOptions = {
+  field: ApiHubConnectorListSortField;
+  order: ApiHubConnectorListSortOrder;
+};
+
+const DEFAULT_SEARCH_SORT: ConnectorListSortOptions = { field: "createdAt", order: "desc" };
+
+export function compareConnectorListSortFields<T extends ConnectorNameSearchSortable>(
+  a: T,
+  b: T,
+  field: ApiHubConnectorListSortField,
+  order: ApiHubConnectorListSortOrder,
+): number {
+  const mul = order === "asc" ? 1 : -1;
+  if (field === "name") {
+    return a.name.localeCompare(b.name, undefined, { sensitivity: "base" }) * mul;
+  }
+  const va = field === "updatedAt" ? a.updatedAt.getTime() : a.createdAt.getTime();
+  const vb = field === "updatedAt" ? b.updatedAt.getTime() : b.createdAt.getTime();
+  return (va - vb) * mul;
+}
 
 /**
  * Search rank for ordering (lower = higher priority): exact name (case-insensitive),
@@ -29,10 +57,14 @@ export function connectorNameSearchRank(name: string, qTrimmed: string): number 
   return 3;
 }
 
-/** Stable sort: rank asc, then newer `createdAt`, then `id` desc for ties. */
+/**
+ * When `q` is set: rank exact → prefix → contains, then apply `sort`/`order` within each rank,
+ * then stable `id` tie-break (direction matches `order`).
+ */
 export function sortConnectorListRowsByNameSearch<T extends ConnectorNameSearchSortable>(
   rows: T[],
   qTrimmed: string,
+  sort: ConnectorListSortOptions = DEFAULT_SEARCH_SORT,
 ): T[] {
   const needle = qTrimmed.trim();
   return [...rows].sort((a, b) => {
@@ -41,11 +73,10 @@ export function sortConnectorListRowsByNameSearch<T extends ConnectorNameSearchS
     if (ra !== rb) {
       return ra - rb;
     }
-    const ca = a.createdAt.getTime();
-    const cb = b.createdAt.getTime();
-    if (ca !== cb) {
-      return cb - ca;
+    const c = compareConnectorListSortFields(a, b, sort.field, sort.order);
+    if (c !== 0) {
+      return c;
     }
-    return b.id.localeCompare(a.id);
+    return sort.order === "asc" ? a.id.localeCompare(b.id) : b.id.localeCompare(a.id);
   });
 }

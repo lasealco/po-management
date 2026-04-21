@@ -1,3 +1,6 @@
+import type { Prisma } from "@prisma/client";
+
+import type { ApiHubConnectorListSortField, ApiHubConnectorListSortOrder } from "@/lib/apihub/constants";
 import { sortConnectorListRowsByNameSearch } from "@/lib/apihub/connector-search";
 import { prisma } from "@/lib/prisma";
 
@@ -20,7 +23,24 @@ export type ListApiHubConnectorsFilters = {
   authMode?: string;
   /** Trimmed connector name search (`q` query); ranked exact → prefix → contains in-repo. */
   q?: string;
+  /** Allowlisted list sort field; default `createdAt` when omitted. */
+  sortField?: ApiHubConnectorListSortField;
+  /** `asc` | `desc`; default `desc` when omitted. */
+  sortOrder?: ApiHubConnectorListSortOrder;
 };
+
+function listOrderBy(
+  field: ApiHubConnectorListSortField,
+  order: ApiHubConnectorListSortOrder,
+): Prisma.ApiHubConnectorOrderByWithRelationInput[] {
+  if (field === "name") {
+    return [{ name: order }, { id: order }];
+  }
+  if (field === "updatedAt") {
+    return [{ updatedAt: order }, { id: order }];
+  }
+  return [{ createdAt: order }, { id: order }];
+}
 
 export type ApiHubConnectorAuditLogRow = {
   id: string;
@@ -37,6 +57,8 @@ export async function listApiHubConnectors(
 ): Promise<ApiHubConnectorListRow[]> {
   const qTrimmed = filters?.q?.trim() ?? "";
   const useSearch = qTrimmed.length > 0;
+  const sortField = filters?.sortField ?? "createdAt";
+  const sortOrder = filters?.sortOrder ?? "desc";
 
   const rows = await prisma.apiHubConnector.findMany({
     where: {
@@ -47,7 +69,7 @@ export async function listApiHubConnectors(
         ? { name: { contains: qTrimmed, mode: "insensitive" as const } }
         : {}),
     },
-    ...(!useSearch ? { orderBy: [{ createdAt: "desc" }, { id: "desc" }] } : {}),
+    ...(!useSearch ? { orderBy: listOrderBy(sortField, sortOrder) } : {}),
     select: {
       id: true,
       name: true,
@@ -62,7 +84,7 @@ export async function listApiHubConnectors(
   });
 
   if (useSearch) {
-    return sortConnectorListRowsByNameSearch(rows, qTrimmed);
+    return sortConnectorListRowsByNameSearch(rows, qTrimmed, { field: sortField, order: sortOrder });
   }
   return rows;
 }

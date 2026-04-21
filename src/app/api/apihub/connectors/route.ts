@@ -5,7 +5,12 @@ import {
   apiHubValidationError,
   type ApiHubValidationIssue,
 } from "@/lib/apihub/api-error";
-import { APIHUB_CONNECTOR_AUTH_MODES, APIHUB_CONNECTOR_STATUSES } from "@/lib/apihub/constants";
+import {
+  APIHUB_CONNECTOR_AUTH_MODES,
+  APIHUB_CONNECTOR_LIST_SORT_FIELDS,
+  APIHUB_CONNECTOR_LIST_SORT_ORDERS,
+  APIHUB_CONNECTOR_STATUSES,
+} from "@/lib/apihub/constants";
 import { APIHUB_CONNECTOR_SEARCH_Q_MAX_LEN } from "@/lib/apihub/connector-search";
 import { toApiHubConnectorDto } from "@/lib/apihub/connector-dto";
 import {
@@ -35,6 +40,8 @@ export async function GET(request: Request) {
   const rawStatus = (url.searchParams.get("status") ?? "").trim().toLowerCase();
   const rawAuthMode = (url.searchParams.get("authMode") ?? "").trim().toLowerCase();
   const rawQ = (url.searchParams.get("q") ?? "").trim();
+  const rawSort = (url.searchParams.get("sort") ?? "").trim().toLowerCase();
+  const rawOrder = (url.searchParams.get("order") ?? "").trim().toLowerCase();
 
   const issues: ApiHubValidationIssue[] = [];
   if (rawQ.length > APIHUB_CONNECTOR_SEARCH_Q_MAX_LEN) {
@@ -42,6 +49,26 @@ export async function GET(request: Request) {
       field: "q",
       code: "MAX_LENGTH",
       message: `q must be at most ${APIHUB_CONNECTOR_SEARCH_Q_MAX_LEN} characters.`,
+    });
+  }
+  if (
+    rawSort.length > 0 &&
+    !APIHUB_CONNECTOR_LIST_SORT_FIELDS.includes(rawSort as (typeof APIHUB_CONNECTOR_LIST_SORT_FIELDS)[number])
+  ) {
+    issues.push({
+      field: "sort",
+      code: "INVALID_ENUM",
+      message: `sort must be one of: ${APIHUB_CONNECTOR_LIST_SORT_FIELDS.join(", ")}.`,
+    });
+  }
+  if (
+    rawOrder.length > 0 &&
+    !APIHUB_CONNECTOR_LIST_SORT_ORDERS.includes(rawOrder as (typeof APIHUB_CONNECTOR_LIST_SORT_ORDERS)[number])
+  ) {
+    issues.push({
+      field: "order",
+      code: "INVALID_ENUM",
+      message: `order must be one of: ${APIHUB_CONNECTOR_LIST_SORT_ORDERS.join(", ")}.`,
     });
   }
   if (rawStatus.length > 0 && !APIHUB_CONNECTOR_STATUSES.includes(rawStatus as (typeof APIHUB_CONNECTOR_STATUSES)[number])) {
@@ -75,6 +102,10 @@ export async function GET(request: Request) {
     status: rawStatus.length > 0 ? rawStatus : undefined,
     authMode: rawAuthMode.length > 0 ? rawAuthMode : undefined,
     q: rawQ.length > 0 ? rawQ : undefined,
+    sortField:
+      rawSort.length > 0 ? (rawSort as (typeof APIHUB_CONNECTOR_LIST_SORT_FIELDS)[number]) : undefined,
+    sortOrder:
+      rawOrder.length > 0 ? (rawOrder as (typeof APIHUB_CONNECTOR_LIST_SORT_ORDERS)[number]) : undefined,
   });
   const rowsWithAudit = await Promise.all(
     rows.map(async (row) => ({

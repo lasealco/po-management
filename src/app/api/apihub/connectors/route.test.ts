@@ -79,6 +79,8 @@ describe("GET /api/apihub/connectors", () => {
       status: "active",
       authMode: "none",
       q: undefined,
+      sortField: undefined,
+      sortOrder: undefined,
     });
     expect(await response.json()).toEqual({ connectors: [{ id: "dto-c1" }] });
     expect(response.headers.get(APIHUB_REQUEST_ID_HEADER)).toBe("conn-list-ok-1");
@@ -97,6 +99,49 @@ describe("GET /api/apihub/connectors", () => {
     expect(body.error.details.issues.map((i) => i.field)).toContain("q");
   });
 
+  it("returns 400 for invalid sort field", async () => {
+    const { GET } = await import("./route");
+    const response = await GET(
+      new Request("http://localhost/api/apihub/connectors?sort=created", {
+        headers: { [APIHUB_REQUEST_ID_HEADER]: "conn-bad-sort" },
+      }),
+    );
+    expect(response.status).toBe(400);
+    const body = (await response.json()) as { error: { details: { issues: { field: string }[] } } };
+    expect(body.error.details.issues.map((i) => i.field)).toContain("sort");
+  });
+
+  it("returns 400 for invalid order", async () => {
+    const { GET } = await import("./route");
+    const response = await GET(
+      new Request("http://localhost/api/apihub/connectors?order=up", {
+        headers: { [APIHUB_REQUEST_ID_HEADER]: "conn-bad-order" },
+      }),
+    );
+    expect(response.status).toBe(400);
+    const body = (await response.json()) as { error: { details: { issues: { field: string }[] } } };
+    expect(body.error.details.issues.map((i) => i.field)).toContain("order");
+  });
+
+  it("passes sort and order to list filters", async () => {
+    listApiHubConnectorsMock.mockResolvedValue([{ id: "c1" }]);
+    const { GET } = await import("./route");
+    const response = await GET(
+      new Request("http://localhost/api/apihub/connectors?sort=name&order=asc", {
+        headers: { [APIHUB_REQUEST_ID_HEADER]: "conn-sort-ok" },
+      }),
+    );
+    expect(response.status).toBe(200);
+    expect(listApiHubConnectorsMock).toHaveBeenCalledWith("tenant-1", {
+      status: undefined,
+      authMode: undefined,
+      q: undefined,
+      sortField: "name",
+      sortOrder: "asc",
+    });
+    expect(await response.json()).toEqual({ connectors: [{ id: "dto-c1" }] });
+  });
+
   it("passes trimmed q to list filters", async () => {
     listApiHubConnectorsMock.mockResolvedValue([{ id: "c1" }]);
     const { GET } = await import("./route");
@@ -110,6 +155,8 @@ describe("GET /api/apihub/connectors", () => {
       status: undefined,
       authMode: undefined,
       q: "acme",
+      sortField: undefined,
+      sortOrder: undefined,
     });
     expect(await response.json()).toEqual({ connectors: [{ id: "dto-c1" }] });
   });
