@@ -4,6 +4,11 @@ import { getDemoTenant } from "@/lib/demo-tenant";
 import { buildHelpAssistantGrantSnapshot } from "@/lib/help-assistant-grants";
 import { HELP_PLAYBOOKS } from "@/lib/help-playbooks";
 import { buildHelpReply } from "@/lib/help-llm";
+import {
+  helpTelemetryGrantBits,
+  helpTelemetryPathPrefix,
+  logHelpChatTelemetry,
+} from "@/lib/help-telemetry";
 
 type HelpChatBody = {
   message?: string;
@@ -41,6 +46,20 @@ export async function POST(request: Request) {
     message,
     currentPath: input.currentPath,
     grantSnapshot,
+  });
+
+  logHelpChatTelemetry({
+    kind: "help_chat",
+    tenantId: tenant.id,
+    messageLen: message.length,
+    answerLen: reply.answer.length,
+    playbookId: reply.playbook?.id ?? null,
+    llmUsed: reply.llmUsed,
+    pathPrefix: helpTelemetryPathPrefix(input.currentPath),
+    doActionCount: reply.doActions.length,
+    actionCount: reply.actions.length,
+    suggestionCount: reply.suggestions.length,
+    grantBits: helpTelemetryGrantBits(grantSnapshot),
   });
 
   return NextResponse.json({

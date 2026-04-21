@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
+import { getViewerGrantSet } from "@/lib/authz";
 import {
   executeHelpDoAction,
   type HelpDoAction,
 } from "@/lib/help-actions";
-import { getViewerGrantSet } from "@/lib/authz";
+import { logHelpActionTelemetry } from "@/lib/help-telemetry";
 
 type Body = {
   action?: HelpDoAction;
@@ -17,6 +18,7 @@ export async function POST(request: Request) {
       { status: 403 },
     );
   }
+  const tenantId = access.tenant.id;
 
   let body: unknown = {};
   try {
@@ -32,6 +34,13 @@ export async function POST(request: Request) {
     typeof action.label !== "string" ||
     (action.payload != null && typeof action.payload !== "object")
   ) {
+    logHelpActionTelemetry({
+      kind: "help_action",
+      tenantId,
+      actionType: "malformed_request",
+      ok: false,
+      httpStatus: 400,
+    });
     return NextResponse.json({ error: "Invalid action payload." }, { status: 400 });
   }
 
@@ -49,12 +58,51 @@ export async function POST(request: Request) {
     normalized.type !== "open_orders_queue" &&
     normalized.type !== "open_path"
   ) {
+    logHelpActionTelemetry({
+      kind: "help_action",
+      tenantId,
+      actionType: "unsupported_type",
+      ok: false,
+      httpStatus: 400,
+    });
     return NextResponse.json({ error: "Unsupported action type." }, { status: 400 });
   }
 
   const result = await executeHelpDoAction(access, normalized);
   if (!result.ok) {
+    logHelpActionTelemetry({
+      kind: "help_action",
+      tenantId,
+      actionType: normalized.type,
+      ok: false,
+      httpStatus: 400,
+      pathKey:
+        normalized.type === "open_path" && typeof normalized.payload?.path === "string"
+          ? (normalized.payload.path as string).split("?")[0]
+          : undefined,
+      queueKey:
+        normalized.type === "open_orders_queue" && typeof normalized.payload?.queue === "string"
+          ? (normalized.payload.queue as string)
+          : undefined,
+      openOrderAttempt: normalized.type === "open_order",
+    });
     return NextResponse.json({ error: result.error }, { status: 400 });
   }
+  logHelpActionTelemetry({
+    kind: "help_action",
+    tenantId,
+    actionType: normalized.type,
+    ok: true,
+    httpStatus: 200,
+    pathKey:
+      normalized.type === "open_path" && typeof normalized.payload?.path === "string"
+        ? (normalized.payload.path as string).split("?")[0]
+        : undefined,
+    queueKey:
+      normalized.type === "open_orders_queue" && typeof normalized.payload?.queue === "string"
+        ? (normalized.payload.queue as string)
+        : undefined,
+    openOrderAttempt: normalized.type === "open_order",
+  });
   return NextResponse.json(result);
 }
