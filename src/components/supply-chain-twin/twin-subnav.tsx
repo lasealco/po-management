@@ -9,6 +9,7 @@ export function TwinSubNav() {
   const pathname = usePathname() ?? "";
   const isOverview = pathname === BASE;
   const isExplorer = pathname.startsWith(`${BASE}/explorer`);
+  const isScenarios = pathname.startsWith(`${BASE}/scenarios`);
 
   const tabClass = (active: boolean) =>
     `rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
@@ -25,6 +26,9 @@ export function TwinSubNav() {
       </Link>
       <Link href={`${BASE}/explorer`} className={tabClass(isExplorer)}>
         Explorer
+      </Link>
+      <Link href={`${BASE}/scenarios`} className={tabClass(isScenarios)}>
+        Scenarios
       </Link>
     </nav>
   );
