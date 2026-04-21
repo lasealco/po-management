@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { APIHUB_REQUEST_ID_HEADER } from "@/lib/apihub/request-id";
+
 const getDemoTenantMock = vi.fn();
 const getActorUserIdMock = vi.fn();
 const listApiHubIngestionRunsMock = vi.fn();
@@ -21,8 +23,13 @@ describe("GET /api/apihub/ingestion-jobs", () => {
     getDemoTenantMock.mockResolvedValue({ id: "tenant-1" });
     getActorUserIdMock.mockResolvedValue("user-1");
     const { GET } = await import("./route");
-    const response = await GET(new Request("http://localhost/api/apihub/ingestion-jobs?status=bad"));
+    const response = await GET(
+      new Request("http://localhost/api/apihub/ingestion-jobs?status=bad", {
+        headers: { [APIHUB_REQUEST_ID_HEADER]: "ingest-list-err-1" },
+      }),
+    );
     expect(response.status).toBe(400);
+    expect(response.headers.get(APIHUB_REQUEST_ID_HEADER)).toBe("ingest-list-err-1");
     expect(await response.json()).toEqual({
       ok: false,
       error: {
@@ -53,8 +60,13 @@ describe("GET /api/apihub/ingestion-jobs", () => {
     listApiHubIngestionRunsMock.mockResolvedValue([{ id: "run-1" }]);
     toApiHubIngestionRunDtoMock.mockReturnValue({ id: "run-dto-1" });
     const { GET } = await import("./route");
-    const response = await GET(new Request("http://localhost/api/apihub/ingestion-jobs?status=queued&limit=5"));
+    const response = await GET(
+      new Request("http://localhost/api/apihub/ingestion-jobs?status=queued&limit=5", {
+        headers: { [APIHUB_REQUEST_ID_HEADER]: "ingest-list-ok-1" },
+      }),
+    );
     expect(response.status).toBe(200);
+    expect(response.headers.get(APIHUB_REQUEST_ID_HEADER)).toBe("ingest-list-ok-1");
     expect(listApiHubIngestionRunsMock).toHaveBeenCalledWith({
       tenantId: "tenant-1",
       status: "queued",
@@ -76,11 +88,12 @@ describe("POST /api/apihub/ingestion-jobs", () => {
     const response = await POST(
       new Request("http://localhost/api/apihub/ingestion-jobs", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", [APIHUB_REQUEST_ID_HEADER]: "ingest-create-1" },
         body: JSON.stringify({ connectorId: "connector-1", idempotencyKey: "abc" }),
       }),
     );
     expect(response.status).toBe(201);
+    expect(response.headers.get(APIHUB_REQUEST_ID_HEADER)).toBe("ingest-create-1");
     expect(createApiHubIngestionRunMock).toHaveBeenCalledWith({
       tenantId: "tenant-1",
       actorUserId: "user-1",

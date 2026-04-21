@@ -1,9 +1,13 @@
-import { NextResponse } from "next/server";
-
 import { getActorUserId } from "@/lib/authz";
-import { apiHubError, apiHubValidationError, type ApiHubValidationIssue } from "@/lib/apihub/api-error";
+import {
+  apiHubError,
+  apiHubJson,
+  apiHubValidationError,
+  type ApiHubValidationIssue,
+} from "@/lib/apihub/api-error";
 import { getApiHubIngestionRunById } from "@/lib/apihub/ingestion-runs-repo";
 import { applyApiHubMappingRulesBatch, type ApiHubMappingRule } from "@/lib/apihub/mapping-engine";
+import { resolveApiHubRequestId } from "@/lib/apihub/request-id";
 import { getDemoTenant } from "@/lib/demo-tenant";
 
 export const dynamic = "force-dynamic";
@@ -77,19 +81,30 @@ function normalizeRecords(input: unknown): { records: unknown[]; issues: ApiHubV
 }
 
 export async function POST(request: Request, context: { params: Promise<{ jobId: string }> }) {
+  const requestId = resolveApiHubRequestId(request);
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return apiHubError(404, "TENANT_NOT_FOUND", "Demo tenant not found. Run `npm run db:seed` to create starter data.");
+    return apiHubError(
+      404,
+      "TENANT_NOT_FOUND",
+      "Demo tenant not found. Run `npm run db:seed` to create starter data.",
+      requestId,
+    );
   }
   const actorId = await getActorUserId();
   if (!actorId) {
-    return apiHubError(403, "ACTOR_NOT_FOUND", "No active demo user for this session. Open Settings → Demo session (/settings/demo) to choose who you are acting as.");
+    return apiHubError(
+      403,
+      "ACTOR_NOT_FOUND",
+      "No active demo user for this session. Open Settings → Demo session (/settings/demo) to choose who you are acting as.",
+      requestId,
+    );
   }
 
   const { jobId } = await context.params;
   const run = await getApiHubIngestionRunById({ tenantId: tenant.id, runId: jobId });
   if (!run) {
-    return apiHubError(404, "RUN_NOT_FOUND", "Run not found.");
+    return apiHubError(404, "RUN_NOT_FOUND", "Run not found.", requestId);
   }
 
   let body: PostBody = {};
@@ -103,12 +118,21 @@ export async function POST(request: Request, context: { params: Promise<{ jobId:
   const normalizedRecords = normalizeRecords(body.records);
   const issues = [...normalizedRules.issues, ...normalizedRecords.issues];
   if (issues.length > 0) {
-    return apiHubValidationError(400, "VALIDATION_ERROR", "Mapping preview payload validation failed.", issues);
+    return apiHubValidationError(
+      400,
+      "VALIDATION_ERROR",
+      "Mapping preview payload validation failed.",
+      issues,
+      requestId,
+    );
   }
 
   const preview = applyApiHubMappingRulesBatch(normalizedRecords.records, normalizedRules.rules);
-  return NextResponse.json({
-    runId: run.id,
-    preview: preview.map((row, index) => ({ recordIndex: index, mapped: row.mapped, issues: row.issues })),
-  });
+  return apiHubJson(
+    {
+      runId: run.id,
+      preview: preview.map((row, index) => ({ recordIndex: index, mapped: row.mapped, issues: row.issues })),
+    },
+    requestId,
+  );
 }

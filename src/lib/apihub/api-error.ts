@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { APIHUB_REQUEST_ID_HEADER } from "@/lib/apihub/request-id";
+
 export type ApiHubValidationIssue = {
   field: string;
   code: string;
@@ -30,9 +32,17 @@ function summarizeIssues(issues: ApiHubValidationIssue[]) {
   return { totalErrors: issues.length, byCode };
 }
 
-export function apiHubError(status: number, code: string, message: string) {
+function withRequestIdHeaders(requestId: string): HeadersInit {
+  return { [APIHUB_REQUEST_ID_HEADER]: requestId };
+}
+
+export function apiHubJson<T>(body: T, requestId: string, status = 200) {
+  return NextResponse.json(body, { status, headers: withRequestIdHeaders(requestId) });
+}
+
+export function apiHubError(status: number, code: string, message: string, requestId: string) {
   const body: ApiHubErrorPayload = { ok: false, error: { code, message } };
-  return NextResponse.json(body, { status });
+  return NextResponse.json(body, { status, headers: withRequestIdHeaders(requestId) });
 }
 
 export function apiHubValidationError(
@@ -40,6 +50,7 @@ export function apiHubValidationError(
   code: string,
   message: string,
   issues: ApiHubValidationIssue[],
+  requestId: string,
 ) {
   const body: ApiHubErrorPayload = {
     ok: false,
@@ -52,5 +63,5 @@ export function apiHubValidationError(
       },
     },
   };
-  return NextResponse.json(body, { status });
+  return NextResponse.json(body, { status, headers: withRequestIdHeaders(requestId) });
 }

@@ -1,11 +1,10 @@
-import { NextResponse } from "next/server";
-
-import { getActorUserId } from "@/lib/authz";
+import { apiHubJson, apiHubValidationError } from "@/lib/apihub/api-error";
 import { APIHUB_INGESTION_JOB_STATUSES } from "@/lib/apihub/constants";
-import { apiHubValidationError } from "@/lib/apihub/api-error";
 import { toApiHubIngestionRunDto } from "@/lib/apihub/ingestion-run-dto";
 import { createApiHubIngestionRun, listApiHubIngestionRuns } from "@/lib/apihub/ingestion-runs-repo";
+import { resolveApiHubRequestId } from "@/lib/apihub/request-id";
 import { isValidRunStatus } from "@/lib/apihub/run-lifecycle";
+import { getActorUserId } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 
 export const dynamic = "force-dynamic";
@@ -16,22 +15,25 @@ type PostBody = {
 };
 
 export async function GET(request: Request) {
+  const requestId = resolveApiHubRequestId(request);
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json(
+    return apiHubJson(
       { error: "Demo tenant not found. Run `npm run db:seed` to create starter data." },
-      { status: 404 },
+      requestId,
+      404,
     );
   }
 
   const actorId = await getActorUserId();
   if (!actorId) {
-    return NextResponse.json(
+    return apiHubJson(
       {
         error:
           "No active demo user for this session. Open Settings → Demo session (/settings/demo) to choose who you are acting as.",
       },
-      { status: 403 },
+      requestId,
+      403,
     );
   }
 
@@ -44,7 +46,7 @@ export async function GET(request: Request) {
         code: "INVALID_ENUM",
         message: `status must be one of: ${APIHUB_INGESTION_JOB_STATUSES.join(", ")}.`,
       },
-    ]);
+    ], requestId);
   }
 
   const rawLimit = Number(url.searchParams.get("limit") ?? "20");
@@ -54,26 +56,29 @@ export async function GET(request: Request) {
     status: rawStatus.length > 0 ? rawStatus : null,
     limit,
   });
-  return NextResponse.json({ runs: rows.map(toApiHubIngestionRunDto) });
+  return apiHubJson({ runs: rows.map(toApiHubIngestionRunDto) }, requestId);
 }
 
 export async function POST(request: Request) {
+  const requestId = resolveApiHubRequestId(request);
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json(
+    return apiHubJson(
       { error: "Demo tenant not found. Run `npm run db:seed` to create starter data." },
-      { status: 404 },
+      requestId,
+      404,
     );
   }
 
   const actorId = await getActorUserId();
   if (!actorId) {
-    return NextResponse.json(
+    return apiHubJson(
       {
         error:
           "No active demo user for this session. Open Settings → Demo session (/settings/demo) to choose who you are acting as.",
       },
-      { status: 403 },
+      requestId,
+      403,
     );
   }
 
@@ -100,13 +105,14 @@ export async function POST(request: Request) {
       connectorId,
       idempotencyKey,
     });
-    return NextResponse.json(
+    return apiHubJson(
       { run: toApiHubIngestionRunDto(created.run), idempotentReplay: created.idempotentReplay },
-      { status: created.idempotentReplay ? 200 : 201 },
+      requestId,
+      created.idempotentReplay ? 200 : 201,
     );
   } catch (error) {
     if (error instanceof Error && error.message === "connector_not_found") {
-      return NextResponse.json({ error: "Connector not found for tenant." }, { status: 404 });
+      return apiHubJson({ error: "Connector not found for tenant." }, requestId, 404);
     }
     throw error;
   }

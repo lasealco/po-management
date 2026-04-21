@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { APIHUB_REQUEST_ID_HEADER } from "@/lib/apihub/request-id";
+
 const getDemoTenantMock = vi.fn();
 const getActorUserIdMock = vi.fn();
 const getApiHubIngestionRunByIdMock = vi.fn();
@@ -23,11 +25,13 @@ describe("POST /api/apihub/ingestion-jobs/:jobId/mapping-preview", () => {
     const response = await POST(
       new Request("http://localhost/api/apihub/ingestion-jobs/run-1/mapping-preview", {
         method: "POST",
+        headers: { [APIHUB_REQUEST_ID_HEADER]: "map-preview-miss-1" },
         body: JSON.stringify({ records: {}, rules: [] }),
       }),
       { params: Promise.resolve({ jobId: "run-1" }) },
     );
     expect(response.status).toBe(404);
+    expect(response.headers.get(APIHUB_REQUEST_ID_HEADER)).toBe("map-preview-miss-1");
   });
 
   it("returns mapping preview for deterministic rules", async () => {
@@ -36,7 +40,10 @@ describe("POST /api/apihub/ingestion-jobs/:jobId/mapping-preview", () => {
     const response = await POST(
       new Request("http://localhost/api/apihub/ingestion-jobs/run-1/mapping-preview", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          [APIHUB_REQUEST_ID_HEADER]: "map-preview-ok-1",
+        },
         body: JSON.stringify({
           records: [{ shipment: { id: " sh-1 " }, totals: { amount: "42.5" } }],
           rules: [
@@ -49,6 +56,7 @@ describe("POST /api/apihub/ingestion-jobs/:jobId/mapping-preview", () => {
     );
 
     expect(response.status).toBe(200);
+    expect(response.headers.get(APIHUB_REQUEST_ID_HEADER)).toBe("map-preview-ok-1");
     expect(await response.json()).toEqual({
       runId: "run-1",
       preview: [
@@ -67,7 +75,10 @@ describe("POST /api/apihub/ingestion-jobs/:jobId/mapping-preview", () => {
     const response = await POST(
       new Request("http://localhost/api/apihub/ingestion-jobs/run-1/mapping-preview", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          [APIHUB_REQUEST_ID_HEADER]: "map-preview-val-1",
+        },
         body: JSON.stringify({
           records: 42,
           rules: [{ sourcePath: "", targetField: "" }],
@@ -77,6 +88,7 @@ describe("POST /api/apihub/ingestion-jobs/:jobId/mapping-preview", () => {
     );
 
     expect(response.status).toBe(400);
+    expect(response.headers.get(APIHUB_REQUEST_ID_HEADER)).toBe("map-preview-val-1");
     expect(await response.json()).toEqual({
       ok: false,
       error: {

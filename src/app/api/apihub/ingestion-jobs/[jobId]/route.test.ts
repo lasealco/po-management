@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { APIHUB_REQUEST_ID_HEADER } from "@/lib/apihub/request-id";
+
 const getDemoTenantMock = vi.fn();
 const getActorUserIdMock = vi.fn();
 const getApiHubIngestionRunByIdMock = vi.fn();
@@ -35,12 +37,13 @@ describe("PATCH /api/apihub/ingestion-jobs/:jobId", () => {
     const response = await PATCH(
       new Request("http://localhost/api/apihub/ingestion-jobs/job-1", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", [APIHUB_REQUEST_ID_HEADER]: "job-patch-bad-1" },
         body: JSON.stringify({ status: "wat" }),
       }),
       { params: Promise.resolve({ jobId: "job-1" }) },
     );
     expect(response.status).toBe(400);
+    expect(response.headers.get(APIHUB_REQUEST_ID_HEADER)).toBe("job-patch-bad-1");
     expect(await response.json()).toEqual({
       ok: false,
       error: {
@@ -73,12 +76,13 @@ describe("PATCH /api/apihub/ingestion-jobs/:jobId", () => {
     const response = await PATCH(
       new Request("http://localhost/api/apihub/ingestion-jobs/job-1", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", [APIHUB_REQUEST_ID_HEADER]: "job-patch-ok-1" },
         body: JSON.stringify({ status: "running", resultSummary: " started " }),
       }),
       { params: Promise.resolve({ jobId: "job-1" }) },
     );
     expect(response.status).toBe(200);
+    expect(response.headers.get(APIHUB_REQUEST_ID_HEADER)).toBe("job-patch-ok-1");
     expect(transitionApiHubIngestionRunMock).toHaveBeenCalledWith({
       tenantId: "tenant-1",
       runId: "job-1",

@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { APIHUB_REQUEST_ID_HEADER } from "@/lib/apihub/request-id";
+
 const getDemoTenantMock = vi.fn();
 const getActorUserIdMock = vi.fn();
 const retryApiHubIngestionRunMock = vi.fn();
@@ -28,13 +30,14 @@ describe("POST /api/apihub/ingestion-jobs/:jobId/retry", () => {
     const response = await POST(
       new Request("http://localhost/api/apihub/ingestion-jobs/run-1/retry", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", [APIHUB_REQUEST_ID_HEADER]: "retry-conflict-1" },
         body: JSON.stringify({}),
       }),
       { params: Promise.resolve({ jobId: "run-1" }) },
     );
 
     expect(response.status).toBe(409);
+    expect(response.headers.get(APIHUB_REQUEST_ID_HEADER)).toBe("retry-conflict-1");
     expect(await response.json()).toEqual({
       ok: false,
       error: {
@@ -52,13 +55,18 @@ describe("POST /api/apihub/ingestion-jobs/:jobId/retry", () => {
     const response = await POST(
       new Request("http://localhost/api/apihub/ingestion-jobs/run-1/retry", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "idempotency-key": "retry-123" },
+        headers: {
+          "Content-Type": "application/json",
+          "idempotency-key": "retry-123",
+          [APIHUB_REQUEST_ID_HEADER]: "retry-success-1",
+        },
         body: JSON.stringify({}),
       }),
       { params: Promise.resolve({ jobId: "run-1" }) },
     );
 
     expect(response.status).toBe(201);
+    expect(response.headers.get(APIHUB_REQUEST_ID_HEADER)).toBe("retry-success-1");
     expect(retryApiHubIngestionRunMock).toHaveBeenCalledWith({
       tenantId: "tenant-1",
       actorUserId: "user-1",

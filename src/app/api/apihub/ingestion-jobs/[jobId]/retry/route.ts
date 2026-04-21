@@ -1,9 +1,8 @@
-import { NextResponse } from "next/server";
-
-import { getActorUserId } from "@/lib/authz";
-import { apiHubError } from "@/lib/apihub/api-error";
+import { apiHubError, apiHubJson } from "@/lib/apihub/api-error";
 import { toApiHubIngestionRunDto } from "@/lib/apihub/ingestion-run-dto";
 import { retryApiHubIngestionRun } from "@/lib/apihub/ingestion-runs-repo";
+import { resolveApiHubRequestId } from "@/lib/apihub/request-id";
+import { getActorUserId } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 
 export const dynamic = "force-dynamic";
@@ -13,22 +12,25 @@ type PostBody = {
 };
 
 export async function POST(request: Request, context: { params: Promise<{ jobId: string }> }) {
+  const requestId = resolveApiHubRequestId(request);
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json(
+    return apiHubJson(
       { error: "Demo tenant not found. Run `npm run db:seed` to create starter data." },
-      { status: 404 },
+      requestId,
+      404,
     );
   }
 
   const actorId = await getActorUserId();
   if (!actorId) {
-    return NextResponse.json(
+    return apiHubJson(
       {
         error:
           "No active demo user for this session. Open Settings → Demo session (/settings/demo) to choose who you are acting as.",
       },
-      { status: 403 },
+      requestId,
+      403,
     );
   }
 
@@ -55,15 +57,15 @@ export async function POST(request: Request, context: { params: Promise<{ jobId:
       idempotencyKey,
     });
     if (!retried) {
-      return NextResponse.json({ error: "Run not found." }, { status: 404 });
+      return apiHubJson({ error: "Run not found." }, requestId, 404);
     }
-    return NextResponse.json({ run: toApiHubIngestionRunDto(retried) }, { status: 201 });
+    return apiHubJson({ run: toApiHubIngestionRunDto(retried) }, requestId, 201);
   } catch (error) {
     if (error instanceof Error && error.message === "retry_requires_failed_status") {
-      return apiHubError(409, "RETRY_REQUIRES_FAILED", "Only failed runs can be retried.");
+      return apiHubError(409, "RETRY_REQUIRES_FAILED", "Only failed runs can be retried.", requestId);
     }
     if (error instanceof Error && error.message === "retry_limit_reached") {
-      return apiHubError(409, "RETRY_LIMIT_REACHED", "Run has reached its max retry attempts.");
+      return apiHubError(409, "RETRY_LIMIT_REACHED", "Run has reached its max retry attempts.", requestId);
     }
     throw error;
   }

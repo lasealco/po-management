@@ -1,11 +1,10 @@
-import { NextResponse } from "next/server";
-
-import { getActorUserId } from "@/lib/authz";
+import { apiHubError, apiHubJson, apiHubValidationError } from "@/lib/apihub/api-error";
 import { APIHUB_INGESTION_JOB_STATUSES } from "@/lib/apihub/constants";
-import { apiHubError, apiHubValidationError } from "@/lib/apihub/api-error";
 import { toApiHubIngestionRunDto } from "@/lib/apihub/ingestion-run-dto";
 import { getApiHubIngestionRunById, transitionApiHubIngestionRun } from "@/lib/apihub/ingestion-runs-repo";
+import { resolveApiHubRequestId } from "@/lib/apihub/request-id";
 import { ApiHubRunStatus, canTransitionRunStatus, isValidRunStatus } from "@/lib/apihub/run-lifecycle";
+import { getActorUserId } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 
 export const dynamic = "force-dynamic";
@@ -17,48 +16,54 @@ type PatchBody = {
   errorMessage?: unknown;
 };
 
-export async function GET(_request: Request, context: { params: Promise<{ jobId: string }> }) {
+export async function GET(request: Request, context: { params: Promise<{ jobId: string }> }) {
+  const requestId = resolveApiHubRequestId(request);
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json(
+    return apiHubJson(
       { error: "Demo tenant not found. Run `npm run db:seed` to create starter data." },
-      { status: 404 },
+      requestId,
+      404,
     );
   }
   const actorId = await getActorUserId();
   if (!actorId) {
-    return NextResponse.json(
+    return apiHubJson(
       {
         error:
           "No active demo user for this session. Open Settings → Demo session (/settings/demo) to choose who you are acting as.",
       },
-      { status: 403 },
+      requestId,
+      403,
     );
   }
   const { jobId } = await context.params;
   const run = await getApiHubIngestionRunById({ tenantId: tenant.id, runId: jobId });
   if (!run) {
-    return NextResponse.json({ error: "Run not found." }, { status: 404 });
+    return apiHubJson({ error: "Run not found." }, requestId, 404);
   }
-  return NextResponse.json({ run: toApiHubIngestionRunDto(run) });
+  return apiHubJson({ run: toApiHubIngestionRunDto(run) }, requestId);
 }
 
 export async function PATCH(request: Request, context: { params: Promise<{ jobId: string }> }) {
+  const requestId = resolveApiHubRequestId(request);
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json(
+    return apiHubJson(
       { error: "Demo tenant not found. Run `npm run db:seed` to create starter data." },
-      { status: 404 },
+      requestId,
+      404,
     );
   }
   const actorId = await getActorUserId();
   if (!actorId) {
-    return NextResponse.json(
+    return apiHubJson(
       {
         error:
           "No active demo user for this session. Open Settings → Demo session (/settings/demo) to choose who you are acting as.",
       },
-      { status: 403 },
+      requestId,
+      403,
     );
   }
 
@@ -78,18 +83,23 @@ export async function PATCH(request: Request, context: { params: Promise<{ jobId
         code: "INVALID_ENUM",
         message: `status must be one of: ${APIHUB_INGESTION_JOB_STATUSES.join(", ")}.`,
       },
-    ]);
+    ], requestId);
   }
 
   const existing = await getApiHubIngestionRunById({ tenantId: tenant.id, runId: jobId });
   if (!existing) {
-    return NextResponse.json({ error: "Run not found." }, { status: 404 });
+    return apiHubJson({ error: "Run not found." }, requestId, 404);
   }
   if (!isValidRunStatus(existing.status)) {
-    return NextResponse.json({ error: "Run has invalid persisted status." }, { status: 409 });
+    return apiHubJson({ error: "Run has invalid persisted status." }, requestId, 409);
   }
   if (!canTransitionRunStatus(existing.status as ApiHubRunStatus, rawStatus)) {
-    return apiHubError(409, "INVALID_STATUS_TRANSITION", `Invalid status transition: ${existing.status} -> ${rawStatus}.`);
+    return apiHubError(
+      409,
+      "INVALID_STATUS_TRANSITION",
+      `Invalid status transition: ${existing.status} -> ${rawStatus}.`,
+      requestId,
+    );
   }
 
   const resultSummary =
@@ -114,7 +124,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ jobId
     errorMessage,
   });
   if (!updated) {
-    return NextResponse.json({ error: "Run not found." }, { status: 404 });
+    return apiHubJson({ error: "Run not found." }, requestId, 404);
   }
-  return NextResponse.json({ run: toApiHubIngestionRunDto(updated) });
+  return apiHubJson({ run: toApiHubIngestionRunDto(updated) }, requestId);
 }
