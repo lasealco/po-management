@@ -9,13 +9,14 @@ This folder is the **documentation home** for **integration / ingestion APIs and
 | Document | Purpose |
 |----------|---------|
 | [integrations-ai-assisted-ingestion.md](./integrations-ai-assisted-ingestion.md) | End-to-end product + technical spec: AI-assisted ingestion, templates, API + file parity, guardrails, phased delivery |
+| [apply-operator-runbook.md](./apply-operator-runbook.md) | **Slice 50:** Operator runbook — apply (live + dry-run), idempotency replay, retry, 409 codes, rollback stub, triage via `/apihub` Alerts + Apply conflicts |
 | [RUNBOOK.md](./RUNBOOK.md) | Docs-only execution runbook for API Hub updates, scope boundaries, and PR checklist |
 
 **Gap map (spec ↔ code):** [GAP_MAP.md](./GAP_MAP.md)
 
 ## In-app entry (P0+)
 
-- Authenticated demo session: **`/apihub`** — workflow placeholders, **Connectors**, **mapping templates** (list / create / edit / delete + diff + preview export panels), and ingestion ops summary (see [GAP_MAP](./GAP_MAP.md)).
+- Authenticated demo session: **`/apihub`** — workflow placeholders, **Connectors**, **mapping templates** (list / create / edit / delete + diff + preview export panels), **Ingestion runs** ops summary, **Alerts** (apply/retry failure summary), **Apply conflicts** (apply 4xx audit table), and links to demo session settings (see [GAP_MAP](./GAP_MAP.md) and [apply-operator-runbook](./apply-operator-runbook.md)).
 - **Health stub:** `GET /api/apihub/health` — JSON `{ ok, service, phase }` for discovery and deploy checks (no auth).
 - **Connector registry (Phase 2 slice):** `GET` / `POST` **`/api/apihub/connectors`** + `PATCH` **`/api/apihub/connectors/:id`** — demo tenant + active demo actor; supports status updates, optional `lastSyncAt` stamp, and lightweight audit rows (no secrets).
 

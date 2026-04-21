@@ -54,6 +54,7 @@ This runbook defines the repeatable workflow for docs-only API Hub updates. Use 
   - README, full spec, and GAP_MAP do not contradict each other.
   - Phase labels (P0-P4) match across docs.
 - **Mapping / ingestion API index:** when shipping or renaming **mapping preview**, **template**, **diff**, or **export** routes, update the **“Mapping contract (shipped)”** section in `README.md` and the gap rows in `GAP_MAP.md` in the same PR (or a fast-follow docs PR).
+- **Apply / retry operator flow:** when changing apply, dry-run, idempotency, conflicts list, alerts summary, or `/apihub` triage panels, update [`apply-operator-runbook.md`](./apply-operator-runbook.md) and the Apply rows in `README.md` / `GAP_MAP.md` in the same PR when practical.
 
 ## Runtime + docs alignment (maintainers)
 
