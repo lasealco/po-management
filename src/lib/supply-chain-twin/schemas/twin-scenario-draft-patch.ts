@@ -38,6 +38,7 @@ export const twinScenarioDraftPatchBodySchema = z
     }
     if (data.draft !== undefined) {
       try {
+        // Same UTF-8 byte rule as twin ingest (`ingest-writer`); cap lives on `TWIN_SCENARIO_DRAFT_MAX_JSON_BYTES`.
         const bytes = Buffer.byteLength(JSON.stringify(data.draft), "utf8");
         if (bytes > TWIN_SCENARIO_DRAFT_MAX_JSON_BYTES) {
           ctx.addIssue({
@@ -60,17 +61,24 @@ export type TwinScenarioDraftPatchBody = z.infer<typeof twinScenarioDraftPatchBo
 
 export function parseTwinScenarioDraftPatchBody(
   raw: unknown,
-): { ok: true; body: TwinScenarioDraftPatchBody } | { ok: false; error: string } {
+): { ok: true; body: TwinScenarioDraftPatchBody } | { ok: false; error: string; draftJsonTooLarge?: true } {
   const parsed = twinScenarioDraftPatchBodySchema.safeParse(raw);
   if (!parsed.success) {
     const flat = parsed.error.flatten().fieldErrors;
+    const issues = parsed.error.issues;
+    const draftJsonTooLarge = issues.some(
+      (i) =>
+        i.path[0] === "draft" &&
+        typeof i.message === "string" &&
+        i.message.includes("exceeds maximum size"),
+    );
     const first =
       flat.draft?.[0] ??
       flat.status?.[0] ??
-      parsed.error.issues.find((i) => i.path.length === 0)?.message ??
-      parsed.error.issues[0]?.message ??
+      issues.find((i) => i.path.length === 0)?.message ??
+      issues[0]?.message ??
       parsed.error.message;
-    return { ok: false, error: first };
+    return draftJsonTooLarge ? { ok: false, error: first, draftJsonTooLarge: true } : { ok: false, error: first };
   }
   return { ok: true, body: parsed.data };
 }

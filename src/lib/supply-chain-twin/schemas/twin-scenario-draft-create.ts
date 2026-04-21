@@ -1,7 +1,13 @@
 import { z } from "zod";
 
-/** Max UTF-8 bytes of `JSON.stringify(draft)` for POST bodies (generous for UI drafts; not logged on reject). */
+/** Max UTF-8 bytes of `JSON.stringify(draft)` for POST/PATCH bodies (generous for UI drafts; not logged on reject). */
 export const TWIN_SCENARIO_DRAFT_MAX_JSON_BYTES = 65_536;
+
+/**
+ * Stable machine code when serialized `draft` JSON exceeds {@link TWIN_SCENARIO_DRAFT_MAX_JSON_BYTES} (no PII).
+ * Same role as `TWIN_INGEST_PAYLOAD_TOO_LARGE` on twin ingest POST.
+ */
+export const TWIN_SCENARIO_DRAFT_JSON_TOO_LARGE = "TWIN_SCENARIO_DRAFT_JSON_TOO_LARGE" as const;
 
 const draftObjectSchema = z.record(z.string(), z.unknown());
 

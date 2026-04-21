@@ -211,6 +211,39 @@ describe("PATCH /api/supply-chain-twin/scenarios/[id]", () => {
     expect(patchScenarioDraftForTenantMock).not.toHaveBeenCalled();
   });
 
+  it("returns 400 with stable code when draft JSON exceeds byte cap", async () => {
+    const { TWIN_SCENARIO_DRAFT_MAX_JSON_BYTES, TWIN_SCENARIO_DRAFT_JSON_TOO_LARGE } =
+      await import("@/lib/supply-chain-twin/schemas/twin-scenario-draft-create");
+    getViewerGrantSetMock.mockResolvedValue({
+      tenant: { id: "t1", name: "Demo", slug: "demo-company" },
+      user: { id: "u1", email: "x@y.com", name: "X" },
+      grantSet: new Set(),
+    });
+    resolveNavStateMock.mockResolvedValue({
+      linkVisibility: { supplyChainTwin: true },
+      setupIncomplete: false,
+      poSubNavVisibility: {},
+    });
+
+    const huge = "z".repeat(TWIN_SCENARIO_DRAFT_MAX_JSON_BYTES + 20);
+    const { PATCH } = await import("./route");
+    const response = await PATCH(
+      new Request("http://localhost/api/supply-chain-twin/scenarios/draft1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ draft: { pad: huge } }),
+      }),
+      { params: Promise.resolve({ id: "draft1" }) },
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: "Scenario draft JSON exceeds maximum size.",
+      code: TWIN_SCENARIO_DRAFT_JSON_TOO_LARGE,
+    });
+    expect(patchScenarioDraftForTenantMock).not.toHaveBeenCalled();
+  });
+
   it("returns 404 when repo reports no row", async () => {
     getViewerGrantSetMock.mockResolvedValue({
       tenant: { id: "t1", name: "Demo", slug: "demo-company" },

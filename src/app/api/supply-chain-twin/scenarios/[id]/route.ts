@@ -8,6 +8,7 @@ import {
   twinApiJson,
   withSctwinRequestId,
 } from "../../_lib/sctwin-api-log";
+import { TWIN_SCENARIO_DRAFT_JSON_TOO_LARGE } from "@/lib/supply-chain-twin/schemas/twin-scenario-draft-create";
 import { parseTwinScenarioDraftPatchBody } from "@/lib/supply-chain-twin/schemas/twin-scenario-draft-patch";
 import { twinScenarioDraftDetailResponseSchema } from "@/lib/supply-chain-twin/schemas/twin-api-responses";
 import { requireTwinApiAccess } from "@/lib/supply-chain-twin/sctwin-api-access";
@@ -90,7 +91,8 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
  * Optimistic concurrency (e.g. `If-Match` / `updatedAt` guards) is deferred — last write wins for now.
  *
  * **200:** Same JSON shape as `GET` (full draft after update). **404:** No row for tenant + id. **400:** Invalid path
- * id, invalid JSON body, empty patch, invalid `status` enum, or disallowed status transition.
+ * id, invalid JSON body, empty patch, invalid `status` enum, disallowed status transition, or oversize `draft`
+ * (`code: TWIN_SCENARIO_DRAFT_JSON_TOO_LARGE`, stable log `errorCode` — no draft contents in logs).
  */
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   const requestId = resolveSctwinRequestId(request);
@@ -128,12 +130,23 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
 
     const parsed = parseTwinScenarioDraftPatchBody(raw);
     if (!parsed.ok) {
+      const errorCode = parsed.draftJsonTooLarge ? TWIN_SCENARIO_DRAFT_JSON_TOO_LARGE : "BODY_VALIDATION_FAILED";
       logSctwinApiWarn({
         route: ROUTE_PATCH,
         phase: "validation",
-        errorCode: "BODY_VALIDATION_FAILED",
+        errorCode,
         requestId,
       });
+      if (parsed.draftJsonTooLarge) {
+        return twinApiJson(
+          {
+            error: "Scenario draft JSON exceeds maximum size.",
+            code: TWIN_SCENARIO_DRAFT_JSON_TOO_LARGE,
+          },
+          { status: 400 },
+          requestId,
+        );
+      }
       return twinApiJson({ error: parsed.error }, { status: 400 }, requestId);
     }
 

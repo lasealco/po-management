@@ -44,5 +44,12 @@ describe("parseTwinScenarioDraftPatchBody", () => {
     const padLen = TWIN_SCENARIO_DRAFT_MAX_JSON_BYTES + 50;
     const r = parseTwinScenarioDraftPatchBody({ draft: { [key]: "y".repeat(padLen) } });
     expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.draftJsonTooLarge).toBe(true);
+  });
+
+  it("does not set draftJsonTooLarge for empty patch", () => {
+    const r = parseTwinScenarioDraftPatchBody({});
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.draftJsonTooLarge).toBeUndefined();
   });
 });
