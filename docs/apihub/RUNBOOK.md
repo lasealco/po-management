@@ -59,6 +59,7 @@ This runbook defines the repeatable workflow for docs-only API Hub updates. Use 
 ## Runtime + docs alignment (maintainers)
 
 If code under `src/app/api/apihub/**` or `src/lib/apihub/**` changes public contracts, refresh `README.md` (endpoint table + body field notes) even when the issue is not “docs-only.” Slice 40 established that table as the operator-facing source of truth alongside `GAP_MAP.md`.
+- **Guards / access model:** when adding or changing `getDemoTenant` / `getActorUserId` usage (or new public routes), update [`permissions-matrix.md`](./permissions-matrix.md) and, if present, `src/lib/apihub/apihub-access-model.ts` in the same PR when practical.
 - Scope check:
   - Diff only includes allowed docs paths for docs-only issues.
 

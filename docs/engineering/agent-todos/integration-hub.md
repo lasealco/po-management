@@ -8,6 +8,7 @@
 - **Full draft spec:** [`docs/apihub/integrations-ai-assisted-ingestion.md`](../../apihub/integrations-ai-assisted-ingestion.md) — product + technical contract (supersedes informal one-pager requests; iterate here and in PRs).
 - **Gap map:** [`docs/apihub/GAP_MAP.md`](../../apihub/GAP_MAP.md) — what is shipped vs stub vs not started.
 - **Docs runbook:** [`docs/apihub/RUNBOOK.md`](../../apihub/RUNBOOK.md) — docs-only execution flow, scope guardrails, and PR checklist.
+- **Permissions matrix (Slice 51):** [`docs/apihub/permissions-matrix.md`](../../apihub/permissions-matrix.md) — public vs demo tenant + actor; matches route handlers today.
 
 **P0 (meeting batch):** docs polish + read-only **`/apihub`** shell + **`GET /api/apihub/health`** — no Prisma / migrations unless explicitly approved. **P1+:** connector registry, ingestion jobs, **mapping templates + preview + diff + export** (shipped in repo; see README mapping table), async AI job pipeline still future — see spec phased delivery §8 and `GAP_MAP.md`.
 

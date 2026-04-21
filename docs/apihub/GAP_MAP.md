@@ -2,12 +2,13 @@
 
 **Legend:** ✅ shipped · 🟡 partial / stub · ❌ not started
 
-**Last updated:** 2026-04-22 (apply operator runbook, alerts/conflicts triage docs)
+**Last updated:** 2026-04-22 (Slice 51 permissions matrix vs route guards)
 
 | Area | Repo reality | Notes |
 |------|--------------|--------|
 | Docs home | ✅ `docs/apihub/README.md`, specs | README includes **mapping API** table + **apply-operator-runbook** (operator triage) |
 | Docs runbook | ✅ `docs/apihub/RUNBOOK.md` | Docs-only workflow; points to README for live endpoint index |
+| Permissions matrix (docs ↔ guards) | ✅ [`permissions-matrix.md`](./permissions-matrix.md), optional `src/lib/apihub/apihub-access-model.ts` | Public = `GET /api/apihub/health` only; all other API Hub routes + `/apihub` UI use demo tenant + demo actor; fine-grained RBAC deferred to Slice 52–53 |
 | Ingestion spec | 🟡 `integrations-ai-assisted-ingestion.md` | Draft; phased table has footnote vs shipped deterministic mapping |
 | App route `/apihub` | ✅ `src/app/apihub/**` | Connectors + **mapping templates** UI + **diff** + **preview export** + **Alerts** + **Apply conflicts**; demo session required |
 | Health / discovery API | ✅ `GET /api/apihub/health` | `{ ok, service, phase }`; no secrets |
