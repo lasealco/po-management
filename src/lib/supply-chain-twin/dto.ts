@@ -8,9 +8,9 @@ export type TwinEntityDto = {
   kind: TwinEntityKind;
   id: string;
   /** Upstream system or module name (e.g. `wms`, `erp`, `manual`). */
-  sourceSystem?: string;
+  sourceSystem?: string | null;
   /** Opaque pointer within `sourceSystem` (record id, URI fragment, etc.). */
-  sourceRef?: string;
+  sourceRef?: string | null;
 };
 
 /**
@@ -19,7 +19,7 @@ export type TwinEntityDto = {
 export type TwinEdgeDto = {
   from: TwinEntityDto;
   to: TwinEntityDto;
-  relation?: string;
-  sourceSystem?: string;
-  sourceRef?: string;
+  relation?: string | null;
+  sourceSystem?: string | null;
+  sourceRef?: string | null;
 };
