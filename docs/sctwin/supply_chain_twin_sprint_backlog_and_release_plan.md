@@ -31,6 +31,18 @@ The bullets above are the **product** bar for R1. The following is what exists *
 - executive dashboard
 - product/supplier/order twin views
 
+### R2 staging (slices 28–47)
+
+This subsection maps the **R2-shaped** work already landed in the preview (slices **28–47** in the agent milestone plan) to concrete repo areas. It is **not** a claim that R2 product goals are complete—only that the listed surfaces and read/write paths exist for demos and further iteration. For slice-by-slice scope, see **[One-agent milestones (slices 1–47)](agent_milestones_one_agent.md)**.
+
+- **Entity drill-in (explorer → snapshot):** App shell `src/app/supply-chain-twin/explorer/[entityId]/`; list → detail links in `src/components/supply-chain-twin/twin-explorer-entities-table.tsx`; read APIs `src/app/api/supply-chain-twin/entities/route.ts`, `src/app/api/supply-chain-twin/entities/[id]/route.ts` with `src/lib/supply-chain-twin/repo.ts`; JSON preview `src/components/supply-chain-twin/twin-entity-json-preview.tsx`.
+- **Scenarios CRUD + compare:** Workspace `src/app/supply-chain-twin/scenarios/`; draft APIs `src/app/api/supply-chain-twin/scenarios/route.ts`, `src/app/api/supply-chain-twin/scenarios/[id]/route.ts` with `src/lib/supply-chain-twin/scenarios-draft-repo.ts` and Zod under `src/lib/supply-chain-twin/schemas/`; drafts UI `src/components/supply-chain-twin/twin-scenarios-drafts-panel.tsx`; read-only detail `src/app/supply-chain-twin/scenarios/[id]/`; compare route `src/app/supply-chain-twin/scenarios/compare/` plus `src/components/supply-chain-twin/twin-scenarios-compare-panel.tsx` and `scenario-draft-compare-summary.ts`.
+- **Risk read path:** API `src/app/api/supply-chain-twin/risk-signals/route.ts` with `src/lib/supply-chain-twin/risk-signals-repo.ts`; overview callout `src/components/supply-chain-twin/twin-risk-signals-callout.tsx` on `src/app/supply-chain-twin/page.tsx`; Prisma models `SupplyChainTwinRiskSignal` / `TwinRiskSeverity` in `prisma/schema.prisma`.
+- **Ingest write + explorer visibility:** Append path `POST` on `src/app/api/supply-chain-twin/events/route.ts` using `src/lib/supply-chain-twin/ingest-writer.ts`; recent-events strip `src/components/supply-chain-twin/twin-explorer-recent-events-strip.tsx`.
+- **Graph edges (selection-driven):** `GET` edges `src/app/api/supply-chain-twin/edges/route.ts` with `src/lib/supply-chain-twin/edges-repo.ts`; live panel wiring in `src/components/supply-chain-twin/twin-graph-stub-panel.tsx` (explorer integration under `src/app/supply-chain-twin/explorer/`).
+- **Catalog metrics:** `GET` `src/app/api/supply-chain-twin/metrics/route.ts` with `src/lib/supply-chain-twin/twin-catalog-metrics.ts` and response schema in `src/lib/supply-chain-twin/schemas/twin-api-responses.ts` (counts only; suitable for a future overview tile).
+- **Twin API observability:** Request correlation in `src/app/api/supply-chain-twin/_lib/sctwin-api-log.ts` (`resolveSctwinRequestId`, `requestId` on `logSctwinApiWarn` / `logSctwinApiError`, `x-request-id` echoed on responses); applied across handlers under `src/app/api/supply-chain-twin/**`.
+
 ## R3 — AI Assistant
 - natural-language query layer
 - grounded answers
