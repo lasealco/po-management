@@ -12,6 +12,9 @@ export type ApiHubConnectorListRow = {
   sourceKind: string;
   status: string;
   authMode: string;
+  authState: string;
+  /** Internal row only; never exposed on API DTOs. */
+  authConfigRef: string | null;
   lastSyncAt: Date | null;
   healthSummary: string | null;
   opsNote: string | null;
@@ -77,6 +80,8 @@ export async function listApiHubConnectors(
       sourceKind: true,
       status: true,
       authMode: true,
+      authState: true,
+      authConfigRef: true,
       lastSyncAt: true,
       healthSummary: true,
       opsNote: true,
@@ -111,6 +116,8 @@ export async function createStubApiHubConnector(opts: {
         sourceKind: true,
         status: true,
         authMode: true,
+        authState: true,
+        authConfigRef: true,
         lastSyncAt: true,
         healthSummary: true,
         opsNote: true,
@@ -183,6 +190,8 @@ export async function updateApiHubConnectorLifecycle(opts: {
               sourceKind: true,
               status: true,
               authMode: true,
+              authState: true,
+              authConfigRef: true,
               lastSyncAt: true,
               healthSummary: true,
               opsNote: true,
@@ -198,6 +207,8 @@ export async function updateApiHubConnectorLifecycle(opts: {
               sourceKind: true,
               status: true,
               authMode: true,
+              authState: true,
+              authConfigRef: true,
               lastSyncAt: true,
               healthSummary: true,
               opsNote: true,

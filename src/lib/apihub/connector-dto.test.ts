@@ -31,6 +31,8 @@ describe("toApiHubConnectorDto", () => {
       sourceKind: "stub",
       status: "draft",
       authMode: "none",
+      authState: "not_configured",
+      authConfigRef: null,
       lastSyncAt: null,
       healthSummary: "ok",
       opsNote: null,
@@ -39,6 +41,8 @@ describe("toApiHubConnectorDto", () => {
     });
     expect(out.lastSyncAt).toBeNull();
     expect(out.opsNote).toBeNull();
+    expect(out.readinessSummary.overall).toBe("attention");
+    expect(out.readinessSummary.reasons).toEqual(["STATUS_DRAFT"]);
     expect(out.createdAt).toBe("2026-04-20T12:00:00.000Z");
     expect(out.updatedAt).toBe("2026-04-20T15:30:00.000Z");
     expect(out.healthSummary).toBe("ok");
@@ -52,6 +56,8 @@ describe("toApiHubConnectorDto", () => {
       sourceKind: "api",
       status: "active",
       authMode: "api_key_ref",
+      authState: "configured",
+      authConfigRef: "vault://demo/key",
       lastSyncAt: new Date("2026-04-21T09:00:00.000Z"),
       healthSummary: "Healthy",
       opsNote: "Hold until ERP cutover.",
@@ -68,6 +74,9 @@ describe("toApiHubConnectorDto", () => {
       ],
     });
     expect(out.opsNote).toBe("Hold until ERP cutover.");
+    expect(out.readinessSummary.overall).toBe("ready");
+    expect(out.readinessSummary.authReady).toBe(true);
+    expect(out.readinessSummary.hasAuthConfigRef).toBe(true);
     expect(out.auditTrail).toEqual([
       {
         id: "a1",
