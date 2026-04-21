@@ -78,6 +78,7 @@ model Tenant {
   apiHubConnectors      ApiHubConnector[]
   apiHubConnectorAuditLogs ApiHubConnectorAuditLog[]
   apiHubIngestionRuns   ApiHubIngestionRun[]
+  apiHubMappingTemplates ApiHubMappingTemplate[]
   supplyChainTwinEntitySnapshots SupplyChainTwinEntitySnapshot[]
   supplyChainTwinEntityEdges     SupplyChainTwinEntityEdge[]
   supplyChainTwinIngestEvents    SupplyChainTwinIngestEvent[]
@@ -172,6 +173,23 @@ model ApiHubIngestionRun {
   @@unique([tenantId, idempotencyKey])
 }
 
+/// Tenant-scoped field mapping rule sets for ingestion / integration hub (Slice 35).
+model ApiHubMappingTemplate {
+  id              String   @id @default(cuid())
+  tenantId        String
+  createdByUserId String
+  name            String
+  description     String?
+  rules           Json
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy User   @relation("ApiHubMappingTemplateCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, createdAt])
+}
+
 /// Tenant-scoped milestone template packs (override or extend built-in packs in code).
 model CtMilestoneTemplatePack {
   id          String   @id @default(cuid())
@@ -252,6 +270,7 @@ model User {
   invoiceIntakesReviewed         InvoiceIntake[]          @relation("InvoiceIntakeReviewer")
   apiHubConnectorAuditLogs       ApiHubConnectorAuditLog[]
   apiHubIngestionRunsRequested   ApiHubIngestionRun[]
+  apiHubMappingTemplatesCreated  ApiHubMappingTemplate[] @relation("ApiHubMappingTemplateCreatedBy")
   invoiceIntakesAccountingApproved InvoiceIntake[]         @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated TariffShipmentApplication[] @relation("TariffShipmentApplicationCreator")
 

@@ -90,3 +90,12 @@ export const APIHUB_INGESTION_ATTEMPT_RANGE_MAX = 99;
  * so preview work stays bounded (Slice 34).
  */
 export const APIHUB_MAPPING_PREVIEW_SAMPLE_MAX = 500;
+
+/** Display name for persisted mapping templates (Slice 35). */
+export const APIHUB_MAPPING_TEMPLATE_NAME_MAX = 200;
+
+/** Optional description length cap for mapping templates. */
+export const APIHUB_MAPPING_TEMPLATE_DESCRIPTION_MAX = 2000;
+
+/** Max rule rows stored on a single mapping template. */
+export const APIHUB_MAPPING_TEMPLATE_RULES_MAX_COUNT = 200;
