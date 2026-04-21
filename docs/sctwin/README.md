@@ -12,6 +12,7 @@ This pack is the developer-ready documentation set for building the **AI-Driven 
 **Release checklist:** [Twin release checklist](./release_checklist.md) (migrations, verify gates, smoke URLs, rollback hints).
 **Release gate:** run `npm run verify:sctwin:full` before handoff for the slices 88-107 tranche.
 **API contracts:** [Twin API contract snapshot](./api_contract_snapshot.md) (request/response shapes and stable errors for slices 68-97).
+**Contract baseline:** [Twin contract snapshot baseline](./contract_snapshot_baseline.md) (version-controlled v1 endpoint payload baselines + review flow).
 
 ## Module Positioning
 The Supply Chain Twin is a cross-module intelligence layer that sits above:
