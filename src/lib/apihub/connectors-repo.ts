@@ -280,6 +280,35 @@ export async function getApiHubConnectorInTenant(
   });
 }
 
+/** Tenant-scoped row slice for `GET …/connectors/:id/health` (no secret values in response). */
+export type ApiHubConnectorHealthContextRow = {
+  id: string;
+  sourceKind: string;
+  status: string;
+  authMode: string;
+  authState: string;
+  authConfigRef: string | null;
+  lastSyncAt: Date | null;
+};
+
+export async function getApiHubConnectorHealthContext(
+  tenantId: string,
+  connectorId: string,
+): Promise<ApiHubConnectorHealthContextRow | null> {
+  return prisma.apiHubConnector.findFirst({
+    where: { id: connectorId, tenantId },
+    select: {
+      id: true,
+      sourceKind: true,
+      status: true,
+      authMode: true,
+      authState: true,
+      authConfigRef: true,
+      lastSyncAt: true,
+    },
+  });
+}
+
 /** Tenant-scoped audit page: `createdAt` desc, `id` desc; `hasMore` via over-fetch of one row. */
 export async function listApiHubConnectorAuditLogsPage(opts: {
   tenantId: string;
