@@ -68,6 +68,12 @@ export default async function SupplyChainTwinScenariosComparePage(props: {
           <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">GET /api/supply-chain-twin/scenarios/[id]</code>
           ). No solver or KPI engine.
         </p>
+        <p className="mt-3 max-w-2xl text-sm text-zinc-600">
+          After <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">db:seed</code> / twin demo seed, pick any two
+          draft rows from the scenarios list: empty <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">{}</code>{" "}
+          bodies still render, and the diff panel highlights top-level key adds/removes once you diverge the JSON (for
+          example via PATCH on each draft).
+        </p>
       </section>
 
       {showInvalidHint ? (

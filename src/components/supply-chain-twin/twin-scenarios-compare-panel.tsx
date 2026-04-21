@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import { describeDraftRootKeyDiff, draftsDeepEqualSerialized } from "./scenario-draft-compare-summary";
+import { computeDraftTopLevelKeyDiffV1, draftsDeepEqualSerialized } from "./scenario-draft-compare-summary";
 import type { TwinScenarioDraftQueryParse } from "./twin-scenario-draft-id";
+import { TwinScenarioDraftKeyDiffSummary } from "./twin-scenario-draft-key-diff-summary";
 
 type ScenarioDraftDetail = {
   id: string;
@@ -21,6 +22,9 @@ type PaneState =
   | { status: "ok"; data: ScenarioDraftDetail };
 
 const PREVIEW_MAX_UTF8_BYTES = 8_000;
+/** Above this UTF-8 size, the UI starts collapsed with an expand stub (read-only preview). */
+const COLLAPSE_WHEN_UTF8_BYTES = 2_600;
+const COLLAPSED_PREVIEW_UTF8_BYTES = 1_200;
 
 function truncateUtf8(text: string, maxBytes: number): { text: string; truncated: boolean } {
   const enc = new TextEncoder();
@@ -42,14 +46,22 @@ function truncateUtf8(text: string, maxBytes: number): { text: string; truncated
   return { text: `${cut}\n…`, truncated: true };
 }
 
-function formatJsonPreview(payload: unknown): { text: string; truncated: boolean } {
+function formatJsonPreview(payload: unknown, maxBytes: number = PREVIEW_MAX_UTF8_BYTES): { text: string; truncated: boolean } {
   let raw: string;
   try {
     raw = JSON.stringify(payload ?? null, null, 2);
   } catch {
     raw = "(unable to serialize draft JSON)";
   }
-  return truncateUtf8(raw, PREVIEW_MAX_UTF8_BYTES);
+  return truncateUtf8(raw, maxBytes);
+}
+
+function draftUtf8ByteLength(payload: unknown): number {
+  try {
+    return new TextEncoder().encode(JSON.stringify(payload ?? null)).length;
+  } catch {
+    return 0;
+  }
 }
 
 function parseDetailPayload(body: unknown): { ok: true; data: ScenarioDraftDetail } | { ok: false } {
@@ -162,7 +174,7 @@ export function TwinScenariosComparePanel(props: { left: TwinScenarioDraftQueryP
     if (leftPane.status !== "ok" || rightPane.status !== "ok") {
       return null;
     }
-    const keysLine = describeDraftRootKeyDiff(leftPane.data.draft, rightPane.data.draft);
+    const diff = computeDraftTopLevelKeyDiffV1(leftPane.data.draft, rightPane.data.draft);
     const deep = draftsDeepEqualSerialized(leftPane.data.draft, rightPane.data.draft);
     const deepLine =
       deep === null
@@ -170,7 +182,7 @@ export function TwinScenariosComparePanel(props: { left: TwinScenarioDraftQueryP
         : deep
           ? "Serialized draft bodies: match."
           : "Serialized draft bodies: differ.";
-    return { keysLine, deepLine };
+    return { diff, deepLine };
   }, [leftPane, rightPane]);
 
   return (
@@ -178,8 +190,14 @@ export function TwinScenariosComparePanel(props: { left: TwinScenarioDraftQueryP
       {diffSummary ? (
         <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
           <h2 className="text-sm font-semibold text-zinc-900">Diff (read-only)</h2>
-          <p className="mt-2 text-sm text-zinc-700">{diffSummary.keysLine}</p>
-          <p className="mt-1 text-sm text-zinc-600">{diffSummary.deepLine}</p>
+          <p className="mt-2 max-w-3xl text-sm text-zinc-600">
+            Same vs different story at the{" "}
+            <span className="font-medium text-zinc-800">top level</span> of each draft object. Nested structures are
+            compared only per-key via JSON snapshot (no graph solver).
+          </p>
+          <div className="mt-4">
+            <TwinScenarioDraftKeyDiffSummary diff={diffSummary.diff} deepLine={diffSummary.deepLine} />
+          </div>
         </section>
       ) : null}
 
@@ -237,22 +255,56 @@ function ComparePane(props: { label: string; state: PaneState; side: "left" | "r
             <span className="mx-2 text-zinc-400">·</span>
             <span className="font-mono text-[11px] text-zinc-500">{state.data.id}</span>
           </div>
-          <DraftJsonBlock draft={state.data.draft} />
+          <DraftJsonBlock draftKey={state.data.id} draft={state.data.draft} />
         </div>
       ) : null}
     </section>
   );
 }
 
-function DraftJsonBlock({ draft }: { draft: unknown }) {
-  const { text, truncated } = formatJsonPreview(draft);
+function DraftJsonBlock({ draftKey, draft }: { draftKey: string; draft: unknown }) {
+  const fullBytes = useMemo(() => draftUtf8ByteLength(draft), [draft]);
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    setExpanded(false);
+  }, [draftKey, draft]);
+
+  const needsCollapseStub = fullBytes > COLLAPSE_WHEN_UTF8_BYTES;
+  const maxBytes = expanded || !needsCollapseStub ? PREVIEW_MAX_UTF8_BYTES : COLLAPSED_PREVIEW_UTF8_BYTES;
+  const { text, truncated } = useMemo(() => formatJsonPreview(draft, maxBytes), [draft, maxBytes]);
+
   return (
     <div className="space-y-2">
+      {needsCollapseStub ? (
+        <div className="flex flex-wrap items-center gap-2">
+          {expanded ? (
+            <button
+              type="button"
+              onClick={() => setExpanded(false)}
+              className="rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-800 shadow-sm hover:bg-zinc-50"
+            >
+              Collapse preview
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setExpanded(true)}
+              className="rounded-xl bg-[var(--arscmp-primary)] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:brightness-95"
+            >
+              Expand preview (read-only stub)
+            </button>
+          )}
+          <span className="text-xs text-zinc-500">Large draft JSON is shortened until expanded.</span>
+        </div>
+      ) : null}
       <pre className="max-h-[min(24rem,50vh)] overflow-auto rounded-xl border border-zinc-200 bg-zinc-50 p-3 font-mono text-[11px] leading-relaxed text-zinc-800">
         {text}
       </pre>
       {truncated ? (
-        <p className="text-xs text-zinc-500">Preview truncated for size. Full JSON is available via the scenarios API.</p>
+        <p className="text-xs text-zinc-500">
+          Preview truncated for size in the browser. Full JSON is available via the scenarios API.
+        </p>
       ) : null}
     </div>
   );

@@ -17,6 +17,59 @@ function rootShape(d: unknown): RootShape {
   return { kind: "object", keys: Object.keys(d as Record<string, unknown>).sort() };
 }
 
+/** Top-level object key buckets for compare v1 (no deep structural diff). */
+export type DraftTopLevelKeyDiffV1 =
+  | {
+      kind: "objects";
+      /** Keys present only on the left draft. */
+      onlyInLeft: string[];
+      /** Keys present only on the right draft. */
+      onlyInRight: string[];
+      /** Shared keys whose serialized values match. */
+      sameKeys: string[];
+      /** Shared keys whose serialized values differ. */
+      changedKeys: string[];
+    }
+  | { kind: "non_object"; narrative: string };
+
+/**
+ * When both roots are plain objects, classifies keys as only-left / only-right / same value / changed value.
+ * Otherwise returns a short narrative (reuses {@link describeDraftRootKeyDiff}).
+ */
+export function computeDraftTopLevelKeyDiffV1(leftDraft: unknown, rightDraft: unknown): DraftTopLevelKeyDiffV1 {
+  const a = rootShape(leftDraft);
+  const b = rootShape(rightDraft);
+  if (a.kind !== "object" || b.kind !== "object") {
+    return { kind: "non_object", narrative: describeDraftRootKeyDiff(leftDraft, rightDraft) };
+  }
+  const leftObj = leftDraft as Record<string, unknown>;
+  const rightObj = rightDraft as Record<string, unknown>;
+  const setA = new Set(a.keys);
+  const setB = new Set(b.keys);
+  const onlyInLeft = a.keys.filter((k) => !setB.has(k)).sort();
+  const onlyInRight = b.keys.filter((k) => !setA.has(k)).sort();
+  const shared = a.keys.filter((k) => setB.has(k)).sort();
+  const sameKeys: string[] = [];
+  const changedKeys: string[] = [];
+  for (const k of shared) {
+    let ls: string;
+    let rs: string;
+    try {
+      ls = JSON.stringify(leftObj[k]);
+      rs = JSON.stringify(rightObj[k]);
+    } catch {
+      changedKeys.push(k);
+      continue;
+    }
+    if (ls === rs) {
+      sameKeys.push(k);
+    } else {
+      changedKeys.push(k);
+    }
+  }
+  return { kind: "objects", onlyInLeft, onlyInRight, sameKeys, changedKeys };
+}
+
 /** Human-readable comparison of two `draft` JSON roots (no deep diff). */
 export function describeDraftRootKeyDiff(leftDraft: unknown, rightDraft: unknown): string {
   const a = rootShape(leftDraft);

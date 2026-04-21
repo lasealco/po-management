@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { describeDraftRootKeyDiff, draftsDeepEqualSerialized } from "./scenario-draft-compare-summary";
+import {
+  computeDraftTopLevelKeyDiffV1,
+  describeDraftRootKeyDiff,
+  draftsDeepEqualSerialized,
+} from "./scenario-draft-compare-summary";
 
 describe("describeDraftRootKeyDiff", () => {
   it("reports same keys for two objects", () => {
@@ -17,6 +21,29 @@ describe("describeDraftRootKeyDiff", () => {
   it("handles non-object roots", () => {
     expect(describeDraftRootKeyDiff([], [])).toContain("arrays at root");
     expect(describeDraftRootKeyDiff(1, true)).toContain("Different JSON shapes at root");
+  });
+});
+
+describe("computeDraftTopLevelKeyDiffV1", () => {
+  it("buckets top-level keys for two objects", () => {
+    const d = computeDraftTopLevelKeyDiffV1({ a: 1, b: 2, c: 3 }, { b: 2, c: 0, d: 4 });
+    expect(d.kind).toBe("objects");
+    if (d.kind !== "objects") {
+      return;
+    }
+    expect(d.onlyInLeft).toEqual(["a"]);
+    expect(d.onlyInRight).toEqual(["d"]);
+    expect(d.sameKeys.sort()).toEqual(["b"]);
+    expect(d.changedKeys.sort()).toEqual(["c"]);
+  });
+
+  it("returns narrative when roots are not both objects", () => {
+    const d = computeDraftTopLevelKeyDiffV1([], {});
+    expect(d.kind).toBe("non_object");
+    if (d.kind !== "non_object") {
+      return;
+    }
+    expect(d.narrative.length).toBeGreaterThan(0);
   });
 });
 
