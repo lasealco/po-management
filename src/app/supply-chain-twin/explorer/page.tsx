@@ -6,6 +6,10 @@ import { TwinExplorerRecentEventsStrip } from "@/components/supply-chain-twin/tw
 import { TwinGraphStubPanel } from "@/components/supply-chain-twin/twin-graph-stub-panel";
 import { TwinSubNav } from "@/components/supply-chain-twin/twin-subnav";
 import { getViewerGrantSet } from "@/lib/authz";
+import {
+  parseExplorerSnapshotFocusQuery,
+  parseExplorerSnapshotQueryParam,
+} from "@/lib/supply-chain-twin/explorer-focus-query";
 import { resolveNavState } from "@/lib/nav-visibility";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +22,7 @@ export const metadata: Metadata = {
 export default async function SupplyChainTwinExplorerPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ q?: string | string[]; snapshot?: string | string[] }>;
+  searchParams?: Promise<{ q?: string | string[]; snapshot?: string | string[]; focus?: string | string[] }>;
 }) {
   const access = await getViewerGrantSet();
   const { linkVisibility } = await resolveNavState(access);
@@ -44,15 +48,19 @@ export default async function SupplyChainTwinExplorerPage({
   const sp = searchParams ? await searchParams : {};
   const rawQ = sp.q;
   const q = typeof rawQ === "string" ? rawQ : Array.isArray(rawQ) ? rawQ[0] ?? "" : "";
-  const rawSnapshot = sp.snapshot;
-  const snapshotParam =
-    typeof rawSnapshot === "string"
-      ? rawSnapshot.trim()
-      : Array.isArray(rawSnapshot)
-        ? (rawSnapshot[0]?.trim() ?? "")
-        : "";
-  const graphSnapshotId =
-    snapshotParam.length > 0 && snapshotParam.length <= 128 ? snapshotParam : null;
+  const focusParse = parseExplorerSnapshotFocusQuery(sp.focus);
+  const snapshotFromQuery = parseExplorerSnapshotQueryParam(sp.snapshot);
+
+  let explorerFocusError: string | null = null;
+  let graphSnapshotId: string | null = null;
+  if (focusParse.kind === "ok") {
+    graphSnapshotId = focusParse.snapshotId;
+  } else if (focusParse.kind === "invalid") {
+    explorerFocusError = focusParse.message;
+    graphSnapshotId = snapshotFromQuery;
+  } else {
+    graphSnapshotId = snapshotFromQuery;
+  }
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
@@ -64,15 +72,26 @@ export default async function SupplyChainTwinExplorerPage({
         <p className="mt-2 max-w-2xl text-sm text-zinc-600">
           Entity rows are loaded from <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">GET /api/supply-chain-twin/entities</code>{" "}
           (same contract as the overview catalog). Filters below are placeholders except search, which sets query{" "}
-          <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">q</code>. Use{" "}
-          <span className="font-medium text-zinc-700">Download JSON</span> in the entities table to export the rows currently on screen (up to 50 per
-          request; a hint appears above 25 rows).
+          <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">q</code>. Add{" "}
+          <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">{`?focus=<snapshot-id>`}</code> to bookmark a catalog
+          snapshot: the graph loads incident edges and the matching table row is highlighted when it appears in the current
+          page. Legacy <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">snapshot=</code> is still accepted if{" "}
+          <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">focus</code> is absent or invalid. If both are valid,{" "}
+          <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">focus</code> wins for the graph.
         </p>
       </section>
+
+      {explorerFocusError ? (
+        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+          <p className="font-medium">Invalid focus query</p>
+          <p className="mt-1 text-amber-900/90">{explorerFocusError}</p>
+        </div>
+      ) : null}
 
       <section className="mt-6 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
         <h2 className="text-sm font-semibold text-zinc-900">Filters</h2>
         <form className="mt-4 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end" method="get" action="/supply-chain-twin/explorer">
+          {graphSnapshotId ? <input type="hidden" name="focus" value={graphSnapshotId} /> : null}
           <label className="block min-w-[200px] flex-1 text-sm">
             <span className="font-medium text-zinc-700">Search</span>
             <input
@@ -104,7 +123,7 @@ export default async function SupplyChainTwinExplorerPage({
 
       <TwinExplorerRecentEventsStrip />
 
-      <TwinExplorerEntitiesTable key={q} searchQ={q} />
+      <TwinExplorerEntitiesTable key={`${q}::${graphSnapshotId ?? ""}`} searchQ={q} highlightSnapshotId={graphSnapshotId} />
 
       <section className="mt-6">
         <TwinGraphStubPanel key={`${q}::${graphSnapshotId ?? ""}`} searchQ={q} selectedSnapshotId={graphSnapshotId} />

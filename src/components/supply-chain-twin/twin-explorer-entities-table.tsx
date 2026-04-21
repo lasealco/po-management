@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, use, useCallback, useMemo } from "react";
+import { Suspense, use, useCallback, useLayoutEffect, useMemo, useRef } from "react";
 
 /** Matches `limit` on `fetchEntitiesCatalog` — exports never include rows beyond this page. */
 const CATALOG_TABLE_PAGE_LIMIT = 50;
@@ -136,8 +136,24 @@ function downloadVisibleEntitiesJson(searchQ: string, items: CatalogRow[]) {
   URL.revokeObjectURL(url);
 }
 
-function TwinExplorerEntitiesTableInner({ searchQ }: { searchQ: string }) {
+function TwinExplorerEntitiesTableInner({
+  searchQ,
+  highlightSnapshotId,
+}: {
+  searchQ: string;
+  highlightSnapshotId?: string | null;
+}) {
   const data = use(useMemo(() => fetchEntitiesCatalog(searchQ), [searchQ]));
+  const rowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
+
+  useLayoutEffect(() => {
+    const id = highlightSnapshotId?.trim();
+    if (!id || data.ok !== true) {
+      return;
+    }
+    const el = rowRefs.current.get(id);
+    el?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [highlightSnapshotId, data]);
 
   const onExportJson = useCallback(() => {
     if (data.ok !== true || data.items.length === 0) {
@@ -198,8 +214,19 @@ function TwinExplorerEntitiesTableInner({ searchQ }: { searchQ: string }) {
               {data.items.map((row) => {
                 const href = `/supply-chain-twin/explorer/${encodeURIComponent(row.id)}`;
                 const label = `Open twin snapshot for ${row.ref.kind} ${row.ref.id}`;
+                const focused = highlightSnapshotId != null && highlightSnapshotId !== "" && row.id === highlightSnapshotId;
                 return (
-                  <tr key={row.id} className="hover:bg-zinc-50/80">
+                  <tr
+                    key={row.id}
+                    ref={(el) => {
+                      if (el) {
+                        rowRefs.current.set(row.id, el);
+                      } else {
+                        rowRefs.current.delete(row.id);
+                      }
+                    }}
+                    className={`hover:bg-zinc-50/80 ${focused ? "bg-emerald-50/90 ring-1 ring-emerald-200/90" : ""}`}
+                  >
                     <td className="px-5 py-3 font-mono text-xs text-zinc-600">{row.ref.kind}</td>
                     <td className="px-5 py-3 font-mono text-xs">{row.ref.id}</td>
                     <td className="px-5 py-3">
@@ -222,14 +249,21 @@ function TwinExplorerEntitiesTableInner({ searchQ }: { searchQ: string }) {
   );
 }
 
-export function TwinExplorerEntitiesTable({ searchQ }: { searchQ: string }) {
+export function TwinExplorerEntitiesTable({
+  searchQ,
+  highlightSnapshotId = null,
+}: {
+  searchQ: string;
+  /** When set and the row is on the current catalog page, the row is highlighted and scrolled into view (Slice 76). */
+  highlightSnapshotId?: string | null;
+}) {
   return (
     <section className="mt-6 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
       <div className="border-b border-zinc-200 px-5 py-3">
         <h2 className="text-sm font-semibold text-zinc-900">Entities</h2>
       </div>
       <Suspense fallback={<TwinExplorerEntitiesTableSkeleton />}>
-        <TwinExplorerEntitiesTableInner searchQ={searchQ} />
+        <TwinExplorerEntitiesTableInner searchQ={searchQ} highlightSnapshotId={highlightSnapshotId} />
       </Suspense>
     </section>
   );

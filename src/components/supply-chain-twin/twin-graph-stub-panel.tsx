@@ -280,7 +280,7 @@ function ExplorerSnapshotChips({
       {pickList.map((row) => {
         const label = `${row.ref.kind}:${row.ref.id}`;
         const short = label.length > 28 ? `${label.slice(0, 27)}…` : label;
-        const href = `/supply-chain-twin/explorer?${new URLSearchParams({ q: searchQ, snapshot: row.id }).toString()}`;
+        const href = `/supply-chain-twin/explorer?${new URLSearchParams({ q: searchQ, focus: row.id }).toString()}`;
         return (
           <button
             key={row.id}
@@ -363,7 +363,7 @@ function TwinGraphStubPanelInner({
           <>
             Live edges for <code className="text-[11px]">GET /api/supply-chain-twin/edges?snapshotId=…&amp;direction=both</code>.{" "}
             <Link
-              href={`/supply-chain-twin/explorer?${new URLSearchParams({ q: searchQ }).toString()}`}
+              href={`/supply-chain-twin/explorer${searchQ.trim() ? `?${new URLSearchParams({ q: searchQ }).toString()}` : ""}`}
               className="font-medium text-[var(--arscmp-primary)] underline-offset-2 hover:underline"
             >
               Clear snapshot focus
