@@ -1,6 +1,6 @@
 # Supply Chain Twin — one-agent milestones (1–2 h slices)
 
-Use this doc as the **single source of truth** for Cursor/Codex agents: paste or `@`-reference this file, then say **which slice number** to implement (**Slices 1–67**).
+Use this doc as the **single source of truth** for Cursor/Codex agents: paste or `@`-reference this file, then say **which slice number** to implement (**Slices 1–87**).
 
 **Rules for the agent**
 
@@ -975,6 +975,292 @@ While another workstream owns **global chrome / nav / product-trace UX**, the tw
 **Paths:** `prisma/*seed*supply-chain-twin*`, `package.json` only if new script (unlikely).
 
 **Done when:** Document the two ids in slice 49 handoff or `docs/sctwin/README.md` one-liner.
+
+---
+
+## Slice 68 — API: `GET …/events?since=&until=` (~1.5 h)
+
+**Goal:** Time-bounded ingest event queries (tenant-scoped) with Zod validation and a **hard cap** on window length (document max days in handler JSDoc).
+
+**Milestones**
+
+- [ ] ISO-8601 strings or epoch ms — pick one wire format and stick to it across twin APIs.
+- [ ] Tests: invalid range → 400; empty window → empty list.
+
+**Paths:** `src/app/api/supply-chain-twin/events/**`, `src/lib/supply-chain-twin/**`, `src/lib/supply-chain-twin/schemas/**`, tests.
+
+**Done when:** Explorer or curl can fetch “last 24h” without full-table scans (index comment if migration in Slice 85).
+
+---
+
+## Slice 69 — API: `GET …/events?includePayload=` (~1 h)
+
+**Goal:** Optional **lightweight** list rows (`includePayload=false`) returning `type`, ids, timestamps only — default preserves current shape.
+
+**Milestones**
+
+- [ ] Zod boolean coercion; never log omitted payloads as “errors”.
+- [ ] Vitest for both modes.
+
+**Paths:** same as Slice 68.
+
+**Done when:** Activity strips can reduce payload over the wire.
+
+---
+
+## Slice 70 — API: `GET …/entities?fields=` (~1.5 h)
+
+**Goal:** `fields=summary|full` (or equivalent) where **summary** omits or truncates large `payloadJson` per existing DTO patterns.
+
+**Milestones**
+
+- [ ] Document max summary bytes in code comment; 400 on unknown enum.
+- [ ] Tests: list still paginates; summary path faster to serialize.
+
+**Paths:** `src/app/api/supply-chain-twin/entities/**`, `src/lib/supply-chain-twin/**`, schemas, tests.
+
+**Done when:** Explorer table can switch to summary mode without a second endpoint.
+
+---
+
+## Slice 71 — API: scenario `draftJson` size guard (~1.5 h)
+
+**Goal:** `PATCH …/scenarios/[id]` rejects oversize `draftJson` with the **same spirit** as ingest payload caps (stable error code, tested).
+
+**Milestones**
+
+- [ ] Reuse or mirror byte/size counting from `ingest-writer` patterns; no PII logs.
+
+**Paths:** `src/app/api/supply-chain-twin/scenarios/[id]/**`, `src/lib/supply-chain-twin/**`, tests.
+
+**Done when:** Maliciously large JSON cannot wedge the API.
+
+---
+
+## Slice 72 — Compare: nested path diff summary (~2 h)
+
+**Goal:** Extend compare UX with a **small fixed-depth** (e.g. 2 levels) key-path summary beyond Slice 49’s top-level-only story — still no heavy diff dependency.
+
+**Milestones**
+
+- [ ] Cap nodes summarized; “+N more” overflow text.
+- [ ] Two demo drafts still load.
+
+**Paths:** `src/app/supply-chain-twin/scenarios/compare/**`, `src/lib/supply-chain-twin/**`, `src/components/supply-chain-twin/**`.
+
+**Done when:** Reviewers can see *where* JSON diverges without a solver.
+
+---
+
+## Slice 73 — API: metrics breakdown by entity kind (~1.5 h)
+
+**Goal:** Extend `GET /api/supply-chain-twin/metrics` with `entityCountsByKind: Record<string, number>` (bounded keys, unknown kinds rolled to `other`).
+
+**Milestones**
+
+- [ ] Cheap `groupBy` or parallel counts; document query budget in comment.
+- [ ] Schema + Vitest update.
+
+**Paths:** `src/app/api/supply-chain-twin/metrics/**`, `src/lib/supply-chain-twin/twin-catalog-metrics.ts`, schemas, tests.
+
+**Done when:** Overview can render a simple breakdown strip (Slice 74).
+
+---
+
+## Slice 74 — Twin overview: entity-kind breakdown strip (~1 h)
+
+**Goal:** Small UI row under the metrics strip (Slice 50) consuming Slice 73 — loading/error consistent with twin pages.
+
+**Milestones**
+
+- [ ] No global nav edits; twin components only.
+
+**Paths:** `src/app/supply-chain-twin/page.tsx`, `src/components/supply-chain-twin/**`.
+
+**Done when:** Demo tenant shows non-zero or intentional empty.
+
+---
+
+## Slice 75 — API: `GET …/edges?fromEntityId=` / `toEntityId=` (~1.5 h)
+
+**Goal:** Filter edges by one endpoint (tenant-scoped); Zod mutual-exclusion or documented precedence if both supplied.
+
+**Milestones**
+
+- [ ] Index-friendly `where` clause; tests for 400 + empty.
+
+**Paths:** `src/app/api/supply-chain-twin/edges/**`, `src/lib/supply-chain-twin/edges-repo.ts`, schemas, tests.
+
+**Done when:** Graph panel can request star subgraph without client filtering everything.
+
+---
+
+## Slice 76 — Explorer graph: “focus entity” deep link (~1.5 h)
+
+**Goal:** Query param on explorer (e.g. `?focus=<entityId>`) selects row + triggers edge fetch (Slice 75) — bookmarkable demo.
+
+**Milestones**
+
+- [ ] Invalid id → no crash; clear inline message.
+
+**Paths:** `src/app/supply-chain-twin/explorer/**`, `src/components/supply-chain-twin/**`.
+
+**Done when:** URL alone drives selection + graph refresh.
+
+---
+
+## Slice 77 — API: `POST …/events` idempotency (~2 h)
+
+**Goal:** Optional `Idempotency-Key` header (or body field — pick one, document): duplicate append returns **same** logical result without second row (or returns existing id — document choice in JSDoc).
+
+**Milestones**
+
+- [ ] Prisma unique constraint **only if** slice chooses DB-enforced idempotency; else in-transaction check with race note.
+- [ ] Tests cover replay.
+
+**Paths:** `prisma/**` (if unique index), `src/app/api/supply-chain-twin/events/**`, `src/lib/supply-chain-twin/**`, tests.
+
+**Done when:** Retries from flaky clients do not duplicate events.
+
+---
+
+## Slice 78 — Readiness: optional metrics snapshot (~1 h)
+
+**Goal:** Extend readiness JSON with **non-sensitive** catalog health: e.g. boolean `hasTwinData` or small counts mirror (no stack traces).
+
+**Milestones**
+
+- [ ] Time-budget comment; fallback if DB slow.
+
+**Paths:** `src/lib/supply-chain-twin/readiness.ts`, `src/app/api/supply-chain-twin/readiness/**`, tests.
+
+**Done when:** `/supply-chain-twin` can show “data present” without extra round trip (optional follow-up UI slice).
+
+---
+
+## Slice 79 — Doc: R3 staging map (slices 68–87) (~1 h)
+
+**Goal:** In `docs/sctwin/supply_chain_twin_sprint_backlog_and_release_plan.md`, expand **`R3 staging (slices 68–87)`** with **repo path bullets** (same style as **R2 extension** above it): map each theme to concrete files under `src/app/api/supply-chain-twin/**`, `src/lib/supply-chain-twin/**`, twin UI, `prisma/**` as applicable.
+
+**Milestones**
+
+- [ ] Cross-link this milestone file; no secrets.
+
+**Paths:** `docs/sctwin/**` only.
+
+**Done when:** Product readers see the next agent tranche after 67 with file-level pointers.
+
+---
+
+## Slice 80 — Doc: `docs/sctwin/runbook.md` stub (~1 h)
+
+**Goal:** Operator runbook: seed commands, key routes, `verify:sctwin`, where logs live — **stub sections** OK.
+
+**Milestones**
+
+- [ ] One-line link from `docs/sctwin/README.md`.
+
+**Paths:** `docs/sctwin/**` only.
+
+**Done when:** On-call has a single bookmark.
+
+---
+
+## Slice 81 — Scenarios detail: inline rename (~1 h)
+
+**Goal:** On `/supply-chain-twin/scenarios/[id]`, edit title with `PATCH` (Slice 35) — optimistic UI optional; must handle 403/404 safely.
+
+**Milestones**
+
+- [ ] No logging of titles in structured logs.
+
+**Paths:** `src/app/supply-chain-twin/scenarios/[id]/**`, `src/components/supply-chain-twin/**`.
+
+**Done when:** Demo presenter can fix a typo without curl.
+
+---
+
+## Slice 82 — Compare: copy share link (~1 h)
+
+**Goal:** Button copies current `left`/`right` URL to clipboard; toast or inline “Copied” — accessibility label.
+
+**Milestones**
+
+- [ ] Degrade gracefully if clipboard API unavailable.
+
+**Paths:** `src/app/supply-chain-twin/scenarios/compare/**`, `src/components/supply-chain-twin/**`.
+
+**Done when:** Two-click share in reviews.
+
+---
+
+## Slice 83 — lib: twin API error code enum (~1 h)
+
+**Goal:** Single exported map of stable `code` strings used in twin route JSON errors (documentation + type guard), **no behavior change** unless a duplicate string is normalized.
+
+**Milestones**
+
+- [ ] Vitest: exported object keys unique.
+
+**Paths:** `src/lib/supply-chain-twin/**` only.
+
+**Done when:** Agents stop inventing divergent error spellings.
+
+---
+
+## Slice 84 — Seed: varied risk + event types (~1.5 h)
+
+**Goal:** Extend `prisma/seed-supply-chain-twin-demo.mjs` (idempotent) with an extra **risk** row (different severity) and 1–2 **ingest** rows with distinct `type` for Slice 54/69 demos.
+
+**Milestones**
+
+- [ ] No widening of unrelated seeds.
+
+**Paths:** `prisma/*seed*supply-chain-twin*`, `docs/sctwin/README.md` one line if ids matter.
+
+**Done when:** Filters show meaningful non-empty lists out of the box.
+
+---
+
+## Slice 85 — Prisma: ingest events time + type index (~1 h)
+
+**Goal:** Composite index aligned with `since`/`until` + `type` filter (Slices 68, 54) — comment the query pattern in SQL.
+
+**Milestones**
+
+- [ ] Twin tables only.
+
+**Paths:** `prisma/schema.prisma`, `prisma/migrations/**`.
+
+**Done when:** `db:migrate` clean.
+
+---
+
+## Slice 86 — Explorer: improved empty + error states (~1 h)
+
+**Goal:** When entities API returns empty or errors, show **actionable** twin-only copy (link to readiness, retry button) — no tenant leakage.
+
+**Milestones**
+
+- [ ] Strings reviewed for PII patterns.
+
+**Paths:** `src/app/supply-chain-twin/explorer/**`, `src/components/supply-chain-twin/**`.
+
+**Done when:** First-time tenants see a guided path.
+
+---
+
+## Slice 87 — Tests: twin “happy path” integration (~1.5–2 h)
+
+**Goal:** One Vitest file that mocks auth/tenant minimally and asserts a **linear** flow: `GET readiness` → `GET entities` (summary) → `GET metrics` — 200 + zod parse; documents pattern for future E2E.
+
+**Milestones**
+
+- [ ] Keep under twin test glob for `verify:sctwin`.
+
+**Paths:** `src/app/api/supply-chain-twin/**/*.test.ts` or `src/lib/supply-chain-twin/**/*.test.ts` as fits repo style.
+
+**Done when:** Regression signal for twin API contracts without browser.
 
 ---
 
