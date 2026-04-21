@@ -149,6 +149,34 @@ export function TwinCatalogMetricsStrip() {
 
       {state.kind === "ok" ? (
         <>
+          {state.data.scenarioDrafts > 0 &&
+          state.data.entities === 0 &&
+          state.data.edges === 0 &&
+          state.data.events === 0 &&
+          state.data.riskSignals === 0 ? (
+            <div
+              className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+              role="status"
+            >
+              <p className="font-semibold text-amber-950">Catalog looks only partially filled</p>
+              <p className="mt-1 text-amber-900/90">
+                Scenario drafts exist, but there are no entity snapshots, edges, ingest events, or risk signals for
+                this tenant. That usually means the Twin demo seed has not been run against the{" "}
+                <span className="font-medium">same database</span> this deployment uses (for example production Neon
+                vs. a dev branch). From a machine with{" "}
+                <code className="rounded bg-amber-100/80 px-1 py-0.5 font-mono text-xs">DATABASE_URL</code> pointing at
+                this environment&apos;s Postgres, run{" "}
+                <code className="rounded bg-amber-100/80 px-1 py-0.5 font-mono text-xs">
+                  npm run db:seed:supply-chain-twin-demo
+                </code>{" "}
+                (after{" "}
+                <code className="rounded bg-amber-100/80 px-1 py-0.5 font-mono text-xs">npm run db:seed</code> if the
+                tenant is missing). See{" "}
+                <code className="rounded bg-amber-100/80 px-1 py-0.5 font-mono text-xs">docs/sctwin/runbook.md</code>{" "}
+                → Seed commands.
+              </p>
+            </div>
+          ) : null}
           <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             {METRIC_CELLS.map((cell) => (
               <div

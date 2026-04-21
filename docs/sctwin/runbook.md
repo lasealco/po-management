@@ -44,6 +44,7 @@ Use this as the single route inventory referenced by release/smoke checklists.
 
 ## Seed Commands (Twin-Focused)
 
+- **Production / hosted (Vercel, etc.):** the app only shows Twin rows that exist in **that** deployment's `DATABASE_URL`. Seeding your laptop `.env.local` does not fill production. Either point a one-off shell `DATABASE_URL` at the hosted Neon URL (from Vercel → Storage / env) and run the commands below, or use `npm run db:migrate:local` + seeds from a trusted CI job. See also `docs/database-neon.md` for build-time seed flags (`RUN_DB_SEED`, etc.).
 - Base demo tenant data:
   - `USE_DOTENV_LOCAL=1 npm run db:seed`
 - Supply Chain Twin demo data:
