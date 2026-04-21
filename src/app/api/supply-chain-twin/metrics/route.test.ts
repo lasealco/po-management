@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { TWIN_ENTITY_KINDS } from "@/lib/supply-chain-twin/types";
+
 const getViewerGrantSetMock = vi.fn();
 const resolveNavStateMock = vi.fn();
 const actorIsSupplierPortalRestrictedMock = vi.fn();
@@ -21,6 +23,10 @@ vi.mock("@/lib/nav-visibility", () => ({
 vi.mock("@/lib/supply-chain-twin/twin-catalog-metrics", () => ({
   getTwinCatalogMetricsForTenant: getTwinCatalogMetricsForTenantMock,
 }));
+
+function zeroEntityCountsByKind(): Record<string, number> {
+  return Object.fromEntries([...TWIN_ENTITY_KINDS, "other"].map((k) => [k, 0]));
+}
 
 describe("GET /api/supply-chain-twin/metrics", () => {
   beforeEach(() => {
@@ -78,6 +84,7 @@ describe("GET /api/supply-chain-twin/metrics", () => {
       events: 100,
       scenarioDrafts: 3,
       riskSignals: 1,
+      entityCountsByKind: { ...zeroEntityCountsByKind(), supplier: 3, shipment: 2 },
     });
 
     const { GET } = await import("./route");
@@ -91,6 +98,7 @@ describe("GET /api/supply-chain-twin/metrics", () => {
       events: 100,
       scenarioDrafts: 3,
       riskSignals: 1,
+      entityCountsByKind: { ...zeroEntityCountsByKind(), supplier: 3, shipment: 2 },
     });
     expect(typeof json.generatedAt).toBe("string");
     expect(Number.isNaN(Date.parse(String(json.generatedAt)))).toBe(false);
@@ -117,6 +125,7 @@ describe("GET /api/supply-chain-twin/metrics", () => {
       events: 0,
       scenarioDrafts: 0,
       riskSignals: 0,
+      entityCountsByKind: zeroEntityCountsByKind(),
     });
 
     const { GET } = await import("./route");

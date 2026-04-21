@@ -9,8 +9,8 @@ const ROUTE = "GET /api/supply-chain-twin/metrics";
 
 /**
  * Tenant-scoped catalog **counts** for the Supply Chain Twin preview (entities, edges, ingest events, scenario drafts,
- * risk signals), plus `generatedAt` (ISO-8601) for UI freshness labels. Each count comes from an indexed `COUNT` — no
- * payload reads, no unbounded scans (see `getTwinCatalogMetricsForTenant` JSDoc).
+ * risk signals), **`entityCountsByKind`** (bounded keys, unknown kinds in `other`), plus `generatedAt` (ISO-8601) for UI
+ * freshness. Counts use indexed `COUNT` / `GROUP BY` — no payload reads (see `getTwinCatalogMetricsForTenant` JSDoc).
  */
 export async function GET(request: Request) {
   const requestId = resolveSctwinRequestId(request);

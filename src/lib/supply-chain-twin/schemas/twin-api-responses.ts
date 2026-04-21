@@ -1,7 +1,15 @@
 import { TwinRiskSeverity } from "@prisma/client";
 import { z } from "zod";
 
+import { TWIN_ENTITY_KINDS } from "@/lib/supply-chain-twin/types";
+
 import { twinEntityRefSchema } from "./twin-entity-ref";
+
+const twinEntityCountsByKindSchema = z.object(
+  Object.fromEntries(
+    [...TWIN_ENTITY_KINDS, "other" as const].map((k) => [k, z.number().int().min(0)]),
+  ) as unknown as Record<string, z.ZodTypeAny>,
+);
 
 /** Success body for `GET /api/supply-chain-twin/entities`. `payload` present when `fields=full` (Slice 70). */
 export const twinEntitiesListResponseSchema = z.object({
@@ -110,6 +118,8 @@ export const twinCatalogMetricsResponseSchema = z.object({
   events: z.number().int().min(0),
   scenarioDrafts: z.number().int().min(0),
   riskSignals: z.number().int().min(0),
+  /** Slice 73: per-kind entity snapshot counts; unknown `entityKind` values rolled into `other`. */
+  entityCountsByKind: twinEntityCountsByKindSchema,
   /** ISO-8601 instant when this payload was assembled (server clock). */
   generatedAt: z.string().datetime(),
 });

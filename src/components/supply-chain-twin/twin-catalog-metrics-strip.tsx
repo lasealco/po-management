@@ -3,11 +3,14 @@
 import { useEffect, useState } from "react";
 
 import { parseTwinCatalogMetricsResponseJson } from "@/lib/supply-chain-twin/twin-catalog-metrics-response";
-import type { TwinCatalogMetricsCounts } from "@/lib/supply-chain-twin/twin-catalog-metrics";
+import type { TwinCatalogMetricsResponse } from "@/lib/supply-chain-twin/schemas/twin-api-responses";
 
-type StripState = { kind: "loading" } | { kind: "error"; message: string } | { kind: "ok"; data: TwinCatalogMetricsCounts };
+type StripState = { kind: "loading" } | { kind: "error"; message: string } | { kind: "ok"; data: TwinCatalogMetricsResponse };
 
-const METRIC_CELLS: Array<{ key: keyof TwinCatalogMetricsCounts; label: string }> = [
+const METRIC_CELLS: Array<{
+  key: "entities" | "edges" | "events" | "scenarioDrafts" | "riskSignals";
+  label: string;
+}> = [
   { key: "entities", label: "Entities" },
   { key: "edges", label: "Edges" },
   { key: "events", label: "Ingest events" },
