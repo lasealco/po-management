@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { AccessDenied } from "@/components/access-denied";
+import { TwinReadinessBanner } from "@/components/supply-chain-twin/twin-readiness-banner";
 import { TwinSubNav } from "@/components/supply-chain-twin/twin-subnav";
 import { getViewerGrantSet } from "@/lib/authz";
 import { PLATFORM_HUB_PATH } from "@/lib/marketing-public-paths";
 import { resolveNavState } from "@/lib/nav-visibility";
-import { getSupplyChainTwinReadinessSnapshot } from "@/lib/supply-chain-twin/readiness";
 
 import { TwinEntitiesSection } from "./twin-entities-section";
 
@@ -53,8 +53,6 @@ export default async function SupplyChainTwinHomePage() {
     );
   }
 
-  const readiness = getSupplyChainTwinReadinessSnapshot();
-
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
       <TwinSubNav />
@@ -68,32 +66,7 @@ export default async function SupplyChainTwinHomePage() {
         <code className="rounded bg-zinc-100 px-1.5 py-0.5 text-sm text-zinc-800">docs/sctwin</code>.
       </p>
 
-      {!readiness.ok ? (
-        <aside
-          className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 shadow-sm"
-          role="alert"
-        >
-          <p className="font-semibold text-amber-900">Twin module is not fully ready</p>
-          {readiness.reasons.length > 0 ? (
-            <ul className="mt-2 list-inside list-disc space-y-1 text-amber-900/90">
-              {readiness.reasons.map((r) => (
-                <li key={r}>{r}</li>
-              ))}
-            </ul>
-          ) : (
-            <p className="mt-2 text-amber-900/90">See operator notes in the developer pack or contact support.</p>
-          )}
-          <p className="mt-3">
-            <a href={README_BLOB} target="_blank" rel="noreferrer" className="font-medium underline underline-offset-2">
-              docs/sctwin README
-            </a>
-            <span className="mx-2 text-amber-800/60">·</span>
-            <a href={DOCS_TREE} target="_blank" rel="noreferrer" className="font-medium underline underline-offset-2">
-              Full spec tree on GitHub
-            </a>
-          </p>
-        </aside>
-      ) : null}
+      <TwinReadinessBanner docsReadmeHref={README_BLOB} docsTreeHref={DOCS_TREE} />
 
       <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
         <a
