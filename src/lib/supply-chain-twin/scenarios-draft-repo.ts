@@ -2,12 +2,14 @@ import type { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { encodeTwinScenariosListCursor } from "@/lib/supply-chain-twin/schemas/twin-scenarios-list-query";
+import { getTwinScenarioStatusTransitionError } from "@/lib/supply-chain-twin/scenario-status-transitions";
 import type { TwinScenarioDraftPatchStatus } from "@/lib/supply-chain-twin/schemas/twin-scenario-draft-patch";
 
 export type CreateScenarioDraftInput = {
   title?: string | null;
   /** Stored as JSON; must serialize under the API byte cap before insert. */
   draft: Prisma.InputJsonValue;
+  actorId?: string | null;
 };
 
 /**
@@ -18,7 +20,7 @@ export async function createScenarioDraft(
   input: CreateScenarioDraftInput,
 ): Promise<{ id: string; title: string | null; status: string; updatedAt: Date }> {
   const title = input.title?.trim() ? input.title.trim() : null;
-  return prisma.supplyChainTwinScenarioDraft.create({
+  const row = await prisma.supplyChainTwinScenarioDraft.create({
     data: {
       tenantId,
       title,
@@ -32,11 +34,23 @@ export async function createScenarioDraft(
       updatedAt: true,
     },
   });
+  await createScenarioRevision({
+    tenantId,
+    scenarioDraftId: row.id,
+    actorId: input.actorId ?? null,
+    action: "create",
+    titleBefore: null,
+    titleAfter: row.title,
+    statusBefore: null,
+    statusAfter: row.status,
+  });
+  return row;
 }
 
 export type DuplicateScenarioDraftForTenantInput = {
   /** Appended after trimmed source title; omit to reuse the source title as stored. */
   titleSuffix?: string;
+  actorId?: string | null;
 };
 
 function buildDuplicatedScenarioTitle(
@@ -75,7 +89,7 @@ export async function duplicateScenarioDraftForTenant(
   const title = mergedTitle?.trim() ? mergedTitle.trim() : null;
   const draft = source.draftJson as Prisma.InputJsonValue;
 
-  return prisma.supplyChainTwinScenarioDraft.create({
+  const row = await prisma.supplyChainTwinScenarioDraft.create({
     data: {
       tenantId,
       title,
@@ -89,6 +103,17 @@ export async function duplicateScenarioDraftForTenant(
       updatedAt: true,
     },
   });
+  await createScenarioRevision({
+    tenantId,
+    scenarioDraftId: row.id,
+    actorId: input.actorId ?? null,
+    action: "duplicate",
+    titleBefore: null,
+    titleAfter: row.title,
+    statusBefore: null,
+    statusAfter: row.status,
+  });
+  return row;
 }
 
 export type ScenarioDraftListItem = {
@@ -195,22 +220,14 @@ export type PatchScenarioDraftInput = {
   draft?: Prisma.InputJsonValue;
   /** Workflow label; omit to leave unchanged. Transitions validated against current row. */
   status?: TwinScenarioDraftPatchStatus;
+  /** Optional actor id for audit revisions. */
+  actorId?: string | null;
 };
 
 export type PatchScenarioDraftResult =
   | { ok: true; row: ScenarioDraftDetailRow }
   | { ok: false; reason: "not_found" }
   | { ok: false; reason: "invalid_status_transition"; message: string };
-
-function statusTransitionError(current: string, next: TwinScenarioDraftPatchStatus): string | null {
-  if (next === "archived") {
-    return null;
-  }
-  if (current === "archived" || current === "draft") {
-    return null;
-  }
-  return "Cannot set status to draft unless the scenario is archived or already draft.";
-}
 
 /**
  * Applies a partial update when the row exists for `tenantId` + `draftId`.
@@ -221,15 +238,15 @@ export async function patchScenarioDraftForTenant(
   draftId: string,
   patch: PatchScenarioDraftInput,
 ): Promise<PatchScenarioDraftResult> {
+  const existing = await prisma.supplyChainTwinScenarioDraft.findFirst({
+    where: { id: draftId, tenantId },
+    select: { status: true, title: true },
+  });
+  if (!existing) {
+    return { ok: false, reason: "not_found" };
+  }
   if (patch.status !== undefined) {
-    const existing = await prisma.supplyChainTwinScenarioDraft.findFirst({
-      where: { id: draftId, tenantId },
-      select: { status: true },
-    });
-    if (!existing) {
-      return { ok: false, reason: "not_found" };
-    }
-    const transitionErr = statusTransitionError(existing.status, patch.status);
+    const transitionErr = getTwinScenarioStatusTransitionError(existing.status, patch.status);
     if (transitionErr) {
       return { ok: false, reason: "invalid_status_transition", message: transitionErr };
     }
@@ -257,7 +274,82 @@ export async function patchScenarioDraftForTenant(
   if (!row) {
     return { ok: false, reason: "not_found" };
   }
+  if (existing.title !== row.title || existing.status !== row.status) {
+    await createScenarioRevision({
+      tenantId,
+      scenarioDraftId: row.id,
+      actorId: patch.actorId ?? null,
+      action: "patch",
+      titleBefore: existing.title,
+      titleAfter: row.title,
+      statusBefore: existing.status,
+      statusAfter: row.status,
+    });
+  }
   return { ok: true, row };
+}
+
+export type ScenarioRevisionListItem = {
+  id: string;
+  createdAt: Date;
+  actorId: string | null;
+  action: string;
+  titleBefore: string | null;
+  titleAfter: string | null;
+  statusBefore: string | null;
+  statusAfter: string | null;
+};
+
+export async function listScenarioHistoryForTenant(
+  tenantId: string,
+  draftId: string,
+): Promise<ScenarioRevisionListItem[] | null> {
+  const exists = await prisma.supplyChainTwinScenarioDraft.findFirst({
+    where: { id: draftId, tenantId },
+    select: { id: true },
+  });
+  if (!exists) {
+    return null;
+  }
+  return prisma.supplyChainTwinScenarioRevision.findMany({
+    where: { tenantId, scenarioDraftId: draftId },
+    select: {
+      id: true,
+      createdAt: true,
+      actorId: true,
+      action: true,
+      titleBefore: true,
+      titleAfter: true,
+      statusBefore: true,
+      statusAfter: true,
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: 200,
+  });
+}
+
+async function createScenarioRevision(input: {
+  tenantId: string;
+  scenarioDraftId: string;
+  actorId: string | null;
+  action: string;
+  titleBefore: string | null;
+  titleAfter: string | null;
+  statusBefore: string | null;
+  statusAfter: string | null;
+}) {
+  await prisma.supplyChainTwinScenarioRevision.create({
+    data: {
+      tenantId: input.tenantId,
+      scenarioDraftId: input.scenarioDraftId,
+      actorId: input.actorId,
+      action: input.action,
+      titleBefore: input.titleBefore,
+      titleAfter: input.titleAfter,
+      statusBefore: input.statusBefore,
+      statusAfter: input.statusAfter,
+    },
+  });
 }
 
 /**
