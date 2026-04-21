@@ -12,8 +12,9 @@ export const dynamic = "force-dynamic";
 const ROUTE = "GET /api/supply-chain-twin/risk-signals";
 
 /**
- * Tenant-scoped `SupplyChainTwinRiskSignal` rows, newest `createdAt` first, keyset-paged. Optional `severity` filter
- * matches Prisma `TwinRiskSeverity`. Titles and details are returned to the client only — not written to structured logs.
+ * Tenant-scoped `SupplyChainTwinRiskSignal` rows, newest `createdAt` first, keyset-paged. Optional **`severity`**
+ * query (strict `TwinRiskSeverity`; invalid → **400**; blank omitted) composes with **`limit`** + **`cursor`**.
+ * Titles and details are returned to the client only — not written to structured logs.
  */
 export async function GET(request: Request) {
   const requestId = resolveSctwinRequestId(request);

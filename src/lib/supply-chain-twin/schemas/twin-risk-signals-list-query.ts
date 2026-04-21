@@ -6,7 +6,12 @@ const twinRiskSignalsCursorPayloadSchema = z.object({
   i: z.string().min(1),
 });
 
-/** GET `/api/supply-chain-twin/risk-signals` — list rows (newest `createdAt` first). */
+/**
+ * GET `/api/supply-chain-twin/risk-signals` — list rows (newest `createdAt` first).
+ *
+ * Optional **`severity`** — strict {@link TwinRiskSeverity} (case-sensitive; invalid → **400**). Blank / whitespace
+ * is treated as omitted. Composes with **`limit`** and opaque **`cursor`** (keyset).
+ */
 export const twinRiskSignalsListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional().default(50),
   cursor: z
@@ -15,7 +20,14 @@ export const twinRiskSignalsListQuerySchema = z.object({
     .max(512)
     .optional()
     .transform((value) => (value && value.length > 0 ? value : undefined)),
-  severity: z.nativeEnum(TwinRiskSeverity).optional(),
+  severity: z.preprocess((val) => {
+    if (val === undefined || val === null || val === "") return undefined;
+    if (typeof val === "string") {
+      const t = val.trim();
+      return t.length === 0 ? undefined : t;
+    }
+    return val;
+  }, z.nativeEnum(TwinRiskSeverity).optional()),
 });
 
 export type TwinRiskSignalsListQuery = z.infer<typeof twinRiskSignalsListQuerySchema>;

@@ -104,6 +104,50 @@ describe("GET /api/supply-chain-twin/risk-signals", () => {
     expect(listRiskSignalsForTenantPageMock).not.toHaveBeenCalled();
   });
 
+  it("returns 400 when severity is not a TwinRiskSeverity value", async () => {
+    getViewerGrantSetMock.mockResolvedValue({
+      tenant: { id: "t1", name: "Demo", slug: "demo-company" },
+      user: { id: "u1", email: "x@y.com", name: "X" },
+      grantSet: new Set(),
+    });
+    resolveNavStateMock.mockResolvedValue({
+      linkVisibility: { supplyChainTwin: true },
+      setupIncomplete: false,
+      poSubNavVisibility: {},
+    });
+
+    const { GET } = await import("./route");
+    const response = await GET(
+      new Request("http://localhost/api/supply-chain-twin/risk-signals?severity=NOT_A_SEVERITY"),
+    );
+
+    expect(response.status).toBe(400);
+    expect(listRiskSignalsForTenantPageMock).not.toHaveBeenCalled();
+  });
+
+  it("omits severity in repo call when severity query is blank", async () => {
+    getViewerGrantSetMock.mockResolvedValue({
+      tenant: { id: "t1", name: "Demo", slug: "demo-company" },
+      user: { id: "u1", email: "x@y.com", name: "X" },
+      grantSet: new Set(),
+    });
+    resolveNavStateMock.mockResolvedValue({
+      linkVisibility: { supplyChainTwin: true },
+      setupIncomplete: false,
+      poSubNavVisibility: {},
+    });
+
+    const { GET } = await import("./route");
+    const response = await GET(new Request("http://localhost/api/supply-chain-twin/risk-signals?severity="));
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ items: [] });
+    expect(listRiskSignalsForTenantPageMock).toHaveBeenCalledWith("t1", {
+      limit: 50,
+      cursorPosition: null,
+    });
+  });
+
   it("returns 400 when cursor is invalid", async () => {
     getViewerGrantSetMock.mockResolvedValue({
       tenant: { id: "t1", name: "Demo", slug: "demo-company" },

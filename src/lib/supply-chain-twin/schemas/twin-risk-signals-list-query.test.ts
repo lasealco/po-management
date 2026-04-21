@@ -24,6 +24,35 @@ describe("parseTwinRiskSignalsListQuery", () => {
     expect(r.ok).toBe(false);
   });
 
+  it("treats blank severity as omitted", () => {
+    const r = parseTwinRiskSignalsListQuery(new URLSearchParams("severity=&limit=10"));
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.query.severity).toBeUndefined();
+      expect(r.query.limit).toBe(10);
+    }
+  });
+
+  it("composes severity with limit and cursor string", () => {
+    const r = parseTwinRiskSignalsListQuery(
+      new URLSearchParams("severity=HIGH&limit=25&cursor=opaque-token"),
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.query.severity).toBe("HIGH");
+      expect(r.query.limit).toBe(25);
+      expect(r.query.cursor).toBe("opaque-token");
+    }
+  });
+
+  it("accepts each TwinRiskSeverity enum value", () => {
+    for (const sev of ["INFO", "LOW", "MEDIUM", "HIGH", "CRITICAL"] as const) {
+      const r = parseTwinRiskSignalsListQuery(new URLSearchParams(`severity=${sev}`));
+      expect(r.ok).toBe(true);
+      if (r.ok) expect(r.query.severity).toBe(sev);
+    }
+  });
+
   it("rejects limit over 100", () => {
     const r = parseTwinRiskSignalsListQuery(new URLSearchParams("limit=101"));
     expect(r.ok).toBe(false);
