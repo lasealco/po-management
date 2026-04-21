@@ -56,6 +56,7 @@ All mapping routes below require the **demo tenant** and an **active demo actor*
 | Method | Path | Purpose |
 |--------|------|---------|
 | `POST` | `/api/apihub/ingestion-jobs/:jobId/apply` | Marks apply outcome for a **succeeded** run (409 conflict codes for not succeeded / already applied / blocked). Success body includes **`targetSummary`** `{ created, updated, skipped }` (from run `resultSummary` JSON when it carries those fields / nested `targetSummary`; otherwise defaults to one logical update). Dry-run **`writeSummary`** includes the same shape as **`targetSummary`** (zeros when apply would not run). **`dryRun`:** query `?dryRun=1` (or JSON body `{ "dryRun": true }`) returns **200** with `{ dryRun, writeSummary, run }` only (no `appliedAt` write). **`idempotency-key`** header or `{ "idempotencyKey" }` in JSON (same precedence as retry, max 128 chars): first response is stored per tenant+key; replays return the same status/body plus `idempotentReplay: true` when the same run id and dry-run flag match, otherwise **409** `APPLY_IDEMPOTENCY_KEY_CONFLICT`. |
+| `POST` | `/api/apihub/ingestion-jobs/:jobId/apply/rollback` | **Stub (Slice 44):** returns **200** with `{ rollback: { stub, implemented: false, effect: "none", message }, run }` and does **not** mutate `appliedAt` or downstream data. **404** if the run is missing. |
 
 Validation errors use the shared **`VALIDATION_ERROR`** envelope with `details.issues` and `details.summary` (including `bySeverity` where applicable).
 
