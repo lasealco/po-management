@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Database model overview — PO Management</title>
+    <style>
+      :root {
+        color-scheme: light;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+        font-size: 16px;
+        line-height: 1.5;
+        color: #18181b;
+        background: #f4f4f5;
+      }
+      .page {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 1.5rem 1.25rem 3rem;
+      }
+      header {
+        margin-bottom: 1.5rem;
+      }
+      h1 {
+        font-size: clamp(1.35rem, 2.5vw, 1.75rem);
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        margin: 0 0 0.5rem;
+      }
+      .lede {
+        margin: 0;
+        max-width: 65ch;
+        color: #52525b;
+        font-size: 0.95rem;
+      }
+      .hint {
+        margin: 0.75rem 0 0;
+        padding: 0.75rem 1rem;
+        background: #fff;
+        border: 1px solid #e4e4e7;
+        border-radius: 10px;
+        font-size: 0.875rem;
+        color: #3f3f46;
+      }
+      section {
+        margin-top: 1.5rem;
+        background: #fff;
+        border: 1px solid #e4e4e7;
+        border-radius: 14px;
+        padding: 1rem 1rem 1.25rem;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+      }
+      section h2 {
+        margin: 0 0 0.75rem;
+        font-size: 1.05rem;
+        font-weight: 650;
+        color: #27272a;
+      }
+      .diagram-wrap {
+        overflow: auto;
+        max-height: min(75vh, 900px);
+        padding: 1rem;
+        border-radius: 10px;
+        background: #fafafa;
+        border: 1px dashed #d4d4d8;
+      }
+      .diagram-wrap .mermaid {
+        display: inline-block;
+        min-width: 100%;
+      }
+      .diagram-wrap svg {
+        max-width: none !important;
+        height: auto !important;
+      }
+      footer {
+        margin-top: 2rem;
+        font-size: 0.8rem;
+        color: #71717a;
+      }
+      footer a {
+        color: #165b67;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header>
+        <h1>Database model overview</h1>
+        <p class="lede">
+          High-level entity-relationship views derived from the Prisma schema. This page uses vector diagrams — use
+          your browser zoom (e.g. ⌘+ / Ctrl+) and horizontal scroll for detail.
+        </p>
+        <p class="hint">
+          <strong>Source of truth:</strong> <code>prisma/schema.prisma</code> in the repo. Regenerate slide assets with
+          <code>node scripts/generate-presentation-model-catalog.mjs</code> and edit
+          <code>docs/presentation/database-model-overview.mmd</code> if you change the model.
+        </p>
+      </header>
+
+      <section>
+        <h2>1 — Tenancy, identity, catalog & purchase orders</h2>
+        <div class="diagram-wrap">
+          <pre class="mermaid">
+erDiagram
+  Tenant ||--o{ User : "scopes"
+  Tenant ||--o{ Role : "RBAC"
+  Tenant ||--o{ Workflow : "PO workflows"
+  Tenant ||--o{ Supplier : "vendors"
+  Tenant ||--o{ Product : "catalog"
+  Tenant ||--o{ PurchaseOrder : "PO"
+  Tenant ||--o{ SalesOrder : "SO"
+  Tenant ||--o{ CrmAccount : "CRM"
+
+  Workflow ||--o{ PurchaseOrder : "uses"
+
+  User ||--o{ PurchaseOrder : "requester"
+  User ||--o{ UserRole : "roles"
+
+  Supplier ||--o{ PurchaseOrder : "supplier"
+  Product ||--o{ PurchaseOrderItem : "SKU"
+
+  PurchaseOrder ||--o{ PurchaseOrderItem : "lines"
+
+  CrmAccount ||--o{ SalesOrder : "customer"
+          </pre>
+        </div>
+      </section>
+
+      <section>
+        <h2>2 — Shipments, WMS, consolidation & Control Tower signals</h2>
+        <div class="diagram-wrap">
+          <pre class="mermaid">
+erDiagram
+  PurchaseOrder ||--o{ Shipment : "executions"
+  SalesOrder ||--o{ Shipment : "optional"
+
+  Shipment ||--o{ ShipmentItem : "cargo lines"
+  PurchaseOrderItem ||--o{ ShipmentItem : "from PO line"
+
+  Tenant ||--o{ Warehouse : "sites"
+  Warehouse ||--o{ InventoryBalance : "stock"
+  Warehouse ||--o{ WmsTask : "tasks"
+  Shipment ||--o{ WmsTask : "receiving etc"
+
+  Tenant ||--o{ LoadPlan : "plans"
+  Warehouse ||--o{ LoadPlan : "origin WH"
+  LoadPlan ||--o{ LoadPlanShipment : "assignments"
+  Shipment ||--o| LoadPlanShipment : "on plan"
+
+  Shipment ||--o{ CtShipmentReference : "BL refs"
+  Shipment ||--o{ CtAlert : "alerts"
+  Shipment ||--o{ TariffShipmentApplication : "rating apps"
+          </pre>
+        </div>
+      </section>
+
+      <section>
+        <h2>3 — Tariffs, frozen pricing snapshots, invoice audit & Supply Chain Twin</h2>
+        <div class="diagram-wrap">
+          <pre class="mermaid">
+erDiagram
+  Tenant ||--o{ TariffContractHeader : "contracts"
+  TariffContractHeader ||--o{ TariffContractVersion : "versions"
+  TariffContractVersion ||--o{ TariffRateLine : "rate lines"
+
+  Tenant ||--o{ BookingPricingSnapshot : "snapshots"
+  BookingPricingSnapshot ||--o{ InvoiceIntake : "audit vs freeze"
+
+  InvoiceIntake ||--o{ InvoiceLine : "parsed lines"
+  InvoiceLine ||--o| InvoiceAuditResult : "line outcome"
+
+  Tenant ||--o{ SupplyChainTwinEntitySnapshot : "twin nodes"
+  SupplyChainTwinEntitySnapshot ||--o{ SupplyChainTwinEntityEdge : "edges"
+          </pre>
+        </div>
+      </section>
+
+      <footer>
+        Static page: <code>/presentation/database-model.html</code> — open on your deployed app (e.g.
+        <a href="/">home</a>) or locally via Next dev at the same path.
+      </footer>
+    </div>
+
+    <script type="module">
+      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs";
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: "neutral",
+        securityLevel: "loose",
+        er: {
+          useMaxWidth: false,
+          diagramPadding: 36,
+        },
+        themeVariables: {
+          fontSize: "17px",
+          fontFamily: "ui-sans-serif, system-ui, sans-serif",
+        },
+      });
+      await mermaid.run({ querySelector: ".mermaid" });
+    </script>
+  </body>
+</html>

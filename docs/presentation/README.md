@@ -2,12 +2,23 @@
 
 Use these in meetings with backend specialists. **Canonical schema** remains [`../../prisma/schema.prisma`](../../prisma/schema.prisma) (PostgreSQL, Prisma ORM).
 
+## Readable diagram (website)
+
+After deploy, open:
+
+**`/presentation/database-model.html`**
+
+(e.g. `https://your-app.vercel.app/presentation/database-model.html`)
+
+That page splits the overview into **three** Mermaid diagrams (larger type, scroll + browser zoom). Source file: [`../public/presentation/database-model.html`](../public/presentation/database-model.html).
+
 ## Quick paths
 
 | Asset | Purpose |
 | --- | --- |
-| [`database-model-overview.mmd`](./database-model-overview.mmd) | **High-level ERD** (Mermaid) — major entities and flows only |
-| [`database-model-overview.png`](./database-model-overview.png) | **Same ERD as PNG** (slide-ready; regenerate after editing the `.mmd`) |
+| **[/presentation/database-model.html](../public/presentation/database-model.html)** | **Interactive ERD** (best readability) |
+| [`database-model-overview.mmd`](./database-model-overview.mmd) | **Single-file Mermaid** (all sections in one graph — crowded) |
+| [`database-model-overview.png`](./database-model-overview.png) | PNG export of the single graph (often too dense for slides) |
 | [`MODEL-CATALOG.md`](./MODEL-CATALOG.md) | **Full model list** grouped by product area (regenerate with script below) |
 | `prisma/schema.prisma` (repo root) | **Every** table, field, index, and relation |
 
