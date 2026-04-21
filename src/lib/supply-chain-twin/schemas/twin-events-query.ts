@@ -27,6 +27,9 @@ const optionalIsoDateTime = z.preprocess(
  *
  * **`since` / `until` (Slice 68):** optional ISO-8601 bounds on `createdAt` (same wire format as cursor payloads).
  * Both must be sent together; `since` ≤ `until`; span ≤ {@link TWIN_EVENTS_QUERY_MAX_WINDOW_DAYS} days.
+ *
+ * **`includePayload` (Slice 69):** optional boolean (coerces `true`/`false`/`1`/`0` strings). Default **true** — list rows
+ * include `payload`; when **false**, responses omit `payload` and the DB read skips `payloadJson` (lighter over the wire).
  */
 export const twinEventsQuerySchema = z
   .object({
@@ -45,6 +48,24 @@ export const twinEventsQuerySchema = z
       .transform((value) => (value && value.length > 0 ? value : undefined)),
     since: optionalIsoDateTime,
     until: optionalIsoDateTime,
+    includePayload: z.preprocess((val) => {
+      if (val === undefined || val === null || val === "") {
+        return true;
+      }
+      if (typeof val === "boolean") {
+        return val;
+      }
+      if (typeof val === "string") {
+        const t = val.trim().toLowerCase();
+        if (t === "false" || t === "0") {
+          return false;
+        }
+        if (t === "true" || t === "1") {
+          return true;
+        }
+      }
+      return val;
+    }, z.boolean()),
   })
   .superRefine((data, ctx) => {
     if (data.type === "*") {
@@ -148,6 +169,7 @@ export function parseTwinEventsQuery(searchParams: URLSearchParams): {
 
   const since = searchParams.get("since") ?? undefined;
   const until = searchParams.get("until") ?? undefined;
+  const includePayload = searchParams.get("includePayload") ?? undefined;
 
   const parsed = twinEventsQuerySchema.safeParse({
     limit: raw.limit,
@@ -155,6 +177,7 @@ export function parseTwinEventsQuery(searchParams: URLSearchParams): {
     type: mergedType,
     since,
     until,
+    includePayload,
   });
   if (!parsed.success) {
     const flat = parsed.error.flatten().fieldErrors;
@@ -162,6 +185,7 @@ export function parseTwinEventsQuery(searchParams: URLSearchParams): {
       flat.limit?.[0] ??
       flat.cursor?.[0] ??
       flat.type?.[0] ??
+      flat.includePayload?.[0] ??
       flat.since?.[0] ??
       flat.until?.[0] ??
       parsed.error.issues.find((i) => i.path.join(".") === "type")?.message ??

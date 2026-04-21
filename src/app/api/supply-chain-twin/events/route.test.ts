@@ -249,6 +249,64 @@ describe("GET /api/supply-chain-twin/events", () => {
     expect(prismaMock.supplyChainTwinIngestEvent.findMany).not.toHaveBeenCalled();
   });
 
+  it("returns 400 when includePayload is not a boolean coercible value", async () => {
+    getViewerGrantSetMock.mockResolvedValue({
+      tenant: { id: "t1", name: "Demo", slug: "demo-company" },
+      user: { id: "u1", email: "x@y.com", name: "X" },
+      grantSet: new Set(),
+    });
+    resolveNavStateMock.mockResolvedValue({
+      linkVisibility: { supplyChainTwin: true },
+      setupIncomplete: false,
+      poSubNavVisibility: {},
+    });
+
+    const { GET } = await import("./route");
+    const response = await GET(new Request("http://localhost/api/supply-chain-twin/events?includePayload=nope"));
+
+    expect(response.status).toBe(400);
+    expect(prismaMock.supplyChainTwinIngestEvent.findMany).not.toHaveBeenCalled();
+  });
+
+  it("returns 200 without payload when includePayload=false", async () => {
+    getViewerGrantSetMock.mockResolvedValue({
+      tenant: { id: "t1", name: "Demo", slug: "demo-company" },
+      user: { id: "u1", email: "x@y.com", name: "X" },
+      grantSet: new Set(),
+    });
+    resolveNavStateMock.mockResolvedValue({
+      linkVisibility: { supplyChainTwin: true },
+      setupIncomplete: false,
+      poSubNavVisibility: {},
+    });
+    const createdAt = new Date("2026-01-01T00:00:00.000Z");
+    vi.mocked(prismaMock.supplyChainTwinIngestEvent.findMany).mockResolvedValue([
+      {
+        id: "e1",
+        type: "entity_upsert",
+        createdAt,
+      },
+    ]);
+
+    const { GET } = await import("./route");
+    const response = await GET(new Request("http://localhost/api/supply-chain-twin/events?limit=10&includePayload=false"));
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { events: Array<Record<string, unknown>> };
+    expect(body.events).toEqual([
+      {
+        id: "e1",
+        type: "entity_upsert",
+        createdAt: "2026-01-01T00:00:00.000Z",
+      },
+    ]);
+    expect(prismaMock.supplyChainTwinIngestEvent.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        select: { id: true, type: true, createdAt: true },
+      }),
+    );
+  });
+
   it("returns 200 with empty events for a valid future window", async () => {
     getViewerGrantSetMock.mockResolvedValue({
       tenant: { id: "t1", name: "Demo", slug: "demo-company" },

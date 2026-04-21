@@ -38,11 +38,12 @@ export const twinEdgesListResponseSchema = z.object({
   ),
 });
 
+/** `payload` omitted when `GET …/events?includePayload=false` (Slice 69). */
 const twinIngestEventListItemSchema = z.object({
   id: z.string(),
   type: z.string(),
   createdAt: z.string(),
-  payload: z.unknown(),
+  payload: z.unknown().optional(),
 });
 
 /** Success body for `GET /api/supply-chain-twin/events`. */

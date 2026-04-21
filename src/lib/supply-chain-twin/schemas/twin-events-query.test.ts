@@ -84,6 +84,28 @@ describe("parseTwinEventsQuery", () => {
     );
     expect(r.ok).toBe(true);
   });
+
+  it("defaults includePayload to true when omitted", () => {
+    const r = parseTwinEventsQuery(new URLSearchParams("limit=10"));
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.query.includePayload).toBe(true);
+  });
+
+  it("coerces includePayload from common string forms", () => {
+    const rFalse = parseTwinEventsQuery(new URLSearchParams("includePayload=false"));
+    expect(rFalse.ok).toBe(true);
+    if (rFalse.ok) expect(rFalse.query.includePayload).toBe(false);
+    const r0 = parseTwinEventsQuery(new URLSearchParams("includePayload=0"));
+    expect(r0.ok).toBe(true);
+    if (r0.ok) expect(r0.query.includePayload).toBe(false);
+    const r1 = parseTwinEventsQuery(new URLSearchParams("includePayload=1"));
+    expect(r1.ok).toBe(true);
+    if (r1.ok) expect(r1.query.includePayload).toBe(true);
+  });
+
+  it("rejects invalid includePayload values", () => {
+    expect(parseTwinEventsQuery(new URLSearchParams("includePayload=nope")).ok).toBe(false);
+  });
 });
 
 describe("twinEventsTypePrismaFilter", () => {

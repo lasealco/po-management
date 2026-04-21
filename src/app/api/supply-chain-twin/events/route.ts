@@ -35,12 +35,12 @@ export type TwinIngestEventListItem = {
   id: string;
   type: string;
   createdAt: string;
-  payload: unknown;
+  payload?: unknown;
 };
 
 /**
  * Recent twin ingest events (tenant-scoped, keyset-paged). Same auth as other twin APIs.
- * Payloads are returned to the client but never written to structured logs.
+ * By default each row includes `payload`; omit with `includePayload=false` (never written to structured logs).
  *
  * **Query `type`:** optional filter on event `type` — exact (`type=entity_upsert`) or prefix
  * (`type=entity_*` → `startsWith("entity_")`). Unknown values yield an empty `events` array (200). Legacy
@@ -50,6 +50,9 @@ export type TwinIngestEventListItem = {
  * Both must appear together. `since` ≤ `until`; maximum window length is **31 days** (see
  * `TWIN_EVENTS_QUERY_MAX_WINDOW_DAYS` in `twin-events-query.ts`). Oversized or inverted ranges return **400**. A valid
  * window with no rows returns **200** and `events: []`.
+ *
+ * **Query `includePayload` (Slice 69):** optional boolean (`true` / `false` / `1` / `0`). Default **true** (full rows).
+ * **`false`** omits `payload` from each event and avoids reading `payloadJson` from the database.
  */
 export async function GET(request: Request) {
   const requestId = resolveSctwinRequestId(request);
@@ -116,14 +119,22 @@ export async function GET(request: Request) {
         : {}),
     };
 
+    const includePayload = parsed.query.includePayload;
+
     const rows = await prisma.supplyChainTwinIngestEvent.findMany({
       where,
-      select: {
-        id: true,
-        type: true,
-        createdAt: true,
-        payloadJson: true,
-      },
+      select: includePayload
+        ? {
+            id: true,
+            type: true,
+            createdAt: true,
+            payloadJson: true,
+          }
+        : {
+            id: true,
+            type: true,
+            createdAt: true,
+          },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: limit + 1,
     });
@@ -136,12 +147,17 @@ export async function GET(request: Request) {
         ? encodeTwinEventsCursor({ createdAt: last.createdAt, id: last.id })
         : null;
 
-    const events: TwinIngestEventListItem[] = pageRows.map((row) => ({
-      id: row.id,
-      type: row.type,
-      createdAt: row.createdAt.toISOString(),
-      payload: row.payloadJson,
-    }));
+    const events: TwinIngestEventListItem[] = pageRows.map((row) => {
+      const base = {
+        id: row.id,
+        type: row.type,
+        createdAt: row.createdAt.toISOString(),
+      };
+      if (includePayload && "payloadJson" in row) {
+        return { ...base, payload: row.payloadJson };
+      }
+      return base;
+    });
 
     if (nextCursor) {
       return twinApiJson(twinEventsListResponseSchema.parse({ events, nextCursor }), undefined, requestId);
