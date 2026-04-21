@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { NextResponse } from "next/server";
 import { actorIsSupplierPortalRestricted, getActorUserId, getViewerGrantSet } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
@@ -48,8 +50,11 @@ export async function POST(request: Request) {
     grantSnapshot,
   });
 
+  const helpEventId = randomUUID();
+
   logHelpChatTelemetry({
     kind: "help_chat",
+    helpEventId,
     tenantId: tenant.id,
     messageLen: message.length,
     answerLen: reply.answer.length,
@@ -65,6 +70,7 @@ export async function POST(request: Request) {
   });
 
   return NextResponse.json({
+    helpEventId,
     answer: reply.answer,
     playbook: reply.playbook,
     suggestions: reply.suggestions,

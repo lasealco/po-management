@@ -33,6 +33,8 @@ export function helpTelemetryGrantBits(g: HelpAssistantGrantSnapshot): string {
 
 type HelpTelemetryChat = {
   kind: "help_chat";
+  /** Correlate this reply with help_action / help_feedback lines in log drains. */
+  helpEventId: string;
   tenantId: string;
   messageLen: number;
   answerLen: number;
@@ -61,6 +63,14 @@ type HelpTelemetryAction = {
   queueKey?: string;
   /** True when open_order was attempted (never log order numbers) */
   openOrderAttempt?: boolean;
+  helpEventId?: string;
+};
+
+type HelpTelemetryFeedback = {
+  kind: "help_feedback";
+  tenantId: string;
+  helpEventId: string;
+  helpful: boolean;
 };
 
 export function logHelpChatTelemetry(payload: HelpTelemetryChat): void {
@@ -69,6 +79,11 @@ export function logHelpChatTelemetry(payload: HelpTelemetryChat): void {
 }
 
 export function logHelpActionTelemetry(payload: HelpTelemetryAction): void {
+  if (helpTelemetryDisabled()) return;
+  console.log(JSON.stringify({ ts: new Date().toISOString(), ...payload }));
+}
+
+export function logHelpFeedbackTelemetry(payload: HelpTelemetryFeedback): void {
   if (helpTelemetryDisabled()) return;
   console.log(JSON.stringify({ ts: new Date().toISOString(), ...payload }));
 }

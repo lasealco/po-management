@@ -4,10 +4,12 @@ import {
   executeHelpDoAction,
   type HelpDoAction,
 } from "@/lib/help-actions";
+import { isValidHelpEventId } from "@/lib/help-event-id";
 import { logHelpActionTelemetry } from "@/lib/help-telemetry";
 
 type Body = {
   action?: HelpDoAction;
+  helpEventId?: string;
 };
 
 export async function POST(request: Request) {
@@ -27,6 +29,8 @@ export async function POST(request: Request) {
     body = {};
   }
   const input = (body && typeof body === "object" ? body : {}) as Body;
+  const rawEventId = typeof input.helpEventId === "string" ? input.helpEventId.trim() : "";
+  const helpEventId = isValidHelpEventId(rawEventId) ? rawEventId : undefined;
   const action = input.action;
   if (
     !action ||
@@ -40,6 +44,7 @@ export async function POST(request: Request) {
       actionType: "malformed_request",
       ok: false,
       httpStatus: 400,
+      helpEventId,
     });
     return NextResponse.json({ error: "Invalid action payload." }, { status: 400 });
   }
@@ -64,6 +69,7 @@ export async function POST(request: Request) {
       actionType: "unsupported_type",
       ok: false,
       httpStatus: 400,
+      helpEventId,
     });
     return NextResponse.json({ error: "Unsupported action type." }, { status: 400 });
   }
@@ -85,6 +91,7 @@ export async function POST(request: Request) {
           ? (normalized.payload.queue as string)
           : undefined,
       openOrderAttempt: normalized.type === "open_order",
+      helpEventId,
     });
     return NextResponse.json({ error: result.error }, { status: 400 });
   }
@@ -103,6 +110,7 @@ export async function POST(request: Request) {
         ? (normalized.payload.queue as string)
         : undefined,
     openOrderAttempt: normalized.type === "open_order",
+    helpEventId,
   });
   return NextResponse.json(result);
 }

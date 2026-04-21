@@ -5,7 +5,13 @@ import { usePathname, useRouter } from "next/navigation";
 import type { HelpDoAction } from "@/lib/help-actions";
 import { HELP_PLAYBOOKS, type HelpPlaybook } from "@/lib/help-playbooks";
 
-type ChatEntry = { role: "user" | "assistant"; text: string };
+type ChatEntry = {
+  role: "user" | "assistant";
+  text: string;
+  /** From `/api/help/chat` — correlates with telemetry and optional thumbs. */
+  helpEventId?: string;
+  feedbackSubmitted?: boolean;
+};
 type HelpAction = { label: string; href: string };
 
 function contextFromPath(pathname: string): { title: string; hint: string } {
@@ -155,6 +161,8 @@ export function HelpAssistant() {
     null,
   );
   const [llmUsed, setLlmUsed] = useState(false);
+  /** Latest chat turn id — sent with “Do it for me” so logs join reply → action. */
+  const latestChatHelpEventIdRef = useRef<string | null>(null);
 
   const context = useMemo(() => contextFromPath(pathname), [pathname]);
   const quickPrompts = useMemo(() => quickPromptsForPath(pathname), [pathname]);
@@ -234,6 +242,7 @@ export function HelpAssistant() {
       });
       const payload = (await res.json().catch(() => null)) as
         | {
+            helpEventId?: string;
             answer?: string;
             playbook?: HelpPlaybook | null;
             suggestions?: string[];
@@ -248,9 +257,19 @@ export function HelpAssistant() {
         setError(payload?.error ?? "Guide could not respond. Try again in a moment.");
         return;
       }
+      if (typeof payload?.helpEventId === "string") {
+        latestChatHelpEventIdRef.current = payload.helpEventId;
+      }
       setLlmUsed(Boolean(payload?.llmUsed));
       if (payload?.answer) {
-        setChat((prev) => [...prev, { role: "assistant", text: payload.answer! }]);
+        setChat((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            text: payload.answer!,
+            helpEventId: typeof payload.helpEventId === "string" ? payload.helpEventId : undefined,
+          },
+        ]);
       }
       if (payload?.playbook) {
         setPlaybook(payload.playbook);
@@ -271,7 +290,12 @@ export function HelpAssistant() {
     const res = await fetch("/api/help/actions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action }),
+      body: JSON.stringify({
+        action,
+        ...(latestChatHelpEventIdRef.current
+          ? { helpEventId: latestChatHelpEventIdRef.current }
+          : {}),
+      }),
     });
     const payload = (await res.json().catch(() => null)) as
       | { ok?: boolean; href?: string; message?: string; error?: string }
@@ -287,6 +311,25 @@ export function HelpAssistant() {
 
   function runSuggestion(text: string) {
     setInput(text);
+  }
+
+  async function submitHelpFeedback(helpEventId: string, helpful: boolean) {
+    try {
+      const res = await fetch("/api/help/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ helpEventId, helpful }),
+      });
+      if (res.ok) {
+        setChat((prev) =>
+          prev.map((row) =>
+            row.helpEventId === helpEventId ? { ...row, feedbackSubmitted: true } : row,
+          ),
+        );
+      }
+    } catch {
+      /* keep buttons visible */
+    }
   }
 
   function resumeGuide() {
@@ -443,6 +486,30 @@ export function HelpAssistant() {
                 >
                   {row.role === "assistant" ? renderAssistantText(row.text) : row.text}
                 </div>
+                {row.role === "assistant" && row.helpEventId && !row.feedbackSubmitted ? (
+                  <div className="mt-1 flex flex-wrap items-center gap-2 px-1">
+                    <span className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
+                      Was this helpful?
+                    </span>
+                    <button
+                      type="button"
+                      className="rounded-lg border border-zinc-200 bg-white px-2 py-1 text-xs font-medium text-zinc-700 shadow-sm transition hover:border-[var(--arscmp-primary)]/40 hover:bg-[var(--arscmp-primary-50)]"
+                      onClick={() => void submitHelpFeedback(row.helpEventId!, true)}
+                    >
+                      Yes
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-lg border border-zinc-200 bg-white px-2 py-1 text-xs font-medium text-zinc-700 shadow-sm transition hover:border-[var(--arscmp-primary)]/40 hover:bg-[var(--arscmp-primary-50)]"
+                      onClick={() => void submitHelpFeedback(row.helpEventId!, false)}
+                    >
+                      No
+                    </button>
+                  </div>
+                ) : null}
+                {row.role === "assistant" && row.helpEventId && row.feedbackSubmitted ? (
+                  <p className="px-1 text-[10px] text-zinc-500">Thanks for the feedback.</p>
+                ) : null}
               </div>
             ))}
             {busy ? (
