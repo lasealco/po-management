@@ -13,7 +13,7 @@ const ROUTE = "GET /api/supply-chain-twin/entities";
 /**
  * Entity catalog backed by `SupplyChainTwinEntitySnapshot`.
  * Query: zod-validated `q`, `limit` (1..100, default 100), optional opaque `cursor` (keyset).
- * Response: `{ items, nextCursor? }` — `nextCursor` omitted when there is no following page.
+ * Response: `{ items, nextCursor? }` — each item includes snapshot `id` (Prisma PK) plus `ref`; `nextCursor` omitted when there is no following page.
  */
 export async function GET(request: Request) {
   try {

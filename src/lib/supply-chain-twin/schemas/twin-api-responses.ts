@@ -4,7 +4,12 @@ import { twinEntityRefSchema } from "./twin-entity-ref";
 
 /** Success body for `GET /api/supply-chain-twin/entities`. */
 export const twinEntitiesListResponseSchema = z.object({
-  items: z.array(z.object({ ref: twinEntityRefSchema })),
+  items: z.array(
+    z.object({
+      id: z.string().min(1),
+      ref: twinEntityRefSchema,
+    }),
+  ),
   nextCursor: z.string().min(1).optional(),
 });
 

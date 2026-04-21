@@ -81,6 +81,7 @@ export async function listForTenantPage(
       : null;
 
   const items = pageRows.map((row) => ({
+    id: row.id,
     ref: { kind: toTwinEntityKind(row.entityKind), id: row.entityKey },
   }));
 

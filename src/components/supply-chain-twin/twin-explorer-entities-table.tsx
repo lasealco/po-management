@@ -1,8 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { Suspense, use, useMemo } from "react";
 
-type CatalogRow = { ref: { kind: string; id: string } };
+type CatalogRow = { id: string; ref: { kind: string; id: string } };
 
 type CatalogResult =
   | { ok: true; items: CatalogRow[] }
@@ -36,6 +37,9 @@ async function fetchEntitiesCatalog(searchQ: string): Promise<CatalogResult> {
       if (
         typeof row === "object" &&
         row != null &&
+        "id" in row &&
+        typeof (row as { id: unknown }).id === "string" &&
+        (row as { id: string }).id.length > 0 &&
         "ref" in row &&
         typeof (row as { ref: unknown }).ref === "object" &&
         (row as { ref: unknown }).ref != null &&
@@ -45,6 +49,7 @@ async function fetchEntitiesCatalog(searchQ: string): Promise<CatalogResult> {
         typeof (row as { ref: { id: unknown } }).ref.id === "string"
       ) {
         normalized.push({
+          id: (row as { id: string }).id,
           ref: {
             kind: (row as { ref: { kind: string } }).ref.kind,
             id: (row as { ref: { id: string } }).ref.id,
@@ -83,20 +88,34 @@ function TwinExplorerEntitiesTableInner({ searchQ }: { searchQ: string }) {
         <div className="px-5 py-10 text-center text-sm text-zinc-600">No entities match this view.</div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[480px] text-left text-sm">
+          <table className="w-full min-w-[520px] text-left text-sm">
             <thead className="bg-zinc-50 text-xs font-semibold uppercase tracking-wide text-zinc-500">
               <tr>
                 <th className="px-5 py-3">Kind</th>
                 <th className="px-5 py-3">Entity key</th>
+                <th className="px-5 py-3">Open</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 text-zinc-800">
-              {data.items.map((row) => (
-                <tr key={`${row.ref.kind}:${row.ref.id}`} className="hover:bg-zinc-50/80">
-                  <td className="px-5 py-3 font-mono text-xs text-zinc-600">{row.ref.kind}</td>
-                  <td className="px-5 py-3">{row.ref.id}</td>
-                </tr>
-              ))}
+              {data.items.map((row) => {
+                const href = `/supply-chain-twin/explorer/${encodeURIComponent(row.id)}`;
+                const label = `Open twin snapshot for ${row.ref.kind} ${row.ref.id}`;
+                return (
+                  <tr key={row.id} className="hover:bg-zinc-50/80">
+                    <td className="px-5 py-3 font-mono text-xs text-zinc-600">{row.ref.kind}</td>
+                    <td className="px-5 py-3 font-mono text-xs">{row.ref.id}</td>
+                    <td className="px-5 py-3">
+                      <Link
+                        href={href}
+                        className="inline-flex rounded-lg px-3 py-2 text-sm font-semibold text-[var(--arscmp-primary)] underline-offset-2 outline-none ring-zinc-300 hover:underline focus-visible:ring-2"
+                        aria-label={label}
+                      >
+                        View
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

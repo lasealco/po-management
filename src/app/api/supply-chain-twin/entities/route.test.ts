@@ -150,7 +150,7 @@ describe("Supply Chain Twin entities route", () => {
       poSubNavVisibility: {},
     });
     listForTenantPageMock.mockResolvedValue({
-      items: [{ ref: { kind: "supplier", id: "ACME" } }],
+      items: [{ id: "snap-acme", ref: { kind: "supplier", id: "ACME" } }],
       nextCursor: "next-page-token",
     });
 
@@ -159,7 +159,7 @@ describe("Supply Chain Twin entities route", () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
-      items: [{ ref: { kind: "supplier", id: "ACME" } }],
+      items: [{ id: "snap-acme", ref: { kind: "supplier", id: "ACME" } }],
       nextCursor: "next-page-token",
     });
     expect(listForTenantPageMock).toHaveBeenCalledWith("t1", { q: "", limit: 10, cursor: null });
