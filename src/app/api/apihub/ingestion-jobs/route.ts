@@ -2,6 +2,7 @@ import { apiHubJson, apiHubValidationError } from "@/lib/apihub/api-error";
 import { APIHUB_INGESTION_JOB_STATUSES } from "@/lib/apihub/constants";
 import { toApiHubIngestionRunDto } from "@/lib/apihub/ingestion-run-dto";
 import { createApiHubIngestionRun, listApiHubIngestionRuns } from "@/lib/apihub/ingestion-runs-repo";
+import { parseApiHubListLimitFromUrl } from "@/lib/apihub/query-limit";
 import { resolveApiHubRequestId } from "@/lib/apihub/request-id";
 import { isValidRunStatus } from "@/lib/apihub/run-lifecycle";
 import { getActorUserId } from "@/lib/authz";
@@ -49,8 +50,7 @@ export async function GET(request: Request) {
     ], requestId);
   }
 
-  const rawLimit = Number(url.searchParams.get("limit") ?? "20");
-  const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(Math.trunc(rawLimit), 1), 100) : 20;
+  const limit = parseApiHubListLimitFromUrl(url);
   const rows = await listApiHubIngestionRuns({
     tenantId: tenant.id,
     status: rawStatus.length > 0 ? rawStatus : null,
