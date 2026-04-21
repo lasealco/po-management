@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { APIHUB_CONNECTOR_SEARCH_Q_MAX_LEN } from "@/lib/apihub/connector-search";
 import { APIHUB_REQUEST_ID_HEADER } from "@/lib/apihub/request-id";
 
 const getDemoTenantMock = vi.fn();
@@ -74,8 +75,42 @@ describe("GET /api/apihub/connectors", () => {
       }),
     );
     expect(response.status).toBe(200);
-    expect(listApiHubConnectorsMock).toHaveBeenCalledWith("tenant-1", { status: "active", authMode: "none" });
+    expect(listApiHubConnectorsMock).toHaveBeenCalledWith("tenant-1", {
+      status: "active",
+      authMode: "none",
+      q: undefined,
+    });
     expect(await response.json()).toEqual({ connectors: [{ id: "dto-c1" }] });
     expect(response.headers.get(APIHUB_REQUEST_ID_HEADER)).toBe("conn-list-ok-1");
+  });
+
+  it("returns 400 when q exceeds max length", async () => {
+    const { GET } = await import("./route");
+    const longQ = "x".repeat(APIHUB_CONNECTOR_SEARCH_Q_MAX_LEN + 1);
+    const response = await GET(
+      new Request(`http://localhost/api/apihub/connectors?q=${encodeURIComponent(longQ)}`, {
+        headers: { [APIHUB_REQUEST_ID_HEADER]: "conn-q-too-long" },
+      }),
+    );
+    expect(response.status).toBe(400);
+    const body = (await response.json()) as { error: { details: { issues: { field: string }[] } } };
+    expect(body.error.details.issues.map((i) => i.field)).toContain("q");
+  });
+
+  it("passes trimmed q to list filters", async () => {
+    listApiHubConnectorsMock.mockResolvedValue([{ id: "c1" }]);
+    const { GET } = await import("./route");
+    const response = await GET(
+      new Request("http://localhost/api/apihub/connectors?q=%20acme%20", {
+        headers: { [APIHUB_REQUEST_ID_HEADER]: "conn-q-search" },
+      }),
+    );
+    expect(response.status).toBe(200);
+    expect(listApiHubConnectorsMock).toHaveBeenCalledWith("tenant-1", {
+      status: undefined,
+      authMode: undefined,
+      q: "acme",
+    });
+    expect(await response.json()).toEqual({ connectors: [{ id: "dto-c1" }] });
   });
 });

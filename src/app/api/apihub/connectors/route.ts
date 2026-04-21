@@ -6,6 +6,7 @@ import {
   type ApiHubValidationIssue,
 } from "@/lib/apihub/api-error";
 import { APIHUB_CONNECTOR_AUTH_MODES, APIHUB_CONNECTOR_STATUSES } from "@/lib/apihub/constants";
+import { APIHUB_CONNECTOR_SEARCH_Q_MAX_LEN } from "@/lib/apihub/connector-search";
 import { toApiHubConnectorDto } from "@/lib/apihub/connector-dto";
 import {
   createStubApiHubConnector,
@@ -33,8 +34,16 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const rawStatus = (url.searchParams.get("status") ?? "").trim().toLowerCase();
   const rawAuthMode = (url.searchParams.get("authMode") ?? "").trim().toLowerCase();
+  const rawQ = (url.searchParams.get("q") ?? "").trim();
 
   const issues: ApiHubValidationIssue[] = [];
+  if (rawQ.length > APIHUB_CONNECTOR_SEARCH_Q_MAX_LEN) {
+    issues.push({
+      field: "q",
+      code: "MAX_LENGTH",
+      message: `q must be at most ${APIHUB_CONNECTOR_SEARCH_Q_MAX_LEN} characters.`,
+    });
+  }
   if (rawStatus.length > 0 && !APIHUB_CONNECTOR_STATUSES.includes(rawStatus as (typeof APIHUB_CONNECTOR_STATUSES)[number])) {
     issues.push({
       field: "status",
@@ -65,6 +74,7 @@ export async function GET(request: Request) {
   const rows = await listApiHubConnectors(tenant.id, {
     status: rawStatus.length > 0 ? rawStatus : undefined,
     authMode: rawAuthMode.length > 0 ? rawAuthMode : undefined,
+    q: rawQ.length > 0 ? rawQ : undefined,
   });
   const rowsWithAudit = await Promise.all(
     rows.map(async (row) => ({

@@ -1,3 +1,4 @@
+import { sortConnectorListRowsByNameSearch } from "@/lib/apihub/connector-search";
 import { prisma } from "@/lib/prisma";
 
 const DEFAULT_STUB_HEALTH = "Not connected — stub row (Phase 1)";
@@ -17,6 +18,8 @@ export type ApiHubConnectorListRow = {
 export type ListApiHubConnectorsFilters = {
   status?: string;
   authMode?: string;
+  /** Trimmed connector name search (`q` query); ranked exact → prefix → contains in-repo. */
+  q?: string;
 };
 
 export type ApiHubConnectorAuditLogRow = {
@@ -32,13 +35,19 @@ export async function listApiHubConnectors(
   tenantId: string,
   filters?: ListApiHubConnectorsFilters,
 ): Promise<ApiHubConnectorListRow[]> {
-  return prisma.apiHubConnector.findMany({
+  const qTrimmed = filters?.q?.trim() ?? "";
+  const useSearch = qTrimmed.length > 0;
+
+  const rows = await prisma.apiHubConnector.findMany({
     where: {
       tenantId,
       ...(filters?.status ? { status: filters.status } : {}),
       ...(filters?.authMode ? { authMode: filters.authMode } : {}),
+      ...(useSearch
+        ? { name: { contains: qTrimmed, mode: "insensitive" as const } }
+        : {}),
     },
-    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    ...(!useSearch ? { orderBy: [{ createdAt: "desc" }, { id: "desc" }] } : {}),
     select: {
       id: true,
       name: true,
@@ -51,6 +60,11 @@ export async function listApiHubConnectors(
       updatedAt: true,
     },
   });
+
+  if (useSearch) {
+    return sortConnectorListRowsByNameSearch(rows, qTrimmed);
+  }
+  return rows;
 }
 
 export async function createStubApiHubConnector(opts: {
