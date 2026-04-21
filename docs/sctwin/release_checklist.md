@@ -62,6 +62,8 @@ Always capture:
 
 ## 6) Handoff template
 
+Prefer copying the structured template from `docs/sctwin/program_closeout_and_handoff.md` (it links the canonical command/route maps and the milestone slice doc).
+
 Record these in release notes:
 
 - Scope summary (what changed in Twin)

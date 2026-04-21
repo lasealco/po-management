@@ -1,16 +1,16 @@
-# Supply Chain Twin Program Closeout Gate (Slices 1-200)
+# Supply Chain Twin Program Closeout Gate (Slices 1-240)
 
-This gate is the final closeout check for the Twin program tranche covering slices 1-200.
+This gate is the final closeout check for the Twin program milestone sequence covering slices 1-240.
 
-## Program closeout command (doc equivalent)
+## Program closeout command (canonical)
 
 - Run from repo root:
-  - `npm run verify:sctwin:full && echo "[sctwin-program] PASS: release gate complete for slices 1-200"`
-- This composes the current full Twin release gate and prints a pass marker on success.
+  - `npm run verify:sctwin:program`
+- This runs the composed program gate (`verify:sctwin:prerelease` then `verify:sctwin:full`) and prints a step-by-step pass/fail summary.
 
-## What "done" means for slices 1-200
+## What "done" means for slices 1-240
 
-Mark the tranche as done only when all are true:
+Mark the milestone sequence as done only when all are true:
 
 1. **Gate passes cleanly**
    - `npm run verify:sctwin:program` exits with status `0`.
@@ -21,14 +21,14 @@ Mark the tranche as done only when all are true:
 4. **Smoke checks pass**
    - Core Twin pages and APIs respond as expected (overview, explorer, scenarios, readiness/entities/edges/events/metrics).
 5. **Handoff package recorded**
-   - Verification commands, migration/seed actions, and known risks are documented in release notes.
+   - Verification commands, migration/seed actions, and known risks are documented in release notes (see `docs/sctwin/program_closeout_and_handoff.md`).
 
 ## Final closeout status template
 
 Use this template in PR notes, release notes, or handoff docs.
 
 ```md
-## Supply Chain Twin Program Closeout (Slices 1-200)
+## Supply Chain Twin Program Closeout (Slices 1-240)
 
 - Date:
 - Owner:
@@ -36,7 +36,7 @@ Use this template in PR notes, release notes, or handoff docs.
 - Environment:
 
 ### Gate results
-- `npm run verify:sctwin:full && echo "[sctwin-program] PASS: release gate complete for slices 1-200"`: PASS/FAIL
+- `npm run verify:sctwin:program`: PASS/FAIL
 - `npm run verify:sctwin:full`: PASS/FAIL
 
 ### Migrations and seed actions
@@ -63,7 +63,7 @@ Use this template in PR notes, release notes, or handoff docs.
 Track residual risks at closeout using this format.
 
 ```md
-## Twin Final Risk Log (Slices 1-200)
+## Twin Final Risk Log (Slices 1-240)
 
 | Risk ID | Area | Severity | Description | Mitigation | Owner | Next Action | Target Date | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |

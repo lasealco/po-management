@@ -10,6 +10,7 @@ This pack is the developer-ready documentation set for building the **AI-Driven 
 **Permissions:** [Twin permission and visibility matrix](./supply_chain_twin_permissions_and_visibility.md) (route/action mapping for view/edit/export/admin semantics).
 **Performance:** runbook section "Performance Notes (Query Plan + Index Intent)" (index-to-query mapping + revisit triggers).
 **Release checklist:** [Twin release checklist](./release_checklist.md) (migrations, verify gates, smoke URLs, rollback hints).
+**Program closeout + handoff:** [Twin program closeout and handoff](./program_closeout_and_handoff.md) (Slices 1–240 anchor doc + checklist).
 **RC dry run log:** [Twin RC dry run 2026-04-21](./release_candidate_dry_run_2026-04-21.md) (findings list with severity and follow-ups).
 **Final risk register:** [Twin final risk register](./final_risk_register.md) (accepted vs deferred residual risks with owner/next action).
 **Release gate:** run `npm run verify:sctwin:full` before handoff/release.
