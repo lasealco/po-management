@@ -144,6 +144,7 @@ export function TwinScenariosComparePanel(props: { left: TwinScenarioDraftQueryP
   const { left, right } = props;
   const [leftPane, setLeftPane] = useState<PaneState>(() => idlePaneForSide(left, right));
   const [rightPane, setRightPane] = useState<PaneState>(() => idlePaneForSide(right, left));
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "fallback" | "error">("idle");
 
   useEffect(() => {
     if (left.status !== "ok" || right.status !== "ok") {
@@ -185,8 +186,54 @@ export function TwinScenariosComparePanel(props: { left: TwinScenarioDraftQueryP
     return { diff, deepLine };
   }, [leftPane, rightPane]);
 
+  async function onCopyShareLink() {
+    const href = window.location.href;
+    try {
+      if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(href);
+        setCopyState("copied");
+        return;
+      }
+    } catch {
+      // Fallback below when async clipboard is blocked.
+    }
+
+    try {
+      const el = document.createElement("textarea");
+      el.value = href;
+      el.setAttribute("readonly", "true");
+      el.style.position = "fixed";
+      el.style.left = "-9999px";
+      document.body.appendChild(el);
+      el.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(el);
+      setCopyState(ok ? "fallback" : "error");
+    } catch {
+      setCopyState("error");
+    }
+  }
+
   return (
     <div className="space-y-6">
+      <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-zinc-600">Share this compare view with the current URL parameters.</p>
+          <button
+            type="button"
+            onClick={onCopyShareLink}
+            aria-label="Copy compare link"
+            className="rounded-xl bg-[var(--arscmp-primary)] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:brightness-95"
+          >
+            Copy share link
+          </button>
+        </div>
+        <p className="mt-2 text-xs text-zinc-600" aria-live="polite">
+          {copyState === "copied" ? "Copied compare URL." : null}
+          {copyState === "fallback" ? "Copied compare URL using browser fallback." : null}
+          {copyState === "error" ? "Could not copy automatically. Copy the URL from your browser address bar." : null}
+        </p>
+      </section>
       {diffSummary ? (
         <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
           <h2 className="text-sm font-semibold text-zinc-900">Diff (read-only)</h2>
