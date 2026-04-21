@@ -3,11 +3,12 @@ import { NextResponse } from "next/server";
 import { getViewerGrantSet } from "@/lib/authz";
 import { resolveNavState } from "@/lib/nav-visibility";
 import { parseTwinEntitiesQuery } from "@/lib/supply-chain-twin/entities-catalog";
+import { listForTenant } from "@/lib/supply-chain-twin/repo";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Stub entity catalog. Query `q` is zod-validated; response is `{ items: [] }` until Slice 4+.
+ * Entity catalog backed by `SupplyChainTwinEntitySnapshot`. Query `q` is zod-validated.
  */
 export async function GET(request: Request) {
   const access = await getViewerGrantSet();
@@ -38,6 +39,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
 
-  const body = { items: [] as const };
-  return NextResponse.json(body);
+  const items = await listForTenant(access.tenant.id, { q: parsed.query.q });
+  return NextResponse.json({ items });
 }

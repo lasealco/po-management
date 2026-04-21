@@ -78,6 +78,7 @@ model Tenant {
   apiHubConnectors      ApiHubConnector[]
   apiHubConnectorAuditLogs ApiHubConnectorAuditLog[]
   apiHubIngestionRuns   ApiHubIngestionRun[]
+  supplyChainTwinEntitySnapshots SupplyChainTwinEntitySnapshot[]
 }
 
 /// Integration / API hub — registry row for an external or internal data source (Phase 1 stub).
@@ -3087,4 +3088,24 @@ model ReferenceAirline {
 
   @@index([awbPrefix3])
   @@map("reference_airlines")
+}
+
+/// Tenant-scoped Supply Chain Twin entity node (materialized snapshot + JSON payload).
+model SupplyChainTwinEntitySnapshot {
+  id         String   @id @default(cuid())
+  tenantId   String
+  /// Twin graph discriminator (see `TwinEntityKind` in app types).
+  entityKind String
+  /// Stable business key for this node within the tenant (upstream id, composite key, etc.).
+  entityKey  String
+  /// Additional attributes, provenance, or denormalized fields for the twin.
+  payload    Json     @default("{}")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, entityKind, entityKey])
+  @@index([tenantId])
+  @@index([tenantId, entityKind])
 }
