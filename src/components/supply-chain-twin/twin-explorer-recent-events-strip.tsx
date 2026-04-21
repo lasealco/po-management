@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, use, useMemo } from "react";
+import { TwinFallbackState } from "./twin-fallback-state";
 
 const EVENT_LIMIT = 10;
 const TYPE_DISPLAY_MAX = 48;
@@ -87,19 +88,19 @@ function TwinExplorerRecentEventsStripInner() {
   if (data.ok === false) {
     return (
       <div className="px-5 py-6">
-        <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">{data.message}</p>
+        <TwinFallbackState tone="error" title="Unable to load ingest events" description={data.message} />
       </div>
     );
   }
 
   if (data.events.length === 0) {
     return (
-      <div className="px-5 py-8 text-center text-sm text-zinc-600">
-        <p className="font-medium text-zinc-800">No ingest events yet</p>
-        <p className="mt-1 text-xs text-zinc-500">
-          Append events via <code className="rounded bg-zinc-100 px-1 py-0.5 text-[11px]">POST /api/supply-chain-twin/events</code>{" "}
-          when your session has twin access.
-        </p>
+      <div className="px-5 py-8">
+        <TwinFallbackState
+          centered
+          title="No ingest events yet"
+          description="Append events with POST /api/supply-chain-twin/events when your session has Twin access."
+        />
       </div>
     );
   }
@@ -137,7 +138,13 @@ export function TwinExplorerRecentEventsStrip() {
           Last {EVENT_LIMIT} rows · <code className="text-[11px]">GET /api/supply-chain-twin/events</code>
         </p>
       </div>
-      <Suspense fallback={<div className="px-5 py-8 text-center text-sm text-zinc-500">Loading ingest events…</div>}>
+      <Suspense
+        fallback={
+          <div className="px-5 py-8">
+            <TwinFallbackState centered tone="loading" title="Loading ingest events..." />
+          </div>
+        }
+      >
         <TwinExplorerRecentEventsStripInner />
       </Suspense>
     </section>

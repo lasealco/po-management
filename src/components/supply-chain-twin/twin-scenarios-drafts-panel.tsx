@@ -7,6 +7,7 @@ import {
   fetchTwinScenarioDraftsPage,
   type TwinScenarioDraftListRow,
 } from "@/lib/supply-chain-twin/twin-scenarios-drafts-client";
+import { TwinFallbackState } from "./twin-fallback-state";
 
 function formatUpdatedAt(iso: string): string {
   const d = new Date(iso);
@@ -115,28 +116,35 @@ export function TwinScenariosDraftsPanel() {
       </div>
 
       {listError ? (
-        <p className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">{listError}</p>
+        <TwinFallbackState className="mt-4" tone="error" title="Unable to load scenario drafts" description={listError} />
       ) : null}
 
       {loading ? (
-        <p className="mt-6 text-sm text-zinc-500" aria-live="polite">
-          Loading drafts…
-        </p>
+        <TwinFallbackState
+          className="mt-6"
+          tone="loading"
+          title="Loading scenario drafts..."
+          description="Fetching the latest tenant drafts from the Twin API."
+        />
       ) : null}
 
       {!loading && !listError && rows.length === 0 ? (
-        <div className="mt-6 rounded-xl border border-dashed border-zinc-300 bg-zinc-50/80 px-5 py-10 text-center">
-          <p className="text-sm font-medium text-zinc-800">No scenario drafts yet</p>
-          <p className="mt-2 text-sm text-zinc-600">Create a draft to start a what-if run. You can rename it when detail editing ships.</p>
-          <button
-            type="button"
-            onClick={() => void createDraft()}
-            disabled={creating}
-            className="mt-5 inline-flex rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {creating ? "Creating…" : "Create draft"}
-          </button>
-        </div>
+        <TwinFallbackState
+          className="mt-6 px-5 py-10"
+          centered
+          title="No scenario drafts yet"
+          description="Create a draft to start a what-if run. You can rename it when detail editing ships."
+          actions={
+            <button
+              type="button"
+              onClick={() => void createDraft()}
+              disabled={creating}
+              className="inline-flex rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {creating ? "Creating…" : "Create draft"}
+            </button>
+          }
+        />
       ) : null}
 
       {!loading && rows.length > 0 ? (

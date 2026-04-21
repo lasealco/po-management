@@ -5,6 +5,9 @@ import { notFound } from "next/navigation";
 import { AccessDenied } from "@/components/access-denied";
 import { TwinEntityActivityTeaser } from "@/components/supply-chain-twin/twin-entity-activity-teaser";
 import { TwinEntityJsonPreview } from "@/components/supply-chain-twin/twin-entity-json-preview";
+import { TwinEntityNeighborsPanel } from "@/components/supply-chain-twin/twin-entity-neighbors-panel";
+import { TwinEventsExportAction } from "@/components/supply-chain-twin/twin-events-export-action";
+import { TwinFallbackState } from "@/components/supply-chain-twin/twin-fallback-state";
 import { TwinSubNav } from "@/components/supply-chain-twin/twin-subnav";
 import { getEntitySnapshotByIdForTenant } from "@/lib/supply-chain-twin/repo";
 import { requireTwinApiAccess } from "@/lib/supply-chain-twin/sctwin-api-access";
@@ -45,19 +48,20 @@ export default async function SupplyChainTwinExplorerEntityPage({
     return (
       <main className="mx-auto max-w-5xl px-6 py-10">
         <TwinSubNav />
-        <section className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-6 text-sm text-red-900 shadow-sm">
-          <p className="font-semibold">Unable to load this snapshot</p>
-          <p className="mt-2">
-            A server error occurred while reading the twin catalog. Try again later or return to the explorer.
-          </p>
-          <p className="mt-4">
-            <Link
-              href="/supply-chain-twin/explorer"
-              className="font-semibold text-[var(--arscmp-primary)] underline-offset-2 hover:underline"
-            >
-              ← Back to explorer
-            </Link>
-          </p>
+        <section className="mt-6">
+          <TwinFallbackState
+            tone="error"
+            title="Unable to load this snapshot"
+            description="A server error occurred while reading the Twin catalog. Try again later or return to explorer."
+            actions={
+              <Link
+                href="/supply-chain-twin/explorer"
+                className="font-semibold text-[var(--arscmp-primary)] underline-offset-2 hover:underline"
+              >
+                ← Back to explorer
+              </Link>
+            }
+          />
         </section>
       </main>
     );
@@ -82,7 +86,10 @@ export default async function SupplyChainTwinExplorerEntityPage({
 
       <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Twin explorer</p>
-        <h1 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-900">Entity snapshot</h1>
+        <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
+          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Entity snapshot</h1>
+          <TwinEventsExportAction />
+        </div>
         <p className="mt-2 max-w-2xl text-sm text-zinc-600">
           Read-only materialized row for your workspace session.
         </p>
@@ -112,6 +119,7 @@ export default async function SupplyChainTwinExplorerEntityPage({
       </section>
 
       <TwinEntityActivityTeaser />
+      <TwinEntityNeighborsPanel snapshotId={snapshot.id} />
 
       <section className="mt-6 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
         <h2 className="text-sm font-semibold text-zinc-900">Payload (JSON)</h2>

@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, use, useMemo } from "react";
+import { Suspense, use, useMemo, useState } from "react";
+import { TwinFallbackState } from "./twin-fallback-state";
 
 const SEVERITIES = new Set(["INFO", "LOW", "MEDIUM", "HIGH", "CRITICAL"]);
 
@@ -13,6 +14,7 @@ type RiskRow = {
   detail: string | null;
   createdAt: string;
   updatedAt: string;
+  acknowledged?: boolean;
 };
 
 type RiskSignalsResult = { ok: true; items: RiskRow[] } | { ok: false; message: string };
@@ -47,7 +49,8 @@ async function fetchRiskSignalsTop(): Promise<RiskSignalsResult> {
         "createdAt" in row &&
         typeof (row as { createdAt: unknown }).createdAt === "string" &&
         "updatedAt" in row &&
-        typeof (row as { updatedAt: unknown }).updatedAt === "string"
+        typeof (row as { updatedAt: unknown }).updatedAt === "string" &&
+        (!("acknowledged" in row) || typeof (row as { acknowledged: unknown }).acknowledged === "boolean")
       ) {
         items.push({
           id: (row as { id: string }).id,
@@ -57,6 +60,9 @@ async function fetchRiskSignalsTop(): Promise<RiskSignalsResult> {
           detail: (row as { detail: string | null }).detail,
           createdAt: (row as { createdAt: string }).createdAt,
           updatedAt: (row as { updatedAt: string }).updatedAt,
+          ...(typeof (row as { acknowledged?: unknown }).acknowledged === "boolean"
+            ? { acknowledged: (row as { acknowledged?: boolean }).acknowledged as boolean }
+            : {}),
         });
       }
     }
@@ -71,6 +77,16 @@ async function fetchRiskSignalsTop(): Promise<RiskSignalsResult> {
 
 function TwinRiskSignalsCalloutInner() {
   const data = use(useMemo(() => fetchRiskSignalsTop(), []));
+  const [activeTab, setActiveTab] = useState<"open" | "acknowledged">("open");
+  const supportsAckState = data.ok && data.items.some((row) => typeof row.acknowledged === "boolean");
+
+  const openItems = data.ok
+    ? data.items.filter((row) => (typeof row.acknowledged === "boolean" ? !row.acknowledged : true))
+    : [];
+  const acknowledgedItems = data.ok
+    ? data.items.filter((row) => typeof row.acknowledged === "boolean" && row.acknowledged)
+    : [];
+  const visibleItems = !data.ok ? [] : activeTab === "open" ? openItems : acknowledgedItems;
 
   return (
     <section className="mt-6 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
@@ -83,6 +99,28 @@ function TwinRiskSignalsCalloutInner() {
             <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">GET /api/supply-chain-twin/risk-signals</code>{" "}
             (capped at five). Open the explorer for catalog drill-down; per-signal detail routes are not wired yet.
           </p>
+          {supportsAckState ? (
+            <div className="mt-3 inline-flex rounded-xl border border-zinc-300 bg-zinc-50 p-1 text-xs">
+              <button
+                type="button"
+                onClick={() => setActiveTab("open")}
+                className={`rounded-lg px-3 py-1.5 font-semibold ${
+                  activeTab === "open" ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-600"
+                }`}
+              >
+                Open ({openItems.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("acknowledged")}
+                className={`rounded-lg px-3 py-1.5 font-semibold ${
+                  activeTab === "acknowledged" ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-600"
+                }`}
+              >
+                Acknowledged ({acknowledgedItems.length})
+              </button>
+            </div>
+          ) : null}
         </div>
         <Link
           href="/supply-chain-twin/explorer"
@@ -93,29 +131,43 @@ function TwinRiskSignalsCalloutInner() {
       </div>
 
       {data.ok === false ? (
-        <p className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">{data.message}</p>
+        <TwinFallbackState
+          className="mt-4"
+          tone="error"
+          title="Unable to load risk signals"
+          description={data.message}
+        />
       ) : null}
 
       {data.ok && data.items.length === 0 ? (
-        <div className="mt-5 rounded-xl border border-dashed border-zinc-300 bg-zinc-50/80 px-4 py-8 text-center text-sm text-zinc-600">
-          <p className="font-medium text-zinc-800">No risk signals yet</p>
-          <p className="mt-2">
-            When the twin demo seed runs, a sample row appears here. Use the explorer to browse entity snapshots in the
-            meantime.
-          </p>
-          <Link
-            href="/supply-chain-twin/explorer"
-            className="mt-4 inline-flex rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:brightness-95"
-          >
-            Open explorer
-          </Link>
-        </div>
+        <TwinFallbackState
+          className="mt-5 py-8"
+          centered
+          title="No risk signals yet"
+          description="When the Twin demo seed runs, sample signals appear here. Use explorer to browse entity snapshots in the meantime."
+          actions={
+            <Link
+              href="/supply-chain-twin/explorer"
+              className="inline-flex rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:brightness-95"
+            >
+              Open explorer
+            </Link>
+          }
+        />
       ) : null}
 
       {data.ok && data.items.length > 0 ? (
         <>
+          {!supportsAckState ? (
+            <p className="mt-4 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600">
+              Ack status is not available yet from this environment; showing all signals as open.
+            </p>
+          ) : null}
+          {supportsAckState && visibleItems.length === 0 ? (
+            <TwinFallbackState className="mt-5 py-6" centered title={`No ${activeTab} signals in this slice.`} />
+          ) : null}
           <ul className="mt-5 divide-y divide-zinc-200 rounded-xl border border-zinc-200">
-            {data.items.map((row) => (
+            {(supportsAckState ? visibleItems : data.items).map((row) => (
               <li key={row.id} className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-zinc-900">{row.title}</p>
@@ -140,7 +192,13 @@ function TwinRiskSignalsCalloutInner() {
 
 export function TwinRiskSignalsCallout() {
   return (
-    <Suspense fallback={<p className="mt-6 text-sm text-zinc-500">Loading risk signals…</p>}>
+    <Suspense
+      fallback={
+        <section className="mt-6">
+          <TwinFallbackState tone="loading" title="Loading risk signals..." />
+        </section>
+      }
+    >
       <TwinRiskSignalsCalloutInner />
     </Suspense>
   );

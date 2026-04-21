@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, use, useCallback, useLayoutEffect, useMemo, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, use, useCallback, useLayoutEffect, useMemo, useRef, useTransition } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { TwinFallbackState } from "./twin-fallback-state";
 
 /** Matches `limit` on `fetchEntitiesCatalog` — exports never include rows beyond this page. */
 const CATALOG_TABLE_PAGE_LIMIT = 50;
@@ -16,13 +17,16 @@ const EXPORT_SIZE_HINT_ABOVE_ROW_COUNT = 25;
 type CatalogRow = { id: string; ref: { kind: string; id: string } };
 
 type CatalogResult =
-  | { ok: true; items: CatalogRow[] }
+  | { ok: true; items: CatalogRow[]; nextCursor: string | null }
   | { ok: false; message: string };
 
-async function fetchEntitiesCatalog(searchQ: string): Promise<CatalogResult> {
+async function fetchEntitiesCatalog(searchQ: string, cursor: string | null): Promise<CatalogResult> {
   const params = new URLSearchParams();
   params.set("q", searchQ);
   params.set("limit", String(CATALOG_TABLE_PAGE_LIMIT));
+  if (cursor) {
+    params.set("cursor", cursor);
+  }
   try {
     const res = await fetch(`/api/supply-chain-twin/entities?${params.toString()}`, { cache: "no-store" });
     const body = (await res.json()) as unknown;
@@ -78,10 +82,28 @@ async function fetchEntitiesCatalog(searchQ: string): Promise<CatalogResult> {
     if (normalized.length !== items.length) {
       return { ok: false, message: "Unexpected response from entity catalog." };
     }
-    return { ok: true, items: normalized };
+    const rawNextCursor = (body as { nextCursor?: unknown }).nextCursor;
+    const nextCursor = typeof rawNextCursor === "string" ? rawNextCursor.trim() || null : null;
+    return { ok: true, items: normalized, nextCursor };
   } catch {
     return { ok: false, message: "Network error while loading the catalog." };
   }
+}
+
+function parseCursorStack(raw: string | null): string[] {
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+}
+
+function stackEncodeCursor(cursor: string | null): string {
+  return cursor && cursor.length > 0 ? cursor : "__root__";
+}
+
+function stackDecodeCursor(encoded: string): string | null {
+  return encoded === "__root__" ? null : encoded;
 }
 
 const SKELETON_ROW_COUNT = 8;
@@ -153,7 +175,11 @@ function TwinExplorerEntitiesTableInner({
   highlightSnapshotId?: string | null;
 }) {
   const router = useRouter();
-  const data = use(useMemo(() => fetchEntitiesCatalog(searchQ), [searchQ]));
+  const searchParams = useSearchParams();
+  const [isPaginating, startPagination] = useTransition();
+  const currentCursor = searchParams.get("cursor")?.trim() || null;
+  const cursorStack = parseCursorStack(searchParams.get("cursorStack"));
+  const data = use(useMemo(() => fetchEntitiesCatalog(searchQ, currentCursor), [searchQ, currentCursor]));
   const rowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
 
   useLayoutEffect(() => {
@@ -172,33 +198,73 @@ function TwinExplorerEntitiesTableInner({
     downloadVisibleEntitiesJson(searchQ, data.items);
   }, [data, searchQ]);
 
+  const onGoNext = useCallback(() => {
+    if (data.ok !== true || !data.nextCursor) {
+      return;
+    }
+    const params = new URLSearchParams(searchParams.toString());
+    const nextStack = [...cursorStack, stackEncodeCursor(currentCursor)];
+    params.set("cursor", data.nextCursor);
+    params.set("cursorStack", nextStack.join(","));
+    startPagination(() => {
+      router.push(`/supply-chain-twin/explorer?${params.toString()}`);
+    });
+  }, [currentCursor, cursorStack, data, router, searchParams]);
+
+  const onGoPrevious = useCallback(() => {
+    if (cursorStack.length === 0) {
+      return;
+    }
+    const params = new URLSearchParams(searchParams.toString());
+    const nextStack = cursorStack.slice(0, -1);
+    const previousCursor = stackDecodeCursor(cursorStack[cursorStack.length - 1] ?? "__root__");
+    if (previousCursor) {
+      params.set("cursor", previousCursor);
+    } else {
+      params.delete("cursor");
+    }
+    if (nextStack.length > 0) {
+      params.set("cursorStack", nextStack.join(","));
+    } else {
+      params.delete("cursorStack");
+    }
+    startPagination(() => {
+      router.push(`/supply-chain-twin/explorer?${params.toString()}`);
+    });
+  }, [cursorStack, router, searchParams]);
+
   if (data.ok === false) {
     return (
       <div className="px-5 py-8">
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-4 text-sm text-red-900">
-          <p className="font-semibold">Unable to load Twin explorer entities</p>
-          <p className="mt-1">{data.message}</p>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => router.refresh()}
-              className="rounded-xl bg-[var(--arscmp-primary)] px-4 py-2 text-xs font-semibold text-white"
-            >
-              Retry
-            </button>
-            <Link
-              href="/api/supply-chain-twin/readiness"
-              className="rounded-xl border border-zinc-300 bg-white px-4 py-2 text-xs font-semibold text-zinc-700"
-            >
-              Check readiness
-            </Link>
-          </div>
-        </div>
+        <TwinFallbackState
+          tone="error"
+          title="Unable to load Twin explorer entities"
+          description={data.message}
+          actions={
+            <>
+              <button
+                type="button"
+                onClick={() => router.refresh()}
+                className="rounded-xl bg-[var(--arscmp-primary)] px-4 py-2 text-xs font-semibold text-white"
+              >
+                Retry
+              </button>
+              <Link
+                href="/api/supply-chain-twin/readiness"
+                className="rounded-xl border border-zinc-300 bg-white px-4 py-2 text-xs font-semibold text-zinc-700"
+              >
+                Check readiness
+              </Link>
+            </>
+          }
+        />
       </div>
     );
   }
 
   const count = data.items.length;
+  const canGoPrevious = cursorStack.length > 0;
+  const canGoNext = Boolean(data.nextCursor);
 
   const showExportSizeHint = count > EXPORT_SIZE_HINT_ABOVE_ROW_COUNT;
 
@@ -223,30 +289,52 @@ function TwinExplorerEntitiesTableInner({
             >
               Download JSON
             </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onGoPrevious}
+                disabled={!canGoPrevious || isPaginating}
+                className="rounded-xl border border-zinc-300 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <button
+                type="button"
+                onClick={onGoNext}
+                disabled={!canGoNext || isPaginating}
+                className="rounded-xl bg-[var(--arscmp-primary)] px-3 py-1.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
           </div>
         ) : null}
       </div>
       {count === 0 ? (
-        <div className="px-5 py-10 text-center text-sm text-zinc-600">
-          <p className="font-medium text-zinc-800">No entities match this view yet.</p>
-          <p className="mt-1">
-            Try adjusting search filters, re-seeding Twin demo data, or checking readiness before retrying.
-          </p>
-          <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-            <button
-              type="button"
-              onClick={() => router.refresh()}
-              className="rounded-xl bg-[var(--arscmp-primary)] px-4 py-2 text-xs font-semibold text-white"
-            >
-              Retry
-            </button>
-            <Link
-              href="/api/supply-chain-twin/readiness"
-              className="rounded-xl border border-zinc-300 bg-white px-4 py-2 text-xs font-semibold text-zinc-700"
-            >
-              Check readiness
-            </Link>
-          </div>
+        <div className="px-5 py-10">
+          <TwinFallbackState
+            centered
+            title="No entities match this view yet."
+            description="Try adjusting search filters, re-seeding Twin demo data, or checking readiness before retrying."
+            actions={
+              <>
+                <button
+                  type="button"
+                  onClick={() => router.refresh()}
+                  className="rounded-xl bg-[var(--arscmp-primary)] px-4 py-2 text-xs font-semibold text-white"
+                >
+                  Retry
+                </button>
+                <Link
+                  href="/api/supply-chain-twin/readiness"
+                  className="rounded-xl border border-zinc-300 bg-white px-4 py-2 text-xs font-semibold text-zinc-700"
+                >
+                  Check readiness
+                </Link>
+              </>
+            }
+            className="mx-auto max-w-2xl"
+          />
         </div>
       ) : (
         <div className="overflow-x-auto">

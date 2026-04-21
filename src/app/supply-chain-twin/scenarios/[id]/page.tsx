@@ -4,10 +4,15 @@ import { notFound } from "next/navigation";
 
 import { AccessDenied } from "@/components/access-denied";
 import { TwinEntityJsonPreview } from "@/components/supply-chain-twin/twin-entity-json-preview";
+import { TwinFallbackState } from "@/components/supply-chain-twin/twin-fallback-state";
+import { TwinScenarioHistoryTimeline } from "@/components/supply-chain-twin/twin-scenario-history-timeline";
 import { TwinScenarioTitleInlineEditor } from "@/components/supply-chain-twin/twin-scenario-title-inline-editor";
 import { TwinSubNav } from "@/components/supply-chain-twin/twin-subnav";
 import { requireTwinApiAccess } from "@/lib/supply-chain-twin/sctwin-api-access";
-import { getScenarioDraftByIdForTenant } from "@/lib/supply-chain-twin/scenarios-draft-repo";
+import {
+  getScenarioDraftByIdForTenant,
+  listScenarioHistoryForTenant,
+} from "@/lib/supply-chain-twin/scenarios-draft-repo";
 
 export const dynamic = "force-dynamic";
 
@@ -45,19 +50,20 @@ export default async function SupplyChainTwinScenarioDraftPage({
     return (
       <main className="mx-auto max-w-5xl px-6 py-10">
         <TwinSubNav />
-        <section className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-6 text-sm text-red-900 shadow-sm">
-          <p className="font-semibold">Unable to load this draft</p>
-          <p className="mt-2">
-            A server error occurred while reading the scenario. Try again later or return to the list.
-          </p>
-          <p className="mt-4">
-            <Link
-              href="/supply-chain-twin/scenarios"
-              className="font-semibold text-[var(--arscmp-primary)] underline-offset-2 hover:underline"
-            >
-              ← Back to scenarios
-            </Link>
-          </p>
+        <section className="mt-6">
+          <TwinFallbackState
+            tone="error"
+            title="Unable to load this draft"
+            description="A server error occurred while reading this scenario draft. Try again later or return to the scenarios list."
+            actions={
+              <Link
+                href="/supply-chain-twin/scenarios"
+                className="font-semibold text-[var(--arscmp-primary)] underline-offset-2 hover:underline"
+              >
+                ← Back to scenarios
+              </Link>
+            }
+          />
         </section>
       </main>
     );
@@ -66,6 +72,8 @@ export default async function SupplyChainTwinScenarioDraftPage({
   if (!draft) {
     notFound();
   }
+
+  const history = (await listScenarioHistoryForTenant(access.tenant.id, draft.id)) ?? [];
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
@@ -114,6 +122,8 @@ export default async function SupplyChainTwinScenarioDraftPage({
           <TwinEntityJsonPreview payload={draft.draftJson} />
         </div>
       </section>
+
+      <TwinScenarioHistoryTimeline items={history} />
     </main>
   );
 }
