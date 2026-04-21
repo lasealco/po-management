@@ -61,37 +61,11 @@ const topNavItems: TopNavItem[] = [
   { kind: "link", key: "settings", label: "Settings", href: "/settings" },
 ];
 
+/** Visible top-bar copy — keep full module names on `aria-label` / `title` on the `Link`. */
 function TopNavLinkLabel({ item }: { item: Exclude<TopNavItem, { kind: "ratesAudit" }> }) {
-  if (item.kind === "po") {
-    return (
-      <>
-        <span className="md:hidden" aria-hidden>
-          PO
-        </span>
-        <span className="hidden md:inline">{item.label}</span>
-      </>
-    );
-  }
-  if (item.key === "controlTower") {
-    return (
-      <>
-        <span className="lg:hidden" aria-hidden>
-          Tower
-        </span>
-        <span className="hidden lg:inline">{item.label}</span>
-      </>
-    );
-  }
-  if (item.key === "salesOrders") {
-    return (
-      <>
-        <span className="xl:hidden" aria-hidden>
-          Sales
-        </span>
-        <span className="hidden xl:inline">{item.label}</span>
-      </>
-    );
-  }
+  if (item.kind === "po") return "Purchase";
+  if (item.key === "controlTower") return "Tower";
+  if (item.key === "salesOrders") return "Sales";
   return item.label;
 }
 
@@ -168,10 +142,7 @@ export function AppNav({
                         : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
                     }`}
                   >
-                    <span className="xl:hidden" aria-hidden>
-                      Rates
-                    </span>
-                    <span className="hidden xl:inline">{RATES_AUDIT_NAV_LABEL}</span>
+                    Rates
                   </Link>
                 );
               }
