@@ -41,11 +41,11 @@ export function PricingSnapshotsSubNav() {
         })}
         <Link
           href="/pricing-snapshots/new"
-          className={`ml-auto ${
+          className={
             pathname === "/pricing-snapshots/new"
               ? subNavActiveClass
               : "rounded-lg px-2.5 py-1.5 text-sm font-semibold text-[var(--arscmp-primary)] transition-colors hover:bg-white/55 sm:px-3"
-          }`}
+          }
         >
           Freeze snapshot
         </Link>
