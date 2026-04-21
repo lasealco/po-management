@@ -9,9 +9,20 @@ export const subNavActiveClass =
 export const moduleSubNavShellClass =
   "border-b border-[var(--arscmp-primary)]/12 bg-[var(--arscmp-nav-substrip)] shadow-[inset_0_1px_0_rgba(255,255,255,0.45)]";
 
+/**
+ * Third-level nav under a module strip (e.g. Invoice audit under Rates & Audit).
+ * White band separates “module section” from “page tools” without adding another tinted row.
+ */
+export const moduleTertiarySubNavShellClass =
+  "border-b border-zinc-200 bg-white shadow-[inset_0_1px_0_rgba(15,23,42,0.04)]";
+
 /** Inactive links on the muted module subnav strip. */
 export const moduleSubNavLinkInactiveClass =
   "rounded-lg px-2.5 py-1.5 text-sm font-medium text-zinc-800 transition-colors hover:bg-white/50 hover:text-zinc-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--arscmp-primary)]/25 sm:px-3";
+
+/** Inactive links on {@link moduleTertiarySubNavShellClass} (white background). */
+export const moduleTertiarySubNavLinkInactiveClass =
+  "rounded-lg px-2.5 py-1.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-zinc-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--arscmp-primary)]/25 sm:px-3";
 
 /** AppNav — active top-level module (inverted brand). */
 export const appNavActiveClass =
