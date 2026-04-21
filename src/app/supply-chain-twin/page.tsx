@@ -4,6 +4,7 @@ import Link from "next/link";
 import { AccessDenied } from "@/components/access-denied";
 import { PageTitleWithHint } from "@/components/page-title-with-hint";
 import { TwinReadinessBanner } from "@/components/supply-chain-twin/twin-readiness-banner";
+import { TwinRiskSignalsCallout } from "@/components/supply-chain-twin/twin-risk-signals-callout";
 import { TwinSubNav } from "@/components/supply-chain-twin/twin-subnav";
 import { getViewerGrantSet } from "@/lib/authz";
 import { PLATFORM_HUB_PATH } from "@/lib/marketing-public-paths";
@@ -70,6 +71,8 @@ export default async function SupplyChainTwinHomePage() {
       </p>
 
       <TwinReadinessBanner docsReadmeHref={README_BLOB} docsTreeHref={DOCS_TREE} />
+
+      <TwinRiskSignalsCallout />
 
       <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
         <a
