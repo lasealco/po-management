@@ -20,6 +20,7 @@
     "test:sctwin:contracts": "vitest run src/app/api/supply-chain-twin/happy-path.contract.test.ts src/app/api/supply-chain-twin/schema-conformance.contract.test.ts src/app/api/supply-chain-twin/contract-snapshot-baseline.contract.test.ts",
     "smoke:sctwin:e2e": "node scripts/sctwin-smoke-pack.mjs",
     "verify:sctwin:prerelease": "npx tsc --noEmit && npm run test:sctwin && npm run test:sctwin:contracts && npm run check:sctwin:lint",
+    "verify:sctwin:program": "node scripts/sctwin-verify-program.mjs",
     "verify:sctwin": "npx tsc --noEmit && npm run test:sctwin",
     "check:sctwin:lint": "eslint \"src/lib/supply-chain-twin/**/*.{ts,tsx}\" \"src/app/api/supply-chain-twin/**/*.{ts,tsx}\" \"src/app/supply-chain-twin/**/*.{ts,tsx}\" \"src/components/supply-chain-twin/**/*.{ts,tsx}\"",
     "verify:sctwin:full": "npm run verify:sctwin && npm run test:sctwin:contracts && npm run check:sctwin:lint",
