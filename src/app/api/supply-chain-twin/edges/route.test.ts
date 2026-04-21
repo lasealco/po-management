@@ -45,6 +45,53 @@ describe("GET /api/supply-chain-twin/edges", () => {
     expect(response.status).toBe(403);
   });
 
+  it("returns 400 when fromEntityId is combined with toEntityId", async () => {
+    getViewerGrantSetMock.mockResolvedValue({
+      tenant: { id: "t1", name: "Demo", slug: "demo-company" },
+      user: { id: "u1", email: "x@y.com", name: "X" },
+      grantSet: new Set(),
+    });
+    resolveNavStateMock.mockResolvedValue({
+      linkVisibility: { supplyChainTwin: true },
+      setupIncomplete: false,
+      poSubNavVisibility: {},
+    });
+
+    const { GET } = await import("./route");
+    const response = await GET(
+      new Request("http://localhost/api/supply-chain-twin/edges?fromEntityId=a&toEntityId=b"),
+    );
+
+    expect(response.status).toBe(400);
+    expect(listEdgesForTenantMock).not.toHaveBeenCalled();
+    expect(listEdgesForEntityMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 200 and passes fromEntityId as fromSnapshotId to repo", async () => {
+    getViewerGrantSetMock.mockResolvedValue({
+      tenant: { id: "t1", name: "Demo", slug: "demo-company" },
+      user: { id: "u1", email: "x@y.com", name: "X" },
+      grantSet: new Set(),
+    });
+    resolveNavStateMock.mockResolvedValue({
+      linkVisibility: { supplyChainTwin: true },
+      setupIncomplete: false,
+      poSubNavVisibility: {},
+    });
+    listEdgesForTenantMock.mockResolvedValue([]);
+
+    const { GET } = await import("./route");
+    const response = await GET(new Request("http://localhost/api/supply-chain-twin/edges?fromEntityId=snap-x&take=15"));
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ edges: [] });
+    expect(listEdgesForTenantMock).toHaveBeenCalledWith(
+      "t1",
+      expect.objectContaining({ fromSnapshotId: "snap-x", take: 15 }),
+    );
+    expect(listEdgesForEntityMock).not.toHaveBeenCalled();
+  });
+
   it("returns 400 when snapshotId is combined with fromSnapshotId", async () => {
     getViewerGrantSetMock.mockResolvedValue({
       tenant: { id: "t1", name: "Demo", slug: "demo-company" },

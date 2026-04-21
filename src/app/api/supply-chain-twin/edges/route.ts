@@ -11,7 +11,10 @@ const ROUTE = "GET /api/supply-chain-twin/edges";
 
 /**
  * Twin graph edges for the demo tenant. Same auth / visibility as entity catalog.
- * Query: zod-validated optional `fromSnapshotId`, `toSnapshotId`, or `snapshotId` + `direction`; `take` (1..500, default 200).
+ * Query: zod-validated optional `fromSnapshotId`, `toSnapshotId`, graph aliases **`fromEntityId`** / **`toEntityId`**
+ * (same values as snapshot PKs; Slice 75 — mutually exclusive with the `*SnapshotId` twin and with each other), or
+ * `snapshotId` + `direction` for the star pattern; `take` (1..500, default 200). Aliases resolve to indexed `where`
+ * clauses on `fromSnapshotId` / `toSnapshotId` (no extra round trip).
  */
 export async function GET(request: Request) {
   const requestId = resolveSctwinRequestId(request);
