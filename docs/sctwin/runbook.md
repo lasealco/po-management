@@ -1,4 +1,4 @@
-# Supply Chain Twin Runbook (Stub)
+# Supply Chain Twin Runbook
 
 Operator quick reference for local/demo validation of the Supply Chain Twin slice.
 
@@ -9,9 +9,29 @@ Governance companion: `docs/sctwin/governance_runbook.md`.
 
 - Run `npm run verify:sctwin` from the repo root.
 - This checks TypeScript (`npx tsc --noEmit`) and runs twin-scoped Vitest suites.
-- Run `npm run verify:sctwin:full` for release-gate validation on slices 88-107 (verify + contract tests).
+- Run `npm run verify:sctwin:full` for release-gate validation (verify + contract tests + Twin lint).
 - Contract baseline check is part of `npm run test:sctwin:contracts` via `contract-snapshot-baseline.contract.test.ts`.
 - Run `npm run smoke:sctwin:e2e` for sequential endpoint smoke checks (readiness -> explorer -> scenarios -> risks -> exports) with machine-readable JSON summary output.
+
+## Canonical Command Map
+
+Use this as the single source for Twin operator/dev commands; other docs should point here.
+
+- **`npm run verify:sctwin`**: typecheck + Twin-scoped tests.
+- **`npm run test:sctwin:contracts`**: contract suites (happy path + schema conformance + snapshot baseline).
+- **`npm run verify:sctwin:full`**: release gate (`verify:sctwin` + contract suites + Twin lint).
+- **`npm run smoke:sctwin:e2e`**: sequential runtime smoke path with JSON summary.
+- **`USE_DOTENV_LOCAL=1 npm run db:seed`**: base demo tenant seed.
+- **`USE_DOTENV_LOCAL=1 npm run db:seed:supply-chain-twin-demo`**: Twin demo seed.
+- **`USE_DOTENV_LOCAL=1 npm run db:seed:supply-chain-twin-large-fixture`**: large fixture seed (opt-in).
+
+## Canonical Route Map
+
+Use this as the single route inventory referenced by release/smoke checklists.
+
+- **UI**: `/supply-chain-twin`, `/supply-chain-twin/explorer`, `/supply-chain-twin/scenarios`, `/supply-chain-twin/scenarios/compare`
+- **Core API**: `/api/supply-chain-twin/readiness`, `/api/supply-chain-twin/metrics`, `/api/supply-chain-twin/entities`, `/api/supply-chain-twin/edges`, `/api/supply-chain-twin/events`, `/api/supply-chain-twin/events/export`, `/api/supply-chain-twin/risk-signals`, `/api/supply-chain-twin/scenarios`
+- **Maintenance/admin API**: `/api/supply-chain-twin/integrity`, `/api/supply-chain-twin/integrity/repair-dry-run`, `/api/supply-chain-twin/integrity/repair-apply`
 
 ## Seed Commands (Twin-Focused)
 
@@ -42,17 +62,6 @@ Governance companion: `docs/sctwin/governance_runbook.md`.
 - Tenant safety guardrails:
   - Both Twin seed scripts now fail fast if a fixed scenario ID already exists under a different tenant.
   - This prevents cross-tenant mutation when re-running seeds on shared databases.
-
-## Key Routes
-
-- Twin overview page: `/supply-chain-twin`
-- Explorer page: `/supply-chain-twin/explorer`
-- Scenarios workspace: `/supply-chain-twin/scenarios`
-- Readiness API: `/api/supply-chain-twin/readiness`
-- Entities API: `/api/supply-chain-twin/entities`
-- Edges API: `/api/supply-chain-twin/edges`
-- Events API: `/api/supply-chain-twin/events`
-- Metrics API: `/api/supply-chain-twin/metrics`
 
 ## Logging Pointers
 

@@ -25,25 +25,17 @@ Use this checklist for predictable Twin releases and handoffs. Keep commands sec
 
 ## 3) Release verification gates
 
-- Fast gate (developer loop): `npm run verify:sctwin`
-- Full gate (release handoff): `npm run verify:sctwin:full`
-- Optional strict typing sanity (if troubleshooting): `npx tsc --noEmit`
+- Use the canonical command map in `docs/sctwin/runbook.md` to avoid drift.
+- Minimum release gate: `npm run verify:sctwin:full`
+- Optional runtime smoke: `npm run smoke:sctwin:e2e`
 
 ## 4) Smoke URLs and API probes
 
-Smoke in this order after deploy:
+Use the canonical route map in `docs/sctwin/runbook.md` and keep smoke coverage to:
 
-- Overview page: `/supply-chain-twin`
-- Explorer page: `/supply-chain-twin/explorer`
-- Scenarios workspace: `/supply-chain-twin/scenarios`
-
-Then probe key APIs:
-
-- `/api/supply-chain-twin/readiness`
-- `/api/supply-chain-twin/entities`
-- `/api/supply-chain-twin/edges`
-- `/api/supply-chain-twin/events`
-- `/api/supply-chain-twin/metrics`
+- UI flow: overview -> explorer -> scenarios.
+- API flow: readiness -> entities -> edges -> events -> metrics.
+- Optional: run the scripted smoke pack (`npm run smoke:sctwin:e2e`) for JSON summary output.
 
 Expected: authenticated requests return stable JSON contracts, no raw stack traces, and no sensitive payload leakage in responses.
 
