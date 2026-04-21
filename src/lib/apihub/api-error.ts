@@ -7,6 +7,8 @@ export type ApiHubValidationIssue = {
   code: string;
   message: string;
   recordIndex?: number;
+  /** When omitted, treat as blocking (`error`). */
+  severity?: "error" | "warn" | "info";
 };
 
 type ApiHubErrorPayload = {
@@ -19,6 +21,7 @@ type ApiHubErrorPayload = {
       summary: {
         totalErrors: number;
         byCode: Record<string, number>;
+        bySeverity: Record<"error" | "warn" | "info", number>;
       };
     };
   };
@@ -26,10 +29,13 @@ type ApiHubErrorPayload = {
 
 function summarizeIssues(issues: ApiHubValidationIssue[]) {
   const byCode: Record<string, number> = {};
+  const bySeverity: Record<"error" | "warn" | "info", number> = { error: 0, warn: 0, info: 0 };
   for (const issue of issues) {
     byCode[issue.code] = (byCode[issue.code] ?? 0) + 1;
+    const s = issue.severity === "warn" || issue.severity === "info" ? issue.severity : "error";
+    bySeverity[s] += 1;
   }
-  return { totalErrors: issues.length, byCode };
+  return { totalErrors: issues.length, byCode, bySeverity };
 }
 
 function withRequestIdHeaders(requestId: string): HeadersInit {

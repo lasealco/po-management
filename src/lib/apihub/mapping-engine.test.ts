@@ -43,6 +43,7 @@ describe("applyApiHubMappingRules", () => {
     const bad = applyApiHubMappingRules({ b: "maybe" }, [{ targetField: "x", sourcePath: "b", transform: "boolean" }]);
     expect(bad.mapped.x).toBeNull();
     expect(bad.issues[0]?.code).toBe("INVALID_BOOLEAN");
+    expect(bad.issues[0]?.severity).toBe("error");
   });
 
   it("maps currency transform with US-style grouping", () => {
@@ -61,7 +62,21 @@ describe("applyApiHubMappingRules", () => {
   it("emits INVALID_CURRENCY for non-parsable amounts", () => {
     const r = applyApiHubMappingRules({ a: "not-a-number" }, [{ targetField: "x", sourcePath: "a", transform: "currency" }]);
     expect(r.issues[0]?.code).toBe("INVALID_CURRENCY");
+    expect(r.issues[0]?.severity).toBe("error");
     expect(r.mapped.x).toBeNull();
+  });
+
+  it("emits warn when string transforms receive a non-string", () => {
+    const r = applyApiHubMappingRules({ n: 7 }, [{ targetField: "t", sourcePath: "n", transform: "trim" }]);
+    expect(r.mapped.t).toBe(7);
+    expect(r.issues).toEqual([
+      {
+        field: "t",
+        code: "COERCION_NON_STRING",
+        message: "trim expected a string; value left unchanged.",
+        severity: "warn",
+      },
+    ]);
   });
 
   it("emits issues for missing required and invalid transform inputs", () => {
@@ -78,11 +93,13 @@ describe("applyApiHubMappingRules", () => {
         field: "shipmentId",
         code: "MISSING_REQUIRED",
         message: "Required source value missing at path 'shipment.id'.",
+        severity: "error",
       },
       {
         field: "amount",
         code: "INVALID_NUMBER",
         message: "Value cannot be converted to number.",
+        severity: "error",
       },
     ]);
   });

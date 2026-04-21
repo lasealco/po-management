@@ -59,6 +59,7 @@ export async function GET(request: Request) {
         field: "status",
         code: "INVALID_ENUM",
         message: `status must be one of: ${APIHUB_INGESTION_JOB_STATUSES.join(", ")}.`,
+        severity: "error",
       },
     ], requestId);
   }
@@ -70,6 +71,7 @@ export async function GET(request: Request) {
         field: "limit",
         code: "INVALID_NUMBER",
         message: `limit must be a finite number between ${APIHUB_LIST_LIMIT_MIN} and ${APIHUB_LIST_LIMIT_MAX}.`,
+        severity: "error",
       },
     ], requestId);
   }
@@ -113,7 +115,7 @@ export async function GET(request: Request) {
     const decoded = decodeIngestionRunListCursor(rawCursor);
     if (!decoded.ok) {
       return apiHubValidationError(400, "VALIDATION_ERROR", "Run query validation failed.", [
-        { field: "cursor", code: "INVALID_CURSOR", message: decoded.message },
+        { field: "cursor", code: "INVALID_CURSOR", message: decoded.message, severity: "error" },
       ], requestId);
     }
     listCursor = decoded.cursor;
@@ -169,6 +171,7 @@ export async function POST(request: Request) {
         field: "triggerKind",
         code: "INVALID_TYPE",
         message: "triggerKind must be a string when provided.",
+        severity: "error",
       },
     ], requestId);
   } else {
@@ -181,6 +184,7 @@ export async function POST(request: Request) {
           field: "triggerKind",
           code: "INVALID_ENUM",
           message: `triggerKind must be one of: ${APIHUB_INGESTION_TRIGGER_KINDS.join(", ")}.`,
+          severity: "error",
         },
       ], requestId);
     } else {

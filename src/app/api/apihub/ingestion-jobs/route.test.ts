@@ -55,9 +55,10 @@ describe("GET /api/apihub/ingestion-jobs", () => {
               field: "limit",
               code: "INVALID_NUMBER",
               message: "limit must be a finite number between 1 and 100.",
+              severity: "error",
             },
           ],
-          summary: { totalErrors: 1, byCode: { INVALID_NUMBER: 1 } },
+          summary: { totalErrors: 1, byCode: { INVALID_NUMBER: 1 }, bySeverity: { error: 1, warn: 0, info: 0 } },
         },
       },
     });
@@ -85,6 +86,7 @@ describe("GET /api/apihub/ingestion-jobs", () => {
               field: "status",
               code: "INVALID_ENUM",
               message: "status must be one of: queued, running, succeeded, failed.",
+              severity: "error",
             },
           ],
           summary: {
@@ -92,6 +94,7 @@ describe("GET /api/apihub/ingestion-jobs", () => {
             byCode: {
               INVALID_ENUM: 1,
             },
+            bySeverity: { error: 1, warn: 0, info: 0 },
           },
         },
       },

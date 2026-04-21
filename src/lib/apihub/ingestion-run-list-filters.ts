@@ -9,7 +9,7 @@ const CONNECTOR_ID_PATTERN = /^[a-z0-9]{12,64}$/i;
 export type IngestionRunAttemptRange = { min: number; max: number };
 
 function pushIssue(issues: ApiHubValidationIssue[], field: string, code: string, message: string) {
-  issues.push({ field, code, message });
+  issues.push({ field, code, message, severity: "error" });
 }
 
 /** Non-empty connector id for `GET …/ingestion-jobs?connectorId=` (tenant ownership checked separately). */
@@ -29,6 +29,7 @@ export function parseIngestionRunListConnectorIdParam(raw: string | null): {
           field: "connectorId",
           code: "INVALID_FORMAT",
           message: "connectorId must be a non-empty alphanumeric id (12–64 characters).",
+          severity: "error",
         },
       ],
     };
@@ -52,6 +53,7 @@ export function parseIngestionRunListTriggerKindParam(raw: string | null): {
           field: "triggerKind",
           code: "INVALID_ENUM",
           message: `triggerKind must be one of: ${APIHUB_INGESTION_TRIGGER_KINDS.join(", ")}.`,
+          severity: "error",
         },
       ],
     };

@@ -95,6 +95,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ jobId
         field: "status",
         code: "INVALID_ENUM",
         message: `status must be one of: ${APIHUB_INGESTION_JOB_STATUSES.join(", ")}.`,
+        severity: "error",
       },
     ], requestId);
   }

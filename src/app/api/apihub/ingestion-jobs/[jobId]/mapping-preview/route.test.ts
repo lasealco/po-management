@@ -167,16 +167,19 @@ describe("POST /api/apihub/ingestion-jobs/:jobId/mapping-preview", () => {
               field: "rules[0].sourcePath",
               code: "REQUIRED",
               message: "sourcePath is required.",
+              severity: "error",
             },
             {
               field: "rules[0].targetField",
               code: "REQUIRED",
               message: "targetField is required.",
+              severity: "error",
             },
             {
               field: "records",
               code: "INVALID_TYPE",
               message: "records must be an object or array of objects.",
+              severity: "error",
             },
           ],
           summary: {
@@ -185,6 +188,7 @@ describe("POST /api/apihub/ingestion-jobs/:jobId/mapping-preview", () => {
               REQUIRED: 2,
               INVALID_TYPE: 1,
             },
+            bySeverity: { error: 3, warn: 0, info: 0 },
           },
         },
       },

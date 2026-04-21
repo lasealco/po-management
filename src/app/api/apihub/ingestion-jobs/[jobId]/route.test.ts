@@ -132,11 +132,13 @@ describe("PATCH /api/apihub/ingestion-jobs/:jobId", () => {
               field: "status",
               code: "INVALID_ENUM",
               message: "status must be one of: queued, running, succeeded, failed.",
+              severity: "error",
             },
           ],
           summary: {
             totalErrors: 1,
             byCode: { INVALID_ENUM: 1 },
+            bySeverity: { error: 1, warn: 0, info: 0 },
           },
         },
       },

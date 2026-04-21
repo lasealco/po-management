@@ -28,14 +28,21 @@ function normalizeRules(input: unknown): { rules: ApiHubMappingRule[]; issues: A
   if (!Array.isArray(input)) {
     return {
       rules: [],
-      issues: [{ field: "rules", code: "INVALID_TYPE", message: "rules must be an array." }],
+      issues: [
+        { field: "rules", code: "INVALID_TYPE", message: "rules must be an array.", severity: "error" },
+      ],
     };
   }
 
   const rules: ApiHubMappingRule[] = [];
   input.forEach((row, idx) => {
     if (!row || typeof row !== "object") {
-      issues.push({ field: `rules[${idx}]`, code: "INVALID_TYPE", message: "rule must be an object." });
+      issues.push({
+        field: `rules[${idx}]`,
+        code: "INVALID_TYPE",
+        message: "rule must be an object.",
+        severity: "error",
+      });
       return;
     }
     const record = row as Record<string, unknown>;
@@ -46,10 +53,20 @@ function normalizeRules(input: unknown): { rules: ApiHubMappingRule[]; issues: A
     const required = record.required === true;
 
     if (!sourcePath) {
-      issues.push({ field: `rules[${idx}].sourcePath`, code: "REQUIRED", message: "sourcePath is required." });
+      issues.push({
+        field: `rules[${idx}].sourcePath`,
+        code: "REQUIRED",
+        message: "sourcePath is required.",
+        severity: "error",
+      });
     }
     if (!targetField) {
-      issues.push({ field: `rules[${idx}].targetField`, code: "REQUIRED", message: "targetField is required." });
+      issues.push({
+        field: `rules[${idx}].targetField`,
+        code: "REQUIRED",
+        message: "targetField is required.",
+        severity: "error",
+      });
     }
     if (
       transform &&
@@ -60,6 +77,7 @@ function normalizeRules(input: unknown): { rules: ApiHubMappingRule[]; issues: A
         code: "INVALID_ENUM",
         message:
           "transform must be one of: identity, trim, upper, lower, number, iso_date, boolean, currency.",
+        severity: "error",
       });
     }
     if (sourcePath && targetField) {
@@ -83,7 +101,14 @@ function normalizeRecords(input: unknown): { records: unknown[]; issues: ApiHubV
   }
   return {
     records: [],
-    issues: [{ field: "records", code: "INVALID_TYPE", message: "records must be an object or array of objects." }],
+    issues: [
+      {
+        field: "records",
+        code: "INVALID_TYPE",
+        message: "records must be an object or array of objects.",
+        severity: "error",
+      },
+    ],
   };
 }
 

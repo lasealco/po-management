@@ -17,6 +17,8 @@ export type ApiHubMappingRule = {
   transform?: ApiHubMappingTransform;
 };
 
+export type ApiHubMappingIssueSeverity = "error" | "warn" | "info";
+
 export type ApiHubMappingIssue = {
   field: string;
   code:
@@ -25,8 +27,10 @@ export type ApiHubMappingIssue = {
     | "INVALID_DATE"
     | "UNSUPPORTED_VALUE"
     | "INVALID_BOOLEAN"
-    | "INVALID_CURRENCY";
+    | "INVALID_CURRENCY"
+    | "COERCION_NON_STRING";
   message: string;
+  severity: ApiHubMappingIssueSeverity;
 };
 
 export type ApiHubMappingRecordResult = {
@@ -98,6 +102,7 @@ export function validateApiHubMappingRulesInput(rows: unknown[]): ApiHubValidati
           field: `rules[${idx}].sourcePath`,
           code: "INVALID_SOURCE_PATH",
           message: pathMsg,
+          severity: "error",
         });
       }
     }
@@ -109,6 +114,7 @@ export function validateApiHubMappingRulesInput(rows: unknown[]): ApiHubValidati
           field: `rules[${idx}].targetField`,
           code: "DUPLICATE_TARGET",
           message: `targetField duplicates rules[${prev}].targetField.`,
+          severity: "error",
         });
       } else {
         targetFirstIndex.set(targetField, idx);
@@ -153,6 +159,7 @@ function parseBooleanDeterministic(value: unknown): { value: boolean } | { issue
       field: "",
       code: "INVALID_BOOLEAN",
       message: "Value cannot be converted to boolean (use true/false, 0/1, yes/no, y/n, on/off).",
+      severity: "error",
     },
   };
 }
@@ -171,6 +178,7 @@ function parseCurrencyDeterministic(value: unknown): { value: number } | { issue
         field: "",
         code: "INVALID_CURRENCY",
         message: "Numeric amount must be finite.",
+        severity: "error",
       },
     };
   }
@@ -180,6 +188,7 @@ function parseCurrencyDeterministic(value: unknown): { value: number } | { issue
         field: "",
         code: "INVALID_CURRENCY",
         message: "Currency transform expects a string or number.",
+        severity: "error",
       },
     };
   }
@@ -190,6 +199,7 @@ function parseCurrencyDeterministic(value: unknown): { value: number } | { issue
         field: "",
         code: "INVALID_CURRENCY",
         message: "Currency string is empty.",
+        severity: "error",
       },
     };
   }
@@ -201,6 +211,7 @@ function parseCurrencyDeterministic(value: unknown): { value: number } | { issue
         field: "",
         code: "INVALID_CURRENCY",
         message: "Value cannot be parsed as a US-style currency amount (commas = thousands, dot = decimal).",
+        severity: "error",
       },
     };
   }
@@ -235,12 +246,48 @@ function applyTransform(value: unknown, transform: ApiHubMappingTransform): { va
   switch (transform) {
     case "identity":
       return { value };
-    case "trim":
-      return { value: typeof value === "string" ? value.trim() : value };
-    case "upper":
-      return { value: typeof value === "string" ? value.toUpperCase() : value };
-    case "lower":
-      return { value: typeof value === "string" ? value.toLowerCase() : value };
+    case "trim": {
+      if (typeof value === "string") {
+        return { value: value.trim() };
+      }
+      return {
+        value,
+        issue: {
+          field: "",
+          code: "COERCION_NON_STRING",
+          message: "trim expected a string; value left unchanged.",
+          severity: "warn",
+        },
+      };
+    }
+    case "upper": {
+      if (typeof value === "string") {
+        return { value: value.toUpperCase() };
+      }
+      return {
+        value,
+        issue: {
+          field: "",
+          code: "COERCION_NON_STRING",
+          message: "upper expected a string; value left unchanged.",
+          severity: "warn",
+        },
+      };
+    }
+    case "lower": {
+      if (typeof value === "string") {
+        return { value: value.toLowerCase() };
+      }
+      return {
+        value,
+        issue: {
+          field: "",
+          code: "COERCION_NON_STRING",
+          message: "lower expected a string; value left unchanged.",
+          severity: "warn",
+        },
+      };
+    }
     case "number": {
       if (typeof value === "number") {
         return { value };
@@ -257,6 +304,7 @@ function applyTransform(value: unknown, transform: ApiHubMappingTransform): { va
           field: "",
           code: "INVALID_NUMBER",
           message: "Value cannot be converted to number.",
+          severity: "error",
         },
       };
     }
@@ -276,6 +324,7 @@ function applyTransform(value: unknown, transform: ApiHubMappingTransform): { va
           field: "",
           code: "INVALID_DATE",
           message: "Value cannot be converted to ISO date.",
+          severity: "error",
         },
       };
     }
@@ -300,6 +349,7 @@ function applyTransform(value: unknown, transform: ApiHubMappingTransform): { va
           field: "",
           code: "UNSUPPORTED_VALUE",
           message: "Unsupported transform.",
+          severity: "error",
         },
       };
   }
@@ -320,6 +370,7 @@ export function applyApiHubMappingRules(
         field: rule.targetField,
         code: "MISSING_REQUIRED",
         message: `Required source value missing at path '${rule.sourcePath}'.`,
+        severity: "error",
       });
       mapped[rule.targetField] = null;
       continue;
