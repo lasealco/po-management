@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 export default async function SupplyChainTwinExplorerPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ q?: string | string[] }>;
+  searchParams?: Promise<{ q?: string | string[]; snapshot?: string | string[] }>;
 }) {
   const access = await getViewerGrantSet();
   const { linkVisibility } = await resolveNavState(access);
@@ -44,6 +44,15 @@ export default async function SupplyChainTwinExplorerPage({
   const sp = searchParams ? await searchParams : {};
   const rawQ = sp.q;
   const q = typeof rawQ === "string" ? rawQ : Array.isArray(rawQ) ? rawQ[0] ?? "" : "";
+  const rawSnapshot = sp.snapshot;
+  const snapshotParam =
+    typeof rawSnapshot === "string"
+      ? rawSnapshot.trim()
+      : Array.isArray(rawSnapshot)
+        ? (rawSnapshot[0]?.trim() ?? "")
+        : "";
+  const graphSnapshotId =
+    snapshotParam.length > 0 && snapshotParam.length <= 128 ? snapshotParam : null;
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
@@ -96,7 +105,7 @@ export default async function SupplyChainTwinExplorerPage({
       <TwinExplorerEntitiesTable key={q} searchQ={q} />
 
       <section className="mt-6">
-        <TwinGraphStubPanel key={q} searchQ={q} />
+        <TwinGraphStubPanel key={`${q}::${graphSnapshotId ?? ""}`} searchQ={q} selectedSnapshotId={graphSnapshotId} />
       </section>
     </main>
   );
