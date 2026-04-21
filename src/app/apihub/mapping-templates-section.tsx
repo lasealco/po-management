@@ -7,6 +7,8 @@ import { readApiHubErrorMessageFromJsonBody } from "@/lib/apihub/api-error";
 import type { ApiHubMappingTemplateAuditTrailDto } from "@/lib/apihub/mapping-template-audit-dto";
 import type { ApiHubMappingTemplateDto } from "@/lib/apihub/mapping-template-dto";
 
+import { MappingRulesDiffPanel } from "./mapping-rules-diff-panel";
+
 type Props = {
   initialTemplates: ApiHubMappingTemplateDto[];
   canManage: boolean;
@@ -468,6 +470,8 @@ export function MappingTemplatesSection({ initialTemplates, canManage }: Props) 
           ) : null}
         </div>
       </div>
+
+      <MappingRulesDiffPanel templates={templates} />
     </section>
   );
 }
