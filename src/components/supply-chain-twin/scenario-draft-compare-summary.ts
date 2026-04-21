@@ -17,7 +17,79 @@ function rootShape(d: unknown): RootShape {
   return { kind: "object", keys: Object.keys(d as Record<string, unknown>).sort() };
 }
 
-/** Top-level object key buckets for compare v1 (no deep structural diff). */
+/** One row in the depth-2 path strip (Slice 72); paths use dot notation (`parent.child`). */
+export type DraftNestedPathEntryV1 = {
+  path: string;
+  kind: "diff" | "only_left" | "only_right";
+};
+
+/** Max nested path rows materialized before UI truncation (compare panel). */
+export const DRAFT_COMPARE_NESTED_PATH_MAX_NODES = 48;
+
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return v !== null && typeof v === "object" && !Array.isArray(v);
+}
+
+/**
+ * For top-level `changedKeys` where both sides are plain objects, lists depth-2 paths (parent.child) for
+ * differing or side-only subkeys. Non-object value changes are covered by `changedKeys` only (no extra rows).
+ */
+function collectNestedPathDiffsDepth2(
+  leftObj: Record<string, unknown>,
+  rightObj: Record<string, unknown>,
+  changedKeys: string[],
+  maxNodes: number,
+): { entries: DraftNestedPathEntryV1[]; overflow: number } {
+  const collected: DraftNestedPathEntryV1[] = [];
+  for (const parent of [...changedKeys].sort()) {
+    const lv = leftObj[parent];
+    const rv = rightObj[parent];
+    if (!isPlainObject(lv) || !isPlainObject(rv)) {
+      continue;
+    }
+    const lk = Object.keys(lv).sort();
+    const rk = Object.keys(rv).sort();
+    const setR = new Set(rk);
+    const setL = new Set(lk);
+    for (const sub of lk) {
+      if (!setR.has(sub)) {
+        collected.push({ path: `${parent}.${sub}`, kind: "only_left" });
+      }
+    }
+    for (const sub of rk) {
+      if (!setL.has(sub)) {
+        collected.push({ path: `${parent}.${sub}`, kind: "only_right" });
+      }
+    }
+    for (const sub of lk) {
+      if (!setR.has(sub)) {
+        continue;
+      }
+      let ls: string;
+      let rs: string;
+      try {
+        ls = JSON.stringify(lv[sub]);
+        rs = JSON.stringify(rv[sub]);
+      } catch {
+        collected.push({ path: `${parent}.${sub}`, kind: "diff" });
+        continue;
+      }
+      if (ls !== rs) {
+        collected.push({ path: `${parent}.${sub}`, kind: "diff" });
+      }
+    }
+  }
+  collected.sort((a, b) => a.path.localeCompare(b.path));
+  if (collected.length <= maxNodes) {
+    return { entries: collected, overflow: 0 };
+  }
+  return {
+    entries: collected.slice(0, maxNodes),
+    overflow: collected.length - maxNodes,
+  };
+}
+
+/** Top-level object key buckets for compare v1, plus capped depth-2 path hints (Slice 72). */
 export type DraftTopLevelKeyDiffV1 =
   | {
       kind: "objects";
@@ -29,6 +101,9 @@ export type DraftTopLevelKeyDiffV1 =
       sameKeys: string[];
       /** Shared keys whose serialized values differ. */
       changedKeys: string[];
+      /** Depth ≤ 2 paths under changed object-valued keys (capped; see overflow). */
+      nestedPathDiffs: DraftNestedPathEntryV1[];
+      nestedPathDiffsOverflow: number;
     }
   | { kind: "non_object"; narrative: string };
 
@@ -67,7 +142,21 @@ export function computeDraftTopLevelKeyDiffV1(leftDraft: unknown, rightDraft: un
       changedKeys.push(k);
     }
   }
-  return { kind: "objects", onlyInLeft, onlyInRight, sameKeys, changedKeys };
+  const { entries: nestedPathDiffs, overflow: nestedPathDiffsOverflow } = collectNestedPathDiffsDepth2(
+    leftObj,
+    rightObj,
+    changedKeys,
+    DRAFT_COMPARE_NESTED_PATH_MAX_NODES,
+  );
+  return {
+    kind: "objects",
+    onlyInLeft,
+    onlyInRight,
+    sameKeys,
+    changedKeys,
+    nestedPathDiffs,
+    nestedPathDiffsOverflow,
+  };
 }
 
 /** Human-readable comparison of two `draft` JSON roots (no deep diff). */

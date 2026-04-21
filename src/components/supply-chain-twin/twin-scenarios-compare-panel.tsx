@@ -191,9 +191,10 @@ export function TwinScenariosComparePanel(props: { left: TwinScenarioDraftQueryP
         <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
           <h2 className="text-sm font-semibold text-zinc-900">Diff (read-only)</h2>
           <p className="mt-2 max-w-3xl text-sm text-zinc-600">
-            Same vs different story at the{" "}
-            <span className="font-medium text-zinc-800">top level</span> of each draft object. Nested structures are
-            compared only per-key via JSON snapshot (no graph solver).
+            Top-level key buckets plus a capped{" "}
+            <span className="font-medium text-zinc-800">depth-2 path</span> strip for object-valued changed keys (dot
+            paths such as <code className="rounded bg-zinc-100 px-1 py-0.5 text-[11px]">shocks.delay</code>). No graph
+            solver or heavy diff library.
           </p>
           <div className="mt-4">
             <TwinScenarioDraftKeyDiffSummary diff={diffSummary.diff} deepLine={diffSummary.deepLine} />
