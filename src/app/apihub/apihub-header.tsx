@@ -15,6 +15,9 @@ export function ApihubHeader() {
           <Link href="/apihub#ingestion-ops" className="font-medium text-zinc-600 hover:text-zinc-900">
             Ingestion runs
           </Link>
+          <Link href="/apihub#mapping-templates" className="font-medium text-zinc-600 hover:text-zinc-900">
+            Mapping templates
+          </Link>
           <Link href="/apihub#connectors" className="font-medium text-zinc-600 hover:text-zinc-900">
             Connectors
           </Link>

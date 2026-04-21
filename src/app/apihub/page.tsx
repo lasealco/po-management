@@ -5,11 +5,15 @@ import { listApiHubConnectors } from "@/lib/apihub/connectors-repo";
 import type { ApiHubIngestionRunDto } from "@/lib/apihub/ingestion-run-dto";
 import { toApiHubIngestionRunDto } from "@/lib/apihub/ingestion-run-dto";
 import { getApiHubIngestionRunOpsSummary, listApiHubIngestionRuns } from "@/lib/apihub/ingestion-runs-repo";
+import type { ApiHubMappingTemplateDto } from "@/lib/apihub/mapping-template-dto";
+import { toApiHubMappingTemplateDto } from "@/lib/apihub/mapping-template-dto";
+import { listApiHubMappingTemplates } from "@/lib/apihub/mapping-templates-repo";
 import { getViewerGrantSet } from "@/lib/authz";
 
 import { ConnectorsSection } from "./connectors-section";
 import { DemoSyncShowcase } from "./demo-sync-showcase";
 import { IngestionOpsPanel, type IngestionOpsSummaryPayload } from "./ingestion-ops-panel";
+import { MappingTemplatesSection } from "./mapping-templates-section";
 
 export const dynamic = "force-dynamic";
 
@@ -55,8 +59,9 @@ export default async function ApihubHomePage() {
 
   let ingestionInitialSummary: IngestionOpsSummaryPayload | null = null;
   let ingestionInitialRuns: ApiHubIngestionRunDto[] = [];
+  let initialMappingTemplates: ApiHubMappingTemplateDto[] = [];
   if (access?.user && access.tenant) {
-    const [ops, listed] = await Promise.all([
+    const [ops, listed, mappingRows] = await Promise.all([
       getApiHubIngestionRunOpsSummary({ tenantId: access.tenant.id }),
       listApiHubIngestionRuns({
         tenantId: access.tenant.id,
@@ -67,6 +72,7 @@ export default async function ApihubHomePage() {
         triggerKind: null,
         attemptRange: null,
       }),
+      listApiHubMappingTemplates(access.tenant.id, 50),
     ]);
     ingestionInitialSummary = {
       totals: ops.totals,
@@ -76,6 +82,7 @@ export default async function ApihubHomePage() {
       asOf: ops.asOf.toISOString(),
     };
     ingestionInitialRuns = listed.items.map(toApiHubIngestionRunDto);
+    initialMappingTemplates = mappingRows.map(toApiHubMappingTemplateDto);
   }
 
   return (
@@ -146,6 +153,7 @@ export default async function ApihubHomePage() {
         initialSummary={ingestionInitialSummary}
         initialRuns={ingestionInitialRuns}
       />
+      <MappingTemplatesSection initialTemplates={initialMappingTemplates} canManage={canCreate} />
       <ConnectorsSection initialConnectors={initialConnectors} canCreate={canCreate} />
     </main>
   );
