@@ -4,8 +4,9 @@
  * Run: `USE_DOTENV_LOCAL=1 npm run db:seed:supply-chain-twin-demo`
  *
  * Prerequisites:
- * - DATABASE_URL
- * - Migrations applied (Twin tables present)
+ * - DATABASE_URL (with `USE_DOTENV_LOCAL=1`, same merge as `npm run db:seed` — includes `.env.local` for Neon)
+ * - Migrations applied on **that same** database. If you use Neon in `.env.local` but keep a local `DATABASE_URL`
+ *   in `.env`, run `npm run db:migrate:local` (not plain `db:migrate`) so Prisma targets Neon before this seed.
  * - Main `npm run db:seed` at least once (tenant `demo-company`)
  *
  * After run, open (as a demo user with Twin access):
