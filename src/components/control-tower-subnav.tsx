@@ -6,27 +6,31 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { REPORTING_HUB_CONTROL_TOWER_HREF } from "@/lib/reporting-hub-paths";
 import { subNavActiveClass } from "@/lib/subnav-active-class";
 
-type SubNavItem = { href: string; label: string };
+type SubNavItem = { href: string; label: string; ariaLabel?: string };
 
 const primaryBase: SubNavItem[] = [
   { href: "/control-tower", label: "Dashboard" },
-  { href: "/control-tower/dashboard", label: "My dashboard" },
+  { href: "/control-tower/dashboard", label: "My Dashboard" },
   { href: "/control-tower/workbench", label: "Workbench" },
-  { href: "/control-tower/shipments/new", label: "New booking" },
+  { href: "/control-tower/shipments/new", label: "Booking", ariaLabel: "New booking" },
 ];
 
 const secondaryBase: SubNavItem[] = [
-  { href: "/control-tower/command-center", label: "Command center" },
-  { href: "/control-tower/ops", label: "Ops console" },
+  { href: "/control-tower/command-center", label: "Command", ariaLabel: "Command center" },
+  { href: "/control-tower/ops", label: "Operation", ariaLabel: "Ops console" },
   { href: "/control-tower/reports", label: "Reports" },
   { href: REPORTING_HUB_CONTROL_TOWER_HREF, label: "Reporting hub" },
-  { href: "/control-tower/search", label: "Search & assist" },
+  { href: "/control-tower/search", label: "Search", ariaLabel: "Search and assist" },
 ];
 
-const digestItem = { href: "/control-tower/digest", label: "Digest" } as const;
+const digestItem: SubNavItem = { href: "/control-tower/digest", label: "Digest" };
 
 /** Cross-link: SKU → PO lines, in-transit map, warehouse stock (same grants as product trace page). */
-const productTraceItem = { href: "/product-trace", label: "Product trace" } as const;
+const productTraceItem = {
+  href: "/product-trace",
+  label: "Product Trace",
+  ariaLabel: "Product trace",
+} as const;
 
 function chipClasses(active: boolean) {
   return `rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors sm:px-3 ${
@@ -77,10 +81,16 @@ export function ControlTowerSubNav({ includeDigestNav = false }: { includeDigest
             Control Tower
           </span>
 
-          {primaryItems.map(({ href, label }) => {
+          {primaryItems.map(({ href, label, ariaLabel }) => {
             const active = isItemActive(href);
             return (
-              <Link key={href} href={href} className={`shrink-0 ${chipClasses(active)}`}>
+              <Link
+                key={href}
+                href={href}
+                aria-label={ariaLabel ?? label}
+                title={ariaLabel ?? label}
+                className={`shrink-0 ${chipClasses(active)}`}
+              >
                 {label}
               </Link>
             );
@@ -88,6 +98,8 @@ export function ControlTowerSubNav({ includeDigestNav = false }: { includeDigest
 
           <Link
             href={productTraceItem.href}
+            aria-label={productTraceItem.ariaLabel}
+            title={productTraceItem.ariaLabel}
             className={`shrink-0 ${chipClasses(productTraceActive)}`}
           >
             {productTraceItem.label}
@@ -98,11 +110,17 @@ export function ControlTowerSubNav({ includeDigestNav = false }: { includeDigest
             aria-hidden
           />
 
-          {secondaryItems.map(({ href, label }, index) => {
+          {secondaryItems.map(({ href, label, ariaLabel }, index) => {
             const active = isItemActive(href);
             const groupStart = index === 0 ? "ml-1 border-l border-zinc-200 pl-2 sm:ml-0 sm:border-l-0 sm:pl-0" : "";
             return (
-              <Link key={href} href={href} className={`shrink-0 ${groupStart} ${chipClasses(active)}`}>
+              <Link
+                key={href}
+                href={href}
+                aria-label={ariaLabel ?? label}
+                title={ariaLabel ?? label}
+                className={`shrink-0 ${groupStart} ${chipClasses(active)}`}
+              >
                 {label}
               </Link>
             );
