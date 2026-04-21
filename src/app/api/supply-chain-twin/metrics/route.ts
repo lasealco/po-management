@@ -9,8 +9,8 @@ const ROUTE = "GET /api/supply-chain-twin/metrics";
 
 /**
  * Tenant-scoped catalog **counts** for the Supply Chain Twin preview (entities, edges, ingest events, scenario drafts,
- * risk signals). Each value comes from an indexed `COUNT` — no payload reads, no unbounded scans (see
- * `getTwinCatalogMetricsForTenant` JSDoc).
+ * risk signals), plus `generatedAt` (ISO-8601) for UI freshness labels. Each count comes from an indexed `COUNT` — no
+ * payload reads, no unbounded scans (see `getTwinCatalogMetricsForTenant` JSDoc).
  */
 export async function GET(request: Request) {
   const requestId = resolveSctwinRequestId(request);
@@ -21,7 +21,8 @@ export async function GET(request: Request) {
     }
 
     const counts = await getTwinCatalogMetricsForTenant(gate.access.tenant.id);
-    return twinApiJson(twinCatalogMetricsResponseSchema.parse(counts), undefined, requestId);
+    const body = { ...counts, generatedAt: new Date().toISOString() };
+    return twinApiJson(twinCatalogMetricsResponseSchema.parse(body), undefined, requestId);
   } catch (caught) {
     const name = caught instanceof Error ? caught.name : "non_error_throw";
     logSctwinApiError({

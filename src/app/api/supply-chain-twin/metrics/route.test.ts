@@ -84,13 +84,16 @@ describe("GET /api/supply-chain-twin/metrics", () => {
     const response = await GET(new Request("http://localhost/api/supply-chain-twin/metrics"));
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({
+    const json = (await response.json()) as Record<string, unknown>;
+    expect(json).toMatchObject({
       entities: 5,
       edges: 2,
       events: 100,
       scenarioDrafts: 3,
       riskSignals: 1,
     });
+    expect(typeof json.generatedAt).toBe("string");
+    expect(Number.isNaN(Date.parse(String(json.generatedAt)))).toBe(false);
     expect(getTwinCatalogMetricsForTenantMock).toHaveBeenCalledWith("t1");
     expect(response.headers.get("x-request-id")).toMatch(/^[0-9a-f-]{36}$/i);
   });

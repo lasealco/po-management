@@ -101,11 +101,15 @@ export const twinRiskSignalsListResponseSchema = z.object({
   nextCursor: z.string().min(1).optional(),
 });
 
-/** Success body for `GET /api/supply-chain-twin/metrics` — counts only, tenant-scoped. */
+/** Success body for `GET /api/supply-chain-twin/metrics` — counts only, tenant-scoped, plus snapshot timestamp (Slice 61). */
 export const twinCatalogMetricsResponseSchema = z.object({
   entities: z.number().int().min(0),
   edges: z.number().int().min(0),
   events: z.number().int().min(0),
   scenarioDrafts: z.number().int().min(0),
   riskSignals: z.number().int().min(0),
+  /** ISO-8601 instant when this payload was assembled (server clock). */
+  generatedAt: z.string().datetime(),
 });
+
+export type TwinCatalogMetricsResponse = z.infer<typeof twinCatalogMetricsResponseSchema>;

@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 
-/** Integer counts only — no row payloads. Keys align with `GET /api/supply-chain-twin/metrics` JSON. */
+/** Integer counts only — no row payloads. The metrics route adds `generatedAt` (see `twinCatalogMetricsResponseSchema`). */
 export type TwinCatalogMetricsCounts = {
   entities: number;
   edges: number;
