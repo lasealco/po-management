@@ -1,5 +1,7 @@
 import { getActorUserId } from "@/lib/authz";
 import {
+  apiHubDemoActorMissing,
+  apiHubDemoTenantMissing,
   apiHubError,
   apiHubJson,
   apiHubValidationError,
@@ -84,21 +86,11 @@ export async function POST(request: Request, context: { params: Promise<{ jobId:
   const requestId = resolveApiHubRequestId(request);
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return apiHubError(
-      404,
-      "TENANT_NOT_FOUND",
-      "Demo tenant not found. Run `npm run db:seed` to create starter data.",
-      requestId,
-    );
+    return apiHubDemoTenantMissing(requestId);
   }
   const actorId = await getActorUserId();
   if (!actorId) {
-    return apiHubError(
-      403,
-      "ACTOR_NOT_FOUND",
-      "No active demo user for this session. Open Settings → Demo session (/settings/demo) to choose who you are acting as.",
-      requestId,
-    );
+    return apiHubDemoActorMissing(requestId);
   }
 
   const { jobId } = await context.params;

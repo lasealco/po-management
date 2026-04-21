@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { apiHubValidationError } from "./api-error";
+import { apiHubValidationError, readApiHubErrorMessageFromJsonBody } from "./api-error";
 import { APIHUB_REQUEST_ID_HEADER } from "./request-id";
 
 describe("apiHubValidationError", () => {
@@ -25,5 +25,24 @@ describe("apiHubValidationError", () => {
     expect(body.error.details.summary.byCode.INVALID_ENUM).toBe(2);
     expect(body.error.details.summary.byCode.REQUIRED).toBe(1);
     expect(response.headers.get(APIHUB_REQUEST_ID_HEADER)).toBe("req-test-001");
+  });
+});
+
+describe("readApiHubErrorMessageFromJsonBody", () => {
+  it("reads structured error message", () => {
+    expect(
+      readApiHubErrorMessageFromJsonBody(
+        { ok: false, error: { code: "X", message: "hello" } },
+        "fallback",
+      ),
+    ).toBe("hello");
+  });
+
+  it("reads legacy string error", () => {
+    expect(readApiHubErrorMessageFromJsonBody({ error: "legacy" }, "fallback")).toBe("legacy");
+  });
+
+  it("uses fallback when missing", () => {
+    expect(readApiHubErrorMessageFromJsonBody({}, "fallback")).toBe("fallback");
   });
 });

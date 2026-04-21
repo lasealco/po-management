@@ -19,6 +19,36 @@ vi.mock("@/lib/apihub/ingestion-run-dto", () => ({ toApiHubIngestionRunDto: toAp
 describe("GET /api/apihub/ingestion-jobs", () => {
   beforeEach(() => vi.clearAllMocks());
 
+  it("returns 400 for invalid limit query", async () => {
+    getDemoTenantMock.mockResolvedValue({ id: "tenant-1" });
+    getActorUserIdMock.mockResolvedValue("user-1");
+    const { GET } = await import("./route");
+    const response = await GET(
+      new Request("http://localhost/api/apihub/ingestion-jobs?limit=not-a-number", {
+        headers: { [APIHUB_REQUEST_ID_HEADER]: "ingest-limit-bad-1" },
+      }),
+    );
+    expect(response.status).toBe(400);
+    expect(response.headers.get(APIHUB_REQUEST_ID_HEADER)).toBe("ingest-limit-bad-1");
+    expect(await response.json()).toEqual({
+      ok: false,
+      error: {
+        code: "VALIDATION_ERROR",
+        message: "Run query validation failed.",
+        details: {
+          issues: [
+            {
+              field: "limit",
+              code: "INVALID_NUMBER",
+              message: "limit must be a finite number between 1 and 100.",
+            },
+          ],
+          summary: { totalErrors: 1, byCode: { INVALID_NUMBER: 1 } },
+        },
+      },
+    });
+  });
+
   it("returns 400 for invalid status filter", async () => {
     getDemoTenantMock.mockResolvedValue({ id: "tenant-1" });
     getActorUserIdMock.mockResolvedValue("user-1");

@@ -4,45 +4,45 @@ import {
   APIHUB_LIST_LIMIT_DEFAULT,
   APIHUB_LIST_LIMIT_MAX,
   parseApiHubListLimitFromUrl,
-  parseApiHubListLimitParam,
+  parseApiHubListLimitQueryInput,
 } from "./query-limit";
 
-describe("parseApiHubListLimitParam", () => {
+describe("parseApiHubListLimitQueryInput", () => {
   it("uses default when missing or blank", () => {
-    expect(parseApiHubListLimitParam(null)).toBe(APIHUB_LIST_LIMIT_DEFAULT);
-    expect(parseApiHubListLimitParam(undefined)).toBe(APIHUB_LIST_LIMIT_DEFAULT);
-    expect(parseApiHubListLimitParam("")).toBe(APIHUB_LIST_LIMIT_DEFAULT);
-    expect(parseApiHubListLimitParam("   ")).toBe(APIHUB_LIST_LIMIT_DEFAULT);
+    expect(parseApiHubListLimitQueryInput(null)).toEqual({ ok: true, limit: APIHUB_LIST_LIMIT_DEFAULT });
+    expect(parseApiHubListLimitQueryInput("")).toEqual({ ok: true, limit: APIHUB_LIST_LIMIT_DEFAULT });
+    expect(parseApiHubListLimitQueryInput("   ")).toEqual({ ok: true, limit: APIHUB_LIST_LIMIT_DEFAULT });
   });
 
-  it("clamps to max", () => {
-    expect(parseApiHubListLimitParam("500")).toBe(APIHUB_LIST_LIMIT_MAX);
-    expect(parseApiHubListLimitParam("100")).toBe(100);
+  it("clamps finite values to max", () => {
+    expect(parseApiHubListLimitQueryInput("500")).toEqual({ ok: true, limit: APIHUB_LIST_LIMIT_MAX });
+    expect(parseApiHubListLimitQueryInput("100")).toEqual({ ok: true, limit: 100 });
   });
 
-  it("clamps to min", () => {
-    expect(parseApiHubListLimitParam("0")).toBe(1);
-    expect(parseApiHubListLimitParam("-5")).toBe(1);
+  it("clamps finite values to min", () => {
+    expect(parseApiHubListLimitQueryInput("0")).toEqual({ ok: true, limit: 1 });
+    expect(parseApiHubListLimitQueryInput("-5")).toEqual({ ok: true, limit: 1 });
   });
 
   it("truncates decimals", () => {
-    expect(parseApiHubListLimitParam("5.9")).toBe(5);
+    expect(parseApiHubListLimitQueryInput("5.9")).toEqual({ ok: true, limit: 5 });
   });
 
-  it("falls back to default for non-finite numbers", () => {
-    expect(parseApiHubListLimitParam("NaN")).toBe(APIHUB_LIST_LIMIT_DEFAULT);
-    expect(parseApiHubListLimitParam("Infinity")).toBe(APIHUB_LIST_LIMIT_DEFAULT);
+  it("rejects non-finite numbers when query value is present", () => {
+    expect(parseApiHubListLimitQueryInput("NaN")).toEqual({ ok: false, raw: "NaN" });
+    expect(parseApiHubListLimitQueryInput("Infinity")).toEqual({ ok: false, raw: "Infinity" });
+    expect(parseApiHubListLimitQueryInput("abc")).toEqual({ ok: false, raw: "abc" });
   });
 });
 
 describe("parseApiHubListLimitFromUrl", () => {
   it("reads limit query", () => {
     const url = new URL("http://localhost/api?limit=7");
-    expect(parseApiHubListLimitFromUrl(url)).toBe(7);
+    expect(parseApiHubListLimitFromUrl(url)).toEqual({ ok: true, limit: 7 });
   });
 
   it("supports custom param name", () => {
     const url = new URL("http://localhost/api?pageSize=12");
-    expect(parseApiHubListLimitFromUrl(url, "pageSize")).toBe(12);
+    expect(parseApiHubListLimitFromUrl(url, "pageSize")).toEqual({ ok: true, limit: 12 });
   });
 });

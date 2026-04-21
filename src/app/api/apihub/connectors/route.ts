@@ -1,4 +1,4 @@
-import { apiHubJson } from "@/lib/apihub/api-error";
+import { apiHubDemoActorMissing, apiHubDemoTenantMissing, apiHubJson } from "@/lib/apihub/api-error";
 import { toApiHubConnectorDto } from "@/lib/apihub/connector-dto";
 import {
   createStubApiHubConnector,
@@ -15,26 +15,12 @@ export async function GET(request: Request) {
   const requestId = resolveApiHubRequestId(request);
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return apiHubJson(
-      {
-        error:
-          "Demo tenant not found. Run `npm run db:seed` to create starter data.",
-      },
-      requestId,
-      404,
-    );
+    return apiHubDemoTenantMissing(requestId);
   }
 
   const actorId = await getActorUserId();
   if (!actorId) {
-    return apiHubJson(
-      {
-        error:
-          "No active demo user for this session. Open Settings → Demo session (/settings/demo) to choose who you are acting as.",
-      },
-      requestId,
-      403,
-    );
+    return apiHubDemoActorMissing(requestId);
   }
 
   const rows = await listApiHubConnectors(tenant.id);
@@ -55,26 +41,12 @@ export async function POST(request: Request) {
   const requestId = resolveApiHubRequestId(request);
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return apiHubJson(
-      {
-        error:
-          "Demo tenant not found. Run `npm run db:seed` to create starter data.",
-      },
-      requestId,
-      404,
-    );
+    return apiHubDemoTenantMissing(requestId);
   }
 
   const actorId = await getActorUserId();
   if (!actorId) {
-    return apiHubJson(
-      {
-        error:
-          "No active demo user for this session. Open Settings → Demo session (/settings/demo) to choose who you are acting as.",
-      },
-      requestId,
-      403,
-    );
+    return apiHubDemoActorMissing(requestId);
   }
 
   let body: PostBody = {};

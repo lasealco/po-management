@@ -1,4 +1,9 @@
-import { apiHubError, apiHubJson } from "@/lib/apihub/api-error";
+import {
+  apiHubDemoActorMissing,
+  apiHubDemoTenantMissing,
+  apiHubError,
+  apiHubJson,
+} from "@/lib/apihub/api-error";
 import { toApiHubIngestionRunDto } from "@/lib/apihub/ingestion-run-dto";
 import { retryApiHubIngestionRun } from "@/lib/apihub/ingestion-runs-repo";
 import { resolveApiHubRequestId } from "@/lib/apihub/request-id";
@@ -15,23 +20,12 @@ export async function POST(request: Request, context: { params: Promise<{ jobId:
   const requestId = resolveApiHubRequestId(request);
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return apiHubJson(
-      { error: "Demo tenant not found. Run `npm run db:seed` to create starter data." },
-      requestId,
-      404,
-    );
+    return apiHubDemoTenantMissing(requestId);
   }
 
   const actorId = await getActorUserId();
   if (!actorId) {
-    return apiHubJson(
-      {
-        error:
-          "No active demo user for this session. Open Settings → Demo session (/settings/demo) to choose who you are acting as.",
-      },
-      requestId,
-      403,
-    );
+    return apiHubDemoActorMissing(requestId);
   }
 
   const { jobId } = await context.params;
@@ -57,7 +51,7 @@ export async function POST(request: Request, context: { params: Promise<{ jobId:
       idempotencyKey,
     });
     if (!retried) {
-      return apiHubJson({ error: "Run not found." }, requestId, 404);
+      return apiHubError(404, "RUN_NOT_FOUND", "Run not found.", requestId);
     }
     return apiHubJson({ run: toApiHubIngestionRunDto(retried) }, requestId, 201);
   } catch (error) {

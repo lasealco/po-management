@@ -65,3 +65,41 @@ export function apiHubValidationError(
   };
   return NextResponse.json(body, { status, headers: withRequestIdHeaders(requestId) });
 }
+
+/** Standard demo-session / seed gate for API Hub routes (structured error). */
+export function apiHubDemoTenantMissing(requestId: string) {
+  return apiHubError(
+    404,
+    "TENANT_NOT_FOUND",
+    "Demo tenant not found. Run `npm run db:seed` to create starter data.",
+    requestId,
+  );
+}
+
+/** Standard demo actor gate for API Hub routes (structured error). */
+export function apiHubDemoActorMissing(requestId: string) {
+  return apiHubError(
+    403,
+    "ACTOR_NOT_FOUND",
+    "No active demo user for this session. Open Settings → Demo session (/settings/demo) to choose who you are acting as.",
+    requestId,
+  );
+}
+
+/** Parse API Hub JSON error bodies from fetch (legacy `{ error }` or structured `{ ok:false, error:{ message } }`). */
+export function readApiHubErrorMessageFromJsonBody(data: unknown, fallback: string): string {
+  if (!data || typeof data !== "object") {
+    return fallback;
+  }
+  const o = data as Record<string, unknown>;
+  if (typeof o.error === "string") {
+    return o.error;
+  }
+  if (o.ok === false && o.error && typeof o.error === "object") {
+    const inner = o.error as Record<string, unknown>;
+    if (typeof inner.message === "string") {
+      return inner.message;
+    }
+  }
+  return fallback;
+}

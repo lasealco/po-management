@@ -1,8 +1,18 @@
-import { apiHubJson, apiHubValidationError } from "@/lib/apihub/api-error";
+import {
+  apiHubDemoActorMissing,
+  apiHubDemoTenantMissing,
+  apiHubError,
+  apiHubJson,
+  apiHubValidationError,
+} from "@/lib/apihub/api-error";
 import { APIHUB_INGESTION_JOB_STATUSES } from "@/lib/apihub/constants";
 import { toApiHubIngestionRunDto } from "@/lib/apihub/ingestion-run-dto";
 import { createApiHubIngestionRun, listApiHubIngestionRuns } from "@/lib/apihub/ingestion-runs-repo";
-import { parseApiHubListLimitFromUrl } from "@/lib/apihub/query-limit";
+import {
+  APIHUB_LIST_LIMIT_MAX,
+  APIHUB_LIST_LIMIT_MIN,
+  parseApiHubListLimitFromUrl,
+} from "@/lib/apihub/query-limit";
 import { resolveApiHubRequestId } from "@/lib/apihub/request-id";
 import { isValidRunStatus } from "@/lib/apihub/run-lifecycle";
 import { getActorUserId } from "@/lib/authz";
@@ -19,23 +29,12 @@ export async function GET(request: Request) {
   const requestId = resolveApiHubRequestId(request);
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return apiHubJson(
-      { error: "Demo tenant not found. Run `npm run db:seed` to create starter data." },
-      requestId,
-      404,
-    );
+    return apiHubDemoTenantMissing(requestId);
   }
 
   const actorId = await getActorUserId();
   if (!actorId) {
-    return apiHubJson(
-      {
-        error:
-          "No active demo user for this session. Open Settings → Demo session (/settings/demo) to choose who you are acting as.",
-      },
-      requestId,
-      403,
-    );
+    return apiHubDemoActorMissing(requestId);
   }
 
   const url = new URL(request.url);
@@ -50,11 +49,21 @@ export async function GET(request: Request) {
     ], requestId);
   }
 
-  const limit = parseApiHubListLimitFromUrl(url);
+  const limitParsed = parseApiHubListLimitFromUrl(url);
+  if (!limitParsed.ok) {
+    return apiHubValidationError(400, "VALIDATION_ERROR", "Run query validation failed.", [
+      {
+        field: "limit",
+        code: "INVALID_NUMBER",
+        message: `limit must be a finite number between ${APIHUB_LIST_LIMIT_MIN} and ${APIHUB_LIST_LIMIT_MAX}.`,
+      },
+    ], requestId);
+  }
+
   const rows = await listApiHubIngestionRuns({
     tenantId: tenant.id,
     status: rawStatus.length > 0 ? rawStatus : null,
-    limit,
+    limit: limitParsed.limit,
   });
   return apiHubJson({ runs: rows.map(toApiHubIngestionRunDto) }, requestId);
 }
@@ -63,23 +72,12 @@ export async function POST(request: Request) {
   const requestId = resolveApiHubRequestId(request);
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return apiHubJson(
-      { error: "Demo tenant not found. Run `npm run db:seed` to create starter data." },
-      requestId,
-      404,
-    );
+    return apiHubDemoTenantMissing(requestId);
   }
 
   const actorId = await getActorUserId();
   if (!actorId) {
-    return apiHubJson(
-      {
-        error:
-          "No active demo user for this session. Open Settings → Demo session (/settings/demo) to choose who you are acting as.",
-      },
-      requestId,
-      403,
-    );
+    return apiHubDemoActorMissing(requestId);
   }
 
   let body: PostBody = {};
@@ -112,7 +110,7 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     if (error instanceof Error && error.message === "connector_not_found") {
-      return apiHubJson({ error: "Connector not found for tenant." }, requestId, 404);
+      return apiHubError(404, "CONNECTOR_NOT_FOUND", "Connector not found for tenant.", requestId);
     }
     throw error;
   }

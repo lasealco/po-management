@@ -1,4 +1,10 @@
-import { apiHubJson } from "@/lib/apihub/api-error";
+import {
+  apiHubDemoActorMissing,
+  apiHubDemoTenantMissing,
+  apiHubError,
+  apiHubJson,
+  apiHubValidationError,
+} from "@/lib/apihub/api-error";
 import { getActorUserId } from "@/lib/authz";
 import { APIHUB_CONNECTOR_STATUSES } from "@/lib/apihub/constants";
 import { toApiHubConnectorDto } from "@/lib/apihub/connector-dto";
@@ -21,31 +27,19 @@ export async function PATCH(
   const requestId = resolveApiHubRequestId(request);
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return apiHubJson(
-      {
-        error:
-          "Demo tenant not found. Run `npm run db:seed` to create starter data.",
-      },
-      requestId,
-      404,
-    );
+    return apiHubDemoTenantMissing(requestId);
   }
 
   const actorId = await getActorUserId();
   if (!actorId) {
-    return apiHubJson(
-      {
-        error:
-          "No active demo user for this session. Open Settings -> Demo session (/settings/demo) to choose who you are acting as.",
-      },
-      requestId,
-      403,
-    );
+    return apiHubDemoActorMissing(requestId);
   }
 
   const { connectorId } = await context.params;
   if (!connectorId) {
-    return apiHubJson({ error: "Connector id is required." }, requestId, 400);
+    return apiHubValidationError(400, "VALIDATION_ERROR", "Connector path validation failed.", [
+      { field: "connectorId", code: "REQUIRED", message: "Connector id is required." },
+    ], requestId);
   }
 
   let body: PatchBody = {};
@@ -57,13 +51,13 @@ export async function PATCH(
 
   const rawStatus = typeof body.status === "string" ? body.status.trim().toLowerCase() : "";
   if (!APIHUB_CONNECTOR_STATUSES.includes(rawStatus as (typeof APIHUB_CONNECTOR_STATUSES)[number])) {
-    return apiHubJson(
+    return apiHubValidationError(400, "VALIDATION_ERROR", "Connector lifecycle validation failed.", [
       {
-        error: `status must be one of: ${APIHUB_CONNECTOR_STATUSES.join(", ")}.`,
+        field: "status",
+        code: "INVALID_ENUM",
+        message: `status must be one of: ${APIHUB_CONNECTOR_STATUSES.join(", ")}.`,
       },
-      requestId,
-      400,
-    );
+    ], requestId);
   }
 
   const markSyncedNow = body.markSyncedNow === true;
@@ -79,7 +73,7 @@ export async function PATCH(
   });
 
   if (!updated) {
-    return apiHubJson({ error: "Connector not found." }, requestId, 404);
+    return apiHubError(404, "CONNECTOR_NOT_FOUND", "Connector not found.", requestId);
   }
 
   return apiHubJson({ connector: toApiHubConnectorDto(updated) }, requestId);

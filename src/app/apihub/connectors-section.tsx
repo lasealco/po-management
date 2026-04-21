@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { readApiHubErrorMessageFromJsonBody } from "@/lib/apihub/api-error";
 import type { ApiHubConnectorDto } from "@/lib/apihub/connector-dto";
 
 type Props = {
@@ -92,9 +93,9 @@ export function ConnectorsSection({ initialConnectors, canCreate }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(typeof data.error === "string" ? data.error : "Could not create connector.");
+        setError(readApiHubErrorMessageFromJsonBody(data, "Could not create connector."));
         return;
       }
       router.refresh();
@@ -112,9 +113,9 @@ export function ConnectorsSection({ initialConnectors, canCreate }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status, markSyncedNow }),
       });
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(typeof data.error === "string" ? data.error : "Could not update connector.");
+        setError(readApiHubErrorMessageFromJsonBody(data, "Could not update connector."));
         return;
       }
       router.refresh();

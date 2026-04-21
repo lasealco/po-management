@@ -1,4 +1,10 @@
-import { apiHubError, apiHubJson, apiHubValidationError } from "@/lib/apihub/api-error";
+import {
+  apiHubDemoActorMissing,
+  apiHubDemoTenantMissing,
+  apiHubError,
+  apiHubJson,
+  apiHubValidationError,
+} from "@/lib/apihub/api-error";
 import { APIHUB_INGESTION_JOB_STATUSES } from "@/lib/apihub/constants";
 import { toApiHubIngestionRunDto } from "@/lib/apihub/ingestion-run-dto";
 import { getApiHubIngestionRunById, transitionApiHubIngestionRun } from "@/lib/apihub/ingestion-runs-repo";
@@ -20,27 +26,16 @@ export async function GET(request: Request, context: { params: Promise<{ jobId: 
   const requestId = resolveApiHubRequestId(request);
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return apiHubJson(
-      { error: "Demo tenant not found. Run `npm run db:seed` to create starter data." },
-      requestId,
-      404,
-    );
+    return apiHubDemoTenantMissing(requestId);
   }
   const actorId = await getActorUserId();
   if (!actorId) {
-    return apiHubJson(
-      {
-        error:
-          "No active demo user for this session. Open Settings → Demo session (/settings/demo) to choose who you are acting as.",
-      },
-      requestId,
-      403,
-    );
+    return apiHubDemoActorMissing(requestId);
   }
   const { jobId } = await context.params;
   const run = await getApiHubIngestionRunById({ tenantId: tenant.id, runId: jobId });
   if (!run) {
-    return apiHubJson({ error: "Run not found." }, requestId, 404);
+    return apiHubError(404, "RUN_NOT_FOUND", "Run not found.", requestId);
   }
   return apiHubJson({ run: toApiHubIngestionRunDto(run) }, requestId);
 }
@@ -49,22 +44,11 @@ export async function PATCH(request: Request, context: { params: Promise<{ jobId
   const requestId = resolveApiHubRequestId(request);
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return apiHubJson(
-      { error: "Demo tenant not found. Run `npm run db:seed` to create starter data." },
-      requestId,
-      404,
-    );
+    return apiHubDemoTenantMissing(requestId);
   }
   const actorId = await getActorUserId();
   if (!actorId) {
-    return apiHubJson(
-      {
-        error:
-          "No active demo user for this session. Open Settings → Demo session (/settings/demo) to choose who you are acting as.",
-      },
-      requestId,
-      403,
-    );
+    return apiHubDemoActorMissing(requestId);
   }
 
   const { jobId } = await context.params;
@@ -88,10 +72,10 @@ export async function PATCH(request: Request, context: { params: Promise<{ jobId
 
   const existing = await getApiHubIngestionRunById({ tenantId: tenant.id, runId: jobId });
   if (!existing) {
-    return apiHubJson({ error: "Run not found." }, requestId, 404);
+    return apiHubError(404, "RUN_NOT_FOUND", "Run not found.", requestId);
   }
   if (!isValidRunStatus(existing.status)) {
-    return apiHubJson({ error: "Run has invalid persisted status." }, requestId, 409);
+    return apiHubError(409, "RUN_STATE_INVALID", "Run has invalid persisted status.", requestId);
   }
   if (!canTransitionRunStatus(existing.status as ApiHubRunStatus, rawStatus)) {
     return apiHubError(
@@ -124,7 +108,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ jobId
     errorMessage,
   });
   if (!updated) {
-    return apiHubJson({ error: "Run not found." }, requestId, 404);
+    return apiHubError(404, "RUN_NOT_FOUND", "Run not found.", requestId);
   }
   return apiHubJson({ run: toApiHubIngestionRunDto(updated) }, requestId);
 }

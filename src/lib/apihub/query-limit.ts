@@ -7,22 +7,29 @@ export const APIHUB_LIST_LIMIT_MIN = 1;
 /** Hard cap so list routes stay bounded. */
 export const APIHUB_LIST_LIMIT_MAX = 100;
 
+export type ApiHubListLimitParseResult =
+  | { ok: true; limit: number }
+  | { ok: false; raw: string };
+
 /**
- * Parse `limit` from a raw query string: finite integers are truncated and clamped;
- * missing/empty/NaN/±Infinity fall back to {@link APIHUB_LIST_LIMIT_DEFAULT}.
+ * Parse list `limit` from a query value: missing/blank → default; non-finite → invalid;
+ * finite values are truncated and clamped to [{@link APIHUB_LIST_LIMIT_MIN}, {@link APIHUB_LIST_LIMIT_MAX}].
  */
-export function parseApiHubListLimitParam(raw: string | null | undefined): number {
+export function parseApiHubListLimitQueryInput(raw: string | null): ApiHubListLimitParseResult {
   if (raw == null || raw.trim() === "") {
-    return APIHUB_LIST_LIMIT_DEFAULT;
+    return { ok: true, limit: APIHUB_LIST_LIMIT_DEFAULT };
   }
-  const n = Number(raw);
+  const trimmed = raw.trim();
+  const n = Number(trimmed);
   if (!Number.isFinite(n)) {
-    return APIHUB_LIST_LIMIT_DEFAULT;
+    return { ok: false, raw: trimmed };
   }
-  return Math.min(Math.max(Math.trunc(n), APIHUB_LIST_LIMIT_MIN), APIHUB_LIST_LIMIT_MAX);
+  return {
+    ok: true,
+    limit: Math.min(Math.max(Math.trunc(n), APIHUB_LIST_LIMIT_MIN), APIHUB_LIST_LIMIT_MAX),
+  };
 }
 
-/** Read `limit` (or `paramName`) from a URL's query string with shared caps. */
-export function parseApiHubListLimitFromUrl(url: URL, paramName = "limit"): number {
-  return parseApiHubListLimitParam(url.searchParams.get(paramName));
+export function parseApiHubListLimitFromUrl(url: URL, paramName = "limit"): ApiHubListLimitParseResult {
+  return parseApiHubListLimitQueryInput(url.searchParams.get(paramName));
 }
