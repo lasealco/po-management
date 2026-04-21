@@ -3,10 +3,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const getViewerGrantSetMock = vi.fn();
 const resolveNavStateMock = vi.fn();
 const createScenarioDraftMock = vi.fn();
+const actorIsSupplierPortalRestrictedMock = vi.fn();
 
-vi.mock("@/lib/authz", () => ({
-  getViewerGrantSet: getViewerGrantSetMock,
-}));
+vi.mock("@/lib/authz", async () => {
+  const mod = await vi.importActual<typeof import("@/lib/authz")>("@/lib/authz");
+  return {
+    ...mod,
+    getViewerGrantSet: getViewerGrantSetMock,
+    actorIsSupplierPortalRestricted: actorIsSupplierPortalRestrictedMock,
+  };
+});
 
 vi.mock("@/lib/nav-visibility", () => ({
   resolveNavState: resolveNavStateMock,
@@ -19,6 +25,7 @@ vi.mock("@/lib/supply-chain-twin/scenarios-draft-repo", () => ({
 describe("POST /api/supply-chain-twin/scenarios", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    actorIsSupplierPortalRestrictedMock.mockResolvedValue(false);
   });
 
   it("returns 403 when there is no demo user", async () => {

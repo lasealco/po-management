@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const getViewerGrantSetMock = vi.fn();
 const resolveNavStateMock = vi.fn();
+const actorIsSupplierPortalRestrictedMock = vi.fn();
 
 const { prismaMock } = vi.hoisted(() => ({
   prismaMock: {
@@ -11,9 +12,14 @@ const { prismaMock } = vi.hoisted(() => ({
   },
 }));
 
-vi.mock("@/lib/authz", () => ({
-  getViewerGrantSet: getViewerGrantSetMock,
-}));
+vi.mock("@/lib/authz", async () => {
+  const mod = await vi.importActual<typeof import("@/lib/authz")>("@/lib/authz");
+  return {
+    ...mod,
+    getViewerGrantSet: getViewerGrantSetMock,
+    actorIsSupplierPortalRestricted: actorIsSupplierPortalRestrictedMock,
+  };
+});
 
 vi.mock("@/lib/nav-visibility", () => ({
   resolveNavState: resolveNavStateMock,
@@ -30,6 +36,7 @@ vi.mock("@/lib/prisma", () => ({
 describe("GET /api/supply-chain-twin/events", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    actorIsSupplierPortalRestrictedMock.mockResolvedValue(false);
     vi.mocked(prismaMock.supplyChainTwinIngestEvent.findMany).mockResolvedValue([]);
   });
 

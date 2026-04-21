@@ -4,10 +4,16 @@ const getViewerGrantSetMock = vi.fn();
 const resolveNavStateMock = vi.fn();
 const listEdgesForTenantMock = vi.fn();
 const listEdgesForEntityMock = vi.fn();
+const actorIsSupplierPortalRestrictedMock = vi.fn();
 
-vi.mock("@/lib/authz", () => ({
-  getViewerGrantSet: getViewerGrantSetMock,
-}));
+vi.mock("@/lib/authz", async () => {
+  const mod = await vi.importActual<typeof import("@/lib/authz")>("@/lib/authz");
+  return {
+    ...mod,
+    getViewerGrantSet: getViewerGrantSetMock,
+    actorIsSupplierPortalRestricted: actorIsSupplierPortalRestrictedMock,
+  };
+});
 
 vi.mock("@/lib/nav-visibility", () => ({
   resolveNavState: resolveNavStateMock,
@@ -21,6 +27,7 @@ vi.mock("@/lib/supply-chain-twin/edges-repo", () => ({
 describe("GET /api/supply-chain-twin/edges", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    actorIsSupplierPortalRestrictedMock.mockResolvedValue(false);
     listEdgesForTenantMock.mockResolvedValue([]);
     listEdgesForEntityMock.mockResolvedValue([]);
   });

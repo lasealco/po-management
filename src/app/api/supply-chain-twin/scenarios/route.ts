@@ -2,8 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { logSctwinApiError, logSctwinApiWarn } from "../_lib/sctwin-api-log";
-import { getViewerGrantSet } from "@/lib/authz";
-import { resolveNavState } from "@/lib/nav-visibility";
+import { requireTwinApiAccess } from "@/lib/supply-chain-twin/sctwin-api-access";
 import { parseTwinScenarioDraftCreateBody } from "@/lib/supply-chain-twin/schemas/twin-scenario-draft-create";
 import { createScenarioDraft } from "@/lib/supply-chain-twin/scenarios-draft-repo";
 
@@ -17,27 +16,11 @@ const ROUTE = "POST /api/supply-chain-twin/scenarios";
  */
 export async function POST(request: Request) {
   try {
-    const access = await getViewerGrantSet();
-    if (!access?.user) {
-      return NextResponse.json(
-        {
-          error:
-            "No active demo user for this session. Open Settings → Demo session (/settings/demo) to choose who you are acting as.",
-        },
-        { status: 403 },
-      );
+    const gate = await requireTwinApiAccess();
+    if (!gate.ok) {
+      return NextResponse.json({ error: gate.denied.error }, { status: gate.denied.status });
     }
-
-    const { linkVisibility } = await resolveNavState(access);
-    if (!linkVisibility?.supplyChainTwin) {
-      return NextResponse.json(
-        {
-          error:
-            "Forbidden: Supply Chain Twin preview requires broader workspace access than this session has.",
-        },
-        { status: 403 },
-      );
-    }
+    const { access } = gate;
 
     let raw: unknown;
     try {

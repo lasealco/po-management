@@ -5,10 +5,16 @@ import { TWIN_HEALTH_INDEX_STUB } from "@/lib/supply-chain-twin/kpi-stub";
 const getViewerGrantSetMock = vi.fn();
 const resolveNavStateMock = vi.fn();
 const getSupplyChainTwinReadinessSnapshotMock = vi.fn();
+const actorIsSupplierPortalRestrictedMock = vi.fn();
 
-vi.mock("@/lib/authz", () => ({
-  getViewerGrantSet: getViewerGrantSetMock,
-}));
+vi.mock("@/lib/authz", async () => {
+  const mod = await vi.importActual<typeof import("@/lib/authz")>("@/lib/authz");
+  return {
+    ...mod,
+    getViewerGrantSet: getViewerGrantSetMock,
+    actorIsSupplierPortalRestricted: actorIsSupplierPortalRestrictedMock,
+  };
+});
 
 vi.mock("@/lib/nav-visibility", () => ({
   resolveNavState: resolveNavStateMock,
@@ -21,6 +27,7 @@ vi.mock("@/lib/supply-chain-twin/readiness", () => ({
 describe("Supply Chain Twin readiness route contract", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    actorIsSupplierPortalRestrictedMock.mockResolvedValue(false);
   });
 
   it("returns 403 when there is no demo user", async () => {
