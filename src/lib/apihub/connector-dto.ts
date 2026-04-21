@@ -19,6 +19,24 @@ export type ApiHubConnectorAuditTrailDto = {
   createdAt: string;
 };
 
+type AuditLogRowLike = {
+  id: string;
+  actorUserId: string;
+  action: string;
+  note: string | null;
+  createdAt: Date;
+};
+
+export function toApiHubConnectorAuditLogDto(row: AuditLogRowLike): ApiHubConnectorAuditTrailDto {
+  return {
+    id: row.id,
+    actorUserId: row.actorUserId,
+    action: row.action,
+    note: row.note,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
 type Row = {
   id: string;
   name: string;

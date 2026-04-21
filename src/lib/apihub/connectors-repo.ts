@@ -189,7 +189,7 @@ export async function listApiHubConnectorAuditLogs(
 ): Promise<ApiHubConnectorAuditLogRow[]> {
   return prisma.apiHubConnectorAuditLog.findMany({
     where: { tenantId, connectorId },
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: limit,
     select: {
       id: true,
@@ -200,4 +200,41 @@ export async function listApiHubConnectorAuditLogs(
       createdAt: true,
     },
   });
+}
+
+export async function getApiHubConnectorInTenant(
+  tenantId: string,
+  connectorId: string,
+): Promise<{ id: string } | null> {
+  return prisma.apiHubConnector.findFirst({
+    where: { id: connectorId, tenantId },
+    select: { id: true },
+  });
+}
+
+/** Tenant-scoped audit page: `createdAt` desc, `id` desc; `hasMore` via over-fetch of one row. */
+export async function listApiHubConnectorAuditLogsPage(opts: {
+  tenantId: string;
+  connectorId: string;
+  limit: number;
+  offset: number;
+}): Promise<{ items: ApiHubConnectorAuditLogRow[]; hasMore: boolean }> {
+  const take = opts.limit + 1;
+  const rows = await prisma.apiHubConnectorAuditLog.findMany({
+    where: { tenantId: opts.tenantId, connectorId: opts.connectorId },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    skip: opts.offset,
+    take,
+    select: {
+      id: true,
+      connectorId: true,
+      actorUserId: true,
+      action: true,
+      note: true,
+      createdAt: true,
+    },
+  });
+  const hasMore = rows.length > opts.limit;
+  const items = hasMore ? rows.slice(0, opts.limit) : rows;
+  return { items, hasMore };
 }

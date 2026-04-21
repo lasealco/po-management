@@ -1,6 +1,25 @@
 import { describe, expect, it } from "vitest";
 
-import { toApiHubConnectorDto } from "./connector-dto";
+import { toApiHubConnectorAuditLogDto, toApiHubConnectorDto } from "./connector-dto";
+
+describe("toApiHubConnectorAuditLogDto", () => {
+  it("serializes audit log row", () => {
+    const out = toApiHubConnectorAuditLogDto({
+      id: "log-1",
+      actorUserId: "u1",
+      action: "connector.created",
+      note: "ok",
+      createdAt: new Date("2026-04-21T10:00:00.000Z"),
+    });
+    expect(out).toEqual({
+      id: "log-1",
+      actorUserId: "u1",
+      action: "connector.created",
+      note: "ok",
+      createdAt: "2026-04-21T10:00:00.000Z",
+    });
+  });
+});
 
 describe("toApiHubConnectorDto", () => {
   it("serializes dates to ISO strings and null lastSyncAt", () => {
