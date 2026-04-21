@@ -88,11 +88,7 @@ export function ControlTowerSubNav({ includeDigestNav = false }: { includeDigest
 
           <Link
             href={productTraceItem.href}
-            className={`shrink-0 rounded-lg px-2 py-1.5 text-xs font-medium transition-colors sm:px-2.5 ${
-              productTraceActive
-                ? "bg-[var(--arscmp-primary-50)] text-[var(--arscmp-primary)] ring-1 ring-[var(--arscmp-primary)]/20"
-                : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800"
-            }`}
+            className={`shrink-0 ${chipClasses(productTraceActive)}`}
           >
             {productTraceItem.label}
           </Link>
