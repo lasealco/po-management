@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { describeDraftRootKeyDiff, draftsDeepEqualSerialized } from "./scenario-draft-compare-summary";
+import type { TwinScenarioDraftQueryParse } from "./twin-scenario-draft-id";
 
 type ScenarioDraftDetail = {
   id: string;
@@ -14,7 +15,7 @@ type ScenarioDraftDetail = {
 };
 
 type PaneState =
-  | { status: "idle"; reason: "missing_id" | "missing_peer" }
+  | { status: "idle"; reason: "missing_id" | "missing_peer" | "invalid_id" | "peer_not_ready" }
   | { status: "loading" }
   | { status: "error"; message: string }
   | { status: "ok"; data: ScenarioDraftDetail };
@@ -80,7 +81,8 @@ function parseDetailPayload(body: unknown): { ok: true; data: ScenarioDraftDetai
   };
 }
 
-function safeErrorMessage(status: number, body: unknown): string {
+/** Twin compare UI never surfaces raw API error strings (only stable copy by status). */
+function safeErrorMessage(status: number): string {
   if (status === 403) {
     return "You do not have access to scenario drafts in this workspace.";
   }
@@ -89,12 +91,6 @@ function safeErrorMessage(status: number, body: unknown): string {
   }
   if (status === 400) {
     return "Invalid draft id.";
-  }
-  if (typeof body === "object" && body != null && "error" in body && typeof (body as { error: unknown }).error === "string") {
-    const msg = (body as { error: string }).error.trim();
-    if (msg.length > 0 && msg.length < 200) {
-      return msg;
-    }
   }
   if (status >= 500) {
     return "Could not load draft. Try again later.";
@@ -107,7 +103,7 @@ async function fetchScenarioDraft(id: string): Promise<{ ok: true; data: Scenari
     const res = await fetch(`/api/supply-chain-twin/scenarios/${encodeURIComponent(id)}`, { cache: "no-store" });
     const body = (await res.json()) as unknown;
     if (!res.ok) {
-      return { ok: false, message: safeErrorMessage(res.status, body) };
+      return { ok: false, message: safeErrorMessage(res.status) };
     }
     const parsed = parseDetailPayload(body);
     if (!parsed.ok) {
@@ -119,52 +115,55 @@ async function fetchScenarioDraft(id: string): Promise<{ ok: true; data: Scenari
   }
 }
 
-function idlePane(id: string | null, peerPresent: boolean): PaneState {
-  if (!id) {
+function idlePaneForSide(side: TwinScenarioDraftQueryParse, peer: TwinScenarioDraftQueryParse): PaneState {
+  if (side.status === "invalid") {
+    return { status: "idle", reason: "invalid_id" };
+  }
+  if (side.status === "missing") {
     return { status: "idle", reason: "missing_id" };
   }
-  if (!peerPresent) {
-    return { status: "idle", reason: "missing_peer" };
+  if (peer.status !== "ok") {
+    return { status: "idle", reason: "peer_not_ready" };
   }
   return { status: "loading" };
 }
 
-export function TwinScenariosComparePanel(props: { leftId: string | null; rightId: string | null }) {
-  const { leftId, rightId } = props;
-  const [left, setLeft] = useState<PaneState>(() => idlePane(leftId, Boolean(rightId)));
-  const [right, setRight] = useState<PaneState>(() => idlePane(rightId, Boolean(leftId)));
+export function TwinScenariosComparePanel(props: { left: TwinScenarioDraftQueryParse; right: TwinScenarioDraftQueryParse }) {
+  const { left, right } = props;
+  const [leftPane, setLeftPane] = useState<PaneState>(() => idlePaneForSide(left, right));
+  const [rightPane, setRightPane] = useState<PaneState>(() => idlePaneForSide(right, left));
 
   useEffect(() => {
-    if (!leftId || !rightId) {
-      setLeft(idlePane(leftId, Boolean(rightId)));
-      setRight(idlePane(rightId, Boolean(leftId)));
+    if (left.status !== "ok" || right.status !== "ok") {
+      setLeftPane(idlePaneForSide(left, right));
+      setRightPane(idlePaneForSide(right, left));
       return;
     }
 
-    setLeft({ status: "loading" });
-    setRight({ status: "loading" });
+    setLeftPane({ status: "loading" });
+    setRightPane({ status: "loading" });
 
     let cancelled = false;
     void (async () => {
-      const [l, r] = await Promise.all([fetchScenarioDraft(leftId), fetchScenarioDraft(rightId)]);
+      const [l, r] = await Promise.all([fetchScenarioDraft(left.id), fetchScenarioDraft(right.id)]);
       if (cancelled) {
         return;
       }
-      setLeft(l.ok ? { status: "ok", data: l.data } : { status: "error", message: l.message });
-      setRight(r.ok ? { status: "ok", data: r.data } : { status: "error", message: r.message });
+      setLeftPane(l.ok ? { status: "ok", data: l.data } : { status: "error", message: l.message });
+      setRightPane(r.ok ? { status: "ok", data: r.data } : { status: "error", message: r.message });
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [leftId, rightId]);
+  }, [left, right]);
 
   const diffSummary = useMemo(() => {
-    if (left.status !== "ok" || right.status !== "ok") {
+    if (leftPane.status !== "ok" || rightPane.status !== "ok") {
       return null;
     }
-    const keysLine = describeDraftRootKeyDiff(left.data.draft, right.data.draft);
-    const deep = draftsDeepEqualSerialized(left.data.draft, right.data.draft);
+    const keysLine = describeDraftRootKeyDiff(leftPane.data.draft, rightPane.data.draft);
+    const deep = draftsDeepEqualSerialized(leftPane.data.draft, rightPane.data.draft);
     const deepLine =
       deep === null
         ? "Serialized draft bodies: not compared (payload too large for a quick check)."
@@ -172,7 +171,7 @@ export function TwinScenariosComparePanel(props: { leftId: string | null; rightI
           ? "Serialized draft bodies: match."
           : "Serialized draft bodies: differ.";
     return { keysLine, deepLine };
-  }, [left, right]);
+  }, [leftPane, rightPane]);
 
   return (
     <div className="space-y-6">
@@ -185,8 +184,8 @@ export function TwinScenariosComparePanel(props: { leftId: string | null; rightI
       ) : null}
 
       <div className="grid gap-4 md:grid-cols-2">
-        <ComparePane label="Left draft" state={left} side="left" />
-        <ComparePane label="Right draft" state={right} side="right" />
+        <ComparePane label="Left draft" state={leftPane} side="left" />
+        <ComparePane label="Right draft" state={rightPane} side="right" />
       </div>
     </div>
   );
@@ -201,14 +200,28 @@ function ComparePane(props: { label: string; state: PaneState; side: "left" | "r
       <h2 className="text-sm font-semibold text-zinc-900">{label}</h2>
       {state.status === "idle" && state.reason === "missing_id" ? (
         <p className="mt-3 text-sm text-zinc-600">
-          Add a <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">{param}</code> query parameter (draft id from
-          your list) to load this pane.
+          Add a <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">{param}</code> query parameter with a draft id
+          from your scenarios list.
+        </p>
+      ) : null}
+      {state.status === "idle" && state.reason === "invalid_id" ? (
+        <p className="mt-3 text-sm text-zinc-600">
+          The <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">{param}</code> value in the address bar does not
+          look like a valid draft id (expect a short lowercase token from the list). Nothing was requested from the
+          server for this side.
         </p>
       ) : null}
       {state.status === "idle" && state.reason === "missing_peer" ? (
         <p className="mt-3 text-sm text-zinc-600">
           Add both <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">left</code> and{" "}
-          <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">right</code> ids in the URL to run the comparison.
+          <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">right</code> with valid ids to run the comparison.
+        </p>
+      ) : null}
+      {state.status === "idle" && state.reason === "peer_not_ready" ? (
+        <p className="mt-3 text-sm text-zinc-600">
+          This side is ready, but the other query parameter is missing or not valid. Fix both{" "}
+          <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">left</code> and{" "}
+          <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">right</code> in the URL to load drafts.
         </p>
       ) : null}
       {state.status === "loading" ? <p className="mt-3 text-sm text-zinc-500">Loading…</p> : null}
