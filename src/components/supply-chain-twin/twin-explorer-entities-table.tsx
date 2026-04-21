@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Suspense, use, useCallback, useLayoutEffect, useMemo, useRef } from "react";
+import { useRouter } from "next/navigation";
 
 /** Matches `limit` on `fetchEntitiesCatalog` — exports never include rows beyond this page. */
 const CATALOG_TABLE_PAGE_LIMIT = 50;
@@ -26,11 +27,19 @@ async function fetchEntitiesCatalog(searchQ: string): Promise<CatalogResult> {
     const res = await fetch(`/api/supply-chain-twin/entities?${params.toString()}`, { cache: "no-store" });
     const body = (await res.json()) as unknown;
     if (!res.ok) {
-      const message =
-        typeof body === "object" && body != null && "error" in body && typeof (body as { error: unknown }).error === "string"
-          ? (body as { error: string }).error
-          : "The entity catalog could not be loaded.";
-      return { ok: false, message };
+      if (res.status === 403) {
+        return { ok: false, message: "This workspace session cannot access Twin entities right now." };
+      }
+      if (res.status === 400) {
+        return { ok: false, message: "Explorer filters are invalid. Reset filters and retry." };
+      }
+      if (res.status >= 500) {
+        return { ok: false, message: "Twin entities are temporarily unavailable. Retry in a moment." };
+      }
+      if (typeof body === "object" && body != null && "error" in body && typeof (body as { error: unknown }).error === "string") {
+        return { ok: false, message: "The entity catalog could not be loaded." };
+      }
+      return { ok: false, message: "The entity catalog could not be loaded." };
     }
     if (
       typeof body !== "object" ||
@@ -143,6 +152,7 @@ function TwinExplorerEntitiesTableInner({
   searchQ: string;
   highlightSnapshotId?: string | null;
 }) {
+  const router = useRouter();
   const data = use(useMemo(() => fetchEntitiesCatalog(searchQ), [searchQ]));
   const rowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
 
@@ -165,7 +175,25 @@ function TwinExplorerEntitiesTableInner({
   if (data.ok === false) {
     return (
       <div className="px-5 py-8">
-        <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">{data.message}</p>
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-4 text-sm text-red-900">
+          <p className="font-semibold">Unable to load Twin explorer entities</p>
+          <p className="mt-1">{data.message}</p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => router.refresh()}
+              className="rounded-xl bg-[var(--arscmp-primary)] px-4 py-2 text-xs font-semibold text-white"
+            >
+              Retry
+            </button>
+            <Link
+              href="/api/supply-chain-twin/readiness"
+              className="rounded-xl border border-zinc-300 bg-white px-4 py-2 text-xs font-semibold text-zinc-700"
+            >
+              Check readiness
+            </Link>
+          </div>
+        </div>
       </div>
     );
   }
@@ -199,7 +227,27 @@ function TwinExplorerEntitiesTableInner({
         ) : null}
       </div>
       {count === 0 ? (
-        <div className="px-5 py-10 text-center text-sm text-zinc-600">No entities match this view.</div>
+        <div className="px-5 py-10 text-center text-sm text-zinc-600">
+          <p className="font-medium text-zinc-800">No entities match this view yet.</p>
+          <p className="mt-1">
+            Try adjusting search filters, re-seeding Twin demo data, or checking readiness before retrying.
+          </p>
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+            <button
+              type="button"
+              onClick={() => router.refresh()}
+              className="rounded-xl bg-[var(--arscmp-primary)] px-4 py-2 text-xs font-semibold text-white"
+            >
+              Retry
+            </button>
+            <Link
+              href="/api/supply-chain-twin/readiness"
+              className="rounded-xl border border-zinc-300 bg-white px-4 py-2 text-xs font-semibold text-zinc-700"
+            >
+              Check readiness
+            </Link>
+          </div>
+        </div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[520px] text-left text-sm">
