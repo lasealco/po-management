@@ -1,0 +1,98 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
+import { parseTwinCatalogMetricsResponseJson } from "@/lib/supply-chain-twin/twin-catalog-metrics-response";
+import type { TwinCatalogMetricsCounts } from "@/lib/supply-chain-twin/twin-catalog-metrics";
+
+type StripState = { kind: "loading" } | { kind: "error"; message: string } | { kind: "ok"; data: TwinCatalogMetricsCounts };
+
+const METRIC_CELLS: Array<{ key: keyof TwinCatalogMetricsCounts; label: string }> = [
+  { key: "entities", label: "Entities" },
+  { key: "edges", label: "Edges" },
+  { key: "events", label: "Ingest events" },
+  { key: "scenarioDrafts", label: "Scenario drafts" },
+  { key: "riskSignals", label: "Risk signals" },
+];
+
+async function fetchMetrics(): Promise<StripState> {
+  try {
+    const res = await fetch("/api/supply-chain-twin/metrics", { cache: "no-store" });
+    const body: unknown = await res.json().catch(() => null);
+    if (!res.ok) {
+      return { kind: "error", message: "Catalog counts could not be loaded for this session." };
+    }
+    const parsed = parseTwinCatalogMetricsResponseJson(body);
+    if (!parsed.ok) {
+      return { kind: "error", message: "Unexpected response when loading catalog counts." };
+    }
+    return { kind: "ok", data: parsed.data };
+  } catch {
+    return { kind: "error", message: "Network error while loading catalog counts." };
+  }
+}
+
+export function TwinCatalogMetricsStrip() {
+  const [tick, setTick] = useState(0);
+  const [state, setState] = useState<StripState>({ kind: "loading" });
+
+  useEffect(() => {
+    let cancelled = false;
+    setState({ kind: "loading" });
+    void (async () => {
+      const next = await fetchMetrics();
+      if (!cancelled) {
+        setState(next);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tick]);
+
+  return (
+    <section className="mt-6 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Catalog</p>
+          <h2 className="mt-2 text-lg font-semibold text-zinc-900">Twin data counts</h2>
+          <p className="mt-2 max-w-2xl text-sm text-zinc-600">
+            Tenant-scoped totals from{" "}
+            <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">GET /api/supply-chain-twin/metrics</code>. Refresh
+            to pull the latest numbers after seeding or edits.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setTick((n) => n + 1)}
+          disabled={state.kind === "loading"}
+          className="shrink-0 rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 shadow-sm hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {state.kind === "loading" ? "Refreshing…" : "Refresh"}
+        </button>
+      </div>
+
+      {state.kind === "loading" ? (
+        <p className="mt-5 text-sm text-zinc-500">Loading catalog counts…</p>
+      ) : null}
+
+      {state.kind === "error" ? (
+        <p className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">{state.message}</p>
+      ) : null}
+
+      {state.kind === "ok" ? (
+        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          {METRIC_CELLS.map((cell) => (
+            <div
+              key={cell.key}
+              className="rounded-xl border border-zinc-200 bg-zinc-50/90 px-4 py-3 text-center shadow-sm"
+            >
+              <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">{cell.label}</p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums text-zinc-900">{state.data[cell.key]}</p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </section>
+  );
+}
