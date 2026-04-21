@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { AccessDenied } from "@/components/access-denied";
 import { TwinExplorerEntitiesTable } from "@/components/supply-chain-twin/twin-explorer-entities-table";
+import { TwinExplorerRecentEventsStrip } from "@/components/supply-chain-twin/twin-explorer-recent-events-strip";
 import { TwinGraphStubPanel } from "@/components/supply-chain-twin/twin-graph-stub-panel";
 import { TwinSubNav } from "@/components/supply-chain-twin/twin-subnav";
 import { getViewerGrantSet } from "@/lib/authz";
@@ -89,6 +90,8 @@ export default async function SupplyChainTwinExplorerPage({
           </button>
         </form>
       </section>
+
+      <TwinExplorerRecentEventsStrip />
 
       <TwinExplorerEntitiesTable key={q} searchQ={q} />
 
