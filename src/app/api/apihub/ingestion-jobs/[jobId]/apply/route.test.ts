@@ -45,6 +45,31 @@ describe("POST /api/apihub/ingestion-jobs/:jobId/apply", () => {
     expect(response.status).toBe(404);
   });
 
+  it("returns targetSummary from resultSummary JSON when present", async () => {
+    applyApiHubIngestionRunMock.mockResolvedValue({
+      kind: "applied",
+      run: {
+        id: "run-1",
+        resultSummary: JSON.stringify({ created: 4, updated: 1, skipped: 0 }),
+      },
+    });
+    toApiHubIngestionRunDtoMock.mockReturnValue({ id: "dto-1", appliedAt: "2026-04-22T10:00:11.000Z" });
+    const { POST } = await import("./route");
+    const response = await POST(
+      new Request("http://localhost/api/apihub/ingestion-jobs/run-1/apply", {
+        method: "POST",
+        headers: { [APIHUB_REQUEST_ID_HEADER]: "apply-ts" },
+      }),
+      { params: Promise.resolve({ jobId: "run-1" }) },
+    );
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      applied: true,
+      targetSummary: { created: 4, updated: 1, skipped: 0 },
+      run: { id: "dto-1", appliedAt: "2026-04-22T10:00:11.000Z" },
+    });
+  });
+
   it("returns 200 with applied payload on success", async () => {
     applyApiHubIngestionRunMock.mockResolvedValue({ kind: "applied", run: { id: "run-1" } });
     toApiHubIngestionRunDtoMock.mockReturnValue({ id: "dto-1", appliedAt: "2026-04-22T10:00:11.000Z" });
@@ -59,6 +84,7 @@ describe("POST /api/apihub/ingestion-jobs/:jobId/apply", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
       applied: true,
+      targetSummary: { created: 0, updated: 1, skipped: 0 },
       run: { id: "dto-1", appliedAt: "2026-04-22T10:00:11.000Z" },
     });
     expect(applyApiHubIngestionRunMock).toHaveBeenCalledWith({
@@ -86,7 +112,11 @@ describe("POST /api/apihub/ingestion-jobs/:jobId/apply", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
       dryRun: true,
-      writeSummary: { wouldApply: true, wouldSetAppliedAt: true },
+      writeSummary: {
+        wouldApply: true,
+        wouldSetAppliedAt: true,
+        targetSummary: { created: 0, updated: 1, skipped: 0 },
+      },
       run: { id: "dto-1", appliedAt: null },
     });
     expect(applyApiHubIngestionRunMock).toHaveBeenCalledWith({
@@ -122,6 +152,7 @@ describe("POST /api/apihub/ingestion-jobs/:jobId/apply", () => {
       writeSummary: {
         wouldApply: false,
         wouldSetAppliedAt: false,
+        targetSummary: { created: 0, updated: 0, skipped: 0 },
         gate: { type: "not_succeeded", status: "queued" },
       },
       run: { id: "dto-1", status: "queued" },
@@ -313,6 +344,7 @@ describe("POST /api/apihub/ingestion-jobs/:jobId/apply", () => {
         responseStatus: 200,
         responseBody: {
           applied: true,
+          targetSummary: { created: 0, updated: 1, skipped: 0 },
           run: { id: "dto-live", appliedAt: "2026-04-22T10:00:11.000Z" },
         },
       }),

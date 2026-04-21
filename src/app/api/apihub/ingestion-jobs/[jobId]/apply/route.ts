@@ -6,6 +6,7 @@ import {
   apiHubError,
   apiHubJson,
 } from "@/lib/apihub/api-error";
+import { resolveApplyTargetSummary, resolveDryRunTargetSummary } from "@/lib/apihub/apply-target-summary";
 import { createApplyIdempotencyRecord, findApplyIdempotencyRecord } from "@/lib/apihub/ingestion-apply-idempotency-repo";
 import { applyApiHubIngestionRun, type ApplyApiHubIngestionRunOutcome } from "@/lib/apihub/ingestion-apply-repo";
 import { toApiHubIngestionRunDto } from "@/lib/apihub/ingestion-run-dto";
@@ -63,6 +64,7 @@ function mapApplyOutcomeToMapped(outcome: ApplyApiHubIngestionRunOutcome | null)
     const writeSummary = {
       wouldApply: outcome.wouldApply,
       wouldSetAppliedAt: outcome.wouldApply,
+      targetSummary: resolveDryRunTargetSummary(outcome.wouldApply, outcome.run),
       ...(outcome.gate ? { gate: outcome.gate } : {}),
     };
     return {
@@ -126,6 +128,7 @@ function mapApplyOutcomeToMapped(outcome: ApplyApiHubIngestionRunOutcome | null)
     status: 200,
     body: {
       applied: true,
+      targetSummary: resolveApplyTargetSummary(outcome.run),
       run: toApiHubIngestionRunDto(outcome.run),
     },
   };
