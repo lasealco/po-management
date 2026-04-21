@@ -51,6 +51,12 @@ export const twinEventsListResponseSchema = z.object({
   nextCursor: z.string().min(1).optional(),
 });
 
+/** Success body for `POST /api/supply-chain-twin/events` (append ingest row). */
+export const twinIngestEventAppendResponseSchema = z.object({
+  id: z.string().min(1),
+  type: z.string(),
+});
+
 /** List row shape aligned with `POST` success body (`id`, `title`, `status`, `updatedAt` ISO). */
 export const twinScenarioDraftListItemSchema = z.object({
   id: z.string(),
