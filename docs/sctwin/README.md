@@ -5,6 +5,7 @@ This pack is the developer-ready documentation set for building the **AI-Driven 
 **Terms:** [Twin glossary](./glossary.md) (entity snapshot, edge, ingest event, scenario draft, risk signal, readiness).
 **Ops:** [Twin runbook](./runbook.md) (verify commands, troubleshooting matrix, seed flow, key routes, logging pointers).
 **Large fixture validation:** [Twin large fixture checklist](./large_fixture_validation_checklist.md) (expected minimum counts, smoke endpoints, troubleshooting).
+**Permissions:** [Twin permission and visibility matrix](./supply_chain_twin_permissions_and_visibility.md) (route/action mapping for view/edit/export/admin semantics).
 **Performance:** runbook section "Performance Notes (Query Plan + Index Intent)" (index-to-query mapping + revisit triggers).
 **Release checklist:** [Twin release checklist](./release_checklist.md) (migrations, verify gates, smoke URLs, rollback hints).
 **Release gate:** run `npm run verify:sctwin:full` before handoff for the slices 88-107 tranche.
