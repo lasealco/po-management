@@ -31,7 +31,7 @@ describe("listScenarioDraftsForTenantPage", () => {
 
     expect(findManyMock).toHaveBeenCalledTimes(1);
     expect(findManyMock).toHaveBeenCalledWith({
-      where: { tenantId: "tenant-1" },
+      where: { tenantId: "tenant-1", status: { not: "archived" } },
       select: { id: true, title: true, status: true, updatedAt: true },
       orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
       take: 11,
@@ -52,6 +52,7 @@ describe("listScenarioDraftsForTenantPage", () => {
     expect(findManyMock).toHaveBeenCalledWith({
       where: {
         tenantId: "tenant-1",
+        status: { not: "archived" },
         OR: [
           { updatedAt: { lt: updatedAt } },
           { AND: [{ updatedAt }, { id: { lt: id } }] },

@@ -7,7 +7,7 @@ describe("parseTwinScenarioDraftPatchBody", () => {
   it("rejects empty object", () => {
     const r = parseTwinScenarioDraftPatchBody({});
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.error).toMatch(/at least one/i);
+    if (!r.ok) expect(r.error).toMatch(/at least one of title, draft, or status/i);
   });
 
   it("accepts title only", () => {
@@ -26,6 +26,17 @@ describe("parseTwinScenarioDraftPatchBody", () => {
     const r = parseTwinScenarioDraftPatchBody({ draft: { k: 1 } });
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.body.draft).toEqual({ k: 1 });
+  });
+
+  it("accepts status only", () => {
+    const r = parseTwinScenarioDraftPatchBody({ status: "archived" });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.body).toEqual({ status: "archived" });
+  });
+
+  it("rejects unknown status string", () => {
+    const r = parseTwinScenarioDraftPatchBody({ status: "deleted" });
+    expect(r.ok).toBe(false);
   });
 
   it("rejects draft over byte cap", () => {

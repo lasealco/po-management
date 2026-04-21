@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { encodeTwinScenariosListCursor } from "@/lib/supply-chain-twin/schemas/twin-scenarios-list-query";
+import type { TwinScenarioDraftPatchStatus } from "@/lib/supply-chain-twin/schemas/twin-scenario-draft-patch";
 
 export type CreateScenarioDraftInput = {
   title?: string | null;
@@ -48,6 +49,8 @@ export type ScenarioDraftListItem = {
  * - **`cursorPosition`**: rows strictly “after” this `(updatedAt, id)` pair in sort order (ties on `updatedAt` broken
  *   by `id`). Matches `@@index([tenantId, updatedAt])` on `SupplyChainTwinScenarioDraft` for tenant-scoped scans.
  * - Decode the opaque `cursor` string in the API route; pass `cursorPosition` here only.
+ * - **`status !== archived` only** — archived drafts are omitted here so the default list stays actionable; use
+ *   `GET …/scenarios/[id]` to load an archived row by id.
  */
 export async function listScenarioDraftsForTenantPage(
   tenantId: string,
@@ -57,9 +60,14 @@ export async function listScenarioDraftsForTenantPage(
 
   const cursorPos = options.cursorPosition ?? null;
 
+  const notArchived: Prisma.SupplyChainTwinScenarioDraftWhereInput = {
+    tenantId,
+    status: { not: "archived" },
+  };
+
   const where: Prisma.SupplyChainTwinScenarioDraftWhereInput = cursorPos
     ? {
-        tenantId,
+        ...notArchived,
         OR: [
           { updatedAt: { lt: cursorPos.updatedAt } },
           {
@@ -67,7 +75,7 @@ export async function listScenarioDraftsForTenantPage(
           },
         ],
       }
-    : { tenantId };
+    : notArchived;
 
   const rows = await prisma.supplyChainTwinScenarioDraft.findMany({
     where,
@@ -128,17 +136,48 @@ export type PatchScenarioDraftInput = {
   title?: string | null;
   /** Replace stored JSON; omit to leave unchanged. */
   draft?: Prisma.InputJsonValue;
+  /** Workflow label; omit to leave unchanged. Transitions validated against current row. */
+  status?: TwinScenarioDraftPatchStatus;
 };
+
+export type PatchScenarioDraftResult =
+  | { ok: true; row: ScenarioDraftDetailRow }
+  | { ok: false; reason: "not_found" }
+  | { ok: false; reason: "invalid_status_transition"; message: string };
+
+function statusTransitionError(current: string, next: TwinScenarioDraftPatchStatus): string | null {
+  if (next === "archived") {
+    return null;
+  }
+  if (current === "archived" || current === "draft") {
+    return null;
+  }
+  return "Cannot set status to draft unless the scenario is archived or already draft.";
+}
 
 /**
  * Applies a partial update when the row exists for `tenantId` + `draftId`.
- * Returns the updated row, or `null` if no row matched (caller returns 404).
+ * When `patch.status` is set, validates transition from the stored status first.
  */
 export async function patchScenarioDraftForTenant(
   tenantId: string,
   draftId: string,
   patch: PatchScenarioDraftInput,
-): Promise<ScenarioDraftDetailRow | null> {
+): Promise<PatchScenarioDraftResult> {
+  if (patch.status !== undefined) {
+    const existing = await prisma.supplyChainTwinScenarioDraft.findFirst({
+      where: { id: draftId, tenantId },
+      select: { status: true },
+    });
+    if (!existing) {
+      return { ok: false, reason: "not_found" };
+    }
+    const transitionErr = statusTransitionError(existing.status, patch.status);
+    if (transitionErr) {
+      return { ok: false, reason: "invalid_status_transition", message: transitionErr };
+    }
+  }
+
   const data: Prisma.SupplyChainTwinScenarioDraftUpdateManyMutationInput = {};
   if (patch.title !== undefined) {
     data.title = patch.title;
@@ -146,15 +185,22 @@ export async function patchScenarioDraftForTenant(
   if (patch.draft !== undefined) {
     data.draftJson = patch.draft;
   }
+  if (patch.status !== undefined) {
+    data.status = patch.status;
+  }
 
   const result = await prisma.supplyChainTwinScenarioDraft.updateMany({
     where: { id: draftId, tenantId },
     data,
   });
   if (result.count === 0) {
-    return null;
+    return { ok: false, reason: "not_found" };
   }
-  return getScenarioDraftByIdForTenant(tenantId, draftId);
+  const row = await getScenarioDraftByIdForTenant(tenantId, draftId);
+  if (!row) {
+    return { ok: false, reason: "not_found" };
+  }
+  return { ok: true, row };
 }
 
 /**

@@ -4,9 +4,15 @@ import { TWIN_SCENARIO_DRAFT_MAX_JSON_BYTES } from "./twin-scenario-draft-create
 
 const draftObjectSchema = z.record(z.string(), z.unknown());
 
+/** Workflow labels accepted on `PATCH` (narrow allowlist; DB column is plain `String`). */
+export const twinScenarioDraftPatchStatusSchema = z.enum(["draft", "archived"]);
+
+export type TwinScenarioDraftPatchStatus = z.infer<typeof twinScenarioDraftPatchStatusSchema>;
+
 /**
- * Partial update: at least one of `title` or `draft` must be present.
+ * Partial update: at least one of `title`, `draft`, or `status` must be present.
  * `title: null` clears the stored title; omitted `title` leaves it unchanged.
+ * `status` is validated here; allowed transitions are enforced in the repo.
  */
 export const twinScenarioDraftPatchBodySchema = z
   .object({
@@ -20,12 +26,13 @@ export const twinScenarioDraftPatchBodySchema = z
         return t.length > 0 ? t : null;
       }),
     draft: draftObjectSchema.optional(),
+    status: twinScenarioDraftPatchStatusSchema.optional(),
   })
   .superRefine((data, ctx) => {
-    if (data.title === undefined && data.draft === undefined) {
+    if (data.title === undefined && data.draft === undefined && data.status === undefined) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Provide at least one of title or draft.",
+        message: "Provide at least one of title, draft, or status.",
         path: [],
       });
     }
@@ -59,6 +66,7 @@ export function parseTwinScenarioDraftPatchBody(
     const flat = parsed.error.flatten().fieldErrors;
     const first =
       flat.draft?.[0] ??
+      flat.status?.[0] ??
       parsed.error.issues.find((i) => i.path.length === 0)?.message ??
       parsed.error.issues[0]?.message ??
       parsed.error.message;

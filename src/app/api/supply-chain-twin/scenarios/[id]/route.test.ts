@@ -222,7 +222,7 @@ describe("PATCH /api/supply-chain-twin/scenarios/[id]", () => {
       setupIncomplete: false,
       poSubNavVisibility: {},
     });
-    patchScenarioDraftForTenantMock.mockResolvedValue(null);
+    patchScenarioDraftForTenantMock.mockResolvedValue({ ok: false, reason: "not_found" });
 
     const { PATCH } = await import("./route");
     const response = await PATCH(
@@ -236,6 +236,86 @@ describe("PATCH /api/supply-chain-twin/scenarios/[id]", () => {
 
     expect(response.status).toBe(404);
     expect(patchScenarioDraftForTenantMock).toHaveBeenCalledWith("t1", "missing", { title: "Only title" });
+  });
+
+  it("returns 400 when repo rejects a status transition", async () => {
+    getViewerGrantSetMock.mockResolvedValue({
+      tenant: { id: "t1", name: "Demo", slug: "demo-company" },
+      user: { id: "u1", email: "x@y.com", name: "X" },
+      grantSet: new Set(),
+    });
+    resolveNavStateMock.mockResolvedValue({
+      linkVisibility: { supplyChainTwin: true },
+      setupIncomplete: false,
+      poSubNavVisibility: {},
+    });
+    patchScenarioDraftForTenantMock.mockResolvedValue({
+      ok: false,
+      reason: "invalid_status_transition",
+      message: "Cannot set status to draft unless the scenario is archived or already draft.",
+    });
+
+    const { PATCH } = await import("./route");
+    const response = await PATCH(
+      new Request("http://localhost/api/supply-chain-twin/scenarios/draft1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "draft" }),
+      }),
+      { params: Promise.resolve({ id: "draft1" }) },
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: "Cannot set status to draft unless the scenario is archived or already draft.",
+    });
+  });
+
+  it("returns 200 for status-only patch", async () => {
+    getViewerGrantSetMock.mockResolvedValue({
+      tenant: { id: "t1", name: "Demo", slug: "demo-company" },
+      user: { id: "u1", email: "x@y.com", name: "X" },
+      grantSet: new Set(),
+    });
+    resolveNavStateMock.mockResolvedValue({
+      linkVisibility: { supplyChainTwin: true },
+      setupIncomplete: false,
+      poSubNavVisibility: {},
+    });
+    const createdAt = new Date("2026-01-01T00:00:00.000Z");
+    const updatedAt = new Date("2026-01-06T00:00:00.000Z");
+    patchScenarioDraftForTenantMock.mockResolvedValue({
+      ok: true,
+      row: {
+        id: "draft1",
+        title: "Keep",
+        status: "archived",
+        draftJson: { shocks: [] },
+        createdAt,
+        updatedAt,
+      },
+    });
+
+    const { PATCH } = await import("./route");
+    const response = await PATCH(
+      new Request("http://localhost/api/supply-chain-twin/scenarios/draft1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "archived" }),
+      }),
+      { params: Promise.resolve({ id: "draft1" }) },
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      id: "draft1",
+      title: "Keep",
+      status: "archived",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-06T00:00:00.000Z",
+      draft: { shocks: [] },
+    });
+    expect(patchScenarioDraftForTenantMock).toHaveBeenCalledWith("t1", "draft1", { status: "archived" });
   });
 
   it("returns 200 with full detail after patch", async () => {
@@ -252,12 +332,15 @@ describe("PATCH /api/supply-chain-twin/scenarios/[id]", () => {
     const createdAt = new Date("2026-01-01T00:00:00.000Z");
     const updatedAt = new Date("2026-01-05T12:00:00.000Z");
     patchScenarioDraftForTenantMock.mockResolvedValue({
-      id: "draft1",
-      title: "Renamed",
-      status: "draft",
-      draftJson: { shocks: [] },
-      createdAt,
-      updatedAt,
+      ok: true,
+      row: {
+        id: "draft1",
+        title: "Renamed",
+        status: "draft",
+        draftJson: { shocks: [] },
+        createdAt,
+        updatedAt,
+      },
     });
 
     const { PATCH } = await import("./route");

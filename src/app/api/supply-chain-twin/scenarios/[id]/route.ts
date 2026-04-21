@@ -16,6 +16,7 @@ import {
   getScenarioDraftByIdForTenant,
   patchScenarioDraftForTenant,
   type PatchScenarioDraftInput,
+  type PatchScenarioDraftResult,
 } from "@/lib/supply-chain-twin/scenarios-draft-repo";
 
 export const dynamic = "force-dynamic";
@@ -80,13 +81,16 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
 }
 
 /**
- * Partial update of `title` and/or `draft` (stored as `draftJson`). Request body validated with Zod; draft JSON is
- * never written to structured logs.
+ * Partial update of `title`, optional `draft` (`draftJson`), and/or **`status`** (`draft` | `archived` only in Zod).
+ * Draft JSON is never written to structured logs.
+ *
+ * **Archived vs list:** rows with `status: archived` are **excluded** from the keyset list on
+ * `GET /api/supply-chain-twin/scenarios` (repo filter). This `GET …/[id]` route still returns archived rows by id.
  *
  * Optimistic concurrency (e.g. `If-Match` / `updatedAt` guards) is deferred — last write wins for now.
  *
  * **200:** Same JSON shape as `GET` (full draft after update). **404:** No row for tenant + id. **400:** Invalid path
- * id, invalid JSON body, or empty patch.
+ * id, invalid JSON body, empty patch, invalid `status` enum, or disallowed status transition.
  */
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   const requestId = resolveSctwinRequestId(request);
@@ -140,11 +144,28 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     if (parsed.body.draft !== undefined) {
       patchInput.draft = parsed.body.draft as Prisma.InputJsonValue;
     }
-
-    const row = await patchScenarioDraftForTenant(access.tenant.id, draftId, patchInput);
-    if (!row) {
-      return twinApiJson({ error: "Not found." }, { status: 404 }, requestId);
+    if (parsed.body.status !== undefined) {
+      patchInput.status = parsed.body.status;
     }
+
+    const patched: PatchScenarioDraftResult = await patchScenarioDraftForTenant(
+      access.tenant.id,
+      draftId,
+      patchInput,
+    );
+    if (!patched.ok) {
+      if (patched.reason === "not_found") {
+        return twinApiJson({ error: "Not found." }, { status: 404 }, requestId);
+      }
+      logSctwinApiWarn({
+        route: ROUTE_PATCH,
+        phase: "validation",
+        errorCode: "INVALID_STATUS_TRANSITION",
+        requestId,
+      });
+      return twinApiJson({ error: patched.message }, { status: 400 }, requestId);
+    }
+    const row = patched.row;
 
     const body = {
       id: row.id,
