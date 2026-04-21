@@ -158,4 +158,64 @@ describe("PATCH /api/apihub/connectors/:connectorId", () => {
     expect(response.status).toBe(400);
     expect(updateApiHubConnectorLifecycleMock).not.toHaveBeenCalled();
   });
+
+  it("accepts valid authConfigRef and forwards to lifecycle update", async () => {
+    getApiHubConnectorInTenantMock.mockResolvedValue({ id: "c1", status: "draft" });
+    const { PATCH } = await import("./route");
+    const response = await PATCH(
+      new Request("http://localhost/api/apihub/connectors/c1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", [APIHUB_REQUEST_ID_HEADER]: "patch-ref-ok" },
+        body: JSON.stringify({ authConfigRef: "  vault://mount/secret  " }),
+      }),
+      { params: Promise.resolve({ connectorId: "c1" }) },
+    );
+    expect(response.status).toBe(200);
+    expect(updateApiHubConnectorLifecycleMock).toHaveBeenCalledWith({
+      tenantId: "tenant-1",
+      connectorId: "c1",
+      actorUserId: "user-1",
+      status: "draft",
+      syncNow: false,
+      note: null,
+      authConfigRef: "vault://mount/secret",
+    });
+  });
+
+  it("returns 400 when authConfigRef pattern is not allowlisted", async () => {
+    getApiHubConnectorInTenantMock.mockResolvedValue({ id: "c1", status: "draft" });
+    const { PATCH } = await import("./route");
+    const response = await PATCH(
+      new Request("http://localhost/api/apihub/connectors/c1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", [APIHUB_REQUEST_ID_HEADER]: "patch-ref-bad" },
+        body: JSON.stringify({ authConfigRef: "https://example.com/secret" }),
+      }),
+      { params: Promise.resolve({ connectorId: "c1" }) },
+    );
+    expect(response.status).toBe(400);
+    expect(updateApiHubConnectorLifecycleMock).not.toHaveBeenCalled();
+    const body = (await response.json()) as {
+      error: { details?: { issues: { field: string; code: string }[] } };
+    };
+    expect(body.error.details?.issues?.[0]?.field).toBe("authConfigRef");
+    expect(body.error.details?.issues?.[0]?.code).toBe("INVALID_PATTERN");
+  });
+
+  it("clears authConfigRef with null", async () => {
+    getApiHubConnectorInTenantMock.mockResolvedValue({ id: "c1", status: "paused" });
+    const { PATCH } = await import("./route");
+    const response = await PATCH(
+      new Request("http://localhost/api/apihub/connectors/c1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", [APIHUB_REQUEST_ID_HEADER]: "patch-ref-null" },
+        body: JSON.stringify({ authConfigRef: null }),
+      }),
+      { params: Promise.resolve({ connectorId: "c1" }) },
+    );
+    expect(response.status).toBe(200);
+    expect(updateApiHubConnectorLifecycleMock).toHaveBeenCalledWith(
+      expect.objectContaining({ authConfigRef: null }),
+    );
+  });
 });

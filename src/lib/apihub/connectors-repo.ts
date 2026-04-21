@@ -149,11 +149,13 @@ export async function updateApiHubConnectorLifecycle(opts: {
   note: string | null;
   /** When not `undefined`, sets or clears `opsNote` on the connector row. */
   opsNote?: string | null;
+  /** When not `undefined`, sets or clears `authConfigRef` (already format-validated in the API layer). */
+  authConfigRef?: string | null;
 }): Promise<ApiHubConnectorListRow | null> {
   return prisma.$transaction(async (tx) => {
     const existing = await tx.apiHubConnector.findFirst({
       where: { id: opts.connectorId, tenantId: opts.tenantId },
-      select: { id: true, status: true, opsNote: true },
+      select: { id: true, status: true, opsNote: true, authConfigRef: true },
     });
     if (!existing) {
       return null;
@@ -164,10 +166,15 @@ export async function updateApiHubConnectorLifecycle(opts: {
     const newOps = opts.opsNote !== undefined ? (opts.opsNote ?? "") : oldOps;
     const opsChanged = opts.opsNote !== undefined && newOps !== oldOps;
 
+    const oldRef = existing.authConfigRef ?? "";
+    const newRef = opts.authConfigRef !== undefined ? (opts.authConfigRef ?? "") : oldRef;
+    const authRefChanged = opts.authConfigRef !== undefined && newRef !== oldRef;
+
     const data: {
       status?: string;
       lastSyncAt?: Date;
       opsNote?: string | null;
+      authConfigRef?: string | null;
     } = {};
     if (existing.status !== opts.status) {
       data.status = opts.status;
@@ -177,6 +184,9 @@ export async function updateApiHubConnectorLifecycle(opts: {
     }
     if (opts.opsNote !== undefined) {
       data.opsNote = opts.opsNote;
+    }
+    if (authRefChanged) {
+      data.authConfigRef = opts.authConfigRef ?? null;
     }
 
     const updated =
@@ -242,6 +252,18 @@ export async function updateApiHubConnectorLifecycle(opts: {
             newOps.length === 0
               ? "Ops note cleared."
               : `Ops note updated (${newOps.length} characters).`,
+        },
+      });
+    }
+
+    if (authRefChanged) {
+      await tx.apiHubConnectorAuditLog.create({
+        data: {
+          tenantId: opts.tenantId,
+          connectorId: existing.id,
+          actorUserId: opts.actorUserId,
+          action: "connector.auth_config_ref.updated",
+          note: newRef.length === 0 ? "Auth config reference cleared." : "Auth config reference updated.",
         },
       });
     }

@@ -5,6 +5,7 @@ import {
   apiHubJson,
   apiHubValidationError,
 } from "@/lib/apihub/api-error";
+import { validateApiHubAuthConfigRefForWrite } from "@/lib/apihub/auth-config-ref";
 import { getActorUserId } from "@/lib/authz";
 import {
   APIHUB_CONNECTOR_DISABLE_FORCE_NOTE_MIN,
@@ -22,6 +23,7 @@ type PatchBody = {
   markSyncedNow?: unknown;
   note?: unknown;
   opsNote?: unknown;
+  authConfigRef?: unknown;
 };
 
 export const dynamic = "force-dynamic";
@@ -103,6 +105,17 @@ export async function PATCH(
     }
   }
 
+  let authConfigRefUpdate: string | null | undefined = undefined;
+  if (Object.prototype.hasOwnProperty.call(body, "authConfigRef")) {
+    const parsed = validateApiHubAuthConfigRefForWrite(body.authConfigRef);
+    if (!parsed.ok) {
+      return apiHubValidationError(400, "VALIDATION_ERROR", "Connector auth config ref validation failed.", [
+        { field: "authConfigRef", code: parsed.code, message: parsed.message },
+      ], requestId);
+    }
+    authConfigRefUpdate = parsed.value;
+  }
+
   let opsNoteUpdate: string | null | undefined = undefined;
   if (Object.prototype.hasOwnProperty.call(body, "opsNote")) {
     if (body.opsNote === null) {
@@ -161,6 +174,7 @@ export async function PATCH(
     syncNow: markSyncedNow,
     note,
     ...(opsNoteUpdate !== undefined ? { opsNote: opsNoteUpdate } : {}),
+    ...(authConfigRefUpdate !== undefined ? { authConfigRef: authConfigRefUpdate } : {}),
   });
 
   if (!updated) {

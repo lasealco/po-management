@@ -17,6 +17,9 @@ export const APIHUB_CONNECTOR_DISABLE_FORCE_NOTE_MIN = 12;
 /** Max persisted length for `opsNote` on `ApiHubConnector` (PATCH `opsNote`). */
 export const APIHUB_CONNECTOR_OPS_NOTE_MAX = 2000;
 
+/** Max length for `authConfigRef` after trim (non-secret pointer strings only). */
+export const APIHUB_AUTH_CONFIG_REF_MAX_LEN = 512;
+
 /** Allowlisted `sort` query values for `GET /api/apihub/connectors`. */
 export const APIHUB_CONNECTOR_LIST_SORT_FIELDS = ["createdAt", "updatedAt", "name"] as const;
 export type ApiHubConnectorListSortField = (typeof APIHUB_CONNECTOR_LIST_SORT_FIELDS)[number];
