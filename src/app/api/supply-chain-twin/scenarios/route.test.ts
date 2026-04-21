@@ -1,0 +1,186 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const getViewerGrantSetMock = vi.fn();
+const resolveNavStateMock = vi.fn();
+const createScenarioDraftMock = vi.fn();
+
+vi.mock("@/lib/authz", () => ({
+  getViewerGrantSet: getViewerGrantSetMock,
+}));
+
+vi.mock("@/lib/nav-visibility", () => ({
+  resolveNavState: resolveNavStateMock,
+}));
+
+vi.mock("@/lib/supply-chain-twin/scenarios-draft-repo", () => ({
+  createScenarioDraft: createScenarioDraftMock,
+}));
+
+describe("POST /api/supply-chain-twin/scenarios", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns 403 when there is no demo user", async () => {
+    getViewerGrantSetMock.mockResolvedValue({
+      tenant: { id: "t1", name: "Demo", slug: "demo-company" },
+      user: null,
+      grantSet: new Set(),
+    });
+
+    const { POST } = await import("./route");
+    const response = await POST(
+      new Request("http://localhost/api/supply-chain-twin/scenarios", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ draft: {} }),
+      }),
+    );
+
+    expect(response.status).toBe(403);
+    expect(createScenarioDraftMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 403 when Twin link is not visible for this session", async () => {
+    getViewerGrantSetMock.mockResolvedValue({
+      tenant: { id: "t1", name: "Demo", slug: "demo-company" },
+      user: { id: "u1", email: "x@y.com", name: "X" },
+      grantSet: new Set(),
+    });
+    resolveNavStateMock.mockResolvedValue({
+      linkVisibility: { supplyChainTwin: false },
+      setupIncomplete: false,
+      poSubNavVisibility: {},
+    });
+
+    const { POST } = await import("./route");
+    const response = await POST(
+      new Request("http://localhost/api/supply-chain-twin/scenarios", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ draft: {} }),
+      }),
+    );
+
+    expect(response.status).toBe(403);
+    expect(createScenarioDraftMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 when body is not valid JSON", async () => {
+    getViewerGrantSetMock.mockResolvedValue({
+      tenant: { id: "t1", name: "Demo", slug: "demo-company" },
+      user: { id: "u1", email: "x@y.com", name: "X" },
+      grantSet: new Set(),
+    });
+    resolveNavStateMock.mockResolvedValue({
+      linkVisibility: { supplyChainTwin: true },
+      setupIncomplete: false,
+      poSubNavVisibility: {},
+    });
+
+    const { POST } = await import("./route");
+    const response = await POST(
+      new Request("http://localhost/api/supply-chain-twin/scenarios", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{",
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ error: expect.stringMatching(/valid JSON/i) });
+    expect(createScenarioDraftMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 when draft is missing", async () => {
+    getViewerGrantSetMock.mockResolvedValue({
+      tenant: { id: "t1", name: "Demo", slug: "demo-company" },
+      user: { id: "u1", email: "x@y.com", name: "X" },
+      grantSet: new Set(),
+    });
+    resolveNavStateMock.mockResolvedValue({
+      linkVisibility: { supplyChainTwin: true },
+      setupIncomplete: false,
+      poSubNavVisibility: {},
+    });
+
+    const { POST } = await import("./route");
+    const response = await POST(
+      new Request("http://localhost/api/supply-chain-twin/scenarios", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "Only title" }),
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(createScenarioDraftMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 when draft JSON exceeds byte cap", async () => {
+    getViewerGrantSetMock.mockResolvedValue({
+      tenant: { id: "t1", name: "Demo", slug: "demo-company" },
+      user: { id: "u1", email: "x@y.com", name: "X" },
+      grantSet: new Set(),
+    });
+    resolveNavStateMock.mockResolvedValue({
+      linkVisibility: { supplyChainTwin: true },
+      setupIncomplete: false,
+      poSubNavVisibility: {},
+    });
+
+    const huge = "x".repeat(70_000);
+    const { POST } = await import("./route");
+    const response = await POST(
+      new Request("http://localhost/api/supply-chain-twin/scenarios", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ draft: { huge } }),
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(createScenarioDraftMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 201 and persists when body is valid", async () => {
+    getViewerGrantSetMock.mockResolvedValue({
+      tenant: { id: "t1", name: "Demo", slug: "demo-company" },
+      user: { id: "u1", email: "x@y.com", name: "X" },
+      grantSet: new Set(),
+    });
+    resolveNavStateMock.mockResolvedValue({
+      linkVisibility: { supplyChainTwin: true },
+      setupIncomplete: false,
+      poSubNavVisibility: {},
+    });
+    const updatedAt = new Date("2026-02-01T12:00:00.000Z");
+    createScenarioDraftMock.mockResolvedValue({
+      id: "draft1",
+      title: "My scenario",
+      status: "draft",
+      updatedAt,
+    });
+
+    const { POST } = await import("./route");
+    const response = await POST(
+      new Request("http://localhost/api/supply-chain-twin/scenarios", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "My scenario", draft: { shocks: [] } }),
+      }),
+    );
+
+    expect(response.status).toBe(201);
+    expect(await response.json()).toEqual({
+      id: "draft1",
+      title: "My scenario",
+      status: "draft",
+      updatedAt: "2026-02-01T12:00:00.000Z",
+    });
+    expect(createScenarioDraftMock).toHaveBeenCalledWith("t1", {
+      title: "My scenario",
+      draft: { shocks: [] },
+    });
+  });
+});

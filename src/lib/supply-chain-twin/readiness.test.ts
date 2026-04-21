@@ -28,6 +28,7 @@ describe("getSupplyChainTwinReadinessSnapshot", () => {
       { table_name: "SupplyChainTwinEntityEdge" },
       { table_name: "SupplyChainTwinIngestEvent" },
       { table_name: "SupplyChainTwinRiskSignal" },
+      { table_name: "SupplyChainTwinScenarioDraft" },
     ]);
 
     const out = await getSupplyChainTwinReadinessSnapshot();
@@ -42,10 +43,11 @@ describe("getSupplyChainTwinReadinessSnapshot", () => {
 
     expect(out.ok).toBe(false);
     expect(out.healthIndex).toEqual(TWIN_HEALTH_INDEX_STUB);
-    expect(out.reasons).toHaveLength(3);
+    expect(out.reasons).toHaveLength(4);
     expect(out.reasons.some((r) => r.includes("SupplyChainTwinEntityEdge"))).toBe(true);
     expect(out.reasons.some((r) => r.includes("SupplyChainTwinIngestEvent"))).toBe(true);
     expect(out.reasons.some((r) => r.includes("SupplyChainTwinRiskSignal"))).toBe(true);
+    expect(out.reasons.some((r) => r.includes("SupplyChainTwinScenarioDraft"))).toBe(true);
     expect(out.reasons.every((r) => r.includes("db:migrate"))).toBe(true);
   });
 

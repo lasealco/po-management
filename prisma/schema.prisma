@@ -82,6 +82,7 @@ model Tenant {
   supplyChainTwinEntityEdges     SupplyChainTwinEntityEdge[]
   supplyChainTwinIngestEvents    SupplyChainTwinIngestEvent[]
   supplyChainTwinRiskSignals     SupplyChainTwinRiskSignal[]
+  supplyChainTwinScenarioDrafts  SupplyChainTwinScenarioDraft[]
 }
 
 /// Integration / API hub — registry row for an external or internal data source (Phase 1 stub).
@@ -3179,4 +3180,21 @@ model SupplyChainTwinIngestEvent {
   @@index([tenantId])
   @@index([tenantId, createdAt])
   @@index([tenantId, type, createdAt])
+}
+
+/// Tenant-scoped what-if scenario draft (JSON only; no solver in Slice 24).
+model SupplyChainTwinScenarioDraft {
+  id         String   @id @default(cuid())
+  tenantId   String
+  title      String?
+  /// Workflow state label (e.g. `draft`); vocabulary may evolve with scenario engine.
+  status     String   @default("draft")
+  draftJson  Json     @default("{}")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, updatedAt])
 }
