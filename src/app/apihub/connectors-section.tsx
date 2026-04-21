@@ -6,6 +6,8 @@ import { useState } from "react";
 import { readApiHubErrorMessageFromJsonBody } from "@/lib/apihub/api-error";
 import type { ApiHubConnectorDto } from "@/lib/apihub/connector-dto";
 
+import { ConnectorAuditTimeline } from "./connector-audit-timeline";
+
 type Props = {
   initialConnectors: ApiHubConnectorDto[];
   canCreate: boolean;
@@ -83,6 +85,7 @@ export function ConnectorsSection({ initialConnectors, canCreate }: Props) {
   const [busy, setBusy] = useState(false);
   const [rowBusyId, setRowBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [timelineConnectorId, setTimelineConnectorId] = useState<string | null>(null);
 
   async function addStub() {
     setError(null);
@@ -247,9 +250,29 @@ export function ConnectorsSection({ initialConnectors, canCreate }: Props) {
                         <p className="font-medium text-zinc-800">{c.auditTrail[0].action}</p>
                         <p className="mt-1">{c.auditTrail[0].note ?? "No note"}</p>
                         <p className="mt-1 text-zinc-500">{formatWhen(c.auditTrail[0].createdAt)}</p>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setTimelineConnectorId((prev) => (prev === c.id ? null : c.id))
+                          }
+                          className="mt-2 text-left text-xs font-semibold text-[var(--arscmp-primary)] hover:underline"
+                        >
+                          {timelineConnectorId === c.id ? "Hide full timeline" : "View full timeline"}
+                        </button>
                       </div>
                     ) : (
-                      <span className="text-xs text-zinc-500">No events yet</span>
+                      <div className="text-xs text-zinc-500">
+                        <span>No events yet</span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setTimelineConnectorId((prev) => (prev === c.id ? null : c.id))
+                          }
+                          className="mt-2 block text-left font-semibold text-[var(--arscmp-primary)] hover:underline"
+                        >
+                          {timelineConnectorId === c.id ? "Hide timeline" : "Open timeline"}
+                        </button>
+                      </div>
                     )}
                   </td>
                   <td className="px-4 py-3 text-zinc-600">{formatWhen(c.updatedAt)}</td>
@@ -260,12 +283,20 @@ export function ConnectorsSection({ initialConnectors, canCreate }: Props) {
         </div>
       )}
 
+      {timelineConnectorId ? (
+        <div className="mt-6">
+          <ConnectorAuditTimeline connectorId={timelineConnectorId} allowFetch={canCreate} />
+        </div>
+      ) : null}
+
       <p className="mt-4 text-xs text-zinc-500">
         API: <code className="rounded bg-zinc-100 px-1.5 py-0.5 font-mono">GET /api/apihub/connectors</code>,{" "}
         <code className="rounded bg-zinc-100 px-1.5 py-0.5 font-mono">POST /api/apihub/connectors</code> (demo tenant +
         demo actor required),{" "}
         <code className="rounded bg-zinc-100 px-1.5 py-0.5 font-mono">PATCH /api/apihub/connectors/:id</code> for status
-        + sync timestamp updates with audit rows.
+        + sync timestamp updates with audit rows,{" "}
+        <code className="rounded bg-zinc-100 px-1.5 py-0.5 font-mono">GET /api/apihub/connectors/:id/audit</code> for
+        paginated audit history.
       </p>
     </section>
   );
