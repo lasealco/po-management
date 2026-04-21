@@ -18,21 +18,25 @@ Observation-only release-candidate dry run for the current Twin slice stack.
 ### High
 
 1. **Runtime smoke target unavailable**
+   - Status: **Resolved (Slice 238 stabilization)**
    - Command: `npm run smoke:sctwin:e2e`
    - Result: `overall fail (0/5 steps passed)`
    - Evidence: all API steps (`readiness`, `explorer`, `scenarios`, `risks`, `exports`) returned connection-level `TypeError` with `status: 0`.
    - Impact: RC runtime/API health could not be validated in this environment.
-   - Suggested next step: run smoke pack against a live seeded app (`SCTWIN_SMOKE_BASE_URL=<reachable-url> npm run smoke:sctwin:e2e`).
+   - Stabilization fix: smoke pack now emits explicit `BASE_URL_UNREACHABLE` classification with `baseUrlReachable=false` and `blockingReason` summary instead of opaque TypeError-only output.
+   - Next step: run smoke pack against a live seeded app (`SCTWIN_SMOKE_BASE_URL=<reachable-url> npm run smoke:sctwin:e2e`).
 
 ### Medium
 
 1. **No seeded runtime evidence captured**
+   - Status: **Open**
    - Because the app endpoint was unreachable, this dry run does not confirm seeded tenant behavior for UI/API smoke flows.
    - Suggested next step: execute smoke pack after confirming app runtime + database seed alignment.
 
 ### Low
 
 1. **Program gate healthy**
+   - Status: **Accepted**
    - Command: `npm run verify:sctwin:program`
    - Result: `PASS`
    - Summary:

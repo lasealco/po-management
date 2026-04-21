@@ -15,6 +15,7 @@ Latest RC dry run log: `docs/sctwin/release_candidate_dry_run_2026-04-21.md`.
 - Run `npm run verify:sctwin:program` for final program-level validation (composed gates + explicit pass/fail summary).
 - Contract baseline check is part of `npm run test:sctwin:contracts` via `contract-snapshot-baseline.contract.test.ts`.
 - Run `npm run smoke:sctwin:e2e` for sequential endpoint smoke checks (readiness -> explorer -> scenarios -> risks -> exports) with machine-readable JSON summary output.
+  - If the target is unreachable, summary includes `blockingReason: "BASE_URL_UNREACHABLE"` and `baseUrlReachable: false`.
 
 ## Canonical Command Map
 

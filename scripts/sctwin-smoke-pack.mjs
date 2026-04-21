@@ -38,6 +38,18 @@ const checks = [
   },
 ];
 
+function classifyRequestError(error) {
+  const name = error instanceof Error ? error.name : "UnknownError";
+  if (name === "AbortError") {
+    return "REQUEST_TIMEOUT";
+  }
+  if (name === "TypeError") {
+    // Node fetch throws TypeError for DNS/refused/offline failures.
+    return "BASE_URL_UNREACHABLE";
+  }
+  return name;
+}
+
 function nowIso() {
   return new Date().toISOString();
 }
@@ -93,19 +105,21 @@ async function main() {
         step.ok = true;
       }
     } catch (error) {
-      const name = error instanceof Error ? error.name : "UnknownError";
-      step.error = name === "AbortError" ? "REQUEST_TIMEOUT" : name;
+      step.error = classifyRequestError(error);
     }
     results.push(step);
   }
 
   const ok = results.every((r) => r.ok);
+  const baseUrlReachable = !results.some((r) => r.error === "BASE_URL_UNREACHABLE");
   const summary = {
     suite: "sctwin-e2e-smoke-pack",
     baseUrl,
     startedAt,
     finishedAt: nowIso(),
     ok,
+    baseUrlReachable,
+    blockingReason: baseUrlReachable ? null : "BASE_URL_UNREACHABLE",
     passed: results.filter((r) => r.ok).length,
     failed: results.filter((r) => !r.ok).length,
     steps: results,
