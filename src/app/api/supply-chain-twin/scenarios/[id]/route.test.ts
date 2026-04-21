@@ -4,6 +4,7 @@ const getViewerGrantSetMock = vi.fn();
 const resolveNavStateMock = vi.fn();
 const actorIsSupplierPortalRestrictedMock = vi.fn();
 const getScenarioDraftByIdForTenantMock = vi.fn();
+const patchScenarioDraftForTenantMock = vi.fn();
 
 vi.mock("@/lib/authz", async () => {
   const mod = await vi.importActual<typeof import("@/lib/authz")>("@/lib/authz");
@@ -20,6 +21,7 @@ vi.mock("@/lib/nav-visibility", () => ({
 
 vi.mock("@/lib/supply-chain-twin/scenarios-draft-repo", () => ({
   getScenarioDraftByIdForTenant: getScenarioDraftByIdForTenantMock,
+  patchScenarioDraftForTenant: patchScenarioDraftForTenantMock,
 }));
 
 describe("GET /api/supply-chain-twin/scenarios/[id]", () => {
@@ -123,6 +125,161 @@ describe("GET /api/supply-chain-twin/scenarios/[id]", () => {
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-02T00:00:00.000Z",
       draft: { shocks: [{ type: "delay", days: 3 }] },
+    });
+  });
+});
+
+describe("PATCH /api/supply-chain-twin/scenarios/[id]", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    actorIsSupplierPortalRestrictedMock.mockResolvedValue(false);
+  });
+
+  it("returns 403 when there is no demo user", async () => {
+    getViewerGrantSetMock.mockResolvedValue({
+      tenant: { id: "t1", name: "Demo", slug: "demo-company" },
+      user: null,
+      grantSet: new Set(),
+    });
+
+    const { PATCH } = await import("./route");
+    const response = await PATCH(
+      new Request("http://localhost/api/supply-chain-twin/scenarios/d1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "x" }),
+      }),
+      { params: Promise.resolve({ id: "d1" }) },
+    );
+
+    expect(response.status).toBe(403);
+    expect(patchScenarioDraftForTenantMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 when body is not valid JSON", async () => {
+    getViewerGrantSetMock.mockResolvedValue({
+      tenant: { id: "t1", name: "Demo", slug: "demo-company" },
+      user: { id: "u1", email: "x@y.com", name: "X" },
+      grantSet: new Set(),
+    });
+    resolveNavStateMock.mockResolvedValue({
+      linkVisibility: { supplyChainTwin: true },
+      setupIncomplete: false,
+      poSubNavVisibility: {},
+    });
+
+    const { PATCH } = await import("./route");
+    const response = await PATCH(
+      new Request("http://localhost/api/supply-chain-twin/scenarios/d1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: "{",
+      }),
+      { params: Promise.resolve({ id: "d1" }) },
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ error: expect.stringMatching(/valid JSON/i) });
+    expect(patchScenarioDraftForTenantMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 when patch is empty", async () => {
+    getViewerGrantSetMock.mockResolvedValue({
+      tenant: { id: "t1", name: "Demo", slug: "demo-company" },
+      user: { id: "u1", email: "x@y.com", name: "X" },
+      grantSet: new Set(),
+    });
+    resolveNavStateMock.mockResolvedValue({
+      linkVisibility: { supplyChainTwin: true },
+      setupIncomplete: false,
+      poSubNavVisibility: {},
+    });
+
+    const { PATCH } = await import("./route");
+    const response = await PATCH(
+      new Request("http://localhost/api/supply-chain-twin/scenarios/d1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      }),
+      { params: Promise.resolve({ id: "d1" }) },
+    );
+
+    expect(response.status).toBe(400);
+    expect(patchScenarioDraftForTenantMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 when repo reports no row", async () => {
+    getViewerGrantSetMock.mockResolvedValue({
+      tenant: { id: "t1", name: "Demo", slug: "demo-company" },
+      user: { id: "u1", email: "x@y.com", name: "X" },
+      grantSet: new Set(),
+    });
+    resolveNavStateMock.mockResolvedValue({
+      linkVisibility: { supplyChainTwin: true },
+      setupIncomplete: false,
+      poSubNavVisibility: {},
+    });
+    patchScenarioDraftForTenantMock.mockResolvedValue(null);
+
+    const { PATCH } = await import("./route");
+    const response = await PATCH(
+      new Request("http://localhost/api/supply-chain-twin/scenarios/missing", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "Only title" }),
+      }),
+      { params: Promise.resolve({ id: "missing" }) },
+    );
+
+    expect(response.status).toBe(404);
+    expect(patchScenarioDraftForTenantMock).toHaveBeenCalledWith("t1", "missing", { title: "Only title" });
+  });
+
+  it("returns 200 with full detail after patch", async () => {
+    getViewerGrantSetMock.mockResolvedValue({
+      tenant: { id: "t1", name: "Demo", slug: "demo-company" },
+      user: { id: "u1", email: "x@y.com", name: "X" },
+      grantSet: new Set(),
+    });
+    resolveNavStateMock.mockResolvedValue({
+      linkVisibility: { supplyChainTwin: true },
+      setupIncomplete: false,
+      poSubNavVisibility: {},
+    });
+    const createdAt = new Date("2026-01-01T00:00:00.000Z");
+    const updatedAt = new Date("2026-01-05T12:00:00.000Z");
+    patchScenarioDraftForTenantMock.mockResolvedValue({
+      id: "draft1",
+      title: "Renamed",
+      status: "draft",
+      draftJson: { shocks: [] },
+      createdAt,
+      updatedAt,
+    });
+
+    const { PATCH } = await import("./route");
+    const response = await PATCH(
+      new Request("http://localhost/api/supply-chain-twin/scenarios/draft1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "Renamed", draft: { shocks: [] } }),
+      }),
+      { params: Promise.resolve({ id: "draft1" }) },
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      id: "draft1",
+      title: "Renamed",
+      status: "draft",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-05T12:00:00.000Z",
+      draft: { shocks: [] },
+    });
+    expect(patchScenarioDraftForTenantMock).toHaveBeenCalledWith("t1", "draft1", {
+      title: "Renamed",
+      draft: { shocks: [] },
     });
   });
 });

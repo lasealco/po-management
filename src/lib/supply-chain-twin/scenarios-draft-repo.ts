@@ -117,3 +117,37 @@ export async function getScenarioDraftByIdForTenant(
   });
   return row;
 }
+
+export type PatchScenarioDraftInput = {
+  /** Set or clear; omit to leave unchanged. */
+  title?: string | null;
+  /** Replace stored JSON; omit to leave unchanged. */
+  draft?: Prisma.InputJsonValue;
+};
+
+/**
+ * Applies a partial update when the row exists for `tenantId` + `draftId`.
+ * Returns the updated row, or `null` if no row matched (caller returns 404).
+ */
+export async function patchScenarioDraftForTenant(
+  tenantId: string,
+  draftId: string,
+  patch: PatchScenarioDraftInput,
+): Promise<ScenarioDraftDetailRow | null> {
+  const data: Prisma.SupplyChainTwinScenarioDraftUpdateManyMutationInput = {};
+  if (patch.title !== undefined) {
+    data.title = patch.title;
+  }
+  if (patch.draft !== undefined) {
+    data.draftJson = patch.draft;
+  }
+
+  const result = await prisma.supplyChainTwinScenarioDraft.updateMany({
+    where: { id: draftId, tenantId },
+    data,
+  });
+  if (result.count === 0) {
+    return null;
+  }
+  return getScenarioDraftByIdForTenant(tenantId, draftId);
+}
