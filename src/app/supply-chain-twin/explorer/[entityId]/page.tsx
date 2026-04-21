@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { AccessDenied } from "@/components/access-denied";
+import { TwinEntityActivityTeaser } from "@/components/supply-chain-twin/twin-entity-activity-teaser";
 import { TwinEntityJsonPreview } from "@/components/supply-chain-twin/twin-entity-json-preview";
 import { TwinSubNav } from "@/components/supply-chain-twin/twin-subnav";
 import { getEntitySnapshotByIdForTenant } from "@/lib/supply-chain-twin/repo";
@@ -109,6 +110,8 @@ export default async function SupplyChainTwinExplorerEntityPage({
           </div>
         </dl>
       </section>
+
+      <TwinEntityActivityTeaser />
 
       <section className="mt-6 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
         <h2 className="text-sm font-semibold text-zinc-900">Payload (JSON)</h2>
