@@ -1,3 +1,5 @@
+import type { ApiHubValidationIssue } from "@/lib/apihub/api-error";
+
 export type ApiHubMappingTransform =
   | "identity"
   | "trim"
@@ -23,6 +25,91 @@ export type ApiHubMappingRecordResult = {
   mapped: Record<string, unknown>;
   issues: ApiHubMappingIssue[];
 };
+
+/**
+ * Returns `null` when the path is safe for {@link getPathValue}; otherwise a short human message.
+ * Bracket indices must be numeric (`[0]`). Segments are dot-separated identifiers or array indices.
+ */
+export function validateApiHubMappingSourcePathSyntax(sourcePath: string): string | null {
+  const t = sourcePath.trim();
+  if (!t) {
+    return "sourcePath cannot be empty.";
+  }
+  if (/\s/.test(t)) {
+    return "sourcePath cannot contain whitespace.";
+  }
+  if (t.includes("..")) {
+    return "sourcePath cannot contain empty segments ('..').";
+  }
+  if (t.startsWith(".") || t.endsWith(".")) {
+    return "sourcePath cannot start or end with a dot.";
+  }
+  const normalized = t.replace(/\[(\d+)\]/g, ".$1");
+  if (normalized.includes("..")) {
+    return "sourcePath cannot contain consecutive dots.";
+  }
+  const parts = normalized.split(".").map((s) => s.trim());
+  if (parts.some((p) => !p)) {
+    return "sourcePath has an empty segment.";
+  }
+  for (const p of parts) {
+    if (/^\d+$/.test(p)) {
+      continue;
+    }
+    if (/^[A-Za-z_][A-Za-z0-9_-]*$/.test(p)) {
+      continue;
+    }
+    return `Invalid path segment '${p}' (use letters, numbers, underscore, hyphen, or numeric indices).`;
+  }
+  return null;
+}
+
+/**
+ * Cross-rule checks on the raw `rules` array: duplicate `targetField` and invalid `sourcePath` shapes.
+ */
+export function validateApiHubMappingRulesInput(rows: unknown[]): ApiHubValidationIssue[] {
+  const issues: ApiHubValidationIssue[] = [];
+  if (!Array.isArray(rows)) {
+    return issues;
+  }
+
+  const targetFirstIndex = new Map<string, number>();
+
+  rows.forEach((row, idx) => {
+    if (!row || typeof row !== "object") {
+      return;
+    }
+    const record = row as Record<string, unknown>;
+    const sourcePath = typeof record.sourcePath === "string" ? record.sourcePath : "";
+    const targetField = typeof record.targetField === "string" ? record.targetField.trim() : "";
+
+    if (sourcePath.trim().length > 0) {
+      const pathMsg = validateApiHubMappingSourcePathSyntax(sourcePath);
+      if (pathMsg) {
+        issues.push({
+          field: `rules[${idx}].sourcePath`,
+          code: "INVALID_SOURCE_PATH",
+          message: pathMsg,
+        });
+      }
+    }
+
+    if (targetField.length > 0) {
+      const prev = targetFirstIndex.get(targetField);
+      if (prev !== undefined) {
+        issues.push({
+          field: `rules[${idx}].targetField`,
+          code: "DUPLICATE_TARGET",
+          message: `targetField duplicates rules[${prev}].targetField.`,
+        });
+      } else {
+        targetFirstIndex.set(targetField, idx);
+      }
+    }
+  });
+
+  return issues;
+}
 
 function tokenizePath(path: string): string[] {
   return path

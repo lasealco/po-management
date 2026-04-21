@@ -8,7 +8,11 @@ import {
   type ApiHubValidationIssue,
 } from "@/lib/apihub/api-error";
 import { getApiHubIngestionRunById } from "@/lib/apihub/ingestion-runs-repo";
-import { applyApiHubMappingRulesBatch, type ApiHubMappingRule } from "@/lib/apihub/mapping-engine";
+import {
+  applyApiHubMappingRulesBatch,
+  validateApiHubMappingRulesInput,
+  type ApiHubMappingRule,
+} from "@/lib/apihub/mapping-engine";
 import { resolveApiHubRequestId } from "@/lib/apihub/request-id";
 import { getDemoTenant } from "@/lib/demo-tenant";
 
@@ -108,7 +112,8 @@ export async function POST(request: Request, context: { params: Promise<{ jobId:
 
   const normalizedRules = normalizeRules(body.rules);
   const normalizedRecords = normalizeRecords(body.records);
-  const issues = [...normalizedRules.issues, ...normalizedRecords.issues];
+  const structuralIssues = validateApiHubMappingRulesInput(Array.isArray(body.rules) ? body.rules : []);
+  const issues = [...normalizedRules.issues, ...normalizedRecords.issues, ...structuralIssues];
   if (issues.length > 0) {
     return apiHubValidationError(
       400,

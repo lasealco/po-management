@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { applyApiHubMappingRules, applyApiHubMappingRulesBatch } from "./mapping-engine";
+import {
+  applyApiHubMappingRules,
+  applyApiHubMappingRulesBatch,
+  validateApiHubMappingRulesInput,
+  validateApiHubMappingSourcePathSyntax,
+} from "./mapping-engine";
 
 describe("applyApiHubMappingRules", () => {
   it("maps nested source paths with deterministic transforms", () => {
@@ -46,6 +51,37 @@ describe("applyApiHubMappingRules", () => {
         message: "Value cannot be converted to number.",
       },
     ]);
+  });
+});
+
+describe("validateApiHubMappingSourcePathSyntax", () => {
+  it("accepts dotted paths and numeric bracket segments", () => {
+    expect(validateApiHubMappingSourcePathSyntax("shipment.id")).toBeNull();
+    expect(validateApiHubMappingSourcePathSyntax("events[0].date")).toBeNull();
+    expect(validateApiHubMappingSourcePathSyntax("foo-bar.baz_1")).toBeNull();
+  });
+
+  it("rejects empty segments and illegal characters", () => {
+    expect(validateApiHubMappingSourcePathSyntax("a..b")).not.toBeNull();
+    expect(validateApiHubMappingSourcePathSyntax(".a")).not.toBeNull();
+    expect(validateApiHubMappingSourcePathSyntax("a.")).not.toBeNull();
+    expect(validateApiHubMappingSourcePathSyntax("a b.c")).not.toBeNull();
+    expect(validateApiHubMappingSourcePathSyntax("a[xy].c")).not.toBeNull();
+  });
+});
+
+describe("validateApiHubMappingRulesInput", () => {
+  it("flags duplicate targetField across rules", () => {
+    const issues = validateApiHubMappingRulesInput([
+      { sourcePath: "a", targetField: "id" },
+      { sourcePath: "b", targetField: "id" },
+    ]);
+    expect(issues.some((i) => i.code === "DUPLICATE_TARGET" && i.field === "rules[1].targetField")).toBe(true);
+  });
+
+  it("flags invalid sourcePath when non-empty", () => {
+    const issues = validateApiHubMappingRulesInput([{ sourcePath: "bad..path", targetField: "x" }]);
+    expect(issues.some((i) => i.code === "INVALID_SOURCE_PATH")).toBe(true);
   });
 });
 

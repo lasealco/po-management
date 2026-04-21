@@ -69,6 +69,73 @@ describe("POST /api/apihub/ingestion-jobs/:jobId/mapping-preview", () => {
     });
   });
 
+  it("returns 400 when rules have duplicate targetField", async () => {
+    getApiHubIngestionRunByIdMock.mockResolvedValue({ id: "run-1" });
+    const { POST } = await import("./route");
+    const response = await POST(
+      new Request("http://localhost/api/apihub/ingestion-jobs/run-1/mapping-preview", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          [APIHUB_REQUEST_ID_HEADER]: "map-preview-dup-1",
+        },
+        body: JSON.stringify({
+          records: [{ a: 1, b: 2 }],
+          rules: [
+            { sourcePath: "a", targetField: "out", transform: "identity" },
+            { sourcePath: "b", targetField: "out", transform: "identity" },
+          ],
+        }),
+      }),
+      { params: Promise.resolve({ jobId: "run-1" }) },
+    );
+    expect(response.status).toBe(400);
+    const body = (await response.json()) as {
+      ok: false;
+      error: { details?: { issues: Array<{ field: string; code: string }> } };
+    };
+    expect(body.error.details?.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          field: "rules[1].targetField",
+          code: "DUPLICATE_TARGET",
+        }),
+      ]),
+    );
+  });
+
+  it("returns 400 when sourcePath has invalid path syntax", async () => {
+    getApiHubIngestionRunByIdMock.mockResolvedValue({ id: "run-1" });
+    const { POST } = await import("./route");
+    const response = await POST(
+      new Request("http://localhost/api/apihub/ingestion-jobs/run-1/mapping-preview", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          [APIHUB_REQUEST_ID_HEADER]: "map-preview-path-1",
+        },
+        body: JSON.stringify({
+          records: [{ x: 1 }],
+          rules: [{ sourcePath: "x..y", targetField: "out" }],
+        }),
+      }),
+      { params: Promise.resolve({ jobId: "run-1" }) },
+    );
+    expect(response.status).toBe(400);
+    const body = (await response.json()) as {
+      ok: false;
+      error: { details?: { issues: Array<{ field: string; code: string }> } };
+    };
+    expect(body.error.details?.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          field: "rules[0].sourcePath",
+          code: "INVALID_SOURCE_PATH",
+        }),
+      ]),
+    );
+  });
+
   it("returns structured validation errors for invalid payload", async () => {
     getApiHubIngestionRunByIdMock.mockResolvedValue({ id: "run-1" });
     const { POST } = await import("./route");
