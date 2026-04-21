@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { AccessDenied } from "@/components/access-denied";
+import { TwinScenariosDraftsPanel } from "@/components/supply-chain-twin/twin-scenarios-drafts-panel";
 import { TwinSubNav } from "@/components/supply-chain-twin/twin-subnav";
 import { getViewerGrantSet } from "@/lib/authz";
 import { resolveNavState } from "@/lib/nav-visibility";
@@ -9,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Supply Chain Twin — Scenarios",
-  description: "Scenario workspace shell for what-if runs over the twin (preview).",
+  description: "Scenario workspace: draft what-if runs over the twin (preview).",
 };
 
 export default async function SupplyChainTwinScenariosPage() {
@@ -44,7 +45,7 @@ export default async function SupplyChainTwinScenariosPage() {
           <div className="rounded-xl border border-zinc-200 bg-zinc-50/80 p-4">
             <p className="text-xs font-semibold uppercase tracking-[0.15em] text-zinc-500">Step 1</p>
             <p className="mt-1 text-sm font-medium text-zinc-900">Define scenario</p>
-            <p className="mt-1 text-xs text-zinc-600">Name, horizon, and scope (stub).</p>
+            <p className="mt-1 text-xs text-zinc-600">Create a draft below; name and JSON editing follow in later slices.</p>
           </div>
           <div className="rounded-xl border border-zinc-200 bg-white p-4 opacity-70">
             <p className="text-xs font-semibold uppercase tracking-[0.15em] text-zinc-500">Step 2</p>
@@ -63,19 +64,12 @@ export default async function SupplyChainTwinScenariosPage() {
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Twin scenarios</p>
         <h1 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-900">Scenario workspace</h1>
         <p className="mt-2 max-w-2xl text-sm text-zinc-600">
-          Static PRD surface for what-if planning over the Supply Chain Twin. Draft persistence, solvers, and diff
-          visualizations ship in later slices; this page establishes routing and access gates only.
+          Drafts are tenant-scoped rows from the twin API. Open links target the detail route planned in Slice 40 (404 until that
+          page exists).
         </p>
       </section>
 
-      <section className="mt-6 rounded-2xl border border-dashed border-zinc-300 bg-zinc-50/80 p-6 text-sm text-zinc-600">
-        <p className="font-medium text-zinc-800">Placeholder</p>
-        <p className="mt-2">
-          No scenario runs, approvals, or API calls are executed here yet. Use{" "}
-          <span className="font-medium text-zinc-800">Overview</span> for catalog readiness and{" "}
-          <span className="font-medium text-zinc-800">Explorer</span> for entity drill-down.
-        </p>
-      </section>
+      <TwinScenariosDraftsPanel />
     </main>
   );
 }
