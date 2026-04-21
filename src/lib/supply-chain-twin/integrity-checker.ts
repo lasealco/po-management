@@ -4,12 +4,14 @@ export type TwinIntegrityIssueCounts = {
   orphanEdgeFromSnapshotRefs: number;
   orphanEdgeToSnapshotRefs: number;
   orphanScenarioRevisionRefs: number;
+  inconsistentRiskSignalAckMetadata: number;
 };
 
 export type TwinIntegrityIssueSamples = {
   orphanEdgeFromSnapshotEdgeIds: string[];
   orphanEdgeToSnapshotEdgeIds: string[];
   orphanScenarioRevisionIds: string[];
+  inconsistentRiskSignalIds: string[];
 };
 
 export type TwinIntegrityCheckSummary = {
@@ -21,6 +23,7 @@ export type TwinIntegrityCheckSummary = {
     edges: number;
     scenarioDrafts: number;
     scenarioRevisions: number;
+      riskSignals: number;
   };
   issues: TwinIntegrityIssueCounts;
   invalidReferenceCount: number;
@@ -43,7 +46,7 @@ export async function getTwinIntegritySummaryForTenant(
 ): Promise<TwinIntegrityCheckSummary> {
   const sampleLimit = Math.min(Math.max(options.sampleLimit ?? 20, 1), 100);
 
-  const [entitySnapshots, edges, scenarioDrafts, scenarioRevisions] = await Promise.all([
+  const [entitySnapshots, edges, scenarioDrafts, scenarioRevisions, riskSignals] = await Promise.all([
     prisma.supplyChainTwinEntitySnapshot.findMany({
       where: { tenantId },
       select: { id: true },
@@ -60,6 +63,10 @@ export async function getTwinIntegritySummaryForTenant(
       where: { tenantId },
       select: { id: true, scenarioDraftId: true },
     }),
+    prisma.supplyChainTwinRiskSignal.findMany({
+      where: { tenantId },
+      select: { id: true, acknowledged: true, acknowledgedAt: true, acknowledgedByActorId: true },
+    }),
   ]);
 
   const snapshotIds = new Set(entitySnapshots.map((row) => row.id));
@@ -69,12 +76,14 @@ export async function getTwinIntegritySummaryForTenant(
     orphanEdgeFromSnapshotEdgeIds: [],
     orphanEdgeToSnapshotEdgeIds: [],
     orphanScenarioRevisionIds: [],
+    inconsistentRiskSignalIds: [],
   };
 
   const issues: TwinIntegrityIssueCounts = {
     orphanEdgeFromSnapshotRefs: 0,
     orphanEdgeToSnapshotRefs: 0,
     orphanScenarioRevisionRefs: 0,
+    inconsistentRiskSignalAckMetadata: 0,
   };
 
   for (const edge of edges) {
@@ -95,8 +104,21 @@ export async function getTwinIntegritySummaryForTenant(
     }
   }
 
+  for (const signal of riskSignals) {
+    const hasAckMeta = signal.acknowledgedAt != null && signal.acknowledgedByActorId != null;
+    const hasNoAckMeta = signal.acknowledgedAt == null && signal.acknowledgedByActorId == null;
+    const metadataConsistent = signal.acknowledged ? hasAckMeta : hasNoAckMeta;
+    if (!metadataConsistent) {
+      issues.inconsistentRiskSignalAckMetadata += 1;
+      pushSample(samples.inconsistentRiskSignalIds, signal.id, sampleLimit);
+    }
+  }
+
   const invalidReferenceCount =
-    issues.orphanEdgeFromSnapshotRefs + issues.orphanEdgeToSnapshotRefs + issues.orphanScenarioRevisionRefs;
+    issues.orphanEdgeFromSnapshotRefs +
+    issues.orphanEdgeToSnapshotRefs +
+    issues.orphanScenarioRevisionRefs +
+    issues.inconsistentRiskSignalAckMetadata;
 
   return {
     checkedAt: new Date().toISOString(),
@@ -107,6 +129,7 @@ export async function getTwinIntegritySummaryForTenant(
       edges: edges.length,
       scenarioDrafts: scenarioDrafts.length,
       scenarioRevisions: scenarioRevisions.length,
+      riskSignals: riskSignals.length,
     },
     issues,
     invalidReferenceCount,

@@ -62,17 +62,20 @@ describe("GET /api/supply-chain-twin/integrity", () => {
         edges: 9,
         scenarioDrafts: 3,
         scenarioRevisions: 5,
+        riskSignals: 4,
       },
       issues: {
         orphanEdgeFromSnapshotRefs: 1,
         orphanEdgeToSnapshotRefs: 2,
         orphanScenarioRevisionRefs: 1,
+        inconsistentRiskSignalAckMetadata: 2,
       },
-      invalidReferenceCount: 4,
+      invalidReferenceCount: 6,
       samples: {
         orphanEdgeFromSnapshotEdgeIds: ["edge-1"],
         orphanEdgeToSnapshotEdgeIds: ["edge-2", "edge-3"],
         orphanScenarioRevisionIds: ["rev-1"],
+        inconsistentRiskSignalIds: ["risk-1", "risk-2"],
       },
     });
 
@@ -89,17 +92,20 @@ describe("GET /api/supply-chain-twin/integrity", () => {
         edges: 9,
         scenarioDrafts: 3,
         scenarioRevisions: 5,
+        riskSignals: 4,
       },
       issues: {
         orphanEdgeFromSnapshotRefs: 1,
         orphanEdgeToSnapshotRefs: 2,
         orphanScenarioRevisionRefs: 1,
+        inconsistentRiskSignalAckMetadata: 2,
       },
-      invalidReferenceCount: 4,
+      invalidReferenceCount: 6,
       samples: {
         orphanEdgeFromSnapshotEdgeIds: ["edge-1"],
         orphanEdgeToSnapshotEdgeIds: ["edge-2", "edge-3"],
         orphanScenarioRevisionIds: ["rev-1"],
+        inconsistentRiskSignalIds: ["risk-1", "risk-2"],
       },
     });
     expect(getTwinIntegritySummaryForTenantMock).toHaveBeenCalledWith("t1");
