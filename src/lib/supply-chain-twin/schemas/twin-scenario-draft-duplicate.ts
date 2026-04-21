@@ -1,8 +1,9 @@
 import { z } from "zod";
 
 /**
- * `POST …/scenarios/[id]/duplicate` — optional `titleSuffix` appended to the source title (source trimmed for
- * concatenation only); omit or empty string leaves the title unchanged from the source row.
+ * `POST …/scenarios/[id]/duplicate` — optional `titleSuffix` appended after the trimmed source title. **Trailing**
+ * whitespace is stripped; a leading space (e.g. `" (copy)"`) is kept so titles read naturally. All-whitespace suffix
+ * is treated as omitted. Omit the field to leave the title identical to the source row.
  */
 export const twinScenarioDraftDuplicateBodySchema = z.object({
   titleSuffix: z
@@ -11,8 +12,9 @@ export const twinScenarioDraftDuplicateBodySchema = z.object({
     .optional()
     .transform((v) => {
       if (v === undefined) return undefined;
-      const t = v.trim();
-      return t.length > 0 ? t : undefined;
+      const t = v.trimEnd();
+      if (t.trim().length === 0) return undefined;
+      return t;
     }),
 });
 

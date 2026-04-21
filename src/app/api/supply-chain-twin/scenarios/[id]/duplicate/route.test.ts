@@ -128,7 +128,7 @@ describe("POST /api/supply-chain-twin/scenarios/[id]/duplicate", () => {
       new Request("http://localhost/api/supply-chain-twin/scenarios/src-draft/duplicate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ titleSuffix: "(copy)" }),
+        body: JSON.stringify({ titleSuffix: " (copy)" }),
       }),
       { params: Promise.resolve({ id: "src-draft" }) },
     );
@@ -140,7 +140,7 @@ describe("POST /api/supply-chain-twin/scenarios/[id]/duplicate", () => {
       status: "draft",
       updatedAt: "2026-02-10T12:00:00.000Z",
     });
-    expect(duplicateScenarioDraftForTenantMock).toHaveBeenCalledWith("t1", "src-draft", { titleSuffix: "(copy)" });
+    expect(duplicateScenarioDraftForTenantMock).toHaveBeenCalledWith("t1", "src-draft", { titleSuffix: " (copy)" });
   });
 
   it("returns 201 with empty object body", async () => {

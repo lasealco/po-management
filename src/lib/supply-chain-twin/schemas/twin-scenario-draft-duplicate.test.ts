@@ -20,10 +20,10 @@ describe("parseTwinScenarioDraftDuplicateBody", () => {
     expect(parseTwinScenarioDraftDuplicateBody("x").ok).toBe(false);
   });
 
-  it("trims titleSuffix and drops blank", () => {
+  it("trimEnds titleSuffix and keeps leading space for natural titles", () => {
     const r = parseTwinScenarioDraftDuplicateBody({ titleSuffix: "  (copy)  " });
     expect(r.ok).toBe(true);
-    if (r.ok) expect(r.body.titleSuffix).toBe("(copy)");
+    if (r.ok) expect(r.body.titleSuffix).toBe("  (copy)");
   });
 
   it("rejects titleSuffix over 200 chars", () => {
