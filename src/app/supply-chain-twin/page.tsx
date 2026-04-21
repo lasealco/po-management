@@ -7,6 +7,8 @@ import { PLATFORM_HUB_PATH } from "@/lib/marketing-public-paths";
 import { resolveNavState } from "@/lib/nav-visibility";
 import { getSupplyChainTwinReadinessSnapshot } from "@/lib/supply-chain-twin/readiness";
 
+import { TwinEntitiesSection } from "./twin-entities-section";
+
 export const dynamic = "force-dynamic";
 
 const DOCS_TREE =
@@ -127,6 +129,8 @@ export default async function SupplyChainTwinHomePage() {
           ))}
         </ul>
       </section>
+
+      <TwinEntitiesSection />
 
       <section className="mt-6 rounded-2xl border border-dashed border-zinc-300 bg-zinc-50/80 p-6 text-sm text-zinc-600">
         <p className="font-medium text-zinc-800">Status</p>
