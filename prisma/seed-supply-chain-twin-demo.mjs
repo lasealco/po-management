@@ -5,10 +5,11 @@
  *
  * Prerequisites:
  * - DATABASE_URL
- * - Migrations through `20260427100000_supply_chain_twin_risk_signal` (twin snapshots + edges + ingest + risk)
+ * - Migrations through `20260428103000_supply_chain_twin_scenario_drafts` (includes scenario drafts for Slice 67)
  * - Main `npm run db:seed` at least once (tenant `demo-company`)
  *
- * After run: open `/supply-chain-twin` — Twin entity catalog lists one supplier node.
+ * After run: open `/supply-chain-twin` — Twin entity catalog lists one supplier node. Two fixed-id scenario drafts are
+ * upserted for `/supply-chain-twin/scenarios/compare` (see console output for `left` / `right` query values).
  */
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
@@ -22,6 +23,13 @@ const DEMO_ENTITY_KIND = "supplier";
 const DEMO_ENTITY_KEY = "DEMO-SCTWIN-SEED-SUPPLIER";
 /** Must match `src/lib/supply-chain-twin/demo-seed.ts` (`SCTWIN_DEMO_SEED_RISK_CODE`). */
 const DEMO_RISK_CODE = "DEMO-SCTWIN-SEED-RISK";
+
+/**
+ * Slice 67 — stable primary keys for compare demos (`TwinScenarioDraft` / compare URL validation: lowercase
+ * `[a-z][a-z0-9]{11,127}`). Idempotent `upsert` by `id` only for `demo-company`.
+ */
+const DEMO_SCENARIO_COMPARE_LEFT_ID = "cldemocompareleftaa00";
+const DEMO_SCENARIO_COMPARE_RIGHT_ID = "cldemocomparerightab0";
 
 const cliDatabaseUrl = process.env.DATABASE_URL?.trim() || null;
 config({ path: resolve(process.cwd(), ".env") });
@@ -48,7 +56,7 @@ async function main() {
     SELECT table_name::text AS table_name
     FROM information_schema.tables
     WHERE table_schema = 'public'
-      AND table_name IN ('SupplyChainTwinEntitySnapshot', 'SupplyChainTwinRiskSignal')
+      AND table_name IN ('SupplyChainTwinEntitySnapshot', 'SupplyChainTwinRiskSignal', 'SupplyChainTwinScenarioDraft')
   `;
   const found = new Set((Array.isArray(tableRows) ? tableRows : []).map((r) => r.table_name));
   if (!found.has("SupplyChainTwinEntitySnapshot")) {
@@ -61,6 +69,13 @@ async function main() {
   if (!found.has("SupplyChainTwinRiskSignal")) {
     console.error(
       "[db:seed:supply-chain-twin-demo] Table SupplyChainTwinRiskSignal is missing.\n" +
+        "  Run: npm run db:migrate   then retry.",
+    );
+    process.exit(1);
+  }
+  if (!found.has("SupplyChainTwinScenarioDraft")) {
+    console.error(
+      "[db:seed:supply-chain-twin-demo] Table SupplyChainTwinScenarioDraft is missing.\n" +
         "  Run: npm run db:migrate   then retry.",
     );
     process.exit(1);
@@ -123,10 +138,63 @@ async function main() {
     },
   });
 
+  const draftJsonLeft = {
+    scenarioLabel: "baseline_lane",
+    leadTimeDays: 14,
+    monthlyUnits: 1200,
+    bufferStockDays: 5,
+  };
+  const draftJsonRight = {
+    scenarioLabel: "expedited_lane",
+    expediteFeeUsd: 250,
+    monthlyUnits: 1100,
+    alternatePorts: ["baltimore", "norfolk"],
+  };
+
+  await prisma.supplyChainTwinScenarioDraft.upsert({
+    where: { id: DEMO_SCENARIO_COMPARE_LEFT_ID },
+    create: {
+      id: DEMO_SCENARIO_COMPARE_LEFT_ID,
+      tenantId: tenant.id,
+      title: "Demo compare — baseline lane",
+      status: "draft",
+      draftJson: draftJsonLeft,
+    },
+    update: {
+      tenantId: tenant.id,
+      title: "Demo compare — baseline lane",
+      status: "draft",
+      draftJson: draftJsonLeft,
+    },
+  });
+
+  await prisma.supplyChainTwinScenarioDraft.upsert({
+    where: { id: DEMO_SCENARIO_COMPARE_RIGHT_ID },
+    create: {
+      id: DEMO_SCENARIO_COMPARE_RIGHT_ID,
+      tenantId: tenant.id,
+      title: "Demo compare — expedited lane",
+      status: "draft",
+      draftJson: draftJsonRight,
+    },
+    update: {
+      tenantId: tenant.id,
+      title: "Demo compare — expedited lane",
+      status: "draft",
+      draftJson: draftJsonRight,
+    },
+  });
+
+  const compareUrl =
+    `/supply-chain-twin/scenarios/compare?left=${encodeURIComponent(DEMO_SCENARIO_COMPARE_LEFT_ID)}` +
+    `&right=${encodeURIComponent(DEMO_SCENARIO_COMPARE_RIGHT_ID)}`;
+
   console.log(
     `[db:seed:supply-chain-twin-demo] OK — tenant "${tenant.name}" (${DEMO_SLUG}): ` +
-      `${DEMO_ENTITY_KIND} / ${DEMO_ENTITY_KEY}; risk ${DEMO_RISK_CODE} (MEDIUM). Open /supply-chain-twin.`,
+      `${DEMO_ENTITY_KIND} / ${DEMO_ENTITY_KEY}; risk ${DEMO_RISK_CODE} (MEDIUM); ` +
+      `compare drafts ${DEMO_SCENARIO_COMPARE_LEFT_ID} / ${DEMO_SCENARIO_COMPARE_RIGHT_ID}.`,
   );
+  console.log(`[db:seed:supply-chain-twin-demo] Compare demo URL: ${compareUrl}`);
 }
 
 main()
