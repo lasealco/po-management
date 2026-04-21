@@ -3,15 +3,17 @@ import { NextResponse } from "next/server";
 import { logSctwinApiError, logSctwinApiWarn } from "../_lib/sctwin-api-log";
 import { getViewerGrantSet } from "@/lib/authz";
 import { resolveNavState } from "@/lib/nav-visibility";
-import { parseTwinEntitiesQuery } from "@/lib/supply-chain-twin/entities-catalog";
-import { listForTenant } from "@/lib/supply-chain-twin/repo";
+import { decodeTwinEntitiesCursor, parseTwinEntitiesQuery } from "@/lib/supply-chain-twin/entities-catalog";
+import { listForTenantPage } from "@/lib/supply-chain-twin/repo";
 
 export const dynamic = "force-dynamic";
 
 const ROUTE = "GET /api/supply-chain-twin/entities";
 
 /**
- * Entity catalog backed by `SupplyChainTwinEntitySnapshot`. Query `q` is zod-validated.
+ * Entity catalog backed by `SupplyChainTwinEntitySnapshot`.
+ * Query: zod-validated `q`, `limit` (1..100, default 100), optional opaque `cursor` (keyset).
+ * Response: `{ items, nextCursor? }` — `nextCursor` omitted when there is no following page.
  */
 export async function GET(request: Request) {
   try {
@@ -48,9 +50,37 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: parsed.error }, { status: 400 });
     }
 
-    const items = await listForTenant(access.tenant.id, { q: parsed.query.q });
+    if (parsed.query.cursor) {
+      const decoded = decodeTwinEntitiesCursor(parsed.query.cursor);
+      if (!decoded.ok) {
+        logSctwinApiWarn({
+          route: ROUTE,
+          phase: "validation",
+          errorCode: "INVALID_CURSOR",
+        });
+        return NextResponse.json({ error: "Invalid cursor" }, { status: 400 });
+      }
+    }
+
+    const { items, nextCursor } = await listForTenantPage(access.tenant.id, {
+      q: parsed.query.q,
+      limit: parsed.query.limit,
+      cursor: parsed.query.cursor ?? null,
+    });
+
+    if (nextCursor) {
+      return NextResponse.json({ items, nextCursor });
+    }
     return NextResponse.json({ items });
   } catch (caught) {
+    if (caught instanceof RangeError && caught.message === "INVALID_TWIN_ENTITIES_CURSOR") {
+      logSctwinApiWarn({
+        route: ROUTE,
+        phase: "validation",
+        errorCode: "INVALID_CURSOR",
+      });
+      return NextResponse.json({ error: "Invalid cursor" }, { status: 400 });
+    }
     const name = caught instanceof Error ? caught.name : "non_error_throw";
     logSctwinApiError({
       route: ROUTE,
