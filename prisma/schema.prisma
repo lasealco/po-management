@@ -3120,6 +3120,8 @@ model SupplyChainTwinRiskSignal {
   @@unique([tenantId, code])
   @@index([tenantId])
   @@index([tenantId, severity])
+  /// Slice 66: keyset list (`listRiskSignalsForTenantPage` — `createdAt` desc, `id` desc).
+  @@index([tenantId, createdAt])
 }
 
 /// Tenant-scoped Supply Chain Twin entity node (materialized snapshot + JSON payload).
@@ -3142,6 +3144,8 @@ model SupplyChainTwinEntitySnapshot {
   @@unique([tenantId, entityKind, entityKey])
   @@index([tenantId])
   @@index([tenantId, entityKind])
+  /// Slice 66: keyset / newest-first catalog list (`listForTenantPage` — `updatedAt` desc, `id` desc).
+  @@index([tenantId, updatedAt])
 }
 
 /// Directed edge between two twin entity snapshots (same tenant).
