@@ -7,10 +7,16 @@ export type ApiHubConnectorListRow = {
   name: string;
   sourceKind: string;
   status: string;
+  authMode: string;
   lastSyncAt: Date | null;
   healthSummary: string | null;
   createdAt: Date;
   updatedAt: Date;
+};
+
+export type ListApiHubConnectorsFilters = {
+  status?: string;
+  authMode?: string;
 };
 
 export type ApiHubConnectorAuditLogRow = {
@@ -22,15 +28,23 @@ export type ApiHubConnectorAuditLogRow = {
   createdAt: Date;
 };
 
-export async function listApiHubConnectors(tenantId: string): Promise<ApiHubConnectorListRow[]> {
+export async function listApiHubConnectors(
+  tenantId: string,
+  filters?: ListApiHubConnectorsFilters,
+): Promise<ApiHubConnectorListRow[]> {
   return prisma.apiHubConnector.findMany({
-    where: { tenantId },
-    orderBy: { createdAt: "desc" },
+    where: {
+      tenantId,
+      ...(filters?.status ? { status: filters.status } : {}),
+      ...(filters?.authMode ? { authMode: filters.authMode } : {}),
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     select: {
       id: true,
       name: true,
       sourceKind: true,
       status: true,
+      authMode: true,
       lastSyncAt: true,
       healthSummary: true,
       createdAt: true,
@@ -58,6 +72,7 @@ export async function createStubApiHubConnector(opts: {
         name: true,
         sourceKind: true,
         status: true,
+        authMode: true,
         lastSyncAt: true,
         healthSummary: true,
         createdAt: true,
@@ -107,6 +122,7 @@ export async function updateApiHubConnectorLifecycle(opts: {
         name: true,
         sourceKind: true,
         status: true,
+        authMode: true,
         lastSyncAt: true,
         healthSummary: true,
         createdAt: true,

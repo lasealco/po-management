@@ -1,4 +1,11 @@
-import { apiHubDemoActorMissing, apiHubDemoTenantMissing, apiHubJson } from "@/lib/apihub/api-error";
+import {
+  apiHubDemoActorMissing,
+  apiHubDemoTenantMissing,
+  apiHubJson,
+  apiHubValidationError,
+  type ApiHubValidationIssue,
+} from "@/lib/apihub/api-error";
+import { APIHUB_CONNECTOR_AUTH_MODES, APIHUB_CONNECTOR_STATUSES } from "@/lib/apihub/constants";
 import { toApiHubConnectorDto } from "@/lib/apihub/connector-dto";
 import {
   createStubApiHubConnector,
@@ -23,7 +30,42 @@ export async function GET(request: Request) {
     return apiHubDemoActorMissing(requestId);
   }
 
-  const rows = await listApiHubConnectors(tenant.id);
+  const url = new URL(request.url);
+  const rawStatus = (url.searchParams.get("status") ?? "").trim().toLowerCase();
+  const rawAuthMode = (url.searchParams.get("authMode") ?? "").trim().toLowerCase();
+
+  const issues: ApiHubValidationIssue[] = [];
+  if (rawStatus.length > 0 && !APIHUB_CONNECTOR_STATUSES.includes(rawStatus as (typeof APIHUB_CONNECTOR_STATUSES)[number])) {
+    issues.push({
+      field: "status",
+      code: "INVALID_ENUM",
+      message: `status must be one of: ${APIHUB_CONNECTOR_STATUSES.join(", ")}.`,
+    });
+  }
+  if (
+    rawAuthMode.length > 0 &&
+    !APIHUB_CONNECTOR_AUTH_MODES.includes(rawAuthMode as (typeof APIHUB_CONNECTOR_AUTH_MODES)[number])
+  ) {
+    issues.push({
+      field: "authMode",
+      code: "INVALID_ENUM",
+      message: `authMode must be one of: ${APIHUB_CONNECTOR_AUTH_MODES.join(", ")}.`,
+    });
+  }
+  if (issues.length > 0) {
+    return apiHubValidationError(
+      400,
+      "VALIDATION_ERROR",
+      "Connector list query validation failed.",
+      issues,
+      requestId,
+    );
+  }
+
+  const rows = await listApiHubConnectors(tenant.id, {
+    status: rawStatus.length > 0 ? rawStatus : undefined,
+    authMode: rawAuthMode.length > 0 ? rawAuthMode : undefined,
+  });
   const rowsWithAudit = await Promise.all(
     rows.map(async (row) => ({
       ...row,
