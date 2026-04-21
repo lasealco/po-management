@@ -3229,7 +3229,7 @@ model SupplyChainTwinScenarioRevision {
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   scenarioDraft SupplyChainTwinScenarioDraft @relation(fields: [scenarioDraftId], references: [id], onDelete: Cascade)
 
-  @@index([tenantId])
-  @@index([tenantId, scenarioDraftId, createdAt])
-  @@index([tenantId, scenarioDraftId, createdAt, id])
+  @@index([tenantId], map: "SupplyChainTwinScenarioRevision_tenantId_idx")
+  @@index([tenantId, scenarioDraftId, createdAt], map: "sctwin_scen_rev_draft_created_idx")
+  @@index([tenantId, scenarioDraftId, createdAt, id], map: "sctwin_scen_rev_draft_created_id_idx")
 }

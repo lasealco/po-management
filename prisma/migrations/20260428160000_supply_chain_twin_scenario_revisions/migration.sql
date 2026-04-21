@@ -17,8 +17,9 @@ CREATE TABLE "SupplyChainTwinScenarioRevision" (
 -- CreateIndex
 CREATE INDEX "SupplyChainTwinScenarioRevision_tenantId_idx" ON "SupplyChainTwinScenarioRevision"("tenantId");
 
--- CreateIndex
-CREATE INDEX "SupplyChainTwinScenarioRevision_tenantId_scenarioDraftId_createdAt_idx" ON "SupplyChainTwinScenarioRevision"("tenantId", "scenarioDraftId", "createdAt");
+-- CreateIndex (short explicit name: PG truncates long Prisma default names to 63 bytes and
+-- two similar composite index names can collide).
+CREATE INDEX "sctwin_scen_rev_draft_created_idx" ON "SupplyChainTwinScenarioRevision"("tenantId", "scenarioDraftId", "createdAt");
 
 -- AddForeignKey
 ALTER TABLE "SupplyChainTwinScenarioRevision" ADD CONSTRAINT "SupplyChainTwinScenarioRevision_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant"("id") ON DELETE CASCADE ON UPDATE CASCADE;
