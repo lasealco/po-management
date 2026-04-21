@@ -4,6 +4,68 @@ import { useEffect, useState } from "react";
 
 import { parseTwinCatalogMetricsResponseJson } from "@/lib/supply-chain-twin/twin-catalog-metrics-response";
 import type { TwinCatalogMetricsResponse } from "@/lib/supply-chain-twin/schemas/twin-api-responses";
+import { TWIN_ENTITY_KINDS } from "@/lib/supply-chain-twin/types";
+
+const ENTITY_KIND_DISPLAY_ORDER = [...TWIN_ENTITY_KINDS, "other"] as const;
+
+function formatEntityKindLabel(kind: string): string {
+  return kind.replace(/_/g, " ");
+}
+
+function TwinEntityKindBreakdown(props: { data: TwinCatalogMetricsResponse }) {
+  const { data } = props;
+  const { entities, entityCountsByKind } = data;
+  const byKind = entityCountsByKind as Record<string, number>;
+  const orderedPositive = ENTITY_KIND_DISPLAY_ORDER.map((k) => [k, byKind[k] ?? 0] as const).filter(([, n]) => n > 0);
+
+  if (entities === 0) {
+    return (
+      <div className="mt-6 border-t border-zinc-100 pt-5">
+        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Entities by kind</p>
+        <p className="mt-2 text-sm text-zinc-600">No entity snapshots for this tenant yet.</p>
+      </div>
+    );
+  }
+
+  if (orderedPositive.length === 0) {
+    return (
+      <div className="mt-6 border-t border-zinc-100 pt-5">
+        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Entities by kind</p>
+        <p className="mt-2 text-sm text-zinc-600">
+          Entity total is {entities}, but per-kind counts are empty in this response.
+        </p>
+      </div>
+    );
+  }
+
+  const sumByKind = orderedPositive.reduce((acc, [, n]) => acc + n, 0);
+
+  return (
+    <div className="mt-6 border-t border-zinc-100 pt-5">
+      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Entities by kind</p>
+      <p className="mt-1 max-w-2xl text-xs text-zinc-500">
+        Kinds with zero rows are omitted. Unknown <code className="rounded bg-zinc-100 px-1 text-[11px]">entityKind</code>{" "}
+        values are grouped under <span className="font-medium text-zinc-700">other</span>.
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {orderedPositive.map(([kind, n]) => (
+          <span
+            key={kind}
+            className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-medium text-zinc-800 shadow-sm"
+          >
+            <span className="capitalize text-zinc-700">{formatEntityKindLabel(kind)}</span>
+            <span className="tabular-nums text-zinc-900">{n}</span>
+          </span>
+        ))}
+      </div>
+      <p className="mt-2 text-xs text-zinc-500">
+        {sumByKind === entities
+          ? `Listed kinds sum to ${entities} snapshot row${entities === 1 ? "" : "s"}.`
+          : `Listed kinds sum to ${sumByKind}; total entities is ${entities}.`}
+      </p>
+    </div>
+  );
+}
 
 type StripState = { kind: "loading" } | { kind: "error"; message: string } | { kind: "ok"; data: TwinCatalogMetricsResponse };
 
@@ -61,8 +123,8 @@ export function TwinCatalogMetricsStrip() {
           <h2 className="mt-2 text-lg font-semibold text-zinc-900">Twin data counts</h2>
           <p className="mt-2 max-w-2xl text-sm text-zinc-600">
             Tenant-scoped totals from{" "}
-            <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">GET /api/supply-chain-twin/metrics</code>. Refresh
-            to pull the latest numbers after seeding or edits.
+            <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">GET /api/supply-chain-twin/metrics</code>, including
+            a per-entity-kind breakdown under the count tiles. Refresh to pull the latest numbers after seeding or edits.
           </p>
         </div>
         <button
@@ -84,17 +146,20 @@ export function TwinCatalogMetricsStrip() {
       ) : null}
 
       {state.kind === "ok" ? (
-        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          {METRIC_CELLS.map((cell) => (
-            <div
-              key={cell.key}
-              className="rounded-xl border border-zinc-200 bg-zinc-50/90 px-4 py-3 text-center shadow-sm"
-            >
-              <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">{cell.label}</p>
-              <p className="mt-1 text-2xl font-semibold tabular-nums text-zinc-900">{state.data[cell.key]}</p>
-            </div>
-          ))}
-        </div>
+        <>
+          <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            {METRIC_CELLS.map((cell) => (
+              <div
+                key={cell.key}
+                className="rounded-xl border border-zinc-200 bg-zinc-50/90 px-4 py-3 text-center shadow-sm"
+              >
+                <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">{cell.label}</p>
+                <p className="mt-1 text-2xl font-semibold tabular-nums text-zinc-900">{state.data[cell.key]}</p>
+              </div>
+            ))}
+          </div>
+          <TwinEntityKindBreakdown data={state.data} />
+        </>
       ) : null}
     </section>
   );

@@ -75,6 +75,7 @@ export default async function SupplyChainTwinHomePage() {
 
       <TwinRiskSignalsCallout />
 
+      {/* Slice 74: catalog strip includes entity-kind breakdown (same metrics fetch). */}
       <TwinCatalogMetricsStrip />
 
       <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
