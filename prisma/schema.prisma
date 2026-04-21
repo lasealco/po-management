@@ -80,6 +80,7 @@ model Tenant {
   apiHubIngestionRuns   ApiHubIngestionRun[]
   supplyChainTwinEntitySnapshots SupplyChainTwinEntitySnapshot[]
   supplyChainTwinEntityEdges     SupplyChainTwinEntityEdge[]
+  supplyChainTwinIngestEvents    SupplyChainTwinIngestEvent[]
 }
 
 /// Integration / API hub — registry row for an external or internal data source (Phase 1 stub).
@@ -3131,4 +3132,22 @@ model SupplyChainTwinEntityEdge {
   @@index([tenantId])
   @@index([tenantId, fromSnapshotId])
   @@index([tenantId, toSnapshotId])
+}
+
+/// Append-only “twin saw X” ingestion spine (no background worker in this slice).
+/// **Payload policy:** max serialized JSON byte length must be enforced in the writer slice (reject oversize before insert).
+model SupplyChainTwinIngestEvent {
+  id          String   @id @default(cuid())
+  tenantId    String
+  /// Event discriminator (e.g. `entity_upsert`, `edge_upsert`, `signal`) — vocabulary owned by writers.
+  type        String
+  /// JSON body; keep small — hard cap enforced in application code, not in the database.
+  payloadJson Json     @default("{}")
+  createdAt   DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, createdAt])
+  @@index([tenantId, type, createdAt])
 }
