@@ -11,6 +11,7 @@ This pack is the developer-ready documentation set for building the **AI-Driven 
 **Performance:** runbook section "Performance Notes (Query Plan + Index Intent)" (index-to-query mapping + revisit triggers).
 **Release checklist:** [Twin release checklist](./release_checklist.md) (migrations, verify gates, smoke URLs, rollback hints).
 **RC dry run log:** [Twin RC dry run 2026-04-21](./release_candidate_dry_run_2026-04-21.md) (findings list with severity and follow-ups).
+**Final risk register:** [Twin final risk register](./final_risk_register.md) (accepted vs deferred residual risks with owner/next action).
 **Release gate:** run `npm run verify:sctwin:full` before handoff/release.
 **API contracts:** [Twin API contract snapshot](./api_contract_snapshot.md) (live endpoint request/response shapes and stable errors).
 **API contract freeze:** [Twin API contract v1 reference](./api-contract-v1.md) (frozen milestone contract reference).

@@ -5,6 +5,7 @@ Operator quick reference for local/demo validation of the Supply Chain Twin slic
 Release handoff companion: `docs/sctwin/release_checklist.md`.
 Governance companion: `docs/sctwin/governance_runbook.md`.
 Latest RC dry run log: `docs/sctwin/release_candidate_dry_run_2026-04-21.md`.
+Residual risk register: `docs/sctwin/final_risk_register.md`.
 
 ## Verify Commands
 
