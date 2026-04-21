@@ -40,7 +40,6 @@ export default async function PlatformHomePage() {
     );
   }
 
-  const tenantName = access.tenant.name;
   const user = access.user;
   const v = linkVisibility;
 
@@ -124,14 +123,8 @@ export default async function PlatformHomePage() {
 
   return (
     <main className="min-h-[calc(100vh-8rem)] bg-gradient-to-b from-zinc-50 via-white to-zinc-50">
-      <div className="mx-auto max-w-5xl px-6 pb-20 pt-12 sm:pt-16">
-        <div className="flex flex-col gap-4 border-b border-zinc-200/80 pb-8 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Platform workspace hub</p>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500 sm:text-right">
-            {tenantName}
-          </p>
-        </div>
-        <h1 className="mt-8 max-w-2xl text-4xl font-semibold tracking-tight text-zinc-900 sm:text-5xl">
+      <div className="mx-auto max-w-5xl px-6 pb-20 pt-8 sm:pt-10">
+        <h1 className="max-w-2xl text-4xl font-semibold tracking-tight text-zinc-900 sm:text-5xl">
           Run procurement and logistics in one place.
         </h1>
         <p className="mt-4 max-w-2xl text-lg text-zinc-600">
