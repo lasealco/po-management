@@ -3,6 +3,7 @@
 Operator quick reference for local/demo validation of the Supply Chain Twin slice.
 
 Release handoff companion: `docs/sctwin/release_checklist.md`.
+Governance companion: `docs/sctwin/governance_runbook.md`.
 
 ## Verify Commands
 
