@@ -193,6 +193,7 @@ describe("POST /api/supply-chain-twin/scenarios", () => {
     expect(createScenarioDraftMock).toHaveBeenCalledWith("t1", {
       title: "My scenario",
       draft: { shocks: [] },
+      actorId: "u1",
     });
   });
 });

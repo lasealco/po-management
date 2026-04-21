@@ -83,6 +83,7 @@ model Tenant {
   supplyChainTwinIngestEvents    SupplyChainTwinIngestEvent[]
   supplyChainTwinRiskSignals     SupplyChainTwinRiskSignal[]
   supplyChainTwinScenarioDrafts  SupplyChainTwinScenarioDraft[]
+  supplyChainTwinScenarioRevisions SupplyChainTwinScenarioRevision[]
 }
 
 /// Integration / API hub — registry row for an external or internal data source (Phase 1 stub).
@@ -3112,6 +3113,9 @@ model SupplyChainTwinRiskSignal {
   severity  TwinRiskSeverity
   title     String
   detail    String?
+  acknowledged           Boolean  @default(false)
+  acknowledgedAt         DateTime?
+  acknowledgedByActorId  String?
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
 
@@ -3202,7 +3206,30 @@ model SupplyChainTwinScenarioDraft {
   updatedAt  DateTime @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  revisions SupplyChainTwinScenarioRevision[]
 
   @@index([tenantId])
   @@index([tenantId, updatedAt])
+  @@index([tenantId, updatedAt, id])
+}
+
+/// Append-only metadata revisions for scenario audit timeline (no draftJson payload copies).
+model SupplyChainTwinScenarioRevision {
+  id          String   @id @default(cuid())
+  tenantId    String
+  scenarioDraftId String
+  actorId     String?
+  action      String
+  titleBefore String?
+  titleAfter  String?
+  statusBefore String?
+  statusAfter  String?
+  createdAt   DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  scenarioDraft SupplyChainTwinScenarioDraft @relation(fields: [scenarioDraftId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, scenarioDraftId, createdAt])
+  @@index([tenantId, scenarioDraftId, createdAt, id])
 }

@@ -79,6 +79,7 @@ describe("Supply Chain Twin readiness route contract", () => {
       ok: false,
       reasons: ["Twin datastore not migrated"],
       healthIndex: TWIN_HEALTH_INDEX_STUB,
+      hasTwinData: false,
     });
 
     const { GET } = await import("./route");
@@ -89,6 +90,7 @@ describe("Supply Chain Twin readiness route contract", () => {
       ok: false,
       reasons: ["Twin datastore not migrated"],
       healthIndex: TWIN_HEALTH_INDEX_STUB,
+      hasTwinData: false,
     });
   });
 
@@ -107,6 +109,7 @@ describe("Supply Chain Twin readiness route contract", () => {
       ok: true,
       reasons: [],
       healthIndex: TWIN_HEALTH_INDEX_STUB,
+      hasTwinData: null,
     });
 
     const { GET } = await import("./route");

@@ -1,6 +1,8 @@
 import { TwinRiskSeverity } from "@prisma/client";
 import { z } from "zod";
 
+import { TWIN_LIST_LIMIT_DEFAULT, TWIN_LIST_LIMIT_MAX } from "@/lib/supply-chain-twin/request-budgets";
+
 const twinRiskSignalsCursorPayloadSchema = z.object({
   c: z.string().datetime(),
   i: z.string().min(1),
@@ -13,7 +15,7 @@ const twinRiskSignalsCursorPayloadSchema = z.object({
  * is treated as omitted. Composes with **`limit`** and opaque **`cursor`** (keyset).
  */
 export const twinRiskSignalsListQuerySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(100).optional().default(50),
+  limit: z.coerce.number().int().min(1).max(TWIN_LIST_LIMIT_MAX).optional().default(TWIN_LIST_LIMIT_DEFAULT),
   cursor: z
     .string()
     .trim()

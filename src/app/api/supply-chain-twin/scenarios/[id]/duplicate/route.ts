@@ -61,6 +61,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
     const row = await duplicateScenarioDraftForTenant(access.tenant.id, sourceDraftId, {
       titleSuffix: parsed.body.titleSuffix,
+      actorId: access.user.id,
     });
     if (!row) {
       return twinApiJson({ error: "Not found." }, { status: 404 }, requestId);

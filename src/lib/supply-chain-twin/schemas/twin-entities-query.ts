@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { TWIN_LIST_LIMIT_MAX } from "@/lib/supply-chain-twin/request-budgets";
 import { TWIN_ENTITY_KINDS, type TwinEntityKind } from "@/lib/supply-chain-twin/types";
 
 const twinEntitiesCursorPayloadSchema = z.object({
@@ -13,7 +14,7 @@ const twinEntityKindEnumSchema = z.enum(
 
 const twinEntityCatalogFieldsSchema = z.enum(["summary", "full"]);
 
-/** GET `/api/supply-chain-twin/entities` — search + pagination (API caps `limit` at 100). */
+/** GET `/api/supply-chain-twin/entities` — search + pagination (API caps `limit` at standard Twin max). */
 export const twinEntitiesQuerySchema = z.object({
   q: z
     .string()
@@ -21,7 +22,7 @@ export const twinEntitiesQuerySchema = z.object({
     .max(256)
     .optional()
     .transform((value) => value ?? ""),
-  limit: z.coerce.number().int().min(1).max(100).optional().default(100),
+  limit: z.coerce.number().int().min(1).max(TWIN_LIST_LIMIT_MAX).optional().default(TWIN_LIST_LIMIT_MAX),
   cursor: z
     .string()
     .trim()

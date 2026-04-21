@@ -128,6 +128,7 @@ export async function POST(request: Request) {
     const row = await createScenarioDraft(access.tenant.id, {
       title: parsed.body.title ?? null,
       draft: parsed.body.draft as Prisma.InputJsonValue,
+      actorId: access.user.id,
     });
 
     return twinApiJson(

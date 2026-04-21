@@ -4,6 +4,7 @@ const { prismaMock } = vi.hoisted(() => ({
   prismaMock: {
     supplyChainTwinIngestEvent: {
       create: vi.fn(),
+      findFirst: vi.fn(),
     },
   },
 }));
@@ -21,11 +22,15 @@ import {
 
 beforeEach(() => {
   vi.mocked(prismaMock.supplyChainTwinIngestEvent.create).mockReset();
+  vi.mocked(prismaMock.supplyChainTwinIngestEvent.findFirst).mockReset();
 });
 
 describe("appendIngestEvent", () => {
   it("persists when payload is under the byte cap", async () => {
-    vi.mocked(prismaMock.supplyChainTwinIngestEvent.create).mockResolvedValueOnce({ id: "evt_1" });
+    vi.mocked(prismaMock.supplyChainTwinIngestEvent.create).mockResolvedValueOnce({
+      id: "evt_1",
+      type: "entity_upsert",
+    });
 
     const out = await appendIngestEvent({
       tenantId: "t1",
@@ -33,14 +38,14 @@ describe("appendIngestEvent", () => {
       payload: { ok: true },
     });
 
-    expect(out).toEqual({ id: "evt_1" });
+    expect(out).toEqual({ id: "evt_1", type: "entity_upsert" });
     expect(prismaMock.supplyChainTwinIngestEvent.create).toHaveBeenCalledWith({
       data: {
         tenantId: "t1",
         type: "entity_upsert",
         payloadJson: { ok: true },
       },
-      select: { id: true },
+      select: { id: true, type: true },
     });
   });
 
@@ -67,5 +72,27 @@ describe("appendIngestEvent", () => {
     ).rejects.toThrow(RangeError);
 
     expect(prismaMock.supplyChainTwinIngestEvent.create).not.toHaveBeenCalled();
+  });
+
+  it("returns existing event on idempotency replay", async () => {
+    const duplicateError = Object.assign(new Error("unique"), { code: "P2002" });
+    vi.mocked(prismaMock.supplyChainTwinIngestEvent.create).mockRejectedValueOnce(duplicateError);
+    vi.mocked(prismaMock.supplyChainTwinIngestEvent.findFirst).mockResolvedValueOnce({
+      id: "evt-existing",
+      type: "entity_upsert",
+    });
+
+    const out = await appendIngestEvent({
+      tenantId: "t1",
+      type: "entity_upsert",
+      payload: { ok: true },
+      idempotencyKey: "idem-1",
+    });
+
+    expect(out).toEqual({ id: "evt-existing", type: "entity_upsert" });
+    expect(prismaMock.supplyChainTwinIngestEvent.findFirst).toHaveBeenCalledWith({
+      where: { tenantId: "t1", idempotencyKey: "idem-1" },
+      select: { id: true, type: true },
+    });
   });
 });

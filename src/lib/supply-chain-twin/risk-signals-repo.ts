@@ -13,6 +13,18 @@ export type RiskSignalListItem = {
   updatedAt: Date;
 };
 
+export type PatchRiskSignalAckResult =
+  | {
+      ok: true;
+      row: {
+        id: string;
+        acknowledged: boolean;
+        acknowledgedAt: Date | null;
+        acknowledgedByActorId: string | null;
+      };
+    }
+  | { ok: false; reason: "not_found" };
+
 /**
  * Keyset-paged risk signals for a tenant (`createdAt` desc, `id` desc). `limit` is clamped to 1..100.
  */
@@ -69,4 +81,45 @@ export async function listRiskSignalsForTenantPage(
       : null;
 
   return { items: pageRows, nextCursor };
+}
+
+/**
+ * Tenant-scoped ack/unack patch for one risk signal id. Repeated requests with the same value are idempotent.
+ */
+export async function patchRiskSignalAckForTenant(
+  tenantId: string,
+  riskSignalId: string,
+  input: { acknowledged: boolean; actorId: string | null; now?: Date },
+): Promise<PatchRiskSignalAckResult> {
+  const row = await prisma.supplyChainTwinRiskSignal.findFirst({
+    where: { tenantId, id: riskSignalId },
+    select: { id: true },
+  });
+  if (!row) {
+    return { ok: false, reason: "not_found" };
+  }
+
+  const now = input.now ?? new Date();
+  const updated = await prisma.supplyChainTwinRiskSignal.update({
+    where: { id: riskSignalId },
+    data: input.acknowledged
+      ? {
+          acknowledged: true,
+          acknowledgedAt: now,
+          acknowledgedByActorId: input.actorId,
+        }
+      : {
+          acknowledged: false,
+          acknowledgedAt: null,
+          acknowledgedByActorId: null,
+        },
+    select: {
+      id: true,
+      acknowledged: true,
+      acknowledgedAt: true,
+      acknowledgedByActorId: true,
+    },
+  });
+
+  return { ok: true, row: updated };
 }

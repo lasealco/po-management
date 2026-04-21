@@ -103,7 +103,6 @@ export function TwinCatalogMetricsStrip() {
 
   useEffect(() => {
     let cancelled = false;
-    setState({ kind: "loading" });
     void (async () => {
       const next = await fetchMetrics();
       if (!cancelled) {
@@ -129,7 +128,10 @@ export function TwinCatalogMetricsStrip() {
         </div>
         <button
           type="button"
-          onClick={() => setTick((n) => n + 1)}
+          onClick={() => {
+            setState({ kind: "loading" });
+            setTick((n) => n + 1);
+          }}
           disabled={state.kind === "loading"}
           className="shrink-0 rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 shadow-sm hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60"
         >

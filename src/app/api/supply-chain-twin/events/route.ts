@@ -8,10 +8,12 @@ import {
 } from "../_lib/sctwin-api-log";
 import {
   appendIngestEvent,
+  TWIN_INGEST_IDEMPOTENCY_KEY_MAX_LEN,
   TWIN_INGEST_PAYLOAD_TOO_LARGE,
   TwinIngestPayloadTooLargeError,
 } from "@/lib/supply-chain-twin/ingest-writer";
 import { prisma } from "@/lib/prisma";
+import { TWIN_API_ERROR_CODES } from "@/lib/supply-chain-twin/error-codes";
 import { requireTwinApiAccess } from "@/lib/supply-chain-twin/sctwin-api-access";
 
 import {
@@ -30,6 +32,35 @@ export const dynamic = "force-dynamic";
 
 const ROUTE_GET = "GET /api/supply-chain-twin/events";
 const ROUTE_POST = "POST /api/supply-chain-twin/events";
+const TWIN_EVENTS_ERROR_QUERY_VALIDATION_FAILED = TWIN_API_ERROR_CODES.QUERY_VALIDATION_FAILED;
+const TWIN_EVENTS_ERROR_INVALID_CURSOR = TWIN_API_ERROR_CODES.INVALID_CURSOR;
+const TWIN_EVENTS_ERROR_BODY_JSON_INVALID = TWIN_API_ERROR_CODES.BODY_JSON_INVALID;
+const TWIN_EVENTS_ERROR_BODY_VALIDATION_FAILED = TWIN_API_ERROR_CODES.BODY_VALIDATION_FAILED;
+const TWIN_EVENTS_ERROR_INVALID_IDEMPOTENCY_KEY = TWIN_API_ERROR_CODES.INVALID_IDEMPOTENCY_KEY;
+const TWIN_EVENTS_ERROR_INVALID_INGEST_TYPE = TWIN_API_ERROR_CODES.INVALID_TWIN_INGEST_TYPE;
+
+function parseIdempotencyKeyHeader(
+  request: Request,
+): { ok: true; key: string | null } | { ok: false; error: string } {
+  const raw =
+    request.headers.get("Idempotency-Key") ??
+    request.headers.get("idempotency-key") ??
+    request.headers.get("IDEMPOTENCY-KEY");
+  if (raw == null) {
+    return { ok: true, key: null };
+  }
+  const trimmed = raw.trim();
+  if (trimmed.length === 0) {
+    return { ok: true, key: null };
+  }
+  if (trimmed.length > TWIN_INGEST_IDEMPOTENCY_KEY_MAX_LEN) {
+    return {
+      ok: false,
+      error: `Idempotency-Key exceeds maximum length (${TWIN_INGEST_IDEMPOTENCY_KEY_MAX_LEN} characters).`,
+    };
+  }
+  return { ok: true, key: trimmed };
+}
 
 export type TwinIngestEventListItem = {
   id: string;
@@ -69,10 +100,14 @@ export async function GET(request: Request) {
       logSctwinApiWarn({
         route: ROUTE_GET,
         phase: "validation",
-        errorCode: "QUERY_VALIDATION_FAILED",
+        errorCode: TWIN_EVENTS_ERROR_QUERY_VALIDATION_FAILED,
         requestId,
       });
-      return twinApiJson({ error: parsed.error }, { status: 400 }, requestId);
+      return twinApiJson(
+        { error: parsed.error, code: TWIN_EVENTS_ERROR_QUERY_VALIDATION_FAILED },
+        { status: 400 },
+        requestId,
+      );
     }
 
     let cursorPos: { createdAt: Date; id: string } | null = null;
@@ -82,10 +117,10 @@ export async function GET(request: Request) {
         logSctwinApiWarn({
           route: ROUTE_GET,
           phase: "validation",
-          errorCode: "INVALID_CURSOR",
+          errorCode: TWIN_EVENTS_ERROR_INVALID_CURSOR,
           requestId,
         });
-        return twinApiJson({ error: "Invalid cursor" }, { status: 400 }, requestId);
+        return twinApiJson({ error: "Invalid cursor", code: TWIN_EVENTS_ERROR_INVALID_CURSOR }, { status: 400 }, requestId);
       }
       cursorPos = { createdAt: decoded.createdAt, id: decoded.id };
     }
@@ -178,6 +213,8 @@ export async function GET(request: Request) {
 
 /**
  * Append a tenant-scoped ingest event (`type` + JSON `payload`). Uses {@link appendIngestEvent} (byte cap, no payload in logs).
+ * Optional `Idempotency-Key` header enables replay-safe append: duplicate requests with the same key return the same
+ * logical outcome (`{ id, type }`) without inserting another row.
  *
  * **201:** `{ id, type }`. **400:** Invalid JSON, Zod validation, oversize payload (`code: TWIN_INGEST_PAYLOAD_TOO_LARGE`), or invalid type from writer.
  */
@@ -197,15 +234,19 @@ export async function POST(request: Request) {
       logSctwinApiWarn({
         route: ROUTE_POST,
         phase: "validation",
-        errorCode: "BODY_JSON_INVALID",
+        errorCode: TWIN_EVENTS_ERROR_BODY_JSON_INVALID,
         requestId,
       });
-      return twinApiJson({ error: "Request body must be valid JSON." }, { status: 400 }, requestId);
+      return twinApiJson(
+        { error: "Request body must be valid JSON.", code: TWIN_EVENTS_ERROR_BODY_JSON_INVALID },
+        { status: 400 },
+        requestId,
+      );
     }
 
     const parsed = parseTwinIngestEventAppendBody(raw);
     if (!parsed.ok) {
-      const errorCode = parsed.payloadTooLarge ? TWIN_INGEST_PAYLOAD_TOO_LARGE : "BODY_VALIDATION_FAILED";
+      const errorCode = parsed.payloadTooLarge ? TWIN_INGEST_PAYLOAD_TOO_LARGE : TWIN_EVENTS_ERROR_BODY_VALIDATION_FAILED;
       logSctwinApiWarn({
         route: ROUTE_POST,
         phase: "validation",
@@ -222,16 +263,36 @@ export async function POST(request: Request) {
           requestId,
         );
       }
-      return twinApiJson({ error: parsed.error }, { status: 400 }, requestId);
+      return twinApiJson(
+        { error: parsed.error, code: TWIN_EVENTS_ERROR_BODY_VALIDATION_FAILED },
+        { status: 400 },
+        requestId,
+      );
+    }
+
+    const idempotency = parseIdempotencyKeyHeader(request);
+    if (!idempotency.ok) {
+      logSctwinApiWarn({
+        route: ROUTE_POST,
+        phase: "validation",
+        errorCode: TWIN_EVENTS_ERROR_INVALID_IDEMPOTENCY_KEY,
+        requestId,
+      });
+      return twinApiJson(
+        { error: idempotency.error, code: TWIN_EVENTS_ERROR_INVALID_IDEMPOTENCY_KEY },
+        { status: 400 },
+        requestId,
+      );
     }
 
     try {
-      const { id } = await appendIngestEvent({
+      const { id, type } = await appendIngestEvent({
         tenantId: access.tenant.id,
         type: parsed.body.type,
         payload: parsed.body.payload as Prisma.InputJsonValue,
+        ...(idempotency.key != null ? { idempotencyKey: idempotency.key } : {}),
       });
-      return twinApiJson(twinIngestEventAppendResponseSchema.parse({ id, type: parsed.body.type }), { status: 201 }, requestId);
+      return twinApiJson(twinIngestEventAppendResponseSchema.parse({ id, type }), { status: 201 }, requestId);
     } catch (caught) {
       if (caught instanceof TwinIngestPayloadTooLargeError) {
         logSctwinApiWarn({
@@ -253,10 +314,14 @@ export async function POST(request: Request) {
         logSctwinApiWarn({
           route: ROUTE_POST,
           phase: "validation",
-          errorCode: "INVALID_TWIN_INGEST_TYPE",
+          errorCode: TWIN_EVENTS_ERROR_INVALID_INGEST_TYPE,
           requestId,
         });
-        return twinApiJson({ error: "Invalid ingest event type." }, { status: 400 }, requestId);
+        return twinApiJson(
+          { error: "Invalid ingest event type.", code: TWIN_EVENTS_ERROR_INVALID_INGEST_TYPE },
+          { status: 400 },
+          requestId,
+        );
       }
       throw caught;
     }

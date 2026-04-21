@@ -35,6 +35,20 @@ export const twinEntitySnapshotDetailResponseSchema = z.object({
   payload: z.unknown(),
 });
 
+/** Success body for `GET /api/supply-chain-twin/entities/[id]/neighbors`. */
+export const twinEntityNeighborsResponseSchema = z.object({
+  id: z.string().min(1),
+  neighbors: z.array(
+    z.object({
+      edgeId: z.string().min(1),
+      relation: z.string().nullable(),
+      direction: z.enum(["in", "out"]),
+      snapshotId: z.string().min(1),
+      ref: twinEntityRefSchema,
+    }),
+  ),
+});
+
 /** Success body for `GET /api/supply-chain-twin/edges`. */
 export const twinEdgesListResponseSchema = z.object({
   edges: z.array(
@@ -92,6 +106,22 @@ export const twinScenarioDraftDetailResponseSchema = z.object({
   draft: z.unknown(),
 });
 
+/** Success body for `GET /api/supply-chain-twin/scenarios/[id]/history` (metadata deltas only). */
+export const twinScenarioHistoryListResponseSchema = z.object({
+  items: z.array(
+    z.object({
+      id: z.string().min(1),
+      createdAt: z.string().datetime(),
+      actorId: z.string().nullable(),
+      action: z.string().min(1),
+      titleBefore: z.string().nullable(),
+      titleAfter: z.string().nullable(),
+      statusBefore: z.string().nullable(),
+      statusAfter: z.string().nullable(),
+    }),
+  ),
+});
+
 const twinRiskSeverityResponseSchema = z.nativeEnum(TwinRiskSeverity);
 
 /** One row from `GET /api/supply-chain-twin/risk-signals` (aligns with Prisma `TwinRiskSeverity`). */
@@ -109,6 +139,14 @@ export const twinRiskSignalListItemSchema = z.object({
 export const twinRiskSignalsListResponseSchema = z.object({
   items: z.array(twinRiskSignalListItemSchema),
   nextCursor: z.string().min(1).optional(),
+});
+
+/** Success body for `PATCH /api/supply-chain-twin/risk-signals/[id]` (acknowledge/unacknowledge). */
+export const twinRiskSignalAckPatchResponseSchema = z.object({
+  id: z.string().min(1),
+  acknowledged: z.boolean(),
+  acknowledgedAt: z.string().datetime().nullable(),
+  acknowledgedByActorId: z.string().min(1).nullable(),
 });
 
 /** Success body for `GET /api/supply-chain-twin/metrics` — counts only, tenant-scoped, plus snapshot timestamp (Slice 61). */

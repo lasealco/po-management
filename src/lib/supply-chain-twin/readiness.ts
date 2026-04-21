@@ -10,6 +10,8 @@ export type SupplyChainTwinReadiness = {
   ok: boolean;
   reasons: string[];
   healthIndex: TwinHealthIndexStub;
+  /** Null means data presence probe timed out or failed and readiness fell back. */
+  hasTwinData: boolean | null;
 };
 
 const REQUIRED_PUBLIC_TABLES = [
@@ -22,6 +24,7 @@ const REQUIRED_PUBLIC_TABLES = [
 
 let cache: { checkedAtMs: number; value: SupplyChainTwinReadiness } | null = null;
 const CACHE_TTL_MS = 45_000;
+const TWIN_DATA_PRESENCE_TIMEOUT_MS = 250;
 
 export type GetSupplyChainTwinReadinessOptions = {
   /** Skip in-memory cache (e.g. `GET .../readiness?refresh=1` after `migrate deploy`). */
@@ -52,9 +55,12 @@ async function computeSupplyChainTwinReadiness(): Promise<SupplyChainTwinReadine
             `Supply Chain Twin requires Postgres table "${name}". Run \`npm run db:migrate\` (or \`npx prisma migrate deploy\`) on this database.`,
         ),
         healthIndex: TWIN_HEALTH_INDEX_STUB,
+        hasTwinData: false,
       };
     }
-    return { ok: true, reasons: [], healthIndex: TWIN_HEALTH_INDEX_STUB };
+
+    const hasTwinData = await withTwinDataPresenceBudget();
+    return { ok: true, reasons: [], healthIndex: TWIN_HEALTH_INDEX_STUB, hasTwinData };
   } catch {
     return {
       ok: false,
@@ -62,7 +68,37 @@ async function computeSupplyChainTwinReadiness(): Promise<SupplyChainTwinReadine
         "Could not verify Supply Chain Twin database tables. Confirm Postgres connectivity and that migrations have been applied.",
       ],
       healthIndex: TWIN_HEALTH_INDEX_STUB,
+      hasTwinData: null,
     };
+  }
+}
+
+async function computeHasTwinData(): Promise<boolean> {
+  const [entityCount, edgeCount, eventCount, riskCount, scenarioCount] = await Promise.all([
+    prisma.supplyChainTwinEntitySnapshot.count(),
+    prisma.supplyChainTwinEntityEdge.count(),
+    prisma.supplyChainTwinIngestEvent.count(),
+    prisma.supplyChainTwinRiskSignal.count(),
+    prisma.supplyChainTwinScenarioDraft.count(),
+  ]);
+
+  return entityCount + edgeCount + eventCount + riskCount + scenarioCount > 0;
+}
+
+/**
+ * Keep readiness responsive: if catalog-count probes exceed budget, return `null` and let callers treat this as
+ * unknown data presence instead of failing the whole readiness check.
+ */
+async function withTwinDataPresenceBudget(): Promise<boolean | null> {
+  try {
+    return await Promise.race<boolean | null>([
+      computeHasTwinData(),
+      new Promise<boolean | null>((resolve) =>
+        setTimeout(() => resolve(null), TWIN_DATA_PRESENCE_TIMEOUT_MS),
+      ),
+    ]);
+  } catch {
+    return null;
   }
 }
 

@@ -1,13 +1,14 @@
 import type { Prisma } from "@prisma/client";
 import { z } from "zod";
 
+import { TWIN_EVENTS_QUERY_MAX_WINDOW_DAYS, TWIN_LIST_LIMIT_DEFAULT, TWIN_LIST_LIMIT_MAX } from "@/lib/supply-chain-twin/request-budgets";
+
 const twinEventsCursorPayloadSchema = z.object({
   c: z.string().datetime(),
   i: z.string().min(1),
 });
 
-/** Hard cap on `until - since` for `GET …/events` (Slice 68). Documented on the route handler. */
-export const TWIN_EVENTS_QUERY_MAX_WINDOW_DAYS = 31;
+export { TWIN_EVENTS_QUERY_MAX_WINDOW_DAYS };
 
 const MS_PER_DAY = 86_400_000;
 
@@ -33,7 +34,7 @@ const optionalIsoDateTime = z.preprocess(
  */
 export const twinEventsQuerySchema = z
   .object({
-    limit: z.coerce.number().int().min(1).max(100).optional().default(50),
+    limit: z.coerce.number().int().min(1).max(TWIN_LIST_LIMIT_MAX).optional().default(TWIN_LIST_LIMIT_DEFAULT),
     cursor: z
       .string()
       .trim()

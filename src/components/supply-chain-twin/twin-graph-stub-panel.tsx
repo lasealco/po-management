@@ -48,7 +48,7 @@ function parseEdgeRow(row: unknown): GraphEdgeVm | null {
   return { id, relation: rel, fromKey: refKey(from), toKey: refKey(to) };
 }
 
-async function fetchGraphForSnapshot(snapshotId: string, _searchQ: string): Promise<GraphBundle> {
+async function fetchGraphForSnapshot(snapshotId: string): Promise<GraphBundle> {
   const edgeParams = new URLSearchParams();
   edgeParams.set("snapshotId", snapshotId);
   edgeParams.set("direction", "both");
@@ -258,7 +258,7 @@ async function fetchGraphCatalogMode(searchQ: string): Promise<GraphBundle> {
 async function fetchGraphBundle(searchQ: string, selectedSnapshotId: string | null): Promise<GraphBundle> {
   const snap = selectedSnapshotId?.trim() || null;
   if (snap) {
-    return fetchGraphForSnapshot(snap, searchQ);
+    return fetchGraphForSnapshot(snap);
   }
   return fetchGraphCatalogMode(searchQ);
 }

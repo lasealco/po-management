@@ -101,7 +101,9 @@ describe("POST /api/supply-chain-twin/scenarios/[id]/duplicate", () => {
 
     expect(response.status).toBe(404);
     expect(await response.json()).toEqual({ error: "Not found." });
-    expect(duplicateScenarioDraftForTenantMock).toHaveBeenCalledWith("t1", "other-tenant-draft", {});
+    expect(duplicateScenarioDraftForTenantMock).toHaveBeenCalledWith("t1", "other-tenant-draft", {
+      actorId: "u1",
+    });
   });
 
   it("returns 201 with a new id and passes titleSuffix to the repo", async () => {
@@ -140,7 +142,10 @@ describe("POST /api/supply-chain-twin/scenarios/[id]/duplicate", () => {
       status: "draft",
       updatedAt: "2026-02-10T12:00:00.000Z",
     });
-    expect(duplicateScenarioDraftForTenantMock).toHaveBeenCalledWith("t1", "src-draft", { titleSuffix: " (copy)" });
+    expect(duplicateScenarioDraftForTenantMock).toHaveBeenCalledWith("t1", "src-draft", {
+      titleSuffix: " (copy)",
+      actorId: "u1",
+    });
   });
 
   it("returns 201 with empty object body", async () => {
@@ -173,6 +178,6 @@ describe("POST /api/supply-chain-twin/scenarios/[id]/duplicate", () => {
     );
 
     expect(response.status).toBe(201);
-    expect(duplicateScenarioDraftForTenantMock).toHaveBeenCalledWith("t1", "a", {});
+    expect(duplicateScenarioDraftForTenantMock).toHaveBeenCalledWith("t1", "a", { actorId: "u1" });
   });
 });

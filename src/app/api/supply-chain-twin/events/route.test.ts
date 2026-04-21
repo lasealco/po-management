@@ -100,6 +100,7 @@ describe("GET /api/supply-chain-twin/events", () => {
     const response = await GET(new Request("http://localhost/api/supply-chain-twin/events?limit=101"));
 
     expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ code: "QUERY_VALIDATION_FAILED" });
   });
 
   it("returns 400 when cursor is invalid", async () => {
@@ -118,6 +119,7 @@ describe("GET /api/supply-chain-twin/events", () => {
     const response = await GET(new Request("http://localhost/api/supply-chain-twin/events?cursor=@@@"));
 
     expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ code: "INVALID_CURSOR" });
   });
 
   it("returns 200 with events when authorized", async () => {
@@ -174,6 +176,7 @@ describe("GET /api/supply-chain-twin/events", () => {
     const response = await GET(new Request("http://localhost/api/supply-chain-twin/events?type=*"));
 
     expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ code: "QUERY_VALIDATION_FAILED" });
     expect(prismaMock.supplyChainTwinIngestEvent.findMany).not.toHaveBeenCalled();
   });
 
@@ -223,6 +226,7 @@ describe("GET /api/supply-chain-twin/events", () => {
     const response = await GET(new Request("http://localhost/api/supply-chain-twin/events?since=2026-01-01T00:00:00.000Z"));
 
     expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ code: "QUERY_VALIDATION_FAILED" });
     expect(prismaMock.supplyChainTwinIngestEvent.findMany).not.toHaveBeenCalled();
   });
 
@@ -246,6 +250,7 @@ describe("GET /api/supply-chain-twin/events", () => {
     );
 
     expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ code: "QUERY_VALIDATION_FAILED" });
     expect(prismaMock.supplyChainTwinIngestEvent.findMany).not.toHaveBeenCalled();
   });
 
@@ -265,6 +270,7 @@ describe("GET /api/supply-chain-twin/events", () => {
     const response = await GET(new Request("http://localhost/api/supply-chain-twin/events?includePayload=nope"));
 
     expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ code: "QUERY_VALIDATION_FAILED" });
     expect(prismaMock.supplyChainTwinIngestEvent.findMany).not.toHaveBeenCalled();
   });
 
@@ -446,7 +452,36 @@ describe("POST /api/supply-chain-twin/events", () => {
     );
 
     expect(response.status).toBe(400);
-    expect(await response.json()).toMatchObject({ error: expect.stringMatching(/valid JSON/i) });
+    expect(await response.json()).toMatchObject({
+      error: expect.stringMatching(/valid JSON/i),
+      code: "BODY_JSON_INVALID",
+    });
+    expect(appendIngestEventMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 with BODY_VALIDATION_FAILED for schema-invalid body", async () => {
+    getViewerGrantSetMock.mockResolvedValue({
+      tenant: { id: "t1", name: "Demo", slug: "demo-company" },
+      user: { id: "u1", email: "x@y.com", name: "X" },
+      grantSet: new Set(),
+    });
+    resolveNavStateMock.mockResolvedValue({
+      linkVisibility: { supplyChainTwin: true },
+      setupIncomplete: false,
+      poSubNavVisibility: {},
+    });
+
+    const { POST } = await import("./route");
+    const response = await POST(
+      new Request("http://localhost/api/supply-chain-twin/events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ payload: { missing: "type" } }),
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ code: "BODY_VALIDATION_FAILED" });
     expect(appendIngestEventMock).not.toHaveBeenCalled();
   });
 
@@ -521,7 +556,7 @@ describe("POST /api/supply-chain-twin/events", () => {
       setupIncomplete: false,
       poSubNavVisibility: {},
     });
-    appendIngestEventMock.mockResolvedValue({ id: "evt-new" });
+    appendIngestEventMock.mockResolvedValue({ id: "evt-new", type: "manual.append" });
 
     const { POST } = await import("./route");
     const response = await POST(
@@ -539,5 +574,102 @@ describe("POST /api/supply-chain-twin/events", () => {
       type: "manual.append",
       payload: { source: "test" },
     });
+  });
+
+  it("returns 400 with INVALID_TWIN_INGEST_TYPE when writer rejects type", async () => {
+    getViewerGrantSetMock.mockResolvedValue({
+      tenant: { id: "t1", name: "Demo", slug: "demo-company" },
+      user: { id: "u1", email: "x@y.com", name: "X" },
+      grantSet: new Set(),
+    });
+    resolveNavStateMock.mockResolvedValue({
+      linkVisibility: { supplyChainTwin: true },
+      setupIncomplete: false,
+      poSubNavVisibility: {},
+    });
+    appendIngestEventMock.mockRejectedValue(new RangeError("INVALID_TWIN_INGEST_TYPE"));
+
+    const { POST } = await import("./route");
+    const response = await POST(
+      new Request("http://localhost/api/supply-chain-twin/events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "invalid.type", payload: { source: "test" } }),
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: "Invalid ingest event type.",
+      code: "INVALID_TWIN_INGEST_TYPE",
+    });
+  });
+
+  it("passes Idempotency-Key header to appendIngestEvent", async () => {
+    getViewerGrantSetMock.mockResolvedValue({
+      tenant: { id: "t1", name: "Demo", slug: "demo-company" },
+      user: { id: "u1", email: "x@y.com", name: "X" },
+      grantSet: new Set(),
+    });
+    resolveNavStateMock.mockResolvedValue({
+      linkVisibility: { supplyChainTwin: true },
+      setupIncomplete: false,
+      poSubNavVisibility: {},
+    });
+    appendIngestEventMock.mockResolvedValue({ id: "evt-existing", type: "manual.append" });
+
+    const { POST } = await import("./route");
+    const response = await POST(
+      new Request("http://localhost/api/supply-chain-twin/events", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": "  replay-key-1 ",
+        },
+        body: JSON.stringify({ type: "manual.append", payload: { source: "test" } }),
+      }),
+    );
+
+    expect(response.status).toBe(201);
+    expect(await response.json()).toEqual({ id: "evt-existing", type: "manual.append" });
+    expect(appendIngestEventMock).toHaveBeenCalledWith({
+      tenantId: "t1",
+      type: "manual.append",
+      payload: { source: "test" },
+      idempotencyKey: "replay-key-1",
+    });
+  });
+
+  it("returns 400 when Idempotency-Key exceeds max length", async () => {
+    getViewerGrantSetMock.mockResolvedValue({
+      tenant: { id: "t1", name: "Demo", slug: "demo-company" },
+      user: { id: "u1", email: "x@y.com", name: "X" },
+      grantSet: new Set(),
+    });
+    resolveNavStateMock.mockResolvedValue({
+      linkVisibility: { supplyChainTwin: true },
+      setupIncomplete: false,
+      poSubNavVisibility: {},
+    });
+
+    const longKey = "k".repeat(256);
+    const { POST } = await import("./route");
+    const response = await POST(
+      new Request("http://localhost/api/supply-chain-twin/events", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": longKey,
+        },
+        body: JSON.stringify({ type: "manual.append", payload: { source: "test" } }),
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({
+      error: expect.stringMatching(/Idempotency-Key exceeds maximum length/i),
+      code: "INVALID_IDEMPOTENCY_KEY",
+    });
+    expect(appendIngestEventMock).not.toHaveBeenCalled();
   });
 });

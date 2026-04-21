@@ -12,7 +12,7 @@ vi.mock("@/lib/prisma", () => ({
   prisma: prismaMock,
 }));
 
-import { listEdgesForEntity, listEdgesForTenant } from "@/lib/supply-chain-twin/edges-repo";
+import { listEdgesForEntity, listEdgesForTenant, listEntityNeighborsForTenant } from "@/lib/supply-chain-twin/edges-repo";
 
 beforeEach(() => {
   vi.mocked(prismaMock.supplyChainTwinEntityEdge.findMany).mockReset();
@@ -103,5 +103,63 @@ describe("listEdgesForEntity", () => {
         take: 200,
       }),
     );
+  });
+});
+
+describe("listEntityNeighborsForTenant", () => {
+  it("maps outgoing neighbor refs with direction out", async () => {
+    vi.mocked(prismaMock.supplyChainTwinEntityEdge.findMany).mockResolvedValueOnce([
+      {
+        id: "e1",
+        relation: "ships_to",
+        fromSnapshotId: "snap-center",
+        toSnapshotId: "snap-neighbor",
+        fromSnapshot: { entityKind: "supplier", entityKey: "S1" },
+        toSnapshot: { entityKind: "site", entityKey: "WH1" },
+      },
+    ]);
+
+    const out = await listEntityNeighborsForTenant("t1", "snap-center", { direction: "out", take: 25 });
+
+    expect(out).toEqual([
+      {
+        edgeId: "e1",
+        relation: "ships_to",
+        direction: "out",
+        snapshotId: "snap-neighbor",
+        ref: { kind: "site", id: "WH1" },
+      },
+    ]);
+    expect(prismaMock.supplyChainTwinEntityEdge.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { tenantId: "t1", fromSnapshotId: "snap-center" },
+        take: 25,
+      }),
+    );
+  });
+
+  it("maps incoming neighbor refs with direction in", async () => {
+    vi.mocked(prismaMock.supplyChainTwinEntityEdge.findMany).mockResolvedValueOnce([
+      {
+        id: "e2",
+        relation: null,
+        fromSnapshotId: "snap-neighbor",
+        toSnapshotId: "snap-center",
+        fromSnapshot: { entityKind: "shipment", entityKey: "SH1" },
+        toSnapshot: { entityKind: "site", entityKey: "WH1" },
+      },
+    ]);
+
+    const out = await listEntityNeighborsForTenant("t1", "snap-center", { direction: "in" });
+
+    expect(out).toEqual([
+      {
+        edgeId: "e2",
+        relation: null,
+        direction: "in",
+        snapshotId: "snap-neighbor",
+        ref: { kind: "shipment", id: "SH1" },
+      },
+    ]);
   });
 });

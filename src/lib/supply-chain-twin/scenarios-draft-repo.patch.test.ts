@@ -2,12 +2,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const findFirstMock = vi.fn();
 const updateManyMock = vi.fn();
+const revisionCreateMock = vi.fn();
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     supplyChainTwinScenarioDraft: {
       findFirst: (...args: unknown[]) => findFirstMock(...args),
       updateMany: (...args: unknown[]) => updateManyMock(...args),
+    },
+    supplyChainTwinScenarioRevision: {
+      create: (...args: unknown[]) => revisionCreateMock(...args),
     },
   },
 }));
@@ -17,7 +21,7 @@ describe("patchScenarioDraftForTenant", () => {
     vi.clearAllMocks();
   });
 
-  it("updates title without a pre-read when status is omitted", async () => {
+  it("updates title when status is omitted", async () => {
     updateManyMock.mockResolvedValue({ count: 1 });
     const detail = {
       id: "d1",
@@ -27,18 +31,19 @@ describe("patchScenarioDraftForTenant", () => {
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
       updatedAt: new Date("2026-01-02T00:00:00.000Z"),
     };
+    findFirstMock.mockResolvedValueOnce({ status: "draft", title: "Old T" });
     findFirstMock.mockResolvedValueOnce(detail);
 
     const { patchScenarioDraftForTenant } = await import("./scenarios-draft-repo");
     const r = await patchScenarioDraftForTenant("tenant-1", "d1", { title: "T" });
 
     expect(r).toEqual({ ok: true, row: detail });
-    expect(findFirstMock).toHaveBeenCalledTimes(1);
+    expect(findFirstMock).toHaveBeenCalledTimes(2);
     expect(updateManyMock).toHaveBeenCalledTimes(1);
   });
 
   it("allows draft → archived after reading current status", async () => {
-    findFirstMock.mockResolvedValueOnce({ status: "draft" });
+    findFirstMock.mockResolvedValueOnce({ status: "draft", title: null });
     updateManyMock.mockResolvedValue({ count: 1 });
     const after = {
       id: "d1",
@@ -72,7 +77,7 @@ describe("patchScenarioDraftForTenant", () => {
   });
 
   it("rejects draft target when current status is neither draft nor archived", async () => {
-    findFirstMock.mockResolvedValueOnce({ status: "published" });
+    findFirstMock.mockResolvedValueOnce({ status: "published", title: null });
 
     const { patchScenarioDraftForTenant } = await import("./scenarios-draft-repo");
     const r = await patchScenarioDraftForTenant("tenant-1", "d1", { status: "draft" });
@@ -86,7 +91,7 @@ describe("patchScenarioDraftForTenant", () => {
   });
 
   it("allows archived from an unknown legacy status", async () => {
-    findFirstMock.mockResolvedValueOnce({ status: "published" });
+    findFirstMock.mockResolvedValueOnce({ status: "published", title: null });
     updateManyMock.mockResolvedValue({ count: 1 });
     const after = {
       id: "d1",

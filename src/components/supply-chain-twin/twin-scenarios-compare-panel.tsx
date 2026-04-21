@@ -148,15 +148,16 @@ export function TwinScenariosComparePanel(props: { left: TwinScenarioDraftQueryP
 
   useEffect(() => {
     if (left.status !== "ok" || right.status !== "ok") {
-      setLeftPane(idlePaneForSide(left, right));
-      setRightPane(idlePaneForSide(right, left));
       return;
     }
 
-    setLeftPane({ status: "loading" });
-    setRightPane({ status: "loading" });
-
     let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) {
+        setLeftPane({ status: "loading" });
+        setRightPane({ status: "loading" });
+      }
+    });
     void (async () => {
       const [l, r] = await Promise.all([fetchScenarioDraft(left.id), fetchScenarioDraft(right.id)]);
       if (cancelled) {
@@ -171,12 +172,15 @@ export function TwinScenariosComparePanel(props: { left: TwinScenarioDraftQueryP
     };
   }, [left, right]);
 
+  const effectiveLeftPane = left.status === "ok" && right.status === "ok" ? leftPane : idlePaneForSide(left, right);
+  const effectiveRightPane = left.status === "ok" && right.status === "ok" ? rightPane : idlePaneForSide(right, left);
+
   const diffSummary = useMemo(() => {
-    if (leftPane.status !== "ok" || rightPane.status !== "ok") {
+    if (effectiveLeftPane.status !== "ok" || effectiveRightPane.status !== "ok") {
       return null;
     }
-    const diff = computeDraftTopLevelKeyDiffV1(leftPane.data.draft, rightPane.data.draft);
-    const deep = draftsDeepEqualSerialized(leftPane.data.draft, rightPane.data.draft);
+    const diff = computeDraftTopLevelKeyDiffV1(effectiveLeftPane.data.draft, effectiveRightPane.data.draft);
+    const deep = draftsDeepEqualSerialized(effectiveLeftPane.data.draft, effectiveRightPane.data.draft);
     const deepLine =
       deep === null
         ? "Serialized draft bodies: not compared (payload too large for a quick check)."
@@ -184,7 +188,7 @@ export function TwinScenariosComparePanel(props: { left: TwinScenarioDraftQueryP
           ? "Serialized draft bodies: match."
           : "Serialized draft bodies: differ.";
     return { diff, deepLine };
-  }, [leftPane, rightPane]);
+  }, [effectiveLeftPane, effectiveRightPane]);
 
   async function onCopyShareLink() {
     const href = window.location.href;
@@ -214,6 +218,40 @@ export function TwinScenariosComparePanel(props: { left: TwinScenarioDraftQueryP
     }
   }
 
+  function onExportDiffSummary() {
+    if (!diffSummary || effectiveLeftPane.status !== "ok" || effectiveRightPane.status !== "ok") {
+      return;
+    }
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      source: "supply-chain-twin/scenarios/compare",
+      compared: {
+        leftId: effectiveLeftPane.data.id,
+        rightId: effectiveRightPane.data.id,
+      },
+      labels: {
+        leftTitle: effectiveLeftPane.data.title,
+        rightTitle: effectiveRightPane.data.title,
+        leftStatus: effectiveLeftPane.data.status,
+        rightStatus: effectiveRightPane.data.status,
+      },
+      // Key-level summary only; no full draft payloads.
+      diff: diffSummary.diff,
+      deepLine: diffSummary.deepLine,
+    };
+    const json = JSON.stringify(payload, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const stamp = new Date().toISOString().replaceAll(":", "").slice(0, 15);
+    a.download = `twin-scenario-compare-diff-${stamp}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div className="space-y-6">
       <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
@@ -236,7 +274,16 @@ export function TwinScenariosComparePanel(props: { left: TwinScenarioDraftQueryP
       </section>
       {diffSummary ? (
         <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-          <h2 className="text-sm font-semibold text-zinc-900">Diff (read-only)</h2>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <h2 className="text-sm font-semibold text-zinc-900">Diff (read-only)</h2>
+            <button
+              type="button"
+              onClick={onExportDiffSummary}
+              className="rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-800 shadow-sm hover:bg-zinc-50"
+            >
+              Export diff summary
+            </button>
+          </div>
           <p className="mt-2 max-w-3xl text-sm text-zinc-600">
             Top-level key buckets plus a capped{" "}
             <span className="font-medium text-zinc-800">depth-2 path</span> strip for object-valued changed keys (dot
@@ -250,8 +297,8 @@ export function TwinScenariosComparePanel(props: { left: TwinScenarioDraftQueryP
       ) : null}
 
       <div className="grid gap-4 md:grid-cols-2">
-        <ComparePane label="Left draft" state={leftPane} side="left" />
-        <ComparePane label="Right draft" state={rightPane} side="right" />
+        <ComparePane label="Left draft" state={effectiveLeftPane} side="left" />
+        <ComparePane label="Right draft" state={effectiveRightPane} side="right" />
       </div>
     </div>
   );
@@ -303,20 +350,16 @@ function ComparePane(props: { label: string; state: PaneState; side: "left" | "r
             <span className="mx-2 text-zinc-400">·</span>
             <span className="font-mono text-[11px] text-zinc-500">{state.data.id}</span>
           </div>
-          <DraftJsonBlock draftKey={state.data.id} draft={state.data.draft} />
+          <DraftJsonBlock key={state.data.id} draft={state.data.draft} />
         </div>
       ) : null}
     </section>
   );
 }
 
-function DraftJsonBlock({ draftKey, draft }: { draftKey: string; draft: unknown }) {
+function DraftJsonBlock({ draft }: { draft: unknown }) {
   const fullBytes = useMemo(() => draftUtf8ByteLength(draft), [draft]);
   const [expanded, setExpanded] = useState(false);
-
-  useEffect(() => {
-    setExpanded(false);
-  }, [draftKey, draft]);
 
   const needsCollapseStub = fullBytes > COLLAPSE_WHEN_UTF8_BYTES;
   const maxBytes = expanded || !needsCollapseStub ? PREVIEW_MAX_UTF8_BYTES : COLLAPSED_PREVIEW_UTF8_BYTES;

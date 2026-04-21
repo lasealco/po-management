@@ -2,12 +2,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const findFirstMock = vi.fn();
 const createMock = vi.fn();
+const revisionCreateMock = vi.fn();
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     supplyChainTwinScenarioDraft: {
       findFirst: (...args: unknown[]) => findFirstMock(...args),
       create: (...args: unknown[]) => createMock(...args),
+    },
+    supplyChainTwinScenarioRevision: {
+      create: (...args: unknown[]) => revisionCreateMock(...args),
     },
   },
 }));
