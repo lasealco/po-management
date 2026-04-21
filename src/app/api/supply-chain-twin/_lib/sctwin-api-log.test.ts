@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   isSafeSctwinRequestId,
+  logSctwinApiError,
+  logSctwinApiWarn,
   resolveSctwinRequestId,
   SCTWIN_MODULE_REQUEST_ID_HEADER,
   SCTWIN_REQUEST_ID_HEADER,
@@ -53,5 +55,48 @@ describe("twinApiJson", () => {
     expect(res.headers.get(SCTWIN_REQUEST_ID_HEADER)).toBe("gateway-req-abc12");
     expect(res.headers.get(SCTWIN_MODULE_REQUEST_ID_HEADER)).toBe("gateway-req-abc12");
     await expect(res.json()).resolves.toEqual({ ok: true });
+  });
+});
+
+describe("structured log normalization", () => {
+  it("normalizes warn payload fields with default tenant scope", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      logSctwinApiWarn({
+        route: "GET /api/supply-chain-twin/entities",
+        phase: "validation",
+        errorCode: "INVALID_CURSOR",
+        requestId: "gateway-req-3001",
+      });
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      const payload = JSON.parse(String(warnSpy.mock.calls[0][0])) as Record<string, unknown>;
+      expect(payload.route).toBe("GET /api/supply-chain-twin/entities");
+      expect(payload.requestId).toBe("gateway-req-3001");
+      expect(payload.errorClass).toBe("validation");
+      expect(payload.tenantScope).toBe("tenant:unknown");
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  it("normalizes error payload fields with safe tenant scope", () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      logSctwinApiError({
+        route: "PATCH /api/supply-chain-twin/scenarios/[id]",
+        phase: "scenarios",
+        errorCode: "UNHANDLED_EXCEPTION",
+        requestId: "gateway-req-3002",
+        tenantScope: "Tenant/Enterprise One",
+      });
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      const payload = JSON.parse(String(errorSpy.mock.calls[0][0])) as Record<string, unknown>;
+      expect(payload.route).toBe("PATCH /api/supply-chain-twin/scenarios/[id]");
+      expect(payload.requestId).toBe("gateway-req-3002");
+      expect(payload.errorClass).toBe("internal");
+      expect(payload.tenantScope).toBe("tenant-enterprise-one");
+    } finally {
+      errorSpy.mockRestore();
+    }
   });
 });

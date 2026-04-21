@@ -13,6 +13,10 @@ type SctwinApiLogBase = {
   phase: string;
   /** Stable machine code for alerts; never user/tenant text. */
   errorCode: string;
+  /** Normalized error family used for alert grouping. */
+  errorClass: "validation" | "authz" | "internal" | "unknown";
+  /** Tenant scope marker; avoids raw tenant names/emails. */
+  tenantScope: string;
   /** Safe hint only (e.g. Error.name). No emails, ids, or request payloads. */
   detail?: string;
   /** Correlate client + server logs; from `x-request-id` / `x-correlation-id` or generated per request. */
@@ -66,6 +70,39 @@ export function twinApiJson(data: unknown, init: ResponseInit | undefined, reque
   return withSctwinRequestId(NextResponse.json(data, init), requestId);
 }
 
+function resolveSctwinErrorClass(phase: string, errorCode: string): SctwinApiLogBase["errorClass"] {
+  if (errorCode === "UNHANDLED_EXCEPTION") {
+    return "internal";
+  }
+  const codeUpper = errorCode.toUpperCase();
+  if (phase === "auth" || codeUpper.includes("FORBIDDEN") || codeUpper.includes("ACCESS") || codeUpper.includes("AUTH")) {
+    return "authz";
+  }
+  if (
+    phase === "validation" ||
+    codeUpper.includes("VALIDATION") ||
+    codeUpper.includes("INVALID") ||
+    codeUpper.includes("CURSOR") ||
+    codeUpper.includes("FORMAT") ||
+    codeUpper.includes("CAP_EXCEEDED")
+  ) {
+    return "validation";
+  }
+  return "unknown";
+}
+
+function normalizeTenantScope(raw: string | undefined): string {
+  if (typeof raw !== "string") {
+    return "tenant:unknown";
+  }
+  const normalized = raw.trim().toLowerCase();
+  if (normalized.length === 0) {
+    return "tenant:unknown";
+  }
+  const safe = normalized.replace(/[^a-z0-9._:-]/g, "-").slice(0, 128);
+  return safe.length > 0 ? safe : "tenant:unknown";
+}
+
 function emit(payload: SctwinApiLogBase) {
   const line = JSON.stringify(payload);
   if (payload.level === "error") {
@@ -76,21 +113,33 @@ function emit(payload: SctwinApiLogBase) {
 }
 
 /** Unexpected failures (typically 5xx path). */
-export function logSctwinApiError(input: Omit<SctwinApiLogBase, "sctwinApi" | "level" | "ts">) {
+export function logSctwinApiError(
+  input: Omit<SctwinApiLogBase, "sctwinApi" | "level" | "ts" | "errorClass" | "tenantScope"> & {
+    tenantScope?: string;
+  },
+) {
   emit({
     sctwinApi: true,
     level: "error",
     ts: new Date().toISOString(),
     ...input,
+    errorClass: resolveSctwinErrorClass(input.phase, input.errorCode),
+    tenantScope: normalizeTenantScope(input.tenantScope),
   });
 }
 
 /** Client/validation issues without PII (optional operator signal). */
-export function logSctwinApiWarn(input: Omit<SctwinApiLogBase, "sctwinApi" | "level" | "ts">) {
+export function logSctwinApiWarn(
+  input: Omit<SctwinApiLogBase, "sctwinApi" | "level" | "ts" | "errorClass" | "tenantScope"> & {
+    tenantScope?: string;
+  },
+) {
   emit({
     sctwinApi: true,
     level: "warn",
     ts: new Date().toISOString(),
     ...input,
+    errorClass: resolveSctwinErrorClass(input.phase, input.errorCode),
+    tenantScope: normalizeTenantScope(input.tenantScope),
   });
 }
