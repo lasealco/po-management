@@ -8,6 +8,18 @@ export const twinEntitiesListResponseSchema = z.object({
   nextCursor: z.string().min(1).optional(),
 });
 
+/**
+ * Success body for `GET /api/supply-chain-twin/entities/[id]` — one snapshot row.
+ * `ref.id` is the business `entityKey`; route `id` is the Prisma primary key (`cuid`).
+ */
+export const twinEntitySnapshotDetailResponseSchema = z.object({
+  id: z.string(),
+  ref: twinEntityRefSchema,
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  payload: z.unknown(),
+});
+
 /** Success body for `GET /api/supply-chain-twin/edges`. */
 export const twinEdgesListResponseSchema = z.object({
   edges: z.array(

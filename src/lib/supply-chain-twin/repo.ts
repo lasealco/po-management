@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import type { TwinEntityListItem } from "@/lib/supply-chain-twin/entities-catalog";
 import { decodeTwinEntitiesCursor, encodeTwinEntitiesCursor } from "@/lib/supply-chain-twin/schemas/twin-entities-query";
-import { TWIN_ENTITY_KINDS, type TwinEntityKind } from "@/lib/supply-chain-twin/types";
+import { TWIN_ENTITY_KINDS, type TwinEntityKind, type TwinEntityRef } from "@/lib/supply-chain-twin/types";
 
 function toTwinEntityKind(value: string): TwinEntityKind {
   return (TWIN_ENTITY_KINDS as readonly string[]).includes(value) ? (value as TwinEntityKind) : "unknown";
@@ -101,4 +101,43 @@ export async function listForTenant(
     cursor: null,
   });
   return items;
+}
+
+/** One `SupplyChainTwinEntitySnapshot` row for detail APIs (tenant-scoped). */
+export type TwinEntitySnapshotDetail = {
+  id: string;
+  ref: TwinEntityRef;
+  createdAt: Date;
+  updatedAt: Date;
+  payload: unknown;
+};
+
+/**
+ * Loads a single entity snapshot by primary key for the tenant. Returns `null` when missing or not in tenant.
+ */
+export async function getEntitySnapshotByIdForTenant(
+  tenantId: string,
+  snapshotId: string,
+): Promise<TwinEntitySnapshotDetail | null> {
+  const row = await prisma.supplyChainTwinEntitySnapshot.findFirst({
+    where: { tenantId, id: snapshotId },
+    select: {
+      id: true,
+      entityKind: true,
+      entityKey: true,
+      payload: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+  if (!row) {
+    return null;
+  }
+  return {
+    id: row.id,
+    ref: { kind: toTwinEntityKind(row.entityKind), id: row.entityKey },
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    payload: row.payload,
+  };
 }
