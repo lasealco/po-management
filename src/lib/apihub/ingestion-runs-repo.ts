@@ -20,11 +20,12 @@ export type ApiHubIngestionRunRow = {
   startedAt: Date | null;
   finishedAt: Date | null;
   retryOfRunId: string | null;
+  appliedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 };
 
-const RUN_SELECT = {
+export const APIHUB_INGESTION_RUN_ROW_SELECT = {
   id: true,
   connectorId: true,
   requestedByUserId: true,
@@ -40,9 +41,12 @@ const RUN_SELECT = {
   startedAt: true,
   finishedAt: true,
   retryOfRunId: true,
+  appliedAt: true,
   createdAt: true,
   updatedAt: true,
 } as const;
+
+const RUN_SELECT = APIHUB_INGESTION_RUN_ROW_SELECT;
 
 export type ListApiHubIngestionRunsResult = {
   items: ApiHubIngestionRunRow[];

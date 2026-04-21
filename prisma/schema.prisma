@@ -153,6 +153,8 @@ model ApiHubIngestionRun {
   startedAt         DateTime?
   finishedAt        DateTime?
   retryOfRunId      String?
+  /// Set when mapping/results were applied to downstream systems (Slice 28).
+  appliedAt         DateTime?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 

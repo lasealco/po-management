@@ -14,6 +14,7 @@ export type ApiHubIngestionRunDto = {
   startedAt: string | null;
   finishedAt: string | null;
   retryOfRunId: string | null;
+  appliedAt: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -34,6 +35,7 @@ type Row = {
   startedAt: Date | null;
   finishedAt: Date | null;
   retryOfRunId: string | null;
+  appliedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -55,6 +57,7 @@ export function toApiHubIngestionRunDto(row: Row): ApiHubIngestionRunDto {
     startedAt: row.startedAt ? row.startedAt.toISOString() : null,
     finishedAt: row.finishedAt ? row.finishedAt.toISOString() : null,
     retryOfRunId: row.retryOfRunId,
+    appliedAt: row.appliedAt ? row.appliedAt.toISOString() : null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
