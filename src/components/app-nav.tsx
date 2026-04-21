@@ -61,6 +61,40 @@ const topNavItems: TopNavItem[] = [
   { kind: "link", key: "settings", label: "Settings", href: "/settings" },
 ];
 
+function TopNavLinkLabel({ item }: { item: Exclude<TopNavItem, { kind: "ratesAudit" }> }) {
+  if (item.kind === "po") {
+    return (
+      <>
+        <span className="md:hidden" aria-hidden>
+          PO
+        </span>
+        <span className="hidden md:inline">{item.label}</span>
+      </>
+    );
+  }
+  if (item.key === "controlTower") {
+    return (
+      <>
+        <span className="lg:hidden" aria-hidden>
+          Tower
+        </span>
+        <span className="hidden lg:inline">{item.label}</span>
+      </>
+    );
+  }
+  if (item.key === "salesOrders") {
+    return (
+      <>
+        <span className="xl:hidden" aria-hidden>
+          Sales
+        </span>
+        <span className="hidden xl:inline">{item.label}</span>
+      </>
+    );
+  }
+  return item.label;
+}
+
 function navItemVisible(item: TopNavItem, linkVisibility: AppNavLinkVisibility | undefined, setupIncomplete: boolean) {
   if (setupIncomplete || !linkVisibility) return true;
   if (item.kind === "ratesAudit") return linkVisibility.pricingSnapshots;
@@ -126,13 +160,18 @@ export function AppNav({
                   <Link
                     key="rates-audit"
                     href={ratesAuditHref}
+                    aria-label={RATES_AUDIT_NAV_LABEL}
+                    title={RATES_AUDIT_NAV_LABEL}
                     className={`shrink-0 rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors sm:px-3 ${
                       active
                         ? "bg-[var(--arscmp-primary-50)] text-[var(--arscmp-primary)] ring-1 ring-[var(--arscmp-primary)]/20"
                         : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
                     }`}
                   >
-                    {RATES_AUDIT_NAV_LABEL}
+                    <span className="xl:hidden" aria-hidden>
+                      Rates
+                    </span>
+                    <span className="hidden xl:inline">{RATES_AUDIT_NAV_LABEL}</span>
                   </Link>
                 );
               }
@@ -144,6 +183,8 @@ export function AppNav({
                 <Link
                   key={item.kind === "po" ? item.key : item.key}
                   href={item.href}
+                  aria-label={item.label}
+                  title={item.label}
                   className={`shrink-0 rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors sm:px-3 ${
                     isSettings ? "ml-1 border-l border-zinc-200 pl-3 sm:ml-2 sm:pl-4" : ""
                   } ${
@@ -152,7 +193,7 @@ export function AppNav({
                       : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
                   }`}
                 >
-                  {item.label}
+                  <TopNavLinkLabel item={item} />
                 </Link>
               );
             })}
