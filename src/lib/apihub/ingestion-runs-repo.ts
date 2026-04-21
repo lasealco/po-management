@@ -1,5 +1,10 @@
 import { prisma } from "@/lib/prisma";
 
+import {
+  type ApiHubIngestionRunOpsByStatus,
+  ingestionRunOpsFromGroupBy,
+  sumIngestionRunOpsByStatus,
+} from "@/lib/apihub/ingestion-run-ops-summary";
 import { encodeIngestionRunListCursor } from "@/lib/apihub/ingestion-run-list-cursor";
 import { apiHubIngestionMaxAttemptsForTrigger, type ApiHubIngestionTriggerKind } from "@/lib/apihub/constants";
 import { allowedSourceStatusesForTransitionTo, ApiHubRunStatus } from "./run-lifecycle";
@@ -280,4 +285,70 @@ export async function countInFlightApiHubIngestionRunsForConnector(opts: {
       status: { in: ["queued", "running"] },
     },
   });
+}
+
+export type ApiHubIngestionRunOpsSummary = {
+  totals: ApiHubIngestionRunOpsByStatus;
+  windows: {
+    last24h: ApiHubIngestionRunOpsByStatus;
+    previous24h: ApiHubIngestionRunOpsByStatus;
+  };
+  /** Convenience: queued + running. */
+  inFlight: number;
+  /** Sum of all known lifecycle statuses. */
+  totalRuns: number;
+  asOf: Date;
+};
+
+/**
+ * Tenant-wide ingestion run counts by status, plus 24h / prior-24h `createdAt` windows for trend views.
+ */
+export async function getApiHubIngestionRunOpsSummary(opts: {
+  tenantId: string;
+  asOf?: Date;
+}): Promise<ApiHubIngestionRunOpsSummary> {
+  const asOf = opts.asOf ?? new Date();
+  const ms = asOf.getTime();
+  const dayMs = 86_400_000;
+  const last24Start = new Date(ms - dayMs);
+  const prev24Start = new Date(ms - 2 * dayMs);
+  const prev24End = last24Start;
+
+  const [totalsRows, last24Rows, prev24Rows] = await Promise.all([
+    prisma.apiHubIngestionRun.groupBy({
+      by: ["status"],
+      where: { tenantId: opts.tenantId },
+      _count: { _all: true },
+    }),
+    prisma.apiHubIngestionRun.groupBy({
+      by: ["status"],
+      where: {
+        tenantId: opts.tenantId,
+        createdAt: { gte: last24Start, lte: asOf },
+      },
+      _count: { _all: true },
+    }),
+    prisma.apiHubIngestionRun.groupBy({
+      by: ["status"],
+      where: {
+        tenantId: opts.tenantId,
+        createdAt: { gte: prev24Start, lt: prev24End },
+      },
+      _count: { _all: true },
+    }),
+  ]);
+
+  const totals = ingestionRunOpsFromGroupBy(totalsRows);
+  const last24h = ingestionRunOpsFromGroupBy(last24Rows);
+  const previous24h = ingestionRunOpsFromGroupBy(prev24Rows);
+  const inFlight = totals.queued + totals.running;
+  const totalRuns = sumIngestionRunOpsByStatus(totals);
+
+  return {
+    totals,
+    windows: { last24h, previous24h },
+    inFlight,
+    totalRuns,
+    asOf,
+  };
 }
