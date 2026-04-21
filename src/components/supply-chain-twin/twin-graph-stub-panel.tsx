@@ -80,15 +80,20 @@ function kindNodeClasses(kind: string): { circle: string; kindText: string; idTe
 function formatKindLabel(kind: string): string {
   const t = kind.replace(/_/g, " ").trim();
   if (!t) return "unknown";
-  return t.length > 10 ? `${t.slice(0, 9)}…` : t;
+  return t.length > 9 ? `${t.slice(0, 8)}…` : t;
 }
 
-/** Fits two-line label inside the node radius (SVG px, ~ monospace width heuristic). */
+/** Fits two-line label inside the node radius (SVG user units; monospace is wide). */
 function truncateIdForBubble(id: string, maxLen: number): string {
   const t = id.trim();
   if (t.length <= maxLen) return t;
   return `${t.slice(0, Math.max(1, maxLen - 1))}…`;
 }
+
+const BUBBLE_KIND_FONT = 6.25;
+const BUBBLE_ID_FONT = 5.1;
+const BUBBLE_LINE_GAP = 8;
+const BUBBLE_MONO = 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace';
 
 function shortenEdgeEndpoints(
   ax: number,
@@ -478,16 +483,29 @@ function TwinGraphStubPanelInner({
         {data.nodes.map((n, i) => {
           const st = kindNodeClasses(n.kind);
           const kindLine = formatKindLabel(n.kind);
-          const idLine = truncateIdForBubble(n.id, 14);
+          const idLine = truncateIdForBubble(n.id, 10);
           const clipId = `${arrowMarkerId}-clip-${i}`;
           return (
             <g key={n.key}>
               <circle cx={n.x} cy={n.y} r={NODE_R} className={`${st.circle}`} strokeWidth={2} />
-              <text x={n.x} y={n.y - 4} textAnchor="middle" clipPath={`url(#${clipId})`} className="select-none">
-                <tspan x={n.x} dy="0" className={`text-[10px] font-semibold capitalize ${st.kindText}`}>
+              {/* Use SVG fontSize — Tailwind text-* on tspans often does not apply, so the UA default (~16px) dominated. */}
+              <text x={n.x} y={n.y - 3} textAnchor="middle" clipPath={`url(#${clipId})`} className="select-none">
+                <tspan
+                  x={n.x}
+                  dy="0"
+                  fontSize={BUBBLE_KIND_FONT}
+                  fontWeight={600}
+                  className={`capitalize ${st.kindText}`}
+                >
                   {kindLine}
                 </tspan>
-                <tspan x={n.x} dy="12" className={`font-mono text-[7.5px] tracking-tight ${st.idText}`}>
+                <tspan
+                  x={n.x}
+                  dy={BUBBLE_LINE_GAP}
+                  fontSize={BUBBLE_ID_FONT}
+                  fontFamily={BUBBLE_MONO}
+                  className={`tracking-tight ${st.idText}`}
+                >
                   {idLine}
                 </tspan>
               </text>
