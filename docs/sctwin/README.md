@@ -3,6 +3,7 @@
 This pack is the developer-ready documentation set for building the **AI-Driven Supply Chain Twin** module.
 
 **Terms:** [Twin glossary](./glossary.md) (entity snapshot, edge, ingest event, scenario draft, risk signal, readiness).
+**Ops:** [Twin runbook](./runbook.md) (verify command, seed flow, key routes, logging pointers).
 
 ## Module Positioning
 The Supply Chain Twin is a cross-module intelligence layer that sits above:
