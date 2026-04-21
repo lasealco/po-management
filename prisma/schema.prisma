@@ -79,6 +79,7 @@ model Tenant {
   apiHubConnectorAuditLogs ApiHubConnectorAuditLog[]
   apiHubIngestionRuns   ApiHubIngestionRun[]
   supplyChainTwinEntitySnapshots SupplyChainTwinEntitySnapshot[]
+  supplyChainTwinEntityEdges     SupplyChainTwinEntityEdge[]
 }
 
 /// Integration / API hub — registry row for an external or internal data source (Phase 1 stub).
@@ -3104,8 +3105,30 @@ model SupplyChainTwinEntitySnapshot {
   updatedAt  DateTime @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  outgoingEdges SupplyChainTwinEntityEdge[] @relation("TwinEntityEdgeFrom")
+  incomingEdges SupplyChainTwinEntityEdge[] @relation("TwinEntityEdgeTo")
 
   @@unique([tenantId, entityKind, entityKey])
   @@index([tenantId])
   @@index([tenantId, entityKind])
+}
+
+/// Directed edge between two twin entity snapshots (same tenant).
+model SupplyChainTwinEntityEdge {
+  id             String   @id @default(cuid())
+  tenantId       String
+  fromSnapshotId String
+  toSnapshotId   String
+  /// Optional semantic label (e.g. fulfills, ships_to).
+  relation       String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenant       Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  fromSnapshot SupplyChainTwinEntitySnapshot @relation("TwinEntityEdgeFrom", fields: [fromSnapshotId], references: [id], onDelete: Cascade)
+  toSnapshot   SupplyChainTwinEntitySnapshot @relation("TwinEntityEdgeTo", fields: [toSnapshotId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, fromSnapshotId])
+  @@index([tenantId, toSnapshotId])
 }
