@@ -3,7 +3,11 @@
 This pack is the developer-ready documentation set for building the **AI-Driven Supply Chain Twin** module.
 
 **Terms:** [Twin glossary](./glossary.md) (entity snapshot, edge, ingest event, scenario draft, risk signal, readiness).
-**Ops:** [Twin runbook](./runbook.md) (verify command, seed flow, key routes, logging pointers).
+**Ops:** [Twin runbook](./runbook.md) (verify commands, troubleshooting matrix, seed flow, key routes, logging pointers).
+**Performance:** runbook section "Performance Notes (Query Plan + Index Intent)" (index-to-query mapping + revisit triggers).
+**Release checklist:** [Twin release checklist](./release_checklist.md) (migrations, verify gates, smoke URLs, rollback hints).
+**Release gate:** run `npm run verify:sctwin:full` before handoff for the slices 88-107 tranche.
+**API contracts:** [Twin API contract snapshot](./api_contract_snapshot.md) (request/response shapes and stable errors for slices 68-97).
 
 ## Module Positioning
 The Supply Chain Twin is a cross-module intelligence layer that sits above:
