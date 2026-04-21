@@ -33,6 +33,9 @@ function isTopNavHrefActive(pathname: string, href: string): boolean {
   if (href === "/invoice-audit") return pathname.startsWith("/invoice-audit");
   if (href === "/rfq/requests") return pathname.startsWith("/rfq");
   if (href === "/apihub") return pathname === "/apihub" || pathname.startsWith("/apihub/");
+  if (href === "/supply-chain-twin") {
+    return pathname === "/supply-chain-twin" || pathname.startsWith("/supply-chain-twin/");
+  }
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -56,6 +59,7 @@ const topNavItems: TopNavItem[] = [
   { kind: "po", key: "poManagement", label: "PO Management", href: "/orders" },
   { kind: "link", key: "salesOrders", label: "Sales Orders", href: "/sales-orders" },
   { kind: "link", key: "reports", label: "Reporting", href: "/reporting" },
+  { kind: "link", key: "supplyChainTwin", label: "Supply Chain Twin", href: "/supply-chain-twin" },
   { kind: "ratesAudit" },
   { kind: "link", key: "apihub", label: "API Hub", href: "/apihub" },
   { kind: "link", key: "settings", label: "Settings", href: "/settings" },
@@ -69,6 +73,7 @@ function TopNavLinkLabel({ item }: { item: Exclude<TopNavItem, { kind: "ratesAud
   if (item.key === "executive") return "Exec";
   if (item.key === "reports") return "Reports";
   if (item.key === "apihub") return "API";
+  if (item.key === "supplyChainTwin") return "Twin";
   return item.label;
 }
 

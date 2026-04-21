@@ -39,6 +39,12 @@ function contextFromPath(pathname: string): { title: string; hint: string } {
   if (pathname.startsWith("/product-trace")) {
     return { title: "Product trace", hint: "SKU and shipment lineage — ask how to search or drill in." };
   }
+  if (pathname.startsWith("/supply-chain-twin")) {
+    return {
+      title: "Supply Chain Twin",
+      hint: "Planned cross-module model of supply, demand, inventory, and risk — docs-backed preview.",
+    };
+  }
   return {
     title: "Platform",
     hint: "Orders, logistics, CRM, and Control Tower — tell me what you want to accomplish.",
@@ -63,6 +69,13 @@ function quickPromptsForPath(pathname: string): string[] {
   }
   if (pathname.startsWith("/reporting")) {
     return ["Open Control Tower in the reporting hub", "What can I do on this page?"];
+  }
+  if (pathname.startsWith("/supply-chain-twin")) {
+    return [
+      "What is the Supply Chain Twin?",
+      "Where is the developer documentation?",
+      "What ships before the graph UI?",
+    ];
   }
   return [
     "Walk me through creating an order",

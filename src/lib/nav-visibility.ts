@@ -22,6 +22,8 @@ export type AppNavLinkVisibility = {
   pricingSnapshots: boolean;
   invoiceAudit: boolean;
   apihub: boolean;
+  /** Supply Chain Twin — cross-module intelligence preview; no dedicated org.* grant yet. */
+  supplyChainTwin: boolean;
 };
 
 export type PoMgmtSubNavVisibility = {
@@ -66,6 +68,19 @@ export async function resolveNavState(access: ViewerAccess | null): Promise<{
           /** Snapshot library is shared: tariffs/RFQ owners, or invoice auditors who need snapshot IDs for matching. */
           const pricingSnapshots = tariffs || rfq || invoiceAudit;
           const poManagement = orders || consolidation || products;
+          /** Preview entry: anyone with meaningful cross-module workspace access (not supplier-portal-only). */
+          const supplyChainTwin =
+            !isSupplierPortalUser &&
+            (controlTower ||
+              orders ||
+              wms ||
+              reports ||
+              salesOrders ||
+              crm ||
+              suppliers ||
+              tariffs ||
+              rfq ||
+              invoiceAudit);
           return {
             poManagement,
             orders,
@@ -85,6 +100,7 @@ export async function resolveNavState(access: ViewerAccess | null): Promise<{
             pricingSnapshots,
             invoiceAudit,
             apihub,
+            supplyChainTwin,
           };
         })()
       : undefined;
@@ -109,7 +125,8 @@ export async function resolveNavState(access: ViewerAccess | null): Promise<{
       linkVisibility.rfq ||
       linkVisibility.pricingSnapshots ||
       linkVisibility.invoiceAudit ||
-      linkVisibility.apihub
+      linkVisibility.apihub ||
+      linkVisibility.supplyChainTwin
     );
 
   const poSubNavVisibility: PoMgmtSubNavVisibility = setupIncomplete

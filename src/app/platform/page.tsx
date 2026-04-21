@@ -77,6 +77,14 @@ export default async function PlatformHomePage() {
       description: "End-to-end shipment visibility, exceptions, and operational command workflows.",
     });
   }
+  if (v?.supplyChainTwin) {
+    modules.push({
+      href: "/supply-chain-twin",
+      title: "Supply Chain Twin",
+      description:
+        "Cross-module intelligence layer — live digital model of supply, demand, inventory, transport, cost, and risk (spec in docs/sctwin).",
+    });
+  }
   if (v?.wms) {
     modules.push({
       href: "/wms",

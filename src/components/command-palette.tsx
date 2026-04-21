@@ -36,6 +36,7 @@ export type CommandPaletteGrants = {
   pricingSnapshots: boolean;
   invoiceAudit: boolean;
   apihub: boolean;
+  supplyChainTwin: boolean;
 };
 
 type CommandItem = {
@@ -84,6 +85,16 @@ export function CommandPalette({ grants }: { grants: CommandPaletteGrants }) {
         hint: "Integration and ingestion hub (P0 shell)",
         searchText: "api hub integration ingestion connector webhook ingest",
         action: go("/apihub"),
+      });
+    }
+
+    if (grants.supplyChainTwin) {
+      list.push({
+        id: "supply-chain-twin",
+        label: "Supply Chain Twin",
+        hint: "Cross-module intelligence layer (preview shell)",
+        searchText: "twin sctwin supply chain graph scenario digital twin intelligence",
+        action: go("/supply-chain-twin"),
       });
     }
 
