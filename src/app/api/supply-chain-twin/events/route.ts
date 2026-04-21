@@ -22,6 +22,7 @@ import {
   decodeTwinEventsCursor,
   encodeTwinEventsCursor,
   parseTwinEventsQuery,
+  twinEventsTypePrismaFilter,
 } from "@/lib/supply-chain-twin/schemas/twin-events-query";
 import { parseTwinIngestEventAppendBody } from "@/lib/supply-chain-twin/schemas/twin-ingest-event-append";
 
@@ -40,6 +41,10 @@ export type TwinIngestEventListItem = {
 /**
  * Recent twin ingest events (tenant-scoped, keyset-paged). Same auth as other twin APIs.
  * Payloads are returned to the client but never written to structured logs.
+ *
+ * **Query `type`:** optional filter on event `type` — exact (`type=entity_upsert`) or prefix
+ * (`type=entity_*` → `startsWith("entity_")`). Unknown values yield an empty `events` array (200). Legacy
+ * **`eventType`** is accepted when `type` is omitted.
  */
 export async function GET(request: Request) {
   const requestId = resolveSctwinRequestId(request);
@@ -82,7 +87,7 @@ export async function GET(request: Request) {
 
     const where: Prisma.SupplyChainTwinIngestEventWhereInput = {
       tenantId,
-      ...(parsed.query.eventType ? { type: parsed.query.eventType } : {}),
+      ...(parsed.query.type ? { type: twinEventsTypePrismaFilter(parsed.query.type) } : {}),
       ...(cursorPos
         ? {
             OR: [

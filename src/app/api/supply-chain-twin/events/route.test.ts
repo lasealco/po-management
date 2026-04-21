@@ -157,6 +157,108 @@ describe("GET /api/supply-chain-twin/events", () => {
     });
     expect(prismaMock.supplyChainTwinIngestEvent.findMany).toHaveBeenCalled();
   });
+
+  it("returns 400 when type is only *", async () => {
+    getViewerGrantSetMock.mockResolvedValue({
+      tenant: { id: "t1", name: "Demo", slug: "demo-company" },
+      user: { id: "u1", email: "x@y.com", name: "X" },
+      grantSet: new Set(),
+    });
+    resolveNavStateMock.mockResolvedValue({
+      linkVisibility: { supplyChainTwin: true },
+      setupIncomplete: false,
+      poSubNavVisibility: {},
+    });
+
+    const { GET } = await import("./route");
+    const response = await GET(new Request("http://localhost/api/supply-chain-twin/events?type=*"));
+
+    expect(response.status).toBe(400);
+    expect(prismaMock.supplyChainTwinIngestEvent.findMany).not.toHaveBeenCalled();
+  });
+
+  it("returns 200 with empty events when exact type matches nothing", async () => {
+    getViewerGrantSetMock.mockResolvedValue({
+      tenant: { id: "t1", name: "Demo", slug: "demo-company" },
+      user: { id: "u1", email: "x@y.com", name: "X" },
+      grantSet: new Set(),
+    });
+    resolveNavStateMock.mockResolvedValue({
+      linkVisibility: { supplyChainTwin: true },
+      setupIncomplete: false,
+      poSubNavVisibility: {},
+    });
+    vi.mocked(prismaMock.supplyChainTwinIngestEvent.findMany).mockResolvedValue([]);
+
+    const { GET } = await import("./route");
+    const response = await GET(
+      new Request("http://localhost/api/supply-chain-twin/events?type=__no_such_ingest_type__"),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ events: [] });
+    expect(prismaMock.supplyChainTwinIngestEvent.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          tenantId: "t1",
+          type: { equals: "__no_such_ingest_type__" },
+        }),
+      }),
+    );
+  });
+
+  it("uses startsWith when type ends with *", async () => {
+    getViewerGrantSetMock.mockResolvedValue({
+      tenant: { id: "t1", name: "Demo", slug: "demo-company" },
+      user: { id: "u1", email: "x@y.com", name: "X" },
+      grantSet: new Set(),
+    });
+    resolveNavStateMock.mockResolvedValue({
+      linkVisibility: { supplyChainTwin: true },
+      setupIncomplete: false,
+      poSubNavVisibility: {},
+    });
+    vi.mocked(prismaMock.supplyChainTwinIngestEvent.findMany).mockResolvedValue([]);
+
+    const { GET } = await import("./route");
+    const response = await GET(new Request("http://localhost/api/supply-chain-twin/events?type=entity_*"));
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ events: [] });
+    expect(prismaMock.supplyChainTwinIngestEvent.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          tenantId: "t1",
+          type: { startsWith: "entity_" },
+        }),
+      }),
+    );
+  });
+
+  it("honors legacy eventType when type is omitted", async () => {
+    getViewerGrantSetMock.mockResolvedValue({
+      tenant: { id: "t1", name: "Demo", slug: "demo-company" },
+      user: { id: "u1", email: "x@y.com", name: "X" },
+      grantSet: new Set(),
+    });
+    resolveNavStateMock.mockResolvedValue({
+      linkVisibility: { supplyChainTwin: true },
+      setupIncomplete: false,
+      poSubNavVisibility: {},
+    });
+    vi.mocked(prismaMock.supplyChainTwinIngestEvent.findMany).mockResolvedValue([]);
+
+    const { GET } = await import("./route");
+    await GET(new Request("http://localhost/api/supply-chain-twin/events?eventType=signal"));
+
+    expect(prismaMock.supplyChainTwinIngestEvent.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          type: { equals: "signal" },
+        }),
+      }),
+    );
+  });
 });
 
 describe("POST /api/supply-chain-twin/events", () => {
