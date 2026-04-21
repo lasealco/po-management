@@ -60,6 +60,8 @@ export async function POST(request: Request) {
     actionCount: reply.actions.length,
     suggestionCount: reply.suggestions.length,
     grantBits: helpTelemetryGrantBits(grantSnapshot),
+    roleHint: grantSnapshot.roleHint,
+    tenantSlug: grantSnapshot.tenantSlug,
   });
 
   return NextResponse.json({

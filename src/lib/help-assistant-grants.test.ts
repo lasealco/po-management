@@ -4,6 +4,7 @@ import {
   buildHelpAssistantGrantSnapshot,
   filterHelpDoActionsByGrants,
   helpAssistantOpenPathAllowed,
+  helpAssistantReportingFocusAllowed,
 } from "@/lib/help-assistant-grants";
 import type { ViewerAccess } from "@/lib/authz";
 
@@ -19,11 +20,14 @@ function accessWithGrants(grants: string[]): ViewerAccess {
 
 describe("buildHelpAssistantGrantSnapshot", () => {
   it("marks all capabilities false when no user", () => {
-    const base = { tenant: { id: "t1", name: "T", slug: "t" }, user: null, grantSet: new Set<string>() };
+    const base = { tenant: { id: "t1", name: "T", slug: "demo-co" }, user: null, grantSet: new Set<string>() };
     const g = buildHelpAssistantGrantSnapshot(base, { supplierPortalRestricted: false });
     expect(g.signedIn).toBe(false);
     expect(g.ordersView).toBe(false);
     expect(g.consolidationNav).toBe(false);
+    expect(g.tenantSlug).toBe("demo-co");
+    expect(g.roleHint).toBe("unsigned");
+    expect(g.supplierPortalRestricted).toBe(false);
   });
 
   it("sets consolidationNav false when supplier portal restricted", () => {
@@ -31,6 +35,9 @@ describe("buildHelpAssistantGrantSnapshot", () => {
     const g = buildHelpAssistantGrantSnapshot(a, { supplierPortalRestricted: true });
     expect(g.ordersView).toBe(true);
     expect(g.consolidationNav).toBe(false);
+    expect(g.supplierPortalRestricted).toBe(true);
+    expect(g.roleHint).toBe("supplier_portal");
+    expect(g.tenantSlug).toBe("t");
   });
 
   it("sets reportingHub when any reporting slice grant exists", () => {
@@ -39,6 +46,16 @@ describe("buildHelpAssistantGrantSnapshot", () => {
     expect(g.reportingHub).toBe(true);
     expect(g.reportingFocusCrm).toBe(true);
     expect(g.reportingFocusPo).toBe(false);
+    expect(g.roleHint).toBe("internal");
+  });
+});
+
+describe("helpAssistantReportingFocusAllowed", () => {
+  it("returns false for po when viewer lacks reports", () => {
+    const a = accessWithGrants([gk("org.crm", "view")]);
+    const g = buildHelpAssistantGrantSnapshot(a, { supplierPortalRestricted: false });
+    expect(helpAssistantReportingFocusAllowed("po", g)).toBe(false);
+    expect(helpAssistantReportingFocusAllowed("crm", g)).toBe(true);
   });
 });
 
@@ -64,6 +81,17 @@ describe("filterHelpDoActionsByGrants", () => {
         g,
       ),
     ).toHaveLength(1);
+  });
+
+  it("drops /reporting open_path when focus is not allowed", () => {
+    const a = accessWithGrants([gk("org.crm", "view")]);
+    const g = buildHelpAssistantGrantSnapshot(a, { supplierPortalRestricted: false });
+    expect(
+      filterHelpDoActionsByGrants(
+        [{ type: "open_path", label: "PO slice", payload: { path: "/reporting", focus: "po" } }],
+        g,
+      ),
+    ).toHaveLength(0);
   });
 });
 

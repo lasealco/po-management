@@ -1,5 +1,9 @@
 import { viewerHas, type ViewerAccess } from "@/lib/authz";
 import type { HelpDoAction } from "@/lib/help-actions";
+import {
+  isValidReportingFocusValue,
+  type ReportingHubFocus,
+} from "@/lib/help-nl-doaction-intent";
 import { LEGAL_COOKIES_PATH, LEGAL_PRIVACY_PATH, LEGAL_PUBLIC_HELP_PATHS, LEGAL_TERMS_PATH } from "@/lib/legal-public-paths";
 import { MARKETING_PRICING_PATH, MARKETING_PUBLIC_HELP_PATHS, PLATFORM_HUB_PATH } from "@/lib/marketing-public-paths";
 import { TARIFFS_MODULE_BASE_PATH } from "@/lib/tariff/tariff-workbench-urls";
@@ -28,6 +32,12 @@ export type HelpAssistantGrantSnapshot = {
   invoiceAuditView: boolean;
   /** Mirrors nav: tariffs OR rfq OR invoice audit */
   pricingSnapshotsView: boolean;
+  /** Supplier portal restriction (consolidation and some CT paths differ). */
+  supplierPortalRestricted: boolean;
+  /** Demo / tenant slug — not a secret; helps the model avoid naming the wrong tenant in examples. */
+  tenantSlug: string;
+  /** Coarse session class for phrasing (no raw RBAC dump). */
+  roleHint: "supplier_portal" | "internal" | "unsigned";
 };
 
 const ALWAYS_ROUTE_HINT = new Set<string>([
@@ -62,6 +72,13 @@ export function buildHelpAssistantGrantSnapshot(
   const invoiceAuditView = signedIn && viewerHas(gs, "org.invoice_audit", "view");
   const pricingSnapshotsView = tariffsView || rfqView || invoiceAuditView;
   const reportingHub = signedIn && (reportsView || controlTowerView || crmView || wmsView);
+  const supplierPortalRestricted = Boolean(signedIn && options.supplierPortalRestricted);
+  const tenantSlug = access?.tenant.slug ?? "";
+  const roleHint: HelpAssistantGrantSnapshot["roleHint"] = !signedIn
+    ? "unsigned"
+    : supplierPortalRestricted
+      ? "supplier_portal"
+      : "internal";
 
   return {
     signedIn,
@@ -83,7 +100,22 @@ export function buildHelpAssistantGrantSnapshot(
     rfqView,
     invoiceAuditView,
     pricingSnapshotsView,
+    supplierPortalRestricted,
+    tenantSlug,
+    roleHint,
   };
+}
+
+export function helpAssistantReportingFocusAllowed(
+  focus: string,
+  g: HelpAssistantGrantSnapshot,
+): focus is ReportingHubFocus {
+  if (!isValidReportingFocusValue(focus)) return false;
+  if (focus === "po") return g.reportingFocusPo;
+  if (focus === "control-tower") return g.reportingFocusCt;
+  if (focus === "crm") return g.reportingFocusCrm;
+  if (focus === "wms") return g.reportingFocusWms;
+  return false;
 }
 
 export function helpAssistantOpenPathAllowed(path: string, g: HelpAssistantGrantSnapshot): boolean {
@@ -114,9 +146,15 @@ export function filterHelpDoActionsByGrants(actions: HelpDoAction[], g: HelpAssi
   return actions.filter((a) => {
     if (a.type === "open_order" || a.type === "open_orders_queue") return g.ordersView;
     if (a.type !== "open_path") return false;
-    const path = typeof a.payload?.path === "string" ? a.payload.path.trim() : "";
+    const payload = a.payload as Record<string, unknown> | undefined;
+    const path = typeof payload?.path === "string" ? payload.path.trim() : "";
     if (!path.startsWith("/")) return false;
     const pathOnly = path.split("?")[0] ?? path;
-    return helpAssistantOpenPathAllowed(pathOnly, g);
+    if (!helpAssistantOpenPathAllowed(pathOnly, g)) return false;
+    if (pathOnly === "/reporting") {
+      const focusRaw = typeof payload?.focus === "string" ? payload.focus.trim().toLowerCase() : "";
+      if (focusRaw && !helpAssistantReportingFocusAllowed(focusRaw, g)) return false;
+    }
+    return true;
   });
 }

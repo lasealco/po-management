@@ -22,6 +22,6 @@ describe("helpTelemetryGrantBits", () => {
       grantSet: new Set([gk("org.orders", "view"), gk("org.controltower", "view")]),
     };
     const g = buildHelpAssistantGrantSnapshot(access, { supplierPortalRestricted: false });
-    expect(helpTelemetryGrantBits(g)).toMatch(/^[01]{8}$/);
+    expect(helpTelemetryGrantBits(g)).toMatch(/^[01]{9}$/);
   });
 });

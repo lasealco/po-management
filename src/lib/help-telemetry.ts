@@ -26,6 +26,7 @@ export function helpTelemetryGrantBits(g: HelpAssistantGrantSnapshot): string {
     g.tariffsView ? "1" : "0",
     g.rfqView ? "1" : "0",
     g.invoiceAuditView ? "1" : "0",
+    g.supplierPortalRestricted ? "1" : "0",
   ];
   return bits.join("");
 }
@@ -41,8 +42,10 @@ type HelpTelemetryChat = {
   doActionCount: number;
   actionCount: number;
   suggestionCount: number;
-  /** Compact capability fingerprint: signedIn,orders,consolidation,ct,reporting,tariffs,rfq,invoiceAudit */
+  /** Compact capability fingerprint: signedIn,orders,consolidation,ct,reporting,tariffs,rfq,invoiceAudit,supplierPortal */
   grantBits: string;
+  roleHint?: string;
+  tenantSlug?: string;
 };
 
 type HelpTelemetryAction = {

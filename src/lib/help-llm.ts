@@ -8,7 +8,14 @@ import {
   filterRouteHintsForGrants,
   type HelpAssistantGrantSnapshot,
   helpAssistantOpenPathAllowed,
+  helpAssistantReportingFocusAllowed,
 } from "@/lib/help-assistant-grants";
+import {
+  extractOrdersQueueIntentFromUserMessage,
+  extractPurchaseOrderNumberFromUserMessage,
+  extractReportingHubFocusFromUserMessage,
+  isValidOrdersQueueValue,
+} from "@/lib/help-nl-doaction-intent";
 import { extractProductTraceOpenPathQueryFromUserMessage } from "@/lib/help-product-trace-intent";
 import { LEGAL_COOKIES_PATH, LEGAL_PRIVACY_PATH, LEGAL_TERMS_PATH } from "@/lib/legal-public-paths";
 import { MARKETING_PRICING_PATH, PLATFORM_HUB_PATH } from "@/lib/marketing-public-paths";
@@ -67,6 +74,24 @@ function fallbackReply(
     const firstHref = matched.steps.find((s) => s.href)?.href;
     const doActions: HelpDoAction[] = [];
     if (matched.id === "create_order") {
+      const extractedPo = extractPurchaseOrderNumberFromUserMessage(message);
+      if (extractedPo && extractedPo.toUpperCase() !== "PO-1004") {
+        doActions.push({
+          type: "open_order",
+          label: `Open ${extractedPo}`,
+          payload: { orderNumber: extractedPo, focus: "workflow", guide: matched.id, step: 2 },
+        });
+      }
+      const queueIntent = extractOrdersQueueIntentFromUserMessage(message);
+      const queueVal =
+        queueIntent && isValidOrdersQueueValue(queueIntent) ? queueIntent : null;
+      if (queueVal && queueVal !== "needs_my_action") {
+        doActions.push({
+          type: "open_orders_queue",
+          label: `Orders: ${queueVal.replace(/_/g, " ")}`,
+          payload: { queue: queueVal, guide: matched.id, step: 0 },
+        });
+      }
       doActions.push({
         type: "open_order",
         label: "Open demo PO-1004",
@@ -127,6 +152,19 @@ function fallbackReply(
         label: "Reporting hub — Control Tower section",
         payload: { path: "/reporting", focus: "control-tower", guide: matched.id, step: 0 },
       });
+      const rf = extractReportingHubFocusFromUserMessage(message);
+      if (
+        rf &&
+        rf !== "control-tower" &&
+        grantSnapshot &&
+        helpAssistantReportingFocusAllowed(rf, grantSnapshot)
+      ) {
+        doActions.push({
+          type: "open_path",
+          label: `Reporting hub — ${rf}`,
+          payload: { path: "/reporting", focus: rf, guide: matched.id, step: 0 },
+        });
+      }
     }
     if (matched.id === "product_trace") {
       const extracted = extractProductTraceOpenPathQueryFromUserMessage(message);
@@ -272,11 +310,20 @@ export async function buildHelpReply(params: {
     "Use demo PO-1004 only as a known example order number when suggesting open_order.",
     "Do not invent unavailable pages or arbitrary paths.",
     "Reporting hub (/reporting): Cockpit board supports Refresh data, optional Auto-refresh (5/10/15 min, pauses when the tab is hidden, catch-up when returning), R to refresh when focus is not in an input/textarea/select, Shift+R for silent refresh. Command palette lists the Reporting hub with the same shortcut hints.",
-    "User JSON includes helpCapabilities: booleans for the active viewer (e.g. ordersView, controlTowerView, reportingHub, tariffsView). Only suggest actions and doActions for routes they are allowed to open; omit the rest. If signedIn is false, tell them to pick a demo user in Settings → Demo session.",
+    "User JSON includes helpCapabilities: booleans plus supplierPortalRestricted, tenantSlug, roleHint (supplier_portal|internal|unsigned) for the active viewer. Only suggest actions and doActions for routes they are allowed to open; omit the rest. If signedIn is false, tell them to pick a demo user in Settings → Demo session.",
+    "When supplierPortalRestricted is true, keep examples portal-safe (no consolidation shortcuts, no implying hidden buyer PO tools). When roleHint is supplier_portal, prefer shipment-scoped language.",
+    "User JSON may include extractedPurchaseOrderNumber, extractedOrdersQueue, extractedReportingFocus — when ordersView/reportingHub and grants allow, mirror them with open_order, open_orders_queue, or open_path /reporting + focus.",
     "Few-shot JSON shape (adapt; use real extractedProductTraceCode when present): When ordersView is true and extractedProductTraceCode is a non-empty string, include doActions with type open_path, path /product-trace, payload.q equal to that code, guide product_trace, step 1, and label like Open product trace for <CODE>. Also set actions to include {label, href} where href is /product-trace?q=<CODE> (encode safely). Example assistant object fragment (ellipses mean you still add suggestions): {\"answer\":\"Here is product trace prefilled for that code.\",\"suggestions\":[\"Open orders\",\"How do I trace another SKU?\"],\"actions\":[{\"label\":\"Product trace\",\"href\":\"/product-trace?q=PKG-CORR-ROLL\"}],\"doActions\":[{\"type\":\"open_path\",\"label\":\"Open product trace for PKG-CORR-ROLL\",\"payload\":{\"path\":\"/product-trace\",\"q\":\"PKG-CORR-ROLL\",\"guide\":\"product_trace\",\"step\":1}}]} — replace PKG-CORR-ROLL with the user's extracted code when different.",
   ].join(" ");
 
   const extractedProductTraceCode = extractProductTraceOpenPathQueryFromUserMessage(params.message);
+  const extractedPurchaseOrderNumber = extractPurchaseOrderNumberFromUserMessage(params.message);
+  const extractedOrdersQueueRaw = extractOrdersQueueIntentFromUserMessage(params.message);
+  const extractedOrdersQueue =
+    extractedOrdersQueueRaw && isValidOrdersQueueValue(extractedOrdersQueueRaw)
+      ? extractedOrdersQueueRaw
+      : null;
+  const extractedReportingFocus = extractReportingHubFocusFromUserMessage(params.message);
 
   const availableRoutes = params.grantSnapshot
     ? filterRouteHintsForGrants(ROUTE_HINTS, params.grantSnapshot)
@@ -289,6 +336,9 @@ export async function buildHelpReply(params: {
     helpCapabilities: params.grantSnapshot ?? null,
     playbookHint,
     extractedProductTraceCode: extractedProductTraceCode ?? null,
+    extractedPurchaseOrderNumber: extractedPurchaseOrderNumber ?? null,
+    extractedOrdersQueue,
+    extractedReportingFocus: extractedReportingFocus ?? null,
     reportingCockpitHints:
       "On /reporting: R = refresh snapshot (not while typing in a field). Shift+R = silent refresh. Auto-refresh checkbox + interval; status line shows last auto result (timer, returned to tab, or on enable).",
   });
@@ -348,6 +398,75 @@ export async function buildHelpReply(params: {
           },
         };
         doActions = [injected, ...doActions].slice(0, 4);
+      }
+    }
+    const gSnap = params.grantSnapshot;
+    if (gSnap) {
+      if (
+        gSnap.reportingHub &&
+        extractedReportingFocus &&
+        helpAssistantReportingFocusAllowed(extractedReportingFocus, gSnap)
+      ) {
+        const hasReportingFocus = doActions.some(
+          (a) =>
+            a.type === "open_path" &&
+            (a.payload as Record<string, unknown> | undefined)?.path === "/reporting" &&
+            String((a.payload as Record<string, unknown> | undefined)?.focus ?? "").toLowerCase() ===
+              extractedReportingFocus,
+        );
+        if (!hasReportingFocus) {
+          const inj: HelpDoAction = {
+            type: "open_path",
+            label: `Reporting hub — ${extractedReportingFocus}`,
+            payload: {
+              path: "/reporting",
+              focus: extractedReportingFocus,
+              guide: "reporting_hub",
+              step: 0,
+            },
+          };
+          doActions = [inj, ...doActions].slice(0, 4);
+        }
+      }
+      if (gSnap.ordersView && extractedOrdersQueue) {
+        const hasQueue = doActions.some(
+          (a) =>
+            a.type === "open_orders_queue" &&
+            String((a.payload as Record<string, unknown> | undefined)?.queue ?? "") === extractedOrdersQueue,
+        );
+        if (!hasQueue) {
+          const inj: HelpDoAction = {
+            type: "open_orders_queue",
+            label: `Orders: ${extractedOrdersQueue.replace(/_/g, " ")}`,
+            payload: {
+              queue: extractedOrdersQueue,
+              guide: matched?.id === "create_order" ? "create_order" : undefined,
+              step: 0,
+            },
+          };
+          doActions = [inj, ...doActions].slice(0, 4);
+        }
+      }
+      if (gSnap.ordersView && extractedPurchaseOrderNumber) {
+        const poUpper = extractedPurchaseOrderNumber.toUpperCase();
+        const hasOrder = doActions.some(
+          (a) =>
+            a.type === "open_order" &&
+            String((a.payload as Record<string, unknown> | undefined)?.orderNumber ?? "").toUpperCase() === poUpper,
+        );
+        if (!hasOrder) {
+          const inj: HelpDoAction = {
+            type: "open_order",
+            label: `Open ${extractedPurchaseOrderNumber}`,
+            payload: {
+              orderNumber: extractedPurchaseOrderNumber,
+              focus: "workflow",
+              guide: matched?.id === "create_order" ? "create_order" : undefined,
+              step: 2,
+            },
+          };
+          doActions = [inj, ...doActions].slice(0, 4);
+        }
       }
     }
     if (params.grantSnapshot) {
