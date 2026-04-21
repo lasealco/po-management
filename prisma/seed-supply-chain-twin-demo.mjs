@@ -54,6 +54,20 @@ const prisma = new PrismaClient({
   ),
 });
 
+async function assertScenarioIdTenantOwnership(id, tenantId) {
+  const existing = await prisma.supplyChainTwinScenarioDraft.findUnique({
+    where: { id },
+    select: { tenantId: true },
+  });
+  if (existing && existing.tenantId !== tenantId) {
+    console.error(
+      `[db:seed:supply-chain-twin-demo] Scenario id collision for "${id}". ` +
+        `Existing row belongs to another tenant; refusing to mutate cross-tenant data.`,
+    );
+    process.exit(1);
+  }
+}
+
 async function main() {
   const tableRows = await prisma.$queryRaw`
     SELECT table_name::text AS table_name
@@ -181,6 +195,9 @@ async function main() {
     monthlyUnits: 1100,
     alternatePorts: ["baltimore", "norfolk"],
   };
+
+  await assertScenarioIdTenantOwnership(DEMO_SCENARIO_COMPARE_LEFT_ID, tenant.id);
+  await assertScenarioIdTenantOwnership(DEMO_SCENARIO_COMPARE_RIGHT_ID, tenant.id);
 
   await prisma.supplyChainTwinScenarioDraft.upsert({
     where: { id: DEMO_SCENARIO_COMPARE_LEFT_ID },

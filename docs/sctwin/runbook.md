@@ -19,6 +19,19 @@ Release handoff companion: `docs/sctwin/release_checklist.md`.
 - Optional large-tenant Twin perf fixture (opt-in, 1k+ entities):
   - `USE_DOTENV_LOCAL=1 npm run db:seed:supply-chain-twin-large-fixture`
 
+### Seed Determinism Notes (Slice 219)
+
+- Re-running `db:seed:supply-chain-twin-demo` is idempotent:
+  - Same demo entity/risk/event/scenario rows are upserted (no duplicates).
+  - Compare scenario IDs stay stable for `/supply-chain-twin/scenarios/compare`.
+- Re-running `db:seed:supply-chain-twin-large-fixture` is deterministic:
+  - Fixture entities/risks/events are upserted by tenant-safe keys.
+  - Fixture edges are replaced by relation prefix cleanup (`perf_fixture/*`) before insert.
+  - Fixture scenarios are replaced by deterministic title-scope cleanup before re-upsert.
+- Tenant safety guardrails:
+  - Both Twin seed scripts now fail fast if a fixed scenario ID already exists under a different tenant.
+  - This prevents cross-tenant mutation when re-running seeds on shared databases.
+
 ## Key Routes
 
 - Twin overview page: `/supply-chain-twin`
