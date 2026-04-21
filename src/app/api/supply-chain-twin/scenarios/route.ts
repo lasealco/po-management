@@ -4,11 +4,81 @@ import { NextResponse } from "next/server";
 import { logSctwinApiError, logSctwinApiWarn } from "../_lib/sctwin-api-log";
 import { requireTwinApiAccess } from "@/lib/supply-chain-twin/sctwin-api-access";
 import { parseTwinScenarioDraftCreateBody } from "@/lib/supply-chain-twin/schemas/twin-scenario-draft-create";
-import { createScenarioDraft } from "@/lib/supply-chain-twin/scenarios-draft-repo";
+import { twinScenariosListResponseSchema } from "@/lib/supply-chain-twin/schemas/twin-api-responses";
+import {
+  decodeTwinScenariosListCursor,
+  parseTwinScenariosListQuery,
+} from "@/lib/supply-chain-twin/schemas/twin-scenarios-list-query";
+import { createScenarioDraft, listScenarioDraftsForTenantPage } from "@/lib/supply-chain-twin/scenarios-draft-repo";
 
 export const dynamic = "force-dynamic";
 
-const ROUTE = "POST /api/supply-chain-twin/scenarios";
+const ROUTE_POST = "POST /api/supply-chain-twin/scenarios";
+const ROUTE_GET = "GET /api/supply-chain-twin/scenarios";
+
+/**
+ * Tenant-scoped scenario drafts (newest `updatedAt` first), keyset-paged. Same auth as other twin APIs.
+ */
+export async function GET(request: Request) {
+  try {
+    const gate = await requireTwinApiAccess();
+    if (!gate.ok) {
+      return NextResponse.json({ error: gate.denied.error }, { status: gate.denied.status });
+    }
+    const { access } = gate;
+
+    const url = new URL(request.url);
+    const parsed = parseTwinScenariosListQuery(url.searchParams);
+    if (!parsed.ok) {
+      logSctwinApiWarn({
+        route: ROUTE_GET,
+        phase: "validation",
+        errorCode: "QUERY_VALIDATION_FAILED",
+      });
+      return NextResponse.json({ error: parsed.error }, { status: 400 });
+    }
+
+    let cursorPosition: { updatedAt: Date; id: string } | null = null;
+    if (parsed.query.cursor) {
+      const decoded = decodeTwinScenariosListCursor(parsed.query.cursor);
+      if (!decoded.ok) {
+        logSctwinApiWarn({
+          route: ROUTE_GET,
+          phase: "validation",
+          errorCode: "INVALID_CURSOR",
+        });
+        return NextResponse.json({ error: "Invalid cursor" }, { status: 400 });
+      }
+      cursorPosition = { updatedAt: decoded.updatedAt, id: decoded.id };
+    }
+
+    const { items, nextCursor } = await listScenarioDraftsForTenantPage(access.tenant.id, {
+      limit: parsed.query.limit,
+      cursorPosition,
+    });
+
+    const body = {
+      items: items.map((row) => ({
+        id: row.id,
+        title: row.title,
+        status: row.status,
+        updatedAt: row.updatedAt.toISOString(),
+      })),
+      ...(nextCursor ? { nextCursor } : {}),
+    };
+
+    return NextResponse.json(twinScenariosListResponseSchema.parse(body));
+  } catch (caught) {
+    const name = caught instanceof Error ? caught.name : "non_error_throw";
+    logSctwinApiError({
+      route: ROUTE_GET,
+      phase: "scenarios",
+      errorCode: "UNHANDLED_EXCEPTION",
+      detail: name,
+    });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
 
 /**
  * Creates a tenant-scoped scenario **draft** (JSON blob only). Same auth / visibility as other twin APIs.
@@ -27,7 +97,7 @@ export async function POST(request: Request) {
       raw = await request.json();
     } catch {
       logSctwinApiWarn({
-        route: ROUTE,
+        route: ROUTE_POST,
         phase: "validation",
         errorCode: "BODY_JSON_INVALID",
       });
@@ -37,7 +107,7 @@ export async function POST(request: Request) {
     const parsed = parseTwinScenarioDraftCreateBody(raw);
     if (!parsed.ok) {
       logSctwinApiWarn({
-        route: ROUTE,
+        route: ROUTE_POST,
         phase: "validation",
         errorCode: "BODY_VALIDATION_FAILED",
       });
@@ -61,7 +131,7 @@ export async function POST(request: Request) {
   } catch (caught) {
     const name = caught instanceof Error ? caught.name : "non_error_throw";
     logSctwinApiError({
-      route: ROUTE,
+      route: ROUTE_POST,
       phase: "scenarios",
       errorCode: "UNHANDLED_EXCEPTION",
       detail: name,

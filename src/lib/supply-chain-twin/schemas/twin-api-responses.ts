@@ -49,3 +49,17 @@ export const twinEventsListResponseSchema = z.object({
   events: z.array(twinIngestEventListItemSchema),
   nextCursor: z.string().min(1).optional(),
 });
+
+/** List row shape aligned with `POST` success body (`id`, `title`, `status`, `updatedAt` ISO). */
+export const twinScenarioDraftListItemSchema = z.object({
+  id: z.string(),
+  title: z.string().nullable(),
+  status: z.string(),
+  updatedAt: z.string(),
+});
+
+/** Success body for `GET /api/supply-chain-twin/scenarios`. */
+export const twinScenariosListResponseSchema = z.object({
+  items: z.array(twinScenarioDraftListItemSchema),
+  nextCursor: z.string().min(1).optional(),
+});

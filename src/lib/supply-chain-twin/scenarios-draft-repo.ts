@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import { encodeTwinScenariosListCursor } from "@/lib/supply-chain-twin/schemas/twin-scenarios-list-query";
 
 export type CreateScenarioDraftInput = {
   title?: string | null;
@@ -30,4 +31,61 @@ export async function createScenarioDraft(
       updatedAt: true,
     },
   });
+}
+
+export type ScenarioDraftListItem = {
+  id: string;
+  title: string | null;
+  status: string;
+  updatedAt: Date;
+};
+
+/**
+ * Keyset-paged scenario drafts for a tenant (`updatedAt` desc, `id` desc). `limit` is clamped to 1..100.
+ * Decode the opaque `cursor` string in the API route; pass `cursorPosition` here.
+ */
+export async function listScenarioDraftsForTenantPage(
+  tenantId: string,
+  options: { limit: number; cursorPosition?: { updatedAt: Date; id: string } | null },
+): Promise<{ items: ScenarioDraftListItem[]; nextCursor: string | null }> {
+  const limit = Math.min(Math.max(options.limit, 1), 100);
+
+  const cursorPos = options.cursorPosition ?? null;
+
+  const where: Prisma.SupplyChainTwinScenarioDraftWhereInput = cursorPos
+    ? {
+        tenantId,
+        OR: [
+          { updatedAt: { lt: cursorPos.updatedAt } },
+          {
+            AND: [{ updatedAt: cursorPos.updatedAt }, { id: { lt: cursorPos.id } }],
+          },
+        ],
+      }
+    : { tenantId };
+
+  const rows = await prisma.supplyChainTwinScenarioDraft.findMany({
+    where,
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      updatedAt: true,
+    },
+    orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+    take: limit + 1,
+  });
+
+  const hasMore = rows.length > limit;
+  const pageRows = hasMore ? rows.slice(0, limit) : rows;
+  const last = pageRows[pageRows.length - 1];
+  const nextCursor =
+    hasMore && last != null
+      ? encodeTwinScenariosListCursor({
+          updatedAt: last.updatedAt,
+          id: last.id,
+        })
+      : null;
+
+  return { items: pageRows, nextCursor };
 }
