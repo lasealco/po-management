@@ -12,6 +12,8 @@ const idemMocks = vi.hoisted(() => ({
   createApplyIdempotencyRecord: vi.fn(),
 }));
 
+const appendApiHubIngestionRunAuditLogMock = vi.fn();
+
 vi.mock("@/lib/demo-tenant", () => ({ getDemoTenant: getDemoTenantMock }));
 vi.mock("@/lib/authz", () => ({ getActorUserId: getActorUserIdMock }));
 vi.mock("@/lib/apihub/ingestion-apply-repo", () => ({
@@ -22,6 +24,9 @@ vi.mock("@/lib/apihub/ingestion-apply-idempotency-repo", () => ({
   findApplyIdempotencyRecord: idemMocks.findApplyIdempotencyRecord,
   createApplyIdempotencyRecord: idemMocks.createApplyIdempotencyRecord,
 }));
+vi.mock("@/lib/apihub/ingestion-run-audit-repo", () => ({
+  appendApiHubIngestionRunAuditLog: appendApiHubIngestionRunAuditLogMock,
+}));
 
 describe("POST /api/apihub/ingestion-jobs/:jobId/apply", () => {
   beforeEach(() => {
@@ -30,6 +35,7 @@ describe("POST /api/apihub/ingestion-jobs/:jobId/apply", () => {
     getActorUserIdMock.mockResolvedValue("user-1");
     idemMocks.findApplyIdempotencyRecord.mockResolvedValue(null);
     idemMocks.createApplyIdempotencyRecord.mockResolvedValue({ created: true });
+    appendApiHubIngestionRunAuditLogMock.mockResolvedValue(undefined);
   });
 
   it("returns 404 when run is missing", async () => {
@@ -92,6 +98,18 @@ describe("POST /api/apihub/ingestion-jobs/:jobId/apply", () => {
       runId: "run-1",
       dryRun: false,
     });
+    expect(appendApiHubIngestionRunAuditLogMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "apply",
+        ingestionRunId: "run-1",
+        metadata: expect.objectContaining({
+          resultCode: "APPLY_COMMITTED",
+          verb: "apply",
+          httpStatus: 200,
+          outcome: "success",
+        }),
+      }),
+    );
   });
 
   it("returns 200 dry-run write summary when dryRun=1", async () => {

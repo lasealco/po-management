@@ -6,6 +6,7 @@ const getDemoTenantMock = vi.fn();
 const getActorUserIdMock = vi.fn();
 const retryApiHubIngestionRunMock = vi.fn();
 const toApiHubIngestionRunDtoMock = vi.fn();
+const appendApiHubIngestionRunAuditLogMock = vi.fn();
 
 vi.mock("@/lib/demo-tenant", () => ({ getDemoTenant: getDemoTenantMock }));
 vi.mock("@/lib/authz", () => ({ getActorUserId: getActorUserIdMock }));
@@ -15,12 +16,16 @@ vi.mock("@/lib/apihub/ingestion-runs-repo", () => ({
 vi.mock("@/lib/apihub/ingestion-run-dto", () => ({
   toApiHubIngestionRunDto: toApiHubIngestionRunDtoMock,
 }));
+vi.mock("@/lib/apihub/ingestion-run-audit-repo", () => ({
+  appendApiHubIngestionRunAuditLog: appendApiHubIngestionRunAuditLogMock,
+}));
 
 describe("POST /api/apihub/ingestion-jobs/:jobId/retry", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getDemoTenantMock.mockResolvedValue({ id: "tenant-1" });
     getActorUserIdMock.mockResolvedValue("user-1");
+    appendApiHubIngestionRunAuditLogMock.mockResolvedValue(undefined);
   });
 
   it("returns structured conflict contract for non-failed runs", async () => {
@@ -74,6 +79,18 @@ describe("POST /api/apihub/ingestion-jobs/:jobId/retry", () => {
       idempotencyKey: "retry-123",
     });
     expect(await response.json()).toEqual({ run: { id: "run-dto-2" }, idempotentReplay: false });
+    expect(appendApiHubIngestionRunAuditLogMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "retry",
+        ingestionRunId: "run-1",
+        metadata: expect.objectContaining({
+          resultCode: "RETRY_CREATED",
+          verb: "retry",
+          httpStatus: 201,
+          retriedRunId: "run-2",
+        }),
+      }),
+    );
   });
 
   it("returns 200 with idempotentReplay when retry key replays the same logical retry", async () => {

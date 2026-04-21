@@ -79,6 +79,7 @@ model Tenant {
   apiHubConnectorAuditLogs ApiHubConnectorAuditLog[]
   apiHubIngestionRuns   ApiHubIngestionRun[]
   apiHubIngestionApplyIdempotencies ApiHubIngestionApplyIdempotency[]
+  apiHubIngestionRunAuditLogs ApiHubIngestionRunAuditLog[]
   apiHubMappingTemplates ApiHubMappingTemplate[]
   apiHubMappingTemplateAuditLogs ApiHubMappingTemplateAuditLog[]
   supplyChainTwinEntitySnapshots SupplyChainTwinEntitySnapshot[]
@@ -190,6 +191,25 @@ model ApiHubIngestionApplyIdempotency {
 
   @@unique([tenantId, idempotencyKey])
   @@index([tenantId, ingestionRunId])
+}
+
+/// Append-only audit for ingestion apply / retry decisions (Slice 45). `ingestionRunId` is not a FK so history survives run deletes.
+model ApiHubIngestionRunAuditLog {
+  id             String   @id @default(cuid())
+  tenantId       String
+  ingestionRunId String
+  actorUserId    String
+  action         String
+  note           String?
+  metadata       Json
+  createdAt      DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actor  User   @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, createdAt])
+  @@index([ingestionRunId, createdAt])
+  @@index([actorUserId, createdAt])
 }
 
 /// Tenant-scoped field mapping rule sets for ingestion / integration hub (Slice 35).
@@ -311,6 +331,7 @@ model User {
   apiHubIngestionRunsRequested   ApiHubIngestionRun[]
   apiHubMappingTemplatesCreated  ApiHubMappingTemplate[] @relation("ApiHubMappingTemplateCreatedBy")
   apiHubMappingTemplateAuditLogs ApiHubMappingTemplateAuditLog[]
+  apiHubIngestionRunAuditLogs ApiHubIngestionRunAuditLog[]
   invoiceIntakesAccountingApproved InvoiceIntake[]         @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated TariffShipmentApplication[] @relation("TariffShipmentApplicationCreator")
 
