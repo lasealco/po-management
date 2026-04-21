@@ -30,6 +30,40 @@ describe("applyApiHubMappingRules", () => {
     });
   });
 
+  it("maps boolean transform deterministically", () => {
+    expect(
+      applyApiHubMappingRules({ a: true }, [{ targetField: "x", sourcePath: "a", transform: "boolean" }]).mapped,
+    ).toEqual({ x: true });
+    expect(
+      applyApiHubMappingRules({ b: "NO" }, [{ targetField: "x", sourcePath: "b", transform: "boolean" }]).mapped,
+    ).toEqual({ x: false });
+    expect(
+      applyApiHubMappingRules({ c: 1 }, [{ targetField: "x", sourcePath: "c", transform: "boolean" }]).mapped,
+    ).toEqual({ x: true });
+    const bad = applyApiHubMappingRules({ b: "maybe" }, [{ targetField: "x", sourcePath: "b", transform: "boolean" }]);
+    expect(bad.mapped.x).toBeNull();
+    expect(bad.issues[0]?.code).toBe("INVALID_BOOLEAN");
+  });
+
+  it("maps currency transform with US-style grouping", () => {
+    const r = applyApiHubMappingRules(
+      { a: "$1,234.50", b: 99.1, c: "€ 10" },
+      [
+        { targetField: "x", sourcePath: "a", transform: "currency" },
+        { targetField: "y", sourcePath: "b", transform: "currency" },
+        { targetField: "z", sourcePath: "c", transform: "currency" },
+      ],
+    );
+    expect(r.issues).toEqual([]);
+    expect(r.mapped).toEqual({ x: 1234.5, y: 99.1, z: 10 });
+  });
+
+  it("emits INVALID_CURRENCY for non-parsable amounts", () => {
+    const r = applyApiHubMappingRules({ a: "not-a-number" }, [{ targetField: "x", sourcePath: "a", transform: "currency" }]);
+    expect(r.issues[0]?.code).toBe("INVALID_CURRENCY");
+    expect(r.mapped.x).toBeNull();
+  });
+
   it("emits issues for missing required and invalid transform inputs", () => {
     const result = applyApiHubMappingRules(
       { shipment: { amount: "NaN?" } },

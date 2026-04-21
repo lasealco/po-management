@@ -6,7 +6,9 @@ export type ApiHubMappingTransform =
   | "upper"
   | "lower"
   | "number"
-  | "iso_date";
+  | "iso_date"
+  | "boolean"
+  | "currency";
 
 export type ApiHubMappingRule = {
   targetField: string;
@@ -17,7 +19,13 @@ export type ApiHubMappingRule = {
 
 export type ApiHubMappingIssue = {
   field: string;
-  code: "MISSING_REQUIRED" | "INVALID_NUMBER" | "INVALID_DATE" | "UNSUPPORTED_VALUE";
+  code:
+    | "MISSING_REQUIRED"
+    | "INVALID_NUMBER"
+    | "INVALID_DATE"
+    | "UNSUPPORTED_VALUE"
+    | "INVALID_BOOLEAN"
+    | "INVALID_CURRENCY";
   message: string;
 };
 
@@ -119,6 +127,86 @@ function tokenizePath(path: string): string[] {
     .filter(Boolean);
 }
 
+/**
+ * Parses booleans deterministically: boolean passthrough; numbers 0/1; strings (trimmed, case-insensitive)
+ * true: true, 1, yes, y, on — false: false, 0, no, n, off.
+ */
+function parseBooleanDeterministic(value: unknown): { value: boolean } | { issue: ApiHubMappingIssue } {
+  if (typeof value === "boolean") {
+    return { value };
+  }
+  if (typeof value === "number") {
+    if (value === 1) return { value: true };
+    if (value === 0) return { value: false };
+  }
+  if (typeof value === "string") {
+    const s = value.trim().toLowerCase();
+    if (s === "true" || s === "1" || s === "yes" || s === "y" || s === "on") {
+      return { value: true };
+    }
+    if (s === "false" || s === "0" || s === "no" || s === "n" || s === "off") {
+      return { value: false };
+    }
+  }
+  return {
+    issue: {
+      field: "",
+      code: "INVALID_BOOLEAN",
+      message: "Value cannot be converted to boolean (use true/false, 0/1, yes/no, y/n, on/off).",
+    },
+  };
+}
+
+/**
+ * Parses currency amounts to a finite number. US-style only: commas are thousands separators (removed),
+ * dot is the decimal separator. Currency symbols ($ € £ ¥) and spaces are stripped. Plain finite numbers pass through.
+ */
+function parseCurrencyDeterministic(value: unknown): { value: number } | { issue: ApiHubMappingIssue } {
+  if (typeof value === "number") {
+    if (Number.isFinite(value)) {
+      return { value };
+    }
+    return {
+      issue: {
+        field: "",
+        code: "INVALID_CURRENCY",
+        message: "Numeric amount must be finite.",
+      },
+    };
+  }
+  if (typeof value !== "string") {
+    return {
+      issue: {
+        field: "",
+        code: "INVALID_CURRENCY",
+        message: "Currency transform expects a string or number.",
+      },
+    };
+  }
+  const trimmed = value.trim();
+  if (!trimmed.length) {
+    return {
+      issue: {
+        field: "",
+        code: "INVALID_CURRENCY",
+        message: "Currency string is empty.",
+      },
+    };
+  }
+  const normalized = trimmed.replace(/[\s$€£¥\u00a0]/g, "").replace(/,/g, "");
+  const n = Number(normalized);
+  if (!Number.isFinite(n)) {
+    return {
+      issue: {
+        field: "",
+        code: "INVALID_CURRENCY",
+        message: "Value cannot be parsed as a US-style currency amount (commas = thousands, dot = decimal).",
+      },
+    };
+  }
+  return { value: n };
+}
+
 function getPathValue(input: unknown, sourcePath: string): unknown {
   const tokens = tokenizePath(sourcePath);
   let current: unknown = input;
@@ -190,6 +278,20 @@ function applyTransform(value: unknown, transform: ApiHubMappingTransform): { va
           message: "Value cannot be converted to ISO date.",
         },
       };
+    }
+    case "boolean": {
+      const parsed = parseBooleanDeterministic(value);
+      if ("issue" in parsed) {
+        return { value: null, issue: parsed.issue };
+      }
+      return { value: parsed.value };
+    }
+    case "currency": {
+      const parsed = parseCurrencyDeterministic(value);
+      if ("issue" in parsed) {
+        return { value: null, issue: parsed.issue };
+      }
+      return { value: parsed.value };
     }
     default:
       return {

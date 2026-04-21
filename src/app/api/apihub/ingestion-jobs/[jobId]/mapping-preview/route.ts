@@ -53,12 +53,13 @@ function normalizeRules(input: unknown): { rules: ApiHubMappingRule[]; issues: A
     }
     if (
       transform &&
-      !["identity", "trim", "upper", "lower", "number", "iso_date"].includes(transform)
+      !["identity", "trim", "upper", "lower", "number", "iso_date", "boolean", "currency"].includes(transform)
     ) {
       issues.push({
         field: `rules[${idx}].transform`,
         code: "INVALID_ENUM",
-        message: "transform must be one of: identity, trim, upper, lower, number, iso_date.",
+        message:
+          "transform must be one of: identity, trim, upper, lower, number, iso_date, boolean, currency.",
       });
     }
     if (sourcePath && targetField) {
