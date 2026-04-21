@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Suspense, use, useMemo } from "react";
+import { useTwinCachedAsync } from "./use-twin-cached-async";
 
 type Ref = { kind: string; id: string };
 
@@ -306,7 +306,23 @@ function TwinGraphStubPanelInner({
   searchQ: string;
   selectedSnapshotId: string | null;
 }) {
-  const data = use(useMemo(() => fetchGraphBundle(searchQ, selectedSnapshotId), [searchQ, selectedSnapshotId]));
+  const snapshot = useTwinCachedAsync(`sctwin:graph-bundle:v1:${searchQ}::${selectedSnapshotId ?? ""}`, () =>
+    fetchGraphBundle(searchQ, selectedSnapshotId),
+  );
+
+  if (snapshot.status === "pending") {
+    return <p className="py-12 text-center text-sm text-zinc-500">Loading graph data…</p>;
+  }
+
+  if (snapshot.status === "rejected") {
+    return (
+      <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+        Network error while loading graph data.
+      </div>
+    );
+  }
+
+  const data = snapshot.data;
 
   if (data.ok === false) {
     return (
@@ -407,12 +423,7 @@ export function TwinGraphStubPanel({
         )}
       </p>
       <div className="mt-4 rounded-xl border border-dashed border-zinc-300 bg-zinc-50/90 p-4">
-        <Suspense
-          key={`${searchQ}::${snap ?? ""}`}
-          fallback={<p className="py-12 text-center text-sm text-zinc-500">Loading graph data…</p>}
-        >
-          <TwinGraphStubPanelInner searchQ={searchQ} selectedSnapshotId={snap} />
-        </Suspense>
+        <TwinGraphStubPanelInner searchQ={searchQ} selectedSnapshotId={snap} />
       </div>
     </section>
   );

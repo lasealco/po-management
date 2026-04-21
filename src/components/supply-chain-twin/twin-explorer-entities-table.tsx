@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, use, useCallback, useLayoutEffect, useMemo, useRef, useTransition } from "react";
+import { useCallback, useLayoutEffect, useRef, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { TwinFallbackState } from "./twin-fallback-state";
+import { useTwinCachedAsync } from "./use-twin-cached-async";
 
 /** Matches `limit` on `fetchEntitiesCatalog` — exports never include rows beyond this page. */
 const CATALOG_TABLE_PAGE_LIMIT = 50;
@@ -179,37 +180,40 @@ function TwinExplorerEntitiesTableInner({
   const [isPaginating, startPagination] = useTransition();
   const currentCursor = searchParams.get("cursor")?.trim() || null;
   const cursorStack = parseCursorStack(searchParams.get("cursorStack"));
-  const data = use(useMemo(() => fetchEntitiesCatalog(searchQ, currentCursor), [searchQ, currentCursor]));
+  const snapshot = useTwinCachedAsync(
+    `sctwin:entities:explorer:v1:q=${searchQ}:cursor=${currentCursor ?? ""}:limit=${CATALOG_TABLE_PAGE_LIMIT}`,
+    () => fetchEntitiesCatalog(searchQ, currentCursor),
+  );
   const rowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
 
   useLayoutEffect(() => {
     const id = highlightSnapshotId?.trim();
-    if (!id || data.ok !== true) {
+    if (!id || snapshot.status !== "resolved" || snapshot.data.ok !== true) {
       return;
     }
     const el = rowRefs.current.get(id);
     el?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-  }, [highlightSnapshotId, data]);
+  }, [highlightSnapshotId, snapshot]);
 
   const onExportJson = useCallback(() => {
-    if (data.ok !== true || data.items.length === 0) {
+    if (snapshot.status !== "resolved" || snapshot.data.ok !== true || snapshot.data.items.length === 0) {
       return;
     }
-    downloadVisibleEntitiesJson(searchQ, data.items);
-  }, [data, searchQ]);
+    downloadVisibleEntitiesJson(searchQ, snapshot.data.items);
+  }, [searchQ, snapshot]);
 
   const onGoNext = useCallback(() => {
-    if (data.ok !== true || !data.nextCursor) {
+    if (snapshot.status !== "resolved" || snapshot.data.ok !== true || !snapshot.data.nextCursor) {
       return;
     }
     const params = new URLSearchParams(searchParams.toString());
     const nextStack = [...cursorStack, stackEncodeCursor(currentCursor)];
-    params.set("cursor", data.nextCursor);
+    params.set("cursor", snapshot.data.nextCursor);
     params.set("cursorStack", nextStack.join(","));
     startPagination(() => {
       router.push(`/supply-chain-twin/explorer?${params.toString()}`);
     });
-  }, [currentCursor, cursorStack, data, router, searchParams]);
+  }, [currentCursor, cursorStack, router, searchParams, snapshot]);
 
   const onGoPrevious = useCallback(() => {
     if (cursorStack.length === 0) {
@@ -232,6 +236,41 @@ function TwinExplorerEntitiesTableInner({
       router.push(`/supply-chain-twin/explorer?${params.toString()}`);
     });
   }, [cursorStack, router, searchParams]);
+
+  if (snapshot.status === "pending" || isPaginating) {
+    return <TwinExplorerEntitiesTableSkeleton />;
+  }
+
+  if (snapshot.status === "rejected") {
+    return (
+      <div className="px-5 py-8">
+        <TwinFallbackState
+          tone="error"
+          title="Unable to load Twin explorer entities"
+          description="Network error while loading the catalog."
+          actions={
+            <>
+              <button
+                type="button"
+                onClick={() => router.refresh()}
+                className="rounded-xl bg-[var(--arscmp-primary)] px-4 py-2 text-xs font-semibold text-white"
+              >
+                Retry
+              </button>
+              <Link
+                href="/api/supply-chain-twin/readiness"
+                className="rounded-xl border border-zinc-300 bg-white px-4 py-2 text-xs font-semibold text-zinc-700"
+              >
+                Check readiness
+              </Link>
+            </>
+          }
+        />
+      </div>
+    );
+  }
+
+  const data = snapshot.data;
 
   if (data.ok === false) {
     return (
@@ -398,9 +437,7 @@ export function TwinExplorerEntitiesTable({
       <div className="border-b border-zinc-200 px-5 py-3">
         <h2 className="text-sm font-semibold text-zinc-900">Entities</h2>
       </div>
-      <Suspense fallback={<TwinExplorerEntitiesTableSkeleton />}>
-        <TwinExplorerEntitiesTableInner searchQ={searchQ} highlightSnapshotId={highlightSnapshotId} />
-      </Suspense>
+      <TwinExplorerEntitiesTableInner searchQ={searchQ} highlightSnapshotId={highlightSnapshotId} />
     </section>
   );
 }

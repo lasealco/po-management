@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, use, useMemo } from "react";
+import { useTwinCachedAsync } from "./use-twin-cached-async";
 
 type ReadinessPayload =
   | { tag: "error" }
@@ -40,7 +40,22 @@ function TwinReadinessBannerInner({
   docsReadmeHref: string;
   docsTreeHref: string;
 }) {
-  const data = use(useMemo(() => fetchReadiness(), []));
+  const snapshot = useTwinCachedAsync("sctwin:readiness:v1", () => fetchReadiness());
+
+  if (snapshot.status === "pending") {
+    return <p className="mt-6 text-sm text-zinc-500">Checking module readiness…</p>;
+  }
+
+  if (snapshot.status === "rejected") {
+    return (
+      <aside className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-900 shadow-sm" role="alert">
+        <p className="font-semibold">Readiness unavailable</p>
+        <p className="mt-1">The readiness check could not be loaded. Try again later.</p>
+      </aside>
+    );
+  }
+
+  const data = snapshot.data;
 
   if (data.tag === "error") {
     return (
@@ -90,9 +105,5 @@ export function TwinReadinessBanner({
   docsReadmeHref: string;
   docsTreeHref: string;
 }) {
-  return (
-    <Suspense fallback={<p className="mt-6 text-sm text-zinc-500">Checking module readiness…</p>}>
-      <TwinReadinessBannerInner docsReadmeHref={docsReadmeHref} docsTreeHref={docsTreeHref} />
-    </Suspense>
-  );
+  return <TwinReadinessBannerInner docsReadmeHref={docsReadmeHref} docsTreeHref={docsTreeHref} />;
 }

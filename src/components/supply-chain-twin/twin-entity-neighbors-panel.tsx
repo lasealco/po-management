@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, use, useMemo } from "react";
 import { TwinFallbackState } from "./twin-fallback-state";
+import { useTwinCachedAsync } from "./use-twin-cached-async";
 
 type NeighborRow = {
   edgeId: string;
@@ -80,7 +80,25 @@ async function fetchEntityNeighbors(snapshotId: string): Promise<NeighborsResult
 }
 
 function TwinEntityNeighborsPanelInner({ snapshotId }: { snapshotId: string }) {
-  const data = use(useMemo(() => fetchEntityNeighbors(snapshotId), [snapshotId]));
+  const snapshot = useTwinCachedAsync(`sctwin:entity-neighbors:v1:${snapshotId}`, () => fetchEntityNeighbors(snapshotId));
+
+  if (snapshot.status === "pending") {
+    return (
+      <div className="px-5 py-6">
+        <TwinFallbackState tone="loading" title="Loading neighbors..." />
+      </div>
+    );
+  }
+
+  if (snapshot.status === "rejected") {
+    return (
+      <div className="px-5 py-6">
+        <TwinFallbackState tone="error" title="Unable to load neighbors" description="Network error while loading neighbor data." />
+      </div>
+    );
+  }
+
+  const data = snapshot.data;
 
   if (data.ok === false) {
     return (
@@ -155,15 +173,7 @@ export function TwinEntityNeighborsPanel({ snapshotId }: { snapshotId: string })
           <code className="text-[11px]">GET /api/supply-chain-twin/entities/[id]/neighbors</code>.
         </p>
       </div>
-      <Suspense
-        fallback={
-          <div className="px-5 py-6">
-            <TwinFallbackState tone="loading" title="Loading neighbors..." />
-          </div>
-        }
-      >
-        <TwinEntityNeighborsPanelInner snapshotId={snapshotId} />
-      </Suspense>
+      <TwinEntityNeighborsPanelInner snapshotId={snapshotId} />
     </section>
   );
 }

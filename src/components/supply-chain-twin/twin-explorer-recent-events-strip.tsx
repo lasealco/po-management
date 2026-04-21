@@ -1,7 +1,7 @@
 "use client";
 
-import { Suspense, use, useMemo } from "react";
 import { TwinFallbackState } from "./twin-fallback-state";
+import { useTwinCachedAsync } from "./use-twin-cached-async";
 
 const EVENT_LIMIT = 10;
 const TYPE_DISPLAY_MAX = 48;
@@ -83,7 +83,25 @@ function formatCreatedAt(iso: string): string {
 }
 
 function TwinExplorerRecentEventsStripInner() {
-  const data = use(useMemo(() => fetchRecentIngestEvents(), []));
+  const snapshot = useTwinCachedAsync(`sctwin:events:recent:v1:limit=${EVENT_LIMIT}`, () => fetchRecentIngestEvents());
+
+  if (snapshot.status === "pending") {
+    return (
+      <div className="px-5 py-8">
+        <TwinFallbackState centered tone="loading" title="Loading ingest events..." />
+      </div>
+    );
+  }
+
+  if (snapshot.status === "rejected") {
+    return (
+      <div className="px-5 py-6">
+        <TwinFallbackState tone="error" title="Unable to load ingest events" description="Network error while loading ingest events." />
+      </div>
+    );
+  }
+
+  const data = snapshot.data;
 
   if (data.ok === false) {
     return (
@@ -138,15 +156,7 @@ export function TwinExplorerRecentEventsStrip() {
           Last {EVENT_LIMIT} rows · <code className="text-[11px]">GET /api/supply-chain-twin/events</code>
         </p>
       </div>
-      <Suspense
-        fallback={
-          <div className="px-5 py-8">
-            <TwinFallbackState centered tone="loading" title="Loading ingest events..." />
-          </div>
-        }
-      >
-        <TwinExplorerRecentEventsStripInner />
-      </Suspense>
+      <TwinExplorerRecentEventsStripInner />
     </section>
   );
 }

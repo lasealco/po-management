@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, use, useMemo } from "react";
+import { useTwinCachedAsync } from "./use-twin-cached-async";
 
 /** Slice 65: small teaser list; matches capped `GET /api/supply-chain-twin/events` page size. */
 const ACTIVITY_TEASER_LIMIT = 8;
@@ -84,7 +84,25 @@ function TwinEntityActivityTeaserSkeleton() {
 }
 
 function TwinEntityActivityTeaserInner() {
-  const data = use(useMemo(() => fetchWorkspaceIngestActivity(), []));
+  const snapshot = useTwinCachedAsync(`sctwin:events:activity-teaser:v1:limit=${ACTIVITY_TEASER_LIMIT}`, () =>
+    fetchWorkspaceIngestActivity(),
+  );
+
+  if (snapshot.status === "pending") {
+    return <TwinEntityActivityTeaserSkeleton />;
+  }
+
+  if (snapshot.status === "rejected") {
+    return (
+      <div className="px-5 py-6">
+        <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+          Network error while loading twin activity.
+        </p>
+      </div>
+    );
+  }
+
+  const data = snapshot.data;
 
   if (data.ok === false) {
     return (
@@ -134,9 +152,7 @@ export function TwinEntityActivityTeaser() {
           query filtering is available on the API for future entity-linked views.
         </p>
       </div>
-      <Suspense fallback={<TwinEntityActivityTeaserSkeleton />}>
-        <TwinEntityActivityTeaserInner />
-      </Suspense>
+      <TwinEntityActivityTeaserInner />
     </section>
   );
 }

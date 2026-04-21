@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, use, useMemo } from "react";
+import { useTwinCachedAsync } from "@/components/supply-chain-twin/use-twin-cached-async";
 
 type CatalogRow = { ref: { kind: string; id: string } };
 
@@ -59,7 +59,21 @@ async function fetchCatalog(): Promise<CatalogResult> {
 }
 
 function TwinEntitiesSectionInner() {
-  const result = use(useMemo(() => fetchCatalog(), []));
+  const snapshot = useTwinCachedAsync("sctwin:entities:catalog-home:v1", () => fetchCatalog());
+
+  if (snapshot.status === "pending") {
+    return <p className="mt-4 text-sm text-zinc-500">Loading catalog…</p>;
+  }
+
+  if (snapshot.status === "rejected") {
+    return (
+      <p className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+        Network error while loading the catalog.
+      </p>
+    );
+  }
+
+  const result = snapshot.data;
 
   return (
     <>
@@ -99,9 +113,7 @@ export function TwinEntitiesSection() {
         Live list from the twin API (stub). When graph persistence lands, matching entities appear here.
       </p>
 
-      <Suspense fallback={<p className="mt-4 text-sm text-zinc-500">Loading catalog…</p>}>
-        <TwinEntitiesSectionInner />
-      </Suspense>
+      <TwinEntitiesSectionInner />
     </section>
   );
 }

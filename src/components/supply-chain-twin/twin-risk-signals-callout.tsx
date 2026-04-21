@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, use, useMemo, useState } from "react";
+import { useState } from "react";
 import { TwinFallbackState } from "./twin-fallback-state";
+import { useTwinCachedAsync } from "./use-twin-cached-async";
 
 const SEVERITIES = new Set(["INFO", "LOW", "MEDIUM", "HIGH", "CRITICAL"]);
 
@@ -76,8 +77,24 @@ async function fetchRiskSignalsTop(): Promise<RiskSignalsResult> {
 }
 
 function TwinRiskSignalsCalloutInner() {
-  const data = use(useMemo(() => fetchRiskSignalsTop(), []));
+  const snapshot = useTwinCachedAsync("sctwin:risk-signals:top:v1", () => fetchRiskSignalsTop());
   const [activeTab, setActiveTab] = useState<"open" | "acknowledged">("open");
+
+  if (snapshot.status === "pending") {
+    return <TwinFallbackState tone="loading" title="Loading risk signals..." />;
+  }
+
+  if (snapshot.status === "rejected") {
+    return (
+      <TwinFallbackState
+        tone="error"
+        title="Unable to load risk signals"
+        description="Network error while loading risk signals."
+      />
+    );
+  }
+
+  const data = snapshot.data;
   const supportsAckState = data.ok && data.items.some((row) => typeof row.acknowledged === "boolean");
 
   const openItems = data.ok
@@ -191,15 +208,5 @@ function TwinRiskSignalsCalloutInner() {
 }
 
 export function TwinRiskSignalsCallout() {
-  return (
-    <Suspense
-      fallback={
-        <section className="mt-6">
-          <TwinFallbackState tone="loading" title="Loading risk signals..." />
-        </section>
-      }
-    >
-      <TwinRiskSignalsCalloutInner />
-    </Suspense>
-  );
+  return <TwinRiskSignalsCalloutInner />;
 }
