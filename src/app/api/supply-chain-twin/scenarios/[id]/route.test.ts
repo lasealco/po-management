@@ -6,6 +6,7 @@ const actorIsSupplierPortalRestrictedMock = vi.fn();
 const getScenarioDraftByIdForTenantMock = vi.fn();
 const patchScenarioDraftForTenantMock = vi.fn();
 const deleteScenarioDraftForTenantMock = vi.fn();
+const appendTwinMutationAuditEventMock = vi.fn();
 
 vi.mock("@/lib/authz", async () => {
   const mod = await vi.importActual<typeof import("@/lib/authz")>("@/lib/authz");
@@ -24,6 +25,10 @@ vi.mock("@/lib/supply-chain-twin/scenarios-draft-repo", () => ({
   getScenarioDraftByIdForTenant: getScenarioDraftByIdForTenantMock,
   patchScenarioDraftForTenant: patchScenarioDraftForTenantMock,
   deleteScenarioDraftForTenant: deleteScenarioDraftForTenantMock,
+}));
+
+vi.mock("@/lib/supply-chain-twin/mutation-audit", () => ({
+  appendTwinMutationAuditEvent: appendTwinMutationAuditEventMock,
 }));
 
 describe("GET /api/supply-chain-twin/scenarios/[id]", () => {
@@ -268,7 +273,10 @@ describe("PATCH /api/supply-chain-twin/scenarios/[id]", () => {
     );
 
     expect(response.status).toBe(404);
-    expect(patchScenarioDraftForTenantMock).toHaveBeenCalledWith("t1", "missing", { title: "Only title" });
+    expect(patchScenarioDraftForTenantMock).toHaveBeenCalledWith("t1", "missing", {
+      title: "Only title",
+      actorId: "u1",
+    });
   });
 
   it("returns 400 when repo rejects a status transition", async () => {
@@ -348,7 +356,10 @@ describe("PATCH /api/supply-chain-twin/scenarios/[id]", () => {
       updatedAt: "2026-01-06T00:00:00.000Z",
       draft: { shocks: [] },
     });
-    expect(patchScenarioDraftForTenantMock).toHaveBeenCalledWith("t1", "draft1", { status: "archived" });
+    expect(patchScenarioDraftForTenantMock).toHaveBeenCalledWith("t1", "draft1", {
+      status: "archived",
+      actorId: "u1",
+    });
   });
 
   it("returns 200 with full detail after patch", async () => {
@@ -398,6 +409,7 @@ describe("PATCH /api/supply-chain-twin/scenarios/[id]", () => {
     expect(patchScenarioDraftForTenantMock).toHaveBeenCalledWith("t1", "draft1", {
       title: "Renamed",
       draft: { shocks: [] },
+      actorId: "u1",
     });
   });
 });
@@ -489,5 +501,11 @@ describe("DELETE /api/supply-chain-twin/scenarios/[id]", () => {
     expect(response.status).toBe(204);
     expect(await response.text()).toBe("");
     expect(deleteScenarioDraftForTenantMock).toHaveBeenCalledWith("t1", "draft1");
+    expect(appendTwinMutationAuditEventMock).toHaveBeenCalledWith({
+      tenantId: "t1",
+      actorId: "u1",
+      action: "scenario_deleted",
+      targetId: "draft1",
+    });
   });
 });

@@ -4,6 +4,7 @@ const getViewerGrantSetMock = vi.fn();
 const resolveNavStateMock = vi.fn();
 const actorIsSupplierPortalRestrictedMock = vi.fn();
 const applyTwinIntegrityRepairsForTenantMock = vi.fn();
+const appendTwinMutationAuditEventMock = vi.fn();
 
 vi.mock("@/lib/authz", async () => {
   const mod = await vi.importActual<typeof import("@/lib/authz")>("@/lib/authz");
@@ -20,6 +21,10 @@ vi.mock("@/lib/nav-visibility", () => ({
 
 vi.mock("@/lib/supply-chain-twin/integrity-repair-apply", () => ({
   applyTwinIntegrityRepairsForTenant: applyTwinIntegrityRepairsForTenantMock,
+}));
+
+vi.mock("@/lib/supply-chain-twin/mutation-audit", () => ({
+  appendTwinMutationAuditEvent: appendTwinMutationAuditEventMock,
 }));
 
 describe("POST /api/supply-chain-twin/integrity/repair-apply", () => {
@@ -113,5 +118,14 @@ describe("POST /api/supply-chain-twin/integrity/repair-apply", () => {
       ],
     });
     expect(applyTwinIntegrityRepairsForTenantMock).toHaveBeenCalledWith("t1", { maxActions: 50 });
+    expect(appendTwinMutationAuditEventMock).toHaveBeenCalledWith({
+      tenantId: "t1",
+      actorId: "u1",
+      action: "integrity_repair_apply_executed",
+      metadata: {
+        attemptedActionCount: 1,
+        appliedActionCount: 1,
+      },
+    });
   });
 });

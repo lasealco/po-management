@@ -8,6 +8,7 @@ import {
   twinApiJson,
   withSctwinRequestId,
 } from "../../_lib/sctwin-api-log";
+import { appendTwinMutationAuditEvent } from "@/lib/supply-chain-twin/mutation-audit";
 import { TWIN_SCENARIO_DRAFT_JSON_TOO_LARGE } from "@/lib/supply-chain-twin/schemas/twin-scenario-draft-create";
 import { parseTwinScenarioDraftPatchBody } from "@/lib/supply-chain-twin/schemas/twin-scenario-draft-patch";
 import { twinScenarioDraftDetailResponseSchema } from "@/lib/supply-chain-twin/schemas/twin-api-responses";
@@ -160,6 +161,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     if (parsed.body.status !== undefined) {
       patchInput.status = parsed.body.status;
     }
+    patchInput.actorId = access.user.id;
 
     const patched: PatchScenarioDraftResult = await patchScenarioDraftForTenant(
       access.tenant.id,
@@ -235,6 +237,22 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
     const deleted = await deleteScenarioDraftForTenant(access.tenant.id, draftId);
     if (!deleted) {
       return twinApiJson({ error: "Not found." }, { status: 404 }, requestId);
+    }
+
+    try {
+      await appendTwinMutationAuditEvent({
+        tenantId: access.tenant.id,
+        actorId: access.user.id,
+        action: "scenario_deleted",
+        targetId: draftId,
+      });
+    } catch {
+      logSctwinApiWarn({
+        route: ROUTE_DELETE,
+        phase: "scenarios",
+        errorCode: "AUDIT_WRITE_FAILED",
+        requestId,
+      });
     }
 
     return withSctwinRequestId(new NextResponse(null, { status: 204 }), requestId);

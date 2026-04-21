@@ -1,5 +1,6 @@
-import { logSctwinApiError, resolveSctwinRequestId, twinApiJson } from "../../_lib/sctwin-api-log";
+import { logSctwinApiError, logSctwinApiWarn, resolveSctwinRequestId, twinApiJson } from "../../_lib/sctwin-api-log";
 import { applyTwinIntegrityRepairsForTenant } from "@/lib/supply-chain-twin/integrity-repair-apply";
+import { appendTwinMutationAuditEvent } from "@/lib/supply-chain-twin/mutation-audit";
 import {
   twinIntegrityRepairApplyBodySchema,
   twinIntegrityRepairApplySummarySchema,
@@ -40,6 +41,26 @@ export async function POST(request: Request) {
     const result = await applyTwinIntegrityRepairsForTenant(gate.access.tenant.id, {
       maxActions: parsed.data.maxActions,
     });
+
+    try {
+      await appendTwinMutationAuditEvent({
+        tenantId: gate.access.tenant.id,
+        actorId: gate.access.user.id,
+        action: "integrity_repair_apply_executed",
+        metadata: {
+          attemptedActionCount: result.attemptedActionCount,
+          appliedActionCount: result.appliedActionCount,
+        },
+      });
+    } catch {
+      logSctwinApiWarn({
+        route: ROUTE,
+        phase: "catalog",
+        errorCode: "AUDIT_WRITE_FAILED",
+        requestId,
+      });
+    }
+
     return twinApiJson(twinIntegrityRepairApplySummarySchema.parse(result), undefined, requestId);
   } catch (caught) {
     const name = caught instanceof Error ? caught.name : "non_error_throw";
