@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   parseTwinEventsQuery,
   twinEventsTypePrismaFilter,
+  TWIN_EVENTS_QUERY_MAX_WINDOW_DAYS,
 } from "@/lib/supply-chain-twin/schemas/twin-events-query";
 
 describe("parseTwinEventsQuery", () => {
@@ -37,6 +38,51 @@ describe("parseTwinEventsQuery", () => {
     const r = parseTwinEventsQuery(new URLSearchParams("type=a&eventType=b"));
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.query.type).toBe("a");
+  });
+
+  it("accepts optional since and until together (ISO-8601)", () => {
+    const r = parseTwinEventsQuery(
+      new URLSearchParams("since=2026-01-01T00:00:00.000Z&until=2026-01-02T00:00:00.000Z"),
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.query.since).toBe("2026-01-01T00:00:00.000Z");
+      expect(r.query.until).toBe("2026-01-02T00:00:00.000Z");
+    }
+  });
+
+  it("rejects when only since is provided", () => {
+    const r = parseTwinEventsQuery(new URLSearchParams("since=2026-01-01T00:00:00.000Z"));
+    expect(r.ok).toBe(false);
+  });
+
+  it("rejects when only until is provided", () => {
+    const r = parseTwinEventsQuery(new URLSearchParams("until=2026-01-02T00:00:00.000Z"));
+    expect(r.ok).toBe(false);
+  });
+
+  it("rejects when since is after until", () => {
+    const r = parseTwinEventsQuery(
+      new URLSearchParams("since=2026-02-02T00:00:00.000Z&until=2026-01-01T00:00:00.000Z"),
+    );
+    expect(r.ok).toBe(false);
+  });
+
+  it("rejects when window exceeds max days", () => {
+    const r = parseTwinEventsQuery(
+      new URLSearchParams("since=2026-01-01T00:00:00.000Z&until=2026-02-02T00:00:00.000Z"),
+    );
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.error).toMatch(new RegExp(String(TWIN_EVENTS_QUERY_MAX_WINDOW_DAYS)));
+    }
+  });
+
+  it("accepts a window exactly at the max day span", () => {
+    const r = parseTwinEventsQuery(
+      new URLSearchParams("since=2026-01-01T00:00:00.000Z&until=2026-02-01T00:00:00.000Z"),
+    );
+    expect(r.ok).toBe(true);
   });
 });
 

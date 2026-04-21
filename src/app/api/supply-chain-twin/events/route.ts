@@ -45,6 +45,11 @@ export type TwinIngestEventListItem = {
  * **Query `type`:** optional filter on event `type` — exact (`type=entity_upsert`) or prefix
  * (`type=entity_*` → `startsWith("entity_")`). Unknown values yield an empty `events` array (200). Legacy
  * **`eventType`** is accepted when `type` is omitted.
+ *
+ * **Query `since` / `until` (Slice 68):** optional ISO-8601 bounds (same format as cursor timestamps, e.g. `…Z`).
+ * Both must appear together. `since` ≤ `until`; maximum window length is **31 days** (see
+ * `TWIN_EVENTS_QUERY_MAX_WINDOW_DAYS` in `twin-events-query.ts`). Oversized or inverted ranges return **400**. A valid
+ * window with no rows returns **200** and `events: []`.
  */
 export async function GET(request: Request) {
   const requestId = resolveSctwinRequestId(request);
@@ -85,8 +90,19 @@ export async function GET(request: Request) {
     const limit = parsed.query.limit;
     const tenantId = access.tenant.id;
 
+    const timeWindow =
+      parsed.query.since != null && parsed.query.until != null
+        ? {
+            createdAt: {
+              gte: new Date(parsed.query.since),
+              lte: new Date(parsed.query.until),
+            },
+          }
+        : {};
+
     const where: Prisma.SupplyChainTwinIngestEventWhereInput = {
       tenantId,
+      ...timeWindow,
       ...(parsed.query.type ? { type: twinEventsTypePrismaFilter(parsed.query.type) } : {}),
       ...(cursorPos
         ? {

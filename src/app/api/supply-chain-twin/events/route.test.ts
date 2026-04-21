@@ -207,6 +207,83 @@ describe("GET /api/supply-chain-twin/events", () => {
     );
   });
 
+  it("returns 400 when since is provided without until", async () => {
+    getViewerGrantSetMock.mockResolvedValue({
+      tenant: { id: "t1", name: "Demo", slug: "demo-company" },
+      user: { id: "u1", email: "x@y.com", name: "X" },
+      grantSet: new Set(),
+    });
+    resolveNavStateMock.mockResolvedValue({
+      linkVisibility: { supplyChainTwin: true },
+      setupIncomplete: false,
+      poSubNavVisibility: {},
+    });
+
+    const { GET } = await import("./route");
+    const response = await GET(new Request("http://localhost/api/supply-chain-twin/events?since=2026-01-01T00:00:00.000Z"));
+
+    expect(response.status).toBe(400);
+    expect(prismaMock.supplyChainTwinIngestEvent.findMany).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 when since is after until", async () => {
+    getViewerGrantSetMock.mockResolvedValue({
+      tenant: { id: "t1", name: "Demo", slug: "demo-company" },
+      user: { id: "u1", email: "x@y.com", name: "X" },
+      grantSet: new Set(),
+    });
+    resolveNavStateMock.mockResolvedValue({
+      linkVisibility: { supplyChainTwin: true },
+      setupIncomplete: false,
+      poSubNavVisibility: {},
+    });
+
+    const { GET } = await import("./route");
+    const response = await GET(
+      new Request(
+        "http://localhost/api/supply-chain-twin/events?since=2026-02-02T00:00:00.000Z&until=2026-01-01T00:00:00.000Z",
+      ),
+    );
+
+    expect(response.status).toBe(400);
+    expect(prismaMock.supplyChainTwinIngestEvent.findMany).not.toHaveBeenCalled();
+  });
+
+  it("returns 200 with empty events for a valid future window", async () => {
+    getViewerGrantSetMock.mockResolvedValue({
+      tenant: { id: "t1", name: "Demo", slug: "demo-company" },
+      user: { id: "u1", email: "x@y.com", name: "X" },
+      grantSet: new Set(),
+    });
+    resolveNavStateMock.mockResolvedValue({
+      linkVisibility: { supplyChainTwin: true },
+      setupIncomplete: false,
+      poSubNavVisibility: {},
+    });
+    vi.mocked(prismaMock.supplyChainTwinIngestEvent.findMany).mockResolvedValue([]);
+
+    const { GET } = await import("./route");
+    const response = await GET(
+      new Request(
+        "http://localhost/api/supply-chain-twin/events?since=2099-01-01T00:00:00.000Z&until=2099-01-02T00:00:00.000Z",
+      ),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ events: [] });
+    expect(prismaMock.supplyChainTwinIngestEvent.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          tenantId: "t1",
+          createdAt: {
+            gte: new Date("2099-01-01T00:00:00.000Z"),
+            lte: new Date("2099-01-02T00:00:00.000Z"),
+          },
+        }),
+      }),
+    );
+  });
+
   it("uses startsWith when type ends with *", async () => {
     getViewerGrantSetMock.mockResolvedValue({
       tenant: { id: "t1", name: "Demo", slug: "demo-company" },

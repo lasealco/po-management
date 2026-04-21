@@ -6,6 +6,16 @@ const twinEventsCursorPayloadSchema = z.object({
   i: z.string().min(1),
 });
 
+/** Hard cap on `until - since` for `GET …/events` (Slice 68). Documented on the route handler. */
+export const TWIN_EVENTS_QUERY_MAX_WINDOW_DAYS = 31;
+
+const MS_PER_DAY = 86_400_000;
+
+const optionalIsoDateTime = z.preprocess(
+  (val) => (typeof val === "string" && val.trim() === "" ? undefined : val),
+  z.string().datetime({ offset: true }).optional(),
+);
+
 /**
  * `GET …/events?type=` — optional filter on `SupplyChainTwinIngestEvent.type`.
  *
@@ -14,6 +24,9 @@ const twinEventsCursorPayloadSchema = z.object({
  * - A lone `*` is invalid.
  *
  * Legacy alias **`eventType`** is accepted when **`type`** is omitted; if both are present, **`type`** wins.
+ *
+ * **`since` / `until` (Slice 68):** optional ISO-8601 bounds on `createdAt` (same wire format as cursor payloads).
+ * Both must be sent together; `since` ≤ `until`; span ≤ {@link TWIN_EVENTS_QUERY_MAX_WINDOW_DAYS} days.
  */
 export const twinEventsQuerySchema = z
   .object({
@@ -30,6 +43,8 @@ export const twinEventsQuerySchema = z
       .max(128)
       .optional()
       .transform((value) => (value && value.length > 0 ? value : undefined)),
+    since: optionalIsoDateTime,
+    until: optionalIsoDateTime,
   })
   .superRefine((data, ctx) => {
     if (data.type === "*") {
@@ -49,6 +64,40 @@ export const twinEventsQuerySchema = z
           path: ["type"],
         });
       }
+    }
+  })
+  .superRefine((data, ctx) => {
+    const hasSince = data.since != null;
+    const hasUntil = data.until != null;
+    if (hasSince !== hasUntil) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Parameters `since` and `until` must both be provided together, or both omitted.",
+        path: hasSince ? ["until"] : ["since"],
+      });
+      return;
+    }
+    if (data.since === undefined || data.until === undefined) {
+      return;
+    }
+    const start = new Date(data.since).getTime();
+    const end = new Date(data.until).getTime();
+    if (start > end) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "`since` must be on or before `until`.",
+        path: ["since"],
+      });
+      return;
+    }
+    const spanMs = end - start;
+    const maxMs = TWIN_EVENTS_QUERY_MAX_WINDOW_DAYS * MS_PER_DAY;
+    if (spanMs > maxMs) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Time window cannot exceed ${TWIN_EVENTS_QUERY_MAX_WINDOW_DAYS} days.`,
+        path: ["until"],
+      });
     }
   });
 
@@ -97,10 +146,15 @@ export function parseTwinEventsQuery(searchParams: URLSearchParams): {
     typeof raw.eventType === "string" && raw.eventType.trim().length > 0 ? raw.eventType.trim() : undefined;
   const mergedType = typePrimary ?? typeLegacy;
 
+  const since = searchParams.get("since") ?? undefined;
+  const until = searchParams.get("until") ?? undefined;
+
   const parsed = twinEventsQuerySchema.safeParse({
     limit: raw.limit,
     cursor: raw.cursor,
     type: mergedType,
+    since,
+    until,
   });
   if (!parsed.success) {
     const flat = parsed.error.flatten().fieldErrors;
@@ -108,6 +162,8 @@ export function parseTwinEventsQuery(searchParams: URLSearchParams): {
       flat.limit?.[0] ??
       flat.cursor?.[0] ??
       flat.type?.[0] ??
+      flat.since?.[0] ??
+      flat.until?.[0] ??
       parsed.error.issues.find((i) => i.path.join(".") === "type")?.message ??
       parsed.error.issues[0]?.message ??
       parsed.error.message;
