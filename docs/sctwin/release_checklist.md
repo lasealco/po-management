@@ -26,6 +26,7 @@ Use this checklist for predictable Twin releases and handoffs. Keep commands sec
 ## 3) Release verification gates
 
 - Use the canonical command map in `docs/sctwin/runbook.md` to avoid drift.
+- Pre-release gate (recommended before merge): `npm run verify:sctwin:prerelease`
 - Minimum release gate: `npm run verify:sctwin:full`
 - Optional runtime smoke: `npm run smoke:sctwin:e2e`
 
