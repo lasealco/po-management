@@ -4,6 +4,7 @@ export type ApiHubIngestionRunDto = {
   requestedByUserId: string;
   idempotencyKey: string | null;
   status: string;
+  triggerKind: string;
   attempt: number;
   maxAttempts: number;
   resultSummary: string | null;
@@ -23,6 +24,7 @@ type Row = {
   requestedByUserId: string;
   idempotencyKey: string | null;
   status: string;
+  triggerKind?: string;
   attempt: number;
   maxAttempts: number;
   resultSummary: string | null;
@@ -43,6 +45,7 @@ export function toApiHubIngestionRunDto(row: Row): ApiHubIngestionRunDto {
     requestedByUserId: row.requestedByUserId,
     idempotencyKey: row.idempotencyKey,
     status: row.status,
+    triggerKind: row.triggerKind ?? "api",
     attempt: row.attempt,
     maxAttempts: row.maxAttempts,
     resultSummary: row.resultSummary,

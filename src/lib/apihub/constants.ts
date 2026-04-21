@@ -53,3 +53,6 @@ export type ApiHubIngestionJobStatus = (typeof APIHUB_INGESTION_JOB_STATUSES)[nu
 /** Ingestion trigger labels for job provenance. */
 export const APIHUB_INGESTION_TRIGGER_KINDS = ["manual", "api", "scheduled"] as const;
 export type ApiHubIngestionTriggerKind = (typeof APIHUB_INGESTION_TRIGGER_KINDS)[number];
+
+/** Inclusive upper bound for `attempt` in `attemptRange` list filter (`min-max` or single digit). */
+export const APIHUB_INGESTION_ATTEMPT_RANGE_MAX = 99;

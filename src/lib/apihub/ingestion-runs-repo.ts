@@ -9,6 +9,7 @@ export type ApiHubIngestionRunRow = {
   requestedByUserId: string;
   idempotencyKey: string | null;
   status: string;
+  triggerKind: string;
   attempt: number;
   maxAttempts: number;
   resultSummary: string | null;
@@ -28,6 +29,7 @@ const RUN_SELECT = {
   requestedByUserId: true,
   idempotencyKey: true,
   status: true,
+  triggerKind: true,
   attempt: true,
   maxAttempts: true,
   resultSummary: true,
@@ -53,12 +55,20 @@ export async function listApiHubIngestionRuns(opts: {
   limit: number;
   /** Keyset position (exclusive): rows older than this `(createdAt, id)` pair in `desc` order. */
   cursor?: { createdAt: Date; id: string } | null;
+  connectorId?: string | null;
+  triggerKind?: string | null;
+  attemptRange?: { min: number; max: number } | null;
 }): Promise<ListApiHubIngestionRunsResult> {
   const take = opts.limit + 1;
   const rows = await prisma.apiHubIngestionRun.findMany({
     where: {
       tenantId: opts.tenantId,
       ...(opts.status ? { status: opts.status } : {}),
+      ...(opts.connectorId ? { connectorId: opts.connectorId } : {}),
+      ...(opts.triggerKind ? { triggerKind: opts.triggerKind } : {}),
+      ...(opts.attemptRange
+        ? { attempt: { gte: opts.attemptRange.min, lte: opts.attemptRange.max } }
+        : {}),
       ...(opts.cursor
         ? {
             OR: [
@@ -200,6 +210,7 @@ export async function retryApiHubIngestionRun(opts: {
         requestedByUserId: opts.actorUserId,
         idempotencyKey: opts.idempotencyKey,
         status: "queued",
+        triggerKind: "api",
         attempt: base.attempt + 1,
         maxAttempts: base.maxAttempts,
         retryOfRunId: base.id,

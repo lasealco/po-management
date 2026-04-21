@@ -142,6 +142,8 @@ model ApiHubIngestionRun {
   requestedByUserId String
   idempotencyKey    String?
   status            String   @default("queued")
+  /// How the run was triggered (`manual` | `api` | `scheduled`); list filter in Slice 22.
+  triggerKind       String   @default("api")
   attempt           Int      @default(1)
   maxAttempts       Int      @default(3)
   resultSummary     String?
