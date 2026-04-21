@@ -29,7 +29,7 @@ describe("Supply Chain Twin readiness route contract", () => {
     });
 
     const { GET } = await import("./route");
-    const response = await GET();
+    const response = await GET(new Request("http://localhost/api/supply-chain-twin/readiness"));
 
     expect(response.status).toBe(403);
     const body = await response.json();
@@ -50,7 +50,7 @@ describe("Supply Chain Twin readiness route contract", () => {
     });
 
     const { GET } = await import("./route");
-    const response = await GET();
+    const response = await GET(new Request("http://localhost/api/supply-chain-twin/readiness"));
 
     expect(response.status).toBe(403);
   });
@@ -66,18 +66,37 @@ describe("Supply Chain Twin readiness route contract", () => {
       setupIncomplete: false,
       poSubNavVisibility: {},
     });
-    getSupplyChainTwinReadinessSnapshotMock.mockReturnValue({
+    getSupplyChainTwinReadinessSnapshotMock.mockResolvedValue({
       ok: false,
       reasons: ["Twin datastore not migrated"],
     });
 
     const { GET } = await import("./route");
-    const response = await GET();
+    const response = await GET(new Request("http://localhost/api/supply-chain-twin/readiness"));
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
       ok: false,
       reasons: ["Twin datastore not migrated"],
     });
+  });
+
+  it("passes refresh=true to bypass readiness cache", async () => {
+    getViewerGrantSetMock.mockResolvedValue({
+      tenant: { id: "t1", name: "Demo", slug: "demo-company" },
+      user: { id: "u1", email: "x@y.com", name: "X" },
+      grantSet: new Set(),
+    });
+    resolveNavStateMock.mockResolvedValue({
+      linkVisibility: { supplyChainTwin: true },
+      setupIncomplete: false,
+      poSubNavVisibility: {},
+    });
+    getSupplyChainTwinReadinessSnapshotMock.mockResolvedValue({ ok: true, reasons: [] });
+
+    const { GET } = await import("./route");
+    await GET(new Request("http://localhost/api/supply-chain-twin/readiness?refresh=true"));
+
+    expect(getSupplyChainTwinReadinessSnapshotMock).toHaveBeenCalledWith({ bypassCache: true });
   });
 });

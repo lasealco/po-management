@@ -11,9 +11,9 @@ const ROUTE = "GET /api/supply-chain-twin/readiness";
 
 /**
  * JSON contract: `{ ok, reasons }`. Same visibility as the Twin preview (cross-module demo grants).
- * Reasons are operator-facing strings only (no PII).
+ * Reasons are operator-facing strings only (no PII). `?refresh=1` bypasses the short readiness cache.
  */
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const access = await getViewerGrantSet();
     if (!access?.user) {
@@ -37,7 +37,11 @@ export async function GET() {
       );
     }
 
-    const readiness = getSupplyChainTwinReadinessSnapshot();
+    const url = new URL(request.url);
+    const bypassCache =
+      url.searchParams.get("refresh") === "1" || url.searchParams.get("refresh") === "true";
+
+    const readiness = await getSupplyChainTwinReadinessSnapshot({ bypassCache });
     return NextResponse.json(readiness);
   } catch (caught) {
     const name = caught instanceof Error ? caught.name : "non_error_throw";
