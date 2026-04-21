@@ -13,6 +13,7 @@ import { getViewerGrantSet } from "@/lib/authz";
 import { ConnectorsSection } from "./connectors-section";
 import { DemoSyncShowcase } from "./demo-sync-showcase";
 import { IngestionOpsPanel, type IngestionOpsSummaryPayload } from "./ingestion-ops-panel";
+import { MappingPreviewExportPanel } from "./mapping-preview-export-panel";
 import { MappingTemplatesSection } from "./mapping-templates-section";
 
 export const dynamic = "force-dynamic";
@@ -154,6 +155,7 @@ export default async function ApihubHomePage() {
         initialRuns={ingestionInitialRuns}
       />
       <MappingTemplatesSection initialTemplates={initialMappingTemplates} canManage={canCreate} />
+      <MappingPreviewExportPanel canUse={canCreate} />
       <ConnectorsSection initialConnectors={initialConnectors} canCreate={canCreate} />
     </main>
   );

@@ -18,6 +18,9 @@ export function ApihubHeader() {
           <Link href="/apihub#mapping-templates" className="font-medium text-zinc-600 hover:text-zinc-900">
             Mapping templates
           </Link>
+          <Link href="/apihub#mapping-preview-export" className="font-medium text-zinc-600 hover:text-zinc-900">
+            Preview export
+          </Link>
           <Link href="/apihub#connectors" className="font-medium text-zinc-600 hover:text-zinc-900">
             Connectors
           </Link>
