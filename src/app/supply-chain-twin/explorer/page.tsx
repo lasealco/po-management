@@ -55,16 +55,30 @@ export default async function SupplyChainTwinExplorerPage({
           <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Entity explorer</h1>
           <TwinEventsExportAction />
         </div>
-        <p className="mt-2 max-w-2xl text-sm text-zinc-600">
-          Entity rows are loaded from <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">GET /api/supply-chain-twin/entities</code>{" "}
-          (same contract as the overview catalog). Filters below are placeholders except search, which sets query{" "}
-          <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">q</code>. Add{" "}
-          <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">{`?focus=<snapshot-id>`}</code> to bookmark a catalog
-          snapshot: the graph loads incident edges and the matching table row is highlighted when it appears in the current
-          page. Legacy <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">snapshot=</code> is still accepted if{" "}
-          <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">focus</code> is absent or invalid. If both are valid,{" "}
-          <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">focus</code> wins for the graph.
-        </p>
+        <div className="mt-2 max-w-2xl space-y-2 text-sm text-zinc-600">
+          <p>
+            Browse entity snapshots for this workspace. Use <span className="font-medium text-zinc-800">Search</span>{" "}
+            to narrow the list. Pick a row to open the detail view; the graph below shows related nodes when a row is in
+            focus.
+          </p>
+          <p className="text-xs text-zinc-500">
+            More filters (kind, date range) are on the roadmap — only search is active in this preview.
+          </p>
+          <details className="rounded-lg border border-zinc-200 bg-zinc-50/80 px-3 py-2 text-xs text-zinc-600">
+            <summary className="cursor-pointer font-medium text-zinc-700">Sharing links &amp; technical notes</summary>
+            <p className="mt-2">
+              Shared URLs can include <code className="rounded bg-white px-1 py-0.5 font-mono text-[11px]">?focus=…</code>{" "}
+              (internal snapshot id) so the graph opens on that entity and the matching table row is highlighted when it
+              appears on the page. An older{" "}
+              <code className="rounded bg-white px-1 py-0.5 font-mono text-[11px]">snapshot=</code> parameter still
+              works if <code className="rounded bg-white px-1 py-0.5 font-mono text-[11px]">focus</code> is missing or
+              invalid; when both are valid, <code className="rounded bg-white px-1 py-0.5 font-mono text-[11px]">focus</code>{" "}
+              controls the graph. Data loads from the same catalog API as the Twin overview (
+              <code className="rounded bg-white px-1 py-0.5 font-mono text-[11px]">GET /api/supply-chain-twin/entities</code>
+              ).
+            </p>
+          </details>
+        </div>
       </section>
 
       {explorerFocusError ? (
