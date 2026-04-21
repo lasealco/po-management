@@ -4,8 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import {
-  moduleSubNavLinkInactiveClass,
-  moduleSubNavShellClass,
+  moduleTertiarySubNavLinkInactiveClass,
+  moduleTertiarySubNavShellClass,
   subNavActiveClass,
 } from "@/lib/subnav-active-class";
 import {
@@ -67,7 +67,7 @@ export function TariffsSubNav() {
   const pathname = usePathname();
 
   return (
-    <div className={moduleSubNavShellClass}>
+    <div className={moduleTertiarySubNavShellClass}>
       <div className="mx-auto flex max-w-7xl flex-wrap gap-1 px-6 py-2.5">
         <span className="mr-2 self-center text-xs font-semibold uppercase tracking-wide text-[var(--arscmp-primary)]">
           Tariffs
@@ -78,7 +78,7 @@ export function TariffsSubNav() {
             <Link
               key={href}
               href={href}
-              className={active ? subNavActiveClass : moduleSubNavLinkInactiveClass}
+              className={active ? subNavActiveClass : moduleTertiarySubNavLinkInactiveClass}
             >
               {label}
             </Link>
