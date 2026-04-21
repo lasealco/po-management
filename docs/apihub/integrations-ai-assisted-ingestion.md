@@ -100,6 +100,8 @@ Exact Prisma names and relations are **P1+**; this table is the conceptual contr
 | **P3** | Deterministic apply to production paths (per scenario); idempotent API; wire to CT/PO/SO as agreed. |
 | **P4** | Hardening: conflict policy, match keys, naming, SLAs, operator training mode. |
 
+**Implementation note (2026-04):** The repository already ships **deterministic** mapping (preview + capped sampling, CSV/JSON **issue export**, **template** persistence + **audit**, **rule diff** API, and ingestion **apply** with conflict responses) plus `/apihub` UI for templates, diff, and export. Treat the table above as the **product phase** roadmap; for **what exists in code today**, prefer [`README.md`](./README.md) and [`GAP_MAP.md`](./GAP_MAP.md).
+
 ---
 
 ## 9. Open decisions (need product / Alex)

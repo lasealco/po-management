@@ -53,6 +53,11 @@ This runbook defines the repeatable workflow for docs-only API Hub updates. Use 
 - Consistency check:
   - README, full spec, and GAP_MAP do not contradict each other.
   - Phase labels (P0-P4) match across docs.
+- **Mapping / ingestion API index:** when shipping or renaming **mapping preview**, **template**, **diff**, or **export** routes, update the **“Mapping contract (shipped)”** section in `README.md` and the gap rows in `GAP_MAP.md` in the same PR (or a fast-follow docs PR).
+
+## Runtime + docs alignment (maintainers)
+
+If code under `src/app/api/apihub/**` or `src/lib/apihub/**` changes public contracts, refresh `README.md` (endpoint table + body field notes) even when the issue is not “docs-only.” Slice 40 established that table as the operator-facing source of truth alongside `GAP_MAP.md`.
 - Scope check:
   - Diff only includes allowed docs paths for docs-only issues.
 

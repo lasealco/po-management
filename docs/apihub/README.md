@@ -15,9 +15,49 @@ This folder is the **documentation home** for **integration / ingestion APIs and
 
 ## In-app entry (P0+)
 
-- Authenticated demo session: **`/apihub`** — workflow placeholders + **Connectors** registry (Phase 1 stub list with health + last-sync display; see [GAP_MAP](./GAP_MAP.md)).
+- Authenticated demo session: **`/apihub`** — workflow placeholders, **Connectors**, **mapping templates** (list / create / edit / delete + diff + preview export panels), and ingestion ops summary (see [GAP_MAP](./GAP_MAP.md)).
 - **Health stub:** `GET /api/apihub/health` — JSON `{ ok, service, phase }` for discovery and deploy checks (no auth).
 - **Connector registry (Phase 2 slice):** `GET` / `POST` **`/api/apihub/connectors`** + `PATCH` **`/api/apihub/connectors/:id`** — demo tenant + active demo actor; supports status updates, optional `lastSyncAt` stamp, and lightweight audit rows (no secrets).
+
+## Mapping contract (shipped)
+
+All mapping routes below require the **demo tenant** and an **active demo actor** (same session gates as connectors). Request id: optional `x-request-id` or `x-correlation-id` (validated pattern; echoed as `x-request-id` on responses).
+
+### Preview (per ingestion run)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `POST` | `/api/apihub/ingestion-jobs/:jobId/mapping-preview` | Dry-run `records` + `rules[]` against the mapping engine; optional `sampleSize` (capped) and `sampling` metadata in the JSON body. |
+| `POST` | `/api/apihub/ingestion-jobs/:jobId/mapping-preview/export` | Same body as preview plus required **`format`**: `json` (full report: sampling + per-record `mapped` + `issues`) or `csv` (one row per issue; RFC4180-style escaping). Returns `Content-Disposition: attachment`. |
+
+**Rules shape:** each rule is an object with `sourcePath`, `targetField`, optional `transform` (`identity` \| `trim` \| `upper` \| `lower` \| `number` \| `iso_date` \| `boolean` \| `currency`), optional `required` boolean. Cross-rule validation (duplicate `targetField`, invalid path syntax) runs on the server.
+
+### Templates (tenant-scoped)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/api/apihub/mapping-templates` | List templates; `limit` query (1–100, default 20). |
+| `POST` | `/api/apihub/mapping-templates` | Create: `name`, optional `description`, `rules[]` (max count enforced). Writes an audit row `mapping_template_created`. |
+| `GET` | `/api/apihub/mapping-templates/:templateId` | Read one template. |
+| `PATCH` | `/api/apihub/mapping-templates/:templateId` | Partial update (`name` / `description` / `rules`); optional `note` stored on audit only. |
+| `DELETE` | `/api/apihub/mapping-templates/:templateId` | Deletes row after audit `mapping_template_deleted`. |
+| `GET` | `/api/apihub/mapping-templates/:templateId/audit` | Paginated audit (`limit`, `page`); `templateId` is not FK-bound so history survives delete. |
+
+**Prisma:** `ApiHubMappingTemplate`, `ApiHubMappingTemplateAuditLog` (migrations under `prisma/migrations/`).
+
+### Rule diff (no run context)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `POST` | `/api/apihub/mapping-diff` | Body: `baselineRules[]`, `compareRules[]` (same rule validation as preview). Response: `{ diff: { summary, added, removed, changed, unchanged } }` keyed by `targetField`. |
+
+### Apply (ingestion run)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `POST` | `/api/apihub/ingestion-jobs/:jobId/apply` | Marks apply outcome for a **succeeded** run (conflict codes for not succeeded / already applied / blocked — see repo tests and `ingestion-apply-repo`). |
+
+Validation errors use the shared **`VALIDATION_ERROR`** envelope with `details.issues` and `details.summary` (including `bySeverity` where applicable).
 
 ## Related material elsewhere
 

@@ -2,24 +2,27 @@
 
 **Legend:** ✅ shipped · 🟡 partial / stub · ❌ not started
 
-**Last updated:** 2026-04-20 (Phase 2 connector lifecycle + audit trail slice)
+**Last updated:** 2026-04-22 (mapping templates, preview export, diff, README contract sync)
 
 | Area | Repo reality | Notes |
 |------|--------------|--------|
-| Docs home | ✅ `docs/apihub/README.md`, specs | Cross-linked README + spec |
-| Docs runbook | ✅ `docs/apihub/RUNBOOK.md` | Docs-only workflow/checklist for API Hub issues |
-| Ingestion spec | 🟡 `integrations-ai-assisted-ingestion.md` | Draft; evolves with P0–P4 |
-| App route `/apihub` | ✅ `src/app/apihub/**` | Shell + **Connectors** section (DB-backed list); demo session required |
+| Docs home | ✅ `docs/apihub/README.md`, specs | README includes **mapping API** table (preview, export, templates, diff, apply) |
+| Docs runbook | ✅ `docs/apihub/RUNBOOK.md` | Docs-only workflow; points to README for live endpoint index |
+| Ingestion spec | 🟡 `integrations-ai-assisted-ingestion.md` | Draft; phased table has footnote vs shipped deterministic mapping |
+| App route `/apihub` | ✅ `src/app/apihub/**` | Connectors + **mapping templates** UI + **diff** + **preview export**; demo session required |
 | Health / discovery API | ✅ `GET /api/apihub/health` | `{ ok, service, phase }`; no secrets |
-| Prisma: **connector registry** | 🟡 `ApiHubConnector` + `ApiHubConnectorAuditLog`; `GET/POST /api/apihub/connectors`; `PATCH /api/apihub/connectors/:id` | Status updates + optional sync timestamp + lightweight audit rows; still no secrets / OAuth / workers |
-| Prisma: template / batch / staging | ❌ | P1+ (remaining spec tables) |
-| AI job + mapping editor | ❌ | P2 |
-| Deterministic apply + idempotent API | ❌ | P3 |
+| Prisma: **connector registry** | ✅ `ApiHubConnector` + `ApiHubConnectorAuditLog`; `GET/POST /api/apihub/connectors`; `PATCH /api/apihub/connectors/:id` | Status + sync stamp + audit; no secrets / OAuth / workers |
+| Prisma: **mapping templates** | ✅ `ApiHubMappingTemplate` + `ApiHubMappingTemplateAuditLog` | Full CRUD + list audit APIs; migrations `20260422160000_*`, `20260422170000_*` |
+| Prisma: batch / staging tables | ❌ | Spec “batch + staging” tables still future (rules live on templates + preview payloads) |
+| Mapping engine + preview | ✅ `src/lib/apihub/mapping-engine.ts`, `mapping-preview-run.ts` | `POST …/mapping-preview` + **export** (`json` \| `csv`); `sampleSize` cap |
+| Rule diff API | ✅ `POST /api/apihub/mapping-diff` | Keyed by `targetField`; used from `/apihub` |
+| AI analysis job pipeline | ❌ | P2+ (async job + LLM proposals not wired) |
+| Deterministic **apply** API | 🟡 `POST /api/apihub/ingestion-jobs/:id/apply` | Run lifecycle + conflict codes shipped; downstream CT/PO/SO wiring still scenario-specific |
 
 ## Near-term build order
 
 1. P0 — shell + health + docs links (see meeting-batch issue).
-2. P1 — **connector registry** (this slice) + further CRUD stubs for template/batch as follow-ups.
-3. P2 — jobs + editor + staging preview.
-4. P3 — production apply + CT/PO/SO wiring per scenario.
+2. P1 — **connector registry** + **mapping templates** (DB + API + `/apihub` manager) — largely shipped; **batch/staging** Prisma still open.
+3. P2 — async analysis job + richer editor; **preview / diff / export** already support operators today.
+4. P3 — extend **apply** to production paths per scenario + idempotency hardening as needed.
 5. P4 — conflicts, match keys, hardening.
