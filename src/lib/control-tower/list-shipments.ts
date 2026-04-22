@@ -1227,7 +1227,17 @@ export async function listControlTowerShipments(params: {
         { destinationLabel: contains },
         { equipmentSummary: contains },
         { cargoDescription: contains },
+        {
+          owner: {
+            is: {
+              OR: [{ name: contains }, { email: contains }],
+            },
+          },
+        },
       ],
+    };
+    const quoteRecipientTextMatch: Prisma.QuoteRequestRecipientWhereInput = {
+      OR: [{ displayName: contains }, { contactEmail: contains }],
     };
     const quoteClarificationTextMatch: Prisma.QuoteClarificationMessageWhereInput = {
       OR: [
@@ -1378,6 +1388,7 @@ export async function listControlTowerShipments(params: {
         ...shipmentWhereForPartyQuoteRecipients({
           quoteRequest: { is: quoteRequestTextMatch },
         }),
+        ...shipmentWhereForPartyQuoteRecipients(quoteRecipientTextMatch),
         ...shipmentWhereForPartyQuoteRecipients(quoteRecipientClarificationPredicate),
         ...shipmentWhereForPartyQuoteRecipients({
           response: { is: quoteResponseHeaderTextMatch },

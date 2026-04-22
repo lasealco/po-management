@@ -202,6 +202,7 @@ describe("listControlTowerShipments", () => {
     expect(dumped).toContain("lineType");
     expect(dumped).toContain("originLabel");
     expect(dumped).toContain("reviewNotes");
+    expect(dumped).toContain("displayName");
     expect(dumped).toContain("supplierOffice");
     expect(dumped).toContain("productSuppliers");
     expect(dumped).toContain("outboundOrderLines");
