@@ -9,6 +9,7 @@ import {
   subNavActiveClass,
 } from "@/lib/subnav-active-class";
 import {
+  TARIFFS_MODULE_BASE_PATH,
   TARIFF_CHARGE_CODES_PATH,
   TARIFF_CONTRACTS_DIRECTORY_PATH,
   TARIFF_GEOGRAPHY_PATH,
@@ -20,7 +21,16 @@ import {
   tariffLaneRatingPath,
 } from "@/lib/tariff/tariff-workbench-urls";
 
+function isTariffsOverviewPath(pathname: string): boolean {
+  return pathname === TARIFFS_MODULE_BASE_PATH || pathname === `${TARIFFS_MODULE_BASE_PATH}/`;
+}
+
 const items: { href: string; label: string; isActive: (pathname: string) => boolean }[] = [
+  {
+    href: TARIFFS_MODULE_BASE_PATH,
+    label: "Overview",
+    isActive: (pathname) => isTariffsOverviewPath(pathname),
+  },
   {
     href: TARIFF_RATE_LOOKUP_PATH,
     label: "Rate lookup",

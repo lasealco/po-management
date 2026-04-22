@@ -1,5 +1,5 @@
 import type { AppNavLinkVisibility } from "@/lib/nav-visibility";
-import { TARIFF_CONTRACTS_DIRECTORY_PATH, TARIFFS_MODULE_BASE_PATH } from "@/lib/tariff/tariff-workbench-urls";
+import { TARIFFS_MODULE_BASE_PATH } from "@/lib/tariff/tariff-workbench-urls";
 
 export const RATES_AUDIT_NAV_LABEL = "Rates & Audit";
 
@@ -8,7 +8,7 @@ export const ratesAuditSubNavItems: Array<{
   label: string;
   href: string;
 }> = [
-  { key: "tariffs", label: "Tariffs", href: TARIFF_CONTRACTS_DIRECTORY_PATH },
+  { key: "tariffs", label: "Tariffs", href: TARIFFS_MODULE_BASE_PATH },
   { key: "pricingSnapshots", label: "Pricing snapshots", href: "/pricing-snapshots" },
   { key: "invoiceAudit", label: "Invoice audit", href: "/invoice-audit" },
   { key: "rfq", label: "RFQ", href: "/rfq/requests" },
@@ -28,10 +28,10 @@ export function ratesAuditTopNavHref(
   linkVisibility: AppNavLinkVisibility | undefined,
   setupIncomplete: boolean,
 ): string {
-  if (setupIncomplete || !linkVisibility) return TARIFF_CONTRACTS_DIRECTORY_PATH;
-  if (linkVisibility.tariffs) return TARIFF_CONTRACTS_DIRECTORY_PATH;
+  if (setupIncomplete || !linkVisibility) return TARIFFS_MODULE_BASE_PATH;
+  if (linkVisibility.tariffs) return TARIFFS_MODULE_BASE_PATH;
   if (linkVisibility.rfq) return "/rfq/requests";
   if (linkVisibility.invoiceAudit) return "/invoice-audit";
   if (linkVisibility.pricingSnapshots) return "/pricing-snapshots";
-  return TARIFF_CONTRACTS_DIRECTORY_PATH;
+  return TARIFFS_MODULE_BASE_PATH;
 }

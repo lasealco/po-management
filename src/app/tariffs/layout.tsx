@@ -8,9 +8,11 @@ export default function TariffsLayout({ children }: { children: React.ReactNode 
   return (
     <TariffsGate>
       <div className="min-h-screen bg-zinc-50">
-        <Suspense fallback={<div className="h-10 border-b border-zinc-200 bg-white" />}>
-          <TariffsSubNav />
-        </Suspense>
+        <header className="bg-white">
+          <Suspense fallback={<div className="h-10" />}>
+            <TariffsSubNav />
+          </Suspense>
+        </header>
         {children}
       </div>
     </TariffsGate>

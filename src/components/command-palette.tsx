@@ -9,6 +9,7 @@ import { REPORTING_HUB_CONTROL_TOWER_HREF } from "@/lib/reporting-hub-paths";
 import {
   TARIFF_CHARGE_CODES_PATH,
   TARIFF_CONTRACTS_DIRECTORY_PATH,
+  TARIFFS_MODULE_BASE_PATH,
   TARIFF_GEOGRAPHY_NEW_PATH,
   TARIFF_GEOGRAPHY_PATH,
   TARIFF_IMPORT_NEW_PATH,
@@ -279,6 +280,13 @@ export function CommandPalette({ grants }: { grants: CommandPaletteGrants }) {
 
     if (grants.tariffs) {
       list.push(
+        {
+          id: "tariffs-overview",
+          label: "Tariffs — overview",
+          hint: "Workbench home: steps and links to every area",
+          searchText: "tariff home rates workbench overview landing",
+          action: go(TARIFFS_MODULE_BASE_PATH),
+        },
         {
           id: "tariffs-rate-lookup",
           label: "Tariffs — rate lookup",
