@@ -3,6 +3,12 @@ import { createHash } from "node:crypto";
 import { APIHUB_MAPPING_ANALYSIS_ENGINE_OPENAI } from "@/lib/apihub/constants";
 import type { ApiHubMappingRule } from "@/lib/apihub/mapping-engine";
 
+/**
+ * Increment when system prompt, user payload shape, or schema constraints change (invalidates prior LLM baselines).
+ * Included in the JSON sent to the model so fingerprints reflect prompt generation.
+ */
+export const APIHUB_MAPPING_ANALYSIS_LLM_PROMPT_VERSION = "2026-04-22-p1" as const;
+
 const REDACT_KEY = /(secret|password|token|apikey|api_key|authorization|credential)/i;
 
 function redactForLlm(value: unknown, depth: number): unknown {
@@ -106,10 +112,11 @@ export async function proposeApiHubMappingWithOpenAi(input: {
 
   const sample = input.records.slice(0, 18).map((r) => redactForLlm(r, 0));
   const payload = {
+    promptVersion: APIHUB_MAPPING_ANALYSIS_LLM_PROMPT_VERSION,
     records: sample,
     targetFieldHints: input.targetFields ?? [],
     instructions:
-      "Propose field mapping rules. Use JSON sourcePath syntax compatible with dotted paths and numeric array indices (e.g. shipment.id or items[0].sku). Do not invent values; only map paths. Prefer concise targetField names (snake_case). If unsure about transform, use identity.",
+      "Propose field mapping rules. Use JSON sourcePath syntax compatible with dotted paths and numeric array indices (e.g. shipment.id or items[0].sku). Do not invent values; only map paths. Prefer concise targetField names (snake_case). Prefer transform `currency` for money strings with symbols or thousands commas; `number` for plain decimals; `iso_date` for ISO-like dates; `boolean` for yes/no. If unsure, use identity.",
   };
   const userJson = JSON.stringify(payload);
   if (userJson.length > 14_000) {

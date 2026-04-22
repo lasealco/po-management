@@ -116,8 +116,8 @@ export const APIHUB_MAPPING_ANALYSIS_NOTE_MAX = 500;
 /** Max target-field hints on create. */
 export const APIHUB_MAPPING_ANALYSIS_TARGET_FIELDS_MAX = 120;
 
-/** Engine id for deterministic proposals (no LLM). */
-export const APIHUB_MAPPING_ANALYSIS_ENGINE_HEURISTIC = "deterministic_heuristic_v1" as const;
+/** Engine id for deterministic proposals (no LLM). Bump when heuristic rules change materially (P2). */
+export const APIHUB_MAPPING_ANALYSIS_ENGINE_HEURISTIC = "deterministic_heuristic_v2" as const;
 
 /** Engine id when OpenAI structured JSON is used successfully. */
 export const APIHUB_MAPPING_ANALYSIS_ENGINE_OPENAI = "openai_structured_json_v1" as const;

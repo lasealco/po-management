@@ -3,7 +3,11 @@ import {
   APIHUB_MAPPING_TEMPLATE_RULES_MAX_COUNT,
 } from "@/lib/apihub/constants";
 import type { ApiHubMappingRule, ApiHubMappingTransform } from "@/lib/apihub/mapping-engine";
-import { getApiHubMappingPathValue, validateApiHubMappingSourcePathSyntax } from "@/lib/apihub/mapping-engine";
+import {
+  getApiHubMappingPathValue,
+  tryParseApiHubCurrencyAmount,
+  validateApiHubMappingSourcePathSyntax,
+} from "@/lib/apihub/mapping-engine";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?)?$/;
 
@@ -71,6 +75,24 @@ function inferTransform(samples: unknown[]): { transform?: ApiHubMappingTransfor
     )
   ) {
     return { transform: "boolean", notes };
+  }
+
+  const allParseAsCurrency = defined.every((s) => tryParseApiHubCurrencyAmount(s) !== null);
+  if (allParseAsCurrency) {
+    const anyDecorative = defined.some((s) => {
+      if (typeof s === "number") {
+        return false;
+      }
+      if (typeof s !== "string") {
+        return false;
+      }
+      const t = s.trim();
+      return /[\$€£¥]/.test(t) || /,/.test(t);
+    });
+    if (anyDecorative) {
+      notes.push("Inferred currency transform from formatted amounts (symbols or thousands separators).");
+      return { transform: "currency", notes };
+    }
   }
 
   if (

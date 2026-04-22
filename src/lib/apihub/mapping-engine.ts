@@ -218,6 +218,12 @@ function parseCurrencyDeterministic(value: unknown): { value: number } | { issue
   return { value: n };
 }
 
+/** Shared by mapping-analysis heuristic when inferring `currency` vs `number`. */
+export function tryParseApiHubCurrencyAmount(value: unknown): number | null {
+  const r = parseCurrencyDeterministic(value);
+  return "issue" in r ? null : r.value;
+}
+
 export function getApiHubMappingPathValue(input: unknown, sourcePath: string): unknown {
   const tokens = tokenizePath(sourcePath);
   let current: unknown = input;

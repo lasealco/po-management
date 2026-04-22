@@ -3,9 +3,23 @@ import { describe, expect, it } from "vitest";
 import {
   applyApiHubMappingRules,
   applyApiHubMappingRulesBatch,
+  tryParseApiHubCurrencyAmount,
   validateApiHubMappingRulesInput,
   validateApiHubMappingSourcePathSyntax,
 } from "./mapping-engine";
+
+describe("tryParseApiHubCurrencyAmount", () => {
+  it("parses symbols and grouping like apply currency", () => {
+    expect(tryParseApiHubCurrencyAmount("$1,234.50")).toBe(1234.5);
+    expect(tryParseApiHubCurrencyAmount("€ 10")).toBe(10);
+    expect(tryParseApiHubCurrencyAmount(42)).toBe(42);
+  });
+
+  it("returns null for non-amounts", () => {
+    expect(tryParseApiHubCurrencyAmount("nope")).toBeNull();
+    expect(tryParseApiHubCurrencyAmount("")).toBeNull();
+  });
+});
 
 describe("applyApiHubMappingRules", () => {
   it("maps nested source paths with deterministic transforms", () => {
