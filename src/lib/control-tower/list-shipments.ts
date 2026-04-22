@@ -455,7 +455,17 @@ export async function listControlTowerShipments(params: {
         {
           wave: {
             is: {
-              OR: [{ waveNo: contains }, { note: contains }],
+              OR: [
+                { waveNo: contains },
+                { note: contains },
+                {
+                  createdBy: {
+                    is: {
+                      OR: [{ name: contains }, { email: contains }],
+                    },
+                  },
+                },
+              ],
             },
           },
         },
@@ -468,6 +478,13 @@ export async function listControlTowerShipments(params: {
                 { rackCode: contains },
                 { aisle: contains },
                 { bay: contains },
+                {
+                  zone: {
+                    is: {
+                      OR: [{ code: contains }, { name: contains }],
+                    },
+                  },
+                },
               ],
             },
           },
@@ -517,6 +534,28 @@ export async function listControlTowerShipments(params: {
                           owner: {
                             is: {
                               OR: [{ name: contains }, { email: contains }],
+                            },
+                          },
+                        },
+                        {
+                          contacts: {
+                            some: {
+                              OR: [
+                                { firstName: contains },
+                                { lastName: contains },
+                                { email: contains },
+                                { phone: contains },
+                                { title: contains },
+                                { department: contains },
+                                { decisionRole: contains },
+                                {
+                                  owner: {
+                                    is: {
+                                      OR: [{ name: contains }, { email: contains }],
+                                    },
+                                  },
+                                },
+                              ],
                             },
                           },
                         },
@@ -776,6 +815,28 @@ export async function listControlTowerShipments(params: {
                     },
                   },
                 },
+                {
+                  contacts: {
+                    some: {
+                      OR: [
+                        { firstName: contains },
+                        { lastName: contains },
+                        { email: contains },
+                        { phone: contains },
+                        { title: contains },
+                        { department: contains },
+                        { decisionRole: contains },
+                        {
+                          owner: {
+                            is: {
+                              OR: [{ name: contains }, { email: contains }],
+                            },
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
               ],
             },
           },
@@ -920,16 +981,7 @@ export async function listControlTowerShipments(params: {
                 { currency: contains },
                 {
                   vendorSupplier: {
-                    is: {
-                      OR: [
-                        { name: contains },
-                        { code: contains },
-                        { legalName: contains },
-                        { email: contains },
-                        { phone: contains },
-                        { taxId: contains },
-                      ],
-                    },
+                    is: supplierPartyMatch,
                   },
                 },
                 {
@@ -953,6 +1005,22 @@ export async function listControlTowerShipments(params: {
                 { status: contains },
                 { notes: contains },
                 { cargoLines: { some: { notes: contains } } },
+              ],
+            },
+          },
+        },
+        {
+          ctFinancialSnapshots: {
+            some: {
+              OR: [
+                { currency: contains },
+                {
+                  createdBy: {
+                    is: {
+                      OR: [{ name: contains }, { email: contains }],
+                    },
+                  },
+                },
               ],
             },
           },

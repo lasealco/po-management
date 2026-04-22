@@ -213,6 +213,9 @@ describe("listControlTowerShipments", () => {
     expect(dumped).toContain("splitChildren");
     expect(dumped).toContain("waveNo");
     expect(dumped).toContain("rackCode");
+    expect(dumped).toContain('"zone"');
+    expect(dumped).toContain("ctFinancialSnapshots");
+    expect(dumped).toContain("decisionRole");
     expect(dumped).toContain("containerCargoLines");
     expect(dumped).toContain("tradingName");
     expect(dumped).toContain("legalEntity");
