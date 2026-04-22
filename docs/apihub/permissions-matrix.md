@@ -10,7 +10,7 @@ This document matches **current route handlers** under `src/app/api/apihub/**` (
 |------|------------------|
 | **Public** | No `getDemoTenant()` / `getActorUserId()` in the handler; safe for unauthenticated discovery. |
 | **Demo tenant + actor** | Handler calls `getDemoTenant()` and `getActorUserId()` from `@/lib/demo-tenant` / `@/lib/authz`. Data is scoped to the resolved **demo tenant**; the **actor** is the active demo-session user (`getDemoActorEmail()` → `User` row for that tenant). |
-| **`org.apihub` + module grants** | Non-health routes use **`apiHubEnsureTenantActorGrants`**; staging apply enforces **`org.orders`** / **`org.controltower`** as documented in [README](./README.md). |
+| **`org.apihub` + module grants** | Non-health routes use **`apiHubEnsureTenantActorGrants`**; **`POST …/staging-batches/:id/apply`** and **`POST …/ingestion-jobs/:jobId/apply`** (when JSON **`target`** is `sales_order` / `purchase_order` / `control_tower_audit`) enforce **`org.orders`** / **`org.controltower`** **`edit`** per [README](./README.md). |
 
 ## Failure responses (demo tenant + actor)
 
@@ -49,7 +49,7 @@ Every other `route.ts` under `src/app/api/apihub/` resolves **demo tenant + acto
 | `POST` | `/api/apihub/ingestion-jobs/:jobId/retry` | Retry |
 | `POST` | `/api/apihub/ingestion-jobs/:jobId/mapping-preview` | Mapping preview |
 | `POST` | `/api/apihub/ingestion-jobs/:jobId/mapping-preview/export` | Preview export |
-| `POST` | `/api/apihub/ingestion-jobs/:jobId/apply` | Apply (incl. dry-run / idempotency) |
+| `POST` | `/api/apihub/ingestion-jobs/:jobId/apply` | Apply: marker-only **or** P3 downstream (`target` + optional `rows` / `resultSummary.rows`; module grants when `target` set) |
 | `POST` | `/api/apihub/ingestion-jobs/:jobId/apply/rollback` | Rollback stub |
 | `GET` | `/api/apihub/ingestion-apply-conflicts` | Apply conflict list |
 | `GET` | `/api/apihub/ingestion-alerts-summary` | Alerts summary |
@@ -69,7 +69,7 @@ Every other `route.ts` under `src/app/api/apihub/` resolves **demo tenant + acto
 
 | Surface | Gate | Notes |
 |---------|------|--------|
-| `/apihub` (layout content) | `ApihubGate` in `src/app/apihub/apihub-gate.tsx` | Uses `getViewerGrantSet()`; requires signed-in user + **`org.apihub` → view**. Page SSR uses **`org.apihub` → edit** for mutations (templates, connectors, analysis, staging, etc.) and module grants for staging apply. |
+| `/apihub` (layout content) | `ApihubGate` in `src/app/apihub/apihub-gate.tsx` | Uses `getViewerGrantSet()`; requires signed-in user + **`org.apihub` → view**. Page SSR uses **`org.apihub` → edit** for mutations (templates, connectors, analysis, staging, etc.) and module grants for **staging** and **ingestion** downstream apply targets (SO/PO/CT). |
 
 ## Code pointers
 

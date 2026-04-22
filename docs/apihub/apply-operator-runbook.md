@@ -12,8 +12,24 @@
 
 1. Confirm the run **`status`** is **`succeeded`** and the linked **connector** is **active** when a connector is attached (otherwise apply returns **409** with a stable `error.code`).
 2. **Optional — dry-run first** (see below) to confirm `writeSummary` and `targetSummary` without writing `appliedAt`.
-3. `POST /api/apihub/ingestion-jobs/:jobId/apply` with no `dryRun` flag.
-4. **200** body includes `applied: true`, `run` (DTO), and **`targetSummary`** `{ created, updated, skipped }`. Counts prefer JSON on the run’s `resultSummary` when present; otherwise defaults reflect the apply marker only until downstream wiring emits real counts.
+3. `POST /api/apihub/ingestion-jobs/:jobId/apply` with no `dryRun` flag (marker-only), **or** with P3 downstream payload (see next section).
+4. **200** body includes `applied: true`, `run` (DTO), and **`targetSummary`** `{ created, updated, skipped }`. With **marker-only** apply, counts prefer JSON on the run’s `resultSummary` when present; otherwise defaults reflect the apply marker. With **downstream** apply, counts and optional **`downstreamSummary`** reflect created SO/PO rows or CT audit rows.
+
+## P3 — downstream apply (SO / PO / Control Tower audit)
+
+Same mapped-row shapes as **staging batch apply**. Requires **`org.orders` → edit** for `sales_order` / `purchase_order` and **`org.controltower` → edit** for `control_tower_audit` (in addition to **`org.apihub` → edit**).
+
+**Body (JSON, optional fields):**
+
+- **`target`:** `sales_order` \| `purchase_order` \| `control_tower_audit`
+- **`rows`:** optional array of `{ "rowIndex"?, "mappedRecord" }`. If omitted, the server reads **`rows`** or **`applyRows`** from the run’s **`resultSummary`** string when it is JSON.
+- **`matchKey`:** optional `none` (default) or **`sales_order_external_ref`** — rejects when `externalRef` is set and a sales order already exists for the tenant.
+
+**Dry-run** with `target` returns **`writeSummary.downstreamPreview`** when validation passes (row-level dry results).
+
+**409 `APPLY_DOWNSTREAM_FAILED`:** missing/invalid rows, row validation failures, or DB apply errors (message in `error.message`).
+
+**Idempotency:** keys are still scoped to **tenant + key** and the **same** `jobId` + **`dryRun`** flag. Changing **`target`** or **`rows`** while reusing the same idempotency key can replay an earlier stored response — use a **new key** when the downstream shape changes.
 
 ## Dry-run (no `appliedAt` write)
 
@@ -37,8 +53,11 @@
 | `APPLY_BLOCKED_CONNECTOR_NOT_FOUND` | Run references a connector id that no longer exists. |
 | `APPLY_BLOCKED_CONNECTOR_NOT_ACTIVE` | Connector exists but is not `active`. |
 | `APPLY_IDEMPOTENCY_KEY_CONFLICT` | Idempotency key reuse across a different logical apply. |
+| `APPLY_DOWNSTREAM_FAILED` | P3 downstream apply: unresolved rows, invalid mapped rows, or transactional failure (see response `error.message`). |
 
 **404 `RUN_NOT_FOUND`:** no run for that tenant and id.
+
+**403 `FORBIDDEN`:** downstream `target` requires **`org.orders`** or **`org.controltower`** **`edit`** when not granted.
 
 ## Retry (failed runs)
 

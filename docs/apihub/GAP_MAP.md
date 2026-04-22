@@ -2,7 +2,7 @@
 
 **Legend:** ✅ shipped · 🟡 partial / stub · ❌ not started
 
-**Last updated:** 2026-04-22 — Permissions matrix reconciled to **27** `route.ts` handlers; **bounded JSON** bodies + [product-completion-v1.md](./product-completion-v1.md).
+**Last updated:** 2026-04-22 — **P3** ingestion downstream apply (SO/PO/CT); permissions matrix + [apply-operator-runbook](./apply-operator-runbook.md) aligned; bounded JSON + [product-completion-v1.md](./product-completion-v1.md).
 
 | Area | Repo reality | Notes |
 |------|--------------|--------|

@@ -38,6 +38,7 @@ APIHUB_SMOKE_BASE_URL="https://your-deployment.vercel.app" npm run smoke:apihub
 
 - [ ] **`smoke:apihub` exits 0** — checks `GET /api/apihub/health` (JSON) and `GET /apihub` (HTML shell).
 - [ ] Optional: manually hit **`/apihub`** with a demo session and spot-check **Connectors**, **Ingestion runs**, **Alerts**, **Apply conflicts** (see [apply-operator-runbook.md](./apply-operator-runbook.md)).
+- [ ] When P3 ingestion **downstream** apply is in scope: confirm **`POST …/ingestion-jobs/:id/apply`** with **`target`** + grants matches [README](./README.md) / [apply-operator-runbook](./apply-operator-runbook.md) (dry-run, **`APPLY_DOWNSTREAM_FAILED`**, idempotency note).
 
 Environment:
 

@@ -104,7 +104,7 @@ Carrier / forwarder sends **XML or flat file** first. Flow: **intent** (“creat
 | **P3** | Deterministic apply to production paths (per scenario); idempotent API; wire to CT/PO/SO as agreed. |
 | **P4** | Hardening: conflict policy, match keys, naming, SLAs, operator training mode. |
 
-**Implementation note (2026-04):** The repository ships deterministic mapping plus optional **OpenAI** structured proposals on analysis jobs, **persisted staging batches**, staging **apply** (sales order / purchase order / Control Tower audit) and **discard**, **`org.apihub`** RBAC, and **create mapping template from succeeded analysis job**. For **what exists in code today**, prefer [`README.md`](./README.md) and [`GAP_MAP.md`](./GAP_MAP.md).
+**Implementation note (2026-04):** The repository ships deterministic mapping plus optional **OpenAI** structured proposals on analysis jobs, **persisted staging batches**, staging **apply** (sales order / purchase order / Control Tower audit) and **discard**, **ingestion-run apply** with the same downstream targets when **`target`** is set (P3), **`org.apihub`** RBAC, and **create mapping template from succeeded analysis job**. For **what exists in code today**, prefer [`README.md`](./README.md) and [`GAP_MAP.md`](./GAP_MAP.md).
 
 ---
 

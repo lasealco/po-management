@@ -51,6 +51,44 @@ describe("POST /api/apihub/ingestion-jobs/:jobId/apply", () => {
     expect(response.status).toBe(404);
   });
 
+  it("returns 400 when rows are sent without target", async () => {
+    const { POST } = await import("./route");
+    const response = await POST(
+      new Request("http://localhost/api/apihub/ingestion-jobs/run-1/apply", {
+        method: "POST",
+        headers: {
+          [APIHUB_REQUEST_ID_HEADER]: "apply-rows-no-target",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ rows: [{ mappedRecord: { a: 1 } }] }),
+      }),
+      { params: Promise.resolve({ jobId: "run-1" }) },
+    );
+    expect(response.status).toBe(400);
+    expect(applyApiHubIngestionRunMock).not.toHaveBeenCalled();
+    const json = (await response.json()) as {
+      error?: { details?: { issues?: { code?: string }[] } };
+    };
+    expect(json.error?.details?.issues?.some((i) => i.code === "REQUIRES_TARGET")).toBe(true);
+  });
+
+  it("returns 400 when target enum is invalid", async () => {
+    const { POST } = await import("./route");
+    const response = await POST(
+      new Request("http://localhost/api/apihub/ingestion-jobs/run-1/apply", {
+        method: "POST",
+        headers: {
+          [APIHUB_REQUEST_ID_HEADER]: "apply-bad-target",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ target: "not_a_target" }),
+      }),
+      { params: Promise.resolve({ jobId: "run-1" }) },
+    );
+    expect(response.status).toBe(400);
+    expect(applyApiHubIngestionRunMock).not.toHaveBeenCalled();
+  });
+
   it("returns targetSummary from resultSummary JSON when present", async () => {
     applyApiHubIngestionRunMock.mockResolvedValue({
       kind: "applied",
