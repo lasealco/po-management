@@ -161,6 +161,21 @@ export default async function ApihubHomePage() {
           </div>
         </div>
 
+        <div className="mt-8 rounded-xl border border-zinc-200 bg-zinc-50/90 p-5 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Non-technical path</p>
+          <p className="mt-2 text-sm font-semibold text-zinc-900">Guided import from a forwarder file</p>
+          <p className="mt-2 max-w-2xl text-sm text-zinc-600">
+            Choose what the data is for (we do not guess), upload a sample JSON, CSV, or XML, confirm a quick keyword
+            check, then review mappings with confidence flags before saving a template or staging.
+          </p>
+          <Link
+            href="/apihub/import-assistant"
+            className="mt-4 inline-flex rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:brightness-95"
+          >
+            Open guided import
+          </Link>
+        </div>
+
         <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {STEP_PLACEHOLDERS.map((step) => (
             <div

@@ -86,6 +86,13 @@ export function CommandPalette({ grants }: { grants: CommandPaletteGrants }) {
         searchText: "api hub integration ingestion connector webhook ingest",
         action: go("/apihub"),
       });
+      list.push({
+        id: "apihub-import-assistant",
+        label: "Guided import (forwarder file)",
+        hint: "Purpose-first upload, mapping review, template",
+        searchText: "import assistant forwarder cargo xml csv mapping guided freight",
+        action: go("/apihub/import-assistant"),
+      });
     }
 
     if (grants.supplyChainTwin) {
