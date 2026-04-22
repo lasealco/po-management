@@ -20,7 +20,7 @@
 | Prisma: **staging** | ✅ `ApiHubStagingBatch`, `ApiHubStagingRow`; `appliedAt` / `applySummary` | Materialize from succeeded analysis job; apply downstream; discard open batches |
 | Mapping engine + preview | ✅ | Export csv/json |
 | AI analysis job pipeline | ✅ | Heuristic + optional OpenAI; `outputProposal.llm`; **Save rules as template** via `POST /mapping-templates` + `sourceMappingAnalysisJobId` |
-| Deterministic **apply** (ingestion run) | 🟡 | Marks `appliedAt`; CT/PO/SO via dedicated adapters elsewhere |
+| Deterministic **apply** (ingestion run) | ✅ | **P3:** optional `target` + `rows` / `resultSummary.rows` → same SO/PO/CT audit writers as staging; `matchKey` for SO `externalRef` de-dupe; 409 `APPLY_DOWNSTREAM_FAILED` on failure |
 | Staging **apply** (domain) | ✅ | SO/PO/CT audit from mapped rows; cross-grants `org.orders` / `org.controltower` |
 | Background workers | 🟡 | Mapping jobs use `after()`; no dedicated queue consumer (see R2 closeout) |
 
@@ -30,12 +30,12 @@
 |----|--------|
 | R1 Demo vs org RBAC | 🟡 **`org.apihub`** shipped; still demo tenant + actor for data scope |
 | R2 Workers | 🟡 No queue ETL |
-| R3 Ingestion apply → downstream | 🟡 Staging apply adds SO/PO/CT path; ingestion apply still marker-centric |
+| R3 Ingestion apply → downstream | 🟡 Staging + ingestion **live apply** share row writers; full “upsert / merge” policy still TBD (P4) |
 | R5 Batch/staging tables | ✅ Shipped |
 
 ## Near-term build order
 
 1. P0–P1 — shell, connectors, templates, ingestion — **shipped**.
 2. P2 — analysis jobs + staging + LLM + template-from-job — **shipped** (iterate on models/prompts).
-3. P3 — ingestion apply to more production paths; **match keys**, conflict policy.
+3. P3 — ingestion apply to SO/PO/CT (**shipped**); extend match keys / conflict policy per product (e.g. PO buyer ref, idempotent upsert).
 4. P4 — centralized abuse budgets, conformance tests, leakage audit pack.

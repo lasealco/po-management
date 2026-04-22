@@ -3,25 +3,60 @@ import { Prisma } from "@prisma/client";
 import {
   apiHubError,
   apiHubJson,
+  apiHubValidationError,
 } from "@/lib/apihub/api-error";
 import {
   APIHUB_AUDIT_ACTION_INGESTION_RUN_APPLY,
   apiHubIngestionRunAuditMetadataEnvelope,
 } from "@/lib/apihub/audit-contract";
 import { resolveApplyTargetSummary, resolveDryRunTargetSummary } from "@/lib/apihub/apply-target-summary";
+import {
+  APIHUB_INGESTION_APPLY_MATCH_KEYS,
+  APIHUB_JSON_BODY_MAX_BYTES,
+  APIHUB_STAGING_APPLY_TARGETS,
+  type ApiHubIngestionApplyMatchKey,
+  type ApiHubStagingApplyTarget,
+} from "@/lib/apihub/constants";
+import { downstreamSummaryToTargetCounts } from "@/lib/apihub/downstream-mapped-rows-apply";
 import { createApplyIdempotencyRecord, findApplyIdempotencyRecord } from "@/lib/apihub/ingestion-apply-idempotency-repo";
-import { applyApiHubIngestionRun, type ApplyApiHubIngestionRunOutcome } from "@/lib/apihub/ingestion-apply-repo";
+import {
+  applyApiHubIngestionRun,
+  type ApplyApiHubIngestionRunOutcome,
+  type ApplyIngestionRunDownstreamOpts,
+} from "@/lib/apihub/ingestion-apply-repo";
 import { appendApiHubIngestionRunAuditLog } from "@/lib/apihub/ingestion-run-audit-repo";
 import { toApiHubIngestionRunDto } from "@/lib/apihub/ingestion-run-dto";
-import { APIHUB_JSON_BODY_MAX_BYTES } from "@/lib/apihub/constants";
 import { parseApiHubRequestJson } from "@/lib/apihub/request-body-limit";
 import { APIHUB_REQUEST_ID_HEADER, resolveApiHubRequestId } from "@/lib/apihub/request-id";
 import { apiHubEnsureTenantActorGrants } from "@/lib/apihub/route-guards";
+import { userHasGlobalGrant } from "@/lib/authz";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-type ApplyJsonBody = { dryRun?: unknown; idempotencyKey?: unknown };
+type ApplyJsonBody = {
+  dryRun?: unknown;
+  idempotencyKey?: unknown;
+  /** P3: same targets as staging batch apply — requires module grants. */
+  target?: unknown;
+  rows?: unknown;
+  matchKey?: unknown;
+};
+
+function parseApplyPostTarget(raw: unknown): ApiHubStagingApplyTarget | null {
+  if (raw === undefined || raw === null) return null;
+  if (typeof raw !== "string") return null;
+  return (APIHUB_STAGING_APPLY_TARGETS as readonly string[]).includes(raw) ? (raw as ApiHubStagingApplyTarget) : null;
+}
+
+function parseApplyMatchKey(raw: unknown): ApiHubIngestionApplyMatchKey {
+  if (raw === undefined || raw === null || typeof raw !== "string") {
+    return "none";
+  }
+  return (APIHUB_INGESTION_APPLY_MATCH_KEYS as readonly string[]).includes(raw)
+    ? (raw as ApiHubIngestionApplyMatchKey)
+    : "none";
+}
 
 async function readApplyJsonBody(request: Request, requestId: string): Promise<ApplyJsonBody | Response> {
   const ct = request.headers.get("content-type")?.toLowerCase() ?? "";
@@ -64,11 +99,24 @@ function mapApplyOutcomeToMapped(outcome: ApplyApiHubIngestionRunOutcome | null)
       body: { ok: false as const, error: { code: "RUN_NOT_FOUND", message: "Run not found." } },
     };
   }
+  if (outcome.kind === "downstream_failed") {
+    return {
+      status: 409,
+      body: {
+        ok: false as const,
+        error: { code: "APPLY_DOWNSTREAM_FAILED", message: outcome.message },
+      },
+    };
+  }
   if (outcome.kind === "dry_run") {
+    const targetSummary = outcome.downstreamPreview
+      ? downstreamSummaryToTargetCounts(outcome.downstreamPreview)
+      : resolveDryRunTargetSummary(outcome.wouldApply, outcome.run);
     const writeSummary = {
       wouldApply: outcome.wouldApply,
       wouldSetAppliedAt: outcome.wouldApply,
-      targetSummary: resolveDryRunTargetSummary(outcome.wouldApply, outcome.run),
+      targetSummary,
+      ...(outcome.downstreamPreview ? { downstreamPreview: outcome.downstreamPreview } : {}),
       ...(outcome.gate ? { gate: outcome.gate } : {}),
     };
     return {
@@ -128,11 +176,15 @@ function mapApplyOutcomeToMapped(outcome: ApplyApiHubIngestionRunOutcome | null)
       },
     };
   }
+  const targetSummary = outcome.downstreamSummary
+    ? downstreamSummaryToTargetCounts(outcome.downstreamSummary)
+    : resolveApplyTargetSummary(outcome.run);
   return {
     status: 200,
     body: {
       applied: true,
-      targetSummary: resolveApplyTargetSummary(outcome.run),
+      targetSummary,
+      ...(outcome.downstreamSummary ? { downstreamSummary: outcome.downstreamSummary } : {}),
       run: toApiHubIngestionRunDto(outcome.run),
     },
   };
@@ -207,6 +259,9 @@ function extrasFromMapped(mapped: ApplyMappedResponse): Record<string, unknown> 
   if (mapped.status === 200 && mapped.body.writeSummary != null) {
     x.writeSummary = mapped.body.writeSummary;
   }
+  if (mapped.status === 200 && mapped.body.downstreamSummary != null) {
+    x.downstreamSummary = mapped.body.downstreamSummary;
+  }
   return x;
 }
 
@@ -276,6 +331,96 @@ export async function POST(request: Request, context: { params: Promise<{ jobId:
   const idempotencyKey = resolveApplyIdempotencyKey(request, jsonBody);
   const idempotencyKeyPresent = Boolean(idempotencyKey);
 
+  let downstream: ApplyIngestionRunDownstreamOpts | undefined;
+  if (jsonBody.target !== undefined && jsonBody.target !== null) {
+    const target = parseApplyPostTarget(jsonBody.target);
+    if (!target) {
+      return finalizeApplyResponse({
+        response: apiHubValidationError(400, "VALIDATION_ERROR", "Ingestion apply validation failed.", [
+          {
+            field: "target",
+            code: "INVALID_ENUM",
+            message: `target must be one of: ${APIHUB_STAGING_APPLY_TARGETS.join(", ")}.`,
+            severity: "error",
+          },
+        ], requestId),
+        tenantId: tenant.id,
+        actorUserId: actorId,
+        runId: jobId,
+        requestId,
+        dryRun,
+        idempotencyKeyPresent,
+        resultCode: "APPLY_VALIDATION_ERROR",
+        outcome: null,
+      });
+    }
+    if (target === "sales_order" || target === "purchase_order") {
+      if (!(await userHasGlobalGrant(actorId, "org.orders", "edit"))) {
+        return finalizeApplyResponse({
+          response: apiHubError(
+            403,
+            "FORBIDDEN",
+            "Applying to purchase or sales orders requires org.orders → edit.",
+            requestId,
+          ),
+          tenantId: tenant.id,
+          actorUserId: actorId,
+          runId: jobId,
+          requestId,
+          dryRun,
+          idempotencyKeyPresent,
+          resultCode: "APPLY_FORBIDDEN_ORDERS",
+          outcome: null,
+        });
+      }
+    }
+    if (target === "control_tower_audit") {
+      if (!(await userHasGlobalGrant(actorId, "org.controltower", "edit"))) {
+        return finalizeApplyResponse({
+          response: apiHubError(
+            403,
+            "FORBIDDEN",
+            "Applying to Control Tower audit requires org.controltower → edit.",
+            requestId,
+          ),
+          tenantId: tenant.id,
+          actorUserId: actorId,
+          runId: jobId,
+          requestId,
+          dryRun,
+          idempotencyKeyPresent,
+          resultCode: "APPLY_FORBIDDEN_CONTROL_TOWER",
+          outcome: null,
+        });
+      }
+    }
+    downstream = {
+      target,
+      actorUserId: actorId,
+      bodyRows: jsonBody.rows,
+      matchKey: parseApplyMatchKey(jsonBody.matchKey),
+    };
+  } else if (jsonBody.rows !== undefined) {
+    return finalizeApplyResponse({
+      response: apiHubValidationError(400, "VALIDATION_ERROR", "Ingestion apply validation failed.", [
+        {
+          field: "rows",
+          code: "REQUIRES_TARGET",
+          message: "rows requires target (sales_order, purchase_order, or control_tower_audit).",
+          severity: "error",
+        },
+      ], requestId),
+      tenantId: tenant.id,
+      actorUserId: actorId,
+      runId: jobId,
+      requestId,
+      dryRun,
+      idempotencyKeyPresent,
+      resultCode: "APPLY_VALIDATION_ERROR",
+      outcome: null,
+    });
+  }
+
   if (idempotencyKey) {
     const cached = await findApplyIdempotencyRecord({ tenantId: tenant.id, idempotencyKey });
     if (cached) {
@@ -312,7 +457,7 @@ export async function POST(request: Request, context: { params: Promise<{ jobId:
     }
   }
 
-  const outcome = await applyApiHubIngestionRun({ tenantId: tenant.id, runId: jobId, dryRun });
+  const outcome = await applyApiHubIngestionRun({ tenantId: tenant.id, runId: jobId, dryRun, downstream });
   const mapped = mapApplyOutcomeToMapped(outcome);
 
   if (idempotencyKey) {

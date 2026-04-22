@@ -10,7 +10,7 @@ End-to-end path we ship and test mentally on each release:
 2. **Run** — Create an ingestion run; observe status in **Ingestion runs** (`/apihub#ingestion-ops`).
 3. **Mapping / analysis** — Queue a mapping analysis job; wait for **succeeded**; review proposal (`/apihub#mapping-analysis-jobs`).
 4. **Preview** — Use mapping preview / export against a run or rules (`/apihub#mapping-preview-export`).
-5. **Promote / apply** — Create a **staging batch** from a succeeded job; **apply** rows to SO / PO / CT targets with optional dry-run (`/apihub#staging-batches`). For ingestion-run apply, see [apply-operator-runbook](./apply-operator-runbook.md).
+5. **Promote / apply** — Create a **staging batch** from a succeeded job; **apply** rows to SO / PO / CT targets with optional dry-run (`/apihub#staging-batches`). **Ingestion run apply** (`POST …/ingestion-jobs/:jobId/apply`) can set **`target`** + optional **`rows`** (or use JSON **`resultSummary.rows`**) for the same downstream writes; requires the same module grants as staging apply. See [README](./README.md) apply row and [apply-operator-runbook](./apply-operator-runbook.md).
 6. **Clear errors** — Use **Alerts** and **Apply conflicts** (`/apihub#ingestion-alerts`, `/apihub#apply-conflicts`) to triage 4xx outcomes; fix inputs and retry where appropriate.
 
 UI anchors match section `id`s on `/apihub`.
