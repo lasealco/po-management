@@ -13,7 +13,7 @@
 | HTTP API | `src/app/api/apihub/**` |
 | Domain / shared logic | `src/lib/apihub/**` |
 | Operator UI | `src/app/apihub/**` (RSC + client panels; demo session gate) |
-| Persistence | `prisma/schema.prisma` — `ApiHubConnector`, `ApiHubConnectorAuditLog`, `ApiHubIngestionRun`, `ApiHubIngestionRunAuditLog`, `ApiHubIngestionApplyIdempotency`, `ApiHubMappingTemplate`, `ApiHubMappingTemplateAuditLog`, `ApiHubMappingAnalysisJob` |
+| Persistence | `prisma/schema.prisma` — `ApiHubConnector`, `ApiHubConnectorAuditLog`, `ApiHubIngestionRun`, `ApiHubIngestionRunAuditLog`, `ApiHubIngestionApplyIdempotency`, `ApiHubMappingTemplate`, `ApiHubMappingTemplateAuditLog`, `ApiHubMappingAnalysisJob`, `ApiHubStagingBatch`, `ApiHubStagingRow` |
 | Migrations | `prisma/migrations/*apihub*` and related hot-path index migration (`20260430103000_apihub_hot_path_indexes`) |
 | Contracts & ops docs | `docs/apihub/README.md`, `GAP_MAP.md`, `apply-operator-runbook.md`, `permissions-matrix.md`, `RUNBOOK.md`, `RELEASE_CHECKLIST.md` |
 
@@ -26,8 +26,10 @@ Out of **this** module’s contract: Control Tower, PO/SO/WMS, tariff engine, CR
 - **Discovery:** `GET /api/apihub/health` — no auth; stable JSON envelope.
 - **Connectors:** registry CRUD-lite (`GET`/`POST`/`PATCH`), audit timeline, per-connector health probe, readiness summary on DTOs, `authConfigRef` validation, disable guardrails with in-flight ingestion.
 - **Ingestion runs:** list (keyset cursor + filters), detail + observability, timeline, retry (idempotency + budget), ops summary, alerts summary, apply-conflicts list.
-- **Mapping:** engine + preview + CSV/JSON export, templates CRUD + audit, rule diff API, **P2** mapping analysis jobs (async heuristic proposals + staging preview on job).
+- **Mapping:** engine + preview + CSV/JSON export, templates CRUD + audit, rule diff API, **P2** mapping analysis jobs (async heuristic proposals + optional LLM JSON when API keys are set + staging preview on job).
+- **Staging:** `ApiHubStagingBatch` / `ApiHubStagingRow` materialized from succeeded analysis jobs; list, apply to SO/PO/CT (cross-grants), discard; tenant-scoped repos + Vitest guards.
 - **Apply:** live + dry-run, idempotency cache, target/write summaries, rollback **stub**, structured audit rows on apply/retry.
+- **Cron / workers (partial):** `GET/POST /api/cron/apihub-mapping-analysis-jobs` — stale **`running`** ingestion runs → **`failed`**, reclaim stale **`processing`** mapping jobs → **`queued`**, drain **`queued`** via Postgres **`FOR UPDATE SKIP LOCKED`** (optional parallelism, optional Upstash Redis sweep lock). Not a full ingestion ETL queue.
 - **Quality gates:** `npm run verify:apihub`, `npm run smoke:apihub` (see [RELEASE_CHECKLIST.md](./RELEASE_CHECKLIST.md)).
 
 Authoritative route table: **[README.md](./README.md)**.
@@ -59,11 +61,11 @@ These are **accepted** gaps for the current phase unless an issue explicitly res
 | ID | Risk | Severity | Mitigation / next step |
 |----|------|----------|-------------------------|
 | R1 | **Demo-session gate**, not full RBAC: most API Hub routes require demo tenant + demo actor, not org-scoped grants. | Medium (prod misuse if routes exposed without edge auth) | **Slice 52–53** route/UI permission parity; edge middleware / session policy per environment. |
-| R2 | **No background workers** for ingestion: runs are registry + API transitions; no queue consumer ships in this slice. | Medium (operational — “runs” do not imply ETL) | Document in runbooks; add workers in P2+ per spec. |
+| R2 | **No full ingestion ETL / durable job stream** — runs are still primarily registry + API transitions; **cron** drains mapping-analysis **`queued`** work and reclaims stale states (see `GAP_MAP.md` R2). | Medium (operational — “runs” do not imply background ETL) | Document in runbooks; add queue consumers if product requires always-on ingest. |
 | R3 | **Apply → downstream systems** is scenario-specific / partially stubbed (rollback stub, CT/PO wiring not universal). | Medium | Extend apply adapters per scenario; expand operator runbook when wiring changes. |
-| R4 | **LLM-assisted mapping job** not implemented — analysis uses **deterministic heuristic** (`deterministic_heuristic_v2`); async job pipeline otherwise ships. | Low for current MVP | Optional model provider + structured tool output in a future slice; see spec guardrails §7. |
-| R5 | **Batch / staging Prisma tables** not present — rules live on templates + request payloads. | Low | `GAP_MAP.md` row; add tables when batch UX ships. |
-| R6 | **Tenant isolation** not exhaustively proven by automated tests across every repo method. | Medium | **Slice 61** — atomic mapping `updateMany`/`deleteMany` + `*.tenant-scope.test.ts` guards; extend as new repos ship. |
+| R4 | **LLM quality / cost** — heuristic is the default path; **optional** OpenAI-backed proposals ship when keys are configured. Residual risk is model drift, cost, and prompt robustness—not “missing LLM.” | Low | Tune prompts/models in future slices; see [README.md](./README.md) env vars. |
+| R5 | **Staging at scale** — tables and apply/discard ship; **row caps**, operator UX, and conflict surfaces still evolve under real load. | Low | Watch `APIHUB_STAGING_BATCH_MAX_ROWS` and apply-conflict runbooks; iterate with operators. |
+| R6 | **Tenant isolation** not exhaustively proven by automated tests across every repo method. | Medium | **Slice 61 partial:** `updateMany`/`deleteMany` on hot mutations where applicable + `*.tenant-scope.test.ts` for connectors, ingestion runs, mapping templates, mapping analysis jobs, **staging batches**; extend as new repos ship. |
 | R7 | **Secrets / PII in logs and error payloads** | Low–Medium (residual: rare engine phrases without listed substrings) | **P4 shipped:** leakage conformance + operator catch helpers (incl. **unique/foreign-key/check constraint**, **duplicate key**, **syntax error at or near**, transaction serialization) on staging create/apply, ingestion apply, mapping-analysis failures. |
 | R8 | **Abuse limits** (payload size, row caps) | Low (residual: per-route caps still vary by scenario) | **P4 shipped:** `request-budget.ts` + route conformance forbidding raw `request.json()` / non-budget parsers. |
 | R9 | **Contract drift** — generated OpenAPI gate | Low | **P4 partial:** `apihub-routes-conformance.test.ts` (budget helpers, route surface count); README + permissions matrix maintained by hand. OpenAPI/JSON Schema gate still future. |
@@ -96,4 +98,4 @@ Full list: `docs/apihub/agent_milestones_one_agent.md` (enterprise tranche 61–
 
 ---
 
-**Last updated:** 2026-04-22 (Slice 60 — doc/CI closeout; R7–R9 row text refreshed for P4 conformance + leakage tests)
+**Last updated:** 2026-04-22 (Slice 60 — closeout doc synced with shipped cron, staging, optional LLM; R2/R4/R5/R6 residual rows refreshed)
