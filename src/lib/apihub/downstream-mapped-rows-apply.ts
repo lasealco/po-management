@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 
-import type { ApiHubStagingApplyTarget } from "@/lib/apihub/constants";
+import type { ApiHubPurchaseOrderLineMergeMode, ApiHubStagingApplyTarget } from "@/lib/apihub/constants";
 import { prisma } from "@/lib/prisma";
 
 export type ApiHubStagingApplyRowResult = {
@@ -53,6 +53,104 @@ function readNum(rec: Record<string, unknown>, key: string): number | null {
     return Number.isFinite(n) ? n : null;
   }
   return null;
+}
+
+/** Key present in mapped payload (including explicit `null`) — used for partial upsert patches. */
+function hasMappedKey(rec: Record<string, unknown>, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(rec, key);
+}
+
+async function recomputePurchaseOrderTotalsFromItems(
+  tx: Prisma.TransactionClient,
+  orderId: string,
+): Promise<void> {
+  const items = await tx.purchaseOrderItem.findMany({
+    where: { orderId },
+    select: { lineTotal: true },
+  });
+  let subtotal = 0;
+  for (const it of items) {
+    subtotal += Number(it.lineTotal);
+  }
+  const tax = subtotal * 0.08;
+  const total = subtotal + tax;
+  await tx.purchaseOrder.update({
+    where: { id: orderId },
+    data: {
+      subtotal: new Prisma.Decimal(subtotal.toFixed(2)),
+      taxAmount: new Prisma.Decimal(tax.toFixed(2)),
+      totalAmount: new Prisma.Decimal(total.toFixed(2)),
+    },
+  });
+}
+
+type PoLineParsed =
+  | { ok: false; error: string }
+  | {
+      ok: true;
+      lineNo: number;
+      supplierId: string;
+      productId: string;
+      description: string;
+      quantity: Prisma.Decimal;
+      unitPrice: Prisma.Decimal;
+      lineTotal: Prisma.Decimal;
+      lineSubtotal: number;
+    };
+
+async function validatePurchaseOrderLineForApply(
+  tx: Prisma.TransactionClient,
+  tenantId: string,
+  row: ApiHubMappedApplyRow,
+): Promise<PoLineParsed> {
+  const rec = asRecord(row.mappedRecord);
+  if (!rec) {
+    return { ok: false, error: "mappedRecord must be an object." };
+  }
+  const supplierId = readStr(rec, "supplierId");
+  const productId = readStr(rec, "productId");
+  const quantity = readNum(rec, "quantity");
+  const unitPrice = readNum(rec, "unitPrice");
+  if (!supplierId || !productId || quantity == null || quantity <= 0 || unitPrice == null || unitPrice < 0) {
+    return {
+      ok: false,
+      error: "supplierId, productId, quantity (>0), and unitPrice (>=0) are required.",
+    };
+  }
+  const supplier = await tx.supplier.findFirst({
+    where: { id: supplierId, tenantId, isActive: true },
+    select: { id: true },
+  });
+  if (!supplier) {
+    return { ok: false, error: "Supplier not found or inactive." };
+  }
+  const linked = await tx.product.findFirst({
+    where: {
+      id: productId,
+      tenantId,
+      isActive: true,
+      productSuppliers: { some: { supplierId } },
+    },
+    select: { id: true, name: true },
+  });
+  if (!linked) {
+    return { ok: false, error: "Product not found or not linked to supplier." };
+  }
+  const lineNo = Math.max(1, Math.trunc(readNum(rec, "lineNo") ?? 1));
+  const description =
+    readStr(rec, "lineDescription") || readStr(rec, "description") || linked.name || "Imported line";
+  const lineSubtotal = quantity * unitPrice;
+  return {
+    ok: true,
+    lineNo,
+    supplierId,
+    productId,
+    description,
+    quantity: new Prisma.Decimal(quantity.toFixed(3)),
+    unitPrice: new Prisma.Decimal(unitPrice.toFixed(4)),
+    lineTotal: new Prisma.Decimal(lineSubtotal.toFixed(2)),
+    lineSubtotal,
+  };
 }
 
 async function nextOrderNumberInTx(tx: Prisma.TransactionClient, tenantId: string): Promise<string> {
@@ -147,9 +245,75 @@ async function applySalesOrderRowLive(
   if (!rec) {
     return { rowIndex: row.rowIndex, ok: false, error: "mappedRecord must be an object." };
   }
+  const externalRef = readStr(rec, "externalRef");
+
+  if (externalRefPolicy === "upsert" && externalRef) {
+    const existing = await tx.salesOrder.findFirst({
+      where: { tenantId, externalRef },
+      select: { id: true },
+    });
+    if (existing) {
+      const data: Prisma.SalesOrderUpdateInput = {};
+      if (hasMappedKey(rec, "customerCrmAccountId")) {
+        const customerId = readStr(rec, "customerCrmAccountId");
+        if (!customerId) {
+          return {
+            rowIndex: row.rowIndex,
+            ok: false,
+            error: "customerCrmAccountId cannot be empty when provided.",
+          };
+        }
+        const account = await tx.crmAccount.findFirst({
+          where: { id: customerId, tenantId },
+          select: { id: true, name: true },
+        });
+        if (!account) {
+          return { rowIndex: row.rowIndex, ok: false, error: "CRM account not found for tenant." };
+        }
+        data.customerName = account.name;
+        data.customerCrmAccount = { connect: { id: account.id } };
+      }
+      if (hasMappedKey(rec, "requestedDeliveryDate")) {
+        const rddRaw = readStr(rec, "requestedDeliveryDate");
+        const requestedDeliveryDate = rddRaw ? new Date(rddRaw) : null;
+        if (requestedDeliveryDate && Number.isNaN(requestedDeliveryDate.getTime())) {
+          return { rowIndex: row.rowIndex, ok: false, error: "Invalid requestedDeliveryDate." };
+        }
+        data.requestedDeliveryDate = requestedDeliveryDate;
+      }
+      if (hasMappedKey(rec, "notes")) {
+        const v = rec["notes"];
+        if (v === null) {
+          data.notes = null;
+        } else if (typeof v === "string") {
+          data.notes = v.trim() || null;
+        } else {
+          return { rowIndex: row.rowIndex, ok: false, error: "notes must be a string or null." };
+        }
+      }
+      if (Object.keys(data).length > 0) {
+        await tx.salesOrder.update({
+          where: { id: existing.id },
+          data,
+        });
+      }
+      return {
+        rowIndex: row.rowIndex,
+        ok: true,
+        entityType: "SalesOrder",
+        entityId: existing.id,
+        applyOp: "updated",
+      };
+    }
+  }
+
   const customerId = readStr(rec, "customerCrmAccountId");
   if (!customerId) {
-    return { rowIndex: row.rowIndex, ok: false, error: "customerCrmAccountId is required." };
+    return {
+      rowIndex: row.rowIndex,
+      ok: false,
+      error: "customerCrmAccountId is required for create.",
+    };
   }
   const account = await tx.crmAccount.findFirst({
     where: { id: customerId, tenantId },
@@ -160,38 +324,12 @@ async function applySalesOrderRowLive(
   }
   const soNumberRaw = readStr(rec, "soNumber");
   const soNumber = soNumberRaw || (await nextSalesOrderNumberInTx(tx, tenantId));
-  const externalRef = readStr(rec, "externalRef");
   const rddRaw = readStr(rec, "requestedDeliveryDate");
   const requestedDeliveryDate = rddRaw ? new Date(rddRaw) : null;
   if (requestedDeliveryDate && Number.isNaN(requestedDeliveryDate.getTime())) {
     return { rowIndex: row.rowIndex, ok: false, error: "Invalid requestedDeliveryDate." };
   }
   const notesVal = readStr(rec, "notes");
-
-  if (externalRefPolicy === "upsert" && externalRef) {
-    const existing = await tx.salesOrder.findFirst({
-      where: { tenantId, externalRef },
-      select: { id: true },
-    });
-    if (existing) {
-      await tx.salesOrder.update({
-        where: { id: existing.id },
-        data: {
-          customerName: account.name,
-          customerCrmAccountId: account.id,
-          requestedDeliveryDate,
-          notes: notesVal,
-        },
-      });
-      return {
-        rowIndex: row.rowIndex,
-        ok: true,
-        entityType: "SalesOrder",
-        entityId: existing.id,
-        applyOp: "updated",
-      };
-    }
-  }
 
   if (externalRefPolicy === "reject_duplicate" && externalRef) {
     try {
@@ -228,6 +366,179 @@ async function applySalesOrderRowLive(
   };
 }
 
+/**
+ * PO upsert with `purchaseOrderLineMerge=replace_all`: one apply replaces **all** lines for the PO
+ * matched by `buyerReference`, using **all rows in the batch** that share that reference.
+ */
+async function applyPoBuyerRefReplaceAllGroup(
+  tx: Prisma.TransactionClient,
+  input: {
+    tenantId: string;
+    actorUserId: string;
+    groupRows: ApiHubMappedApplyRow[];
+  },
+): Promise<ApiHubStagingApplyRowResult[]> {
+  const { tenantId, actorUserId, groupRows } = input;
+  const sorted = [...groupRows].sort((a, b) => a.rowIndex - b.rowIndex);
+  const firstRec = asRecord(sorted[0]?.mappedRecord);
+  if (!firstRec) {
+    return sorted.map((row) => ({
+      rowIndex: row.rowIndex,
+      ok: false,
+      error: "mappedRecord must be an object.",
+    }));
+  }
+  const buyerReference = readStr(firstRec, "buyerReference");
+  if (!buyerReference) {
+    return sorted.map((row) => ({
+      rowIndex: row.rowIndex,
+      ok: false,
+      error: "buyerReference is required for replace_all groups.",
+    }));
+  }
+  for (const row of sorted) {
+    const rec = asRecord(row.mappedRecord);
+    const br = rec ? readStr(rec, "buyerReference") : null;
+    if (br !== buyerReference) {
+      return sorted.map((r) => ({
+        rowIndex: r.rowIndex,
+        ok: false,
+        error: "Inconsistent buyerReference within replace_all group.",
+      }));
+    }
+  }
+
+  const parsedList: Array<{ row: ApiHubMappedApplyRow; p: Extract<PoLineParsed, { ok: true }> }> = [];
+  for (const row of sorted) {
+    const p = await validatePurchaseOrderLineForApply(tx, tenantId, row);
+    if (!p.ok) {
+      return sorted.map((r) => ({
+        rowIndex: r.rowIndex,
+        ok: false,
+        error: p.error,
+      }));
+    }
+    parsedList.push({ row, p });
+  }
+  const supplierIds = new Set(parsedList.map((x) => x.p.supplierId));
+  if (supplierIds.size !== 1) {
+    const msg =
+      "purchaseOrderLineMerge=replace_all requires the same supplierId on every line in the group.";
+    return sorted.map((row) => ({ rowIndex: row.rowIndex, ok: false, error: msg }));
+  }
+  const supplierId = parsedList[0]!.p.supplierId;
+
+  const existing = await tx.purchaseOrder.findFirst({
+    where: { tenantId, buyerReference },
+    select: { id: true, supplierId: true },
+  });
+
+  if (existing) {
+    if (existing.supplierId !== supplierId) {
+      const msg = "Line supplierId does not match existing purchase order supplier.";
+      return sorted.map((row) => ({ rowIndex: row.rowIndex, ok: false, error: msg }));
+    }
+    await tx.purchaseOrderItem.deleteMany({ where: { orderId: existing.id } });
+    const header: Prisma.PurchaseOrderUpdateInput = {
+      requester: { connect: { id: actorUserId } },
+      supplier: { connect: { id: supplierId } },
+    };
+    if (hasMappedKey(firstRec, "title")) {
+      header.title = readStr(firstRec, "title");
+    }
+    if (hasMappedKey(firstRec, "requestedDeliveryDate")) {
+      const rddRaw = readStr(firstRec, "requestedDeliveryDate");
+      const requestedDeliveryDate = rddRaw ? new Date(`${rddRaw}T00:00:00.000Z`) : null;
+      if (requestedDeliveryDate && Number.isNaN(requestedDeliveryDate.getTime())) {
+        const err = "Invalid requestedDeliveryDate.";
+        return sorted.map((row) => ({ rowIndex: row.rowIndex, ok: false, error: err }));
+      }
+      header.requestedDeliveryDate = requestedDeliveryDate;
+    }
+    await tx.purchaseOrder.update({
+      where: { id: existing.id },
+      data: {
+        ...header,
+        items: {
+          create: parsedList.map(({ p }) => ({
+            lineNo: p.lineNo,
+            productId: p.productId,
+            description: p.description,
+            quantity: p.quantity,
+            unitPrice: p.unitPrice,
+            lineTotal: p.lineTotal,
+          })),
+        },
+      },
+    });
+    await recomputePurchaseOrderTotalsFromItems(tx, existing.id);
+    return sorted.map((row) => ({
+      rowIndex: row.rowIndex,
+      ok: true,
+      entityType: "PurchaseOrder",
+      entityId: existing.id,
+      applyOp: "updated" as const,
+    }));
+  }
+
+  const { workflowId, statusId } = await loadDefaultWorkflowStart(tx, tenantId);
+  const orderNumber = readStr(firstRec, "orderNumber") || (await nextOrderNumberInTx(tx, tenantId));
+  const title = hasMappedKey(firstRec, "title") ? readStr(firstRec, "title") : null;
+  let requestedDeliveryDate: Date | null = null;
+  if (hasMappedKey(firstRec, "requestedDeliveryDate")) {
+    const rddRaw = readStr(firstRec, "requestedDeliveryDate");
+    requestedDeliveryDate = rddRaw ? new Date(`${rddRaw}T00:00:00.000Z`) : null;
+    if (requestedDeliveryDate && Number.isNaN(requestedDeliveryDate.getTime())) {
+      const err = "Invalid requestedDeliveryDate.";
+      return sorted.map((row) => ({ rowIndex: row.rowIndex, ok: false, error: err }));
+    }
+  }
+
+  let subtotal = 0;
+  for (const { p } of parsedList) {
+    subtotal += p.lineSubtotal;
+  }
+  const tax = subtotal * 0.08;
+  const total = subtotal + tax;
+
+  const created = await tx.purchaseOrder.create({
+    data: {
+      tenantId,
+      workflowId,
+      orderNumber,
+      title,
+      requesterId: actorUserId,
+      supplierId,
+      statusId,
+      currency: "USD",
+      subtotal: new Prisma.Decimal(subtotal.toFixed(2)),
+      taxAmount: new Prisma.Decimal(tax.toFixed(2)),
+      totalAmount: new Prisma.Decimal(total.toFixed(2)),
+      buyerReference,
+      requestedDeliveryDate,
+      items: {
+        create: parsedList.map(({ p }) => ({
+          lineNo: p.lineNo,
+          productId: p.productId,
+          description: p.description,
+          quantity: p.quantity,
+          unitPrice: p.unitPrice,
+          lineTotal: p.lineTotal,
+        })),
+      },
+    },
+    select: { id: true },
+  });
+  await recomputePurchaseOrderTotalsFromItems(tx, created.id);
+  return sorted.map((row) => ({
+    rowIndex: row.rowIndex,
+    ok: true,
+    entityType: "PurchaseOrder",
+    entityId: created.id,
+    applyOp: "created" as const,
+  }));
+}
+
 async function applyPurchaseOrderRowLive(
   tx: Prisma.TransactionClient,
   input: {
@@ -235,47 +546,31 @@ async function applyPurchaseOrderRowLive(
     actorUserId: string;
     row: ApiHubMappedApplyRow;
     buyerRefPolicy: ApiHubPurchaseOrderBuyerRefPolicy;
+    /** Only used when `buyerRefPolicy === "upsert"`; **`replace_all` rows are handled by grouping.** */
+    purchaseOrderLineMerge?: ApiHubPurchaseOrderLineMergeMode;
   },
 ): Promise<ApiHubStagingApplyRowResult> {
-  const { tenantId, actorUserId, row, buyerRefPolicy } = input;
+  const { tenantId, actorUserId, row, buyerRefPolicy, purchaseOrderLineMerge = "merge_by_line_no" } =
+    input;
   const rec = asRecord(row.mappedRecord);
   if (!rec) {
     return { rowIndex: row.rowIndex, ok: false, error: "mappedRecord must be an object." };
   }
-  const supplierId = readStr(rec, "supplierId");
-  const productId = readStr(rec, "productId");
-  const quantity = readNum(rec, "quantity");
-  const unitPrice = readNum(rec, "unitPrice");
-  if (!supplierId || !productId || quantity == null || quantity <= 0 || unitPrice == null || unitPrice < 0) {
-    return {
-      rowIndex: row.rowIndex,
-      ok: false,
-      error: "supplierId, productId, quantity (>0), and unitPrice (>=0) are required.",
-    };
+  const parsed = await validatePurchaseOrderLineForApply(tx, tenantId, row);
+  if (!parsed.ok) {
+    return { rowIndex: row.rowIndex, ok: false, error: parsed.error };
   }
-  const supplier = await tx.supplier.findFirst({
-    where: { id: supplierId, tenantId, isActive: true },
-    select: { id: true },
-  });
-  if (!supplier) {
-    return { rowIndex: row.rowIndex, ok: false, error: "Supplier not found or inactive." };
-  }
-  const linked = await tx.product.findFirst({
-    where: {
-      id: productId,
-      tenantId,
-      isActive: true,
-      productSuppliers: { some: { supplierId } },
-    },
-    select: { id: true, name: true },
-  });
-  if (!linked) {
-    return { rowIndex: row.rowIndex, ok: false, error: "Product not found or not linked to supplier." };
-  }
-  const lineNo = Math.max(1, Math.trunc(readNum(rec, "lineNo") ?? 1));
-  const description =
-    readStr(rec, "lineDescription") || readStr(rec, "description") || linked.name || "Imported line";
-  const subtotal = quantity * unitPrice;
+  const {
+    lineNo,
+    supplierId,
+    productId,
+    description,
+    quantity,
+    unitPrice,
+    lineTotal,
+    lineSubtotal,
+  } = parsed;
+  const subtotal = lineSubtotal;
   const tax = subtotal * 0.08;
   const total = subtotal + tax;
   const buyerReference = readStr(rec, "buyerReference");
@@ -286,45 +581,93 @@ async function applyPurchaseOrderRowLive(
   }
 
   if (buyerRefPolicy === "upsert" && buyerReference) {
+    if (purchaseOrderLineMerge === "replace_all") {
+      return {
+        rowIndex: row.rowIndex,
+        ok: false,
+        error: "Internal error: replace_all row was not processed by group apply.",
+      };
+    }
     const existing = await tx.purchaseOrder.findFirst({
       where: { tenantId, buyerReference },
-      select: { id: true },
+      select: { id: true, supplierId: true },
     });
     if (existing) {
-      const lineCount = await tx.purchaseOrderItem.count({ where: { orderId: existing.id } });
-      if (lineCount > 1) {
+      let headerSupplierId = existing.supplierId;
+      if (hasMappedKey(rec, "supplierId")) {
+        const sid = readStr(rec, "supplierId");
+        if (!sid) {
+          return { rowIndex: row.rowIndex, ok: false, error: "supplierId cannot be empty when provided." };
+        }
+        const supplier = await tx.supplier.findFirst({
+          where: { id: sid, tenantId, isActive: true },
+          select: { id: true },
+        });
+        if (!supplier) {
+          return { rowIndex: row.rowIndex, ok: false, error: "Supplier not found or inactive." };
+        }
+        headerSupplierId = sid;
+      }
+      if (supplierId !== headerSupplierId) {
         return {
           rowIndex: row.rowIndex,
           ok: false,
-          error:
-            "Upsert is not supported when the purchase order has multiple lines; reconcile manually or split imports.",
+          error: "Line supplierId must match purchase order supplier (or header supplierId patch).",
         };
       }
-      await tx.purchaseOrderItem.deleteMany({ where: { orderId: existing.id } });
+
+      const existingLine = await tx.purchaseOrderItem.findFirst({
+        where: { orderId: existing.id, lineNo },
+        select: { id: true },
+      });
+      if (existingLine) {
+        await tx.purchaseOrderItem.update({
+          where: { id: existingLine.id },
+          data: {
+            productId,
+            description,
+            quantity,
+            unitPrice,
+            lineTotal,
+          },
+        });
+      } else {
+        await tx.purchaseOrderItem.create({
+          data: {
+            orderId: existing.id,
+            lineNo,
+            productId,
+            description,
+            quantity,
+            unitPrice,
+            lineTotal,
+          },
+        });
+      }
+
+      const header: Prisma.PurchaseOrderUpdateInput = {
+        requester: { connect: { id: actorUserId } },
+      };
+      if (hasMappedKey(rec, "title")) {
+        header.title = readStr(rec, "title");
+      }
+      if (hasMappedKey(rec, "supplierId")) {
+        header.supplier = { connect: { id: headerSupplierId } };
+      }
+      if (hasMappedKey(rec, "requestedDeliveryDate")) {
+        const rddKey = readStr(rec, "requestedDeliveryDate");
+        const rdd = rddKey ? new Date(`${rddKey}T00:00:00.000Z`) : null;
+        if (rdd && Number.isNaN(rdd.getTime())) {
+          return { rowIndex: row.rowIndex, ok: false, error: "Invalid requestedDeliveryDate." };
+        }
+        header.requestedDeliveryDate = rdd;
+      }
       await tx.purchaseOrder.update({
         where: { id: existing.id },
-        data: {
-          title: readStr(rec, "title"),
-          requesterId: actorUserId,
-          supplierId,
-          subtotal: new Prisma.Decimal(subtotal.toFixed(2)),
-          taxAmount: new Prisma.Decimal(tax.toFixed(2)),
-          totalAmount: new Prisma.Decimal(total.toFixed(2)),
-          requestedDeliveryDate,
-          items: {
-            create: [
-              {
-                lineNo,
-                productId,
-                description,
-                quantity: new Prisma.Decimal(quantity.toFixed(3)),
-                unitPrice: new Prisma.Decimal(unitPrice.toFixed(4)),
-                lineTotal: new Prisma.Decimal(subtotal.toFixed(2)),
-              },
-            ],
-          },
-        },
+        data: header,
       });
+
+      await recomputePurchaseOrderTotalsFromItems(tx, existing.id);
       return {
         rowIndex: row.rowIndex,
         ok: true,
@@ -370,9 +713,9 @@ async function applyPurchaseOrderRowLive(
             lineNo,
             productId,
             description,
-            quantity: new Prisma.Decimal(quantity.toFixed(3)),
-            unitPrice: new Prisma.Decimal(unitPrice.toFixed(4)),
-            lineTotal: new Prisma.Decimal(subtotal.toFixed(2)),
+            quantity,
+            unitPrice,
+            lineTotal,
           },
         ],
       },
@@ -407,13 +750,24 @@ function dryRunPurchaseOrderRow(row: ApiHubMappedApplyRow): ApiHubStagingApplyRo
   return { rowIndex: row.rowIndex, ok: true, entityType: "PurchaseOrder", entityId: "(dry-run)" };
 }
 
-function dryRunSalesOrderRow(row: ApiHubMappedApplyRow): ApiHubStagingApplyRowResult {
+function dryRunSalesOrderRow(
+  row: ApiHubMappedApplyRow,
+  opts?: { upsert?: boolean },
+): ApiHubStagingApplyRowResult {
   const rec = asRecord(row.mappedRecord);
   if (!rec) {
     return { rowIndex: row.rowIndex, ok: false, error: "mappedRecord must be an object." };
   }
   const customerId = readStr(rec, "customerCrmAccountId");
-  if (!customerId) {
+  const externalRef = readStr(rec, "externalRef");
+  if (opts?.upsert) {
+    if (!externalRef) {
+      return { rowIndex: row.rowIndex, ok: false, error: "externalRef is required." };
+    }
+    if (!customerId) {
+      return { rowIndex: row.rowIndex, ok: true, entityType: "SalesOrder", entityId: "(dry-run)" };
+    }
+  } else if (!customerId) {
     return { rowIndex: row.rowIndex, ok: false, error: "customerCrmAccountId is required." };
   }
   return { rowIndex: row.rowIndex, ok: true, entityType: "SalesOrder", entityId: "(dry-run)" };
@@ -552,11 +906,52 @@ export async function applyMappedRowsInTransaction(
     ctSource: ApiHubCtAuditSource;
     salesOrderExternalRefPolicy: ApiHubSalesOrderExternalRefPolicy;
     purchaseOrderBuyerRefPolicy: ApiHubPurchaseOrderBuyerRefPolicy;
+    /**
+     * PO upsert only (ignored otherwise). Defaults to **`merge_by_line_no`**.
+     * **`replace_all`** groups rows by `buyerReference` and replaces all lines per PO in one step.
+     */
+    purchaseOrderLineMerge?: ApiHubPurchaseOrderLineMergeMode;
   },
 ): Promise<ApiHubStagingApplySummary> {
   const sorted = [...input.rows].sort((a, b) => a.rowIndex - b.rowIndex);
   const outRows: ApiHubStagingApplyRowResult[] = [];
+  const consumed = new Set<number>();
+
+  const lineMerge = input.purchaseOrderLineMerge ?? "merge_by_line_no";
+  const poReplaceAll =
+    input.target === "purchase_order" &&
+    input.purchaseOrderBuyerRefPolicy === "upsert" &&
+    lineMerge === "replace_all";
+
+  if (poReplaceAll) {
+    const groups = new Map<string, ApiHubMappedApplyRow[]>();
+    for (const row of sorted) {
+      const rec = asRecord(row.mappedRecord);
+      const br = rec ? readStr(rec, "buyerReference") : null;
+      if (!br) continue;
+      const arr = groups.get(br) ?? [];
+      arr.push(row);
+      groups.set(br, arr);
+    }
+    for (const [, groupRows] of groups) {
+      const gr = [...groupRows].sort((a, b) => a.rowIndex - b.rowIndex);
+      const groupResults = await applyPoBuyerRefReplaceAllGroup(tx, {
+        tenantId: input.tenantId,
+        actorUserId: input.actorUserId,
+        groupRows: gr,
+      });
+      for (const r of groupResults) {
+        outRows.push(r);
+        if (!r.ok) {
+          throw new Error(r.error ?? "Row apply failed.");
+        }
+        consumed.add(r.rowIndex);
+      }
+    }
+  }
+
   for (const row of sorted) {
+    if (consumed.has(row.rowIndex)) continue;
     let r: ApiHubStagingApplyRowResult;
     if (input.target === "sales_order") {
       r = await applySalesOrderRowLive(tx, {
@@ -571,6 +966,7 @@ export async function applyMappedRowsInTransaction(
         actorUserId: input.actorUserId,
         row,
         buyerRefPolicy: input.purchaseOrderBuyerRefPolicy,
+        purchaseOrderLineMerge: poReplaceAll ? "merge_by_line_no" : lineMerge,
       });
     } else {
       r = await applyCtAuditRowLive(tx, {
@@ -585,6 +981,7 @@ export async function applyMappedRowsInTransaction(
       throw new Error(r.error ?? "Row apply failed.");
     }
   }
+  outRows.sort((a, b) => a.rowIndex - b.rowIndex);
   return { target: input.target, dryRun: false, rows: outRows };
 }
 
@@ -592,12 +989,14 @@ export async function dryRunMappedRowsPreview(input: {
   tenantId: string;
   target: ApiHubStagingApplyTarget;
   rows: ApiHubMappedApplyRow[];
+  /** When true, SO rows may omit `customerCrmAccountId` if `externalRef` is set (upsert patch). */
+  salesOrderUpsert?: boolean;
 }): Promise<ApiHubStagingApplySummary> {
   const sorted = [...input.rows].sort((a, b) => a.rowIndex - b.rowIndex);
   const outRows: ApiHubStagingApplyRowResult[] = [];
   for (const row of sorted) {
     if (input.target === "sales_order") {
-      outRows.push(dryRunSalesOrderRow(row));
+      outRows.push(dryRunSalesOrderRow(row, { upsert: input.salesOrderUpsert === true }));
     } else if (input.target === "purchase_order") {
       outRows.push(dryRunPurchaseOrderRow(row));
     } else {

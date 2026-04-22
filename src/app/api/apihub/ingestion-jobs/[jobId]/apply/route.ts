@@ -13,11 +13,15 @@ import { resolveApplyTargetSummary, resolveDryRunTargetSummary } from "@/lib/api
 import {
   APIHUB_INGESTION_APPLY_MATCH_KEYS,
   APIHUB_INGESTION_APPLY_WRITE_MODES,
+  APIHUB_PURCHASE_ORDER_LINE_MERGE_MODES,
   APIHUB_STAGING_APPLY_TARGETS,
   apiHubIngestionUpsertAllowed,
+  apiHubPurchaseOrderLineMergeAllowed,
   isApiHubIngestionApplyWriteMode,
+  isApiHubPurchaseOrderLineMergeMode,
   type ApiHubIngestionApplyMatchKey,
   type ApiHubIngestionApplyWriteMode,
+  type ApiHubPurchaseOrderLineMergeMode,
   type ApiHubStagingApplyTarget,
 } from "@/lib/apihub/constants";
 import { downstreamSummaryToTargetCounts } from "@/lib/apihub/downstream-mapped-rows-apply";
@@ -48,6 +52,8 @@ type ApplyJsonBody = {
   matchKey?: unknown;
   /** Ingestion only: `create_only` (default) or `upsert` (requires ref matchKey). */
   writeMode?: unknown;
+  /** PO upsert only: `merge_by_line_no` (default) or `replace_all`. */
+  purchaseOrderLineMerge?: unknown;
 };
 
 function parseApplyPostTarget(raw: unknown): ApiHubStagingApplyTarget | null {
@@ -82,6 +88,31 @@ function parseApplyWriteMode(
     return {
       ok: false,
       message: `writeMode must be one of: ${APIHUB_INGESTION_APPLY_WRITE_MODES.join(", ")}.`,
+    };
+  }
+  return { ok: true, mode: t };
+}
+
+function mergeOrderLineFieldProvided(raw: unknown): boolean {
+  if (raw === undefined || raw === null) return false;
+  if (typeof raw === "string" && raw.trim() === "") return false;
+  return true;
+}
+
+function parsePurchaseOrderLineMerge(
+  raw: unknown,
+): { ok: true; mode: ApiHubPurchaseOrderLineMergeMode } | { ok: false; message: string } {
+  if (!mergeOrderLineFieldProvided(raw)) {
+    return { ok: true, mode: "merge_by_line_no" };
+  }
+  if (typeof raw !== "string") {
+    return { ok: false, message: "purchaseOrderLineMerge must be a string when provided." };
+  }
+  const t = raw.trim();
+  if (!isApiHubPurchaseOrderLineMergeMode(t)) {
+    return {
+      ok: false,
+      message: `purchaseOrderLineMerge must be one of: ${APIHUB_PURCHASE_ORDER_LINE_MERGE_MODES.join(", ")}.`,
     };
   }
   return { ok: true, mode: t };
@@ -461,12 +492,60 @@ export async function POST(request: Request, context: { params: Promise<{ jobId:
         outcome: null,
       });
     }
+    const poLineMergeAllowed = apiHubPurchaseOrderLineMergeAllowed(target, matchKey, writeParsed.mode);
+    if (!poLineMergeAllowed && mergeOrderLineFieldProvided(jsonBody.purchaseOrderLineMerge)) {
+      return finalizeApplyResponse({
+        response: apiHubValidationError(400, "VALIDATION_ERROR", "Ingestion apply validation failed.", [
+          {
+            field: "purchaseOrderLineMerge",
+            code: "INVALID_COMBINATION",
+            message:
+              "purchaseOrderLineMerge is only allowed for target purchase_order with matchKey purchase_order_buyer_reference and writeMode upsert.",
+            severity: "error",
+          },
+        ], requestId),
+        tenantId: tenant.id,
+        actorUserId: actorId,
+        runId: jobId,
+        requestId,
+        dryRun,
+        idempotencyKeyPresent,
+        resultCode: "APPLY_VALIDATION_ERROR",
+        outcome: null,
+      });
+    }
+    let purchaseOrderLineMerge: ApiHubPurchaseOrderLineMergeMode | undefined;
+    if (poLineMergeAllowed) {
+      const mergeParsed = parsePurchaseOrderLineMerge(jsonBody.purchaseOrderLineMerge);
+      if (!mergeParsed.ok) {
+        return finalizeApplyResponse({
+          response: apiHubValidationError(400, "VALIDATION_ERROR", "Ingestion apply validation failed.", [
+            {
+              field: "purchaseOrderLineMerge",
+              code: "INVALID_ENUM",
+              message: mergeParsed.message,
+              severity: "error",
+            },
+          ], requestId),
+          tenantId: tenant.id,
+          actorUserId: actorId,
+          runId: jobId,
+          requestId,
+          dryRun,
+          idempotencyKeyPresent,
+          resultCode: "APPLY_VALIDATION_ERROR",
+          outcome: null,
+        });
+      }
+      purchaseOrderLineMerge = mergeParsed.mode;
+    }
     downstream = {
       target,
       actorUserId: actorId,
       bodyRows: jsonBody.rows,
       matchKey,
       writeMode: writeParsed.mode,
+      ...(purchaseOrderLineMerge != null ? { purchaseOrderLineMerge } : {}),
     };
   } else if (jsonBody.rows !== undefined) {
     return finalizeApplyResponse({
@@ -489,12 +568,22 @@ export async function POST(request: Request, context: { params: Promise<{ jobId:
     });
   }
 
+  const writeModeForFingerprint = downstream?.writeMode ?? "create_only";
+  const purchaseOrderLineMergeForFingerprint =
+    downstream &&
+    apiHubPurchaseOrderLineMergeAllowed(downstream.target, downstream.matchKey, writeModeForFingerprint)
+      ? (downstream.purchaseOrderLineMerge ?? "merge_by_line_no")
+      : undefined;
+
   const requestFingerprint = computeIngestionApplyIdempotencyFingerprint({
     downstream: downstream
       ? {
           target: downstream.target,
           matchKey: downstream.matchKey,
-          writeMode: downstream.writeMode ?? "create_only",
+          writeMode: writeModeForFingerprint,
+          ...(purchaseOrderLineMergeForFingerprint != null
+            ? { purchaseOrderLineMerge: purchaseOrderLineMergeForFingerprint }
+            : {}),
           bodyRows: downstream.bodyRows,
         }
       : undefined,

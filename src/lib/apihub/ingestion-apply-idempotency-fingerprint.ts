@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import type {
   ApiHubIngestionApplyMatchKey,
   ApiHubIngestionApplyWriteMode,
+  ApiHubPurchaseOrderLineMergeMode,
   ApiHubStagingApplyTarget,
 } from "@/lib/apihub/constants";
 
@@ -10,6 +11,8 @@ export type ApplyIdempotencyFingerprintDownstream = {
   target: ApiHubStagingApplyTarget;
   matchKey: ApiHubIngestionApplyMatchKey;
   writeMode: ApiHubIngestionApplyWriteMode;
+  /** PO upsert only; included in the fingerprint so `merge_by_line_no` vs `replace_all` replay stays distinct. */
+  purchaseOrderLineMerge?: ApiHubPurchaseOrderLineMergeMode;
   /** When omitted, apply rows are resolved from `resultSummary` at execution time. */
   bodyRows?: unknown;
 };
@@ -49,6 +52,9 @@ function stableJsonPayload(input: ApplyIdempotencyFingerprintInput): string {
       target: input.downstream.target,
       matchKey: input.downstream.matchKey,
       writeMode: input.downstream.writeMode,
+      ...(input.downstream.purchaseOrderLineMerge != null
+        ? { purchaseOrderLineMerge: input.downstream.purchaseOrderLineMerge }
+        : {}),
       rows: rowsFingerprint,
     }),
   );

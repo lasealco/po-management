@@ -61,6 +61,28 @@ describe("computeIngestionApplyIdempotencyFingerprint", () => {
     expect(createOnly).not.toEqual(upsert);
   });
 
+  it("differs when purchaseOrderLineMerge changes (PO upsert)", () => {
+    const merge = computeIngestionApplyIdempotencyFingerprint({
+      downstream: {
+        target: "purchase_order",
+        matchKey: "purchase_order_buyer_reference",
+        writeMode: "upsert",
+        purchaseOrderLineMerge: "merge_by_line_no",
+      },
+    });
+    const replaceAll = computeIngestionApplyIdempotencyFingerprint({
+      downstream: {
+        target: "purchase_order",
+        matchKey: "purchase_order_buyer_reference",
+        writeMode: "upsert",
+        purchaseOrderLineMerge: "replace_all",
+      },
+    });
+    expect(merge.startsWith("v1:ds:")).toBe(true);
+    expect(replaceAll.startsWith("v1:ds:")).toBe(true);
+    expect(merge).not.toEqual(replaceAll);
+  });
+
   it("is stable under key reordering in mappedRecord", () => {
     const a = computeIngestionApplyIdempotencyFingerprint({
       downstream: {

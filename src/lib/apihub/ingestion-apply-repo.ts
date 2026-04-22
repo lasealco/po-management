@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import type {
   ApiHubIngestionApplyMatchKey,
   ApiHubIngestionApplyWriteMode,
+  ApiHubPurchaseOrderLineMergeMode,
   ApiHubStagingApplyTarget,
 } from "@/lib/apihub/constants";
 import {
@@ -35,6 +36,8 @@ export type ApplyIngestionRunDownstreamOpts = {
   matchKey: ApiHubIngestionApplyMatchKey;
   /** Default `create_only`. `upsert` requires matching ref `matchKey` (ingestion only). */
   writeMode?: ApiHubIngestionApplyWriteMode;
+  /** PO + buyer ref + upsert only. Default **`merge_by_line_no`**. */
+  purchaseOrderLineMerge?: ApiHubPurchaseOrderLineMergeMode;
 };
 
 export type ApplyApiHubIngestionRunOutcome =
@@ -180,12 +183,19 @@ export async function applyApiHubIngestionRun(opts: {
           ? "upsert"
           : "reject_duplicate"
         : "ignore";
+    const purchaseOrderLineMerge: ApiHubPurchaseOrderLineMergeMode | undefined =
+      downstream.target === "purchase_order" &&
+      downstream.matchKey === "purchase_order_buyer_reference" &&
+      writeMode === "upsert"
+        ? (downstream.purchaseOrderLineMerge ?? "merge_by_line_no")
+        : undefined;
 
     if (dryRun) {
       const preview = await dryRunMappedRowsPreview({
         tenantId,
         target: downstream.target,
         rows: resolved.rows,
+        salesOrderUpsert: salesOrderExternalRefPolicy === "upsert",
       });
       const anyInvalid = preview.rows.some((r) => !r.ok);
       if (anyInvalid) {
@@ -251,6 +261,7 @@ export async function applyApiHubIngestionRun(opts: {
           ctSource: { kind: "ingestion_run", runId },
           salesOrderExternalRefPolicy,
           purchaseOrderBuyerRefPolicy,
+          purchaseOrderLineMerge,
         });
 
         const runRow = await tx.apiHubIngestionRun.findFirst({

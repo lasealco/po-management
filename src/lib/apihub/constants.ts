@@ -168,6 +168,30 @@ export function apiHubIngestionUpsertAllowed(
 }
 
 /**
+ * PO upsert line strategy (ingestion only). **`merge_by_line_no`** updates/creates one line per row;
+ * **`replace_all`** replaces all lines using **all rows that share the same `buyerReference`** in one apply.
+ */
+export const APIHUB_PURCHASE_ORDER_LINE_MERGE_MODES = ["merge_by_line_no", "replace_all"] as const;
+export type ApiHubPurchaseOrderLineMergeMode = (typeof APIHUB_PURCHASE_ORDER_LINE_MERGE_MODES)[number];
+
+export function isApiHubPurchaseOrderLineMergeMode(value: string): value is ApiHubPurchaseOrderLineMergeMode {
+  return (APIHUB_PURCHASE_ORDER_LINE_MERGE_MODES as readonly string[]).includes(value);
+}
+
+/** `purchaseOrderLineMerge` is only meaningful for PO + buyer ref + upsert. */
+export function apiHubPurchaseOrderLineMergeAllowed(
+  target: ApiHubStagingApplyTarget,
+  matchKey: ApiHubIngestionApplyMatchKey,
+  writeMode: ApiHubIngestionApplyWriteMode,
+): boolean {
+  return (
+    target === "purchase_order" &&
+    matchKey === "purchase_order_buyer_reference" &&
+    writeMode === "upsert"
+  );
+}
+
+/**
  * Default max JSON body size (bytes) for API Hub POST/PATCH — abuse guard.
  * Heavy routes (mapping preview, analysis jobs, diff, large templates) use {@link APIHUB_JSON_BODY_MAX_BYTES_LARGE}.
  */
