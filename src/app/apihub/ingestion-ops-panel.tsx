@@ -43,6 +43,14 @@ function formatWhen(iso: string) {
   }
 }
 
+function formatWhenShort(iso: string) {
+  try {
+    return new Date(iso).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" });
+  } catch {
+    return iso;
+  }
+}
+
 function statusBadgeClass(status: string) {
   switch (status) {
     case "succeeded":
@@ -299,7 +307,7 @@ export function IngestionOpsPanel({ canView, canEdit = false, initialSummary, in
           <tbody className="divide-y divide-zinc-100 bg-white text-zinc-800">
             {runs.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-sm text-zinc-600">
+                <td colSpan={9} className="px-4 py-8 text-center text-sm text-zinc-600">
                   No runs match this filter.
                 </td>
               </tr>
@@ -317,6 +325,12 @@ export function IngestionOpsPanel({ canView, canEdit = false, initialSummary, in
                           ? `${r.connectorId.slice(0, 10)}…`
                           : r.connectorId
                         : "—"}
+                    </td>
+                    <td
+                      className="whitespace-nowrap px-4 py-3 text-xs text-zinc-600"
+                      title={r.enqueuedAt}
+                    >
+                      {formatWhenShort(r.enqueuedAt)}
                     </td>
                     <td className="px-4 py-3">
                       <span
@@ -349,7 +363,7 @@ export function IngestionOpsPanel({ canView, canEdit = false, initialSummary, in
                   </tr>
                   {expandedRunId === r.id ? (
                     <tr className="bg-zinc-50/80">
-                      <td colSpan={8} className="p-0">
+                      <td colSpan={9} className="p-0">
                         <IngestionRunDetailExpand
                           runId={r.id}
                           canRetry={canEdit}
