@@ -34,6 +34,13 @@ describe("TWIN_API_ERROR_CODES", () => {
 
   it("type-guards only registered code strings", () => {
     expect(isTwinApiErrorCode("QUERY_VALIDATION_FAILED")).toBe(true);
+    expect(isTwinApiErrorCode("INVALID_CURSOR")).toBe(true);
+    expect(isTwinApiErrorCode("BODY_JSON_INVALID")).toBe(true);
+    expect(isTwinApiErrorCode("BODY_VALIDATION_FAILED")).toBe(true);
+    expect(isTwinApiErrorCode("PATH_ID_INVALID")).toBe(true);
+    expect(isTwinApiErrorCode("INVALID_STATUS_TRANSITION")).toBe(true);
+    expect(isTwinApiErrorCode("TWIN_INGEST_PAYLOAD_TOO_LARGE")).toBe(true);
+    expect(isTwinApiErrorCode("TWIN_SCENARIO_DRAFT_JSON_TOO_LARGE")).toBe(true);
     expect(isTwinApiErrorCode("EXPORT_ROW_CAP_EXCEEDED")).toBe(true);
     expect(isTwinApiErrorCode("NOT_A_REAL_TWIN_CODE")).toBe(false);
     expect(isTwinApiErrorCode(123)).toBe(false);
@@ -45,6 +52,15 @@ describe("TWIN_API_ERROR_CODES", () => {
     expect(parseTwinApiErrorCode({ code: " QUERY_VALIDATION_FAILED " })).toBe("QUERY_VALIDATION_FAILED");
     expect(parseTwinApiErrorCode({ code: "\n\tQUERY_VALIDATION_FAILED\t\n" })).toBe("QUERY_VALIDATION_FAILED");
     expect(parseTwinApiErrorCode({ code: "query_validation_failed" })).toBe("QUERY_VALIDATION_FAILED");
+    expect(parseTwinApiErrorCode({ code: " invalid_cursor " })).toBe("INVALID_CURSOR");
+    expect(parseTwinApiErrorCode({ code: " body_json_invalid " })).toBe("BODY_JSON_INVALID");
+    expect(parseTwinApiErrorCode({ code: " body_validation_failed " })).toBe("BODY_VALIDATION_FAILED");
+    expect(parseTwinApiErrorCode({ code: " path_id_invalid " })).toBe("PATH_ID_INVALID");
+    expect(parseTwinApiErrorCode({ code: " invalid_status_transition " })).toBe("INVALID_STATUS_TRANSITION");
+    expect(parseTwinApiErrorCode({ code: " twin_ingest_payload_too_large " })).toBe("TWIN_INGEST_PAYLOAD_TOO_LARGE");
+    expect(parseTwinApiErrorCode({ code: " twin_scenario_draft_json_too_large " })).toBe(
+      "TWIN_SCENARIO_DRAFT_JSON_TOO_LARGE",
+    );
     expect(parseTwinApiErrorCode({ code: "query-validation-failed" })).toBeNull();
     expect(parseTwinApiErrorCode({ code: 1001 })).toBeNull();
     expect(parseTwinApiErrorCode({ code: true })).toBeNull();
@@ -107,6 +123,96 @@ describe("TWIN_API_ERROR_CODES", () => {
     expect(parseTwinApiErrorBody({ code: "FORMAT_INVALID", error: 42, message: "Invalid format" })).toEqual({
       code: "FORMAT_INVALID",
       error: "Invalid format",
+    });
+    expect(
+      parseTwinApiErrorBody({
+        code: " export_row_cap_exceeded ",
+        error: 42,
+        message: "Too many rows",
+      }),
+    ).toEqual({
+      code: "EXPORT_ROW_CAP_EXCEEDED",
+      error: "Too many rows",
+    });
+    expect(
+      parseTwinApiErrorBody({
+        code: " query_validation_failed ",
+        error: 42,
+        message: "Bad filters",
+      }),
+    ).toEqual({
+      code: "QUERY_VALIDATION_FAILED",
+      error: "Bad filters",
+    });
+    expect(
+      parseTwinApiErrorBody({
+        code: " invalid_cursor ",
+        error: 42,
+        message: "Bad cursor",
+      }),
+    ).toEqual({
+      code: "INVALID_CURSOR",
+      error: "Bad cursor",
+    });
+    expect(
+      parseTwinApiErrorBody({
+        code: " body_json_invalid ",
+        error: 42,
+        message: "Unexpected token",
+      }),
+    ).toEqual({
+      code: "BODY_JSON_INVALID",
+      error: "Unexpected token",
+    });
+    expect(
+      parseTwinApiErrorBody({
+        code: " body_validation_failed ",
+        error: 42,
+        message: "title is required",
+      }),
+    ).toEqual({
+      code: "BODY_VALIDATION_FAILED",
+      error: "title is required",
+    });
+    expect(
+      parseTwinApiErrorBody({
+        code: " path_id_invalid ",
+        error: 42,
+        message: "id is empty",
+      }),
+    ).toEqual({
+      code: "PATH_ID_INVALID",
+      error: "id is empty",
+    });
+    expect(
+      parseTwinApiErrorBody({
+        code: " invalid_status_transition ",
+        error: 42,
+        message: "draft is archived",
+      }),
+    ).toEqual({
+      code: "INVALID_STATUS_TRANSITION",
+      error: "draft is archived",
+    });
+    expect(
+      parseTwinApiErrorBody({
+        code: " twin_ingest_payload_too_large ",
+        error: 42,
+        message: "payload exceeds cap",
+      }),
+    ).toEqual({
+      code: "TWIN_INGEST_PAYLOAD_TOO_LARGE",
+      error: "payload exceeds cap",
+    });
+    expect(
+      parseTwinApiErrorBody({
+        code: " twin_scenario_draft_json_too_large ",
+        error: 42,
+        message: "draft JSON exceeds byte cap",
+      }),
+    ).toEqual({
+      code: "TWIN_SCENARIO_DRAFT_JSON_TOO_LARGE",
+      error: "draft JSON exceeds byte cap",
     });
     expect(parseTwinApiErrorBody({ code: "FORMAT_INVALID", error: "   ", message: "Invalid format" })).toEqual({
       code: "FORMAT_INVALID",
@@ -240,6 +346,28 @@ describe("TWIN_API_ERROR_CODES", () => {
     expect(getTwinEventsExportErrorMessage({ code: "FORMAT_INVALID", message: "custom backend text" })).toMatch(
       /CSV or JSON/i,
     );
+    expect(getTwinEventsExportErrorMessage({ code: " invalid_cursor ", error: "Use next page token" })).toBe(
+      "Use next page token",
+    );
+    expect(getTwinEventsExportErrorMessage({ code: " body_json_invalid ", error: "Unexpected token" })).toBe(
+      "Unexpected token",
+    );
+    expect(getTwinEventsExportErrorMessage({ code: " body_validation_failed ", error: "title is required" })).toBe(
+      "title is required",
+    );
+    expect(getTwinEventsExportErrorMessage({ code: " path_id_invalid ", error: "id is empty" })).toBe("id is empty");
+    expect(getTwinEventsExportErrorMessage({ code: " invalid_status_transition ", error: "draft is archived" })).toBe(
+      "draft is archived",
+    );
+    expect(
+      getTwinEventsExportErrorMessage({ code: " twin_ingest_payload_too_large ", error: "payload exceeds cap" }),
+    ).toBe("payload exceeds cap");
+    expect(
+      getTwinEventsExportErrorMessage({
+        code: " twin_scenario_draft_json_too_large ",
+        error: "draft JSON exceeds byte cap",
+      }),
+    ).toBe("draft JSON exceeds byte cap");
     expect(getTwinEventsExportErrorMessage({ error: "raw message" })).toBe("raw message");
     expect(getTwinEventsExportErrorMessage({ error: "\n\traw message\t\n" })).toBe("raw message");
     expect(getTwinEventsExportErrorMessage({ code: "NOT_A_REAL_TWIN_CODE", message: " fallback message " })).toBe(
