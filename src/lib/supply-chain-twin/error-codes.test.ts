@@ -498,6 +498,50 @@ describe("TWIN_API_ERROR_CODES", () => {
     expect(getTwinEventsExportErrorMessage(null)).toBe("Export failed.");
   });
 
+  it("loops export message behavior: mapped codes ignore backend text; others pass through", () => {
+    const mapped: Array<[(typeof TWIN_API_ERROR_CODES)[keyof typeof TWIN_API_ERROR_CODES], RegExp]> = [
+      [TWIN_API_ERROR_CODES.QUERY_VALIDATION_FAILED, /filters are invalid/i],
+      [TWIN_API_ERROR_CODES.EXPORT_ROW_CAP_EXCEEDED, /too large/i],
+      [TWIN_API_ERROR_CODES.FORMAT_INVALID, /CSV or JSON/i],
+    ];
+    const mappedCodes = new Set(mapped.map(([code]) => code));
+
+    for (const [code, pattern] of mapped) {
+      expect(
+        getTwinEventsExportErrorMessage({
+          code: ` ${code.toLowerCase()} `,
+          error: "noisy backend text",
+          message: "also noisy",
+        }),
+      ).toMatch(pattern);
+      expect(
+        getTwinEventsExportErrorMessage({
+          code: ` ${code.toLowerCase()} `,
+          error: 42,
+          message: "parsed detail before mapping",
+        }),
+      ).toMatch(pattern);
+    }
+
+    for (const code of Object.values(TWIN_API_ERROR_CODES)) {
+      if (mappedCodes.has(code)) continue;
+      expect(
+        getTwinEventsExportErrorMessage({
+          code: ` ${code.toLowerCase()} `,
+          error: "operator-visible detail",
+          message: "secondary",
+        }),
+      ).toBe("operator-visible detail");
+      expect(
+        getTwinEventsExportErrorMessage({
+          code: ` ${code.toLowerCase()} `,
+          error: 42,
+          message: "from message field",
+        }),
+      ).toBe("from message field");
+    }
+  });
+
   it("prefers stable code mapping over raw error text", () => {
     expect(
       getTwinEventsExportErrorMessage({
