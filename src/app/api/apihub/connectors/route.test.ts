@@ -5,14 +5,13 @@ import { APIHUB_REQUEST_ID_HEADER } from "@/lib/apihub/request-id";
 
 const getDemoTenantMock = vi.fn();
 const getActorUserIdMock = vi.fn();
-const listApiHubConnectorsMock = vi.fn();
-const listApiHubConnectorAuditLogsMock = vi.fn();
+const listApiHubConnectorsWithRecentAuditMock = vi.fn();
 
 vi.mock("@/lib/demo-tenant", () => ({ getDemoTenant: getDemoTenantMock }));
 vi.mock("@/lib/authz", () => ({ getActorUserId: getActorUserIdMock }));
 vi.mock("@/lib/apihub/connectors-repo", () => ({
-  listApiHubConnectors: listApiHubConnectorsMock,
-  listApiHubConnectorAuditLogs: listApiHubConnectorAuditLogsMock,
+  listApiHubConnectorsWithRecentAudit: listApiHubConnectorsWithRecentAuditMock,
+  listApiHubConnectorAuditLogs: vi.fn(),
   createStubApiHubConnector: vi.fn(),
 }));
 
@@ -25,7 +24,6 @@ describe("GET /api/apihub/connectors", () => {
     vi.clearAllMocks();
     getDemoTenantMock.mockResolvedValue({ id: "tenant-1" });
     getActorUserIdMock.mockResolvedValue("user-1");
-    listApiHubConnectorAuditLogsMock.mockResolvedValue([]);
   });
 
   it("returns 400 for invalid status filter", async () => {
@@ -67,7 +65,7 @@ describe("GET /api/apihub/connectors", () => {
   });
 
   it("lists connectors with status and authMode filters", async () => {
-    listApiHubConnectorsMock.mockResolvedValue([{ id: "c1" }]);
+    listApiHubConnectorsWithRecentAuditMock.mockResolvedValue([{ id: "c1", auditLogs: [] }]);
     const { GET } = await import("./route");
     const response = await GET(
       new Request("http://localhost/api/apihub/connectors?status=active&authMode=none", {
@@ -75,13 +73,17 @@ describe("GET /api/apihub/connectors", () => {
       }),
     );
     expect(response.status).toBe(200);
-    expect(listApiHubConnectorsMock).toHaveBeenCalledWith("tenant-1", {
-      status: "active",
-      authMode: "none",
-      q: undefined,
-      sortField: undefined,
-      sortOrder: undefined,
-    });
+    expect(listApiHubConnectorsWithRecentAuditMock).toHaveBeenCalledWith(
+      "tenant-1",
+      {
+        status: "active",
+        authMode: "none",
+        q: undefined,
+        sortField: undefined,
+        sortOrder: undefined,
+      },
+      3,
+    );
     expect(await response.json()).toEqual({ connectors: [{ id: "dto-c1" }] });
     expect(response.headers.get(APIHUB_REQUEST_ID_HEADER)).toBe("conn-list-ok-1");
   });
@@ -124,7 +126,7 @@ describe("GET /api/apihub/connectors", () => {
   });
 
   it("passes sort and order to list filters", async () => {
-    listApiHubConnectorsMock.mockResolvedValue([{ id: "c1" }]);
+    listApiHubConnectorsWithRecentAuditMock.mockResolvedValue([{ id: "c1", auditLogs: [] }]);
     const { GET } = await import("./route");
     const response = await GET(
       new Request("http://localhost/api/apihub/connectors?sort=name&order=asc", {
@@ -132,18 +134,22 @@ describe("GET /api/apihub/connectors", () => {
       }),
     );
     expect(response.status).toBe(200);
-    expect(listApiHubConnectorsMock).toHaveBeenCalledWith("tenant-1", {
-      status: undefined,
-      authMode: undefined,
-      q: undefined,
-      sortField: "name",
-      sortOrder: "asc",
-    });
+    expect(listApiHubConnectorsWithRecentAuditMock).toHaveBeenCalledWith(
+      "tenant-1",
+      {
+        status: undefined,
+        authMode: undefined,
+        q: undefined,
+        sortField: "name",
+        sortOrder: "asc",
+      },
+      3,
+    );
     expect(await response.json()).toEqual({ connectors: [{ id: "dto-c1" }] });
   });
 
   it("passes trimmed q to list filters", async () => {
-    listApiHubConnectorsMock.mockResolvedValue([{ id: "c1" }]);
+    listApiHubConnectorsWithRecentAuditMock.mockResolvedValue([{ id: "c1", auditLogs: [] }]);
     const { GET } = await import("./route");
     const response = await GET(
       new Request("http://localhost/api/apihub/connectors?q=%20acme%20", {
@@ -151,13 +157,17 @@ describe("GET /api/apihub/connectors", () => {
       }),
     );
     expect(response.status).toBe(200);
-    expect(listApiHubConnectorsMock).toHaveBeenCalledWith("tenant-1", {
-      status: undefined,
-      authMode: undefined,
-      q: "acme",
-      sortField: undefined,
-      sortOrder: undefined,
-    });
+    expect(listApiHubConnectorsWithRecentAuditMock).toHaveBeenCalledWith(
+      "tenant-1",
+      {
+        status: undefined,
+        authMode: undefined,
+        q: "acme",
+        sortField: undefined,
+        sortOrder: undefined,
+      },
+      3,
+    );
     expect(await response.json()).toEqual({ connectors: [{ id: "dto-c1" }] });
   });
 });

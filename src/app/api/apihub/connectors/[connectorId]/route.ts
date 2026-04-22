@@ -13,7 +13,11 @@ import {
   APIHUB_CONNECTOR_STATUSES,
 } from "@/lib/apihub/constants";
 import { toApiHubConnectorDto } from "@/lib/apihub/connector-dto";
-import { getApiHubConnectorInTenant, updateApiHubConnectorLifecycle } from "@/lib/apihub/connectors-repo";
+import {
+  getApiHubConnectorInTenant,
+  listApiHubConnectorAuditLogs,
+  updateApiHubConnectorLifecycle,
+} from "@/lib/apihub/connectors-repo";
 import { countInFlightApiHubIngestionRunsForConnector } from "@/lib/apihub/ingestion-runs-repo";
 import { resolveApiHubRequestId } from "@/lib/apihub/request-id";
 import { getDemoTenant } from "@/lib/demo-tenant";
@@ -181,5 +185,6 @@ export async function PATCH(
     return apiHubError(404, "CONNECTOR_NOT_FOUND", "Connector not found.", requestId);
   }
 
-  return apiHubJson({ connector: toApiHubConnectorDto(updated) }, requestId);
+  const auditLogs = await listApiHubConnectorAuditLogs(tenant.id, connectorId, 3);
+  return apiHubJson({ connector: toApiHubConnectorDto({ ...updated, auditLogs }) }, requestId);
 }

@@ -7,6 +7,8 @@ describe("toApiHubConnectorAuditLogDto", () => {
     const out = toApiHubConnectorAuditLogDto({
       id: "log-1",
       actorUserId: "u1",
+      actorEmail: "ops@example.com",
+      actorName: "Ops User",
       action: "apihub.connector.created",
       note: "ok",
       createdAt: new Date("2026-04-21T10:00:00.000Z"),
@@ -14,6 +16,8 @@ describe("toApiHubConnectorAuditLogDto", () => {
     expect(out).toEqual({
       id: "log-1",
       actorUserId: "u1",
+      actorEmail: "ops@example.com",
+      actorName: "Ops User",
       action: "apihub.connector.created",
       note: "ok",
       createdAt: "2026-04-21T10:00:00.000Z",
@@ -67,6 +71,8 @@ describe("toApiHubConnectorDto", () => {
         {
           id: "a1",
           actorUserId: "u1",
+          actorEmail: "u1@example.com",
+          actorName: "User One",
           action: "apihub.connector.lifecycle_updated",
           note: "Set to active and marked synced.",
           createdAt: new Date("2026-04-21T09:01:00.000Z"),
@@ -81,6 +87,8 @@ describe("toApiHubConnectorDto", () => {
       {
         id: "a1",
         actorUserId: "u1",
+        actorEmail: "u1@example.com",
+        actorName: "User One",
         action: "apihub.connector.lifecycle_updated",
         note: "Set to active and marked synced.",
         createdAt: "2026-04-21T09:01:00.000Z",

@@ -56,6 +56,8 @@ export type ApiHubConnectorAuditLogRow = {
   id: string;
   connectorId: string;
   actorUserId: string;
+  actorEmail: string;
+  actorName: string;
   action: string;
   note: string | null;
   createdAt: Date;
@@ -100,6 +102,21 @@ export async function listApiHubConnectors(
     return sortConnectorListRowsByNameSearch(rows, qTrimmed, { field: sortField, order: sortOrder });
   }
   return rows;
+}
+
+/** List connectors plus the latest `auditLimit` audit rows per connector (for SSR + list API DTOs). */
+export async function listApiHubConnectorsWithRecentAudit(
+  tenantId: string,
+  filters?: ListApiHubConnectorsFilters,
+  auditLimit = 3,
+): Promise<Array<ApiHubConnectorListRow & { auditLogs: ApiHubConnectorAuditLogRow[] }>> {
+  const rows = await listApiHubConnectors(tenantId, filters);
+  return Promise.all(
+    rows.map(async (row) => ({
+      ...row,
+      auditLogs: await listApiHubConnectorAuditLogs(tenantId, row.id, auditLimit),
+    })),
+  );
 }
 
 export async function createStubApiHubConnector(opts: {
@@ -283,19 +300,24 @@ export async function listApiHubConnectorAuditLogs(
   connectorId: string,
   limit = 5,
 ): Promise<ApiHubConnectorAuditLogRow[]> {
-  return prisma.apiHubConnectorAuditLog.findMany({
+  const rows = await prisma.apiHubConnectorAuditLog.findMany({
     where: { tenantId, connectorId },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: limit,
-    select: {
-      id: true,
-      connectorId: true,
-      actorUserId: true,
-      action: true,
-      note: true,
-      createdAt: true,
+    include: {
+      actorUser: { select: { email: true, name: true } },
     },
   });
+  return rows.map((r) => ({
+    id: r.id,
+    connectorId: r.connectorId,
+    actorUserId: r.actorUserId,
+    actorEmail: r.actorUser.email,
+    actorName: r.actorUser.name,
+    action: r.action,
+    note: r.note,
+    createdAt: r.createdAt,
+  }));
 }
 
 export async function getApiHubConnectorInTenant(
@@ -350,16 +372,21 @@ export async function listApiHubConnectorAuditLogsPage(opts: {
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     skip: opts.offset,
     take,
-    select: {
-      id: true,
-      connectorId: true,
-      actorUserId: true,
-      action: true,
-      note: true,
-      createdAt: true,
+    include: {
+      actorUser: { select: { email: true, name: true } },
     },
   });
   const hasMore = rows.length > opts.limit;
-  const items = hasMore ? rows.slice(0, opts.limit) : rows;
+  const slice = hasMore ? rows.slice(0, opts.limit) : rows;
+  const items: ApiHubConnectorAuditLogRow[] = slice.map((r) => ({
+    id: r.id,
+    connectorId: r.connectorId,
+    actorUserId: r.actorUserId,
+    actorEmail: r.actorUser.email,
+    actorName: r.actorUser.name,
+    action: r.action,
+    note: r.note,
+    createdAt: r.createdAt,
+  }));
   return { items, hasMore };
 }

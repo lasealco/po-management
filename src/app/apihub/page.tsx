@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { toApiHubConnectorDto } from "@/lib/apihub/connector-dto";
-import { listApiHubConnectors } from "@/lib/apihub/connectors-repo";
+import { listApiHubConnectorsWithRecentAudit } from "@/lib/apihub/connectors-repo";
 import type { ApiHubIngestionRunDto } from "@/lib/apihub/ingestion-run-dto";
 import { toApiHubIngestionRunDto } from "@/lib/apihub/ingestion-run-dto";
 import type { ApiHubApplyConflictListItemDto } from "@/lib/apihub/ingestion-apply-conflict-dto";
@@ -61,7 +61,7 @@ export default async function ApihubHomePage() {
   const access = await getViewerGrantSet();
   const canCreate = Boolean(access?.user);
   const connectorRows =
-    access?.user && access.tenant ? await listApiHubConnectors(access.tenant.id) : [];
+    access?.user && access.tenant ? await listApiHubConnectorsWithRecentAudit(access.tenant.id, undefined, 3) : [];
   const initialConnectors = connectorRows.map(toApiHubConnectorDto);
 
   let ingestionInitialSummary: IngestionOpsSummaryPayload | null = null;

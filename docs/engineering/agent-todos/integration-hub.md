@@ -29,11 +29,11 @@
 
 - [x] **Connector registry** — `ApiHubConnector` + migration `20260420183000_apihub_connector_registry`; `GET`/`POST` `src/app/api/apihub/connectors/route.ts`; Connectors section on `/apihub` (Session 8 / Phase 1 stub).
 - [x] **Mapping templates + audit + diff + preview export** — Prisma `ApiHubMappingTemplate` (+ audit log), REST routes under `/api/apihub/mapping-templates/**`, `POST /api/apihub/mapping-diff`, preview + export under ingestion jobs; `/apihub` UI panels (2026-04 agent slices).
-- [ ] **Health / last sync** — display-only fields on registry rows (mock data ok until integrations exist).
-- [ ] **Audit log slice** — who changed connector config (may reuse existing audit patterns).
+- [x] **Health / last sync** — list shows registry `lastSyncAt` + stored `healthSummary`; **Run live health probe** calls `GET …/connectors/:id/health` (readiness + checked-at; no secrets).
+- [x] **Audit log slice** — `ApiHubConnectorAuditLog` + paginated `GET …/audit`; timeline and list preview resolve **actor name + email** (demo user).
 
 ---
 
 ## Hygiene
 
-- [x] Keep [`docs/apihub/GAP_MAP.md`](../../apihub/GAP_MAP.md) and [`docs/apihub/README.md`](../../apihub/README.md) mapping section current when merging API hub PRs (last doc sync 2026-04-22).
+- [x] Keep [`docs/apihub/GAP_MAP.md`](../../apihub/GAP_MAP.md) and [`docs/apihub/README.md`](../../apihub/README.md) mapping section current when merging API hub PRs (last doc sync 2026-04-22 — connector health UI + audit actor).

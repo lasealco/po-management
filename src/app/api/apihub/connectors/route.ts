@@ -16,7 +16,7 @@ import { toApiHubConnectorDto } from "@/lib/apihub/connector-dto";
 import {
   createStubApiHubConnector,
   listApiHubConnectorAuditLogs,
-  listApiHubConnectors,
+  listApiHubConnectorsWithRecentAudit,
 } from "@/lib/apihub/connectors-repo";
 import { resolveApiHubRequestId } from "@/lib/apihub/request-id";
 import { getActorUserId } from "@/lib/authz";
@@ -98,22 +98,20 @@ export async function GET(request: Request) {
     );
   }
 
-  const rows = await listApiHubConnectors(tenant.id, {
-    status: rawStatus.length > 0 ? rawStatus : undefined,
-    authMode: rawAuthMode.length > 0 ? rawAuthMode : undefined,
-    q: rawQ.length > 0 ? rawQ : undefined,
-    sortField:
-      rawSort.length > 0 ? (rawSort as (typeof APIHUB_CONNECTOR_LIST_SORT_FIELDS)[number]) : undefined,
-    sortOrder:
-      rawOrder.length > 0 ? (rawOrder as (typeof APIHUB_CONNECTOR_LIST_SORT_ORDERS)[number]) : undefined,
-  });
-  const rowsWithAudit = await Promise.all(
-    rows.map(async (row) => ({
-      ...row,
-      auditLogs: await listApiHubConnectorAuditLogs(tenant.id, row.id, 3),
-    })),
+  const rows = await listApiHubConnectorsWithRecentAudit(
+    tenant.id,
+    {
+      status: rawStatus.length > 0 ? rawStatus : undefined,
+      authMode: rawAuthMode.length > 0 ? rawAuthMode : undefined,
+      q: rawQ.length > 0 ? rawQ : undefined,
+      sortField:
+        rawSort.length > 0 ? (rawSort as (typeof APIHUB_CONNECTOR_LIST_SORT_FIELDS)[number]) : undefined,
+      sortOrder:
+        rawOrder.length > 0 ? (rawOrder as (typeof APIHUB_CONNECTOR_LIST_SORT_ORDERS)[number]) : undefined,
+    },
+    3,
   );
-  return apiHubJson({ connectors: rowsWithAudit.map(toApiHubConnectorDto) }, requestId);
+  return apiHubJson({ connectors: rows.map(toApiHubConnectorDto) }, requestId);
 }
 
 type PostBody = {
@@ -143,5 +141,6 @@ export async function POST(request: Request) {
   const name = rawName.length > 0 ? rawName.slice(0, 128) : "Stub connector";
 
   const created = await createStubApiHubConnector({ tenantId: tenant.id, actorUserId: actorId, name });
-  return apiHubJson({ connector: toApiHubConnectorDto(created) }, requestId, 201);
+  const auditLogs = await listApiHubConnectorAuditLogs(tenant.id, created.id, 3);
+  return apiHubJson({ connector: toApiHubConnectorDto({ ...created, auditLogs }) }, requestId, 201);
 }

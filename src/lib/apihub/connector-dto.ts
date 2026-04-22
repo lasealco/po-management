@@ -21,6 +21,10 @@ export type ApiHubConnectorDto = {
 export type ApiHubConnectorAuditTrailDto = {
   id: string;
   actorUserId: string;
+  /** Demo-tenant user email (no secrets). */
+  actorEmail: string;
+  /** Demo-tenant display name. */
+  actorName: string;
   action: string;
   note: string | null;
   createdAt: string;
@@ -29,6 +33,8 @@ export type ApiHubConnectorAuditTrailDto = {
 type AuditLogRowLike = {
   id: string;
   actorUserId: string;
+  actorEmail?: string | null;
+  actorName?: string | null;
   action: string;
   note: string | null;
   createdAt: Date;
@@ -38,6 +44,8 @@ export function toApiHubConnectorAuditLogDto(row: AuditLogRowLike): ApiHubConnec
   return {
     id: row.id,
     actorUserId: row.actorUserId,
+    actorEmail: (row.actorEmail ?? "").trim(),
+    actorName: (row.actorName ?? "").trim(),
     action: row.action,
     note: row.note,
     createdAt: row.createdAt.toISOString(),
@@ -61,6 +69,8 @@ type Row = {
   auditLogs?: {
     id: string;
     actorUserId: string;
+    actorEmail?: string | null;
+    actorName?: string | null;
     action: string;
     note: string | null;
     createdAt: Date;
@@ -87,12 +97,6 @@ export function toApiHubConnectorDto(row: Row): ApiHubConnectorDto {
     readinessSummary,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
-    auditTrail: (row.auditLogs ?? []).map((audit) => ({
-      id: audit.id,
-      actorUserId: audit.actorUserId,
-      action: audit.action,
-      note: audit.note,
-      createdAt: audit.createdAt.toISOString(),
-    })),
+    auditTrail: (row.auditLogs ?? []).map((audit) => toApiHubConnectorAuditLogDto(audit)),
   };
 }

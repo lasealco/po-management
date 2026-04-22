@@ -2,7 +2,7 @@
 
 **Legend:** ✅ shipped · 🟡 partial / stub · ❌ not started
 
-**Last updated:** 2026-04-30 (Slice 61 tenant scoping + tests)
+**Last updated:** 2026-04-22 (connector health probe UI + audit actor on list/API)
 
 | Area | Repo reality | Notes |
 |------|--------------|--------|
@@ -14,7 +14,7 @@
 | Ingestion spec | 🟡 `integrations-ai-assisted-ingestion.md` | Draft; phased table has footnote vs shipped deterministic mapping |
 | App route `/apihub` | ✅ `src/app/apihub/**` | Connectors + **mapping templates** UI + **diff** + **preview export** + **Alerts** + **Apply conflicts**; demo session required |
 | Health / discovery API | ✅ `GET /api/apihub/health` | `{ ok, service, phase }`; no secrets |
-| Prisma: **connector registry** | ✅ `ApiHubConnector` + `ApiHubConnectorAuditLog`; `GET/POST /api/apihub/connectors`; `PATCH /api/apihub/connectors/:id` | Status + sync stamp + audit; no secrets / OAuth / workers |
+| Prisma: **connector registry** | ✅ `ApiHubConnector` + `ApiHubConnectorAuditLog`; `GET/POST /api/apihub/connectors`; `PATCH /api/apihub/connectors/:id`; `GET …/connectors/:id/health` + `GET …/audit` | List/SSR includes recent audit + actor identity; `/apihub` **Run live health probe**; no secrets / OAuth / workers |
 | Prisma: **mapping templates** | ✅ `ApiHubMappingTemplate` + `ApiHubMappingTemplateAuditLog` | Full CRUD + list audit APIs; migrations `20260422160000_*`, `20260422170000_*` |
 | Prisma: batch / staging tables | ❌ | Spec “batch + staging” tables still future (rules live on templates + preview payloads) |
 | Mapping engine + preview | ✅ `src/lib/apihub/mapping-engine.ts`, `mapping-preview-run.ts` | `POST …/mapping-preview` + **export** (`json` \| `csv`); `sampleSize` cap |

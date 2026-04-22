@@ -13,6 +13,18 @@ type Props = {
   canCreate: boolean;
 };
 
+type LiveHealthPayload = {
+  state: string;
+  summary: string;
+  lastSyncAt: string | null;
+  checkedAt: string;
+  readinessOverall: string;
+  lifecycleStatus: string;
+  sourceKind: string;
+};
+
+type HealthProbeUi = { loading: boolean; error: string | null; data: LiveHealthPayload | null };
+
 type BadgeTone = "green" | "amber" | "red" | "zinc";
 
 function formatWhen(iso: string) {
@@ -86,6 +98,7 @@ export function ConnectorsSection({ initialConnectors, canCreate }: Props) {
   const [rowBusyId, setRowBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [timelineConnectorId, setTimelineConnectorId] = useState<string | null>(null);
+  const [healthProbeById, setHealthProbeById] = useState<Record<string, HealthProbeUi>>({});
 
   async function addStub() {
     setError(null);
@@ -104,6 +117,43 @@ export function ConnectorsSection({ initialConnectors, canCreate }: Props) {
       router.refresh();
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function runHealthProbe(connectorId: string) {
+    if (!canCreate) {
+      return;
+    }
+    setHealthProbeById((prev) => ({
+      ...prev,
+      [connectorId]: { loading: true, error: null, data: prev[connectorId]?.data ?? null },
+    }));
+    try {
+      const res = await fetch(`/api/apihub/connectors/${encodeURIComponent(connectorId)}/health`);
+      const data = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        health?: LiveHealthPayload;
+      };
+      if (!res.ok || !data.health) {
+        setHealthProbeById((prev) => ({
+          ...prev,
+          [connectorId]: {
+            loading: false,
+            error: readApiHubErrorMessageFromJsonBody(data, "Health probe failed."),
+            data: null,
+          },
+        }));
+        return;
+      }
+      setHealthProbeById((prev) => ({
+        ...prev,
+        [connectorId]: { loading: false, error: null, data: data.health! },
+      }));
+    } catch {
+      setHealthProbeById((prev) => ({
+        ...prev,
+        [connectorId]: { loading: false, error: "Health probe failed.", data: null },
+      }));
     }
   }
 
@@ -185,6 +235,7 @@ export function ConnectorsSection({ initialConnectors, canCreate }: Props) {
                 <th className="px-4 py-3">Name</th>
                 <th className="px-4 py-3">Kind</th>
                 <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Readiness</th>
                 <th className="px-4 py-3">Last sync</th>
                 <th className="px-4 py-3">Health</th>
                 <th className="px-4 py-3">Actions</th>
@@ -198,6 +249,19 @@ export function ConnectorsSection({ initialConnectors, canCreate }: Props) {
                   <td className="px-4 py-3 font-medium">{c.name}</td>
                   <td className="px-4 py-3 font-mono text-xs text-zinc-600">{c.sourceKind}</td>
                   <td className="px-4 py-3">{c.status}</td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${toneClass(
+                        c.readinessSummary.overall === "ready"
+                          ? "green"
+                          : c.readinessSummary.overall === "blocked"
+                            ? "red"
+                            : "amber",
+                      )}`}
+                    >
+                      {c.readinessSummary.overall}
+                    </span>
+                  </td>
                   <td className="px-4 py-3">
                     {c.lastSyncAt ? (
                       <div className="flex flex-col gap-1 text-xs">
@@ -213,16 +277,52 @@ export function ConnectorsSection({ initialConnectors, canCreate }: Props) {
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    {(() => {
-                      const health = getHealthDisplay(c.status, c.healthSummary);
-                      return (
-                        <span
-                          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${toneClass(health.tone)}`}
-                        >
-                          {health.label}
-                        </span>
-                      );
-                    })()}
+                    <div className="flex max-w-xs flex-col gap-2">
+                      {(() => {
+                        const health = getHealthDisplay(c.status, c.healthSummary);
+                        return (
+                          <span
+                            className={`inline-flex w-fit items-center rounded-full border px-2 py-0.5 text-xs font-medium ${toneClass(health.tone)}`}
+                          >
+                            {health.label}
+                          </span>
+                        );
+                      })()}
+                      <p className="text-xs text-zinc-500">
+                        Stored summary on the registry row (integrations still stubbed).
+                      </p>
+                      <button
+                        type="button"
+                        disabled={!canCreate || healthProbeById[c.id]?.loading}
+                        onClick={() => void runHealthProbe(c.id)}
+                        className="w-fit rounded-lg border border-zinc-300 bg-white px-2.5 py-1 text-xs font-medium text-zinc-800 hover:bg-zinc-50 disabled:opacity-50"
+                      >
+                        {healthProbeById[c.id]?.loading ? "Probing…" : "Run live health probe"}
+                      </button>
+                      {healthProbeById[c.id]?.error ? (
+                        <p className="text-xs text-red-700" role="alert">
+                          {healthProbeById[c.id]?.error}
+                        </p>
+                      ) : null}
+                      {healthProbeById[c.id]?.data ? (
+                        <div className="rounded-lg border border-emerald-200 bg-emerald-50/80 px-2.5 py-2 text-xs text-emerald-950">
+                          <p className="font-semibold text-emerald-900">
+                            Live: {healthProbeById[c.id]?.data?.state} ·{" "}
+                            {healthProbeById[c.id]?.data?.readinessOverall}
+                          </p>
+                          <p className="mt-1">{healthProbeById[c.id]?.data?.summary}</p>
+                          <p className="mt-1 text-emerald-800/90">
+                            Last sync (registry):{" "}
+                            {healthProbeById[c.id]?.data?.lastSyncAt
+                              ? formatWhen(healthProbeById[c.id]!.data!.lastSyncAt!)
+                              : "—"}
+                          </p>
+                          <p className="mt-1 text-emerald-800/80">
+                            Checked {formatWhen(healthProbeById[c.id]!.data!.checkedAt)}
+                          </p>
+                        </div>
+                      ) : null}
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-2">
@@ -248,6 +348,12 @@ export function ConnectorsSection({ initialConnectors, canCreate }: Props) {
                     {c.auditTrail.length > 0 ? (
                       <div className="text-xs text-zinc-600">
                         <p className="font-medium text-zinc-800">{c.auditTrail[0].action}</p>
+                        <p className="mt-1 text-zinc-700">
+                          {c.auditTrail[0].actorName || "Unknown user"}
+                          {c.auditTrail[0].actorEmail ? (
+                            <span className="text-zinc-500"> · {c.auditTrail[0].actorEmail}</span>
+                          ) : null}
+                        </p>
                         <p className="mt-1">{c.auditTrail[0].note ?? "No note"}</p>
                         <p className="mt-1 text-zinc-500">{formatWhen(c.auditTrail[0].createdAt)}</p>
                         <button

@@ -14,6 +14,7 @@ vi.mock("@/lib/authz", () => ({ getActorUserId: getActorUserIdMock }));
 vi.mock("@/lib/apihub/connectors-repo", () => ({
   getApiHubConnectorInTenant: getApiHubConnectorInTenantMock,
   updateApiHubConnectorLifecycle: updateApiHubConnectorLifecycleMock,
+  listApiHubConnectorAuditLogs: vi.fn().mockResolvedValue([]),
 }));
 vi.mock("@/lib/apihub/ingestion-runs-repo", () => ({
   countInFlightApiHubIngestionRunsForConnector: countInFlightMock,

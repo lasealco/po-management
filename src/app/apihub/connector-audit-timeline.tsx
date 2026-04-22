@@ -121,7 +121,11 @@ export function ConnectorAuditTimeline({ connectorId, allowFetch }: Props) {
               />
               <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">{formatWhen(e.createdAt)}</p>
               <p className="mt-1 text-sm font-semibold text-zinc-900">{e.action}</p>
-              <p className="mt-1 font-mono text-xs text-zinc-600">Actor {e.actorUserId}</p>
+              <p className="mt-1 text-sm text-zinc-800">
+                {e.actorName || "Unknown user"}
+                {e.actorEmail ? <span className="text-zinc-600"> · {e.actorEmail}</span> : null}
+              </p>
+              <p className="mt-0.5 font-mono text-xs text-zinc-500">User id {e.actorUserId}</p>
               {e.note ? <p className="mt-2 text-sm text-zinc-700">{e.note}</p> : null}
             </li>
           ))}
