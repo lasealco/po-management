@@ -1,6 +1,6 @@
 # API Hub — permissions matrix (Slice 51 + 52 baseline)
 
-This document matches **current route handlers** under `src/app/api/apihub/**` (**27** `route.ts` files as of 2026-04-22: one public health route + 26 guarded). **Slice 52 (shipped):** handlers use `apiHubEnsureTenantActorGrants` → **`org.apihub`** `view` or `edit` via `userHasGlobalGrant` (demo tenant + demo actor unchanged). Staging **apply** additionally requires **`org.orders`** or **`org.controltower`** `edit` per target.
+This document matches **current route handlers** under `src/app/api/apihub/**` (**28** `route.ts` files as of 2026-04-22: one public health route + 27 guarded). **Slice 52 (shipped):** handlers use `apiHubEnsureTenantActorGrants` → **`org.apihub`** `view` or `edit` via `userHasGlobalGrant` (demo tenant + demo actor unchanged). Staging **apply** additionally requires **`org.orders`** or **`org.controltower`** `edit` per target.
 
 **Payload bounds:** JSON POST/PATCH bodies are size-capped server-side (`APIHUB_JSON_BODY_MAX_BYTES` / `_LARGE` in `src/lib/apihub/constants.ts`); oversize requests return **413** `PAYLOAD_TOO_LARGE`. See [product-completion-v1.md](./product-completion-v1.md).
 
@@ -57,6 +57,7 @@ Every other `route.ts` under `src/app/api/apihub/` resolves **demo tenant + acto
 | `GET`, `PATCH`, `DELETE` | `/api/apihub/mapping-templates/:templateId` | Template CRUD |
 | `GET` | `/api/apihub/mapping-templates/:templateId/audit` | Template audit |
 | `POST` | `/api/apihub/mapping-diff` | Rule diff |
+| `POST` | `/api/apihub/import-assistant/chat` | Import assistant chat turn (bounded JSON; **`org.apihub` → view**) |
 | `GET`, `POST` | `/api/apihub/mapping-analysis-jobs` | List / queue mapping analysis job (P2) |
 | `GET` | `/api/apihub/mapping-analysis-jobs/:jobId` | Job detail + proposal |
 | `POST` | `/api/apihub/mapping-analysis-jobs/:jobId/process` | Manually claim/process a queued job (dev / retry) |

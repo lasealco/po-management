@@ -12,6 +12,10 @@ import { logApiHubBackgroundError } from "./safe-server-log";
  */
 const APIHUB_HTTP_ROOT = path.join(process.cwd(), "src/app/api/apihub");
 const APIHUB_LIB_ROOT = path.join(process.cwd(), "src/lib/apihub");
+const APIHUB_CRON_SWEEP_ROUTE = path.join(
+  process.cwd(),
+  "src/app/api/cron/apihub-mapping-analysis-jobs/route.ts",
+);
 
 const CONSOLE_METHOD = /\bconsole\.(log|debug|info|warn|error|trace)\s*\(/;
 
@@ -72,6 +76,21 @@ describe("apihub leakage conformance (console)", () => {
       if (!CONSOLE_METHOD.test(text)) continue;
       const rel = path.relative(process.cwd(), abs);
       offenders.push(rel);
+    }
+    expect(offenders).toEqual([]);
+  });
+});
+
+describe("apihub leakage conformance (sensitive env in responses)", () => {
+  it("HTTP route handlers do not read DATABASE_URL or CRON_SECRET via process.env (avoids accidental echo in errors)", () => {
+    const files = collectTsFiles(APIHUB_HTTP_ROOT, { skipTest: true }).filter((p) => p.endsWith(`${path.sep}route.ts`));
+    expect(files.length).toBeGreaterThan(5);
+    const forbidden = /process\.env\.(DATABASE_URL|CRON_SECRET)\b/;
+    const offenders: string[] = [];
+    for (const abs of files) {
+      const text = fs.readFileSync(abs, "utf8");
+      if (!forbidden.test(text)) continue;
+      offenders.push(path.relative(process.cwd(), abs));
     }
     expect(offenders).toEqual([]);
   });

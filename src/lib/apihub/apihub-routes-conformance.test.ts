@@ -32,7 +32,15 @@ function exportedHttpMethods(text: string): Set<string> {
   return methods;
 }
 
+/** Bump when adding or removing `route.ts` under `src/app/api/apihub` (sync permissions-matrix + README). */
+const APIHUB_ROUTE_TS_EXPECTED_COUNT = 28;
+
 describe("apihub HTTP routes conformance", () => {
+  it("tracks ApiHub route.ts surface count", () => {
+    const files = collectRouteTsFiles(APIHUB_ROUTES_ROOT);
+    expect(files).toHaveLength(APIHUB_ROUTE_TS_EXPECTED_COUNT);
+  });
+
   it("uses request-budget helpers for JSON bodies (no raw parseApiHubPostJsonForRoute / parseApiHubRequestJson calls)", () => {
     const files = collectRouteTsFiles(APIHUB_ROUTES_ROOT);
     expect(files.length).toBeGreaterThan(10);

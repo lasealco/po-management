@@ -56,4 +56,5 @@ Track in [`docs/apihub/GAP_MAP.md`](../../apihub/GAP_MAP.md) and product issues:
 - [x] **Ingestion retry from workspace** — `/apihub/workspace` expanded run: **Retry run** (`org.apihub` edit) calls **`POST …/ingestion-jobs/:id/retry`**, refreshes list, expands new run.
 - [x] **Smoke pack** — `scripts/apihub-smoke-pack.mjs` checks `/apihub/workspace` and aligns `/apihub` HTML assertions with **Guided import** + **ApihubGate** (no-cookie vs signed-in).
 - [x] Workers/queues (R2 partial **2026-04-22**): Postgres **`FOR UPDATE SKIP LOCKED`** claim, optional parallel drain (**`APIHUB_MAPPING_ANALYSIS_WORKER_PARALLEL`**), optional **Upstash Redis** cron lock for mapping sweep; ingestion apply → **richer PO/SO header** fields (R3); smoke **cron unauthenticated** step.
-- [ ] Conformance / abuse / leakage hardening (R7–R9); non–demo-tenant **live** E2E if required (repos already tenant-scoped in tests).
+- [x] Conformance / leakage guards (R7–R9 partial **2026-04-22**): route **surface count** + budget/`request.json` bans; leakage tests include **ApiHub cron** sweep route; **`DATABASE_URL` / `CRON_SECRET`** forbidden in `apihub/**/route.ts`; CLOSEOUT residual table updated for P4 reality.
+- [ ] Non–demo-tenant **live** E2E if required (repos already tenant-scoped in tests); optional OpenAPI contract gate (R9 remainder).

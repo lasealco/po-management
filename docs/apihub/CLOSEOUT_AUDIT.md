@@ -64,9 +64,9 @@ These are **accepted** gaps for the current phase unless an issue explicitly res
 | R4 | **LLM-assisted mapping job** not implemented — analysis uses **deterministic heuristic** (`deterministic_heuristic_v2`); async job pipeline otherwise ships. | Low for current MVP | Optional model provider + structured tool output in a future slice; see spec guardrails §7. |
 | R5 | **Batch / staging Prisma tables** not present — rules live on templates + request payloads. | Low | `GAP_MAP.md` row; add tables when batch UX ships. |
 | R6 | **Tenant isolation** not exhaustively proven by automated tests across every repo method. | Medium | **Slice 61** — atomic mapping `updateMany`/`deleteMany` + `*.tenant-scope.test.ts` guards; extend as new repos ship. |
-| R7 | **Secrets / PII in logs and error payloads** not covered by a dedicated leakage test pack in-repo. | Medium | **Slice 54** — leakage audit + tests. |
-| R8 | **Abuse limits** (payload size, row caps beyond per-route validation) not centralized. | Low | **Slice 55** — request budget helpers. |
-| R9 | **Contract drift** — major APIs lack a single generated-schema gate in CI. | Low | **Slice 56** — conformance suite. |
+| R7 | **Secrets / PII in logs and error payloads** | Medium (residual: generic `Error.message` from catch can still reach clients on some paths) | **P4 shipped:** `apihub-leakage-conformance.test.ts` (no `console.*` on headers/cookies in HTTP + mapping-analysis cron route; background errors via `logApiHubBackgroundError`); stable `apiHubError` envelope tests. Extend per-route catch sanitization in Slice 61+ as needed. |
+| R8 | **Abuse limits** (payload size, row caps) | Low (residual: per-route caps still vary by scenario) | **P4 shipped:** `request-budget.ts` + route conformance forbidding raw `request.json()` / non-budget parsers. |
+| R9 | **Contract drift** — generated OpenAPI gate | Low | **P4 partial:** `apihub-routes-conformance.test.ts` (budget helpers, route surface count); README + permissions matrix maintained by hand. OpenAPI/JSON Schema gate still future. |
 
 ---
 
@@ -74,7 +74,7 @@ These are **accepted** gaps for the current phase unless an issue explicitly res
 
 Use this for a formal “module ready for adjacent teams” sign-off:
 
-- [x] `README.md` **Route index** matches `src/app/api/apihub/**` `route.ts` files on `main` (23 handlers; includes P2 mapping analysis jobs).
+- [x] `README.md` **Route index** matches `src/app/api/apihub/**` `route.ts` files on `main` (28 handlers; Vitest guard in `apihub-routes-conformance.test.ts`).
 - [x] `GAP_MAP.md` legend reflects shipped vs stub for connectors, mapping, apply, alerts, conflicts.
 - [x] `permissions-matrix.md` matches demo-tenant / demo-actor guards on routes (health public; all other handlers use tenant + actor).
 - [x] `npm run verify:apihub` runs in GitHub Actions CI after the main test suite (`.github/workflows/ci.yml`).
@@ -96,4 +96,4 @@ Full list: `docs/apihub/agent_milestones_one_agent.md` (enterprise tranche 61–
 
 ---
 
-**Last updated:** 2026-04-22 (Slice 60 — doc/CI closeout for Phase 1 module MVP)
+**Last updated:** 2026-04-22 (Slice 60 — doc/CI closeout; R7–R9 row text refreshed for P4 conformance + leakage tests)
