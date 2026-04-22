@@ -20,6 +20,7 @@ All **API Hub** persistence entry points are intended to be **tenant-scoped**: r
 | `ingestion-run-timeline-repo.ts` | All `findFirst` / `findMany` include `tenantId`. |
 | `mapping-templates-repo.ts` | List/get scoped; **updates and deletes** use `updateMany` / `deleteMany` with **`{ id, tenantId }`** so mutations are atomic with tenant in the `WHERE` clause (Slice 61 hardening). |
 | `staging-batches-repo.ts` | List/get/discard/create-from-job — `where` includes `tenantId` (and ids); **discard** uses `updateMany` with **`{ id, tenantId }`**. |
+| `staging-batch-apply.ts` | Loads batch via **`getApiHubStagingBatchWithRows`**; dry-run and live apply pass **`tenantId`** into downstream preview / transaction; promote uses **`update`** with **`{ id, tenantId }`**. |
 
 ## Automated checks
 
@@ -33,6 +34,8 @@ Vitest files assert representative `where` shapes for:
 - Raw SQL list endpoints: `ingestion-apply-conflicts-repo.test.ts` and `ingestion-alerts-summary-repo.test.ts` assert **`tenantId`** is bound in `Prisma.sql` **`values`**.
 - Timeline page: `ingestion-run-timeline-repo.tenant-scope.test.ts` (**anchor**, **parent walk**, **BFS**, **row fetch**).
 - Mapping analysis jobs: `mapping-analysis-jobs-repo.tenant-scope.test.ts` (**get** / **list** / **create** `tenantId`).
+- Staging apply: `staging-batch-apply.tenant-scope.test.ts` (**dry-run** + **live** `tenantId` through load, preview/tx, batch promote).
+- Audit append: `ingestion-run-audit-repo.test.ts` (**create** `tenantId`).
 
 Run: `npm run test:apihub`
 

@@ -48,4 +48,30 @@ describe("appendApiHubIngestionRunAuditLog", () => {
       }),
     });
   });
+
+  describe("tenant scoping (Slice 61)", () => {
+    it("persists caller tenantId on the audit row (non-demo id)", async () => {
+      await appendApiHubIngestionRunAuditLog({
+        tenantId: "tenant-audit-scope-9",
+        actorUserId: "u1",
+        ingestionRunId: "run-1",
+        action: "apihub.ingestion_run.apply",
+        metadata: {
+          schemaVersion: 1,
+          resourceType: "ingestion_run",
+          requestId: "req-1",
+          verb: "apply",
+          resultCode: "APPLY_COMMITTED",
+          httpStatus: 200,
+          outcome: "success",
+        },
+      });
+      expect(h.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          tenantId: "tenant-audit-scope-9",
+          ingestionRunId: "run-1",
+        }),
+      });
+    });
+  });
 });
