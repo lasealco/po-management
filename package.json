@@ -16,7 +16,7 @@
     "test": "vitest run",
     "test:invoice-audit": "vitest run src/lib/invoice-audit src/lib/booking-pricing-snapshot src/app/api/booking-pricing-snapshots",
     "test:tariff-rfq": "vitest run src/lib/rfq src/lib/tariff src/app/api/tariffs src/app/api/rfq",
-    "test:apihub": "vitest run src/lib/apihub src/app/api/apihub",
+    "test:apihub": "vitest run src/lib/apihub src/app/api/apihub src/app/api/cron/apihub-mapping-analysis-jobs",
     "verify:apihub": "npm run test:apihub && npx tsc --noEmit",
     "smoke:apihub": "node scripts/apihub-smoke-pack.mjs",
     "test:sctwin": "vitest run src/lib/supply-chain-twin src/app/api/supply-chain-twin",

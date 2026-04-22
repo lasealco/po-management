@@ -49,21 +49,22 @@ function finalizeRulesOrThrow(rules: unknown[]): { rules: ReturnType<typeof norm
 
 /**
  * Claims a queued job (tenant-scoped), runs LLM (if configured) then deterministic heuristic fallback, persists outcome.
+ * @returns `true` if this invocation claimed the job and ran it to success or failed status; `false` if the job was not queued (race / already processed).
  */
-export async function processApiHubMappingAnalysisJob(jobId: string, tenantId: string): Promise<void> {
+export async function processApiHubMappingAnalysisJob(jobId: string, tenantId: string): Promise<boolean> {
   const claimed = await prisma.apiHubMappingAnalysisJob.updateMany({
     where: { id: jobId, tenantId, status: "queued" },
     data: { status: "processing", startedAt: new Date() },
   });
   if (claimed.count === 0) {
-    return;
+    return false;
   }
 
   const job = await prisma.apiHubMappingAnalysisJob.findFirst({
     where: { id: jobId, tenantId },
   });
   if (!job) {
-    return;
+    return false;
   }
 
   try {
@@ -149,6 +150,7 @@ export async function processApiHubMappingAnalysisJob(jobId: string, tenantId: s
         errorMessage: null,
       },
     });
+    return true;
   } catch (e) {
     const message = e instanceof Error ? e.message : "Analysis failed.";
     await prisma.apiHubMappingAnalysisJob.update({
@@ -160,5 +162,6 @@ export async function processApiHubMappingAnalysisJob(jobId: string, tenantId: s
         outputProposal: Prisma.DbNull,
       },
     });
+    return true;
   }
 }

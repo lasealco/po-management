@@ -61,9 +61,15 @@ Authoritative guard semantics: [permissions-matrix.md](./permissions-matrix.md).
 | Method | Path | Purpose |
 |--------|------|---------|
 | `GET` | `/api/apihub/mapping-analysis-jobs` | List recent jobs; `limit` query (same bounds as other list routes). |
-| `POST` | `/api/apihub/mapping-analysis-jobs` | Queue job: JSON `{ records: object[], targetFields?: string[], note?: string }`. Schedules processing via `after()` (OpenAI JSON proposal when configured, else deterministic heuristic). |
+| `POST` | `/api/apihub/mapping-analysis-jobs` | Queue job: JSON `{ records: object[], targetFields?: string[], note?: string }`. Schedules processing via `after()` **and** relies on cron (below) if `after()` does not run (serverless). |
 | `GET` | `/api/apihub/mapping-analysis-jobs/:jobId` | Job detail, `outputProposal.rules`, optional **`outputProposal.llm`** (attempted/used/model/error), optional embedded **`stagingPreview`**. |
 | `POST` | `/api/apihub/mapping-analysis-jobs/:jobId/process` | Manually claim a **queued** job (local dev / recovery); idempotent. |
+
+### ApiHub cron worker (mapping analysis)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET`, `POST` | `/api/cron/apihub-mapping-analysis-jobs` | **Bearer `CRON_SECRET`** (same as Control Tower crons). Drains oldest **`queued`** jobs via shared `processApiHubMappingAnalysisJob` (default batch **`limit=5`**, max **20**, optional `?limit=`). Root **`vercel.json`**: `*/10 * * * *` UTC (Pro); Hobby may run less often. |
 
 ### Staging batches (persisted preview rows)
 

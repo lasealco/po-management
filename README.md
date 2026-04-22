@@ -76,7 +76,7 @@ Names only (no secrets in git). Use `.env.local` for local development.
 | `REPORTING_COCKPIT_LLM`, `OPENAI_REPORTING_COCKPIT_MODEL` | Reporting cockpit insight |
 | `HELP_LLM`, `OPENAI_HELP_MODEL`, `OPENAI_HELP_DISABLED` | In-app help assistant |
 | `BLOB_READ_WRITE_TOKEN` | Vercel Blob for document uploads (production); dev may use local fallbacks |
-| `CRON_SECRET` | Secures `/api/cron/*` routes when calling from a scheduler |
+| `CRON_SECRET` | Secures `/api/cron/*` routes when calling from a scheduler (Control Tower sweeps + **ApiHub mapping-analysis worker** at `/api/cron/apihub-mapping-analysis-jobs`) |
 | `PO_ALLOW_UNAUTHENTICATED` | Set to `1` only for controlled demo / local open access |
 | `DEMO_ACTOR_EMAIL` | Demo session actor override |
 | `CONTROL_TOWER_FX_BASES`, `CONTROL_TOWER_FX_TARGETS` | FX refresh currency lists |

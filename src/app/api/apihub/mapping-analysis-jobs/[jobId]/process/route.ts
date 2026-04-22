@@ -13,7 +13,8 @@ export const dynamic = "force-dynamic";
 
 /**
  * Manually (re)process a **queued** job — useful for local dev/tests when `after()` is not observed,
- * or to retry after infra issues. Idempotent: only jobs in `queued` are claimed.
+ * or before cron catches up. Same claim logic as `GET/POST /api/cron/apihub-mapping-analysis-jobs` (Bearer `CRON_SECRET`).
+ * Idempotent: only jobs in `queued` are claimed.
  */
 export async function POST(request: Request, ctx: { params: Promise<{ jobId: string }> }) {
   const requestId = resolveApiHubRequestId(request);

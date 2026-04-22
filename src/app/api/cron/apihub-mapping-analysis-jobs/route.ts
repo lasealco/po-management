@@ -1,0 +1,50 @@
+import { NextResponse } from "next/server";
+
+import {
+  APIHUB_MAPPING_ANALYSIS_WORKER_MAX_LIMIT,
+  runApiHubMappingAnalysisWorkerSweep,
+} from "@/lib/apihub/mapping-analysis-job-worker-sweep";
+
+export const dynamic = "force-dynamic";
+
+/**
+ * Scheduled worker for **ApiHub mapping analysis** jobs stuck in `queued` when `after()` does not run
+ * (serverless early exit, crash, or platform behavior). Same auth pattern as other crons.
+ *
+ * Secure with `CRON_SECRET`: `Authorization: Bearer <CRON_SECRET>`.
+ *
+ * Optional query: `limit` (1–{@link APIHUB_MAPPING_ANALYSIS_WORKER_MAX_LIMIT}, default 5).
+ *
+ * Configure in `vercel.json` (Pro: sub-hourly; Hobby: may run at most once per day — still drains backlog when it fires).
+ */
+async function handleCron(request: Request) {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) {
+    return NextResponse.json({ error: "CRON_SECRET is not configured." }, { status: 503 });
+  }
+  const auth = request.headers.get("authorization") ?? "";
+  if (auth !== `Bearer ${secret}`) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  let limit: number | undefined;
+  try {
+    const raw = new URL(request.url).searchParams.get("limit");
+    if (raw != null && raw.trim() !== "") {
+      limit = Number(raw);
+    }
+  } catch {
+    limit = undefined;
+  }
+
+  const summary = await runApiHubMappingAnalysisWorkerSweep(limit);
+  return NextResponse.json({ ok: true, ...summary });
+}
+
+export async function GET(request: Request) {
+  return handleCron(request);
+}
+
+export async function POST(request: Request) {
+  return handleCron(request);
+}
