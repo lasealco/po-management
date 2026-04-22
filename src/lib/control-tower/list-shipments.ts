@@ -1090,6 +1090,13 @@ export async function listControlTowerShipments(params: {
                 { description: contains },
                 { ean: contains },
                 { customerName: contains },
+                {
+                  productSuppliers: {
+                    some: {
+                      supplier: { is: supplierPartyMatch },
+                    },
+                  },
+                },
               ],
             },
           },
@@ -1322,6 +1329,13 @@ export async function listControlTowerShipments(params: {
                               },
                             },
                           },
+                          {
+                            productSuppliers: {
+                              some: {
+                                supplier: { is: supplierPartyMatch },
+                              },
+                            },
+                          },
                         ],
                       },
                     },
@@ -1462,6 +1476,21 @@ export async function listControlTowerShipments(params: {
                 { cargoDimensionsText: contains },
                 { orderItem: { is: { description: contains } } },
                 { containerCargoLines: { some: { notes: contains } } },
+                {
+                  orderItem: {
+                    is: {
+                      product: {
+                        is: {
+                          productSuppliers: {
+                            some: {
+                              supplier: { is: supplierPartyMatch },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
               ],
             },
           },
