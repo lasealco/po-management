@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Children, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Children, useCallback, useEffect, useMemo, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import {
@@ -12,22 +12,20 @@ import {
 } from "@/app/apihub/workspace-tabs";
 
 type Props = {
-  initialTabId: WorkspaceTabId;
   children: ReactNode;
 };
 
-export function WorkspaceTabbedLayout({ initialTabId, children }: Props) {
+export function WorkspaceTabbedLayout({ children }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [active, setActive] = useState<WorkspaceTabId>(initialTabId);
+
+  const active = useMemo(
+    () => normalizeWorkspaceTab(searchParams.get("tab") ?? undefined),
+    [searchParams],
+  );
 
   const childArr = useMemo(() => Children.toArray(children), [children]);
-
-  useEffect(() => {
-    const t = searchParams.get("tab");
-    setActive(normalizeWorkspaceTab(t ?? undefined));
-  }, [searchParams]);
 
   /** Legacy hash links (#ingestion-ops) → ?tab= (one-time migrate) */
   useEffect(() => {
@@ -41,16 +39,13 @@ export function WorkspaceTabbedLayout({ initialTabId, children }: Props) {
       params.set("tab", n);
     }
     const q = params.toString();
-    const path = window.location.pathname;
-    const next = q ? `${path}?${q}` : path;
-    window.history.replaceState(null, "", next);
+    const next = q ? `${pathname}?${q}` : pathname;
     window.location.hash = "";
-    setActive(n);
-  }, []);
+    router.replace(next, { scroll: false });
+  }, [pathname, router]);
 
   const selectTab = useCallback(
     (id: WorkspaceTabId) => {
-      setActive(id);
       const params = new URLSearchParams(searchParams.toString());
       if (id === "overview") {
         params.delete("tab");

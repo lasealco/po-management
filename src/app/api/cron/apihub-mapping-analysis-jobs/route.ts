@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
 
-import {
-  APIHUB_MAPPING_ANALYSIS_WORKER_MAX_LIMIT,
-  runApiHubMappingAnalysisWorkerSweep,
-} from "@/lib/apihub/mapping-analysis-job-worker-sweep";
+import { runApiHubMappingAnalysisWorkerSweep } from "@/lib/apihub/mapping-analysis-job-worker-sweep";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +10,7 @@ export const dynamic = "force-dynamic";
  *
  * Secure with `CRON_SECRET`: `Authorization: Bearer <CRON_SECRET>`.
  *
- * Optional query: `limit` (1–{@link APIHUB_MAPPING_ANALYSIS_WORKER_MAX_LIMIT}, default 5).
+ * Optional query: `limit` (1–20 per worker sweep cap, default 5).
  *
  * Configure in `vercel.json` (Pro: sub-hourly; Hobby: may run at most once per day — still drains backlog when it fires).
  */

@@ -51,7 +51,7 @@ describe("Invoice intake run-audit route contract", () => {
     const response = await POST(request, { params: Promise.resolve({ id: "intake-1" }) });
 
     expect(response.status).toBe(400);
-    expect(await response.json()).toEqual({ error: "Invalid toleranceRuleId." });
+    expect(await response.json()).toEqual({ error: "Invalid toleranceRuleId.", code: "BAD_INPUT" });
   });
 
   it("returns audited intake shape on success", async () => {

@@ -72,7 +72,7 @@ describe("Invoice intake by-id route contract", () => {
     const response = await GET(new Request("http://localhost"), { params: Promise.resolve({ id: "bad-id" }) });
 
     expect(response.status).toBe(400);
-    expect(await response.json()).toEqual({ error: "Invalid intake id." });
+    expect(await response.json()).toEqual({ error: "Invalid intake id.", code: "BAD_INPUT" });
   });
 
   it("PATCH returns parity error body for invalid JSON", async () => {
@@ -86,7 +86,7 @@ describe("Invoice intake by-id route contract", () => {
     const response = await PATCH(request, { params: Promise.resolve({ id: "intake-1" }) });
 
     expect(response.status).toBe(400);
-    expect(await response.json()).toEqual({ error: "Invalid JSON body." });
+    expect(await response.json()).toEqual({ error: "Invalid JSON body.", code: "BAD_INPUT" });
   });
 
   it("PATCH updates notes and returns response shape parity", async () => {

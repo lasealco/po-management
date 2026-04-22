@@ -31,13 +31,9 @@ import { MappingPreviewExportPanel } from "../mapping-preview-export-panel";
 import { MappingTemplatesSection } from "../mapping-templates-section";
 import { StagingBatchesPanel } from "../staging-batches-panel";
 import { WorkspaceTabbedLayout } from "../workspace-tabbed-layout";
-import { normalizeWorkspaceTab, workspaceTabHref } from "../workspace-tabs";
+import { workspaceTabHref } from "../workspace-tabs";
 
 export const dynamic = "force-dynamic";
-
-type PageProps = {
-  searchParams?: Promise<{ tab?: string | string[] }>;
-};
 
 const GITHUB_DOCS_APIHUB_TREE =
   "https://github.com/lasealco/po-management/tree/main/docs/apihub";
@@ -77,11 +73,7 @@ const STEP_PLACEHOLDERS = [
   },
 ] as const;
 
-export default async function ApihubWorkspacePage({ searchParams }: PageProps) {
-  const sp = (await (searchParams ?? Promise.resolve({}))) as { tab?: string | string[] };
-  const rawTab = typeof sp.tab === "string" ? sp.tab : Array.isArray(sp.tab) ? sp.tab[0] : undefined;
-  const initialTab = normalizeWorkspaceTab(rawTab);
-
+export default async function ApihubWorkspacePage() {
   const access = await getViewerGrantSet();
   const grantSet = access?.grantSet ?? new Set<string>();
   const canViewHub = Boolean(access?.user && access?.tenant && viewerHas(grantSet, "org.apihub", "view"));
@@ -142,7 +134,7 @@ export default async function ApihubWorkspacePage({ searchParams }: PageProps) {
       <Suspense
         fallback={<div className="h-96 animate-pulse rounded-2xl border border-zinc-200 bg-zinc-50" aria-hidden />}
       >
-        <WorkspaceTabbedLayout initialTabId={initialTab}>
+        <WorkspaceTabbedLayout>
           <div className="space-y-6">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Workflow</p>

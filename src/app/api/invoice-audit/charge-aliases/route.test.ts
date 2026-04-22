@@ -75,6 +75,7 @@ describe("Invoice charge-aliases route contract", () => {
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({
       error: "canonicalTokens is required (non-empty array or newline/comma-separated string).",
+      code: "BAD_INPUT",
     });
   });
 });

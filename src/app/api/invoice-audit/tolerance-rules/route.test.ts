@@ -71,6 +71,6 @@ describe("Invoice tolerance-rules route contract", () => {
     const response = await POST(request);
 
     expect(response.status).toBe(400);
-    expect(await response.json()).toEqual({ error: "name is required." });
+    expect(await response.json()).toEqual({ error: "name is required.", code: "BAD_INPUT" });
   });
 });

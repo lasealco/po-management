@@ -51,7 +51,7 @@ describe("Invoice tolerance-rule by-id route contract", () => {
     const response = await PATCH(request, { params: Promise.resolve({ id: "bad-id" }) });
 
     expect(response.status).toBe(400);
-    expect(await response.json()).toEqual({ error: "Invalid rule id." });
+    expect(await response.json()).toEqual({ error: "Invalid rule id.", code: "BAD_INPUT" });
   });
 
   it("returns parity error when no updatable fields supplied", async () => {
@@ -64,7 +64,7 @@ describe("Invoice tolerance-rule by-id route contract", () => {
     const response = await PATCH(request, { params: Promise.resolve({ id: "rule-1" }) });
 
     expect(response.status).toBe(400);
-    expect(await response.json()).toEqual({ error: "No updatable fields supplied." });
+    expect(await response.json()).toEqual({ error: "No updatable fields supplied.", code: "BAD_INPUT" });
   });
 
   it("updates rule and returns rule shape", async () => {

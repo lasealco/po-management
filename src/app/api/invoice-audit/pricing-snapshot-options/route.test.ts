@@ -39,7 +39,7 @@ describe("Invoice pricing-snapshot-options route contract", () => {
     const response = await GET();
 
     expect(response.status).toBe(404);
-    expect(await response.json()).toEqual({ error: "Tenant not found." });
+    expect(await response.json()).toEqual({ error: "Tenant not found.", code: "NOT_FOUND" });
   });
 
   it("returns snapshots with totalEstimatedCost serialized as string", async () => {

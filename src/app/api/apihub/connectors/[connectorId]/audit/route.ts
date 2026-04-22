@@ -45,7 +45,7 @@ export async function GET(request: Request, context: { params: Promise<{ connect
   if (!gate.ok) {
     return gate.response;
   }
-  const { tenant, actorId } = gate.ctx;
+  const { tenant } = gate.ctx;
 
   const { connectorId } = await context.params;
   if (!connectorId) {

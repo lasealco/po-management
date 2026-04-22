@@ -166,6 +166,8 @@ export function SupplierDetailClient({
       setIncoterm(initial.defaultIncoterm ?? "");
       setInternalNotes(initial.internalNotes ?? "");
     });
+    // Intentionally only re-sync when `initial.updatedAt` changes (full `initial` deps would over-reset).
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- initial.* fields track one payload version
   }, [initial.updatedAt]);
 
   const [officeName, setOfficeName] = useState("");

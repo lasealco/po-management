@@ -163,9 +163,9 @@ export function ControlTowerShipment360({
   }, [tab, pathname, router]);
 
   const bookingSafe = (data?.booking as Record<string, unknown> | null | undefined) ?? undefined;
-  const legsSafe = (data?.legs as unknown[]) ?? [];
-  const containersSafe = (data?.containers as unknown[]) ?? [];
-  const exceptionsSafe = (data?.exceptions as unknown[]) ?? [];
+  const legsSafe = useMemo(() => (data?.legs as unknown[]) ?? [], [data?.legs]);
+  const containersSafe = useMemo(() => (data?.containers as unknown[]) ?? [], [data?.containers]);
+  const exceptionsSafe = useMemo(() => (data?.exceptions as unknown[]) ?? [], [data?.exceptions]);
 
   const stuffedQtyByShipmentItemId = useMemo(() => {
     const m = new Map<string, number>();

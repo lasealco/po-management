@@ -70,7 +70,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ jobId
   if (!gate.ok) {
     return gate.response;
   }
-  const { tenant, actorId } = gate.ctx;
+  const { tenant } = gate.ctx;
 
   const { jobId } = await context.params;
   let body: PatchBody = {};

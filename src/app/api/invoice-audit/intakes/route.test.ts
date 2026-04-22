@@ -115,7 +115,7 @@ describe("Invoice audit intakes route contract", () => {
     const response = await POST(request);
 
     expect(response.status).toBe(400);
-    expect(await response.json()).toEqual({ error: "Invalid JSON body." });
+    expect(await response.json()).toEqual({ error: "Invalid JSON body.", code: "BAD_INPUT" });
   });
 
   it("POST creates intake and keeps amount/quantity as strings", async () => {
