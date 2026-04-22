@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { actorIsSupplierPortalRestricted, getActorUserId, requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
@@ -12,19 +14,20 @@ export async function POST(
 
   const actorId = await getActorUserId();
   if (!actorId) {
-    return NextResponse.json({ error: "No active demo actor." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active demo actor.", code: "FORBIDDEN", status: 403 });
   }
   const isSupplier = await actorIsSupplierPortalRestricted(actorId);
   if (isSupplier) {
-    return NextResponse.json(
-      { error: "Supplier users cannot validate ASN shipments." },
-      { status: 403 },
-    );
+    return toApiErrorResponse({
+      error: "Supplier users cannot validate ASN shipments.",
+      code: "FORBIDDEN",
+      status: 403,
+    });
   }
 
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   }
 
   const { id: shipmentId } = await context.params;
@@ -33,17 +36,18 @@ export async function POST(
     select: { id: true, status: true },
   });
   if (!shipment) {
-    return NextResponse.json({ error: "Shipment not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Shipment not found.", code: "NOT_FOUND", status: 404 });
   }
   if (
     shipment.status !== "SHIPPED" &&
     shipment.status !== "VALIDATED" &&
     shipment.status !== "BOOKED"
   ) {
-    return NextResponse.json(
-      { error: `Shipment in status ${shipment.status} cannot be validated.` },
-      { status: 400 },
-    );
+    return toApiErrorResponse({
+      error: `Shipment in status ${shipment.status} cannot be validated.`,
+      code: "BAD_INPUT",
+      status: 400,
+    });
   }
 
   await prisma.$transaction(async (tx) => {

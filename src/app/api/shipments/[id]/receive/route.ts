@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { actorIsSupplierPortalRestricted, getActorUserId, requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
@@ -15,19 +17,20 @@ export async function POST(
 
   const actorId = await getActorUserId();
   if (!actorId) {
-    return NextResponse.json({ error: "No active demo actor." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active demo actor.", code: "FORBIDDEN", status: 403 });
   }
   const isSupplier = await actorIsSupplierPortalRestricted(actorId);
   if (isSupplier) {
-    return NextResponse.json(
-      { error: "Supplier users cannot mark buyer receipts." },
-      { status: 403 },
-    );
+    return toApiErrorResponse({
+      error: "Supplier users cannot mark buyer receipts.",
+      code: "FORBIDDEN",
+      status: 403,
+    });
   }
 
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   }
 
   const { id: shipmentId } = await context.params;
@@ -36,7 +39,7 @@ export async function POST(
     include: { items: true },
   });
   if (!shipment) {
-    return NextResponse.json({ error: "Shipment not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Shipment not found.", code: "NOT_FOUND", status: 404 });
   }
 
   let body: unknown = {};
@@ -50,10 +53,11 @@ export async function POST(
   for (const row of input.lines ?? []) {
     const qty = Number(row.quantityReceived);
     if (!Number.isFinite(qty) || qty <= 0) {
-      return NextResponse.json(
-        { error: "quantityReceived must be positive." },
-        { status: 400 },
-      );
+      return toApiErrorResponse({
+        error: "quantityReceived must be positive.",
+        code: "BAD_INPUT",
+        status: 400,
+      });
     }
     lineMap.set(row.shipmentItemId, qty);
   }

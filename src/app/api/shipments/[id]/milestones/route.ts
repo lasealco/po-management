@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import {
   actorIsSupplierPortalRestricted,
   getActorUserId,
@@ -38,14 +40,15 @@ export async function POST(
 
   const actorId = await getActorUserId();
   if (!actorId) {
-    return NextResponse.json({ error: "No active demo actor." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active demo actor.", code: "FORBIDDEN", status: 403 });
   }
   const isSupplier = await actorIsSupplierPortalRestricted(actorId);
   if (isSupplier) {
-    return NextResponse.json(
-      { error: "Supplier users cannot post logistics milestones." },
-      { status: 403 },
-    );
+    return toApiErrorResponse({
+      error: "Supplier users cannot post logistics milestones.",
+      code: "FORBIDDEN",
+      status: 403,
+    });
   }
   const isSuper = await userIsSuperuser(actorId);
   const isForwarder = await userHasRoleNamed(actorId, "Forwarder");
@@ -62,7 +65,7 @@ export async function POST(
     select: { id: true, status: true },
   });
   if (!shipment) {
-    return NextResponse.json({ error: "Shipment not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Shipment not found.", code: "NOT_FOUND", status: 404 });
   }
 
   let body: unknown = {};
@@ -74,21 +77,22 @@ export async function POST(
   const input = (body && typeof body === "object" ? body : {}) as MilestoneBody;
   const code = input.code;
   if (!code) {
-    return NextResponse.json({ error: "Milestone code is required." }, { status: 400 });
+    return toApiErrorResponse({ error: "Milestone code is required.", code: "BAD_INPUT", status: 400 });
   }
 
   const allowedForForwarder = new Set(["DEPARTED", "ARRIVED", "DELIVERED"]);
   if (forwarderMilestoneLimited && !allowedForForwarder.has(code)) {
-    return NextResponse.json(
-      { error: "Forwarder users can only post departed/arrived/delivered milestones." },
-      { status: 403 },
-    );
+    return toApiErrorResponse({
+      error: "Forwarder users can only post departed/arrived/delivered milestones.",
+      code: "FORBIDDEN",
+      status: 403,
+    });
   }
 
   const plannedAt = parseDate(input.plannedAt);
   const actualAt = parseDate(input.actualAt);
   if (plannedAt === "invalid" || actualAt === "invalid") {
-    return NextResponse.json({ error: "Invalid milestone date." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid milestone date.", code: "BAD_INPUT", status: 400 });
   }
 
   await prisma.$transaction(async (tx) => {
