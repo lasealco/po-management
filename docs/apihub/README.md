@@ -15,6 +15,7 @@ This folder is the **documentation home** for **integration / ingestion APIs and
 | [RELEASE_CHECKLIST.md](./RELEASE_CHECKLIST.md) | **Slice 59:** Pre/post deploy checklist and `npm run smoke:apihub` sequence |
 | [CLOSEOUT_AUDIT.md](./CLOSEOUT_AUDIT.md) | **Slice 60:** Module handoff — scope inventory, residual risks (R1–R9), sign-off checklist |
 | [TENANT_SCOPING.md](./TENANT_SCOPING.md) | **Slice 61:** Tenant isolation — repo inventory + scoped mutation patterns |
+| [ACTOR_ATTRIBUTION.md](./ACTOR_ATTRIBUTION.md) | **Slice 62:** Actor id on audit rows and in JSON metadata where exports need it |
 
 **Gap map (spec ↔ code):** [GAP_MAP.md](./GAP_MAP.md)
 
@@ -65,7 +66,7 @@ All mapping routes below require the **demo tenant** and an **active demo actor*
 | `GET` | `/api/apihub/ingestion-apply-conflicts` | **Slice 46:** tenant-scoped list of **apply** attempts whose audit `metadata.outcome` is `client_error` (4xx apply responses), newest first. Query: `limit` (default 20, max 100), optional `cursor` (opaque; use `nextCursor` from prior page). Response: `{ conflicts: [...], nextCursor }`. **Slice 47 UI:** `/apihub` → **Apply conflicts** panel (`#apply-conflicts`) with table, refresh, load-more, and scaffold actions (copy diagnostics, open job JSON, disabled “Mark reviewed”). |
 | `GET` | `/api/apihub/ingestion-alerts-summary` | **Slice 48:** tenant-scoped **alert-style** summary over recent **apply** and **retry** audit rows with `metadata.outcome === "client_error"`. Query: `limit` (default 20, capped at **50** server-side). Response: `{ generatedAt, limit, counts: { error, warn, info }, alerts: [...] }` for UI and integrations. **Slice 49 UI:** `/apihub` → **Alerts** panel (`#ingestion-alerts`) with counts, priority banner, and table (server-hydrated on load + Refresh). |
 
-**Ingestion lifecycle audit (Slice 45):** successful and failed **`POST .../apply`** and **`POST .../retry`** calls append a row to **`ApiHubIngestionRunAuditLog`** (`action` = `apply` \| `retry`, `metadata` JSON with `requestId`, `verb`, `resultCode`, `httpStatus`, `outcome`, idempotency flags, and run correlation fields). Failures to write audit are logged and do not change the HTTP response.
+**Ingestion lifecycle audit (Slice 45, Slice 62):** successful and failed **`POST .../apply`** and **`POST .../retry`** calls append a row to **`ApiHubIngestionRunAuditLog`** (`action` = `apply` \| `retry`, `actorUserId` column plus `metadata` JSON with `actorUserId`, `requestId`, `verb`, `resultCode`, `httpStatus`, `outcome`, idempotency flags, and run correlation fields). Failures to write audit are logged and do not change the HTTP response.
 
 Validation errors use the shared **`VALIDATION_ERROR`** envelope with `details.issues` and `details.summary` (including `bySeverity` where applicable).
 

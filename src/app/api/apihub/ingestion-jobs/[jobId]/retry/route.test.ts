@@ -84,6 +84,7 @@ describe("POST /api/apihub/ingestion-jobs/:jobId/retry", () => {
         action: "retry",
         ingestionRunId: "run-1",
         metadata: expect.objectContaining({
+          actorUserId: "user-1",
           resultCode: "RETRY_CREATED",
           verb: "retry",
           httpStatus: 201,

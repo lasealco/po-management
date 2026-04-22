@@ -103,6 +103,7 @@ describe("POST /api/apihub/ingestion-jobs/:jobId/apply", () => {
         action: "apply",
         ingestionRunId: "run-1",
         metadata: expect.objectContaining({
+          actorUserId: "user-1",
           resultCode: "APPLY_COMMITTED",
           verb: "apply",
           httpStatus: 200,

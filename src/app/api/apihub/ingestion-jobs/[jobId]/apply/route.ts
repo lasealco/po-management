@@ -233,6 +233,7 @@ async function finalizeApplyResponse(opts: {
   const httpStatus = opts.response.status;
   const metadata = {
     requestId: opts.requestId,
+    actorUserId: opts.actorUserId,
     verb: "apply" as const,
     resultCode: opts.resultCode,
     httpStatus,

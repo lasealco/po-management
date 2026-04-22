@@ -50,6 +50,7 @@ async function finalizeRetryResponse(opts: {
   const httpStatus = opts.response.status;
   const metadata = {
     requestId: opts.requestId,
+    actorUserId: opts.actorUserId,
     verb: "retry" as const,
     resultCode: opts.resultCode,
     httpStatus,

@@ -6,7 +6,8 @@ export type ApiHubIngestionRunAuditAction = "apply" | "retry";
 
 /**
  * Append-only audit row for ingestion apply/retry (Slice 45).
- * `metadata` should include stable `resultCode`, `httpStatus`, `requestId`, and `verb` for analytics.
+ * `metadata` should include stable `resultCode`, `httpStatus`, `requestId`, `verb`, and `actorUserId`
+ * (duplicate of the column) so consumers that export or query JSON-only payloads retain actor traceability.
  */
 export async function appendApiHubIngestionRunAuditLog(opts: {
   tenantId: string;
