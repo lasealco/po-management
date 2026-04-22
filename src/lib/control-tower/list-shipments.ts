@@ -436,6 +436,20 @@ export async function listControlTowerShipments(params: {
         { ctReferences: { some: { refValue: contains } } },
         { ctNotes: { some: { body: contains } } },
         {
+          ctAlerts: {
+            some: {
+              OR: [{ type: contains }, { title: contains }, { body: contains }],
+            },
+          },
+        },
+        {
+          ctExceptions: {
+            some: {
+              OR: [{ type: contains }, { rootCause: contains }],
+            },
+          },
+        },
+        {
           ctTrackingMilestones: {
             some: {
               OR: [
