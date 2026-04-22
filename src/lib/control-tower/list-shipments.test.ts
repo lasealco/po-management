@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { Prisma } from "@prisma/client";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const shipmentFindMany = vi.hoisted(() => vi.fn());
 const ensureBookingConfirmationSlaAlerts = vi.hoisted(() => vi.fn());
@@ -26,6 +27,82 @@ const ctxRestricted = {
   isSupplierPortal: false,
   customerCrmAccountId: "crm-1" as string | null,
 };
+
+function draftLeg(legNo: number) {
+  return {
+    legNo,
+    originCode: "AAA",
+    destinationCode: "BBB",
+    transportMode: "OCEAN" as const,
+    plannedEtd: null as Date | null,
+    plannedEta: null as Date | null,
+    actualAtd: null as Date | null,
+    actualAta: null as Date | null,
+  };
+}
+
+/** Minimal `listSelectInternal` payload for mapping tests. */
+function internalListRow(
+  pick: {
+    id?: string;
+    booking?: {
+      status: "DRAFT" | "SENT" | "CONFIRMED" | null;
+      bookingConfirmSlaDueAt?: Date | null;
+    } | null;
+    ctLegs?: ReturnType<typeof draftLeg>[];
+  } = {},
+) {
+  const id = pick.id ?? "sh1";
+  const ctLegs = pick.ctLegs ?? [draftLeg(1)];
+  const booking =
+    pick.booking === undefined
+      ? null
+      : pick.booking && {
+          status: pick.booking.status,
+          mode: "OCEAN" as const,
+          originCode: "CNSHA",
+          destinationCode: "USLAX",
+          etd: null as Date | null,
+          eta: null as Date | null,
+          latestEta: null as Date | null,
+          bookingSentAt: null as Date | null,
+          bookingConfirmSlaDueAt: pick.booking.bookingConfirmSlaDueAt ?? null,
+        };
+  return {
+    id,
+    shipmentNo: "SN-1",
+    status: "IN_TRANSIT" as const,
+    transportMode: "OCEAN" as const,
+    trackingNo: null,
+    carrier: null,
+    carrierSupplierId: null,
+    shippedAt: new Date("2026-01-01T00:00:00.000Z"),
+    updatedAt: new Date("2026-01-02T00:00:00.000Z"),
+    receivedAt: null,
+    expectedReceiveAt: null,
+    estimatedVolumeCbm: null,
+    estimatedWeightKg: null,
+    customerCrmAccountId: null,
+    customerCrmAccount: null,
+    order: {
+      id: "o1",
+      orderNumber: "PO-1",
+      title: "PO order",
+      buyerReference: null,
+      supplierId: "sup1",
+      supplier: { id: "sup1", name: "Acme Supply" },
+    },
+    items: [{ quantityShipped: new Prisma.Decimal(10) }],
+    ctReferences: [],
+    booking,
+    milestones: [],
+    ctLegs,
+    _count: { ctAlerts: 0, ctExceptions: 0 },
+    ctAlerts: [],
+    ctExceptions: [],
+    ctTrackingMilestones: [],
+  };
+}
 
 describe("listControlTowerShipments", () => {
   beforeEach(() => {
@@ -81,5 +158,103 @@ describe("listControlTowerShipments", () => {
     });
     expect(ensureBookingConfirmationSlaAlerts).not.toHaveBeenCalled();
     expect(shipmentFindMany.mock.calls[0]![0].take).toBe(25);
+  });
+
+  it("maps booking DRAFT nextAction ahead of route planning", async () => {
+    shipmentFindMany.mockResolvedValueOnce([
+      internalListRow({
+        booking: { status: "DRAFT" },
+        ctLegs: [draftLeg(1), draftLeg(2)],
+      }),
+    ]);
+    const out = await listControlTowerShipments({
+      tenantId: "tenant-1",
+      ctx: ctxInternal,
+      query: {},
+    });
+    expect(out.rows).toHaveLength(1);
+    expect(out.rows[0]!.nextAction).toBe("Send booking to forwarder");
+    expect(out.rows[0]!.bookingStatus).toBe("DRAFT");
+    expect(out.rows[0]!.routeProgressPct).toBe(0);
+  });
+
+  it("maps route Plan leg when booking is not in draft/sent pipeline", async () => {
+    shipmentFindMany.mockResolvedValueOnce([
+      internalListRow({
+        booking: { status: "CONFIRMED" },
+        ctLegs: [draftLeg(1)],
+      }),
+    ]);
+    const out = await listControlTowerShipments({
+      tenantId: "tenant-1",
+      ctx: ctxInternal,
+      query: {},
+    });
+    expect(out.rows[0]!.nextAction).toBe("Plan leg 1");
+    expect(out.rows[0]!.bookingSlaBreached).toBe(false);
+  });
+
+  it("post-filters by routeActionPrefix after mapping", async () => {
+    shipmentFindMany.mockResolvedValueOnce([
+      internalListRow({ id: "a", booking: { status: "CONFIRMED" }, ctLegs: [draftLeg(1)] }),
+      internalListRow({
+        id: "b",
+        booking: null,
+        ctLegs: [
+          {
+            legNo: 1,
+            originCode: "X",
+            destinationCode: "Y",
+            transportMode: "OCEAN",
+            plannedEtd: new Date("2026-02-01T00:00:00.000Z"),
+            plannedEta: null,
+            actualAtd: null,
+            actualAta: null,
+          },
+        ],
+      }),
+    ]);
+    const out = await listControlTowerShipments({
+      tenantId: "tenant-1",
+      ctx: ctxInternal,
+      query: { routeActionPrefix: "Plan leg", take: 5 },
+    });
+    expect(out.rows).toHaveLength(1);
+    expect(out.rows[0]!.id).toBe("a");
+    expect(out.rows[0]!.nextAction?.startsWith("Plan leg")).toBe(true);
+  });
+});
+
+describe("listControlTowerShipments booking SLA flag", () => {
+  beforeEach(() => {
+    shipmentFindMany.mockReset();
+    ensureBookingConfirmationSlaAlerts.mockReset();
+    shipmentFindMany.mockResolvedValue([]);
+    ensureBookingConfirmationSlaAlerts.mockResolvedValue(undefined);
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-20T12:00:00.000Z"));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("surfaces escalate action and breached flag when confirmation SLA is past due", async () => {
+    shipmentFindMany.mockResolvedValueOnce([
+      internalListRow({
+        booking: {
+          status: "SENT",
+          bookingConfirmSlaDueAt: new Date("2026-06-01T00:00:00.000Z"),
+        },
+        ctLegs: [draftLeg(1)],
+      }),
+    ]);
+    const out = await listControlTowerShipments({
+      tenantId: "tenant-1",
+      ctx: ctxInternal,
+      query: {},
+    });
+    expect(out.rows[0]!.nextAction).toBe("Escalate booking SLA");
+    expect(out.rows[0]!.bookingSlaBreached).toBe(true);
   });
 });
