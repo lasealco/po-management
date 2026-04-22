@@ -185,8 +185,15 @@ describe("listControlTowerShipments", () => {
     expect(dumped).toContain("ean");
     expect(dumped).toContain("customerName");
     expect(dumped).toContain("cargoCommoditySummary");
+    expect(dumped).toContain("cargoDimensionsText");
     expect(dumped).toContain("soNumber");
     expect(dumped).toContain("externalRef");
+    expect(dumped).toContain("orderItem");
+    expect(dumped).toContain("refType");
+    expect(dumped).toContain("sourceType");
+    expect(dumped).toContain("milestones");
+    expect(dumped).toContain("ctAuditLogs");
+    expect(dumped).toContain("entityType");
     expect(dumped).toContain("ctNotes");
     expect(dumped).toContain("ctAlerts");
     expect(dumped).toMatch(/"owner"/);

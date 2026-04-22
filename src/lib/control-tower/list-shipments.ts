@@ -396,10 +396,16 @@ export async function listControlTowerShipments(params: {
         { asnReference: contains },
         { notes: contains },
         { cargoCommoditySummary: contains },
+        { cargoDimensionsText: contains },
         {
           salesOrder: {
             is: {
-              OR: [{ soNumber: contains }, { externalRef: contains }, { customerName: contains }],
+              OR: [
+                { soNumber: contains },
+                { externalRef: contains },
+                { customerName: contains },
+                { notes: contains },
+              ],
             },
           },
         },
@@ -431,9 +437,19 @@ export async function listControlTowerShipments(params: {
             },
           },
         },
+        {
+          items: {
+            some: {
+              OR: [
+                { cargoDimensionsText: contains },
+                { orderItem: { is: { description: contains } } },
+              ],
+            },
+          },
+        },
         { order: { supplier: { is: { name: contains } } } },
         { customerCrmAccount: { is: { name: contains } } },
-        { ctReferences: { some: { refValue: contains } } },
+        { ctReferences: { some: { OR: [{ refValue: contains }, { refType: contains }] } } },
         {
           ctDocuments: {
             some: {
@@ -526,6 +542,7 @@ export async function listControlTowerShipments(params: {
                 { label: contains },
                 { notes: contains },
                 { sourceRef: contains },
+                { sourceType: contains },
               ],
             },
           },
@@ -538,6 +555,7 @@ export async function listControlTowerShipments(params: {
                 { destinationCode: contains },
                 { carrier: contains },
                 { notes: contains },
+                { carrierSupplier: { is: { name: contains } } },
               ],
             },
           },
@@ -567,6 +585,24 @@ export async function listControlTowerShipments(params: {
             },
           },
         },
+        { milestones: { some: { note: contains } } },
+        {
+          ctAuditLogs: {
+            some: {
+              OR: [
+                { action: contains },
+                { entityType: contains },
+                {
+                  actor: {
+                    is: {
+                      OR: [{ name: contains }, { email: contains }],
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        },
         ...(milestoneMatch ? [milestoneMatch] : []),
         {
           booking: {
@@ -575,6 +611,8 @@ export async function listControlTowerShipments(params: {
                 { bookingNo: contains },
                 { serviceLevel: contains },
                 { notes: contains },
+                { originCode: contains },
+                { destinationCode: contains },
                 { forwarderSupplier: { is: { name: contains } } },
               ],
             },
