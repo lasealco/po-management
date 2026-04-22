@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { readApiHubErrorMessageFromJsonBody } from "@/lib/apihub/api-error";
 import type { ApiHubMappingTemplateAuditTrailDto } from "@/lib/apihub/mapping-template-audit-dto";
 import type { ApiHubMappingTemplateDto } from "@/lib/apihub/mapping-template-dto";
+import { normalizeApiHubMappingRulesBody } from "@/lib/apihub/mapping-rules-body";
 
 import { ApiHubAdvancedJsonDisclosure } from "./apihub-advanced-json";
 import { MappingRulesDiffPanel } from "./mapping-rules-diff-panel";
@@ -39,6 +40,89 @@ function rulesToJson(rules: ApiHubMappingTemplateDto["rules"]) {
   return `${JSON.stringify(rules, null, 2)}\n`;
 }
 
+type DraftRulesPreview =
+  | { kind: "parse_error"; message: string }
+  | { kind: "not_array"; message: string }
+  | {
+      kind: "ok";
+      rules: ReturnType<typeof normalizeApiHubMappingRulesBody>["rules"];
+      issues: ReturnType<typeof normalizeApiHubMappingRulesBody>["issues"];
+    };
+
+function draftRulesPreviewFromJson(formRulesJson: string, panel: string): DraftRulesPreview | null {
+  if (panel !== "create" && panel !== "edit") return null;
+  try {
+    const parsed: unknown = JSON.parse(formRulesJson.trim());
+    if (!Array.isArray(parsed)) {
+      return { kind: "not_array", message: "Rules must be a JSON array." };
+    }
+    const { rules, issues } = normalizeApiHubMappingRulesBody(parsed);
+    return { kind: "ok", rules, issues };
+  } catch {
+    return { kind: "parse_error", message: "Invalid JSON — fix syntax to see rule summary." };
+  }
+}
+
+function MappingTemplateDraftRulesPreview({ preview }: { preview: DraftRulesPreview }) {
+  if (preview.kind === "parse_error") {
+    return (
+      <div className="rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-950">
+        {preview.message}
+      </div>
+    );
+  }
+  if (preview.kind === "not_array") {
+    return (
+      <div className="rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-950">
+        {preview.message}
+      </div>
+    );
+  }
+  const errIssues = preview.issues.filter((i) => i.severity === "error");
+  const warnIssues = preview.issues.filter((i) => i.severity === "warn");
+  return (
+    <div className="rounded-lg border border-zinc-200 bg-zinc-50/90 px-3 py-3 text-xs text-zinc-800 shadow-sm">
+      <p className="font-semibold uppercase tracking-wide text-zinc-500">Draft check (client)</p>
+      <p className="mt-2">
+        <span className="tabular-nums font-semibold text-zinc-900">{preview.rules.length}</span> rule
+        {preview.rules.length === 1 ? "" : "s"} pass the same shape checks the server uses first.
+      </p>
+      {errIssues.length > 0 ? (
+        <ul className="mt-2 list-inside list-disc space-y-1 text-red-800">
+          {errIssues.slice(0, 8).map((i, idx) => (
+            <li key={`${i.field}-${idx}`}>
+              <span className="font-mono text-[11px]">{i.field}</span>: {i.message}
+            </li>
+          ))}
+          {errIssues.length > 8 ? <li>… and {errIssues.length - 8} more</li> : null}
+        </ul>
+      ) : null}
+      {warnIssues.length > 0 ? (
+        <ul className="mt-2 list-inside list-disc space-y-1 text-amber-900">
+          {warnIssues.slice(0, 6).map((i, idx) => (
+            <li key={`w-${i.field}-${idx}`}>
+              <span className="font-mono text-[11px]">{i.field}</span>: {i.message}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {preview.rules.length > 0 ? (
+        <ul className="mt-3 flex max-h-20 flex-wrap gap-1 overflow-y-auto">
+          {preview.rules.map((r, idx) => (
+            <li
+              key={`${idx}-${r.targetField}-${r.sourcePath}`}
+              className="rounded-full border border-zinc-200 bg-white px-2 py-0.5 font-mono text-[11px] text-zinc-800"
+              title={r.sourcePath}
+            >
+              {r.targetField}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
 export function MappingTemplatesSection({ initialTemplates, canManage }: Props) {
   const router = useRouter();
   const [detailBoost, setDetailBoost] = useState<ApiHubMappingTemplateDto | null>(null);
@@ -53,6 +137,12 @@ export function MappingTemplatesSection({ initialTemplates, canManage }: Props) 
   const [rowBusyId, setRowBusyId] = useState<string | null>(null);
   const [auditRows, setAuditRows] = useState<ApiHubMappingTemplateAuditTrailDto[] | null>(null);
   const [auditLoading, setAuditLoading] = useState(false);
+  const [templateApiErrorBody, setTemplateApiErrorBody] = useState<unknown | null>(null);
+
+  const draftRulesPreview = useMemo(
+    () => draftRulesPreviewFromJson(formRulesJson, panel),
+    [formRulesJson, panel],
+  );
 
   useEffect(() => {
     if (detailBoost && initialTemplates.some((t) => t.id === detailBoost.id)) {
@@ -80,6 +170,7 @@ export function MappingTemplatesSection({ initialTemplates, canManage }: Props) 
     setSelectedId(id);
     setPanel("detail");
     setError(null);
+    setTemplateApiErrorBody(null);
     setAuditRows(null);
   }
 
@@ -103,6 +194,7 @@ export function MappingTemplatesSection({ initialTemplates, canManage }: Props) 
     setFormRulesJson(rulesToJson(selected.rules));
     setFormAuditNote("");
     setError(null);
+    setTemplateApiErrorBody(null);
     setAuditRows(null);
   }
 
@@ -111,6 +203,7 @@ export function MappingTemplatesSection({ initialTemplates, canManage }: Props) 
     setPanel("none");
     setSelectedId(null);
     setError(null);
+    setTemplateApiErrorBody(null);
     setAuditRows(null);
   }
 
@@ -130,6 +223,7 @@ export function MappingTemplatesSection({ initialTemplates, canManage }: Props) 
 
   async function submitCreate() {
     setError(null);
+    setTemplateApiErrorBody(null);
     const rules = parseRulesFromForm();
     if (!rules) return;
     const name = formName.trim();
@@ -150,6 +244,7 @@ export function MappingTemplatesSection({ initialTemplates, canManage }: Props) 
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        setTemplateApiErrorBody(data);
         setError(readApiHubErrorMessageFromJsonBody(data, "Could not create template."));
         return;
       }
@@ -195,6 +290,7 @@ export function MappingTemplatesSection({ initialTemplates, canManage }: Props) 
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        setTemplateApiErrorBody(data);
         setError(readApiHubErrorMessageFromJsonBody(data, "Could not update template."));
         return;
       }
@@ -211,11 +307,13 @@ export function MappingTemplatesSection({ initialTemplates, canManage }: Props) 
       return;
     }
     setError(null);
+    setTemplateApiErrorBody(null);
     setRowBusyId(selected.id);
     try {
       const res = await fetch(`/api/apihub/mapping-templates/${selected.id}`, { method: "DELETE" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        setTemplateApiErrorBody(data);
         setError(readApiHubErrorMessageFromJsonBody(data, "Could not delete template."));
         return;
       }
@@ -230,10 +328,12 @@ export function MappingTemplatesSection({ initialTemplates, canManage }: Props) 
     if (!selected) return;
     setAuditLoading(true);
     setError(null);
+    setTemplateApiErrorBody(null);
     try {
       const res = await fetch(`/api/apihub/mapping-templates/${selected.id}/audit?limit=20`);
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        setTemplateApiErrorBody(data);
         setError(readApiHubErrorMessageFromJsonBody(data, "Could not load audit trail."));
         setAuditRows(null);
         return;
@@ -282,9 +382,20 @@ export function MappingTemplatesSection({ initialTemplates, canManage }: Props) 
       </div>
 
       {error ? (
-        <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">
-          {error}
-        </p>
+        <div className="mt-4 space-y-3">
+          <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">
+            {error}
+          </p>
+          {templateApiErrorBody != null ? (
+            <ApiHubAdvancedJsonDisclosure
+              value={templateApiErrorBody}
+              label="Advanced — last template API error body"
+              description="From the most recent failed templates request on this page."
+              maxHeightClass="max-h-56"
+              dark={false}
+            />
+          ) : null}
+        </div>
       ) : null}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-5">
@@ -445,11 +556,16 @@ export function MappingTemplatesSection({ initialTemplates, canManage }: Props) 
                 </label>
                 <label className="grid gap-1 text-sm">
                   <span className="font-medium text-zinc-800">Rules (JSON array)</span>
+                  {draftRulesPreview ? (
+                    <div className="mt-1">
+                      <MappingTemplateDraftRulesPreview preview={draftRulesPreview} />
+                    </div>
+                  ) : null}
                   <textarea
                     value={formRulesJson}
                     onChange={(e) => setFormRulesJson(e.target.value)}
                     rows={12}
-                    className="rounded-lg border border-zinc-300 px-3 py-2 font-mono text-xs shadow-sm"
+                    className="mt-2 rounded-lg border border-zinc-300 px-3 py-2 font-mono text-xs shadow-sm"
                     spellCheck={false}
                   />
                 </label>

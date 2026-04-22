@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { readApiHubErrorMessageFromJsonBody } from "@/lib/apihub/api-error";
 import type { ApiHubMappingAnalysisJobDto } from "@/lib/apihub/mapping-analysis-job-dto";
@@ -23,6 +23,63 @@ function terminal(status: string) {
   return status === "succeeded" || status === "failed";
 }
 
+type RecordsDraftPreview =
+  | { kind: "empty" }
+  | { kind: "parse_error"; message: string }
+  | { kind: "not_array"; message: string }
+  | { kind: "ok"; count: number; nonObjectCount: number };
+
+function recordsDraftPreviewFromJson(recordsJson: string): RecordsDraftPreview {
+  const t = recordsJson.trim();
+  if (!t) return { kind: "empty" };
+  try {
+    const v: unknown = JSON.parse(t);
+    if (!Array.isArray(v)) {
+      return { kind: "not_array", message: "Records must be a JSON array of objects." };
+    }
+    let nonObjectCount = 0;
+    for (const item of v) {
+      if (item === null || typeof item !== "object" || Array.isArray(item)) {
+        nonObjectCount += 1;
+      }
+    }
+    return { kind: "ok", count: v.length, nonObjectCount };
+  } catch {
+    return { kind: "parse_error", message: "Invalid JSON — fix syntax before queueing." };
+  }
+}
+
+function MappingAnalysisRecordsDraftPreview({ preview }: { preview: RecordsDraftPreview }) {
+  if (preview.kind === "empty") {
+    return (
+      <div className="mt-2 rounded-lg border border-zinc-200 bg-white/80 px-3 py-2 text-xs text-zinc-600">
+        Paste a JSON array of sample record objects. The server expects the same shape you submit.
+      </div>
+    );
+  }
+  if (preview.kind === "parse_error" || preview.kind === "not_array") {
+    return (
+      <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-950">
+        {preview.message}
+      </div>
+    );
+  }
+  return (
+    <div className="mt-2 rounded-lg border border-zinc-200 bg-zinc-50/90 px-3 py-2 text-xs text-zinc-800 shadow-sm">
+      <p className="font-semibold uppercase tracking-wide text-zinc-500">Draft check (client)</p>
+      <p className="mt-1">
+        <span className="tabular-nums font-semibold text-zinc-900">{preview.count}</span> element
+        {preview.count === 1 ? "" : "s"} in the array.
+      </p>
+      {preview.nonObjectCount > 0 ? (
+        <p className="mt-1 text-amber-900">
+          {preview.nonObjectCount} entr{preview.nonObjectCount === 1 ? "y is" : "ies are"} not plain objects — the API may reject or skip them.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 export function MappingAnalysisJobsPanel({ initialJobs, canView, canEdit }: Props) {
   const router = useRouter();
   const [jobs, setJobs] = useState(initialJobs);
@@ -34,7 +91,10 @@ export function MappingAnalysisJobsPanel({ initialJobs, canView, canEdit }: Prop
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [analysisApiErrorBody, setAnalysisApiErrorBody] = useState<unknown | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const recordsDraftPreview = useMemo(() => recordsDraftPreviewFromJson(recordsJson), [recordsJson]);
 
   const stopPoll = useCallback(() => {
     if (pollRef.current) {
@@ -47,9 +107,11 @@ export function MappingAnalysisJobsPanel({ initialJobs, canView, canEdit }: Prop
     const res = await fetch(`/api/apihub/mapping-analysis-jobs/${encodeURIComponent(id)}`);
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
+      setAnalysisApiErrorBody(data);
       setError(readApiHubErrorMessageFromJsonBody(data, "Could not load job."));
       return null;
     }
+    setAnalysisApiErrorBody(null);
     const job = (data as { job: ApiHubMappingAnalysisJobDto }).job;
     setActiveJob(job);
     setJobs((prev) => {
@@ -87,6 +149,7 @@ export function MappingAnalysisJobsPanel({ initialJobs, canView, canEdit }: Prop
   async function submitCreate() {
     if (!canEdit) return;
     setError(null);
+    setAnalysisApiErrorBody(null);
     setInfo(null);
     let records: unknown;
     try {
@@ -115,6 +178,7 @@ export function MappingAnalysisJobsPanel({ initialJobs, canView, canEdit }: Prop
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        setAnalysisApiErrorBody(data);
         setError(readApiHubErrorMessageFromJsonBody(data, "Create failed."));
         return;
       }
@@ -136,6 +200,7 @@ export function MappingAnalysisJobsPanel({ initialJobs, canView, canEdit }: Prop
       return;
     }
     setError(null);
+    setAnalysisApiErrorBody(null);
     setInfo(null);
     setBusy(true);
     try {
@@ -149,6 +214,7 @@ export function MappingAnalysisJobsPanel({ initialJobs, canView, canEdit }: Prop
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        setAnalysisApiErrorBody(data);
         setError(readApiHubErrorMessageFromJsonBody(data, "Could not create template."));
         return;
       }
@@ -162,6 +228,7 @@ export function MappingAnalysisJobsPanel({ initialJobs, canView, canEdit }: Prop
   async function materializeStaging() {
     if (!canEdit || !activeId || !activeJob || activeJob.status !== "succeeded") return;
     setError(null);
+    setAnalysisApiErrorBody(null);
     setInfo(null);
     setBusy(true);
     try {
@@ -175,6 +242,7 @@ export function MappingAnalysisJobsPanel({ initialJobs, canView, canEdit }: Prop
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        setAnalysisApiErrorBody(data);
         setError(readApiHubErrorMessageFromJsonBody(data, "Staging batch create failed."));
         return;
       }
@@ -188,6 +256,7 @@ export function MappingAnalysisJobsPanel({ initialJobs, canView, canEdit }: Prop
   async function runProcessNow() {
     if (!canEdit || !activeId) return;
     setError(null);
+    setAnalysisApiErrorBody(null);
     setInfo(null);
     setBusy(true);
     try {
@@ -196,6 +265,7 @@ export function MappingAnalysisJobsPanel({ initialJobs, canView, canEdit }: Prop
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        setAnalysisApiErrorBody(data);
         setError(readApiHubErrorMessageFromJsonBody(data, "Process failed."));
         return;
       }
@@ -241,6 +311,7 @@ export function MappingAnalysisJobsPanel({ initialJobs, canView, canEdit }: Prop
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
         <div className="rounded-xl border border-zinc-200 bg-zinc-50/50 p-4">
           <label className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Sample records (JSON)</label>
+          <MappingAnalysisRecordsDraftPreview preview={recordsDraftPreview} />
           <textarea
             className="mt-2 h-48 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 font-mono text-xs text-zinc-900 disabled:opacity-60"
             value={recordsJson}
@@ -264,7 +335,22 @@ export function MappingAnalysisJobsPanel({ initialJobs, canView, canEdit }: Prop
             onChange={(e) => setNote(e.target.value)}
             disabled={!canEdit}
           />
-          {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
+          {error ? (
+            <div className="mt-3 space-y-3">
+              <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">
+                {error}
+              </p>
+              {analysisApiErrorBody != null ? (
+                <ApiHubAdvancedJsonDisclosure
+                  value={analysisApiErrorBody}
+                  label="Advanced — last analysis API error body"
+                  description="From the most recent failed mapping-analysis or related request on this panel."
+                  maxHeightClass="max-h-56"
+                  dark={false}
+                />
+              ) : null}
+            </div>
+          ) : null}
           {info ? <p className="mt-3 text-sm text-emerald-800">{info}</p> : null}
           <div className="mt-4 flex flex-wrap gap-2">
             <button
@@ -317,6 +403,8 @@ export function MappingAnalysisJobsPanel({ initialJobs, canView, canEdit }: Prop
                 <button
                   type="button"
                   onClick={() => {
+                    setError(null);
+                    setAnalysisApiErrorBody(null);
                     setActiveId(j.id);
                     setActiveJob(j);
                   }}
