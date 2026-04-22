@@ -211,7 +211,7 @@ export async function runControlTowerAssist(params: {
   if (!capable) {
     return {
       hints: baseHints,
-      suggestedFilters: rule.suggestedFilters,
+      suggestedFilters: sanitizeAssistSuggestedFilters(rule.suggestedFilters),
       capabilities: { llmAssist: capable },
       usedLlm: false,
     };
@@ -229,7 +229,7 @@ export async function runControlTowerAssist(params: {
     if (!llmRaw) {
       return {
         hints: ["AI assist did not return usable JSON; using rule-based filters only.", ...baseHints],
-        suggestedFilters: rule.suggestedFilters,
+        suggestedFilters: sanitizeAssistSuggestedFilters(rule.suggestedFilters),
         capabilities: { llmAssist: true },
         usedLlm: false,
       };
@@ -245,14 +245,14 @@ export async function runControlTowerAssist(params: {
 
     return {
       hints: mergedHints.length ? mergedHints : baseHints,
-      suggestedFilters: mergedFilters,
+      suggestedFilters: sanitizeAssistSuggestedFilters(mergedFilters),
       capabilities: { llmAssist: true },
       usedLlm: true,
     };
   } catch {
     return {
       hints: ["AI assist failed; using rule-based filters only.", ...baseHints],
-      suggestedFilters: rule.suggestedFilters,
+      suggestedFilters: sanitizeAssistSuggestedFilters(rule.suggestedFilters),
       capabilities: { llmAssist: true },
       usedLlm: false,
     };

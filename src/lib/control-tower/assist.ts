@@ -1,6 +1,9 @@
 import type { ShipmentStatus, TransportMode } from "@prisma/client";
 
-import { isProbableControlTowerShipmentCuid } from "@/lib/control-tower/search-query";
+import {
+  isProbableControlTowerShipmentCuid,
+  parseControlTowerProductTraceParam,
+} from "@/lib/control-tower/search-query";
 import { CT_URL_ROUTE_ACTION_PREFIXES } from "@/lib/control-tower/workbench-url-sync";
 
 /** Rule-based parse output for Search & assist (no LLM). */
@@ -233,9 +236,12 @@ export function assistControlTowerQuery(raw: string): {
   const traceM = working.match(/\b(?:trace|sku|product)\s*:\s*([\w.-]+)\b/i);
   if (traceM) {
     const t = sanitizeListFilterToken(traceM[1]);
-    if (t) {
-      suggestedFilters.productTraceQ = t;
-      hints.push(`Product trace / SKU token: ${t}.`);
+    const pt = t ? parseControlTowerProductTraceParam(t) : undefined;
+    if (pt) {
+      suggestedFilters.productTraceQ = pt;
+      hints.push(`Product trace / SKU token: ${pt}.`);
+    } else if (t) {
+      hints.push("trace: / sku: / product: expects a product code, not a shipment id.");
     } else {
       hints.push("trace: / sku: / product: expects a code (letters, digits, . _ -).");
     }

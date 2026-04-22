@@ -80,6 +80,13 @@ describe("assistControlTowerQuery", () => {
     expect(assistControlTowerQuery("product:Widget-X").suggestedFilters.productTraceQ).toBe("Widget-X");
   });
 
+  it("does not treat trace: value as productTraceQ when it is a shipment cuid", () => {
+    const cuid = `c${"0".repeat(19)}`;
+    const { suggestedFilters, hints } = assistControlTowerQuery(`trace:${cuid}`);
+    expect(suggestedFilters.productTraceQ).toBeUndefined();
+    expect(hints.some((h) => h.includes("not a shipment id"))).toBe(true);
+  });
+
   it("copies productTraceQ to q when no other free text remains", () => {
     const { suggestedFilters } = assistControlTowerQuery("trace:ONLYCODE");
     expect(suggestedFilters.productTraceQ).toBe("ONLYCODE");
