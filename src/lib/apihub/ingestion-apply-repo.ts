@@ -1,3 +1,4 @@
+import { apiHubOperatorMessageFromCaughtError } from "@/lib/apihub/api-error";
 import { prisma } from "@/lib/prisma";
 
 import type {
@@ -284,7 +285,7 @@ export async function applyApiHubIngestionRun(opts: {
           return { kind: "not_succeeded", status: ex.status };
         }
       }
-      const msg = e instanceof Error ? e.message : "Downstream apply failed.";
+      const msg = apiHubOperatorMessageFromCaughtError(e, "Downstream apply failed.");
       return { kind: "downstream_failed", message: msg };
     }
   }

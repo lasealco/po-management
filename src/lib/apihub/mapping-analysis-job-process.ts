@@ -8,6 +8,7 @@ import type { ApiHubMappingLlmMeta } from "@/lib/apihub/mapping-analysis-llm";
 import { proposeApiHubMappingWithOpenAi } from "@/lib/apihub/mapping-analysis-llm";
 import { validateApiHubMappingRulesInput } from "@/lib/apihub/mapping-engine";
 import { normalizeApiHubMappingRulesBody } from "@/lib/apihub/mapping-rules-body";
+import { apiHubOperatorMessageFromCaughtError } from "@/lib/apihub/api-error";
 import { computeMappingPreview } from "@/lib/apihub/mapping-preview-run";
 import { prisma } from "@/lib/prisma";
 
@@ -138,13 +139,13 @@ async function runApiHubMappingAnalysisJobCore(job: JobCoreRow): Promise<void> {
       },
     });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Analysis failed.";
+    const message = apiHubOperatorMessageFromCaughtError(e, "Analysis failed.").slice(0, 4000);
     await prisma.apiHubMappingAnalysisJob.update({
       where: { id: jobId },
       data: {
         status: "failed",
         finishedAt: new Date(),
-        errorMessage: message.slice(0, 4000),
+        errorMessage: message,
         outputProposal: Prisma.DbNull,
       },
     });

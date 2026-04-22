@@ -9,6 +9,7 @@ import {
   type ApiHubStagingApplyRowResult,
   type ApiHubStagingApplySummary,
 } from "@/lib/apihub/downstream-mapped-rows-apply";
+import { apiHubOperatorMessageFromCaughtError } from "@/lib/apihub/api-error";
 import { getApiHubStagingBatchWithRows } from "@/lib/apihub/staging-batches-repo";
 import type { ApiHubStagingRowEntity } from "@/lib/apihub/staging-batches-repo";
 import { prisma } from "@/lib/prisma";
@@ -90,7 +91,9 @@ export async function applyApiHubStagingBatchToDownstream(input: {
     });
     return { ok: true, summary };
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Apply failed.";
+    const fallback =
+      "Could not apply staging batch. Check mapped rows, CRM/supplier/product links, and workflow defaults, then retry.";
+    const msg = apiHubOperatorMessageFromCaughtError(e, fallback);
     return { ok: false, code: "VALIDATION", message: msg };
   }
 }

@@ -93,6 +93,50 @@ export function apiHubDemoActorMissing(requestId: string) {
 }
 
 /**
+ * Heuristic for DB client / transport failures that must not be echoed on API Hub JSON errors (R7).
+ * Domain validation messages from our code should not match these patterns.
+ */
+export function apiHubErrorMessageLooksLikeInfrastructureNoise(message: string): boolean {
+  const m = message.toLowerCase();
+  if (m.length > 8000) {
+    return true;
+  }
+  return (
+    m.includes("prisma") ||
+    m.includes("postgres") ||
+    m.includes("invalid `") ||
+    m.includes("invocation in") ||
+    m.includes("engine is not yet connected") ||
+    m.includes("econnrefused") ||
+    m.includes("etimedout") ||
+    m.includes("deadlock") ||
+    m.includes("tls connection") ||
+    m.includes("server closed the connection") ||
+    m.includes("can't reach database") ||
+    m.includes("connection pool") ||
+    m.includes("too many connections")
+  );
+}
+
+/**
+ * For **`catch`** blocks that surface **`Error.message`** to operators: allow normal domain text,
+ * replace likely Prisma/Postgres/transport details with **`fallback`**.
+ */
+export function apiHubOperatorMessageFromCaughtError(error: unknown, fallback: string): string {
+  if (!(error instanceof Error) || typeof error.message !== "string") {
+    return fallback;
+  }
+  const m = error.message.trim();
+  if (!m) {
+    return fallback;
+  }
+  if (apiHubErrorMessageLooksLikeInfrastructureNoise(m)) {
+    return fallback;
+  }
+  return m.length > 2000 ? m.slice(0, 2000) : m;
+}
+
+/**
  * Maps **`createApiHubStagingBatchFromAnalysisJob`** failures to an operator-safe message.
  * Unknown errors (e.g. Prisma engine) return **`fallback`** so internal details are not echoed (R7).
  */

@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   apiHubError,
+  apiHubErrorMessageLooksLikeInfrastructureNoise,
+  apiHubOperatorMessageFromCaughtError,
   apiHubStagingBatchCreateFailedMessage,
   apiHubValidationError,
   readApiHubErrorMessageFromJsonBody,
@@ -96,6 +98,44 @@ describe("apiHubValidationError (P4 — stable envelope)", () => {
     expect(Object.keys(body.error.details).sort()).toEqual(["issues", "summary"]);
     expect(Array.isArray(body.error.details.issues)).toBe(true);
     expect(body.error.details.issues).toHaveLength(1);
+  });
+});
+
+describe("apiHubOperatorMessageFromCaughtError", () => {
+  const fb = "Downstream apply failed.";
+
+  it("passes through domain-style errors", () => {
+    expect(apiHubOperatorMessageFromCaughtError(new Error("Supplier not found or inactive."), fb)).toBe(
+      "Supplier not found or inactive.",
+    );
+    expect(apiHubOperatorMessageFromCaughtError(new Error("No default workflow found for tenant."), fb)).toBe(
+      "No default workflow found for tenant.",
+    );
+  });
+
+  it("replaces Prisma-style errors with fallback", () => {
+    expect(
+      apiHubOperatorMessageFromCaughtError(
+        new Error(
+          "\nInvalid `prisma.purchaseOrder.create()` invocation:\nForeign key constraint violated on the constraint: `PurchaseOrder_tenantId_fkey`",
+        ),
+        fb,
+      ),
+    ).toBe(fb);
+  });
+
+  it("treats oversized messages as noise", () => {
+    const huge = "x".repeat(9000);
+    expect(apiHubOperatorMessageFromCaughtError(new Error(huge), fb)).toBe(fb);
+  });
+});
+
+describe("apiHubErrorMessageLooksLikeInfrastructureNoise", () => {
+  it("flags prisma and postgres substrings", () => {
+    expect(apiHubErrorMessageLooksLikeInfrastructureNoise("Invalid `prisma.foo` invocation")).toBe(true);
+    expect(apiHubErrorMessageLooksLikeInfrastructureNoise("duplicate key value violates unique constraint")).toBe(
+      false,
+    );
   });
 });
 
