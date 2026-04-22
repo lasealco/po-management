@@ -1041,6 +1041,48 @@ export async function listControlTowerShipments(params: {
         { paymentTermsLabel: contains },
         { defaultIncoterm: contains },
         { creditCurrency: contains },
+        {
+          offices: {
+            some: {
+              OR: [
+                { name: contains },
+                { addressLine1: contains },
+                { addressLine2: contains },
+                { city: contains },
+                { region: contains },
+                { postalCode: contains },
+                { countryCode: contains },
+              ],
+            },
+          },
+        },
+        {
+          contacts: {
+            some: {
+              OR: [
+                { name: contains },
+                { title: contains },
+                { role: contains },
+                { email: contains },
+                { phone: contains },
+                { notes: contains },
+              ],
+            },
+          },
+        },
+        {
+          serviceCapabilities: {
+            some: {
+              OR: [
+                { mode: contains },
+                { subMode: contains },
+                { serviceType: contains },
+                { geography: contains },
+                { notes: contains },
+              ],
+            },
+          },
+        },
       ],
     };
     const warehouseTextMatch: Prisma.WarehouseWhereInput = {
@@ -1052,6 +1094,37 @@ export async function listControlTowerShipments(params: {
         { region: contains },
         { countryCode: contains },
         ...warehouseTypeEnumMatch.map((type) => ({ type })),
+      ],
+    };
+    const replenishmentRuleMatch: Prisma.ReplenishmentRuleWhereInput = {
+      OR: [
+        {
+          warehouse: {
+            is: warehouseTextMatch,
+          },
+        },
+        {
+          sourceZone: {
+            is: {
+              OR: [
+                { code: contains },
+                { name: contains },
+                ...warehouseZoneTypeEnumMatch.map((zoneType) => ({ zoneType })),
+              ],
+            },
+          },
+        },
+        {
+          targetZone: {
+            is: {
+              OR: [
+                { code: contains },
+                { name: contains },
+                ...warehouseZoneTypeEnumMatch.map((zoneType) => ({ zoneType })),
+              ],
+            },
+          },
+        },
       ],
     };
     const outboundOrderTextMatch: Prisma.OutboundOrderWhereInput = {
@@ -1120,6 +1193,11 @@ export async function listControlTowerShipments(params: {
                     some: {
                       outboundOrder: { is: outboundOrderTextMatch },
                     },
+                  },
+                },
+                {
+                  replenishmentRules: {
+                    some: replenishmentRuleMatch,
                   },
                 },
               ],
@@ -1368,6 +1446,11 @@ export async function listControlTowerShipments(params: {
                               },
                             },
                           },
+                          {
+                            replenishmentRules: {
+                              some: replenishmentRuleMatch,
+                            },
+                          },
                         ],
                       },
                     },
@@ -1575,6 +1658,19 @@ export async function listControlTowerShipments(params: {
                             some: {
                               outboundOrder: { is: outboundOrderTextMatch },
                             },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+                {
+                  orderItem: {
+                    is: {
+                      product: {
+                        is: {
+                          replenishmentRules: {
+                            some: replenishmentRuleMatch,
                           },
                         },
                       },

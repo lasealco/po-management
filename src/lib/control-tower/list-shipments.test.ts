@@ -201,6 +201,9 @@ describe("listControlTowerShipments", () => {
     expect(dumped).toContain("supplierOffice");
     expect(dumped).toContain("productSuppliers");
     expect(dumped).toContain("outboundOrderLines");
+    expect(dumped).toContain("replenishmentRules");
+    expect(dumped).toContain("serviceCapabilities");
+    expect(dumped).toContain("offices");
     expect(dumped).toContain("vendorSupplier");
     expect(dumped).toContain("cargoLines");
     expect(dumped).toContain("wmsTasks");
