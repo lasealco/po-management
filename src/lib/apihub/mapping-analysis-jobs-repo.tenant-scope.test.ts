@@ -41,6 +41,37 @@ describe("mapping-analysis-jobs-repo tenant scoping", () => {
     });
   });
 
+  it("createApiHubMappingAnalysisJob persists tenantId on the new row", async () => {
+    create.mockResolvedValue({
+      id: "j-new",
+      tenantId: "tenant-job-create",
+      requestedByUserId: "u1",
+      status: "queued",
+      inputPayload: {},
+      outputProposal: null,
+      errorMessage: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      startedAt: null,
+      finishedAt: null,
+    });
+    const { createApiHubMappingAnalysisJob } = await import("./mapping-analysis-jobs-repo");
+    await createApiHubMappingAnalysisJob({
+      tenantId: "tenant-job-create",
+      requestedByUserId: "u1",
+      inputPayload: { records: [] },
+    });
+    expect(create).toHaveBeenCalledWith({
+      data: {
+        tenantId: "tenant-job-create",
+        requestedByUserId: "u1",
+        status: "queued",
+        inputPayload: { records: [] },
+      },
+      select: expect.any(Object) as unknown,
+    });
+  });
+
   it("uses distinct tenant ids in where clauses (non–demo tenant safe)", async () => {
     findFirst.mockResolvedValue(null);
     findMany.mockResolvedValue([]);
