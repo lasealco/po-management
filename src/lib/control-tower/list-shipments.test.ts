@@ -203,6 +203,12 @@ describe("listControlTowerShipments", () => {
     expect(dumped).toContain("cargoLines");
     expect(dumped).toContain("wmsTasks");
     expect(dumped).toContain("tariffShipmentApplications");
+    expect(dumped).toContain("contractHeader");
+    expect(dumped).toContain("chats");
+    expect(dumped).toContain("author");
+    expect(dumped).toContain("transitions");
+    expect(dumped).toContain("actionCode");
+    expect(dumped).toContain("registeredCity");
     expect(dumped).toContain("forwarderOffice");
     expect(dumped).toContain("forwarderContact");
     expect(dumped).toContain("taxId");

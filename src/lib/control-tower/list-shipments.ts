@@ -387,6 +387,24 @@ export async function listControlTowerShipments(params: {
       milestoneCodesMatching.length > 0
         ? { milestones: { some: { code: { in: milestoneCodesMatching } } } }
         : null;
+    const supplierPartyMatch: Prisma.SupplierWhereInput = {
+      OR: [
+        { name: contains },
+        { code: contains },
+        { legalName: contains },
+        { email: contains },
+        { phone: contains },
+        { taxId: contains },
+        { website: contains },
+        { registeredAddressLine1: contains },
+        { registeredAddressLine2: contains },
+        { registeredCity: contains },
+        { registeredRegion: contains },
+        { registeredPostalCode: contains },
+        { registeredCountryCode: contains },
+        { internalNotes: contains },
+      ],
+    };
     ands.push({
       OR: [
         ...idOr,
@@ -395,16 +413,7 @@ export async function listControlTowerShipments(params: {
         { carrier: contains },
         {
           carrierSupplier: {
-            is: {
-              OR: [
-                { name: contains },
-                { code: contains },
-                { legalName: contains },
-                { email: contains },
-                { phone: contains },
-                { taxId: contains },
-              ],
-            },
+            is: supplierPartyMatch,
           },
         },
         { asnReference: contains },
@@ -465,6 +474,7 @@ export async function listControlTowerShipments(params: {
         { order: { shipToRegion: contains } },
         { order: { shipToPostalCode: contains } },
         { order: { shipToCountryCode: contains } },
+        { order: { currency: contains } },
         {
           order: {
             requester: {
@@ -558,6 +568,43 @@ export async function listControlTowerShipments(params: {
           },
         },
         {
+          order: {
+            chats: {
+              some: {
+                OR: [
+                  { body: contains },
+                  {
+                    author: {
+                      is: {
+                        OR: [{ name: contains }, { email: contains }],
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        },
+        {
+          order: {
+            transitions: {
+              some: {
+                OR: [
+                  { comment: contains },
+                  { actionCode: contains },
+                  {
+                    actor: {
+                      is: {
+                        OR: [{ name: contains }, { email: contains }],
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        },
+        {
           items: {
             some: {
               OR: [
@@ -570,16 +617,7 @@ export async function listControlTowerShipments(params: {
         {
           order: {
             supplier: {
-              is: {
-                OR: [
-                  { name: contains },
-                  { code: contains },
-                  { legalName: contains },
-                  { email: contains },
-                  { phone: contains },
-                  { taxId: contains },
-                ],
-              },
+              is: supplierPartyMatch,
             },
           },
         },
@@ -725,16 +763,7 @@ export async function listControlTowerShipments(params: {
                 { notes: contains },
                 {
                   carrierSupplier: {
-                    is: {
-                      OR: [
-                        { name: contains },
-                        { code: contains },
-                        { legalName: contains },
-                        { email: contains },
-                        { phone: contains },
-                        { taxId: contains },
-                      ],
-                    },
+                    is: supplierPartyMatch,
                   },
                 },
               ],
@@ -830,6 +859,28 @@ export async function listControlTowerShipments(params: {
                     },
                   },
                 },
+                {
+                  contractVersion: {
+                    is: {
+                      OR: [
+                        { sourceReference: contains },
+                        { comments: contains },
+                        {
+                          contractHeader: {
+                            is: {
+                              OR: [
+                                { contractNumber: contains },
+                                { title: contains },
+                                { tradeScope: contains },
+                                { notes: contains },
+                              ],
+                            },
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
               ],
             },
           },
@@ -879,15 +930,20 @@ export async function listControlTowerShipments(params: {
                 { destinationCode: contains },
                 {
                   forwarderSupplier: {
+                    is: supplierPartyMatch,
+                  },
+                },
+                {
+                  createdBy: {
                     is: {
-                      OR: [
-                        { name: contains },
-                        { code: contains },
-                        { legalName: contains },
-                        { email: contains },
-                        { phone: contains },
-                        { taxId: contains },
-                      ],
+                      OR: [{ name: contains }, { email: contains }],
+                    },
+                  },
+                },
+                {
+                  updatedBy: {
+                    is: {
+                      OR: [{ name: contains }, { email: contains }],
                     },
                   },
                 },
