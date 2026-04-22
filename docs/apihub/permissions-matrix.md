@@ -1,6 +1,8 @@
 # API Hub — permissions matrix (Slice 51 + 52 baseline)
 
-This document matches **current route handlers** under `src/app/api/apihub/**`. **Slice 52 (shipped):** handlers use `apiHubEnsureTenantActorGrants` → **`org.apihub`** `view` or `edit` via `userHasGlobalGrant` (demo tenant + demo actor unchanged). Staging **apply** additionally requires **`org.orders`** or **`org.controltower`** `edit` per target.
+This document matches **current route handlers** under `src/app/api/apihub/**` (**27** `route.ts` files as of 2026-04-22: one public health route + 26 guarded). **Slice 52 (shipped):** handlers use `apiHubEnsureTenantActorGrants` → **`org.apihub`** `view` or `edit` via `userHasGlobalGrant` (demo tenant + demo actor unchanged). Staging **apply** additionally requires **`org.orders`** or **`org.controltower`** `edit` per target.
+
+**Payload bounds:** JSON POST/PATCH bodies are size-capped server-side (`APIHUB_JSON_BODY_MAX_BYTES` / `_LARGE` in `src/lib/apihub/constants.ts`); oversize requests return **413** `PAYLOAD_TOO_LARGE`. See [product-completion-v1.md](./product-completion-v1.md).
 
 ## Legend
 
@@ -18,6 +20,9 @@ When a guarded handler runs:
 |-----------|------|---------------|-----------------|
 | Demo tenant missing / not seeded | **404** | `TENANT_NOT_FOUND` | Run `npm run db:seed` … |
 | No active demo actor for session | **403** | `ACTOR_NOT_FOUND` | Open Settings → Demo session … |
+| JSON body over API Hub size cap | **413** | `PAYLOAD_TOO_LARGE` | Body exceeds `APIHUB_JSON_BODY_MAX_BYTES` (256 KiB) or `_LARGE` (1 MiB) — see [product-completion-v1.md](./product-completion-v1.md). |
+
+Most guarded POST/PATCH routes parse JSON with `emptyOnInvalid: true` (legacy behavior): **malformed JSON is treated as an empty object**, not **400** `INVALID_JSON`. The shared parser still enforces the byte cap before parse.
 
 Helpers: `apiHubDemoTenantMissing`, `apiHubDemoActorMissing` in `src/lib/apihub/api-error.ts`.
 

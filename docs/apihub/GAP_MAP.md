@@ -2,7 +2,7 @@
 
 **Legend:** ✅ shipped · 🟡 partial / stub · ❌ not started
 
-**Last updated:** 2026-04-22 — Staging **persisted** tables, **LLM** optional on mapping analysis jobs, **`org.apihub`** RBAC, staging **apply** (SO/PO/CT audit), staging **discard**, **template from analysis job**.
+**Last updated:** 2026-04-22 — Permissions matrix reconciled to **27** `route.ts` handlers; **bounded JSON** bodies + [product-completion-v1.md](./product-completion-v1.md).
 
 | Area | Repo reality | Notes |
 |------|--------------|--------|
@@ -10,8 +10,9 @@
 | Slice 60 handoff | ✅ [`CLOSEOUT_AUDIT.md`](./CLOSEOUT_AUDIT.md) | Inventory, verify commands, **residual risk log** (R1–R9); some risks partially mitigated (see below) |
 | Docs home | ✅ `docs/apihub/README.md`, specs | Route index includes mapping analysis, staging, apply, discard, playbook for catalog/tariffs |
 | Docs runbook | ✅ `docs/apihub/RUNBOOK.md` | Docs-only workflow; points to README for live endpoint index |
-| Permissions matrix | 🟡 [`permissions-matrix.md`](./permissions-matrix.md) | **Slice 52:** `org.apihub` view/edit on routes + `/apihub` gate; matrix row list may lag new paths — prefer README index |
-| Ingestion spec | 🟡 `integrations-ai-assisted-ingestion.md` | Draft; Scenario C links catalog/tariff playbook |
+| Permissions matrix | ✅ [`permissions-matrix.md`](./permissions-matrix.md) | **Slice 52:** `org.apihub` view/edit; staging apply cross-grants. **2026-04-22:** table matches **27** handlers under `src/app/api/apihub/**` (health + guarded routes). |
+| JSON / abuse limits | ✅ [`product-completion-v1.md`](./product-completion-v1.md), `src/lib/apihub/request-body-limit.ts` | POST/PATCH bounded reads; **413** `PAYLOAD_TOO_LARGE` over cap (`APIHUB_JSON_BODY_MAX_BYTES*`). |
+| Ingestion spec | 🟡 `integrations-ai-assisted-ingestion.md` | **Narrative draft** (principles, scenarios, phased roadmap); **implementation truth** = README + GAP_MAP + permissions matrix |
 | App route `/apihub` | ✅ `src/app/apihub/**` | Analysis jobs, staging list + apply + discard, templates, connectors, ingestion triage |
 | Health / discovery API | ✅ `GET /api/apihub/health` | `{ ok, service, phase }`; no secrets |
 | Prisma: **connector registry** | ✅ `ApiHubConnector` + audit, CRUD + health + list | |

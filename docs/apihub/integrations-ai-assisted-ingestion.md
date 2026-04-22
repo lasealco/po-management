@@ -81,7 +81,7 @@ Carrier / forwarder sends **XML or flat file** first. Flow: **intent** (“creat
 | **Staging** | Normalized rows pre-commit; keyed for preview + diff. |
 | **Provenance** | Link staging → template version → AI job id → user ids. |
 
-Exact Prisma names and relations are **P1+**; this table is the conceptual contract.
+**Implementation:** Prisma models include `ApiHubConnector`, `ApiHubMappingTemplate`, `ApiHubIngestionRun`, `ApiHubMappingAnalysisJob`, `ApiHubStagingBatch`, `ApiHubStagingRow`, and related audit tables — see migrations under `prisma/migrations/` and [`GAP_MAP.md`](./GAP_MAP.md).
 
 ---
 
@@ -113,7 +113,8 @@ Exact Prisma names and relations are **P1+**; this table is the conceptual contr
 - **Match keys** — natural keys for upsert (e.g. shipment id vs house B/L vs customer ref).
 - **Conflict policy** — last-write-wins vs manual merge when staging disagrees with live row.
 - **Public name** — “API hub”, “Integration hub”, “Ingestion” — align nav + URLs.
-- **Entitlement flag** — which `org.*` grant gates `/apihub`.
+
+**Shipped (no longer open):** **`org.apihub`** **view** / **edit** gates `/apihub` and `/api/apihub/*` except `GET /health`; staging apply also requires **`org.orders`** or **`org.controltower`** **edit** per target. See [permissions-matrix.md](./permissions-matrix.md).
 
 ---
 
@@ -123,3 +124,4 @@ Exact Prisma names and relations are **P1+**; this table is the conceptual contr
 - Engineering agent list: `docs/engineering/agent-todos/integration-hub.md`.
 - **Catalog / tariff uploads (AI role vs deterministic pricing):** [ai-upload-playbook-catalog-tariffs.md](./ai-upload-playbook-catalog-tariffs.md).
 - **P0 implementation pointers:** app shell `src/app/apihub/`, health route `src/app/api/apihub/health/route.ts`, shared constants `src/lib/apihub/`.
+- **Definition of done / limits / ops:** [product-completion-v1.md](./product-completion-v1.md).

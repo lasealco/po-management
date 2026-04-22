@@ -4,6 +4,9 @@
  * Handlers live under `src/app/api/apihub/**`. Today, every route except health
  * resolves the demo tenant and demo-actor user before serving.
  *
+ * Route inventory: **27** `route.ts` files (public health + guarded); keep aligned with
+ * `docs/apihub/permissions-matrix.md` when adding paths.
+ *
  * @see docs/apihub/permissions-matrix.md
  */
 
