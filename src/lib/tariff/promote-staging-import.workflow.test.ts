@@ -594,4 +594,104 @@ describe("promoteApprovedStagingRowsToNewVersion (workflow)", () => {
     expect(h.createTariffChargeLine).not.toHaveBeenCalled();
     expect(h.versionDeleteMany).toHaveBeenCalledWith({ where: { id: "ver-new" } });
   });
+
+  it("throws BAD_INPUT when rate row is missing rateType (rolls back version)", async () => {
+    const { promoteApprovedStagingRowsToNewVersion } = await import("./promote-staging-import");
+    h.getTariffImportBatchForTenant.mockResolvedValue(
+      readyBatchWithRows([
+        {
+          id: "row-no-rate-type",
+          approved: true,
+          rowType: "RATE_LINE_CANDIDATE",
+          normalizedPayload: {
+            unitBasis: "CONTAINER",
+            currency: "USD",
+            amount: 100,
+          },
+        },
+      ]),
+    );
+
+    const err = await promoteApprovedStagingRowsToNewVersion({
+      tenantId: "t1",
+      importBatchId: "b1",
+      contractHeaderId: "hdr-1",
+      actorUserId: "u1",
+    }).catch((e) => e);
+
+    expect(err).toBeInstanceOf(TariffRepoError);
+    expect((err as TariffRepoError).code).toBe("BAD_INPUT");
+    expect((err as TariffRepoError).message).toMatch(/missing rateType, unitBasis, currency, or amount/);
+
+    expect(h.createTariffRateLine).not.toHaveBeenCalled();
+    expect(h.versionDeleteMany).toHaveBeenCalledWith({ where: { id: "ver-new" } });
+  });
+
+  it("throws BAD_INPUT when rate row amount is NaN (rolls back version)", async () => {
+    const { promoteApprovedStagingRowsToNewVersion } = await import("./promote-staging-import");
+    h.getTariffImportBatchForTenant.mockResolvedValue(
+      readyBatchWithRows([
+        {
+          id: "row-rate-nan",
+          approved: true,
+          rowType: "RATE_LINE_CANDIDATE",
+          normalizedPayload: {
+            rateType: "BASE_RATE",
+            unitBasis: "CONTAINER",
+            currency: "USD",
+            amount: Number.NaN,
+          },
+        },
+      ]),
+    );
+
+    const err = await promoteApprovedStagingRowsToNewVersion({
+      tenantId: "t1",
+      importBatchId: "b1",
+      contractHeaderId: "hdr-1",
+      actorUserId: "u1",
+    }).catch((e) => e);
+
+    expect(err).toBeInstanceOf(TariffRepoError);
+    expect((err as TariffRepoError).code).toBe("BAD_INPUT");
+    expect((err as TariffRepoError).message).toMatch(/missing rateType, unitBasis, currency, or amount/);
+
+    expect(h.createTariffRateLine).not.toHaveBeenCalled();
+    expect(h.versionDeleteMany).toHaveBeenCalledWith({ where: { id: "ver-new" } });
+  });
+
+  it("throws BAD_INPUT when charge row amount is not parseable as a number (rolls back version)", async () => {
+    const { promoteApprovedStagingRowsToNewVersion } = await import("./promote-staging-import");
+    h.getTariffImportBatchForTenant.mockResolvedValue(
+      readyBatchWithRows([
+        {
+          id: "row-charge-bad-amt",
+          approved: true,
+          rowType: "CHARGE_LINE_CANDIDATE",
+          normalizedPayload: {
+            rawChargeName: "BAF",
+            unitBasis: "CONTAINER",
+            currency: "USD",
+            amount: "12,000.00",
+          },
+        },
+      ]),
+    );
+
+    const err = await promoteApprovedStagingRowsToNewVersion({
+      tenantId: "t1",
+      importBatchId: "b1",
+      contractHeaderId: "hdr-1",
+      actorUserId: "u1",
+    }).catch((e) => e);
+
+    expect(err).toBeInstanceOf(TariffRepoError);
+    expect((err as TariffRepoError).code).toBe("BAD_INPUT");
+    expect((err as TariffRepoError).message).toMatch(
+      /Charge staging row.*missing rawChargeName, unitBasis, currency, or amount/,
+    );
+
+    expect(h.createTariffChargeLine).not.toHaveBeenCalled();
+    expect(h.versionDeleteMany).toHaveBeenCalledWith({ where: { id: "ver-new" } });
+  });
 });
