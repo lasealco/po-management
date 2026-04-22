@@ -42,6 +42,49 @@ describe("parseAttachTariffApplicationRequestBody", () => {
     });
   });
 
+  it("defaults isPrimary and source when types are not boolean or string", () => {
+    expect(
+      parseAttachTariffApplicationRequestBody({
+        contractVersionId: "v1",
+        isPrimary: "yes",
+        source: 404,
+      }),
+    ).toEqual({
+      ok: true,
+      body: {
+        contractVersionId: "v1",
+        isPrimary: true,
+        source: "MANUAL",
+        polCode: null,
+        podCode: null,
+        equipmentType: null,
+        appliedNotes: null,
+      },
+    });
+  });
+
+  it("ignores non-string optional UNLOC and equipment fields", () => {
+    const r = parseAttachTariffApplicationRequestBody({
+      contractVersionId: "v1",
+      polCode: 12345,
+      podCode: null,
+      equipmentType: ["40HC"],
+      appliedNotes: true,
+    } as unknown);
+    expect(r).toEqual({
+      ok: true,
+      body: {
+        contractVersionId: "v1",
+        isPrimary: true,
+        source: "MANUAL",
+        polCode: null,
+        podCode: null,
+        equipmentType: null,
+        appliedNotes: null,
+      },
+    });
+  });
+
   it("rejects non-objects and empty contractVersionId", () => {
     expect(parseAttachTariffApplicationRequestBody(null)).toEqual({
       ok: false,

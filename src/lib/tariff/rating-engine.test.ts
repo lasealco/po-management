@@ -15,6 +15,7 @@ describe("normalizeEquipmentType", () => {
   it("normalizes 20' and 45' cube aliases", () => {
     expect(normalizeEquipmentType("20 GP")).toBe("20GP");
     expect(normalizeEquipmentType("20' standard")).toBe("20GP");
+    expect(normalizeEquipmentType("20DC")).toBe("20GP");
     expect(normalizeEquipmentType("45 high cube")).toBe("45HC");
   });
 
@@ -41,6 +42,8 @@ describe("mainLegPolPodMatch", () => {
 
   it("allows double wildcard with lower score", () => {
     expect(mainLegPolPodMatch({ members: [] }, { members: [] }, "DEHAM", "USCHI")).toEqual({ ok: true, score: 40 });
+    expect(mainLegPolPodMatch(null, null, "DEHAM", "USCHI")).toEqual({ ok: true, score: 40 });
+    expect(mainLegPolPodMatch(undefined, undefined, "DEHAM", "USCHI")).toEqual({ ok: true, score: 40 });
   });
 
   it("rejects when POD missing from destination scope", () => {
