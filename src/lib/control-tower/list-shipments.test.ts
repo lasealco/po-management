@@ -104,6 +104,34 @@ function internalListRow(
   };
 }
 
+/** `listSelectCore` payload (customer / supplier portal lists). */
+function coreListRow(pick: Parameters<typeof internalListRow>[0] = {}) {
+  const r = internalListRow(pick);
+  return {
+    id: r.id,
+    shipmentNo: r.shipmentNo,
+    status: r.status,
+    transportMode: r.transportMode,
+    trackingNo: r.trackingNo,
+    carrier: r.carrier,
+    carrierSupplierId: r.carrierSupplierId,
+    shippedAt: r.shippedAt,
+    updatedAt: r.updatedAt,
+    receivedAt: r.receivedAt,
+    expectedReceiveAt: r.expectedReceiveAt,
+    estimatedVolumeCbm: r.estimatedVolumeCbm,
+    estimatedWeightKg: r.estimatedWeightKg,
+    customerCrmAccountId: r.customerCrmAccountId,
+    customerCrmAccount: r.customerCrmAccount,
+    order: r.order,
+    items: r.items,
+    ctReferences: r.ctReferences,
+    booking: r.booking,
+    milestones: r.milestones,
+    ctLegs: r.ctLegs,
+  };
+}
+
 describe("listControlTowerShipments", () => {
   beforeEach(() => {
     shipmentFindMany.mockReset();
@@ -158,6 +186,42 @@ describe("listControlTowerShipments", () => {
     });
     expect(ensureBookingConfirmationSlaAlerts).not.toHaveBeenCalled();
     expect(shipmentFindMany.mock.calls[0]![0].take).toBe(25);
+  });
+
+  it("uses core select for restricted lists and omits internal queue fields", async () => {
+    shipmentFindMany.mockResolvedValueOnce([
+      coreListRow({ booking: { status: "CONFIRMED" }, ctLegs: [draftLeg(1)] }),
+    ]);
+    const out = await listControlTowerShipments({
+      tenantId: "tenant-1",
+      ctx: ctxRestricted,
+      query: {},
+    });
+    const sel = shipmentFindMany.mock.calls[0]![0].select as Record<string, unknown>;
+    expect(sel._count).toBeUndefined();
+    expect(sel.ctAlerts).toBeUndefined();
+    expect(out.rows[0]!.openQueueCounts).toEqual({ openAlerts: 0, openExceptions: 0 });
+    expect(out.rows[0]!.trackingMilestoneSummary).toBeNull();
+    expect(out.rows[0]!.dispatchOwner).toBeNull();
+  });
+
+  it("marks ad-hoc export shells as UNLINKED shipment source", async () => {
+    const row = internalListRow({
+      booking: { status: "CONFIRMED" },
+      ctLegs: [draftLeg(1)],
+    });
+    row.order = {
+      ...row.order,
+      title: "Ad-hoc export shipment — demo",
+      supplier: { id: "sup1", name: "" },
+    };
+    shipmentFindMany.mockResolvedValueOnce([row]);
+    const out = await listControlTowerShipments({
+      tenantId: "tenant-1",
+      ctx: ctxInternal,
+      query: {},
+    });
+    expect(out.rows[0]!.shipmentSource).toBe("UNLINKED");
   });
 
   it("maps booking DRAFT nextAction ahead of route planning", async () => {
