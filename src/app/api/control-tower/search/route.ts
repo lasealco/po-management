@@ -51,6 +51,15 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const q = searchParams.get("q")?.trim() ?? "";
+  const productTraceRaw = searchParams.get("productTrace")?.trim() ?? "";
+  const productTrace =
+    productTraceRaw.length > 0 &&
+    productTraceRaw.length <= 80 &&
+    /^[\w.-]+$/i.test(productTraceRaw)
+      ? productTraceRaw
+      : undefined;
+  /** SKU / product code search (aligned with assist `productTraceQ` and workbench `productTrace` param). */
+  const effectiveQ = q || productTrace || "";
   const statusRaw = searchParams.get("status") ?? "";
   const modeRaw = searchParams.get("mode") ?? "";
   const onlyOverdueEtaRaw = searchParams.get("onlyOverdueEta") ?? "";
@@ -117,14 +126,14 @@ export async function GET(request: Request) {
       exceptionCode ||
       alertType,
   );
-  if (!q && !hasStructured) {
+  if (!effectiveQ && !hasStructured) {
     return NextResponse.json({
       shipments: [],
       searchLimit: DEFAULT_SEARCH_TAKE,
       itemCount: 0,
       truncated: false,
       message:
-        "Provide q= text and/or filters: mode, status, onlyOverdueEta, lane, originCode, destinationCode, routeAction, shipmentSource, dispatchOwnerUserId, supplierId, customerCrmAccountId, carrierSupplierId, exceptionCode, alertType.",
+        "Provide q= text and/or productTrace= SKU code and/or filters: mode, status, onlyOverdueEta, lane, originCode, destinationCode, routeAction, shipmentSource, dispatchOwnerUserId, supplierId, customerCrmAccountId, carrierSupplierId, exceptionCode, alertType.",
     });
   }
 
@@ -132,7 +141,7 @@ export async function GET(request: Request) {
     tenantId: tenant.id,
     ctx,
     query: {
-      q: q || undefined,
+      q: effectiveQ || undefined,
       take: effectiveTake,
       status: status ?? "",
       mode: mode ?? "",
@@ -152,7 +161,8 @@ export async function GET(request: Request) {
   });
 
   return NextResponse.json({
-    q: q || null,
+    q: effectiveQ || null,
+    productTrace: productTrace ?? null,
     searchLimit: listResult.listLimit,
     itemCount: listResult.rows.length,
     truncated: listResult.truncated,
