@@ -198,6 +198,11 @@ describe("listControlTowerShipments", () => {
     expect(dumped).toContain("acknowledgedBy");
     expect(dumped).toContain("updatedBy");
     expect(dumped).toContain("splitProposal");
+    expect(dumped).toContain("supplierOffice");
+    expect(dumped).toContain("vendorSupplier");
+    expect(dumped).toContain("cargoLines");
+    expect(dumped).toContain("wmsTasks");
+    expect(dumped).toContain("tariffShipmentApplications");
     expect(dumped).toContain("forwarderOffice");
     expect(dumped).toContain("forwarderContact");
     expect(dumped).toContain("taxId");

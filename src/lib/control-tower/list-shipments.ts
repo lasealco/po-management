@@ -426,6 +426,26 @@ export async function listControlTowerShipments(params: {
                     },
                   },
                 },
+                {
+                  customerCrmAccount: {
+                    is: {
+                      OR: [
+                        { name: contains },
+                        { legalName: contains },
+                        { website: contains },
+                        { industry: contains },
+                        { segment: contains },
+                        {
+                          owner: {
+                            is: {
+                              OR: [{ name: contains }, { email: contains }],
+                            },
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
               ],
             },
           },
@@ -495,6 +515,21 @@ export async function listControlTowerShipments(params: {
                               },
                             },
                           },
+                          {
+                            supplierOffice: {
+                              is: {
+                                OR: [
+                                  { name: contains },
+                                  { addressLine1: contains },
+                                  { addressLine2: contains },
+                                  { city: contains },
+                                  { region: contains },
+                                  { postalCode: contains },
+                                  { countryCode: contains },
+                                ],
+                              },
+                            },
+                          },
                         ],
                       },
                     },
@@ -557,6 +592,13 @@ export async function listControlTowerShipments(params: {
                 { website: contains },
                 { industry: contains },
                 { segment: contains },
+                {
+                  owner: {
+                    is: {
+                      OR: [{ name: contains }, { email: contains }],
+                    },
+                  },
+                },
               ],
             },
           },
@@ -707,6 +749,28 @@ export async function listControlTowerShipments(params: {
                 { description: contains },
                 { vendor: contains },
                 { invoiceNo: contains },
+                { currency: contains },
+                {
+                  vendorSupplier: {
+                    is: {
+                      OR: [
+                        { name: contains },
+                        { code: contains },
+                        { legalName: contains },
+                        { email: contains },
+                        { phone: contains },
+                        { taxId: contains },
+                      ],
+                    },
+                  },
+                },
+                {
+                  createdBy: {
+                    is: {
+                      OR: [{ name: contains }, { email: contains }],
+                    },
+                  },
+                },
               ],
             },
           },
@@ -720,6 +784,52 @@ export async function listControlTowerShipments(params: {
                 { containerType: contains },
                 { status: contains },
                 { notes: contains },
+                { cargoLines: { some: { notes: contains } } },
+              ],
+            },
+          },
+        },
+        {
+          wmsTasks: {
+            some: {
+              OR: [
+                { note: contains },
+                { referenceType: contains },
+                { referenceId: contains },
+                {
+                  createdBy: {
+                    is: {
+                      OR: [{ name: contains }, { email: contains }],
+                    },
+                  },
+                },
+                {
+                  completedBy: {
+                    is: {
+                      OR: [{ name: contains }, { email: contains }],
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        },
+        {
+          tariffShipmentApplications: {
+            some: {
+              OR: [
+                { source: contains },
+                { polCode: contains },
+                { podCode: contains },
+                { equipmentType: contains },
+                { appliedNotes: contains },
+                {
+                  createdBy: {
+                    is: {
+                      OR: [{ name: contains }, { email: contains }],
+                    },
+                  },
+                },
               ],
             },
           },
