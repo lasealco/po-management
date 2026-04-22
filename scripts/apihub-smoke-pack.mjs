@@ -2,6 +2,10 @@
 /**
  * API Hub lightweight smoke pack (no cookies / no secrets).
  *
+ * `/apihub` and `/apihub/workspace` sit behind `ApihubGate`: without a demo session, HTML checks accept the
+ * access-denial shell (`API hub` + demo/org.apihub copy). With `org.apihub` + signed-in demo user, they assert
+ * richer shells (guided import + workspace).
+ *
  * Usage:
  *   npm run smoke:apihub
  *   APIHUB_SMOKE_BASE_URL="https://your-app.vercel.app" npm run smoke:apihub
@@ -28,10 +32,31 @@ const checks = [
     url: "/apihub",
     accept: "text/html",
     asJson: false,
-    validate: (body) =>
-      typeof body === "string" &&
-      body.includes("Integration and ingestion hub") &&
-      body.includes("Connectors"),
+    validate: (body) => {
+      if (typeof body !== "string") return false;
+      const fullShell = body.includes("Guided import") && body.includes("Connectors");
+      const gateShell =
+        body.includes("API hub") &&
+        (body.includes("Demo session") || body.includes("org.apihub"));
+      return fullShell || gateShell;
+    },
+  },
+  {
+    key: "apihub_workspace_page",
+    url: "/apihub/workspace",
+    accept: "text/html",
+    asJson: false,
+    validate: (body) => {
+      if (typeof body !== "string") return false;
+      // With demo session + org.apihub: full workspace. Without auth: ApihubGate still proves route + layout work.
+      const fullShell =
+        body.includes("Operator workspace") &&
+        (body.includes('id="ingestion-ops"') || body.includes("ingestion-ops"));
+      const gateShell =
+        body.includes("API hub") &&
+        (body.includes("Demo session") || body.includes("org.apihub"));
+      return fullShell || gateShell;
+    },
   },
 ];
 

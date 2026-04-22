@@ -54,4 +54,5 @@ Track in [`docs/apihub/GAP_MAP.md`](../../apihub/GAP_MAP.md) and product issues:
 - [x] **Stale mapping-analysis reclaim** — cron sweep resets `processing` jobs older than configurable threshold before draining `queued` (R2 partial; **2026-04-22**).
 - [x] **Stale ingestion-run reclaim** — same cron fails `running` runs past **`APIHUB_INGESTION_RUN_STALE_RUNNING_MS`** (default 24h, cap 7d) with **`STALE_RUNNING`**; `/apihub` run expand explains reclaim + retry API (R2 partial).
 - [x] **Ingestion retry from workspace** — `/apihub/workspace` expanded run: **Retry run** (`org.apihub` edit) calls **`POST …/ingestion-jobs/:id/retry`**, refreshes list, expands new run.
+- [x] **Smoke pack** — `scripts/apihub-smoke-pack.mjs` checks `/apihub/workspace` and aligns `/apihub` HTML assertions with **Guided import** + **ApihubGate** (no-cookie vs signed-in).
 - [ ] Workers/queues (R2 remainder: Redis / multi-worker); ingestion-run apply → richer downstream (R3); conformance / abuse / leakage hardening (R7–R9); non–demo-tenant scope if required.
