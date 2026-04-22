@@ -405,6 +405,75 @@ export async function listControlTowerShipments(params: {
         { internalNotes: contains },
       ],
     };
+    const wmsTaskTextMatch: Prisma.WmsTaskWhereInput = {
+      OR: [
+        { note: contains },
+        { referenceType: contains },
+        { referenceId: contains },
+        {
+          createdBy: {
+            is: {
+              OR: [{ name: contains }, { email: contains }],
+            },
+          },
+        },
+        {
+          completedBy: {
+            is: {
+              OR: [{ name: contains }, { email: contains }],
+            },
+          },
+        },
+        {
+          warehouse: {
+            is: {
+              OR: [
+                { name: contains },
+                { code: contains },
+                { addressLine1: contains },
+                { city: contains },
+                { region: contains },
+                { countryCode: contains },
+              ],
+            },
+          },
+        },
+        {
+          product: {
+            is: {
+              OR: [
+                { sku: contains },
+                { productCode: contains },
+                { name: contains },
+                { description: contains },
+                { ean: contains },
+                { customerName: contains },
+              ],
+            },
+          },
+        },
+        {
+          wave: {
+            is: {
+              OR: [{ waveNo: contains }, { note: contains }],
+            },
+          },
+        },
+        {
+          bin: {
+            is: {
+              OR: [
+                { code: contains },
+                { name: contains },
+                { rackCode: contains },
+                { aisle: contains },
+                { bay: contains },
+              ],
+            },
+          },
+        },
+      ],
+    };
     ands.push({
       OR: [
         ...idOr,
@@ -655,28 +724,21 @@ export async function listControlTowerShipments(params: {
         },
         {
           order: {
-            wmsTasks: {
+            splitChildren: {
               some: {
                 OR: [
-                  { note: contains },
-                  { referenceType: contains },
-                  { referenceId: contains },
-                  {
-                    createdBy: {
-                      is: {
-                        OR: [{ name: contains }, { email: contains }],
-                      },
-                    },
-                  },
-                  {
-                    completedBy: {
-                      is: {
-                        OR: [{ name: contains }, { email: contains }],
-                      },
-                    },
-                  },
+                  { orderNumber: contains },
+                  { title: contains },
+                  { buyerReference: contains },
                 ],
               },
+            },
+          },
+        },
+        {
+          order: {
+            wmsTasks: {
+              some: wmsTaskTextMatch,
             },
           },
         },
@@ -897,27 +959,7 @@ export async function listControlTowerShipments(params: {
         },
         {
           wmsTasks: {
-            some: {
-              OR: [
-                { note: contains },
-                { referenceType: contains },
-                { referenceId: contains },
-                {
-                  createdBy: {
-                    is: {
-                      OR: [{ name: contains }, { email: contains }],
-                    },
-                  },
-                },
-                {
-                  completedBy: {
-                    is: {
-                      OR: [{ name: contains }, { email: contains }],
-                    },
-                  },
-                },
-              ],
-            },
+            some: wmsTaskTextMatch,
           },
         },
         {
@@ -1125,6 +1167,7 @@ export async function listControlTowerShipments(params: {
                       OR: [
                         { sourceRecordId: contains },
                         { sourceSummary: contains },
+                        { currency: contains },
                         { incoterm: contains },
                         { basisSide: contains },
                         { totalDerivation: contains },
