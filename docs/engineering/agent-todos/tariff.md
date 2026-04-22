@@ -8,6 +8,8 @@ There is no single `docs/tariff/GAP_MAP.md` yet; backlog is spread across contra
 
 **Tariffs REST index:** [`docs/engineering/tariff-engine/API_ROUTE_INDEX.md`](../tariff-engine/API_ROUTE_INDEX.md) — grouped listing of all `/api/tariffs` route handlers.
 
+**Tariffs domain lib index:** [`docs/engineering/tariff-engine/LIB_MODULE_INDEX.md`](../tariff-engine/LIB_MODULE_INDEX.md) — `src/lib/tariff/**` modules (import, geography, contracts, rating, shipment hooks, shared errors/URLs).
+
 **Parallel batches (60 slices, 3 tracks × 20):** [`docs/engineering/tariff-engine/BATCH_BACKLOG.md`](../tariff-engine/BATCH_BACKLOG.md) — file ownership skew so three agents can run a wave without constant merges. *(Note: `docs/tariff/` is gitignored in this repo; backlog lives under `docs/engineering/tariff-engine/`.)*
 
 **AI + uploads (products, ASN, ocean/truck/air/LCL docs):** product framing and guardrails live in **`docs/apihub/ai-upload-playbook-catalog-tariffs.md`** (extraction vs deterministic rating; staging/promote pattern).

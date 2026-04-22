@@ -7,6 +7,8 @@
 
 **Maintenance:** When you add or remove a `route.ts` under this tree, update this file in the same PR.
 
+**Domain lib:** [`LIB_MODULE_INDEX.md`](./LIB_MODULE_INDEX.md) — `src/lib/tariff/**` modules (import, geography, contracts, rating, shipment hooks).
+
 ---
 
 ## Contracts & versions

@@ -2,6 +2,8 @@
 
 **HTTP surface map:** [`API_ROUTE_INDEX.md`](./API_ROUTE_INDEX.md) — every `src/app/api/tariffs/**/route.ts` handler (maintain when routes change).
 
+**Domain lib map:** [`LIB_MODULE_INDEX.md`](./LIB_MODULE_INDEX.md) — every `src/lib/tariff/*.ts` module (maintain when files change).
+
 Use this when you want **parallel agents** without stomping the same files: each **track** is intentionally skewed toward different primary paths. Within a track, work **top to bottom** when in doubt.
 
 - **Track A** — Import pipeline, staging/promote, normalized charge codes, geography **catalog/lib**, providers/legal **lib**, matching **API** routes.
