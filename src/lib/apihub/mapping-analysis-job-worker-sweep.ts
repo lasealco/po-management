@@ -6,7 +6,49 @@ export const APIHUB_MAPPING_ANALYSIS_WORKER_DEFAULT_LIMIT = 5;
 /** Hard cap per invocation to bound LLM / CPU time in one HTTP request. */
 export const APIHUB_MAPPING_ANALYSIS_WORKER_MAX_LIMIT = 20;
 
+/** Default age after which `processing` jobs are reset to `queued` (serverless crash / timeout). */
+export const APIHUB_MAPPING_ANALYSIS_STALE_PROCESSING_MS_DEFAULT = 15 * 60 * 1000;
+const STALE_MS_MIN = 60 * 1000;
+const STALE_MS_MAX = 24 * 60 * 60 * 1000;
+
+function readStaleProcessingMs(): number {
+  const raw = process.env.APIHUB_MAPPING_ANALYSIS_STALE_PROCESSING_MS;
+  if (raw == null || String(raw).trim() === "") {
+    return APIHUB_MAPPING_ANALYSIS_STALE_PROCESSING_MS_DEFAULT;
+  }
+  const n = Number(raw);
+  if (!Number.isFinite(n)) {
+    return APIHUB_MAPPING_ANALYSIS_STALE_PROCESSING_MS_DEFAULT;
+  }
+  return Math.min(STALE_MS_MAX, Math.max(STALE_MS_MIN, Math.floor(n)));
+}
+
+/**
+ * Jobs left in `processing` (e.g. Lambda freeze, OOM, deploy) never complete. Reset them to `queued` so the
+ * cron sweep can pick them up again. `startedAt` older than the stale threshold, or null while still processing,
+ * triggers reclaim.
+ *
+ * Optional `now` for tests. Threshold: `APIHUB_MAPPING_ANALYSIS_STALE_PROCESSING_MS` (milliseconds, default 15m).
+ */
+export async function reclaimStaleApiHubMappingAnalysisJobs(now?: Date): Promise<number> {
+  const clock = now ?? new Date();
+  const cutoff = new Date(clock.getTime() - readStaleProcessingMs());
+  const r = await prisma.apiHubMappingAnalysisJob.updateMany({
+    where: {
+      status: "processing",
+      OR: [{ startedAt: { lt: cutoff } }, { startedAt: null }],
+    },
+    data: {
+      status: "queued",
+      startedAt: null,
+    },
+  });
+  return r.count;
+}
+
 export type ApiHubMappingAnalysisWorkerSweepResult = {
+  /** Jobs reset from stale `processing` → `queued` before draining the queue. */
+  reclaimedStale: number;
   /** Jobs for which `processApiHubMappingAnalysisJob` returned `true` (claimed and finished). */
   claimedAndFinished: number;
   /** Jobs we attempted (`findFirst` returned queued); includes races where claim was lost. */
@@ -27,6 +69,7 @@ function clampWorkerLimit(raw: number | undefined): number {
 export async function runApiHubMappingAnalysisWorkerSweep(
   limit?: number,
 ): Promise<ApiHubMappingAnalysisWorkerSweepResult> {
+  const reclaimedStale = await reclaimStaleApiHubMappingAnalysisJobs();
   const cap = clampWorkerLimit(limit);
   const jobIdsTried: string[] = [];
   let claimedAndFinished = 0;
@@ -49,5 +92,5 @@ export async function runApiHubMappingAnalysisWorkerSweep(
     }
   }
 
-  return { claimedAndFinished, attempts, jobIdsTried };
+  return { reclaimedStale, claimedAndFinished, attempts, jobIdsTried };
 }

@@ -1,12 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const findFirstMock = vi.fn();
+const updateManyMock = vi.fn();
 const processMock = vi.fn();
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     apiHubMappingAnalysisJob: {
       findFirst: findFirstMock,
+      updateMany: updateManyMock,
     },
   },
 }));
@@ -18,12 +20,14 @@ vi.mock("@/lib/apihub/mapping-analysis-job-process", () => ({
 describe("runApiHubMappingAnalysisWorkerSweep", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    updateManyMock.mockResolvedValue({ count: 0 });
   });
 
   it("stops when no queued jobs", async () => {
     findFirstMock.mockResolvedValue(null);
     const { runApiHubMappingAnalysisWorkerSweep } = await import("./mapping-analysis-job-worker-sweep");
     const r = await runApiHubMappingAnalysisWorkerSweep(5);
+    expect(r.reclaimedStale).toBe(0);
     expect(r.claimedAndFinished).toBe(0);
     expect(r.attempts).toBe(0);
     expect(r.jobIdsTried).toEqual([]);
@@ -55,5 +59,15 @@ describe("runApiHubMappingAnalysisWorkerSweep", () => {
     await runApiHubMappingAnalysisWorkerSweep(999);
     expect(processMock).toHaveBeenCalledTimes(APIHUB_MAPPING_ANALYSIS_WORKER_MAX_LIMIT);
     expect(findFirstMock.mock.calls.length).toBe(APIHUB_MAPPING_ANALYSIS_WORKER_MAX_LIMIT);
+  });
+
+  it("reclaims stale processing jobs before draining queued", async () => {
+    updateManyMock.mockResolvedValueOnce({ count: 3 });
+    findFirstMock.mockResolvedValue(null);
+    const { runApiHubMappingAnalysisWorkerSweep } = await import("./mapping-analysis-job-worker-sweep");
+    const r = await runApiHubMappingAnalysisWorkerSweep(5);
+    expect(r.reclaimedStale).toBe(3);
+    expect(updateManyMock).toHaveBeenCalledTimes(1);
+    expect(r.claimedAndFinished).toBe(0);
   });
 });

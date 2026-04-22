@@ -51,4 +51,5 @@ Track in [`docs/apihub/GAP_MAP.md`](../../apihub/GAP_MAP.md) and product issues:
 - [x] **Async mapping analysis job** — `ApiHubMappingAnalysisJob`, list/create/detail/process routes, `/apihub` panel, `after()` processing, **stagingPreview** on success; optional **LLM** JSON when API keys set.
 - [x] **Batch / staging** — `ApiHubStagingBatch` / `ApiHubStagingRow`, materialize, apply (SO/PO/CT), discard; **`org.apihub`** + cross-grants on apply.
 - [x] **Template from analysis job** — `POST /mapping-templates` with **`sourceMappingAnalysisJobId`**; UI **Save rules as template**.
-- [ ] Workers/queues (R2); ingestion-run apply → richer downstream (R3); conformance / abuse / leakage hardening (R7–R9); non–demo-tenant scope if required.
+- [x] **Stale mapping-analysis reclaim** — cron sweep resets `processing` jobs older than configurable threshold before draining `queued` (R2 partial; **2026-04-22**).
+- [ ] Workers/queues (R2 remainder: Redis / multi-worker); ingestion-run apply → richer downstream (R3); conformance / abuse / leakage hardening (R7–R9); non–demo-tenant scope if required.

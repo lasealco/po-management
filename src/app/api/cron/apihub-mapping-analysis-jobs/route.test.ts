@@ -37,6 +37,7 @@ describe("GET /api/cron/apihub-mapping-analysis-jobs", () => {
   it("runs sweep when authorized", async () => {
     process.env.CRON_SECRET = "secret-xyz";
     sweepMock.mockResolvedValue({
+      reclaimedStale: 0,
       claimedAndFinished: 2,
       attempts: 2,
       jobIdsTried: ["j1", "j2"],
@@ -49,8 +50,9 @@ describe("GET /api/cron/apihub-mapping-analysis-jobs", () => {
     );
     expect(res.status).toBe(200);
     expect(sweepMock).toHaveBeenCalledWith(3);
-    const body = (await res.json()) as { ok: boolean; claimedAndFinished: number };
+    const body = (await res.json()) as { ok: boolean; reclaimedStale: number; claimedAndFinished: number };
     expect(body.ok).toBe(true);
+    expect(body.reclaimedStale).toBe(0);
     expect(body.claimedAndFinished).toBe(2);
   });
 });
