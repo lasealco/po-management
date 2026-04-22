@@ -74,6 +74,12 @@ describe("appendAssistToSearchParams", () => {
     expect(sp.get("productTrace")).toBe("SKU-1");
   });
 
+  it("omits productTrace when productTraceQ is not a valid trace token", () => {
+    const sp = new URLSearchParams();
+    appendAssistToSearchParams(sp, { productTraceQ: `c${"0".repeat(19)}` });
+    expect(sp.has("productTrace")).toBe(false);
+  });
+
   it("omits shipmentSource when not PO or UNLINKED", () => {
     const sp = new URLSearchParams();
     appendAssistToSearchParams(sp, { shipmentSource: undefined });

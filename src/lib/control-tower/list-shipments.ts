@@ -415,7 +415,14 @@ export async function listControlTowerShipments(params: {
                   {
                     product: {
                       is: {
-                        OR: [{ sku: contains }, { productCode: contains }],
+                        OR: [
+                          { sku: contains },
+                          { productCode: contains },
+                          { name: contains },
+                          { description: contains },
+                          { ean: contains },
+                          { customerName: contains },
+                        ],
                       },
                     },
                   },
