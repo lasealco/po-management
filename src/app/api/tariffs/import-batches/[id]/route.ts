@@ -4,16 +4,13 @@ import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { recordTariffAuditLog } from "@/lib/tariff/audit-log";
 import { getTariffImportBatchForTenant, updateTariffImportBatch } from "@/lib/tariff/import-batches";
 import {
-  TARIFF_IMPORT_PARSE_STATUSES,
-  TARIFF_IMPORT_REVIEW_STATUSES,
+  TARIFF_IMPORT_PARSE_STATUS_SET,
+  TARIFF_IMPORT_REVIEW_STATUS_SET,
 } from "@/lib/tariff/import-batch-statuses";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { jsonFromTariffError } from "@/app/api/tariffs/_lib/tariff-api-error";
 
 export const dynamic = "force-dynamic";
-
-const PARSE_SET = new Set<string>([...TARIFF_IMPORT_PARSE_STATUSES]);
-const REVIEW_SET = new Set<string>([...TARIFF_IMPORT_REVIEW_STATUSES]);
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
   const gate = await requireApiGrant("org.tariffs", "view");
@@ -59,12 +56,14 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   const patch: Parameters<typeof updateTariffImportBatch>[2] = {};
   if (typeof o.parseStatus === "string") {
     const p = o.parseStatus.trim();
-    if (!PARSE_SET.has(p)) return NextResponse.json({ error: "Invalid parseStatus." }, { status: 400 });
+    if (!TARIFF_IMPORT_PARSE_STATUS_SET.has(p))
+      return NextResponse.json({ error: "Invalid parseStatus." }, { status: 400 });
     patch.parseStatus = p;
   }
   if (typeof o.reviewStatus === "string") {
     const r = o.reviewStatus.trim();
-    if (!REVIEW_SET.has(r)) return NextResponse.json({ error: "Invalid reviewStatus." }, { status: 400 });
+    if (!TARIFF_IMPORT_REVIEW_STATUS_SET.has(r))
+      return NextResponse.json({ error: "Invalid reviewStatus." }, { status: 400 });
     patch.reviewStatus = r;
   }
   if (typeof o.sourceReference === "string" || o.sourceReference === null) {
@@ -83,8 +82,16 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       objectId: id,
       action: "patch",
       userId: actorId,
-      oldValue: { parseStatus: before.parseStatus, reviewStatus: before.reviewStatus },
-      newValue: { parseStatus: updated.parseStatus, reviewStatus: updated.reviewStatus },
+      oldValue: {
+        parseStatus: before.parseStatus,
+        reviewStatus: before.reviewStatus,
+        sourceReference: before.sourceReference,
+      },
+      newValue: {
+        parseStatus: updated.parseStatus,
+        reviewStatus: updated.reviewStatus,
+        sourceReference: updated.sourceReference,
+      },
     });
     return NextResponse.json({ batch: updated });
   } catch (e) {

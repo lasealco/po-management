@@ -24,7 +24,8 @@
  * | `BAD_INPUT` | No approved `RATE_LINE_CANDIDATE` or `CHARGE_LINE_CANDIDATE` rows. |
  * | `BAD_INPUT` | Rate row: missing `rateType` / `unitBasis` / `currency` / valid `amount`, or `rateType` not in Prisma `TariffLineRateType`. |
  * | `BAD_INPUT` | Charge row: missing `rawChargeName` / `unitBasis` / `currency` / valid `amount`. |
- * | `BAD_INPUT` | After processing, every approved row had a non-object `normalizedPayload` or was skipped — zero rate/charge lines created. |
+ * | `BAD_INPUT` | Approved promotable row has non-object `normalizedPayload` (null, array, scalar); fix before promote. |
+ * | `BAD_INPUT` | After processing, zero rate/charge lines created (should not occur if preflight passed). |
  *
  * On any error **after** the draft version is created, the implementation **best-effort deletes** that version row before rethrowing (lines are cascade-cleaned with the version).
  */

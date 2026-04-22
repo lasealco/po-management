@@ -41,6 +41,7 @@ export async function deleteStagingRowsForBatch(tenantId: string, importBatchId:
 
 export async function updateTariffImportStagingRow(
   tenantId: string,
+  importBatchId: string,
   rowId: string,
   patch: Partial<{
     normalizedPayload: Prisma.InputJsonValue | null;
@@ -50,10 +51,10 @@ export async function updateTariffImportStagingRow(
   }>,
 ) {
   const row = await prisma.tariffImportStagingRow.findFirst({
-    where: { id: rowId, importBatch: { tenantId } },
+    where: { id: rowId, importBatchId, importBatch: { tenantId } },
     select: { id: true },
   });
-  if (!row) throw new TariffRepoError("NOT_FOUND", "Staging row not found.");
+  if (!row) throw new TariffRepoError("NOT_FOUND", "Staging row not found for this batch.");
   const jsonOrNull = (v: Prisma.InputJsonValue | null | undefined) => {
     if (v === undefined) return undefined;
     if (v === null) return Prisma.DbNull;

@@ -32,13 +32,25 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   }
   const o = body as Record<string, unknown>;
 
-  const patch: Parameters<typeof updateTariffImportStagingRow>[2] = {};
+  const patch: Parameters<typeof updateTariffImportStagingRow>[3] = {};
   if (typeof o.approved === "boolean") patch.approved = o.approved;
   if (o.normalizedPayload !== undefined) {
+    if (o.normalizedPayload !== null && (typeof o.normalizedPayload !== "object" || Array.isArray(o.normalizedPayload))) {
+      return NextResponse.json(
+        { error: "normalizedPayload must be null or a JSON object." },
+        { status: 400 },
+      );
+    }
     patch.normalizedPayload =
       o.normalizedPayload === null ? null : (o.normalizedPayload as Prisma.InputJsonValue);
   }
   if (o.unresolvedFlags !== undefined) {
+    if (o.unresolvedFlags !== null && (typeof o.unresolvedFlags !== "object" || Array.isArray(o.unresolvedFlags))) {
+      return NextResponse.json(
+        { error: "unresolvedFlags must be null or a JSON object." },
+        { status: 400 },
+      );
+    }
     patch.unresolvedFlags =
       o.unresolvedFlags === null ? null : (o.unresolvedFlags as Prisma.InputJsonValue);
   }
@@ -48,7 +60,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   }
 
   try {
-    const updated = await updateTariffImportStagingRow(tenant.id, rowId, patch);
+    const updated = await updateTariffImportStagingRow(tenant.id, batchId, rowId, patch);
     await recordTariffAuditLog({
       objectType: "import_staging_row",
       objectId: rowId,

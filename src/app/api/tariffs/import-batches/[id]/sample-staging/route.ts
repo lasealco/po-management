@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { recordTariffAuditLog } from "@/lib/tariff/audit-log";
-import { updateTariffImportBatch } from "@/lib/tariff/import-batches";
+import { getTariffImportBatchForTenant, updateTariffImportBatch } from "@/lib/tariff/import-batches";
 import {
   createTariffImportStagingRows,
   deleteStagingRowsForBatch,
@@ -28,6 +28,17 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   }
 
   const { id: batchId } = await context.params;
+
+  try {
+    const existing = await getTariffImportBatchForTenant({ tenantId: tenant.id, batchId });
+    if (existing.reviewStatus === "APPLIED") {
+      return NextResponse.json({ error: "Batch already promoted; sample staging is not allowed." }, { status: 409 });
+    }
+  } catch (e) {
+    const j = jsonFromTariffError(e);
+    if (j) return j;
+    throw e;
+  }
 
   let replace = false;
   const raw = await request.text().catch(() => "");

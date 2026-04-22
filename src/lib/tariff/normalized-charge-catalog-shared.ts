@@ -1,5 +1,8 @@
 /**
  * Charge catalog helpers and option lists safe for Client Components (no Prisma / DB).
+ *
+ * Keep in sync with **`src/app/tariffs/charge-codes/tariff-charge-codes-client.tsx`**, which imports
+ * `TARIFF_CHARGE_FAMILY_OPTIONS` and `TARIFF_TRANSPORT_MODE_OPTIONS` for selects — do not fork duplicate literals there.
  */
 import type { TariffChargeFamily, TariffTransportMode } from "@prisma/client";
 

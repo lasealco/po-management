@@ -25,12 +25,17 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
 
   const { id: batchId } = await context.params;
 
+  let batch: Awaited<ReturnType<typeof getTariffImportBatchForTenant>>;
   try {
-    await getTariffImportBatchForTenant({ tenantId: tenant.id, batchId });
+    batch = await getTariffImportBatchForTenant({ tenantId: tenant.id, batchId });
   } catch (e) {
     const j = jsonFromTariffError(e);
     if (j) return j;
     throw e;
+  }
+
+  if (batch.reviewStatus === "APPLIED") {
+    return NextResponse.json({ error: "Batch already promoted; fixture rows are not allowed." }, { status: 409 });
   }
 
   const groups = await prisma.tariffGeographyGroup.findMany({

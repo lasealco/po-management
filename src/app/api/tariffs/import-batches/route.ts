@@ -17,14 +17,29 @@ function sourceTypeFromMime(mime: string): TariffSourceType {
   return "EXCEL";
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const gate = await requireApiGrant("org.tariffs", "view");
   if (gate) return gate;
 
   const tenant = await getDemoTenant();
   if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
 
-  const batches = await listTariffImportBatchesForTenant({ tenantId: tenant.id, take: 200 });
+  let take = 200;
+  try {
+    const url = new URL(request.url);
+    const raw = url.searchParams.get("take");
+    if (raw != null && raw !== "") {
+      const n = Number(raw);
+      if (!Number.isInteger(n) || n < 1) {
+        return NextResponse.json({ error: "Query take must be a positive integer." }, { status: 400 });
+      }
+      take = Math.min(n, 300);
+    }
+  } catch {
+    /* ignore malformed URL; use default take */
+  }
+
+  const batches = await listTariffImportBatchesForTenant({ tenantId: tenant.id, take });
   return NextResponse.json({ batches });
 }
 

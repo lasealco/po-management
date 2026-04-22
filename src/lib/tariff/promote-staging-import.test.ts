@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  assertApprovedPromotablePayloadsAreObjects,
   findDuplicatePromotableRows,
   isSupportedPromoteRateType,
   promoteStagingImportAmountPresent,
 } from "@/lib/tariff/promote-staging-import";
+import { TariffRepoError } from "@/lib/tariff/tariff-repo-error";
 
 describe("promoteStagingImportAmountPresent", () => {
   it("treats numeric zero and string zero as present", () => {
@@ -35,6 +37,19 @@ describe("promoteStagingImportAmountPresent", () => {
 });
 
 describe("findDuplicatePromotableRows", () => {
+  it("returns null for empty or single-row input", () => {
+    expect(findDuplicatePromotableRows([])).toBeNull();
+    expect(
+      findDuplicatePromotableRows([
+        {
+          id: "only",
+          rowType: "RATE_LINE_CANDIDATE",
+          normalizedPayload: { rateType: "BASE_RATE", currency: "USD", unitBasis: "CONTAINER", amount: "1" },
+        },
+      ]),
+    ).toBeNull();
+  });
+
   it("flags duplicate normalized payloads for equivalent approved rows", () => {
     const duplicate = findDuplicatePromotableRows([
       {
@@ -80,6 +95,45 @@ describe("findDuplicatePromotableRows", () => {
         { id: "row-2", rowType: "RATE_LINE_CANDIDATE", normalizedPayload: [] },
       ]),
     ).toBeNull();
+  });
+
+  it("detects duplicate charge-line payloads", () => {
+    const dup = findDuplicatePromotableRows([
+      {
+        id: "c1",
+        rowType: "CHARGE_LINE_CANDIDATE",
+        normalizedPayload: { rawChargeName: "BAF", currency: "USD", unitBasis: "CONTAINER", amount: "50" },
+      },
+      {
+        id: "c2",
+        rowType: "CHARGE_LINE_CANDIDATE",
+        normalizedPayload: { amount: "50", unitBasis: "CONTAINER", currency: "USD", rawChargeName: "BAF" },
+      },
+    ]);
+    expect(dup).toEqual({ firstRowId: "c1", duplicateRowId: "c2" });
+  });
+});
+
+describe("assertApprovedPromotablePayloadsAreObjects", () => {
+  it("throws when an approved row has null or non-object normalizedPayload", () => {
+    expect(() =>
+      assertApprovedPromotablePayloadsAreObjects([
+        { id: "r1", normalizedPayload: { a: 1 } },
+        { id: "r2", normalizedPayload: null },
+      ]),
+    ).toThrow(TariffRepoError);
+    expect(() =>
+      assertApprovedPromotablePayloadsAreObjects([{ id: "r1", normalizedPayload: [] as unknown as object }]),
+    ).toThrow(/r1/);
+  });
+
+  it("accepts all object payloads", () => {
+    expect(() =>
+      assertApprovedPromotablePayloadsAreObjects([
+        { id: "r1", normalizedPayload: {} },
+        { id: "r2", normalizedPayload: { x: 1 } },
+      ]),
+    ).not.toThrow();
   });
 });
 

@@ -3,7 +3,10 @@ import { mkdir, writeFile } from "fs/promises";
 import { join } from "path";
 import { put } from "@vercel/blob";
 
-const MAX_BYTES = 30 * 1024 * 1024;
+/** Hard cap for tariff import uploads (Excel/PDF). */
+export const TARIFF_IMPORT_MAX_FILE_BYTES = 30 * 1024 * 1024;
+
+const MAX_BYTES = TARIFF_IMPORT_MAX_FILE_BYTES;
 
 const MIME_EXT: Record<string, string> = {
   "application/pdf": "pdf",

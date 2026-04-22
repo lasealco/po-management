@@ -1,6 +1,10 @@
 import type { Prisma, TariffSourceType } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import {
+  TARIFF_IMPORT_PARSE_STATUS_SET,
+  TARIFF_IMPORT_REVIEW_STATUS_SET,
+} from "@/lib/tariff/import-batch-statuses";
 import { TariffRepoError } from "@/lib/tariff/tariff-repo-error";
 
 export async function listTariffImportBatchesForTenant(params: { tenantId: string; take?: number }) {
@@ -38,6 +42,14 @@ export async function createTariffImportBatch(input: {
   parseStatus?: string;
   reviewStatus?: string;
 }) {
+  const parseStatus = input.parseStatus ?? "UPLOADED";
+  const reviewStatus = input.reviewStatus ?? "PENDING";
+  if (!TARIFF_IMPORT_PARSE_STATUS_SET.has(parseStatus)) {
+    throw new TariffRepoError("BAD_INPUT", `Invalid parseStatus "${parseStatus}".`);
+  }
+  if (!TARIFF_IMPORT_REVIEW_STATUS_SET.has(reviewStatus)) {
+    throw new TariffRepoError("BAD_INPUT", `Invalid reviewStatus "${reviewStatus}".`);
+  }
   return prisma.tariffImportBatch.create({
     data: {
       tenantId: input.tenantId,
@@ -49,8 +61,8 @@ export async function createTariffImportBatch(input: {
       sourceMimeType: input.sourceMimeType?.trim() || null,
       sourceByteSize: input.sourceByteSize ?? null,
       sourceMetadata: input.sourceMetadata ?? undefined,
-      parseStatus: input.parseStatus ?? "UPLOADED",
-      reviewStatus: input.reviewStatus ?? "PENDING",
+      parseStatus,
+      reviewStatus,
     },
   });
 }
@@ -70,6 +82,12 @@ export async function updateTariffImportBatch(
     select: { id: true },
   });
   if (!existing) throw new TariffRepoError("NOT_FOUND", "Import batch not found.");
+  if (patch.parseStatus != null && !TARIFF_IMPORT_PARSE_STATUS_SET.has(patch.parseStatus)) {
+    throw new TariffRepoError("BAD_INPUT", `Invalid parseStatus "${patch.parseStatus}".`);
+  }
+  if (patch.reviewStatus != null && !TARIFF_IMPORT_REVIEW_STATUS_SET.has(patch.reviewStatus)) {
+    throw new TariffRepoError("BAD_INPUT", `Invalid reviewStatus "${patch.reviewStatus}".`);
+  }
   return prisma.tariffImportBatch.update({
     where: { id: batchId },
     data: {

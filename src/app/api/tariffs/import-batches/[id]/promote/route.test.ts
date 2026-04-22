@@ -71,4 +71,33 @@ describe("POST /api/tariffs/import-batches/[id]/promote", () => {
     expect(response.status).toBe(409);
     expect(await response.json()).toEqual({ error: "Import already promoted.", code: "CONFLICT" });
   });
+
+  it("calls promote with tenant, batch, header, and actor when body is valid", async () => {
+    const { POST } = await import("./route");
+    promoteApprovedStagingRowsToNewVersionMock.mockResolvedValueOnce({
+      versionId: "ver-1",
+      rateLineCount: 2,
+      chargeLineCount: 1,
+    });
+
+    const request = new Request("http://localhost/api/tariffs/import-batches/batch-9/promote", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ contractHeaderId: "hdr-9" }),
+    });
+    const response = await POST(request, { params: Promise.resolve({ id: "batch-9" }) });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      versionId: "ver-1",
+      rateLineCount: 2,
+      chargeLineCount: 1,
+    });
+    expect(promoteApprovedStagingRowsToNewVersionMock).toHaveBeenCalledWith({
+      tenantId: "tenant-1",
+      importBatchId: "batch-9",
+      contractHeaderId: "hdr-9",
+      actorUserId: "user-1",
+    });
+  });
 });

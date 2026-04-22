@@ -71,6 +71,20 @@ export function promoteStagingImportAmountPresent(amount: unknown): boolean {
   return false;
 }
 
+/** Ensures every approved promotable row has an object `normalizedPayload` before creating a contract version. */
+export function assertApprovedPromotablePayloadsAreObjects(
+  rows: Array<{ id: string; normalizedPayload: unknown }>,
+): void {
+  for (const row of rows) {
+    if (!isRecord(row.normalizedPayload)) {
+      throw new TariffRepoError(
+        "BAD_INPUT",
+        `Approved staging row ${row.id} must have an object normalizedPayload before promote (fix in staging or unapprove).`,
+      );
+    }
+  }
+}
+
 /**
  * Promotes **approved** `RATE_LINE_CANDIDATE` / `CHARGE_LINE_CANDIDATE` staging rows into a **new draft**
  * contract version on an existing header. First slice of “Excel → contract version”.
@@ -125,6 +139,8 @@ export async function promoteApprovedStagingRowsToNewVersion(params: {
     );
   }
 
+  assertApprovedPromotablePayloadsAreObjects(rows);
+
   let versionId: string | null = null;
   let rateLineCount = 0;
   let chargeLineCount = 0;
@@ -142,8 +158,7 @@ export async function promoteApprovedStagingRowsToNewVersion(params: {
     versionId = version.id;
 
     for (const row of rows) {
-      const norm = row.normalizedPayload;
-      if (!isRecord(norm)) continue;
+      const norm = row.normalizedPayload as Record<string, unknown>;
 
       if (row.rowType === RATE_ROW) {
         const rateType = pickString(norm, "rateType") as TariffLineRateType | null;

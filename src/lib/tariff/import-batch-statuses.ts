@@ -22,6 +22,10 @@ export const TARIFF_IMPORT_REVIEW_STATUSES = [
 
 export type TariffImportReviewStatus = (typeof TARIFF_IMPORT_REVIEW_STATUSES)[number];
 
+/** Fast membership checks for repo/API validation (avoid ad-hoc string sets). */
+export const TARIFF_IMPORT_PARSE_STATUS_SET = new Set<string>(TARIFF_IMPORT_PARSE_STATUSES);
+export const TARIFF_IMPORT_REVIEW_STATUS_SET = new Set<string>(TARIFF_IMPORT_REVIEW_STATUSES);
+
 export function parseStatusLabel(s: string): string {
   const map: Record<string, string> = {
     UPLOADED: "Uploaded",
