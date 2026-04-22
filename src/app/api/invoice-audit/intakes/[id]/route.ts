@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { jsonFromInvoiceAuditError } from "@/app/api/invoice-audit/_lib/invoice-audit-api-error";
 import { guardInvoiceAuditSchema } from "@/app/api/invoice-audit/_lib/guard-invoice-audit-schema";
 import {
@@ -30,11 +31,13 @@ export async function GET(_request: Request, ctx: { params: Promise<{ id: string
   const { id: rawId } = await ctx.params;
   const id = parseInvoiceAuditRecordId(rawId);
   if (!id) {
-    return NextResponse.json({ error: "Invalid intake id." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid intake id.", code: "BAD_INPUT", status: 400 });
   }
 
   const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) {
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
+  }
 
   try {
     const row = await getInvoiceIntakeForTenant({ tenantId: tenant.id, intakeId: id });
@@ -91,25 +94,25 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
   const tenant = await getDemoTenant();
   const actorId = await getActorUserId();
   if (!tenant || !actorId) {
-    return NextResponse.json({ error: "No active user." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   }
 
   const { id: rawId } = await ctx.params;
   const id = parseInvoiceAuditRecordId(rawId);
   if (!id) {
-    return NextResponse.json({ error: "Invalid intake id." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid intake id.", code: "BAD_INPUT", status: 400 });
   }
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON body.", code: "BAD_INPUT", status: 400 });
   }
 
   const parsed = parseInvoiceIntakePatchBody(body);
   if (!parsed.ok) {
-    return NextResponse.json({ error: parsed.error }, { status: parsed.status });
+    return toApiErrorResponse({ error: parsed.error, code: "BAD_INPUT", status: parsed.status });
   }
   const p = parsed.value;
 
@@ -172,6 +175,6 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
     const j = jsonFromInvoiceAuditError(e);
     if (j) return j;
     const msg = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ error: msg, code: "UNHANDLED" }, { status: 500 });
+    return toApiErrorResponse({ error: msg, code: "UNHANDLED", status: 500 });
   }
 }

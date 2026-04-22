@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { jsonFromInvoiceAuditError } from "@/app/api/invoice-audit/_lib/invoice-audit-api-error";
 import { guardInvoiceAuditSchema } from "@/app/api/invoice-audit/_lib/guard-invoice-audit-schema";
 import { serializeAuditResult, serializeInvoiceLine } from "@/app/api/invoice-audit/_lib/serialize";
@@ -17,12 +18,14 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
   if (schema) return schema;
 
   const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) {
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
+  }
 
   const { id: rawId } = await ctx.params;
   const id = parseInvoiceAuditRecordId(rawId);
   if (!id) {
-    return NextResponse.json({ error: "Invalid intake id." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid intake id.", code: "BAD_INPUT", status: 400 });
   }
 
   let toleranceRuleId: string | null = null;
@@ -32,14 +35,14 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
     try {
       body = JSON.parse(raw) as unknown;
     } catch {
-      return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+      return toApiErrorResponse({ error: "Invalid JSON body.", code: "BAD_INPUT", status: 400 });
     }
     if (body && typeof body === "object") {
       const o = body as Record<string, unknown>;
       if (typeof o.toleranceRuleId === "string" && o.toleranceRuleId.trim()) {
         const tid = parseInvoiceAuditRecordId(o.toleranceRuleId.trim());
         if (!tid) {
-          return NextResponse.json({ error: "Invalid toleranceRuleId." }, { status: 400 });
+          return toApiErrorResponse({ error: "Invalid toleranceRuleId.", code: "BAD_INPUT", status: 400 });
         }
         toleranceRuleId = tid;
       }
@@ -71,6 +74,6 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
     const j = jsonFromInvoiceAuditError(e);
     if (j) return j;
     const msg = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ error: `Audit failed: ${msg}`, code: "UNHANDLED" }, { status: 500 });
+    return toApiErrorResponse({ error: `Audit failed: ${msg}`, code: "UNHANDLED", status: 500 });
   }
 }

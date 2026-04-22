@@ -6,6 +6,7 @@ export type InvoiceAuditErrorCode =
   /** Database missing invoice-audit tables/columns (migrations not applied). */
   | "SCHEMA_NOT_READY";
 
+/** Domain errors from invoice-audit libs; `src/app/api/invoice-audit/_lib/invoice-audit-api-error` maps these to HTTP. */
 export class InvoiceAuditError extends Error {
   readonly code: InvoiceAuditErrorCode;
 

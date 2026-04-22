@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { jsonFromInvoiceAuditError } from "@/app/api/invoice-audit/_lib/invoice-audit-api-error";
 import { guardInvoiceAuditSchema } from "@/app/api/invoice-audit/_lib/guard-invoice-audit-schema";
 import { serializeToleranceRule } from "@/app/api/invoice-audit/_lib/serialize";
@@ -28,22 +29,24 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
   if (schema) return schema;
 
   const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) {
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
+  }
 
   const { id: rawRuleId } = await ctx.params;
   const ruleId = parseInvoiceAuditRecordId(rawRuleId);
   if (!ruleId) {
-    return NextResponse.json({ error: "Invalid rule id." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid rule id.", code: "BAD_INPUT", status: 400 });
   }
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON body.", code: "BAD_INPUT", status: 400 });
   }
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "Expected JSON object." }, { status: 400 });
+    return toApiErrorResponse({ error: "Expected JSON object.", code: "BAD_INPUT", status: 400 });
   }
   const o = body as Record<string, unknown>;
 
@@ -57,7 +60,9 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
   } = {};
 
   if (typeof o.name === "string") {
-    if (!o.name.trim()) return NextResponse.json({ error: "name cannot be empty." }, { status: 400 });
+    if (!o.name.trim()) {
+      return toApiErrorResponse({ error: "name cannot be empty.", code: "BAD_INPUT", status: 400 });
+    }
     updates.name = o.name;
   }
   if (typeof o.priority === "number" && Number.isFinite(o.priority)) {
@@ -76,20 +81,20 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
   const abs = parseNum(o.amountAbsTolerance);
   if (abs !== undefined) {
     if (abs != null && !Number.isFinite(abs)) {
-      return NextResponse.json({ error: "amountAbsTolerance must be finite." }, { status: 400 });
+      return toApiErrorResponse({ error: "amountAbsTolerance must be finite.", code: "BAD_INPUT", status: 400 });
     }
     updates.amountAbsTolerance = abs;
   }
   const pct = parseNum(o.percentTolerance);
   if (pct !== undefined) {
     if (pct != null && !Number.isFinite(pct)) {
-      return NextResponse.json({ error: "percentTolerance must be finite." }, { status: 400 });
+      return toApiErrorResponse({ error: "percentTolerance must be finite.", code: "BAD_INPUT", status: 400 });
     }
     updates.percentTolerance = pct;
   }
 
   if (Object.keys(updates).length === 0) {
-    return NextResponse.json({ error: "No updatable fields supplied." }, { status: 400 });
+    return toApiErrorResponse({ error: "No updatable fields supplied.", code: "BAD_INPUT", status: 400 });
   }
 
   try {
@@ -103,6 +108,6 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
     const j = jsonFromInvoiceAuditError(e);
     if (j) return j;
     const msg = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    return toApiErrorResponse({ error: msg, code: "UNHANDLED", status: 500 });
   }
 }

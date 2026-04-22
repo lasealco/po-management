@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { jsonFromInvoiceAuditError } from "@/app/api/invoice-audit/_lib/invoice-audit-api-error";
 import { guardInvoiceAuditSchema } from "@/app/api/invoice-audit/_lib/guard-invoice-audit-schema";
 import { serializeInvoiceChargeAlias } from "@/app/api/invoice-audit/_lib/serialize";
@@ -20,22 +21,24 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
   if (schema) return schema;
 
   const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) {
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
+  }
 
   const { id: rawId } = await ctx.params;
   const aliasId = parseInvoiceAuditRecordId(rawId);
   if (!aliasId) {
-    return NextResponse.json({ error: "Invalid alias id." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid alias id.", code: "BAD_INPUT", status: 400 });
   }
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON body.", code: "BAD_INPUT", status: 400 });
   }
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "Expected JSON object." }, { status: 400 });
+    return toApiErrorResponse({ error: "Expected JSON object.", code: "BAD_INPUT", status: 400 });
   }
   const o = body as Record<string, unknown>;
 
@@ -57,10 +60,10 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
   if ("canonicalTokens" in o) {
     const tokens = parseCanonicalTokensFromBody(o.canonicalTokens);
     if (tokens == null) {
-      return NextResponse.json({ error: "canonicalTokens: use array or string." }, { status: 400 });
+      return toApiErrorResponse({ error: "canonicalTokens: use array or string.", code: "BAD_INPUT", status: 400 });
     }
     if (tokens.length === 0) {
-      return NextResponse.json({ error: "canonicalTokens cannot be empty." }, { status: 400 });
+      return toApiErrorResponse({ error: "canonicalTokens cannot be empty.", code: "BAD_INPUT", status: 400 });
     }
     updates.canonicalTokens = tokens;
   }
@@ -83,7 +86,7 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
   }
 
   if (Object.keys(updates).length === 0) {
-    return NextResponse.json({ error: "No updatable fields supplied." }, { status: 400 });
+    return toApiErrorResponse({ error: "No updatable fields supplied.", code: "BAD_INPUT", status: 400 });
   }
 
   try {
@@ -97,6 +100,6 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
     const j = jsonFromInvoiceAuditError(e);
     if (j) return j;
     const msg = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    return toApiErrorResponse({ error: msg, code: "UNHANDLED", status: 500 });
   }
 }

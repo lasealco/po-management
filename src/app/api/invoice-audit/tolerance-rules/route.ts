@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { jsonFromInvoiceAuditError } from "@/app/api/invoice-audit/_lib/invoice-audit-api-error";
 import { guardInvoiceAuditSchema } from "@/app/api/invoice-audit/_lib/guard-invoice-audit-schema";
 import { serializeToleranceRule } from "@/app/api/invoice-audit/_lib/serialize";
@@ -16,7 +17,9 @@ export async function GET() {
   if (schema) return schema;
 
   const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) {
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
+  }
 
   const rules = await listToleranceRulesForTenant({ tenantId: tenant.id });
   return NextResponse.json({ rules: rules.map(serializeToleranceRule) });
@@ -29,20 +32,24 @@ export async function POST(request: Request) {
   if (schema) return schema;
 
   const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) {
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
+  }
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON body.", code: "BAD_INPUT", status: 400 });
   }
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "Expected JSON object." }, { status: 400 });
+    return toApiErrorResponse({ error: "Expected JSON object.", code: "BAD_INPUT", status: 400 });
   }
   const o = body as Record<string, unknown>;
   const name = typeof o.name === "string" ? o.name.trim() : "";
-  if (!name) return NextResponse.json({ error: "name is required." }, { status: 400 });
+  if (!name) {
+    return toApiErrorResponse({ error: "name is required.", code: "BAD_INPUT", status: 400 });
+  }
 
   const amountAbsTolerance =
     typeof o.amountAbsTolerance === "number"
@@ -58,10 +65,10 @@ export async function POST(request: Request) {
         : null;
 
   if (amountAbsTolerance != null && !Number.isFinite(amountAbsTolerance)) {
-    return NextResponse.json({ error: "amountAbsTolerance must be finite." }, { status: 400 });
+    return toApiErrorResponse({ error: "amountAbsTolerance must be finite.", code: "BAD_INPUT", status: 400 });
   }
   if (percentTolerance != null && !Number.isFinite(percentTolerance)) {
-    return NextResponse.json({ error: "percentTolerance must be finite." }, { status: 400 });
+    return toApiErrorResponse({ error: "percentTolerance must be finite.", code: "BAD_INPUT", status: 400 });
   }
 
   const active =
@@ -86,6 +93,6 @@ export async function POST(request: Request) {
     const j = jsonFromInvoiceAuditError(e);
     if (j) return j;
     const msg = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    return toApiErrorResponse({ error: msg, code: "UNHANDLED", status: 500 });
   }
 }

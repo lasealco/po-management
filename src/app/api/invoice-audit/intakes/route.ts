@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { jsonFromInvoiceAuditError } from "@/app/api/invoice-audit/_lib/invoice-audit-api-error";
 import { guardInvoiceAuditSchema } from "@/app/api/invoice-audit/_lib/guard-invoice-audit-schema";
 import {
@@ -21,7 +22,9 @@ export async function GET() {
   if (schema) return schema;
 
   const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) {
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
+  }
 
   const intakes = await listInvoiceIntakesForTenant({ tenantId: tenant.id, take: 200 });
   return NextResponse.json({ intakes: intakes.map(serializeInvoiceIntakeListRow) });
@@ -36,30 +39,30 @@ export async function POST(request: Request) {
   const tenant = await getDemoTenant();
   const actorId = await getActorUserId();
   if (!tenant || !actorId) {
-    return NextResponse.json({ error: "No active user." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   }
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON body.", code: "BAD_INPUT", status: 400 });
   }
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "Expected JSON object." }, { status: 400 });
+    return toApiErrorResponse({ error: "Expected JSON object.", code: "BAD_INPUT", status: 400 });
   }
   const o = body as Record<string, unknown>;
   const rawSnapId = typeof o.bookingPricingSnapshotId === "string" ? o.bookingPricingSnapshotId.trim() : "";
   if (!rawSnapId) {
-    return NextResponse.json({ error: "bookingPricingSnapshotId is required." }, { status: 400 });
+    return toApiErrorResponse({ error: "bookingPricingSnapshotId is required.", code: "BAD_INPUT", status: 400 });
   }
   const bookingPricingSnapshotId = parseInvoiceAuditRecordId(rawSnapId);
   if (!bookingPricingSnapshotId) {
-    return NextResponse.json({ error: "bookingPricingSnapshotId is invalid." }, { status: 400 });
+    return toApiErrorResponse({ error: "bookingPricingSnapshotId is invalid.", code: "BAD_INPUT", status: 400 });
   }
   const linesRaw = o.lines;
   if (!Array.isArray(linesRaw) || linesRaw.length === 0) {
-    return NextResponse.json({ error: "lines must be a non-empty array." }, { status: 400 });
+    return toApiErrorResponse({ error: "lines must be a non-empty array.", code: "BAD_INPUT", status: 400 });
   }
 
   const lines: Array<{
@@ -78,24 +81,25 @@ export async function POST(request: Request) {
 
   for (const row of linesRaw) {
     if (!row || typeof row !== "object") {
-      return NextResponse.json({ error: "Each line must be an object." }, { status: 400 });
+      return toApiErrorResponse({ error: "Each line must be an object.", code: "BAD_INPUT", status: 400 });
     }
     const ln = row as Record<string, unknown>;
     const lineNo = typeof ln.lineNo === "number" ? ln.lineNo : Number(ln.lineNo);
     if (!Number.isFinite(lineNo)) {
-      return NextResponse.json({ error: "Each line needs a numeric lineNo." }, { status: 400 });
+      return toApiErrorResponse({ error: "Each line needs a numeric lineNo.", code: "BAD_INPUT", status: 400 });
     }
     const rawDescription = typeof ln.rawDescription === "string" ? ln.rawDescription : "";
     const currency = typeof ln.currency === "string" ? ln.currency : "USD";
     if (ln.amount === undefined || ln.amount === null) {
-      return NextResponse.json({ error: `Line ${lineNo}: amount is required.` }, { status: 400 });
+      return toApiErrorResponse({ error: `Line ${lineNo}: amount is required.`, code: "BAD_INPUT", status: 400 });
     }
     const csh = typeof ln.chargeStructureHint === "string" ? ln.chargeStructureHint.trim().toUpperCase() : "";
     if (csh && csh !== "ALL_IN" && csh !== "ITEMIZED") {
-      return NextResponse.json(
-        { error: `Line ${lineNo}: chargeStructureHint must be ALL_IN, ITEMIZED, or omitted.` },
-        { status: 400 },
-      );
+      return toApiErrorResponse({
+        error: `Line ${lineNo}: chargeStructureHint must be ALL_IN, ITEMIZED, or omitted.`,
+        code: "BAD_INPUT",
+        status: 400,
+      });
     }
     lines.push({
       lineNo,
@@ -122,7 +126,7 @@ export async function POST(request: Request) {
       ? new Date(o.invoiceDate.trim())
       : null;
   if (invoiceDate && Number.isNaN(invoiceDate.getTime())) {
-    return NextResponse.json({ error: "invoiceDate is not a valid date." }, { status: 400 });
+    return toApiErrorResponse({ error: "invoiceDate is not a valid date.", code: "BAD_INPUT", status: 400 });
   }
 
   try {
@@ -154,9 +158,6 @@ export async function POST(request: Request) {
     const j = jsonFromInvoiceAuditError(e);
     if (j) return j;
     const msg = e instanceof Error ? e.message : String(e);
-    return NextResponse.json(
-      { error: `Create failed: ${msg}`, code: "UNHANDLED" },
-      { status: 500 },
-    );
+    return toApiErrorResponse({ error: `Create failed: ${msg}`, code: "UNHANDLED", status: 500 });
   }
 }

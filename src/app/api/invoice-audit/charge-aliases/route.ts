@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { jsonFromInvoiceAuditError } from "@/app/api/invoice-audit/_lib/invoice-audit-api-error";
 import { guardInvoiceAuditSchema } from "@/app/api/invoice-audit/_lib/guard-invoice-audit-schema";
 import { serializeInvoiceChargeAlias } from "@/app/api/invoice-audit/_lib/serialize";
@@ -20,7 +21,9 @@ export async function GET() {
   if (schema) return schema;
 
   const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) {
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
+  }
 
   const rows = await listInvoiceChargeAliasesForTenant({ tenantId: tenant.id });
   return NextResponse.json({ aliases: rows.map(serializeInvoiceChargeAlias) });
@@ -33,26 +36,29 @@ export async function POST(request: Request) {
   if (schema) return schema;
 
   const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) {
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
+  }
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON body.", code: "BAD_INPUT", status: 400 });
   }
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "Expected JSON object." }, { status: 400 });
+    return toApiErrorResponse({ error: "Expected JSON object.", code: "BAD_INPUT", status: 400 });
   }
   const o = body as Record<string, unknown>;
 
   const pattern = typeof o.pattern === "string" ? o.pattern : "";
   const tokens = parseCanonicalTokensFromBody(o.canonicalTokens);
   if (tokens == null || tokens.length === 0) {
-    return NextResponse.json(
-      { error: "canonicalTokens is required (non-empty array or newline/comma-separated string)." },
-      { status: 400 },
-    );
+    return toApiErrorResponse({
+      error: "canonicalTokens is required (non-empty array or newline/comma-separated string).",
+      code: "BAD_INPUT",
+      status: 400,
+    });
   }
 
   const priority =
@@ -62,7 +68,7 @@ export async function POST(request: Request) {
         ? Math.trunc(Number(o.priority))
         : 0;
   if (!Number.isFinite(priority)) {
-    return NextResponse.json({ error: "priority must be a finite number." }, { status: 400 });
+    return toApiErrorResponse({ error: "priority must be a finite number.", code: "BAD_INPUT", status: 400 });
   }
 
   const active =
@@ -87,6 +93,6 @@ export async function POST(request: Request) {
     const j = jsonFromInvoiceAuditError(e);
     if (j) return j;
     const msg = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    return toApiErrorResponse({ error: msg, code: "UNHANDLED", status: 500 });
   }
 }
