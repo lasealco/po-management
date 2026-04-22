@@ -1219,6 +1219,43 @@ export async function listControlTowerShipments(params: {
         },
       },
     };
+    const quoteRequestTextMatch: Prisma.QuoteRequestWhereInput = {
+      OR: [
+        { title: contains },
+        { description: contains },
+        { originLabel: contains },
+        { destinationLabel: contains },
+        { equipmentSummary: contains },
+        { cargoDescription: contains },
+      ],
+    };
+    const quoteClarificationTextMatch: Prisma.QuoteClarificationMessageWhereInput = {
+      OR: [
+        { body: contains },
+        {
+          author: {
+            is: {
+              OR: [{ name: contains }, { email: contains }],
+            },
+          },
+        },
+      ],
+    };
+    const quoteRecipientClarificationPredicate: Prisma.QuoteRequestRecipientWhereInput = {
+      OR: [
+        { clarifications: { some: quoteClarificationTextMatch } },
+        {
+          quoteRequest: {
+            is: {
+              clarifications: { some: quoteClarificationTextMatch },
+            },
+          },
+        },
+      ],
+    };
+    const quoteResponseHeaderTextMatch: Prisma.QuoteResponseWhereInput = {
+      OR: [{ reviewNotes: contains }],
+    };
     const wmsTaskTextMatch: Prisma.WmsTaskWhereInput = {
       OR: [
         ...wmsTaskStatusEnumMatch.map((status) => ({ status })),
@@ -1338,6 +1375,13 @@ export async function listControlTowerShipments(params: {
         ...idOr,
         ...enumTokenOr,
         ...shipmentWhereForPartyQuoteResponseLines(quoteResponseLineTextMatch),
+        ...shipmentWhereForPartyQuoteRecipients({
+          quoteRequest: { is: quoteRequestTextMatch },
+        }),
+        ...shipmentWhereForPartyQuoteRecipients(quoteRecipientClarificationPredicate),
+        ...shipmentWhereForPartyQuoteRecipients({
+          response: { is: quoteResponseHeaderTextMatch },
+        }),
         { shipmentNo: contains },
         { trackingNo: contains },
         { carrier: contains },
