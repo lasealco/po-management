@@ -84,6 +84,13 @@ describe("TWIN_API_ERROR_CODES", () => {
     expect(parseTwinApiErrorCode(null)).toBeNull();
   });
 
+  it("normalizes spaced lowercase snake for every registered Twin API error code", () => {
+    for (const code of Object.values(TWIN_API_ERROR_CODES)) {
+      expect(isTwinApiErrorCode(code)).toBe(true);
+      expect(parseTwinApiErrorCode({ code: ` ${code.toLowerCase()} ` })).toBe(code);
+    }
+  });
+
   it("parses code + error safely from unknown response bodies", () => {
     expect(parseTwinApiErrorBody({ code: "FORMAT_INVALID", error: "Invalid format" })).toEqual({
       code: "FORMAT_INVALID",
