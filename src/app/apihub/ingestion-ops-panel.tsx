@@ -287,6 +287,7 @@ export function IngestionOpsPanel({ canView, canEdit = false, initialSummary, in
           <thead className="bg-zinc-50 text-xs font-semibold uppercase tracking-wide text-zinc-500">
             <tr>
               <th className="px-4 py-3">Run id</th>
+              <th className="px-4 py-3">Connector</th>
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Error code</th>
               <th className="px-4 py-3">Attempt</th>
@@ -298,7 +299,7 @@ export function IngestionOpsPanel({ canView, canEdit = false, initialSummary, in
           <tbody className="divide-y divide-zinc-100 bg-white text-zinc-800">
             {runs.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-sm text-zinc-600">
+                <td colSpan={8} className="px-4 py-8 text-center text-sm text-zinc-600">
                   No runs match this filter.
                 </td>
               </tr>
@@ -307,6 +308,16 @@ export function IngestionOpsPanel({ canView, canEdit = false, initialSummary, in
                 <Fragment key={r.id}>
                   <tr>
                     <td className="px-4 py-3 font-mono text-xs text-zinc-700">{r.id}</td>
+                    <td
+                      className="max-w-[7rem] truncate px-4 py-3 font-mono text-[11px] text-zinc-600"
+                      title={r.connectorId ?? undefined}
+                    >
+                      {r.connectorId
+                        ? r.connectorId.length > 12
+                          ? `${r.connectorId.slice(0, 10)}…`
+                          : r.connectorId
+                        : "—"}
+                    </td>
                     <td className="px-4 py-3">
                       <span
                         className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium capitalize ${statusBadgeClass(r.status)}`}
@@ -338,7 +349,7 @@ export function IngestionOpsPanel({ canView, canEdit = false, initialSummary, in
                   </tr>
                   {expandedRunId === r.id ? (
                     <tr className="bg-zinc-50/80">
-                      <td colSpan={7} className="p-0">
+                      <td colSpan={8} className="p-0">
                         <IngestionRunDetailExpand
                           runId={r.id}
                           canRetry={canEdit}
