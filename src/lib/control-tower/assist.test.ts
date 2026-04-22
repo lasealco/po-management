@@ -57,6 +57,23 @@ describe("assistControlTowerQuery", () => {
     expect(suggestedFilters.shipmentSource).toBe("UNLINKED");
   });
 
+  it("accepts flow: as an alias for shipmentSource", () => {
+    expect(assistControlTowerQuery("flow:po").suggestedFilters.shipmentSource).toBe("PO");
+    expect(assistControlTowerQuery("flow:unlinked").suggestedFilters.shipmentSource).toBe("UNLINKED");
+  });
+
+  it("maps extra route: slugs to workbench routeAction prefixes", () => {
+    expect(assistControlTowerQuery("route:escalate_booking").suggestedFilters.routeAction).toBe("Escalate booking");
+    expect(assistControlTowerQuery("route:await_booking").suggestedFilters.routeAction).toBe("Await booking");
+    expect(assistControlTowerQuery("route:record_arrival").suggestedFilters.routeAction).toBe("Record arrival");
+    expect(assistControlTowerQuery("route:route_complete").suggestedFilters.routeAction).toBe("Route complete");
+  });
+
+  it("parses from / to UNLOCODE tokens as lane filters", () => {
+    expect(assistControlTowerQuery("from USNYC").suggestedFilters.lane).toBe("USNYC");
+    expect(assistControlTowerQuery("to DEHAM").suggestedFilters.lane).toBe("DEHAM");
+  });
+
   it("adds default search hint when no structured tokens match", () => {
     const { hints } = assistControlTowerQuery("random freetext only");
     expect(hints.some((h) => h.includes("Searching bookings"))).toBe(true);
