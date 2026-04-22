@@ -39,9 +39,9 @@ UI anchors match section `id`s on `/apihub`.
 
 ## 5) Honest limits
 
-- **JSON request bodies:** Routes use bounded reads via `src/lib/apihub/request-body-limit.ts`.
-  - **Default:** **`APIHUB_JSON_BODY_MAX_BYTES`** = **256 KiB** — connectors, ingestion jobs (create/patch/retry), staging batch create/apply, ingestion apply (when `Content-Type` is JSON).
-  - **Large:** **`APIHUB_JSON_BODY_MAX_BYTES_LARGE`** = **1 MiB** — mapping analysis jobs, mapping templates (create/patch), mapping diff, mapping preview + export.
+- **JSON request bodies:** Routes use bounded reads via `src/lib/apihub/request-body-limit.ts` and the centralized tier helpers in **`src/lib/apihub/request-budget.ts`** (`parseApiHubPostJsonForRouteWithBudget` / `parseApiHubRequestJsonWithBudget` with **`standard`** vs **`large`**).
+  - **Default (`standard`):** **`APIHUB_JSON_BODY_MAX_BYTES`** = **256 KiB** — connectors, ingestion jobs (create/patch/retry), staging batch create/apply, ingestion apply (when `Content-Type` is JSON).
+  - **Large (`large`):** **`APIHUB_JSON_BODY_MAX_BYTES_LARGE`** = **1 MiB** — mapping analysis jobs, mapping templates (create/patch), mapping diff, mapping preview + export.
   - **Over limit:** **413** `PAYLOAD_TOO_LARGE`. **Invalid JSON** (where routes accept empty body): **400** `INVALID_JSON`, except legacy routes that treat bad JSON as `{}` (still enforced for size before parse).
 - **Other caps:** Sample sizes, rule counts, staging row caps, etc., live in `src/lib/apihub/constants.ts` (e.g. `APIHUB_MAPPING_PREVIEW_SAMPLE_MAX`, `APIHUB_STAGING_BATCH_MAX_ROWS`, `APIHUB_MAPPING_TEMPLATE_RULES_MAX_COUNT`).
 - **Workers / `after()`:** Mapping analysis jobs schedule follow-up work with `after()`; long-running work is not guaranteed to complete inside the HTTP request. Operators should poll job status via GET job detail or the hub UI — see spec and README mapping-analysis-jobs section.

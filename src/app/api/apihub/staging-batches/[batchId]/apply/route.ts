@@ -4,11 +4,10 @@ import {
   apiHubValidationError,
 } from "@/lib/apihub/api-error";
 import {
-  APIHUB_JSON_BODY_MAX_BYTES,
   APIHUB_STAGING_APPLY_TARGETS,
   type ApiHubStagingApplyTarget,
 } from "@/lib/apihub/constants";
-import { parseApiHubPostJsonForRoute } from "@/lib/apihub/request-body-limit";
+import { parseApiHubPostJsonForRouteWithBudget } from "@/lib/apihub/request-budget";
 import { resolveApiHubRequestId } from "@/lib/apihub/request-id";
 import { apiHubEnsureTenantActorGrants } from "@/lib/apihub/route-guards";
 import { applyApiHubStagingBatchToDownstream } from "@/lib/apihub/staging-batch-apply";
@@ -36,7 +35,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ batchId: s
   const { batchId } = await ctx.params;
 
   let body: PostBody = {};
-  const parsedBody = await parseApiHubPostJsonForRoute(request, requestId, APIHUB_JSON_BODY_MAX_BYTES, {
+  const parsedBody = await parseApiHubPostJsonForRouteWithBudget(request, requestId, "standard", {
     emptyOnInvalid: true,
   });
   if (!parsedBody.ok) {

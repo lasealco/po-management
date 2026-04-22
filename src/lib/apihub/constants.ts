@@ -125,6 +125,9 @@ export const APIHUB_MAPPING_ANALYSIS_ENGINE_OPENAI = "openai_structured_json_v1"
 /** Max rows materialized into a single staging batch (bounded writes). */
 export const APIHUB_STAGING_BATCH_MAX_ROWS = 500;
 
+/** Max rows returned for staging batch detail (`GET …/staging-batches/:id` `rowLimit` query). */
+export const APIHUB_STAGING_BATCH_DETAIL_ROW_LIMIT_MAX = 300;
+
 /** Downstream apply targets for persisted staging batches (requires module grants in addition to org.apihub). */
 export const APIHUB_STAGING_APPLY_TARGETS = ["sales_order", "purchase_order", "control_tower_audit"] as const;
 export type ApiHubStagingApplyTarget = (typeof APIHUB_STAGING_APPLY_TARGETS)[number];

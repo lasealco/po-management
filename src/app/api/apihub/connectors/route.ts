@@ -8,7 +8,6 @@ import {
   APIHUB_CONNECTOR_LIST_SORT_FIELDS,
   APIHUB_CONNECTOR_LIST_SORT_ORDERS,
   APIHUB_CONNECTOR_STATUSES,
-  APIHUB_JSON_BODY_MAX_BYTES,
 } from "@/lib/apihub/constants";
 import { APIHUB_CONNECTOR_SEARCH_Q_MAX_LEN } from "@/lib/apihub/connector-search";
 import { toApiHubConnectorDto } from "@/lib/apihub/connector-dto";
@@ -17,7 +16,7 @@ import {
   listApiHubConnectorAuditLogs,
   listApiHubConnectorsWithRecentAudit,
 } from "@/lib/apihub/connectors-repo";
-import { parseApiHubPostJsonForRoute } from "@/lib/apihub/request-body-limit";
+import { parseApiHubPostJsonForRouteWithBudget } from "@/lib/apihub/request-budget";
 import { resolveApiHubRequestId } from "@/lib/apihub/request-id";
 import { apiHubEnsureTenantActorGrants } from "@/lib/apihub/route-guards";
 
@@ -122,7 +121,7 @@ export async function POST(request: Request) {
   const { tenant, actorId } = gate.ctx;
 
   let body: PostBody = {};
-  const parsedBody = await parseApiHubPostJsonForRoute(request, requestId, APIHUB_JSON_BODY_MAX_BYTES, {
+  const parsedBody = await parseApiHubPostJsonForRouteWithBudget(request, requestId, "standard", {
     emptyOnInvalid: true,
   });
   if (!parsedBody.ok) {

@@ -12,7 +12,6 @@ import {
 import { resolveApplyTargetSummary, resolveDryRunTargetSummary } from "@/lib/apihub/apply-target-summary";
 import {
   APIHUB_INGESTION_APPLY_MATCH_KEYS,
-  APIHUB_JSON_BODY_MAX_BYTES,
   APIHUB_STAGING_APPLY_TARGETS,
   type ApiHubIngestionApplyMatchKey,
   type ApiHubStagingApplyTarget,
@@ -27,7 +26,7 @@ import {
 } from "@/lib/apihub/ingestion-apply-repo";
 import { appendApiHubIngestionRunAuditLog } from "@/lib/apihub/ingestion-run-audit-repo";
 import { toApiHubIngestionRunDto } from "@/lib/apihub/ingestion-run-dto";
-import { parseApiHubRequestJson } from "@/lib/apihub/request-body-limit";
+import { parseApiHubRequestJsonWithBudget } from "@/lib/apihub/request-budget";
 import { APIHUB_REQUEST_ID_HEADER, resolveApiHubRequestId } from "@/lib/apihub/request-id";
 import { apiHubEnsureTenantActorGrants } from "@/lib/apihub/route-guards";
 import { userHasGlobalGrant } from "@/lib/authz";
@@ -64,7 +63,7 @@ async function readApplyJsonBody(request: Request, requestId: string): Promise<A
   if (!ct.includes("application/json")) {
     return {};
   }
-  const parsed = await parseApiHubRequestJson(request, APIHUB_JSON_BODY_MAX_BYTES, { emptyOnInvalid: true });
+  const parsed = await parseApiHubRequestJsonWithBudget(request, "standard", { emptyOnInvalid: true });
   if (!parsed.ok) {
     return apiHubError(413, "PAYLOAD_TOO_LARGE", parsed.message, requestId);
   }

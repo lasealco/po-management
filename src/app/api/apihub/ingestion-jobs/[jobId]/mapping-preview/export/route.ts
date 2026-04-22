@@ -4,12 +4,11 @@ import {
   apiHubError,
   apiHubValidationError,
 } from "@/lib/apihub/api-error";
-import { APIHUB_JSON_BODY_MAX_BYTES_LARGE } from "@/lib/apihub/constants";
 import { buildMappingPreviewIssuesCsv, buildMappingPreviewIssuesJson } from "@/lib/apihub/mapping-preview-export-build";
 import { computeMappingPreview, type MappingPreviewPostBody } from "@/lib/apihub/mapping-preview-run";
 import { getApiHubIngestionRunById } from "@/lib/apihub/ingestion-runs-repo";
 import { APIHUB_REQUEST_ID_HEADER } from "@/lib/apihub/request-id";
-import { parseApiHubPostJsonForRoute } from "@/lib/apihub/request-body-limit";
+import { parseApiHubPostJsonForRouteWithBudget } from "@/lib/apihub/request-budget";
 import { resolveApiHubRequestId } from "@/lib/apihub/request-id";
 import { apiHubEnsureTenantActorGrants } from "@/lib/apihub/route-guards";
 
@@ -34,7 +33,7 @@ export async function POST(request: Request, context: { params: Promise<{ jobId:
   }
 
   let body: ExportPostBody = {};
-  const parsedBody = await parseApiHubPostJsonForRoute(request, requestId, APIHUB_JSON_BODY_MAX_BYTES_LARGE, {
+  const parsedBody = await parseApiHubPostJsonForRouteWithBudget(request, requestId, "large", {
     emptyOnInvalid: true,
   });
   if (!parsedBody.ok) {

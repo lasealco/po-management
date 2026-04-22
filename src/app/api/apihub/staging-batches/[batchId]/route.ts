@@ -3,6 +3,7 @@ import {
   apiHubJson,
   apiHubValidationError,
 } from "@/lib/apihub/api-error";
+import { APIHUB_STAGING_BATCH_DETAIL_ROW_LIMIT_MAX } from "@/lib/apihub/constants";
 import { resolveApiHubRequestId } from "@/lib/apihub/request-id";
 import { apiHubEnsureTenantActorGrants } from "@/lib/apihub/route-guards";
 import { toApiHubStagingBatchDetailDto } from "@/lib/apihub/staging-batch-dto";
@@ -11,7 +12,6 @@ import { getApiHubStagingBatchWithRows } from "@/lib/apihub/staging-batches-repo
 export const dynamic = "force-dynamic";
 
 const ROW_LIMIT_DEFAULT = 100;
-const ROW_LIMIT_MAX = 300;
 
 export async function GET(request: Request, ctx: { params: Promise<{ batchId: string }> }) {
   const requestId = resolveApiHubRequestId(request);
@@ -32,7 +32,7 @@ export async function GET(request: Request, ctx: { params: Promise<{ batchId: st
         { field: "rowLimit", code: "INVALID_NUMBER", message: "rowLimit must be a positive number when provided.", severity: "error" },
       ], requestId);
     }
-    rowLimit = Math.min(Math.trunc(n), ROW_LIMIT_MAX);
+    rowLimit = Math.min(Math.trunc(n), APIHUB_STAGING_BATCH_DETAIL_ROW_LIMIT_MAX);
   }
 
   const found = await getApiHubStagingBatchWithRows({

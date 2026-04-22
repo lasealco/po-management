@@ -6,11 +6,10 @@ import {
   APIHUB_AUDIT_ACTION_INGESTION_RUN_RETRY,
   apiHubIngestionRunAuditMetadataEnvelope,
 } from "@/lib/apihub/audit-contract";
-import { APIHUB_JSON_BODY_MAX_BYTES } from "@/lib/apihub/constants";
 import { appendApiHubIngestionRunAuditLog } from "@/lib/apihub/ingestion-run-audit-repo";
 import { toApiHubIngestionRunDto } from "@/lib/apihub/ingestion-run-dto";
 import { retryApiHubIngestionRun } from "@/lib/apihub/ingestion-runs-repo";
-import { parseApiHubPostJsonForRoute } from "@/lib/apihub/request-body-limit";
+import { parseApiHubPostJsonForRouteWithBudget } from "@/lib/apihub/request-budget";
 import { resolveApiHubRequestId } from "@/lib/apihub/request-id";
 import { apiHubEnsureTenantActorGrants } from "@/lib/apihub/route-guards";
 import { NextResponse } from "next/server";
@@ -92,7 +91,7 @@ export async function POST(request: Request, context: { params: Promise<{ jobId:
 
   const { jobId } = await context.params;
   let body: PostBody = {};
-  const parsedBody = await parseApiHubPostJsonForRoute(request, requestId, APIHUB_JSON_BODY_MAX_BYTES, {
+  const parsedBody = await parseApiHubPostJsonForRouteWithBudget(request, requestId, "standard", {
     emptyOnInvalid: true,
   });
   if (!parsedBody.ok) {

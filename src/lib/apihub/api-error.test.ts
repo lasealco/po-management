@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { apiHubValidationError, readApiHubErrorMessageFromJsonBody } from "./api-error";
+import { apiHubError, apiHubValidationError, readApiHubErrorMessageFromJsonBody } from "./api-error";
 import { APIHUB_REQUEST_ID_HEADER } from "./request-id";
 
 describe("apiHubValidationError", () => {
@@ -48,6 +48,19 @@ describe("apiHubValidationError", () => {
     expect(body.error.details.issues[0].severity).toBe("warn");
     expect(body.error.details.issues[1].severity).toBe("info");
     expect(body.error.details.issues[2].severity).toBeUndefined();
+  });
+});
+
+describe("apiHubError (P4 leakage guard — stable envelope)", () => {
+  it("exposes only code + message on the error object (no stack / cause fields)", async () => {
+    const response = apiHubError(400, "TEST_CODE", "Operator-safe message.", "req-leak-1");
+    const body = (await response.json()) as { ok: false; error: Record<string, unknown> };
+    expect(body.ok).toBe(false);
+    expect(body.error).toEqual({
+      code: "TEST_CODE",
+      message: "Operator-safe message.",
+    });
+    expect(Object.keys(body.error).sort()).toEqual(["code", "message"]);
   });
 });
 

@@ -8,7 +8,6 @@ import {
   APIHUB_CONNECTOR_DISABLE_FORCE_NOTE_MIN,
   APIHUB_CONNECTOR_OPS_NOTE_MAX,
   APIHUB_CONNECTOR_STATUSES,
-  APIHUB_JSON_BODY_MAX_BYTES,
 } from "@/lib/apihub/constants";
 import { toApiHubConnectorDto } from "@/lib/apihub/connector-dto";
 import {
@@ -17,7 +16,7 @@ import {
   updateApiHubConnectorLifecycle,
 } from "@/lib/apihub/connectors-repo";
 import { countInFlightApiHubIngestionRunsForConnector } from "@/lib/apihub/ingestion-runs-repo";
-import { parseApiHubPostJsonForRoute } from "@/lib/apihub/request-body-limit";
+import { parseApiHubPostJsonForRouteWithBudget } from "@/lib/apihub/request-budget";
 import { resolveApiHubRequestId } from "@/lib/apihub/request-id";
 import { apiHubEnsureTenantActorGrants } from "@/lib/apihub/route-guards";
 
@@ -50,7 +49,7 @@ export async function PATCH(
   }
 
   let body: PatchBody = {};
-  const parsedBody = await parseApiHubPostJsonForRoute(request, requestId, APIHUB_JSON_BODY_MAX_BYTES, {
+  const parsedBody = await parseApiHubPostJsonForRouteWithBudget(request, requestId, "standard", {
     emptyOnInvalid: true,
   });
   if (!parsedBody.ok) {
