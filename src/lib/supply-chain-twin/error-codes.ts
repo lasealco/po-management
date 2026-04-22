@@ -1,3 +1,5 @@
+import { apiClientErrorMessage, readApiErrorTextFromJson, readApiResponseErrorCode } from "@/lib/api-client-error";
+
 /** Stable Twin API error-code registry used by route handlers. */
 export const TWIN_API_ERROR_CODES = {
   QUERY_VALIDATION_FAILED: "QUERY_VALIDATION_FAILED",
@@ -40,50 +42,11 @@ export function parseTwinApiErrorCode(body: unknown): TwinApiErrorCode | null {
   return isTwinApiErrorCode(normalized) ? normalized : null;
 }
 
-/** Raw `code` string from Twin API JSON (any non-empty trimmed value), including HTTP contract codes like `FORBIDDEN`. */
-export function readTwinApiResponseErrorCode(body: unknown): string | null {
-  if (typeof body !== "object" || body == null) {
-    return null;
-  }
-  const raw = (body as { code?: unknown }).code;
-  if (typeof raw !== "string") {
-    return null;
-  }
-  const t = raw.trim();
-  return t.length > 0 ? t : null;
-}
+/** Raw `code` from Twin API JSON (any non-empty trimmed value), including HTTP contract codes like `FORBIDDEN`. */
+export const readTwinApiResponseErrorCode = readApiResponseErrorCode;
 
-function extractTwinApiErrorTextFromJson(body: unknown): string | null {
-  const hasObjectBody = typeof body === "object" && body != null;
-  const rawError =
-    hasObjectBody && "error" in body && typeof (body as { error: unknown }).error === "string"
-      ? (body as { error: string }).error.trim()
-      : null;
-  const rawMessage =
-    hasObjectBody && "message" in body && typeof (body as { message: unknown }).message === "string"
-      ? (body as { message: string }).message.trim()
-      : null;
-  const error = rawError && rawError.length > 0 ? rawError : rawMessage && rawMessage.length > 0 ? rawMessage : null;
-  return error && error.length > 0 ? error : null;
-}
-
-/**
- * Human-readable line for UI toasts: server `error` text plus ` (code)` when a machine code is present
- * and not already embedded in the message.
- */
-export function twinApiClientErrorMessage(body: unknown, fallback: string): string {
-  const error = extractTwinApiErrorTextFromJson(body);
-  const rawCode = readTwinApiResponseErrorCode(body);
-  const base = error ?? fallback;
-  if (!rawCode) {
-    return base;
-  }
-  const codeUpper = rawCode.toUpperCase();
-  if (base.toUpperCase().includes(codeUpper)) {
-    return base;
-  }
-  return `${base} (${rawCode})`;
-}
+/** Re-export of `apiClientErrorMessage` from `@/lib/api-client-error` for Twin call sites. */
+export const twinApiClientErrorMessage = apiClientErrorMessage;
 
 /**
  * Parses common Twin API error payload shape from unknown JSON:
@@ -91,7 +54,7 @@ export function twinApiClientErrorMessage(body: unknown, fallback: string): stri
  */
 export function parseTwinApiErrorBody(body: unknown): { code: TwinApiErrorCode | null; error: string | null } {
   const code = parseTwinApiErrorCode(body);
-  const error = extractTwinApiErrorTextFromJson(body);
+  const error = readApiErrorTextFromJson(body);
   return { code, error };
 }
 

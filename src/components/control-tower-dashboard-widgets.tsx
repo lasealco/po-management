@@ -14,6 +14,7 @@ import {
   metricSummaryValue,
   type CtDashboardWidgetReport,
 } from "@/components/control-tower-dashboard-chart-kit";
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 
 type Widget = {
   id: string;
@@ -58,13 +59,14 @@ export function ControlTowerDashboardWidgets({ canEdit }: { canEdit: boolean }) 
   const load = useCallback(async () => {
     try {
       const res = await fetch("/api/control-tower/dashboard/widgets");
-      const json = (await res.json()) as { widgets?: Widget[]; error?: string };
+      const json: unknown = await res.json();
       if (!res.ok) {
-        setErr(json.error || res.statusText);
+        setErr(apiClientErrorMessage(json, res.statusText || "Could not load widgets."));
         return;
       }
+      const rec = json as { widgets?: Widget[] };
       setErr(null);
-      setWidgets(json.widgets ?? []);
+      setWidgets(rec.widgets ?? []);
     } finally {
       setInitialLoadDone(true);
     }

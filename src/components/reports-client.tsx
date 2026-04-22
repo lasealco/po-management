@@ -3,6 +3,8 @@
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
+
 type ReportListItem = {
   id: string;
   title: string;
@@ -182,15 +184,16 @@ export function ReportsClient({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ reportId: selectedId, params: {} }),
     });
-    const payload = (await res.json()) as { result?: ReportResult; error?: string };
+    const payload: unknown = await res.json();
     setBusy(false);
     if (!res.ok) {
       setResult(null);
-      setError(payload.error ?? "Report failed.");
+      setError(apiClientErrorMessage(payload, "Report failed."));
       return;
     }
-    if (payload.result) {
-      setResult(payload.result);
+    const body = payload as { result?: ReportResult };
+    if (body.result) {
+      setResult(body.result);
       const p = new URLSearchParams(searchParams.toString());
       p.set("report", selectedId);
       const qs = p.toString();

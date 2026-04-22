@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import type { HelpDoAction } from "@/lib/help-actions";
 import { HELP_PLAYBOOKS } from "@/lib/help-playbooks";
 
@@ -37,14 +38,13 @@ export function GuideCallout() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action }),
       });
-      const payload = (await res.json().catch(() => null)) as
-        | { ok?: boolean; href?: string; error?: string }
-        | null;
-      if (res.ok && payload?.ok && payload.href) {
-        window.location.href = payload.href;
+      const payload: unknown = await res.json().catch(() => null);
+      const rec = payload as { ok?: boolean; href?: string } | null;
+      if (res.ok && rec?.ok && rec.href) {
+        window.location.href = rec.href;
         return;
       }
-      setDoError(payload?.error ?? "Action could not run.");
+      setDoError(apiClientErrorMessage(payload, "Action could not run."));
     } finally {
       setDoBusy(false);
     }
