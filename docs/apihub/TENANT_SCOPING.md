@@ -31,6 +31,7 @@ Vitest files assert representative `where` shapes for:
 - `connectors-repo.tenant-scope.test.ts`
 - `connectors-repo.lifecycle-tenant-scope.test.ts`
 - Raw SQL list endpoints: `ingestion-apply-conflicts-repo.test.ts` and `ingestion-alerts-summary-repo.test.ts` assert **`tenantId`** is bound in `Prisma.sql` **`values`**.
+- Timeline page: `ingestion-run-timeline-repo.tenant-scope.test.ts` (**anchor**, **parent walk**, **BFS**, **row fetch**).
 
 Run: `npm run test:apihub`
 
