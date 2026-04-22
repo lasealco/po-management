@@ -75,6 +75,9 @@ export default async function ApihubHomePage() {
   const grantSet = access?.grantSet ?? new Set<string>();
   const canViewHub = Boolean(access?.user && access?.tenant && viewerHas(grantSet, "org.apihub", "view"));
   const canEditHub = canViewHub && viewerHas(grantSet, "org.apihub", "edit");
+  const canApplyStagingSalesOrder = canEditHub && viewerHas(grantSet, "org.orders", "edit");
+  const canApplyStagingPurchaseOrder = canEditHub && viewerHas(grantSet, "org.orders", "edit");
+  const canApplyStagingCtAudit = canEditHub && viewerHas(grantSet, "org.controltower", "edit");
 
   const connectorRows =
     canViewHub && access?.tenant ? await listApiHubConnectorsWithRecentAudit(access.tenant.id, undefined, 3) : [];
@@ -202,7 +205,13 @@ export default async function ApihubHomePage() {
         canView={canViewHub}
         canEdit={canEditHub}
       />
-      <StagingBatchesPanel initialBatches={initialStagingBatches} canView={canViewHub} />
+      <StagingBatchesPanel
+        initialBatches={initialStagingBatches}
+        canView={canViewHub}
+        canApplySalesOrder={canApplyStagingSalesOrder}
+        canApplyPurchaseOrder={canApplyStagingPurchaseOrder}
+        canApplyCtAudit={canApplyStagingCtAudit}
+      />
       <MappingTemplatesSection initialTemplates={initialMappingTemplates} canManage={canEditHub} />
       <MappingPreviewExportPanel canUse={canEditHub} />
       <ConnectorsSection initialConnectors={initialConnectors} canCreate={canEditHub} />

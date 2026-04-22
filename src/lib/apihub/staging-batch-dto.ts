@@ -6,6 +6,7 @@ export type ApiHubStagingBatchListItemDto = {
   rowCount: number;
   title: string | null;
   sourceMappingAnalysisJobId: string | null;
+  appliedAt: string | null;
   createdAt: string;
 };
 
@@ -27,6 +28,7 @@ export function toApiHubStagingBatchListItemDto(row: ApiHubStagingBatchRow): Api
     rowCount: row.rowCount,
     title: row.title,
     sourceMappingAnalysisJobId: row.sourceMappingAnalysisJobId,
+    appliedAt: row.appliedAt ? row.appliedAt.toISOString() : null,
     createdAt: row.createdAt.toISOString(),
   };
 }

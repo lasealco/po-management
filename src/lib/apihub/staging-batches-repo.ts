@@ -13,6 +13,8 @@ const batchSelect = {
   title: true,
   status: true,
   rowCount: true,
+  appliedAt: true,
+  applySummary: true,
   createdAt: true,
   updatedAt: true,
 } as const;
@@ -25,6 +27,8 @@ export type ApiHubStagingBatchRow = {
   title: string | null;
   status: string;
   rowCount: number;
+  appliedAt: Date | null;
+  applySummary: Prisma.JsonValue | null;
   createdAt: Date;
   updatedAt: Date;
 };

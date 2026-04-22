@@ -155,7 +155,8 @@ export const GLOBAL_PERMISSION_CATALOG = [
     resource: "org.apihub",
     action: "edit",
     label: "Manage integration hub",
-    description: "Create or change connectors, templates, ingestion runs, mapping analysis jobs, and staging batches.",
+    description:
+      "Create or change connectors, templates, ingestion runs, mapping analysis jobs, staging batches, and staging downstream apply (SO/PO/CT still require their module grants).",
   },
 ] as const;
 

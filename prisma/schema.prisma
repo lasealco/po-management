@@ -301,6 +301,10 @@ model ApiHubStagingBatch {
   /// `open` | `promoted` | `discarded`
   status                     String   @default("open")
   rowCount                   Int      @default(0)
+  /// Set when rows were applied to downstream modules (SO/PO/CT audit) via API Hub apply.
+  appliedAt                  DateTime?
+  /// Last apply outcome: target, dryRun, row results (ids/errors).
+  applySummary               Json?
   createdAt                  DateTime @default(now())
   updatedAt                  DateTime @updatedAt
 

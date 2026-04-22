@@ -68,8 +68,9 @@ Authoritative guard semantics: [permissions-matrix.md](./permissions-matrix.md).
 |--------|------|---------|
 | `GET`, `POST` | `/api/apihub/staging-batches` | List recent batches / create from **`mappingAnalysisJobId`** (succeeded job only; row cap server-side). |
 | `GET` | `/api/apihub/staging-batches/:batchId` | Batch metadata + rows (`rowLimit` query). |
+| `POST` | `/api/apihub/staging-batches/:batchId/apply` | Apply **open** batch rows to downstream modules: JSON `{ target: "sales_order" \| "purchase_order" \| "control_tower_audit", dryRun?: boolean }`. Requires **`org.apihub` → edit** plus **`org.orders` → edit** (SO/PO targets) or **`org.controltower` → edit** (CT audit). **SO** rows need `mappedRecord.customerCrmAccountId` (+ optional `soNumber`, `externalRef`, `requestedDeliveryDate`). **PO** rows need `supplierId`, `productId`, `quantity`, `unitPrice` (+ optional line/title/buyer refs). **CT audit** rows optionally set `mappedRecord.shipmentId` (must exist). Live apply sets batch **`promoted`** and **`appliedAt`**. |
 
-**Prisma:** `ApiHubMappingAnalysisJob` (`20260430120000_apihub_mapping_analysis_job`); `ApiHubStagingBatch`, `ApiHubStagingRow` (`20260430140000_apihub_staging_batch`).
+**Prisma:** `ApiHubMappingAnalysisJob` (`20260430120000_apihub_mapping_analysis_job`); `ApiHubStagingBatch`, `ApiHubStagingRow` (`20260430140000_apihub_staging_batch`, `20260430150000_apihub_staging_batch_apply` for `appliedAt` / `applySummary`).
 
 ## Mapping templates, preview, diff, and apply (shipped)
 

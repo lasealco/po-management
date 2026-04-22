@@ -1,8 +1,13 @@
 import type { ApiHubStagingBatchListItemDto } from "@/lib/apihub/staging-batch-dto";
 
+import { StagingBatchApplyActions } from "./staging-batch-apply-actions";
+
 type Props = {
   initialBatches: ApiHubStagingBatchListItemDto[];
   canView: boolean;
+  canApplySalesOrder: boolean;
+  canApplyPurchaseOrder: boolean;
+  canApplyCtAudit: boolean;
 };
 
 function formatWhen(iso: string) {
@@ -16,7 +21,13 @@ function formatWhen(iso: string) {
   }
 }
 
-export function StagingBatchesPanel({ initialBatches, canView }: Props) {
+export function StagingBatchesPanel({
+  initialBatches,
+  canView,
+  canApplySalesOrder,
+  canApplyPurchaseOrder,
+  canApplyCtAudit,
+}: Props) {
   if (!canView) {
     return (
       <section id="staging-batches" className="mt-10 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
@@ -31,10 +42,12 @@ export function StagingBatchesPanel({ initialBatches, canView }: Props) {
       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Persistence</p>
       <h2 className="mt-2 text-lg font-semibold text-zinc-900">Staging batches</h2>
       <p className="mt-2 max-w-3xl text-sm text-zinc-600">
-        Materialized rows from a succeeded mapping analysis job (capped server-side). Use{" "}
-        <code className="rounded bg-zinc-100 px-1 font-mono text-[11px]">GET /api/apihub/staging-batches</code> and{" "}
-        <code className="rounded bg-zinc-100 px-1 font-mono text-[11px]">GET /api/apihub/staging-batches/[id]</code>{" "}
-        for full detail.
+        Materialized rows from a succeeded mapping analysis job (capped server-side). Apply open batches to{" "}
+        <span className="font-medium text-zinc-800">sales orders</span>,{" "}
+        <span className="font-medium text-zinc-800">purchase orders</span>, or{" "}
+        <span className="font-medium text-zinc-800">Control Tower audit</span> when mapped fields match the contract
+        (see API docs). Use{" "}
+        <code className="rounded bg-zinc-100 px-1 font-mono text-[11px]">POST …/staging-batches/[id]/apply</code>.
       </p>
 
       {initialBatches.length === 0 ? (
@@ -49,6 +62,7 @@ export function StagingBatchesPanel({ initialBatches, canView }: Props) {
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Source job</th>
                 <th className="px-4 py-3">Created</th>
+                <th className="px-4 py-3 min-w-[14rem]">Apply</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 bg-white text-zinc-800">
@@ -64,6 +78,20 @@ export function StagingBatchesPanel({ initialBatches, canView }: Props) {
                     {b.sourceMappingAnalysisJobId ? `${b.sourceMappingAnalysisJobId.slice(0, 12)}…` : "—"}
                   </td>
                   <td className="px-4 py-3 text-xs text-zinc-600">{formatWhen(b.createdAt)}</td>
+                  <td className="px-4 py-3 align-top text-xs">
+                    {b.status === "open" && !b.appliedAt ? (
+                      <StagingBatchApplyActions
+                        batchId={b.id}
+                        canApplySalesOrder={canApplySalesOrder}
+                        canApplyPurchaseOrder={canApplyPurchaseOrder}
+                        canApplyCtAudit={canApplyCtAudit}
+                      />
+                    ) : b.appliedAt ? (
+                      <span className="text-zinc-500">Applied {formatWhen(b.appliedAt)}</span>
+                    ) : (
+                      <span className="text-zinc-400">—</span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
