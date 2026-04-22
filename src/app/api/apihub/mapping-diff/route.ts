@@ -1,6 +1,4 @@
 import {
-  apiHubDemoActorMissing,
-  apiHubDemoTenantMissing,
   apiHubJson,
   apiHubValidationError,
   type ApiHubValidationIssue,
@@ -10,8 +8,7 @@ import { validateApiHubMappingRulesInput } from "@/lib/apihub/mapping-engine";
 import { diffApiHubMappingRules } from "@/lib/apihub/mapping-rules-diff";
 import { normalizeApiHubMappingRulesBody } from "@/lib/apihub/mapping-rules-body";
 import { resolveApiHubRequestId } from "@/lib/apihub/request-id";
-import { getActorUserId } from "@/lib/authz";
-import { getDemoTenant } from "@/lib/demo-tenant";
+import { apiHubEnsureTenantActorGrants } from "@/lib/apihub/route-guards";
 
 export const dynamic = "force-dynamic";
 
@@ -53,13 +50,9 @@ function arrayShapeIssues(field: "baselineRules" | "compareRules", raw: unknown)
 
 export async function POST(request: Request) {
   const requestId = resolveApiHubRequestId(request);
-  const tenant = await getDemoTenant();
-  if (!tenant) {
-    return apiHubDemoTenantMissing(requestId);
-  }
-  const actorId = await getActorUserId();
-  if (!actorId) {
-    return apiHubDemoActorMissing(requestId);
+  const gate = await apiHubEnsureTenantActorGrants(requestId, "view");
+  if (!gate.ok) {
+    return gate.response;
   }
 
   let body: PostBody = {};

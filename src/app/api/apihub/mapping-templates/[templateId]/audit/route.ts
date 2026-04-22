@@ -1,6 +1,4 @@
 import {
-  apiHubDemoActorMissing,
-  apiHubDemoTenantMissing,
   apiHubJson,
   apiHubValidationError,
   type ApiHubValidationIssue,
@@ -13,8 +11,7 @@ import {
   parseApiHubListLimitFromUrl,
 } from "@/lib/apihub/query-limit";
 import { resolveApiHubRequestId } from "@/lib/apihub/request-id";
-import { getActorUserId } from "@/lib/authz";
-import { getDemoTenant } from "@/lib/demo-tenant";
+import { apiHubEnsureTenantActorGrants } from "@/lib/apihub/route-guards";
 
 export const dynamic = "force-dynamic";
 
@@ -45,14 +42,11 @@ function parseAuditPage(url: URL): { ok: true; page: number } | { ok: false; iss
 
 export async function GET(request: Request, context: { params: Promise<{ templateId: string }> }) {
   const requestId = resolveApiHubRequestId(request);
-  const tenant = await getDemoTenant();
-  if (!tenant) {
-    return apiHubDemoTenantMissing(requestId);
+  const gate = await apiHubEnsureTenantActorGrants(requestId, "view");
+  if (!gate.ok) {
+    return gate.response;
   }
-  const actorId = await getActorUserId();
-  if (!actorId) {
-    return apiHubDemoActorMissing(requestId);
-  }
+  const { tenant } = gate.ctx;
 
   const { templateId } = await context.params;
   const url = new URL(request.url);

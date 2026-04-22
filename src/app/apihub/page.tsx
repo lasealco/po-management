@@ -15,7 +15,10 @@ import { listApiHubMappingAnalysisJobs } from "@/lib/apihub/mapping-analysis-job
 import type { ApiHubMappingTemplateDto } from "@/lib/apihub/mapping-template-dto";
 import { toApiHubMappingTemplateDto } from "@/lib/apihub/mapping-template-dto";
 import { listApiHubMappingTemplates } from "@/lib/apihub/mapping-templates-repo";
-import { getViewerGrantSet } from "@/lib/authz";
+import { listApiHubStagingBatches } from "@/lib/apihub/staging-batches-repo";
+import type { ApiHubStagingBatchListItemDto } from "@/lib/apihub/staging-batch-dto";
+import { toApiHubStagingBatchListItemDto } from "@/lib/apihub/staging-batch-dto";
+import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 
 import { ApplyConflictsPanel } from "./apply-conflicts-panel";
 import { ConnectorsSection } from "./connectors-section";
@@ -25,6 +28,7 @@ import { IngestionOpsPanel, type IngestionOpsSummaryPayload } from "./ingestion-
 import { MappingAnalysisJobsPanel } from "./mapping-analysis-jobs-panel";
 import { MappingPreviewExportPanel } from "./mapping-preview-export-panel";
 import { MappingTemplatesSection } from "./mapping-templates-section";
+import { StagingBatchesPanel } from "./staging-batches-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -68,35 +72,41 @@ const STEP_PLACEHOLDERS = [
 
 export default async function ApihubHomePage() {
   const access = await getViewerGrantSet();
-  const canCreate = Boolean(access?.user);
+  const grantSet = access?.grantSet ?? new Set<string>();
+  const canViewHub = Boolean(access?.user && access?.tenant && viewerHas(grantSet, "org.apihub", "view"));
+  const canEditHub = canViewHub && viewerHas(grantSet, "org.apihub", "edit");
+
   const connectorRows =
-    access?.user && access.tenant ? await listApiHubConnectorsWithRecentAudit(access.tenant.id, undefined, 3) : [];
+    canViewHub && access?.tenant ? await listApiHubConnectorsWithRecentAudit(access.tenant.id, undefined, 3) : [];
   const initialConnectors = connectorRows.map(toApiHubConnectorDto);
 
   let ingestionInitialSummary: IngestionOpsSummaryPayload | null = null;
   let ingestionInitialRuns: ApiHubIngestionRunDto[] = [];
   let initialMappingTemplates: ApiHubMappingTemplateDto[] = [];
   let initialMappingAnalysisJobs: ApiHubMappingAnalysisJobDto[] = [];
+  let initialStagingBatches: ApiHubStagingBatchListItemDto[] = [];
   let initialApplyConflicts: ApiHubApplyConflictListItemDto[] = [];
   let initialApplyConflictsNextCursor: string | null = null;
   let initialAlertsSummary: ApiHubIngestionAlertsSummaryDto | null = null;
-  if (access?.user && access.tenant) {
-    const [ops, listed, mappingRows, analysisJobRows, applyConflicts, alertsSummary] = await Promise.all([
-      getApiHubIngestionRunOpsSummary({ tenantId: access.tenant.id }),
-      listApiHubIngestionRuns({
-        tenantId: access.tenant.id,
-        status: null,
-        limit: 20,
-        cursor: null,
-        connectorId: null,
-        triggerKind: null,
-        attemptRange: null,
-      }),
-      listApiHubMappingTemplates(access.tenant.id, 50),
-      listApiHubMappingAnalysisJobs({ tenantId: access.tenant.id, limit: 12 }),
-      listApiHubApplyConflicts({ tenantId: access.tenant.id, limit: 20, cursor: null }),
-      getApiHubIngestionAlertsSummary({ tenantId: access.tenant.id, limit: 12 }),
-    ]);
+  if (canViewHub && access?.tenant) {
+    const [ops, listed, mappingRows, analysisJobRows, stagingBatchRows, applyConflicts, alertsSummary] =
+      await Promise.all([
+        getApiHubIngestionRunOpsSummary({ tenantId: access.tenant.id }),
+        listApiHubIngestionRuns({
+          tenantId: access.tenant.id,
+          status: null,
+          limit: 20,
+          cursor: null,
+          connectorId: null,
+          triggerKind: null,
+          attemptRange: null,
+        }),
+        listApiHubMappingTemplates(access.tenant.id, 50),
+        listApiHubMappingAnalysisJobs({ tenantId: access.tenant.id, limit: 12 }),
+        listApiHubStagingBatches({ tenantId: access.tenant.id, limit: 20 }),
+        listApiHubApplyConflicts({ tenantId: access.tenant.id, limit: 20, cursor: null }),
+        getApiHubIngestionAlertsSummary({ tenantId: access.tenant.id, limit: 12 }),
+      ]);
     ingestionInitialSummary = {
       totals: ops.totals,
       windows: ops.windows,
@@ -107,6 +117,7 @@ export default async function ApihubHomePage() {
     ingestionInitialRuns = listed.items.map(toApiHubIngestionRunDto);
     initialMappingTemplates = mappingRows.map(toApiHubMappingTemplateDto);
     initialMappingAnalysisJobs = analysisJobRows.map(toApiHubMappingAnalysisJobDto);
+    initialStagingBatches = stagingBatchRows.map(toApiHubStagingBatchListItemDto);
     initialApplyConflicts = applyConflicts.items;
     initialApplyConflictsNextCursor = applyConflicts.nextCursor;
     initialAlertsSummary = alertsSummary;
@@ -122,8 +133,9 @@ export default async function ApihubHomePage() {
             <p className="mt-2 max-w-2xl text-sm text-zinc-600">
               Single place for AI-assisted mapping proposals, human confirmation, and repeatable runs across file upload
               and server-to-server APIs. <span className="font-medium text-zinc-800">P2</span> ships async mapping
-              analysis jobs (deterministic heuristic) plus staging-style preview on the job payload; connectors,
-              templates, and apply flows remain demo-session scoped.
+              analysis jobs (heuristic plus optional OpenAI JSON when API keys are configured), staging preview on the
+              job, and persisted staging batches for API access. Access is org-scoped via{" "}
+              <span className="font-mono text-xs text-zinc-700">org.apihub</span> view/edit.
             </p>
           </div>
           <div className="flex flex-col gap-2 sm:items-end">
@@ -175,20 +187,25 @@ export default async function ApihubHomePage() {
 
       <DemoSyncShowcase />
       <IngestionOpsPanel
-        canView={canCreate}
+        canView={canViewHub}
         initialSummary={ingestionInitialSummary}
         initialRuns={ingestionInitialRuns}
       />
-      <IngestionAlertsPanel canView={canCreate} initialSummary={initialAlertsSummary} />
+      <IngestionAlertsPanel canView={canViewHub} initialSummary={initialAlertsSummary} />
       <ApplyConflictsPanel
-        canView={canCreate}
+        canView={canViewHub}
         initialItems={initialApplyConflicts}
         initialNextCursor={initialApplyConflictsNextCursor}
       />
-      <MappingAnalysisJobsPanel initialJobs={initialMappingAnalysisJobs} canUse={canCreate} />
-      <MappingTemplatesSection initialTemplates={initialMappingTemplates} canManage={canCreate} />
-      <MappingPreviewExportPanel canUse={canCreate} />
-      <ConnectorsSection initialConnectors={initialConnectors} canCreate={canCreate} />
+      <MappingAnalysisJobsPanel
+        initialJobs={initialMappingAnalysisJobs}
+        canView={canViewHub}
+        canEdit={canEditHub}
+      />
+      <StagingBatchesPanel initialBatches={initialStagingBatches} canView={canViewHub} />
+      <MappingTemplatesSection initialTemplates={initialMappingTemplates} canManage={canEditHub} />
+      <MappingPreviewExportPanel canUse={canEditHub} />
+      <ConnectorsSection initialConnectors={initialConnectors} canCreate={canEditHub} />
     </main>
   );
 }

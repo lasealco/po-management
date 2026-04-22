@@ -8,7 +8,7 @@ const getApiHubIngestionRunByIdMock = vi.fn();
 const toApiHubIngestionRunDtoMock = vi.fn();
 
 vi.mock("@/lib/demo-tenant", () => ({ getDemoTenant: getDemoTenantMock }));
-vi.mock("@/lib/authz", () => ({ getActorUserId: getActorUserIdMock }));
+vi.mock("@/lib/authz", () => ({ getActorUserId: getActorUserIdMock, userHasGlobalGrant: vi.fn().mockResolvedValue(true) }));
 vi.mock("@/lib/apihub/ingestion-runs-repo", () => ({
   getApiHubIngestionRunById: getApiHubIngestionRunByIdMock,
 }));

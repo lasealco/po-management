@@ -145,6 +145,18 @@ export const GLOBAL_PERMISSION_CATALOG = [
     label: "Manage invoice audit",
     description: "Create intakes, run audits vs pricing snapshots, and record approvals or overrides.",
   },
+  {
+    resource: "org.apihub",
+    action: "view",
+    label: "View integration hub",
+    description: "Open /apihub and read API Hub data (connectors, mapping, ingestion runs, staging).",
+  },
+  {
+    resource: "org.apihub",
+    action: "edit",
+    label: "Manage integration hub",
+    description: "Create or change connectors, templates, ingestion runs, mapping analysis jobs, and staging batches.",
+  },
 ] as const;
 
 export type GlobalPermissionRow = (typeof GLOBAL_PERMISSION_CATALOG)[number];

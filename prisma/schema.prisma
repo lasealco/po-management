@@ -83,6 +83,8 @@ model Tenant {
   apiHubMappingTemplates ApiHubMappingTemplate[]
   apiHubMappingTemplateAuditLogs ApiHubMappingTemplateAuditLog[]
   apiHubMappingAnalysisJobs ApiHubMappingAnalysisJob[]
+  apiHubStagingBatches ApiHubStagingBatch[]
+  apiHubStagingRows ApiHubStagingRow[]
   supplyChainTwinEntitySnapshots SupplyChainTwinEntitySnapshot[]
   supplyChainTwinEntityEdges     SupplyChainTwinEntityEdge[]
   supplyChainTwinIngestEvents    SupplyChainTwinIngestEvent[]
@@ -283,9 +285,49 @@ model ApiHubMappingAnalysisJob {
 
   tenant       Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   requestedBy  User   @relation(fields: [requestedByUserId], references: [id], onDelete: Restrict)
+  stagingBatches ApiHubStagingBatch[]
 
   @@index([tenantId, createdAt])
   @@index([tenantId, status, createdAt])
+}
+
+/// Normalized staging batch (pre-commit rows) for operator review — linked from mapping analysis or future ingest.
+model ApiHubStagingBatch {
+  id                         String   @id @default(cuid())
+  tenantId                   String
+  createdByUserId            String
+  sourceMappingAnalysisJobId String?
+  title                      String?
+  /// `open` | `promoted` | `discarded`
+  status                     String   @default("open")
+  rowCount                   Int      @default(0)
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy User   @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
+  sourceJob ApiHubMappingAnalysisJob? @relation(fields: [sourceMappingAnalysisJobId], references: [id], onDelete: SetNull)
+  rows      ApiHubStagingRow[]
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, status, createdAt])
+}
+
+model ApiHubStagingRow {
+  id           String   @id @default(cuid())
+  tenantId     String
+  batchId      String
+  rowIndex     Int
+  sourceRecord Json?
+  mappedRecord Json?
+  issues       Json?
+  createdAt    DateTime @default(now())
+
+  tenant Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  batch  ApiHubStagingBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@unique([batchId, rowIndex])
+  @@index([tenantId, batchId])
 }
 
 /// Tenant-scoped milestone template packs (override or extend built-in packs in code).
@@ -372,6 +414,7 @@ model User {
   apiHubMappingTemplateAuditLogs ApiHubMappingTemplateAuditLog[]
   apiHubIngestionRunAuditLogs ApiHubIngestionRunAuditLog[]
   apiHubMappingAnalysisJobsRequested ApiHubMappingAnalysisJob[]
+  apiHubStagingBatchesCreated ApiHubStagingBatch[]
   invoiceIntakesAccountingApproved InvoiceIntake[]         @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated TariffShipmentApplication[] @relation("TariffShipmentApplicationCreator")
 

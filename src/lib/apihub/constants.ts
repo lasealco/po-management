@@ -118,3 +118,9 @@ export const APIHUB_MAPPING_ANALYSIS_TARGET_FIELDS_MAX = 120;
 
 /** Engine id for deterministic proposals (no LLM). */
 export const APIHUB_MAPPING_ANALYSIS_ENGINE_HEURISTIC = "deterministic_heuristic_v1" as const;
+
+/** Engine id when OpenAI structured JSON is used successfully. */
+export const APIHUB_MAPPING_ANALYSIS_ENGINE_OPENAI = "openai_structured_json_v1" as const;
+
+/** Max rows materialized into a single staging batch (bounded writes). */
+export const APIHUB_STAGING_BATCH_MAX_ROWS = 500;

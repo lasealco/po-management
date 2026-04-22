@@ -1,6 +1,4 @@
 import {
-  apiHubDemoActorMissing,
-  apiHubDemoTenantMissing,
   apiHubError,
   apiHubJson,
   apiHubValidationError,
@@ -21,21 +19,17 @@ import {
   updateApiHubMappingTemplate,
 } from "@/lib/apihub/mapping-templates-repo";
 import { resolveApiHubRequestId } from "@/lib/apihub/request-id";
-import { getActorUserId } from "@/lib/authz";
-import { getDemoTenant } from "@/lib/demo-tenant";
+import { apiHubEnsureTenantActorGrants } from "@/lib/apihub/route-guards";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request, context: { params: Promise<{ templateId: string }> }) {
   const requestId = resolveApiHubRequestId(request);
-  const tenant = await getDemoTenant();
-  if (!tenant) {
-    return apiHubDemoTenantMissing(requestId);
+  const gate = await apiHubEnsureTenantActorGrants(requestId, "view");
+  if (!gate.ok) {
+    return gate.response;
   }
-  const actorId = await getActorUserId();
-  if (!actorId) {
-    return apiHubDemoActorMissing(requestId);
-  }
+  const { tenant } = gate.ctx;
 
   const { templateId } = await context.params;
   const row = await getApiHubMappingTemplateById({ tenantId: tenant.id, templateId });
@@ -48,14 +42,11 @@ export async function GET(request: Request, context: { params: Promise<{ templat
 
 export async function PATCH(request: Request, context: { params: Promise<{ templateId: string }> }) {
   const requestId = resolveApiHubRequestId(request);
-  const tenant = await getDemoTenant();
-  if (!tenant) {
-    return apiHubDemoTenantMissing(requestId);
+  const gate = await apiHubEnsureTenantActorGrants(requestId, "edit");
+  if (!gate.ok) {
+    return gate.response;
   }
-  const actorId = await getActorUserId();
-  if (!actorId) {
-    return apiHubDemoActorMissing(requestId);
-  }
+  const { tenant, actorId } = gate.ctx;
 
   const { templateId } = await context.params;
   const existing = await getApiHubMappingTemplateById({ tenantId: tenant.id, templateId });
@@ -142,14 +133,11 @@ export async function PATCH(request: Request, context: { params: Promise<{ templ
 
 export async function DELETE(request: Request, context: { params: Promise<{ templateId: string }> }) {
   const requestId = resolveApiHubRequestId(request);
-  const tenant = await getDemoTenant();
-  if (!tenant) {
-    return apiHubDemoTenantMissing(requestId);
+  const gate = await apiHubEnsureTenantActorGrants(requestId, "edit");
+  if (!gate.ok) {
+    return gate.response;
   }
-  const actorId = await getActorUserId();
-  if (!actorId) {
-    return apiHubDemoActorMissing(requestId);
-  }
+  const { tenant, actorId } = gate.ctx;
 
   const { templateId } = await context.params;
   const deleted = await deleteApiHubMappingTemplate({

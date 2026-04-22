@@ -15,7 +15,7 @@ const idemMocks = vi.hoisted(() => ({
 const appendApiHubIngestionRunAuditLogMock = vi.fn();
 
 vi.mock("@/lib/demo-tenant", () => ({ getDemoTenant: getDemoTenantMock }));
-vi.mock("@/lib/authz", () => ({ getActorUserId: getActorUserIdMock }));
+vi.mock("@/lib/authz", () => ({ getActorUserId: getActorUserIdMock, userHasGlobalGrant: vi.fn().mockResolvedValue(true) }));
 vi.mock("@/lib/apihub/ingestion-apply-repo", () => ({
   applyApiHubIngestionRun: applyApiHubIngestionRunMock,
 }));

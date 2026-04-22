@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getActorUserId } from "@/lib/authz";
 import {
-  apiHubDemoActorMissing,
-  apiHubDemoTenantMissing,
   apiHubError,
   apiHubValidationError,
 } from "@/lib/apihub/api-error";
@@ -12,7 +9,7 @@ import { computeMappingPreview, type MappingPreviewPostBody } from "@/lib/apihub
 import { getApiHubIngestionRunById } from "@/lib/apihub/ingestion-runs-repo";
 import { APIHUB_REQUEST_ID_HEADER } from "@/lib/apihub/request-id";
 import { resolveApiHubRequestId } from "@/lib/apihub/request-id";
-import { getDemoTenant } from "@/lib/demo-tenant";
+import { apiHubEnsureTenantActorGrants } from "@/lib/apihub/route-guards";
 
 export const dynamic = "force-dynamic";
 
@@ -22,14 +19,11 @@ type ExportPostBody = MappingPreviewPostBody & {
 
 export async function POST(request: Request, context: { params: Promise<{ jobId: string }> }) {
   const requestId = resolveApiHubRequestId(request);
-  const tenant = await getDemoTenant();
-  if (!tenant) {
-    return apiHubDemoTenantMissing(requestId);
+  const gate = await apiHubEnsureTenantActorGrants(requestId, "view");
+  if (!gate.ok) {
+    return gate.response;
   }
-  const actorId = await getActorUserId();
-  if (!actorId) {
-    return apiHubDemoActorMissing(requestId);
-  }
+  const { tenant } = gate.ctx;
 
   const { jobId } = await context.params;
   const run = await getApiHubIngestionRunById({ tenantId: tenant.id, runId: jobId });

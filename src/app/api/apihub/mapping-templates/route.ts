@@ -1,6 +1,4 @@
 import {
-  apiHubDemoActorMissing,
-  apiHubDemoTenantMissing,
   apiHubJson,
   apiHubValidationError,
   type ApiHubValidationIssue,
@@ -23,8 +21,7 @@ import {
   parseApiHubListLimitFromUrl,
 } from "@/lib/apihub/query-limit";
 import { resolveApiHubRequestId } from "@/lib/apihub/request-id";
-import { getActorUserId } from "@/lib/authz";
-import { getDemoTenant } from "@/lib/demo-tenant";
+import { apiHubEnsureTenantActorGrants } from "@/lib/apihub/route-guards";
 
 export const dynamic = "force-dynamic";
 
@@ -36,14 +33,11 @@ type PostBody = {
 
 export async function GET(request: Request) {
   const requestId = resolveApiHubRequestId(request);
-  const tenant = await getDemoTenant();
-  if (!tenant) {
-    return apiHubDemoTenantMissing(requestId);
+  const gate = await apiHubEnsureTenantActorGrants(requestId, "view");
+  if (!gate.ok) {
+    return gate.response;
   }
-  const actorId = await getActorUserId();
-  if (!actorId) {
-    return apiHubDemoActorMissing(requestId);
-  }
+  const { tenant } = gate.ctx;
 
   const limitParsed = parseApiHubListLimitFromUrl(new URL(request.url));
   if (!limitParsed.ok) {
@@ -63,14 +57,11 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const requestId = resolveApiHubRequestId(request);
-  const tenant = await getDemoTenant();
-  if (!tenant) {
-    return apiHubDemoTenantMissing(requestId);
+  const gate = await apiHubEnsureTenantActorGrants(requestId, "edit");
+  if (!gate.ok) {
+    return gate.response;
   }
-  const actorId = await getActorUserId();
-  if (!actorId) {
-    return apiHubDemoActorMissing(requestId);
-  }
+  const { tenant, actorId } = gate.ctx;
 
   let body: PostBody = {};
   try {

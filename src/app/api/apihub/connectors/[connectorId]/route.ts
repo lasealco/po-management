@@ -1,12 +1,9 @@
 import {
-  apiHubDemoActorMissing,
-  apiHubDemoTenantMissing,
   apiHubError,
   apiHubJson,
   apiHubValidationError,
 } from "@/lib/apihub/api-error";
 import { validateApiHubAuthConfigRefForWrite } from "@/lib/apihub/auth-config-ref";
-import { getActorUserId } from "@/lib/authz";
 import {
   APIHUB_CONNECTOR_DISABLE_FORCE_NOTE_MIN,
   APIHUB_CONNECTOR_OPS_NOTE_MAX,
@@ -20,7 +17,7 @@ import {
 } from "@/lib/apihub/connectors-repo";
 import { countInFlightApiHubIngestionRunsForConnector } from "@/lib/apihub/ingestion-runs-repo";
 import { resolveApiHubRequestId } from "@/lib/apihub/request-id";
-import { getDemoTenant } from "@/lib/demo-tenant";
+import { apiHubEnsureTenantActorGrants } from "@/lib/apihub/route-guards";
 
 type PatchBody = {
   status?: unknown;
@@ -37,15 +34,11 @@ export async function PATCH(
   context: { params: Promise<{ connectorId: string }> },
 ) {
   const requestId = resolveApiHubRequestId(request);
-  const tenant = await getDemoTenant();
-  if (!tenant) {
-    return apiHubDemoTenantMissing(requestId);
+  const gate = await apiHubEnsureTenantActorGrants(requestId, "edit");
+  if (!gate.ok) {
+    return gate.response;
   }
-
-  const actorId = await getActorUserId();
-  if (!actorId) {
-    return apiHubDemoActorMissing(requestId);
-  }
+  const { tenant, actorId } = gate.ctx;
 
   const { connectorId } = await context.params;
   if (!connectorId) {

@@ -203,11 +203,12 @@ export function ConnectorsSection({ initialConnectors, canCreate }: Props) {
           </button>
         ) : (
           <p className="max-w-xs text-right text-sm text-zinc-600">
-            Choose a demo user in{" "}
-            <a href="/settings/demo" className="font-medium text-[var(--arscmp-primary)] hover:underline">
-              Settings → Demo session
-            </a>{" "}
-            to create registry rows via the API.
+            <span className="font-medium text-zinc-800">View-only:</span> org.apihub → edit is required to add connectors.
+            Ask an admin in{" "}
+            <a href="/settings/roles" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+              Settings → Roles
+            </a>
+            .
           </p>
         )}
       </div>
@@ -224,7 +225,7 @@ export function ConnectorsSection({ initialConnectors, canCreate }: Props) {
           <p className="mt-2">
             {canCreate
               ? "Use “Add stub connector” to insert a draft row for UI and API checks."
-              : "Once a demo session is active, you can add stub rows from this page or POST /api/apihub/connectors."}
+              : "With org.apihub → edit, add stub rows from this page or POST /api/apihub/connectors."}
           </p>
         </div>
       ) : (

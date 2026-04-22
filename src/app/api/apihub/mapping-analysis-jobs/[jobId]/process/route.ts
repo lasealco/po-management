@@ -1,6 +1,4 @@
 import {
-  apiHubDemoActorMissing,
-  apiHubDemoTenantMissing,
   apiHubError,
   apiHubJson,
 } from "@/lib/apihub/api-error";
@@ -8,8 +6,7 @@ import { toApiHubMappingAnalysisJobDto } from "@/lib/apihub/mapping-analysis-job
 import { processApiHubMappingAnalysisJob } from "@/lib/apihub/mapping-analysis-job-process";
 import { getApiHubMappingAnalysisJob } from "@/lib/apihub/mapping-analysis-jobs-repo";
 import { resolveApiHubRequestId } from "@/lib/apihub/request-id";
-import { getActorUserId } from "@/lib/authz";
-import { getDemoTenant } from "@/lib/demo-tenant";
+import { apiHubEnsureTenantActorGrants } from "@/lib/apihub/route-guards";
 
 export const dynamic = "force-dynamic";
 
@@ -20,14 +17,11 @@ export const dynamic = "force-dynamic";
 export async function POST(request: Request, ctx: { params: Promise<{ jobId: string }> }) {
   const requestId = resolveApiHubRequestId(request);
   const { jobId } = await ctx.params;
-  const tenant = await getDemoTenant();
-  if (!tenant) {
-    return apiHubDemoTenantMissing(requestId);
+  const gate = await apiHubEnsureTenantActorGrants(requestId, "edit");
+  if (!gate.ok) {
+    return gate.response;
   }
-  const actorId = await getActorUserId();
-  if (!actorId) {
-    return apiHubDemoActorMissing(requestId);
-  }
+  const { tenant } = gate.ctx;
 
   const existing = await getApiHubMappingAnalysisJob({ tenantId: tenant.id, jobId });
   if (!existing) {

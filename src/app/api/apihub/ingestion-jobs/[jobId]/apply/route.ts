@@ -1,8 +1,6 @@
 import { Prisma } from "@prisma/client";
 
 import {
-  apiHubDemoActorMissing,
-  apiHubDemoTenantMissing,
   apiHubError,
   apiHubJson,
 } from "@/lib/apihub/api-error";
@@ -16,8 +14,7 @@ import { applyApiHubIngestionRun, type ApplyApiHubIngestionRunOutcome } from "@/
 import { appendApiHubIngestionRunAuditLog } from "@/lib/apihub/ingestion-run-audit-repo";
 import { toApiHubIngestionRunDto } from "@/lib/apihub/ingestion-run-dto";
 import { APIHUB_REQUEST_ID_HEADER, resolveApiHubRequestId } from "@/lib/apihub/request-id";
-import { getActorUserId } from "@/lib/authz";
-import { getDemoTenant } from "@/lib/demo-tenant";
+import { apiHubEnsureTenantActorGrants } from "@/lib/apihub/route-guards";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -261,14 +258,11 @@ async function finalizeApplyResponse(opts: {
 
 export async function POST(request: Request, context: { params: Promise<{ jobId: string }> }) {
   const requestId = resolveApiHubRequestId(request);
-  const tenant = await getDemoTenant();
-  if (!tenant) {
-    return apiHubDemoTenantMissing(requestId);
+  const gate = await apiHubEnsureTenantActorGrants(requestId, "edit");
+  if (!gate.ok) {
+    return gate.response;
   }
-  const actorId = await getActorUserId();
-  if (!actorId) {
-    return apiHubDemoActorMissing(requestId);
-  }
+  const { tenant, actorId } = gate.ctx;
 
   const { jobId } = await context.params;
   const jsonBody = await readApplyJsonBody(request);

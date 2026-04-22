@@ -26,7 +26,7 @@ This folder is the **documentation home** for **integration / ingestion APIs and
 
 ## Route index (parity with `src/app/api/apihub/**`)
 
-Authoritative guard semantics: [permissions-matrix.md](./permissions-matrix.md). Every path below except **`GET /api/apihub/health`** requires **demo tenant** and **active demo actor**.
+Authoritative guard semantics: [permissions-matrix.md](./permissions-matrix.md). Every path below except **`GET /api/apihub/health`** requires **demo tenant**, **active demo actor**, and **`org.apihub`** grants (**view** for reads, **edit** for writes). Mapping analysis may use OpenAI when **`APIHUB_OPENAI_API_KEY`** or **`OPENAI_API_KEY`** is set; optional **`APIHUB_OPENAI_MODEL`** (default `gpt-4o-mini`).
 
 ### Discovery (public)
 
@@ -58,11 +58,18 @@ Authoritative guard semantics: [permissions-matrix.md](./permissions-matrix.md).
 | Method | Path | Purpose |
 |--------|------|---------|
 | `GET` | `/api/apihub/mapping-analysis-jobs` | List recent jobs; `limit` query (same bounds as other list routes). |
-| `POST` | `/api/apihub/mapping-analysis-jobs` | Queue job: JSON `{ records: object[], targetFields?: string[], note?: string }`. Schedules processing via `after()` (deterministic heuristic; no secrets). |
-| `GET` | `/api/apihub/mapping-analysis-jobs/:jobId` | Job detail, `outputProposal.rules`, optional embedded **`stagingPreview`** (mapping engine dry-run on sample records). |
+| `POST` | `/api/apihub/mapping-analysis-jobs` | Queue job: JSON `{ records: object[], targetFields?: string[], note?: string }`. Schedules processing via `after()` (OpenAI JSON proposal when configured, else deterministic heuristic). |
+| `GET` | `/api/apihub/mapping-analysis-jobs/:jobId` | Job detail, `outputProposal.rules`, optional **`outputProposal.llm`** (attempted/used/model/error), optional embedded **`stagingPreview`**. |
 | `POST` | `/api/apihub/mapping-analysis-jobs/:jobId/process` | Manually claim a **queued** job (local dev / recovery); idempotent. |
 
-**Prisma:** `ApiHubMappingAnalysisJob` (`20260430120000_apihub_mapping_analysis_job`).
+### Staging batches (persisted preview rows)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET`, `POST` | `/api/apihub/staging-batches` | List recent batches / create from **`mappingAnalysisJobId`** (succeeded job only; row cap server-side). |
+| `GET` | `/api/apihub/staging-batches/:batchId` | Batch metadata + rows (`rowLimit` query). |
+
+**Prisma:** `ApiHubMappingAnalysisJob` (`20260430120000_apihub_mapping_analysis_job`); `ApiHubStagingBatch`, `ApiHubStagingRow` (`20260430140000_apihub_staging_batch`).
 
 ## Mapping templates, preview, diff, and apply (shipped)
 

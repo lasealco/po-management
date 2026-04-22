@@ -9,7 +9,7 @@ const listApiHubMappingTemplatesMock = vi.fn();
 const createApiHubMappingTemplateMock = vi.fn();
 
 vi.mock("@/lib/demo-tenant", () => ({ getDemoTenant: getDemoTenantMock }));
-vi.mock("@/lib/authz", () => ({ getActorUserId: getActorUserIdMock }));
+vi.mock("@/lib/authz", () => ({ getActorUserId: getActorUserIdMock, userHasGlobalGrant: vi.fn().mockResolvedValue(true) }));
 vi.mock("@/lib/apihub/mapping-templates-repo", () => ({
   listApiHubMappingTemplates: listApiHubMappingTemplatesMock,
   createApiHubMappingTemplate: createApiHubMappingTemplateMock,

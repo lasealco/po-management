@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { readApiHubErrorMessageFromJsonBody } from "@/lib/apihub/api-error";
@@ -7,7 +8,8 @@ import type { ApiHubMappingAnalysisJobDto } from "@/lib/apihub/mapping-analysis-
 
 type Props = {
   initialJobs: ApiHubMappingAnalysisJobDto[];
-  canUse: boolean;
+  canView: boolean;
+  canEdit: boolean;
 };
 
 const SAMPLE_RECORDS = `[
@@ -19,7 +21,8 @@ function terminal(status: string) {
   return status === "succeeded" || status === "failed";
 }
 
-export function MappingAnalysisJobsPanel({ initialJobs, canUse }: Props) {
+export function MappingAnalysisJobsPanel({ initialJobs, canView, canEdit }: Props) {
+  const router = useRouter();
   const [jobs, setJobs] = useState(initialJobs);
   const [recordsJson, setRecordsJson] = useState(SAMPLE_RECORDS);
   const [targetFieldsText, setTargetFieldsText] = useState("");
@@ -27,6 +30,7 @@ export function MappingAnalysisJobsPanel({ initialJobs, canUse }: Props) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activeJob, setActiveJob] = useState<ApiHubMappingAnalysisJobDto | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -79,7 +83,9 @@ export function MappingAnalysisJobsPanel({ initialJobs, canUse }: Props) {
   }, [activeId, refreshJob, stopPoll]);
 
   async function submitCreate() {
+    if (!canEdit) return;
     setError(null);
+    setInfo(null);
     let records: unknown;
     try {
       records = JSON.parse(recordsJson.trim());
@@ -119,9 +125,36 @@ export function MappingAnalysisJobsPanel({ initialJobs, canUse }: Props) {
     }
   }
 
-  async function runProcessNow() {
-    if (!activeId) return;
+  async function materializeStaging() {
+    if (!canEdit || !activeId || !activeJob || activeJob.status !== "succeeded") return;
     setError(null);
+    setInfo(null);
+    setBusy(true);
+    try {
+      const res = await fetch("/api/apihub/staging-batches", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mappingAnalysisJobId: activeId,
+          title: `From analysis ${activeId.slice(0, 8)}`,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(readApiHubErrorMessageFromJsonBody(data, "Staging batch create failed."));
+        return;
+      }
+      setInfo("Staging batch created. Refresh the staging list below if it is open.");
+      router.refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function runProcessNow() {
+    if (!canEdit || !activeId) return;
+    setError(null);
+    setInfo(null);
     setBusy(true);
     try {
       const res = await fetch(`/api/apihub/mapping-analysis-jobs/${encodeURIComponent(activeId)}/process`, {
@@ -143,11 +176,11 @@ export function MappingAnalysisJobsPanel({ initialJobs, canUse }: Props) {
     }
   }
 
-  if (!canUse) {
+  if (!canView) {
     return (
       <section id="mapping-analysis-jobs" className="mt-10 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-zinc-900">Mapping analysis jobs (P2)</h2>
-        <p className="mt-2 text-sm text-zinc-600">Open Settings → Demo session to run async analysis jobs.</p>
+        <p className="mt-2 text-sm text-zinc-600">You need Integration hub access (org.apihub → view).</p>
       </section>
     );
   }
@@ -158,38 +191,51 @@ export function MappingAnalysisJobsPanel({ initialJobs, canUse }: Props) {
       <h2 className="mt-2 text-lg font-semibold text-zinc-900">Mapping analysis jobs</h2>
       <p className="mt-2 max-w-3xl text-sm text-zinc-600">
         Queue a <span className="font-medium text-zinc-800">structured mapping proposal</span> from sample records.
-        Jobs run asynchronously after submit (deterministic heuristic today; LLM slot later). Use{" "}
-        <span className="font-medium">Process now</span> if the status stays queued locally.
+        Jobs run asynchronously after submit: deterministic heuristic plus optional OpenAI JSON assist when{" "}
+        <span className="font-mono text-[11px] text-zinc-700">APIHUB_OPENAI_API_KEY</span> or{" "}
+        <span className="font-mono text-[11px] text-zinc-700">OPENAI_API_KEY</span> is set server-side. Use{" "}
+        <span className="font-medium">Process now</span> if the status stays queued locally. Use{" "}
+        <span className="font-medium">Materialize staging</span> after success to persist capped rows for APIs.
       </p>
+      {!canEdit ? (
+        <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          View-only: your role has org.apihub → view but not edit. Queue, process, and materialize require org.apihub →
+          edit.
+        </p>
+      ) : null}
 
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
         <div className="rounded-xl border border-zinc-200 bg-zinc-50/50 p-4">
           <label className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Sample records (JSON)</label>
           <textarea
-            className="mt-2 h-48 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 font-mono text-xs text-zinc-900"
+            className="mt-2 h-48 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 font-mono text-xs text-zinc-900 disabled:opacity-60"
             value={recordsJson}
             onChange={(e) => setRecordsJson(e.target.value)}
+            disabled={!canEdit}
           />
           <label className="mt-3 block text-xs font-semibold uppercase tracking-wide text-zinc-500">
             Target field hints (optional, comma or newline)
           </label>
           <input
-            className="mt-2 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900"
+            className="mt-2 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 disabled:opacity-60"
             value={targetFieldsText}
             onChange={(e) => setTargetFieldsText(e.target.value)}
             placeholder="shipmentId, amount"
+            disabled={!canEdit}
           />
           <label className="mt-3 block text-xs font-semibold uppercase tracking-wide text-zinc-500">Note (optional)</label>
           <input
-            className="mt-2 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900"
+            className="mt-2 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 disabled:opacity-60"
             value={note}
             onChange={(e) => setNote(e.target.value)}
+            disabled={!canEdit}
           />
           {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
+          {info ? <p className="mt-3 text-sm text-emerald-800">{info}</p> : null}
           <div className="mt-4 flex flex-wrap gap-2">
             <button
               type="button"
-              disabled={busy}
+              disabled={busy || !canEdit}
               onClick={() => void submitCreate()}
               className="rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:brightness-95 disabled:opacity-60"
             >
@@ -197,11 +243,19 @@ export function MappingAnalysisJobsPanel({ initialJobs, canUse }: Props) {
             </button>
             <button
               type="button"
-              disabled={busy || !activeId || activeJob?.status !== "queued"}
+              disabled={busy || !canEdit || !activeId || activeJob?.status !== "queued"}
               onClick={() => void runProcessNow()}
               className="rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 hover:bg-zinc-50 disabled:opacity-50"
             >
               Process now
+            </button>
+            <button
+              type="button"
+              disabled={busy || !canEdit || !activeId || activeJob?.status !== "succeeded"}
+              onClick={() => void materializeStaging()}
+              className="rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 hover:bg-zinc-50 disabled:opacity-50"
+            >
+              Materialize staging
             </button>
           </div>
         </div>
@@ -242,6 +296,30 @@ export function MappingAnalysisJobsPanel({ initialJobs, canUse }: Props) {
                   </>
                 ) : null}
               </p>
+              {activeJob.outputProposal?.llm ? (
+                <p className="mt-2 text-xs text-zinc-600">
+                  LLM:{" "}
+                  {activeJob.outputProposal.llm.used ? (
+                    <span className="font-medium text-emerald-800">used</span>
+                  ) : activeJob.outputProposal.llm.attempted ? (
+                    <span className="font-medium text-amber-800">attempted, fell back</span>
+                  ) : (
+                    <span className="font-medium text-zinc-700">not attempted</span>
+                  )}
+                  {activeJob.outputProposal.llm.model ? (
+                    <>
+                      {" "}
+                      · model <span className="font-mono text-[11px]">{activeJob.outputProposal.llm.model}</span>
+                    </>
+                  ) : null}
+                  {activeJob.outputProposal.llm.error ? (
+                    <>
+                      {" "}
+                      · <span className="text-red-700">{activeJob.outputProposal.llm.error}</span>
+                    </>
+                  ) : null}
+                </p>
+              ) : null}
               {activeJob.errorMessage ? <p className="mt-2 text-sm text-red-600">{activeJob.errorMessage}</p> : null}
               {activeJob.outputProposal ? (
                 <>

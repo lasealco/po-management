@@ -61,6 +61,11 @@ function mergeDemoLegacyGrants(
     ensure("org.suppliers", "approve");
   }
 
+  if (!grantSet.has(grantKey("org.apihub", "view"))) {
+    ensure("org.apihub", "view");
+    ensure("org.apihub", "edit");
+  }
+
   return next ?? grantSet;
 }
 

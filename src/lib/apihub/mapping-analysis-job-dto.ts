@@ -2,6 +2,14 @@ import type { ApiHubMappingAnalysisJobRow } from "@/lib/apihub/mapping-analysis-
 import type { ApiHubMappingRule } from "@/lib/apihub/mapping-engine";
 import type { MappingPreviewComputedRow, MappingPreviewSamplingMeta } from "@/lib/apihub/mapping-preview-run";
 
+export type ApiHubMappingAnalysisJobLlmMetaDto = {
+  attempted: boolean;
+  used: boolean;
+  model?: string;
+  inputSha256?: string;
+  error?: string;
+};
+
 export type ApiHubMappingAnalysisJobDto = {
   id: string;
   tenantId: string;
@@ -19,6 +27,7 @@ export type ApiHubMappingAnalysisJobDto = {
     rules: ApiHubMappingRule[];
     notes: string[];
     stagingPreview: { sampling: MappingPreviewSamplingMeta; rows: MappingPreviewComputedRow[] } | null;
+    llm?: ApiHubMappingAnalysisJobLlmMetaDto;
   } | null;
   errorMessage: string | null;
   createdAt: string;
@@ -64,12 +73,26 @@ function parseOutputEnvelope(raw: unknown): ApiHubMappingAnalysisJobDto["outputP
       };
     }
   }
+  let llm: ApiHubMappingAnalysisJobLlmMetaDto | undefined;
+  const llmRaw = o.llm;
+  if (llmRaw && typeof llmRaw === "object") {
+    const m = llmRaw as Record<string, unknown>;
+    llm = {
+      attempted: m.attempted === true,
+      used: m.used === true,
+      model: typeof m.model === "string" ? m.model : undefined,
+      inputSha256: typeof m.inputSha256 === "string" ? m.inputSha256 : undefined,
+      error: typeof m.error === "string" ? m.error : undefined,
+    };
+  }
+
   return {
     schemaVersion: 1,
     engine: o.engine,
     rules: o.rules as ApiHubMappingRule[],
     notes,
     stagingPreview,
+    ...(llm ? { llm } : {}),
   };
 }
 

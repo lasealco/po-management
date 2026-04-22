@@ -270,11 +270,12 @@ export function MappingTemplatesSection({ initialTemplates, canManage }: Props) 
           </button>
         ) : (
           <p className="max-w-xs text-right text-sm text-zinc-600">
-            Choose a demo user in{" "}
-            <a href="/settings/demo" className="font-medium text-[var(--arscmp-primary)] hover:underline">
-              Settings → Demo session
-            </a>{" "}
-            to manage templates.
+            <span className="font-medium text-zinc-800">View-only:</span> org.apihub → edit is required to manage
+            templates. Use{" "}
+            <a href="/settings/roles" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+              Settings → Roles
+            </a>
+            .
           </p>
         )}
       </div>
@@ -291,7 +292,7 @@ export function MappingTemplatesSection({ initialTemplates, canManage }: Props) 
             <div className="rounded-xl border border-dashed border-zinc-300 bg-zinc-50 px-4 py-8 text-center text-sm text-zinc-600">
               <p className="font-medium text-zinc-800">No templates yet</p>
               <p className="mt-2">
-                {canManage ? "Create one with “New template” to reuse rules across runs." : "Enable a demo session to add templates."}
+                {canManage ? "Create one with “New template” to reuse rules across runs." : "org.apihub → edit is required to add templates."}
               </p>
             </div>
           ) : (

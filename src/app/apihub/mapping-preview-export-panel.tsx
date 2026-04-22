@@ -103,11 +103,12 @@ export function MappingPreviewExportPanel({ canUse }: Props) {
 
       {!canUse ? (
         <p className="mt-4 text-sm text-zinc-600">
-          Choose a demo user in{" "}
-          <a href="/settings/demo" className="font-medium text-[var(--arscmp-primary)] hover:underline">
-            Settings → Demo session
-          </a>{" "}
-          to call the export API from this page.
+          <span className="font-medium text-zinc-800">View-only:</span> org.apihub → edit is required to run exports from
+          this page. Roles are managed in{" "}
+          <a href="/settings/roles" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+            Settings → Roles
+          </a>
+          .
         </p>
       ) : (
         <div className="mt-5 grid gap-4 lg:grid-cols-2">

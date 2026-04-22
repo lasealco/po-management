@@ -9,7 +9,7 @@ const createMock = vi.fn();
 const processMock = vi.fn(() => Promise.resolve());
 
 vi.mock("@/lib/demo-tenant", () => ({ getDemoTenant: getDemoTenantMock }));
-vi.mock("@/lib/authz", () => ({ getActorUserId: getActorUserIdMock }));
+vi.mock("@/lib/authz", () => ({ getActorUserId: getActorUserIdMock, userHasGlobalGrant: vi.fn().mockResolvedValue(true) }));
 vi.mock("@/lib/apihub/mapping-analysis-jobs-repo", () => ({
   listApiHubMappingAnalysisJobs: listMock,
   createApiHubMappingAnalysisJob: createMock,

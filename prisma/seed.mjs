@@ -220,6 +220,8 @@ async function seed() {
     ["org.rfq", "edit"],
     ["org.invoice_audit", "view"],
     ["org.invoice_audit", "edit"],
+    ["org.apihub", "view"],
+    ["org.apihub", "edit"],
   ];
   const approverGrants = [
     ...buyerGrants,
@@ -258,6 +260,8 @@ async function seed() {
     ["org.rfq", "edit"],
     ["org.invoice_audit", "view"],
     ["org.invoice_audit", "edit"],
+    ["org.apihub", "view"],
+    ["org.apihub", "edit"],
   ];
 
   await replaceGlobalRolePermissions(roleBuyer.id, buyerGrants);
