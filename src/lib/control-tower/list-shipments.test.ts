@@ -192,7 +192,12 @@ describe("listControlTowerShipments", () => {
     expect(dumped).toContain("customerName");
     expect(dumped).toContain("hsCode");
     expect(dumped).toContain("category");
+    expect(dumped).toContain("division");
     expect(dumped).toContain("temperatureRangeText");
+    expect(dumped).toContain("website");
+    expect(dumped).toContain("acknowledgedBy");
+    expect(dumped).toContain("updatedBy");
+    expect(dumped).toContain("splitProposal");
     expect(dumped).toContain("forwarderOffice");
     expect(dumped).toContain("forwarderContact");
     expect(dumped).toContain("taxId");

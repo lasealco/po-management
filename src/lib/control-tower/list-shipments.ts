@@ -488,7 +488,32 @@ export async function listControlTowerShipments(params: {
                               },
                             },
                           },
+                          {
+                            division: {
+                              is: {
+                                OR: [{ name: contains }, { code: contains }],
+                              },
+                            },
+                          },
                         ],
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        },
+        {
+          order: {
+            splitProposal: {
+              is: {
+                OR: [
+                  { comment: contains },
+                  {
+                    proposedBy: {
+                      is: {
+                        OR: [{ name: contains }, { email: contains }],
                       },
                     },
                   },
@@ -526,7 +551,13 @@ export async function listControlTowerShipments(params: {
         {
           customerCrmAccount: {
             is: {
-              OR: [{ name: contains }, { legalName: contains }],
+              OR: [
+                { name: contains },
+                { legalName: contains },
+                { website: contains },
+                { industry: contains },
+                { segment: contains },
+              ],
             },
           },
         },
@@ -594,6 +625,13 @@ export async function listControlTowerShipments(params: {
                     },
                   },
                 },
+                {
+                  acknowledgedBy: {
+                    is: {
+                      OR: [{ name: contains }, { email: contains }],
+                    },
+                  },
+                },
               ],
             },
           },
@@ -624,6 +662,13 @@ export async function listControlTowerShipments(params: {
                 { notes: contains },
                 { sourceRef: contains },
                 { sourceType: contains },
+                {
+                  updatedBy: {
+                    is: {
+                      OR: [{ name: contains }, { email: contains }],
+                    },
+                  },
+                },
               ],
             },
           },
@@ -679,7 +724,22 @@ export async function listControlTowerShipments(params: {
             },
           },
         },
-        { milestones: { some: { note: contains } } },
+        {
+          milestones: {
+            some: {
+              OR: [
+                { note: contains },
+                {
+                  updatedBy: {
+                    is: {
+                      OR: [{ name: contains }, { email: contains }],
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        },
         {
           ctAuditLogs: {
             some: {
