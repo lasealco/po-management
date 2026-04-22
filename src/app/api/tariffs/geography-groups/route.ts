@@ -16,11 +16,29 @@ function parseGeographyType(v: unknown): TariffGeographyType | null {
   return VALID_TYPES.has(t) ? (t as TariffGeographyType) : null;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const gate = await requireApiGrant("org.tariffs", "view");
   if (gate) return gate;
 
-  const groups = await listTariffGeographyGroups({ take: 500 });
+  const url = new URL(request.url);
+  let take = 500;
+  try {
+    const raw = url.searchParams.get("take");
+    if (raw != null && raw !== "") {
+      const n = Number(raw);
+      if (!Number.isInteger(n) || n < 1) {
+        return NextResponse.json({ error: "Query take must be a positive integer." }, { status: 400 });
+      }
+      take = Math.min(n, 500);
+    }
+  } catch {
+    /* default */
+  }
+  const activeOnlyRaw = url.searchParams.get("activeOnly");
+  const activeOnly =
+    activeOnlyRaw === "1" || activeOnlyRaw === "true" || activeOnlyRaw === "yes";
+
+  const groups = await listTariffGeographyGroups({ take, activeOnly });
   return NextResponse.json({ groups });
 }
 

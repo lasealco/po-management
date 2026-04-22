@@ -3,9 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
+import { TARIFF_TRANSPORT_MODE_OPTIONS } from "@/lib/tariff/normalized-charge-catalog-shared";
 import { TARIFF_CONTRACTS_DIRECTORY_PATH, tariffContractHeaderPath } from "@/lib/tariff/tariff-workbench-urls";
-
-const TRANSPORT_MODES = ["OCEAN", "LCL", "AIR", "TRUCK", "RAIL", "LOCAL_SERVICE"] as const;
 
 type ProviderOpt = { id: string; legalName: string; tradingName: string | null };
 type EntityOpt = { id: string; name: string; code: string | null };
@@ -122,7 +121,7 @@ export function TariffNewContractForm({
             onChange={(e) => setTransportMode(e.target.value)}
             className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-[var(--arscmp-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--arscmp-primary)]"
           >
-            {TRANSPORT_MODES.map((m) => (
+            {TARIFF_TRANSPORT_MODE_OPTIONS.map((m) => (
               <option key={m} value={m}>
                 {m}
               </option>

@@ -127,6 +127,7 @@ export async function createTariffContractVersion(input: {
   });
 }
 
+/** Applies `assertTariffVersionRowMutable` so fully approved versions cannot change. */
 export async function updateTariffContractVersion(
   params: { tenantId: string; versionId: string },
   patch: Partial<{

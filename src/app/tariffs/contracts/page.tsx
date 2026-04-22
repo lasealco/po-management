@@ -17,7 +17,7 @@ export default async function TariffContractsDirectoryPage() {
 
   if (!tenant) {
     return (
-      <main className="mx-auto max-w-3xl px-6 py-12">
+      <main className="mx-auto w-full max-w-7xl py-12 pl-2 pr-6 sm:pl-3 md:pl-6">
         <p className="text-zinc-600">Tenant not found.</p>
       </main>
     );
@@ -26,7 +26,7 @@ export default async function TariffContractsDirectoryPage() {
   const contracts = await listTariffContractHeadersForTenant({ tenantId: tenant.id, take: 200 });
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-10">
+    <main className="mx-auto w-full max-w-7xl py-10 pl-2 pr-6 sm:pl-3 md:pl-6">
       <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Workflow</p>
         <div className="mt-3 flex flex-wrap items-end justify-between gap-4">

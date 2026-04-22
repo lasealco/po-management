@@ -12,7 +12,7 @@ export default async function TariffNewContractPage() {
 
   if (!tenant) {
     return (
-      <main className="mx-auto max-w-3xl px-6 py-12">
+      <main className="mx-auto w-full max-w-7xl py-12 pl-2 pr-6 sm:pl-3 md:pl-6">
         <p className="text-zinc-600">Tenant not found.</p>
       </main>
     );
@@ -34,7 +34,7 @@ export default async function TariffNewContractPage() {
   ]);
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-10">
+    <main className="mx-auto w-full max-w-7xl py-10 pl-2 pr-6 sm:pl-3 md:pl-6">
       <TariffNewContractForm providers={providers} legalEntities={legalEntities} canEdit={canEdit} />
     </main>
   );

@@ -6,7 +6,13 @@ import { TARIFF_CONTRACT_VERSION_SOURCE_TYPE_SET } from "@/lib/tariff/contract-v
 import { getTariffContractVersionForTenant, updateTariffContractVersion } from "@/lib/tariff/contract-versions";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { jsonFromTariffError } from "@/app/api/tariffs/_lib/tariff-api-error";
+import {
+  TARIFF_APPROVAL_STATUS_SET,
+  TARIFF_CONTRACT_HEADER_STATUS_SET,
+} from "@/lib/tariff/tariff-enum-sets";
 import { prisma } from "@/lib/prisma";
+
+import type { TariffApprovalStatus, TariffContractStatus } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -79,6 +85,18 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       return NextResponse.json({ error: "Invalid sourceType." }, { status: 400 });
     }
   }
+  if (typeof o.approvalStatus === "string") {
+    const a = o.approvalStatus.trim();
+    if (!TARIFF_APPROVAL_STATUS_SET.has(a)) {
+      return NextResponse.json({ error: "Invalid approvalStatus." }, { status: 400 });
+    }
+  }
+  if (typeof o.status === "string") {
+    const s = o.status.trim();
+    if (!TARIFF_CONTRACT_HEADER_STATUS_SET.has(s)) {
+      return NextResponse.json({ error: "Invalid status." }, { status: 400 });
+    }
+  }
 
   try {
     const updated = await updateTariffContractVersion(
@@ -91,8 +109,10 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         ...(typeof o.sourceFileUrl === "string" || o.sourceFileUrl === null
           ? { sourceFileUrl: typeof o.sourceFileUrl === "string" ? o.sourceFileUrl.trim() || null : null }
           : {}),
-        ...(typeof o.approvalStatus === "string" ? { approvalStatus: o.approvalStatus.trim() as never } : {}),
-        ...(typeof o.status === "string" ? { status: o.status.trim() as never } : {}),
+        ...(typeof o.approvalStatus === "string"
+          ? { approvalStatus: o.approvalStatus.trim() as TariffApprovalStatus }
+          : {}),
+        ...(typeof o.status === "string" ? { status: o.status.trim() as TariffContractStatus } : {}),
         ...(o.validFrom !== undefined ? { validFrom: parseDate(o.validFrom) } : {}),
         ...(o.validTo !== undefined ? { validTo: parseDate(o.validTo) } : {}),
         ...(o.bookingDateValidFrom !== undefined ? { bookingDateValidFrom: parseDate(o.bookingDateValidFrom) } : {}),

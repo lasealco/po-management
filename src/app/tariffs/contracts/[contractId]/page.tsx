@@ -29,7 +29,7 @@ export default async function TariffContractDetailPage({
 
   if (!tenant) {
     return (
-      <main className="mx-auto max-w-3xl px-6 py-12">
+      <main className="mx-auto w-full max-w-7xl py-12 pl-2 pr-6 sm:pl-3 md:pl-6">
         <p className="text-zinc-600">Tenant not found.</p>
       </main>
     );
@@ -45,7 +45,7 @@ export default async function TariffContractDetailPage({
   const providerLabel = contract.provider.tradingName ?? contract.provider.legalName;
 
   return (
-    <main className="mx-auto max-w-5xl space-y-8 px-6 py-10">
+    <main className="mx-auto w-full max-w-7xl space-y-8 py-10 pl-2 pr-6 sm:pl-3 md:pl-6">
       <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>

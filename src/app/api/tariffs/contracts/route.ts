@@ -7,26 +7,37 @@ import { getDemoTenant } from "@/lib/demo-tenant";
 import type { TariffTransportMode } from "@prisma/client";
 
 import { jsonFromTariffError } from "@/app/api/tariffs/_lib/tariff-api-error";
-
-const TRANSPORT_MODES = new Set<string>([
-  "OCEAN",
-  "LCL",
-  "AIR",
-  "TRUCK",
-  "RAIL",
-  "LOCAL_SERVICE",
-]);
+import { TARIFF_TRANSPORT_MODE_SET } from "@/lib/tariff/tariff-enum-sets";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
   const gate = await requireApiGrant("org.tariffs", "view");
   if (gate) return gate;
 
   const tenant = await getDemoTenant();
   if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
 
-  const rows = await listTariffContractHeadersForTenant({ tenantId: tenant.id, take: 200 });
+  let take = 200;
+  try {
+    const raw = new URL(request.url).searchParams.get("take");
+    if (raw != null && raw !== "") {
+      const n = Number(raw);
+      if (!Number.isInteger(n) || n < 1) {
+        return NextResponse.json({ error: "Query take must be a positive integer." }, { status: 400 });
+      }
+      take = Math.min(n, 300);
+    }
+  } catch {
+    /* default take */
+  }
+  const providerId = new URL(request.url).searchParams.get("providerId")?.trim() || undefined;
+
+  const rows = await listTariffContractHeadersForTenant({
+    tenantId: tenant.id,
+    take,
+    ...(providerId ? { providerId } : {}),
+  });
   return NextResponse.json({ contracts: rows });
 }
 
@@ -59,7 +70,7 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
-  if (!TRANSPORT_MODES.has(transportMode)) {
+  if (!TARIFF_TRANSPORT_MODE_SET.has(transportMode)) {
     return NextResponse.json({ error: "Invalid transportMode." }, { status: 400 });
   }
 

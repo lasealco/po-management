@@ -5,7 +5,13 @@ import { recordTariffAuditLog } from "@/lib/tariff/audit-log";
 import { getTariffContractHeaderForTenant, updateTariffContractHeader } from "@/lib/tariff/contract-headers";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { jsonFromTariffError } from "@/app/api/tariffs/_lib/tariff-api-error";
+import {
+  TARIFF_CONTRACT_HEADER_STATUS_SET,
+  TARIFF_TRANSPORT_MODE_SET,
+} from "@/lib/tariff/tariff-enum-sets";
 import { prisma } from "@/lib/prisma";
+
+import type { TariffContractStatus, TariffTransportMode } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -62,31 +68,54 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   });
   if (!before) return NextResponse.json({ error: "Contract not found." }, { status: 404 });
 
+  if (typeof o.transportMode === "string") {
+    const tm = o.transportMode.trim();
+    if (!TARIFF_TRANSPORT_MODE_SET.has(tm)) {
+      return NextResponse.json({ error: "Invalid transportMode." }, { status: 400 });
+    }
+  }
+  if (typeof o.status === "string") {
+    const st = o.status.trim();
+    if (!TARIFF_CONTRACT_HEADER_STATUS_SET.has(st)) {
+      return NextResponse.json({ error: "Invalid status." }, { status: 400 });
+    }
+  }
+
+  const patch: Parameters<typeof updateTariffContractHeader>[1] = {};
+  if (typeof o.legalEntityId === "string" || o.legalEntityId === null) {
+    patch.legalEntityId = typeof o.legalEntityId === "string" ? o.legalEntityId.trim() || null : null;
+  }
+  if (typeof o.providerId === "string") patch.providerId = o.providerId.trim();
+  if (typeof o.transportMode === "string") {
+    patch.transportMode = o.transportMode.trim() as TariffTransportMode;
+  }
+  if (typeof o.contractNumber === "string" || o.contractNumber === null) {
+    patch.contractNumber = typeof o.contractNumber === "string" ? o.contractNumber.trim() || null : null;
+  }
+  if (typeof o.title === "string") {
+    const t = o.title.trim();
+    if (!t) return NextResponse.json({ error: "title cannot be empty." }, { status: 400 });
+    patch.title = t;
+  }
+  if (typeof o.tradeScope === "string" || o.tradeScope === null) {
+    patch.tradeScope = typeof o.tradeScope === "string" ? o.tradeScope.trim() || null : null;
+  }
+  if (typeof o.status === "string") {
+    patch.status = o.status.trim() as TariffContractStatus;
+  }
+  if (typeof o.ownerUserId === "string" || o.ownerUserId === null) {
+    patch.ownerUserId = typeof o.ownerUserId === "string" ? o.ownerUserId.trim() || null : null;
+  }
+  if (typeof o.notes === "string" || o.notes === null) {
+    patch.notes = typeof o.notes === "string" ? o.notes.trim() || null : null;
+  }
+
+  if (Object.keys(patch).length === 0) {
+    return NextResponse.json({ error: "No valid fields to update." }, { status: 400 });
+  }
+
   try {
-    const updated = await updateTariffContractHeader(
-      { tenantId: tenant.id, id },
-      {
-        ...(typeof o.legalEntityId === "string" || o.legalEntityId === null
-          ? { legalEntityId: typeof o.legalEntityId === "string" ? o.legalEntityId.trim() || null : null }
-          : {}),
-        ...(typeof o.providerId === "string" ? { providerId: o.providerId.trim() } : {}),
-        ...(typeof o.transportMode === "string" ? { transportMode: o.transportMode.trim() as never } : {}),
-        ...(typeof o.contractNumber === "string" || o.contractNumber === null
-          ? { contractNumber: typeof o.contractNumber === "string" ? o.contractNumber.trim() || null : null }
-          : {}),
-        ...(typeof o.title === "string" ? { title: o.title.trim() } : {}),
-        ...(typeof o.tradeScope === "string" || o.tradeScope === null
-          ? { tradeScope: typeof o.tradeScope === "string" ? o.tradeScope.trim() || null : null }
-          : {}),
-        ...(typeof o.status === "string" ? { status: o.status.trim() as never } : {}),
-        ...(typeof o.ownerUserId === "string" || o.ownerUserId === null
-          ? { ownerUserId: typeof o.ownerUserId === "string" ? o.ownerUserId.trim() || null : null }
-          : {}),
-        ...(typeof o.notes === "string" || o.notes === null
-          ? { notes: typeof o.notes === "string" ? o.notes.trim() || null : null }
-          : {}),
-      },
-    );
+    const updated = await updateTariffContractHeader({ tenantId: tenant.id, id }, patch);
     await recordTariffAuditLog({
       objectType: "contract_header",
       objectId: id,

@@ -68,7 +68,7 @@ export function TariffsSubNav() {
 
   return (
     <div className={moduleTertiarySubNavShellClass}>
-      <div className="mx-auto flex max-w-7xl flex-wrap gap-1 px-6 py-2.5">
+      <div className="mx-auto flex max-w-7xl flex-wrap gap-1 py-2.5 pl-2 pr-6 sm:pl-3 md:pl-6">
         <span className="mr-2 self-center text-xs font-semibold uppercase tracking-wide text-[var(--arscmp-primary)]">
           Tariffs
         </span>
