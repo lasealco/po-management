@@ -10,6 +10,7 @@ import { appendApiHubIngestionRunAuditLog } from "@/lib/apihub/ingestion-run-aud
 import { toApiHubIngestionRunDto } from "@/lib/apihub/ingestion-run-dto";
 import { retryApiHubIngestionRun } from "@/lib/apihub/ingestion-runs-repo";
 import { parseApiHubPostJsonForRouteWithBudget } from "@/lib/apihub/request-budget";
+import { logApiHubBackgroundError } from "@/lib/apihub/safe-server-log";
 import { resolveApiHubRequestId } from "@/lib/apihub/request-id";
 import { apiHubEnsureTenantActorGrants } from "@/lib/apihub/route-guards";
 import { NextResponse } from "next/server";
@@ -76,7 +77,7 @@ async function finalizeRetryResponse(opts: {
       metadata,
     });
   } catch (caught) {
-    console.error("[apihub] appendApiHubIngestionRunAuditLog failed", caught);
+    logApiHubBackgroundError("appendApiHubIngestionRunAuditLog failed", caught);
   }
   return opts.response;
 }

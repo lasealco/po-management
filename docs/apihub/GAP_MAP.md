@@ -11,7 +11,7 @@
 | Docs home | ✅ `docs/apihub/README.md`, specs | Route index includes mapping analysis, staging, apply, discard, playbook for catalog/tariffs |
 | Docs runbook | ✅ `docs/apihub/RUNBOOK.md` | Docs-only workflow; points to README for live endpoint index |
 | Permissions matrix | ✅ [`permissions-matrix.md`](./permissions-matrix.md) | **Slice 52:** `org.apihub` view/edit; staging apply cross-grants. **2026-04-22:** table matches **27** handlers under `src/app/api/apihub/**` (health + guarded routes). |
-| JSON / abuse limits | ✅ [`product-completion-v1.md`](./product-completion-v1.md), `request-body-limit.ts`, **`request-budget.ts`** (P4 tiers) | POST/PATCH bounded reads; **413** `PAYLOAD_TOO_LARGE` over cap; handlers use **`standard` / `large`** tier helpers. |
+| JSON / abuse limits | ✅ [`product-completion-v1.md`](./product-completion-v1.md), `request-body-limit.ts`, **`request-budget.ts`**, **`safe-server-log.ts`** | POST/PATCH bounded reads; **413** over cap; tier helpers; background errors log via **`logApiHubBackgroundError`** (no full `Error` / request dumps to stdout). |
 | Ingestion spec | 🟡 `integrations-ai-assisted-ingestion.md` | **Narrative draft** (principles, scenarios, phased roadmap); **implementation truth** = README + GAP_MAP + permissions matrix |
 | App route `/apihub` | ✅ `src/app/apihub/**` | Analysis jobs, staging list + apply + discard, templates, connectors, ingestion triage |
 | Health / discovery API | ✅ `GET /api/apihub/health` | `{ ok, service, phase }`; no secrets |
@@ -38,4 +38,4 @@
 1. P0–P1 — shell, connectors, templates, ingestion — **shipped**.
 2. P2 — analysis jobs + staging + LLM + template-from-job — **shipped** (iterate on models/prompts).
 3. P3 — ingestion apply to SO/PO/CT (**shipped**); `matchKey` includes **`purchase_order_buyer_reference`**; extend further (idempotent upsert / merge) as needed.
-4. P4 — **in progress:** centralized JSON body tiers (`request-budget.ts`), route conformance test (no drift on `parseApiHub*`), minimal stable `apiHubError` envelope test; extend with richer leakage scans as needed.
+4. P4 — **in progress:** centralized JSON body tiers (`request-budget.ts`), route conformance, stable `apiHubError` envelope test, **`safe-server-log`** + **leakage conformance** (no `console.*` with headers/auth/cookies in HTTP routes; no raw `console.*` in `lib/apihub` except `safe-server-log.ts`).

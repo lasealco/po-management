@@ -27,6 +27,7 @@ import {
 import { appendApiHubIngestionRunAuditLog } from "@/lib/apihub/ingestion-run-audit-repo";
 import { toApiHubIngestionRunDto } from "@/lib/apihub/ingestion-run-dto";
 import { parseApiHubRequestJsonWithBudget } from "@/lib/apihub/request-budget";
+import { logApiHubBackgroundError } from "@/lib/apihub/safe-server-log";
 import { APIHUB_REQUEST_ID_HEADER, resolveApiHubRequestId } from "@/lib/apihub/request-id";
 import { apiHubEnsureTenantActorGrants } from "@/lib/apihub/route-guards";
 import { userHasGlobalGrant } from "@/lib/authz";
@@ -271,7 +272,7 @@ async function safeAppendIngestionRunAudit(
   try {
     await appendApiHubIngestionRunAuditLog(opts);
   } catch (caught) {
-    console.error("[apihub] appendApiHubIngestionRunAuditLog failed", caught);
+    logApiHubBackgroundError("appendApiHubIngestionRunAuditLog failed", caught);
   }
 }
 

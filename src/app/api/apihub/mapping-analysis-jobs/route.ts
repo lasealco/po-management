@@ -19,6 +19,7 @@ import {
   parseApiHubListLimitFromUrl,
 } from "@/lib/apihub/query-limit";
 import { parseApiHubPostJsonForRouteWithBudget } from "@/lib/apihub/request-budget";
+import { logApiHubBackgroundError } from "@/lib/apihub/safe-server-log";
 import { resolveApiHubRequestId } from "@/lib/apihub/request-id";
 import { apiHubEnsureTenantActorGrants } from "@/lib/apihub/route-guards";
 
@@ -91,7 +92,7 @@ export async function POST(request: Request) {
 
   after(() => {
     void processApiHubMappingAnalysisJob(job.id, tenant.id).catch((err) => {
-      console.error("[apihub] mapping analysis job failed", err);
+      logApiHubBackgroundError("mapping analysis job failed", err);
     });
   });
 
