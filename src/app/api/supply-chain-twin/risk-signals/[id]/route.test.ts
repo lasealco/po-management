@@ -63,7 +63,7 @@ describe("PATCH /api/supply-chain-twin/risk-signals/[id]", () => {
     );
 
     expect(response.status).toBe(404);
-    expect(await response.json()).toEqual({ error: "Not found." });
+    expect(await response.json()).toEqual({ error: "Not found.", code: "NOT_FOUND" });
   });
 
   it("returns 200 for repeated idempotent ack requests", async () => {

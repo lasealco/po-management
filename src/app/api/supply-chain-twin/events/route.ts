@@ -4,6 +4,7 @@ import {
   logSctwinApiError,
   logSctwinApiWarn,
   resolveSctwinRequestId,
+  twinApiErrorJson,
   twinApiJson,
 } from "../_lib/sctwin-api-log";
 import {
@@ -90,7 +91,7 @@ export async function GET(request: Request) {
   try {
     const gate = await requireTwinApiAccess();
     if (!gate.ok) {
-      return twinApiJson({ error: gate.denied.error }, { status: gate.denied.status }, requestId);
+      return twinApiErrorJson(gate.denied.error, gate.denied.status, requestId);
     }
     const { access } = gate;
 
@@ -103,11 +104,7 @@ export async function GET(request: Request) {
         errorCode: TWIN_EVENTS_ERROR_QUERY_VALIDATION_FAILED,
         requestId,
       });
-      return twinApiJson(
-        { error: parsed.error, code: TWIN_EVENTS_ERROR_QUERY_VALIDATION_FAILED },
-        { status: 400 },
-        requestId,
-      );
+      return twinApiErrorJson(parsed.error, 400, requestId, TWIN_EVENTS_ERROR_QUERY_VALIDATION_FAILED);
     }
 
     let cursorPos: { createdAt: Date; id: string } | null = null;
@@ -120,7 +117,7 @@ export async function GET(request: Request) {
           errorCode: TWIN_EVENTS_ERROR_INVALID_CURSOR,
           requestId,
         });
-        return twinApiJson({ error: "Invalid cursor", code: TWIN_EVENTS_ERROR_INVALID_CURSOR }, { status: 400 }, requestId);
+        return twinApiErrorJson("Invalid cursor", 400, requestId, TWIN_EVENTS_ERROR_INVALID_CURSOR);
       }
       cursorPos = { createdAt: decoded.createdAt, id: decoded.id };
     }
@@ -207,7 +204,7 @@ export async function GET(request: Request) {
       detail: name,
       requestId,
     });
-    return twinApiJson({ error: "Internal server error" }, { status: 500 }, requestId);
+    return twinApiErrorJson("Internal server error", 500, requestId);
   }
 }
 
@@ -223,7 +220,7 @@ export async function POST(request: Request) {
   try {
     const gate = await requireTwinApiAccess();
     if (!gate.ok) {
-      return twinApiJson({ error: gate.denied.error }, { status: gate.denied.status }, requestId);
+      return twinApiErrorJson(gate.denied.error, gate.denied.status, requestId);
     }
     const { access } = gate;
 
@@ -237,11 +234,7 @@ export async function POST(request: Request) {
         errorCode: TWIN_EVENTS_ERROR_BODY_JSON_INVALID,
         requestId,
       });
-      return twinApiJson(
-        { error: "Request body must be valid JSON.", code: TWIN_EVENTS_ERROR_BODY_JSON_INVALID },
-        { status: 400 },
-        requestId,
-      );
+      return twinApiErrorJson("Request body must be valid JSON.", 400, requestId, TWIN_EVENTS_ERROR_BODY_JSON_INVALID);
     }
 
     const parsed = parseTwinIngestEventAppendBody(raw);
@@ -254,20 +247,9 @@ export async function POST(request: Request) {
         requestId,
       });
       if (parsed.payloadTooLarge) {
-        return twinApiJson(
-          {
-            error: "Ingest payload exceeds maximum size.",
-            code: TWIN_INGEST_PAYLOAD_TOO_LARGE,
-          },
-          { status: 400 },
-          requestId,
-        );
+        return twinApiErrorJson("Ingest payload exceeds maximum size.", 400, requestId, TWIN_INGEST_PAYLOAD_TOO_LARGE);
       }
-      return twinApiJson(
-        { error: parsed.error, code: TWIN_EVENTS_ERROR_BODY_VALIDATION_FAILED },
-        { status: 400 },
-        requestId,
-      );
+      return twinApiErrorJson(parsed.error, 400, requestId, TWIN_EVENTS_ERROR_BODY_VALIDATION_FAILED);
     }
 
     const idempotency = parseIdempotencyKeyHeader(request);
@@ -278,11 +260,7 @@ export async function POST(request: Request) {
         errorCode: TWIN_EVENTS_ERROR_INVALID_IDEMPOTENCY_KEY,
         requestId,
       });
-      return twinApiJson(
-        { error: idempotency.error, code: TWIN_EVENTS_ERROR_INVALID_IDEMPOTENCY_KEY },
-        { status: 400 },
-        requestId,
-      );
+      return twinApiErrorJson(idempotency.error, 400, requestId, TWIN_EVENTS_ERROR_INVALID_IDEMPOTENCY_KEY);
     }
 
     try {
@@ -301,14 +279,7 @@ export async function POST(request: Request) {
           errorCode: TWIN_INGEST_PAYLOAD_TOO_LARGE,
           requestId,
         });
-        return twinApiJson(
-          {
-            error: "Ingest payload exceeds maximum size.",
-            code: TWIN_INGEST_PAYLOAD_TOO_LARGE,
-          },
-          { status: 400 },
-          requestId,
-        );
+        return twinApiErrorJson("Ingest payload exceeds maximum size.", 400, requestId, TWIN_INGEST_PAYLOAD_TOO_LARGE);
       }
       if (caught instanceof RangeError && caught.message === "INVALID_TWIN_INGEST_TYPE") {
         logSctwinApiWarn({
@@ -317,11 +288,7 @@ export async function POST(request: Request) {
           errorCode: TWIN_EVENTS_ERROR_INVALID_INGEST_TYPE,
           requestId,
         });
-        return twinApiJson(
-          { error: "Invalid ingest event type.", code: TWIN_EVENTS_ERROR_INVALID_INGEST_TYPE },
-          { status: 400 },
-          requestId,
-        );
+        return twinApiErrorJson("Invalid ingest event type.", 400, requestId, TWIN_EVENTS_ERROR_INVALID_INGEST_TYPE);
       }
       throw caught;
     }
@@ -334,6 +301,6 @@ export async function POST(request: Request) {
       detail: name,
       requestId,
     });
-    return twinApiJson({ error: "Internal server error" }, { status: 500 }, requestId);
+    return twinApiErrorJson("Internal server error", 500, requestId);
   }
 }

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { errorCodeForHttpStatus, toApiErrorBody } from "@/app/api/_lib/api-error-contract";
+
 type SctwinApiLogLevel = "error" | "warn";
 
 type SctwinApiLogBase = {
@@ -68,6 +70,20 @@ export function withSctwinRequestId(response: NextResponse, requestId: string): 
 
 export function twinApiJson(data: unknown, init: ResponseInit | undefined, requestId: string): NextResponse {
   return withSctwinRequestId(NextResponse.json(data, init), requestId);
+}
+
+/** JSON error with `{ error, code }` (shared API contract) plus twin request-id headers. */
+export function twinApiErrorJson(
+  error: string,
+  status: number,
+  requestId: string,
+  code?: string,
+): NextResponse {
+  const resolvedCode = code ?? errorCodeForHttpStatus(status);
+  return withSctwinRequestId(
+    NextResponse.json(toApiErrorBody(error, resolvedCode), { status }),
+    requestId,
+  );
 }
 
 function resolveSctwinErrorClass(phase: string, errorCode: string): SctwinApiLogBase["errorClass"] {

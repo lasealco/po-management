@@ -5,6 +5,7 @@ import {
   logSctwinApiError,
   logSctwinApiWarn,
   resolveSctwinRequestId,
+  twinApiErrorJson,
   twinApiJson,
   withSctwinRequestId,
 } from "../../_lib/sctwin-api-log";
@@ -39,7 +40,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
   try {
     const gate = await requireTwinApiAccess();
     if (!gate.ok) {
-      return twinApiJson({ error: gate.denied.error }, { status: gate.denied.status }, requestId);
+      return twinApiErrorJson(gate.denied.error, gate.denied.status, requestId);
     }
     const { access } = gate;
 
@@ -52,12 +53,12 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
         errorCode: "PATH_ID_INVALID",
         requestId,
       });
-      return twinApiJson({ error: "Invalid scenario draft id." }, { status: 400 }, requestId);
+      return twinApiErrorJson("Invalid scenario draft id.", 400, requestId, "PATH_ID_INVALID");
     }
 
     const row = await getScenarioDraftByIdForTenant(access.tenant.id, draftId);
     if (!row) {
-      return twinApiJson({ error: "Not found." }, { status: 404 }, requestId);
+      return twinApiErrorJson("Not found.", 404, requestId);
     }
 
     const body = {
@@ -78,7 +79,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       detail: name,
       requestId,
     });
-    return twinApiJson({ error: "Internal server error" }, { status: 500 }, requestId);
+    return twinApiErrorJson("Internal server error", 500, requestId);
   }
 }
 
@@ -100,7 +101,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   try {
     const gate = await requireTwinApiAccess();
     if (!gate.ok) {
-      return twinApiJson({ error: gate.denied.error }, { status: gate.denied.status }, requestId);
+      return twinApiErrorJson(gate.denied.error, gate.denied.status, requestId);
     }
     const { access } = gate;
 
@@ -113,7 +114,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         errorCode: "PATH_ID_INVALID",
         requestId,
       });
-      return twinApiJson({ error: "Invalid scenario draft id." }, { status: 400 }, requestId);
+      return twinApiErrorJson("Invalid scenario draft id.", 400, requestId, "PATH_ID_INVALID");
     }
 
     let raw: unknown;
@@ -126,7 +127,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         errorCode: "BODY_JSON_INVALID",
         requestId,
       });
-      return twinApiJson({ error: "Request body must be valid JSON." }, { status: 400 }, requestId);
+      return twinApiErrorJson("Request body must be valid JSON.", 400, requestId, "BODY_JSON_INVALID");
     }
 
     const parsed = parseTwinScenarioDraftPatchBody(raw);
@@ -139,16 +140,14 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         requestId,
       });
       if (parsed.draftJsonTooLarge) {
-        return twinApiJson(
-          {
-            error: "Scenario draft JSON exceeds maximum size.",
-            code: TWIN_SCENARIO_DRAFT_JSON_TOO_LARGE,
-          },
-          { status: 400 },
+        return twinApiErrorJson(
+          "Scenario draft JSON exceeds maximum size.",
+          400,
           requestId,
+          TWIN_SCENARIO_DRAFT_JSON_TOO_LARGE,
         );
       }
-      return twinApiJson({ error: parsed.error }, { status: 400 }, requestId);
+      return twinApiErrorJson(parsed.error, 400, requestId, "BODY_VALIDATION_FAILED");
     }
 
     const patchInput: PatchScenarioDraftInput = {};
@@ -170,7 +169,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     );
     if (!patched.ok) {
       if (patched.reason === "not_found") {
-        return twinApiJson({ error: "Not found." }, { status: 404 }, requestId);
+        return twinApiErrorJson("Not found.", 404, requestId);
       }
       logSctwinApiWarn({
         route: ROUTE_PATCH,
@@ -178,7 +177,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         errorCode: "INVALID_STATUS_TRANSITION",
         requestId,
       });
-      return twinApiJson({ error: patched.message }, { status: 400 }, requestId);
+      return twinApiErrorJson(patched.message, 400, requestId, "INVALID_STATUS_TRANSITION");
     }
     const row = patched.row;
 
@@ -200,7 +199,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       detail: name,
       requestId,
     });
-    return twinApiJson({ error: "Internal server error" }, { status: 500 }, requestId);
+    return twinApiErrorJson("Internal server error", 500, requestId);
   }
 }
 
@@ -218,7 +217,7 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
   try {
     const gate = await requireTwinApiAccess();
     if (!gate.ok) {
-      return twinApiJson({ error: gate.denied.error }, { status: gate.denied.status }, requestId);
+      return twinApiErrorJson(gate.denied.error, gate.denied.status, requestId);
     }
     const { access } = gate;
 
@@ -231,12 +230,12 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
         errorCode: "PATH_ID_INVALID",
         requestId,
       });
-      return twinApiJson({ error: "Invalid scenario draft id." }, { status: 400 }, requestId);
+      return twinApiErrorJson("Invalid scenario draft id.", 400, requestId, "PATH_ID_INVALID");
     }
 
     const deleted = await deleteScenarioDraftForTenant(access.tenant.id, draftId);
     if (!deleted) {
-      return twinApiJson({ error: "Not found." }, { status: 404 }, requestId);
+      return twinApiErrorJson("Not found.", 404, requestId);
     }
 
     try {
@@ -265,6 +264,6 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
       detail: name,
       requestId,
     });
-    return twinApiJson({ error: "Internal server error" }, { status: 500 }, requestId);
+    return twinApiErrorJson("Internal server error", 500, requestId);
   }
 }

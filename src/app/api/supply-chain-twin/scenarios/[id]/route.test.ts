@@ -93,7 +93,7 @@ describe("GET /api/supply-chain-twin/scenarios/[id]", () => {
     });
 
     expect(response.status).toBe(404);
-    expect(await response.json()).toEqual({ error: "Not found." });
+    expect(await response.json()).toEqual({ error: "Not found.", code: "NOT_FOUND" });
     expect(getScenarioDraftByIdForTenantMock).toHaveBeenCalledWith("t1", "missing");
   });
 
@@ -309,6 +309,7 @@ describe("PATCH /api/supply-chain-twin/scenarios/[id]", () => {
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({
       error: "Cannot set status to draft unless the scenario is archived or already draft.",
+      code: "INVALID_STATUS_TRANSITION",
     });
   });
 
@@ -476,7 +477,7 @@ describe("DELETE /api/supply-chain-twin/scenarios/[id]", () => {
     });
 
     expect(response.status).toBe(404);
-    expect(await response.json()).toEqual({ error: "Not found." });
+    expect(await response.json()).toEqual({ error: "Not found.", code: "NOT_FOUND" });
     expect(deleteScenarioDraftForTenantMock).toHaveBeenCalledWith("t1", "missing");
   });
 

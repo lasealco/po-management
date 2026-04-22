@@ -1,6 +1,12 @@
 import type { Prisma } from "@prisma/client";
 
-import { logSctwinApiError, logSctwinApiWarn, resolveSctwinRequestId, twinApiJson } from "../_lib/sctwin-api-log";
+import {
+  logSctwinApiError,
+  logSctwinApiWarn,
+  resolveSctwinRequestId,
+  twinApiErrorJson,
+  twinApiJson,
+} from "../_lib/sctwin-api-log";
 import { requireTwinApiAccess } from "@/lib/supply-chain-twin/sctwin-api-access";
 import { parseTwinScenarioDraftCreateBody } from "@/lib/supply-chain-twin/schemas/twin-scenario-draft-create";
 import { twinScenariosListResponseSchema } from "@/lib/supply-chain-twin/schemas/twin-api-responses";
@@ -28,7 +34,7 @@ export async function GET(request: Request) {
   try {
     const gate = await requireTwinApiAccess();
     if (!gate.ok) {
-      return twinApiJson({ error: gate.denied.error }, { status: gate.denied.status }, requestId);
+      return twinApiErrorJson(gate.denied.error, gate.denied.status, requestId);
     }
     const { access } = gate;
 
@@ -41,7 +47,7 @@ export async function GET(request: Request) {
         errorCode: "QUERY_VALIDATION_FAILED",
         requestId,
       });
-      return twinApiJson({ error: parsed.error }, { status: 400 }, requestId);
+      return twinApiErrorJson(parsed.error, 400, requestId, "QUERY_VALIDATION_FAILED");
     }
 
     let cursorPosition: { updatedAt: Date; id: string } | null = null;
@@ -54,7 +60,7 @@ export async function GET(request: Request) {
           errorCode: "INVALID_CURSOR",
           requestId,
         });
-        return twinApiJson({ error: "Invalid cursor" }, { status: 400 }, requestId);
+        return twinApiErrorJson("Invalid cursor", 400, requestId, "INVALID_CURSOR");
       }
       cursorPosition = { updatedAt: decoded.updatedAt, id: decoded.id };
     }
@@ -84,7 +90,7 @@ export async function GET(request: Request) {
       detail: name,
       requestId,
     });
-    return twinApiJson({ error: "Internal server error" }, { status: 500 }, requestId);
+    return twinApiErrorJson("Internal server error", 500, requestId);
   }
 }
 
@@ -97,7 +103,7 @@ export async function POST(request: Request) {
   try {
     const gate = await requireTwinApiAccess();
     if (!gate.ok) {
-      return twinApiJson({ error: gate.denied.error }, { status: gate.denied.status }, requestId);
+      return twinApiErrorJson(gate.denied.error, gate.denied.status, requestId);
     }
     const { access } = gate;
 
@@ -111,7 +117,7 @@ export async function POST(request: Request) {
         errorCode: "BODY_JSON_INVALID",
         requestId,
       });
-      return twinApiJson({ error: "Request body must be valid JSON." }, { status: 400 }, requestId);
+      return twinApiErrorJson("Request body must be valid JSON.", 400, requestId, "BODY_JSON_INVALID");
     }
 
     const parsed = parseTwinScenarioDraftCreateBody(raw);
@@ -122,7 +128,7 @@ export async function POST(request: Request) {
         errorCode: "BODY_VALIDATION_FAILED",
         requestId,
       });
-      return twinApiJson({ error: parsed.error }, { status: 400 }, requestId);
+      return twinApiErrorJson(parsed.error, 400, requestId, "BODY_VALIDATION_FAILED");
     }
 
     const row = await createScenarioDraft(access.tenant.id, {
@@ -150,6 +156,6 @@ export async function POST(request: Request) {
       detail: name,
       requestId,
     });
-    return twinApiJson({ error: "Internal server error" }, { status: 500 }, requestId);
+    return twinApiErrorJson("Internal server error", 500, requestId);
   }
 }

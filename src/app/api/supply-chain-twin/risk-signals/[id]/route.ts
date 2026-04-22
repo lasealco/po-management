@@ -1,4 +1,10 @@
-import { logSctwinApiError, logSctwinApiWarn, resolveSctwinRequestId, twinApiJson } from "../../_lib/sctwin-api-log";
+import {
+  logSctwinApiError,
+  logSctwinApiWarn,
+  resolveSctwinRequestId,
+  twinApiErrorJson,
+  twinApiJson,
+} from "../../_lib/sctwin-api-log";
 import { appendTwinMutationAuditEvent } from "@/lib/supply-chain-twin/mutation-audit";
 import { patchRiskSignalAckForTenant } from "@/lib/supply-chain-twin/risk-signals-repo";
 import { twinRiskSignalAckPatchResponseSchema } from "@/lib/supply-chain-twin/schemas/twin-api-responses";
@@ -21,7 +27,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   try {
     const gate = await requireTwinApiAccess();
     if (!gate.ok) {
-      return twinApiJson({ error: gate.denied.error }, { status: gate.denied.status }, requestId);
+      return twinApiErrorJson(gate.denied.error, gate.denied.status, requestId);
     }
     const { access } = gate;
 
@@ -34,7 +40,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         errorCode: "PATH_ID_INVALID",
         requestId,
       });
-      return twinApiJson({ error: "Invalid risk signal id." }, { status: 400 }, requestId);
+      return twinApiErrorJson("Invalid risk signal id.", 400, requestId, "PATH_ID_INVALID");
     }
 
     let raw: unknown;
@@ -47,7 +53,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         errorCode: "BODY_JSON_INVALID",
         requestId,
       });
-      return twinApiJson({ error: "Request body must be valid JSON." }, { status: 400 }, requestId);
+      return twinApiErrorJson("Request body must be valid JSON.", 400, requestId, "BODY_JSON_INVALID");
     }
 
     const parsed = parseTwinRiskSignalAckPatchBody(raw);
@@ -58,7 +64,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         errorCode: "BODY_VALIDATION_FAILED",
         requestId,
       });
-      return twinApiJson({ error: parsed.error }, { status: 400 }, requestId);
+      return twinApiErrorJson(parsed.error, 400, requestId, "BODY_VALIDATION_FAILED");
     }
 
     const patched = await patchRiskSignalAckForTenant(access.tenant.id, riskSignalId, {
@@ -66,7 +72,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       actorId: access.user.id,
     });
     if (!patched.ok) {
-      return twinApiJson({ error: "Not found." }, { status: 404 }, requestId);
+      return twinApiErrorJson("Not found.", 404, requestId);
     }
 
     const body = twinRiskSignalAckPatchResponseSchema.parse({
@@ -102,6 +108,6 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       detail: name,
       requestId,
     });
-    return twinApiJson({ error: "Internal server error" }, { status: 500 }, requestId);
+    return twinApiErrorJson("Internal server error", 500, requestId);
   }
 }

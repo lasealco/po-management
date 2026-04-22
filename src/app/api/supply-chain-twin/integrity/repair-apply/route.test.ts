@@ -57,6 +57,7 @@ describe("POST /api/supply-chain-twin/integrity/repair-apply", () => {
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({
       error: "confirmApply=true is required to execute integrity repair apply mode.",
+      code: "BAD_INPUT",
     });
     expect(applyTwinIntegrityRepairsForTenantMock).not.toHaveBeenCalled();
   });
@@ -153,6 +154,7 @@ describe("POST /api/supply-chain-twin/integrity/repair-apply", () => {
     expect(response.status).toBe(403);
     expect(await response.json()).toEqual({
       error: "Forbidden: Supply Chain Twin maintenance routes require org.settings edit permission.",
+      code: "FORBIDDEN",
     });
     expect(applyTwinIntegrityRepairsForTenantMock).not.toHaveBeenCalled();
   });

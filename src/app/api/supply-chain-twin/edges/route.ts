@@ -1,4 +1,10 @@
-import { logSctwinApiError, logSctwinApiWarn, resolveSctwinRequestId, twinApiJson } from "../_lib/sctwin-api-log";
+import {
+  logSctwinApiError,
+  logSctwinApiWarn,
+  resolveSctwinRequestId,
+  twinApiErrorJson,
+  twinApiJson,
+} from "../_lib/sctwin-api-log";
 import { requireTwinApiAccess } from "@/lib/supply-chain-twin/sctwin-api-access";
 import { listEdgesForEntity, listEdgesForTenant } from "@/lib/supply-chain-twin/edges-repo";
 
@@ -21,7 +27,7 @@ export async function GET(request: Request) {
   try {
     const gate = await requireTwinApiAccess();
     if (!gate.ok) {
-      return twinApiJson({ error: gate.denied.error }, { status: gate.denied.status }, requestId);
+      return twinApiErrorJson(gate.denied.error, gate.denied.status, requestId);
     }
     const { access } = gate;
 
@@ -34,7 +40,7 @@ export async function GET(request: Request) {
         errorCode: "QUERY_VALIDATION_FAILED",
         requestId,
       });
-      return twinApiJson({ error: parsed.error }, { status: 400 }, requestId);
+      return twinApiErrorJson(parsed.error, 400, requestId, "QUERY_VALIDATION_FAILED");
     }
 
     const q = parsed.query;
@@ -61,6 +67,6 @@ export async function GET(request: Request) {
       detail: name,
       requestId,
     });
-    return twinApiJson({ error: "Internal server error" }, { status: 500 }, requestId);
+    return twinApiErrorJson("Internal server error", 500, requestId);
   }
 }

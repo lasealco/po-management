@@ -47,7 +47,7 @@ describe("GET /api/supply-chain-twin/scenarios/[id]/history", () => {
     });
 
     expect(response.status).toBe(404);
-    expect(await response.json()).toEqual({ error: "Not found." });
+    expect(await response.json()).toEqual({ error: "Not found.", code: "NOT_FOUND" });
     expect(listScenarioHistoryForTenantMock).toHaveBeenCalledWith("t1", "missing");
   });
 

@@ -1,4 +1,10 @@
-import { logSctwinApiError, logSctwinApiWarn, resolveSctwinRequestId, twinApiJson } from "../../_lib/sctwin-api-log";
+import {
+  logSctwinApiError,
+  logSctwinApiWarn,
+  resolveSctwinRequestId,
+  twinApiErrorJson,
+  twinApiJson,
+} from "../../_lib/sctwin-api-log";
 import { getEntitySnapshotByIdForTenant } from "@/lib/supply-chain-twin/repo";
 import { twinEntitySnapshotDetailResponseSchema } from "@/lib/supply-chain-twin/schemas/twin-api-responses";
 import { requireTwinApiAccess } from "@/lib/supply-chain-twin/sctwin-api-access";
@@ -19,7 +25,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
   try {
     const gate = await requireTwinApiAccess();
     if (!gate.ok) {
-      return twinApiJson({ error: gate.denied.error }, { status: gate.denied.status }, requestId);
+      return twinApiErrorJson(gate.denied.error, gate.denied.status, requestId);
     }
     const { access } = gate;
 
@@ -32,12 +38,12 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
         errorCode: "PATH_ID_INVALID",
         requestId,
       });
-      return twinApiJson({ error: "Invalid entity id." }, { status: 400 }, requestId);
+      return twinApiErrorJson("Invalid entity id.", 400, requestId, "PATH_ID_INVALID");
     }
 
     const row = await getEntitySnapshotByIdForTenant(access.tenant.id, snapshotId);
     if (!row) {
-      return twinApiJson({ error: "Not found." }, { status: 404 }, requestId);
+      return twinApiErrorJson("Not found.", 404, requestId);
     }
 
     const body = {
@@ -57,6 +63,6 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       detail: name,
       requestId,
     });
-    return twinApiJson({ error: "Internal server error" }, { status: 500 }, requestId);
+    return twinApiErrorJson("Internal server error", 500, requestId);
   }
 }

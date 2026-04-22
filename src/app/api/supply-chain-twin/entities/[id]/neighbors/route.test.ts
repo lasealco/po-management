@@ -61,7 +61,7 @@ describe("GET /api/supply-chain-twin/entities/[id]/neighbors", () => {
     });
 
     expect(response.status).toBe(404);
-    expect(await response.json()).toEqual({ error: "Not found." });
+    expect(await response.json()).toEqual({ error: "Not found.", code: "NOT_FOUND" });
     expect(listEntityNeighborsForTenantMock).not.toHaveBeenCalled();
   });
 
@@ -87,7 +87,7 @@ describe("GET /api/supply-chain-twin/entities/[id]/neighbors", () => {
     );
 
     expect(response.status).toBe(404);
-    expect(await response.json()).toEqual({ error: "Not found." });
+    expect(await response.json()).toEqual({ error: "Not found.", code: "NOT_FOUND" });
   });
 
   it("returns 200 with empty neighbors list", async () => {

@@ -1,4 +1,10 @@
-import { logSctwinApiError, logSctwinApiWarn, resolveSctwinRequestId, twinApiJson } from "../../../_lib/sctwin-api-log";
+import {
+  logSctwinApiError,
+  logSctwinApiWarn,
+  resolveSctwinRequestId,
+  twinApiErrorJson,
+  twinApiJson,
+} from "../../../_lib/sctwin-api-log";
 import { listEntityNeighborsForTenant } from "@/lib/supply-chain-twin/edges-repo";
 import { getEntitySnapshotByIdForTenant } from "@/lib/supply-chain-twin/repo";
 import { twinEntityNeighborsResponseSchema } from "@/lib/supply-chain-twin/schemas/twin-api-responses";
@@ -18,7 +24,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
   try {
     const gate = await requireTwinApiAccess();
     if (!gate.ok) {
-      return twinApiJson({ error: gate.denied.error }, { status: gate.denied.status }, requestId);
+      return twinApiErrorJson(gate.denied.error, gate.denied.status, requestId);
     }
     const { access } = gate;
 
@@ -31,7 +37,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
         errorCode: "PATH_ID_INVALID",
         requestId,
       });
-      return twinApiJson({ error: "Invalid entity id." }, { status: 400 }, requestId);
+      return twinApiErrorJson("Invalid entity id.", 400, requestId, "PATH_ID_INVALID");
     }
 
     const url = new URL(request.url);
@@ -43,12 +49,12 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
         errorCode: "QUERY_VALIDATION_FAILED",
         requestId,
       });
-      return twinApiJson({ error: parsed.error }, { status: 400 }, requestId);
+      return twinApiErrorJson(parsed.error, 400, requestId, "QUERY_VALIDATION_FAILED");
     }
 
     const snapshot = await getEntitySnapshotByIdForTenant(access.tenant.id, snapshotId);
     if (!snapshot) {
-      return twinApiJson({ error: "Not found." }, { status: 404 }, requestId);
+      return twinApiErrorJson("Not found.", 404, requestId);
     }
 
     const neighbors = await listEntityNeighborsForTenant(access.tenant.id, snapshotId, {
@@ -66,6 +72,6 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       detail: name,
       requestId,
     });
-    return twinApiJson({ error: "Internal server error" }, { status: 500 }, requestId);
+    return twinApiErrorJson("Internal server error", 500, requestId);
   }
 }

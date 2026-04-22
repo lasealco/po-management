@@ -100,7 +100,7 @@ describe("POST /api/supply-chain-twin/scenarios/[id]/duplicate", () => {
     );
 
     expect(response.status).toBe(404);
-    expect(await response.json()).toEqual({ error: "Not found." });
+    expect(await response.json()).toEqual({ error: "Not found.", code: "NOT_FOUND" });
     expect(duplicateScenarioDraftForTenantMock).toHaveBeenCalledWith("t1", "other-tenant-draft", {
       actorId: "u1",
     });

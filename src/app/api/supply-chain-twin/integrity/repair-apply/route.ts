@@ -1,4 +1,10 @@
-import { logSctwinApiError, logSctwinApiWarn, resolveSctwinRequestId, twinApiJson } from "../../_lib/sctwin-api-log";
+import {
+  logSctwinApiError,
+  logSctwinApiWarn,
+  resolveSctwinRequestId,
+  twinApiErrorJson,
+  twinApiJson,
+} from "../../_lib/sctwin-api-log";
 import { applyTwinIntegrityRepairsForTenant } from "@/lib/supply-chain-twin/integrity-repair-apply";
 import { appendTwinMutationAuditEvent } from "@/lib/supply-chain-twin/mutation-audit";
 import {
@@ -20,22 +26,18 @@ export async function POST(request: Request) {
   try {
     const gate = await requireTwinMaintenanceAccess();
     if (!gate.ok) {
-      return twinApiJson({ error: gate.denied.error }, { status: gate.denied.status }, requestId);
+      return twinApiErrorJson(gate.denied.error, gate.denied.status, requestId);
     }
 
     let rawBody: unknown;
     try {
       rawBody = await request.json();
     } catch {
-      return twinApiJson({ error: "Request body must be valid JSON." }, { status: 400 }, requestId);
+      return twinApiErrorJson("Request body must be valid JSON.", 400, requestId);
     }
     const parsed = twinIntegrityRepairApplyBodySchema.safeParse(rawBody);
     if (!parsed.success) {
-      return twinApiJson(
-        { error: "confirmApply=true is required to execute integrity repair apply mode." },
-        { status: 400 },
-        requestId,
-      );
+      return twinApiErrorJson("confirmApply=true is required to execute integrity repair apply mode.", 400, requestId);
     }
 
     const result = await applyTwinIntegrityRepairsForTenant(gate.access.tenant.id, {
@@ -71,6 +73,6 @@ export async function POST(request: Request) {
       detail: name,
       requestId,
     });
-    return twinApiJson({ error: "Internal server error" }, { status: 500 }, requestId);
+    return twinApiErrorJson("Internal server error", 500, requestId);
   }
 }

@@ -1,4 +1,4 @@
-import { logSctwinApiError, resolveSctwinRequestId, twinApiJson } from "../../_lib/sctwin-api-log";
+import { logSctwinApiError, resolveSctwinRequestId, twinApiErrorJson, twinApiJson } from "../../_lib/sctwin-api-log";
 import { getTwinIntegrityRepairDryRunForTenant } from "@/lib/supply-chain-twin/integrity-repair-dry-run";
 import { twinIntegrityRepairDryRunSummarySchema } from "@/lib/supply-chain-twin/schemas/twin-integrity-repair-dry-run";
 import { requireTwinMaintenanceAccess } from "@/lib/supply-chain-twin/sctwin-api-access";
@@ -16,7 +16,7 @@ export async function GET(request: Request) {
   try {
     const gate = await requireTwinMaintenanceAccess();
     if (!gate.ok) {
-      return twinApiJson({ error: gate.denied.error }, { status: gate.denied.status }, requestId);
+      return twinApiErrorJson(gate.denied.error, gate.denied.status, requestId);
     }
 
     const body = await getTwinIntegrityRepairDryRunForTenant(gate.access.tenant.id);
@@ -30,6 +30,6 @@ export async function GET(request: Request) {
       detail: name,
       requestId,
     });
-    return twinApiJson({ error: "Internal server error" }, { status: 500 }, requestId);
+    return twinApiErrorJson("Internal server error", 500, requestId);
   }
 }

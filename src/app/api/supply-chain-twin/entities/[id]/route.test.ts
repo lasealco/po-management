@@ -88,7 +88,7 @@ describe("GET /api/supply-chain-twin/entities/[id]", () => {
     });
 
     expect(response.status).toBe(404);
-    expect(await response.json()).toEqual({ error: "Not found." });
+    expect(await response.json()).toEqual({ error: "Not found.", code: "NOT_FOUND" });
     expect(getEntitySnapshotByIdForTenantMock).toHaveBeenCalledWith("t1", "missing-id");
   });
 

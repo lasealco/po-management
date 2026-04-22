@@ -7,6 +7,7 @@ import {
   resolveSctwinRequestId,
   SCTWIN_MODULE_REQUEST_ID_HEADER,
   SCTWIN_REQUEST_ID_HEADER,
+  twinApiErrorJson,
   twinApiJson,
 } from "./sctwin-api-log";
 
@@ -55,6 +56,19 @@ describe("twinApiJson", () => {
     expect(res.headers.get(SCTWIN_REQUEST_ID_HEADER)).toBe("gateway-req-abc12");
     expect(res.headers.get(SCTWIN_MODULE_REQUEST_ID_HEADER)).toBe("gateway-req-abc12");
     await expect(res.json()).resolves.toEqual({ ok: true });
+  });
+});
+
+describe("twinApiErrorJson", () => {
+  it("includes error + code from status and sets request id headers", async () => {
+    const res = twinApiErrorJson("nope", 404, "gateway-req-err1");
+    expect(res.headers.get(SCTWIN_REQUEST_ID_HEADER)).toBe("gateway-req-err1");
+    await expect(res.json()).resolves.toEqual({ error: "nope", code: "NOT_FOUND" });
+  });
+
+  it("allows overriding the machine code", async () => {
+    const res = twinApiErrorJson("bad cursor", 400, "gateway-req-err2", "INVALID_CURSOR");
+    await expect(res.json()).resolves.toEqual({ error: "bad cursor", code: "INVALID_CURSOR" });
   });
 });
 

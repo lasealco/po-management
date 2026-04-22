@@ -125,6 +125,7 @@ describe("GET /api/supply-chain-twin/integrity/repair-dry-run", () => {
     expect(response.status).toBe(403);
     expect(await response.json()).toEqual({
       error: "Forbidden: Supply Chain Twin maintenance routes require org.settings edit permission.",
+      code: "FORBIDDEN",
     });
     expect(getTwinIntegrityRepairDryRunForTenantMock).not.toHaveBeenCalled();
   });

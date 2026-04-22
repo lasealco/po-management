@@ -233,6 +233,7 @@ describe("GET /api/supply-chain-twin/scenarios", () => {
     expect(response.status).toBe(403);
     expect(await response.json()).toEqual({
       error: "Forbidden: Supply Chain Twin is not available for supplier portal sessions.",
+      code: "FORBIDDEN",
     });
     expect(resolveNavStateMock).not.toHaveBeenCalled();
     expect(listScenarioDraftsForTenantPageMock).not.toHaveBeenCalled();
