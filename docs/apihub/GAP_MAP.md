@@ -2,10 +2,11 @@
 
 **Legend:** ✅ shipped · 🟡 partial / stub · ❌ not started
 
-**Last updated:** 2026-04-22 (Slice 51 permissions matrix vs route guards)
+**Last updated:** 2026-04-30 (Slice 60 closeout audit + residual risks)
 
 | Area | Repo reality | Notes |
 |------|--------------|--------|
+| Slice 60 handoff | ✅ [`CLOSEOUT_AUDIT.md`](./CLOSEOUT_AUDIT.md) | Inventory, verify commands, **residual risk log** (R1–R9), sign-off checklist |
 | Docs home | ✅ `docs/apihub/README.md`, specs | README includes **mapping API** table + **apply-operator-runbook** (operator triage) |
 | Docs runbook | ✅ `docs/apihub/RUNBOOK.md` | Docs-only workflow; points to README for live endpoint index |
 | Permissions matrix (docs ↔ guards) | ✅ [`permissions-matrix.md`](./permissions-matrix.md), optional `src/lib/apihub/apihub-access-model.ts` | Public = `GET /api/apihub/health` only; all other API Hub routes + `/apihub` UI use demo tenant + demo actor; fine-grained RBAC deferred to Slice 52–53 |

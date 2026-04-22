@@ -13,6 +13,7 @@ This folder is the **documentation home** for **integration / ingestion APIs and
 | [permissions-matrix.md](./permissions-matrix.md) | **Slice 51:** Route-level access — public vs demo tenant + demo actor; aligns with `src/app/api/apihub/**` guards and `/apihub` `ApihubGate` |
 | [RUNBOOK.md](./RUNBOOK.md) | Docs-only execution runbook for API Hub updates, scope boundaries, and PR checklist |
 | [RELEASE_CHECKLIST.md](./RELEASE_CHECKLIST.md) | **Slice 59:** Pre/post deploy checklist and `npm run smoke:apihub` sequence |
+| [CLOSEOUT_AUDIT.md](./CLOSEOUT_AUDIT.md) | **Slice 60:** Module handoff — scope inventory, residual risks (R1–R9), sign-off checklist |
 
 **Gap map (spec ↔ code):** [GAP_MAP.md](./GAP_MAP.md)
 
