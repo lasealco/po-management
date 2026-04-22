@@ -857,7 +857,7 @@ function ControlTowerWorkbenchInner({
               setQ(e.target.value);
               if (productTraceFilter) setProductTraceFilter("");
             }}
-            placeholder="PO #, SKU, tracking, B/L ref…"
+            placeholder="PO #, SKU, tracking, docs, assignee…"
             className="mt-1 block w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"
           />
         </label>

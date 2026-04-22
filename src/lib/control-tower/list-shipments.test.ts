@@ -196,6 +196,7 @@ describe("listControlTowerShipments", () => {
     expect(dumped).toContain("invoiceNo");
     expect(dumped).toContain("ctDocuments");
     expect(dumped).toContain("fileName");
+    expect(dumped).toContain("uploadedBy");
     expect(dumped).toContain("opsAssignee");
     expect(dumped).toContain("createdBy");
   });

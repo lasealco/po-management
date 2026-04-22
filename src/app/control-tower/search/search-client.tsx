@@ -161,7 +161,7 @@ export function ControlTowerSearchClient() {
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="PO-…, source:unlinked, lane:CNSHA, route:plan_leg, overdue…"
+          placeholder="PO-…, docs, assignee, lane:CNSHA, route:plan_leg, overdue…"
           className="flex-1 rounded-lg border border-zinc-300 px-3 py-2 text-sm"
           onKeyDown={(e) => {
             if (e.key === "Enter") void run();

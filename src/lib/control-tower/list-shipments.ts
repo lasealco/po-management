@@ -442,6 +442,13 @@ export async function listControlTowerShipments(params: {
                 { docType: contains },
                 { externalRef: contains },
                 { integrationProvider: contains },
+                {
+                  uploadedBy: {
+                    is: {
+                      OR: [{ name: contains }, { email: contains }],
+                    },
+                  },
+                },
               ],
             },
           },
