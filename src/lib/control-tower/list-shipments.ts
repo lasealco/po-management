@@ -434,6 +434,32 @@ export async function listControlTowerShipments(params: {
         { order: { supplier: { is: { name: contains } } } },
         { customerCrmAccount: { is: { name: contains } } },
         { ctReferences: { some: { refValue: contains } } },
+        {
+          ctDocuments: {
+            some: {
+              OR: [
+                { fileName: contains },
+                { docType: contains },
+                { externalRef: contains },
+                { integrationProvider: contains },
+              ],
+            },
+          },
+        },
+        {
+          opsAssignee: {
+            is: {
+              OR: [{ name: contains }, { email: contains }],
+            },
+          },
+        },
+        {
+          createdBy: {
+            is: {
+              OR: [{ name: contains }, { email: contains }],
+            },
+          },
+        },
         { ctNotes: { some: { body: contains } } },
         {
           ctAlerts: {
