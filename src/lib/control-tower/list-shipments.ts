@@ -1461,6 +1461,49 @@ export async function listControlTowerShipments(params: {
         },
         {
           order: {
+            workflow: {
+              is: {
+                transitions: {
+                  some: {
+                    OR: [
+                      { actionCode: contains },
+                      { label: contains },
+                      {
+                        fromStatus: {
+                          is: {
+                            OR: [{ label: contains }, { code: contains }, { category: contains }],
+                          },
+                        },
+                      },
+                      {
+                        toStatus: {
+                          is: {
+                            OR: [{ label: contains }, { code: contains }, { category: contains }],
+                          },
+                        },
+                      },
+                    ],
+                  },
+                },
+              },
+            },
+          },
+        },
+        {
+          order: {
+            workflow: {
+              is: {
+                actions: {
+                  some: {
+                    OR: [{ code: contains }, { label: contains }],
+                  },
+                },
+              },
+            },
+          },
+        },
+        {
+          order: {
             status: {
               is: {
                 OR: [{ label: contains }, { code: contains }, { category: contains }],
