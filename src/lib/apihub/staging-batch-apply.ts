@@ -72,6 +72,7 @@ export async function applyApiHubStagingBatchToDownstream(input: {
         rows: mappedRows,
         ctSource: { kind: "staging_batch", batchId: input.batchId },
         enforceSalesOrderExternalRefUnique: false,
+        enforcePurchaseOrderBuyerReferenceUnique: false,
       });
       await tx.apiHubStagingBatch.update({
         where: { id: input.batchId, tenantId: input.tenantId },

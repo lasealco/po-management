@@ -111,6 +111,20 @@ export async function assertNoSalesOrderExternalRefConflict(
   }
 }
 
+export async function assertNoPurchaseOrderBuyerReferenceConflict(
+  tx: Prisma.TransactionClient,
+  tenantId: string,
+  buyerReference: string,
+): Promise<void> {
+  const existing = await tx.purchaseOrder.findFirst({
+    where: { tenantId, buyerReference },
+    select: { id: true },
+  });
+  if (existing) {
+    throw new Error(`Purchase order already exists for buyerReference=${buyerReference}.`);
+  }
+}
+
 async function applySalesOrderRowLive(
   tx: Prisma.TransactionClient,
   input: {
@@ -173,9 +187,14 @@ async function applySalesOrderRowLive(
 
 async function applyPurchaseOrderRowLive(
   tx: Prisma.TransactionClient,
-  input: { tenantId: string; actorUserId: string; row: ApiHubMappedApplyRow },
+  input: {
+    tenantId: string;
+    actorUserId: string;
+    row: ApiHubMappedApplyRow;
+    enforceBuyerReferenceUnique: boolean;
+  },
 ): Promise<ApiHubStagingApplyRowResult> {
-  const { tenantId, actorUserId, row } = input;
+  const { tenantId, actorUserId, row, enforceBuyerReferenceUnique } = input;
   const rec = asRecord(row.mappedRecord);
   if (!rec) {
     return { rowIndex: row.rowIndex, ok: false, error: "mappedRecord must be an object." };
@@ -219,6 +238,17 @@ async function applyPurchaseOrderRowLive(
   const tax = subtotal * 0.08;
   const total = subtotal + tax;
   const buyerReference = readStr(rec, "buyerReference");
+  if (enforceBuyerReferenceUnique && buyerReference) {
+    try {
+      await assertNoPurchaseOrderBuyerReferenceConflict(tx, tenantId, buyerReference);
+    } catch {
+      return {
+        rowIndex: row.rowIndex,
+        ok: false,
+        error: `Duplicate purchase order buyerReference for tenant (${buyerReference}).`,
+      };
+    }
+  }
   const rddRaw = readStr(rec, "requestedDeliveryDate");
   const requestedDeliveryDate = rddRaw ? new Date(`${rddRaw}T00:00:00.000Z`) : null;
   if (requestedDeliveryDate && Number.isNaN(requestedDeliveryDate.getTime())) {
@@ -391,6 +421,25 @@ export async function dryRunSalesOrderExternalRefConflicts(
   return null;
 }
 
+export async function dryRunPurchaseOrderBuyerReferenceConflicts(
+  tenantId: string,
+  rows: ApiHubMappedApplyRow[],
+): Promise<{ rowIndex: number; buyerReference: string } | null> {
+  for (const row of rows) {
+    const rec = asRecord(row.mappedRecord);
+    const buyerReference = rec ? readStr(rec, "buyerReference") : null;
+    if (!buyerReference) continue;
+    const existing = await prisma.purchaseOrder.findFirst({
+      where: { tenantId, buyerReference },
+      select: { id: true },
+    });
+    if (existing) {
+      return { rowIndex: row.rowIndex, buyerReference };
+    }
+  }
+  return null;
+}
+
 /** Apply mapped rows inside an existing transaction (caller commits). */
 export async function applyMappedRowsInTransaction(
   tx: Prisma.TransactionClient,
@@ -401,6 +450,7 @@ export async function applyMappedRowsInTransaction(
     rows: ApiHubMappedApplyRow[];
     ctSource: ApiHubCtAuditSource;
     enforceSalesOrderExternalRefUnique: boolean;
+    enforcePurchaseOrderBuyerReferenceUnique: boolean;
   },
 ): Promise<ApiHubStagingApplySummary> {
   const sorted = [...input.rows].sort((a, b) => a.rowIndex - b.rowIndex);
@@ -419,6 +469,7 @@ export async function applyMappedRowsInTransaction(
         tenantId: input.tenantId,
         actorUserId: input.actorUserId,
         row,
+        enforceBuyerReferenceUnique: input.enforcePurchaseOrderBuyerReferenceUnique,
       });
     } else {
       r = await applyCtAuditRowLive(tx, {

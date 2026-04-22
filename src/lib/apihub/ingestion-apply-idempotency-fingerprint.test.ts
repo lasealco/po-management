@@ -24,6 +24,18 @@ describe("computeIngestionApplyIdempotencyFingerprint", () => {
     expect(fromSummary).not.toEqual(fromBody);
   });
 
+  it("differs when matchKey changes for same target", () => {
+    const none = computeIngestionApplyIdempotencyFingerprint({
+      downstream: { target: "purchase_order", matchKey: "none" },
+    });
+    const buyerRef = computeIngestionApplyIdempotencyFingerprint({
+      downstream: { target: "purchase_order", matchKey: "purchase_order_buyer_reference" },
+    });
+    expect(none.startsWith("v1:ds:")).toBe(true);
+    expect(buyerRef.startsWith("v1:ds:")).toBe(true);
+    expect(none).not.toEqual(buyerRef);
+  });
+
   it("is stable under key reordering in mappedRecord", () => {
     const a = computeIngestionApplyIdempotencyFingerprint({
       downstream: {

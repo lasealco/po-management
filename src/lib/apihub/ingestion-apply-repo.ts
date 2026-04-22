@@ -4,6 +4,7 @@ import type { ApiHubIngestionApplyMatchKey, ApiHubStagingApplyTarget } from "@/l
 import {
   applyMappedRowsInTransaction,
   dryRunMappedRowsPreview,
+  dryRunPurchaseOrderBuyerReferenceConflicts,
   dryRunSalesOrderExternalRefConflicts,
   type ApiHubStagingApplySummary,
 } from "@/lib/apihub/downstream-mapped-rows-apply";
@@ -20,7 +21,8 @@ export type ApplyDryRunGate =
     }
   | { type: "downstream_rows_unresolved"; message: string }
   | { type: "downstream_rows_invalid"; summary: ApiHubStagingApplySummary }
-  | { type: "duplicate_sales_order_external_ref"; rowIndex: number; externalRef: string };
+  | { type: "duplicate_sales_order_external_ref"; rowIndex: number; externalRef: string }
+  | { type: "duplicate_purchase_order_buyer_reference"; rowIndex: number; buyerReference: string };
 
 export type ApplyIngestionRunDownstreamOpts = {
   target: ApiHubStagingApplyTarget;
@@ -161,6 +163,8 @@ export async function applyApiHubIngestionRun(opts: {
     }
     const enforceSalesOrderExternalRefUnique =
       downstream.target === "sales_order" && downstream.matchKey === "sales_order_external_ref";
+    const enforcePurchaseOrderBuyerReferenceUnique =
+      downstream.target === "purchase_order" && downstream.matchKey === "purchase_order_buyer_reference";
 
     if (dryRun) {
       const preview = await dryRunMappedRowsPreview({
@@ -179,6 +183,16 @@ export async function applyApiHubIngestionRun(opts: {
             type: "duplicate_sales_order_external_ref",
             rowIndex: dup.rowIndex,
             externalRef: dup.externalRef,
+          });
+        }
+      }
+      if (enforcePurchaseOrderBuyerReferenceUnique) {
+        const dupPo = await dryRunPurchaseOrderBuyerReferenceConflicts(tenantId, resolved.rows);
+        if (dupPo) {
+          return dryRunPreview(false, {
+            type: "duplicate_purchase_order_buyer_reference",
+            rowIndex: dupPo.rowIndex,
+            buyerReference: dupPo.buyerReference,
           });
         }
       }
@@ -221,6 +235,7 @@ export async function applyApiHubIngestionRun(opts: {
           rows: resolved.rows,
           ctSource: { kind: "ingestion_run", runId },
           enforceSalesOrderExternalRefUnique,
+          enforcePurchaseOrderBuyerReferenceUnique,
         });
 
         const runRow = await tx.apiHubIngestionRun.findFirst({

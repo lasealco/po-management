@@ -20,7 +20,7 @@
 | Prisma: **staging** | ✅ `ApiHubStagingBatch`, `ApiHubStagingRow`; `appliedAt` / `applySummary` | Materialize from succeeded analysis job; apply downstream; discard open batches |
 | Mapping engine + preview | ✅ | Export csv/json |
 | AI analysis job pipeline | ✅ | Heuristic + optional OpenAI; `outputProposal.llm`; **Save rules as template** via `POST /mapping-templates` + `sourceMappingAnalysisJobId` |
-| Deterministic **apply** (ingestion run) | ✅ | **P3:** optional `target` + `rows` / `resultSummary.rows` → same SO/PO/CT audit writers as staging; `matchKey` for SO `externalRef` de-dupe; 409 `APPLY_DOWNSTREAM_FAILED` on failure |
+| Deterministic **apply** (ingestion run) | ✅ | **P3:** optional `target` + `rows` / `resultSummary.rows` → same SO/PO/CT audit writers as staging; `matchKey` for SO `externalRef` + PO `buyerReference` de-dupe; 409 `APPLY_DOWNSTREAM_FAILED` on failure |
 | Staging **apply** (domain) | ✅ | SO/PO/CT audit from mapped rows; cross-grants `org.orders` / `org.controltower` |
 | Background workers | 🟡 | Mapping jobs use `after()`; no dedicated queue consumer (see R2 closeout) |
 
@@ -37,5 +37,5 @@
 
 1. P0–P1 — shell, connectors, templates, ingestion — **shipped**.
 2. P2 — analysis jobs + staging + LLM + template-from-job — **shipped** (iterate on models/prompts).
-3. P3 — ingestion apply to SO/PO/CT (**shipped**); extend match keys / conflict policy per product (e.g. PO buyer ref, idempotent upsert).
+3. P3 — ingestion apply to SO/PO/CT (**shipped**); `matchKey` includes **`purchase_order_buyer_reference`**; extend further (idempotent upsert / merge) as needed.
 4. P4 — centralized abuse budgets, conformance tests, leakage audit pack.

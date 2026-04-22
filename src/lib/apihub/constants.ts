@@ -130,11 +130,16 @@ export const APIHUB_STAGING_APPLY_TARGETS = ["sales_order", "purchase_order", "c
 export type ApiHubStagingApplyTarget = (typeof APIHUB_STAGING_APPLY_TARGETS)[number];
 
 /**
- * P3 — match-key policy when applying **ingestion runs** to `sales_order`.
- * - `none`: create-only (same as staging); optional `externalRef` duplicates are not pre-checked.
- * - `sales_order_external_ref`: fail apply when `externalRef` is set and a SO already exists for tenant+ref.
+ * P3 — match-key policy when applying **ingestion runs** downstream (staging apply stays create-only).
+ * - `none`: create-only; optional refs are not pre-checked for duplicates.
+ * - `sales_order_external_ref`: fail when `externalRef` is set and a SO already exists for tenant+ref.
+ * - `purchase_order_buyer_reference`: fail when `buyerReference` is set and a PO already exists for tenant+ref.
  */
-export const APIHUB_INGESTION_APPLY_MATCH_KEYS = ["none", "sales_order_external_ref"] as const;
+export const APIHUB_INGESTION_APPLY_MATCH_KEYS = [
+  "none",
+  "sales_order_external_ref",
+  "purchase_order_buyer_reference",
+] as const;
 export type ApiHubIngestionApplyMatchKey = (typeof APIHUB_INGESTION_APPLY_MATCH_KEYS)[number];
 
 /**

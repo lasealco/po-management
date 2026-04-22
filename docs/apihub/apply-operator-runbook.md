@@ -23,7 +23,7 @@ Same mapped-row shapes as **staging batch apply**. Requires **`org.orders` → e
 
 - **`target`:** `sales_order` \| `purchase_order` \| `control_tower_audit`
 - **`rows`:** optional array of `{ "rowIndex"?, "mappedRecord" }`. If omitted, the server reads **`rows`** or **`applyRows`** from the run’s **`resultSummary`** string when it is JSON.
-- **`matchKey`:** optional `none` (default) or **`sales_order_external_ref`** — rejects when `externalRef` is set and a sales order already exists for the tenant.
+- **`matchKey`:** optional `none` (default), **`sales_order_external_ref`** (SO: rejects when `externalRef` is set and a sales order already exists for the tenant), or **`purchase_order_buyer_reference`** (PO: rejects when `buyerReference` is set and a purchase order already exists for the tenant).
 
 **Dry-run** with `target` returns **`writeSummary.downstreamPreview`** when validation passes (row-level dry results).
 
