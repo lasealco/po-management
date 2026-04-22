@@ -24,8 +24,9 @@ const checks = [
       typeof body === "object" &&
       body != null &&
       body.ok === true &&
-      typeof body.service === "string" &&
-      typeof body.phase === "string",
+      body.service === "apihub" &&
+      typeof body.phase === "string" &&
+      Object.keys(body).length === 3,
   },
   {
     key: "apihub_page",

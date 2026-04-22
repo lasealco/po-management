@@ -10,4 +10,9 @@ describe("getApiHubHealthJson", () => {
       phase: "P2",
     });
   });
+
+  it("exposes only ok, service, phase (R9 — no silent JSON drift on the public health route)", () => {
+    const j = getApiHubHealthJson();
+    expect(Object.keys(j as Record<string, unknown>).sort()).toEqual(["ok", "phase", "service"]);
+  });
 });

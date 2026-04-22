@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { getApiHubHealthJson } from "@/lib/apihub/health-body";
 import { APIHUB_REQUEST_ID_HEADER } from "@/lib/apihub/request-id";
 
 describe("GET /api/apihub/health", () => {
@@ -12,8 +13,7 @@ describe("GET /api/apihub/health", () => {
     );
     expect(response.status).toBe(200);
     expect(response.headers.get(APIHUB_REQUEST_ID_HEADER)).toBe("health-check-01");
-    const body = (await response.json()) as { ok: boolean; service: string };
-    expect(body.ok).toBe(true);
-    expect(typeof body.service).toBe("string");
+    const body = (await response.json()) as Record<string, unknown>;
+    expect(body).toEqual(getApiHubHealthJson());
   });
 });
