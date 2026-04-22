@@ -1282,7 +1282,36 @@ export async function listControlTowerShipments(params: {
                                     },
                                   },
                                 },
+                                {
+                                  lines: {
+                                    some: {
+                                      OR: [
+                                        { rawDescription: contains },
+                                        { normalizedLabel: contains },
+                                        { currency: contains },
+                                        { unitBasis: contains },
+                                        { equipmentType: contains },
+                                        { chargeStructureHint: contains },
+                                        { parseConfidence: contains },
+                                        {
+                                          auditResult: {
+                                            is: {
+                                              explanation: contains,
+                                            },
+                                          },
+                                        },
+                                      ],
+                                    },
+                                  },
+                                },
                               ],
+                            },
+                          },
+                        },
+                        {
+                          invoiceAuditResults: {
+                            some: {
+                              explanation: contains,
                             },
                           },
                         },
