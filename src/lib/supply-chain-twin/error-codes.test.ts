@@ -91,6 +91,18 @@ describe("TWIN_API_ERROR_CODES", () => {
     }
   });
 
+  it("parses every registered code with message fallback when error is not a string", () => {
+    for (const code of Object.values(TWIN_API_ERROR_CODES)) {
+      expect(
+        parseTwinApiErrorBody({
+          code: ` ${code.toLowerCase()} `,
+          error: 42,
+          message: "gateway detail",
+        }),
+      ).toEqual({ code, error: "gateway detail" });
+    }
+  });
+
   it("parses code + error safely from unknown response bodies", () => {
     expect(parseTwinApiErrorBody({ code: "FORMAT_INVALID", error: "Invalid format" })).toEqual({
       code: "FORMAT_INVALID",
