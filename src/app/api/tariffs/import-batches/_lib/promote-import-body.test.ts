@@ -10,6 +10,15 @@ describe("parsePromoteImportRequestBody", () => {
     });
   });
 
+  it("ignores unrelated keys and only reads contractHeaderId", () => {
+    expect(
+      parsePromoteImportRequestBody({ contractHeaderId: "hdr_9", note: "x", extra: { nested: true } }),
+    ).toEqual({
+      ok: true,
+      contractHeaderId: "hdr_9",
+    });
+  });
+
   it("rejects non-objects and missing id", () => {
     expect(parsePromoteImportRequestBody(null)).toEqual({
       ok: false,
