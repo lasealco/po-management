@@ -133,16 +133,42 @@ export async function updateApiHubMappingTemplate(input: {
   auditNote: string | null;
 }): Promise<ApiHubMappingTemplateRow | null> {
   return prisma.$transaction(async (tx) => {
-    const existing = await tx.apiHubMappingTemplate.findFirst({
+    const patch: Prisma.ApiHubMappingTemplateUpdateManyMutationInput = {};
+    if (input.data.name !== undefined) {
+      patch.name = input.data.name;
+    }
+    if (input.data.description !== undefined) {
+      patch.description = input.data.description;
+    }
+    if (input.data.rules !== undefined) {
+      patch.rules = input.data.rules as unknown as Prisma.InputJsonValue;
+    }
+    if (Object.keys(patch).length === 0) {
+      const row = await tx.apiHubMappingTemplate.findFirst({
+        where: { id: input.templateId, tenantId: input.tenantId },
+        select,
+      });
+      if (!row) {
+        return null;
+      }
+      await appendMappingTemplateAuditLog(tx, {
+        tenantId: input.tenantId,
+        templateId: input.templateId,
+        actorUserId: input.actorUserId,
+        action: APIHUB_MAPPING_TEMPLATE_AUDIT_ACTION_UPDATED,
+        note: input.auditNote,
+      });
+      return row;
+    }
+    const updated = await tx.apiHubMappingTemplate.updateMany({
       where: { id: input.templateId, tenantId: input.tenantId },
-      select: { id: true },
+      data: patch,
     });
-    if (!existing) {
+    if (updated.count === 0) {
       return null;
     }
-    const row = await tx.apiHubMappingTemplate.update({
-      where: { id: input.templateId },
-      data: input.data,
+    const row = await tx.apiHubMappingTemplate.findFirstOrThrow({
+      where: { id: input.templateId, tenantId: input.tenantId },
       select,
     });
     await appendMappingTemplateAuditLog(tx, {
@@ -162,11 +188,10 @@ export async function deleteApiHubMappingTemplate(input: {
   actorUserId: string;
 }): Promise<boolean> {
   return prisma.$transaction(async (tx) => {
-    const existing = await tx.apiHubMappingTemplate.findFirst({
+    const removed = await tx.apiHubMappingTemplate.deleteMany({
       where: { id: input.templateId, tenantId: input.tenantId },
-      select: { id: true },
     });
-    if (!existing) {
+    if (removed.count === 0) {
       return false;
     }
     await appendMappingTemplateAuditLog(tx, {
@@ -175,9 +200,6 @@ export async function deleteApiHubMappingTemplate(input: {
       actorUserId: input.actorUserId,
       action: APIHUB_MAPPING_TEMPLATE_AUDIT_ACTION_DELETED,
       note: null,
-    });
-    await tx.apiHubMappingTemplate.delete({
-      where: { id: input.templateId },
     });
     return true;
   });

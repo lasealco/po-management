@@ -2,10 +2,11 @@
 
 **Legend:** ✅ shipped · 🟡 partial / stub · ❌ not started
 
-**Last updated:** 2026-04-30 (Slice 60 closeout audit + residual risks)
+**Last updated:** 2026-04-30 (Slice 61 tenant scoping + tests)
 
 | Area | Repo reality | Notes |
 |------|--------------|--------|
+| Tenant scoping (repos) | ✅ [`TENANT_SCOPING.md`](./TENANT_SCOPING.md), `*.tenant-scope.test.ts` | Mapping template PATCH/DELETE use `updateMany`/`deleteMany` with `{ id, tenantId }`; sample repo `where` assertions |
 | Slice 60 handoff | ✅ [`CLOSEOUT_AUDIT.md`](./CLOSEOUT_AUDIT.md) | Inventory, verify commands, **residual risk log** (R1–R9), sign-off checklist |
 | Docs home | ✅ `docs/apihub/README.md`, specs | README includes **mapping API** table + **apply-operator-runbook** (operator triage) |
 | Docs runbook | ✅ `docs/apihub/RUNBOOK.md` | Docs-only workflow; points to README for live endpoint index |

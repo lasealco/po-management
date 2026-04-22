@@ -63,7 +63,7 @@ These are **accepted** gaps for the current phase unless an issue explicitly res
 | R3 | **Apply → downstream systems** is scenario-specific / partially stubbed (rollback stub, CT/PO wiring not universal). | Medium | Extend apply adapters per scenario; expand operator runbook when wiring changes. |
 | R4 | **AI-assisted mapping job** (async LLM) not implemented — mapping is deterministic + human-driven. | Low for current MVP | Spec in `integrations-ai-assisted-ingestion.md`; track as P2+. |
 | R5 | **Batch / staging Prisma tables** not present — rules live on templates + request payloads. | Low | `GAP_MAP.md` row; add tables when batch UX ships. |
-| R6 | **Tenant isolation** not exhaustively proven by automated tests across every repo method. | Medium | **Slice 61** — tenant scoping assertions. |
+| R6 | **Tenant isolation** not exhaustively proven by automated tests across every repo method. | Medium | **Slice 61** — atomic mapping `updateMany`/`deleteMany` + `*.tenant-scope.test.ts` guards; extend as new repos ship. |
 | R7 | **Secrets / PII in logs and error payloads** not covered by a dedicated leakage test pack in-repo. | Medium | **Slice 54** — leakage audit + tests. |
 | R8 | **Abuse limits** (payload size, row caps beyond per-route validation) not centralized. | Low | **Slice 55** — request budget helpers. |
 | R9 | **Contract drift** — major APIs lack a single generated-schema gate in CI. | Low | **Slice 56** — conformance suite. |
