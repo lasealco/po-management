@@ -53,7 +53,9 @@ const checks = [
       (status === 401 || status === 503) &&
       typeof body === "object" &&
       body != null &&
-      typeof body.error === "string",
+      typeof body.error === "string" &&
+      typeof body.code === "string" &&
+      Object.keys(body).length === 2,
   },
   {
     key: "apihub_workspace_page",

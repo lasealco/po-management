@@ -34,6 +34,10 @@ describe("GET /api/cron/apihub-mapping-analysis-jobs", () => {
     const { GET } = await import("./route");
     const res = await GET(new Request("http://localhost/api/cron/apihub-mapping-analysis-jobs"));
     expect(res.status).toBe(503);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(Object.keys(body).sort()).toEqual(["code", "error"]);
+    expect(body.code).toBe("UNAVAILABLE");
+    expect(body.error).toBe("CRON_SECRET is not configured.");
   });
 
   it("returns 401 when bearer does not match", async () => {
@@ -45,6 +49,10 @@ describe("GET /api/cron/apihub-mapping-analysis-jobs", () => {
       }),
     );
     expect(res.status).toBe(401);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(Object.keys(body).sort()).toEqual(["code", "error"]);
+    expect(body.code).toBe("UNAUTHORIZED");
+    expect(body.error).toBe("Unauthorized");
     expect(sweepMock).not.toHaveBeenCalled();
     expect(reclaimIngestionMock).not.toHaveBeenCalled();
   });
