@@ -7,6 +7,8 @@ import {
   userHasGlobalGrant,
   viewerHas,
 } from "@/lib/authz";
+import { parseControlTowerProductTraceParam } from "@/lib/control-tower/search-query";
+import { controlTowerWorkbenchPath } from "@/lib/control-tower/workbench-url-sync";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { getProductTracePayload } from "@/lib/product-trace";
 
@@ -71,6 +73,9 @@ export async function ProductTraceWorkspace({
 
   const canSeeWms = await userHasGlobalGrant(actorUserId, "org.wms", "view");
   const canSeeCt = viewerHas(access.grantSet, "org.controltower", "view");
+  const productTraceToken = parseControlTowerProductTraceParam(q.length > 0 ? q : null);
+  const workbenchHrefFromTrace =
+    canSeeCt && productTraceToken ? controlTowerWorkbenchPath({ productTrace: productTraceToken }) : undefined;
 
   const trace =
     q.length > 0
@@ -93,7 +98,10 @@ export async function ProductTraceWorkspace({
           permitted) on a map — then list or tile details below.
         </p>
         {canSeeCt ? (
-          <ControlTowerReportingHubWorkbenchLinks className="mt-4 flex flex-wrap gap-4 text-sm" />
+          <ControlTowerReportingHubWorkbenchLinks
+            className="mt-4 flex flex-wrap gap-4 text-sm"
+            workbenchHref={workbenchHrefFromTrace}
+          />
         ) : null}
       </header>
 

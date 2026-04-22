@@ -2,6 +2,8 @@ import Link from "next/link";
 
 import { REPORTING_HUB_CONTROL_TOWER_HREF } from "@/lib/reporting-hub-paths";
 
+const DEFAULT_WORKBENCH_HREF = "/control-tower/workbench";
+
 const textLinkClass = "font-medium text-sky-800 hover:underline";
 
 const buttonLinkClass: Record<"sm" | "md", string> = {
@@ -17,6 +19,7 @@ export function ControlTowerReportingHubWorkbenchLinks({
   buttonSize = "md",
   reportingLabel = "Reporting hub",
   workbenchLabel = "Workbench",
+  workbenchHref = DEFAULT_WORKBENCH_HREF,
   noWrapper = false,
 }: {
   className?: string;
@@ -30,6 +33,8 @@ export function ControlTowerReportingHubWorkbenchLinks({
   reportingLabel?: string;
   /** Visible label for the workbench link when `includeWorkbench`. */
   workbenchLabel?: string;
+  /** Overrides default `/control-tower/workbench` (e.g. `?productTrace=…` from product trace). */
+  workbenchHref?: string;
   /**
    * When true with `variant="text"` and `includeWorkbench`, render a fragment so links participate in a parent
    * flex `gap-*` (e.g. digest footer). `className` is ignored in that case.
@@ -37,6 +42,7 @@ export function ControlTowerReportingHubWorkbenchLinks({
   noWrapper?: boolean;
 }) {
   const btn = buttonLinkClass[buttonSize];
+  const wb = workbenchHref;
 
   if (variant === "button") {
     const reporting = (
@@ -50,7 +56,7 @@ export function ControlTowerReportingHubWorkbenchLinks({
     return (
       <>
         {reporting}
-        <Link href="/control-tower/workbench" className={btn}>
+        <Link href={wb} className={btn}>
           {workbenchLabel}
         </Link>
       </>
@@ -70,7 +76,7 @@ export function ControlTowerReportingHubWorkbenchLinks({
       <Link href={REPORTING_HUB_CONTROL_TOWER_HREF} className={textLinkClass}>
         {reportingLabel}
       </Link>
-      <Link href="/control-tower/workbench" className={textLinkClass}>
+      <Link href={wb} className={textLinkClass}>
         {workbenchLabel}
       </Link>
     </>
