@@ -170,6 +170,7 @@ export function ApplyConflictsPanel({ canView, initialItems, initialNextCursor }
               <th className="px-4 py-3">Result</th>
               <th className="px-4 py-3">HTTP</th>
               <th className="px-4 py-3">Run</th>
+              <th className="px-4 py-3">Connector</th>
               <th className="px-4 py-3">Flags</th>
               <th className="px-4 py-3">Actions</th>
               <th className="px-4 py-3 w-24">Detail</th>
@@ -276,7 +277,7 @@ export function ApplyConflictsPanel({ canView, initialItems, initialNextCursor }
                   </tr>
                   {expandedId === row.id ? (
                     <tr className="bg-zinc-50/90">
-                      <td colSpan={7} className="p-0">
+                      <td colSpan={8} className="p-0">
                         <div className="border-t border-zinc-100 px-4 py-4 text-sm text-zinc-800">
                           <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Summary</p>
                           <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
