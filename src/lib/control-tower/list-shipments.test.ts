@@ -294,6 +294,30 @@ describe("listControlTowerShipments", () => {
     });
     where = shipmentFindMany.mock.calls[3]![0].where as Prisma.ShipmentWhereInput;
     expect(JSON.stringify(where)).toContain("GREEN");
+
+    await listControlTowerShipments({
+      tenantId: "tenant-1",
+      ctx: ctxInternal,
+      query: { q: "PARSED" },
+    });
+    where = shipmentFindMany.mock.calls[4]![0].where as Prisma.ShipmentWhereInput;
+    expect(JSON.stringify(where)).toContain("PARSED");
+
+    await listControlTowerShipments({
+      tenantId: "tenant-1",
+      ctx: ctxInternal,
+      query: { q: "PICK" },
+    });
+    where = shipmentFindMany.mock.calls[5]![0].where as Prisma.ShipmentWhereInput;
+    expect(JSON.stringify(where)).toContain("PICK");
+
+    await listControlTowerShipments({
+      tenantId: "tenant-1",
+      ctx: ctxInternal,
+      query: { q: "FCL_40HC" },
+    });
+    where = shipmentFindMany.mock.calls[6]![0].where as Prisma.ShipmentWhereInput;
+    expect(JSON.stringify(where)).toContain("FCL_40HC");
   });
 
   it("overscans DB when routeActionPrefix is set", async () => {

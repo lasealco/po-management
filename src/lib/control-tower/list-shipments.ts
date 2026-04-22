@@ -1,10 +1,21 @@
 import type { Prisma } from "@prisma/client";
 import {
+  ContainerSize,
+  CtAlertSeverity,
+  CtAlertStatus,
+  CtExceptionStatus,
   InvoiceAuditLineOutcome,
+  InvoiceAuditRollupOutcome,
+  InvoiceIntakeStatus,
+  InvoiceReviewDecision,
+  LoadPlanStatus,
   ShipmentBookingStatus,
   ShipmentMilestoneCode,
   ShipmentStatus,
   TransportMode,
+  WmsTaskStatus,
+  WmsTaskType,
+  WmsWaveStatus,
 } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
@@ -405,6 +416,39 @@ export async function listControlTowerShipments(params: {
     const invoiceAuditOutcomeEnumMatch = (
       Object.values(InvoiceAuditLineOutcome) as InvoiceAuditLineOutcome[]
     ).filter((o) => o.toLowerCase() === qLower);
+    const ctAlertSeverityEnumMatch = (Object.values(CtAlertSeverity) as CtAlertSeverity[]).filter(
+      (s) => s.toLowerCase() === qLower,
+    );
+    const ctAlertStatusEnumMatch = (Object.values(CtAlertStatus) as CtAlertStatus[]).filter(
+      (s) => s.toLowerCase() === qLower,
+    );
+    const ctExceptionStatusEnumMatch = (Object.values(CtExceptionStatus) as CtExceptionStatus[]).filter(
+      (s) => s.toLowerCase() === qLower,
+    );
+    const invoiceIntakeStatusEnumMatch = (Object.values(InvoiceIntakeStatus) as InvoiceIntakeStatus[]).filter(
+      (s) => s.toLowerCase() === qLower,
+    );
+    const invoiceReviewDecisionEnumMatch = (
+      Object.values(InvoiceReviewDecision) as InvoiceReviewDecision[]
+    ).filter((s) => s.toLowerCase() === qLower);
+    const invoiceRollupOutcomeEnumMatch = (
+      Object.values(InvoiceAuditRollupOutcome) as InvoiceAuditRollupOutcome[]
+    ).filter((s) => s.toLowerCase() === qLower);
+    const loadPlanStatusEnumMatch = (Object.values(LoadPlanStatus) as LoadPlanStatus[]).filter(
+      (s) => s.toLowerCase() === qLower,
+    );
+    const containerSizeEnumMatch = (Object.values(ContainerSize) as ContainerSize[]).filter(
+      (s) => s.toLowerCase() === qLower,
+    );
+    const wmsTaskStatusEnumMatch = (Object.values(WmsTaskStatus) as WmsTaskStatus[]).filter(
+      (s) => s.toLowerCase() === qLower,
+    );
+    const wmsTaskTypeEnumMatch = (Object.values(WmsTaskType) as WmsTaskType[]).filter(
+      (s) => s.toLowerCase() === qLower,
+    );
+    const wmsWaveStatusEnumMatch = (Object.values(WmsWaveStatus) as WmsWaveStatus[]).filter(
+      (s) => s.toLowerCase() === qLower,
+    );
     const enumTokenOr: Prisma.ShipmentWhereInput[] = [
       ...shipmentStatusEnumMatch.map((status) => ({ status })),
       ...transportModeEnumMatch.flatMap((mode) => [
@@ -435,6 +479,62 @@ export async function listControlTowerShipments(params: {
                 ],
               },
             },
+          },
+        },
+      })),
+      ...ctAlertSeverityEnumMatch.map((severity) => ({
+        ctAlerts: { some: { severity } },
+      })),
+      ...ctAlertStatusEnumMatch.map((status) => ({
+        ctAlerts: { some: { status } },
+      })),
+      ...ctExceptionStatusEnumMatch.map((status) => ({
+        ctExceptions: { some: { status } },
+      })),
+      ...invoiceIntakeStatusEnumMatch.map((status) => ({
+        booking: {
+          is: {
+            pricingSnapshots: {
+              some: {
+                invoiceIntakes: { some: { status } },
+              },
+            },
+          },
+        },
+      })),
+      ...invoiceReviewDecisionEnumMatch.map((reviewDecision) => ({
+        booking: {
+          is: {
+            pricingSnapshots: {
+              some: {
+                invoiceIntakes: { some: { reviewDecision } },
+              },
+            },
+          },
+        },
+      })),
+      ...invoiceRollupOutcomeEnumMatch.map((rollupOutcome) => ({
+        booking: {
+          is: {
+            pricingSnapshots: {
+              some: {
+                invoiceIntakes: { some: { rollupOutcome } },
+              },
+            },
+          },
+        },
+      })),
+      ...loadPlanStatusEnumMatch.map((status) => ({
+        loadPlanShipment: {
+          is: {
+            loadPlan: { is: { status } },
+          },
+        },
+      })),
+      ...containerSizeEnumMatch.map((containerSize) => ({
+        loadPlanShipment: {
+          is: {
+            loadPlan: { is: { containerSize } },
           },
         },
       })),
@@ -514,6 +614,7 @@ export async function listControlTowerShipments(params: {
               OR: [
                 { waveNo: contains },
                 { note: contains },
+                ...wmsWaveStatusEnumMatch.map((status) => ({ status })),
                 {
                   warehouse: {
                     is: warehouseTextMatch,
