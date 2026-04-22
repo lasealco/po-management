@@ -550,4 +550,173 @@ describe("TWIN_API_ERROR_CODES", () => {
       }),
     ).toMatch(/filters are invalid/i);
   });
+
+  /**
+   * Program closeout tranche: slices 200–240 (error-contract hardening).
+   * @see docs/sctwin/program_closeout_gate.md
+   */
+  describe("SCTwin program slices 200–240", () => {
+    const allCodes = Object.values(TWIN_API_ERROR_CODES);
+
+    for (let i = 0; i < allCodes.length; i += 1) {
+      const code = allCodes[i];
+      const sliceNo = 200 + i;
+      it(`slice ${sliceNo} — whitespace-only error falls back to trimmed message (${code})`, () => {
+        expect(
+          parseTwinApiErrorBody({
+            code: ` ${code.toLowerCase()} `,
+            error: "\n\t \t\n",
+            message: ` detail for ${code} `,
+          }),
+        ).toEqual({ code, error: `detail for ${code}` });
+      });
+    }
+
+    it("slice 214 — export: QUERY_VALIDATION_FAILED maps when only message is present", () => {
+      expect(getTwinEventsExportErrorMessage({ code: "query_validation_failed", message: "ignored detail" })).toMatch(
+        /filters are invalid/i,
+      );
+    });
+
+    it("slice 215 — export: EXPORT_ROW_CAP_EXCEEDED maps when only message is present", () => {
+      expect(getTwinEventsExportErrorMessage({ code: "export_row_cap_exceeded", message: "ignored detail" })).toMatch(
+        /too large/i,
+      );
+    });
+
+    it("slice 216 — export: FORMAT_INVALID maps when only message is present", () => {
+      expect(getTwinEventsExportErrorMessage({ code: "format_invalid", message: "ignored detail" })).toMatch(
+        /CSV or JSON/i,
+      );
+    });
+
+    it("slice 217 — export: non-mapped code uses trimmed message when error key is absent", () => {
+      expect(getTwinEventsExportErrorMessage({ code: "invalid_cursor", message: " next page token " })).toBe(
+        "next page token",
+      );
+    });
+
+    const errorBeatsMessageCases: { slice: number; code: string }[] = [
+      { slice: 218, code: "INVALID_CURSOR" },
+      { slice: 219, code: "BODY_JSON_INVALID" },
+      { slice: 220, code: "BODY_VALIDATION_FAILED" },
+      { slice: 221, code: "PATH_ID_INVALID" },
+      { slice: 222, code: "INVALID_STATUS_TRANSITION" },
+      { slice: 223, code: "TWIN_INGEST_PAYLOAD_TOO_LARGE" },
+      { slice: 224, code: "TWIN_SCENARIO_DRAFT_JSON_TOO_LARGE" },
+      { slice: 225, code: "TIMEOUT_BUDGET_EXCEEDED" },
+      { slice: 226, code: "INVALID_IDEMPOTENCY_KEY" },
+      { slice: 227, code: "INVALID_TWIN_INGEST_TYPE" },
+    ];
+
+    for (const row of errorBeatsMessageCases) {
+      it(`slice ${row.slice} — export: raw error beats message (${row.code})`, () => {
+        expect(
+          getTwinEventsExportErrorMessage({
+            code: ` ${row.code.toLowerCase()} `,
+            error: " preferred operator text ",
+            message: " secondary text ",
+          }),
+        ).toBe("preferred operator text");
+      });
+    }
+
+    it("slice 228 — parseTwinApiErrorCode trims NBSP padding around registry codes", () => {
+      expect(parseTwinApiErrorCode({ code: `\u00A0QUERY_VALIDATION_FAILED\u00A0` })).toBe("QUERY_VALIDATION_FAILED");
+    });
+
+    it("slice 229 — parseTwinApiErrorCode trims leading BOM before registry code", () => {
+      expect(parseTwinApiErrorCode({ code: `\uFEFFQUERY_VALIDATION_FAILED` })).toBe("QUERY_VALIDATION_FAILED");
+    });
+
+    it("slice 230 — parseTwinApiErrorBody: message without code still surfaces text", () => {
+      expect(parseTwinApiErrorBody({ message: " gateway timeout " })).toEqual({
+        code: null,
+        error: "gateway timeout",
+      });
+    });
+
+    it("slice 231 — parseTwinApiErrorBody: error without code still surfaces text", () => {
+      expect(parseTwinApiErrorBody({ error: " raw failure " })).toEqual({ code: null, error: "raw failure" });
+    });
+
+    it("slice 232 — getTwinEventsExportErrorMessage: empty object falls back to default copy", () => {
+      expect(getTwinEventsExportErrorMessage({})).toBe("Export failed.");
+    });
+
+    it("slice 233 — getTwinEventsExportErrorMessage: undefined body falls back to default copy", () => {
+      expect(getTwinEventsExportErrorMessage(undefined)).toBe("Export failed.");
+    });
+
+    it("slice 234 — export: lowercase QUERY still beats misleading message", () => {
+      expect(
+        getTwinEventsExportErrorMessage({
+          code: "query_validation_failed",
+          error: "misleading",
+          message: "also misleading",
+        }),
+      ).toMatch(/filters are invalid/i);
+    });
+
+    it("slice 235 — export: lowercase EXPORT_ROW_CAP still beats misleading message", () => {
+      expect(
+        getTwinEventsExportErrorMessage({
+          code: "export_row_cap_exceeded",
+          error: "misleading",
+          message: "also misleading",
+        }),
+      ).toMatch(/too large/i);
+    });
+
+    it("slice 236 — export: lowercase FORMAT_INVALID still beats misleading message", () => {
+      expect(
+        getTwinEventsExportErrorMessage({
+          code: "format_invalid",
+          error: "misleading",
+          message: "also misleading",
+        }),
+      ).toMatch(/CSV or JSON/i);
+    });
+
+    it("slice 237 — parseTwinApiErrorBody: blank code string yields null code with error text", () => {
+      expect(parseTwinApiErrorBody({ code: "   ", error: "still an error" })).toEqual({
+        code: null,
+        error: "still an error",
+      });
+    });
+
+    it("slice 238 — parseTwinApiErrorBody: empty error and message collapse to null", () => {
+      expect(parseTwinApiErrorBody({ code: "FORMAT_INVALID", error: "", message: "" })).toEqual({
+        code: "FORMAT_INVALID",
+        error: null,
+      });
+    });
+
+    it("slice 239 — export: QUERY with no usable text still returns stable mapped copy", () => {
+      expect(
+        getTwinEventsExportErrorMessage({
+          code: "query_validation_failed",
+          error: "",
+          message: "   ",
+        }),
+      ).toMatch(/filters are invalid/i);
+    });
+
+    it("slice 240 — export: EXPORT_ROW_CAP and FORMAT with no usable text still return stable copy", () => {
+      expect(
+        getTwinEventsExportErrorMessage({
+          code: "export_row_cap_exceeded",
+          error: "",
+          message: "   ",
+        }),
+      ).toMatch(/too large/i);
+      expect(
+        getTwinEventsExportErrorMessage({
+          code: "format_invalid",
+          error: "  ",
+          message: "\t\n",
+        }),
+      ).toMatch(/CSV or JSON/i);
+    });
+  });
 });
