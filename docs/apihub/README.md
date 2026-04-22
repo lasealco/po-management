@@ -69,7 +69,7 @@ Authoritative guard semantics: [permissions-matrix.md](./permissions-matrix.md).
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| `GET`, `POST` | `/api/cron/apihub-mapping-analysis-jobs` | **Bearer `CRON_SECRET`** (same as Control Tower crons). **Reclaims** stale **`processing`** jobs (older than **`APIHUB_MAPPING_ANALYSIS_STALE_PROCESSING_MS`**, default **15m**, clamped 1m–24h), then drains oldest **`queued`** jobs via shared `processApiHubMappingAnalysisJob` (default batch **`limit=5`**, max **20**, optional `?limit=`). Root **`vercel.json`**: `*/10 * * * *` UTC (Pro); Hobby may run less often. |
+| `GET`, `POST` | `/api/cron/apihub-mapping-analysis-jobs` | **Bearer `CRON_SECRET`** (same as Control Tower crons). Fails stale **`running`** ingestion runs (**`APIHUB_INGESTION_RUN_STALE_RUNNING_MS`**, default **15m**, clamped 1m–24h) with **`STALE_RUNNING`** so **`POST …/ingestion-jobs/:id/retry`** applies; **reclaims** stale **`processing`** mapping-analysis jobs (**`APIHUB_MAPPING_ANALYSIS_STALE_PROCESSING_MS`**); then drains oldest **`queued`** mapping-analysis jobs via `processApiHubMappingAnalysisJob` (default batch **`limit=5`**, max **20**, optional `?limit=`). Root **`vercel.json`**: `*/10 * * * *` UTC (Pro); Hobby may run less often. |
 
 ### Staging batches (persisted preview rows)
 

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 
 
+import { reclaimStaleApiHubIngestionRuns } from "@/lib/apihub/ingestion-run-stale-reclaim";
 import { runApiHubMappingAnalysisWorkerSweep } from "@/lib/apihub/mapping-analysis-job-worker-sweep";
 
 export const dynamic = "force-dynamic";
@@ -38,8 +39,9 @@ async function handleCron(request: Request) {
     limit = undefined;
   }
 
+  const reclaimedStaleIngestionRuns = await reclaimStaleApiHubIngestionRuns();
   const summary = await runApiHubMappingAnalysisWorkerSweep(limit);
-  return NextResponse.json({ ok: true, ...summary });
+  return NextResponse.json({ ok: true, reclaimedStaleIngestionRuns, ...summary });
 }
 
 export async function GET(request: Request) {

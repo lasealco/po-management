@@ -50,6 +50,9 @@ export const APIHUB_INGESTION_JOB_STATUSES = [
 ] as const;
 export type ApiHubIngestionJobStatus = (typeof APIHUB_INGESTION_JOB_STATUSES)[number];
 
+/** Set by cron reclaim when a run stays `running` past the stale threshold (`ingestion-run-stale-reclaim.ts`). */
+export const APIHUB_INGESTION_ERROR_STALE_RUNNING = "STALE_RUNNING" as const;
+
 /** Ingestion trigger labels for job provenance. */
 export const APIHUB_INGESTION_TRIGGER_KINDS = ["manual", "api", "scheduled"] as const;
 export type ApiHubIngestionTriggerKind = (typeof APIHUB_INGESTION_TRIGGER_KINDS)[number];

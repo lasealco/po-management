@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const sweepMock = vi.fn();
+const reclaimIngestionMock = vi.fn();
+
+vi.mock("@/lib/apihub/ingestion-run-stale-reclaim", () => ({
+  reclaimStaleApiHubIngestionRuns: reclaimIngestionMock,
+}));
 
 vi.mock("@/lib/apihub/mapping-analysis-job-worker-sweep", () => ({
   runApiHubMappingAnalysisWorkerSweep: sweepMock,
@@ -32,10 +37,12 @@ describe("GET /api/cron/apihub-mapping-analysis-jobs", () => {
     );
     expect(res.status).toBe(401);
     expect(sweepMock).not.toHaveBeenCalled();
+    expect(reclaimIngestionMock).not.toHaveBeenCalled();
   });
 
   it("runs sweep when authorized", async () => {
     process.env.CRON_SECRET = "secret-xyz";
+    reclaimIngestionMock.mockResolvedValue(1);
     sweepMock.mockResolvedValue({
       reclaimedStale: 0,
       claimedAndFinished: 2,
@@ -49,9 +56,16 @@ describe("GET /api/cron/apihub-mapping-analysis-jobs", () => {
       }),
     );
     expect(res.status).toBe(200);
+    expect(reclaimIngestionMock).toHaveBeenCalledTimes(1);
     expect(sweepMock).toHaveBeenCalledWith(3);
-    const body = (await res.json()) as { ok: boolean; reclaimedStale: number; claimedAndFinished: number };
+    const body = (await res.json()) as {
+      ok: boolean;
+      reclaimedStaleIngestionRuns: number;
+      reclaimedStale: number;
+      claimedAndFinished: number;
+    };
     expect(body.ok).toBe(true);
+    expect(body.reclaimedStaleIngestionRuns).toBe(1);
     expect(body.reclaimedStale).toBe(0);
     expect(body.claimedAndFinished).toBe(2);
   });
