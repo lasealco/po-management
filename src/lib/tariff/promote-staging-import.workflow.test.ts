@@ -378,6 +378,76 @@ describe("promoteApprovedStagingRowsToNewVersion (workflow)", () => {
     );
   });
 
+  it("forwards optional scope fields from normalized payloads into line creators", async () => {
+    const { promoteApprovedStagingRowsToNewVersion } = await import("./promote-staging-import");
+    h.getTariffImportBatchForTenant.mockResolvedValue(
+      readyBatchWithRows([
+        {
+          id: "row-rate",
+          approved: true,
+          rowType: "RATE_LINE_CANDIDATE",
+          normalizedPayload: {
+            rateType: "BASE_RATE",
+            unitBasis: "CONTAINER",
+            currency: "USD",
+            amount: 1,
+            commodityScope: "  FMCG  ",
+            serviceScope: "CY/CY",
+            originScopeId: "scope-o1",
+            destinationScopeId: "scope-d1",
+            rawRateDescription: "  Ocean leg  ",
+          },
+        },
+        {
+          id: "row-charge",
+          approved: true,
+          rowType: "CHARGE_LINE_CANDIDATE",
+          normalizedPayload: {
+            rawChargeName: "THC",
+            unitBasis: "CONTAINER",
+            currency: "USD",
+            amount: 40,
+            normalizedChargeCodeId: "ncc-1",
+            geographyScopeId: "geo-1",
+            equipmentScope: "  40HC  ",
+            directionScope: "EXPORT",
+            conditionScope: null,
+            isIncluded: true,
+            isMandatory: false,
+          },
+        },
+      ]),
+    );
+
+    await promoteApprovedStagingRowsToNewVersion({
+      tenantId: "t1",
+      importBatchId: "batch-scopes",
+      contractHeaderId: "hdr-1",
+      actorUserId: "u1",
+    });
+
+    expect(h.createTariffRateLine).toHaveBeenCalledWith(
+      expect.objectContaining({
+        commodityScope: "FMCG",
+        serviceScope: "CY/CY",
+        originScopeId: "scope-o1",
+        destinationScopeId: "scope-d1",
+        rawRateDescription: "Ocean leg",
+      }),
+    );
+    expect(h.createTariffChargeLine).toHaveBeenCalledWith(
+      expect.objectContaining({
+        normalizedChargeCodeId: "ncc-1",
+        geographyScopeId: "geo-1",
+        equipmentScope: "40HC",
+        directionScope: "EXPORT",
+        conditionScope: null,
+        isIncluded: true,
+        isMandatory: false,
+      }),
+    );
+  });
+
   it("best-effort deletes draft version when rate line creation fails after version create", async () => {
     const { promoteApprovedStagingRowsToNewVersion } = await import("./promote-staging-import");
     h.getTariffImportBatchForTenant.mockResolvedValue(
@@ -441,6 +511,39 @@ describe("promoteApprovedStagingRowsToNewVersion (workflow)", () => {
 
     expect(h.versionDeleteMany).toHaveBeenCalledWith({ where: { id: "ver-new" } });
     expect(h.updateTariffImportBatch).not.toHaveBeenCalled();
+    expect(h.recordTariffAuditLog).not.toHaveBeenCalled();
+  });
+
+  it("best-effort deletes draft version when batch update fails after lines are written", async () => {
+    const { promoteApprovedStagingRowsToNewVersion } = await import("./promote-staging-import");
+    h.getTariffImportBatchForTenant.mockResolvedValue(
+      readyBatchWithRows([
+        {
+          id: "row-rate",
+          approved: true,
+          rowType: "RATE_LINE_CANDIDATE",
+          normalizedPayload: {
+            rateType: "BASE_RATE",
+            unitBasis: "CONTAINER",
+            currency: "USD",
+            amount: 1,
+          },
+        },
+      ]),
+    );
+    h.updateTariffImportBatch.mockRejectedValueOnce(new Error("batch status update failed"));
+
+    await expect(
+      promoteApprovedStagingRowsToNewVersion({
+        tenantId: "t1",
+        importBatchId: "b1",
+        contractHeaderId: "hdr-1",
+        actorUserId: "u1",
+      }),
+    ).rejects.toThrow("batch status update failed");
+
+    expect(h.createTariffRateLine).toHaveBeenCalledTimes(1);
+    expect(h.versionDeleteMany).toHaveBeenCalledWith({ where: { id: "ver-new" } });
     expect(h.recordTariffAuditLog).not.toHaveBeenCalled();
   });
 
