@@ -5,17 +5,9 @@ import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { createQuoteRequest, listQuoteRequestsForTenant } from "@/lib/rfq/quote-requests";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { jsonFromRfqError } from "@/app/api/rfq/_lib/rfq-api-error";
+import { TARIFF_TRANSPORT_MODE_SET } from "@/lib/tariff/tariff-enum-sets";
 
 export const dynamic = "force-dynamic";
-
-const TRANSPORT = new Set<string>([
-  "OCEAN",
-  "LCL",
-  "AIR",
-  "TRUCK",
-  "RAIL",
-  "LOCAL_SERVICE",
-]);
 
 export async function GET() {
   const gate = await requireApiGrant("org.rfq", "view");
@@ -58,8 +50,8 @@ export async function POST(request: Request) {
     );
   }
 
-  const transportModeRaw = typeof o.transportMode === "string" ? o.transportMode.trim() : "OCEAN";
-  if (!TRANSPORT.has(transportModeRaw)) {
+  const transportModeRaw = typeof o.transportMode === "string" ? o.transportMode.trim().toUpperCase() : "OCEAN";
+  if (!TARIFF_TRANSPORT_MODE_SET.has(transportModeRaw)) {
     return NextResponse.json({ error: "Invalid transportMode." }, { status: 400 });
   }
 
