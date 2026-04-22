@@ -15,6 +15,14 @@ describe("labelTariffShipmentApplicationSource", () => {
   it("title-cases unknown underscore tokens", () => {
     expect(labelTariffShipmentApplicationSource("CUSTOM_IMPORT")).toBe("Custom Import");
   });
+
+  it("returns empty string for empty source", () => {
+    expect(labelTariffShipmentApplicationSource("")).toBe("");
+  });
+
+  it("collapses repeated underscores when title-casing unknown sources", () => {
+    expect(labelTariffShipmentApplicationSource("A__B")).toBe("A B");
+  });
 });
 
 describe("addTariffShipmentApplicationSourceLabel", () => {

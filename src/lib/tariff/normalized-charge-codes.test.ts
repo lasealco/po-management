@@ -104,6 +104,16 @@ describe("parsePatchNormalizedChargeCodeBody", () => {
   it("rejects invalid transportMode on patch", () => {
     expect(() => parsePatchNormalizedChargeCodeBody({ transportMode: "INVALID" })).toThrow(/Invalid transportMode/);
   });
+
+  it("rejects non-string displayName when the key is present", () => {
+    expect(() => parsePatchNormalizedChargeCodeBody({ displayName: 99 as unknown as string })).toThrow(
+      /displayName must be a string/,
+    );
+  });
+
+  it("rejects invalid chargeFamily on patch", () => {
+    expect(() => parsePatchNormalizedChargeCodeBody({ chargeFamily: "NOT_A_FAMILY" })).toThrow(/Invalid chargeFamily/);
+  });
 });
 
 describe("toChargeCatalogRowJson", () => {

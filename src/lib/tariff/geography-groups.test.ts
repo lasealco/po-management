@@ -20,4 +20,15 @@ describe("assertTariffGeographyValidityWindow", () => {
       assertTariffGeographyValidityWindow(new Date("2024-12-01"), new Date("2024-01-01")),
     ).toThrow(TariffRepoError);
   });
+
+  it("surfaces a clear BAD_INPUT message when the window is inverted", () => {
+    try {
+      assertTariffGeographyValidityWindow(new Date("2025-01-02T00:00:00.001Z"), new Date("2025-01-02T00:00:00.000Z"));
+      expect.fail("expected throw");
+    } catch (e) {
+      expect(e).toBeInstanceOf(TariffRepoError);
+      expect((e as TariffRepoError).code).toBe("BAD_INPUT");
+      expect((e as TariffRepoError).message).toMatch(/validFrom must be on or before validTo/);
+    }
+  });
 });
