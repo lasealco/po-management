@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 
 import { requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
-import { classifyTariffUnlocsAgainstLocationCatalog } from "@/lib/tariff/geography-catalog";
+import {
+  TARIFF_GEO_CATALOG_CHECK_MAX_CODES,
+  classifyTariffUnlocsAgainstLocationCatalog,
+  normalizeUnlocCodesForCatalogCheck,
+} from "@/lib/tariff/geography-catalog";
 
 export const dynamic = "force-dynamic";
 
@@ -27,10 +31,23 @@ export async function POST(request: Request) {
   if (!Array.isArray(codes) || !codes.every((c) => typeof c === "string")) {
     return NextResponse.json({ error: "codes must be an array of strings." }, { status: 400 });
   }
+  if (codes.length > 10_000) {
+    return NextResponse.json({ error: "codes array is too large." }, { status: 400 });
+  }
+
+  const deduped = normalizeUnlocCodesForCatalogCheck(codes as string[]);
+  if (deduped.length > TARIFF_GEO_CATALOG_CHECK_MAX_CODES) {
+    return NextResponse.json(
+      {
+        error: `After deduplication, at most ${TARIFF_GEO_CATALOG_CHECK_MAX_CODES} distinct codes are allowed per request.`,
+      },
+      { status: 400 },
+    );
+  }
 
   const result = await classifyTariffUnlocsAgainstLocationCatalog({
     tenantId: tenant.id,
-    codes: codes as string[],
+    codes: deduped,
   });
   return NextResponse.json(result);
 }

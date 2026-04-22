@@ -52,8 +52,20 @@ export async function updateTariffGeographyMember(
     validFrom: Date | null;
     validTo: Date | null;
   }>,
+  scope?: { geographyGroupId: string },
 ) {
-  await getTariffGeographyMemberById(id);
+  const row = scope
+    ? await prisma.tariffGeographyMember.findFirst({
+        where: { id, geographyGroupId: scope.geographyGroupId },
+        select: { id: true },
+      })
+    : await prisma.tariffGeographyMember.findUnique({ where: { id }, select: { id: true } });
+  if (!row) {
+    throw new TariffRepoError(
+      "NOT_FOUND",
+      scope ? "Geography member not found for this group." : "Geography member not found.",
+    );
+  }
   return prisma.tariffGeographyMember.update({
     where: { id },
     data: {
@@ -66,7 +78,18 @@ export async function updateTariffGeographyMember(
   });
 }
 
-export async function deleteTariffGeographyMember(id: string) {
-  await getTariffGeographyMemberById(id);
+export async function deleteTariffGeographyMember(id: string, scope?: { geographyGroupId: string }) {
+  const row = scope
+    ? await prisma.tariffGeographyMember.findFirst({
+        where: { id, geographyGroupId: scope.geographyGroupId },
+        select: { id: true },
+      })
+    : await prisma.tariffGeographyMember.findUnique({ where: { id }, select: { id: true } });
+  if (!row) {
+    throw new TariffRepoError(
+      "NOT_FOUND",
+      scope ? "Geography member not found for this group." : "Geography member not found.",
+    );
+  }
   await prisma.tariffGeographyMember.delete({ where: { id } });
 }

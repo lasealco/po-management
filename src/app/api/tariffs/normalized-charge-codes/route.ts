@@ -11,11 +11,24 @@ import { getActorUserId, requireApiGrant } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
   const gate = await requireApiGrant("org.tariffs", "view");
   if (gate) return gate;
+  let take: number | undefined;
   try {
-    const rows = await listNormalizedChargeCodes();
+    const raw = new URL(request.url).searchParams.get("take");
+    if (raw != null && raw !== "") {
+      const n = Number(raw);
+      if (!Number.isInteger(n) || n < 1) {
+        return NextResponse.json({ error: "Query take must be a positive integer." }, { status: 400 });
+      }
+      take = n;
+    }
+  } catch {
+    /* use default take from listNormalizedChargeCodes */
+  }
+  try {
+    const rows = await listNormalizedChargeCodes(take != null ? { take } : undefined);
     return NextResponse.json({ chargeCodes: rows.map(toChargeCatalogRowJson) });
   } catch (e) {
     const j = jsonFromTariffError(e);

@@ -16,4 +16,9 @@ describe("tariffGeographyTypeLabel", () => {
     const all = Object.values(TariffGeographyType) as TariffGeographyType[];
     expect(new Set(TARIFF_GEOGRAPHY_TYPES_ORDERED)).toEqual(new Set(all));
   });
+
+  it("uses stable human labels for key logistics types", () => {
+    expect(tariffGeographyTypeLabel(TariffGeographyType.PORT)).toContain("Port");
+    expect(tariffGeographyTypeLabel(TariffGeographyType.COUNTRY)).toBe("Country");
+  });
 });

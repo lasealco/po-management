@@ -56,10 +56,11 @@ function parseTransportMode(raw: unknown): TariffTransportMode | null {
   return s as TariffTransportMode;
 }
 
-export async function listNormalizedChargeCodes() {
+export async function listNormalizedChargeCodes(params?: { take?: number }) {
+  const take = Math.min(Math.max(params?.take ?? 600, 1), 600);
   return prisma.tariffNormalizedChargeCode.findMany({
     orderBy: { code: "asc" },
-    take: 600,
+    take,
   });
 }
 

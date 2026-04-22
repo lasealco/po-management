@@ -16,11 +16,18 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const cursor = searchParams.get("cursor")?.trim() || undefined;
   const takeRaw = searchParams.get("take");
-  const take = takeRaw ? Number(takeRaw) : undefined;
+  let take: number | undefined;
+  if (takeRaw != null && takeRaw !== "") {
+    const n = Number(takeRaw);
+    if (!Number.isInteger(n) || n < 1) {
+      return NextResponse.json({ error: "Query take must be a positive integer." }, { status: 400 });
+    }
+    take = n;
+  }
   const status = searchParams.get("status")?.trim() || undefined;
 
   const { items, nextCursor } = await listTariffProviders({
-    take: take && Number.isFinite(take) ? take : undefined,
+    take,
     cursor,
     status,
   });

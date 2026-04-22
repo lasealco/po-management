@@ -22,7 +22,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   const gate = await requireApiGrant("org.tariffs", "edit");
   if (gate) return gate;
 
-  const { memberId } = await context.params;
+  const { id: geographyGroupId, memberId } = await context.params;
 
   let body: unknown;
   try {
@@ -57,7 +57,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   }
 
   try {
-    const updated = await updateTariffGeographyMember(memberId, patch);
+    const updated = await updateTariffGeographyMember(memberId, patch, { geographyGroupId });
     return NextResponse.json({ member: updated });
   } catch (e) {
     const j = jsonFromTariffError(e);
@@ -70,9 +70,9 @@ export async function DELETE(_request: Request, context: { params: Promise<{ id:
   const gate = await requireApiGrant("org.tariffs", "edit");
   if (gate) return gate;
 
-  const { memberId } = await context.params;
+  const { id: geographyGroupId, memberId } = await context.params;
   try {
-    await deleteTariffGeographyMember(memberId);
+    await deleteTariffGeographyMember(memberId, { geographyGroupId });
     return NextResponse.json({ ok: true });
   } catch (e) {
     const j = jsonFromTariffError(e);

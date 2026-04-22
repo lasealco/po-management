@@ -3,6 +3,16 @@ import type { Prisma, TariffGeographyType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { TariffRepoError } from "@/lib/tariff/tariff-repo-error";
 
+/** Exported for unit tests; used by create/update geography group. */
+export function assertTariffGeographyValidityWindow(
+  validFrom: Date | null | undefined,
+  validTo: Date | null | undefined,
+): void {
+  if (validFrom != null && validTo != null && validFrom.getTime() > validTo.getTime()) {
+    throw new TariffRepoError("BAD_INPUT", "validFrom must be on or before validTo.");
+  }
+}
+
 export async function listTariffGeographyGroups(params?: {
   activeOnly?: boolean;
   take?: number;
@@ -35,6 +45,7 @@ export async function createTariffGeographyGroup(input: {
   validTo?: Date | null;
   active?: boolean;
 }) {
+  assertTariffGeographyValidityWindow(input.validFrom ?? null, input.validTo ?? null);
   return prisma.tariffGeographyGroup.create({
     data: {
       geographyType: input.geographyType,
@@ -60,8 +71,14 @@ export async function updateTariffGeographyGroup(
     active: boolean;
   }>,
 ) {
-  const existing = await prisma.tariffGeographyGroup.findUnique({ where: { id }, select: { id: true } });
+  const existing = await prisma.tariffGeographyGroup.findUnique({
+    where: { id },
+    select: { id: true, validFrom: true, validTo: true },
+  });
   if (!existing) throw new TariffRepoError("NOT_FOUND", "Geography group not found.");
+  const nextFrom = patch.validFrom !== undefined ? patch.validFrom : existing.validFrom;
+  const nextTo = patch.validTo !== undefined ? patch.validTo : existing.validTo;
+  assertTariffGeographyValidityWindow(nextFrom, nextTo);
   return prisma.tariffGeographyGroup.update({
     where: { id },
     data: {
