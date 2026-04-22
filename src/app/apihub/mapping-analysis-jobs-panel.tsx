@@ -298,8 +298,11 @@ export function MappingAnalysisJobsPanel({ initialJobs, canView, canEdit }: Prop
         Jobs run asynchronously after submit: deterministic heuristic plus optional OpenAI JSON assist when{" "}
         <span className="font-mono text-[11px] text-zinc-700">APIHUB_OPENAI_API_KEY</span> or{" "}
         <span className="font-mono text-[11px] text-zinc-700">OPENAI_API_KEY</span> is set server-side. Use{" "}
-        <span className="font-medium">Process now</span> if the status stays queued locally. Use{" "}
-        <span className="font-medium">Materialize staging</span> after success to persist capped rows for APIs.
+        <span className="font-medium">Process now</span> if the status stays queued locally. Stuck{" "}
+        <span className="font-medium">processing</span> rows are requeued by the scheduled ApiHub cron after{" "}
+        <span className="font-mono text-[11px] text-zinc-700">APIHUB_MAPPING_ANALYSIS_STALE_PROCESSING_MS</span>{" "}
+        (default 15m). Use <span className="font-medium">Materialize staging</span> after success to persist capped rows
+        for APIs.
       </p>
       {!canEdit ? (
         <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
@@ -457,6 +460,19 @@ export function MappingAnalysisJobsPanel({ initialJobs, canView, canEdit }: Prop
                 </p>
               ) : null}
               {activeJob.errorMessage ? <p className="mt-2 text-sm text-red-600">{activeJob.errorMessage}</p> : null}
+              {activeJob.status === "processing" ? (
+                <div className="mt-3 rounded-lg border border-zinc-200 bg-zinc-50/90 px-3 py-2 text-xs leading-relaxed text-zinc-700">
+                  <p className="font-semibold text-zinc-900">While processing</p>
+                  <p className="mt-1">
+                    Most jobs finish quickly. If this stays in <span className="font-medium">processing</span> after a
+                    deploy or timeout, the ApiHub cron (about every 10 minutes on Pro) resets stale rows to{" "}
+                    <span className="font-medium">queued</span> using{" "}
+                    <span className="font-mono text-[11px]">APIHUB_MAPPING_ANALYSIS_STALE_PROCESSING_MS</span> (default
+                    15m), then drains the queue. You can still use <span className="font-medium">Process now</span> when
+                    the job is <span className="font-medium">queued</span>.
+                  </p>
+                </div>
+              ) : null}
               {activeJob.outputProposal ? (
                 <>
                   <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">Proposed rules</p>

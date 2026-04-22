@@ -173,8 +173,10 @@ export function IngestionOpsPanel({ canView, canEdit = false, initialSummary, in
           <p className="mt-2 max-w-2xl text-sm text-zinc-600">
             Snapshot from the ops summary API plus quick status filters on the ingestion jobs list. Use{" "}
             <span className="font-medium text-zinc-800">Refresh</span> after pipeline or connector changes. Open{" "}
-            <span className="font-medium text-zinc-800">View</span> on a run for a summary of timing, retries, and
-            apply-related fields; raw JSON stays under Advanced.
+            <span className="font-medium text-zinc-800">View</span> on a run for timing, retries, apply fields, and
+            automatic stale-reclaim notes; raw JSON stays under Advanced. Failed runs: with{" "}
+            <span className="font-mono text-[11px] text-zinc-700">org.apihub → edit</span>, use{" "}
+            <span className="font-medium text-zinc-800">Retry run</span> in the expanded detail.
           </p>
           {summary ? (
             <p className="mt-2 text-xs text-zinc-500">
