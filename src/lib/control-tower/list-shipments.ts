@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import {
+  BinStorageType,
   ContainerSize,
   CtAlertSeverity,
   CtAlertStatus,
@@ -12,6 +13,7 @@ import {
   InvoiceIntakeStatus,
   InvoiceReviewDecision,
   LoadPlanStatus,
+  PricingSnapshotSourceType,
   SalesOrderStatus,
   ShipmentBookingStatus,
   ShipmentMilestoneCode,
@@ -19,7 +21,13 @@ import {
   ShipmentStatus,
   SrmSupplierCategory,
   SupplierApprovalStatus,
+  TariffApprovalStatus,
+  TariffContractStatus,
+  TariffSourceType,
+  TariffTransportMode,
   TransportMode,
+  WarehouseType,
+  WarehouseZoneType,
   WmsTaskStatus,
   WmsTaskType,
   WmsWaveStatus,
@@ -477,6 +485,30 @@ export async function listControlTowerShipments(params: {
     const supplierApprovalStatusEnumMatch = (
       Object.values(SupplierApprovalStatus) as SupplierApprovalStatus[]
     ).filter((s) => s.toLowerCase() === qLower);
+    const binStorageTypeEnumMatch = (Object.values(BinStorageType) as BinStorageType[]).filter(
+      (s) => s.toLowerCase() === qLower,
+    );
+    const warehouseZoneTypeEnumMatch = (Object.values(WarehouseZoneType) as WarehouseZoneType[]).filter(
+      (s) => s.toLowerCase() === qLower,
+    );
+    const warehouseTypeEnumMatch = (Object.values(WarehouseType) as WarehouseType[]).filter(
+      (s) => s.toLowerCase() === qLower,
+    );
+    const pricingSnapshotSourceTypeEnumMatch = (
+      Object.values(PricingSnapshotSourceType) as PricingSnapshotSourceType[]
+    ).filter((s) => s.toLowerCase() === qLower);
+    const tariffContractStatusEnumMatch = (
+      Object.values(TariffContractStatus) as TariffContractStatus[]
+    ).filter((s) => s.toLowerCase() === qLower);
+    const tariffApprovalStatusEnumMatch = (
+      Object.values(TariffApprovalStatus) as TariffApprovalStatus[]
+    ).filter((s) => s.toLowerCase() === qLower);
+    const tariffSourceTypeEnumMatch = (Object.values(TariffSourceType) as TariffSourceType[]).filter(
+      (s) => s.toLowerCase() === qLower,
+    );
+    const tariffTransportModeEnumMatch = (
+      Object.values(TariffTransportMode) as TariffTransportMode[]
+    ).filter((s) => s.toLowerCase() === qLower);
     const enumTokenOr: Prisma.ShipmentWhereInput[] = [
       ...shipmentStatusEnumMatch.map((status) => ({ status })),
       ...transportModeEnumMatch.flatMap((mode) => [
@@ -581,6 +613,55 @@ export async function listControlTowerShipments(params: {
       ...ctNoteVisibilityEnumMatch.map((visibility) => ({
         ctNotes: { some: { visibility } },
       })),
+      ...pricingSnapshotSourceTypeEnumMatch.map((sourceType) => ({
+        booking: {
+          is: {
+            pricingSnapshots: {
+              some: { sourceType },
+            },
+          },
+        },
+      })),
+      ...tariffContractStatusEnumMatch.map((status) => ({
+        tariffShipmentApplications: {
+          some: {
+            contractVersion: {
+              is: {
+                OR: [{ status }, { contractHeader: { is: { status } } }],
+              },
+            },
+          },
+        },
+      })),
+      ...tariffApprovalStatusEnumMatch.map((approvalStatus) => ({
+        tariffShipmentApplications: {
+          some: {
+            contractVersion: {
+              is: { approvalStatus },
+            },
+          },
+        },
+      })),
+      ...tariffSourceTypeEnumMatch.map((sourceType) => ({
+        tariffShipmentApplications: {
+          some: {
+            contractVersion: {
+              is: { sourceType },
+            },
+          },
+        },
+      })),
+      ...tariffTransportModeEnumMatch.map((transportMode) => ({
+        tariffShipmentApplications: {
+          some: {
+            contractVersion: {
+              is: {
+                contractHeader: { is: { transportMode } },
+              },
+            },
+          },
+        },
+      })),
     ];
     const supplierPartyMatch: Prisma.SupplierWhereInput = {
       OR: [
@@ -613,10 +694,13 @@ export async function listControlTowerShipments(params: {
         { city: contains },
         { region: contains },
         { countryCode: contains },
+        ...warehouseTypeEnumMatch.map((type) => ({ type })),
       ],
     };
     const wmsTaskTextMatch: Prisma.WmsTaskWhereInput = {
       OR: [
+        ...wmsTaskStatusEnumMatch.map((status) => ({ status })),
+        ...wmsTaskTypeEnumMatch.map((taskType) => ({ taskType })),
         { note: contains },
         { referenceType: contains },
         { referenceId: contains },
@@ -685,10 +769,15 @@ export async function listControlTowerShipments(params: {
                 { rackCode: contains },
                 { aisle: contains },
                 { bay: contains },
+                ...binStorageTypeEnumMatch.map((storageType) => ({ storageType })),
                 {
                   zone: {
                     is: {
-                      OR: [{ code: contains }, { name: contains }],
+                      OR: [
+                        { code: contains },
+                        { name: contains },
+                        ...warehouseZoneTypeEnumMatch.map((zoneType) => ({ zoneType })),
+                      ],
                     },
                   },
                 },
