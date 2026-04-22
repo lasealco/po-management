@@ -2,6 +2,8 @@ import type { Prisma } from "@prisma/client";
 import {
   BinStorageType,
   ContainerSize,
+  CrmAccountLifecycle,
+  CrmAccountType,
   CtAlertSeverity,
   CtAlertStatus,
   CtDocVisibility,
@@ -19,10 +21,12 @@ import {
   ShipmentMilestoneCode,
   ShipmentMilestoneSource,
   ShipmentStatus,
+  SplitProposalStatus,
   SrmSupplierCategory,
   SupplierApprovalStatus,
   TariffApprovalStatus,
   TariffContractStatus,
+  TariffProviderType,
   TariffSourceType,
   TariffTransportMode,
   TransportMode,
@@ -509,11 +513,31 @@ export async function listControlTowerShipments(params: {
     const tariffTransportModeEnumMatch = (
       Object.values(TariffTransportMode) as TariffTransportMode[]
     ).filter((s) => s.toLowerCase() === qLower);
+    const splitProposalStatusEnumMatch = (
+      Object.values(SplitProposalStatus) as SplitProposalStatus[]
+    ).filter((s) => s.toLowerCase() === qLower);
+    const tariffProviderTypeEnumMatch = (
+      Object.values(TariffProviderType) as TariffProviderType[]
+    ).filter((s) => s.toLowerCase() === qLower);
+    const crmAccountTypeEnumMatch = (Object.values(CrmAccountType) as CrmAccountType[]).filter(
+      (s) => s.toLowerCase() === qLower,
+    );
+    const crmAccountLifecycleEnumMatch = (
+      Object.values(CrmAccountLifecycle) as CrmAccountLifecycle[]
+    ).filter((s) => s.toLowerCase() === qLower);
     const enumTokenOr: Prisma.ShipmentWhereInput[] = [
       ...shipmentStatusEnumMatch.map((status) => ({ status })),
       ...transportModeEnumMatch.flatMap((mode) => [
         { transportMode: mode },
         { booking: { is: { mode } } },
+        {
+          loadPlanShipment: {
+            is: {
+              loadPlan: { is: { transportMode: mode } },
+            },
+          },
+        },
+        { ctLegs: { some: { transportMode: mode } } },
       ]),
       ...bookingStatusEnumMatch.map((status) => ({ booking: { is: { status } } })),
       ...invoiceAuditOutcomeEnumMatch.map((outcome) => ({
@@ -662,6 +686,37 @@ export async function listControlTowerShipments(params: {
           },
         },
       })),
+      ...splitProposalStatusEnumMatch.map((status) => ({
+        order: {
+          OR: [
+            { splitProposal: { is: { status } } },
+            { splitProposalsAsParent: { some: { status } } },
+          ],
+        },
+      })),
+      ...tariffProviderTypeEnumMatch.map((providerType) => ({
+        tariffShipmentApplications: {
+          some: {
+            contractVersion: {
+              is: {
+                contractHeader: {
+                  is: {
+                    provider: { is: { providerType } },
+                  },
+                },
+              },
+            },
+          },
+        },
+      })),
+      ...crmAccountTypeEnumMatch.flatMap((accountType) => [
+        { customerCrmAccount: { is: { accountType } } },
+        { salesOrder: { is: { customerCrmAccount: { is: { accountType } } } } },
+      ]),
+      ...crmAccountLifecycleEnumMatch.flatMap((lifecycle) => [
+        { customerCrmAccount: { is: { lifecycle } } },
+        { salesOrder: { is: { customerCrmAccount: { is: { lifecycle } } } } },
+      ]),
     ];
     const supplierPartyMatch: Prisma.SupplierWhereInput = {
       OR: [
