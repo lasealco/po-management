@@ -30,6 +30,7 @@ UI anchors match section `id`s on `/apihub`.
 ## 4) Ops
 
 - **Runbooks:** [RUNBOOK.md](./RUNBOOK.md) (change workflow), [apply-operator-runbook.md](./apply-operator-runbook.md) (apply/retry/idempotency).
+- **Server logs:** background failures (e.g. audit append, mapping job `after()`) use **`logApiHubBackgroundError`** in `src/lib/apihub/safe-server-log.ts` so stdout gets a short message, not full `Error` stacks or request objects.
 - **Release / smoke:** [RELEASE_CHECKLIST.md](./RELEASE_CHECKLIST.md) — `npm run verify:apihub`, then `npm run smoke:apihub` against the deployed origin.
 - **Migrations:** API Hub tables are under `prisma/migrations/` (mapping analysis job, staging batch/row, apply columns, etc.); production must run migrate before code that expects new columns.
 - **Environment variables**
