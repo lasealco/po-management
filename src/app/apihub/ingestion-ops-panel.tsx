@@ -288,6 +288,7 @@ export function IngestionOpsPanel({ canView, canEdit = false, initialSummary, in
             <tr>
               <th className="px-4 py-3">Run id</th>
               <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3">Error code</th>
               <th className="px-4 py-3">Attempt</th>
               <th className="px-4 py-3">Trigger</th>
               <th className="px-4 py-3">Updated</th>
@@ -297,7 +298,7 @@ export function IngestionOpsPanel({ canView, canEdit = false, initialSummary, in
           <tbody className="divide-y divide-zinc-100 bg-white text-zinc-800">
             {runs.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-sm text-zinc-600">
+                <td colSpan={7} className="px-4 py-8 text-center text-sm text-zinc-600">
                   No runs match this filter.
                 </td>
               </tr>
@@ -312,6 +313,12 @@ export function IngestionOpsPanel({ canView, canEdit = false, initialSummary, in
                       >
                         {r.status}
                       </span>
+                    </td>
+                    <td
+                      className="max-w-[10rem] truncate px-4 py-3 font-mono text-[11px] text-zinc-700"
+                      title={r.status === "failed" && r.errorCode ? r.errorCode : undefined}
+                    >
+                      {r.status === "failed" && r.errorCode ? r.errorCode : "—"}
                     </td>
                     <td className="px-4 py-3 tabular-nums">
                       {r.attempt}/{r.maxAttempts}
@@ -331,7 +338,7 @@ export function IngestionOpsPanel({ canView, canEdit = false, initialSummary, in
                   </tr>
                   {expandedRunId === r.id ? (
                     <tr className="bg-zinc-50/80">
-                      <td colSpan={6} className="p-0">
+                      <td colSpan={7} className="p-0">
                         <IngestionRunDetailExpand
                           runId={r.id}
                           canRetry={canEdit}
