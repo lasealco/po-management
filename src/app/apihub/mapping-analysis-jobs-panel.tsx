@@ -456,6 +456,24 @@ export function MappingAnalysisJobsPanel({ initialJobs, canView, canEdit }: Prop
                   </>
                 ) : null}
               </p>
+              <p className="mt-1.5 text-xs text-zinc-600">
+                <span className="text-zinc-500">Created:</span>{" "}
+                <span title={activeJob.createdAt}>{formatJobCreatedShort(activeJob.createdAt)}</span>
+                {activeJob.startedAt ? (
+                  <>
+                    {" "}
+                    <span className="text-zinc-500">· Started:</span>{" "}
+                    <span title={activeJob.startedAt}>{formatJobCreatedShort(activeJob.startedAt)}</span>
+                  </>
+                ) : null}
+                {activeJob.finishedAt ? (
+                  <>
+                    {" "}
+                    <span className="text-zinc-500">· Finished:</span>{" "}
+                    <span title={activeJob.finishedAt}>{formatJobCreatedShort(activeJob.finishedAt)}</span>
+                  </>
+                ) : null}
+              </p>
               {activeJob.outputProposal?.llm ? (
                 <p className="mt-2 text-xs text-zinc-600">
                   LLM:{" "}
