@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { actorIsSupplierPortalRestricted, getActorUserId, requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 type PatchLoadPlanBody = {
   warehouseId?: string;
@@ -23,18 +25,15 @@ async function gateBuyerConsolidationAccess() {
   if (gate) return gate;
   const actorId = await getActorUserId();
   if (!actorId) {
-    return NextResponse.json({ error: "No active demo actor." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active demo actor.", code: "FORBIDDEN", status: 403 });
   }
   const isSupplierPortalUser = await actorIsSupplierPortalRestricted(actorId);
   if (isSupplierPortalUser) {
-    return NextResponse.json(
-      { error: "Supplier users cannot manage buyer consolidation." },
-      { status: 403 },
-    );
+    return toApiErrorResponse({ error: "Supplier users cannot manage buyer consolidation.", code: "FORBIDDEN", status: 403 });
   }
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   }
   return { actorId, tenant };
 }
@@ -77,7 +76,7 @@ export async function GET(
     },
   });
   if (!plan) {
-    return NextResponse.json({ error: "Load plan not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Load plan not found.", code: "NOT_FOUND", status: 404 });
   }
 
   const shipments = plan.assignments.map((assignment) => {
@@ -130,7 +129,7 @@ export async function PATCH(
     select: { id: true, status: true },
   });
   if (!existing) {
-    return NextResponse.json({ error: "Load plan not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Load plan not found.", code: "NOT_FOUND", status: 404 });
   }
 
   let body: unknown = {};
@@ -161,7 +160,7 @@ export async function PATCH(
       select: { id: true },
     });
     if (!warehouse) {
-      return NextResponse.json({ error: "Warehouse not found." }, { status: 404 });
+      return toApiErrorResponse({ error: "Warehouse not found.", code: "NOT_FOUND", status: 404 });
     }
     patch.warehouseId = input.warehouseId;
   }
@@ -171,7 +170,7 @@ export async function PATCH(
     } else {
       const parsed = new Date(`${input.plannedEta}T00:00:00.000Z`);
       if (Number.isNaN(parsed.getTime())) {
-        return NextResponse.json({ error: "plannedEta must be a valid date." }, { status: 400 });
+        return toApiErrorResponse({ error: "plannedEta must be a valid date.", code: "BAD_INPUT", status: 400 });
       }
       patch.plannedEta = parsed;
     }
@@ -184,10 +183,7 @@ export async function PATCH(
       (current === "FINALIZED" && (next === "DRAFT" || next === "CANCELLED")) ||
       (current === "CANCELLED" && next === "DRAFT");
     if (!valid) {
-      return NextResponse.json(
-        { error: `Invalid status transition: ${current} -> ${next}.` },
-        { status: 400 },
-      );
+      return toApiErrorResponse({ error: `Invalid status transition: ${current} -> ${next}.`, code: "BAD_INPUT", status: 400 });
     }
     patch.status = next;
   }
@@ -210,10 +206,7 @@ export async function PATCH(
       patch.plannedEta !== undefined ||
       patch.notes !== undefined;
     if (touchedMetadata) {
-      return NextResponse.json(
-        { error: "Only DRAFT load plans can edit metadata." },
-        { status: 400 },
-      );
+      return toApiErrorResponse({ error: "Only DRAFT load plans can edit metadata.", code: "BAD_INPUT", status: 400 });
     }
   }
 

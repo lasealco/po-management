@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 const PREF_KEY = "consolidation_filter_presets";
 
@@ -30,7 +32,7 @@ export async function DELETE(
   const tenant = await getDemoTenant();
   const actorId = await getActorUserId();
   if (!tenant || !actorId) {
-    return NextResponse.json({ error: "No active user." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   }
   const { id } = await context.params;
   const existing = await prisma.userPreference.findUnique({

@@ -209,7 +209,7 @@ describe("Supply Chain Twin permission matrix regression", () => {
 
     const response = await invoke();
     expect(response.status).toBe(403);
-    expect(await response.json()).toEqual({ error: denied.denied.error });
+    expect(await response.json()).toEqual(expect.objectContaining({ error: denied.denied.error }));
   });
 
   it.each(matrix)("proceeds past permission gate when allowed: $name", async ({ invoke, expectAllowedStatus }) => {

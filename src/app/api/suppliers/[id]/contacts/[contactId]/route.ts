@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 async function getContactOr404(
   supplierId: string,
@@ -23,22 +25,22 @@ export async function PATCH(
   const { id: supplierId, contactId } = await context.params;
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   }
 
   const existing = await getContactOr404(supplierId, contactId, tenant.id);
   if (!existing) {
-    return NextResponse.json({ error: "Not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Not found.", code: "NOT_FOUND", status: 404 });
   }
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON.", code: "BAD_INPUT", status: 400 });
   }
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "Expected object." }, { status: 400 });
+    return toApiErrorResponse({ error: "Expected object.", code: "BAD_INPUT", status: 400 });
   }
 
   const o = body as Record<string, unknown>;
@@ -54,7 +56,7 @@ export async function PATCH(
 
   if (o.name !== undefined) {
     if (typeof o.name !== "string" || !o.name.trim()) {
-      return NextResponse.json({ error: "Invalid name." }, { status: 400 });
+      return toApiErrorResponse({ error: "Invalid name.", code: "BAD_INPUT", status: 400 });
     }
     data.name = o.name.trim();
   }
@@ -69,35 +71,35 @@ export async function PATCH(
   if (o.title !== undefined) {
     const t = strOrNull(o.title);
     if (t === undefined) {
-      return NextResponse.json({ error: "Invalid title." }, { status: 400 });
+      return toApiErrorResponse({ error: "Invalid title.", code: "BAD_INPUT", status: 400 });
     }
     data.title = t;
   }
   if (o.role !== undefined) {
     const t = strOrNull(o.role);
     if (t === undefined) {
-      return NextResponse.json({ error: "Invalid role." }, { status: 400 });
+      return toApiErrorResponse({ error: "Invalid role.", code: "BAD_INPUT", status: 400 });
     }
     data.role = t;
   }
   if (o.email !== undefined) {
     const t = strOrNull(o.email);
     if (t === undefined) {
-      return NextResponse.json({ error: "Invalid email." }, { status: 400 });
+      return toApiErrorResponse({ error: "Invalid email.", code: "BAD_INPUT", status: 400 });
     }
     data.email = t;
   }
   if (o.phone !== undefined) {
     const t = strOrNull(o.phone);
     if (t === undefined) {
-      return NextResponse.json({ error: "Invalid phone." }, { status: 400 });
+      return toApiErrorResponse({ error: "Invalid phone.", code: "BAD_INPUT", status: 400 });
     }
     data.phone = t;
   }
   if (o.notes !== undefined) {
     const t = strOrNull(o.notes);
     if (t === undefined) {
-      return NextResponse.json({ error: "Invalid notes." }, { status: 400 });
+      return toApiErrorResponse({ error: "Invalid notes.", code: "BAD_INPUT", status: 400 });
     }
     data.notes = t;
   }
@@ -106,10 +108,7 @@ export async function PATCH(
   }
 
   if (Object.keys(data).length === 0) {
-    return NextResponse.json(
-      { error: "No valid fields to update." },
-      { status: 400 },
-    );
+    return toApiErrorResponse({ error: "No valid fields to update.", code: "BAD_INPUT", status: 400 });
   }
 
   const contact = await prisma.$transaction(async (tx) => {
@@ -138,12 +137,12 @@ export async function DELETE(
   const { id: supplierId, contactId } = await context.params;
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   }
 
   const existing = await getContactOr404(supplierId, contactId, tenant.id);
   if (!existing) {
-    return NextResponse.json({ error: "Not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Not found.", code: "NOT_FOUND", status: 404 });
   }
 
   await prisma.supplierContact.delete({ where: { id: contactId } });

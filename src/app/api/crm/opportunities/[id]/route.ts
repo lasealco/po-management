@@ -1,5 +1,7 @@
 import type { CrmOpportunityStage } from "@prisma/client";
 import { NextResponse } from "next/server";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 import { getActorUserId, requireApiGrant, userHasGlobalGrant } from "@/lib/authz";
 import {
@@ -40,13 +42,13 @@ export async function GET(
   const tenant = await getDemoTenant();
   const actorId = await getActorUserId();
   if (!tenant || !actorId) {
-    return NextResponse.json({ error: "No active user." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   }
 
   const { id } = await context.params;
   const opportunity = await loadOpportunity(tenant.id, id, actorId);
   if (!opportunity) {
-    return NextResponse.json({ error: "Opportunity not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Opportunity not found.", code: "NOT_FOUND", status: 404 });
   }
 
   const activities = await prisma.crmActivity.findMany({
@@ -92,36 +94,36 @@ export async function PATCH(
   const tenant = await getDemoTenant();
   const actorId = await getActorUserId();
   if (!tenant || !actorId) {
-    return NextResponse.json({ error: "No active user." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   }
 
   const { id } = await context.params;
   const existing = await loadOpportunity(tenant.id, id, actorId);
   if (!existing) {
-    return NextResponse.json({ error: "Opportunity not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Opportunity not found.", code: "NOT_FOUND", status: 404 });
   }
 
   const canEditAll = await userHasGlobalGrant(actorId, "org.crm", "edit");
   if (!canEditAll && existing.ownerUserId !== actorId) {
-    return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+    return toApiErrorResponse({ error: "Forbidden.", code: "FORBIDDEN", status: 403 });
   }
 
   let body: PatchBody;
   try {
     body = (await request.json()) as PatchBody;
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON body.", code: "BAD_INPUT", status: 400 });
   }
 
   const data: Record<string, unknown> = {};
   if (body.name !== undefined) data.name = body.name.trim();
   if (body.stage !== undefined) {
     if (!isCrmOpportunityStage(body.stage)) {
-      return NextResponse.json({ error: buildInvalidStageMessage(body.stage) }, { status: 400 });
+      return toApiErrorResponse({ error: buildInvalidStageMessage(body.stage), code: "BAD_INPUT", status: 400 });
     }
     const stageValidation = validateOpportunityStageChange(existing.stage, body.stage);
     if (!stageValidation.ok) {
-      return NextResponse.json({ error: stageValidation.error }, { status: 400 });
+      return toApiErrorResponse({ error: stageValidation.error, code: "BAD_INPUT", status: 400 });
     }
     data.stage = body.stage;
   }
@@ -168,10 +170,7 @@ export async function PATCH(
         select: { id: true },
       });
       if (!c) {
-        return NextResponse.json(
-          { error: "Contact not found on this account." },
-          { status: 400 },
-        );
+        return toApiErrorResponse({ error: "Contact not found on this account.", code: "BAD_INPUT", status: 400 });
       }
       data.primaryContactId = cid;
     } else {
@@ -180,7 +179,7 @@ export async function PATCH(
   }
 
   if (Object.keys(data).length === 0) {
-    return NextResponse.json({ error: "No fields to update." }, { status: 400 });
+    return toApiErrorResponse({ error: "No fields to update.", code: "BAD_INPUT", status: 400 });
   }
 
   const opportunity = await prisma.crmOpportunity.update({

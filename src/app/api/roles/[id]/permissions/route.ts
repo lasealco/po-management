@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { requireApiGrant } from "@/lib/authz";
 import {
   GLOBAL_PERMISSION_CATALOG,
@@ -18,13 +20,7 @@ export async function GET(
 
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json(
-      {
-        error:
-          "Demo tenant not found. Run `npm run db:seed` to create starter data.",
-      },
-      { status: 404 },
-    );
+    return toApiErrorResponse({ error: "Demo tenant not found. Run `npm run db:seed` to create starter data.", code: "NOT_FOUND", status: 404 });
   }
 
   const role = await prisma.role.findFirst({
@@ -32,7 +28,7 @@ export async function GET(
     select: { id: true, name: true },
   });
   if (!role) {
-    return NextResponse.json({ error: "Role not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Role not found.", code: "NOT_FOUND", status: 404 });
   }
 
   const permissions = await prisma.rolePermission.findMany({
@@ -69,40 +65,29 @@ export async function PUT(
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON body.", code: "BAD_INPUT", status: 400 });
   }
 
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "Expected an object." }, { status: 400 });
+    return toApiErrorResponse({ error: "Expected an object.", code: "BAD_INPUT", status: 400 });
   }
 
   const grantsRaw = (body as Record<string, unknown>).grants;
   if (!Array.isArray(grantsRaw)) {
-    return NextResponse.json(
-      { error: "grants must be an array of { resource, action }." },
-      { status: 400 },
-    );
+    return toApiErrorResponse({ error: "grants must be an array of { resource, action }.", code: "BAD_INPUT", status: 400 });
   }
 
   const pairs: { resource: string; action: string }[] = [];
   for (const g of grantsRaw) {
     if (!g || typeof g !== "object") {
-      return NextResponse.json({ error: "Invalid grant entry." }, {
-        status: 400,
-      });
+      return toApiErrorResponse({ error: "Invalid grant entry.", code: "BAD_INPUT", status: 400 });
     }
     const o = g as Record<string, unknown>;
     if (typeof o.resource !== "string" || typeof o.action !== "string") {
-      return NextResponse.json(
-        { error: "Each grant needs resource and action strings." },
-        { status: 400 },
-      );
+      return toApiErrorResponse({ error: "Each grant needs resource and action strings.", code: "BAD_INPUT", status: 400 });
     }
     if (!isValidGlobalPermission(o.resource, o.action)) {
-      return NextResponse.json(
-        { error: `Unknown permission: ${o.resource} / ${o.action}` },
-        { status: 400 },
-      );
+      return toApiErrorResponse({ error: `Unknown permission: ${o.resource} / ${o.action}`, code: "BAD_INPUT", status: 400 });
     }
     pairs.push({ resource: o.resource, action: o.action });
   }
@@ -115,13 +100,7 @@ export async function PUT(
 
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json(
-      {
-        error:
-          "Demo tenant not found. Run `npm run db:seed` to create starter data.",
-      },
-      { status: 404 },
-    );
+    return toApiErrorResponse({ error: "Demo tenant not found. Run `npm run db:seed` to create starter data.", code: "NOT_FOUND", status: 404 });
   }
 
   const role = await prisma.role.findFirst({
@@ -129,7 +108,7 @@ export async function PUT(
     select: { id: true, name: true },
   });
   if (!role) {
-    return NextResponse.json({ error: "Role not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Role not found.", code: "NOT_FOUND", status: 404 });
   }
 
   await prisma.$transaction(async (tx) => {

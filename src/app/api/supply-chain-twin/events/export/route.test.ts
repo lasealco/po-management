@@ -312,7 +312,7 @@ describe("GET /api/supply-chain-twin/events/export", () => {
     const { GET } = await import("./route");
     const response = await GET(new Request("http://localhost/api/supply-chain-twin/events/export?format=json"));
     expect(response.status).toBe(500);
-    expect(await response.json()).toEqual({ error: "Internal server error" });
+    expect(await response.json()).toEqual({ error: "Internal server error", code: "UNHANDLED" });
     expect(prismaMock.supplyChainTwinIngestEvent.findMany).toHaveBeenCalledTimes(2);
   });
 });

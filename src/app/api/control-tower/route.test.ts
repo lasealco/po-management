@@ -46,7 +46,7 @@ describe("POST /api/control-tower", () => {
     const response = await POST(new Request("http://localhost/api/control-tower", { method: "POST" }));
 
     expect(response.status).toBe(404);
-    expect(await response.json()).toEqual({ error: "Tenant not found." });
+    expect(await response.json()).toEqual({ error: "Tenant not found.", code: "NOT_FOUND" });
   });
 
   it("passes object body through on happy path", async () => {

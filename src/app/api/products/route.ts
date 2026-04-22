@@ -5,6 +5,8 @@ import { getDemoTenant } from "@/lib/demo-tenant";
 import { assertProductRelationsValid } from "@/lib/product-mutation";
 import { parseProductCreateBody } from "@/lib/parse-product-create";
 import { prisma } from "@/lib/prisma";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 export async function POST(request: Request) {
   const gate = await requireApiGrant("org.products", "edit");
@@ -14,12 +16,12 @@ export async function POST(request: Request) {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON body.", code: "BAD_INPUT", status: 400 });
   }
 
   const parsed = parseProductCreateBody(body);
   if (!parsed.ok) {
-    return NextResponse.json({ error: parsed.error }, { status: 400 });
+    return toApiErrorResponse({ error: parsed.error, code: "BAD_INPUT", status: 400 });
   }
 
   const d = parsed.data;
@@ -29,23 +31,14 @@ export async function POST(request: Request) {
   if (d.flashPoint) {
     const n = Number(d.flashPoint);
     if (!Number.isFinite(n)) {
-      return NextResponse.json(
-        { error: "flashPoint must be a number." },
-        { status: 400 },
-      );
+      return toApiErrorResponse({ error: "flashPoint must be a number.", code: "BAD_INPUT", status: 400 });
     }
     flashPoint = new Prisma.Decimal(n);
   }
 
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json(
-      {
-        error:
-          "Demo tenant not found. Run `npm run db:seed` to create starter data.",
-      },
-      { status: 404 },
-    );
+    return toApiErrorResponse({ error: "Demo tenant not found. Run `npm run db:seed` to create starter data.", code: "NOT_FOUND", status: 404 });
   }
 
   try {
@@ -53,22 +46,16 @@ export async function POST(request: Request) {
   } catch (e) {
     const msg = e instanceof Error ? e.message : "";
     if (msg === "INVALID_CATEGORY") {
-      return NextResponse.json({ error: "Invalid category." }, { status: 400 });
+      return toApiErrorResponse({ error: "Invalid category.", code: "BAD_INPUT", status: 400 });
     }
     if (msg === "INVALID_DIVISION") {
-      return NextResponse.json({ error: "Invalid division." }, { status: 400 });
+      return toApiErrorResponse({ error: "Invalid division.", code: "BAD_INPUT", status: 400 });
     }
     if (msg === "INVALID_OFFICE") {
-      return NextResponse.json(
-        { error: "Invalid supplier office." },
-        { status: 400 },
-      );
+      return toApiErrorResponse({ error: "Invalid supplier office.", code: "BAD_INPUT", status: 400 });
     }
     if (msg === "INVALID_SUPPLIERS") {
-      return NextResponse.json(
-        { error: "One or more suppliers are invalid." },
-        { status: 400 },
-      );
+      return toApiErrorResponse({ error: "One or more suppliers are invalid.", code: "BAD_INPUT", status: 400 });
     }
     throw e;
   }
@@ -144,13 +131,7 @@ export async function POST(request: Request) {
         ? (e as { code: string }).code
         : null;
     if (code === "P2002") {
-      return NextResponse.json(
-        {
-          error:
-            "A product with this code or SKU already exists for this tenant.",
-        },
-        { status: 409 },
-      );
+      return toApiErrorResponse({ error: "A product with this code or SKU already exists for this tenant.", code: "CONFLICT", status: 409 });
     }
     throw e;
   }

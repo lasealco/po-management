@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
+
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import {
   actorIsSupplierPortalRestricted,
   getActorUserId,
@@ -45,13 +47,7 @@ export async function GET(
 
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json(
-      {
-        error:
-          "Demo tenant not found. Run `npm run db:seed` to create starter data.",
-      },
-      { status: 404 },
-    );
+    return toApiErrorResponse({ error: "Demo tenant not found. Run `npm run db:seed` to create starter data.", code: "NOT_FOUND", status: 404 });
   }
 
   const { id } = await context.params;
@@ -157,7 +153,7 @@ export async function GET(
   });
 
   if (!order) {
-    return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    return toApiErrorResponse({ error: "Order not found", code: "NOT_FOUND", status: 404 });
   }
 
   const statusIds = new Set<string>();
@@ -180,7 +176,7 @@ export async function GET(
   const isForwarderUser =
     actorId !== null && (await userHasRoleNamed(actorId, "Forwarder"));
   if (isSupplierPortalUser && !order.workflow.supplierPortalOn) {
-    return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    return toApiErrorResponse({ error: "Order not found", code: "NOT_FOUND", status: 404 });
   }
 
   const supplierOnlyActions = new Set([
@@ -578,13 +574,7 @@ export async function PATCH(
 
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json(
-      {
-        error:
-          "Demo tenant not found. Run `npm run db:seed` to create starter data.",
-      },
-      { status: 404 },
-    );
+    return toApiErrorResponse({ error: "Demo tenant not found. Run `npm run db:seed` to create starter data.", code: "NOT_FOUND", status: 404 });
   }
 
   const { id } = await context.params;
@@ -593,10 +583,10 @@ export async function PATCH(
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON.", code: "BAD_INPUT", status: 400 });
   }
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "Expected object." }, { status: 400 });
+    return toApiErrorResponse({ error: "Expected object.", code: "BAD_INPUT", status: 400 });
   }
 
   const existing = await prisma.purchaseOrder.findFirst({
@@ -604,7 +594,7 @@ export async function PATCH(
     select: { id: true },
   });
   if (!existing) {
-    return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    return toApiErrorResponse({ error: "Order not found", code: "NOT_FOUND", status: 404 });
   }
 
   const o = body as Record<string, unknown>;
@@ -642,20 +632,14 @@ export async function PATCH(
     ) {
       data.paymentTermsDays = v;
     } else {
-      return NextResponse.json(
-        { error: "Invalid paymentTermsDays." },
-        { status: 400 },
-      );
+      return toApiErrorResponse({ error: "Invalid paymentTermsDays.", code: "BAD_INPUT", status: 400 });
     }
   }
 
   if ("requestedDeliveryDate" in o) {
     const parsed = parseRequestedDeliveryDate(o.requestedDeliveryDate);
     if (parsed === "invalid") {
-      return NextResponse.json(
-        { error: "Invalid requestedDeliveryDate (use YYYY-MM-DD)." },
-        { status: 400 },
-      );
+      return toApiErrorResponse({ error: "Invalid requestedDeliveryDate (use YYYY-MM-DD).", code: "BAD_INPUT", status: 400 });
     }
     if (parsed !== undefined) {
       data.requestedDeliveryDate = parsed;
@@ -663,10 +647,7 @@ export async function PATCH(
   }
 
   if (Object.keys(data).length === 0) {
-    return NextResponse.json(
-      { error: "No valid fields to update." },
-      { status: 400 },
-    );
+    return toApiErrorResponse({ error: "No valid fields to update.", code: "BAD_INPUT", status: 400 });
   }
 
   await prisma.purchaseOrder.update({

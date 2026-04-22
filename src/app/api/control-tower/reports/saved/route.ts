@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { sanitizeCtReportConfig } from "@/lib/control-tower/report-engine";
@@ -17,9 +19,9 @@ export async function GET(request: Request) {
   const gate = await requireApiGrant("org.controltower", "view");
   if (gate) return gate;
   const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   const actorId = await getActorUserId();
-  if (!actorId) return NextResponse.json({ error: "No active user." }, { status: 403 });
+  if (!actorId) return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
 
   const datasetFilter = parseReportDatasetQuery(new URL(request.url).searchParams.get("dataset"));
 
@@ -61,9 +63,9 @@ export async function POST(request: Request) {
   const gate = await requireApiGrant("org.controltower", "edit");
   if (gate) return gate;
   const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   const actorId = await getActorUserId();
-  if (!actorId) return NextResponse.json({ error: "No active user." }, { status: 403 });
+  if (!actorId) return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
 
   let body: unknown = {};
   try {
@@ -73,7 +75,7 @@ export async function POST(request: Request) {
   }
   const obj = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
   const name = typeof obj.name === "string" ? obj.name.trim() : "";
-  if (!name) return NextResponse.json({ error: "name is required." }, { status: 400 });
+  if (!name) return toApiErrorResponse({ error: "name is required.", code: "BAD_INPUT", status: 400 });
 
   const description =
     typeof obj.description === "string" && obj.description.trim() ? obj.description.trim() : null;

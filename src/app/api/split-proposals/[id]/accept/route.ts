@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 export async function POST(
   _request: Request,
@@ -11,10 +13,7 @@ export async function POST(
 
   const actorId = await getActorUserId();
   if (!actorId) {
-    return NextResponse.json(
-      { error: "Could not resolve demo actor." },
-      { status: 403 },
-    );
+    return toApiErrorResponse({ error: "Could not resolve demo actor.", code: "FORBIDDEN", status: 403 });
   }
 
   const { id: proposalId } = await context.params;
@@ -25,10 +24,7 @@ export async function POST(
   });
 
   if (!proposal || proposal.status !== "PENDING") {
-    return NextResponse.json(
-      { error: "Proposal not found or not pending." },
-      { status: 404 },
-    );
+    return toApiErrorResponse({ error: "Proposal not found or not pending.", code: "NOT_FOUND", status: 404 });
   }
 
   const parent = proposal.parentOrder;
@@ -45,10 +41,7 @@ export async function POST(
   });
 
   if (!acceptTransition || !confirmedStatus) {
-    return NextResponse.json(
-      { error: "Workflow misconfigured for buyer accept." },
-      { status: 500 },
-    );
+    return toApiErrorResponse({ error: "Workflow misconfigured for buyer accept.", code: "UNHANDLED", status: 500 });
   }
 
   await prisma.$transaction(async (tx) => {

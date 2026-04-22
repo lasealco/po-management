@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 import { requireApiGrant } from "@/lib/authz";
 import { isMacroRegion } from "@/lib/reference-data/macro-regions";
@@ -40,7 +42,7 @@ export async function POST(req: Request) {
   const gate = await requireApiGrant("org.settings", "edit");
   if (gate) return gate;
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
-  if (!body) return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
+  if (!body) return toApiErrorResponse({ error: "Invalid JSON.", code: "BAD_INPUT", status: 400 });
   const isoAlpha2 = String(body.isoAlpha2 ?? "")
     .trim()
     .toUpperCase()
@@ -51,13 +53,13 @@ export async function POST(req: Request) {
     .slice(0, 3);
   const name = String(body.name ?? "").trim();
   if (isoAlpha2.length !== 2 || isoAlpha3.length !== 3 || !name) {
-    return NextResponse.json({ error: "isoAlpha2 (2 chars), isoAlpha3 (3 chars), and name are required." }, { status: 400 });
+    return toApiErrorResponse({ error: "isoAlpha2 (2 chars), isoAlpha3 (3 chars), and name are required.", code: "BAD_INPUT", status: 400 });
   }
   const rc = typeof body.regionCode === "string" ? body.regionCode.trim() : "";
   let regionCode: string | null = null;
   if (rc) {
     if (!isMacroRegion(rc)) {
-      return NextResponse.json({ error: "Invalid regionCode." }, { status: 400 });
+      return toApiErrorResponse({ error: "Invalid regionCode.", code: "BAD_INPUT", status: 400 });
     }
     if (rc !== "") regionCode = rc;
   }
@@ -81,9 +83,6 @@ export async function POST(req: Request) {
     });
     return NextResponse.json({ row });
   } catch {
-    return NextResponse.json(
-      { error: "Could not create country (duplicate ISO code or database error)." },
-      { status: 409 },
-    );
+    return toApiErrorResponse({ error: "Could not create country (duplicate ISO code or database error).", code: "CONFLICT", status: 409 });
   }
 }

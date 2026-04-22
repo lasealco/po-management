@@ -3,6 +3,8 @@ import { requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { hashPassword } from "@/lib/password";
 import { prisma } from "@/lib/prisma";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 const MAX_NAME = 120;
 
@@ -25,11 +27,11 @@ export async function PATCH(
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON body.", code: "BAD_INPUT", status: 400 });
   }
 
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "Expected an object." }, { status: 400 });
+    return toApiErrorResponse({ error: "Expected an object.", code: "BAD_INPUT", status: 400 });
   }
 
   const o = body as Record<string, unknown>;
@@ -41,10 +43,7 @@ export async function PATCH(
   let roleIds: string[] | undefined;
   if (o.roleIds !== undefined) {
     if (roleIdsParsed === null) {
-      return NextResponse.json(
-        { error: "roleIds must be an array of non-empty strings." },
-        { status: 400 },
-      );
+      return toApiErrorResponse({ error: "roleIds must be an array of non-empty strings.", code: "BAD_INPUT", status: 400 });
     }
     roleIds = roleIdsParsed;
   }
@@ -55,30 +54,20 @@ export async function PATCH(
     roleIds === undefined &&
     passwordRaw === undefined
   ) {
-    return NextResponse.json(
-      { error: "Provide name, isActive, and/or roleIds." },
-      { status: 400 },
-    );
+    return toApiErrorResponse({ error: "Provide name, isActive, and/or roleIds.", code: "BAD_INPUT", status: 400 });
   }
 
   let name: string | undefined;
   if (nameRaw !== undefined) {
     if (typeof nameRaw !== "string") {
-      return NextResponse.json({ error: "name must be a string." }, {
-        status: 400,
-      });
+      return toApiErrorResponse({ error: "name must be a string.", code: "BAD_INPUT", status: 400 });
     }
     const t = nameRaw.trim();
     if (!t.length) {
-      return NextResponse.json({ error: "name cannot be empty." }, {
-        status: 400,
-      });
+      return toApiErrorResponse({ error: "name cannot be empty.", code: "BAD_INPUT", status: 400 });
     }
     if (t.length > MAX_NAME) {
-      return NextResponse.json(
-        { error: `name must be at most ${MAX_NAME} characters.` },
-        { status: 400 },
-      );
+      return toApiErrorResponse({ error: `name must be at most ${MAX_NAME} characters.`, code: "BAD_INPUT", status: 400 });
     }
     name = t;
   }
@@ -86,33 +75,21 @@ export async function PATCH(
   let isActive: boolean | undefined;
   if (activeRaw !== undefined) {
     if (typeof activeRaw !== "boolean") {
-      return NextResponse.json(
-        { error: "isActive must be a boolean." },
-        { status: 400 },
-      );
+      return toApiErrorResponse({ error: "isActive must be a boolean.", code: "BAD_INPUT", status: 400 });
     }
     isActive = activeRaw;
   }
   let passwordHash: string | undefined;
   if (passwordRaw !== undefined) {
     if (typeof passwordRaw !== "string" || passwordRaw.length < 8) {
-      return NextResponse.json(
-        { error: "password must be a string with at least 8 characters." },
-        { status: 400 },
-      );
+      return toApiErrorResponse({ error: "password must be a string with at least 8 characters.", code: "BAD_INPUT", status: 400 });
     }
     passwordHash = hashPassword(passwordRaw);
   }
 
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json(
-      {
-        error:
-          "Demo tenant not found. Run `npm run db:seed` to create starter data.",
-      },
-      { status: 404 },
-    );
+    return toApiErrorResponse({ error: "Demo tenant not found. Run `npm run db:seed` to create starter data.", code: "NOT_FOUND", status: 404 });
   }
 
   const existing = await prisma.user.findFirst({
@@ -120,7 +97,7 @@ export async function PATCH(
     select: { id: true },
   });
   if (!existing) {
-    return NextResponse.json({ error: "User not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "User not found.", code: "NOT_FOUND", status: 404 });
   }
 
   if (roleIds !== undefined && roleIds.length > 0) {
@@ -129,10 +106,7 @@ export async function PATCH(
       select: { id: true },
     });
     if (found.length !== roleIds.length) {
-      return NextResponse.json(
-        { error: "One or more roles are invalid for this tenant." },
-        { status: 400 },
-      );
+      return toApiErrorResponse({ error: "One or more roles are invalid for this tenant.", code: "BAD_INPUT", status: 400 });
     }
   }
 
@@ -171,7 +145,7 @@ export async function PATCH(
   });
 
   if (!user) {
-    return NextResponse.json({ error: "User not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "User not found.", code: "NOT_FOUND", status: 404 });
   }
 
   const { userRoles, ...rest } = user;

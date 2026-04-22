@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { actorIsSupplierPortalRestricted, getActorUserId, requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 type CreateLoadPlanBody = {
   reference?: string;
@@ -23,18 +25,15 @@ async function gateBuyerConsolidationAccess() {
   if (gate) return gate;
   const actorId = await getActorUserId();
   if (!actorId) {
-    return NextResponse.json({ error: "No active demo actor." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active demo actor.", code: "FORBIDDEN", status: 403 });
   }
   const isSupplierPortalUser = await actorIsSupplierPortalRestricted(actorId);
   if (isSupplierPortalUser) {
-    return NextResponse.json(
-      { error: "Supplier users cannot manage buyer consolidation." },
-      { status: 403 },
-    );
+    return toApiErrorResponse({ error: "Supplier users cannot manage buyer consolidation.", code: "FORBIDDEN", status: 403 });
   }
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   }
   return { actorId, tenant };
 }
@@ -128,10 +127,10 @@ export async function POST(request: Request) {
   const input = (body && typeof body === "object" ? body : {}) as CreateLoadPlanBody;
   const reference = (input.reference ?? "").trim();
   if (!reference) {
-    return NextResponse.json({ error: "reference is required." }, { status: 400 });
+    return toApiErrorResponse({ error: "reference is required.", code: "BAD_INPUT", status: 400 });
   }
   if (!input.warehouseId) {
-    return NextResponse.json({ error: "warehouseId is required." }, { status: 400 });
+    return toApiErrorResponse({ error: "warehouseId is required.", code: "BAD_INPUT", status: 400 });
   }
 
   const warehouse = await prisma.warehouse.findFirst({
@@ -139,7 +138,7 @@ export async function POST(request: Request) {
     select: { id: true },
   });
   if (!warehouse) {
-    return NextResponse.json({ error: "Warehouse not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Warehouse not found.", code: "NOT_FOUND", status: 404 });
   }
 
   const plannedEta =
@@ -147,7 +146,7 @@ export async function POST(request: Request) {
       ? new Date(`${input.plannedEta}T00:00:00.000Z`)
       : null;
   if (plannedEta && Number.isNaN(plannedEta.getTime())) {
-    return NextResponse.json({ error: "plannedEta must be a valid date." }, { status: 400 });
+    return toApiErrorResponse({ error: "plannedEta must be a valid date.", code: "BAD_INPUT", status: 400 });
   }
 
   try {
@@ -166,9 +165,6 @@ export async function POST(request: Request) {
     });
     return NextResponse.json({ ok: true, id: created.id });
   } catch {
-    return NextResponse.json(
-      { error: "Could not create load plan (reference may already exist)." },
-      { status: 400 },
-    );
+    return toApiErrorResponse({ error: "Could not create load plan (reference may already exist).", code: "BAD_INPUT", status: 400 });
   }
 }

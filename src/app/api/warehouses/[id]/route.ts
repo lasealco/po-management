@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 type PatchWarehouseBody = {
   code?: string | null;
@@ -21,7 +23,7 @@ export async function PATCH(
   const gate = await requireApiGrant("org.settings", "edit");
   if (gate) return gate;
   const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   const { id } = await context.params;
   let body: unknown = {};
   try {
@@ -43,7 +45,7 @@ export async function PATCH(
   if (input.code !== undefined) patch.code = input.code?.trim() || null;
   if (input.name !== undefined) {
     const name = input.name.trim();
-    if (!name) return NextResponse.json({ error: "name cannot be empty." }, { status: 400 });
+    if (!name) return toApiErrorResponse({ error: "name cannot be empty.", code: "BAD_INPUT", status: 400 });
     patch.name = name;
   }
   if (input.type !== undefined) patch.type = input.type;
@@ -58,11 +60,11 @@ export async function PATCH(
     where: { id, tenantId: tenant.id },
     select: { id: true },
   });
-  if (!row) return NextResponse.json({ error: "Location not found." }, { status: 404 });
+  if (!row) return toApiErrorResponse({ error: "Location not found.", code: "NOT_FOUND", status: 404 });
   try {
     await prisma.warehouse.update({ where: { id }, data: patch });
     return NextResponse.json({ ok: true });
   } catch {
-    return NextResponse.json({ error: "Could not update location." }, { status: 400 });
+    return toApiErrorResponse({ error: "Could not update location.", code: "BAD_INPUT", status: 400 });
   }
 }

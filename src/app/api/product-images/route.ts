@@ -3,6 +3,8 @@ import { mkdir, writeFile } from "fs/promises";
 import { join } from "path";
 import { put } from "@vercel/blob";
 import { NextResponse } from "next/server";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 import { requireApiGrant } from "@/lib/authz";
 
@@ -31,28 +33,20 @@ export async function POST(request: Request) {
   try {
     form = await request.formData();
   } catch {
-    return NextResponse.json({ error: "Expected multipart form data." }, {
-      status: 400,
-    });
+    return toApiErrorResponse({ error: "Expected multipart form data.", code: "BAD_INPUT", status: 400 });
   }
 
   const file = form.get("file");
   if (!file || !(file instanceof File)) {
-    return NextResponse.json({ error: "Missing file field." }, { status: 400 });
+    return toApiErrorResponse({ error: "Missing file field.", code: "BAD_INPUT", status: 400 });
   }
 
   if (!ALLOWED.has(file.type)) {
-    return NextResponse.json(
-      { error: "Use JPEG, PNG, WebP, or GIF." },
-      { status: 400 },
-    );
+    return toApiErrorResponse({ error: "Use JPEG, PNG, WebP, or GIF.", code: "BAD_INPUT", status: 400 });
   }
 
   if (file.size > MAX_BYTES) {
-    return NextResponse.json(
-      { error: "Image must be at most 5 MB." },
-      { status: 400 },
-    );
+    return toApiErrorResponse({ error: "Image must be at most 5 MB.", code: "BAD_INPUT", status: 400 });
   }
 
   const ext = MIME_EXT[file.type] ?? "bin";
@@ -76,11 +70,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ url: `/uploads/products/${basename}` });
   }
 
-  return NextResponse.json(
-    {
-      error:
-        "Upload is not configured. Add BLOB_READ_WRITE_TOKEN (Vercel Blob) for production, or run locally to store under public/uploads.",
-    },
-    { status: 503 },
-  );
+  return toApiErrorResponse({ error: "Upload is not configured. Add BLOB_READ_WRITE_TOKEN (Vercel Blob) for production, or run locally to store under public/uploads.", code: "UNAVAILABLE", status: 503 });
 }

@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
@@ -19,9 +21,9 @@ export async function GET(request: Request) {
   const gate = await requireApiGrant("org.wms", "view");
   if (gate) return gate;
   const tenant = await getTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   const actorId = await getActorUserId();
-  if (!actorId) return NextResponse.json({ error: "No active actor." }, { status: 403 });
+  if (!actorId) return toApiErrorResponse({ error: "No active actor.", code: "FORBIDDEN", status: 403 });
   const movementLedger = parseMovementLedgerQuery(new URL(request.url).searchParams);
   const payload = await getWmsDashboardPayload(tenant.id, actorId, movementLedger ?? null);
   return NextResponse.json(payload);
@@ -31,9 +33,9 @@ export async function POST(request: Request) {
   const gate = await requireApiGrant("org.wms", "edit");
   if (gate) return gate;
   const tenant = await getTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   const actorId = await getActorUserId();
-  if (!actorId) return NextResponse.json({ error: "No active actor." }, { status: 403 });
+  if (!actorId) return toApiErrorResponse({ error: "No active actor.", code: "FORBIDDEN", status: 403 });
   let body: unknown = {};
   try {
     body = await request.json();

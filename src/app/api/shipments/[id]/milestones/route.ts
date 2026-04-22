@@ -56,7 +56,7 @@ export async function POST(
 
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   }
 
   const { id: shipmentId } = await context.params;

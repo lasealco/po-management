@@ -3,6 +3,8 @@ import { requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { hashPassword } from "@/lib/password";
 import { prisma } from "@/lib/prisma";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 type CreateUserBody = {
   email?: string;
@@ -16,13 +18,13 @@ export async function POST(request: Request) {
   if (gate) return gate;
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   }
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON body.", code: "BAD_INPUT", status: 400 });
   }
   const input = (body && typeof body === "object" ? body : {}) as CreateUserBody;
   const email = input.email?.trim().toLowerCase() ?? "";
@@ -32,16 +34,10 @@ export async function POST(request: Request) {
     ? [...new Set(input.roleIds.filter((r) => typeof r === "string" && r))]
     : [];
   if (!email || !name || !password) {
-    return NextResponse.json(
-      { error: "email, name, and password are required." },
-      { status: 400 },
-    );
+    return toApiErrorResponse({ error: "email, name, and password are required.", code: "BAD_INPUT", status: 400 });
   }
   if (password.length < 8) {
-    return NextResponse.json(
-      { error: "password must be at least 8 characters." },
-      { status: 400 },
-    );
+    return toApiErrorResponse({ error: "password must be at least 8 characters.", code: "BAD_INPUT", status: 400 });
   }
   if (roleIds.length > 0) {
     const found = await prisma.role.findMany({
@@ -49,10 +45,7 @@ export async function POST(request: Request) {
       select: { id: true },
     });
     if (found.length !== roleIds.length) {
-      return NextResponse.json(
-        { error: "One or more roles are invalid for this tenant." },
-        { status: 400 },
-      );
+      return toApiErrorResponse({ error: "One or more roles are invalid for this tenant.", code: "BAD_INPUT", status: 400 });
     }
   }
   try {
@@ -75,9 +68,6 @@ export async function POST(request: Request) {
     });
     return NextResponse.json({ ok: true, id: created.id });
   } catch {
-    return NextResponse.json(
-      { error: "Could not create user (email may already exist)." },
-      { status: 400 },
-    );
+    return toApiErrorResponse({ error: "Could not create user (email may already exist).", code: "BAD_INPUT", status: 400 });
   }
 }

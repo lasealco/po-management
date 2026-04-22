@@ -3,6 +3,8 @@ import { mkdir, writeFile } from "fs/promises";
 import { join } from "path";
 import { put } from "@vercel/blob";
 import { NextResponse } from "next/server";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 import { actorIsSupplierPortalRestricted, getActorUserId, requireApiGrant } from "@/lib/authz";
 import { writeCtAudit } from "@/lib/control-tower/audit";
@@ -33,19 +35,19 @@ export async function POST(request: Request) {
 
   const actorId = await getActorUserId();
   if (!actorId || (await actorIsSupplierPortalRestricted(actorId))) {
-    return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+    return toApiErrorResponse({ error: "Forbidden.", code: "FORBIDDEN", status: 403 });
   }
 
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   }
 
   let form: FormData;
   try {
     form = await request.formData();
   } catch {
-    return NextResponse.json({ error: "Expected multipart form data." }, { status: 400 });
+    return toApiErrorResponse({ error: "Expected multipart form data.", code: "BAD_INPUT", status: 400 });
   }
 
   const shipmentId = String(form.get("shipmentId") ?? "").trim();
@@ -55,7 +57,7 @@ export async function POST(request: Request) {
     visibilityRaw === "CUSTOMER_SHAREABLE" ? "CUSTOMER_SHAREABLE" : "INTERNAL";
 
   if (!shipmentId) {
-    return NextResponse.json({ error: "shipmentId is required." }, { status: 400 });
+    return toApiErrorResponse({ error: "shipmentId is required.", code: "BAD_INPUT", status: 400 });
   }
 
   const shipment = await prisma.shipment.findFirst({
@@ -63,21 +65,18 @@ export async function POST(request: Request) {
     select: { id: true },
   });
   if (!shipment) {
-    return NextResponse.json({ error: "Shipment not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Shipment not found.", code: "NOT_FOUND", status: 404 });
   }
 
   const file = form.get("file");
   if (!file || !(file instanceof File)) {
-    return NextResponse.json({ error: "Missing file field." }, { status: 400 });
+    return toApiErrorResponse({ error: "Missing file field.", code: "BAD_INPUT", status: 400 });
   }
   if (!ALLOWED.has(file.type)) {
-    return NextResponse.json(
-      { error: "Use PDF, JPEG, PNG, or WebP." },
-      { status: 400 },
-    );
+    return toApiErrorResponse({ error: "Use PDF, JPEG, PNG, or WebP.", code: "BAD_INPUT", status: 400 });
   }
   if (file.size > MAX_BYTES) {
-    return NextResponse.json({ error: "File must be at most 15 MB." }, { status: 400 });
+    return toApiErrorResponse({ error: "File must be at most 15 MB.", code: "BAD_INPUT", status: 400 });
   }
 
   const ext = MIME_EXT[file.type] ?? "bin";
@@ -99,13 +98,7 @@ export async function POST(request: Request) {
     await writeFile(path, bytes);
     url = `/uploads/control-tower/${basename}`;
   } else {
-    return NextResponse.json(
-      {
-        error:
-          "Upload is not configured. Add BLOB_READ_WRITE_TOKEN for production, or run locally.",
-      },
-      { status: 503 },
-    );
+    return toApiErrorResponse({ error: "Upload is not configured. Add BLOB_READ_WRITE_TOKEN for production, or run locally.", code: "UNAVAILABLE", status: 503 });
   }
 
   const row = await prisma.ctShipmentDocument.create({

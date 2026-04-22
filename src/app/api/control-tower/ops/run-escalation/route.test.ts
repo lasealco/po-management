@@ -50,7 +50,7 @@ describe("POST /api/control-tower/ops/run-escalation", () => {
     const response = await POST(new Request("http://localhost/api/control-tower/ops/run-escalation", { method: "POST" }));
 
     expect(response.status).toBe(404);
-    expect(await response.json()).toEqual({ error: "Tenant not found." });
+    expect(await response.json()).toEqual({ error: "Tenant not found.", code: "NOT_FOUND" });
   });
 
   it("returns stable actor-missing error payload", async () => {
@@ -60,7 +60,7 @@ describe("POST /api/control-tower/ops/run-escalation", () => {
     const response = await POST(new Request("http://localhost/api/control-tower/ops/run-escalation", { method: "POST" }));
 
     expect(response.status).toBe(403);
-    expect(await response.json()).toEqual({ error: "No active user." });
+    expect(await response.json()).toEqual({ error: "No active user.", code: "FORBIDDEN" });
   });
 
   it("treats invalid JSON as empty body and still returns success shape", async () => {

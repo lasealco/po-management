@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { runReportInsightLlm } from "@/lib/control-tower/report-insight-llm";
 import { buildReportInsightRunSummary } from "@/lib/control-tower/report-run-summary";
@@ -14,9 +15,9 @@ export async function POST(request: Request) {
   if (gate) return gate;
 
   const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   const actorId = await getActorUserId();
-  if (!actorId) return NextResponse.json({ error: "No active user." }, { status: 403 });
+  if (!actorId) return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   const ctx = await getControlTowerPortalContext(actorId);
 
   let body: unknown = {};
@@ -43,14 +44,15 @@ export async function POST(request: Request) {
   });
 
   if ("error" in out) {
-    return NextResponse.json(
-      {
-        error: out.error,
+    return toApiErrorResponse({
+      error: typeof out.error === "string" ? out.error : "Insight unavailable.",
+      code: "UNAVAILABLE",
+      status: 503,
+      extra: {
         generatedAt: result.generatedAt,
         runSummary: buildReportInsightRunSummary(result),
       },
-      { status: 503 },
-    );
+    });
   }
   return NextResponse.json({
     insight: out.insight,

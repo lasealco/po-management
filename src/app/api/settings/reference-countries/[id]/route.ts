@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 import { requireApiGrant } from "@/lib/authz";
 import { isMacroRegion } from "@/lib/reference-data/macro-regions";
@@ -9,7 +11,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   if (gate) return gate;
   const { id } = await ctx.params;
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
-  if (!body) return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
+  if (!body) return toApiErrorResponse({ error: "Invalid JSON.", code: "BAD_INPUT", status: 400 });
 
   const data: { name?: string; isActive?: boolean; regionCode?: string | null } = {};
   if (typeof body.name === "string") data.name = body.name.trim() || undefined;
@@ -19,11 +21,11 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     if (rc === "") data.regionCode = null;
     else if (isMacroRegion(rc) && rc !== "") data.regionCode = rc;
     else if (rc !== "") {
-      return NextResponse.json({ error: "Invalid regionCode." }, { status: 400 });
+      return toApiErrorResponse({ error: "Invalid regionCode.", code: "BAD_INPUT", status: 400 });
     }
   }
   if (Object.keys(data).length === 0) {
-    return NextResponse.json({ error: "No fields to update." }, { status: 400 });
+    return toApiErrorResponse({ error: "No fields to update.", code: "BAD_INPUT", status: 400 });
   }
 
   try {
@@ -41,6 +43,6 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     });
     return NextResponse.json({ row });
   } catch {
-    return NextResponse.json({ error: "Not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Not found.", code: "NOT_FOUND", status: 404 });
   }
 }

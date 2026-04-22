@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 import { runSlaEscalationsAllTenants } from "@/lib/control-tower/sla-escalation";
 
@@ -14,14 +16,11 @@ export const dynamic = "force-dynamic";
 async function handleCron(request: Request) {
   const secret = process.env.CRON_SECRET;
   if (!secret) {
-    return NextResponse.json(
-      { error: "CRON_SECRET is not configured." },
-      { status: 503 },
-    );
+    return toApiErrorResponse({ error: "CRON_SECRET is not configured.", code: "UNAVAILABLE", status: 503 });
   }
   const auth = request.headers.get("authorization") ?? "";
   if (auth !== `Bearer ${secret}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return toApiErrorResponse({ error: "Unauthorized", code: "UNAUTHORIZED", status: 401 });
   }
 
   const summary = await runSlaEscalationsAllTenants();

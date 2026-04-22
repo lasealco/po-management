@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 import { requireApiGrant } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
@@ -64,15 +66,12 @@ export async function POST(req: Request) {
   const gate = await requireApiGrant("org.settings", "edit");
   if (gate) return gate;
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
-  if (!body) return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
+  if (!body) return toApiErrorResponse({ error: "Invalid JSON.", code: "BAD_INPUT", status: 400 });
   const iataCode = normalizeIata(String(body.iataCode ?? ""));
   const name = String(body.name ?? "").trim();
   const awbPrefix3 = normalizeAwbPrefix(body.awbPrefix3);
   if (iataCode.length < 2 || !name || !awbPrefix3) {
-    return NextResponse.json(
-      { error: "iataCode (2–3 chars), name, and awbPrefix3 (3 digits) are required." },
-      { status: 400 },
-    );
+    return toApiErrorResponse({ error: "iataCode (2–3 chars), name, and awbPrefix3 (3 digits) are required.", code: "BAD_INPUT", status: 400 });
   }
   const icaoCode = normalizeIcao(body.icaoCode);
   const notes = typeof body.notes === "string" ? body.notes.trim() || null : null;
@@ -91,9 +90,6 @@ export async function POST(req: Request) {
     });
     return NextResponse.json({ row });
   } catch {
-    return NextResponse.json(
-      { error: "Could not create airline (duplicate IATA / ICAO?)." },
-      { status: 409 },
-    );
+    return toApiErrorResponse({ error: "Could not create airline (duplicate IATA / ICAO?).", code: "CONFLICT", status: 409 });
   }
 }

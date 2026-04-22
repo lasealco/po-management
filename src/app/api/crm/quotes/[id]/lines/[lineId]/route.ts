@@ -1,5 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 import { getActorUserId, requireApiGrant, userHasGlobalGrant } from "@/lib/authz";
 import { recalcQuoteSubtotal } from "@/lib/crm-quote-recalc";
@@ -45,20 +47,20 @@ export async function PATCH(
   const tenant = await getDemoTenant();
   const actorId = await getActorUserId();
   if (!tenant || !actorId) {
-    return NextResponse.json({ error: "No active user." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   }
 
   const { id: quoteId, lineId } = await context.params;
   const existing = await assertLineAccess(tenant.id, quoteId, lineId, actorId);
   if (!existing) {
-    return NextResponse.json({ error: "Line not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Line not found.", code: "NOT_FOUND", status: 404 });
   }
 
   let body: PatchBody;
   try {
     body = (await request.json()) as PatchBody;
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON body.", code: "BAD_INPUT", status: 400 });
   }
 
   const data: Record<string, unknown> = {};
@@ -66,21 +68,21 @@ export async function PATCH(
   if (body.quantity !== undefined) {
     const qty = Number(body.quantity);
     if (Number.isNaN(qty) || qty <= 0) {
-      return NextResponse.json({ error: "Invalid quantity." }, { status: 400 });
+      return toApiErrorResponse({ error: "Invalid quantity.", code: "BAD_INPUT", status: 400 });
     }
     data.quantity = new Prisma.Decimal(String(qty));
   }
   if (body.unitPrice !== undefined) {
     const price = Number(body.unitPrice);
     if (Number.isNaN(price) || price < 0) {
-      return NextResponse.json({ error: "Invalid unitPrice." }, { status: 400 });
+      return toApiErrorResponse({ error: "Invalid unitPrice.", code: "BAD_INPUT", status: 400 });
     }
     data.unitPrice = new Prisma.Decimal(String(price));
   }
   if (body.sortOrder !== undefined) data.sortOrder = Math.round(body.sortOrder);
 
   if (Object.keys(data).length === 0) {
-    return NextResponse.json({ error: "No fields to update." }, { status: 400 });
+    return toApiErrorResponse({ error: "No fields to update.", code: "BAD_INPUT", status: 400 });
   }
 
   const line = await prisma.$transaction(async (tx) => {
@@ -111,13 +113,13 @@ export async function DELETE(
   const tenant = await getDemoTenant();
   const actorId = await getActorUserId();
   if (!tenant || !actorId) {
-    return NextResponse.json({ error: "No active user." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   }
 
   const { id: quoteId, lineId } = await context.params;
   const existing = await assertLineAccess(tenant.id, quoteId, lineId, actorId);
   if (!existing) {
-    return NextResponse.json({ error: "Line not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Line not found.", code: "NOT_FOUND", status: 404 });
   }
 
   await prisma.$transaction(async (tx) => {

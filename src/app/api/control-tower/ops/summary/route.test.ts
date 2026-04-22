@@ -50,7 +50,7 @@ describe("GET /api/control-tower/ops/summary", () => {
     const response = await GET();
 
     expect(response.status).toBe(404);
-    expect(await response.json()).toEqual({ error: "Tenant not found." });
+    expect(await response.json()).toEqual({ error: "Tenant not found.", code: "NOT_FOUND" });
   });
 
   it("returns stable actor-missing error payload", async () => {
@@ -60,7 +60,7 @@ describe("GET /api/control-tower/ops/summary", () => {
     const response = await GET();
 
     expect(response.status).toBe(403);
-    expect(await response.json()).toEqual({ error: "No active user." });
+    expect(await response.json()).toEqual({ error: "No active user.", code: "FORBIDDEN" });
   });
 
   it("returns ops summary payload on happy path", async () => {

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getActorUserId } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 const PREF_KEY = "help_guide_progress";
 
@@ -14,7 +16,7 @@ export async function GET() {
   const tenant = await getDemoTenant();
   const actorId = await getActorUserId();
   if (!tenant || !actorId) {
-    return NextResponse.json({ error: "No active session." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active session.", code: "FORBIDDEN", status: 403 });
   }
   const pref = await prisma.userPreference.findUnique({
     where: { userId_key: { userId: actorId, key: PREF_KEY } },
@@ -29,7 +31,7 @@ export async function PATCH(request: Request) {
   const tenant = await getDemoTenant();
   const actorId = await getActorUserId();
   if (!tenant || !actorId) {
-    return NextResponse.json({ error: "No active session." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active session.", code: "FORBIDDEN", status: 403 });
   }
   let body: unknown = {};
   try {
@@ -39,10 +41,7 @@ export async function PATCH(request: Request) {
   }
   const input = (body && typeof body === "object" ? body : {}) as ProgressPayload;
   if (!input.playbookId || input.stepIdx == null || !Number.isFinite(input.stepIdx)) {
-    return NextResponse.json(
-      { error: "playbookId and stepIdx are required." },
-      { status: 400 },
-    );
+    return toApiErrorResponse({ error: "playbookId and stepIdx are required.", code: "BAD_INPUT", status: 400 });
   }
   const payload = {
     playbookId: input.playbookId,

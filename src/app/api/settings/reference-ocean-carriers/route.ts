@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 import { requireApiGrant } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
@@ -38,11 +40,11 @@ export async function POST(req: Request) {
   const gate = await requireApiGrant("org.settings", "edit");
   if (gate) return gate;
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
-  if (!body) return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
+  if (!body) return toApiErrorResponse({ error: "Invalid JSON.", code: "BAD_INPUT", status: 400 });
   const scac = normalizeScac(String(body.scac ?? ""));
   const name = String(body.name ?? "").trim();
   if (scac.length < 2 || !name) {
-    return NextResponse.json({ error: "scac (2–4 characters) and name are required." }, { status: 400 });
+    return toApiErrorResponse({ error: "scac (2–4 characters) and name are required.", code: "BAD_INPUT", status: 400 });
   }
   const notes = typeof body.notes === "string" ? body.notes.trim() || null : null;
   try {
@@ -52,6 +54,6 @@ export async function POST(req: Request) {
     });
     return NextResponse.json({ row });
   } catch {
-    return NextResponse.json({ error: "Could not create carrier (duplicate SCAC?)." }, { status: 409 });
+    return toApiErrorResponse({ error: "Could not create carrier (duplicate SCAC?).", code: "CONFLICT", status: 409 });
   }
 }

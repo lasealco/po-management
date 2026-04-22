@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 import { DEFAULT_WMS_BILLING_RATES } from "@/lib/wms/billing-default-rates";
 import {
@@ -28,7 +30,7 @@ export async function GET(request: Request) {
   const gate = await requireApiGrant("org.wms", "view");
   if (gate) return gate;
   const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
 
   const csvRunId = new URL(request.url).searchParams.get("csvRun");
   if (csvRunId) {
@@ -37,7 +39,7 @@ export async function GET(request: Request) {
       select: { csvSnapshot: true, runNo: true },
     });
     if (!row?.csvSnapshot) {
-      return NextResponse.json({ error: "Invoice run or CSV not found." }, { status: 404 });
+      return toApiErrorResponse({ error: "Invoice run or CSV not found.", code: "NOT_FOUND", status: 404 });
     }
     const safeName = row.runNo.replace(/[^\w.-]+/g, "_");
     return new NextResponse(row.csvSnapshot, {
@@ -131,9 +133,9 @@ export async function POST(request: Request) {
   const gate = await requireApiGrant("org.wms", "edit");
   if (gate) return gate;
   const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   const actorId = await getActorUserId();
-  if (!actorId) return NextResponse.json({ error: "No active actor." }, { status: 403 });
+  if (!actorId) return toApiErrorResponse({ error: "No active actor.", code: "FORBIDDEN", status: 403 });
 
   let body: unknown = {};
   try {
@@ -153,10 +155,10 @@ export async function POST(request: Request) {
     const since = input.since ? new Date(input.since) : undefined;
     const until = input.until ? new Date(input.until) : undefined;
     if (since && Number.isNaN(since.getTime())) {
-      return NextResponse.json({ error: "Invalid since date." }, { status: 400 });
+      return toApiErrorResponse({ error: "Invalid since date.", code: "BAD_INPUT", status: 400 });
     }
     if (until && Number.isNaN(until.getTime())) {
-      return NextResponse.json({ error: "Invalid until date." }, { status: 400 });
+      return toApiErrorResponse({ error: "Invalid until date.", code: "BAD_INPUT", status: 400 });
     }
     const result = await syncBillingEventsFromMovements(tenant.id, { since, until });
     return NextResponse.json({ ok: true, ...result });
@@ -166,31 +168,31 @@ export async function POST(request: Request) {
     const periodFrom = input.periodFrom ? new Date(input.periodFrom) : null;
     const periodTo = input.periodTo ? new Date(input.periodTo) : null;
     if (!periodFrom || !periodTo || Number.isNaN(periodFrom.getTime()) || Number.isNaN(periodTo.getTime())) {
-      return NextResponse.json({ error: "periodFrom and periodTo (ISO) required." }, { status: 400 });
+      return toApiErrorResponse({ error: "periodFrom and periodTo (ISO) required.", code: "BAD_INPUT", status: 400 });
     }
     if (periodFrom > periodTo) {
-      return NextResponse.json({ error: "periodFrom must be before periodTo." }, { status: 400 });
+      return toApiErrorResponse({ error: "periodFrom must be before periodTo.", code: "BAD_INPUT", status: 400 });
     }
     try {
       const result = await createInvoiceRunFromUnbilledEvents(tenant.id, actorId, periodFrom, periodTo);
       return NextResponse.json({ ok: true, ...result });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Invoice run failed.";
-      return NextResponse.json({ error: msg }, { status: 400 });
+      return toApiErrorResponse({ error: msg, code: "BAD_INPUT", status: 400 });
     }
   }
 
   if (action === "post_invoice_run") {
     const invoiceRunId = input.invoiceRunId?.trim();
     if (!invoiceRunId) {
-      return NextResponse.json({ error: "invoiceRunId required." }, { status: 400 });
+      return toApiErrorResponse({ error: "invoiceRunId required.", code: "BAD_INPUT", status: 400 });
     }
     const updated = await prisma.wmsBillingInvoiceRun.updateMany({
       where: { id: invoiceRunId, tenantId: tenant.id, status: "DRAFT" },
       data: { status: "POSTED" },
     });
     if (updated.count === 0) {
-      return NextResponse.json({ error: "Run not found or not in DRAFT." }, { status: 404 });
+      return toApiErrorResponse({ error: "Run not found or not in DRAFT.", code: "NOT_FOUND", status: 404 });
     }
     return NextResponse.json({ ok: true });
   }
@@ -205,16 +207,16 @@ export async function POST(request: Request) {
           ? rawAmt.trim()
           : "";
     if (!code || !amountStr) {
-      return NextResponse.json({ error: "code and amountPerUnit required." }, { status: 400 });
+      return toApiErrorResponse({ error: "code and amountPerUnit required.", code: "BAD_INPUT", status: 400 });
     }
     let dec: Prisma.Decimal;
     try {
       dec = new Prisma.Decimal(amountStr);
     } catch {
-      return NextResponse.json({ error: "Invalid amountPerUnit." }, { status: 400 });
+      return toApiErrorResponse({ error: "Invalid amountPerUnit.", code: "BAD_INPUT", status: 400 });
     }
     if (dec.lessThanOrEqualTo(0)) {
-      return NextResponse.json({ error: "amountPerUnit must be positive." }, { status: 400 });
+      return toApiErrorResponse({ error: "amountPerUnit must be positive.", code: "BAD_INPUT", status: 400 });
     }
     const m = input.movementType;
     const mt =
@@ -241,5 +243,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  return NextResponse.json({ error: "Unsupported billing action." }, { status: 400 });
+  return toApiErrorResponse({ error: "Unsupported billing action.", code: "BAD_INPUT", status: 400 });
 }

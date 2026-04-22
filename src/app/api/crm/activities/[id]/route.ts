@@ -1,5 +1,7 @@
 import type { CrmActivityType } from "@prisma/client";
 import { NextResponse } from "next/server";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 import { getActorUserId, requireApiGrant, userHasGlobalGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
@@ -41,13 +43,13 @@ export async function GET(
   const tenant = await getDemoTenant();
   const actorId = await getActorUserId();
   if (!tenant || !actorId) {
-    return NextResponse.json({ error: "No active user." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   }
 
   const { id } = await context.params;
   const activity = await loadActivity(tenant.id, id, actorId);
   if (!activity) {
-    return NextResponse.json({ error: "Activity not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Activity not found.", code: "NOT_FOUND", status: 404 });
   }
 
   return NextResponse.json({ activity });
@@ -73,31 +75,31 @@ export async function PATCH(
   const tenant = await getDemoTenant();
   const actorId = await getActorUserId();
   if (!tenant || !actorId) {
-    return NextResponse.json({ error: "No active user." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   }
 
   const { id } = await context.params;
   const existing = await loadActivity(tenant.id, id, actorId);
   if (!existing) {
-    return NextResponse.json({ error: "Activity not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Activity not found.", code: "NOT_FOUND", status: 404 });
   }
 
   const canEditAll = await userHasGlobalGrant(actorId, "org.crm", "edit");
   if (!canEditAll && existing.ownerUserId !== actorId) {
-    return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+    return toApiErrorResponse({ error: "Forbidden.", code: "FORBIDDEN", status: 403 });
   }
 
   let body: PatchBody;
   try {
     body = (await request.json()) as PatchBody;
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON body.", code: "BAD_INPUT", status: 400 });
   }
 
   const data: Record<string, unknown> = {};
   if (body.type !== undefined) {
     if (!TYPES.includes(body.type)) {
-      return NextResponse.json({ error: "Invalid type." }, { status: 400 });
+      return toApiErrorResponse({ error: "Invalid type.", code: "BAD_INPUT", status: 400 });
     }
     data.type = body.type;
   }
@@ -116,7 +118,7 @@ export async function PATCH(
         select: { id: true },
       });
       if (!acc) {
-        return NextResponse.json({ error: "Account not found." }, { status: 400 });
+        return toApiErrorResponse({ error: "Account not found.", code: "BAD_INPUT", status: 400 });
       }
     }
     data.relatedAccountId = aid;
@@ -130,14 +132,14 @@ export async function PATCH(
         select: { id: true },
       });
       if (!opp) {
-        return NextResponse.json({ error: "Opportunity not found." }, { status: 400 });
+        return toApiErrorResponse({ error: "Opportunity not found.", code: "BAD_INPUT", status: 400 });
       }
     }
     data.relatedOpportunityId = oid;
   }
 
   if (Object.keys(data).length === 0) {
-    return NextResponse.json({ error: "No fields to update." }, { status: 400 });
+    return toApiErrorResponse({ error: "No fields to update.", code: "BAD_INPUT", status: 400 });
   }
 
   const activity = await prisma.crmActivity.update({

@@ -78,7 +78,7 @@ export async function POST(
   const eta = parseDate(input.eta);
   const latestEta = parseDate(input.latestEta);
   if (etd === "invalid" || eta === "invalid" || latestEta === "invalid") {
-    return NextResponse.json({ error: "Invalid booking date field." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid booking date field.", code: "BAD_INPUT", status: 400 });
   }
 
   const forwarderSupplierId = input.forwarderSupplierId?.trim() || null;

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 export async function GET() {
   const gate = await requireApiGrant("org.settings", "view");
@@ -9,7 +11,7 @@ export async function GET() {
 
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   }
   const divisions = await prisma.productDivision.findMany({
     where: { tenantId: tenant.id },
@@ -24,23 +26,23 @@ export async function POST(request: Request) {
 
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   }
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON.", code: "BAD_INPUT", status: 400 });
   }
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "Expected object." }, { status: 400 });
+    return toApiErrorResponse({ error: "Expected object.", code: "BAD_INPUT", status: 400 });
   }
   const o = body as Record<string, unknown>;
   const name =
     typeof o.name === "string" && o.name.trim() ? o.name.trim() : null;
   if (!name) {
-    return NextResponse.json({ error: "name is required." }, { status: 400 });
+    return toApiErrorResponse({ error: "name is required.", code: "BAD_INPUT", status: 400 });
   }
 
   const code =
@@ -66,10 +68,7 @@ export async function POST(request: Request) {
         ? (e as { code: string }).code
         : null;
     if (c === "P2002") {
-      return NextResponse.json(
-        { error: "Division name must be unique per tenant." },
-        { status: 409 },
-      );
+      return toApiErrorResponse({ error: "Division name must be unique per tenant.", code: "CONFLICT", status: 409 });
     }
     throw e;
   }

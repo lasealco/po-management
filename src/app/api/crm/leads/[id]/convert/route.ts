@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 import { getActorUserId, requireApiGrant, userHasGlobalGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
@@ -22,7 +24,7 @@ export async function POST(
   const tenant = await getDemoTenant();
   const actorId = await getActorUserId();
   if (!tenant || !actorId) {
-    return NextResponse.json({ error: "No active user." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   }
 
   const { id: leadId } = await context.params;
@@ -32,29 +34,23 @@ export async function POST(
     const text = await request.text();
     if (text.trim()) body = JSON.parse(text) as ConvertBody;
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON body.", code: "BAD_INPUT", status: 400 });
   }
 
   const lead = await prisma.crmLead.findFirst({
     where: { id: leadId, tenantId: tenant.id },
   });
   if (!lead) {
-    return NextResponse.json({ error: "Lead not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Lead not found.", code: "NOT_FOUND", status: 404 });
   }
 
   const canEditAll = await userHasGlobalGrant(actorId, "org.crm", "edit");
   if (!canEditAll && lead.ownerUserId !== actorId) {
-    return NextResponse.json(
-      { error: "You can only convert leads you own." },
-      { status: 403 },
-    );
+    return toApiErrorResponse({ error: "You can only convert leads you own.", code: "FORBIDDEN", status: 403 });
   }
 
   if (lead.status === "CONVERTED") {
-    return NextResponse.json(
-      { error: "Lead is already converted." },
-      { status: 400 },
-    );
+    return toApiErrorResponse({ error: "Lead is already converted.", code: "BAD_INPUT", status: 400 });
   }
 
   const existingAccountId = body.existingAccountId?.trim() || null;
@@ -69,10 +65,7 @@ export async function POST(
       select: { id: true },
     });
     if (!acc) {
-      return NextResponse.json(
-        { error: "Account not found or you cannot attach to this account." },
-        { status: 404 },
-      );
+      return toApiErrorResponse({ error: "Account not found or you cannot attach to this account.", code: "NOT_FOUND", status: 404 });
     }
   }
 

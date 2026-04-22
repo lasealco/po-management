@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import {
   getActorUserId,
   requireApiGrant,
@@ -18,13 +20,7 @@ export async function POST(
 
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json(
-      {
-        error:
-          "Demo tenant not found. Run `npm run db:seed` to create starter data.",
-      },
-      { status: 404 },
-    );
+    return toApiErrorResponse({ error: "Demo tenant not found. Run `npm run db:seed` to create starter data.", code: "NOT_FOUND", status: 404 });
   }
 
   const { id: orderId } = await context.params;
@@ -34,51 +30,39 @@ export async function POST(
     select: { id: true },
   });
   if (!order) {
-    return NextResponse.json({ error: "Order not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Order not found.", code: "NOT_FOUND", status: 404 });
   }
 
   const actorId = await getActorUserId();
   if (!actorId) {
-    return NextResponse.json(
-      { error: "No active demo user for this session." },
-      { status: 403 },
-    );
+    return toApiErrorResponse({ error: "No active demo user for this session.", code: "FORBIDDEN", status: 403 });
   }
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON.", code: "BAD_INPUT", status: 400 });
   }
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "Expected object." }, { status: 400 });
+    return toApiErrorResponse({ error: "Expected object.", code: "BAD_INPUT", status: 400 });
   }
 
   const o = body as Record<string, unknown>;
   const text =
     typeof o.body === "string" && o.body.trim() ? o.body.trim() : null;
   if (!text) {
-    return NextResponse.json({ error: "body is required." }, { status: 400 });
+    return toApiErrorResponse({ error: "body is required.", code: "BAD_INPUT", status: 400 });
   }
   if (text.length > MAX_LEN) {
-    return NextResponse.json(
-      { error: `Message must be at most ${MAX_LEN} characters.` },
-      { status: 400 },
-    );
+    return toApiErrorResponse({ error: `Message must be at most ${MAX_LEN} characters.`, code: "BAD_INPUT", status: 400 });
   }
 
   const isInternal = Boolean(o.isInternal);
   if (isInternal) {
     const ok = await userHasGlobalGrant(actorId, "org.orders", "edit");
     if (!ok) {
-      return NextResponse.json(
-        {
-          error:
-            "Forbidden: internal messages require org.orders → edit.",
-        },
-        { status: 403 },
-      );
+      return toApiErrorResponse({ error: "Forbidden: internal messages require org.orders → edit.", code: "FORBIDDEN", status: 403 });
     }
   }
 

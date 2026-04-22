@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { actorIsSupplierPortalRestricted, getActorUserId, requireApiGrant } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { allocateTotals } from "@/lib/split";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 type AllocationInput = {
   childIndex: number;
@@ -30,10 +32,7 @@ export async function POST(
   const body = (await request.json()) as Body;
 
   if (!body.lines?.length) {
-    return NextResponse.json(
-      { error: "lines[] is required with allocations per parent line." },
-      { status: 400 },
-    );
+    return toApiErrorResponse({ error: "lines[] is required with allocations per parent line.", code: "BAD_INPUT", status: 400 });
   }
 
   const order = await prisma.purchaseOrder.findUnique({
@@ -48,40 +47,26 @@ export async function POST(
   });
 
   if (!order) {
-    return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    return toApiErrorResponse({ error: "Order not found", code: "NOT_FOUND", status: 404 });
   }
 
   if (order.splitParentId) {
-    return NextResponse.json(
-      { error: "Split proposals can only be created on a parent purchase order." },
-      { status: 400 },
-    );
+    return toApiErrorResponse({ error: "Split proposals can only be created on a parent purchase order.", code: "BAD_INPUT", status: 400 });
   }
 
   if (!order.workflow.allowSplitOrders) {
-    return NextResponse.json(
-      { error: "This workflow does not allow order splits." },
-      { status: 400 },
-    );
+    return toApiErrorResponse({ error: "This workflow does not allow order splits.", code: "BAD_INPUT", status: 400 });
   }
 
   if (order.status.code !== "SENT") {
-    return NextResponse.json(
-      {
-        error: `Split can only be proposed from status SENT (current: ${order.status.code}).`,
-      },
-      { status: 400 },
-    );
+    return toApiErrorResponse({ error: `Split can only be proposed from status SENT (current: ${order.status.code}).`, code: "BAD_INPUT", status: 400 });
   }
 
   const existingPending = await prisma.splitProposal.findFirst({
     where: { parentOrderId: order.id, status: "PENDING" },
   });
   if (existingPending) {
-    return NextResponse.json(
-      { error: "A split proposal is already pending for this order." },
-      { status: 409 },
-    );
+    return toApiErrorResponse({ error: "A split proposal is already pending for this order.", code: "CONFLICT", status: 409 });
   }
 
   const itemById = new Map(order.items.map((item) => [item.id, item]));
@@ -90,84 +75,48 @@ export async function POST(
   for (const row of body.lines) {
     const item = itemById.get(row.sourceLineId);
     if (!item) {
-      return NextResponse.json(
-        { error: `Unknown line id: ${row.sourceLineId}` },
-        { status: 400 },
-      );
+      return toApiErrorResponse({ error: `Unknown line id: ${row.sourceLineId}`, code: "BAD_INPUT", status: 400 });
     }
     if (!row.allocations?.length) {
-      return NextResponse.json(
-        { error: `Allocations required for line ${item.lineNo}.` },
-        { status: 400 },
-      );
+      return toApiErrorResponse({ error: `Allocations required for line ${item.lineNo}.`, code: "BAD_INPUT", status: 400 });
     }
     let sum = 0;
     for (const allocation of row.allocations) {
       if (!allocation.childIndex || allocation.childIndex < 1) {
-        return NextResponse.json(
-          { error: "childIndex must be >= 1 for each allocation." },
-          { status: 400 },
-        );
+        return toApiErrorResponse({ error: "childIndex must be >= 1 for each allocation.", code: "BAD_INPUT", status: 400 });
       }
       const qty = Number(allocation.quantity);
       if (!Number.isFinite(qty) || qty <= 0) {
-        return NextResponse.json(
-          { error: "Each allocation quantity must be a positive number." },
-          { status: 400 },
-        );
+        return toApiErrorResponse({ error: "Each allocation quantity must be a positive number.", code: "BAD_INPUT", status: 400 });
       }
       const shipDate = new Date(allocation.plannedShipDate);
       if (Number.isNaN(shipDate.getTime())) {
-        return NextResponse.json(
-          { error: "Invalid plannedShipDate (use ISO date)." },
-          { status: 400 },
-        );
+        return toApiErrorResponse({ error: "Invalid plannedShipDate (use ISO date).", code: "BAD_INPUT", status: 400 });
       }
       sum += qty;
       childIndices.add(allocation.childIndex);
     }
     const ordered = Number(item.quantity);
     if (Math.abs(sum - ordered) > 1e-6) {
-      return NextResponse.json(
-        {
-          error: `Line ${item.lineNo}: allocated total (${sum}) must equal ordered quantity (${ordered}).`,
-        },
-        { status: 400 },
-      );
+      return toApiErrorResponse({ error: `Line ${item.lineNo}: allocated total (${sum}) must equal ordered quantity (${ordered}).`, code: "BAD_INPUT", status: 400 });
     }
   }
 
   if (body.lines.length !== order.items.length) {
-    return NextResponse.json(
-      {
-        error: "Every order line must appear exactly once in the payload.",
-      },
-      { status: 400 },
-    );
+    return toApiErrorResponse({ error: "Every order line must appear exactly once in the payload.", code: "BAD_INPUT", status: 400 });
   }
 
   if (childIndices.size < 2) {
-    return NextResponse.json(
-      {
-        error: "Split requires at least two child orders (distinct childIndex values).",
-      },
-      { status: 400 },
-    );
+    return toApiErrorResponse({ error: "Split requires at least two child orders (distinct childIndex values).", code: "BAD_INPUT", status: 400 });
   }
 
   const coverIds = new Set(body.lines.map((row) => row.sourceLineId));
   if (coverIds.size !== order.items.length) {
-    return NextResponse.json(
-      { error: "Duplicate or missing sourceLineId entries." },
-      { status: 400 },
-    );
+    return toApiErrorResponse({ error: "Duplicate or missing sourceLineId entries.", code: "BAD_INPUT", status: 400 });
   }
   for (const item of order.items) {
     if (!coverIds.has(item.id)) {
-      return NextResponse.json(
-        { error: `Missing line payload for line ${item.lineNo}.` },
-        { status: 400 },
-      );
+      return toApiErrorResponse({ error: `Missing line payload for line ${item.lineNo}.`, code: "BAD_INPUT", status: 400 });
     }
   }
 
@@ -177,41 +126,26 @@ export async function POST(
       candidate.actionCode === "propose_split",
   );
   if (!transition) {
-    return NextResponse.json(
-      { error: "No propose_split transition is configured for this status." },
-      { status: 400 },
-    );
+    return toApiErrorResponse({ error: "No propose_split transition is configured for this status.", code: "BAD_INPUT", status: 400 });
   }
 
   const actorId = await getActorUserId();
   if (!actorId) {
-    return NextResponse.json(
-      { error: "Could not resolve demo actor for this tenant." },
-      { status: 403 },
-    );
+    return toApiErrorResponse({ error: "Could not resolve demo actor for this tenant.", code: "FORBIDDEN", status: 403 });
   }
   const isSupplierPortalUser = await actorIsSupplierPortalRestricted(actorId);
   if (!isSupplierPortalUser) {
-    return NextResponse.json(
-      { error: "Only supplier users can propose split allocations." },
-      { status: 403 },
-    );
+    return toApiErrorResponse({ error: "Only supplier users can propose split allocations.", code: "FORBIDDEN", status: 403 });
   }
   if (!order.workflow.supplierPortalOn) {
-    return NextResponse.json(
-      { error: "Split proposals are only available on supplier-portal workflows." },
-      { status: 403 },
-    );
+    return toApiErrorResponse({ error: "Split proposals are only available on supplier-portal workflows.", code: "FORBIDDEN", status: 403 });
   }
 
   const pendingChildStatus = await prisma.workflowStatus.findFirst({
     where: { workflowId: order.workflowId, code: "PENDING_BUYER_APPROVAL" },
   });
   if (!pendingChildStatus) {
-    return NextResponse.json(
-      { error: "Workflow missing PENDING_BUYER_APPROVAL status." },
-      { status: 500 },
-    );
+    return toApiErrorResponse({ error: "Workflow missing PENDING_BUYER_APPROVAL status.", code: "UNHANDLED", status: 500 });
   }
 
   const distinctChildren = [...childIndices].sort((a, b) => a - b);

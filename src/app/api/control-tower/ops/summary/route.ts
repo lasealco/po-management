@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { getControlTowerOpsSummary } from "@/lib/control-tower/ops-summary";
@@ -13,11 +15,11 @@ export async function GET() {
 
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   }
   const actorId = await getActorUserId();
   if (!actorId) {
-    return NextResponse.json({ error: "No active user." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   }
   const ctx = await getControlTowerPortalContext(actorId);
   const summary = await getControlTowerOpsSummary({ tenantId: tenant.id, ctx });

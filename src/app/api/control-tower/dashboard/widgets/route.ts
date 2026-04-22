@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { runControlTowerReport, sanitizeCtReportConfig } from "@/lib/control-tower/report-engine";
@@ -14,9 +16,9 @@ export async function GET() {
   const gate = await requireApiGrant("org.controltower", "view");
   if (gate) return gate;
   const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   const actorId = await getActorUserId();
-  if (!actorId) return NextResponse.json({ error: "No active user." }, { status: 403 });
+  if (!actorId) return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   const ctx = await getControlTowerPortalContext(actorId);
 
   const widgets = await prisma.ctDashboardWidget.findMany({
@@ -65,9 +67,9 @@ export async function POST(request: Request) {
   const gate = await requireApiGrant("org.controltower", "edit");
   if (gate) return gate;
   const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   const actorId = await getActorUserId();
-  if (!actorId) return NextResponse.json({ error: "No active user." }, { status: 403 });
+  if (!actorId) return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
 
   let body: unknown = {};
   try {
@@ -77,18 +79,15 @@ export async function POST(request: Request) {
   }
   const obj = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
   const savedReportId = typeof obj.savedReportId === "string" ? obj.savedReportId : "";
-  if (!savedReportId) return NextResponse.json({ error: "savedReportId is required." }, { status: 400 });
+  if (!savedReportId) return toApiErrorResponse({ error: "savedReportId is required.", code: "BAD_INPUT", status: 400 });
 
   const report = await prisma.ctSavedReport.findFirst({
     where: { id: savedReportId, tenantId: tenant.id, OR: [{ userId: actorId }, { isShared: true }] },
     select: { id: true, name: true, dataset: true },
   });
-  if (!report) return NextResponse.json({ error: "Report not found." }, { status: 404 });
+  if (!report) return toApiErrorResponse({ error: "Report not found.", code: "NOT_FOUND", status: 404 });
   if (report.dataset !== DASHBOARD_PIN_DATASET) {
-    return NextResponse.json(
-      { error: "Only Control Tower logistics reports can be pinned to this dashboard." },
-      { status: 400 },
-    );
+    return toApiErrorResponse({ error: "Only Control Tower logistics reports can be pinned to this dashboard.", code: "BAD_INPUT", status: 400 });
   }
 
   const titleRaw = typeof obj.title === "string" ? obj.title.trim() : "";

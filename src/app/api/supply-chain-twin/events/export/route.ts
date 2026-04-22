@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { logSctwinApiError, logSctwinApiWarn, resolveSctwinRequestId, withSctwinRequestId } from "../../_lib/sctwin-api-log";
 import { prisma } from "@/lib/prisma";
 import { TWIN_API_ERROR_CODES } from "@/lib/supply-chain-twin/error-codes";
@@ -13,6 +14,13 @@ import { parseTwinEventsQuery, twinEventsTypePrismaFilter } from "@/lib/supply-c
 export const dynamic = "force-dynamic";
 
 const ROUTE_GET = "GET /api/supply-chain-twin/events/export";
+
+function sctwinErrorCodeFromStatus(status: number): "NOT_FOUND" | "FORBIDDEN" | "BAD_INPUT" | "UNHANDLED" {
+  if (status === 404) return "NOT_FOUND";
+  if (status === 403) return "FORBIDDEN";
+  if (status === 500) return "UNHANDLED";
+  return "BAD_INPUT";
+}
 
 function parseExportFormat(searchParams: URLSearchParams): { ok: true; format: "json" | "csv" } | { ok: false; error: string } {
   const raw = (searchParams.get("format") ?? "json").trim().toLowerCase();
@@ -35,7 +43,11 @@ export async function GET(request: Request) {
     const gate = await requireTwinApiAccess();
     if (!gate.ok) {
       return withSctwinRequestId(
-        NextResponse.json({ error: gate.denied.error }, { status: gate.denied.status }),
+        toApiErrorResponse({
+          error: gate.denied.error,
+          code: sctwinErrorCodeFromStatus(gate.denied.status),
+          status: gate.denied.status,
+        }),
         requestId,
       );
     }
@@ -51,7 +63,11 @@ export async function GET(request: Request) {
         requestId,
       });
       return withSctwinRequestId(
-        NextResponse.json({ error: parsed.error, code: TWIN_API_ERROR_CODES.QUERY_VALIDATION_FAILED }, { status: 400 }),
+        toApiErrorResponse({
+          error: parsed.error,
+          code: TWIN_API_ERROR_CODES.QUERY_VALIDATION_FAILED,
+          status: 400,
+        }),
         requestId,
       );
     }
@@ -65,7 +81,11 @@ export async function GET(request: Request) {
         requestId,
       });
       return withSctwinRequestId(
-        NextResponse.json({ error: format.error, code: TWIN_API_ERROR_CODES.FORMAT_INVALID }, { status: 400 }),
+        toApiErrorResponse({
+          error: format.error,
+          code: TWIN_API_ERROR_CODES.FORMAT_INVALID,
+          status: 400,
+        }),
         requestId,
       );
     }
@@ -107,13 +127,11 @@ export async function GET(request: Request) {
         requestId,
       });
       return withSctwinRequestId(
-        NextResponse.json(
-          {
-            error: `Export result exceeds ${TWIN_EVENTS_EXPORT_MAX_ROWS} rows. Narrow filters and try again.`,
-            code: TWIN_API_ERROR_CODES.EXPORT_ROW_CAP_EXCEEDED,
-          },
-          { status: 400 },
-        ),
+        toApiErrorResponse({
+          error: `Export result exceeds ${TWIN_EVENTS_EXPORT_MAX_ROWS} rows. Narrow filters and try again.`,
+          code: TWIN_API_ERROR_CODES.EXPORT_ROW_CAP_EXCEEDED,
+          status: 400,
+        }),
         requestId,
       );
     }
@@ -162,6 +180,9 @@ export async function GET(request: Request) {
       detail: name,
       requestId,
     });
-    return withSctwinRequestId(NextResponse.json({ error: "Internal server error" }, { status: 500 }), requestId);
+    return withSctwinRequestId(
+      toApiErrorResponse({ error: "Internal server error", code: "UNHANDLED", status: 500 }),
+      requestId,
+    );
   }
 }

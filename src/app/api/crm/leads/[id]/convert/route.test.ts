@@ -53,7 +53,7 @@ describe("CRM lead conversion route contract", () => {
     const response = await POST(request, { params: Promise.resolve({ id: "lead-1" }) });
 
     expect(response.status).toBe(400);
-    await expect(response.json()).resolves.toEqual({ error: "Invalid JSON body." });
+    await expect(response.json()).resolves.toEqual({ error: "Invalid JSON body.", code: "BAD_INPUT" });
     expect(transactionMock).not.toHaveBeenCalled();
   });
 
@@ -68,7 +68,7 @@ describe("CRM lead conversion route contract", () => {
     const response = await POST(request, { params: Promise.resolve({ id: "lead-404" }) });
 
     expect(response.status).toBe(404);
-    await expect(response.json()).resolves.toEqual({ error: "Lead not found." });
+    await expect(response.json()).resolves.toEqual({ error: "Lead not found.", code: "NOT_FOUND" });
   });
 
   it("returns 403 contract when actor does not own lead", async () => {
@@ -89,6 +89,7 @@ describe("CRM lead conversion route contract", () => {
     expect(response.status).toBe(403);
     await expect(response.json()).resolves.toEqual({
       error: "You can only convert leads you own.",
+      code: "FORBIDDEN",
     });
   });
 

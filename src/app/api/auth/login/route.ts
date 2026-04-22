@@ -5,19 +5,21 @@ import { getDemoTenant } from "@/lib/demo-tenant";
 import { httpSessionBase } from "@/lib/http-session-cookie";
 import { verifyPassword } from "@/lib/password";
 import { prisma } from "@/lib/prisma";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 30;
 
 export async function POST(request: Request) {
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   }
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON.", code: "BAD_INPUT", status: 400 });
   }
   const email =
     body && typeof body === "object" && typeof (body as { email?: unknown }).email === "string"
@@ -28,7 +30,7 @@ export async function POST(request: Request) {
       ? (body as { password: string }).password
       : "";
   if (!email || !password) {
-    return NextResponse.json({ error: "email and password are required." }, { status: 400 });
+    return toApiErrorResponse({ error: "email and password are required.", code: "BAD_INPUT", status: 400 });
   }
   const user = await prisma.user.findFirst({
     where: {
@@ -39,7 +41,7 @@ export async function POST(request: Request) {
     select: { email: true, passwordHash: true },
   });
   if (!user?.passwordHash || !verifyPassword(password, user.passwordHash)) {
-    return NextResponse.json({ error: "Invalid credentials." }, { status: 401 });
+    return toApiErrorResponse({ error: "Invalid credentials.", code: "UNAUTHORIZED", status: 401 });
   }
 
   const base = httpSessionBase();

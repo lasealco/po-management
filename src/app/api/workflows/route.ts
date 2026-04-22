@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireApiGrant } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 const DEFAULT_TENANT_SLUG = "demo-company";
 
@@ -14,13 +16,7 @@ export async function GET() {
   });
 
   if (!tenant) {
-    return NextResponse.json(
-      {
-        error:
-          "Demo tenant not found. Run `npm run db:seed` to create starter data.",
-      },
-      { status: 404 },
-    );
+    return toApiErrorResponse({ error: "Demo tenant not found. Run `npm run db:seed` to create starter data.", code: "NOT_FOUND", status: 404 });
   }
 
   const workflows = await prisma.workflow.findMany({

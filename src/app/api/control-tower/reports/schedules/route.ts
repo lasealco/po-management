@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { parseScheduleFrequency } from "@/lib/control-tower/report-schedule-delivery";
@@ -26,9 +28,9 @@ export async function GET() {
   const gate = await requireApiGrant("org.controltower", "view");
   if (gate) return gate;
   const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   const actorId = await getActorUserId();
-  if (!actorId) return NextResponse.json({ error: "No active user." }, { status: 403 });
+  if (!actorId) return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
 
   const schedules = await prisma.ctReportSchedule.findMany({
     where: { tenantId: tenant.id, userId: actorId },
@@ -71,9 +73,9 @@ export async function POST(request: Request) {
   const gate = await requireApiGrant("org.controltower", "edit");
   if (gate) return gate;
   const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   const actorId = await getActorUserId();
-  if (!actorId) return NextResponse.json({ error: "No active user." }, { status: 403 });
+  if (!actorId) return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
 
   let body: unknown = {};
   try {
@@ -89,17 +91,17 @@ export async function POST(request: Request) {
   const hourUtc = parseHourUtc(obj.hourUtc);
   const dayOfWeek = parseDayOfWeek(obj.dayOfWeek);
 
-  if (!savedReportId) return NextResponse.json({ error: "savedReportId is required." }, { status: 400 });
+  if (!savedReportId) return toApiErrorResponse({ error: "savedReportId is required.", code: "BAD_INPUT", status: 400 });
   if (!recipientEmail || !EMAIL_RE.test(recipientEmail)) {
-    return NextResponse.json({ error: "recipientEmail must be a valid address." }, { status: 400 });
+    return toApiErrorResponse({ error: "recipientEmail must be a valid address.", code: "BAD_INPUT", status: 400 });
   }
-  if (!frequency) return NextResponse.json({ error: "frequency must be DAILY or WEEKLY." }, { status: 400 });
-  if (hourUtc == null) return NextResponse.json({ error: "hourUtc must be an integer 0–23 (UTC)." }, { status: 400 });
+  if (!frequency) return toApiErrorResponse({ error: "frequency must be DAILY or WEEKLY.", code: "BAD_INPUT", status: 400 });
+  if (hourUtc == null) return toApiErrorResponse({ error: "hourUtc must be an integer 0–23 (UTC).", code: "BAD_INPUT", status: 400 });
   if (frequency === "WEEKLY" && dayOfWeek == null) {
-    return NextResponse.json({ error: "dayOfWeek (0–6, UTC weekday) is required for WEEKLY." }, { status: 400 });
+    return toApiErrorResponse({ error: "dayOfWeek (0–6, UTC weekday) is required for WEEKLY.", code: "BAD_INPUT", status: 400 });
   }
   if (frequency === "DAILY" && dayOfWeek != null) {
-    return NextResponse.json({ error: "dayOfWeek must be omitted for DAILY." }, { status: 400 });
+    return toApiErrorResponse({ error: "dayOfWeek must be omitted for DAILY.", code: "BAD_INPUT", status: 400 });
   }
 
   const report = await prisma.ctSavedReport.findFirst({
@@ -112,17 +114,14 @@ export async function POST(request: Request) {
     select: { id: true },
   });
   if (!report) {
-    return NextResponse.json(
-      { error: "Saved report not found, not visible, or not a Control Tower dataset report." },
-      { status: 404 },
-    );
+    return toApiErrorResponse({ error: "Saved report not found, not visible, or not a Control Tower dataset report.", code: "NOT_FOUND", status: 404 });
   }
 
   const count = await prisma.ctReportSchedule.count({
     where: { tenantId: tenant.id, userId: actorId },
   });
   if (count >= 30) {
-    return NextResponse.json({ error: "Maximum 30 schedules per user." }, { status: 400 });
+    return toApiErrorResponse({ error: "Maximum 30 schedules per user.", code: "BAD_INPUT", status: 400 });
   }
 
   const created = await prisma.ctReportSchedule.create({

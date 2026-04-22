@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 import type { Prisma } from "@prisma/client";
 
@@ -15,7 +17,7 @@ export async function GET(request: Request) {
   if (gate) return gate;
 
   const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
 
   const url = new URL(request.url);
   const listQuery = parseSalesOrdersListQuery(url.searchParams);
@@ -52,22 +54,22 @@ export async function POST(request: Request) {
   if (gate) return gate;
 
   const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   const tenantId = tenant.id;
   const actorId = await getActorUserId();
-  if (!actorId) return NextResponse.json({ error: "No active user." }, { status: 403 });
+  if (!actorId) return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
 
   let body: unknown = {};
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON.", code: "BAD_INPUT", status: 400 });
   }
   const o = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
   const customerRaw =
     typeof o.customerCrmAccountId === "string" ? o.customerCrmAccountId.trim() : "";
   if (!customerRaw) {
-    return NextResponse.json({ error: "customerCrmAccountId is required." }, { status: 400 });
+    return toApiErrorResponse({ error: "customerCrmAccountId is required.", code: "BAD_INPUT", status: 400 });
   }
   const soNumberRaw = typeof o.soNumber === "string" ? o.soNumber.trim() : "";
   const soNumber = soNumberRaw || (await nextSalesOrderNumber(tenantId));
@@ -75,7 +77,7 @@ export async function POST(request: Request) {
   const requestedDeliveryDateRaw = typeof o.requestedDeliveryDate === "string" ? o.requestedDeliveryDate.trim() : "";
   const requestedDeliveryDate = requestedDeliveryDateRaw ? new Date(requestedDeliveryDateRaw) : null;
   if (requestedDeliveryDate && Number.isNaN(requestedDeliveryDate.getTime())) {
-    return NextResponse.json({ error: "Invalid requestedDeliveryDate." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid requestedDeliveryDate.", code: "BAD_INPUT", status: 400 });
   }
   const shipmentId = typeof o.shipmentId === "string" ? o.shipmentId.trim() : "";
 
@@ -177,13 +179,13 @@ export async function POST(request: Request) {
   } catch (e) {
     const msg = e instanceof Error ? e.message : "";
     if (msg === "Shipment not found.") {
-      return NextResponse.json({ error: "Shipment not found." }, { status: 404 });
+      return toApiErrorResponse({ error: "Shipment not found.", code: "NOT_FOUND", status: 404 });
     }
     if (msg === "Forwarder supplier not found or not eligible.") {
-      return NextResponse.json({ error: msg }, { status: 404 });
+      return toApiErrorResponse({ error: msg, code: "NOT_FOUND", status: 404 });
     }
     if (msg === "Customer CRM account not found.") {
-      return NextResponse.json({ error: msg }, { status: 404 });
+      return toApiErrorResponse({ error: msg, code: "NOT_FOUND", status: 404 });
     }
     throw e;
   }

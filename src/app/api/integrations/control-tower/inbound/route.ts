@@ -1,4 +1,6 @@
 import { createHash, timingSafeEqual } from "node:crypto";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 import { NextResponse } from "next/server";
 
@@ -36,10 +38,7 @@ function constantTimeEqString(a: string, b: string): boolean {
 export async function POST(request: Request) {
   const secret = process.env.CONTROL_TOWER_INBOUND_WEBHOOK_SECRET?.trim();
   if (!secret) {
-    return NextResponse.json(
-      { error: "Webhook not configured. Set CONTROL_TOWER_INBOUND_WEBHOOK_SECRET." },
-      { status: 503 },
-    );
+    return toApiErrorResponse({ error: "Webhook not configured. Set CONTROL_TOWER_INBOUND_WEBHOOK_SECRET.", code: "UNAVAILABLE", status: 503 });
   }
 
   const auth = request.headers.get("authorization") ?? "";
@@ -47,19 +46,19 @@ export async function POST(request: Request) {
   const headerSecret = request.headers.get("x-ct-inbound-secret")?.trim() ?? "";
   const token = bearer || headerSecret;
   if (!token || !constantTimeEqString(token, secret)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return toApiErrorResponse({ error: "Unauthorized", code: "UNAUTHORIZED", status: 401 });
   }
 
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   }
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON body.", code: "BAD_INPUT", status: 400 });
   }
   const obj = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
 
@@ -69,7 +68,7 @@ export async function POST(request: Request) {
     select: { id: true },
   });
   if (!actor) {
-    return NextResponse.json({ error: "No active user in tenant to attribute audit entry." }, { status: 500 });
+    return toApiErrorResponse({ error: "No active user in tenant to attribute audit entry.", code: "UNHANDLED", status: 500 });
   }
 
   const out = await processControlTowerInboundWebhook({

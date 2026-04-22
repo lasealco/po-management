@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 import { getActorUserId } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
@@ -6,9 +8,9 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(req: Request) {
   const actorId = await getActorUserId();
-  if (!actorId) return NextResponse.json({ error: "No active user." }, { status: 403 });
+  if (!actorId) return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
 
   const url = new URL(req.url);
   const q = (url.searchParams.get("q") ?? "").trim();

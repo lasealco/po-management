@@ -4,6 +4,8 @@ import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
 import { visibleOnBoard } from "@/lib/workflow-actions";
 import { Prisma } from "@prisma/client";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 type CreateOrderItemInput = {
   productId: string;
@@ -56,13 +58,7 @@ export async function GET() {
 
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json(
-      {
-        error:
-          "Demo tenant not found. Run `npm run db:seed` to create starter data.",
-      },
-      { status: 404 },
-    );
+    return toApiErrorResponse({ error: "Demo tenant not found. Run `npm run db:seed` to create starter data.", code: "NOT_FOUND", status: 404 });
   }
 
   const actorId = await getActorUserId();
@@ -260,11 +256,11 @@ export async function POST(request: Request) {
 
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json({ error: "Demo tenant not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Demo tenant not found.", code: "NOT_FOUND", status: 404 });
   }
   const requesterId = await getActorUserId();
   if (!requesterId) {
-    return NextResponse.json({ error: "No active demo actor." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active demo actor.", code: "FORBIDDEN", status: 403 });
   }
 
   let body: unknown = {};
@@ -276,10 +272,10 @@ export async function POST(request: Request) {
   const input = (body && typeof body === "object" ? body : {}) as CreateOrderBody;
 
   if (!input.supplierId) {
-    return NextResponse.json({ error: "supplierId is required." }, { status: 400 });
+    return toApiErrorResponse({ error: "supplierId is required.", code: "BAD_INPUT", status: 400 });
   }
   if (!Array.isArray(input.items) || input.items.length === 0) {
-    return NextResponse.json({ error: "At least one order line is required." }, { status: 400 });
+    return toApiErrorResponse({ error: "At least one order line is required.", code: "BAD_INPUT", status: 400 });
   }
   const validItems = input.items.filter(
     (row) =>
@@ -291,7 +287,7 @@ export async function POST(request: Request) {
       row.unitPrice >= 0,
   );
   if (validItems.length !== input.items.length) {
-    return NextResponse.json({ error: "Invalid line values." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid line values.", code: "BAD_INPUT", status: 400 });
   }
 
   const supplier = await prisma.supplier.findFirst({
@@ -305,7 +301,7 @@ export async function POST(request: Request) {
     },
   });
   if (!supplier) {
-    return NextResponse.json({ error: "Supplier not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Supplier not found.", code: "NOT_FOUND", status: 404 });
   }
 
   const products = await prisma.product.findMany({
@@ -320,10 +316,7 @@ export async function POST(request: Request) {
   const allowedProductIds = new Set(products.map((p) => p.id));
   const blocked = validItems.find((row) => !allowedProductIds.has(row.productId));
   if (blocked) {
-    return NextResponse.json(
-      { error: "One or more products are not supplied by the selected supplier." },
-      { status: 400 },
-    );
+    return toApiErrorResponse({ error: "One or more products are not supplied by the selected supplier.", code: "BAD_INPUT", status: 400 });
   }
 
   const workflow = await prisma.workflow.findFirst({
@@ -331,10 +324,7 @@ export async function POST(request: Request) {
     select: { id: true, name: true },
   });
   if (!workflow) {
-    return NextResponse.json(
-      { error: "No default workflow found for tenant." },
-      { status: 400 },
-    );
+    return toApiErrorResponse({ error: "No default workflow found for tenant.", code: "BAD_INPUT", status: 400 });
   }
   const startStatus = await prisma.workflowStatus.findFirst({
     where: { workflowId: workflow.id, isStart: true },
@@ -342,7 +332,7 @@ export async function POST(request: Request) {
     select: { id: true },
   });
   if (!startStatus) {
-    return NextResponse.json({ error: "Default workflow has no start status." }, { status: 400 });
+    return toApiErrorResponse({ error: "Default workflow has no start status.", code: "BAD_INPUT", status: 400 });
   }
 
   const subtotal = validItems.reduce((sum, row) => sum + row.quantity * row.unitPrice, 0);
@@ -351,12 +341,12 @@ export async function POST(request: Request) {
       ? new Date(`${input.requestedDeliveryDate}T00:00:00.000Z`)
       : null;
   if (requestedDeliveryDate && Number.isNaN(requestedDeliveryDate.getTime())) {
-    return NextResponse.json({ error: "requestedDeliveryDate must be a valid date." }, { status: 400 });
+    return toApiErrorResponse({ error: "requestedDeliveryDate must be a valid date.", code: "BAD_INPUT", status: 400 });
   }
   const orderNumber = await nextOrderNumber(tenant.id);
   const currency = (input.currency || "USD").toUpperCase();
   if (!/^[A-Z]{3}$/.test(currency)) {
-    return NextResponse.json({ error: "Currency must be a 3-letter code." }, { status: 400 });
+    return toApiErrorResponse({ error: "Currency must be a 3-letter code.", code: "BAD_INPUT", status: 400 });
   }
   const taxPercent =
     typeof input.taxPercent === "number" && Number.isFinite(input.taxPercent)
@@ -397,10 +387,7 @@ export async function POST(request: Request) {
   let forwarderContactName: string | null = null;
 
   if (!deliveryWarehouseId) {
-    return NextResponse.json(
-      { error: "deliveryWarehouseId is required and must reference master data." },
-      { status: 400 },
-    );
+    return toApiErrorResponse({ error: "deliveryWarehouseId is required and must reference master data.", code: "BAD_INPUT", status: 400 });
   }
 
   if (buyerWarehouseId) {
@@ -408,7 +395,7 @@ export async function POST(request: Request) {
       where: { id: buyerWarehouseId, tenantId: tenant.id, isActive: true },
       select: { name: true },
     });
-    if (!w) return NextResponse.json({ error: "Invalid buyer office." }, { status: 400 });
+    if (!w) return toApiErrorResponse({ error: "Invalid buyer office.", code: "BAD_INPUT", status: 400 });
     buyerWarehouseName = w.name;
   }
   if (cfsWarehouseId) {
@@ -416,7 +403,7 @@ export async function POST(request: Request) {
       where: { id: cfsWarehouseId, tenantId: tenant.id, isActive: true },
       select: { name: true },
     });
-    if (!w) return NextResponse.json({ error: "Invalid CFS." }, { status: 400 });
+    if (!w) return toApiErrorResponse({ error: "Invalid CFS.", code: "BAD_INPUT", status: 400 });
     cfsWarehouseName = w.name;
   }
   const deliveryWarehouse = await prisma.warehouse.findFirst({
@@ -430,14 +417,14 @@ export async function POST(request: Request) {
     },
   });
   if (!deliveryWarehouse) {
-    return NextResponse.json({ error: "Invalid delivery warehouse." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid delivery warehouse.", code: "BAD_INPUT", status: 400 });
   }
   if (forwarderSupplierId) {
     const fwd = await prisma.supplier.findFirst({
       where: { id: forwarderSupplierId, tenantId: tenant.id, isActive: true },
       select: { id: true, name: true },
     });
-    if (!fwd) return NextResponse.json({ error: "Invalid forwarder." }, { status: 400 });
+    if (!fwd) return toApiErrorResponse({ error: "Invalid forwarder.", code: "BAD_INPUT", status: 400 });
     forwarderSupplierName = fwd.name;
     if (forwarderOfficeId) {
       const office = await prisma.supplierOffice.findFirst({
@@ -449,7 +436,7 @@ export async function POST(request: Request) {
         },
         select: { name: true },
       });
-      if (!office) return NextResponse.json({ error: "Invalid forwarder office." }, { status: 400 });
+      if (!office) return toApiErrorResponse({ error: "Invalid forwarder office.", code: "BAD_INPUT", status: 400 });
       forwarderOfficeName = office.name;
     }
     if (forwarderContactId) {
@@ -458,7 +445,7 @@ export async function POST(request: Request) {
         select: { name: true },
       });
       if (!contact) {
-        return NextResponse.json({ error: "Invalid forwarder contact." }, { status: 400 });
+        return toApiErrorResponse({ error: "Invalid forwarder contact.", code: "BAD_INPUT", status: 400 });
       }
       forwarderContactName = contact.name;
     }

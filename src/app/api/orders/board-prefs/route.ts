@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import {
@@ -17,7 +19,7 @@ export async function GET() {
   const tenant = await getDemoTenant();
   const actorId = await getActorUserId();
   if (!tenant || !actorId) {
-    return NextResponse.json({ error: "No active user." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   }
 
   const pref = await prisma.userPreference.findUnique({
@@ -43,7 +45,7 @@ export async function PATCH(request: Request) {
   const tenant = await getDemoTenant();
   const actorId = await getActorUserId();
   if (!tenant || !actorId) {
-    return NextResponse.json({ error: "No active user." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   }
 
   let body: unknown = {};
@@ -68,13 +70,13 @@ export async function PATCH(request: Request) {
       typeof input.queueFilter !== "string" ||
       !(BOARD_QUEUE_FILTERS as readonly string[]).includes(input.queueFilter)
     ) {
-      return NextResponse.json({ error: "Invalid queueFilter." }, { status: 400 });
+      return toApiErrorResponse({ error: "Invalid queueFilter.", code: "BAD_INPUT", status: 400 });
     }
     nextQueue = input.queueFilter as BoardQueueFilter;
   }
   if (input.sortMode !== undefined) {
     if (input.sortMode !== "priority" && input.sortMode !== "newest") {
-      return NextResponse.json({ error: "Invalid sortMode." }, { status: 400 });
+      return toApiErrorResponse({ error: "Invalid sortMode.", code: "BAD_INPUT", status: 400 });
     }
     nextSort = input.sortMode;
   }

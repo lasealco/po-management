@@ -48,7 +48,7 @@ describe("CRM accounts route contract", () => {
     const response = await GET(new Request("http://localhost/api/crm/accounts"));
 
     expect(response.status).toBe(403);
-    await expect(response.json()).resolves.toEqual({ error: "No active user." });
+    await expect(response.json()).resolves.toEqual({ error: "No active user.", code: "FORBIDDEN" });
     expect(crmAccountFindManyMock).not.toHaveBeenCalled();
   });
 
@@ -96,7 +96,7 @@ describe("CRM accounts route contract", () => {
     const response = await POST(request);
 
     expect(response.status).toBe(400);
-    await expect(response.json()).resolves.toEqual({ error: "name is required." });
+    await expect(response.json()).resolves.toEqual({ error: "name is required.", code: "BAD_INPUT" });
     expect(crmAccountCreateMock).not.toHaveBeenCalled();
   });
 

@@ -1,5 +1,7 @@
 import type { ShipmentStatus, TransportMode } from "@prisma/client";
 import { NextResponse } from "next/server";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 import { actorIsSupplierPortalRestricted, getActorUserId, requireApiGrant } from "@/lib/authz";
 import { createLogisticsShipment } from "@/lib/control-tower/create-logistics-shipment";
@@ -27,11 +29,11 @@ export async function GET(request: Request) {
 
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   }
   const actorId = await getActorUserId();
   if (!actorId) {
-    return NextResponse.json({ error: "No active user." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   }
   const ctx = await getControlTowerPortalContext(actorId);
 
@@ -146,27 +148,24 @@ export async function POST(request: Request) {
 
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   }
   const actorId = await getActorUserId();
   if (!actorId) {
-    return NextResponse.json({ error: "No active user." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   }
   if (await actorIsSupplierPortalRestricted(actorId)) {
-    return NextResponse.json(
-      { error: "Supplier portal users cannot create logistics shipments here." },
-      { status: 403 },
-    );
+    return toApiErrorResponse({ error: "Supplier portal users cannot create logistics shipments here.", code: "FORBIDDEN", status: 403 });
   }
 
   let body: unknown = {};
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON.", code: "BAD_INPUT", status: 400 });
   }
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "Expected object body." }, { status: 400 });
+    return toApiErrorResponse({ error: "Expected object body.", code: "BAD_INPUT", status: 400 });
   }
   const o = body as Record<string, unknown>;
   const orderId = typeof o.orderId === "string" ? o.orderId.trim() : "";
@@ -176,10 +175,7 @@ export async function POST(request: Request) {
     ? (transportModeRaw as TransportMode)
     : null;
   if (!transportMode) {
-    return NextResponse.json(
-      { error: "transportMode must be OCEAN, AIR, ROAD, or RAIL." },
-      { status: 400 },
-    );
+    return toApiErrorResponse({ error: "transportMode must be OCEAN, AIR, ROAD, or RAIL.", code: "BAD_INPUT", status: 400 });
   }
 
   const linesRaw = o.lines;
@@ -190,17 +186,14 @@ export async function POST(request: Request) {
     typeof o.consigneeCrmAccountId === "string" ? o.consigneeCrmAccountId.trim() : "";
   if (!createUnlinked) {
     if (!orderId) {
-      return NextResponse.json({ error: "orderId is required unless createUnlinked=true." }, { status: 400 });
+      return toApiErrorResponse({ error: "orderId is required unless createUnlinked=true.", code: "BAD_INPUT", status: 400 });
     }
     if (!Array.isArray(linesRaw) || linesRaw.length === 0) {
-      return NextResponse.json(
-        { error: "lines[] with orderItemId and quantityShipped is required." },
-        { status: 400 },
-      );
+      return toApiErrorResponse({ error: "lines[] with orderItemId and quantityShipped is required.", code: "BAD_INPUT", status: 400 });
     }
     for (const row of linesRaw) {
       if (!row || typeof row !== "object") {
-        return NextResponse.json({ error: "Invalid line." }, { status: 400 });
+        return toApiErrorResponse({ error: "Invalid line.", code: "BAD_INPUT", status: 400 });
       }
       const r = row as Record<string, unknown>;
       const orderItemId = typeof r.orderItemId === "string" ? r.orderItemId.trim() : "";
@@ -211,19 +204,16 @@ export async function POST(request: Request) {
             ? String(r.quantityShipped)
             : "";
       if (!orderItemId || !quantityShipped.trim()) {
-        return NextResponse.json({ error: "Each line needs orderItemId and quantityShipped." }, { status: 400 });
+        return toApiErrorResponse({ error: "Each line needs orderItemId and quantityShipped.", code: "BAD_INPUT", status: 400 });
       }
       lines.push({ orderItemId, quantityShipped });
     }
   } else {
     if (!shipperSupplierId) {
-      return NextResponse.json({ error: "shipperSupplierId is required for unlinked shipment." }, { status: 400 });
+      return toApiErrorResponse({ error: "shipperSupplierId is required for unlinked shipment.", code: "BAD_INPUT", status: 400 });
     }
     if (!consigneeCrmAccountId) {
-      return NextResponse.json(
-        { error: "consigneeCrmAccountId is required for unlinked shipment." },
-        { status: 400 },
-      );
+      return toApiErrorResponse({ error: "consigneeCrmAccountId is required for unlinked shipment.", code: "BAD_INPUT", status: 400 });
     }
   }
 
@@ -275,6 +265,6 @@ export async function POST(request: Request) {
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Could not create shipment.";
-    return NextResponse.json({ error: msg }, { status: 400 });
+    return toApiErrorResponse({ error: msg, code: "BAD_INPUT", status: 400 });
   }
 }

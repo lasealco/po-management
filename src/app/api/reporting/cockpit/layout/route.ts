@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 import { getActorUserId, getViewerGrantSet } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
@@ -12,7 +14,7 @@ export async function GET() {
   const tenant = await getDemoTenant();
   const actorId = await getActorUserId();
   const access = await getViewerGrantSet();
-  if (!tenant || !actorId || !access?.user) return NextResponse.json({ error: "No active user." }, { status: 403 });
+  if (!tenant || !actorId || !access?.user) return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
 
   const pref = await prisma.userPreference.findUnique({
     where: { userId_key: { userId: actorId, key: PREF_KEY } },
@@ -25,7 +27,7 @@ export async function PATCH(request: Request) {
   const tenant = await getDemoTenant();
   const actorId = await getActorUserId();
   const access = await getViewerGrantSet();
-  if (!tenant || !actorId || !access?.user) return NextResponse.json({ error: "No active user." }, { status: 403 });
+  if (!tenant || !actorId || !access?.user) return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
 
   let body: unknown = {};
   try {
@@ -35,7 +37,7 @@ export async function PATCH(request: Request) {
   }
   const obj = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
   const layout = Array.isArray(obj.layout) ? obj.layout : null;
-  if (!layout) return NextResponse.json({ error: "layout array is required." }, { status: 400 });
+  if (!layout) return toApiErrorResponse({ error: "layout array is required.", code: "BAD_INPUT", status: 400 });
 
   await prisma.userPreference.upsert({
     where: { userId_key: { userId: actorId, key: PREF_KEY } },

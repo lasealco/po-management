@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { parseScheduleFrequency } from "@/lib/control-tower/report-schedule-delivery";
@@ -31,15 +33,15 @@ export async function PATCH(
   const gate = await requireApiGrant("org.controltower", "edit");
   if (gate) return gate;
   const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   const actorId = await getActorUserId();
-  if (!actorId) return NextResponse.json({ error: "No active user." }, { status: 403 });
+  if (!actorId) return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   const { id } = await params;
 
   const existing = await prisma.ctReportSchedule.findFirst({
     where: { id, tenantId: tenant.id, userId: actorId },
   });
-  if (!existing) return NextResponse.json({ error: "Schedule not found." }, { status: 404 });
+  if (!existing) return toApiErrorResponse({ error: "Schedule not found.", code: "NOT_FOUND", status: 404 });
 
   let body: unknown = {};
   try {
@@ -51,26 +53,26 @@ export async function PATCH(
 
   const nextFrequency = obj.frequency !== undefined ? parseScheduleFrequency(obj.frequency) : undefined;
   if (obj.frequency !== undefined && !nextFrequency) {
-    return NextResponse.json({ error: "frequency must be DAILY or WEEKLY." }, { status: 400 });
+    return toApiErrorResponse({ error: "frequency must be DAILY or WEEKLY.", code: "BAD_INPUT", status: 400 });
   }
   const frequency = nextFrequency ?? existing.frequency;
 
   const hourPatch = parseHourUtc(obj.hourUtc);
   if (obj.hourUtc !== undefined && hourPatch === null) {
-    return NextResponse.json({ error: "hourUtc must be an integer 0–23." }, { status: 400 });
+    return toApiErrorResponse({ error: "hourUtc must be an integer 0–23.", code: "BAD_INPUT", status: 400 });
   }
   const hourUtc = hourPatch ?? existing.hourUtc;
 
   let dayOfWeek = existing.dayOfWeek;
   if (obj.dayOfWeek !== undefined) {
     const d = parseDayOfWeekPatch(obj.dayOfWeek);
-    if (d === null) return NextResponse.json({ error: "dayOfWeek must be 0–6 or null." }, { status: 400 });
+    if (d === null) return toApiErrorResponse({ error: "dayOfWeek must be 0–6 or null.", code: "BAD_INPUT", status: 400 });
     if (d === "clear") dayOfWeek = null;
     else if (typeof d === "number") dayOfWeek = d;
   }
 
   if (frequency === "WEEKLY" && dayOfWeek == null) {
-    return NextResponse.json({ error: "WEEKLY schedules require dayOfWeek (0–6)." }, { status: 400 });
+    return toApiErrorResponse({ error: "WEEKLY schedules require dayOfWeek (0–6).", code: "BAD_INPUT", status: 400 });
   }
   if (frequency === "DAILY") dayOfWeek = null;
 
@@ -79,7 +81,7 @@ export async function PATCH(
       ? obj.recipientEmail.trim().slice(0, 320)
       : existing.recipientEmail;
   if (!EMAIL_RE.test(recipientEmail)) {
-    return NextResponse.json({ error: "recipientEmail must be a valid address." }, { status: 400 });
+    return toApiErrorResponse({ error: "recipientEmail must be a valid address.", code: "BAD_INPUT", status: 400 });
   }
 
   const isActive = typeof obj.isActive === "boolean" ? obj.isActive : existing.isActive;
@@ -105,14 +107,14 @@ export async function DELETE(
   const gate = await requireApiGrant("org.controltower", "edit");
   if (gate) return gate;
   const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   const actorId = await getActorUserId();
-  if (!actorId) return NextResponse.json({ error: "No active user." }, { status: 403 });
+  if (!actorId) return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   const { id } = await params;
 
   const del = await prisma.ctReportSchedule.deleteMany({
     where: { id, tenantId: tenant.id, userId: actorId },
   });
-  if (del.count === 0) return NextResponse.json({ error: "Schedule not found." }, { status: 404 });
+  if (del.count === 0) return toApiErrorResponse({ error: "Schedule not found.", code: "NOT_FOUND", status: 404 });
   return NextResponse.json({ ok: true });
 }

@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 import { getActorUserId, requireApiGrant, userHasGlobalGrant } from "@/lib/authz";
 import { crmTenantFilter } from "@/lib/crm-scope";
@@ -31,7 +33,7 @@ export async function GET(request: Request) {
   const tenant = await getDemoTenant();
   const actorId = await getActorUserId();
   if (!tenant || !actorId) {
-    return NextResponse.json({ error: "No active user." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   }
 
   const { searchParams } = new URL(request.url);
@@ -72,7 +74,7 @@ export async function GET(request: Request) {
 
   const ok = await assertAccountAccess(tenant.id, accountId, actorId);
   if (!ok) {
-    return NextResponse.json({ error: "Account not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Account not found.", code: "NOT_FOUND", status: 404 });
   }
 
   const contacts = await prisma.crmContact.findMany({
@@ -113,29 +115,26 @@ export async function POST(request: Request) {
   const tenant = await getDemoTenant();
   const actorId = await getActorUserId();
   if (!tenant || !actorId) {
-    return NextResponse.json({ error: "No active user." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   }
 
   let body: PostBody;
   try {
     body = (await request.json()) as PostBody;
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON body.", code: "BAD_INPUT", status: 400 });
   }
 
   const accountId = body.accountId?.trim();
   const firstName = body.firstName?.trim();
   const lastName = body.lastName?.trim();
   if (!accountId || !firstName || !lastName) {
-    return NextResponse.json(
-      { error: "accountId, firstName, and lastName are required." },
-      { status: 400 },
-    );
+    return toApiErrorResponse({ error: "accountId, firstName, and lastName are required.", code: "BAD_INPUT", status: 400 });
   }
 
   const ok = await assertAccountAccess(tenant.id, accountId, actorId);
   if (!ok) {
-    return NextResponse.json({ error: "Account not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Account not found.", code: "NOT_FOUND", status: 404 });
   }
 
   const contact = await prisma.crmContact.create({

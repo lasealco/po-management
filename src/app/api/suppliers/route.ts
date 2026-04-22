@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { SrmSupplierCategory, SupplierApprovalStatus } from "@prisma/client";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 import {
   getActorUserId,
@@ -16,7 +18,7 @@ export async function GET() {
 
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   }
 
   const suppliers = await prisma.supplier.findMany({
@@ -36,7 +38,7 @@ export async function POST(request: Request) {
 
   const actorId = await getActorUserId();
   if (!actorId) {
-    return NextResponse.json({ error: "No active user." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   }
   const grantSet = await loadGlobalGrantsForUser(actorId);
   const canApprove = viewerHas(grantSet, "org.suppliers", "approve");
@@ -45,18 +47,18 @@ export async function POST(request: Request) {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON.", code: "BAD_INPUT", status: 400 });
   }
 
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "Expected object." }, { status: 400 });
+    return toApiErrorResponse({ error: "Expected object.", code: "BAD_INPUT", status: 400 });
   }
 
   const o = body as Record<string, unknown>;
   const name =
     typeof o.name === "string" && o.name.trim() ? o.name.trim() : null;
   if (!name) {
-    return NextResponse.json({ error: "name is required." }, { status: 400 });
+    return toApiErrorResponse({ error: "name is required.", code: "BAD_INPUT", status: 400 });
   }
 
   const code =
@@ -93,7 +95,7 @@ export async function POST(request: Request) {
       ? null
       : Number.parseInt(String(o.paymentTermsDays), 10);
   if (rawPaymentTermsDays != null && (!Number.isFinite(rawPaymentTermsDays) || rawPaymentTermsDays < 0 || rawPaymentTermsDays > 3650)) {
-    return NextResponse.json({ error: "paymentTermsDays must be a whole number between 0 and 3650." }, { status: 400 });
+    return toApiErrorResponse({ error: "paymentTermsDays must be a whole number between 0 and 3650.", code: "BAD_INPUT", status: 400 });
   }
   const paymentTermsDays = rawPaymentTermsDays;
   const defaultIncoterm =
@@ -110,7 +112,7 @@ export async function POST(request: Request) {
 
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   }
 
   try {
@@ -161,10 +163,7 @@ export async function POST(request: Request) {
         ? (e as { code: string }).code
         : null;
     if (codeErr === "P2002") {
-      return NextResponse.json(
-        { error: "Supplier code must be unique per tenant." },
-        { status: 409 },
-      );
+      return toApiErrorResponse({ error: "Supplier code must be unique per tenant.", code: "CONFLICT", status: 409 });
     }
     throw e;
   }

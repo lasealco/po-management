@@ -1,5 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 import { getDemoActorEmail, PO_DEMO_USER_COOKIE } from "@/lib/demo-actor";
 import { getDemoTenant } from "@/lib/demo-tenant";
@@ -11,7 +13,7 @@ const COOKIE_MAX_AGE = 60 * 60 * 24 * 90;
 export async function GET() {
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   }
 
   const users = await prisma.user.findMany({
@@ -34,7 +36,7 @@ export async function POST(request: Request) {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON.", code: "BAD_INPUT", status: 400 });
   }
 
   const emailRaw =
@@ -43,12 +45,12 @@ export async function POST(request: Request) {
       : "";
 
   if (!emailRaw) {
-    return NextResponse.json({ error: "email is required." }, { status: 400 });
+    return toApiErrorResponse({ error: "email is required.", code: "BAD_INPUT", status: 400 });
   }
 
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   }
 
   const user = await prisma.user.findFirst({
@@ -61,10 +63,7 @@ export async function POST(request: Request) {
   });
 
   if (!user) {
-    return NextResponse.json(
-      { error: "User not found or inactive for this tenant." },
-      { status: 400 },
-    );
+    return toApiErrorResponse({ error: "User not found or inactive for this tenant.", code: "BAD_INPUT", status: 400 });
   }
 
   const base = httpSessionBase();

@@ -1,5 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 import { getActorUserId, requireApiGrant, userHasGlobalGrant } from "@/lib/authz";
 import { recalcQuoteSubtotal } from "@/lib/crm-quote-recalc";
@@ -41,30 +43,27 @@ export async function POST(
   const tenant = await getDemoTenant();
   const actorId = await getActorUserId();
   if (!tenant || !actorId) {
-    return NextResponse.json({ error: "No active user." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   }
 
   const { id: quoteId } = await context.params;
   const ok = await assertQuoteAccess(tenant.id, quoteId, actorId);
   if (!ok) {
-    return NextResponse.json({ error: "Quote not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Quote not found.", code: "NOT_FOUND", status: 404 });
   }
 
   let body: PostBody;
   try {
     body = (await request.json()) as PostBody;
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON body.", code: "BAD_INPUT", status: 400 });
   }
 
   const description = body.description?.trim();
   const qty = body.quantity != null ? Number(body.quantity) : NaN;
   const price = body.unitPrice != null ? Number(body.unitPrice) : NaN;
   if (!description || Number.isNaN(qty) || qty <= 0 || Number.isNaN(price) || price < 0) {
-    return NextResponse.json(
-      { error: "description, positive quantity, and non-negative unitPrice are required." },
-      { status: 400 },
-    );
+    return toApiErrorResponse({ error: "description, positive quantity, and non-negative unitPrice are required.", code: "BAD_INPUT", status: 400 });
   }
 
   const maxSort = await prisma.crmQuoteLine.aggregate({

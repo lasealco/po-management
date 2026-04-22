@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 const MODES = new Set(["", "OCEAN", "AIR", "ROAD", "RAIL"]);
 
@@ -32,7 +34,7 @@ export async function POST(
   const { id: supplierId } = await context.params;
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   }
 
   const supplier = await prisma.supplier.findFirst({
@@ -40,38 +42,35 @@ export async function POST(
     select: { id: true },
   });
   if (!supplier) {
-    return NextResponse.json({ error: "Not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Not found.", code: "NOT_FOUND", status: 404 });
   }
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON.", code: "BAD_INPUT", status: 400 });
   }
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "Expected object." }, { status: 400 });
+    return toApiErrorResponse({ error: "Expected object.", code: "BAD_INPUT", status: 400 });
   }
 
   const o = body as Record<string, unknown>;
   const mode = normMode(o.mode);
   if (mode === "__invalid__") {
-    return NextResponse.json(
-      { error: "mode must be OCEAN, AIR, ROAD, RAIL, or empty." },
-      { status: 400 },
-    );
+    return toApiErrorResponse({ error: "mode must be OCEAN, AIR, ROAD, RAIL, or empty.", code: "BAD_INPUT", status: 400 });
   }
   const subMode = str(o.subMode, 64, false);
   if (subMode === "__invalid__") {
-    return NextResponse.json({ error: "Invalid subMode." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid subMode.", code: "BAD_INPUT", status: 400 });
   }
   const serviceType = str(o.serviceType, 128, true);
   if (serviceType === "__invalid__" || serviceType == null) {
-    return NextResponse.json({ error: "serviceType is required (max 128 chars)." }, { status: 400 });
+    return toApiErrorResponse({ error: "serviceType is required (max 128 chars).", code: "BAD_INPUT", status: 400 });
   }
   const geography = str(o.geography, 256, false);
   if (geography === "__invalid__") {
-    return NextResponse.json({ error: "Invalid geography." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid geography.", code: "BAD_INPUT", status: 400 });
   }
   const notes = typeof o.notes === "string" ? (o.notes.trim() ? o.notes.trim().slice(0, 8000) : null) : null;
 

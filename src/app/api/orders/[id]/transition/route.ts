@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { actorIsSupplierPortalRestricted, getActorUserId, requireApiGrant } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 type TransitionBody = {
   actionCode?: string;
@@ -18,20 +20,11 @@ export async function POST(
   const body = (await request.json()) as TransitionBody;
 
   if (!body.actionCode) {
-    return NextResponse.json(
-      { error: "actionCode is required" },
-      { status: 400 },
-    );
+    return toApiErrorResponse({ error: "actionCode is required", code: "BAD_INPUT", status: 400 });
   }
 
   if (body.actionCode === "propose_split") {
-    return NextResponse.json(
-      {
-        error:
-          "Use POST /api/orders/:id/split-proposal with line allocations instead.",
-      },
-      { status: 400 },
-    );
+    return toApiErrorResponse({ error: "Use POST /api/orders/:id/split-proposal with line allocations instead.", code: "BAD_INPUT", status: 400 });
   }
 
   const order = await prisma.purchaseOrder.findUnique({
@@ -47,7 +40,7 @@ export async function POST(
   });
 
   if (!order) {
-    return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    return toApiErrorResponse({ error: "Order not found", code: "NOT_FOUND", status: 404 });
   }
 
   const selectedTransition = order.workflow.transitions.find(
@@ -57,38 +50,24 @@ export async function POST(
   );
 
   if (!selectedTransition) {
-    return NextResponse.json(
-      {
-        error: `Action '${body.actionCode}' is not allowed from status '${order.status.code}'.`,
-      },
-      { status: 400 },
-    );
+    return toApiErrorResponse({ error: `Action '${body.actionCode}' is not allowed from status '${order.status.code}'.`, code: "BAD_INPUT", status: 400 });
   }
 
   if (
     selectedTransition.requiresComment &&
     (!body.comment || !body.comment.trim())
   ) {
-    return NextResponse.json(
-      { error: "A comment is required for this transition." },
-      { status: 400 },
-    );
+    return toApiErrorResponse({ error: "A comment is required for this transition.", code: "BAD_INPUT", status: 400 });
   }
 
   const actorId = await getActorUserId();
   if (!actorId) {
-    return NextResponse.json(
-      { error: "Could not resolve demo actor for this tenant." },
-      { status: 403 },
-    );
+    return toApiErrorResponse({ error: "Could not resolve demo actor for this tenant.", code: "FORBIDDEN", status: 403 });
   }
 
   const isSupplierPortalUser = await actorIsSupplierPortalRestricted(actorId);
   if (isSupplierPortalUser && !order.workflow.supplierPortalOn) {
-    return NextResponse.json(
-      { error: "Supplier users can only act on supplier-portal orders." },
-      { status: 403 },
-    );
+    return toApiErrorResponse({ error: "Supplier users can only act on supplier-portal orders.", code: "FORBIDDEN", status: 403 });
   }
   const supplierOnlyActions = new Set([
     "confirm",
@@ -107,20 +86,10 @@ export async function POST(
     supplierOnlyActions.has(selectedTransition.actionCode) &&
     !isSupplierPortalUser
   ) {
-    return NextResponse.json(
-      {
-        error: `Action '${selectedTransition.actionCode}' is supplier-only.`,
-      },
-      { status: 403 },
-    );
+    return toApiErrorResponse({ error: `Action '${selectedTransition.actionCode}' is supplier-only.`, code: "FORBIDDEN", status: 403 });
   }
   if (buyerOnlyActions.has(selectedTransition.actionCode) && isSupplierPortalUser) {
-    return NextResponse.json(
-      {
-        error: `Action '${selectedTransition.actionCode}' is buyer-only.`,
-      },
-      { status: 403 },
-    );
+    return toApiErrorResponse({ error: `Action '${selectedTransition.actionCode}' is buyer-only.`, code: "FORBIDDEN", status: 403 });
   }
 
   const updatedOrder = await prisma.$transaction(async (tx) => {

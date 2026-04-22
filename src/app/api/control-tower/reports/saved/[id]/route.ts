@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { sanitizeCtReportConfig } from "@/lib/control-tower/report-engine";
@@ -19,17 +21,17 @@ export async function PATCH(
   const gate = await requireApiGrant("org.controltower", "edit");
   if (gate) return gate;
   const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   const actorId = await getActorUserId();
-  if (!actorId) return NextResponse.json({ error: "No active user." }, { status: 403 });
+  if (!actorId) return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   const { id } = await params;
 
   const existing = await prisma.ctSavedReport.findFirst({
     where: { id, tenantId: tenant.id },
     select: { userId: true },
   });
-  if (!existing) return NextResponse.json({ error: "Report not found." }, { status: 404 });
-  if (existing.userId !== actorId) return NextResponse.json({ error: "Only owner can edit." }, { status: 403 });
+  if (!existing) return toApiErrorResponse({ error: "Report not found.", code: "NOT_FOUND", status: 404 });
+  if (existing.userId !== actorId) return toApiErrorResponse({ error: "Only owner can edit.", code: "FORBIDDEN", status: 403 });
 
   let body: unknown = {};
   try {
@@ -64,17 +66,17 @@ export async function DELETE(
   const gate = await requireApiGrant("org.controltower", "edit");
   if (gate) return gate;
   const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   const actorId = await getActorUserId();
-  if (!actorId) return NextResponse.json({ error: "No active user." }, { status: 403 });
+  if (!actorId) return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   const { id } = await params;
 
   const existing = await prisma.ctSavedReport.findFirst({
     where: { id, tenantId: tenant.id },
     select: { userId: true },
   });
-  if (!existing) return NextResponse.json({ error: "Report not found." }, { status: 404 });
-  if (existing.userId !== actorId) return NextResponse.json({ error: "Only owner can delete." }, { status: 403 });
+  if (!existing) return toApiErrorResponse({ error: "Report not found.", code: "NOT_FOUND", status: 404 });
+  if (existing.userId !== actorId) return toApiErrorResponse({ error: "Only owner can delete.", code: "FORBIDDEN", status: 403 });
 
   await prisma.ctSavedReport.delete({ where: { id } });
   return NextResponse.json({ ok: true });

@@ -1,5 +1,7 @@
 import type { CrmLeadStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 import { getActorUserId, requireApiGrant, userHasGlobalGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
@@ -38,13 +40,13 @@ export async function GET(
   const tenant = await getDemoTenant();
   const actorId = await getActorUserId();
   if (!tenant || !actorId) {
-    return NextResponse.json({ error: "No active user." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   }
 
   const { id } = await context.params;
   const lead = await loadLead(tenant.id, id, actorId);
   if (!lead) {
-    return NextResponse.json({ error: "Lead not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Lead not found.", code: "NOT_FOUND", status: 404 });
   }
 
   return NextResponse.json({ lead });
@@ -74,25 +76,25 @@ export async function PATCH(
   const tenant = await getDemoTenant();
   const actorId = await getActorUserId();
   if (!tenant || !actorId) {
-    return NextResponse.json({ error: "No active user." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   }
 
   const { id } = await context.params;
   const existing = await loadLead(tenant.id, id, actorId);
   if (!existing) {
-    return NextResponse.json({ error: "Lead not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Lead not found.", code: "NOT_FOUND", status: 404 });
   }
 
   const canEditAll = await userHasGlobalGrant(actorId, "org.crm", "edit");
   if (!canEditAll && existing.ownerUserId !== actorId) {
-    return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+    return toApiErrorResponse({ error: "Forbidden.", code: "FORBIDDEN", status: 403 });
   }
 
   let body: PatchBody;
   try {
     body = (await request.json()) as PatchBody;
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON body.", code: "BAD_INPUT", status: 400 });
   }
 
   if (existing.status === "CONVERTED") {
@@ -102,10 +104,7 @@ export async function PATCH(
     const allowedKeys = new Set(["qualificationNotes", "serviceInterest"]);
     const bad = sent.filter((k) => !allowedKeys.has(k));
     if (bad.length > 0) {
-      return NextResponse.json(
-        { error: "Converted leads can only update notes and service interest." },
-        { status: 400 },
-      );
+      return toApiErrorResponse({ error: "Converted leads can only update notes and service interest.", code: "BAD_INPUT", status: 400 });
     }
     const convData: Record<string, unknown> = {};
     if (body.qualificationNotes !== undefined) {
@@ -115,7 +114,7 @@ export async function PATCH(
       convData.serviceInterest = body.serviceInterest?.trim() || null;
     }
     if (Object.keys(convData).length === 0) {
-      return NextResponse.json({ error: "No fields to update." }, { status: 400 });
+      return toApiErrorResponse({ error: "No fields to update.", code: "BAD_INPUT", status: 400 });
     }
     const leadConverted = await prisma.crmLead.update({
       where: { id },
@@ -126,10 +125,7 @@ export async function PATCH(
   }
 
   if (body.status === "CONVERTED") {
-    return NextResponse.json(
-      { error: "Use POST /api/crm/leads/:id/convert to convert a lead." },
-      { status: 400 },
-    );
+    return toApiErrorResponse({ error: "Use POST /api/crm/leads/:id/convert to convert a lead.", code: "BAD_INPUT", status: 400 });
   }
 
   const data: Record<string, unknown> = {};
@@ -151,7 +147,7 @@ export async function PATCH(
   }
   if (body.status !== undefined) {
     if (!PATCHABLE_STATUSES.includes(body.status)) {
-      return NextResponse.json({ error: "Invalid status." }, { status: 400 });
+      return toApiErrorResponse({ error: "Invalid status.", code: "BAD_INPUT", status: 400 });
     }
     data.status = body.status;
   }
@@ -168,7 +164,7 @@ export async function PATCH(
   }
 
   if (Object.keys(data).length === 0) {
-    return NextResponse.json({ error: "No fields to update." }, { status: 400 });
+    return toApiErrorResponse({ error: "No fields to update.", code: "BAD_INPUT", status: 400 });
   }
 
   const lead = await prisma.crmLead.update({

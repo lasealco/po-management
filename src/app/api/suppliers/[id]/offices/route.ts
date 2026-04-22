@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 export async function POST(
   request: Request,
@@ -16,15 +18,15 @@ export async function POST(
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON.", code: "BAD_INPUT", status: 400 });
   }
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "Expected object." }, { status: 400 });
+    return toApiErrorResponse({ error: "Expected object.", code: "BAD_INPUT", status: 400 });
   }
 
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   }
 
   const supplier = await prisma.supplier.findFirst({
@@ -32,14 +34,14 @@ export async function POST(
     select: { id: true },
   });
   if (!supplier) {
-    return NextResponse.json({ error: "Supplier not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Supplier not found.", code: "NOT_FOUND", status: 404 });
   }
 
   const o = body as Record<string, unknown>;
   const name =
     typeof o.name === "string" && o.name.trim() ? o.name.trim() : null;
   if (!name) {
-    return NextResponse.json({ error: "Office name is required." }, { status: 400 });
+    return toApiErrorResponse({ error: "Office name is required.", code: "BAD_INPUT", status: 400 });
   }
 
   const opt = (k: string) =>
@@ -68,10 +70,7 @@ export async function POST(
         ? (e as { code: string }).code
         : null;
     if (codeErr === "P2002") {
-      return NextResponse.json(
-        { error: "An office with this name already exists for the supplier." },
-        { status: 409 },
-      );
+      return toApiErrorResponse({ error: "An office with this name already exists for the supplier.", code: "CONFLICT", status: 409 });
     }
     throw e;
   }

@@ -3,6 +3,8 @@ import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
 import { executeReport } from "@/lib/reports/run-report";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 type Body = {
   reportId?: string;
@@ -16,7 +18,7 @@ export async function POST(request: Request) {
   const tenant = await getDemoTenant();
   const actorId = await getActorUserId();
   if (!tenant || !actorId) {
-    return NextResponse.json({ error: "No active user." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   }
 
   let body: unknown = {};
@@ -28,7 +30,7 @@ export async function POST(request: Request) {
   const input = (body && typeof body === "object" ? body : {}) as Body;
   const reportId = (input.reportId ?? "").trim();
   if (!reportId) {
-    return NextResponse.json({ error: "reportId is required." }, { status: 400 });
+    return toApiErrorResponse({ error: "reportId is required.", code: "BAD_INPUT", status: 400 });
   }
 
   const out = await executeReport({
@@ -41,7 +43,11 @@ export async function POST(request: Request) {
 
   if (!out.ok) {
     const status = out.error.startsWith("Forbidden") ? 403 : 400;
-    return NextResponse.json({ error: out.error }, { status });
+    return toApiErrorResponse({
+      error: out.error,
+      code: status === 403 ? "FORBIDDEN" : "BAD_INPUT",
+      status,
+    });
   }
 
   return NextResponse.json({ result: out.result });

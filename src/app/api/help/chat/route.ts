@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 import { NextResponse } from "next/server";
 import { actorIsSupplierPortalRestricted, getActorUserId, getViewerGrantSet } from "@/lib/authz";
@@ -21,10 +23,7 @@ export async function POST(request: Request) {
   const tenant = await getDemoTenant();
   const actorId = await getActorUserId();
   if (!tenant || !actorId) {
-    return NextResponse.json(
-      { error: "You need an active session to use Help Assistant." },
-      { status: 403 },
-    );
+    return toApiErrorResponse({ error: "You need an active session to use Help Assistant.", code: "FORBIDDEN", status: 403 });
   }
 
   let body: unknown = {};
@@ -36,7 +35,7 @@ export async function POST(request: Request) {
   const input = (body && typeof body === "object" ? body : {}) as HelpChatBody;
   const message = (input.message ?? "").trim();
   if (!message) {
-    return NextResponse.json({ error: "message is required." }, { status: 400 });
+    return toApiErrorResponse({ error: "message is required.", code: "BAD_INPUT", status: 400 });
   }
 
   const access = await getViewerGrantSet();

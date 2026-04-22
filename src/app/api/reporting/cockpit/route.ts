@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 import { getActorUserId, getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
@@ -9,8 +11,8 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const access = await getViewerGrantSet();
   const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
-  if (!access?.user) return NextResponse.json({ error: "No active user." }, { status: 403 });
+  if (!tenant) return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
+  if (!access?.user) return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
 
   const canSeeAny =
     viewerHas(access.grantSet, "org.reports", "view") ||
@@ -18,7 +20,7 @@ export async function GET() {
     viewerHas(access.grantSet, "org.crm", "view") ||
     viewerHas(access.grantSet, "org.wms", "view");
   if (!canSeeAny) {
-    return NextResponse.json({ error: "Forbidden: no reporting module grants." }, { status: 403 });
+    return toApiErrorResponse({ error: "Forbidden: no reporting module grants.", code: "FORBIDDEN", status: 403 });
   }
 
   const actorId = await getActorUserId();

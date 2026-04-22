@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { getViewerGrantSet } from "@/lib/authz";
 import {
   executeHelpDoAction,
@@ -15,10 +17,7 @@ type Body = {
 export async function POST(request: Request) {
   const access = await getViewerGrantSet();
   if (!access?.user) {
-    return NextResponse.json(
-      { error: "You need an active session to run help actions." },
-      { status: 403 },
-    );
+    return toApiErrorResponse({ error: "You need an active session to run help actions.", code: "FORBIDDEN", status: 403 });
   }
   const tenantId = access.tenant.id;
 
@@ -46,7 +45,7 @@ export async function POST(request: Request) {
       httpStatus: 400,
       helpEventId,
     });
-    return NextResponse.json({ error: "Invalid action payload." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid action payload.", code: "BAD_INPUT", status: 400 });
   }
 
   const normalized: HelpDoAction = {
@@ -71,7 +70,7 @@ export async function POST(request: Request) {
       httpStatus: 400,
       helpEventId,
     });
-    return NextResponse.json({ error: "Unsupported action type." }, { status: 400 });
+    return toApiErrorResponse({ error: "Unsupported action type.", code: "BAD_INPUT", status: 400 });
   }
 
   const result = await executeHelpDoAction(access, normalized);
@@ -93,7 +92,7 @@ export async function POST(request: Request) {
       openOrderAttempt: normalized.type === "open_order",
       helpEventId,
     });
-    return NextResponse.json({ error: result.error }, { status: 400 });
+    return toApiErrorResponse({ error: result.error, code: "BAD_INPUT", status: 400 });
   }
   logHelpActionTelemetry({
     kind: "help_action",

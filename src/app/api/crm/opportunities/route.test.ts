@@ -92,6 +92,7 @@ describe("CRM opportunities route contract", () => {
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({
       error: "accountId and name are required.",
+      code: "BAD_INPUT",
     });
     expect(crmOpportunityCreateMock).not.toHaveBeenCalled();
   });
@@ -108,7 +109,7 @@ describe("CRM opportunities route contract", () => {
     const response = await POST(request);
 
     expect(response.status).toBe(404);
-    await expect(response.json()).resolves.toEqual({ error: "Account not found." });
+    await expect(response.json()).resolves.toEqual({ error: "Account not found.", code: "NOT_FOUND" });
   });
 
   it("POST returns 201 with created opportunity contract", async () => {

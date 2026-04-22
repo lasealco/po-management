@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
@@ -13,17 +15,17 @@ export async function DELETE(
   const gate = await requireApiGrant("org.controltower", "edit");
   if (gate) return gate;
   const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   const actorId = await getActorUserId();
-  if (!actorId) return NextResponse.json({ error: "No active user." }, { status: 403 });
+  if (!actorId) return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   const { id } = await params;
 
   const widget = await prisma.ctDashboardWidget.findFirst({
     where: { id, tenantId: tenant.id },
     select: { userId: true },
   });
-  if (!widget) return NextResponse.json({ error: "Widget not found." }, { status: 404 });
-  if (widget.userId !== actorId) return NextResponse.json({ error: "Only owner can delete widget." }, { status: 403 });
+  if (!widget) return toApiErrorResponse({ error: "Widget not found.", code: "NOT_FOUND", status: 404 });
+  if (widget.userId !== actorId) return toApiErrorResponse({ error: "Only owner can delete widget.", code: "FORBIDDEN", status: 403 });
 
   await prisma.ctDashboardWidget.delete({ where: { id } });
   return NextResponse.json({ ok: true });
@@ -36,16 +38,16 @@ export async function PATCH(
   const gate = await requireApiGrant("org.controltower", "edit");
   if (gate) return gate;
   const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   const actorId = await getActorUserId();
-  if (!actorId) return NextResponse.json({ error: "No active user." }, { status: 403 });
+  if (!actorId) return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   const { id } = await params;
 
   const widget = await prisma.ctDashboardWidget.findFirst({
     where: { id, tenantId: tenant.id, userId: actorId },
     select: { id: true },
   });
-  if (!widget) return NextResponse.json({ error: "Widget not found." }, { status: 404 });
+  if (!widget) return toApiErrorResponse({ error: "Widget not found.", code: "NOT_FOUND", status: 404 });
 
   let body: unknown = {};
   try {

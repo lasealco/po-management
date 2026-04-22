@@ -52,7 +52,7 @@ describe("CRM summary route contract", () => {
     const response = await GET();
 
     expect(response.status).toBe(403);
-    await expect(response.json()).resolves.toEqual({ error: "No active user." });
+    await expect(response.json()).resolves.toEqual({ error: "No active user.", code: "FORBIDDEN" });
   });
 
   it("returns stable aggregate summary shape", async () => {

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 export async function PATCH(
   request: Request,
@@ -13,24 +15,24 @@ export async function PATCH(
   const { id } = await context.params;
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   }
 
   const existing = await prisma.productDivision.findFirst({
     where: { id, tenantId: tenant.id },
   });
   if (!existing) {
-    return NextResponse.json({ error: "Not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Not found.", code: "NOT_FOUND", status: 404 });
   }
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON.", code: "BAD_INPUT", status: 400 });
   }
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "Expected object." }, { status: 400 });
+    return toApiErrorResponse({ error: "Expected object.", code: "BAD_INPUT", status: 400 });
   }
   const o = body as Record<string, unknown>;
 
@@ -41,7 +43,7 @@ export async function PATCH(
   } = {};
   if (o.name !== undefined) {
     if (typeof o.name !== "string" || !o.name.trim()) {
-      return NextResponse.json({ error: "Invalid name." }, { status: 400 });
+      return toApiErrorResponse({ error: "Invalid name.", code: "BAD_INPUT", status: 400 });
     }
     data.name = o.name.trim();
   }
@@ -51,7 +53,7 @@ export async function PATCH(
   }
   if (o.sortOrder !== undefined) {
     if (typeof o.sortOrder !== "number" || !Number.isFinite(o.sortOrder)) {
-      return NextResponse.json({ error: "Invalid sortOrder." }, { status: 400 });
+      return toApiErrorResponse({ error: "Invalid sortOrder.", code: "BAD_INPUT", status: 400 });
     }
     data.sortOrder = Math.floor(o.sortOrder);
   }
@@ -68,10 +70,7 @@ export async function PATCH(
         ? (e as { code: string }).code
         : null;
     if (c === "P2002") {
-      return NextResponse.json(
-        { error: "Division name must be unique per tenant." },
-        { status: 409 },
-      );
+      return toApiErrorResponse({ error: "Division name must be unique per tenant.", code: "CONFLICT", status: 409 });
     }
     throw e;
   }
@@ -87,14 +86,14 @@ export async function DELETE(
   const { id } = await context.params;
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   }
 
   const existing = await prisma.productDivision.findFirst({
     where: { id, tenantId: tenant.id },
   });
   if (!existing) {
-    return NextResponse.json({ error: "Not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Not found.", code: "NOT_FOUND", status: 404 });
   }
 
   await prisma.productDivision.delete({ where: { id } });

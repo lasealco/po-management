@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
@@ -10,6 +11,13 @@ import {
   parseTargetSalesOrderStatus,
 } from "@/lib/sales-orders/patch-status";
 
+function errorCodeFromHttpStatus(status: number): "NOT_FOUND" | "FORBIDDEN" | "BAD_INPUT" | "UNHANDLED" {
+  if (status === 404) return "NOT_FOUND";
+  if (status === 403) return "FORBIDDEN";
+  if (status === 500) return "UNHANDLED";
+  return "BAD_INPUT";
+}
+
 export async function GET(
   _request: Request,
   context: { params: Promise<{ id: string }> },
@@ -18,11 +26,15 @@ export async function GET(
   if (gate) return gate;
 
   const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   const { id: rawId } = await context.params;
   const idParsed = parseSalesOrderRouteId(rawId);
   if (!idParsed.ok) {
-    return NextResponse.json({ error: idParsed.error }, { status: idParsed.status });
+    return toApiErrorResponse({
+      error: idParsed.error,
+      code: errorCodeFromHttpStatus(idParsed.status),
+      status: idParsed.status,
+    });
   }
   const { id } = idParsed;
 
@@ -43,7 +55,7 @@ export async function GET(
       },
     },
   });
-  if (!row) return NextResponse.json({ error: "Sales order not found." }, { status: 404 });
+  if (!row) return toApiErrorResponse({ error: "Sales order not found.", code: "NOT_FOUND", status: 404 });
 
   return NextResponse.json({
     ...row,
@@ -63,11 +75,15 @@ export async function PATCH(
   if (gate) return gate;
 
   const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   const { id: rawId } = await context.params;
   const idParsed = parseSalesOrderRouteId(rawId);
   if (!idParsed.ok) {
-    return NextResponse.json({ error: idParsed.error }, { status: idParsed.status });
+    return toApiErrorResponse({
+      error: idParsed.error,
+      code: errorCodeFromHttpStatus(idParsed.status),
+      status: idParsed.status,
+    });
   }
   const { id } = idParsed;
 
@@ -75,17 +91,21 @@ export async function PATCH(
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON.", code: "BAD_INPUT", status: 400 });
   }
 
   const parsedBody = parseSalesOrderPatchRequestBody(body);
   if (!parsedBody.ok) {
-    return NextResponse.json({ error: parsedBody.error }, { status: parsedBody.status });
+    return toApiErrorResponse({
+      error: parsedBody.error,
+      code: errorCodeFromHttpStatus(parsedBody.status),
+      status: parsedBody.status,
+    });
   }
 
   const parsedStatus = parseTargetSalesOrderStatus(parsedBody.record);
   if (!parsedStatus.ok) {
-    return NextResponse.json({ error: parsedStatus.error }, { status: 400 });
+    return toApiErrorResponse({ error: parsedStatus.error, code: "BAD_INPUT", status: 400 });
   }
   const targetStatus = parsedStatus.status;
 
@@ -97,7 +117,7 @@ export async function PATCH(
       shipments: { select: { id: true, status: true, shipmentNo: true } },
     },
   });
-  if (!row) return NextResponse.json({ error: "Sales order not found." }, { status: 404 });
+  if (!row) return toApiErrorResponse({ error: "Sales order not found.", code: "NOT_FOUND", status: 404 });
 
   const transition = evaluateSalesOrderStatusTransition({
     current: row.status,

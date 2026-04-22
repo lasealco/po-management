@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { Prisma, SrmSupplierCategory, SupplierApprovalStatus } from "@prisma/client";
+
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import {
   getActorUserId,
   loadGlobalGrantsForUser,
@@ -31,7 +33,7 @@ export async function GET(
   const { id } = await context.params;
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   }
 
   const supplier = await prisma.supplier.findFirst({
@@ -40,7 +42,7 @@ export async function GET(
   });
 
   if (!supplier) {
-    return NextResponse.json({ error: "Not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Not found.", code: "NOT_FOUND", status: 404 });
   }
 
   return NextResponse.json({ supplier });
@@ -58,15 +60,15 @@ export async function PATCH(
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON.", code: "BAD_INPUT", status: 400 });
   }
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "Expected object." }, { status: 400 });
+    return toApiErrorResponse({ error: "Expected object.", code: "BAD_INPUT", status: 400 });
   }
 
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   }
 
   const existing = await prisma.supplier.findFirst({
@@ -74,12 +76,12 @@ export async function PATCH(
     select: { id: true },
   });
   if (!existing) {
-    return NextResponse.json({ error: "Not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Not found.", code: "NOT_FOUND", status: 404 });
   }
 
   const actorId = await getActorUserId();
   if (!actorId) {
-    return NextResponse.json({ error: "No active user." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   }
   const grantSet = await loadGlobalGrantsForUser(actorId);
   const canApprove = viewerHas(grantSet, "org.suppliers", "approve");
@@ -89,20 +91,14 @@ export async function PATCH(
     (o.isActive !== undefined || o.approvalStatus !== undefined) &&
     !canApprove
   ) {
-    return NextResponse.json(
-      {
-        error:
-          "Changing activation or approval status requires org.suppliers → approve.",
-      },
-      { status: 403 },
-    );
+    return toApiErrorResponse({ error: "Changing activation or approval status requires org.suppliers → approve.", code: "FORBIDDEN", status: 403 });
   }
 
   const data: Prisma.SupplierUpdateInput = {};
 
   if (o.name !== undefined) {
     if (typeof o.name !== "string" || !o.name.trim()) {
-      return NextResponse.json({ error: "Invalid name." }, { status: 400 });
+      return toApiErrorResponse({ error: "Invalid name.", code: "BAD_INPUT", status: 400 });
     }
     data.name = o.name.trim();
   }
@@ -139,16 +135,10 @@ export async function PATCH(
       } else if (t === "rejected") {
         data.approvalStatus = SupplierApprovalStatus.rejected;
       } else {
-        return NextResponse.json(
-          { error: "Invalid approvalStatus." },
-          { status: 400 },
-        );
+        return toApiErrorResponse({ error: "Invalid approvalStatus.", code: "BAD_INPUT", status: 400 });
       }
     } else {
-      return NextResponse.json(
-        { error: "Invalid approvalStatus." },
-        { status: 400 },
-      );
+      return toApiErrorResponse({ error: "Invalid approvalStatus.", code: "BAD_INPUT", status: 400 });
     }
   }
 
@@ -161,16 +151,10 @@ export async function PATCH(
       if (t === "product") data.srmCategory = SrmSupplierCategory.product;
       else if (t === "logistics") data.srmCategory = SrmSupplierCategory.logistics;
       else {
-        return NextResponse.json(
-          { error: "Invalid srmCategory." },
-          { status: 400 },
-        );
+        return toApiErrorResponse({ error: "Invalid srmCategory.", code: "BAD_INPUT", status: 400 });
       }
     } else {
-      return NextResponse.json(
-        { error: "Invalid srmCategory." },
-        { status: 400 },
-      );
+      return toApiErrorResponse({ error: "Invalid srmCategory.", code: "BAD_INPUT", status: 400 });
     }
   }
 
@@ -200,10 +184,7 @@ export async function PATCH(
       const t = v.trim().toUpperCase();
       data.registeredCountryCode = t.length === 2 ? t : null;
     } else {
-      return NextResponse.json(
-        { error: "Invalid registeredCountryCode." },
-        { status: 400 },
-      );
+      return toApiErrorResponse({ error: "Invalid registeredCountryCode.", code: "BAD_INPUT", status: 400 });
     }
   }
 
@@ -214,17 +195,11 @@ export async function PATCH(
     } else if (typeof v === "string") {
       const t = v.trim().toUpperCase();
       if (t.length !== 3 && t.length !== 0) {
-        return NextResponse.json(
-          { error: "creditCurrency must be a 3-letter ISO code." },
-          { status: 400 },
-        );
+        return toApiErrorResponse({ error: "creditCurrency must be a 3-letter ISO code.", code: "BAD_INPUT", status: 400 });
       }
       data.creditCurrency = t.length ? t : null;
     } else {
-      return NextResponse.json(
-        { error: "Invalid creditCurrency." },
-        { status: 400 },
-      );
+      return toApiErrorResponse({ error: "Invalid creditCurrency.", code: "BAD_INPUT", status: 400 });
     }
   }
 
@@ -240,10 +215,7 @@ export async function PATCH(
     ) {
       data.paymentTermsDays = v;
     } else {
-      return NextResponse.json(
-        { error: "Invalid paymentTermsDays." },
-        { status: 400 },
-      );
+      return toApiErrorResponse({ error: "Invalid paymentTermsDays.", code: "BAD_INPUT", status: 400 });
     }
   }
 
@@ -261,32 +233,20 @@ export async function PATCH(
         try {
           const d = new Prisma.Decimal(t);
           if (d.lt(0)) {
-            return NextResponse.json(
-              { error: "creditLimit must be non-negative." },
-              { status: 400 },
-            );
+            return toApiErrorResponse({ error: "creditLimit must be non-negative.", code: "BAD_INPUT", status: 400 });
           }
           data.creditLimit = d;
         } catch {
-          return NextResponse.json(
-            { error: "Invalid creditLimit." },
-            { status: 400 },
-          );
+          return toApiErrorResponse({ error: "Invalid creditLimit.", code: "BAD_INPUT", status: 400 });
         }
       }
     } else {
-      return NextResponse.json(
-        { error: "Invalid creditLimit." },
-        { status: 400 },
-      );
+      return toApiErrorResponse({ error: "Invalid creditLimit.", code: "BAD_INPUT", status: 400 });
     }
   }
 
   if (Object.keys(data).length === 0) {
-    return NextResponse.json(
-      { error: "No valid fields to update." },
-      { status: 400 },
-    );
+    return toApiErrorResponse({ error: "No valid fields to update.", code: "BAD_INPUT", status: 400 });
   }
 
   try {
@@ -302,10 +262,7 @@ export async function PATCH(
         ? (e as { code: string }).code
         : null;
     if (codeErr === "P2002") {
-      return NextResponse.json(
-        { error: "Supplier code must be unique per tenant." },
-        { status: 409 },
-      );
+      return toApiErrorResponse({ error: "Supplier code must be unique per tenant.", code: "CONFLICT", status: 409 });
     }
     throw e;
   }
@@ -321,7 +278,7 @@ export async function DELETE(
   const { id } = await context.params;
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   }
 
   const supplier = await prisma.supplier.findFirst({
@@ -332,16 +289,10 @@ export async function DELETE(
     },
   });
   if (!supplier) {
-    return NextResponse.json({ error: "Not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Not found.", code: "NOT_FOUND", status: 404 });
   }
   if (supplier._count.orders > 0) {
-    return NextResponse.json(
-      {
-        error:
-          "Supplier has purchase orders and cannot be deleted. Set inactive instead.",
-      },
-      { status: 400 },
-    );
+    return toApiErrorResponse({ error: "Supplier has purchase orders and cannot be deleted. Set inactive instead.", code: "BAD_INPUT", status: 400 });
   }
 
   await prisma.supplier.delete({ where: { id } });

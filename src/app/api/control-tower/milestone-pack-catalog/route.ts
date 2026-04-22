@@ -1,5 +1,7 @@
 import type { TransportMode } from "@prisma/client";
 import { NextResponse } from "next/server";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import {
@@ -18,21 +20,18 @@ export async function GET(request: Request) {
 
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   }
   const actorId = await getActorUserId();
   if (!actorId) {
-    return NextResponse.json({ error: "No active user." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   }
 
   const sp = new URL(request.url).searchParams;
   const modeRaw = sp.get("mode")?.trim() ?? "";
   const modeValid = MODES.includes(modeRaw as TransportMode) ? (modeRaw as TransportMode) : null;
   if (modeRaw && !modeValid) {
-    return NextResponse.json(
-      { error: "Invalid mode. Use OCEAN, AIR, ROAD, RAIL, or omit mode for the full catalog." },
-      { status: 400 },
-    );
+    return toApiErrorResponse({ error: "Invalid mode. Use OCEAN, AIR, ROAD, RAIL, or omit mode for the full catalog.", code: "BAD_INPUT", status: 400 });
   }
 
   const full = await listMilestonePackCatalogForTenant(tenant.id);

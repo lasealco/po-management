@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { actorIsSupplierPortalRestricted, getActorUserId, requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 type Preset = {
   id: string;
@@ -21,14 +23,11 @@ async function gate() {
   const tenant = await getDemoTenant();
   const actorId = await getActorUserId();
   if (!tenant || !actorId) {
-    return NextResponse.json({ error: "No active user." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   }
   const isSupplier = await actorIsSupplierPortalRestricted(actorId);
   if (isSupplier) {
-    return NextResponse.json(
-      { error: "Supplier users cannot manage consolidation presets." },
-      { status: 403 },
-    );
+    return toApiErrorResponse({ error: "Supplier users cannot manage consolidation presets.", code: "FORBIDDEN", status: 403 });
   }
   return { tenant, actorId };
 }
@@ -65,7 +64,7 @@ export async function POST(request: Request) {
   const input = (body && typeof body === "object" ? body : {}) as SavePresetBody;
   const name = (input.name ?? "").trim();
   if (!name) {
-    return NextResponse.json({ error: "name is required." }, { status: 400 });
+    return toApiErrorResponse({ error: "name is required.", code: "BAD_INPUT", status: 400 });
   }
 
   const existing = await prisma.userPreference.findUnique({

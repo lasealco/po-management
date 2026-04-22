@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+
 
 const MODES = new Set(["OCEAN", "AIR", "ROAD", "RAIL"]);
 
@@ -43,22 +45,22 @@ export async function PATCH(
   const { id: supplierId, capId } = await context.params;
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   }
 
   const existing = await getCapOr404(supplierId, capId, tenant.id);
   if (!existing) {
-    return NextResponse.json({ error: "Not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Not found.", code: "NOT_FOUND", status: 404 });
   }
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON.", code: "BAD_INPUT", status: 400 });
   }
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "Expected object." }, { status: 400 });
+    return toApiErrorResponse({ error: "Expected object.", code: "BAD_INPUT", status: 400 });
   }
 
   const o = body as Record<string, unknown>;
@@ -73,28 +75,25 @@ export async function PATCH(
   if (o.mode !== undefined) {
     const mode = parseModePatch(o.mode);
     if (mode === "__invalid__") {
-      return NextResponse.json(
-        { error: "mode must be OCEAN, AIR, ROAD, RAIL, or empty." },
-        { status: 400 },
-      );
+      return toApiErrorResponse({ error: "mode must be OCEAN, AIR, ROAD, RAIL, or empty.", code: "BAD_INPUT", status: 400 });
     }
     data.mode = mode;
   }
   if (o.subMode !== undefined) {
     const s = str(o.subMode, 64, false);
-    if (s === "__invalid__") return NextResponse.json({ error: "Invalid subMode." }, { status: 400 });
+    if (s === "__invalid__") return toApiErrorResponse({ error: "Invalid subMode.", code: "BAD_INPUT", status: 400 });
     data.subMode = s;
   }
   if (o.serviceType !== undefined) {
     const s = str(o.serviceType, 128, true);
     if (s === "__invalid__" || s == null) {
-      return NextResponse.json({ error: "serviceType invalid." }, { status: 400 });
+      return toApiErrorResponse({ error: "serviceType invalid.", code: "BAD_INPUT", status: 400 });
     }
     data.serviceType = s;
   }
   if (o.geography !== undefined) {
     const s = str(o.geography, 256, false);
-    if (s === "__invalid__") return NextResponse.json({ error: "Invalid geography." }, { status: 400 });
+    if (s === "__invalid__") return toApiErrorResponse({ error: "Invalid geography.", code: "BAD_INPUT", status: 400 });
     data.geography = s;
   }
   if (o.notes !== undefined) {
@@ -103,12 +102,12 @@ export async function PATCH(
       const t = o.notes.trim();
       data.notes = t ? t.slice(0, 8000) : null;
     } else {
-      return NextResponse.json({ error: "Invalid notes." }, { status: 400 });
+      return toApiErrorResponse({ error: "Invalid notes.", code: "BAD_INPUT", status: 400 });
     }
   }
 
   if (Object.keys(data).length === 0) {
-    return NextResponse.json({ error: "No fields to update." }, { status: 400 });
+    return toApiErrorResponse({ error: "No fields to update.", code: "BAD_INPUT", status: 400 });
   }
 
   const row = await prisma.supplierServiceCapability.update({
@@ -138,12 +137,12 @@ export async function DELETE(
   const { id: supplierId, capId } = await context.params;
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   }
 
   const existing = await getCapOr404(supplierId, capId, tenant.id);
   if (!existing) {
-    return NextResponse.json({ error: "Not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Not found.", code: "NOT_FOUND", status: 404 });
   }
 
   await prisma.supplierServiceCapability.delete({ where: { id: capId } });
