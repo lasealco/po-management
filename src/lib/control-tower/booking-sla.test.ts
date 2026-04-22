@@ -61,4 +61,11 @@ describe("ensureBookingConfirmationSlaAlerts", () => {
 
     expect(prismaMock.ctAlert.create).not.toHaveBeenCalled();
   });
+
+  it("does not touch alerts when findMany returns no due shipments", async () => {
+    prismaMock.shipment.findMany.mockResolvedValue([]);
+    await ensureBookingConfirmationSlaAlerts({ tenantId: "t1", shipmentIds: ["s-missing"] });
+    expect(prismaMock.ctAlert.findFirst).not.toHaveBeenCalled();
+    expect(prismaMock.ctAlert.create).not.toHaveBeenCalled();
+  });
 });
