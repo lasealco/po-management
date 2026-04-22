@@ -4,7 +4,7 @@
 **As of 2026-04-22:** **32** implementation modules (`.ts`) and **18** co-located Vitest files (`*.test.ts`).  
 `index.ts` is currently a **placeholder** (empty barrel).
 
-**Maintenance:** When you add, rename, or remove a non-test module here, update this file in the same PR.
+**Maintenance:** When you add, rename, or remove a non-test module here, update this file in the same PR and bump **`TARIFF_LIB_MODULE_EXPECTED_COUNT`** in `src/lib/tariff/tariff-surface-conformance.test.ts`.
 
 **Related:** HTTP handlers are listed in [`API_ROUTE_INDEX.md`](./API_ROUTE_INDEX.md).
 
@@ -91,6 +91,8 @@
 ---
 
 ## Tests
+
+**Surface guard:** `tariff-surface-conformance.test.ts` pins `route.ts` count under `/api/tariffs` and non-test module count here (fail if docs/constants drift).
 
 Vitest files mirror the modules above (e.g. `rating-engine.test.ts`, `promote-staging-import.test.ts`). Run the tariff vertical tests with:
 

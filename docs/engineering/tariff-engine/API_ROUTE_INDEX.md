@@ -5,7 +5,7 @@
 
 **Tenant & auth:** Almost all handlers use **`getDemoTenant()`** and **`requireApiGrant("org.tariffs", "view" | "edit")`** (see each `route.ts`). Errors generally use **`toApiErrorResponse`** / **`jsonFromTariffError`**.
 
-**Maintenance:** When you add or remove a `route.ts` under this tree, update this file in the same PR.
+**Maintenance:** When you add or remove a `route.ts` under this tree, update this file in the same PR and bump **`TARIFF_API_ROUTE_TS_EXPECTED_COUNT`** in `src/lib/tariff/tariff-surface-conformance.test.ts`.
 
 **Domain lib:** [`LIB_MODULE_INDEX.md`](./LIB_MODULE_INDEX.md) — `src/lib/tariff/**` modules (import, geography, contracts, rating, shipment hooks).
 
