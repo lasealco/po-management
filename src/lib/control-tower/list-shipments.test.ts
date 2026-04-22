@@ -208,6 +208,10 @@ describe("listControlTowerShipments", () => {
     expect(dumped).toContain("author");
     expect(dumped).toContain("transitions");
     expect(dumped).toContain("actionCode");
+    expect(dumped).toContain("workflow");
+    expect(dumped).toContain("splitParent");
+    expect(dumped).toContain("containerCargoLines");
+    expect(dumped).toContain("tradingName");
     expect(dumped).toContain("registeredCity");
     expect(dumped).toContain("forwarderOffice");
     expect(dumped).toContain("forwarderContact");

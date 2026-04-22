@@ -605,11 +605,70 @@ export async function listControlTowerShipments(params: {
           },
         },
         {
+          order: {
+            workflow: {
+              is: {
+                OR: [{ name: contains }, { code: contains }],
+              },
+            },
+          },
+        },
+        {
+          order: {
+            status: {
+              is: {
+                OR: [{ label: contains }, { code: contains }, { category: contains }],
+              },
+            },
+          },
+        },
+        {
+          order: {
+            splitParent: {
+              is: {
+                OR: [
+                  { orderNumber: contains },
+                  { title: contains },
+                  { buyerReference: contains },
+                ],
+              },
+            },
+          },
+        },
+        {
+          order: {
+            wmsTasks: {
+              some: {
+                OR: [
+                  { note: contains },
+                  { referenceType: contains },
+                  { referenceId: contains },
+                  {
+                    createdBy: {
+                      is: {
+                        OR: [{ name: contains }, { email: contains }],
+                      },
+                    },
+                  },
+                  {
+                    completedBy: {
+                      is: {
+                        OR: [{ name: contains }, { email: contains }],
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        },
+        {
           items: {
             some: {
               OR: [
                 { cargoDimensionsText: contains },
                 { orderItem: { is: { description: contains } } },
+                { containerCargoLines: { some: { notes: contains } } },
               ],
             },
           },
@@ -873,6 +932,18 @@ export async function listControlTowerShipments(params: {
                                 { title: contains },
                                 { tradeScope: contains },
                                 { notes: contains },
+                                {
+                                  provider: {
+                                    is: {
+                                      OR: [
+                                        { legalName: contains },
+                                        { tradingName: contains },
+                                        { status: contains },
+                                        { countryCode: contains },
+                                      ],
+                                    },
+                                  },
+                                },
                               ],
                             },
                           },
