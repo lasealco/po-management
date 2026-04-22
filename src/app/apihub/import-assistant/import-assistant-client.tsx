@@ -17,7 +17,11 @@ import { parseImportAssistantFileByName } from "@/lib/apihub/import-assistant-fi
 import { importAssistantConfidenceForRule } from "@/lib/apihub/import-assistant-rule-confidence";
 import type { ApiHubMappingAnalysisJobDto } from "@/lib/apihub/mapping-analysis-job-dto";
 
-type Step = "domain" | "upload" | "confirm" | "analyze" | "review" | "connection";
+import {
+  buildImportAssistantChatContextPayload,
+  ImportAssistantChatPanel,
+} from "./import-assistant-chat-panel";
+import type { ImportAssistantStep } from "./import-assistant-types";
 
 type Props = {
   canEdit: boolean;
@@ -97,7 +101,8 @@ function confidenceLabel(c: string): { text: string; className: string } {
 
 export function ImportAssistantClient({ canEdit }: Props) {
   const router = useRouter();
-  const [step, setStep] = useState<Step>("domain");
+  const [flowEpoch, setFlowEpoch] = useState(0);
+  const [step, setStep] = useState<ImportAssistantStep>("domain");
   const [domain, setDomain] = useState<ImportAssistantDomainId | null>(null);
   const [userDoc, setUserDoc] = useState("");
   const [fileName, setFileName] = useState<string | null>(null);
@@ -175,8 +180,39 @@ export function ImportAssistantClient({ canEdit }: Props) {
     [ruleConfidences],
   );
 
+  const chatContextPayload = useMemo(
+    () =>
+      buildImportAssistantChatContextPayload({
+        step,
+        domainId: domain,
+        domainTitle: domainMeta?.title ?? null,
+        records,
+        fileName,
+        userDoc,
+        guessDomainId: guessDomain,
+        guessDomainTitle: guessMeta?.title ?? null,
+        jobStatus: job?.status ?? null,
+        proposedRuleCount: job?.outputProposal?.rules.length ?? null,
+        mappingEngine: job?.outputProposal?.engine ?? null,
+      }),
+    [
+      step,
+      domain,
+      domainMeta?.title,
+      records,
+      fileName,
+      userDoc,
+      guessDomain,
+      guessMeta?.title,
+      job?.status,
+      job?.outputProposal?.rules.length,
+      job?.outputProposal?.engine,
+    ],
+  );
+
   function resetFlow() {
     stopPoll();
+    setFlowEpoch((e) => e + 1);
     setStep("domain");
     setDomain(null);
     setUserDoc("");
@@ -368,7 +404,9 @@ export function ImportAssistantClient({ canEdit }: Props) {
   }
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-10">
+    <main className="mx-auto max-w-6xl px-6 py-10">
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_min(100%,340px)] lg:items-start lg:gap-8">
+        <div className="min-w-0">
       <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Guided import</p>
@@ -741,6 +779,9 @@ export function ImportAssistantClient({ canEdit }: Props) {
           </Link>
         </section>
       ) : null}
+        </div>
+        <ImportAssistantChatPanel flowEpoch={flowEpoch} contextPayload={chatContextPayload} />
+      </div>
     </main>
   );
 }
