@@ -57,7 +57,7 @@ export async function listApiHubApplyConflicts(opts: {
         SELECT id, "ingestionRunId", "actorUserId", metadata, "createdAt"
         FROM "ApiHubIngestionRunAuditLog"
         WHERE "tenantId" = ${opts.tenantId}
-          AND action = ${APIHUB_AUDIT_ACTION_INGESTION_RUN_APPLY}
+          AND (action = ${APIHUB_AUDIT_ACTION_INGESTION_RUN_APPLY} OR action = 'apply')
           AND metadata->>'outcome' = 'client_error'
           AND (
             "createdAt" < ${opts.cursor.createdAt}
@@ -70,7 +70,7 @@ export async function listApiHubApplyConflicts(opts: {
         SELECT id, "ingestionRunId", "actorUserId", metadata, "createdAt"
         FROM "ApiHubIngestionRunAuditLog"
         WHERE "tenantId" = ${opts.tenantId}
-          AND action = ${APIHUB_AUDIT_ACTION_INGESTION_RUN_APPLY}
+          AND (action = ${APIHUB_AUDIT_ACTION_INGESTION_RUN_APPLY} OR action = 'apply')
           AND metadata->>'outcome' = 'client_error'
         ORDER BY "createdAt" DESC, id DESC
         LIMIT ${take}

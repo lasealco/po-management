@@ -29,4 +29,4 @@ Older rows may omit `schemaVersion` / `resourceType`; treat missing `schemaVersi
 
 ## Alert / conflict queries
 
-`ingestion-alerts-summary-repo` and `ingestion-apply-conflicts-repo` filter on the canonical **`apihub.ingestion_run.*`** `action` values. UI DTOs still expose `source: "apply" | "retry"` derived from those actions.
+`ingestion-alerts-summary-repo` and `ingestion-apply-conflicts-repo` filter on canonical **`apihub.ingestion_run.*`** values and still include legacy `apply` / `retry` until all environments have run the normalize migration. UI DTOs expose `source: "apply" | "retry"` derived from either form.

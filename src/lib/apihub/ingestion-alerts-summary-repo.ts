@@ -133,7 +133,7 @@ export async function getApiHubIngestionAlertsSummary(opts: {
     SELECT id, "ingestionRunId", action, metadata, "createdAt"
     FROM "ApiHubIngestionRunAuditLog"
     WHERE "tenantId" = ${opts.tenantId}
-      AND action IN (${APIHUB_AUDIT_ACTION_INGESTION_RUN_APPLY}, ${APIHUB_AUDIT_ACTION_INGESTION_RUN_RETRY})
+      AND action IN (${APIHUB_AUDIT_ACTION_INGESTION_RUN_APPLY}, ${APIHUB_AUDIT_ACTION_INGESTION_RUN_RETRY}, 'apply', 'retry')
       AND metadata->>'outcome' = 'client_error'
     ORDER BY "createdAt" DESC, id DESC
     LIMIT ${take}
