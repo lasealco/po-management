@@ -1,11 +1,12 @@
 import type { Prisma } from "@prisma/client";
 
+import {
+  APIHUB_AUDIT_ACTION_MAPPING_TEMPLATE_CREATED,
+  APIHUB_AUDIT_ACTION_MAPPING_TEMPLATE_DELETED,
+  APIHUB_AUDIT_ACTION_MAPPING_TEMPLATE_UPDATED,
+} from "@/lib/apihub/audit-contract";
 import type { ApiHubMappingRule } from "@/lib/apihub/mapping-engine";
 import { prisma } from "@/lib/prisma";
-
-export const APIHUB_MAPPING_TEMPLATE_AUDIT_ACTION_CREATED = "mapping_template_created" as const;
-export const APIHUB_MAPPING_TEMPLATE_AUDIT_ACTION_UPDATED = "mapping_template_updated" as const;
-export const APIHUB_MAPPING_TEMPLATE_AUDIT_ACTION_DELETED = "mapping_template_deleted" as const;
 
 const select = {
   id: true,
@@ -92,7 +93,7 @@ export async function createApiHubMappingTemplate(input: {
       tenantId: input.tenantId,
       templateId: row.id,
       actorUserId: input.createdByUserId,
-      action: APIHUB_MAPPING_TEMPLATE_AUDIT_ACTION_CREATED,
+      action: APIHUB_AUDIT_ACTION_MAPPING_TEMPLATE_CREATED,
       note: null,
     });
     return row;
@@ -155,7 +156,7 @@ export async function updateApiHubMappingTemplate(input: {
         tenantId: input.tenantId,
         templateId: input.templateId,
         actorUserId: input.actorUserId,
-        action: APIHUB_MAPPING_TEMPLATE_AUDIT_ACTION_UPDATED,
+        action: APIHUB_AUDIT_ACTION_MAPPING_TEMPLATE_UPDATED,
         note: input.auditNote,
       });
       return row;
@@ -175,7 +176,7 @@ export async function updateApiHubMappingTemplate(input: {
       tenantId: input.tenantId,
       templateId: input.templateId,
       actorUserId: input.actorUserId,
-      action: APIHUB_MAPPING_TEMPLATE_AUDIT_ACTION_UPDATED,
+      action: APIHUB_AUDIT_ACTION_MAPPING_TEMPLATE_UPDATED,
       note: input.auditNote,
     });
     return row;
@@ -198,7 +199,7 @@ export async function deleteApiHubMappingTemplate(input: {
       tenantId: input.tenantId,
       templateId: input.templateId,
       actorUserId: input.actorUserId,
-      action: APIHUB_MAPPING_TEMPLATE_AUDIT_ACTION_DELETED,
+      action: APIHUB_AUDIT_ACTION_MAPPING_TEMPLATE_DELETED,
       note: null,
     });
     return true;

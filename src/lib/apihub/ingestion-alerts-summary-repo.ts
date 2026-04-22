@@ -1,5 +1,9 @@
 import { Prisma } from "@prisma/client";
 
+import {
+  APIHUB_AUDIT_ACTION_INGESTION_RUN_APPLY,
+  APIHUB_AUDIT_ACTION_INGESTION_RUN_RETRY,
+} from "@/lib/apihub/audit-contract";
 import type {
   ApiHubIngestionAlertItemDto,
   ApiHubIngestionAlertSeverity,
@@ -84,8 +88,11 @@ function detailFor(meta: Record<string, unknown>, resultCode: string): string {
 }
 
 function normalizeLifecycleAction(raw: string): "apply" | "retry" | null {
-  if (raw === "apply" || raw === "retry") {
-    return raw;
+  if (raw === "apply" || raw === APIHUB_AUDIT_ACTION_INGESTION_RUN_APPLY) {
+    return "apply";
+  }
+  if (raw === "retry" || raw === APIHUB_AUDIT_ACTION_INGESTION_RUN_RETRY) {
+    return "retry";
   }
   return null;
 }
@@ -126,7 +133,7 @@ export async function getApiHubIngestionAlertsSummary(opts: {
     SELECT id, "ingestionRunId", action, metadata, "createdAt"
     FROM "ApiHubIngestionRunAuditLog"
     WHERE "tenantId" = ${opts.tenantId}
-      AND action IN ('apply', 'retry')
+      AND action IN (${APIHUB_AUDIT_ACTION_INGESTION_RUN_APPLY}, ${APIHUB_AUDIT_ACTION_INGESTION_RUN_RETRY})
       AND metadata->>'outcome' = 'client_error'
     ORDER BY "createdAt" DESC, id DESC
     LIMIT ${take}

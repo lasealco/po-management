@@ -81,9 +81,11 @@ describe("POST /api/apihub/ingestion-jobs/:jobId/retry", () => {
     expect(await response.json()).toEqual({ run: { id: "run-dto-2" }, idempotentReplay: false });
     expect(appendApiHubIngestionRunAuditLogMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        action: "retry",
+        action: "apihub.ingestion_run.retry",
         ingestionRunId: "run-1",
         metadata: expect.objectContaining({
+          schemaVersion: 1,
+          resourceType: "ingestion_run",
           actorUserId: "user-1",
           resultCode: "RETRY_CREATED",
           verb: "retry",

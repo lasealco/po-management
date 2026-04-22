@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 
+import { APIHUB_AUDIT_ACTION_INGESTION_RUN_APPLY } from "@/lib/apihub/audit-contract";
 import { encodeApplyConflictListCursor } from "@/lib/apihub/apply-conflict-list-cursor";
 import type { ApiHubApplyConflictListItemDto } from "@/lib/apihub/ingestion-apply-conflict-dto";
 import { prisma } from "@/lib/prisma";
@@ -56,7 +57,7 @@ export async function listApiHubApplyConflicts(opts: {
         SELECT id, "ingestionRunId", "actorUserId", metadata, "createdAt"
         FROM "ApiHubIngestionRunAuditLog"
         WHERE "tenantId" = ${opts.tenantId}
-          AND action = 'apply'
+          AND action = ${APIHUB_AUDIT_ACTION_INGESTION_RUN_APPLY}
           AND metadata->>'outcome' = 'client_error'
           AND (
             "createdAt" < ${opts.cursor.createdAt}
@@ -69,7 +70,7 @@ export async function listApiHubApplyConflicts(opts: {
         SELECT id, "ingestionRunId", "actorUserId", metadata, "createdAt"
         FROM "ApiHubIngestionRunAuditLog"
         WHERE "tenantId" = ${opts.tenantId}
-          AND action = 'apply'
+          AND action = ${APIHUB_AUDIT_ACTION_INGESTION_RUN_APPLY}
           AND metadata->>'outcome' = 'client_error'
         ORDER BY "createdAt" DESC, id DESC
         LIMIT ${take}

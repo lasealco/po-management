@@ -1,5 +1,11 @@
 import type { Prisma } from "@prisma/client";
 
+import {
+  APIHUB_AUDIT_ACTION_CONNECTOR_AUTH_CONFIG_REF_UPDATED,
+  APIHUB_AUDIT_ACTION_CONNECTOR_CREATED,
+  APIHUB_AUDIT_ACTION_CONNECTOR_LIFECYCLE_UPDATED,
+  APIHUB_AUDIT_ACTION_CONNECTOR_OPS_NOTE_UPDATED,
+} from "@/lib/apihub/audit-contract";
 import type { ApiHubConnectorListSortField, ApiHubConnectorListSortOrder } from "@/lib/apihub/constants";
 import { sortConnectorListRowsByNameSearch } from "@/lib/apihub/connector-search";
 import { prisma } from "@/lib/prisma";
@@ -131,7 +137,7 @@ export async function createStubApiHubConnector(opts: {
         tenantId: opts.tenantId,
         connectorId: created.id,
         actorUserId: opts.actorUserId,
-        action: "connector.created",
+        action: APIHUB_AUDIT_ACTION_CONNECTOR_CREATED,
         note: "Created stub connector row.",
       },
     });
@@ -233,7 +239,7 @@ export async function updateApiHubConnectorLifecycle(opts: {
           tenantId: opts.tenantId,
           connectorId: existing.id,
           actorUserId: opts.actorUserId,
-          action: "connector.lifecycle.updated",
+          action: APIHUB_AUDIT_ACTION_CONNECTOR_LIFECYCLE_UPDATED,
           note:
             opts.note ??
             `Status ${existing.status} -> ${opts.status}${opts.syncNow ? " (sync timestamp set)" : ""}`,
@@ -247,7 +253,7 @@ export async function updateApiHubConnectorLifecycle(opts: {
           tenantId: opts.tenantId,
           connectorId: existing.id,
           actorUserId: opts.actorUserId,
-          action: "connector.ops_note.updated",
+          action: APIHUB_AUDIT_ACTION_CONNECTOR_OPS_NOTE_UPDATED,
           note:
             newOps.length === 0
               ? "Ops note cleared."
@@ -262,7 +268,7 @@ export async function updateApiHubConnectorLifecycle(opts: {
           tenantId: opts.tenantId,
           connectorId: existing.id,
           actorUserId: opts.actorUserId,
-          action: "connector.auth_config_ref.updated",
+          action: APIHUB_AUDIT_ACTION_CONNECTOR_AUTH_CONFIG_REF_UPDATED,
           note: newRef.length === 0 ? "Auth config reference cleared." : "Auth config reference updated.",
         },
       });

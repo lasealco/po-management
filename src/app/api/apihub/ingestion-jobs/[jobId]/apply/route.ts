@@ -6,6 +6,10 @@ import {
   apiHubError,
   apiHubJson,
 } from "@/lib/apihub/api-error";
+import {
+  APIHUB_AUDIT_ACTION_INGESTION_RUN_APPLY,
+  apiHubIngestionRunAuditMetadataEnvelope,
+} from "@/lib/apihub/audit-contract";
 import { resolveApplyTargetSummary, resolveDryRunTargetSummary } from "@/lib/apihub/apply-target-summary";
 import { createApplyIdempotencyRecord, findApplyIdempotencyRecord } from "@/lib/apihub/ingestion-apply-idempotency-repo";
 import { applyApiHubIngestionRun, type ApplyApiHubIngestionRunOutcome } from "@/lib/apihub/ingestion-apply-repo";
@@ -232,6 +236,7 @@ async function finalizeApplyResponse(opts: {
 }): Promise<NextResponse> {
   const httpStatus = opts.response.status;
   const metadata = {
+    ...apiHubIngestionRunAuditMetadataEnvelope(),
     requestId: opts.requestId,
     actorUserId: opts.actorUserId,
     verb: "apply" as const,
@@ -248,7 +253,7 @@ async function finalizeApplyResponse(opts: {
     tenantId: opts.tenantId,
     actorUserId: opts.actorUserId,
     ingestionRunId: opts.runId,
-    action: "apply",
+    action: APIHUB_AUDIT_ACTION_INGESTION_RUN_APPLY,
     metadata,
   });
   return opts.response;

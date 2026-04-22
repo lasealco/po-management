@@ -342,6 +342,8 @@ Use this doc as the single execution plan for API Hub work. Implement one slice 
 **Paths:** `src/lib/apihub/**`, tests, docs
 **Done when:** Audit consumers parse one stable shape.
 
+**Status:** Complete — canonical `apihub.<resource>.<event>` `action` values (writers + migration `20260430110000_apihub_audit_action_normalize`); ingestion-run audit `metadata` includes `schemaVersion` + `resourceType`. See [AUDIT_SCHEMA.md](./AUDIT_SCHEMA.md).
+
 ## Slice 64 — API versioning envelope
 **Goal:** Introduce explicit API version metadata in responses/headers.
 **Paths:** `src/app/api/apihub/**`, `src/lib/apihub/**`, docs/tests

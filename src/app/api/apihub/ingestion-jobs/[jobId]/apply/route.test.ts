@@ -100,9 +100,11 @@ describe("POST /api/apihub/ingestion-jobs/:jobId/apply", () => {
     });
     expect(appendApiHubIngestionRunAuditLogMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        action: "apply",
+        action: "apihub.ingestion_run.apply",
         ingestionRunId: "run-1",
         metadata: expect.objectContaining({
+          schemaVersion: 1,
+          resourceType: "ingestion_run",
           actorUserId: "user-1",
           resultCode: "APPLY_COMMITTED",
           verb: "apply",

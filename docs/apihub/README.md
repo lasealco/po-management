@@ -16,6 +16,7 @@ This folder is the **documentation home** for **integration / ingestion APIs and
 | [CLOSEOUT_AUDIT.md](./CLOSEOUT_AUDIT.md) | **Slice 60:** Module handoff — scope inventory, residual risks (R1–R9), sign-off checklist |
 | [TENANT_SCOPING.md](./TENANT_SCOPING.md) | **Slice 61:** Tenant isolation — repo inventory + scoped mutation patterns |
 | [ACTOR_ATTRIBUTION.md](./ACTOR_ATTRIBUTION.md) | **Slice 62:** Actor id on audit rows and in JSON metadata where exports need it |
+| [AUDIT_SCHEMA.md](./AUDIT_SCHEMA.md) | **Slice 63:** Canonical `action` strings and ingestion-run audit `metadata` envelope |
 
 **Gap map (spec ↔ code):** [GAP_MAP.md](./GAP_MAP.md)
 
@@ -43,10 +44,10 @@ All mapping routes below require the **demo tenant** and an **active demo actor*
 | Method | Path | Purpose |
 |--------|------|---------|
 | `GET` | `/api/apihub/mapping-templates` | List templates; `limit` query (1–100, default 20). |
-| `POST` | `/api/apihub/mapping-templates` | Create: `name`, optional `description`, `rules[]` (max count enforced). Writes an audit row `mapping_template_created`. |
+| `POST` | `/api/apihub/mapping-templates` | Create: `name`, optional `description`, `rules[]` (max count enforced). Writes an audit row `apihub.mapping_template.created`. |
 | `GET` | `/api/apihub/mapping-templates/:templateId` | Read one template. |
 | `PATCH` | `/api/apihub/mapping-templates/:templateId` | Partial update (`name` / `description` / `rules`); optional `note` stored on audit only. |
-| `DELETE` | `/api/apihub/mapping-templates/:templateId` | Deletes row after audit `mapping_template_deleted`. |
+| `DELETE` | `/api/apihub/mapping-templates/:templateId` | Deletes row after audit `apihub.mapping_template.deleted`. |
 | `GET` | `/api/apihub/mapping-templates/:templateId/audit` | Paginated audit (`limit`, `page`); `templateId` is not FK-bound so history survives delete. |
 
 **Prisma:** `ApiHubMappingTemplate`, `ApiHubMappingTemplateAuditLog` (migrations under `prisma/migrations/`).
@@ -66,7 +67,7 @@ All mapping routes below require the **demo tenant** and an **active demo actor*
 | `GET` | `/api/apihub/ingestion-apply-conflicts` | **Slice 46:** tenant-scoped list of **apply** attempts whose audit `metadata.outcome` is `client_error` (4xx apply responses), newest first. Query: `limit` (default 20, max 100), optional `cursor` (opaque; use `nextCursor` from prior page). Response: `{ conflicts: [...], nextCursor }`. **Slice 47 UI:** `/apihub` → **Apply conflicts** panel (`#apply-conflicts`) with table, refresh, load-more, and scaffold actions (copy diagnostics, open job JSON, disabled “Mark reviewed”). |
 | `GET` | `/api/apihub/ingestion-alerts-summary` | **Slice 48:** tenant-scoped **alert-style** summary over recent **apply** and **retry** audit rows with `metadata.outcome === "client_error"`. Query: `limit` (default 20, capped at **50** server-side). Response: `{ generatedAt, limit, counts: { error, warn, info }, alerts: [...] }` for UI and integrations. **Slice 49 UI:** `/apihub` → **Alerts** panel (`#ingestion-alerts`) with counts, priority banner, and table (server-hydrated on load + Refresh). |
 
-**Ingestion lifecycle audit (Slice 45, Slice 62):** successful and failed **`POST .../apply`** and **`POST .../retry`** calls append a row to **`ApiHubIngestionRunAuditLog`** (`action` = `apply` \| `retry`, `actorUserId` column plus `metadata` JSON with `actorUserId`, `requestId`, `verb`, `resultCode`, `httpStatus`, `outcome`, idempotency flags, and run correlation fields). Failures to write audit are logged and do not change the HTTP response.
+**Ingestion lifecycle audit (Slice 45, Slice 62, Slice 63):** successful and failed **`POST .../apply`** and **`POST .../retry`** calls append a row to **`ApiHubIngestionRunAuditLog`** (`action` = `apihub.ingestion_run.apply` \| `apihub.ingestion_run.retry`, `actorUserId` column plus `metadata` JSON with `schemaVersion`, `resourceType`, `actorUserId`, `requestId`, `verb`, `resultCode`, `httpStatus`, `outcome`, idempotency flags, and run correlation fields). Failures to write audit are logged and do not change the HTTP response. Canonical vocabulary: [AUDIT_SCHEMA.md](./AUDIT_SCHEMA.md).
 
 Validation errors use the shared **`VALIDATION_ERROR`** envelope with `details.issues` and `details.summary` (including `bySeverity` where applicable).
 

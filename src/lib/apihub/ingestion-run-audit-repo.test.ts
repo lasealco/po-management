@@ -27,8 +27,10 @@ describe("appendApiHubIngestionRunAuditLog", () => {
       tenantId: "t1",
       actorUserId: "u1",
       ingestionRunId: "run-1",
-      action: "apply",
+      action: "apihub.ingestion_run.apply",
       metadata: {
+        schemaVersion: 1,
+        resourceType: "ingestion_run",
         requestId: "req-1",
         verb: "apply",
         resultCode: "APPLY_COMMITTED",
@@ -41,7 +43,7 @@ describe("appendApiHubIngestionRunAuditLog", () => {
         tenantId: "t1",
         actorUserId: "u1",
         ingestionRunId: "run-1",
-        action: "apply",
+        action: "apihub.ingestion_run.apply",
         metadata: expect.objectContaining({ resultCode: "APPLY_COMMITTED" }),
       }),
     });

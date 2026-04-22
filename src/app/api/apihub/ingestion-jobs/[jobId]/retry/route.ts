@@ -4,6 +4,10 @@ import {
   apiHubError,
   apiHubJson,
 } from "@/lib/apihub/api-error";
+import {
+  APIHUB_AUDIT_ACTION_INGESTION_RUN_RETRY,
+  apiHubIngestionRunAuditMetadataEnvelope,
+} from "@/lib/apihub/audit-contract";
 import { appendApiHubIngestionRunAuditLog } from "@/lib/apihub/ingestion-run-audit-repo";
 import { toApiHubIngestionRunDto } from "@/lib/apihub/ingestion-run-dto";
 import { retryApiHubIngestionRun } from "@/lib/apihub/ingestion-runs-repo";
@@ -49,6 +53,7 @@ async function finalizeRetryResponse(opts: {
 }): Promise<NextResponse> {
   const httpStatus = opts.response.status;
   const metadata = {
+    ...apiHubIngestionRunAuditMetadataEnvelope(),
     requestId: opts.requestId,
     actorUserId: opts.actorUserId,
     verb: "retry" as const,
@@ -69,7 +74,7 @@ async function finalizeRetryResponse(opts: {
       tenantId: opts.tenantId,
       actorUserId: opts.actorUserId,
       ingestionRunId: opts.sourceRunId,
-      action: "retry",
+      action: APIHUB_AUDIT_ACTION_INGESTION_RUN_RETRY,
       metadata,
     });
   } catch (caught) {
