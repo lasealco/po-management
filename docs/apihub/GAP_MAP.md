@@ -19,7 +19,7 @@
 | Prisma: **mapping templates** | ✅ + audit, CRUD, diff | |
 | Prisma: **staging** | ✅ `ApiHubStagingBatch`, `ApiHubStagingRow`; `appliedAt` / `applySummary` | Materialize from succeeded analysis job; apply downstream; discard open batches |
 | Mapping engine + preview | ✅ | Export csv/json |
-| AI analysis job pipeline | ✅ | Heuristic + optional OpenAI; `outputProposal.llm`; **Save rules as template** via `POST /mapping-templates` + `sourceMappingAnalysisJobId` |
+| AI analysis job pipeline | ✅ | Heuristic + optional OpenAI; `outputProposal.llm`; **Save rules as template** via `POST /mapping-templates` + `sourceMappingAnalysisJobId`. Workspace **Recent jobs** list shows **`failed`** **`errorMessage`** preview. |
 | Deterministic **apply** (ingestion run) | ✅ | **P3:** optional `target` + rows; `matchKey` + **`writeMode`** (`create_only` / **`upsert`**) for ref keys; SO/PO/CT writers; `targetSummary.updated` when upsert; 409 `APPLY_DOWNSTREAM_FAILED` on failure |
 | Staging **apply** (domain) | ✅ | SO/PO/CT audit from mapped rows; cross-grants `org.orders` / `org.controltower` |
 | Background workers | 🟡 | **Cron** `GET/POST /api/cron/apihub-mapping-analysis-jobs` (Bearer `CRON_SECRET`, `vercel.json` every **10m** UTC on Pro): fails stale **`running`** ingestion runs → **`failed`** (`STALE_RUNNING`, `APIHUB_INGESTION_RUN_STALE_RUNNING_MS`, default 24h, cap 7d) so **`POST …/retry`** applies; **reclaims** stale mapping-analysis **`processing`** → **`queued`** (`APIHUB_MAPPING_ANALYSIS_STALE_PROCESSING_MS`); drains mapping-analysis **`queued`** via `processApiHubMappingAnalysisJob`. Mapping jobs also use `after()` on create. No Redis queue. |

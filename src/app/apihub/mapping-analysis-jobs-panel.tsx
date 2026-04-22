@@ -418,6 +418,14 @@ export function MappingAnalysisJobsPanel({ initialJobs, canView, canEdit }: Prop
                   <span className="font-mono text-xs text-zinc-500">{j.id.slice(0, 12)}…</span>
                   <span className="ml-2 font-medium text-zinc-900">{j.status}</span>
                   <span className="ml-2 text-xs text-zinc-500">{j.input.recordCount} records</span>
+                  {j.status === "failed" && j.errorMessage ? (
+                    <p
+                      className="mt-1 line-clamp-2 text-[11px] leading-snug text-red-700"
+                      title={j.errorMessage}
+                    >
+                      {j.errorMessage}
+                    </p>
+                  ) : null}
                 </button>
               </li>
             ))}
