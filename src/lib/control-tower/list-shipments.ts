@@ -403,6 +403,9 @@ export async function listControlTowerShipments(params: {
         { registeredPostalCode: contains },
         { registeredCountryCode: contains },
         { internalNotes: contains },
+        { paymentTermsLabel: contains },
+        { defaultIncoterm: contains },
+        { creditCurrency: contains },
       ],
     };
     const warehouseTextMatch: Prisma.WarehouseWhereInput = {
@@ -1115,6 +1118,7 @@ export async function listControlTowerShipments(params: {
                                         { code: contains },
                                         { countryCode: contains },
                                         { status: contains },
+                                        { baseCurrency: contains },
                                       ],
                                     },
                                   },

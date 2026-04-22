@@ -227,6 +227,8 @@ describe("listControlTowerShipments", () => {
     expect(dumped).toContain("forwarderOffice");
     expect(dumped).toContain("forwarderContact");
     expect(dumped).toContain("taxId");
+    expect(dumped).toContain("defaultIncoterm");
+    expect(dumped).toContain("baseCurrency");
     expect(dumped).toContain("cargoCommoditySummary");
     expect(dumped).toContain("cargoDimensionsText");
     expect(dumped).toContain("soNumber");
