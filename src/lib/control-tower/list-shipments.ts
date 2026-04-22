@@ -17,7 +17,9 @@ import {
   InvoiceAuditRollupOutcome,
   InvoiceIntakeStatus,
   InvoiceReviewDecision,
+  InventoryMovementType,
   LoadPlanStatus,
+  OutboundOrderStatus,
   PricingSnapshotSourceType,
   ProductDocumentKind,
   SalesOrderStatus,
@@ -40,6 +42,8 @@ import {
   TransportMode,
   WarehouseType,
   WarehouseZoneType,
+  WmsBillingInvoiceStatus,
+  WmsBillingProfileSource,
   WmsTaskStatus,
   WmsTaskType,
   WmsWaveStatus,
@@ -557,6 +561,18 @@ export async function listControlTowerShipments(params: {
     const crmQuoteStatusEnumMatch = (Object.values(CrmQuoteStatus) as CrmQuoteStatus[]).filter(
       (s) => s.toLowerCase() === qLower,
     );
+    const outboundOrderStatusEnumMatch = (
+      Object.values(OutboundOrderStatus) as OutboundOrderStatus[]
+    ).filter((s) => s.toLowerCase() === qLower);
+    const inventoryMovementTypeEnumMatch = (
+      Object.values(InventoryMovementType) as InventoryMovementType[]
+    ).filter((s) => s.toLowerCase() === qLower);
+    const wmsBillingProfileSourceEnumMatch = (
+      Object.values(WmsBillingProfileSource) as WmsBillingProfileSource[]
+    ).filter((s) => s.toLowerCase() === qLower);
+    const wmsBillingInvoiceStatusEnumMatch = (
+      Object.values(WmsBillingInvoiceStatus) as WmsBillingInvoiceStatus[]
+    ).filter((s) => s.toLowerCase() === qLower);
     const enumTokenOr: Prisma.ShipmentWhereInput[] = [
       ...shipmentStatusEnumMatch.map((status) => ({ status })),
       ...transportModeEnumMatch.flatMap((mode) => [
@@ -831,6 +847,22 @@ export async function listControlTowerShipments(params: {
                 OR: [
                   { rateLines: { some: { originScope: { is: { geographyType } } } } },
                   { rateLines: { some: { destinationScope: { is: { geographyType } } } } },
+                  {
+                    rateLines: {
+                      some: {
+                        originScope: { is: { members: { some: { memberType: geographyType } } } },
+                      },
+                    },
+                  },
+                  {
+                    rateLines: {
+                      some: {
+                        destinationScope: {
+                          is: { members: { some: { memberType: geographyType } } },
+                        },
+                      },
+                    },
+                  },
                   { chargeLines: { some: { geographyScope: { is: { geographyType } } } } },
                   { freeTimeRules: { some: { geographyScope: { is: { geographyType } } } } },
                 ],
@@ -851,6 +883,91 @@ export async function listControlTowerShipments(params: {
         { customerCrmAccount: { is: { quotes: { some: { status } } } } },
         { salesOrder: { is: { customerCrmAccount: { is: { quotes: { some: { status } } } } } } },
       ]),
+      ...outboundOrderStatusEnumMatch.map((status) => ({
+        items: {
+          some: {
+            orderItem: {
+              is: {
+                product: {
+                  is: {
+                    outboundOrderLines: {
+                      some: {
+                        outboundOrder: { is: { status } },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      })),
+      ...inventoryMovementTypeEnumMatch.flatMap((movementType) => [
+        {
+          items: {
+            some: {
+              orderItem: {
+                is: {
+                  product: {
+                    is: {
+                      inventoryMovements: { some: { movementType } },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        {
+          items: {
+            some: {
+              orderItem: {
+                is: {
+                  product: {
+                    is: {
+                      wmsBillingEvents: { some: { movementType } },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      ]),
+      ...wmsBillingProfileSourceEnumMatch.map((profileSource) => ({
+        items: {
+          some: {
+            orderItem: {
+              is: {
+                product: {
+                  is: {
+                    wmsBillingEvents: { some: { profileSource } },
+                  },
+                },
+              },
+            },
+          },
+        },
+      })),
+      ...wmsBillingInvoiceStatusEnumMatch.map((status) => ({
+        items: {
+          some: {
+            orderItem: {
+              is: {
+                product: {
+                  is: {
+                    wmsBillingEvents: {
+                      some: {
+                        invoiceRun: { is: { status } },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      })),
     ];
     const supplierPartyMatch: Prisma.SupplierWhereInput = {
       OR: [
