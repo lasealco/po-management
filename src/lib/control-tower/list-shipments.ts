@@ -4,6 +4,9 @@ import {
   ContainerSize,
   CrmAccountLifecycle,
   CrmAccountType,
+  CrmActivityType,
+  CrmOpportunityStage,
+  CrmQuoteStatus,
   CtAlertSeverity,
   CtAlertStatus,
   CtDocVisibility,
@@ -28,6 +31,7 @@ import {
   TariffApprovalStatus,
   TariffChargeFamily,
   TariffContractStatus,
+  TariffGeographyType,
   TariffLineRateType,
   TariffProviderType,
   TariffRuleType,
@@ -541,6 +545,18 @@ export async function listControlTowerShipments(params: {
     const productDocumentKindEnumMatch = (
       Object.values(ProductDocumentKind) as ProductDocumentKind[]
     ).filter((s) => s.toLowerCase() === qLower);
+    const tariffGeographyTypeEnumMatch = (
+      Object.values(TariffGeographyType) as TariffGeographyType[]
+    ).filter((s) => s.toLowerCase() === qLower);
+    const crmOpportunityStageEnumMatch = (
+      Object.values(CrmOpportunityStage) as CrmOpportunityStage[]
+    ).filter((s) => s.toLowerCase() === qLower);
+    const crmActivityTypeEnumMatch = (Object.values(CrmActivityType) as CrmActivityType[]).filter(
+      (s) => s.toLowerCase() === qLower,
+    );
+    const crmQuoteStatusEnumMatch = (Object.values(CrmQuoteStatus) as CrmQuoteStatus[]).filter(
+      (s) => s.toLowerCase() === qLower,
+    );
     const enumTokenOr: Prisma.ShipmentWhereInput[] = [
       ...shipmentStatusEnumMatch.map((status) => ({ status })),
       ...transportModeEnumMatch.flatMap((mode) => [
@@ -692,17 +708,36 @@ export async function listControlTowerShipments(params: {
           },
         },
       })),
-      ...tariffTransportModeEnumMatch.map((transportMode) => ({
-        tariffShipmentApplications: {
-          some: {
-            contractVersion: {
-              is: {
-                contractHeader: { is: { transportMode } },
+      ...tariffTransportModeEnumMatch.flatMap((transportMode) => [
+        {
+          tariffShipmentApplications: {
+            some: {
+              contractVersion: {
+                is: {
+                  contractHeader: { is: { transportMode } },
+                },
               },
             },
           },
         },
-      })),
+        {
+          tariffShipmentApplications: {
+            some: {
+              contractVersion: {
+                is: {
+                  chargeLines: {
+                    some: {
+                      normalizedChargeCode: {
+                        is: { transportMode },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      ]),
       ...splitProposalStatusEnumMatch.map((status) => ({
         order: {
           OR: [
@@ -788,6 +823,34 @@ export async function listControlTowerShipments(params: {
           },
         },
       })),
+      ...tariffGeographyTypeEnumMatch.map((geographyType) => ({
+        tariffShipmentApplications: {
+          some: {
+            contractVersion: {
+              is: {
+                OR: [
+                  { rateLines: { some: { originScope: { is: { geographyType } } } } },
+                  { rateLines: { some: { destinationScope: { is: { geographyType } } } } },
+                  { chargeLines: { some: { geographyScope: { is: { geographyType } } } } },
+                  { freeTimeRules: { some: { geographyScope: { is: { geographyType } } } } },
+                ],
+              },
+            },
+          },
+        },
+      })),
+      ...crmOpportunityStageEnumMatch.flatMap((stage) => [
+        { customerCrmAccount: { is: { opportunities: { some: { stage } } } } },
+        { salesOrder: { is: { customerCrmAccount: { is: { opportunities: { some: { stage } } } } } } },
+      ]),
+      ...crmActivityTypeEnumMatch.flatMap((type) => [
+        { customerCrmAccount: { is: { activities: { some: { type } } } } },
+        { salesOrder: { is: { customerCrmAccount: { is: { activities: { some: { type } } } } } } },
+      ]),
+      ...crmQuoteStatusEnumMatch.flatMap((status) => [
+        { customerCrmAccount: { is: { quotes: { some: { status } } } } },
+        { salesOrder: { is: { customerCrmAccount: { is: { quotes: { some: { status } } } } } } },
+      ]),
     ];
     const supplierPartyMatch: Prisma.SupplierWhereInput = {
       OR: [

@@ -438,6 +438,38 @@ describe("listControlTowerShipments", () => {
     });
     where = shipmentFindMany.mock.calls[21]![0].where as Prisma.ShipmentWhereInput;
     expect(JSON.stringify(where)).toContain("MSDS");
+
+    await listControlTowerShipments({
+      tenantId: "tenant-1",
+      ctx: ctxInternal,
+      query: { q: "PORT" },
+    });
+    where = shipmentFindMany.mock.calls[22]![0].where as Prisma.ShipmentWhereInput;
+    expect(JSON.stringify(where)).toContain("PORT");
+
+    await listControlTowerShipments({
+      tenantId: "tenant-1",
+      ctx: ctxInternal,
+      query: { q: "NEGOTIATION" },
+    });
+    where = shipmentFindMany.mock.calls[23]![0].where as Prisma.ShipmentWhereInput;
+    expect(JSON.stringify(where)).toContain("NEGOTIATION");
+
+    await listControlTowerShipments({
+      tenantId: "tenant-1",
+      ctx: ctxInternal,
+      query: { q: "MEETING" },
+    });
+    where = shipmentFindMany.mock.calls[24]![0].where as Prisma.ShipmentWhereInput;
+    expect(JSON.stringify(where)).toContain("MEETING");
+
+    await listControlTowerShipments({
+      tenantId: "tenant-1",
+      ctx: ctxInternal,
+      query: { q: "EXPIRED" },
+    });
+    where = shipmentFindMany.mock.calls[25]![0].where as Prisma.ShipmentWhereInput;
+    expect(JSON.stringify(where)).toContain("EXPIRED");
   });
 
   it("q enum token WARN matches severity on both ctAlerts and ctExceptions", async () => {
