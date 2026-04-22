@@ -1,11 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createTariffLegalEntity, getTariffLegalEntityForTenant } from "./legal-entities";
+import {
+  createTariffLegalEntity,
+  getTariffLegalEntityForTenant,
+  listTariffLegalEntitiesForTenant,
+  updateTariffLegalEntity,
+} from "./legal-entities";
 
 const prismaMock = vi.hoisted(() => ({
   tariffLegalEntity: {
     findFirst: vi.fn(),
+    findMany: vi.fn(),
     create: vi.fn(),
+    update: vi.fn(),
   },
 }));
 
@@ -68,5 +75,82 @@ describe("createTariffLegalEntity", () => {
         status: "ACTIVE",
       },
     });
+  });
+});
+
+describe("listTariffLegalEntitiesForTenant", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("caps take at 500 and requests one extra row for cursor detection", async () => {
+    prismaMock.tariffLegalEntity.findMany.mockResolvedValue([]);
+    await listTariffLegalEntitiesForTenant({ tenantId: "t1", take: 999 });
+    expect(prismaMock.tariffLegalEntity.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { tenantId: "t1" },
+        take: 501,
+        orderBy: [{ name: "asc" }, { id: "asc" }],
+      }),
+    );
+  });
+
+  it("adds status filter and cursor pagination when provided", async () => {
+    prismaMock.tariffLegalEntity.findMany.mockResolvedValue([]);
+    await listTariffLegalEntitiesForTenant({ tenantId: "t1", status: "INACTIVE", cursor: "after-me" });
+    expect(prismaMock.tariffLegalEntity.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { tenantId: "t1", status: "INACTIVE" },
+        cursor: { id: "after-me" },
+        skip: 1,
+      }),
+    );
+  });
+
+  it("returns nextCursor when more than take rows exist", async () => {
+    prismaMock.tariffLegalEntity.findMany.mockResolvedValue([
+      { id: "a", name: "A" },
+      { id: "b", name: "B" },
+      { id: "c", name: "C" },
+    ]);
+    const r = await listTariffLegalEntitiesForTenant({ tenantId: "t1", take: 2 });
+    expect(r.items).toHaveLength(2);
+    expect(r.items.map((x) => x.id)).toEqual(["a", "b"]);
+    expect(r.nextCursor).toBe("c");
+  });
+});
+
+describe("updateTariffLegalEntity", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    prismaMock.tariffLegalEntity.findFirst.mockResolvedValue({ id: "le1" });
+    prismaMock.tariffLegalEntity.update.mockResolvedValue({ id: "le1" });
+  });
+
+  it("loads by tenant then updates with trimmed normalized fields", async () => {
+    await updateTariffLegalEntity(
+      { tenantId: "t1", id: "le1" },
+      { name: "  New  ", code: null, countryCode: " fr ", baseCurrency: " usd " },
+    );
+    expect(prismaMock.tariffLegalEntity.findFirst).toHaveBeenCalledWith({
+      where: { id: "le1", tenantId: "t1" },
+    });
+    expect(prismaMock.tariffLegalEntity.update).toHaveBeenCalledWith({
+      where: { id: "le1" },
+      data: {
+        name: "New",
+        code: null,
+        countryCode: "FR",
+        baseCurrency: "USD",
+      },
+    });
+  });
+
+  it("propagates NOT_FOUND from get when entity is missing", async () => {
+    prismaMock.tariffLegalEntity.findFirst.mockResolvedValue(null);
+    await expect(
+      updateTariffLegalEntity({ tenantId: "t1", id: "gone" }, { name: "X" }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(prismaMock.tariffLegalEntity.update).not.toHaveBeenCalled();
   });
 });
