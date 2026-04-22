@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import Link from "next/link";
 import { Suspense, type ReactNode, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -118,13 +119,13 @@ function CtWorkbenchDemoTools({
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ action: "enrich_ct_demo_tracking", take: 180 }),
                 });
-                const payload = (await res.json()) as {
-                  error?: string;
+                const parsed: unknown = await res.json();
+                if (!res.ok) throw new Error(apiClientErrorMessage(parsed, "Could not enrich shipments."));
+                const payload = parsed as {
                   shipmentsUpdated?: number;
                   legsCreated?: number;
                   milestonesCreated?: number;
                 };
-                if (!res.ok) throw new Error(payload.error || "Could not enrich shipments.");
                 window.alert(
                   `Demo enrichment complete.\nShipments updated: ${payload.shipmentsUpdated ?? 0}\nLegs created: ${payload.legsCreated ?? 0}\nTracking milestones created: ${payload.milestonesCreated ?? 0}`,
                 );
@@ -150,14 +151,14 @@ function CtWorkbenchDemoTools({
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ action: "regenerate_ct_demo_timeline", take: 260 }),
                 });
-                const payload = (await res.json()) as {
-                  error?: string;
+                const parsed: unknown = await res.json();
+                if (!res.ok) throw new Error(apiClientErrorMessage(parsed, "Could not regenerate timeline."));
+                const payload = parsed as {
                   updated?: number;
                   onTime?: number;
                   atRisk?: number;
                   delayed?: number;
                 };
-                if (!res.ok) throw new Error(payload.error || "Could not regenerate timeline.");
                 window.alert(
                   `Timeline regenerated.\nShipments updated: ${payload.updated ?? 0}\nOn-time profile: ${payload.onTime ?? 0}\nAt-risk profile: ${payload.atRisk ?? 0}\nDelayed profile: ${payload.delayed ?? 0}`,
                 );
@@ -440,14 +441,14 @@ function ControlTowerWorkbenchInner({
       if (routeAction) sp.set("routeAction", routeAction);
       sp.set("take", routeAction ? "200" : "150");
       const res = await fetch(`/api/control-tower/shipments?${sp.toString()}`);
-      const data = (await res.json()) as {
+      const parsed: unknown = await res.json();
+      if (!res.ok) throw new Error(apiClientErrorMessage(parsed, res.statusText || "Request failed"));
+      if (myId !== workbenchRequestId.current) return;
+      const data = parsed as {
         shipments?: Row[];
-        error?: string;
         truncated?: boolean;
         listLimit?: number;
       };
-      if (!res.ok) throw new Error(data.error || res.statusText);
-      if (myId !== workbenchRequestId.current) return;
       setRows(data.shipments ?? []);
       setListTruncated(Boolean(data.truncated));
       setListLimit(typeof data.listLimit === "number" ? data.listLimit : null);
@@ -771,9 +772,9 @@ function ControlTowerWorkbenchInner({
           externalOrderRef: value,
         }),
       });
-      const payload = (await res.json()) as { error?: string };
+      const parsed: unknown = await res.json();
       if (!res.ok) {
-        window.alert(payload.error || "Could not save reference");
+        window.alert(apiClientErrorMessage(parsed, "Could not save reference"));
         return;
       }
       await load();
@@ -1097,8 +1098,8 @@ function ControlTowerWorkbenchInner({
                         body: JSON.stringify({ action: "delete_ct_filter", filterId: f.id }),
                       });
                       if (!res.ok) {
-                        const err = (await res.json()) as { error?: string };
-                        window.alert(err.error || "Delete failed");
+                        const err: unknown = await res.json();
+                        window.alert(apiClientErrorMessage(err, "Delete failed"));
                         return;
                       }
                       if (
@@ -1427,11 +1428,12 @@ function ControlTowerWorkbenchInner({
                   shipmentIds,
                 }),
               });
-              const payload = (await res.json()) as { error?: string; acknowledgedAlertCount?: number };
+              const parsed: unknown = await res.json();
               if (!res.ok) {
-                window.alert(payload.error || "Could not acknowledge alerts.");
+                window.alert(apiClientErrorMessage(parsed, "Could not acknowledge alerts."));
                 return;
               }
+              const payload = parsed as { acknowledgedAlertCount?: number };
               window.alert(`Acknowledged ${payload.acknowledgedAlertCount ?? 0} open alerts.`);
               setSelectedShipmentIds([]);
               await load();

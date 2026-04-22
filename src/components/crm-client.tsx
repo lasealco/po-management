@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+
 import { ActionButton } from "@/components/action-button";
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import { WorkflowHeader } from "@/components/workflow-header";
 
 type Summary = {
@@ -70,21 +72,27 @@ export function CrmClient({
   const load = useCallback(async () => {
     setError(null);
     try {
-      const [s, l, a, o] = await Promise.all([
-        fetch("/api/crm/summary").then((r) => r.json()),
-        fetch("/api/crm/leads").then((r) => r.json()),
-        fetch("/api/crm/accounts").then((r) => r.json()),
-        fetch("/api/crm/opportunities").then((r) => r.json()),
+      const [sRes, lRes, aRes, oRes] = await Promise.all([
+        fetch("/api/crm/summary"),
+        fetch("/api/crm/leads"),
+        fetch("/api/crm/accounts"),
+        fetch("/api/crm/opportunities"),
       ]);
-      if (s.error) throw new Error(s.error);
-      if (l.error) throw new Error(l.error);
-      if (a.error) throw new Error(a.error);
-      if (o.error) throw new Error(o.error);
-      setSummary(s);
-      setLeads(l.leads ?? []);
-      const acc = a.accounts ?? [];
+      const [s, l, a, o]: [unknown, unknown, unknown, unknown] = await Promise.all([
+        sRes.json(),
+        lRes.json(),
+        aRes.json(),
+        oRes.json(),
+      ]);
+      if (!sRes.ok) throw new Error(apiClientErrorMessage(s, "Failed to load summary"));
+      if (!lRes.ok) throw new Error(apiClientErrorMessage(l, "Failed to load leads"));
+      if (!aRes.ok) throw new Error(apiClientErrorMessage(a, "Failed to load accounts"));
+      if (!oRes.ok) throw new Error(apiClientErrorMessage(o, "Failed to load opportunities"));
+      setSummary(s as Summary);
+      setLeads((l as { leads?: LeadRow[] }).leads ?? []);
+      const acc = (a as { accounts?: AccountRow[] }).accounts ?? [];
       setAccounts(acc);
-      setOpportunities(o.opportunities ?? []);
+      setOpportunities((o as { opportunities?: OppRow[] }).opportunities ?? []);
       setOppAccountId((prev) => prev || acc[0]?.id || "");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load CRM");
@@ -106,8 +114,8 @@ export function CrmClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ companyName: leadCompany.trim() }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Save failed");
+      const data: unknown = await res.json();
+      if (!res.ok) throw new Error(apiClientErrorMessage(data, "Save failed"));
       setLeadCompany("");
       await load();
     } catch (err) {
@@ -128,8 +136,8 @@ export function CrmClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: accountName.trim() }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Save failed");
+      const data: unknown = await res.json();
+      if (!res.ok) throw new Error(apiClientErrorMessage(data, "Save failed"));
       setAccountName("");
       await load();
     } catch (err) {
@@ -154,8 +162,8 @@ export function CrmClient({
           stage: "IDENTIFIED",
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Save failed");
+      const data: unknown = await res.json();
+      if (!res.ok) throw new Error(apiClientErrorMessage(data, "Save failed"));
       setOppName("");
       await load();
     } catch (err) {
@@ -172,8 +180,8 @@ export function CrmClient({
       const res = await fetch(`/api/crm/leads/${leadId}/convert`, {
         method: "POST",
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Convert failed");
+      const data: unknown = await res.json();
+      if (!res.ok) throw new Error(apiClientErrorMessage(data, "Convert failed"));
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Convert failed");

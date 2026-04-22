@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
@@ -74,11 +75,12 @@ export function CrmOpportunityDetail({
     setError(null);
     try {
       const res = await fetch(`/api/crm/opportunities/${opportunityId}`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Load failed");
-      const o = data.opportunity as Opp;
+      const data: unknown = await res.json();
+      if (!res.ok) throw new Error(apiClientErrorMessage(data, "Load failed"));
+      const body = data as { opportunity: Opp; activities?: ActRow[] };
+      const o = body.opportunity;
       setOpportunity(o);
-      setActivities(data.activities ?? []);
+      setActivities(body.activities ?? []);
       setName(o.name);
       setStage(o.stage);
       setProbability(o.probability);
@@ -128,9 +130,9 @@ export function CrmOpportunityDetail({
           primaryContactId: primaryContactId.trim() || null,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Save failed");
-      setOpportunity(data.opportunity);
+      const data: unknown = await res.json();
+      if (!res.ok) throw new Error(apiClientErrorMessage(data, "Save failed"));
+      setOpportunity((data as { opportunity: Opp }).opportunity);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Save failed");
     } finally {

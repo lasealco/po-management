@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import { PLATFORM_HUB_PATH } from "@/lib/marketing-public-paths";
 
 function safeNextPath(raw: string | null): string {
@@ -25,10 +26,10 @@ export default function LoginPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
     });
-    const payload = (await res.json().catch(() => null)) as { error?: string } | null;
+    const payload: unknown = await res.json().catch(() => null);
     setBusy(false);
     if (!res.ok) {
-      setError(payload?.error ?? "Login failed.");
+      setError(apiClientErrorMessage(payload ?? {}, "Login failed."));
       return;
     }
     const next = safeNextPath(

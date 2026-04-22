@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
@@ -54,9 +55,9 @@ export function CrmQuoteDetail({
     setError(null);
     try {
       const res = await fetch(`/api/crm/quotes/${quoteId}`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Load failed");
-      const q = data.quote as Quote;
+      const data: unknown = await res.json();
+      if (!res.ok) throw new Error(apiClientErrorMessage(data, "Load failed"));
+      const q = (data as { quote: Quote }).quote;
       setQuote(q);
       setTitle(q.title);
       setStatus(q.status);
@@ -81,9 +82,9 @@ export function CrmQuoteDetail({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: title.trim(), status, notes: notes.trim() || null }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Save failed");
-      setQuote(data.quote);
+      const data: unknown = await res.json();
+      if (!res.ok) throw new Error(apiClientErrorMessage(data, "Save failed"));
+      setQuote((data as { quote: Quote }).quote);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Save failed");
     } finally {
@@ -106,8 +107,8 @@ export function CrmQuoteDetail({
           unitPrice: price,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Save failed");
+      const data: unknown = await res.json();
+      if (!res.ok) throw new Error(apiClientErrorMessage(data, "Save failed"));
       setDesc("");
       setQty("1");
       setPrice("");
@@ -126,8 +127,8 @@ export function CrmQuoteDetail({
       const res = await fetch(`/api/crm/quotes/${quoteId}/lines/${lineId}`, {
         method: "DELETE",
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Delete failed");
+      const data: unknown = await res.json();
+      if (!res.ok) throw new Error(apiClientErrorMessage(data, "Delete failed"));
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Delete failed");

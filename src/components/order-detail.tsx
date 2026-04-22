@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import { labelTariffShipmentApplicationSource } from "@/lib/tariff/tariff-shipment-application-labels";
 import { tariffContractVersionPath, tariffLaneRatingPath } from "@/lib/tariff/tariff-workbench-urls";
 import Link from "next/link";
@@ -297,15 +298,13 @@ export function OrderDetail({
   const load = useCallback(async () => {
     setError(null);
     const response = await fetch(`/api/orders/${orderId}`, { cache: "no-store" });
-    const payload = (await response.json()) as OrderDetailResponse & {
-      error?: string;
-    };
+    const parsed: unknown = await response.json();
     if (!response.ok) {
-      setError(payload.error ?? "Failed to load order.");
+      setError(apiClientErrorMessage(parsed, "Failed to load order."));
       setData(null);
       return;
     }
-    setData(payload);
+    setData(parsed as OrderDetailResponse);
   }, [orderId]);
 
   useEffect(() => {
@@ -449,9 +448,9 @@ export function OrderDetail({
           data.messageCapabilities.canPostInternal && newMessageInternal,
       }),
     });
-    const payload = (await res.json()) as { error?: string };
+    const parsed: unknown = await res.json();
     if (!res.ok) {
-      setError(payload.error ?? "Could not post message.");
+      setError(apiClientErrorMessage(parsed, "Could not post message."));
       setBusy(false);
       return;
     }
@@ -491,13 +490,13 @@ export function OrderDetail({
         notesToSupplier: notesToSupplier || null,
       }),
     });
-    const payload = (await res.json()) as OrderDetailResponse & { error?: string };
+    const parsed: unknown = await res.json();
     if (!res.ok) {
-      setError(payload.error ?? "Save failed.");
+      setError(apiClientErrorMessage(parsed, "Save failed."));
       setBusy(false);
       return;
     }
-    setData(payload);
+    setData(parsed as OrderDetailResponse);
     setBusy(false);
   }
 
@@ -521,9 +520,9 @@ export function OrderDetail({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ actionCode, comment }),
     });
-    const payload = (await response.json()) as { error?: string };
+    const parsed: unknown = await response.json();
     if (!response.ok) {
-      setError(payload.error ?? "Action failed.");
+      setError(apiClientErrorMessage(parsed, "Action failed."));
       setBusy(false);
       return;
     }
@@ -557,9 +556,9 @@ export function OrderDetail({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ lines }),
     });
-    const payload = (await response.json()) as { error?: string };
+    const parsed: unknown = await response.json();
     if (!response.ok) {
-      setError(payload.error ?? "Split proposal failed.");
+      setError(apiClientErrorMessage(parsed, "Split proposal failed."));
       setBusy(false);
       return;
     }
@@ -573,9 +572,9 @@ export function OrderDetail({
     const response = await fetch(`/api/split-proposals/${proposalId}/accept`, {
       method: "POST",
     });
-    const payload = (await response.json()) as { error?: string };
+    const parsed: unknown = await response.json();
     if (!response.ok) {
-      setError(payload.error ?? "Accept failed.");
+      setError(apiClientErrorMessage(parsed, "Accept failed."));
       setBusy(false);
       return;
     }
@@ -611,9 +610,9 @@ export function OrderDetail({
         lines,
       }),
     });
-    const payload = (await res.json()) as { error?: string };
+    const parsed: unknown = await res.json();
     if (!res.ok) {
-      setError(payload.error ?? "Could not create ASN.");
+      setError(apiClientErrorMessage(parsed, "Could not create ASN."));
       setBusy(false);
       return;
     }
@@ -654,9 +653,9 @@ export function OrderDetail({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ lines }),
     });
-    const payload = (await res.json()) as { error?: string };
+    const parsed: unknown = await res.json();
     if (!res.ok) {
-      setError(payload.error ?? "Could not receive shipment.");
+      setError(apiClientErrorMessage(parsed, "Could not receive shipment."));
       setBusy(false);
       return;
     }
@@ -701,9 +700,9 @@ export function OrderDetail({
     const res = await fetch(`/api/shipments/${shipmentId}/validate`, {
       method: "POST",
     });
-    const payload = (await res.json()) as { error?: string };
+    const parsed: unknown = await res.json();
     if (!res.ok) {
-      setError(payload.error ?? "Could not validate ASN.");
+      setError(apiClientErrorMessage(parsed, "Could not validate ASN."));
       setBusy(false);
       return;
     }
@@ -735,9 +734,9 @@ export function OrderDetail({
         notes: draft.notes || null,
       }),
     });
-    const payload = (await res.json()) as { error?: string };
+    const parsed: unknown = await res.json();
     if (!res.ok) {
-      setError(payload.error ?? "Could not save booking.");
+      setError(apiClientErrorMessage(parsed, "Could not save booking."));
       setBusy(false);
       return;
     }
@@ -759,9 +758,9 @@ export function OrderDetail({
         actualAt: todayIsoDate(),
       }),
     });
-    const payload = (await res.json()) as { error?: string };
+    const parsed: unknown = await res.json();
     if (!res.ok) {
-      setError(payload.error ?? "Could not post milestone.");
+      setError(apiClientErrorMessage(parsed, "Could not post milestone."));
       setBusy(false);
       return;
     }
@@ -775,9 +774,9 @@ export function OrderDetail({
     const response = await fetch(`/api/split-proposals/${proposalId}/reject`, {
       method: "POST",
     });
-    const payload = (await response.json()) as { error?: string };
+    const parsed: unknown = await response.json();
     if (!response.ok) {
-      setError(payload.error ?? "Reject failed.");
+      setError(apiClientErrorMessage(parsed, "Reject failed."));
       setBusy(false);
       return;
     }

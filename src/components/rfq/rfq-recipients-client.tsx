@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { RecordIdCopy } from "@/components/invoice-audit/record-id-copy";
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 
 export type SupplierOption = { id: string; name: string; code: string | null };
 
@@ -50,9 +51,9 @@ export function RfqRecipientsClient({
           contactEmail: contactEmail.trim() || null,
         }),
       });
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      const data: unknown = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error ?? "Could not add recipient.");
+        setError(apiClientErrorMessage(data, "Could not add recipient."));
         return;
       }
       setDisplayName("");
@@ -70,9 +71,9 @@ export function RfqRecipientsClient({
     setError(null);
     try {
       const res = await fetch(`/api/rfq/requests/${requestId}/recipients/${id}`, { method: "DELETE" });
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      const data: unknown = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error ?? "Remove failed.");
+        setError(apiClientErrorMessage(data, "Remove failed."));
         return;
       }
       router.refresh();
@@ -92,9 +93,9 @@ export function RfqRecipientsClient({
           metadata: { stub: true, note: "Mailbox integration not enabled — status only." },
         }),
       });
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      const data: unknown = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error ?? "Update failed.");
+        setError(apiClientErrorMessage(data, "Update failed."));
         return;
       }
       router.refresh();

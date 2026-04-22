@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 
 import { DemoSeedCopyBlock } from "@/components/invoice-audit/demo-seed-copy-block";
 import { RecordIdCopy } from "@/components/invoice-audit/record-id-copy";
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import { formatInvoiceAuditApiError } from "@/lib/invoice-audit/invoice-audit-api-client-error";
 import { INVOICE_AUDIT_DEMO_SEED_CLI } from "@/lib/invoice-audit/invoice-audit-demo-constants";
 
@@ -54,16 +55,19 @@ export function InvoiceAuditNewClient(props: { initialSnapshotId?: string }) {
       setSnapshotOptionsError(null);
       try {
         const res = await fetch("/api/invoice-audit/pricing-snapshot-options");
-        const data = (await res.json().catch(() => ({}))) as {
-          error?: string;
-          snapshots?: SnapshotOption[];
-        };
+        const data: unknown = await res.json().catch(() => ({}));
         if (cancelled) return;
         if (!res.ok) {
-          setSnapshotOptionsError(data.error ?? `Could not load snapshots (${res.status}). Paste an id manually.`);
+          setSnapshotOptionsError(
+            apiClientErrorMessage(
+              data,
+              `Could not load snapshots (${res.status}). Paste an id manually.`,
+            ),
+          );
           return;
         }
-        setSnapshotOptions(Array.isArray(data.snapshots) ? data.snapshots : []);
+        const body = data as { snapshots?: SnapshotOption[] };
+        setSnapshotOptions(Array.isArray(body.snapshots) ? body.snapshots : []);
       } finally {
         if (!cancelled) setSnapshotsLoading(false);
       }

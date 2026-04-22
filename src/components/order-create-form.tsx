@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import Link from "next/link";
 import { startTransition, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -341,10 +342,11 @@ export function OrderCreateForm({
         items: payloadLines,
       }),
     });
-    const payload = (await response.json()) as { id?: string; error?: string };
+    const parsed: unknown = await response.json();
     setBusy(false);
+    const payload = parsed as { id?: string };
     if (!response.ok || !payload.id) {
-      setError(payload.error ?? "Could not create order.");
+      setError(apiClientErrorMessage(parsed, "Could not create order."));
       return;
     }
     if (mode === "send" && canSendDirect) {
@@ -354,8 +356,8 @@ export function OrderCreateForm({
         body: JSON.stringify({ actionCode: "send_to_supplier" }),
       });
       if (!sendRes.ok) {
-        const sendPayload = (await sendRes.json()) as { error?: string };
-        setError(sendPayload.error ?? "Order saved but could not send.");
+        const sendParsed: unknown = await sendRes.json();
+        setError(apiClientErrorMessage(sendParsed, "Order saved but could not send."));
       }
     }
     router.push(`/orders/${payload.id}`);
@@ -372,9 +374,10 @@ export function OrderCreateForm({
         type: newWarehouseType,
       }),
     });
-    const payload = (await res.json()) as { id?: string; error?: string };
+    const parsed: unknown = await res.json();
+    const payload = parsed as { id?: string };
     if (!res.ok || !payload.id) {
-      setError(payload.error ?? "Could not create office/CFS.");
+      setError(apiClientErrorMessage(parsed, "Could not create office/CFS."));
       return;
     }
     router.refresh();
@@ -392,12 +395,12 @@ export function OrderCreateForm({
         supplierIds: [supplierId],
       }),
     });
-    const payload = (await res.json()) as {
+    const parsed: unknown = await res.json();
+    const payload = parsed as {
       product?: { id: string; name: string; productCode: string | null };
-      error?: string;
     };
     if (!res.ok || !payload.product) {
-      setError(payload.error ?? "Could not create product.");
+      setError(apiClientErrorMessage(parsed, "Could not create product."));
       return;
     }
     setProductOptions((prev) => [

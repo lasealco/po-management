@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 
 import type { CockpitWeekPair, ReportingCockpitSnapshot } from "@/lib/reporting/cockpit-types";
@@ -185,10 +186,11 @@ export function ReportingCockpitBoard({
     }
     try {
       const res = await fetch("/api/reporting/cockpit");
-      const j = (await res.json()) as { snapshot?: ReportingCockpitSnapshot; error?: string };
-      if (!res.ok) throw new Error(j.error || res.statusText);
-      if (!j.snapshot) throw new Error("No snapshot returned.");
-      setData(j.snapshot);
+      const j: unknown = await res.json();
+      if (!res.ok) throw new Error(apiClientErrorMessage(j, res.statusText || "Request failed"));
+      const body = j as { snapshot?: ReportingCockpitSnapshot };
+      if (!body.snapshot) throw new Error("No snapshot returned.");
+      setData(body.snapshot);
       const now = Date.now();
       setNowMs(now);
       setRefreshErr(null);
@@ -338,9 +340,9 @@ export function ReportingCockpitBoard({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question: question.trim() || undefined }),
       });
-      const data = (await res.json()) as { insight?: string; error?: string };
-      if (!res.ok) throw new Error(data.error || res.statusText);
-      setInsightText(data.insight ?? "");
+      const data: unknown = await res.json();
+      if (!res.ok) throw new Error(apiClientErrorMessage(data, res.statusText || "Request failed"));
+      setInsightText((data as { insight?: string }).insight ?? "");
       setInsightRevealId((n) => n + 1);
     } catch (e) {
       setInsightErr(e instanceof Error ? e.message : "Insight failed.");

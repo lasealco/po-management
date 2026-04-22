@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ActionButton } from "@/components/action-button";
@@ -63,10 +64,10 @@ export function SupplierCreateForm({
         srmCategory,
       }),
     });
-    const payload = (await res.json()) as { error?: string };
+    const payload: unknown = await res.json();
     if (!res.ok) {
       setBusy(false);
-      setError(payload.error ?? "Failed.");
+      setError(apiClientErrorMessage(payload, "Failed."));
       return;
     }
     setName("");

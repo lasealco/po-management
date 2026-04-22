@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
@@ -55,9 +56,9 @@ export function CrmLeadDetail({
     setError(null);
     try {
       const res = await fetch(`/api/crm/leads/${leadId}`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Load failed");
-      const l = data.lead as Lead;
+      const data: unknown = await res.json();
+      if (!res.ok) throw new Error(apiClientErrorMessage(data, "Load failed"));
+      const l = (data as { lead: Lead }).lead;
       setLead(l);
       setCompanyName(l.companyName);
       setContactFirstName(l.contactFirstName ?? "");
@@ -135,9 +136,9 @@ export function CrmLeadDetail({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Save failed");
-      setLead(data.lead);
+      const data: unknown = await res.json();
+      if (!res.ok) throw new Error(apiClientErrorMessage(data, "Save failed"));
+      setLead((data as { lead: Lead }).lead);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Save failed");
     } finally {
@@ -158,11 +159,12 @@ export function CrmLeadDetail({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Convert failed");
+      const data: unknown = await res.json();
+      if (!res.ok) throw new Error(apiClientErrorMessage(data, "Convert failed"));
       await load();
-      if (data.account?.id) {
-        window.location.href = `/crm/accounts/${data.account.id}`;
+      const acc = (data as { account?: { id: string } }).account;
+      if (acc?.id) {
+        window.location.href = `/crm/accounts/${acc.id}`;
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Convert failed");

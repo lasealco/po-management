@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import type { InventoryMovementType } from "@prisma/client";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -440,11 +441,12 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
       }
       const url = params.toString() ? `/api/wms?${params.toString()}` : "/api/wms";
       const res = await fetch(url, { cache: "no-store" });
-      const payload = (await res.json()) as WmsData & { error?: string };
+      const parsed: unknown = await res.json();
       if (!res.ok) {
-        setError(payload.error ?? "Could not load WMS.");
+        setError(apiClientErrorMessage(parsed, "Could not load WMS."));
         return;
       }
+      const payload = parsed as WmsData;
       setData(payload);
       setLastRefreshedAt(new Date().toISOString());
       setSelectedWarehouseId((prev) => {
@@ -715,11 +717,12 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      const payload = (await res.json()) as { error?: string; item?: SavedLedgerView };
+      const parsed: unknown = await res.json();
       if (!res.ok) {
-        setSavedViewsError(payload.error ?? "Could not create saved view.");
+        setSavedViewsError(apiClientErrorMessage(parsed, "Could not create saved view."));
         return;
       }
+      const payload = parsed as { item?: SavedLedgerView };
       setNewSavedViewName("");
       await loadSavedViews();
       if (payload.item?.id) setSelectedSavedViewId(payload.item.id);
@@ -734,9 +737,9 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
       const res = await fetch(`/api/wms/saved-ledger-views/${encodeURIComponent(viewId)}`, {
         method: "DELETE",
       });
-      const payload = (await res.json()) as { error?: string };
+      const parsed: unknown = await res.json();
       if (!res.ok) {
-        setSavedViewsError(payload.error ?? "Could not delete saved view.");
+        setSavedViewsError(apiClientErrorMessage(parsed, "Could not delete saved view."));
         return;
       }
       if (selectedSavedViewId === viewId) setSelectedSavedViewId("");
@@ -754,9 +757,9 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    const payload = (await res.json()) as { error?: string };
+    const parsed: unknown = await res.json();
     if (!res.ok) {
-      setError(payload.error ?? "WMS action failed.");
+      setError(apiClientErrorMessage(parsed, "WMS action failed."));
       setBusy(false);
       return;
     }

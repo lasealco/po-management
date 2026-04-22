@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import { useEffect, useMemo, useState } from "react";
 
 export type CtExceptionCodeRow = {
@@ -41,9 +42,9 @@ export function SettingsCtExceptionCodesClient({ initialCodes, canEdit }: Props)
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "upsert_ct_exception_code", ...body }),
     });
-    const j = (await res.json()) as { error?: string; row?: CtExceptionCodeRow & { defaultSeverity: string } };
-    if (!res.ok) throw new Error(j.error || res.statusText);
-    return j.row!;
+    const j: unknown = await res.json();
+    if (!res.ok) throw new Error(apiClientErrorMessage(j, res.statusText || "Request failed"));
+    return (j as { row?: CtExceptionCodeRow & { defaultSeverity: string } }).row!;
   }
 
   async function saveRow(r: CtExceptionCodeRow, draft: Partial<CtExceptionCodeRow>) {

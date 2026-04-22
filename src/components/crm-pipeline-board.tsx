@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -36,9 +37,9 @@ export function CrmPipelineBoard() {
     setError(null);
     try {
       const res = await fetch("/api/crm/opportunities");
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Failed to load");
-      setOpportunities(data.opportunities ?? []);
+      const data: unknown = await res.json();
+      if (!res.ok) throw new Error(apiClientErrorMessage(data, "Failed to load"));
+      setOpportunities((data as { opportunities?: Opp[] }).opportunities ?? []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load");
     }

@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -25,13 +26,14 @@ export function SettingsOrganizationForm({ initialName, slug }: Props) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name }),
     });
-    const payload = (await res.json()) as { tenant?: { name: string }; error?: string };
+    const payload: unknown = await res.json();
     setBusy(false);
     if (!res.ok) {
-      setError(payload.error ?? "Update failed.");
+      setError(apiClientErrorMessage(payload, "Update failed."));
       return;
     }
-    if (payload.tenant) setName(payload.tenant.name);
+    const body = payload as { tenant?: { name: string } };
+    if (body.tenant) setName(body.tenant.name);
     setMessage("Saved.");
     router.refresh();
   }

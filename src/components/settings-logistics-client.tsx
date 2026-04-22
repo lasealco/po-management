@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -46,12 +47,13 @@ export function SettingsLogisticsClient({
     if (q.trim()) params.set("q", q.trim());
     if (type) params.set("type", type);
     const res = await fetch(`/api/settings/location-codes?${params.toString()}`);
-    const payload = (await res.json()) as { rows?: typeof codes; error?: string };
+    const payload: unknown = await res.json();
     if (!res.ok) {
-      setError(payload.error ?? "Search failed.");
+      setError(apiClientErrorMessage(payload, "Search failed."));
       return;
     }
-    setCodes(payload.rows ?? []);
+    const body = payload as { rows?: typeof codes };
+    setCodes(body.rows ?? []);
   }
 
   async function importFromWeb() {
@@ -62,10 +64,10 @@ export function SettingsLogisticsClient({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "import_web" }),
     });
-    const payload = (await res.json()) as { error?: string };
+    const payload: unknown = await res.json();
     setBusy(false);
     if (!res.ok) {
-      setError(payload.error ?? "Import failed.");
+      setError(apiClientErrorMessage(payload, "Import failed."));
       return;
     }
     await searchCodes();
@@ -85,10 +87,10 @@ export function SettingsLogisticsClient({
         countryCode: newCountry.trim().toUpperCase(),
       }),
     });
-    const payload = (await res.json()) as { error?: string };
+    const payload: unknown = await res.json();
     setBusy(false);
     if (!res.ok) {
-      setError(payload.error ?? "Save failed.");
+      setError(apiClientErrorMessage(payload, "Save failed."));
       return;
     }
     setNewCode("");
@@ -103,9 +105,9 @@ export function SettingsLogisticsClient({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isActive }),
     });
-    const payload = (await res.json()) as { error?: string };
+    const payload: unknown = await res.json();
     if (!res.ok) {
-      setError(payload.error ?? "Update failed.");
+      setError(apiClientErrorMessage(payload, "Update failed."));
       return;
     }
     setCodes((prev) => prev.map((row) => (row.id === id ? { ...row, isActive } : row)));

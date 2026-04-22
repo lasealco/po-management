@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -108,27 +109,27 @@ export function SettingsUsersClient({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    const data = (await res.json()) as {
+    const data: unknown = await res.json();
+    setSavingId(null);
+    if (!res.ok) {
+      setError(apiClientErrorMessage(data, "Save failed."));
+      return;
+    }
+    const body = data as {
       user?: {
         id: string;
         name: string;
         isActive: boolean;
         roles: SettingsUserRow["roles"];
       };
-      error?: string;
     };
-    setSavingId(null);
-    if (!res.ok) {
-      setError(data.error ?? "Save failed.");
-      return;
-    }
-    if (data.user) {
-      const roles = data.user.roles ?? [];
+    if (body.user) {
+      const roles = body.user.roles ?? [];
       setBaseline((prev) => ({
         ...prev,
         [id]: {
-          name: data.user!.name,
-          isActive: data.user!.isActive,
+          name: body.user!.name,
+          isActive: body.user!.isActive,
           roleKey: roleIdsSignature(roles.map((r) => r.id)),
         },
       }));
@@ -137,8 +138,8 @@ export function SettingsUsersClient({
           r.id === id
             ? {
                 ...r,
-                name: data.user!.name,
-                isActive: data.user!.isActive,
+                name: body.user!.name,
+                isActive: body.user!.isActive,
                 roles,
               }
             : r,
@@ -160,10 +161,10 @@ export function SettingsUsersClient({
         password: createPassword,
       }),
     });
-    const data = (await res.json().catch(() => null)) as { error?: string } | null;
+    const data: unknown = await res.json().catch(() => null);
     setCreating(false);
     if (!res.ok) {
-      setError(data?.error ?? "Create user failed.");
+      setError(apiClientErrorMessage(data ?? {}, "Create user failed."));
       return;
     }
     setCreateEmail("");
@@ -182,10 +183,10 @@ export function SettingsUsersClient({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ password }),
     });
-    const data = (await res.json().catch(() => null)) as { error?: string } | null;
+    const data: unknown = await res.json().catch(() => null);
     setSavingId(null);
     if (!res.ok) {
-      setError(data?.error ?? "Password update failed.");
+      setError(apiClientErrorMessage(data ?? {}, "Password update failed."));
       return;
     }
   }

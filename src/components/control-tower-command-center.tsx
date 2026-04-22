@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { SearchableSelectField } from "@/components/searchable-select-field";
@@ -224,13 +225,13 @@ export function ControlTowerCommandCenter({
       }
       sp.set("take", "150");
       const res = await fetch(`/api/control-tower/shipments?${sp.toString()}`);
-      const data = (await res.json()) as {
+      const parsed: unknown = await res.json();
+      if (!res.ok) throw new Error(apiClientErrorMessage(parsed, res.statusText || "Request failed"));
+      const data = parsed as {
         shipments?: Row[];
-        error?: string;
         truncated?: boolean;
         listLimit?: number;
       };
-      if (!res.ok) throw new Error(data.error || res.statusText);
       const list = data.shipments ?? [];
       setRows(list);
       setListTruncated(Boolean(data.truncated));

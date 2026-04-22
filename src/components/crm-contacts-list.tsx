@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
@@ -21,9 +22,9 @@ export function CrmContactsList() {
     setError(null);
     try {
       const res = await fetch("/api/crm/contacts");
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Failed to load");
-      setContacts(data.contacts ?? []);
+      const data: unknown = await res.json();
+      if (!res.ok) throw new Error(apiClientErrorMessage(data, "Failed to load"));
+      setContacts((data as { contacts?: ContactRow[] }).contacts ?? []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load");
     }

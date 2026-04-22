@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
 import { SearchableSelectField } from "@/components/searchable-select-field";
@@ -208,24 +209,20 @@ export function ProductCatalogForm({
       body: JSON.stringify(body),
     });
 
-    const payload = (await response.json()) as ProductPayload;
-
-    if (!response.ok || "error" in payload) {
+    const payload: unknown = await response.json();
+    const fallback =
+      mode === "create" ? "Failed to create product." : "Failed to update product.";
+    if (!response.ok || (typeof payload === "object" && payload !== null && "error" in payload)) {
       setBusy(false);
-      setErrorMessage(
-        "error" in payload
-          ? payload.error
-          : mode === "create"
-            ? "Failed to create product."
-            : "Failed to update product.",
-      );
+      setErrorMessage(apiClientErrorMessage(payload, fallback));
       return;
     }
 
+    const saved = payload as Extract<ProductPayload, { product: unknown }>;
     setSuccessMessage(
       mode === "create"
-        ? `Product "${payload.product.productCode ?? payload.product.name}" created.`
-        : `Product "${payload.product.productCode ?? payload.product.name}" saved.`,
+        ? `Product "${saved.product.productCode ?? saved.product.name}" created.`
+        : `Product "${saved.product.productCode ?? saved.product.name}" saved.`,
     );
     setBusy(false);
     onSuccess?.();
@@ -277,14 +274,10 @@ export function ProductCatalogForm({
     const response = await fetch(`/api/products/${productId}`, {
       method: "DELETE",
     });
-    const payload = (await response.json()) as {
-      error?: string;
-      deactivated?: boolean;
-      deleted?: boolean;
-    };
+    const payload: unknown = await response.json();
     if (!response.ok) {
       setBusy(false);
-      setErrorMessage(payload.error ?? "Remove failed.");
+      setErrorMessage(apiClientErrorMessage(payload, "Remove failed."));
       return;
     }
     router.push("/products");
@@ -301,12 +294,13 @@ export function ProductCatalogForm({
         method: "POST",
         body: fd,
       });
-      const payload = (await res.json()) as { url?: string; error?: string };
+      const payload: unknown = await res.json();
       if (!res.ok) {
-        setImageError(payload.error ?? "Upload failed.");
+        setImageError(apiClientErrorMessage(payload, "Upload failed."));
         return;
       }
-      if (payload.url) setPrimaryImageUrl(payload.url);
+      const body = payload as { url?: string };
+      if (body.url) setPrimaryImageUrl(body.url);
     } catch {
       setImageError("Upload failed.");
     } finally {

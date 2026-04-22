@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
@@ -903,19 +904,17 @@ export function ControlTowerDashboardWidgetModal(props: {
           question: insightQuestion.trim() || undefined,
         }),
       });
-      const data = (await res.json()) as {
-        insight?: string;
-        error?: string;
-        runSummary?: ReportInsightRunSummary;
-      };
+      const data: unknown = await res.json();
       if (!res.ok) {
+        const body = data as { runSummary?: ReportInsightRunSummary };
         setInsightText(null);
-        setInsightRunSummary(data.runSummary ?? null);
-        setInsightErr(data.error || res.statusText);
+        setInsightRunSummary(body.runSummary ?? null);
+        setInsightErr(apiClientErrorMessage(data, res.statusText || "Request failed"));
         return;
       }
-      setInsightText(data.insight ?? "");
-      setInsightRunSummary(data.runSummary ?? null);
+      const body = data as { insight?: string; runSummary?: ReportInsightRunSummary };
+      setInsightText(body.insight ?? "");
+      setInsightRunSummary(body.runSummary ?? null);
     } catch (e) {
       setInsightErr(e instanceof Error ? e.message : "Insight failed.");
       setInsightText(null);

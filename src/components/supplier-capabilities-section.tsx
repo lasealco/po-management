@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -48,14 +49,15 @@ export function SupplierCapabilitiesSection({
         notes: nNotes.trim() || null,
       }),
     });
-    const payload = (await res.json()) as { error?: string; capability?: SupplierCapabilityRow };
+    const payload: unknown = await res.json();
     if (!res.ok) {
       setBusy(false);
-      setError(payload.error ?? "Save failed.");
+      setError(apiClientErrorMessage(payload, "Save failed."));
       return;
     }
-    if (payload.capability) {
-      setRows((r) => [...r, payload.capability!]);
+    const body = payload as { capability?: SupplierCapabilityRow };
+    if (body.capability) {
+      setRows((r) => [...r, body.capability!]);
     }
     setNMode("");
     setNSubMode("");
@@ -84,14 +86,15 @@ export function SupplierCapabilitiesSection({
         notes: draft.notes,
       }),
     });
-    const payload = (await res.json()) as { error?: string; capability?: SupplierCapabilityRow };
+    const payload: unknown = await res.json();
     if (!res.ok) {
       setBusy(false);
-      setError(payload.error ?? "Update failed.");
+      setError(apiClientErrorMessage(payload, "Update failed."));
       return;
     }
-    if (payload.capability) {
-      setRows((prev) => prev.map((x) => (x.id === id ? payload.capability! : x)));
+    const body = payload as { capability?: SupplierCapabilityRow };
+    if (body.capability) {
+      setRows((prev) => prev.map((x) => (x.id === id ? body.capability! : x)));
     }
     setEditingId(null);
     setDraft({});
@@ -106,9 +109,9 @@ export function SupplierCapabilitiesSection({
       method: "DELETE",
     });
     if (!res.ok) {
-      const payload = (await res.json()) as { error?: string };
+      const payload: unknown = await res.json();
       setBusy(false);
-      setError(payload.error ?? "Delete failed.");
+      setError(apiClientErrorMessage(payload, "Delete failed."));
       return;
     }
     setRows((prev) => prev.filter((x) => x.id !== id));

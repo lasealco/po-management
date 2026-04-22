@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import { useCallback, useEffect, useState } from "react";
 
 import { REFERENCE_MACRO_REGIONS } from "@/lib/reference-data/macro-regions";
@@ -62,19 +63,19 @@ export function SettingsReferenceDataClient({
     try {
       if (tab === "countries") {
         const res = await fetch(`/api/settings/reference-countries?${sp}`);
-        const data = (await res.json()) as { rows?: CountryRow[]; error?: string };
-        if (!res.ok) throw new Error(data.error || res.statusText);
-        setCountries(data.rows ?? []);
+        const data: unknown = await res.json();
+        if (!res.ok) throw new Error(apiClientErrorMessage(data, res.statusText || "Load failed"));
+        setCountries((data as { rows?: CountryRow[] }).rows ?? []);
       } else if (tab === "ocean") {
         const res = await fetch(`/api/settings/reference-ocean-carriers?${sp}`);
-        const data = (await res.json()) as { rows?: OceanRow[]; error?: string };
-        if (!res.ok) throw new Error(data.error || res.statusText);
-        setOcean(data.rows ?? []);
+        const data: unknown = await res.json();
+        if (!res.ok) throw new Error(apiClientErrorMessage(data, res.statusText || "Load failed"));
+        setOcean((data as { rows?: OceanRow[] }).rows ?? []);
       } else {
         const res = await fetch(`/api/settings/reference-airlines?${sp}`);
-        const data = (await res.json()) as { rows?: AirlineRow[]; error?: string };
-        if (!res.ok) throw new Error(data.error || res.statusText);
-        setAirlines(data.rows ?? []);
+        const data: unknown = await res.json();
+        if (!res.ok) throw new Error(apiClientErrorMessage(data, res.statusText || "Load failed"));
+        setAirlines((data as { rows?: AirlineRow[] }).rows ?? []);
       }
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Load failed");
@@ -109,9 +110,9 @@ export function SettingsReferenceDataClient({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(patch),
     });
-    const data = (await res.json()) as { error?: string };
+    const data: unknown = await res.json();
     if (!res.ok) {
-      window.alert(data.error || "Update failed");
+      window.alert(apiClientErrorMessage(data, "Update failed"));
       return;
     }
     void load();
@@ -124,9 +125,9 @@ export function SettingsReferenceDataClient({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(patch),
     });
-    const data = (await res.json()) as { error?: string };
+    const data: unknown = await res.json();
     if (!res.ok) {
-      window.alert(data.error || "Update failed");
+      window.alert(apiClientErrorMessage(data, "Update failed"));
       return;
     }
     void load();
@@ -143,9 +144,9 @@ export function SettingsReferenceDataClient({
         notes: newOcean.notes || undefined,
       }),
     });
-    const data = (await res.json()) as { error?: string };
+    const data: unknown = await res.json();
     if (!res.ok) {
-      window.alert(data.error || "Create failed");
+      window.alert(apiClientErrorMessage(data, "Create failed"));
       return;
     }
     setNewOcean({ scac: "", name: "", notes: "" });
@@ -165,9 +166,9 @@ export function SettingsReferenceDataClient({
         notes: newAir.notes || undefined,
       }),
     });
-    const data = (await res.json()) as { error?: string };
+    const data: unknown = await res.json();
     if (!res.ok) {
-      window.alert(data.error || "Create failed");
+      window.alert(apiClientErrorMessage(data, "Create failed"));
       return;
     }
     setNewAir({ iataCode: "", icaoCode: "", awbPrefix3: "", name: "", notes: "" });
@@ -186,9 +187,9 @@ export function SettingsReferenceDataClient({
         regionCode: newCountry.regionCode || undefined,
       }),
     });
-    const data = (await res.json()) as { error?: string };
+    const data: unknown = await res.json();
     if (!res.ok) {
-      window.alert(data.error || "Create failed");
+      window.alert(apiClientErrorMessage(data, "Create failed"));
       return;
     }
     setNewCountry({ isoAlpha2: "", isoAlpha3: "", name: "", regionCode: "" });

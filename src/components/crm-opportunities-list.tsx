@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import {
   buildOpportunitiesListSearch,
   parseOpportunitiesListQuery,
@@ -87,9 +88,9 @@ export function CrmOpportunitiesList() {
     setLoading(true);
     try {
       const res = await fetch("/api/crm/opportunities");
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Failed to load");
-      setRows(data.opportunities ?? []);
+      const data: unknown = await res.json();
+      if (!res.ok) throw new Error(apiClientErrorMessage(data, "Failed to load"));
+      setRows((data as { opportunities?: OppRow[] }).opportunities ?? []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load");
     } finally {

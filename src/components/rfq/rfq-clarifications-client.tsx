@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { RecordIdCopy } from "@/components/invoice-audit/record-id-copy";
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 
 export type ClarificationRow = {
   id: string;
@@ -44,9 +45,9 @@ export function RfqClarificationsClient({
               : undefined,
         }),
       });
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      const data: unknown = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error ?? "Could not post message.");
+        setError(apiClientErrorMessage(data, "Could not post message."));
         return;
       }
       setBody("");

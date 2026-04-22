@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { RecordIdCopy } from "@/components/invoice-audit/record-id-copy";
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 
 export type ResponsePanelRow = {
   recipientId: string;
@@ -35,13 +36,14 @@ export function RfqResponsesPanelClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ recipientId }),
       });
-      const data = (await res.json().catch(() => ({}))) as { error?: string; response?: { id: string } };
+      const data: unknown = await res.json().catch(() => ({}));
       if (!res.ok) {
-        window.alert(data.error ?? "Failed");
+        window.alert(apiClientErrorMessage(data, "Failed"));
         return;
       }
-      if (data.response?.id) {
-        router.push(`/rfq/requests/${requestId}/responses/${data.response.id}/edit`);
+      const body = data as { response?: { id: string } };
+      if (body.response?.id) {
+        router.push(`/rfq/requests/${requestId}/responses/${body.response.id}/edit`);
       }
     } finally {
       setPendingId(null);
@@ -56,9 +58,9 @@ export function RfqResponsesPanelClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
       });
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      const data: unknown = await res.json().catch(() => ({}));
       if (!res.ok) {
-        window.alert(data.error ?? "Review update failed");
+        window.alert(apiClientErrorMessage(data, "Review update failed"));
         return;
       }
       router.refresh();

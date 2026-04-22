@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { colorFor } from "@/components/control-tower-dashboard-chart-kit";
@@ -575,9 +576,9 @@ export function ControlTowerReportBuilder({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ config: toRunPayload(config) }),
       });
-      const data = (await res.json()) as RunResult & { error?: string };
-      if (!res.ok) throw new Error(data.error || res.statusText);
-      setResult(data);
+      const data: unknown = await res.json();
+      if (!res.ok) throw new Error(apiClientErrorMessage(data, res.statusText || "Request failed"));
+      setResult(data as RunResult);
 
       const shifted = compareRange(config);
       if (shifted) {
@@ -620,19 +621,17 @@ export function ControlTowerReportBuilder({
           question: insightQuestion.trim() || undefined,
         }),
       });
-      const data = (await res.json()) as {
-        insight?: string;
-        error?: string;
-        runSummary?: ReportInsightRunSummary;
-      };
+      const data: unknown = await res.json();
       if (!res.ok) {
+        const body = data as { runSummary?: ReportInsightRunSummary };
         setInsightText(null);
-        setInsightRunSummary(data.runSummary ?? null);
-        setInsightErr(data.error || res.statusText);
+        setInsightRunSummary(body.runSummary ?? null);
+        setInsightErr(apiClientErrorMessage(data, res.statusText || "Request failed"));
         return;
       }
-      setInsightText(data.insight ?? "");
-      setInsightRunSummary(data.runSummary ?? null);
+      const body = data as { insight?: string; runSummary?: ReportInsightRunSummary };
+      setInsightText(body.insight ?? "");
+      setInsightRunSummary(body.runSummary ?? null);
     } catch (e) {
       setInsightErr(e instanceof Error ? e.message : "Insight failed.");
       setInsightText(null);
@@ -660,8 +659,8 @@ export function ControlTowerReportBuilder({
           isShared: saveAsShared,
         }),
       });
-      const data = (await res.json()) as { ok?: boolean; id?: string; error?: string };
-      if (!res.ok) throw new Error(data.error || res.statusText);
+      const data: unknown = await res.json();
+      if (!res.ok) throw new Error(apiClientErrorMessage(data, res.statusText || "Request failed"));
       setMsg("Report saved.");
       await loadSaved();
     } catch (e) {
@@ -683,8 +682,8 @@ export function ControlTowerReportBuilder({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ isShared: !report.isShared }),
         });
-        const data = (await res.json()) as { ok?: boolean; error?: string };
-        if (!res.ok) throw new Error(data.error || res.statusText);
+        const data: unknown = await res.json();
+        if (!res.ok) throw new Error(apiClientErrorMessage(data, res.statusText || "Request failed"));
         setMsg(!report.isShared ? "Report is now shared." : "Report is now private.");
         await loadSaved();
       } catch (e) {
@@ -775,8 +774,8 @@ export function ControlTowerReportBuilder({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ savedReportId, title }),
       });
-      const data = (await res.json()) as { ok?: boolean; error?: string };
-      if (!res.ok) throw new Error(data.error || res.statusText);
+      const data: unknown = await res.json();
+      if (!res.ok) throw new Error(apiClientErrorMessage(data, res.statusText || "Request failed"));
       setMsg("Pinned to dashboard.");
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Pin failed.");
@@ -810,8 +809,8 @@ export function ControlTowerReportBuilder({
           dayOfWeek: scheduleFrequency === "WEEKLY" ? scheduleDayOfWeek : null,
         }),
       });
-      const data = (await res.json()) as { ok?: boolean; error?: string };
-      if (!res.ok) throw new Error(data.error || res.statusText);
+      const data: unknown = await res.json();
+      if (!res.ok) throw new Error(apiClientErrorMessage(data, res.statusText || "Request failed"));
       setMsg("Email schedule created.");
       setSchedulePanelReportId(null);
       await loadEmailSchedules();
@@ -839,8 +838,8 @@ export function ControlTowerReportBuilder({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ isActive }),
         });
-        const data = (await res.json()) as { ok?: boolean; error?: string };
-        if (!res.ok) throw new Error(data.error || res.statusText);
+        const data: unknown = await res.json();
+        if (!res.ok) throw new Error(apiClientErrorMessage(data, res.statusText || "Request failed"));
         await loadEmailSchedules();
       } catch (e) {
         setScheduleErr(e instanceof Error ? e.message : "Update failed.");
@@ -857,8 +856,8 @@ export function ControlTowerReportBuilder({
       setScheduleErr(null);
       try {
         const res = await fetch(`/api/control-tower/reports/schedules/${id}`, { method: "DELETE" });
-        const data = (await res.json()) as { ok?: boolean; error?: string };
-        if (!res.ok) throw new Error(data.error || res.statusText);
+        const data: unknown = await res.json();
+        if (!res.ok) throw new Error(apiClientErrorMessage(data, res.statusText || "Request failed"));
         await loadEmailSchedules();
       } catch (e) {
         setScheduleErr(e instanceof Error ? e.message : "Delete failed.");

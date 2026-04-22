@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { ActionButton, ActionLink } from "@/components/action-button";
@@ -242,16 +243,16 @@ export function ControlTowerNewShipment({
           milestonePackId: packId.trim() || null,
         }),
       });
-      const payload = (await res.json()) as {
-        error?: string;
-        shipmentId?: string;
-        milestonePackWarning?: string | null;
-      };
+      const parsed: unknown = await res.json();
       if (!res.ok) {
-        setError(payload.error ?? "Create failed.");
+        setError(apiClientErrorMessage(parsed, "Create failed."));
         setBusy(false);
         return;
       }
+      const payload = parsed as {
+        shipmentId?: string;
+        milestonePackWarning?: string | null;
+      };
       if (payload.shipmentId) {
         if (payload.milestonePackWarning) {
           window.alert(payload.milestonePackWarning);

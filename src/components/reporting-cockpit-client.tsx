@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -50,9 +51,9 @@ export function ReportingCockpitClient({
     setErr(null);
     try {
       const res = await fetch("/api/reporting/cockpit");
-      const data = (await res.json()) as { snapshot?: ReportingCockpitSnapshot; error?: string };
-      if (!res.ok) throw new Error(data.error || res.statusText);
-      setSnapshot(data.snapshot ?? null);
+      const data: unknown = await res.json();
+      if (!res.ok) throw new Error(apiClientErrorMessage(data, res.statusText || "Request failed"));
+      setSnapshot((data as { snapshot?: ReportingCockpitSnapshot }).snapshot ?? null);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Failed to load cockpit.");
     } finally {
@@ -73,9 +74,9 @@ export function ReportingCockpitClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question: question.trim() || undefined }),
       });
-      const data = (await res.json()) as { insight?: string; error?: string };
-      if (!res.ok) throw new Error(data.error || res.statusText);
-      setInsight(data.insight ?? "");
+      const data: unknown = await res.json();
+      if (!res.ok) throw new Error(apiClientErrorMessage(data, res.statusText || "Request failed"));
+      setInsight((data as { insight?: string }).insight ?? "");
     } catch (e) {
       setInsightErr(e instanceof Error ? e.message : "Insight failed.");
       setInsight(null);

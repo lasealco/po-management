@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -51,12 +52,12 @@ export function CrmActivitiesHub() {
         fetch("/api/crm/activities"),
         fetch("/api/crm/accounts"),
       ]);
-      const aData = await aRes.json();
-      const accData = await accRes.json();
-      if (!aRes.ok) throw new Error(aData.error ?? "Failed to load activities");
-      if (!accRes.ok) throw new Error(accData.error ?? "Failed to load accounts");
-      setActivities(aData.activities ?? []);
-      setAccounts((accData.accounts ?? []).map((x: AccountOpt) => ({ id: x.id, name: x.name })));
+      const aData: unknown = await aRes.json();
+      const accData: unknown = await accRes.json();
+      if (!aRes.ok) throw new Error(apiClientErrorMessage(aData, "Failed to load activities"));
+      if (!accRes.ok) throw new Error(apiClientErrorMessage(accData, "Failed to load accounts"));
+      setActivities((aData as { activities?: ActivityRow[] }).activities ?? []);
+      setAccounts(((accData as { accounts?: AccountOpt[] }).accounts ?? []).map((x: AccountOpt) => ({ id: x.id, name: x.name })));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load");
     }
@@ -82,8 +83,8 @@ export function CrmActivitiesHub() {
           relatedAccountId: accountId || null,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Save failed");
+      const data: unknown = await res.json();
+      if (!res.ok) throw new Error(apiClientErrorMessage(data, "Save failed"));
       setSubject("");
       setDue("");
       setAccountId("");
@@ -104,8 +105,8 @@ export function CrmActivitiesHub() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Update failed");
+      const data: unknown = await res.json();
+      if (!res.ok) throw new Error(apiClientErrorMessage(data, "Update failed"));
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Update failed");

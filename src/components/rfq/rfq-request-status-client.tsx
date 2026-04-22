@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -27,8 +28,8 @@ export function RfqRequestStatusClient({
         body: JSON.stringify({ status }),
       });
       if (!res.ok) {
-        const j = (await res.json().catch(() => ({}))) as { error?: string };
-        window.alert(j.error ?? "Update failed");
+        const j: unknown = await res.json().catch(() => ({}));
+        window.alert(apiClientErrorMessage(j, "Update failed"));
         return;
       }
       router.refresh();

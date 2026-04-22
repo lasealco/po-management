@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -37,9 +38,9 @@ export function SettingsWarehousesClient({ initialRows }: { initialRows: Warehou
         addressLine1: createAddressLine1 || null,
       }),
     });
-    const payload = (await res.json().catch(() => null)) as { error?: string } | null;
+    const payload: unknown = await res.json().catch(() => null);
     if (!res.ok) {
-      setError(payload?.error ?? "Create failed.");
+      setError(apiClientErrorMessage(payload ?? {}, "Create failed."));
       return;
     }
     setCreateName("");
@@ -55,10 +56,10 @@ export function SettingsWarehousesClient({ initialRows }: { initialRows: Warehou
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(row),
     });
-    const payload = (await res.json().catch(() => null)) as { error?: string } | null;
+    const payload: unknown = await res.json().catch(() => null);
     setBusyId(null);
     if (!res.ok) {
-      setError(payload?.error ?? "Save failed.");
+      setError(apiClientErrorMessage(payload ?? {}, "Save failed."));
       return;
     }
     router.refresh();

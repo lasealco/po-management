@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { ActionButton } from "@/components/action-button";
@@ -80,10 +81,11 @@ export function SalesOrderCreateForm({
         shipmentId: shipmentHint?.id || null,
       }),
     });
-    const payload = (await res.json()) as { id?: string; error?: string };
+    const parsed: unknown = await res.json();
     setBusy(false);
+    const payload = parsed as { id?: string };
     if (!res.ok || !payload.id) {
-      setError(payload.error || "Could not create sales order.");
+      setError(apiClientErrorMessage(parsed, "Could not create sales order."));
       return;
     }
     router.push(`/sales-orders/${payload.id}`);

@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import Link from "next/link";
 import { startTransition, useCallback, useEffect, useState } from "react";
 
@@ -56,12 +57,12 @@ export function WmsBillingClient({ canEdit }: { canEdit: boolean }) {
 
   const load = useCallback(async () => {
     const res = await fetch("/api/wms/billing", { cache: "no-store" });
-    const payload = (await res.json()) as BillingPayload & { error?: string };
+    const parsed: unknown = await res.json();
     if (!res.ok) {
-      setError(payload.error ?? "Could not load billing.");
+      setError(apiClientErrorMessage(parsed, "Could not load billing."));
       return;
     }
-    setData(payload);
+    setData(parsed as BillingPayload);
     setError(null);
   }, []);
 
@@ -79,9 +80,9 @@ export function WmsBillingClient({ canEdit }: { canEdit: boolean }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    const payload = (await res.json()) as { error?: string };
+    const parsed: unknown = await res.json();
     if (!res.ok) {
-      setError(payload.error ?? "Request failed.");
+      setError(apiClientErrorMessage(parsed, "Request failed."));
       setBusy(false);
       return;
     }

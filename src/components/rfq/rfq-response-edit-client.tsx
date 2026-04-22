@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
+
 export type LineDraft = {
   lineType: string;
   label: string;
@@ -132,9 +134,9 @@ export function RfqResponseEditClient({
           lines: linePayload,
         }),
       });
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      const parsed: unknown = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error ?? "Save failed.");
+        setError(apiClientErrorMessage(parsed, "Save failed."));
         return false;
       }
       router.refresh();
@@ -151,9 +153,9 @@ export function RfqResponseEditClient({
     setPending(true);
     try {
       const res = await fetch(`/api/rfq/responses/${responseId}/submit`, { method: "POST" });
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      const data: unknown = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error ?? "Submit failed.");
+        setError(apiClientErrorMessage(data, "Submit failed."));
         return;
       }
       router.push(`/rfq/requests/${requestId}`);

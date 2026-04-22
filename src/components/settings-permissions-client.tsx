@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import { useRouter } from "next/navigation";
 import { startTransition, useCallback, useEffect, useMemo, useState } from "react";
 import { SearchableSelectField } from "@/components/searchable-select-field";
@@ -46,19 +47,17 @@ export function SettingsPermissionsClient({
     setLoading(true);
     setError(null);
     const res = await fetch(`/api/roles/${rid}/permissions`);
-    const data = (await res.json()) as {
-      catalog?: CatalogRow[];
-      error?: string;
-    };
+    const data: unknown = await res.json();
     setLoading(false);
     if (!res.ok) {
       setCatalog(null);
-      setError(data.error ?? "Failed to load permissions.");
+      setError(apiClientErrorMessage(data, "Failed to load permissions."));
       return;
     }
-    if (data.catalog) {
-      setCatalog(data.catalog);
-      setBaselineKey(grantsKey(data.catalog));
+    const body = data as { catalog?: CatalogRow[] };
+    if (body.catalog) {
+      setCatalog(body.catalog);
+      setBaselineKey(grantsKey(body.catalog));
     }
   }, []);
 
@@ -93,15 +92,16 @@ export function SettingsPermissionsClient({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ grants }),
     });
-    const data = (await res.json()) as { catalog?: CatalogRow[]; error?: string };
+    const data: unknown = await res.json();
     setSaving(false);
     if (!res.ok) {
-      setError(data.error ?? "Save failed.");
+      setError(apiClientErrorMessage(data, "Save failed."));
       return;
     }
-    if (data.catalog) {
-      setCatalog(data.catalog);
-      setBaselineKey(grantsKey(data.catalog));
+    const body = data as { catalog?: CatalogRow[] };
+    if (body.catalog) {
+      setCatalog(body.catalog);
+      setBaselineKey(grantsKey(body.catalog));
     }
     router.refresh();
   }

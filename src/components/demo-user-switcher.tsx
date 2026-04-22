@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import { startTransition, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 
@@ -47,10 +48,8 @@ export function DemoUserSwitcher() {
     });
     setSaving(false);
     if (!res.ok) {
-      const data = (await res.json().catch(() => null)) as {
-        error?: string;
-      } | null;
-      setError(data?.error ?? `Switch failed (${res.status})`);
+      const data: unknown = await res.json().catch(() => null);
+      setError(apiClientErrorMessage(data ?? {}, `Switch failed (${res.status})`));
       return;
     }
     setCurrent(email);

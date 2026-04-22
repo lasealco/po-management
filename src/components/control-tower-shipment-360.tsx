@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import { labelTariffShipmentApplicationSource } from "@/lib/tariff/tariff-shipment-application-labels";
 import { tariffContractVersionPath, tariffLaneRatingPath } from "@/lib/tariff/tariff-workbench-urls";
 import Link from "next/link";
@@ -127,9 +128,9 @@ export function ControlTowerShipment360({
     setError(null);
     try {
       const res = await fetch(`/api/control-tower/shipments/${shipmentId}`);
-      const json = (await res.json()) as Record<string, unknown> & { error?: string };
-      if (!res.ok) throw new Error(json.error || res.statusText);
-      setData(json);
+      const json: unknown = await res.json();
+      if (!res.ok) throw new Error(apiClientErrorMessage(json, res.statusText || "Request failed"));
+      setData(json as Record<string, unknown>);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load");
     } finally {
@@ -215,10 +216,10 @@ export function ControlTowerShipment360({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    const json = (await res.json()) as Record<string, unknown> & { error?: string };
-    if (!res.ok) throw new Error(json.error || res.statusText);
+    const json: unknown = await res.json();
+    if (!res.ok) throw new Error(apiClientErrorMessage(json, res.statusText || "Request failed"));
     await load();
-    return json;
+    return json as Record<string, unknown>;
   }
 
   const asLocalDateTime = (iso: unknown) => {
@@ -2833,8 +2834,8 @@ export function ControlTowerShipment360({
                     body: up,
                   });
                   if (!res.ok) {
-                    const j = (await res.json()) as { error?: string };
-                    throw new Error(j.error || "Upload failed");
+                    const j: unknown = await res.json();
+                    throw new Error(apiClientErrorMessage(j, "Upload failed"));
                   }
                   form.reset();
                   await load();

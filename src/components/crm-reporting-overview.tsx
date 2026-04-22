@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import { useEffect, useState } from "react";
 
 type CrmSummary = {
@@ -37,17 +38,18 @@ export function CrmReportingOverview() {
       setErr(null);
       try {
         const res = await fetch("/api/crm/summary");
-        const j = (await res.json()) as Partial<CrmSummary> & { error?: string };
-        if (!res.ok) throw new Error(j.error || res.statusText);
+        const j: unknown = await res.json();
+        if (!res.ok) throw new Error(apiClientErrorMessage(j, res.statusText || "Request failed"));
         if (!active) return;
+        const body = j as Partial<CrmSummary>;
         setData({
-          leads: Number(j.leads ?? 0),
-          accounts: Number(j.accounts ?? 0),
-          openOpportunities: Number(j.openOpportunities ?? 0),
-          openActivities: Number(j.openActivities ?? 0),
-          openQuotes: Number(j.openQuotes ?? 0),
-          staleOpportunities: Number(j.staleOpportunities ?? 0),
-          overdueActivities: Number(j.overdueActivities ?? 0),
+          leads: Number(body.leads ?? 0),
+          accounts: Number(body.accounts ?? 0),
+          openOpportunities: Number(body.openOpportunities ?? 0),
+          openActivities: Number(body.openActivities ?? 0),
+          openQuotes: Number(body.openQuotes ?? 0),
+          staleOpportunities: Number(body.staleOpportunities ?? 0),
+          overdueActivities: Number(body.overdueActivities ?? 0),
         });
       } catch (e) {
         if (!active) return;

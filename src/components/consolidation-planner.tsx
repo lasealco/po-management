@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import { useEffect, useMemo, useState } from "react";
 import { SearchableSelectField } from "@/components/searchable-select-field";
 
@@ -430,9 +431,10 @@ export function ConsolidationPlanner({
         notes: notes || null,
       }),
     });
-    const payload = (await response.json()) as { ok?: true; id?: string; error?: string };
+    const parsed: unknown = await response.json();
+    const payload = parsed as { id?: string };
     if (!response.ok || !payload.id) {
-      setError(payload.error ?? "Could not create load plan.");
+      setError(apiClientErrorMessage(parsed, "Could not create load plan."));
       setBusy(false);
       return;
     }
@@ -457,9 +459,9 @@ export function ConsolidationPlanner({
         notes: notes || null,
       }),
     });
-    const payload = (await response.json()) as { ok?: true; error?: string };
+    const parsed: unknown = await response.json();
     if (!response.ok) {
-      setError(payload.error ?? "Could not save draft metadata.");
+      setError(apiClientErrorMessage(parsed, "Could not save draft metadata."));
       setBusy(false);
       return;
     }
@@ -486,9 +488,9 @@ export function ConsolidationPlanner({
         body: JSON.stringify({ shipmentId: row.shipmentId }),
       },
     );
-    const payload = (await response.json()) as { ok?: true; error?: string };
+    const parsed: unknown = await response.json();
     if (!response.ok) {
-      setError(payload.error ?? "Could not add shipment to draft.");
+      setError(apiClientErrorMessage(parsed, "Could not add shipment to draft."));
       setBusy(false);
       return;
     }
@@ -512,9 +514,9 @@ export function ConsolidationPlanner({
       `/api/consolidation/load-plans/${selectedLoadId}/shipments/${row.shipmentId}`,
       { method: "DELETE" },
     );
-    const payload = (await response.json()) as { ok?: true; error?: string };
+    const parsed: unknown = await response.json();
     if (!response.ok) {
-      setError(payload.error ?? "Could not remove shipment from draft.");
+      setError(apiClientErrorMessage(parsed, "Could not remove shipment from draft."));
       setBusy(false);
       return;
     }
@@ -564,9 +566,9 @@ export function ConsolidationPlanner({
         shippedTo: shippedTo || null,
       }),
     });
-    const payload = (await response.json()) as { error?: string };
+    const parsed: unknown = await response.json();
     if (!response.ok) {
-      setError(payload.error ?? "Could not save preset.");
+      setError(apiClientErrorMessage(parsed, "Could not save preset."));
       setBusy(false);
       return;
     }
@@ -583,9 +585,9 @@ export function ConsolidationPlanner({
       `/api/consolidation/filter-presets/${selectedPresetId}`,
       { method: "DELETE" },
     );
-    const payload = (await response.json()) as { error?: string };
+    const parsed: unknown = await response.json();
     if (!response.ok) {
-      setError(payload.error ?? "Could not delete preset.");
+      setError(apiClientErrorMessage(parsed, "Could not delete preset."));
       setBusy(false);
       return;
     }
@@ -638,9 +640,12 @@ export function ConsolidationPlanner({
               `Auto-optimized (${transportMode}) · ${bin.usedVolume.toFixed(2)} cbm · ${bin.usedWeight.toFixed(0)} kg`,
           }),
         });
-        const createPayload = (await createRes.json()) as { id?: string; error?: string };
+        const createParsed: unknown = await createRes.json();
+        const createPayload = createParsed as { id?: string };
         if (!createRes.ok || !createPayload.id) {
-          throw new Error(createPayload.error ?? "Could not create one of the optimized loads.");
+          throw new Error(
+            apiClientErrorMessage(createParsed, "Could not create one of the optimized loads."),
+          );
         }
         createdLoadIds.push(createPayload.id);
         for (const shipment of bin.shipments) {
@@ -653,10 +658,12 @@ export function ConsolidationPlanner({
             },
           );
           if (!assignRes.ok) {
-            const assignPayload = (await assignRes.json()) as { error?: string };
+            const assignParsed: unknown = await assignRes.json();
             throw new Error(
-              assignPayload.error ??
+              apiClientErrorMessage(
+                assignParsed,
                 `Could not assign ${shipment.shipmentNo} to ${createPayload.id}.`,
+              ),
             );
           }
         }
@@ -697,9 +704,9 @@ export function ConsolidationPlanner({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
     });
-    const payload = (await response.json()) as { error?: string };
+    const parsed: unknown = await response.json();
     if (!response.ok) {
-      setError(payload.error ?? "Could not change status.");
+      setError(apiClientErrorMessage(parsed, "Could not change status."));
       setBusy(false);
       return;
     }

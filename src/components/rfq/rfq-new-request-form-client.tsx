@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
+
 export function RfqNewRequestFormClient({ canEdit }: { canEdit: boolean }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
@@ -32,13 +34,14 @@ export function RfqNewRequestFormClient({ canEdit }: { canEdit: boolean }) {
           ...(quotesDueAt.trim() ? { quotesDueAt: quotesDueAt } : {}),
         }),
       });
-      const data = (await res.json().catch(() => ({}))) as { error?: string; request?: { id: string } };
+      const data: unknown = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error ?? "Could not create RFQ.");
+        setError(apiClientErrorMessage(data, "Could not create RFQ."));
         return;
       }
-      if (data.request?.id) {
-        router.push(`/rfq/requests/${data.request.id}`);
+      const body = data as { request?: { id: string } };
+      if (body.request?.id) {
+        router.push(`/rfq/requests/${body.request.id}`);
         router.refresh();
       }
     } finally {

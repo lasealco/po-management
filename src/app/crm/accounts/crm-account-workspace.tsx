@@ -12,6 +12,7 @@ import {
   validateQuoteDraftInput,
   type AccountWorkspaceTabId,
 } from "@/lib/crm/account-workspace";
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 
 type AccountDetail = {
   id: string;
@@ -169,16 +170,23 @@ export function CrmAccountWorkspace({
     setLoadError(null);
     try {
       const res = await fetch(`/api/crm/accounts/${accountId}`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Load failed");
-      setAccount(data.account);
-      setName(data.account.name);
-      setIndustry(data.account.industry ?? "");
-      setStrategic(data.account.strategicFlag);
-      setContacts(data.contacts ?? []);
-      setOpportunities(data.opportunities ?? []);
-      setActivities(data.activities ?? []);
-      setQuotes(data.quotes ?? []);
+      const data: unknown = await res.json();
+      if (!res.ok) throw new Error(apiClientErrorMessage(data, "Load failed"));
+      const body = data as {
+        account: AccountDetail;
+        contacts?: ContactRow[];
+        opportunities?: OppRow[];
+        activities?: ActRow[];
+        quotes?: QuoteRow[];
+      };
+      setAccount(body.account);
+      setName(body.account.name);
+      setIndustry(body.account.industry ?? "");
+      setStrategic(body.account.strategicFlag);
+      setContacts(body.contacts ?? []);
+      setOpportunities(body.opportunities ?? []);
+      setActivities(body.activities ?? []);
+      setQuotes(body.quotes ?? []);
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : "Load failed");
     } finally {
@@ -210,9 +218,9 @@ export function CrmAccountWorkspace({
           strategicFlag: strategic,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Save failed");
-      setAccount(data.account);
+      const data: unknown = await res.json();
+      if (!res.ok) throw new Error(apiClientErrorMessage(data, "Save failed"));
+      setAccount((data as { account: AccountDetail }).account);
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Save failed");
     } finally {
@@ -244,8 +252,8 @@ export function CrmAccountWorkspace({
           email: cEmail.trim() || null,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Save failed");
+      const data: unknown = await res.json();
+      if (!res.ok) throw new Error(apiClientErrorMessage(data, "Add contact failed"));
       setCFirst("");
       setCLast("");
       setCEmail("");
@@ -275,13 +283,14 @@ export function CrmAccountWorkspace({
           title: quoteTitle.trim(),
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Save failed");
+      const data: unknown = await res.json();
+      if (!res.ok) throw new Error(apiClientErrorMessage(data, "Create quote failed"));
       setQuoteTitle("");
       await load({ refresh: true });
       setTab("quotes");
-      if (data.quote?.id) {
-        router.push(`/crm/quotes/${data.quote.id}`);
+      const quoteId = (data as { quote?: { id?: string } }).quote?.id;
+      if (quoteId) {
+        router.push(`/crm/quotes/${quoteId}`);
       }
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Save failed");

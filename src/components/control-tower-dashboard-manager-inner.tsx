@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -91,13 +92,14 @@ export function ControlTowerDashboardManagerInner({ canEdit }: { canEdit: boolea
   const load = useCallback(async () => {
     try {
       const res = await fetch("/api/control-tower/dashboard/widgets");
-      const data = (await res.json()) as { widgets?: Widget[]; error?: string };
+      const data: unknown = await res.json();
       if (!res.ok) {
-        setErr(data.error || res.statusText);
+        setErr(apiClientErrorMessage(data, res.statusText || "Request failed"));
         return;
       }
       setErr(null);
-      const sorted = [...(data.widgets ?? [])].sort((a, b) => a.sortOrder - b.sortOrder);
+      const body = data as { widgets?: Widget[] };
+      const sorted = [...(body.widgets ?? [])].sort((a, b) => a.sortOrder - b.sortOrder);
       setWidgets(sorted);
     } finally {
       setInitialLoadDone(true);
@@ -174,8 +176,8 @@ export function ControlTowerDashboardManagerInner({ canEdit }: { canEdit: boolea
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ layoutJson }),
         });
-        const j = (await res.json()) as { error?: string };
-        if (!res.ok) throw new Error(j.error || res.statusText);
+        const j: unknown = await res.json();
+        if (!res.ok) throw new Error(apiClientErrorMessage(j, res.statusText || "Request failed"));
         setMsg("Widget size saved.");
         await load();
       } catch (e) {
@@ -196,8 +198,8 @@ export function ControlTowerDashboardManagerInner({ canEdit }: { canEdit: boolea
         const res = await fetch(`/api/control-tower/dashboard/widgets/${id}`, {
           method: "DELETE",
         });
-        const j = (await res.json()) as { error?: string };
-        if (!res.ok) throw new Error(j.error || res.statusText);
+        const j: unknown = await res.json();
+        if (!res.ok) throw new Error(apiClientErrorMessage(j, res.statusText || "Request failed"));
         setMsg("Widget removed.");
         if (expanded?.id === id) {
           setExpanded(null);

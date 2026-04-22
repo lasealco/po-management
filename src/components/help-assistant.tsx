@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { HelpDoAction } from "@/lib/help-actions";
@@ -240,45 +241,43 @@ export function HelpAssistant() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message, currentPath: window.location.pathname }),
       });
-      const payload = (await res.json().catch(() => null)) as
-        | {
-            helpEventId?: string;
-            answer?: string;
-            playbook?: HelpPlaybook | null;
-            suggestions?: string[];
-            actions?: HelpAction[];
-            doActions?: HelpDoAction[];
-            llmUsed?: boolean;
-            error?: string;
-          }
-        | null;
+      const payload: unknown = await res.json().catch(() => null);
       setBusy(false);
       if (!res.ok) {
-        setError(payload?.error ?? "Guide could not respond. Try again in a moment.");
+        setError(apiClientErrorMessage(payload ?? {}, "Guide could not respond. Try again in a moment."));
         return;
       }
-      if (typeof payload?.helpEventId === "string") {
-        latestChatHelpEventIdRef.current = payload.helpEventId;
+      const body = payload as {
+        helpEventId?: string;
+        answer?: string;
+        playbook?: HelpPlaybook | null;
+        suggestions?: string[];
+        actions?: HelpAction[];
+        doActions?: HelpDoAction[];
+        llmUsed?: boolean;
+      };
+      if (typeof body.helpEventId === "string") {
+        latestChatHelpEventIdRef.current = body.helpEventId;
       }
-      setLlmUsed(Boolean(payload?.llmUsed));
-      if (payload?.answer) {
+      setLlmUsed(Boolean(body.llmUsed));
+      if (body.answer) {
         setChat((prev) => [
           ...prev,
           {
             role: "assistant",
-            text: payload.answer!,
-            helpEventId: typeof payload.helpEventId === "string" ? payload.helpEventId : undefined,
+            text: body.answer!,
+            helpEventId: typeof body.helpEventId === "string" ? body.helpEventId : undefined,
           },
         ]);
       }
-      if (payload?.playbook) {
-        setPlaybook(payload.playbook);
+      if (body.playbook) {
+        setPlaybook(body.playbook);
         setStepIdx(0);
-        setResumeHint({ playbookId: payload.playbook.id, stepIdx: 0 });
+        setResumeHint({ playbookId: body.playbook.id, stepIdx: 0 });
       }
-      setActions(payload?.actions ?? []);
-      setDoActions(Array.isArray(payload?.doActions) ? payload!.doActions! : []);
-      setSuggestions(payload?.suggestions ?? []);
+      setActions(body.actions ?? []);
+      setDoActions(Array.isArray(body.doActions) ? body.doActions : []);
+      setSuggestions(body.suggestions ?? []);
     },
     [input],
   );
@@ -297,16 +296,15 @@ export function HelpAssistant() {
           : {}),
       }),
     });
-    const payload = (await res.json().catch(() => null)) as
-      | { ok?: boolean; href?: string; message?: string; error?: string }
-      | null;
+    const payload: unknown = await res.json().catch(() => null);
     setDoBusyKey(null);
-    if (!res.ok || !payload?.ok || !payload.href) {
-      setError(payload?.error ?? "That action isn’t available for your account or page.");
+    const body = payload as { ok?: boolean; href?: string; message?: string } | null;
+    if (!res.ok || !body?.ok || !body.href) {
+      setError(apiClientErrorMessage(payload ?? {}, "That action isn’t available for your account or page."));
       return;
     }
-    setChat((prev) => [...prev, { role: "assistant", text: payload.message ?? "Done — taking you there now." }]);
-    router.push(payload.href);
+    setChat((prev) => [...prev, { role: "assistant", text: body.message ?? "Done — taking you there now." }]);
+    router.push(body.href);
   }
 
   function runSuggestion(text: string) {

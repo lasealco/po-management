@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import Link from "next/link";
 import { startTransition, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -233,10 +234,10 @@ export function SupplierDetailClient({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(baseBody),
     });
-    const payload = (await res.json()) as { error?: string };
+    const payload: unknown = await res.json();
     if (!res.ok) {
       setBusy(false);
-      setError(payload.error ?? "Save failed.");
+      setError(apiClientErrorMessage(payload, "Save failed."));
       return;
     }
     setBusy(false);
@@ -257,10 +258,10 @@ export function SupplierDetailClient({
         countryCode: officeCountry.trim() || null,
       }),
     });
-    const payload = (await res.json()) as { error?: string };
+    const payload: unknown = await res.json();
     if (!res.ok) {
       setBusy(false);
-      setError(payload.error ?? "Could not add office.");
+      setError(apiClientErrorMessage(payload, "Could not add office."));
       return;
     }
     setOfficeName("");
@@ -284,9 +285,9 @@ export function SupplierDetailClient({
       { method: "DELETE" },
     );
     if (!res.ok) {
-      const payload = (await res.json()) as { error?: string };
+      const payload: unknown = await res.json();
       setBusy(false);
-      setError(payload.error ?? "Delete failed.");
+      setError(apiClientErrorMessage(payload, "Delete failed."));
       return;
     }
     setBusy(false);
@@ -304,10 +305,10 @@ export function SupplierDetailClient({
     setBusy(true);
     setError(null);
     const res = await fetch(`/api/suppliers/${initial.id}`, { method: "DELETE" });
-    const payload = (await res.json().catch(() => null)) as { error?: string } | null;
+    const payload: unknown = await res.json().catch(() => null);
     if (!res.ok) {
       setBusy(false);
-      setError(payload?.error ?? "Delete failed.");
+      setError(apiClientErrorMessage(payload ?? {}, "Delete failed."));
       return;
     }
     setBusy(false);
@@ -323,10 +324,10 @@ export function SupplierDetailClient({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ decision }),
     });
-    const payload = (await res.json().catch(() => null)) as { error?: string } | null;
+    const payload: unknown = await res.json().catch(() => null);
     if (!res.ok) {
       setBusy(false);
-      setError(payload?.error ?? "Approval update failed.");
+      setError(apiClientErrorMessage(payload ?? {}, "Approval update failed."));
       return;
     }
     setBusy(false);
@@ -344,10 +345,10 @@ export function SupplierDetailClient({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isActive: false }),
     });
-    const payload = (await res.json().catch(() => null)) as { error?: string } | null;
+    const payload: unknown = await res.json().catch(() => null);
     if (!res.ok) {
       setBusy(false);
-      setError(payload?.error ?? "Archive failed.");
+      setError(apiClientErrorMessage(payload ?? {}, "Archive failed."));
       return;
     }
     setBusy(false);
@@ -372,10 +373,10 @@ export function SupplierDetailClient({
         isPrimary: cPrimary,
       }),
     });
-    const payload = (await res.json()) as { error?: string };
+    const payload: unknown = await res.json();
     if (!res.ok) {
       setBusy(false);
-      setError(payload.error ?? "Could not add contact.");
+      setError(apiClientErrorMessage(payload, "Could not add contact."));
       return;
     }
     setCName("");
@@ -413,10 +414,10 @@ export function SupplierDetailClient({
         }),
       },
     );
-    const payload = (await res.json()) as { error?: string };
+    const payload: unknown = await res.json();
     if (!res.ok) {
       setBusy(false);
-      setError(payload.error ?? "Update failed.");
+      setError(apiClientErrorMessage(payload, "Update failed."));
       return;
     }
     setEditingContactId(null);
@@ -433,9 +434,9 @@ export function SupplierDetailClient({
       { method: "DELETE" },
     );
     if (!res.ok) {
-      const payload = (await res.json()) as { error?: string };
+      const payload: unknown = await res.json();
       setBusy(false);
-      setError(payload.error ?? "Delete failed.");
+      setError(apiClientErrorMessage(payload, "Delete failed."));
       return;
     }
     setBusy(false);

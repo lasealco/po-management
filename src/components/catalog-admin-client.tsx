@@ -2,6 +2,8 @@
 
 import { startTransition, useCallback, useEffect, useState } from "react";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
+
 type Category = {
   id: string;
   name: string;
@@ -63,9 +65,9 @@ export function CatalogAdminClient() {
       }),
     });
     if (!res.ok) {
-      const j = (await res.json()) as { error?: string };
+      const j: unknown = await res.json();
       setBusy(false);
-      setError(j.error ?? "Category create failed.");
+      setError(apiClientErrorMessage(j, "Category create failed."));
       return;
     }
     setCatName("");
@@ -87,9 +89,9 @@ export function CatalogAdminClient() {
       }),
     });
     if (!res.ok) {
-      const j = (await res.json()) as { error?: string };
+      const j: unknown = await res.json();
       setBusy(false);
-      setError(j.error ?? "Division create failed.");
+      setError(apiClientErrorMessage(j, "Division create failed."));
       return;
     }
     setDivName("");
@@ -108,8 +110,8 @@ export function CatalogAdminClient() {
     });
     setBusy(false);
     if (!res.ok) {
-      const j = (await res.json()) as { error?: string };
-      setError(j.error ?? "Delete failed.");
+      const j: unknown = await res.json();
+      setError(apiClientErrorMessage(j, "Delete failed."));
       return;
     }
     await load();
@@ -125,8 +127,8 @@ export function CatalogAdminClient() {
     });
     setBusy(false);
     if (!res.ok) {
-      const j = (await res.json()) as { error?: string };
-      setError(j.error ?? "Delete failed.");
+      const j: unknown = await res.json();
+      setError(apiClientErrorMessage(j, "Delete failed."));
       return;
     }
     await load();
