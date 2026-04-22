@@ -74,11 +74,11 @@ These are **accepted** gaps for the current phase unless an issue explicitly res
 
 Use this for a formal “module ready for adjacent teams” sign-off:
 
-- [ ] `README.md` endpoint table matches `src/app/api/apihub/**` routes in `main`.
-- [ ] `GAP_MAP.md` legend reflects shipped vs stub for connectors, mapping, apply, alerts, conflicts.
-- [ ] `permissions-matrix.md` matches demo-tenant / demo-actor guards on routes.
-- [ ] `npm run verify:apihub` passes on CI (or release branch).
-- [ ] `npm run smoke:apihub` passes against staging (or prod smoke window).
+- [x] `README.md` **Route index** matches `src/app/api/apihub/**` `route.ts` files on `main` (20 handlers; audited 2026-04-22).
+- [x] `GAP_MAP.md` legend reflects shipped vs stub for connectors, mapping, apply, alerts, conflicts.
+- [x] `permissions-matrix.md` matches demo-tenant / demo-actor guards on routes (health public; all other handlers use tenant + actor).
+- [x] `npm run verify:apihub` runs in GitHub Actions CI after the main test suite (`.github/workflows/ci.yml`).
+- [ ] `npm run smoke:apihub` passes against staging (or prod smoke window) — **operator / env**; see [RELEASE_CHECKLIST.md](./RELEASE_CHECKLIST.md).
 - [ ] Residual table above reviewed with PM / security; owners assigned for R1–R9 or explicitly deferred.
 
 ---
@@ -96,4 +96,4 @@ Full list: `docs/apihub/agent_milestones_one_agent.md` (enterprise tranche 61–
 
 ---
 
-**Last updated:** 2026-04-30 (Slice 60)
+**Last updated:** 2026-04-22 (Slice 60 — doc/CI closeout for Phase 1 module MVP)

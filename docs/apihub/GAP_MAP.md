@@ -2,7 +2,7 @@
 
 **Legend:** ✅ shipped · 🟡 partial / stub · ❌ not started
 
-**Last updated:** 2026-04-22 (connector health probe UI + audit actor on list/API)
+**Last updated:** 2026-04-22 (connector health probe UI + audit actor on list/API). **Phase 1 (module MVP)** is **closed** for integration-hub scope — see [CLOSEOUT_AUDIT.md](./CLOSEOUT_AUDIT.md) §5; P2+ items (AI jobs, batch/staging tables, org RBAC) remain future.
 
 | Area | Repo reality | Notes |
 |------|--------------|--------|
@@ -24,8 +24,8 @@
 
 ## Near-term build order
 
-1. P0 — shell + health + docs links (see meeting-batch issue).
-2. P1 — **connector registry** + **mapping templates** (DB + API + `/apihub` manager) — largely shipped; **batch/staging** Prisma still open.
+1. P0 — shell + health + docs links — **shipped**.
+2. P1 — **connector registry** + **mapping templates** + ingestion/apply operator surfaces — **shipped**; **batch/staging** Prisma still future (see R5 in closeout).
 3. P2 — async analysis job + richer editor; **preview / diff / export** already support operators today.
 4. P3 — extend **apply** to production paths per scenario + idempotency hardening as needed.
 5. P4 — conflicts, match keys, hardening.

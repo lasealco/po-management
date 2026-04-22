@@ -23,12 +23,39 @@ This folder is the **documentation home** for **integration / ingestion APIs and
 ## In-app entry (P0+)
 
 - Authenticated demo session: **`/apihub`** — workflow placeholders, **Connectors**, **mapping templates** (list / create / edit / delete + diff + preview export panels), **Ingestion runs** ops summary, **Alerts** (apply/retry failure summary), **Apply conflicts** (apply 4xx audit table), and links to demo session settings (see [GAP_MAP](./GAP_MAP.md) and [apply-operator-runbook](./apply-operator-runbook.md)).
-- **Health stub:** `GET /api/apihub/health` — JSON `{ ok, service, phase }` for discovery and deploy checks (no auth).
-- **Connector registry (Phase 2 slice):** `GET` / `POST` **`/api/apihub/connectors`** + `PATCH` **`/api/apihub/connectors/:id`** — demo tenant + active demo actor; supports status updates, optional `lastSyncAt` stamp, and lightweight audit rows (no secrets).
 
-## Mapping contract (shipped)
+## Route index (parity with `src/app/api/apihub/**`)
 
-All mapping routes below require the **demo tenant** and an **active demo actor** (same session gates as connectors). Request id: optional `x-request-id` or `x-correlation-id` (validated pattern; echoed as `x-request-id` on responses).
+Authoritative guard semantics: [permissions-matrix.md](./permissions-matrix.md). Every path below except **`GET /api/apihub/health`** requires **demo tenant** and **active demo actor**.
+
+### Discovery (public)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/api/apihub/health` | JSON `{ ok, service, phase }` — no auth |
+
+### Connectors (registry)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET`, `POST` | `/api/apihub/connectors` | List / create |
+| `PATCH` | `/api/apihub/connectors/:connectorId` | Update (status, `lastSyncAt`, health summary, etc.) |
+| `GET` | `/api/apihub/connectors/:connectorId/audit` | Paginated connector audit |
+| `GET` | `/api/apihub/connectors/:connectorId/health` | Live health probe (no secrets) |
+
+### Ingestion jobs (lifecycle)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET`, `POST` | `/api/apihub/ingestion-jobs` | List (cursor + filters) / create |
+| `GET` | `/api/apihub/ingestion-jobs/ops-summary` | Ops summary |
+| `GET`, `PATCH` | `/api/apihub/ingestion-jobs/:jobId` | Detail / update |
+| `GET` | `/api/apihub/ingestion-jobs/:jobId/timeline` | Timeline |
+| `POST` | `/api/apihub/ingestion-jobs/:jobId/retry` | Retry |
+
+## Mapping templates, preview, diff, and apply (shipped)
+
+The sections below expand **mapping** and **apply** contracts (preview/export, templates, diff, apply, conflicts, alerts). Request id: optional `x-request-id` or `x-correlation-id` (validated pattern; echoed as `x-request-id` on responses). Same demo session gates as the route index above.
 
 ### Preview (per ingestion run)
 

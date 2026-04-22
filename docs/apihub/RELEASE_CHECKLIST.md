@@ -17,8 +17,10 @@ Run in repo root:
 npm run verify:apihub
 ```
 
-- [ ] **`npm run test:apihub`** — Vitest for `src/lib/apihub` + `src/app/api/apihub`.
-- [ ] **`npx tsc --noEmit`** — full project typecheck (same as other `verify:*` scripts).
+GitHub Actions **CI** runs this step after the main `npm run test` job (see `.github/workflows/ci.yml`).
+
+- [ ] **`npm run test:apihub`** — Vitest for `src/lib/apihub` + `src/app/api/apihub` (also invoked by `verify:apihub`).
+- [ ] **`npx tsc --noEmit`** — full project typecheck (final step of `verify:apihub`).
 
 If `tsc` fails only in a dirty workspace, fix duplicate artifacts or reinstall; CI should stay green.
 

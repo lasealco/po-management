@@ -37,3 +37,17 @@
 ## Hygiene
 
 - [x] Keep [`docs/apihub/GAP_MAP.md`](../../apihub/GAP_MAP.md) and [`docs/apihub/README.md`](../../apihub/README.md) mapping section current when merging API hub PRs (last doc sync 2026-04-22 — connector health UI + audit actor).
+
+---
+
+## Phase 1 module MVP — closed (Slice 60)
+
+Phase 0–1 items above are **complete** for the greenfield integration hub contract (demo tenant + actor, deterministic mapping/apply, operator UI). **Formal handoff:** [`docs/apihub/CLOSEOUT_AUDIT.md`](../../apihub/CLOSEOUT_AUDIT.md) (residual risks R1–R9, smoke checklist).
+
+## Phase 2+ backlog (not Phase 1 scope)
+
+Track in [`docs/apihub/GAP_MAP.md`](../../apihub/GAP_MAP.md) and product issues:
+
+- Async **AI-assisted mapping** job pipeline (spec: [`integrations-ai-assisted-ingestion.md`](../../apihub/integrations-ai-assisted-ingestion.md)).
+- **Batch / staging** Prisma tables when batch UX ships.
+- Org-scoped **RBAC** for API + UI (Slices 52–53); workers/queues (R2); production **apply** adapters (R3); conformance / abuse / leakage hardening (R7–R9).
