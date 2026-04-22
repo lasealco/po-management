@@ -5,6 +5,7 @@ import type { CtRunReportResult } from "./report-engine";
 import {
   formatReportRunForEmail,
   isReportScheduleDue,
+  parseScheduleFrequency,
   sendScheduledReportEmail,
 } from "./report-schedule-delivery";
 
@@ -72,6 +73,21 @@ function minimalRunResult(overrides: Partial<CtRunReportResult> = {}): CtRunRepo
     ...overrides,
   };
 }
+
+describe("parseScheduleFrequency", () => {
+  it("accepts DAILY and WEEKLY", () => {
+    expect(parseScheduleFrequency("DAILY")).toBe("DAILY");
+    expect(parseScheduleFrequency("WEEKLY")).toBe("WEEKLY");
+  });
+
+  it("returns null for unknown or non-string values", () => {
+    expect(parseScheduleFrequency("MONTHLY")).toBeNull();
+    expect(parseScheduleFrequency("")).toBeNull();
+    expect(parseScheduleFrequency(null)).toBeNull();
+    expect(parseScheduleFrequency(undefined)).toBeNull();
+    expect(parseScheduleFrequency(1)).toBeNull();
+  });
+});
 
 describe("isReportScheduleDue", () => {
   it("returns false before the UTC hour slot starts", () => {
