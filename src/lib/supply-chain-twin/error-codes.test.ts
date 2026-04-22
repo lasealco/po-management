@@ -35,6 +35,7 @@ describe("TWIN_API_ERROR_CODES", () => {
   it("type-guards only registered code strings", () => {
     expect(isTwinApiErrorCode("QUERY_VALIDATION_FAILED")).toBe(true);
     expect(isTwinApiErrorCode("INVALID_CURSOR")).toBe(true);
+    expect(isTwinApiErrorCode("FORMAT_INVALID")).toBe(true);
     expect(isTwinApiErrorCode("BODY_JSON_INVALID")).toBe(true);
     expect(isTwinApiErrorCode("BODY_VALIDATION_FAILED")).toBe(true);
     expect(isTwinApiErrorCode("PATH_ID_INVALID")).toBe(true);
@@ -56,6 +57,7 @@ describe("TWIN_API_ERROR_CODES", () => {
     expect(parseTwinApiErrorCode({ code: "\n\tQUERY_VALIDATION_FAILED\t\n" })).toBe("QUERY_VALIDATION_FAILED");
     expect(parseTwinApiErrorCode({ code: "query_validation_failed" })).toBe("QUERY_VALIDATION_FAILED");
     expect(parseTwinApiErrorCode({ code: " invalid_cursor " })).toBe("INVALID_CURSOR");
+    expect(parseTwinApiErrorCode({ code: " format_invalid " })).toBe("FORMAT_INVALID");
     expect(parseTwinApiErrorCode({ code: " body_json_invalid " })).toBe("BODY_JSON_INVALID");
     expect(parseTwinApiErrorCode({ code: " body_validation_failed " })).toBe("BODY_VALIDATION_FAILED");
     expect(parseTwinApiErrorCode({ code: " path_id_invalid " })).toBe("PATH_ID_INVALID");
@@ -250,6 +252,16 @@ describe("TWIN_API_ERROR_CODES", () => {
       code: "INVALID_TWIN_INGEST_TYPE",
       error: "unsupported ingest type",
     });
+    expect(
+      parseTwinApiErrorBody({
+        code: " format_invalid ",
+        error: 42,
+        message: "backend rejected format token",
+      }),
+    ).toEqual({
+      code: "FORMAT_INVALID",
+      error: "backend rejected format token",
+    });
     expect(parseTwinApiErrorBody({ code: "FORMAT_INVALID", error: "   ", message: "Invalid format" })).toEqual({
       code: "FORMAT_INVALID",
       error: "Invalid format",
@@ -416,6 +428,13 @@ describe("TWIN_API_ERROR_CODES", () => {
     expect(
       getTwinEventsExportErrorMessage({ code: " invalid_twin_ingest_type ", error: "unsupported ingest type" }),
     ).toBe("unsupported ingest type");
+    expect(
+      getTwinEventsExportErrorMessage({
+        code: " format_invalid ",
+        error: "backend prefers xml",
+        message: "should not override export copy",
+      }),
+    ).toMatch(/CSV or JSON/i);
     expect(getTwinEventsExportErrorMessage({ error: "raw message" })).toBe("raw message");
     expect(getTwinEventsExportErrorMessage({ error: "\n\traw message\t\n" })).toBe("raw message");
     expect(getTwinEventsExportErrorMessage({ code: "NOT_A_REAL_TWIN_CODE", message: " fallback message " })).toBe(
