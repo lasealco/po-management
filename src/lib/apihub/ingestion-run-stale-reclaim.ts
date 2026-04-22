@@ -2,8 +2,12 @@ import { prisma } from "@/lib/prisma";
 
 import { APIHUB_INGESTION_ERROR_STALE_RUNNING } from "./constants";
 
-/** Default age after which `running` ingestion runs are failed for retry (serverless crash / lost client). */
-export const APIHUB_INGESTION_RUN_STALE_RUNNING_MS_DEFAULT = 15 * 60 * 1000;
+/**
+ * Default age after which `running` ingestion runs are failed for retry (lost client / abandoned tab).
+ * Intentionally **longer** than mapping-analysis reclaim: these rows track operator/API workflows that may
+ * stay `running` for hours. Tune down with **`APIHUB_INGESTION_RUN_STALE_RUNNING_MS`** if you want stricter reclaim.
+ */
+export const APIHUB_INGESTION_RUN_STALE_RUNNING_MS_DEFAULT = 24 * 60 * 60 * 1000;
 const STALE_MS_MIN = 60 * 1000;
 const STALE_MS_MAX = 24 * 60 * 60 * 1000;
 
@@ -27,7 +31,7 @@ function readStaleRunningMs(): number {
  * so operators can use **`POST …/retry`** (same as other terminal failures). `startedAt` older than the stale
  * threshold, or null while still running, triggers reclaim.
  *
- * Optional `now` for tests. Threshold: **`APIHUB_INGESTION_RUN_STALE_RUNNING_MS`** (milliseconds, default 15m).
+ * Optional `now` for tests. Threshold: **`APIHUB_INGESTION_RUN_STALE_RUNNING_MS`** (milliseconds, default 24h).
  */
 export async function reclaimStaleApiHubIngestionRuns(now?: Date): Promise<number> {
   const clock = now ?? new Date();

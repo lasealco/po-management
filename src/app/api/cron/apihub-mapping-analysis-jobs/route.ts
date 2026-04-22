@@ -8,14 +8,15 @@ import { runApiHubMappingAnalysisWorkerSweep } from "@/lib/apihub/mapping-analys
 export const dynamic = "force-dynamic";
 
 /**
- * Scheduled worker for **ApiHub mapping analysis** jobs: requeues stale `processing` rows (crash/timeout), then
- * drains `queued` when `after()` does not run (serverless early exit, etc.). Same auth pattern as other crons.
+ * ApiHub **cron**: fails stale **`running`** ingestion runs, requeues stale **`processing`** mapping-analysis jobs,
+ * then drains mapping-analysis **`queued`** (when `after()` does not run on serverless). Same auth as other crons.
  *
  * Secure with `CRON_SECRET`: `Authorization: Bearer <CRON_SECRET>`.
  *
- * Optional query: `limit` (1–20 per worker sweep cap, default 5).
+ * Optional query: `limit` (1–20 mapping-analysis jobs per sweep, default 5).
  *
- * Stale threshold: `APIHUB_MAPPING_ANALYSIS_STALE_PROCESSING_MS` (milliseconds; default 15 minutes).
+ * Stale thresholds (milliseconds, each clamped 1m–24h): **`APIHUB_INGESTION_RUN_STALE_RUNNING_MS`** (default **24h**),
+ * **`APIHUB_MAPPING_ANALYSIS_STALE_PROCESSING_MS`** (default **15m**).
  *
  * Configure in `vercel.json` (Pro: sub-hourly; Hobby: may run at most once per day — still drains backlog when it fires).
  */

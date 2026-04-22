@@ -26,7 +26,7 @@ describe("reclaimStaleApiHubIngestionRuns", () => {
     else process.env.APIHUB_INGESTION_RUN_STALE_RUNNING_MS = prevStale;
   });
 
-  it("uses default 15m cutoff from fixed now and sets stable error code", async () => {
+  it("uses default 24h cutoff from fixed now and sets stable error code", async () => {
     const { reclaimStaleApiHubIngestionRuns, APIHUB_INGESTION_RUN_STALE_RUNNING_MS_DEFAULT } =
       await import("./ingestion-run-stale-reclaim");
     const now = new Date("2026-04-22T12:00:00.000Z");
