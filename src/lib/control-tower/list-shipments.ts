@@ -401,6 +401,8 @@ export async function listControlTowerShipments(params: {
                 { code: contains },
                 { legalName: contains },
                 { email: contains },
+                { phone: contains },
+                { taxId: contains },
               ],
             },
           },
@@ -417,6 +419,13 @@ export async function listControlTowerShipments(params: {
                 { externalRef: contains },
                 { customerName: contains },
                 { notes: contains },
+                {
+                  createdBy: {
+                    is: {
+                      OR: [{ name: contains }, { email: contains }],
+                    },
+                  },
+                },
               ],
             },
           },
@@ -466,6 +475,19 @@ export async function listControlTowerShipments(params: {
                           { unNumber: contains },
                           { dangerousGoodsClass: contains },
                           { packagingNotes: contains },
+                          { unit: contains },
+                          { temperatureRangeText: contains },
+                          { temperatureUnit: contains },
+                          { coolingType: contains },
+                          { humidityRequirements: contains },
+                          { storageDescription: contains },
+                          {
+                            category: {
+                              is: {
+                                OR: [{ name: contains }, { code: contains }],
+                              },
+                            },
+                          },
                         ],
                       },
                     },
@@ -494,6 +516,8 @@ export async function listControlTowerShipments(params: {
                   { code: contains },
                   { legalName: contains },
                   { email: contains },
+                  { phone: contains },
+                  { taxId: contains },
                 ],
               },
             },
@@ -612,7 +636,20 @@ export async function listControlTowerShipments(params: {
                 { destinationCode: contains },
                 { carrier: contains },
                 { notes: contains },
-                { carrierSupplier: { is: { name: contains } } },
+                {
+                  carrierSupplier: {
+                    is: {
+                      OR: [
+                        { name: contains },
+                        { code: contains },
+                        { legalName: contains },
+                        { email: contains },
+                        { phone: contains },
+                        { taxId: contains },
+                      ],
+                    },
+                  },
+                },
               ],
             },
           },
@@ -670,7 +707,49 @@ export async function listControlTowerShipments(params: {
                 { notes: contains },
                 { originCode: contains },
                 { destinationCode: contains },
-                { forwarderSupplier: { is: { name: contains } } },
+                {
+                  forwarderSupplier: {
+                    is: {
+                      OR: [
+                        { name: contains },
+                        { code: contains },
+                        { legalName: contains },
+                        { email: contains },
+                        { phone: contains },
+                        { taxId: contains },
+                      ],
+                    },
+                  },
+                },
+                {
+                  forwarderOffice: {
+                    is: {
+                      OR: [
+                        { name: contains },
+                        { addressLine1: contains },
+                        { addressLine2: contains },
+                        { city: contains },
+                        { region: contains },
+                        { postalCode: contains },
+                        { countryCode: contains },
+                      ],
+                    },
+                  },
+                },
+                {
+                  forwarderContact: {
+                    is: {
+                      OR: [
+                        { name: contains },
+                        { title: contains },
+                        { role: contains },
+                        { email: contains },
+                        { phone: contains },
+                        { notes: contains },
+                      ],
+                    },
+                  },
+                },
               ],
             },
           },
