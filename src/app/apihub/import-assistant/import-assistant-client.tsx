@@ -229,6 +229,7 @@ export function ImportAssistantClient({ canEdit }: Props) {
   }
 
   function onPickDomain(id: ImportAssistantDomainId) {
+    if (!canEdit) return;
     setDomain(id);
     setStep("upload");
     setRecords(null);
@@ -243,6 +244,7 @@ export function ImportAssistantClient({ canEdit }: Props) {
   }
 
   async function onFileChange(file: File | null) {
+    if (!canEdit) return;
     setParseMessage(null);
     setRecords(null);
     setGuessDomain(null);
@@ -416,7 +418,7 @@ export function ImportAssistantClient({ canEdit }: Props) {
             propose field mappings. Anything unclear is flagged for your confirmation before you save or stage data.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Link
             href="/apihub"
             className="rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
@@ -430,6 +432,14 @@ export function ImportAssistantClient({ canEdit }: Props) {
           >
             Start over
           </button>
+          <a
+            href="https://github.com/lasealco/po-management/blob/main/docs/apihub/import-assistant-dogfood.md"
+            target="_blank"
+            rel="noreferrer"
+            className="text-sm font-medium text-[var(--arscmp-primary)] hover:underline"
+          >
+            Dogfood checklist
+          </a>
         </div>
       </div>
 
@@ -478,8 +488,9 @@ export function ImportAssistantClient({ canEdit }: Props) {
               <button
                 key={d.id}
                 type="button"
+                disabled={!canEdit}
                 onClick={() => onPickDomain(d.id)}
-                className="rounded-xl border border-zinc-200 bg-zinc-50/80 p-4 text-left shadow-sm transition hover:border-[var(--arscmp-primary)] hover:bg-white"
+                className="rounded-xl border border-zinc-200 bg-zinc-50/80 p-4 text-left shadow-sm transition hover:border-[var(--arscmp-primary)] hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <p className="font-semibold text-zinc-900">{d.title}</p>
                 <p className="mt-2 text-xs leading-relaxed text-zinc-600">{d.description}</p>

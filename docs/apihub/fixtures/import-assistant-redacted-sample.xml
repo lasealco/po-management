@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Consolidations>
+  <Consolidation>
+    <Id>CON-DEMO-001</Id>
+    <Shipment>
+      <HouseBill>HB-DEMO-001</HouseBill>
+      <Totals>
+        <Amount>1,234.50</Amount>
+        <Currency>USD</Currency>
+      </Totals>
+    </Shipment>
+  </Consolidation>
+  <Consolidation>
+    <Id>CON-DEMO-002</Id>
+    <Shipment>
+      <HouseBill>HB-DEMO-002</HouseBill>
+      <Totals>
+        <Amount>99.00</Amount>
+        <Currency>USD</Currency>
+      </Totals>
+    </Shipment>
+  </Consolidation>
+</Consolidations>

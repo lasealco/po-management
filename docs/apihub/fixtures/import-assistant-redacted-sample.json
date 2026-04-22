@@ -1,0 +1,18 @@
+[
+  {
+    "shipment": {
+      "id": " SH-DEMO-001 ",
+      "reference": "REF-2026-0001"
+    },
+    "totals": {
+      "amount": "$1,234.50",
+      "currency": "USD"
+    },
+    "events": [{ "code": "DEPART", "at": "2026-04-20T14:00:00Z" }]
+  },
+  {
+    "shipment": { "id": "SH-DEMO-002", "reference": "REF-2026-0002" },
+    "totals": { "amount": "99.00", "currency": "USD" },
+    "events": [{ "code": "ARRIVE", "at": "2026-04-22" }]
+  }
+]
