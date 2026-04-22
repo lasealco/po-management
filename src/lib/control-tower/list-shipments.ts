@@ -1,5 +1,11 @@
-import type { Prisma, ShipmentStatus, TransportMode } from "@prisma/client";
-import { ShipmentMilestoneCode } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
+import {
+  InvoiceAuditLineOutcome,
+  ShipmentBookingStatus,
+  ShipmentMilestoneCode,
+  ShipmentStatus,
+  TransportMode,
+} from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 
@@ -387,6 +393,52 @@ export async function listControlTowerShipments(params: {
       milestoneCodesMatching.length > 0
         ? { milestones: { some: { code: { in: milestoneCodesMatching } } } }
         : null;
+    const shipmentStatusEnumMatch = (Object.values(ShipmentStatus) as ShipmentStatus[]).filter(
+      (s) => s.toLowerCase() === qLower,
+    );
+    const transportModeEnumMatch = (Object.values(TransportMode) as TransportMode[]).filter(
+      (m) => m.toLowerCase() === qLower,
+    );
+    const bookingStatusEnumMatch = (Object.values(ShipmentBookingStatus) as ShipmentBookingStatus[]).filter(
+      (s) => s.toLowerCase() === qLower,
+    );
+    const invoiceAuditOutcomeEnumMatch = (
+      Object.values(InvoiceAuditLineOutcome) as InvoiceAuditLineOutcome[]
+    ).filter((o) => o.toLowerCase() === qLower);
+    const enumTokenOr: Prisma.ShipmentWhereInput[] = [
+      ...shipmentStatusEnumMatch.map((status) => ({ status })),
+      ...transportModeEnumMatch.flatMap((mode) => [
+        { transportMode: mode },
+        { booking: { is: { mode } } },
+      ]),
+      ...bookingStatusEnumMatch.map((status) => ({ booking: { is: { status } } })),
+      ...invoiceAuditOutcomeEnumMatch.map((outcome) => ({
+        booking: {
+          is: {
+            pricingSnapshots: {
+              some: {
+                OR: [
+                  { invoiceAuditResults: { some: { outcome } } },
+                  {
+                    invoiceIntakes: {
+                      some: {
+                        lines: {
+                          some: {
+                            auditResult: {
+                              is: { outcome },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        },
+      })),
+    ];
     const supplierPartyMatch: Prisma.SupplierWhereInput = {
       OR: [
         { name: contains },
@@ -494,6 +546,11 @@ export async function listControlTowerShipments(params: {
                     },
                   },
                 },
+                {
+                  warehouse: {
+                    is: warehouseTextMatch,
+                  },
+                },
               ],
             },
           },
@@ -503,6 +560,7 @@ export async function listControlTowerShipments(params: {
     ands.push({
       OR: [
         ...idOr,
+        ...enumTokenOr,
         { shipmentNo: contains },
         { trackingNo: contains },
         { carrier: contains },

@@ -262,6 +262,40 @@ describe("listControlTowerShipments", () => {
     expect(dumped).toContain("createdBy");
   });
 
+  it("text q matches exact enum tokens for status, transport mode, booking, and audit outcome", async () => {
+    await listControlTowerShipments({
+      tenantId: "tenant-1",
+      ctx: ctxInternal,
+      query: { q: "IN_TRANSIT" },
+    });
+    let where = shipmentFindMany.mock.calls[0]![0].where as Prisma.ShipmentWhereInput;
+    expect(JSON.stringify(where)).toContain("IN_TRANSIT");
+
+    await listControlTowerShipments({
+      tenantId: "tenant-1",
+      ctx: ctxInternal,
+      query: { q: "OCEAN" },
+    });
+    where = shipmentFindMany.mock.calls[1]![0].where as Prisma.ShipmentWhereInput;
+    expect(JSON.stringify(where)).toContain("OCEAN");
+
+    await listControlTowerShipments({
+      tenantId: "tenant-1",
+      ctx: ctxInternal,
+      query: { q: "CONFIRMED" },
+    });
+    where = shipmentFindMany.mock.calls[2]![0].where as Prisma.ShipmentWhereInput;
+    expect(JSON.stringify(where)).toContain("CONFIRMED");
+
+    await listControlTowerShipments({
+      tenantId: "tenant-1",
+      ctx: ctxInternal,
+      query: { q: "GREEN" },
+    });
+    where = shipmentFindMany.mock.calls[3]![0].where as Prisma.ShipmentWhereInput;
+    expect(JSON.stringify(where)).toContain("GREEN");
+  });
+
   it("overscans DB when routeActionPrefix is set", async () => {
     await listControlTowerShipments({
       tenantId: "tenant-1",
