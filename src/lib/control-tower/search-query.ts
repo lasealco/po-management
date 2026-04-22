@@ -46,6 +46,23 @@ export function appendAssistToSearchParams(
   if (opts?.take != null) sp.set("take", String(opts.take));
 }
 
+/**
+ * After `appendAssistToSearchParams`, merges raw box input when assist did not set `q`.
+ * If the whole trimmed input is a valid product-trace token, sets `productTrace` only (no `q`) so URLs and
+ * APIs match assist-driven trace queries. Otherwise sets `q` to the trimmed text.
+ */
+export function mergeRawControlTowerSearchInput(sp: URLSearchParams, rawInput: string): void {
+  const trimmed = rawInput.trim();
+  if (!trimmed) return;
+  if (sp.has("q")) return;
+  const pt = parseControlTowerProductTraceParam(trimmed);
+  if (pt && pt === trimmed) {
+    if (!sp.has("productTrace")) sp.set("productTrace", pt);
+    return;
+  }
+  sp.set("q", trimmed);
+}
+
 export function hasStructuredSearchInput(filters: AssistSuggestedFilters): boolean {
   return Boolean(
     filters.mode ||

@@ -8,7 +8,12 @@ import {
   controlTowerListPrimaryTitle,
   controlTowerListSecondaryRef,
 } from "@/lib/control-tower/shipment-list-label";
-import { appendAssistToSearchParams, hasStructuredSearchInput } from "@/lib/control-tower/search-query";
+import {
+  appendAssistToSearchParams,
+  hasStructuredSearchInput,
+  mergeRawControlTowerSearchInput,
+  parseControlTowerProductTraceParam,
+} from "@/lib/control-tower/search-query";
 
 type Hit = {
   id: string;
@@ -24,9 +29,7 @@ type Hit = {
 function buildWorkbenchUrl(filters: AssistSuggestedFilters, rawInput: string): string {
   const sp = new URLSearchParams();
   appendAssistToSearchParams(sp, filters);
-  if (!sp.has("q") && rawInput.trim()) {
-    sp.set("q", rawInput.trim());
-  }
+  mergeRawControlTowerSearchInput(sp, rawInput);
   return `/control-tower/workbench?${sp.toString()}`;
 }
 
@@ -50,10 +53,13 @@ export function ControlTowerSearchClient() {
   }, [suggested, q]);
 
   const productTraceHref = useMemo(() => {
-    const code = suggested?.productTraceQ?.trim();
+    const trimmed = q.trim();
+    const fromRaw = trimmed && parseControlTowerProductTraceParam(trimmed) === trimmed ? trimmed : "";
+    const fromAssist = suggested?.productTraceQ?.trim() ?? "";
+    const code = fromRaw || fromAssist;
     if (!code) return null;
     return `/control-tower/product-trace?q=${encodeURIComponent(code)}`;
-  }, [suggested?.productTraceQ]);
+  }, [q, suggested?.productTraceQ]);
 
   const run = useCallback(async () => {
     const raw = q.trim();
@@ -99,9 +105,7 @@ export function ControlTowerSearchClient() {
       const filters = assistRes.ok ? (assistJson.suggestedFilters ?? {}) : {};
       const sp = new URLSearchParams();
       appendAssistToSearchParams(sp, filters, { take: 60 });
-      if (!sp.has("q") && raw) {
-        sp.set("q", raw);
-      }
+      mergeRawControlTowerSearchInput(sp, raw);
       if (!sp.toString()) {
         throw new Error("Enter search text or structured tokens (e.g. lane:, overdue).");
       }

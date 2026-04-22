@@ -4,6 +4,7 @@ import {
   appendAssistToSearchParams,
   effectiveControlTowerQParam,
   hasStructuredSearchInput,
+  mergeRawControlTowerSearchInput,
   parseControlTowerProductTraceParam,
 } from "./search-query";
 
@@ -89,6 +90,36 @@ describe("appendAssistToSearchParams", () => {
     expect(sp.get("destinationCode")).toBe("USNYC");
     expect(sp.get("dispatchOwnerUserId")).toBe("user-owner");
     expect(sp.get("alertType")).toBe("COLLAB_MENTION");
+  });
+});
+
+describe("mergeRawControlTowerSearchInput", () => {
+  it("uses productTrace only when the full input is a valid trace token and q is unset", () => {
+    const sp = new URLSearchParams();
+    mergeRawControlTowerSearchInput(sp, "  SKU-1.a  ");
+    expect(sp.get("productTrace")).toBe("SKU-1.a");
+    expect(sp.has("q")).toBe(false);
+  });
+
+  it("sets q for free text or when q is already present from assist", () => {
+    const sp1 = new URLSearchParams();
+    mergeRawControlTowerSearchInput(sp1, "PO 123");
+    expect(sp1.get("q")).toBe("PO 123");
+    expect(sp1.has("productTrace")).toBe(false);
+
+    const sp2 = new URLSearchParams();
+    sp2.set("q", "from-assist");
+    mergeRawControlTowerSearchInput(sp2, "SKU-1");
+    expect(sp2.get("q")).toBe("from-assist");
+    expect(sp2.has("productTrace")).toBe(false);
+  });
+
+  it("does nothing when assist already set q (even if raw differs)", () => {
+    const sp = new URLSearchParams();
+    appendAssistToSearchParams(sp, { q: "from-assist", productTraceQ: "SKU-1" });
+    mergeRawControlTowerSearchInput(sp, "other-raw");
+    expect(sp.get("q")).toBe("from-assist");
+    expect(sp.get("productTrace")).toBe("SKU-1");
   });
 });
 
