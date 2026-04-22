@@ -130,6 +130,39 @@ describe("promoteApprovedStagingRowsToNewVersion (workflow)", () => {
     expect(h.createTariffContractVersion).not.toHaveBeenCalled();
   });
 
+  it("propagates when createTariffContractVersion fails (no lines written, no rollback delete)", async () => {
+    const { promoteApprovedStagingRowsToNewVersion } = await import("./promote-staging-import");
+    h.getTariffImportBatchForTenant.mockResolvedValue(
+      readyBatchWithRows([
+        {
+          id: "r1",
+          approved: true,
+          rowType: "RATE_LINE_CANDIDATE",
+          normalizedPayload: {
+            rateType: "BASE_RATE",
+            unitBasis: "CONTAINER",
+            currency: "USD",
+            amount: 1,
+          },
+        },
+      ]),
+    );
+    h.createTariffContractVersion.mockRejectedValueOnce(new Error("version create failed"));
+
+    await expect(
+      promoteApprovedStagingRowsToNewVersion({
+        tenantId: "t1",
+        importBatchId: "b1",
+        contractHeaderId: "hdr-1",
+        actorUserId: "u1",
+      }),
+    ).rejects.toThrow("version create failed");
+
+    expect(h.createTariffRateLine).not.toHaveBeenCalled();
+    expect(h.createTariffChargeLine).not.toHaveBeenCalled();
+    expect(h.versionDeleteMany).not.toHaveBeenCalled();
+  });
+
   it("throws BAD_INPUT when duplicate approved promotable payloads exist", async () => {
     const { promoteApprovedStagingRowsToNewVersion } = await import("./promote-staging-import");
     const payload = {
@@ -694,6 +727,98 @@ describe("promoteApprovedStagingRowsToNewVersion (workflow)", () => {
     expect(h.createTariffRateLine).toHaveBeenCalledTimes(1);
     expect(h.versionDeleteMany).toHaveBeenCalledWith({ where: { id: "ver-new" } });
     expect(h.recordTariffAuditLog).not.toHaveBeenCalled();
+  });
+
+  it("rolls back when a valid rate row is followed by an invalid charge row", async () => {
+    const { promoteApprovedStagingRowsToNewVersion } = await import("./promote-staging-import");
+    h.getTariffImportBatchForTenant.mockResolvedValue(
+      readyBatchWithRows([
+        {
+          id: "ok-rate",
+          approved: true,
+          rowType: "RATE_LINE_CANDIDATE",
+          normalizedPayload: {
+            rateType: "BASE_RATE",
+            unitBasis: "CONTAINER",
+            currency: "USD",
+            amount: 1,
+          },
+        },
+        {
+          id: "bad-charge",
+          approved: true,
+          rowType: "CHARGE_LINE_CANDIDATE",
+          normalizedPayload: {
+            rawChargeName: "BAF",
+            unitBasis: "CONTAINER",
+            currency: "USD",
+          },
+        },
+      ]),
+    );
+
+    const err = await promoteApprovedStagingRowsToNewVersion({
+      tenantId: "t1",
+      importBatchId: "b1",
+      contractHeaderId: "hdr-1",
+      actorUserId: "u1",
+    }).catch((e) => e);
+
+    expect(err).toBeInstanceOf(TariffRepoError);
+    expect((err as TariffRepoError).code).toBe("BAD_INPUT");
+    expect((err as TariffRepoError).message).toMatch(
+      /Charge staging row bad-charge missing rawChargeName, unitBasis, currency, or amount/,
+    );
+
+    expect(h.createTariffRateLine).toHaveBeenCalledTimes(1);
+    expect(h.createTariffChargeLine).not.toHaveBeenCalled();
+    expect(h.versionDeleteMany).toHaveBeenCalledWith({ where: { id: "ver-new" } });
+  });
+
+  it("rolls back when a valid charge row is followed by an invalid rate row", async () => {
+    const { promoteApprovedStagingRowsToNewVersion } = await import("./promote-staging-import");
+    h.getTariffImportBatchForTenant.mockResolvedValue(
+      readyBatchWithRows([
+        {
+          id: "ok-charge",
+          approved: true,
+          rowType: "CHARGE_LINE_CANDIDATE",
+          normalizedPayload: {
+            rawChargeName: "DOC",
+            unitBasis: "CONTAINER",
+            currency: "USD",
+            amount: 5,
+          },
+        },
+        {
+          id: "bad-rate",
+          approved: true,
+          rowType: "RATE_LINE_CANDIDATE",
+          normalizedPayload: {
+            rateType: "BASE_RATE",
+            unitBasis: "CONTAINER",
+            currency: "USD",
+          },
+        },
+      ]),
+    );
+
+    const err = await promoteApprovedStagingRowsToNewVersion({
+      tenantId: "t1",
+      importBatchId: "b1",
+      contractHeaderId: "hdr-1",
+      actorUserId: "u1",
+    }).catch((e) => e);
+
+    expect(err).toBeInstanceOf(TariffRepoError);
+    expect((err as TariffRepoError).code).toBe("BAD_INPUT");
+    expect((err as TariffRepoError).message).toMatch(
+      /Rate staging row bad-rate missing rateType, unitBasis, currency, or amount/,
+    );
+
+    expect(h.createTariffChargeLine).toHaveBeenCalledTimes(1);
+    expect(h.createTariffRateLine).not.toHaveBeenCalled();
+    expect(h.versionDeleteMany).toHaveBeenCalledWith({ where: { id: "ver-new" } });
   });
 
   it("throws BAD_INPUT for unsupported rateType before persisting lines", async () => {
