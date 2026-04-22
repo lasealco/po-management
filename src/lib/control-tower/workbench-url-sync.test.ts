@@ -84,6 +84,12 @@ describe("readWorkbenchUrlState", () => {
     const restricted = readWorkbenchUrlState(sp({ dispatchOwnerUserId: "c0000000000000000000" }), true);
     expect(restricted.ownerFilter).toBe("");
   });
+
+  it("reads exceptionCode and alertType", () => {
+    const r = readWorkbenchUrlState(sp({ exceptionCode: "DELAY", alertType: "COLLAB_MENTION" }), false);
+    expect(r.exceptionCodeFilter).toBe("DELAY");
+    expect(r.alertTypeFilter).toBe("COLLAB_MENTION");
+  });
 });
 
 describe("buildWorkbenchSearchString", () => {
@@ -121,6 +127,16 @@ describe("buildWorkbenchSearchString", () => {
     expect(qs).toContain("ship360Tab=milestones");
     expect(qs).toContain("autoRefresh=0");
   });
+
+  it("includes exception and alert type filters", () => {
+    const state = readWorkbenchUrlState(
+      sp({ exceptionCode: "LATE_DOC", alertType: "OPS_PING" }),
+      false,
+    );
+    const qs = buildWorkbenchSearchString(state, false);
+    expect(qs).toContain("exceptionCode=LATE_DOC");
+    expect(qs).toContain("alertType=OPS_PING");
+  });
 });
 
 describe("controlTowerWorkbenchPath", () => {
@@ -141,5 +157,11 @@ describe("controlTowerWorkbenchPathFromEtaLaneLabel", () => {
 
   it("returns bare workbench path when label is not two tokens", () => {
     expect(controlTowerWorkbenchPathFromEtaLaneLabel("only-one")).toBe("/control-tower/workbench");
+  });
+
+  it("maps origin only when destination is unknown placeholder", () => {
+    expect(controlTowerWorkbenchPathFromEtaLaneLabel("CNSHA -> ?")).toBe(
+      "/control-tower/workbench?originCode=CNSHA",
+    );
   });
 });
