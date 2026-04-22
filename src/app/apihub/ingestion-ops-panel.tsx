@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { readApiHubErrorMessageFromJsonBody } from "@/lib/apihub/api-error";
 import type { ApiHubIngestionJobStatus } from "@/lib/apihub/constants";
 import { APIHUB_INGESTION_JOB_STATUSES } from "@/lib/apihub/constants";
 import type { ApiHubIngestionRunDto } from "@/lib/apihub/ingestion-run-dto";
+
+import { IngestionRunDetailExpand } from "./ingestion-run-detail-expand";
 
 export type IngestionOpsSummaryPayload = {
   totals: Record<ApiHubIngestionJobStatus, number>;
@@ -64,6 +66,7 @@ export function IngestionOpsPanel({ canView, initialSummary, initialRuns }: Prop
   const [summary, setSummary] = useState<IngestionOpsSummaryPayload | null>(initialSummary);
   const [runs, setRuns] = useState<ApiHubIngestionRunDto[]>(initialRuns);
   const [filter, setFilter] = useState<StatusFilter>("");
+  const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const skipNextFilterFetch = useRef(true);
@@ -152,7 +155,9 @@ export function IngestionOpsPanel({ canView, initialSummary, initialRuns }: Prop
           <h2 className="mt-1 text-xl font-semibold text-zinc-900">Ingestion runs</h2>
           <p className="mt-2 max-w-2xl text-sm text-zinc-600">
             Snapshot from the ops summary API plus quick status filters on the ingestion jobs list. Use{" "}
-            <span className="font-medium text-zinc-800">Refresh</span> after pipeline or connector changes.
+            <span className="font-medium text-zinc-800">Refresh</span> after pipeline or connector changes. Open{" "}
+            <span className="font-medium text-zinc-800">View</span> on a run for a summary of timing, retries, and
+            apply-related fields; raw JSON stays under Advanced.
           </p>
           {summary ? (
             <p className="mt-2 text-xs text-zinc-500">
@@ -256,32 +261,52 @@ export function IngestionOpsPanel({ canView, initialSummary, initialRuns }: Prop
               <th className="px-4 py-3">Attempt</th>
               <th className="px-4 py-3">Trigger</th>
               <th className="px-4 py-3">Updated</th>
+              <th className="px-4 py-3 w-28">Detail</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100 bg-white text-zinc-800">
             {runs.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-sm text-zinc-600">
+                <td colSpan={6} className="px-4 py-8 text-center text-sm text-zinc-600">
                   No runs match this filter.
                 </td>
               </tr>
             ) : (
               runs.map((r) => (
-                <tr key={r.id}>
-                  <td className="px-4 py-3 font-mono text-xs text-zinc-700">{r.id}</td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium capitalize ${statusBadgeClass(r.status)}`}
-                    >
-                      {r.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 tabular-nums">
-                    {r.attempt}/{r.maxAttempts}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-zinc-600">{r.triggerKind}</td>
-                  <td className="px-4 py-3 text-xs text-zinc-600">{formatWhen(r.updatedAt)}</td>
-                </tr>
+                <Fragment key={r.id}>
+                  <tr>
+                    <td className="px-4 py-3 font-mono text-xs text-zinc-700">{r.id}</td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium capitalize ${statusBadgeClass(r.status)}`}
+                      >
+                        {r.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 tabular-nums">
+                      {r.attempt}/{r.maxAttempts}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-zinc-600">{r.triggerKind}</td>
+                    <td className="px-4 py-3 text-xs text-zinc-600">{formatWhen(r.updatedAt)}</td>
+                    <td className="px-4 py-3">
+                      <button
+                        type="button"
+                        onClick={() => setExpandedRunId((cur) => (cur === r.id ? null : r.id))}
+                        className="rounded-lg border border-zinc-200 bg-white px-2.5 py-1 text-xs font-semibold text-zinc-800 hover:bg-zinc-50"
+                        aria-expanded={expandedRunId === r.id}
+                      >
+                        {expandedRunId === r.id ? "Hide" : "View"}
+                      </button>
+                    </td>
+                  </tr>
+                  {expandedRunId === r.id ? (
+                    <tr className="bg-zinc-50/80">
+                      <td colSpan={6} className="p-0">
+                        <IngestionRunDetailExpand runId={r.id} />
+                      </td>
+                    </tr>
+                  ) : null}
+                </Fragment>
               ))
             )}
           </tbody>

@@ -42,13 +42,13 @@ const STEP_PLACEHOLDERS = [
     n: 1,
     title: "Intent",
     body: "Pick scenario and target (for example, new shipments from a partner file or API shape).",
-    badge: "Placeholder",
+    badge: "Scoping",
   },
   {
     n: 2,
     title: "Uploads + optional docs",
     body: "Bring sample files, example API JSON, and optional reference documents — not as a secret channel.",
-    badge: "Placeholder",
+    badge: "Inputs",
   },
   {
     n: 3,

@@ -1,0 +1,369 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
+import { readApiHubErrorMessageFromJsonBody } from "@/lib/apihub/api-error";
+import type { ApiHubIngestionRunDto } from "@/lib/apihub/ingestion-run-dto";
+
+type ObservabilityDto = {
+  timings: {
+    queueWaitMs: number | null;
+    runMs: number | null;
+    totalMs: number | null;
+    ageMs: number;
+  };
+  retries: {
+    retryDepth: number;
+    rootRunId: string;
+    remainingAttempts: number;
+  };
+};
+
+type RunDetailResponse = {
+  run: ApiHubIngestionRunDto;
+  observability: ObservabilityDto;
+};
+
+type TimelineEvent = {
+  runId: string;
+  attempt: number;
+  status: string;
+  at: string;
+};
+
+function formatWhen(iso: string) {
+  try {
+    return new Date(iso).toLocaleString(undefined, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
+  } catch {
+    return iso;
+  }
+}
+
+function formatMs(ms: number | null | undefined): string {
+  if (ms == null || !Number.isFinite(ms)) return "—";
+  if (ms < 1000) return `${Math.round(ms)} ms`;
+  if (ms < 60_000) return `${(ms / 1000).toFixed(1)} s`;
+  return `${(ms / 60_000).toFixed(1)} min`;
+}
+
+function tryApplyCountsFromResultSummary(
+  raw: string | null,
+): { created: number; updated: number; skipped: number } | null {
+  if (raw == null || !String(raw).trim()) return null;
+  let obj: unknown;
+  try {
+    obj = JSON.parse(String(raw)) as unknown;
+  } catch {
+    return null;
+  }
+  if (obj == null || typeof obj !== "object" || Array.isArray(obj)) return null;
+  const rec = obj as Record<string, unknown>;
+  const nested =
+    rec.targetSummary != null && typeof rec.targetSummary === "object" && !Array.isArray(rec.targetSummary)
+      ? (rec.targetSummary as Record<string, unknown>)
+      : rec;
+  const read = (k: string): number | null => {
+    const v = nested[k];
+    if (typeof v !== "number" || !Number.isFinite(v)) return null;
+    const n = Math.trunc(v);
+    return n >= 0 && n <= 1_000_000_000 ? n : null;
+  };
+  const c = read("created");
+  const u = read("updated");
+  const s = read("skipped");
+  if (c === null && u === null && s === null) return null;
+  return { created: c ?? 0, updated: u ?? 0, skipped: s ?? 0 };
+}
+
+function tryMappedRowCount(raw: string | null): number | null {
+  if (raw == null || !String(raw).trim()) return null;
+  try {
+    const obj = JSON.parse(String(raw)) as unknown;
+    if (obj && typeof obj === "object" && !Array.isArray(obj)) {
+      const rows = (obj as Record<string, unknown>).rows;
+      if (Array.isArray(rows)) return rows.length;
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+function StepChip(props: {
+  label: string;
+  done: boolean;
+  active?: boolean;
+  variant?: "ok" | "bad" | "neutral";
+}) {
+  const { label, done, active, variant = "neutral" } = props;
+  const base =
+    "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold";
+  if (done && variant === "ok") {
+    return (
+      <span className={`${base} border-emerald-200 bg-emerald-50 text-emerald-900`}>
+        <span aria-hidden>✓</span> {label}
+      </span>
+    );
+  }
+  if (done && variant === "bad") {
+    return (
+      <span className={`${base} border-red-200 bg-red-50 text-red-900`}>
+        <span aria-hidden>✕</span> {label}
+      </span>
+    );
+  }
+  if (active) {
+    return (
+      <span className={`${base} border-amber-200 bg-amber-50 text-amber-900`}>
+        <span className="inline-block size-1.5 animate-pulse rounded-full bg-amber-500" aria-hidden />
+        {label}
+      </span>
+    );
+  }
+  if (done) {
+    return (
+      <span className={`${base} border-zinc-200 bg-zinc-100 text-zinc-800`}>
+        <span aria-hidden>✓</span> {label}
+      </span>
+    );
+  }
+  return <span className={`${base} border-dashed border-zinc-300 bg-white text-zinc-500`}>{label}</span>;
+}
+
+type Props = {
+  runId: string;
+};
+
+export function IngestionRunDetailExpand({ runId }: Props) {
+  const [detail, setDetail] = useState<RunDetailResponse | null>(null);
+  const [timeline, setTimeline] = useState<TimelineEvent[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    setDetail(null);
+    setTimeline(null);
+
+    void (async () => {
+      try {
+        const [runRes, tlRes] = await Promise.all([
+          fetch(`/api/apihub/ingestion-jobs/${encodeURIComponent(runId)}`, { method: "GET" }),
+          fetch(`/api/apihub/ingestion-jobs/${encodeURIComponent(runId)}/timeline?limit=12`, {
+            method: "GET",
+          }),
+        ]);
+        const runJson = await runRes.json().catch(() => ({}));
+        if (!runRes.ok) {
+          throw new Error(readApiHubErrorMessageFromJsonBody(runJson, "Could not load run."));
+        }
+        const tlJson = await tlRes.json().catch(() => ({}));
+        const events = tlRes.ok && Array.isArray((tlJson as { events?: unknown }).events)
+          ? ((tlJson as { events: TimelineEvent[] }).events ?? [])
+          : [];
+
+        if (!cancelled) {
+          setDetail(runJson as RunDetailResponse);
+          setTimeline(events);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setError(e instanceof Error ? e.message : "Could not load run detail.");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [runId]);
+
+  if (loading) {
+    return (
+      <div className="border-t border-zinc-100 bg-zinc-50/90 px-4 py-6 text-sm text-zinc-600">
+        Loading run detail…
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div
+        className="border-t border-red-100 bg-red-50/80 px-4 py-4 text-sm text-red-800"
+        role="alert"
+      >
+        {error}
+      </div>
+    );
+  }
+
+  if (!detail) {
+    return null;
+  }
+
+  const { run, observability } = detail;
+  const t = observability.timings;
+  const r = observability.retries;
+
+  const enqueued = Boolean(run.enqueuedAt);
+  const started = Boolean(run.startedAt);
+  const finished = Boolean(run.finishedAt);
+  const succeeded = run.status === "succeeded";
+  const failed = run.status === "failed";
+  const applied = Boolean(run.appliedAt);
+  const runningNow = run.status === "running" || (started && !finished);
+
+  const applyCounts = tryApplyCountsFromResultSummary(run.resultSummary);
+  const mappedRows = tryMappedRowCount(run.resultSummary);
+
+  const advancedPayload = { run, observability, timelinePreview: timeline ?? [] };
+
+  return (
+    <div className="border-t border-zinc-100 bg-zinc-50/90 px-4 py-5 text-sm text-zinc-800">
+      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Run progress</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <StepChip label="Enqueued" done={enqueued} />
+        <StepChip label="Running" done={started} active={runningNow} />
+        <StepChip
+          label={failed ? "Failed" : "Finished"}
+          done={finished}
+          active={false}
+          variant={failed ? "bad" : finished ? "ok" : "neutral"}
+        />
+        <StepChip
+          label="Applied downstream"
+          done={applied}
+          variant={applied ? "ok" : "neutral"}
+        />
+      </div>
+
+      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Timing</p>
+          <ul className="mt-2 space-y-1 text-xs text-zinc-700">
+            <li>
+              <span className="text-zinc-500">Queue wait:</span> {formatMs(t.queueWaitMs)}
+            </li>
+            <li>
+              <span className="text-zinc-500">Run time:</span> {formatMs(t.runMs)}
+            </li>
+            <li>
+              <span className="text-zinc-500">Enqueue → finish:</span> {formatMs(t.totalMs)}
+            </li>
+          </ul>
+        </div>
+        <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Retries</p>
+          <ul className="mt-2 space-y-1 text-xs text-zinc-700">
+            <li>
+              <span className="text-zinc-500">Attempt:</span>{" "}
+              <span className="font-mono tabular-nums">
+                {run.attempt}/{run.maxAttempts}
+              </span>
+            </li>
+            <li>
+              <span className="text-zinc-500">Remaining:</span> {r.remainingAttempts}
+            </li>
+            <li>
+              <span className="text-zinc-500">Chain depth:</span> {r.retryDepth}
+            </li>
+            <li className="truncate" title={r.rootRunId}>
+              <span className="text-zinc-500">Root run:</span>{" "}
+              <span className="font-mono text-[11px]">{r.rootRunId}</span>
+            </li>
+          </ul>
+        </div>
+        <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm sm:col-span-2 lg:col-span-1">
+          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Pipeline output</p>
+          {failed && (run.errorCode || run.errorMessage) ? (
+            <p className="mt-2 text-xs text-red-800">
+              {run.errorCode ? (
+                <span className="font-mono font-semibold">{run.errorCode}</span>
+              ) : null}
+              {run.errorCode && run.errorMessage ? " · " : null}
+              {run.errorMessage ?? ""}
+            </p>
+          ) : null}
+          {succeeded ? (
+            <ul className="mt-2 space-y-1 text-xs text-zinc-700">
+              {mappedRows != null ? (
+                <li>
+                  <span className="text-zinc-500">Mapped rows (from summary):</span>{" "}
+                  <span className="font-semibold tabular-nums">{mappedRows}</span>
+                </li>
+              ) : null}
+              {applyCounts ? (
+                <li>
+                  <span className="text-zinc-500">Last apply counts (if present):</span>{" "}
+                  <span className="tabular-nums">
+                    {applyCounts.created} created · {applyCounts.updated} updated · {applyCounts.skipped}{" "}
+                    skipped
+                  </span>
+                </li>
+              ) : (
+                <li className="text-zinc-600">
+                  No structured <span className="font-mono">created/updated/skipped</span> block in{" "}
+                  <span className="font-mono">resultSummary</span> yet.
+                </li>
+              )}
+              {applied ? (
+                <li>
+                  <span className="text-zinc-500">Marked applied:</span>{" "}
+                  {run.appliedAt ? formatWhen(run.appliedAt) : "—"}
+                </li>
+              ) : succeeded ? (
+                <li className="text-zinc-600">Not marked applied — downstream apply may not have run.</li>
+              ) : null}
+            </ul>
+          ) : !failed ? (
+            <p className="mt-2 text-xs text-zinc-600">Run not finished yet.</p>
+          ) : null}
+        </div>
+      </div>
+
+      {timeline && timeline.length > 0 ? (
+        <div className="mt-6">
+          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+            Status timeline (retry tree)
+          </p>
+          <ul className="mt-2 max-h-40 overflow-y-auto rounded-lg border border-zinc-200 bg-white text-xs text-zinc-700">
+            {timeline.map((ev, i) => (
+              <li
+                key={`${ev.runId}-${ev.at}-${ev.status}-${i}`}
+                className="flex flex-wrap items-baseline gap-x-2 border-b border-zinc-100 px-3 py-2 last:border-b-0"
+              >
+                <span className="font-mono text-[10px] text-zinc-500">{formatWhen(ev.at)}</span>
+                <span className="capitalize text-zinc-800">{ev.status}</span>
+                <span className="text-zinc-500">
+                  attempt {ev.attempt} ·{" "}
+                  <span className="font-mono" title={ev.runId}>
+                    {ev.runId.slice(0, 8)}…
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      <details className="mt-6 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
+        <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-zinc-600">
+          Advanced — raw JSON
+        </summary>
+        <p className="mt-2 text-xs text-zinc-500">
+          Full API payload for debugging. Operators usually do not need this.
+        </p>
+        <pre className="mt-3 max-h-64 overflow-auto rounded-lg bg-zinc-950 p-3 text-[11px] leading-relaxed text-zinc-100">
+          {JSON.stringify(advancedPayload, null, 2)}
+        </pre>
+      </details>
+    </div>
+  );
+}
