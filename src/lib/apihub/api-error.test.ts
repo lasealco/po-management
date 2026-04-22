@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { apiHubError, apiHubValidationError, readApiHubErrorMessageFromJsonBody } from "./api-error";
+import {
+  apiHubError,
+  apiHubStagingBatchCreateFailedMessage,
+  apiHubValidationError,
+  readApiHubErrorMessageFromJsonBody,
+} from "./api-error";
 import { APIHUB_REQUEST_ID_HEADER } from "./request-id";
 
 describe("apiHubValidationError", () => {
@@ -91,6 +96,40 @@ describe("apiHubValidationError (P4 — stable envelope)", () => {
     expect(Object.keys(body.error.details).sort()).toEqual(["issues", "summary"]);
     expect(Array.isArray(body.error.details.issues)).toBe(true);
     expect(body.error.details.issues).toHaveLength(1);
+  });
+});
+
+describe("apiHubStagingBatchCreateFailedMessage", () => {
+  const fb = "Could not create staging batch.";
+
+  it("passes through known domain messages from staging-batches-repo", () => {
+    expect(
+      apiHubStagingBatchCreateFailedMessage(
+        new Error("Analysis job not found, wrong tenant, or not succeeded."),
+        fb,
+      ),
+    ).toBe("Analysis job not found, wrong tenant, or not succeeded.");
+    expect(apiHubStagingBatchCreateFailedMessage(new Error("Job input has no records array."), fb)).toBe(
+      "Job input has no records array.",
+    );
+    expect(apiHubStagingBatchCreateFailedMessage(new Error("Job output has no rules array."), fb)).toBe(
+      "Job output has no rules array.",
+    );
+    expect(apiHubStagingBatchCreateFailedMessage(new Error("At most 500 rows per staging batch."), fb)).toBe(
+      "At most 500 rows per staging batch.",
+    );
+  });
+
+  it("hides unexpected engine errors", () => {
+    expect(
+      apiHubStagingBatchCreateFailedMessage(
+        new Error(
+          "\nInvalid `prisma.apiHubStagingBatch.create()` invocation:\nForeign key constraint failed",
+        ),
+        fb,
+      ),
+    ).toBe(fb);
+    expect(apiHubStagingBatchCreateFailedMessage("not an error", fb)).toBe(fb);
   });
 });
 

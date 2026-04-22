@@ -92,6 +92,28 @@ export function apiHubDemoActorMissing(requestId: string) {
   );
 }
 
+/**
+ * Maps **`createApiHubStagingBatchFromAnalysisJob`** failures to an operator-safe message.
+ * Unknown errors (e.g. Prisma engine) return **`fallback`** so internal details are not echoed (R7).
+ */
+export function apiHubStagingBatchCreateFailedMessage(error: unknown, fallback: string): string {
+  if (!(error instanceof Error) || typeof error.message !== "string") {
+    return fallback;
+  }
+  const m = error.message.trim();
+  if (
+    m === "Analysis job not found, wrong tenant, or not succeeded." ||
+    m === "Job input has no records array." ||
+    m === "Job output has no rules array."
+  ) {
+    return m;
+  }
+  if (/^At most \d+ rows per staging batch\.$/.test(m)) {
+    return m;
+  }
+  return fallback;
+}
+
 /** Parse API Hub JSON error bodies from fetch (legacy `{ error }` or structured `{ ok:false, error:{ message } }`). */
 export function readApiHubErrorMessageFromJsonBody(data: unknown, fallback: string): string {
   if (!data || typeof data !== "object") {

@@ -1,6 +1,7 @@
 import {
   apiHubError,
   apiHubJson,
+  apiHubStagingBatchCreateFailedMessage,
   apiHubValidationError,
 } from "@/lib/apihub/api-error";
 import {
@@ -92,7 +93,7 @@ export async function POST(request: Request) {
     });
     return apiHubJson({ batch: toApiHubStagingBatchListItemDto(batch) }, requestId, 201);
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Could not create staging batch.";
+    const msg = apiHubStagingBatchCreateFailedMessage(e, "Could not create staging batch.");
     return apiHubError(400, "STAGING_BATCH_CREATE_FAILED", msg, requestId);
   }
 }

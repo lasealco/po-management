@@ -65,6 +65,12 @@ Authoritative guard semantics: [permissions-matrix.md](./permissions-matrix.md).
 | `GET` | `/api/apihub/mapping-analysis-jobs/:jobId` | Job detail, `outputProposal.rules`, optional **`outputProposal.llm`** (attempted/used/model/error), optional embedded **`stagingPreview`**. |
 | `POST` | `/api/apihub/mapping-analysis-jobs/:jobId/process` | Manually claim a **queued** job (local dev / recovery); idempotent. |
 
+### Import assistant (guided chat)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `POST` | `/api/apihub/import-assistant/chat` | Bounded JSON body: chat turn for import guidance (`messages`, optional hints). **`org.apihub` → view**; same demo session gates as other routes. |
+
 ### ApiHub cron worker (mapping analysis)
 
 | Method | Path | Purpose |
