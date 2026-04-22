@@ -17,7 +17,7 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 
-import { getControlTowerPortalContext } from "./viewer";
+import { getControlTowerPortalContext, isControlTowerCustomerView } from "./viewer";
 
 describe("getControlTowerPortalContext", () => {
   beforeEach(() => {
@@ -72,5 +72,25 @@ describe("getControlTowerPortalContext", () => {
       isSupplierPortal: false,
       customerCrmAccountId: null,
     });
+  });
+});
+
+describe("isControlTowerCustomerView", () => {
+  beforeEach(() => {
+    userIsSuperuser.mockReset();
+    userHasRoleNamed.mockReset();
+    findUniqueUser.mockReset();
+  });
+
+  it("is false for superusers", async () => {
+    userIsSuperuser.mockResolvedValue(true);
+    expect(await isControlTowerCustomerView("u1")).toBe(false);
+  });
+
+  it("is true when portal context is restricted (supplier portal)", async () => {
+    userIsSuperuser.mockResolvedValue(false);
+    userHasRoleNamed.mockImplementation((_id, name) => Promise.resolve(name === "Supplier portal"));
+    findUniqueUser.mockResolvedValue({ customerCrmAccountId: null });
+    expect(await isControlTowerCustomerView("u-sup")).toBe(true);
   });
 });

@@ -116,4 +116,12 @@ describe("mergeAssistSuggestedFilters", () => {
     const r = mergeAssistSuggestedFilters({ onlyOverdueEta: true }, { onlyOverdueEta: false });
     expect(r.onlyOverdueEta).toBeUndefined();
   });
+
+  it("overwrites prior string fields from patch", () => {
+    const r = mergeAssistSuggestedFilters(
+      { q: "keep", mode: "OCEAN", status: "BOOKED" },
+      { mode: "AIR", status: "IN_TRANSIT" },
+    );
+    expect(r).toEqual({ q: "keep", mode: "AIR", status: "IN_TRANSIT" });
+  });
 });
