@@ -405,6 +405,16 @@ export async function listControlTowerShipments(params: {
         { internalNotes: contains },
       ],
     };
+    const warehouseTextMatch: Prisma.WarehouseWhereInput = {
+      OR: [
+        { name: contains },
+        { code: contains },
+        { addressLine1: contains },
+        { city: contains },
+        { region: contains },
+        { countryCode: contains },
+      ],
+    };
     const wmsTaskTextMatch: Prisma.WmsTaskWhereInput = {
       OR: [
         { note: contains },
@@ -426,16 +436,7 @@ export async function listControlTowerShipments(params: {
         },
         {
           warehouse: {
-            is: {
-              OR: [
-                { name: contains },
-                { code: contains },
-                { addressLine1: contains },
-                { city: contains },
-                { region: contains },
-                { countryCode: contains },
-              ],
-            },
+            is: warehouseTextMatch,
           },
         },
         {
@@ -458,6 +459,11 @@ export async function listControlTowerShipments(params: {
               OR: [
                 { waveNo: contains },
                 { note: contains },
+                {
+                  warehouse: {
+                    is: warehouseTextMatch,
+                  },
+                },
                 {
                   createdBy: {
                     is: {
@@ -563,6 +569,13 @@ export async function listControlTowerShipments(params: {
                         {
                           parent: {
                             is: {
+                              OR: [{ name: contains }, { legalName: contains }],
+                            },
+                          },
+                        },
+                        {
+                          children: {
+                            some: {
                               OR: [{ name: contains }, { legalName: contains }],
                             },
                           },
@@ -841,14 +854,21 @@ export async function listControlTowerShipments(params: {
                             },
                           },
                         },
-                        {
-                          parent: {
-                            is: {
-                              OR: [{ name: contains }, { legalName: contains }],
-                            },
-                          },
-                        },
                       ],
+                    },
+                  },
+                },
+                {
+                  parent: {
+                    is: {
+                      OR: [{ name: contains }, { legalName: contains }],
+                    },
+                  },
+                },
+                {
+                  children: {
+                    some: {
+                      OR: [{ name: contains }, { legalName: contains }],
                     },
                   },
                 },
@@ -1128,16 +1148,7 @@ export async function listControlTowerShipments(params: {
                     { notes: contains },
                     {
                       warehouse: {
-                        is: {
-                          OR: [
-                            { name: contains },
-                            { code: contains },
-                            { addressLine1: contains },
-                            { city: contains },
-                            { region: contains },
-                            { countryCode: contains },
-                          ],
-                        },
+                        is: warehouseTextMatch,
                       },
                     },
                     {

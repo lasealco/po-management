@@ -237,6 +237,7 @@ describe("listControlTowerShipments", () => {
     expect(dumped).toContain("toleranceRule");
     expect(dumped).toContain("currencyScope");
     expect(dumped).toContain('"parent":{"is"');
+    expect(dumped).toContain('"children":{"some"');
     expect(dumped).toContain("externalRef");
     expect(dumped).toContain("orderItem");
     expect(dumped).toContain("refType");
