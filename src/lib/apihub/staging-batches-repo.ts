@@ -148,10 +148,13 @@ export async function discardApiHubStagingBatch(input: {
   if (batch.status !== "open") {
     return { ok: false, reason: "not_open" };
   }
-  await prisma.apiHubStagingBatch.update({
-    where: { id: input.batchId },
+  const updated = await prisma.apiHubStagingBatch.updateMany({
+    where: { id: input.batchId, tenantId: input.tenantId },
     data: { status: "discarded" },
   });
+  if (updated.count !== 1) {
+    return { ok: false, reason: "not_found" };
+  }
   return { ok: true };
 }
 

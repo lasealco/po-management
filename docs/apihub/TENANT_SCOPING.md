@@ -19,12 +19,14 @@ All **API Hub** persistence entry points are intended to be **tenant-scoped**: r
 | `ingestion-run-audit-repo.ts` | `create` includes `tenantId` from caller. |
 | `ingestion-run-timeline-repo.ts` | All `findFirst` / `findMany` include `tenantId`. |
 | `mapping-templates-repo.ts` | List/get scoped; **updates and deletes** use `updateMany` / `deleteMany` with **`{ id, tenantId }`** so mutations are atomic with tenant in the `WHERE` clause (Slice 61 hardening). |
+| `staging-batches-repo.ts` | List/get/discard/create-from-job — `where` includes `tenantId` (and ids); **discard** uses `updateMany` with **`{ id, tenantId }`**. |
 
 ## Automated checks
 
 Vitest files assert representative `where` shapes for:
 
 - `mapping-templates-repo.tenant-scope.test.ts`
+- `staging-batches-repo.tenant-scope.test.ts`
 - `ingestion-runs-repo.tenant-scope.test.ts`
 - `connectors-repo.tenant-scope.test.ts`
 
@@ -35,4 +37,4 @@ Run: `npm run test:apihub`
 - Extend the same style of assertions to every remaining delegate (`countInFlight…`, raw SQL repos) if regressions appear.
 - Enterprise tranche **Slice 61** in `agent_milestones_one_agent.md` is satisfied for **defense-in-depth mutations** + **contract tests**; a full formal verification of every line of SQL is still optional hardening.
 
-**Last updated:** 2026-04-30
+**Last updated:** 2026-04-22
