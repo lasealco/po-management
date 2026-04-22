@@ -10,7 +10,7 @@ All **API Hub** persistence entry points are intended to be **tenant-scoped**: r
 
 | Module | Scoping notes |
 |--------|----------------|
-| `connectors-repo.ts` | `listApiHubConnectors`, `getApiHubConnectorInTenant`, `getApiHubConnectorHealthContext`, audit lists, lifecycle updates — `where` includes `tenantId` (and `connectorId` where relevant). |
+| `connectors-repo.ts` | `listApiHubConnectors`, `getApiHubConnectorInTenant`, `getApiHubConnectorHealthContext`, audit lists, lifecycle updates — `where` includes `tenantId` (and `connectorId` where relevant); **lifecycle field mutations** use `updateMany` **`{ id, tenantId }`** then re-read. |
 | `ingestion-runs-repo.ts` | List, get, create, transition, retry, count, `groupBy` — all filter `tenantId`. |
 | `ingestion-apply-repo.ts` | `applyApiHubIngestionRun` uses `tenantId` on `findFirst` / `updateMany`. |
 | `ingestion-apply-idempotency-repo.ts` | Composite unique `tenantId` + `idempotencyKey`. |
@@ -34,7 +34,7 @@ Run: `npm run test:apihub`
 
 ## Follow-ups
 
-- Extend the same style of assertions to every remaining delegate (`countInFlight…`, raw SQL repos) if regressions appear.
+- Extend the same style of assertions to raw SQL repos (`$queryRaw`) if regressions appear; **`countInFlight`** / ops **`groupBy`** are covered in `ingestion-runs-repo.tenant-scope.test.ts`.
 - Enterprise tranche **Slice 61** in `agent_milestones_one_agent.md` is satisfied for **defense-in-depth mutations** + **contract tests**; a full formal verification of every line of SQL is still optional hardening.
 
 **Last updated:** 2026-04-22

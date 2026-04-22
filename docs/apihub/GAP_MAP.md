@@ -6,7 +6,7 @@
 
 | Area | Repo reality | Notes |
 |------|--------------|--------|
-| Tenant scoping (repos) | ✅ [`TENANT_SCOPING.md`](./TENANT_SCOPING.md), `*.tenant-scope.test.ts` | Mapping template PATCH/DELETE use `updateMany`/`deleteMany` with `{ id, tenantId }`; staging **discard** uses `updateMany` `{ id, tenantId }`; repo `where` assertions incl. **`staging-batches-repo`** (**2026-04-22**) |
+| Tenant scoping (repos) | ✅ [`TENANT_SCOPING.md`](./TENANT_SCOPING.md), `*.tenant-scope.test.ts` | Mapping template PATCH/DELETE use `updateMany`/`deleteMany` with `{ id, tenantId }`; staging **discard** + connector **lifecycle** field mutations use `updateMany` `{ id, tenantId }`; tenant-scope tests incl. **ingestion in-flight count** + **ops `groupBy`** (**2026-04-22**) |
 | Slice 60 handoff | ✅ [`CLOSEOUT_AUDIT.md`](./CLOSEOUT_AUDIT.md) | Inventory, verify commands, **residual risk log** (R1–R9); some risks partially mitigated (see below) |
 | Docs home | ✅ `docs/apihub/README.md`, specs | Route index includes mapping analysis, staging, apply, discard, playbook for catalog/tariffs |
 | Docs runbook | ✅ `docs/apihub/RUNBOOK.md` | Docs-only workflow; points to README for live endpoint index |

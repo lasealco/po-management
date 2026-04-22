@@ -212,43 +212,40 @@ export async function updateApiHubConnectorLifecycle(opts: {
       data.authConfigRef = opts.authConfigRef ?? null;
     }
 
-    const updated =
-      Object.keys(data).length > 0
-        ? await tx.apiHubConnector.update({
-            where: { id: existing.id },
-            data,
-            select: {
-              id: true,
-              name: true,
-              sourceKind: true,
-              status: true,
-              authMode: true,
-              authState: true,
-              authConfigRef: true,
-              lastSyncAt: true,
-              healthSummary: true,
-              opsNote: true,
-              createdAt: true,
-              updatedAt: true,
-            },
-          })
-        : await tx.apiHubConnector.findFirstOrThrow({
-            where: { id: existing.id },
-            select: {
-              id: true,
-              name: true,
-              sourceKind: true,
-              status: true,
-              authMode: true,
-              authState: true,
-              authConfigRef: true,
-              lastSyncAt: true,
-              healthSummary: true,
-              opsNote: true,
-              createdAt: true,
-              updatedAt: true,
-            },
-          });
+    const connectorListRowSelect = {
+      id: true,
+      name: true,
+      sourceKind: true,
+      status: true,
+      authMode: true,
+      authState: true,
+      authConfigRef: true,
+      lastSyncAt: true,
+      healthSummary: true,
+      opsNote: true,
+      createdAt: true,
+      updatedAt: true,
+    } as const;
+
+    let updated;
+    if (Object.keys(data).length > 0) {
+      const upd = await tx.apiHubConnector.updateMany({
+        where: { id: existing.id, tenantId: opts.tenantId },
+        data,
+      });
+      if (upd.count !== 1) {
+        return null;
+      }
+      updated = await tx.apiHubConnector.findFirstOrThrow({
+        where: { id: existing.id, tenantId: opts.tenantId },
+        select: connectorListRowSelect,
+      });
+    } else {
+      updated = await tx.apiHubConnector.findFirstOrThrow({
+        where: { id: existing.id, tenantId: opts.tenantId },
+        select: connectorListRowSelect,
+      });
+    }
 
     if (lifecycleChanged) {
       await tx.apiHubConnectorAuditLog.create({
