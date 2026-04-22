@@ -5,6 +5,10 @@ import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { listControlTowerShipments } from "@/lib/control-tower/list-shipments";
+import {
+  effectiveControlTowerQParam,
+  parseControlTowerProductTraceParam,
+} from "@/lib/control-tower/search-query";
 import { getControlTowerPortalContext } from "@/lib/control-tower/viewer";
 import { getDemoTenant } from "@/lib/demo-tenant";
 
@@ -50,16 +54,8 @@ export async function GET(request: Request) {
   const ctx = await getControlTowerPortalContext(actorId);
 
   const { searchParams } = new URL(request.url);
-  const q = searchParams.get("q")?.trim() ?? "";
-  const productTraceRaw = searchParams.get("productTrace")?.trim() ?? "";
-  const productTrace =
-    productTraceRaw.length > 0 &&
-    productTraceRaw.length <= 80 &&
-    /^[\w.-]+$/i.test(productTraceRaw)
-      ? productTraceRaw
-      : undefined;
-  /** SKU / product code search (aligned with assist `productTraceQ` and workbench `productTrace` param). */
-  const effectiveQ = q || productTrace || "";
+  const productTrace = parseControlTowerProductTraceParam(searchParams.get("productTrace"));
+  const effectiveQ = effectiveControlTowerQParam(searchParams.get("q"), productTrace);
   const statusRaw = searchParams.get("status") ?? "";
   const modeRaw = searchParams.get("mode") ?? "";
   const onlyOverdueEtaRaw = searchParams.get("onlyOverdueEta") ?? "";

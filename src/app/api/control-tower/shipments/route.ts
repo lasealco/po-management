@@ -6,6 +6,10 @@ import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { actorIsSupplierPortalRestricted, getActorUserId, requireApiGrant } from "@/lib/authz";
 import { createLogisticsShipment } from "@/lib/control-tower/create-logistics-shipment";
 import { listControlTowerShipments } from "@/lib/control-tower/list-shipments";
+import {
+  effectiveControlTowerQParam,
+  parseControlTowerProductTraceParam,
+} from "@/lib/control-tower/search-query";
 import { getControlTowerPortalContext } from "@/lib/control-tower/viewer";
 import { getDemoTenant } from "@/lib/demo-tenant";
 
@@ -40,7 +44,9 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const statusRaw = searchParams.get("status") ?? "";
   const modeRaw = searchParams.get("mode") ?? "";
-  const q = searchParams.get("q") ?? undefined;
+  const productTrace = parseControlTowerProductTraceParam(searchParams.get("productTrace"));
+  const qRaw = effectiveControlTowerQParam(searchParams.get("q"), productTrace);
+  const q = qRaw || undefined;
   const lane = searchParams.get("lane") ?? undefined;
   const carrierSupplierId = searchParams.get("carrierSupplierId") ?? undefined;
   const supplierId = searchParams.get("supplierId") ?? undefined;
@@ -125,6 +131,8 @@ export async function GET(request: Request) {
   });
 
   return NextResponse.json({
+    q: qRaw || null,
+    productTrace: productTrace ?? null,
     shipments: listResult.rows,
     listLimit: listResult.listLimit,
     itemCount: listResult.rows.length,

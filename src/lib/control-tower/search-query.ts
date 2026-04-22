@@ -1,5 +1,24 @@
 import type { AssistSuggestedFilters } from "@/lib/control-tower/assist";
 
+const MAX_PRODUCT_TRACE_LEN = 80;
+
+/** Validate `productTrace` query param (same rules as assist catalog-style tokens). */
+export function parseControlTowerProductTraceParam(raw: string | null | undefined): string | undefined {
+  const t = raw?.trim() ?? "";
+  if (!t || t.length > MAX_PRODUCT_TRACE_LEN) return undefined;
+  if (!/^[\w.-]+$/i.test(t)) return undefined;
+  return t;
+}
+
+/** Prefer explicit `q`; fall back to validated product / SKU trace code. */
+export function effectiveControlTowerQParam(
+  qRaw: string | null | undefined,
+  productTrace: string | undefined,
+): string {
+  const q = qRaw?.trim() ?? "";
+  return q || productTrace || "";
+}
+
 /** Apply assist / structured filters to a URLSearchParams for GET /api/control-tower/search or workbench. */
 export function appendAssistToSearchParams(
   sp: URLSearchParams,

@@ -1,6 +1,35 @@
 import { describe, expect, it } from "vitest";
 
-import { appendAssistToSearchParams, hasStructuredSearchInput } from "./search-query";
+import {
+  appendAssistToSearchParams,
+  effectiveControlTowerQParam,
+  hasStructuredSearchInput,
+  parseControlTowerProductTraceParam,
+} from "./search-query";
+
+describe("parseControlTowerProductTraceParam", () => {
+  it("accepts trimmed alphanumeric tokens", () => {
+    expect(parseControlTowerProductTraceParam("  SKU-1.a  ")).toBe("SKU-1.a");
+  });
+
+  it("rejects empty, too long, or invalid characters", () => {
+    expect(parseControlTowerProductTraceParam("")).toBeUndefined();
+    expect(parseControlTowerProductTraceParam("   ")).toBeUndefined();
+    expect(parseControlTowerProductTraceParam("a".repeat(81))).toBeUndefined();
+    expect(parseControlTowerProductTraceParam("bad code")).toBeUndefined();
+  });
+});
+
+describe("effectiveControlTowerQParam", () => {
+  it("prefers q over productTrace", () => {
+    expect(effectiveControlTowerQParam("  PO-1  ", "SKU")).toBe("PO-1");
+  });
+
+  it("falls back to productTrace when q is blank", () => {
+    expect(effectiveControlTowerQParam("", "SKU-9")).toBe("SKU-9");
+    expect(effectiveControlTowerQParam(null, "SKU-9")).toBe("SKU-9");
+  });
+});
 
 describe("appendAssistToSearchParams", () => {
   it("sets query keys from sanitized-style filters", () => {
