@@ -5,6 +5,7 @@ import { Fragment, useCallback, useState } from "react";
 
 import { readApiHubErrorMessageFromJsonBody } from "@/lib/apihub/api-error";
 import type { ApiHubApplyConflictListItemDto } from "@/lib/apihub/ingestion-apply-conflict-dto";
+import { workspaceTabHref } from "@/app/apihub/workspace-tabs";
 
 import { ApiHubAdvancedJsonDisclosure } from "./apihub-advanced-json";
 
@@ -247,7 +248,7 @@ export function ApplyConflictsPanel({ canView, initialItems, initialNextCursor }
                           Copy diagnostics
                         </button>
                         <Link
-                          href="/apihub/workspace#ingestion-ops"
+                          href={workspaceTabHref("ingestion-ops")}
                           className="text-xs font-semibold text-zinc-600 underline-offset-2 hover:text-zinc-900 hover:underline"
                         >
                           Runs list

@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { workspaceTabHref } from "@/app/apihub/workspace-tabs";
+
 export function ApihubHeader() {
   return (
     <header className="border-b border-zinc-200 bg-white">
@@ -18,25 +20,28 @@ export function ApihubHeader() {
           <span className="hidden text-zinc-300 sm:inline" aria-hidden>
             |
           </span>
-          <Link href="/apihub/workspace#demo-sync" className="font-medium text-zinc-600 hover:text-zinc-900">
+          <Link href={workspaceTabHref("demo-sync")} className="font-medium text-zinc-600 hover:text-zinc-900">
             Demo sync
           </Link>
-          <Link href="/apihub/workspace#ingestion-ops" className="font-medium text-zinc-600 hover:text-zinc-900">
+          <Link href={workspaceTabHref("ingestion-ops")} className="font-medium text-zinc-600 hover:text-zinc-900">
             Ingestion runs
           </Link>
-          <Link href="/apihub/workspace#ingestion-alerts" className="font-medium text-zinc-600 hover:text-zinc-900">
+          <Link href={workspaceTabHref("ingestion-alerts")} className="font-medium text-zinc-600 hover:text-zinc-900">
             Alerts
           </Link>
-          <Link href="/apihub/workspace#apply-conflicts" className="font-medium text-zinc-600 hover:text-zinc-900">
+          <Link href={workspaceTabHref("apply-conflicts")} className="font-medium text-zinc-600 hover:text-zinc-900">
             Apply conflicts
           </Link>
-          <Link href="/apihub/workspace#mapping-templates" className="font-medium text-zinc-600 hover:text-zinc-900">
+          <Link href={workspaceTabHref("mapping-templates")} className="font-medium text-zinc-600 hover:text-zinc-900">
             Mapping templates
           </Link>
-          <Link href="/apihub/workspace#mapping-preview-export" className="font-medium text-zinc-600 hover:text-zinc-900">
+          <Link
+            href={workspaceTabHref("mapping-preview-export")}
+            className="font-medium text-zinc-600 hover:text-zinc-900"
+          >
             Preview export
           </Link>
-          <Link href="/apihub/workspace#connectors" className="font-medium text-zinc-600 hover:text-zinc-900">
+          <Link href={workspaceTabHref("connectors")} className="font-medium text-zinc-600 hover:text-zinc-900">
             Connectors
           </Link>
           <Link href="/settings/demo" className="font-medium text-zinc-600 hover:text-zinc-900">

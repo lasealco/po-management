@@ -5,6 +5,7 @@ import { Fragment, useCallback, useState } from "react";
 
 import { readApiHubErrorMessageFromJsonBody } from "@/lib/apihub/api-error";
 import type { ApiHubIngestionAlertsSummaryDto } from "@/lib/apihub/ingestion-alerts-dto";
+import { workspaceTabHref } from "@/app/apihub/workspace-tabs";
 
 import { ApiHubAdvancedJsonDisclosure } from "./apihub-advanced-json";
 
@@ -96,7 +97,10 @@ export function IngestionAlertsPanel({ canView, initialSummary }: Props) {
             <span className="font-medium text-zinc-800">Refresh</span> after triage.{" "}
             <span className="font-medium text-zinc-800">View</span> expands a summary plus Advanced JSON for each alert.
             Open the{" "}
-            <Link href="/apihub/workspace#apply-conflicts" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+            <Link
+              href={workspaceTabHref("apply-conflicts")}
+              className="font-medium text-[var(--arscmp-primary)] hover:underline"
+            >
               Apply conflicts
             </Link>{" "}
             table for the full conflict list.
@@ -258,13 +262,13 @@ export function IngestionAlertsPanel({ canView, initialSummary }: Props) {
                               </dl>
                               <div className="mt-4 flex flex-wrap gap-3">
                                 <Link
-                                  href="/apihub/workspace#ingestion-ops"
+                                  href={workspaceTabHref("ingestion-ops")}
                                   className="text-xs font-semibold text-[var(--arscmp-primary)] hover:underline"
                                 >
                                   Open ingestion runs
                                 </Link>
                                 <Link
-                                  href="/apihub/workspace#apply-conflicts"
+                                  href={workspaceTabHref("apply-conflicts")}
                                   className="text-xs font-semibold text-[var(--arscmp-primary)] hover:underline"
                                 >
                                   Apply conflicts

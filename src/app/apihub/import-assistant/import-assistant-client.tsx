@@ -16,6 +16,7 @@ import { topImportAssistantDomainGuess } from "@/lib/apihub/import-assistant-dom
 import { parseImportAssistantFileByName } from "@/lib/apihub/import-assistant-file-parse";
 import { importAssistantConfidenceForRule } from "@/lib/apihub/import-assistant-rule-confidence";
 import type { ApiHubMappingAnalysisJobDto } from "@/lib/apihub/mapping-analysis-job-dto";
+import { workspaceTabHref } from "@/app/apihub/workspace-tabs";
 
 import {
   buildImportAssistantChatContextPayload,
@@ -760,7 +761,7 @@ export function ImportAssistantClient({ canEdit }: Props) {
           <p className="mt-2 text-sm text-zinc-600">
             We do not store passwords in this chat-style flow. Your administrator sets up connectors (SFTP, API, manual
             upload, etc.) under{" "}
-            <Link href="/apihub/workspace#connectors" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+            <Link href={workspaceTabHref("connectors")} className="font-medium text-[var(--arscmp-primary)] hover:underline">
               Connectors
             </Link>
             . Typical patterns:
@@ -783,7 +784,7 @@ export function ImportAssistantClient({ canEdit }: Props) {
             Bring this mapping template and a sample file to your IT contact to choose the right connector.
           </p>
           <Link
-            href="/apihub/workspace#mapping-templates"
+            href={workspaceTabHref("mapping-templates")}
             className="mt-4 inline-flex rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:brightness-95"
           >
             Open mapping templates on the hub
