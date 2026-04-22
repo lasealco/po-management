@@ -560,6 +560,13 @@ export async function listControlTowerShipments(params: {
                             },
                           },
                         },
+                        {
+                          parent: {
+                            is: {
+                              OR: [{ name: contains }, { legalName: contains }],
+                            },
+                          },
+                        },
                       ],
                     },
                   },
@@ -831,6 +838,13 @@ export async function listControlTowerShipments(params: {
                           owner: {
                             is: {
                               OR: [{ name: contains }, { email: contains }],
+                            },
+                          },
+                        },
+                        {
+                          parent: {
+                            is: {
+                              OR: [{ name: contains }, { legalName: contains }],
                             },
                           },
                         },
@@ -1296,7 +1310,19 @@ export async function listControlTowerShipments(params: {
                                         {
                                           auditResult: {
                                             is: {
-                                              explanation: contains,
+                                              OR: [
+                                                { explanation: contains },
+                                                {
+                                                  toleranceRule: {
+                                                    is: {
+                                                      OR: [
+                                                        { name: contains },
+                                                        { currencyScope: contains },
+                                                      ],
+                                                    },
+                                                  },
+                                                },
+                                              ],
                                             },
                                           },
                                         },
@@ -1311,7 +1337,19 @@ export async function listControlTowerShipments(params: {
                         {
                           invoiceAuditResults: {
                             some: {
-                              explanation: contains,
+                              OR: [
+                                { explanation: contains },
+                                {
+                                  toleranceRule: {
+                                    is: {
+                                      OR: [
+                                        { name: contains },
+                                        { currencyScope: contains },
+                                      ],
+                                    },
+                                  },
+                                },
+                              ],
                             },
                           },
                         },

@@ -234,6 +234,9 @@ describe("listControlTowerShipments", () => {
     expect(dumped).toContain("externalInvoiceNo");
     expect(dumped).toContain("rawDescription");
     expect(dumped).toContain("invoiceAuditResults");
+    expect(dumped).toContain("toleranceRule");
+    expect(dumped).toContain("currencyScope");
+    expect(dumped).toContain('"parent":{"is"');
     expect(dumped).toContain("externalRef");
     expect(dumped).toContain("orderItem");
     expect(dumped).toContain("refType");
