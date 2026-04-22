@@ -467,18 +467,54 @@ export async function listControlTowerShipments(params: {
             },
           },
         },
-        { ctNotes: { some: { body: contains } } },
+        {
+          ctNotes: {
+            some: {
+              OR: [
+                { body: contains },
+                {
+                  createdBy: {
+                    is: {
+                      OR: [{ name: contains }, { email: contains }],
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        },
         {
           ctAlerts: {
             some: {
-              OR: [{ type: contains }, { title: contains }, { body: contains }],
+              OR: [
+                { type: contains },
+                { title: contains },
+                { body: contains },
+                {
+                  owner: {
+                    is: {
+                      OR: [{ name: contains }, { email: contains }],
+                    },
+                  },
+                },
+              ],
             },
           },
         },
         {
           ctExceptions: {
             some: {
-              OR: [{ type: contains }, { rootCause: contains }],
+              OR: [
+                { type: contains },
+                { rootCause: contains },
+                {
+                  owner: {
+                    is: {
+                      OR: [{ name: contains }, { email: contains }],
+                    },
+                  },
+                },
+              ],
             },
           },
         },

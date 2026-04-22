@@ -355,7 +355,7 @@ export function ControlTowerCommandCenter({
             className="mt-1 block w-56 rounded border border-zinc-300 px-2 py-1.5 text-sm"
             value={qInput}
             onChange={(e) => setQInput(e.target.value)}
-            placeholder="PO, SKU, tracking, carrier…"
+            placeholder="PO, SKU, tracking, docs, assignee, carrier…"
           />
         </label>
         <label className="block text-sm">

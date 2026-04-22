@@ -189,6 +189,7 @@ describe("listControlTowerShipments", () => {
     expect(dumped).toContain("externalRef");
     expect(dumped).toContain("ctNotes");
     expect(dumped).toContain("ctAlerts");
+    expect(dumped).toMatch(/"owner"/);
     expect(dumped).toContain("ctExceptions");
     expect(dumped).toContain("ctTrackingMilestones");
     expect(dumped).toContain("ctLegs");
