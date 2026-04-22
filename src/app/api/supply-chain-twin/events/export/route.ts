@@ -1,7 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
-import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+import { errorCodeForHttpStatus, toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { logSctwinApiError, logSctwinApiWarn, resolveSctwinRequestId, withSctwinRequestId } from "../../_lib/sctwin-api-log";
 import { prisma } from "@/lib/prisma";
 import { TWIN_API_ERROR_CODES } from "@/lib/supply-chain-twin/error-codes";
@@ -14,13 +14,6 @@ import { parseTwinEventsQuery, twinEventsTypePrismaFilter } from "@/lib/supply-c
 export const dynamic = "force-dynamic";
 
 const ROUTE_GET = "GET /api/supply-chain-twin/events/export";
-
-function sctwinErrorCodeFromStatus(status: number): "NOT_FOUND" | "FORBIDDEN" | "BAD_INPUT" | "UNHANDLED" {
-  if (status === 404) return "NOT_FOUND";
-  if (status === 403) return "FORBIDDEN";
-  if (status === 500) return "UNHANDLED";
-  return "BAD_INPUT";
-}
 
 function parseExportFormat(searchParams: URLSearchParams): { ok: true; format: "json" | "csv" } | { ok: false; error: string } {
   const raw = (searchParams.get("format") ?? "json").trim().toLowerCase();
@@ -45,7 +38,7 @@ export async function GET(request: Request) {
       return withSctwinRequestId(
         toApiErrorResponse({
           error: gate.denied.error,
-          code: sctwinErrorCodeFromStatus(gate.denied.status),
+          code: errorCodeForHttpStatus(gate.denied.status),
           status: gate.denied.status,
         }),
         requestId,

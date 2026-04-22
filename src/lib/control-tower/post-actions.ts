@@ -1,6 +1,7 @@
 import { Prisma, ShipmentMilestoneCode, type TransportMode } from "@prisma/client";
 import { NextResponse } from "next/server";
 
+import { toApiErrorResponseFromStatus } from "@/app/api/_lib/api-error-contract";
 import { actorIsSupplierPortalRestricted, getActorUserId } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { amountToMinor, normalizeCurrency } from "@/lib/control-tower/currency";
@@ -16,7 +17,7 @@ import {
 type Json = Record<string, unknown>;
 
 function bad(msg: string, status = 400) {
-  return NextResponse.json({ error: msg }, { status });
+  return toApiErrorResponseFromStatus(msg, status);
 }
 
 async function assertShipmentTenant(shipmentId: string, tenantId: string) {
@@ -84,13 +85,10 @@ export async function handleControlTowerPost(
 ): Promise<Response> {
   const actorId = await getActorUserId();
   if (!actorId) {
-    return NextResponse.json({ error: "No active user." }, { status: 403 });
+    return bad("No active user.", 403);
   }
   if (await actorIsSupplierPortalRestricted(actorId)) {
-    return NextResponse.json(
-      { error: "Customer users cannot modify control tower data." },
-      { status: 403 },
-    );
+    return bad("Customer users cannot modify control tower data.", 403);
   }
 
   const action = typeof body.action === "string" ? body.action : "";

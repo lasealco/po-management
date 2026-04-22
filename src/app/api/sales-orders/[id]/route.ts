@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+import { errorCodeForHttpStatus, toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
@@ -10,13 +10,6 @@ import {
   parseSalesOrderRouteId,
   parseTargetSalesOrderStatus,
 } from "@/lib/sales-orders/patch-status";
-
-function errorCodeFromHttpStatus(status: number): "NOT_FOUND" | "FORBIDDEN" | "BAD_INPUT" | "UNHANDLED" {
-  if (status === 404) return "NOT_FOUND";
-  if (status === 403) return "FORBIDDEN";
-  if (status === 500) return "UNHANDLED";
-  return "BAD_INPUT";
-}
 
 export async function GET(
   _request: Request,
@@ -32,7 +25,7 @@ export async function GET(
   if (!idParsed.ok) {
     return toApiErrorResponse({
       error: idParsed.error,
-      code: errorCodeFromHttpStatus(idParsed.status),
+      code: errorCodeForHttpStatus(idParsed.status),
       status: idParsed.status,
     });
   }
@@ -81,7 +74,7 @@ export async function PATCH(
   if (!idParsed.ok) {
     return toApiErrorResponse({
       error: idParsed.error,
-      code: errorCodeFromHttpStatus(idParsed.status),
+      code: errorCodeForHttpStatus(idParsed.status),
       status: idParsed.status,
     });
   }
@@ -98,7 +91,7 @@ export async function PATCH(
   if (!parsedBody.ok) {
     return toApiErrorResponse({
       error: parsedBody.error,
-      code: errorCodeFromHttpStatus(parsedBody.status),
+      code: errorCodeForHttpStatus(parsedBody.status),
       status: parsedBody.status,
     });
   }

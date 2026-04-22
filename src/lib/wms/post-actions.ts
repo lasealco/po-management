@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+
+import { toApiErrorResponseFromStatus } from "@/app/api/_lib/api-error-contract";
 import { Prisma, ShipmentMilestoneCode } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
@@ -21,10 +23,7 @@ export async function handleWmsPost(
     const name = input.name?.trim();
     const zoneType = input.zoneType;
     if (!warehouseId || !code || !name || !zoneType) {
-      return NextResponse.json(
-        { error: "warehouseId, code, name and zoneType required." },
-        { status: 400 },
-      );
+      return toApiErrorResponseFromStatus("warehouseId, code, name and zoneType required.", 400);
     }
     await prisma.warehouseZone.create({
       data: {
@@ -43,7 +42,7 @@ export async function handleWmsPost(
     const code = input.code?.trim().toUpperCase();
     const name = input.name?.trim();
     if (!warehouseId || !code || !name) {
-      return NextResponse.json({ error: "warehouseId, code, name required." }, { status: 400 });
+      return toApiErrorResponseFromStatus("warehouseId, code, name required.", 400);
     }
     const rackCode = input.rackCode?.trim() || null;
     const aisle = input.aisle?.trim() || null;
@@ -82,7 +81,7 @@ export async function handleWmsPost(
 
   if (action === "update_bin_profile") {
     const binId = input.binId?.trim();
-    if (!binId) return NextResponse.json({ error: "binId required." }, { status: 400 });
+    if (!binId) return toApiErrorResponseFromStatus("binId required.", 400);
     const data: Prisma.WarehouseBinUncheckedUpdateManyInput = {
       zoneId: input.targetZoneId?.trim() || null,
       storageType: input.storageType ?? undefined,
@@ -129,13 +128,10 @@ export async function handleWmsPost(
       !Number.isFinite(maxPickQty) ||
       !Number.isFinite(replenishQty)
     ) {
-      return NextResponse.json(
-        { error: "warehouseId, productId, min/max/replenish quantities required." },
-        { status: 400 },
-      );
+      return toApiErrorResponseFromStatus("warehouseId, productId, min/max/replenish quantities required.", 400);
     }
     if (minPickQty < 0 || maxPickQty <= 0 || replenishQty <= 0 || minPickQty > maxPickQty) {
-      return NextResponse.json({ error: "Invalid replenishment parameters." }, { status: 400 });
+      return toApiErrorResponseFromStatus("Invalid replenishment parameters.", 400);
     }
     await prisma.replenishmentRule.upsert({
       where: { warehouseId_productId: { warehouseId, productId } },
@@ -163,7 +159,7 @@ export async function handleWmsPost(
 
   if (action === "create_replenishment_tasks") {
     const warehouseId = input.warehouseId?.trim();
-    if (!warehouseId) return NextResponse.json({ error: "warehouseId required." }, { status: 400 });
+    if (!warehouseId) return toApiErrorResponseFromStatus("warehouseId required.", 400);
     const [rules, balances] = await Promise.all([
       prisma.replenishmentRule.findMany({
         where: { tenantId, warehouseId, isActive: true },
@@ -227,24 +223,24 @@ export async function handleWmsPost(
     const warehouseId = input.warehouseId?.trim();
     const lines = Array.isArray(input.lines) ? input.lines : [];
     if (!warehouseId || lines.length === 0) {
-      return NextResponse.json({ error: "warehouseId and lines required." }, { status: 400 });
+      return toApiErrorResponseFromStatus("warehouseId and lines required.", 400);
     }
     const crmRaw = input.crmAccountId;
     const crmAccountId =
       crmRaw === null || crmRaw === undefined ? null : String(crmRaw).trim() || null;
     if (!crmAccountId) {
-      return NextResponse.json({ error: "crmAccountId is required." }, { status: 400 });
+      return toApiErrorResponseFromStatus("crmAccountId is required.", 400);
     }
     const gate = await assertOutboundCrmAccountLinkable(tenantId, actorId, crmAccountId);
     if (!gate.ok) {
-      return NextResponse.json({ error: gate.error }, { status: gate.status });
+      return toApiErrorResponseFromStatus(gate.error, gate.status);
     }
     const crmAccount = await prisma.crmAccount.findFirst({
       where: { id: crmAccountId, tenantId },
       select: { id: true, name: true },
     });
     if (!crmAccount) {
-      return NextResponse.json({ error: "CRM account not found." }, { status: 404 });
+      return toApiErrorResponseFromStatus("CRM account not found.", 404);
     }
     const outboundNo = `OUT-${Date.now().toString().slice(-8)}`;
     const created = await prisma.outboundOrder.create({
@@ -279,7 +275,7 @@ export async function handleWmsPost(
   if (action === "set_outbound_crm_account") {
     const outboundOrderId = input.outboundOrderId?.trim();
     if (!outboundOrderId) {
-      return NextResponse.json({ error: "outboundOrderId required." }, { status: 400 });
+      return toApiErrorResponseFromStatus("outboundOrderId required.", 400);
     }
     const crmRaw = input.crmAccountId;
     const crmAccountId =
@@ -287,7 +283,7 @@ export async function handleWmsPost(
     if (crmAccountId) {
       const gate = await assertOutboundCrmAccountLinkable(tenantId, actorId, crmAccountId);
       if (!gate.ok) {
-        return NextResponse.json({ error: gate.error }, { status: gate.status });
+        return toApiErrorResponseFromStatus(gate.error, gate.status);
       }
     }
     const order = await prisma.outboundOrder.findFirst({
@@ -295,17 +291,14 @@ export async function handleWmsPost(
       select: { id: true, status: true },
     });
     if (!order) {
-      return NextResponse.json({ error: "Outbound order not found." }, { status: 404 });
+      return toApiErrorResponseFromStatus("Outbound order not found.", 404);
     }
     if (
       order.status === "SHIPPED" ||
       order.status === "CANCELLED" ||
       order.status === "PACKED"
     ) {
-      return NextResponse.json(
-        { error: "Cannot change CRM link after pack, on shipped, or on cancelled orders." },
-        { status: 400 },
-      );
+      return toApiErrorResponseFromStatus("Cannot change CRM link after pack, on shipped, or on cancelled orders.", 400);
     }
     await prisma.outboundOrder.update({
       where: { id: order.id },
@@ -317,7 +310,7 @@ export async function handleWmsPost(
   if (action === "release_outbound_order") {
     const outboundOrderId = input.outboundOrderId?.trim();
     if (!outboundOrderId) {
-      return NextResponse.json({ error: "outboundOrderId required." }, { status: 400 });
+      return toApiErrorResponseFromStatus("outboundOrderId required.", 400);
     }
     await prisma.outboundOrder.updateMany({
       where: { id: outboundOrderId, tenantId, status: "DRAFT" },
@@ -331,7 +324,7 @@ export async function handleWmsPost(
     const warehouseId = input.warehouseId?.trim();
     const qty = Number(input.quantity);
     if (!shipmentItemId || !warehouseId || !Number.isFinite(qty) || qty <= 0) {
-      return NextResponse.json({ error: "shipmentItemId, warehouseId, quantity required." }, { status: 400 });
+      return toApiErrorResponseFromStatus("shipmentItemId, warehouseId, quantity required.", 400);
     }
     const item = await prisma.shipmentItem.findFirst({
       where: { id: shipmentItemId, shipment: { order: { tenantId } } },
@@ -341,7 +334,7 @@ export async function handleWmsPost(
       },
     });
     if (!item?.orderItem.productId) {
-      return NextResponse.json({ error: "Invalid shipment line." }, { status: 400 });
+      return toApiErrorResponseFromStatus("Invalid shipment line.", 400);
     }
     await prisma.wmsTask.create({
       data: {
@@ -364,18 +357,18 @@ export async function handleWmsPost(
 
   if (action === "complete_putaway_task") {
     const taskId = input.taskId?.trim();
-    if (!taskId) return NextResponse.json({ error: "taskId required." }, { status: 400 });
+    if (!taskId) return toApiErrorResponseFromStatus("taskId required.", 400);
     const task = await prisma.wmsTask.findFirst({
       where: { id: taskId, tenantId, status: "OPEN", taskType: "PUTAWAY" },
       select: { id: true, warehouseId: true, productId: true, quantity: true, referenceId: true, binId: true },
     });
     if (!task || !task.productId || !task.referenceId) {
-      return NextResponse.json({ error: "Putaway task not found." }, { status: 404 });
+      return toApiErrorResponseFromStatus("Putaway task not found.", 404);
     }
     const productId = task.productId;
     const referenceId = task.referenceId;
     const targetBinId = input.binId?.trim() || task.binId;
-    if (!targetBinId) return NextResponse.json({ error: "binId required." }, { status: 400 });
+    if (!targetBinId) return toApiErrorResponseFromStatus("binId required.", 400);
     await prisma.$transaction(async (tx) => {
       await tx.wmsTask.update({
         where: { id: task.id },
@@ -422,13 +415,13 @@ export async function handleWmsPost(
     const binId = input.binId?.trim();
     const qty = Number(input.quantity);
     if (!outboundLineId || !warehouseId || !productId || !binId || !Number.isFinite(qty) || qty <= 0) {
-      return NextResponse.json({ error: "outboundLineId, warehouseId, productId, binId, quantity required." }, { status: 400 });
+      return toApiErrorResponseFromStatus("outboundLineId, warehouseId, productId, binId, quantity required.", 400);
     }
     const item = await prisma.outboundOrderLine.findFirst({
       where: { id: outboundLineId, tenantId },
       select: { id: true, outboundOrderId: true },
     });
-    if (!item) return NextResponse.json({ error: "Outbound line not found." }, { status: 404 });
+    if (!item) return toApiErrorResponseFromStatus("Outbound line not found.", 404);
     await prisma.$transaction(async (tx) => {
       await tx.wmsTask.create({
         data: {
@@ -455,7 +448,7 @@ export async function handleWmsPost(
   if (action === "create_pick_wave") {
     const warehouseId = input.warehouseId?.trim();
     if (!warehouseId) {
-      return NextResponse.json({ error: "warehouseId required." }, { status: 400 });
+      return toApiErrorResponseFromStatus("warehouseId required.", 400);
     }
     const openLines = await prisma.outboundOrderLine.findMany({
       where: {
@@ -557,7 +550,7 @@ export async function handleWmsPost(
 
   if (action === "release_wave") {
     const waveId = input.waveId?.trim() || "";
-    if (!waveId) return NextResponse.json({ error: "waveId required." }, { status: 400 });
+    if (!waveId) return toApiErrorResponseFromStatus("waveId required.", 400);
     await prisma.wmsWave.updateMany({
       where: { id: waveId, tenantId, status: "OPEN" },
       data: { status: "RELEASED", releasedAt: new Date() },
@@ -567,7 +560,7 @@ export async function handleWmsPost(
 
   if (action === "complete_wave") {
     const waveId = input.waveId?.trim() || "";
-    if (!waveId) return NextResponse.json({ error: "waveId required." }, { status: 400 });
+    if (!waveId) return toApiErrorResponseFromStatus("waveId required.", 400);
     await prisma.$transaction(async (tx) => {
       const tasks = await tx.wmsTask.findMany({
         where: {
@@ -639,13 +632,13 @@ export async function handleWmsPost(
 
   if (action === "complete_pick_task") {
     const taskId = input.taskId?.trim();
-    if (!taskId) return NextResponse.json({ error: "taskId required." }, { status: 400 });
+    if (!taskId) return toApiErrorResponseFromStatus("taskId required.", 400);
     const task = await prisma.wmsTask.findFirst({
       where: { id: taskId, tenantId, status: "OPEN", taskType: "PICK" },
       select: { id: true, warehouseId: true, productId: true, binId: true, quantity: true, referenceId: true },
     });
     if (!task || !task.productId || !task.binId) {
-      return NextResponse.json({ error: "Pick task not found." }, { status: 404 });
+      return toApiErrorResponseFromStatus("Pick task not found.", 404);
     }
     const productId = task.productId;
     const binId = task.binId;
@@ -654,16 +647,13 @@ export async function handleWmsPost(
       select: { id: true, onHandQty: true, allocatedQty: true, onHold: true },
     });
     if (!balPre) {
-      return NextResponse.json({ error: "No inventory balance in selected bin." }, { status: 400 });
+      return toApiErrorResponseFromStatus("No inventory balance in selected bin.", 400);
     }
     if (balPre.onHold) {
-      return NextResponse.json(
-        { error: "Cannot complete pick: bin/product is on hold. Clear the hold first." },
-        { status: 400 },
-      );
+      return toApiErrorResponseFromStatus("Cannot complete pick: bin/product is on hold. Clear the hold first.", 400);
     }
     if (Number(balPre.onHandQty) < Number(task.quantity)) {
-      return NextResponse.json({ error: "Insufficient stock for pick." }, { status: 400 });
+      return toApiErrorResponseFromStatus("Insufficient stock for pick.", 400);
     }
     await prisma.$transaction(async (tx) => {
       await tx.wmsTask.update({
@@ -704,27 +694,21 @@ export async function handleWmsPost(
   if (action === "mark_outbound_packed") {
     const outboundOrderId = input.outboundOrderId?.trim();
     if (!outboundOrderId) {
-      return NextResponse.json({ error: "outboundOrderId required." }, { status: 400 });
+      return toApiErrorResponseFromStatus("outboundOrderId required.", 400);
     }
     const order = await prisma.outboundOrder.findFirst({
       where: { id: outboundOrderId, tenantId },
       include: { lines: true },
     });
     if (!order) {
-      return NextResponse.json({ error: "Outbound order not found." }, { status: 404 });
+      return toApiErrorResponseFromStatus("Outbound order not found.", 404);
     }
     if (order.status !== "RELEASED" && order.status !== "PICKING") {
-      return NextResponse.json(
-        { error: "Pack is only allowed when the order is RELEASED or PICKING." },
-        { status: 400 },
-      );
+      return toApiErrorResponseFromStatus("Pack is only allowed when the order is RELEASED or PICKING.", 400);
     }
     const allPicked = order.lines.every((l) => Number(l.pickedQty) >= Number(l.quantity));
     if (!allPicked) {
-      return NextResponse.json(
-        { error: "All lines must be fully picked before packing." },
-        { status: 400 },
-      );
+      return toApiErrorResponseFromStatus("All lines must be fully picked before packing.", 400);
     }
     await prisma.$transaction(async (tx) => {
       for (const line of order.lines) {
@@ -744,24 +728,21 @@ export async function handleWmsPost(
   if (action === "mark_outbound_shipped") {
     const outboundOrderId = input.outboundOrderId?.trim();
     if (!outboundOrderId) {
-      return NextResponse.json({ error: "outboundOrderId required." }, { status: 400 });
+      return toApiErrorResponseFromStatus("outboundOrderId required.", 400);
     }
     const order = await prisma.outboundOrder.findFirst({
       where: { id: outboundOrderId, tenantId },
       include: { lines: true },
     });
     if (!order) {
-      return NextResponse.json({ error: "Outbound order not found." }, { status: 404 });
+      return toApiErrorResponseFromStatus("Outbound order not found.", 404);
     }
     if (order.status !== "PACKED") {
-      return NextResponse.json(
-        { error: "Ship is only allowed when the order is PACKED." },
-        { status: 400 },
-      );
+      return toApiErrorResponseFromStatus("Ship is only allowed when the order is PACKED.", 400);
     }
     const allPacked = order.lines.every((l) => Number(l.packedQty) >= Number(l.quantity));
     if (!allPacked) {
-      return NextResponse.json({ error: "All lines must be fully packed." }, { status: 400 });
+      return toApiErrorResponseFromStatus("All lines must be fully packed.", 400);
     }
     await prisma.$transaction(async (tx) => {
       for (const line of order.lines) {
@@ -797,14 +778,14 @@ export async function handleWmsPost(
   if (action === "set_shipment_inbound_fields") {
     const shipmentId = input.shipmentId?.trim();
     if (!shipmentId) {
-      return NextResponse.json({ error: "shipmentId required." }, { status: 400 });
+      return toApiErrorResponseFromStatus("shipmentId required.", 400);
     }
     const shipment = await prisma.shipment.findFirst({
       where: { id: shipmentId, order: { tenantId } },
       select: { id: true },
     });
     if (!shipment) {
-      return NextResponse.json({ error: "Shipment not found." }, { status: 404 });
+      return toApiErrorResponseFromStatus("Shipment not found.", 404);
     }
     const data: Prisma.ShipmentUpdateInput = {};
     if (input.asnReference !== undefined) {
@@ -817,16 +798,13 @@ export async function handleWmsPost(
       } else {
         const d = new Date(String(raw).trim());
         if (Number.isNaN(d.getTime())) {
-          return NextResponse.json({ error: "Invalid expectedReceiveAt." }, { status: 400 });
+          return toApiErrorResponseFromStatus("Invalid expectedReceiveAt.", 400);
         }
         data.expectedReceiveAt = d;
       }
     }
     if (Object.keys(data).length === 0) {
-      return NextResponse.json(
-        { error: "Provide asnReference and/or expectedReceiveAt to update." },
-        { status: 400 },
-      );
+      return toApiErrorResponseFromStatus("Provide asnReference and/or expectedReceiveAt to update.", 400);
     }
     await prisma.shipment.update({
       where: { id: shipment.id },
@@ -839,13 +817,10 @@ export async function handleWmsPost(
     const shipmentId = input.shipmentId?.trim();
     const rawCode = input.milestoneCode?.trim();
     if (!shipmentId || !rawCode) {
-      return NextResponse.json(
-        { error: "shipmentId and milestoneCode required." },
-        { status: 400 },
-      );
+      return toApiErrorResponseFromStatus("shipmentId and milestoneCode required.", 400);
     }
     if (!Object.values(ShipmentMilestoneCode).includes(rawCode as ShipmentMilestoneCode)) {
-      return NextResponse.json({ error: "Invalid milestoneCode." }, { status: 400 });
+      return toApiErrorResponseFromStatus("Invalid milestoneCode.", 400);
     }
     const code = rawCode as ShipmentMilestoneCode;
     const shipment = await prisma.shipment.findFirst({
@@ -853,7 +828,7 @@ export async function handleWmsPost(
       select: { id: true },
     });
     if (!shipment) {
-      return NextResponse.json({ error: "Shipment not found." }, { status: 404 });
+      return toApiErrorResponseFromStatus("Shipment not found.", 404);
     }
     await prisma.shipmentMilestone.create({
       data: {
@@ -869,33 +844,33 @@ export async function handleWmsPost(
   if (action === "set_balance_hold") {
     const balanceId = input.balanceId?.trim();
     if (!balanceId) {
-      return NextResponse.json({ error: "balanceId required." }, { status: 400 });
+      return toApiErrorResponseFromStatus("balanceId required.", 400);
     }
     const reason = input.holdReason?.trim() || "On hold";
     const n = await prisma.inventoryBalance.updateMany({
       where: { id: balanceId, tenantId },
       data: { onHold: true, holdReason: reason.slice(0, 500) },
     });
-    if (n.count === 0) return NextResponse.json({ error: "Balance row not found." }, { status: 404 });
+    if (n.count === 0) return toApiErrorResponseFromStatus("Balance row not found.", 404);
     return NextResponse.json({ ok: true });
   }
 
   if (action === "clear_balance_hold") {
     const balanceId = input.balanceId?.trim();
     if (!balanceId) {
-      return NextResponse.json({ error: "balanceId required." }, { status: 400 });
+      return toApiErrorResponseFromStatus("balanceId required.", 400);
     }
     const n = await prisma.inventoryBalance.updateMany({
       where: { id: balanceId, tenantId },
       data: { onHold: false, holdReason: null },
     });
-    if (n.count === 0) return NextResponse.json({ error: "Balance row not found." }, { status: 404 });
+    if (n.count === 0) return toApiErrorResponseFromStatus("Balance row not found.", 404);
     return NextResponse.json({ ok: true });
   }
 
   if (action === "complete_replenish_task") {
     const taskId = input.taskId?.trim();
-    if (!taskId) return NextResponse.json({ error: "taskId required." }, { status: 400 });
+    if (!taskId) return toApiErrorResponseFromStatus("taskId required.", 400);
     const task = await prisma.wmsTask.findFirst({
       where: { id: taskId, tenantId, status: "OPEN", taskType: "REPLENISH" },
       select: {
@@ -908,14 +883,14 @@ export async function handleWmsPost(
       },
     });
     if (!task?.productId || !task.binId || !task.referenceId) {
-      return NextResponse.json({ error: "Replenish task not found." }, { status: 404 });
+      return toApiErrorResponseFromStatus("Replenish task not found.", 404);
     }
     const productId = task.productId;
     const targetBinId = task.binId;
     const sourceBinId = task.referenceId;
     const qty = Number(task.quantity);
     if (!Number.isFinite(qty) || qty <= 0) {
-      return NextResponse.json({ error: "Invalid task quantity." }, { status: 400 });
+      return toApiErrorResponseFromStatus("Invalid task quantity.", 400);
     }
     const sourceBalPre = await prisma.inventoryBalance.findFirst({
       where: {
@@ -927,12 +902,12 @@ export async function handleWmsPost(
       select: { id: true, onHandQty: true, allocatedQty: true },
     });
     if (!sourceBalPre) {
-      return NextResponse.json({ error: "Source bin has no balance row." }, { status: 400 });
+      return toApiErrorResponseFromStatus("Source bin has no balance row.", 400);
     }
     const movable = Number(sourceBalPre.onHandQty) - Number(sourceBalPre.allocatedQty);
     const moveQty = Math.min(qty, Math.max(0, movable));
     if (moveQty <= 0) {
-      return NextResponse.json({ error: "No available quantity to move from source bin." }, { status: 400 });
+      return toApiErrorResponseFromStatus("No available quantity to move from source bin.", 400);
     }
     await prisma.$transaction(async (tx) => {
       await tx.wmsTask.update({
@@ -1001,7 +976,7 @@ export async function handleWmsPost(
   if (action === "create_cycle_count_task") {
     const balanceId = input.balanceId?.trim();
     if (!balanceId) {
-      return NextResponse.json({ error: "balanceId required." }, { status: 400 });
+      return toApiErrorResponseFromStatus("balanceId required.", 400);
     }
     const row = await prisma.inventoryBalance.findFirst({
       where: { id: balanceId, tenantId },
@@ -1013,7 +988,7 @@ export async function handleWmsPost(
         onHandQty: true,
       },
     });
-    if (!row) return NextResponse.json({ error: "Balance not found." }, { status: 404 });
+    if (!row) return toApiErrorResponseFromStatus("Balance not found.", 404);
     await prisma.wmsTask.create({
       data: {
         tenantId,
@@ -1035,7 +1010,7 @@ export async function handleWmsPost(
     const taskId = input.taskId?.trim();
     const counted = Number(input.countedQty);
     if (!taskId || !Number.isFinite(counted) || counted < 0) {
-      return NextResponse.json({ error: "taskId and countedQty (>=0) required." }, { status: 400 });
+      return toApiErrorResponseFromStatus("taskId and countedQty (>=0) required.", 400);
     }
     const task = await prisma.wmsTask.findFirst({
       where: { id: taskId, tenantId, status: "OPEN", taskType: "CYCLE_COUNT" },
@@ -1049,7 +1024,7 @@ export async function handleWmsPost(
       },
     });
     if (!task?.productId || !task.binId || !task.referenceId) {
-      return NextResponse.json({ error: "Cycle count task not found." }, { status: 404 });
+      return toApiErrorResponseFromStatus("Cycle count task not found.", 404);
     }
     const ccProductId = task.productId;
     const balanceRowId = task.referenceId;
@@ -1084,5 +1059,5 @@ export async function handleWmsPost(
     return NextResponse.json({ ok: true, bookQty: book, countedQty: counted, variance });
   }
 
-  return NextResponse.json({ error: "Unsupported WMS action." }, { status: 400 });
+  return toApiErrorResponseFromStatus("Unsupported WMS action.", 400);
 }
