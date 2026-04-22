@@ -434,6 +434,19 @@ export async function listControlTowerShipments(params: {
         { order: { supplier: { is: { name: contains } } } },
         { customerCrmAccount: { is: { name: contains } } },
         { ctReferences: { some: { refValue: contains } } },
+        { ctNotes: { some: { body: contains } } },
+        {
+          ctTrackingMilestones: {
+            some: {
+              OR: [
+                { code: contains },
+                { label: contains },
+                { notes: contains },
+                { sourceRef: contains },
+              ],
+            },
+          },
+        },
         { ctContainers: { some: { containerNumber: contains } } },
         ...(milestoneMatch ? [milestoneMatch] : []),
         {
