@@ -23,6 +23,7 @@ export function appendAssistToSearchParams(
   if (filters.dispatchOwnerUserId?.trim()) sp.set("dispatchOwnerUserId", filters.dispatchOwnerUserId.trim());
   if (filters.exceptionCode?.trim()) sp.set("exceptionCode", filters.exceptionCode.trim());
   if (filters.alertType?.trim()) sp.set("alertType", filters.alertType.trim());
+  if (filters.productTraceQ?.trim()) sp.set("productTrace", filters.productTraceQ.trim());
   if (opts?.take != null) sp.set("take", String(opts.take));
 }
 

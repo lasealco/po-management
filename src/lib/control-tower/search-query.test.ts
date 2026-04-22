@@ -32,6 +32,12 @@ describe("appendAssistToSearchParams", () => {
     expect(sp.get("take")).toBe("25");
   });
 
+  it("sets productTrace from productTraceQ", () => {
+    const sp = new URLSearchParams();
+    appendAssistToSearchParams(sp, { productTraceQ: "  SKU-1  " });
+    expect(sp.get("productTrace")).toBe("SKU-1");
+  });
+
   it("omits shipmentSource when not PO or UNLINKED", () => {
     const sp = new URLSearchParams();
     appendAssistToSearchParams(sp, { shipmentSource: undefined });

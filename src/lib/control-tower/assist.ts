@@ -233,6 +233,18 @@ export function assistControlTowerQuery(raw: string): {
     working = stripOnce(working, /\bctAlert\s*:\s*[\w.-]+\b/i);
   }
 
+  const traceM = working.match(/\b(?:trace|sku|product)\s*:\s*([\w.-]+)\b/i);
+  if (traceM) {
+    const t = sanitizeListFilterToken(traceM[1]);
+    if (t) {
+      suggestedFilters.productTraceQ = t;
+      hints.push(`Product trace / SKU token: ${t}.`);
+    } else {
+      hints.push("trace: / sku: / product: expects a code (letters, digits, . _ -).");
+    }
+    working = stripOnce(working, /\b(?:trace|sku|product)\s*:\s*[\w.-]+\b/i);
+  }
+
   const routeM = working.match(/\broute\s*:\s*([a-z0-9_-]+)\b/i);
   if (routeM) {
     const slug = routeM[1];

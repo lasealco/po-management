@@ -74,6 +74,24 @@ describe("assistControlTowerQuery", () => {
     expect(assistControlTowerQuery("to DEHAM").suggestedFilters.lane).toBe("DEHAM");
   });
 
+  it("parses trace:, sku:, and product: into productTraceQ", () => {
+    expect(assistControlTowerQuery("trace:SKU-1.a").suggestedFilters.productTraceQ).toBe("SKU-1.a");
+    expect(assistControlTowerQuery("sku:BUYER-2").suggestedFilters.productTraceQ).toBe("BUYER-2");
+    expect(assistControlTowerQuery("product:Widget-X").suggestedFilters.productTraceQ).toBe("Widget-X");
+  });
+
+  it("copies productTraceQ to q when no other free text remains", () => {
+    const { suggestedFilters } = assistControlTowerQuery("trace:ONLYCODE");
+    expect(suggestedFilters.productTraceQ).toBe("ONLYCODE");
+    expect(suggestedFilters.q).toBe("ONLYCODE");
+  });
+
+  it("keeps remaining words in q alongside trace token", () => {
+    const { suggestedFilters } = assistControlTowerQuery("trace:ABC hello");
+    expect(suggestedFilters.productTraceQ).toBe("ABC");
+    expect(suggestedFilters.q).toBe("hello");
+  });
+
   it("adds default search hint when no structured tokens match", () => {
     const { hints } = assistControlTowerQuery("random freetext only");
     expect(hints.some((h) => h.includes("Searching bookings"))).toBe(true);
