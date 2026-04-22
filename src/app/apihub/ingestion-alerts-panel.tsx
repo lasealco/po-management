@@ -96,7 +96,7 @@ export function IngestionAlertsPanel({ canView, initialSummary }: Props) {
             <span className="font-medium text-zinc-800">Refresh</span> after triage.{" "}
             <span className="font-medium text-zinc-800">View</span> expands a summary plus Advanced JSON for each alert.
             Open the{" "}
-            <Link href="/apihub#apply-conflicts" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+            <Link href="/apihub/workspace#apply-conflicts" className="font-medium text-[var(--arscmp-primary)] hover:underline">
               Apply conflicts
             </Link>{" "}
             table for the full conflict list.
@@ -258,13 +258,13 @@ export function IngestionAlertsPanel({ canView, initialSummary }: Props) {
                               </dl>
                               <div className="mt-4 flex flex-wrap gap-3">
                                 <Link
-                                  href="/apihub#ingestion-ops"
+                                  href="/apihub/workspace#ingestion-ops"
                                   className="text-xs font-semibold text-[var(--arscmp-primary)] hover:underline"
                                 >
                                   Open ingestion runs
                                 </Link>
                                 <Link
-                                  href="/apihub#apply-conflicts"
+                                  href="/apihub/workspace#apply-conflicts"
                                   className="text-xs font-semibold text-[var(--arscmp-primary)] hover:underline"
                                 >
                                   Apply conflicts

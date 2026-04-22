@@ -420,10 +420,10 @@ export function ImportAssistantClient({ canEdit }: Props) {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Link
-            href="/apihub"
+            href="/apihub/workspace"
             className="rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
           >
-            Back to hub
+            Operator workspace
           </Link>
           <button
             type="button"
@@ -760,7 +760,7 @@ export function ImportAssistantClient({ canEdit }: Props) {
           <p className="mt-2 text-sm text-zinc-600">
             We do not store passwords in this chat-style flow. Your administrator sets up connectors (SFTP, API, manual
             upload, etc.) under{" "}
-            <Link href="/apihub#connectors" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+            <Link href="/apihub/workspace#connectors" className="font-medium text-[var(--arscmp-primary)] hover:underline">
               Connectors
             </Link>
             . Typical patterns:
@@ -783,7 +783,7 @@ export function ImportAssistantClient({ canEdit }: Props) {
             Bring this mapping template and a sample file to your IT contact to choose the right connector.
           </p>
           <Link
-            href="/apihub#mapping-templates"
+            href="/apihub/workspace#mapping-templates"
             className="mt-4 inline-flex rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:brightness-95"
           >
             Open mapping templates on the hub

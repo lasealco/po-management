@@ -1,12 +1,12 @@
 # Guided import — dogfood checklist
 
-Use this to walk **`/apihub/import-assistant`** end-to-end with **redacted** data (no live customer IDs, rates, or credentials).
+Use this to walk **`/apihub`** (guided import home) end-to-end with **redacted** data (no live customer IDs, rates, or credentials). The legacy URL `/apihub/import-assistant` redirects to `/apihub`.
 
 ## Preconditions
 
 - Demo session: **Settings → Demo session** — pick a user with **`org.apihub` → view + edit** (analysis, template, staging actions require edit).
 - Optional chat: set **`APIHUB_OPENAI_API_KEY`** or **`OPENAI_API_KEY`** on the server; without it, chat returns a fallback message (flow on the left still works).
-- Local app: `npm run dev`, open `/apihub/import-assistant`.
+- Local app: `npm run dev`, open `/apihub`. Operator console (manual): `/apihub/workspace`.
 
 ## Fixtures (copy or upload)
 

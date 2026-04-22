@@ -81,17 +81,17 @@ export function CommandPalette({ grants }: { grants: CommandPaletteGrants }) {
     if (grants.apihub) {
       list.push({
         id: "apihub",
-        label: "API hub",
-        hint: "Integration and ingestion hub (P0 shell)",
-        searchText: "api hub integration ingestion connector webhook ingest",
+        label: "API hub — guided import",
+        hint: "Default hub entry: assistant and upload flow",
+        searchText: "api hub integration ingestion connector webhook ingest guided import",
         action: go("/apihub"),
       });
       list.push({
-        id: "apihub-import-assistant",
-        label: "Guided import (forwarder file)",
-        hint: "Purpose-first upload, mapping review, template",
-        searchText: "import assistant forwarder cargo xml csv mapping guided freight",
-        action: go("/apihub/import-assistant"),
+        id: "apihub-workspace",
+        label: "API hub — operator workspace",
+        hint: "Manual console: runs, mapping jobs, staging",
+        searchText: "apihub workspace manual operator console ingestion mapping staging",
+        action: go("/apihub/workspace"),
       });
     }
 

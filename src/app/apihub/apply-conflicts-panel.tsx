@@ -247,7 +247,7 @@ export function ApplyConflictsPanel({ canView, initialItems, initialNextCursor }
                           Copy diagnostics
                         </button>
                         <Link
-                          href="/apihub#ingestion-ops"
+                          href="/apihub/workspace#ingestion-ops"
                           className="text-xs font-semibold text-zinc-600 underline-offset-2 hover:text-zinc-900 hover:underline"
                         >
                           Runs list
