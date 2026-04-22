@@ -24,11 +24,15 @@ describe("assertValidChargeCatalogCode", () => {
   it("accepts valid codes", () => {
     expect(() => assertValidChargeCatalogCode("OHC")).not.toThrow();
     expect(() => assertValidChargeCatalogCode("DOC_FEE")).not.toThrow();
+    expect(() => assertValidChargeCatalogCode("AB")).not.toThrow();
+    expect(() => assertValidChargeCatalogCode("A".repeat(32))).not.toThrow();
   });
 
   it("rejects invalid patterns", () => {
     expect(() => assertValidChargeCatalogCode("x")).toThrow(TariffRepoError);
     expect(() => assertValidChargeCatalogCode("bad-code!")).toThrow(TariffRepoError);
+    expect(() => assertValidChargeCatalogCode("A")).toThrow(TariffRepoError);
+    expect(() => assertValidChargeCatalogCode("A".repeat(33))).toThrow(TariffRepoError);
   });
 });
 
@@ -77,6 +81,18 @@ describe("parseCreateNormalizedChargeCodeBody", () => {
         transportMode: "SEA",
       }),
     ).toThrow(/Invalid transportMode/);
+  });
+
+  it("defaults boolean flags to false when not real booleans", () => {
+    const b = parseCreateNormalizedChargeCodeBody({
+      code: "CD",
+      displayName: "N",
+      chargeFamily: "ADMIN_OTHER",
+      isLocalCharge: "yes" as unknown as boolean,
+      isSurcharge: 1 as unknown as boolean,
+    } as Record<string, unknown>);
+    expect(b.isLocalCharge).toBe(false);
+    expect(b.isSurcharge).toBe(false);
   });
 });
 

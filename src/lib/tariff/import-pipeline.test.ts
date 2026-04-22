@@ -18,6 +18,10 @@ describe("import-pipeline stages", () => {
       "audit",
     ]);
   });
+
+  it("uses six unique stage ids", () => {
+    expect(new Set(TARIFF_IMPORT_PIPELINE_STAGES).size).toBe(TARIFF_IMPORT_PIPELINE_STAGES.length);
+  });
 });
 
 describe("import-pipeline staging row types", () => {
