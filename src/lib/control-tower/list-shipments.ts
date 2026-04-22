@@ -3,15 +3,22 @@ import {
   ContainerSize,
   CtAlertSeverity,
   CtAlertStatus,
+  CtDocVisibility,
   CtExceptionStatus,
+  CtNoteVisibility,
+  CtShipmentDocumentSource,
   InvoiceAuditLineOutcome,
   InvoiceAuditRollupOutcome,
   InvoiceIntakeStatus,
   InvoiceReviewDecision,
   LoadPlanStatus,
+  SalesOrderStatus,
   ShipmentBookingStatus,
   ShipmentMilestoneCode,
+  ShipmentMilestoneSource,
   ShipmentStatus,
+  SrmSupplierCategory,
+  SupplierApprovalStatus,
   TransportMode,
   WmsTaskStatus,
   WmsTaskType,
@@ -449,6 +456,27 @@ export async function listControlTowerShipments(params: {
     const wmsWaveStatusEnumMatch = (Object.values(WmsWaveStatus) as WmsWaveStatus[]).filter(
       (s) => s.toLowerCase() === qLower,
     );
+    const salesOrderStatusEnumMatch = (Object.values(SalesOrderStatus) as SalesOrderStatus[]).filter(
+      (s) => s.toLowerCase() === qLower,
+    );
+    const shipmentMilestoneSourceEnumMatch = (
+      Object.values(ShipmentMilestoneSource) as ShipmentMilestoneSource[]
+    ).filter((s) => s.toLowerCase() === qLower);
+    const ctDocVisibilityEnumMatch = (Object.values(CtDocVisibility) as CtDocVisibility[]).filter(
+      (s) => s.toLowerCase() === qLower,
+    );
+    const ctShipmentDocumentSourceEnumMatch = (
+      Object.values(CtShipmentDocumentSource) as CtShipmentDocumentSource[]
+    ).filter((s) => s.toLowerCase() === qLower);
+    const ctNoteVisibilityEnumMatch = (Object.values(CtNoteVisibility) as CtNoteVisibility[]).filter(
+      (s) => s.toLowerCase() === qLower,
+    );
+    const srmSupplierCategoryEnumMatch = (Object.values(SrmSupplierCategory) as SrmSupplierCategory[]).filter(
+      (s) => s.toLowerCase() === qLower,
+    );
+    const supplierApprovalStatusEnumMatch = (
+      Object.values(SupplierApprovalStatus) as SupplierApprovalStatus[]
+    ).filter((s) => s.toLowerCase() === qLower);
     const enumTokenOr: Prisma.ShipmentWhereInput[] = [
       ...shipmentStatusEnumMatch.map((status) => ({ status })),
       ...transportModeEnumMatch.flatMap((mode) => [
@@ -538,9 +566,26 @@ export async function listControlTowerShipments(params: {
           },
         },
       })),
+      ...salesOrderStatusEnumMatch.map((status) => ({
+        salesOrder: { is: { status } },
+      })),
+      ...shipmentMilestoneSourceEnumMatch.map((source) => ({
+        milestones: { some: { source } },
+      })),
+      ...ctDocVisibilityEnumMatch.map((visibility) => ({
+        ctDocuments: { some: { visibility } },
+      })),
+      ...ctShipmentDocumentSourceEnumMatch.map((source) => ({
+        ctDocuments: { some: { source } },
+      })),
+      ...ctNoteVisibilityEnumMatch.map((visibility) => ({
+        ctNotes: { some: { visibility } },
+      })),
     ];
     const supplierPartyMatch: Prisma.SupplierWhereInput = {
       OR: [
+        ...srmSupplierCategoryEnumMatch.map((srmCategory) => ({ srmCategory })),
+        ...supplierApprovalStatusEnumMatch.map((approvalStatus) => ({ approvalStatus })),
         { name: contains },
         { code: contains },
         { legalName: contains },
