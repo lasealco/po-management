@@ -58,6 +58,7 @@ describe("TWIN_API_ERROR_CODES", () => {
     expect(parseTwinApiErrorCode({ code: "query_validation_failed" })).toBe("QUERY_VALIDATION_FAILED");
     expect(parseTwinApiErrorCode({ code: " invalid_cursor " })).toBe("INVALID_CURSOR");
     expect(parseTwinApiErrorCode({ code: " format_invalid " })).toBe("FORMAT_INVALID");
+    expect(parseTwinApiErrorCode({ code: " export_row_cap_exceeded " })).toBe("EXPORT_ROW_CAP_EXCEEDED");
     expect(parseTwinApiErrorCode({ code: " body_json_invalid " })).toBe("BODY_JSON_INVALID");
     expect(parseTwinApiErrorCode({ code: " body_validation_failed " })).toBe("BODY_VALIDATION_FAILED");
     expect(parseTwinApiErrorCode({ code: " path_id_invalid " })).toBe("PATH_ID_INVALID");
