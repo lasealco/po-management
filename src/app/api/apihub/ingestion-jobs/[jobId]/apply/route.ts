@@ -18,6 +18,7 @@ import {
   type ApiHubStagingApplyTarget,
 } from "@/lib/apihub/constants";
 import { downstreamSummaryToTargetCounts } from "@/lib/apihub/downstream-mapped-rows-apply";
+import { computeIngestionApplyIdempotencyFingerprint } from "@/lib/apihub/ingestion-apply-idempotency-fingerprint";
 import { createApplyIdempotencyRecord, findApplyIdempotencyRecord } from "@/lib/apihub/ingestion-apply-idempotency-repo";
 import {
   applyApiHubIngestionRun,
@@ -421,6 +422,16 @@ export async function POST(request: Request, context: { params: Promise<{ jobId:
     });
   }
 
+  const requestFingerprint = computeIngestionApplyIdempotencyFingerprint({
+    downstream: downstream
+      ? {
+          target: downstream.target,
+          matchKey: downstream.matchKey,
+          bodyRows: downstream.bodyRows,
+        }
+      : undefined,
+  });
+
   if (idempotencyKey) {
     const cached = await findApplyIdempotencyRecord({ tenantId: tenant.id, idempotencyKey });
     if (cached) {
@@ -439,6 +450,24 @@ export async function POST(request: Request, context: { params: Promise<{ jobId:
           dryRun,
           idempotencyKeyPresent,
           resultCode: "APPLY_IDEMPOTENCY_KEY_CONFLICT",
+          outcome: null,
+        });
+      }
+      if (cached.requestFingerprint !== requestFingerprint) {
+        return finalizeApplyResponse({
+          response: apiHubError(
+            409,
+            "APPLY_IDEMPOTENCY_PAYLOAD_MISMATCH",
+            "This idempotency key is already stored for a different apply payload (marker vs downstream, target, rows source, or matchKey). Use a new idempotency key when changing the apply shape.",
+            requestId,
+          ),
+          tenantId: tenant.id,
+          actorUserId: actorId,
+          runId: jobId,
+          requestId,
+          dryRun,
+          idempotencyKeyPresent,
+          resultCode: "APPLY_IDEMPOTENCY_PAYLOAD_MISMATCH",
           outcome: null,
         });
       }
@@ -466,6 +495,7 @@ export async function POST(request: Request, context: { params: Promise<{ jobId:
       idempotencyKey,
       runId: jobId,
       dryRun,
+      requestFingerprint,
       responseStatus: mapped.status,
       responseBody: mapped.body as Prisma.InputJsonValue,
     });
@@ -486,6 +516,24 @@ export async function POST(request: Request, context: { params: Promise<{ jobId:
           dryRun,
           idempotencyKeyPresent,
           resultCode: "APPLY_IDEMPOTENCY_KEY_CONFLICT",
+          outcome: null,
+        });
+      }
+      if (ex.requestFingerprint !== requestFingerprint) {
+        return finalizeApplyResponse({
+          response: apiHubError(
+            409,
+            "APPLY_IDEMPOTENCY_PAYLOAD_MISMATCH",
+            "This idempotency key is already stored for a different apply payload (marker vs downstream, target, rows source, or matchKey). Use a new idempotency key when changing the apply shape.",
+            requestId,
+          ),
+          tenantId: tenant.id,
+          actorUserId: actorId,
+          runId: jobId,
+          requestId,
+          dryRun,
+          idempotencyKeyPresent,
+          resultCode: "APPLY_IDEMPOTENCY_PAYLOAD_MISMATCH",
           outcome: null,
         });
       }

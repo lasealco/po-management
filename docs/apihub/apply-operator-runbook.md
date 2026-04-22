@@ -29,7 +29,7 @@ Same mapped-row shapes as **staging batch apply**. Requires **`org.orders` → e
 
 **409 `APPLY_DOWNSTREAM_FAILED`:** missing/invalid rows, row validation failures, or DB apply errors (message in `error.message`).
 
-**Idempotency:** keys are still scoped to **tenant + key** and the **same** `jobId` + **`dryRun`** flag. Changing **`target`** or **`rows`** while reusing the same idempotency key can replay an earlier stored response — use a **new key** when the downstream shape changes.
+**Idempotency:** replays require the same **fingerprint** as the stored row; changing **`target`**, **`matchKey`**, **`rows`** vs **`resultSummary`** source, or marker-only vs downstream returns **409 `APPLY_IDEMPOTENCY_PAYLOAD_MISMATCH`** so clients must use a **new key** when changing apply shape.
 
 ## Dry-run (no `appliedAt` write)
 
@@ -41,8 +41,10 @@ Same mapped-row shapes as **staging batch apply**. Requires **`org.orders` → e
 ## Idempotency (safe replay)
 
 - Send **`Idempotency-Key`** header or **`idempotencyKey`** in JSON (header wins; max **128** characters), same pattern as **retry**.
-- **First response** is stored per **tenant + key** (including error bodies). **Replays** return the **same** status and JSON plus **`idempotentReplay: true`**, when the **same** `jobId` **and** the **same** `dryRun` flag are used.
+- **First response** is stored per **tenant + key** (including error bodies) with a **`requestFingerprint`**: marker-only apply vs downstream **`target` / `matchKey` / rows source** (body vs `resultSummary`) / normalized **`rows`** payload.
+- **Replays** return the **same** status and JSON plus **`idempotentReplay: true`**, when the **same** `jobId`, the **same** `dryRun` flag, and the **same** fingerprint are used.
 - **409 `APPLY_IDEMPOTENCY_KEY_CONFLICT`:** the key is already bound to a **different** apply request (different run or dry-run mismatch).
+- **409 `APPLY_IDEMPOTENCY_PAYLOAD_MISMATCH`:** the key exists for this run and dry-run mode but the **apply shape changed** (e.g. marker-only → downstream, different `target`, body rows vs `resultSummary`, or `matchKey`). Use a **new** idempotency key.
 
 ## Live apply — HTTP conflicts (409)
 
@@ -53,6 +55,7 @@ Same mapped-row shapes as **staging batch apply**. Requires **`org.orders` → e
 | `APPLY_BLOCKED_CONNECTOR_NOT_FOUND` | Run references a connector id that no longer exists. |
 | `APPLY_BLOCKED_CONNECTOR_NOT_ACTIVE` | Connector exists but is not `active`. |
 | `APPLY_IDEMPOTENCY_KEY_CONFLICT` | Idempotency key reuse across a different logical apply. |
+| `APPLY_IDEMPOTENCY_PAYLOAD_MISMATCH` | Same key + run + dry-run but apply **shape** differs from the stored fingerprint. |
 | `APPLY_DOWNSTREAM_FAILED` | P3 downstream apply: unresolved rows, invalid mapped rows, or transactional failure (see response `error.message`). |
 
 **404 `RUN_NOT_FOUND`:** no run for that tenant and id.

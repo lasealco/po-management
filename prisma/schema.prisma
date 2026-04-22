@@ -198,6 +198,8 @@ model ApiHubIngestionApplyIdempotency {
   idempotencyKey   String
   ingestionRunId   String
   dryRun           Boolean
+  /// Stable hash of apply shape (marker vs downstream target/rows/matchKey) for safe idempotent replay.
+  requestFingerprint String @default("v1:marker")
   responseStatus   Int
   responseBody     Json
   createdAt        DateTime @default(now())

@@ -309,6 +309,7 @@ describe("POST /api/apihub/ingestion-jobs/:jobId/apply", () => {
       idempotencyKey: "apply-idem-1",
       ingestionRunId: "run-1",
       dryRun: false,
+      requestFingerprint: "v1:marker",
       responseStatus: 200,
       responseBody: { applied: true, run: { id: "from-cache", appliedAt: "2026-01-01T00:00:00.000Z" } },
       createdAt: new Date("2026-04-22T12:00:00.000Z"),
@@ -334,6 +335,40 @@ describe("POST /api/apihub/ingestion-jobs/:jobId/apply", () => {
     });
   });
 
+  it("returns 409 APPLY_IDEMPOTENCY_PAYLOAD_MISMATCH when cached fingerprint differs from request shape", async () => {
+    idemMocks.findApplyIdempotencyRecord.mockResolvedValue({
+      id: "row-1",
+      tenantId: "tenant-1",
+      idempotencyKey: "shared-shape",
+      ingestionRunId: "run-1",
+      dryRun: false,
+      requestFingerprint: "v1:marker",
+      responseStatus: 200,
+      responseBody: { applied: true, run: { id: "cached" } },
+      createdAt: new Date(),
+    });
+    const { POST } = await import("./route");
+    const response = await POST(
+      new Request("http://localhost/api/apihub/ingestion-jobs/run-1/apply", {
+        method: "POST",
+        headers: {
+          [APIHUB_REQUEST_ID_HEADER]: "apply-idem-fp",
+          "idempotency-key": "shared-shape",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          target: "control_tower_audit",
+          rows: [{ mappedRecord: { shipmentId: "s1" } }],
+        }),
+      }),
+      { params: Promise.resolve({ jobId: "run-1" }) },
+    );
+    expect(applyApiHubIngestionRunMock).not.toHaveBeenCalled();
+    expect(response.status).toBe(409);
+    const json = (await response.json()) as { error?: { code?: string } };
+    expect(json.error?.code).toBe("APPLY_IDEMPOTENCY_PAYLOAD_MISMATCH");
+  });
+
   it("returns 409 APPLY_IDEMPOTENCY_KEY_CONFLICT when key is bound to another run", async () => {
     idemMocks.findApplyIdempotencyRecord.mockResolvedValue({
       id: "row-1",
@@ -341,6 +376,7 @@ describe("POST /api/apihub/ingestion-jobs/:jobId/apply", () => {
       idempotencyKey: "shared-key",
       ingestionRunId: "run-other",
       dryRun: false,
+      requestFingerprint: "v1:marker",
       responseStatus: 200,
       responseBody: { applied: true, run: { id: "other" } },
       createdAt: new Date(),
@@ -378,6 +414,7 @@ describe("POST /api/apihub/ingestion-jobs/:jobId/apply", () => {
         idempotencyKey: "race-key",
         ingestionRunId: "run-1",
         dryRun: false,
+        requestFingerprint: "v1:marker",
         responseStatus: 200,
         responseBody: { applied: true, run: { id: "winner-dto", appliedAt: "2026-04-22T09:00:00.000Z" } },
         createdAt: new Date(),
@@ -400,6 +437,7 @@ describe("POST /api/apihub/ingestion-jobs/:jobId/apply", () => {
         idempotencyKey: "race-key",
         runId: "run-1",
         dryRun: false,
+        requestFingerprint: "v1:marker",
         responseStatus: 200,
         responseBody: {
           applied: true,

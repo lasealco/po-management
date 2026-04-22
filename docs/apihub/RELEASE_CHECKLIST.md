@@ -6,7 +6,7 @@ Use this before tagging or right after a production deploy that touches **API Hu
 
 - [ ] **Branch** is rebased on `origin/main` (or merge target is current).
 - [ ] **Node** matches `package.json` `engines` (currently **22.x**).
-- [ ] **Database:** `DATABASE_URL` for the target environment points at the DB that will run the app (Neon / Postgres). Migrations are applied **before** or as part of deploy (`npm run db:migrate` / Vercel build step per `docs/database-neon.md`).
+- [ ] **Database:** `DATABASE_URL` for the target environment points at the DB that will run the app (Neon / Postgres). Migrations are applied **before** or as part of deploy (`npm run db:migrate` / Vercel build step per `docs/database-neon.md`). If **`ApiHubIngestionApplyIdempotency.requestFingerprint`** is new in this deploy, ensure migration **`20260422140000_apihub_apply_idempotency_fingerprint`** ran.
 - [ ] **Demo data (optional):** if you rely on `/apihub` demos, confirm `demo-company` seed exists (`npm run db:seed` where appropriate). Do not leave `RUN_DB_SEED=1` on Vercel long-term unless you intend build-time re-seeding.
 
 ## 2) Quality gate (local or CI)

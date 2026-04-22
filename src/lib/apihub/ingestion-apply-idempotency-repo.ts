@@ -8,6 +8,7 @@ export type ApiHubApplyIdempotencyRow = {
   idempotencyKey: string;
   ingestionRunId: string;
   dryRun: boolean;
+  requestFingerprint: string;
   responseStatus: number;
   responseBody: Prisma.JsonValue;
   createdAt: Date;
@@ -40,6 +41,7 @@ export async function createApplyIdempotencyRecord(opts: {
   idempotencyKey: string;
   runId: string;
   dryRun: boolean;
+  requestFingerprint: string;
   responseStatus: number;
   responseBody: Prisma.InputJsonValue;
 }): Promise<{ created: true } | { created: false; existing: ApiHubApplyIdempotencyRow }> {
@@ -50,6 +52,7 @@ export async function createApplyIdempotencyRecord(opts: {
         idempotencyKey: opts.idempotencyKey,
         ingestionRunId: opts.runId,
         dryRun: opts.dryRun,
+        requestFingerprint: opts.requestFingerprint,
         responseStatus: opts.responseStatus,
         responseBody: opts.responseBody,
       },
