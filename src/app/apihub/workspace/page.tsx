@@ -270,6 +270,7 @@ export default async function ApihubWorkspacePage() {
           <DemoSyncShowcase />
           <IngestionOpsPanel
             canView={canViewHub}
+            canEdit={canEditHub}
             initialSummary={ingestionInitialSummary}
             initialRuns={ingestionInitialRuns}
           />

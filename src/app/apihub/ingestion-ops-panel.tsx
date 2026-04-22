@@ -26,6 +26,8 @@ type StatusFilter = "" | ApiHubIngestionJobStatus;
 
 type Props = {
   canView: boolean;
+  /** `org.apihub` edit — enables Retry on failed runs in the expanded row. */
+  canEdit?: boolean;
   initialSummary: IngestionOpsSummaryPayload | null;
   initialRuns: ApiHubIngestionRunDto[];
 };
@@ -63,7 +65,7 @@ function trendLabel(last: number, prev: number): string {
   return `↓ ${Math.abs(d)} vs prior 24h`;
 }
 
-export function IngestionOpsPanel({ canView, initialSummary, initialRuns }: Props) {
+export function IngestionOpsPanel({ canView, canEdit = false, initialSummary, initialRuns }: Props) {
   const [summary, setSummary] = useState<IngestionOpsSummaryPayload | null>(initialSummary);
   const [runs, setRuns] = useState<ApiHubIngestionRunDto[]>(initialRuns);
   const [filter, setFilter] = useState<StatusFilter>("");
@@ -328,7 +330,26 @@ export function IngestionOpsPanel({ canView, initialSummary, initialRuns }: Prop
                   {expandedRunId === r.id ? (
                     <tr className="bg-zinc-50/80">
                       <td colSpan={6} className="p-0">
-                        <IngestionRunDetailExpand runId={r.id} />
+                        <IngestionRunDetailExpand
+                          runId={r.id}
+                          canRetry={canEdit}
+                          onRetryComplete={(info) => {
+                            void (async () => {
+                              setError(null);
+                              setOpsApiErrorBody(null);
+                              setBusy(true);
+                              try {
+                                const summaryOk = await loadSummary();
+                                if (!summaryOk) return;
+                                const runsOk = await loadRuns(filter);
+                                if (!runsOk) return;
+                                setExpandedRunId(info.newRunId);
+                              } finally {
+                                setBusy(false);
+                              }
+                            })();
+                          }}
+                        />
                       </td>
                     </tr>
                   ) : null}

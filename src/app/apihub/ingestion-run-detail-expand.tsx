@@ -138,15 +138,20 @@ function StepChip(props: {
 
 type Props = {
   runId: string;
+  canRetry?: boolean;
+  onRetryComplete?: (info: { newRunId: string; idempotentReplay: boolean }) => void;
 };
 
-export function IngestionRunDetailExpand({ runId }: Props) {
+export function IngestionRunDetailExpand({ runId, canRetry = false, onRetryComplete }: Props) {
   const [detail, setDetail] = useState<RunDetailResponse | null>(null);
   const [timeline, setTimeline] = useState<TimelineEvent[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [runApiErrorBody, setRunApiErrorBody] = useState<unknown | null>(null);
   const [timelineApiErrorBody, setTimelineApiErrorBody] = useState<unknown | null>(null);
+  const [retryBusy, setRetryBusy] = useState(false);
+  const [retryError, setRetryError] = useState<string | null>(null);
+  const [retryErrorBody, setRetryErrorBody] = useState<unknown | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -201,6 +206,41 @@ export function IngestionRunDetailExpand({ runId }: Props) {
     };
   }, [runId]);
 
+  async function handleRetry() {
+    if (!canRetry || !onRetryComplete) return;
+    setRetryBusy(true);
+    setRetryError(null);
+    setRetryErrorBody(null);
+    try {
+      const res = await fetch(`/api/apihub/ingestion-jobs/${encodeURIComponent(runId)}/retry`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setRetryErrorBody(data);
+        setRetryError(readApiHubErrorMessageFromJsonBody(data, "Retry request failed."));
+        return;
+      }
+      const run = (data as { run?: { id?: string }; idempotentReplay?: boolean }).run;
+      const newRunId = run && typeof run.id === "string" ? run.id : null;
+      if (!newRunId) {
+        setRetryError("Retry succeeded but response had no run id.");
+        return;
+      }
+      onRetryComplete({
+        newRunId,
+        idempotentReplay: Boolean((data as { idempotentReplay?: boolean }).idempotentReplay),
+      });
+    } catch (e) {
+      setRetryErrorBody(null);
+      setRetryError(e instanceof Error ? e.message : "Retry request failed.");
+    } finally {
+      setRetryBusy(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="border-t border-zinc-100 bg-zinc-50/90 px-4 py-6 text-sm text-zinc-600">
@@ -251,6 +291,51 @@ export function IngestionRunDetailExpand({ runId }: Props) {
 
   return (
     <div className="border-t border-zinc-100 bg-zinc-50/90 px-4 py-5 text-sm text-zinc-800">
+      {failed && canRetry && onRetryComplete ? (
+        <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Actions</p>
+            <p className="mt-1 max-w-xl text-xs text-zinc-600">
+              Queue a new run linked to this attempt (same connector and retry budget). Requires{" "}
+              <span className="font-mono text-[11px]">org.apihub → edit</span>.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 sm:items-end">
+            <button
+              type="button"
+              onClick={() => void handleRetry()}
+              disabled={retryBusy || r.remainingAttempts <= 0}
+              className="inline-flex shrink-0 items-center justify-center rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:brightness-95 disabled:opacity-60"
+            >
+              {retryBusy ? "Retrying…" : "Retry run"}
+            </button>
+            {r.remainingAttempts <= 0 ? (
+              <p className="text-xs text-zinc-600">No retry budget left on this row (attempt cap reached).</p>
+            ) : null}
+            {retryError ? (
+              <p className="max-w-md text-xs text-red-800" role="alert">
+                {retryError}
+              </p>
+            ) : null}
+            {retryErrorBody != null ? (
+              <ApiHubAdvancedJsonDisclosure
+                value={retryErrorBody}
+                label="Advanced — retry API error body"
+                description="From POST …/ingestion-jobs/[id]/retry when the response was not OK."
+                maxHeightClass="max-h-48"
+                dark={false}
+              />
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+      {failed && !canRetry ? (
+        <p className="mb-5 text-xs text-zinc-600">
+          <span className="font-medium text-zinc-800">View-only:</span> failed runs can be retried via{" "}
+          <span className="font-mono text-[11px]">POST …/ingestion-jobs/[id]/retry</span> when you have{" "}
+          <span className="font-mono text-[11px]">org.apihub → edit</span>.
+        </p>
+      ) : null}
       <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Run progress</p>
       <div className="mt-3 flex flex-wrap gap-2">
         <StepChip label="Enqueued" done={enqueued} />
