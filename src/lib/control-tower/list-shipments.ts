@@ -16,6 +16,7 @@ import {
   InvoiceReviewDecision,
   LoadPlanStatus,
   PricingSnapshotSourceType,
+  ProductDocumentKind,
   SalesOrderStatus,
   ShipmentBookingStatus,
   ShipmentMilestoneCode,
@@ -25,8 +26,11 @@ import {
   SrmSupplierCategory,
   SupplierApprovalStatus,
   TariffApprovalStatus,
+  TariffChargeFamily,
   TariffContractStatus,
+  TariffLineRateType,
   TariffProviderType,
+  TariffRuleType,
   TariffSourceType,
   TariffTransportMode,
   TransportMode,
@@ -525,6 +529,18 @@ export async function listControlTowerShipments(params: {
     const crmAccountLifecycleEnumMatch = (
       Object.values(CrmAccountLifecycle) as CrmAccountLifecycle[]
     ).filter((s) => s.toLowerCase() === qLower);
+    const tariffLineRateTypeEnumMatch = (
+      Object.values(TariffLineRateType) as TariffLineRateType[]
+    ).filter((s) => s.toLowerCase() === qLower);
+    const tariffRuleTypeEnumMatch = (Object.values(TariffRuleType) as TariffRuleType[]).filter(
+      (s) => s.toLowerCase() === qLower,
+    );
+    const tariffChargeFamilyEnumMatch = (
+      Object.values(TariffChargeFamily) as TariffChargeFamily[]
+    ).filter((s) => s.toLowerCase() === qLower);
+    const productDocumentKindEnumMatch = (
+      Object.values(ProductDocumentKind) as ProductDocumentKind[]
+    ).filter((s) => s.toLowerCase() === qLower);
     const enumTokenOr: Prisma.ShipmentWhereInput[] = [
       ...shipmentStatusEnumMatch.map((status) => ({ status })),
       ...transportModeEnumMatch.flatMap((mode) => [
@@ -566,9 +582,10 @@ export async function listControlTowerShipments(params: {
           },
         },
       })),
-      ...ctAlertSeverityEnumMatch.map((severity) => ({
-        ctAlerts: { some: { severity } },
-      })),
+      ...ctAlertSeverityEnumMatch.flatMap((severity) => [
+        { ctAlerts: { some: { severity } } },
+        { ctExceptions: { some: { severity } } },
+      ]),
       ...ctAlertStatusEnumMatch.map((status) => ({
         ctAlerts: { some: { status } },
       })),
@@ -717,6 +734,60 @@ export async function listControlTowerShipments(params: {
         { customerCrmAccount: { is: { lifecycle } } },
         { salesOrder: { is: { customerCrmAccount: { is: { lifecycle } } } } },
       ]),
+      ...tariffLineRateTypeEnumMatch.map((rateType) => ({
+        tariffShipmentApplications: {
+          some: {
+            contractVersion: {
+              is: {
+                rateLines: { some: { rateType } },
+              },
+            },
+          },
+        },
+      })),
+      ...tariffRuleTypeEnumMatch.map((ruleType) => ({
+        tariffShipmentApplications: {
+          some: {
+            contractVersion: {
+              is: {
+                freeTimeRules: { some: { ruleType } },
+              },
+            },
+          },
+        },
+      })),
+      ...tariffChargeFamilyEnumMatch.map((chargeFamily) => ({
+        tariffShipmentApplications: {
+          some: {
+            contractVersion: {
+              is: {
+                chargeLines: {
+                  some: {
+                    normalizedChargeCode: {
+                      is: { chargeFamily },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      })),
+      ...productDocumentKindEnumMatch.map((kind) => ({
+        items: {
+          some: {
+            orderItem: {
+              is: {
+                product: {
+                  is: {
+                    documents: { some: { kind } },
+                  },
+                },
+              },
+            },
+          },
+        },
+      })),
     ];
     const supplierPartyMatch: Prisma.SupplierWhereInput = {
       OR: [
