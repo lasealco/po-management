@@ -41,6 +41,7 @@ describe("TWIN_API_ERROR_CODES", () => {
     expect(isTwinApiErrorCode("INVALID_STATUS_TRANSITION")).toBe(true);
     expect(isTwinApiErrorCode("TWIN_INGEST_PAYLOAD_TOO_LARGE")).toBe(true);
     expect(isTwinApiErrorCode("TWIN_SCENARIO_DRAFT_JSON_TOO_LARGE")).toBe(true);
+    expect(isTwinApiErrorCode("TIMEOUT_BUDGET_EXCEEDED")).toBe(true);
     expect(isTwinApiErrorCode("EXPORT_ROW_CAP_EXCEEDED")).toBe(true);
     expect(isTwinApiErrorCode("NOT_A_REAL_TWIN_CODE")).toBe(false);
     expect(isTwinApiErrorCode(123)).toBe(false);
@@ -61,6 +62,7 @@ describe("TWIN_API_ERROR_CODES", () => {
     expect(parseTwinApiErrorCode({ code: " twin_scenario_draft_json_too_large " })).toBe(
       "TWIN_SCENARIO_DRAFT_JSON_TOO_LARGE",
     );
+    expect(parseTwinApiErrorCode({ code: " timeout_budget_exceeded " })).toBe("TIMEOUT_BUDGET_EXCEEDED");
     expect(parseTwinApiErrorCode({ code: "query-validation-failed" })).toBeNull();
     expect(parseTwinApiErrorCode({ code: 1001 })).toBeNull();
     expect(parseTwinApiErrorCode({ code: true })).toBeNull();
@@ -213,6 +215,16 @@ describe("TWIN_API_ERROR_CODES", () => {
     ).toEqual({
       code: "TWIN_SCENARIO_DRAFT_JSON_TOO_LARGE",
       error: "draft JSON exceeds byte cap",
+    });
+    expect(
+      parseTwinApiErrorBody({
+        code: " timeout_budget_exceeded ",
+        error: 42,
+        message: "deadline exceeded",
+      }),
+    ).toEqual({
+      code: "TIMEOUT_BUDGET_EXCEEDED",
+      error: "deadline exceeded",
     });
     expect(parseTwinApiErrorBody({ code: "FORMAT_INVALID", error: "   ", message: "Invalid format" })).toEqual({
       code: "FORMAT_INVALID",
@@ -368,6 +380,9 @@ describe("TWIN_API_ERROR_CODES", () => {
         error: "draft JSON exceeds byte cap",
       }),
     ).toBe("draft JSON exceeds byte cap");
+    expect(
+      getTwinEventsExportErrorMessage({ code: " timeout_budget_exceeded ", error: "deadline exceeded" }),
+    ).toBe("deadline exceeded");
     expect(getTwinEventsExportErrorMessage({ error: "raw message" })).toBe("raw message");
     expect(getTwinEventsExportErrorMessage({ error: "\n\traw message\t\n" })).toBe("raw message");
     expect(getTwinEventsExportErrorMessage({ code: "NOT_A_REAL_TWIN_CODE", message: " fallback message " })).toBe(
