@@ -10,6 +10,19 @@ export function parseControlTowerProductTraceParam(raw: string | null | undefine
   return t;
 }
 
+/**
+ * Maps a single search box value to shipments/list query params: trace-style tokens use `productTrace`, else `q`.
+ */
+export function controlTowerShipmentsTextQuery(
+  text: string,
+): { q: string } | { productTrace: string } | null {
+  const t = text.trim();
+  if (!t) return null;
+  const pt = parseControlTowerProductTraceParam(t);
+  if (pt && pt === t) return { productTrace: pt };
+  return { q: t };
+}
+
 /** Prefer explicit `q`; fall back to validated product / SKU trace code. */
 export function effectiveControlTowerQParam(
   qRaw: string | null | undefined,
@@ -55,12 +68,13 @@ export function mergeRawControlTowerSearchInput(sp: URLSearchParams, rawInput: s
   const trimmed = rawInput.trim();
   if (!trimmed) return;
   if (sp.has("q")) return;
-  const pt = parseControlTowerProductTraceParam(trimmed);
-  if (pt && pt === trimmed) {
-    if (!sp.has("productTrace")) sp.set("productTrace", pt);
+  const box = controlTowerShipmentsTextQuery(rawInput);
+  if (!box) return;
+  if ("productTrace" in box) {
+    if (!sp.has("productTrace")) sp.set("productTrace", box.productTrace);
     return;
   }
-  sp.set("q", trimmed);
+  sp.set("q", box.q);
 }
 
 export function hasStructuredSearchInput(filters: AssistSuggestedFilters): boolean {

@@ -4,6 +4,7 @@ import {
   appendAssistToSearchParams,
   effectiveControlTowerQParam,
   hasStructuredSearchInput,
+  controlTowerShipmentsTextQuery,
   mergeRawControlTowerSearchInput,
   parseControlTowerProductTraceParam,
 } from "./search-query";
@@ -90,6 +91,18 @@ describe("appendAssistToSearchParams", () => {
     expect(sp.get("destinationCode")).toBe("USNYC");
     expect(sp.get("dispatchOwnerUserId")).toBe("user-owner");
     expect(sp.get("alertType")).toBe("COLLAB_MENTION");
+  });
+});
+
+describe("controlTowerShipmentsTextQuery", () => {
+  it("returns productTrace when the full trimmed input is a valid token", () => {
+    expect(controlTowerShipmentsTextQuery("  SKU-1  ")).toEqual({ productTrace: "SKU-1" });
+  });
+
+  it("returns q for empty, whitespace-only, or non-trace text", () => {
+    expect(controlTowerShipmentsTextQuery("")).toBeNull();
+    expect(controlTowerShipmentsTextQuery("   ")).toBeNull();
+    expect(controlTowerShipmentsTextQuery("PO 123")).toEqual({ q: "PO 123" });
   });
 });
 

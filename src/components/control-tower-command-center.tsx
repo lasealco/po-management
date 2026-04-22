@@ -9,6 +9,7 @@ import {
   controlTowerListPrimaryTitle,
   controlTowerListSecondaryRef,
 } from "@/lib/control-tower/shipment-list-label";
+import { controlTowerShipmentsTextQuery } from "@/lib/control-tower/search-query";
 import { controlTowerWorkbenchPath } from "@/lib/control-tower/workbench-url-sync";
 
 type Row = {
@@ -216,7 +217,11 @@ export function ControlTowerCommandCenter({
     setListLimit(null);
     try {
       const sp = new URLSearchParams();
-      if (debouncedQ) sp.set("q", debouncedQ);
+      const box = controlTowerShipmentsTextQuery(debouncedQ);
+      if (box) {
+        if ("productTrace" in box) sp.set("productTrace", box.productTrace);
+        else sp.set("q", box.q);
+      }
       if (status) sp.set("status", status);
       if (onlyOverdueEta) sp.set("onlyOverdueEta", "1");
       if (routeAction) sp.set("routeAction", routeAction);
@@ -306,7 +311,11 @@ export function ControlTowerCommandCenter({
     if (status) q.status = status;
     if (routeAction) q.routeAction = routeAction;
     if (onlyOverdueEta) q.onlyOverdueEta = "1";
-    if (debouncedQ.trim()) q.q = debouncedQ.trim();
+    const box = controlTowerShipmentsTextQuery(debouncedQ);
+    if (box) {
+      if ("productTrace" in box) q.productTrace = box.productTrace;
+      else q.q = box.q;
+    }
     if (!restrictedView && ownerFilter && ownerFilter !== "__unassigned") {
       q.dispatchOwnerUserId = ownerFilter;
     }
@@ -346,7 +355,7 @@ export function ControlTowerCommandCenter({
             className="mt-1 block w-56 rounded border border-zinc-300 px-2 py-1.5 text-sm"
             value={qInput}
             onChange={(e) => setQInput(e.target.value)}
-            placeholder="PO, tracking, carrier…"
+            placeholder="PO, SKU, tracking, carrier…"
           />
         </label>
         <label className="block text-sm">
