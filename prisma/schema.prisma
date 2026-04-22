@@ -119,6 +119,10 @@ model ApiHubConnector {
 
   @@index([tenantId])
   @@index([tenantId, createdAt])
+  /// Connector list filters + sort (Slice 58).
+  @@index([tenantId, status, createdAt])
+  @@index([tenantId, authMode, createdAt])
+  @@index([tenantId, updatedAt])
 }
 
 model ApiHubConnectorAuditLog {
@@ -173,6 +177,14 @@ model ApiHubIngestionRun {
   @@index([connectorId, createdAt])
   @@index([requestedByUserId, createdAt])
   @@index([retryOfRunId, createdAt])
+  /// List + keyset pagination when filtering by connector (Slice 58).
+  @@index([tenantId, connectorId, createdAt])
+  /// In-flight counts and connector-scoped status filters (Slice 58).
+  @@index([tenantId, connectorId, status])
+  /// List runs filtered by trigger kind (Slice 58).
+  @@index([tenantId, triggerKind, createdAt])
+  /// Retry-tree expansion under tenant scope (Slice 58).
+  @@index([tenantId, retryOfRunId])
   @@unique([tenantId, idempotencyKey])
 }
 
@@ -210,6 +222,8 @@ model ApiHubIngestionRunAuditLog {
   @@index([tenantId, createdAt])
   @@index([ingestionRunId, createdAt])
   @@index([actorUserId, createdAt])
+  /// Apply/retry alert queries: tenant + action + sort by time (Slice 58).
+  @@index([tenantId, action, createdAt])
 }
 
 /// Tenant-scoped field mapping rule sets for ingestion / integration hub (Slice 35).
