@@ -179,7 +179,7 @@ export function ApplyConflictsPanel({ canView, initialItems, initialNextCursor }
           <tbody className="divide-y divide-zinc-100 bg-white text-zinc-800">
             {items.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-sm text-zinc-600">
+                <td colSpan={8} className="px-4 py-8 text-center text-sm text-zinc-600">
                   No apply conflicts recorded yet. Failed apply attempts (4xx) will appear here.
                 </td>
               </tr>
@@ -200,6 +200,16 @@ export function ApplyConflictsPanel({ canView, initialItems, initialNextCursor }
                     </td>
                     <td className="px-4 py-3 tabular-nums text-xs">{row.httpStatus}</td>
                     <td className="px-4 py-3 font-mono text-[11px] text-zinc-700">{row.ingestionRunId}</td>
+                    <td
+                      className="max-w-[7rem] truncate px-4 py-3 font-mono text-[11px] text-zinc-600"
+                      title={row.connectorId ?? undefined}
+                    >
+                      {row.connectorId
+                        ? row.connectorId.length > 12
+                          ? `${row.connectorId.slice(0, 10)}…`
+                          : row.connectorId
+                        : "—"}
+                    </td>
                     <td className="px-4 py-3 text-xs text-zinc-600">
                       {row.dryRun ? <span className="font-medium text-zinc-800">dry-run</span> : "live"}
                       {row.idempotencyKeyPresent ? " · idem" : ""}
