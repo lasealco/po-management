@@ -1054,6 +1054,24 @@ export async function listControlTowerShipments(params: {
         ...warehouseTypeEnumMatch.map((type) => ({ type })),
       ],
     };
+    const outboundOrderTextMatch: Prisma.OutboundOrderWhereInput = {
+      OR: [
+        { outboundNo: contains },
+        { customerRef: contains },
+        { shipToName: contains },
+        { shipToLine1: contains },
+        { shipToCity: contains },
+        { shipToCountryCode: contains },
+        { notes: contains },
+        {
+          crmAccount: {
+            is: {
+              OR: [{ name: contains }, { legalName: contains }],
+            },
+          },
+        },
+      ],
+    };
     const wmsTaskTextMatch: Prisma.WmsTaskWhereInput = {
       OR: [
         ...wmsTaskStatusEnumMatch.map((status) => ({ status })),
@@ -1094,6 +1112,13 @@ export async function listControlTowerShipments(params: {
                   productSuppliers: {
                     some: {
                       supplier: { is: supplierPartyMatch },
+                    },
+                  },
+                },
+                {
+                  outboundOrderLines: {
+                    some: {
+                      outboundOrder: { is: outboundOrderTextMatch },
                     },
                   },
                 },
@@ -1336,6 +1361,13 @@ export async function listControlTowerShipments(params: {
                               },
                             },
                           },
+                          {
+                            outboundOrderLines: {
+                              some: {
+                                outboundOrder: { is: outboundOrderTextMatch },
+                              },
+                            },
+                          },
                         ],
                       },
                     },
@@ -1484,6 +1516,21 @@ export async function listControlTowerShipments(params: {
                           productSuppliers: {
                             some: {
                               supplier: { is: supplierPartyMatch },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+                {
+                  orderItem: {
+                    is: {
+                      product: {
+                        is: {
+                          outboundOrderLines: {
+                            some: {
+                              outboundOrder: { is: outboundOrderTextMatch },
                             },
                           },
                         },
