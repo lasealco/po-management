@@ -114,7 +114,16 @@ export function apiHubErrorMessageLooksLikeInfrastructureNoise(message: string):
     m.includes("server closed the connection") ||
     m.includes("can't reach database") ||
     m.includes("connection pool") ||
-    m.includes("too many connections")
+    m.includes("too many connections") ||
+    /** PostgreSQL / Prisma constraint & engine errors often omit the word "postgres". */
+    m.includes("unique constraint") ||
+    m.includes("foreign key constraint") ||
+    m.includes("violates check constraint") ||
+    m.includes("duplicate key value") ||
+    m.includes("null value in column") ||
+    m.includes("current transaction is aborted") ||
+    m.includes("could not serialize access") ||
+    m.includes("syntax error at or near")
   );
 }
 

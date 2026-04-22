@@ -124,6 +124,21 @@ describe("apiHubOperatorMessageFromCaughtError", () => {
     ).toBe(fb);
   });
 
+  it("replaces Postgres-style constraint messages without prisma in text", () => {
+    expect(
+      apiHubOperatorMessageFromCaughtError(
+        new Error('Unique constraint failed on the fields: (`tenantId`,`soNumber`)'),
+        fb,
+      ),
+    ).toBe(fb);
+    expect(
+      apiHubOperatorMessageFromCaughtError(
+        new Error('duplicate key value violates unique constraint "SalesOrder_tenantId_soNumber_key"'),
+        fb,
+      ),
+    ).toBe(fb);
+  });
+
   it("treats oversized messages as noise", () => {
     const huge = "x".repeat(9000);
     expect(apiHubOperatorMessageFromCaughtError(new Error(huge), fb)).toBe(fb);
@@ -131,9 +146,13 @@ describe("apiHubOperatorMessageFromCaughtError", () => {
 });
 
 describe("apiHubErrorMessageLooksLikeInfrastructureNoise", () => {
-  it("flags prisma and postgres substrings", () => {
+  it("flags prisma, postgres, and constraint engine patterns", () => {
     expect(apiHubErrorMessageLooksLikeInfrastructureNoise("Invalid `prisma.foo` invocation")).toBe(true);
     expect(apiHubErrorMessageLooksLikeInfrastructureNoise("duplicate key value violates unique constraint")).toBe(
+      true,
+    );
+    expect(apiHubErrorMessageLooksLikeInfrastructureNoise("Supplier not found or inactive.")).toBe(false);
+    expect(apiHubErrorMessageLooksLikeInfrastructureNoise("Duplicate sales order externalRef for tenant (x).")).toBe(
       false,
     );
   });
