@@ -186,6 +186,45 @@ export default async function ApihubHomePage() {
           </Link>
           .
         </div>
+
+        <div
+          id="completion-path"
+          className="mt-6 rounded-xl border border-zinc-200 bg-zinc-50/80 px-4 py-4 text-sm text-zinc-700"
+        >
+          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Operator completion path</p>
+          <p className="mt-2 text-sm text-zinc-600">
+            Connector → run →{" "}
+            <Link href="#mapping-analysis-jobs" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+              mapping job
+            </Link>{" "}
+            →{" "}
+            <Link href="#mapping-preview-export" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+              preview
+            </Link>{" "}
+            →{" "}
+            <Link href="#staging-batches" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+              staging apply
+            </Link>
+            ; triage via{" "}
+            <Link href="#ingestion-alerts" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+              alerts
+            </Link>{" "}
+            and{" "}
+            <Link href="#apply-conflicts" className="font-medium text-[var(--arscmp-primary)] hover:underline">
+              apply conflicts
+            </Link>
+            . Limits and runbooks:{" "}
+            <a
+              href={`${GITHUB_DOCS_APIHUB_TREE}/product-completion-v1.md`}
+              target="_blank"
+              rel="noreferrer"
+              className="font-medium text-[var(--arscmp-primary)] hover:underline"
+            >
+              product-completion-v1.md
+            </a>
+            .
+          </p>
+        </div>
       </section>
 
       <DemoSyncShowcase />

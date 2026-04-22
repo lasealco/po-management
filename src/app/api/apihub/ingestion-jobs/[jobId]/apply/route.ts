@@ -13,6 +13,8 @@ import { createApplyIdempotencyRecord, findApplyIdempotencyRecord } from "@/lib/
 import { applyApiHubIngestionRun, type ApplyApiHubIngestionRunOutcome } from "@/lib/apihub/ingestion-apply-repo";
 import { appendApiHubIngestionRunAuditLog } from "@/lib/apihub/ingestion-run-audit-repo";
 import { toApiHubIngestionRunDto } from "@/lib/apihub/ingestion-run-dto";
+import { APIHUB_JSON_BODY_MAX_BYTES } from "@/lib/apihub/constants";
+import { parseApiHubRequestJson } from "@/lib/apihub/request-body-limit";
 import { APIHUB_REQUEST_ID_HEADER, resolveApiHubRequestId } from "@/lib/apihub/request-id";
 import { apiHubEnsureTenantActorGrants } from "@/lib/apihub/route-guards";
 import { NextResponse } from "next/server";
@@ -21,17 +23,17 @@ export const dynamic = "force-dynamic";
 
 type ApplyJsonBody = { dryRun?: unknown; idempotencyKey?: unknown };
 
-async function readApplyJsonBody(request: Request): Promise<ApplyJsonBody> {
+async function readApplyJsonBody(request: Request, requestId: string): Promise<ApplyJsonBody | Response> {
   const ct = request.headers.get("content-type")?.toLowerCase() ?? "";
   if (!ct.includes("application/json")) {
     return {};
   }
-  try {
-    const raw = (await request.json()) as ApplyJsonBody;
-    return raw != null && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
-  } catch {
-    return {};
+  const parsed = await parseApiHubRequestJson(request, APIHUB_JSON_BODY_MAX_BYTES, { emptyOnInvalid: true });
+  if (!parsed.ok) {
+    return apiHubError(413, "PAYLOAD_TOO_LARGE", parsed.message, requestId);
   }
+  const raw = parsed.value;
+  return raw != null && typeof raw === "object" && !Array.isArray(raw) ? (raw as ApplyJsonBody) : {};
 }
 
 function resolveApplyDryRun(request: Request, body: ApplyJsonBody): boolean {
@@ -265,7 +267,11 @@ export async function POST(request: Request, context: { params: Promise<{ jobId:
   const { tenant, actorId } = gate.ctx;
 
   const { jobId } = await context.params;
-  const jsonBody = await readApplyJsonBody(request);
+  const jsonBodyOrErr = await readApplyJsonBody(request, requestId);
+  if (jsonBodyOrErr instanceof Response) {
+    return jsonBodyOrErr;
+  }
+  const jsonBody = jsonBodyOrErr;
   const dryRun = resolveApplyDryRun(request, jsonBody);
   const idempotencyKey = resolveApplyIdempotencyKey(request, jsonBody);
   const idempotencyKeyPresent = Boolean(idempotencyKey);

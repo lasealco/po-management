@@ -13,11 +13,13 @@ import {
   createApiHubMappingAnalysisJob,
   listApiHubMappingAnalysisJobs,
 } from "@/lib/apihub/mapping-analysis-jobs-repo";
+import { APIHUB_JSON_BODY_MAX_BYTES_LARGE } from "@/lib/apihub/constants";
 import {
   APIHUB_LIST_LIMIT_MAX,
   APIHUB_LIST_LIMIT_MIN,
   parseApiHubListLimitFromUrl,
 } from "@/lib/apihub/query-limit";
+import { parseApiHubPostJsonForRoute } from "@/lib/apihub/request-body-limit";
 import { resolveApiHubRequestId } from "@/lib/apihub/request-id";
 import { apiHubEnsureTenantActorGrants } from "@/lib/apihub/route-guards";
 
@@ -62,11 +64,13 @@ export async function POST(request: Request) {
   const { tenant, actorId } = gate.ctx;
 
   let body: PostBody = {};
-  try {
-    body = (await request.json()) as PostBody;
-  } catch {
-    body = {};
+  const parsedBody = await parseApiHubPostJsonForRoute(request, requestId, APIHUB_JSON_BODY_MAX_BYTES_LARGE, {
+    emptyOnInvalid: true,
+  });
+  if (!parsedBody.ok) {
+    return parsedBody.response;
   }
+  body = parsedBody.value as PostBody;
 
   const parsed = parseApiHubMappingAnalysisJobCreateBody(body);
   if (!parsed.ok) {

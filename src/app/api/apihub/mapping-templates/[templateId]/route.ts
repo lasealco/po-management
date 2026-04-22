@@ -4,7 +4,11 @@ import {
   apiHubValidationError,
   type ApiHubValidationIssue,
 } from "@/lib/apihub/api-error";
-import { APIHUB_MAPPING_TEMPLATE_AUDIT_NOTE_MAX, APIHUB_MAPPING_TEMPLATE_RULES_MAX_COUNT } from "@/lib/apihub/constants";
+import {
+  APIHUB_JSON_BODY_MAX_BYTES_LARGE,
+  APIHUB_MAPPING_TEMPLATE_AUDIT_NOTE_MAX,
+  APIHUB_MAPPING_TEMPLATE_RULES_MAX_COUNT,
+} from "@/lib/apihub/constants";
 import type { ApiHubMappingRule } from "@/lib/apihub/mapping-engine";
 import { toApiHubMappingTemplateDto } from "@/lib/apihub/mapping-template-dto";
 import { validateApiHubMappingRulesInput } from "@/lib/apihub/mapping-engine";
@@ -18,6 +22,7 @@ import {
   getApiHubMappingTemplateById,
   updateApiHubMappingTemplate,
 } from "@/lib/apihub/mapping-templates-repo";
+import { parseApiHubPostJsonForRoute } from "@/lib/apihub/request-body-limit";
 import { resolveApiHubRequestId } from "@/lib/apihub/request-id";
 import { apiHubEnsureTenantActorGrants } from "@/lib/apihub/route-guards";
 
@@ -55,11 +60,13 @@ export async function PATCH(request: Request, context: { params: Promise<{ templ
   }
 
   let body: MappingTemplatePatchBody = {};
-  try {
-    body = (await request.json()) as MappingTemplatePatchBody;
-  } catch {
-    body = {};
+  const parsedBody = await parseApiHubPostJsonForRoute(request, requestId, APIHUB_JSON_BODY_MAX_BYTES_LARGE, {
+    emptyOnInvalid: true,
+  });
+  if (!parsedBody.ok) {
+    return parsedBody.response;
   }
+  body = parsedBody.value as MappingTemplatePatchBody;
 
   const patchIssues = collectMappingTemplatePatchIssues(body);
   const hasRules = Object.prototype.hasOwnProperty.call(body, "rules");

@@ -3,11 +3,13 @@ import {
   apiHubJson,
   apiHubValidationError,
 } from "@/lib/apihub/api-error";
+import { APIHUB_JSON_BODY_MAX_BYTES } from "@/lib/apihub/constants";
 import {
   APIHUB_LIST_LIMIT_MAX,
   APIHUB_LIST_LIMIT_MIN,
   parseApiHubListLimitFromUrl,
 } from "@/lib/apihub/query-limit";
+import { parseApiHubPostJsonForRoute } from "@/lib/apihub/request-body-limit";
 import { resolveApiHubRequestId } from "@/lib/apihub/request-id";
 import { apiHubEnsureTenantActorGrants } from "@/lib/apihub/route-guards";
 import { toApiHubStagingBatchListItemDto } from "@/lib/apihub/staging-batch-dto";
@@ -56,11 +58,13 @@ export async function POST(request: Request) {
   const { tenant, actorId } = gate.ctx;
 
   let body: PostBody = {};
-  try {
-    body = (await request.json()) as PostBody;
-  } catch {
-    body = {};
+  const parsedBody = await parseApiHubPostJsonForRoute(request, requestId, APIHUB_JSON_BODY_MAX_BYTES, {
+    emptyOnInvalid: true,
+  });
+  if (!parsedBody.ok) {
+    return parsedBody.response;
   }
+  body = parsedBody.value as PostBody;
 
   const jobId = typeof body.mappingAnalysisJobId === "string" ? body.mappingAnalysisJobId.trim() : "";
   if (!jobId) {

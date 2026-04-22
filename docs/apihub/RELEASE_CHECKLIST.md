@@ -46,6 +46,10 @@ Environment:
 | `APIHUB_SMOKE_BASE_URL` | `http://localhost:3000` | Origin for fetches (no trailing slash). |
 | `APIHUB_SMOKE_TIMEOUT_MS` | `15000` | Per-request timeout. |
 
+**API Hub JSON bodies (production contracts):** default POST/PATCH bodies are capped at **256 KiB**; mapping analysis, templates, diff, and mapping preview/export allow **1 MiB**. Oversize requests return **413** `PAYLOAD_TOO_LARGE`. See `APIHUB_JSON_BODY_MAX_BYTES*` in `src/lib/apihub/constants.ts` and [product-completion-v1.md](./product-completion-v1.md).
+
+**Optional OpenAI:** `APIHUB_OPENAI_API_KEY` or `OPENAI_API_KEY`; `APIHUB_OPENAI_MODEL` (default `gpt-4o-mini`). Documented in [README.md](./README.md) route index.
+
 ## 4) After deploy
 
 - [ ] Confirm **Vercel** (or host) build logs show **migrate** success if migrations shipped.

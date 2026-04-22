@@ -3,10 +3,11 @@ import {
   apiHubValidationError,
   type ApiHubValidationIssue,
 } from "@/lib/apihub/api-error";
-import { APIHUB_MAPPING_TEMPLATE_RULES_MAX_COUNT } from "@/lib/apihub/constants";
+import { APIHUB_JSON_BODY_MAX_BYTES_LARGE, APIHUB_MAPPING_TEMPLATE_RULES_MAX_COUNT } from "@/lib/apihub/constants";
 import { validateApiHubMappingRulesInput } from "@/lib/apihub/mapping-engine";
 import { diffApiHubMappingRules } from "@/lib/apihub/mapping-rules-diff";
 import { normalizeApiHubMappingRulesBody } from "@/lib/apihub/mapping-rules-body";
+import { parseApiHubPostJsonForRoute } from "@/lib/apihub/request-body-limit";
 import { resolveApiHubRequestId } from "@/lib/apihub/request-id";
 import { apiHubEnsureTenantActorGrants } from "@/lib/apihub/route-guards";
 
@@ -56,11 +57,13 @@ export async function POST(request: Request) {
   }
 
   let body: PostBody = {};
-  try {
-    body = (await request.json()) as PostBody;
-  } catch {
-    body = {};
+  const parsedBody = await parseApiHubPostJsonForRoute(request, requestId, APIHUB_JSON_BODY_MAX_BYTES_LARGE, {
+    emptyOnInvalid: true,
+  });
+  if (!parsedBody.ok) {
+    return parsedBody.response;
   }
+  body = parsedBody.value as PostBody;
 
   const shapeIssues = [...arrayShapeIssues("baselineRules", body.baselineRules), ...arrayShapeIssues("compareRules", body.compareRules)];
   if (shapeIssues.length > 0) {

@@ -3,10 +3,11 @@ import {
   apiHubJson,
   apiHubValidationError,
 } from "@/lib/apihub/api-error";
-import { APIHUB_INGESTION_JOB_STATUSES } from "@/lib/apihub/constants";
+import { APIHUB_INGESTION_JOB_STATUSES, APIHUB_JSON_BODY_MAX_BYTES } from "@/lib/apihub/constants";
 import { toApiHubIngestionRunDto } from "@/lib/apihub/ingestion-run-dto";
 import { getApiHubIngestionRunById, transitionApiHubIngestionRun } from "@/lib/apihub/ingestion-runs-repo";
 import { buildApiHubRunObservability } from "@/lib/apihub/run-observability";
+import { parseApiHubPostJsonForRoute } from "@/lib/apihub/request-body-limit";
 import { resolveApiHubRequestId } from "@/lib/apihub/request-id";
 import { apiHubEnsureTenantActorGrants } from "@/lib/apihub/route-guards";
 import { ApiHubRunStatus, canTransitionRunStatus, isValidRunStatus } from "@/lib/apihub/run-lifecycle";
@@ -73,11 +74,13 @@ export async function PATCH(request: Request, context: { params: Promise<{ jobId
 
   const { jobId } = await context.params;
   let body: PatchBody = {};
-  try {
-    body = (await request.json()) as PatchBody;
-  } catch {
-    body = {};
+  const parsedBody = await parseApiHubPostJsonForRoute(request, requestId, APIHUB_JSON_BODY_MAX_BYTES, {
+    emptyOnInvalid: true,
+  });
+  if (!parsedBody.ok) {
+    return parsedBody.response;
   }
+  body = parsedBody.value as PatchBody;
 
   const rawStatus = typeof body.status === "string" ? body.status.trim().toLowerCase() : "";
   if (!isValidRunStatus(rawStatus)) {

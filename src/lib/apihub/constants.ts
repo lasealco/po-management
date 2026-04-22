@@ -128,3 +128,12 @@ export const APIHUB_STAGING_BATCH_MAX_ROWS = 500;
 /** Downstream apply targets for persisted staging batches (requires module grants in addition to org.apihub). */
 export const APIHUB_STAGING_APPLY_TARGETS = ["sales_order", "purchase_order", "control_tower_audit"] as const;
 export type ApiHubStagingApplyTarget = (typeof APIHUB_STAGING_APPLY_TARGETS)[number];
+
+/**
+ * Default max JSON body size (bytes) for API Hub POST/PATCH — abuse guard.
+ * Heavy routes (mapping preview, analysis jobs, diff, large templates) use {@link APIHUB_JSON_BODY_MAX_BYTES_LARGE}.
+ */
+export const APIHUB_JSON_BODY_MAX_BYTES = 256 * 1024;
+
+/** Larger JSON payloads: mapping analysis, preview/export, rule diff, template create-from-rules. */
+export const APIHUB_JSON_BODY_MAX_BYTES_LARGE = 1024 * 1024;

@@ -8,6 +8,7 @@ import {
   APIHUB_CONNECTOR_DISABLE_FORCE_NOTE_MIN,
   APIHUB_CONNECTOR_OPS_NOTE_MAX,
   APIHUB_CONNECTOR_STATUSES,
+  APIHUB_JSON_BODY_MAX_BYTES,
 } from "@/lib/apihub/constants";
 import { toApiHubConnectorDto } from "@/lib/apihub/connector-dto";
 import {
@@ -16,6 +17,7 @@ import {
   updateApiHubConnectorLifecycle,
 } from "@/lib/apihub/connectors-repo";
 import { countInFlightApiHubIngestionRunsForConnector } from "@/lib/apihub/ingestion-runs-repo";
+import { parseApiHubPostJsonForRoute } from "@/lib/apihub/request-body-limit";
 import { resolveApiHubRequestId } from "@/lib/apihub/request-id";
 import { apiHubEnsureTenantActorGrants } from "@/lib/apihub/route-guards";
 
@@ -48,11 +50,13 @@ export async function PATCH(
   }
 
   let body: PatchBody = {};
-  try {
-    body = (await request.json()) as PatchBody;
-  } catch {
-    body = {};
+  const parsedBody = await parseApiHubPostJsonForRoute(request, requestId, APIHUB_JSON_BODY_MAX_BYTES, {
+    emptyOnInvalid: true,
+  });
+  if (!parsedBody.ok) {
+    return parsedBody.response;
   }
+  body = parsedBody.value as PatchBody;
 
   const existing = await getApiHubConnectorInTenant(tenant.id, connectorId);
   if (!existing) {

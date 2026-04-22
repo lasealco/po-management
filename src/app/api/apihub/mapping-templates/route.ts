@@ -4,6 +4,7 @@ import {
   type ApiHubValidationIssue,
 } from "@/lib/apihub/api-error";
 import {
+  APIHUB_JSON_BODY_MAX_BYTES_LARGE,
   APIHUB_MAPPING_TEMPLATE_RULES_MAX_COUNT,
 } from "@/lib/apihub/constants";
 import type { ApiHubMappingRule } from "@/lib/apihub/mapping-engine";
@@ -24,6 +25,7 @@ import {
   APIHUB_LIST_LIMIT_MIN,
   parseApiHubListLimitFromUrl,
 } from "@/lib/apihub/query-limit";
+import { parseApiHubPostJsonForRoute } from "@/lib/apihub/request-body-limit";
 import { resolveApiHubRequestId } from "@/lib/apihub/request-id";
 import { apiHubEnsureTenantActorGrants } from "@/lib/apihub/route-guards";
 
@@ -69,11 +71,13 @@ export async function POST(request: Request) {
   const { tenant, actorId } = gate.ctx;
 
   let body: PostBody = {};
-  try {
-    body = (await request.json()) as PostBody;
-  } catch {
-    body = {};
+  const parsedBody = await parseApiHubPostJsonForRoute(request, requestId, APIHUB_JSON_BODY_MAX_BYTES_LARGE, {
+    emptyOnInvalid: true,
+  });
+  if (!parsedBody.ok) {
+    return parsedBody.response;
   }
+  body = parsedBody.value as PostBody;
 
   const jobId =
     typeof body.sourceMappingAnalysisJobId === "string" ? body.sourceMappingAnalysisJobId.trim() : "";
