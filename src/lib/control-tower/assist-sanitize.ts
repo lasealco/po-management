@@ -1,7 +1,10 @@
 import type { ShipmentStatus, TransportMode } from "@prisma/client";
 
 import type { AssistSuggestedFilters } from "@/lib/control-tower/assist";
-import { isProbableControlTowerShipmentCuid } from "@/lib/control-tower/search-query";
+import {
+  isProbableControlTowerShipmentCuid,
+  parseControlTowerProductTraceParam,
+} from "@/lib/control-tower/search-query";
 import { CT_URL_ROUTE_ACTION_PREFIXES } from "@/lib/control-tower/workbench-url-sync";
 
 const VALID_STATUSES = new Set<ShipmentStatus>([
@@ -42,7 +45,8 @@ export function sanitizeAssistSuggestedFilters(input: unknown): AssistSuggestedF
     const m = o.productTraceQ.trim().match(/^([A-Za-z0-9._-]+)/);
     if (m) {
       const t = m[1].slice(0, MAX_PRODUCT_TRACE_Q);
-      if (t) out.productTraceQ = t;
+      const pt = parseControlTowerProductTraceParam(t);
+      if (pt) out.productTraceQ = pt;
     }
   }
   if (typeof o.mode === "string" && VALID_MODES.has(o.mode as TransportMode)) {

@@ -74,6 +74,10 @@ describe("sanitizeAssistSuggestedFilters", () => {
     ).toBe("SKU-1.0_extra");
   });
 
+  it("drops productTraceQ when value is a shipment cuid (not a SKU token)", () => {
+    expect(sanitizeAssistSuggestedFilters({ productTraceQ: VALID_CUID_20 }).productTraceQ).toBeUndefined();
+  });
+
   it("sanitizes exceptionCode and alertType", () => {
     const r = sanitizeAssistSuggestedFilters({
       exceptionCode: "  ERR.code-1  ",

@@ -84,4 +84,16 @@ describe("GET /api/control-tower/search", () => {
     expect(body.message).toBeDefined();
     expect(listShipmentsMock).not.toHaveBeenCalled();
   });
+
+  it("ignores productTrace when it looks like a shipment cuid", async () => {
+    const { GET } = await import("./route");
+    const res = await GET(
+      new Request("http://localhost/api/control-tower/search?productTrace=cl9k2abcdefghijklmnopqrs"),
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { message?: string; itemCount: number; productTrace?: unknown };
+    expect(body.itemCount).toBe(0);
+    expect(body.message).toBeDefined();
+    expect(listShipmentsMock).not.toHaveBeenCalled();
+  });
 });
