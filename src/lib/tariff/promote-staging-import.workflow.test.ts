@@ -177,6 +177,61 @@ describe("promoteApprovedStagingRowsToNewVersion (workflow)", () => {
     expect(h.createTariffContractVersion).not.toHaveBeenCalled();
   });
 
+  it("promotes only approved rows when batch mixes approved and unapproved candidates", async () => {
+    const { promoteApprovedStagingRowsToNewVersion } = await import("./promote-staging-import");
+    h.getTariffImportBatchForTenant.mockResolvedValue(
+      readyBatchWithRows([
+        {
+          id: "approved-rate",
+          approved: true,
+          rowType: "RATE_LINE_CANDIDATE",
+          normalizedPayload: {
+            rateType: "BASE_RATE",
+            unitBasis: "CONTAINER",
+            currency: "USD",
+            amount: 100,
+          },
+        },
+        {
+          id: "skipped-rate",
+          approved: false,
+          rowType: "RATE_LINE_CANDIDATE",
+          normalizedPayload: {
+            rateType: "BASE_RATE",
+            unitBasis: "CONTAINER",
+            currency: "USD",
+            amount: 999,
+          },
+        },
+        {
+          id: "skipped-charge",
+          approved: false,
+          rowType: "CHARGE_LINE_CANDIDATE",
+          normalizedPayload: {
+            rawChargeName: "IGNORED",
+            unitBasis: "CONTAINER",
+            currency: "USD",
+            amount: 50,
+          },
+        },
+      ]),
+    );
+
+    const out = await promoteApprovedStagingRowsToNewVersion({
+      tenantId: "t1",
+      importBatchId: "batch-mixed",
+      contractHeaderId: "hdr-1",
+      actorUserId: "u1",
+    });
+
+    expect(out).toEqual({ versionId: "ver-new", rateLineCount: 1, chargeLineCount: 0 });
+    expect(h.createTariffRateLine).toHaveBeenCalledTimes(1);
+    expect(h.createTariffChargeLine).not.toHaveBeenCalled();
+    expect(h.createTariffRateLine).toHaveBeenCalledWith(
+      expect.objectContaining({ contractVersionId: "ver-new", amount: 100 }),
+    );
+  });
+
   it("creates version, rate lines, marks batch APPLIED, and records audit on success", async () => {
     const { promoteApprovedStagingRowsToNewVersion } = await import("./promote-staging-import");
     h.getTariffImportBatchForTenant.mockResolvedValue(
@@ -476,6 +531,100 @@ describe("promoteApprovedStagingRowsToNewVersion (workflow)", () => {
       }),
     ).rejects.toThrow("simulated DB failure");
 
+    expect(h.versionDeleteMany).toHaveBeenCalledWith({ where: { id: "ver-new" } });
+    expect(h.updateTariffImportBatch).not.toHaveBeenCalled();
+    expect(h.recordTariffAuditLog).not.toHaveBeenCalled();
+  });
+
+  it("best-effort deletes draft version when the second rate line persist fails", async () => {
+    const { promoteApprovedStagingRowsToNewVersion } = await import("./promote-staging-import");
+    h.getTariffImportBatchForTenant.mockResolvedValue(
+      readyBatchWithRows([
+        {
+          id: "row-rate-1",
+          approved: true,
+          rowType: "RATE_LINE_CANDIDATE",
+          normalizedPayload: {
+            rateType: "BASE_RATE",
+            unitBasis: "CONTAINER",
+            currency: "USD",
+            amount: 1,
+          },
+        },
+        {
+          id: "row-rate-2",
+          approved: true,
+          rowType: "RATE_LINE_CANDIDATE",
+          normalizedPayload: {
+            rateType: "BASE_RATE",
+            unitBasis: "CONTAINER",
+            currency: "USD",
+            amount: 2,
+          },
+        },
+      ]),
+    );
+    h.createTariffRateLine
+      .mockResolvedValueOnce({ id: "rl-first" })
+      .mockRejectedValueOnce(new Error("second rate persist failed"));
+
+    await expect(
+      promoteApprovedStagingRowsToNewVersion({
+        tenantId: "t1",
+        importBatchId: "b1",
+        contractHeaderId: "hdr-1",
+        actorUserId: "u1",
+      }),
+    ).rejects.toThrow("second rate persist failed");
+
+    expect(h.createTariffRateLine).toHaveBeenCalledTimes(2);
+    expect(h.versionDeleteMany).toHaveBeenCalledWith({ where: { id: "ver-new" } });
+    expect(h.updateTariffImportBatch).not.toHaveBeenCalled();
+    expect(h.recordTariffAuditLog).not.toHaveBeenCalled();
+  });
+
+  it("best-effort deletes draft version when the second charge line persist fails", async () => {
+    const { promoteApprovedStagingRowsToNewVersion } = await import("./promote-staging-import");
+    h.getTariffImportBatchForTenant.mockResolvedValue(
+      readyBatchWithRows([
+        {
+          id: "c1",
+          approved: true,
+          rowType: "CHARGE_LINE_CANDIDATE",
+          normalizedPayload: {
+            rawChargeName: "BAF",
+            unitBasis: "CONTAINER",
+            currency: "USD",
+            amount: 1,
+          },
+        },
+        {
+          id: "c2",
+          approved: true,
+          rowType: "CHARGE_LINE_CANDIDATE",
+          normalizedPayload: {
+            rawChargeName: "DOC",
+            unitBasis: "BL",
+            currency: "USD",
+            amount: 2,
+          },
+        },
+      ]),
+    );
+    h.createTariffChargeLine
+      .mockResolvedValueOnce({ id: "cl-first" })
+      .mockRejectedValueOnce(new Error("second charge persist failed"));
+
+    await expect(
+      promoteApprovedStagingRowsToNewVersion({
+        tenantId: "t1",
+        importBatchId: "b1",
+        contractHeaderId: "hdr-1",
+        actorUserId: "u1",
+      }),
+    ).rejects.toThrow("second charge persist failed");
+
+    expect(h.createTariffChargeLine).toHaveBeenCalledTimes(2);
     expect(h.versionDeleteMany).toHaveBeenCalledWith({ where: { id: "ver-new" } });
     expect(h.updateTariffImportBatch).not.toHaveBeenCalled();
     expect(h.recordTariffAuditLog).not.toHaveBeenCalled();
