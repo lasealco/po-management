@@ -37,22 +37,27 @@ export function ApplyConflictsPanel({ canView, initialItems, initialNextCursor }
   const [busy, setBusy] = useState(false);
   const [loadMoreBusy, setLoadMoreBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [apiErrorBody, setApiErrorBody] = useState<unknown | null>(null);
   const [copyMsg, setCopyMsg] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const refreshFirstPage = useCallback(async () => {
     setError(null);
+    setApiErrorBody(null);
     setBusy(true);
     try {
       const res = await fetch("/api/apihub/ingestion-apply-conflicts?limit=20", { method: "GET" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(readApiHubErrorMessageFromJsonBody(data, "Could not load apply conflicts."));
+        setApiErrorBody(data);
+        setError(readApiHubErrorMessageFromJsonBody(data, "Could not load apply conflicts."));
+        return;
       }
       const payload = data as { conflicts?: ApiHubApplyConflictListItemDto[]; nextCursor?: string | null };
       setItems(payload.conflicts ?? []);
       setNextCursor(payload.nextCursor ?? null);
     } catch (e) {
+      setApiErrorBody(null);
       setError(e instanceof Error ? e.message : "Something went wrong.");
     } finally {
       setBusy(false);
@@ -62,18 +67,22 @@ export function ApplyConflictsPanel({ canView, initialItems, initialNextCursor }
   const loadMore = useCallback(async () => {
     if (!nextCursor) return;
     setError(null);
+    setApiErrorBody(null);
     setLoadMoreBusy(true);
     try {
       const params = new URLSearchParams({ limit: "20", cursor: nextCursor });
       const res = await fetch(`/api/apihub/ingestion-apply-conflicts?${params.toString()}`, { method: "GET" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(readApiHubErrorMessageFromJsonBody(data, "Could not load more conflicts."));
+        setApiErrorBody(data);
+        setError(readApiHubErrorMessageFromJsonBody(data, "Could not load more conflicts."));
+        return;
       }
       const payload = data as { conflicts?: ApiHubApplyConflictListItemDto[]; nextCursor?: string | null };
       setItems((prev) => [...prev, ...(payload.conflicts ?? [])]);
       setNextCursor(payload.nextCursor ?? null);
     } catch (e) {
+      setApiErrorBody(null);
       setError(e instanceof Error ? e.message : "Could not load more.");
     } finally {
       setLoadMoreBusy(false);
@@ -131,9 +140,20 @@ export function ApplyConflictsPanel({ canView, initialItems, initialNextCursor }
       </div>
 
       {error ? (
-        <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">
-          {error}
-        </p>
+        <div className="mt-4 space-y-3">
+          <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">
+            {error}
+          </p>
+          {apiErrorBody != null ? (
+            <ApiHubAdvancedJsonDisclosure
+              value={apiErrorBody}
+              label="Advanced — apply-conflicts API error body"
+              description="From the most recent failed conflicts list request on this panel."
+              maxHeightClass="max-h-56"
+              dark={false}
+            />
+          ) : null}
+        </div>
       ) : null}
       {copyMsg ? (
         <p className="mt-3 text-xs font-medium text-emerald-800" role="status">

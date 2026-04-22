@@ -25,13 +25,16 @@ export function MappingRulesDiffPanel({ templates }: Props) {
   const [draftJson, setDraftJson] = useState(EMPTY_DRAFT);
   const [result, setResult] = useState<ApiHubMappingRulesDiffResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [apiErrorBody, setApiErrorBody] = useState<unknown | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function runDiff() {
     setError(null);
+    setApiErrorBody(null);
     setResult(null);
     const tpl = templates.find((t) => t.id === templateId);
     if (!tpl) {
+      setApiErrorBody(null);
       setError("Choose a template to use as the baseline (reference).");
       return;
     }
@@ -39,10 +42,12 @@ export function MappingRulesDiffPanel({ templates }: Props) {
     try {
       draft = JSON.parse(draftJson.trim());
     } catch {
+      setApiErrorBody(null);
       setError("Draft rules must be valid JSON.");
       return;
     }
     if (!Array.isArray(draft)) {
+      setApiErrorBody(null);
       setError("Draft rules must be a JSON array.");
       return;
     }
@@ -58,14 +63,17 @@ export function MappingRulesDiffPanel({ templates }: Props) {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        setApiErrorBody(data);
         setError(readApiHubErrorMessageFromJsonBody(data, "Could not compute diff."));
         return;
       }
       const body = data as { diff?: ApiHubMappingRulesDiffResult };
       if (!body.diff) {
+        setApiErrorBody(data);
         setError("Unexpected response.");
         return;
       }
+      setApiErrorBody(null);
       setResult(body.diff);
     } finally {
       setBusy(false);
@@ -122,9 +130,20 @@ export function MappingRulesDiffPanel({ templates }: Props) {
       </div>
 
       {error ? (
-        <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">
-          {error}
-        </p>
+        <div className="mt-3 space-y-3">
+          <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">
+            {error}
+          </p>
+          {apiErrorBody != null ? (
+            <ApiHubAdvancedJsonDisclosure
+              value={apiErrorBody}
+              label="Advanced — mapping-diff API / response body"
+              description="Structured error from the API, or the parsed body when the response shape was unexpected."
+              maxHeightClass="max-h-56"
+              dark={false}
+            />
+          ) : null}
+        </div>
       ) : null}
 
       {result ? (

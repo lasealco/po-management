@@ -144,11 +144,15 @@ export function IngestionRunDetailExpand({ runId }: Props) {
   const [timeline, setTimeline] = useState<TimelineEvent[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [runApiErrorBody, setRunApiErrorBody] = useState<unknown | null>(null);
+  const [timelineApiErrorBody, setTimelineApiErrorBody] = useState<unknown | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
+    setRunApiErrorBody(null);
+    setTimelineApiErrorBody(null);
     setDetail(null);
     setTimeline(null);
 
@@ -162,19 +166,28 @@ export function IngestionRunDetailExpand({ runId }: Props) {
         ]);
         const runJson = await runRes.json().catch(() => ({}));
         if (!runRes.ok) {
-          throw new Error(readApiHubErrorMessageFromJsonBody(runJson, "Could not load run."));
+          if (!cancelled) {
+            setRunApiErrorBody(runJson);
+            setError(readApiHubErrorMessageFromJsonBody(runJson, "Could not load run."));
+          }
+          return;
         }
         const tlJson = await tlRes.json().catch(() => ({}));
-        const events = tlRes.ok && Array.isArray((tlJson as { events?: unknown }).events)
-          ? ((tlJson as { events: TimelineEvent[] }).events ?? [])
-          : [];
+        const events =
+          tlRes.ok && Array.isArray((tlJson as { events?: unknown }).events)
+            ? ((tlJson as { events: TimelineEvent[] }).events ?? [])
+            : [];
+        const tlErr = !tlRes.ok ? tlJson : null;
 
         if (!cancelled) {
           setDetail(runJson as RunDetailResponse);
           setTimeline(events);
+          setTimelineApiErrorBody(tlErr);
         }
       } catch (e) {
         if (!cancelled) {
+          setRunApiErrorBody(null);
+          setTimelineApiErrorBody(null);
           setError(e instanceof Error ? e.message : "Could not load run detail.");
         }
       } finally {
@@ -197,11 +210,19 @@ export function IngestionRunDetailExpand({ runId }: Props) {
 
   if (error) {
     return (
-      <div
-        className="border-t border-red-100 bg-red-50/80 px-4 py-4 text-sm text-red-800"
-        role="alert"
-      >
-        {error}
+      <div className="border-t border-red-100 bg-red-50/80 px-4 py-4 text-sm text-red-800" role="alert">
+        <p>{error}</p>
+        {runApiErrorBody != null ? (
+          <div className="mt-3">
+            <ApiHubAdvancedJsonDisclosure
+              value={runApiErrorBody}
+              label="Advanced — run detail API error body"
+              description="From GET …/ingestion-jobs/[id] when the response was not OK."
+              maxHeightClass="max-h-56"
+              dark={false}
+            />
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -329,6 +350,19 @@ export function IngestionRunDetailExpand({ runId }: Props) {
           ) : null}
         </div>
       </div>
+
+      {timelineApiErrorBody != null ? (
+        <div className="mt-6 space-y-2 rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-3 text-xs text-amber-950">
+          <p className="font-semibold text-amber-950">Timeline request failed; run summary above is still valid.</p>
+          <ApiHubAdvancedJsonDisclosure
+            value={timelineApiErrorBody}
+            label="Advanced — timeline API error body"
+            description="From GET …/ingestion-jobs/[id]/timeline when the response was not OK."
+            maxHeightClass="max-h-48"
+            dark={false}
+          />
+        </div>
+      ) : null}
 
       {timeline && timeline.length > 0 ? (
         <div className="mt-6">

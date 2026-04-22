@@ -8,6 +8,7 @@ import type { ApiHubIngestionJobStatus } from "@/lib/apihub/constants";
 import { APIHUB_INGESTION_JOB_STATUSES } from "@/lib/apihub/constants";
 import type { ApiHubIngestionRunDto } from "@/lib/apihub/ingestion-run-dto";
 
+import { ApiHubAdvancedJsonDisclosure } from "./apihub-advanced-json";
 import { IngestionRunDetailExpand } from "./ingestion-run-detail-expand";
 
 export type IngestionOpsSummaryPayload = {
@@ -69,35 +70,47 @@ export function IngestionOpsPanel({ canView, initialSummary, initialRuns }: Prop
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [opsApiErrorBody, setOpsApiErrorBody] = useState<unknown | null>(null);
   const skipNextFilterFetch = useRef(true);
 
-  const loadSummary = useCallback(async () => {
+  const loadSummary = useCallback(async (): Promise<boolean> => {
     const res = await fetch("/api/apihub/ingestion-jobs/ops-summary", { method: "GET" });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      throw new Error(readApiHubErrorMessageFromJsonBody(data, "Could not load ops summary."));
+      setOpsApiErrorBody(data);
+      setError(readApiHubErrorMessageFromJsonBody(data, "Could not load ops summary."));
+      return false;
     }
     setSummary(data as IngestionOpsSummaryPayload);
+    return true;
   }, []);
 
-  const loadRuns = useCallback(async (status: StatusFilter) => {
+  const loadRuns = useCallback(async (status: StatusFilter): Promise<boolean> => {
     const params = new URLSearchParams({ limit: "20" });
     if (status) params.set("status", status);
     const res = await fetch(`/api/apihub/ingestion-jobs?${params.toString()}`, { method: "GET" });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      throw new Error(readApiHubErrorMessageFromJsonBody(data, "Could not load ingestion runs."));
+      setOpsApiErrorBody(data);
+      setError(readApiHubErrorMessageFromJsonBody(data, "Could not load ingestion runs."));
+      return false;
     }
     const runsPayload = (data as { runs?: ApiHubIngestionRunDto[] }).runs ?? [];
     setRuns(runsPayload);
+    return true;
   }, []);
 
   const refreshAll = useCallback(async () => {
     setError(null);
+    setOpsApiErrorBody(null);
     setBusy(true);
     try {
-      await Promise.all([loadSummary(), loadRuns(filter)]);
+      const summaryOk = await loadSummary();
+      if (!summaryOk) return;
+      const runsOk = await loadRuns(filter);
+      if (!runsOk) return;
     } catch (e) {
+      setOpsApiErrorBody(null);
       setError(e instanceof Error ? e.message : "Something went wrong.");
     } finally {
       setBusy(false);
@@ -112,9 +125,11 @@ export function IngestionOpsPanel({ canView, initialSummary, initialRuns }: Prop
     }
     void (async () => {
       setError(null);
+      setOpsApiErrorBody(null);
       try {
         await loadRuns(filter);
       } catch (e) {
+        setOpsApiErrorBody(null);
         setError(e instanceof Error ? e.message : "Could not load runs.");
       }
     })();
@@ -177,9 +192,20 @@ export function IngestionOpsPanel({ canView, initialSummary, initialRuns }: Prop
       </div>
 
       {error ? (
-        <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">
-          {error}
-        </p>
+        <div className="mt-4 space-y-3">
+          <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">
+            {error}
+          </p>
+          {opsApiErrorBody != null ? (
+            <ApiHubAdvancedJsonDisclosure
+              value={opsApiErrorBody}
+              label="Advanced — ingestion ops API error body"
+              description="From the most recent failed ops-summary or ingestion-jobs list request."
+              maxHeightClass="max-h-56"
+              dark={false}
+            />
+          ) : null}
+        </div>
       ) : null}
 
       {summary ? (

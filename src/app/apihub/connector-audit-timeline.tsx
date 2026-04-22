@@ -5,6 +5,8 @@ import { useCallback, useEffect, useState } from "react";
 import { readApiHubErrorMessageFromJsonBody } from "@/lib/apihub/api-error";
 import type { ApiHubConnectorAuditTrailDto } from "@/lib/apihub/connector-dto";
 
+import { ApiHubAdvancedJsonDisclosure } from "./apihub-advanced-json";
+
 type AuditListJson = {
   connectorId: string;
   page: number;
@@ -39,11 +41,13 @@ export function ConnectorAuditTimeline({ connectorId, allowFetch }: Props) {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [apiErrorBody, setApiErrorBody] = useState<unknown | null>(null);
 
   const fetchPage = useCallback(
     async (nextPage: number, append: boolean) => {
       if (!allowFetch) {
         setLoading(false);
+        setApiErrorBody(null);
         setError("Choose a demo user in Settings → Demo session to load audit history.");
         setEntries([]);
         setHasMore(false);
@@ -56,12 +60,14 @@ export function ConnectorAuditTimeline({ connectorId, allowFetch }: Props) {
         setLoadingMore(true);
       }
       setError(null);
+      setApiErrorBody(null);
       try {
         const res = await fetch(
           `/api/apihub/connectors/${encodeURIComponent(connectorId)}/audit?limit=${PAGE_SIZE}&page=${nextPage}`,
         );
         const data = (await res.json().catch(() => ({}))) as AuditListJson & { ok?: false };
         if (!res.ok) {
+          setApiErrorBody(data);
           setError(readApiHubErrorMessageFromJsonBody(data, "Could not load audit history."));
           if (isFirst) {
             setEntries([]);
@@ -102,9 +108,27 @@ export function ConnectorAuditTimeline({ connectorId, allowFetch }: Props) {
       </div>
 
       {error ? (
-        <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900" role="alert">
-          {error}
-        </p>
+        <div className="mt-4 space-y-3">
+          <p
+            className={`rounded-lg border px-3 py-2 text-sm ${
+              apiErrorBody != null
+                ? "border-red-200 bg-red-50 text-red-800"
+                : "border-amber-200 bg-amber-50 text-amber-900"
+            }`}
+            role="alert"
+          >
+            {error}
+          </p>
+          {apiErrorBody != null ? (
+            <ApiHubAdvancedJsonDisclosure
+              value={apiErrorBody}
+              label="Advanced — connector audit API error body"
+              description="From GET …/connectors/[id]/audit when the response was not OK."
+              maxHeightClass="max-h-56"
+              dark={false}
+            />
+          ) : null}
+        </div>
       ) : null}
 
       {loading ? (

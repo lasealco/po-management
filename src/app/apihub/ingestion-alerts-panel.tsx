@@ -39,19 +39,24 @@ export function IngestionAlertsPanel({ canView, initialSummary }: Props) {
   const [summary, setSummary] = useState<ApiHubIngestionAlertsSummaryDto | null>(initialSummary);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [apiErrorBody, setApiErrorBody] = useState<unknown | null>(null);
   const [expandedAlertId, setExpandedAlertId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setError(null);
+    setApiErrorBody(null);
     setBusy(true);
     try {
       const res = await fetch("/api/apihub/ingestion-alerts-summary?limit=12", { method: "GET" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(readApiHubErrorMessageFromJsonBody(data, "Could not load alerts summary."));
+        setApiErrorBody(data);
+        setError(readApiHubErrorMessageFromJsonBody(data, "Could not load alerts summary."));
+        return;
       }
       setSummary(data as ApiHubIngestionAlertsSummaryDto);
     } catch (e) {
+      setApiErrorBody(null);
       setError(e instanceof Error ? e.message : "Something went wrong.");
     } finally {
       setBusy(false);
@@ -114,9 +119,20 @@ export function IngestionAlertsPanel({ canView, initialSummary }: Props) {
       </div>
 
       {error ? (
-        <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">
-          {error}
-        </p>
+        <div className="mt-4 space-y-3">
+          <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">
+            {error}
+          </p>
+          {apiErrorBody != null ? (
+            <ApiHubAdvancedJsonDisclosure
+              value={apiErrorBody}
+              label="Advanced — alerts summary API error body"
+              description="From GET …/ingestion-alerts-summary when the response was not OK."
+              maxHeightClass="max-h-56"
+              dark={false}
+            />
+          ) : null}
+        </div>
       ) : null}
 
       {summary ? (

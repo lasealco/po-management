@@ -49,6 +49,7 @@ export function StagingBatchApplyActions({
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [applyApiErrorBody, setApplyApiErrorBody] = useState<unknown | null>(null);
   const [lastSummary, setLastSummary] = useState<Summary | null>(null);
 
   const anyApply = canApplySalesOrder || canApplyPurchaseOrder || canApplyCtAudit;
@@ -64,6 +65,7 @@ export function StagingBatchApplyActions({
 
   async function run(target: ApiHubStagingApplyTarget, dryRun: boolean) {
     setError(null);
+    setApplyApiErrorBody(null);
     setLastSummary(null);
     setBusy(true);
     try {
@@ -74,6 +76,7 @@ export function StagingBatchApplyActions({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        setApplyApiErrorBody(data);
         setError(readApiHubErrorMessageFromJsonBody(data, "Apply failed."));
         return;
       }
@@ -135,7 +138,22 @@ export function StagingBatchApplyActions({
           </>
         ) : null}
       </div>
-      {error ? <p className="mt-2 text-xs text-red-600">{error}</p> : null}
+      {error ? (
+        <div className="mt-2 space-y-2">
+          <p className="text-xs text-red-600" role="alert">
+            {error}
+          </p>
+          {applyApiErrorBody != null ? (
+            <ApiHubAdvancedJsonDisclosure
+              value={applyApiErrorBody}
+              label="Advanced — staging apply error body"
+              description="Parsed JSON from POST …/staging-batches/[id]/apply when the response was not OK."
+              maxHeightClass="max-h-48"
+              dark={false}
+            />
+          ) : null}
+        </div>
+      ) : null}
       {lastSummary ? (
         <div className="mt-3 space-y-3">
           <div className="rounded-lg border border-zinc-200 bg-white p-3 text-xs text-zinc-800 shadow-sm">
