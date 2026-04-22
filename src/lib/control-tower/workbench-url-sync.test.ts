@@ -62,6 +62,22 @@ describe("readWorkbenchUrlState", () => {
     expect(r.ship360Tab).toBe("milestones");
   });
 
+  it("defaults page to 1 for invalid or sub-1 values and maps mid route health", () => {
+    expect(readWorkbenchUrlState(sp({ page: "0" }), false).page).toBe(1);
+    expect(readWorkbenchUrlState(sp({ page: "nope" }), false).page).toBe(1);
+    const mid = readWorkbenchUrlState(
+      sp({ minRouteProgressPct: "41", maxRouteProgressPct: "79" }),
+      false,
+    );
+    expect(mid.routeHealth).toBe("mid");
+  });
+
+  it("treats onlyOverdueEta=1 as true and ignores bogus shipmentSource", () => {
+    const r = readWorkbenchUrlState(sp({ onlyOverdueEta: "1", shipmentSource: "FAKE" }), false);
+    expect(r.onlyOverdueEta).toBe(true);
+    expect(r.shipmentSource).toBe("");
+  });
+
   it("clears owner filter in restricted view", () => {
     const open = readWorkbenchUrlState(sp({ dispatchOwnerUserId: "c0000000000000000000" }), false);
     expect(open.ownerFilter).toBe("c0000000000000000000");
