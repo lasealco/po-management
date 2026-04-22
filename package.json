@@ -39,6 +39,7 @@
     "db:migrate:deploy": "npm run db:migrate",
     "db:repair:supplier-migration": "node scripts/repair-failed-supplier-migration.cjs",
     "db:repair:apihub-auth-columns-migration": "node scripts/repair-failed-apihub-auth-columns-migration.cjs",
+    "db:repair:apihub-apply-fingerprint-migration": "node scripts/repair-failed-apihub-apply-fingerprint-migration.cjs",
     "db:repair:gen-workbench": "node scripts/repair-gen-workbench-demo.mjs",
     "vercel-build": "node scripts/vercel-build.cjs",
     "db:seed": "node prisma/seed.mjs",
