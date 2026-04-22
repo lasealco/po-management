@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { requireApiGrant } from "@/lib/authz";
 import { lookupInvestorDehamUschiDoorRates } from "@/lib/tariff/investor-door-rate-lookup";
 import { getDemoTenant } from "@/lib/demo-tenant";
@@ -16,7 +17,7 @@ export async function GET() {
 
   const tenant = await getDemoTenant();
   if (!tenant) {
-    return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   }
 
   try {
@@ -30,9 +31,10 @@ export async function GET() {
           : null,
     });
   } catch (e) {
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : "Lookup failed." },
-      { status: 500 },
-    );
+    return toApiErrorResponse({
+      error: e instanceof Error ? e.message : "Lookup failed.",
+      code: "UNHANDLED",
+      status: 500,
+    });
   }
 }

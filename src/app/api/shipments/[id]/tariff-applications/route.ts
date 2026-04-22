@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { jsonFromTariffError } from "@/app/api/tariffs/_lib/tariff-api-error";
@@ -15,14 +16,18 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   if (gate) return gate;
 
   const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) {
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
+  }
 
   const { id: shipmentId } = await context.params;
   const shipment = await prisma.shipment.findFirst({
     where: { id: shipmentId, order: { tenantId: tenant.id } },
     select: { id: true },
   });
-  if (!shipment) return NextResponse.json({ error: "Shipment not found." }, { status: 404 });
+  if (!shipment) {
+    return toApiErrorResponse({ error: "Shipment not found.", code: "NOT_FOUND", status: 404 });
+  }
 
   const applications = await listTariffShipmentApplications({ tenantId: tenant.id, shipmentId });
   return NextResponse.json({
@@ -37,7 +42,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   const tenant = await getDemoTenant();
   const actorId = await getActorUserId();
   if (!tenant || !actorId) {
-    return NextResponse.json({ error: "No active user." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   }
 
   const { id: shipmentId } = await context.params;
@@ -46,17 +51,19 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     where: { id: shipmentId, order: { tenantId: tenant.id } },
     select: { id: true },
   });
-  if (!shipment) return NextResponse.json({ error: "Shipment not found." }, { status: 404 });
+  if (!shipment) {
+    return toApiErrorResponse({ error: "Shipment not found.", code: "NOT_FOUND", status: 404 });
+  }
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON.", code: "BAD_INPUT", status: 400 });
   }
   const parsed = parseAttachTariffApplicationRequestBody(body);
   if (!parsed.ok) {
-    return NextResponse.json({ error: parsed.error }, { status: 400 });
+    return toApiErrorResponse({ error: parsed.error, code: "BAD_INPUT", status: 400 });
   }
 
   try {

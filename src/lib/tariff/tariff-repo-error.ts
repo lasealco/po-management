@@ -5,6 +5,7 @@ export type TariffRepoErrorCode =
   | "VERSION_FROZEN"
   | "CONFLICT";
 
+/** Domain errors from tariff libs; `src/app/api/tariffs/_lib/tariff-api-error` maps these to HTTP. */
 export class TariffRepoError extends Error {
   readonly code: TariffRepoErrorCode;
 
