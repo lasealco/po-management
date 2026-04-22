@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -53,12 +54,13 @@ export function PricingSnapshotsNewClient(props: { canContract: boolean; canRfq:
           shipmentBookingId: shipmentBookingId.trim() || undefined,
         }),
       });
-      const data = (await res.json().catch(() => ({}))) as { error?: string; snapshot?: { id: string } };
+      const data: unknown = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error ?? `Request failed (${res.status})`);
+        setError(apiClientErrorMessage(data, `Request failed (${res.status})`));
         return;
       }
-      if (data.snapshot?.id) router.push(`/pricing-snapshots/${data.snapshot.id}`);
+      const body = data as { snapshot?: { id: string } };
+      if (body.snapshot?.id) router.push(`/pricing-snapshots/${body.snapshot.id}`);
     } finally {
       setBusy(false);
     }
@@ -85,12 +87,13 @@ export function PricingSnapshotsNewClient(props: { canContract: boolean; canRfq:
           shipmentBookingId: shipmentBookingId.trim() || undefined,
         }),
       });
-      const data = (await res.json().catch(() => ({}))) as { error?: string; snapshot?: { id: string } };
+      const data: unknown = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error ?? `Request failed (${res.status})`);
+        setError(apiClientErrorMessage(data, `Request failed (${res.status})`));
         return;
       }
-      if (data.snapshot?.id) router.push(`/pricing-snapshots/${data.snapshot.id}`);
+      const body = data as { snapshot?: { id: string } };
+      if (body.snapshot?.id) router.push(`/pricing-snapshots/${body.snapshot.id}`);
     } finally {
       setBusy(false);
     }
@@ -109,12 +112,13 @@ export function PricingSnapshotsNewClient(props: { canContract: boolean; canRfq:
           shipmentBookingId: shipmentBookingId.trim() || undefined,
         }),
       });
-      const data = (await res.json().catch(() => ({}))) as { error?: string; snapshot?: { id: string } };
+      const data: unknown = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error ?? `Request failed (${res.status})`);
+        setError(apiClientErrorMessage(data, `Request failed (${res.status})`));
         return;
       }
-      if (data.snapshot?.id) router.push(`/pricing-snapshots/${data.snapshot.id}`);
+      const body = data as { snapshot?: { id: string } };
+      if (body.snapshot?.id) router.push(`/pricing-snapshots/${body.snapshot.id}`);
     } finally {
       setBusy(false);
     }

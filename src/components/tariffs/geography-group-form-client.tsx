@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import type { TariffGeographyType } from "@prisma/client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -55,12 +56,13 @@ export function GeographyGroupFormClient({ mode, canEdit, groupId, initial }: Pr
             active,
           }),
         });
-        const data = (await res.json().catch(() => ({}))) as { error?: string; group?: { id: string } };
+        const data: unknown = await res.json().catch(() => ({}));
         if (!res.ok) {
-          setError(data.error ?? "Save failed.");
+          setError(apiClientErrorMessage(data, "Save failed."));
           return;
         }
-        if (data.group?.id) router.push(tariffGeographyGroupPath(data.group.id));
+        const body = data as { group?: { id: string } };
+        if (body.group?.id) router.push(tariffGeographyGroupPath(body.group.id));
         else router.push(TARIFF_GEOGRAPHY_PATH);
         router.refresh();
         return;
@@ -80,9 +82,9 @@ export function GeographyGroupFormClient({ mode, canEdit, groupId, initial }: Pr
           active,
         }),
       });
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      const data: unknown = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error ?? "Save failed.");
+        setError(apiClientErrorMessage(data, "Save failed."));
         return;
       }
       router.refresh();
@@ -100,9 +102,9 @@ export function GeographyGroupFormClient({ mode, canEdit, groupId, initial }: Pr
     setError(null);
     try {
       const res = await fetch(`/api/tariffs/geography-groups/${groupId}`, { method: "DELETE" });
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      const data: unknown = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error ?? "Delete failed.");
+        setError(apiClientErrorMessage(data, "Delete failed."));
         return;
       }
       router.push(TARIFF_GEOGRAPHY_PATH);

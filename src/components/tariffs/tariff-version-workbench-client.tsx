@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -152,9 +153,9 @@ export function TariffVersionWorkbenchClient({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(partial),
     });
-    const data = (await res.json().catch(() => null)) as { error?: string } | null;
+    const data: unknown = await res.json().catch(() => null);
     if (!res.ok) {
-      setError(data?.error ?? `Update failed (${res.status})`);
+      setError(apiClientErrorMessage(data ?? {}, `Update failed (${res.status})`));
       return;
     }
     setMeta((m) => ({ ...m, ...partial }));
@@ -183,9 +184,9 @@ export function TariffVersionWorkbenchClient({
         comments: meta.comments,
       }),
     });
-    const data = (await res.json().catch(() => null)) as { error?: string } | null;
+    const data: unknown = await res.json().catch(() => null);
     if (!res.ok) {
-      setError(data?.error ?? `Version save failed (${res.status})`);
+      setError(apiClientErrorMessage(data ?? {}, `Version save failed (${res.status})`));
       return;
     }
     router.refresh();
@@ -554,8 +555,8 @@ function LineSection({
                                 method: "DELETE",
                                 credentials: "include",
                               });
-                              const data = (await res.json().catch(() => null)) as { error?: string } | null;
-                              if (!res.ok) setError(data?.error ?? "Delete failed");
+                              const data: unknown = await res.json().catch(() => null);
+                              if (!res.ok) setError(apiClientErrorMessage(data ?? {}, "Delete failed"));
                               else onRefresh();
                             })
                           }
@@ -593,8 +594,8 @@ function LineSection({
                                 method: "DELETE",
                                 credentials: "include",
                               });
-                              const data = (await res.json().catch(() => null)) as { error?: string } | null;
-                              if (!res.ok) setError(data?.error ?? "Delete failed");
+                              const data: unknown = await res.json().catch(() => null);
+                              if (!res.ok) setError(apiClientErrorMessage(data ?? {}, "Delete failed"));
                               else onRefresh();
                             })
                           }
@@ -628,8 +629,8 @@ function LineSection({
                                 method: "DELETE",
                                 credentials: "include",
                               });
-                              const data = (await res.json().catch(() => null)) as { error?: string } | null;
-                              if (!res.ok) setError(data?.error ?? "Delete failed");
+                              const data: unknown = await res.json().catch(() => null);
+                              if (!res.ok) setError(apiClientErrorMessage(data ?? {}, "Delete failed"));
                               else onRefresh();
                             })
                           }
@@ -708,9 +709,9 @@ function AddLineForm({
           destinationScopeId: destId || null,
         }),
       });
-      const data = (await res.json().catch(() => null)) as { error?: string } | null;
+      const data: unknown = await res.json().catch(() => null);
       if (!res.ok) {
-        onError(data?.error ?? "Create failed");
+        onError(apiClientErrorMessage(data ?? {}, "Create failed"));
         return;
       }
       onDone();
@@ -730,9 +731,9 @@ function AddLineForm({
           geographyScopeId: geoId || null,
         }),
       });
-      const data = (await res.json().catch(() => null)) as { error?: string } | null;
+      const data: unknown = await res.json().catch(() => null);
       if (!res.ok) {
-        onError(data?.error ?? "Create failed");
+        onError(apiClientErrorMessage(data ?? {}, "Create failed"));
         return;
       }
       onDone();
@@ -748,9 +749,9 @@ function AddLineForm({
         geographyScopeId: geoId || null,
       }),
     });
-    const data = (await res.json().catch(() => null)) as { error?: string } | null;
+    const data: unknown = await res.json().catch(() => null);
     if (!res.ok) {
-      onError(data?.error ?? "Create failed");
+      onError(apiClientErrorMessage(data ?? {}, "Create failed"));
       return;
     }
     onDone();

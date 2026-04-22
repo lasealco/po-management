@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import { useCallback, useEffect, useState } from "react";
 
 type Breakdown = {
@@ -44,13 +45,13 @@ export function InvestorDoorRatesClient() {
     setError(null);
     try {
       const res = await fetch("/api/tariffs/investor-door-rates", { cache: "no-store" });
-      const json = (await res.json()) as Payload & { error?: string };
+      const parsed: unknown = await res.json();
       if (!res.ok) {
-        setError(json.error ?? `Request failed (${res.status})`);
+        setError(apiClientErrorMessage(parsed, `Request failed (${res.status})`));
         setData(null);
         return;
       }
-      setData(json);
+      setData(parsed as Payload);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load.");
       setData(null);

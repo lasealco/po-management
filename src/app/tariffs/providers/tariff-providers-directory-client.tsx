@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -44,9 +45,9 @@ export function TariffProvidersDirectoryClient({
           countryCode: countryCode.trim() || null,
         }),
       });
-      const data = (await res.json().catch(() => null)) as { error?: string } | null;
+      const data: unknown = await res.json().catch(() => null);
       if (!res.ok) {
-        setError(data?.error ?? `Create failed (${res.status})`);
+        setError(apiClientErrorMessage(data ?? {}, `Create failed (${res.status})`));
         return;
       }
       setLegalName("");

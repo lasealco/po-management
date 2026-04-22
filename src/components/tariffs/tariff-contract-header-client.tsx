@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -38,9 +39,9 @@ export function TariffContractHeaderClient({
         status,
       }),
     });
-    const data = (await res.json().catch(() => null)) as { error?: string } | null;
+    const data: unknown = await res.json().catch(() => null);
     if (!res.ok) {
-      setError(data?.error ?? "Save failed");
+      setError(apiClientErrorMessage(data ?? {}, "Save failed"));
       return;
     }
     router.refresh();
@@ -54,13 +55,14 @@ export function TariffContractHeaderClient({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ sourceType: "MANUAL" }),
     });
-    const data = (await res.json().catch(() => null)) as { error?: string; version?: { id: string } } | null;
+    const data: unknown = await res.json().catch(() => null);
     if (!res.ok) {
-      setError(data?.error ?? "Could not create version");
+      setError(apiClientErrorMessage(data ?? {}, "Could not create version"));
       return;
     }
-    if (data?.version?.id) {
-      router.push(tariffContractVersionPath(contractId, data.version.id));
+    const body = data as { version?: { id: string } } | null;
+    if (body?.version?.id) {
+      router.push(tariffContractVersionPath(contractId, body.version.id));
       router.refresh();
     }
   }

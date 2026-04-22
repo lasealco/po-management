@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
@@ -50,13 +51,14 @@ export function TariffNewContractForm({
           legalEntityId: legalEntityId || null,
         }),
       });
-      const data = (await res.json().catch(() => null)) as { error?: string; contract?: { id: string } } | null;
+      const data: unknown = await res.json().catch(() => null);
       if (!res.ok) {
-        setError(data?.error ?? `Save failed (${res.status})`);
+        setError(apiClientErrorMessage(data ?? {}, `Save failed (${res.status})`));
         return;
       }
-      if (data?.contract?.id) {
-        router.push(tariffContractHeaderPath(data.contract.id));
+      const body = data as { contract?: { id: string } } | null;
+      if (body?.contract?.id) {
+        router.push(tariffContractHeaderPath(body.contract.id));
         router.refresh();
       }
     });

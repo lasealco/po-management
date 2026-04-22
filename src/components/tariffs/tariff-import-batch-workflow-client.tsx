@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -38,9 +39,9 @@ export function TariffImportBatchWorkflowClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ parseStatus, reviewStatus }),
       });
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      const data: unknown = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error ?? "Update failed.");
+        setError(apiClientErrorMessage(data, "Update failed."));
         return;
       }
       router.refresh();
@@ -58,14 +59,15 @@ export function TariffImportBatchWorkflowClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ replace: replaceSample }),
       });
-      const data = (await res.json().catch(() => ({}))) as { error?: string; batch?: { parseStatus: string; reviewStatus: string } };
+      const data: unknown = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error ?? "Could not add sample rows.");
+        setError(apiClientErrorMessage(data, "Could not add sample rows."));
         return;
       }
-      if (data.batch) {
-        setParseStatus(data.batch.parseStatus);
-        setReviewStatus(data.batch.reviewStatus);
+      const body = data as { batch?: { parseStatus: string; reviewStatus: string } };
+      if (body.batch) {
+        setParseStatus(body.batch.parseStatus);
+        setReviewStatus(body.batch.reviewStatus);
       }
       router.refresh();
     } finally {

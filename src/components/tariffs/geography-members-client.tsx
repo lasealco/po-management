@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import type { TariffGeographyType } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -67,9 +68,9 @@ export function GeographyMembersClient({ groupId, canEdit, members }: Props) {
           validTo: add.validTo.trim() || null,
         }),
       });
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      const data: unknown = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error ?? "Could not add member.");
+        setError(apiClientErrorMessage(data, "Could not add member."));
         return;
       }
       setAdd(emptyAddState());
@@ -95,9 +96,9 @@ export function GeographyMembersClient({ groupId, canEdit, members }: Props) {
           validTo: editDraft.validTo.trim() || null,
         }),
       });
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      const data: unknown = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error ?? "Could not save member.");
+        setError(apiClientErrorMessage(data, "Could not save member."));
         return;
       }
       setEditingId(null);
@@ -113,9 +114,9 @@ export function GeographyMembersClient({ groupId, canEdit, members }: Props) {
     setPending(true);
     try {
       const res = await fetch(`/api/tariffs/geography-groups/${groupId}/members/${id}`, { method: "DELETE" });
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      const data: unknown = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error ?? "Could not delete member.");
+        setError(apiClientErrorMessage(data, "Could not delete member."));
         return;
       }
       if (editingId === id) setEditingId(null);

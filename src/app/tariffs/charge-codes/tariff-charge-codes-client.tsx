@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import { useState } from "react";
 
 import type { TariffChargeFamily, TariffTransportMode } from "@prisma/client";
@@ -83,13 +84,14 @@ export function TariffChargeCodesClient(props: {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(patch),
       });
-      const data = (await res.json().catch(() => ({}))) as { error?: string; chargeCode?: SerializedChargeCatalogRow };
+      const data: unknown = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error ?? `Update failed (${res.status})`);
+        setError(apiClientErrorMessage(data, `Update failed (${res.status})`));
         return;
       }
-      if (data.chargeCode) {
-        const next = mergeUpdatedRow(data.chargeCode);
+      const body = data as { chargeCode?: SerializedChargeCatalogRow };
+      if (body.chargeCode) {
+        const next = mergeUpdatedRow(body.chargeCode);
         setRows((prev) => prev.map((r) => (r.id === id ? next : r)));
         if (opts?.closeEdit) setEditingId(null);
       }
@@ -129,13 +131,14 @@ export function TariffChargeCodesClient(props: {
           isSurcharge,
         }),
       });
-      const data = (await res.json().catch(() => ({}))) as { error?: string; chargeCode?: SerializedChargeCatalogRow };
+      const data: unknown = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error ?? `Create failed (${res.status})`);
+        setError(apiClientErrorMessage(data, `Create failed (${res.status})`));
         return;
       }
-      if (data.chargeCode) {
-        const row = mergeUpdatedRow(data.chargeCode);
+      const body = data as { chargeCode?: SerializedChargeCatalogRow };
+      if (body.chargeCode) {
+        const row = mergeUpdatedRow(body.chargeCode);
         setRows((prev) => [...prev, row].sort((a, b) => a.code.localeCompare(b.code)));
         setCode("");
         setDisplayName("");

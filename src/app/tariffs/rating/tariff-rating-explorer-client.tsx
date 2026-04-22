@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClientErrorMessage } from "@/lib/api-client-error";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -102,13 +103,13 @@ export function TariffRatingExplorerClient() {
       const res = await fetch(`/api/shipments/${encodeURIComponent(shipmentId)}/tariff-applications`, {
         credentials: "include",
       });
-      const json = (await res.json()) as { applications?: ShipmentTariffAppRow[]; error?: string };
+      const parsed: unknown = await res.json();
       if (!res.ok) {
-        setLinkedError(json.error ?? `Load failed (${res.status})`);
+        setLinkedError(apiClientErrorMessage(parsed, `Load failed (${res.status})`));
         setLinkedApps(null);
         return;
       }
-      setLinkedApps(json.applications ?? []);
+      setLinkedApps((parsed as { applications?: ShipmentTariffAppRow[] }).applications ?? []);
     } catch (e) {
       setLinkedError(e instanceof Error ? e.message : "Failed to load tariff links.");
       setLinkedApps(null);
@@ -135,12 +136,13 @@ export function TariffRatingExplorerClient() {
         const res = await fetch(`/api/shipments/${encodeURIComponent(shipmentId)}/tariff-rating-hints`, {
           credentials: "include",
         });
-        const json = (await res.json()) as HintsResponse & { error?: string };
+        const parsed: unknown = await res.json();
         if (!res.ok) {
-          if (!cancelled) setHintsError(json.error ?? `Hints failed (${res.status})`);
+          if (!cancelled) setHintsError(apiClientErrorMessage(parsed, `Hints failed (${res.status})`));
           return;
         }
         if (cancelled) return;
+        const json = parsed as HintsResponse;
         if (json.pol) setPol(json.pol);
         if (json.pod) setPod(json.pod);
         setEquipment(json.equipment);
@@ -164,13 +166,13 @@ export function TariffRatingExplorerClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pol, pod, equipment, transportMode, asOf }),
       });
-      const json = (await res.json()) as RateResponse & { error?: string };
+      const parsed: unknown = await res.json();
       if (!res.ok) {
-        setError(json.error ?? `Request failed (${res.status})`);
+        setError(apiClientErrorMessage(parsed, `Request failed (${res.status})`));
         setData(null);
         return;
       }
-      setData(json);
+      setData(parsed as RateResponse);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Request failed.");
       setData(null);
@@ -199,9 +201,9 @@ export function TariffRatingExplorerClient() {
           appliedNotes: "Applied from lane rating explorer",
         }),
       });
-      const json = (await res.json()) as { error?: string };
+      const parsed: unknown = await res.json();
       if (!res.ok) {
-        setApplyMessage(json.error ?? `Apply failed (${res.status})`);
+        setApplyMessage(apiClientErrorMessage(parsed, `Apply failed (${res.status})`));
         return;
       }
       setApplyMessage("Tariff version linked as primary for this shipment.");
