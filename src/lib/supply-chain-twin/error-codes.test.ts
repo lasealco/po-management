@@ -43,6 +43,7 @@ describe("TWIN_API_ERROR_CODES", () => {
     expect(isTwinApiErrorCode("TWIN_SCENARIO_DRAFT_JSON_TOO_LARGE")).toBe(true);
     expect(isTwinApiErrorCode("TIMEOUT_BUDGET_EXCEEDED")).toBe(true);
     expect(isTwinApiErrorCode("INVALID_IDEMPOTENCY_KEY")).toBe(true);
+    expect(isTwinApiErrorCode("INVALID_TWIN_INGEST_TYPE")).toBe(true);
     expect(isTwinApiErrorCode("EXPORT_ROW_CAP_EXCEEDED")).toBe(true);
     expect(isTwinApiErrorCode("NOT_A_REAL_TWIN_CODE")).toBe(false);
     expect(isTwinApiErrorCode(123)).toBe(false);
@@ -65,6 +66,7 @@ describe("TWIN_API_ERROR_CODES", () => {
     );
     expect(parseTwinApiErrorCode({ code: " timeout_budget_exceeded " })).toBe("TIMEOUT_BUDGET_EXCEEDED");
     expect(parseTwinApiErrorCode({ code: " invalid_idempotency_key " })).toBe("INVALID_IDEMPOTENCY_KEY");
+    expect(parseTwinApiErrorCode({ code: " invalid_twin_ingest_type " })).toBe("INVALID_TWIN_INGEST_TYPE");
     expect(parseTwinApiErrorCode({ code: "query-validation-failed" })).toBeNull();
     expect(parseTwinApiErrorCode({ code: 1001 })).toBeNull();
     expect(parseTwinApiErrorCode({ code: true })).toBeNull();
@@ -238,6 +240,16 @@ describe("TWIN_API_ERROR_CODES", () => {
       code: "INVALID_IDEMPOTENCY_KEY",
       error: "Idempotency-Key exceeds max length",
     });
+    expect(
+      parseTwinApiErrorBody({
+        code: " invalid_twin_ingest_type ",
+        error: 42,
+        message: "unsupported ingest type",
+      }),
+    ).toEqual({
+      code: "INVALID_TWIN_INGEST_TYPE",
+      error: "unsupported ingest type",
+    });
     expect(parseTwinApiErrorBody({ code: "FORMAT_INVALID", error: "   ", message: "Invalid format" })).toEqual({
       code: "FORMAT_INVALID",
       error: "Invalid format",
@@ -401,6 +413,9 @@ describe("TWIN_API_ERROR_CODES", () => {
         error: "Idempotency-Key exceeds max length",
       }),
     ).toBe("Idempotency-Key exceeds max length");
+    expect(
+      getTwinEventsExportErrorMessage({ code: " invalid_twin_ingest_type ", error: "unsupported ingest type" }),
+    ).toBe("unsupported ingest type");
     expect(getTwinEventsExportErrorMessage({ error: "raw message" })).toBe("raw message");
     expect(getTwinEventsExportErrorMessage({ error: "\n\traw message\t\n" })).toBe("raw message");
     expect(getTwinEventsExportErrorMessage({ code: "NOT_A_REAL_TWIN_CODE", message: " fallback message " })).toBe(
