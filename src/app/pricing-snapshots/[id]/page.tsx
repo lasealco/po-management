@@ -71,7 +71,7 @@ export default async function PricingSnapshotDetailPage(props: { params: Promise
     : null;
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-10">
+    <main className="mx-auto max-w-7xl py-10 pl-2 pr-6 sm:pl-3 md:pl-6">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
           <Link

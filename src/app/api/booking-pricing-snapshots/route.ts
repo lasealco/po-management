@@ -23,7 +23,9 @@ export async function GET(request: Request) {
   if (gate) return gate;
 
   const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) {
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
+  }
 
   const url = new URL(request.url);
   const takeRaw = url.searchParams.get("take");
@@ -50,10 +52,10 @@ export async function POST(request: Request) {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON.", code: "BAD_INPUT", status: 400 });
   }
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "Expected object body." }, { status: 400 });
+    return toApiErrorResponse({ error: "Expected object body.", code: "BAD_INPUT", status: 400 });
   }
   const o = body as Record<string, unknown>;
   const sourceTypeRaw = typeof o.sourceType === "string" ? o.sourceType.trim() : "";
@@ -62,13 +64,11 @@ export async function POST(request: Request) {
     sourceTypeRaw !== "QUOTE_RESPONSE" &&
     sourceTypeRaw !== "COMPOSITE_CONTRACT_VERSION"
   ) {
-    return NextResponse.json(
-      {
-        error:
-          "sourceType must be TARIFF_CONTRACT_VERSION, QUOTE_RESPONSE, or COMPOSITE_CONTRACT_VERSION.",
-      },
-      { status: 400 },
-    );
+    return toApiErrorResponse({
+      error: "sourceType must be TARIFF_CONTRACT_VERSION, QUOTE_RESPONSE, or COMPOSITE_CONTRACT_VERSION.",
+      code: "BAD_INPUT",
+      status: 400,
+    });
   }
 
   const writeGate = await requirePricingSnapshotWriteForSource({ sourceType: sourceTypeRaw });
@@ -77,7 +77,7 @@ export async function POST(request: Request) {
   const tenant = await getDemoTenant();
   const actorId = await getActorUserId();
   if (!tenant || !actorId) {
-    return NextResponse.json({ error: "No active user." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   }
 
   const shipmentBookingId =
@@ -89,25 +89,27 @@ export async function POST(request: Request) {
     if (sourceTypeRaw === "COMPOSITE_CONTRACT_VERSION") {
       const componentsRaw = o.components;
       if (!Array.isArray(componentsRaw) || componentsRaw.length === 0) {
-        return NextResponse.json(
-          { error: "components must be a non-empty array of { role, contractVersionId }." },
-          { status: 400 },
-        );
+        return toApiErrorResponse({
+          error: "components must be a non-empty array of { role, contractVersionId }.",
+          code: "BAD_INPUT",
+          status: 400,
+        });
       }
       const components: { role: string; contractVersionId: string }[] = [];
       for (const item of componentsRaw) {
         if (!item || typeof item !== "object") {
-          return NextResponse.json({ error: "Each component must be an object." }, { status: 400 });
+          return toApiErrorResponse({ error: "Each component must be an object.", code: "BAD_INPUT", status: 400 });
         }
         const it = item as Record<string, unknown>;
         const role = typeof it.role === "string" ? it.role.trim() : "";
         const contractVersionId =
           typeof it.contractVersionId === "string" ? it.contractVersionId.trim() : "";
         if (!role || !contractVersionId) {
-          return NextResponse.json(
-            { error: "Each component needs role and contractVersionId." },
-            { status: 400 },
-          );
+          return toApiErrorResponse({
+            error: "Each component needs role and contractVersionId.",
+            code: "BAD_INPUT",
+            status: 400,
+          });
         }
         components.push({ role, contractVersionId });
       }
@@ -126,7 +128,7 @@ export async function POST(request: Request) {
       const contractVersionId =
         typeof o.contractVersionId === "string" ? o.contractVersionId.trim() : "";
       if (!contractVersionId) {
-        return NextResponse.json({ error: "contractVersionId is required." }, { status: 400 });
+        return toApiErrorResponse({ error: "contractVersionId is required.", code: "BAD_INPUT", status: 400 });
       }
       const created = await freezeSnapshotFromContractVersion({
         tenantId: tenant.id,
@@ -139,7 +141,7 @@ export async function POST(request: Request) {
 
     const quoteResponseId = typeof o.quoteResponseId === "string" ? o.quoteResponseId.trim() : "";
     if (!quoteResponseId) {
-      return NextResponse.json({ error: "quoteResponseId is required." }, { status: 400 });
+      return toApiErrorResponse({ error: "quoteResponseId is required.", code: "BAD_INPUT", status: 400 });
     }
     const created = await freezeSnapshotFromQuoteResponse({
       tenantId: tenant.id,
