@@ -2,7 +2,7 @@
 
 **Legend:** ✅ shipped · 🟡 partial / stub · ❌ not started
 
-**Last updated:** 2026-04-22 (connector health probe UI + audit actor on list/API). **Phase 1 (module MVP)** is **closed** for integration-hub scope — see [CLOSEOUT_AUDIT.md](./CLOSEOUT_AUDIT.md) §5; P2+ items (AI jobs, batch/staging tables, org RBAC) remain future.
+**Last updated:** 2026-04-22 — **P2** mapping analysis jobs (async heuristic + `/apihub` UI + staging preview on job). **Phase 1 (module MVP)** remains closed — see [CLOSEOUT_AUDIT.md](./CLOSEOUT_AUDIT.md); LLM proposals + batch/staging tables + org RBAC remain future.
 
 | Area | Repo reality | Notes |
 |------|--------------|--------|
@@ -19,13 +19,13 @@
 | Prisma: batch / staging tables | ❌ | Spec “batch + staging” tables still future (rules live on templates + preview payloads) |
 | Mapping engine + preview | ✅ `src/lib/apihub/mapping-engine.ts`, `mapping-preview-run.ts` | `POST …/mapping-preview` + **export** (`json` \| `csv`); `sampleSize` cap |
 | Rule diff API | ✅ `POST /api/apihub/mapping-diff` | Keyed by `targetField`; used from `/apihub` |
-| AI analysis job pipeline | ❌ | P2+ (async job + LLM proposals not wired) |
+| AI analysis job pipeline | 🟡 | **P2:** `ApiHubMappingAnalysisJob` + `GET`/`POST` `/api/apihub/mapping-analysis-jobs` + `POST …/:id/process`; `after()` worker; deterministic **`deterministic_heuristic_v1`** proposals + **stagingPreview** on success; **LLM** still future |
 | Deterministic **apply** API | 🟡 `POST /api/apihub/ingestion-jobs/:id/apply` (+ dry-run, idempotency, rollback stub, audit, conflicts **GET**, alerts **GET**, `/apihub` triage) | Operator runbook: `apply-operator-runbook.md`; downstream CT/PO/SO wiring still scenario-specific |
 
 ## Near-term build order
 
 1. P0 — shell + health + docs links — **shipped**.
 2. P1 — **connector registry** + **mapping templates** + ingestion/apply operator surfaces — **shipped**; **batch/staging** Prisma still future (see R5 in closeout).
-3. P2 — async analysis job + richer editor; **preview / diff / export** already support operators today.
+3. P2 — async analysis job + richer editor — **shipped** (heuristic engine + `/apihub` panel + staging preview on job); LLM proposals still future.
 4. P3 — extend **apply** to production paths per scenario + idempotency hardening as needed.
 5. P4 — conflicts, match keys, hardening.

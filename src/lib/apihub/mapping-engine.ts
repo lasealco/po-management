@@ -39,7 +39,7 @@ export type ApiHubMappingRecordResult = {
 };
 
 /**
- * Returns `null` when the path is safe for {@link getPathValue}; otherwise a short human message.
+ * Returns `null` when the path is safe for {@link getApiHubMappingPathValue}; otherwise a short human message.
  * Bracket indices must be numeric (`[0]`). Segments are dot-separated identifiers or array indices.
  */
 export function validateApiHubMappingSourcePathSyntax(sourcePath: string): string | null {
@@ -218,7 +218,7 @@ function parseCurrencyDeterministic(value: unknown): { value: number } | { issue
   return { value: n };
 }
 
-function getPathValue(input: unknown, sourcePath: string): unknown {
+export function getApiHubMappingPathValue(input: unknown, sourcePath: string): unknown {
   const tokens = tokenizePath(sourcePath);
   let current: unknown = input;
   for (const token of tokens) {
@@ -363,7 +363,7 @@ export function applyApiHubMappingRules(
   const issues: ApiHubMappingIssue[] = [];
 
   for (const rule of rules) {
-    const raw = getPathValue(input, rule.sourcePath);
+    const raw = getApiHubMappingPathValue(input, rule.sourcePath);
     const missing = raw === undefined || raw === null || (typeof raw === "string" && raw.trim().length === 0);
     if (missing && rule.required) {
       issues.push({

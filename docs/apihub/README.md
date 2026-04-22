@@ -22,7 +22,7 @@ This folder is the **documentation home** for **integration / ingestion APIs and
 
 ## In-app entry (P0+)
 
-- Authenticated demo session: **`/apihub`** — workflow placeholders, **Connectors**, **mapping templates** (list / create / edit / delete + diff + preview export panels), **Ingestion runs** ops summary, **Alerts** (apply/retry failure summary), **Apply conflicts** (apply 4xx audit table), and links to demo session settings (see [GAP_MAP](./GAP_MAP.md) and [apply-operator-runbook](./apply-operator-runbook.md)).
+- Authenticated demo session: **`/apihub`** — **Mapping analysis jobs** (P2 async proposals + staging preview), **Connectors**, **mapping templates** (list / create / edit / delete + diff + preview export panels), **Ingestion runs** ops summary, **Alerts** (apply/retry failure summary), **Apply conflicts** (apply 4xx audit table), and links to demo session settings (see [GAP_MAP](./GAP_MAP.md) and [apply-operator-runbook](./apply-operator-runbook.md)).
 
 ## Route index (parity with `src/app/api/apihub/**`)
 
@@ -52,6 +52,17 @@ Authoritative guard semantics: [permissions-matrix.md](./permissions-matrix.md).
 | `GET`, `PATCH` | `/api/apihub/ingestion-jobs/:jobId` | Detail / update |
 | `GET` | `/api/apihub/ingestion-jobs/:jobId/timeline` | Timeline |
 | `POST` | `/api/apihub/ingestion-jobs/:jobId/retry` | Retry |
+
+### Mapping analysis jobs (P2)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/api/apihub/mapping-analysis-jobs` | List recent jobs; `limit` query (same bounds as other list routes). |
+| `POST` | `/api/apihub/mapping-analysis-jobs` | Queue job: JSON `{ records: object[], targetFields?: string[], note?: string }`. Schedules processing via `after()` (deterministic heuristic; no secrets). |
+| `GET` | `/api/apihub/mapping-analysis-jobs/:jobId` | Job detail, `outputProposal.rules`, optional embedded **`stagingPreview`** (mapping engine dry-run on sample records). |
+| `POST` | `/api/apihub/mapping-analysis-jobs/:jobId/process` | Manually claim a **queued** job (local dev / recovery); idempotent. |
+
+**Prisma:** `ApiHubMappingAnalysisJob` (`20260430120000_apihub_mapping_analysis_job`).
 
 ## Mapping templates, preview, diff, and apply (shipped)
 

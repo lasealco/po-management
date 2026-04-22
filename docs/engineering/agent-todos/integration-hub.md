@@ -44,10 +44,11 @@
 
 Phase 0–1 items above are **complete** for the greenfield integration hub contract (demo tenant + actor, deterministic mapping/apply, operator UI). **Formal handoff:** [`docs/apihub/CLOSEOUT_AUDIT.md`](../../apihub/CLOSEOUT_AUDIT.md) (residual risks R1–R9, smoke checklist).
 
-## Phase 2+ backlog (not Phase 1 scope)
+## Phase 2+ backlog (post–P2 heuristic)
 
 Track in [`docs/apihub/GAP_MAP.md`](../../apihub/GAP_MAP.md) and product issues:
 
-- Async **AI-assisted mapping** job pipeline (spec: [`integrations-ai-assisted-ingestion.md`](../../apihub/integrations-ai-assisted-ingestion.md)).
-- **Batch / staging** Prisma tables when batch UX ships.
-- Org-scoped **RBAC** for API + UI (Slices 52–53); workers/queues (R2); production **apply** adapters (R3); conformance / abuse / leakage hardening (R7–R9).
+- [x] **Async mapping analysis job** — `ApiHubMappingAnalysisJob`, list/create/detail/process routes, `/apihub` panel, `after()` processing, **stagingPreview** on success (deterministic engine).
+- [ ] **LLM** structured proposals (optional provider; no secrets in context) — extends same job model.
+- [ ] **Batch / staging** Prisma tables when batch UX ships (beyond preview-on-job).
+- [ ] Org-scoped **RBAC** for API + UI (Slices 52–53); workers/queues (R2); production **apply** adapters (R3); conformance / abuse / leakage hardening (R7–R9).

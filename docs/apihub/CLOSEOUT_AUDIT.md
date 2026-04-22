@@ -13,7 +13,7 @@
 | HTTP API | `src/app/api/apihub/**` |
 | Domain / shared logic | `src/lib/apihub/**` |
 | Operator UI | `src/app/apihub/**` (RSC + client panels; demo session gate) |
-| Persistence | `prisma/schema.prisma` — `ApiHubConnector`, `ApiHubConnectorAuditLog`, `ApiHubIngestionRun`, `ApiHubIngestionRunAuditLog`, `ApiHubIngestionApplyIdempotency`, `ApiHubMappingTemplate`, `ApiHubMappingTemplateAuditLog` |
+| Persistence | `prisma/schema.prisma` — `ApiHubConnector`, `ApiHubConnectorAuditLog`, `ApiHubIngestionRun`, `ApiHubIngestionRunAuditLog`, `ApiHubIngestionApplyIdempotency`, `ApiHubMappingTemplate`, `ApiHubMappingTemplateAuditLog`, `ApiHubMappingAnalysisJob` |
 | Migrations | `prisma/migrations/*apihub*` and related hot-path index migration (`20260430103000_apihub_hot_path_indexes`) |
 | Contracts & ops docs | `docs/apihub/README.md`, `GAP_MAP.md`, `apply-operator-runbook.md`, `permissions-matrix.md`, `RUNBOOK.md`, `RELEASE_CHECKLIST.md` |
 
@@ -26,7 +26,7 @@ Out of **this** module’s contract: Control Tower, PO/SO/WMS, tariff engine, CR
 - **Discovery:** `GET /api/apihub/health` — no auth; stable JSON envelope.
 - **Connectors:** registry CRUD-lite (`GET`/`POST`/`PATCH`), audit timeline, per-connector health probe, readiness summary on DTOs, `authConfigRef` validation, disable guardrails with in-flight ingestion.
 - **Ingestion runs:** list (keyset cursor + filters), detail + observability, timeline, retry (idempotency + budget), ops summary, alerts summary, apply-conflicts list.
-- **Mapping:** engine + preview + CSV/JSON export, templates CRUD + audit, rule diff API.
+- **Mapping:** engine + preview + CSV/JSON export, templates CRUD + audit, rule diff API, **P2** mapping analysis jobs (async heuristic proposals + staging preview on job).
 - **Apply:** live + dry-run, idempotency cache, target/write summaries, rollback **stub**, structured audit rows on apply/retry.
 - **Quality gates:** `npm run verify:apihub`, `npm run smoke:apihub` (see [RELEASE_CHECKLIST.md](./RELEASE_CHECKLIST.md)).
 
@@ -61,7 +61,7 @@ These are **accepted** gaps for the current phase unless an issue explicitly res
 | R1 | **Demo-session gate**, not full RBAC: most API Hub routes require demo tenant + demo actor, not org-scoped grants. | Medium (prod misuse if routes exposed without edge auth) | **Slice 52–53** route/UI permission parity; edge middleware / session policy per environment. |
 | R2 | **No background workers** for ingestion: runs are registry + API transitions; no queue consumer ships in this slice. | Medium (operational — “runs” do not imply ETL) | Document in runbooks; add workers in P2+ per spec. |
 | R3 | **Apply → downstream systems** is scenario-specific / partially stubbed (rollback stub, CT/PO wiring not universal). | Medium | Extend apply adapters per scenario; expand operator runbook when wiring changes. |
-| R4 | **AI-assisted mapping job** (async LLM) not implemented — mapping is deterministic + human-driven. | Low for current MVP | Spec in `integrations-ai-assisted-ingestion.md`; track as P2+. |
+| R4 | **LLM-assisted mapping job** not implemented — analysis uses **deterministic heuristic** (`deterministic_heuristic_v1`); async job pipeline otherwise ships. | Low for current MVP | Optional model provider + structured tool output in a future slice; see spec guardrails §7. |
 | R5 | **Batch / staging Prisma tables** not present — rules live on templates + request payloads. | Low | `GAP_MAP.md` row; add tables when batch UX ships. |
 | R6 | **Tenant isolation** not exhaustively proven by automated tests across every repo method. | Medium | **Slice 61** — atomic mapping `updateMany`/`deleteMany` + `*.tenant-scope.test.ts` guards; extend as new repos ship. |
 | R7 | **Secrets / PII in logs and error payloads** not covered by a dedicated leakage test pack in-repo. | Medium | **Slice 54** — leakage audit + tests. |
@@ -74,7 +74,7 @@ These are **accepted** gaps for the current phase unless an issue explicitly res
 
 Use this for a formal “module ready for adjacent teams” sign-off:
 
-- [x] `README.md` **Route index** matches `src/app/api/apihub/**` `route.ts` files on `main` (20 handlers; audited 2026-04-22).
+- [x] `README.md` **Route index** matches `src/app/api/apihub/**` `route.ts` files on `main` (23 handlers; includes P2 mapping analysis jobs).
 - [x] `GAP_MAP.md` legend reflects shipped vs stub for connectors, mapping, apply, alerts, conflicts.
 - [x] `permissions-matrix.md` matches demo-tenant / demo-actor guards on routes (health public; all other handlers use tenant + actor).
 - [x] `npm run verify:apihub` runs in GitHub Actions CI after the main test suite (`.github/workflows/ci.yml`).

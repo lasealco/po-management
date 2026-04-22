@@ -102,3 +102,19 @@ export const APIHUB_MAPPING_TEMPLATE_RULES_MAX_COUNT = 200;
 
 /** Optional operator note stored on mapping template audit rows (PATCH/DELETE). */
 export const APIHUB_MAPPING_TEMPLATE_AUDIT_NOTE_MAX = 500;
+
+/** Mapping analysis job lifecycle (P2 async pipeline). */
+export const APIHUB_MAPPING_ANALYSIS_JOB_STATUSES = ["queued", "processing", "succeeded", "failed"] as const;
+export type ApiHubMappingAnalysisJobStatus = (typeof APIHUB_MAPPING_ANALYSIS_JOB_STATUSES)[number];
+
+/** Max sample records accepted on `POST …/mapping-analysis-jobs` (bounded work). */
+export const APIHUB_MAPPING_ANALYSIS_MAX_RECORDS = 80;
+
+/** Max operator note length on analysis job create. */
+export const APIHUB_MAPPING_ANALYSIS_NOTE_MAX = 500;
+
+/** Max target-field hints on create. */
+export const APIHUB_MAPPING_ANALYSIS_TARGET_FIELDS_MAX = 120;
+
+/** Engine id for deterministic proposals (no LLM). */
+export const APIHUB_MAPPING_ANALYSIS_ENGINE_HEURISTIC = "deterministic_heuristic_v1" as const;

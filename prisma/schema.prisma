@@ -82,6 +82,7 @@ model Tenant {
   apiHubIngestionRunAuditLogs ApiHubIngestionRunAuditLog[]
   apiHubMappingTemplates ApiHubMappingTemplate[]
   apiHubMappingTemplateAuditLogs ApiHubMappingTemplateAuditLog[]
+  apiHubMappingAnalysisJobs ApiHubMappingAnalysisJob[]
   supplyChainTwinEntitySnapshots SupplyChainTwinEntitySnapshot[]
   supplyChainTwinEntityEdges     SupplyChainTwinEntityEdge[]
   supplyChainTwinIngestEvents    SupplyChainTwinIngestEvent[]
@@ -263,6 +264,30 @@ model ApiHubMappingTemplateAuditLog {
   @@index([tenantId, createdAt])
 }
 
+/// P2 — async mapping analysis job: structured rule proposals (deterministic heuristic today; LLM optional later).
+model ApiHubMappingAnalysisJob {
+  id                String   @id @default(cuid())
+  tenantId          String
+  requestedByUserId String
+  /// `queued` | `processing` | `succeeded` | `failed`
+  status            String   @default("queued")
+  /// `{ schemaVersion, records, targetFields?, note? }` — no secrets; size-capped in API.
+  inputPayload      Json
+  /// `{ schemaVersion, engine, rules, notes?, stagingPreview? }` when succeeded.
+  outputProposal    Json?
+  errorMessage      String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  startedAt         DateTime?
+  finishedAt        DateTime?
+
+  tenant       Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  requestedBy  User   @relation(fields: [requestedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, status, createdAt])
+}
+
 /// Tenant-scoped milestone template packs (override or extend built-in packs in code).
 model CtMilestoneTemplatePack {
   id          String   @id @default(cuid())
@@ -346,6 +371,7 @@ model User {
   apiHubMappingTemplatesCreated  ApiHubMappingTemplate[] @relation("ApiHubMappingTemplateCreatedBy")
   apiHubMappingTemplateAuditLogs ApiHubMappingTemplateAuditLog[]
   apiHubIngestionRunAuditLogs ApiHubIngestionRunAuditLog[]
+  apiHubMappingAnalysisJobsRequested ApiHubMappingAnalysisJob[]
   invoiceIntakesAccountingApproved InvoiceIntake[]         @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated TariffShipmentApplication[] @relation("TariffShipmentApplicationCreator")
 

@@ -52,6 +52,9 @@ Every other `route.ts` under `src/app/api/apihub/` uses **demo tenant + actor** 
 | `GET`, `PATCH`, `DELETE` | `/api/apihub/mapping-templates/:templateId` | Template CRUD |
 | `GET` | `/api/apihub/mapping-templates/:templateId/audit` | Template audit |
 | `POST` | `/api/apihub/mapping-diff` | Rule diff |
+| `GET`, `POST` | `/api/apihub/mapping-analysis-jobs` | List / queue mapping analysis job (P2) |
+| `GET` | `/api/apihub/mapping-analysis-jobs/:jobId` | Job detail + proposal |
+| `POST` | `/api/apihub/mapping-analysis-jobs/:jobId/process` | Manually claim/process a queued job (dev / retry) |
 
 ## App UI (`/apihub`)
 

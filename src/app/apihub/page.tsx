@@ -9,6 +9,9 @@ import { listApiHubApplyConflicts } from "@/lib/apihub/ingestion-apply-conflicts
 import type { ApiHubIngestionAlertsSummaryDto } from "@/lib/apihub/ingestion-alerts-dto";
 import { getApiHubIngestionAlertsSummary } from "@/lib/apihub/ingestion-alerts-summary-repo";
 import { getApiHubIngestionRunOpsSummary, listApiHubIngestionRuns } from "@/lib/apihub/ingestion-runs-repo";
+import type { ApiHubMappingAnalysisJobDto } from "@/lib/apihub/mapping-analysis-job-dto";
+import { toApiHubMappingAnalysisJobDto } from "@/lib/apihub/mapping-analysis-job-dto";
+import { listApiHubMappingAnalysisJobs } from "@/lib/apihub/mapping-analysis-jobs-repo";
 import type { ApiHubMappingTemplateDto } from "@/lib/apihub/mapping-template-dto";
 import { toApiHubMappingTemplateDto } from "@/lib/apihub/mapping-template-dto";
 import { listApiHubMappingTemplates } from "@/lib/apihub/mapping-templates-repo";
@@ -19,6 +22,7 @@ import { ConnectorsSection } from "./connectors-section";
 import { IngestionAlertsPanel } from "./ingestion-alerts-panel";
 import { DemoSyncShowcase } from "./demo-sync-showcase";
 import { IngestionOpsPanel, type IngestionOpsSummaryPayload } from "./ingestion-ops-panel";
+import { MappingAnalysisJobsPanel } from "./mapping-analysis-jobs-panel";
 import { MappingPreviewExportPanel } from "./mapping-preview-export-panel";
 import { MappingTemplatesSection } from "./mapping-templates-section";
 
@@ -34,26 +38,31 @@ const STEP_PLACEHOLDERS = [
     n: 1,
     title: "Intent",
     body: "Pick scenario and target (for example, new shipments from a partner file or API shape).",
+    badge: "Placeholder",
   },
   {
     n: 2,
     title: "Uploads + optional docs",
     body: "Bring sample files, example API JSON, and optional reference documents — not as a secret channel.",
+    badge: "Placeholder",
   },
   {
     n: 3,
     title: "AI analysis job",
     body: "Async job proposes structured mappings under guardrails; operators stay in control.",
+    badge: "P2 — async job",
   },
   {
     n: 4,
     title: "Mapping editor",
     body: "Confirm source paths or columns → canonical fields, transforms, and required vs optional rules.",
+    badge: "Templates + diff",
   },
   {
     n: 5,
     title: "Validate + real UI preview",
     body: "Dry-run against staging and open real app surfaces (read-only or flagged preview) where possible.",
+    badge: "Preview + export",
   },
 ] as const;
 
@@ -67,11 +76,12 @@ export default async function ApihubHomePage() {
   let ingestionInitialSummary: IngestionOpsSummaryPayload | null = null;
   let ingestionInitialRuns: ApiHubIngestionRunDto[] = [];
   let initialMappingTemplates: ApiHubMappingTemplateDto[] = [];
+  let initialMappingAnalysisJobs: ApiHubMappingAnalysisJobDto[] = [];
   let initialApplyConflicts: ApiHubApplyConflictListItemDto[] = [];
   let initialApplyConflictsNextCursor: string | null = null;
   let initialAlertsSummary: ApiHubIngestionAlertsSummaryDto | null = null;
   if (access?.user && access.tenant) {
-    const [ops, listed, mappingRows, applyConflicts, alertsSummary] = await Promise.all([
+    const [ops, listed, mappingRows, analysisJobRows, applyConflicts, alertsSummary] = await Promise.all([
       getApiHubIngestionRunOpsSummary({ tenantId: access.tenant.id }),
       listApiHubIngestionRuns({
         tenantId: access.tenant.id,
@@ -83,6 +93,7 @@ export default async function ApihubHomePage() {
         attemptRange: null,
       }),
       listApiHubMappingTemplates(access.tenant.id, 50),
+      listApiHubMappingAnalysisJobs({ tenantId: access.tenant.id, limit: 12 }),
       listApiHubApplyConflicts({ tenantId: access.tenant.id, limit: 20, cursor: null }),
       getApiHubIngestionAlertsSummary({ tenantId: access.tenant.id, limit: 12 }),
     ]);
@@ -95,6 +106,7 @@ export default async function ApihubHomePage() {
     };
     ingestionInitialRuns = listed.items.map(toApiHubIngestionRunDto);
     initialMappingTemplates = mappingRows.map(toApiHubMappingTemplateDto);
+    initialMappingAnalysisJobs = analysisJobRows.map(toApiHubMappingAnalysisJobDto);
     initialApplyConflicts = applyConflicts.items;
     initialApplyConflictsNextCursor = applyConflicts.nextCursor;
     initialAlertsSummary = alertsSummary;
@@ -108,11 +120,10 @@ export default async function ApihubHomePage() {
           <div>
             <h2 className="text-2xl font-semibold text-zinc-900">Integration and ingestion hub</h2>
             <p className="mt-2 max-w-2xl text-sm text-zinc-600">
-              Single place for AI-assisted mapping proposals, human confirmation, and repeatable runs across file
-              upload and server-to-server APIs. The workflow cards below remain{" "}
-              <span className="font-medium text-zinc-800">placeholders</span>;{" "}
-              <span className="font-medium text-zinc-800">Phase 1</span> adds a tenant-scoped connector registry (stub
-              rows, no live ingestion).
+              Single place for AI-assisted mapping proposals, human confirmation, and repeatable runs across file upload
+              and server-to-server APIs. <span className="font-medium text-zinc-800">P2</span> ships async mapping
+              analysis jobs (deterministic heuristic) plus staging-style preview on the job payload; connectors,
+              templates, and apply flows remain demo-session scoped.
             </p>
           </div>
           <div className="flex flex-col gap-2 sm:items-end">
@@ -144,7 +155,7 @@ export default async function ApihubHomePage() {
               <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Step {step.n} / 5</p>
               <p className="mt-2 text-sm font-semibold text-zinc-900">{step.title}</p>
               <p className="mt-2 text-xs leading-relaxed text-zinc-600">{step.body}</p>
-              <p className="mt-3 text-[11px] font-medium text-zinc-500">Placeholder — P1+</p>
+              <p className="mt-3 text-[11px] font-medium text-zinc-500">{step.badge}</p>
             </div>
           ))}
         </div>
@@ -174,6 +185,7 @@ export default async function ApihubHomePage() {
         initialItems={initialApplyConflicts}
         initialNextCursor={initialApplyConflictsNextCursor}
       />
+      <MappingAnalysisJobsPanel initialJobs={initialMappingAnalysisJobs} canUse={canCreate} />
       <MappingTemplatesSection initialTemplates={initialMappingTemplates} canManage={canCreate} />
       <MappingPreviewExportPanel canUse={canCreate} />
       <ConnectorsSection initialConnectors={initialConnectors} canCreate={canCreate} />
