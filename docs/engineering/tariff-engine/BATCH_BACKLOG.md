@@ -1,5 +1,7 @@
 # Tariff / rates vertical — 60-slice batch backlog (3 tracks × 20)
 
+**HTTP surface map:** [`API_ROUTE_INDEX.md`](./API_ROUTE_INDEX.md) — every `src/app/api/tariffs/**/route.ts` handler (maintain when routes change).
+
 Use this when you want **parallel agents** without stomping the same files: each **track** is intentionally skewed toward different primary paths. Within a track, work **top to bottom** when in doubt.
 
 - **Track A** — Import pipeline, staging/promote, normalized charge codes, geography **catalog/lib**, providers/legal **lib**, matching **API** routes.
