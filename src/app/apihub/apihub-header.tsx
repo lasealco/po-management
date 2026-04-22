@@ -5,7 +5,7 @@ import { workspaceTabHref } from "@/app/apihub/workspace-tabs";
 export function ApihubHeader() {
   return (
     <header className="border-b border-zinc-200 bg-white">
-      <div className="mx-auto flex max-w-6xl flex-col gap-3 px-6 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 py-3 pl-2 pr-6 sm:flex-row sm:items-center sm:justify-between sm:pl-3 md:pl-6">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Module</p>
           <h1 className="text-base font-semibold text-zinc-900">API hub</h1>

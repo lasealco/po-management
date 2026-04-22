@@ -407,7 +407,7 @@ export function ImportAssistantClient({ canEdit }: Props) {
   }
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-10">
+    <main className="mx-auto w-full max-w-7xl py-10 pl-2 pr-6 sm:pl-3 md:pl-6">
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_min(100%,340px)] lg:items-start lg:gap-8">
         <div className="min-w-0">
       <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
