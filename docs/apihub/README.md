@@ -12,6 +12,7 @@ This folder is the **documentation home** for **integration / ingestion APIs and
 | [apply-operator-runbook.md](./apply-operator-runbook.md) | **Slice 50:** Operator runbook — apply (live + dry-run), idempotency replay, retry, 409 codes, rollback stub, triage via `/apihub` Alerts + Apply conflicts |
 | [permissions-matrix.md](./permissions-matrix.md) | **Slice 51:** Route-level access — public vs demo tenant + demo actor; aligns with `src/app/api/apihub/**` guards and `/apihub` `ApihubGate` |
 | [RUNBOOK.md](./RUNBOOK.md) | Docs-only execution runbook for API Hub updates, scope boundaries, and PR checklist |
+| [RELEASE_CHECKLIST.md](./RELEASE_CHECKLIST.md) | **Slice 59:** Pre/post deploy checklist and `npm run smoke:apihub` sequence |
 
 **Gap map (spec ↔ code):** [GAP_MAP.md](./GAP_MAP.md)
 

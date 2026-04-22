@@ -1,0 +1,60 @@
+# API Hub — release checklist (Slice 59)
+
+Use this before tagging or right after a production deploy that touches **API Hub** (`src/app/api/apihub/**`, `src/lib/apihub/**`, `src/app/apihub/**`, or API Hub Prisma models).
+
+## 1) Preconditions
+
+- [ ] **Branch** is rebased on `origin/main` (or merge target is current).
+- [ ] **Node** matches `package.json` `engines` (currently **22.x**).
+- [ ] **Database:** `DATABASE_URL` for the target environment points at the DB that will run the app (Neon / Postgres). Migrations are applied **before** or as part of deploy (`npm run db:migrate` / Vercel build step per `docs/database-neon.md`).
+- [ ] **Demo data (optional):** if you rely on `/apihub` demos, confirm `demo-company` seed exists (`npm run db:seed` where appropriate). Do not leave `RUN_DB_SEED=1` on Vercel long-term unless you intend build-time re-seeding.
+
+## 2) Quality gate (local or CI)
+
+Run in repo root:
+
+```bash
+npm run verify:apihub
+```
+
+- [ ] **`npm run test:apihub`** — Vitest for `src/lib/apihub` + `src/app/api/apihub`.
+- [ ] **`npx tsc --noEmit`** — full project typecheck (same as other `verify:*` scripts).
+
+If `tsc` fails only in a dirty workspace, fix duplicate artifacts or reinstall; CI should stay green.
+
+## 3) Smoke against a running app
+
+With **`next start`** or a preview/prod URL:
+
+```bash
+# default: http://localhost:3000
+npm run smoke:apihub
+
+# e.g. Vercel preview
+APIHUB_SMOKE_BASE_URL="https://your-deployment.vercel.app" npm run smoke:apihub
+```
+
+- [ ] **`smoke:apihub` exits 0** — checks `GET /api/apihub/health` (JSON) and `GET /apihub` (HTML shell).
+- [ ] Optional: manually hit **`/apihub`** with a demo session and spot-check **Connectors**, **Ingestion runs**, **Alerts**, **Apply conflicts** (see [apply-operator-runbook.md](./apply-operator-runbook.md)).
+
+Environment:
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `APIHUB_SMOKE_BASE_URL` | `http://localhost:3000` | Origin for fetches (no trailing slash). |
+| `APIHUB_SMOKE_TIMEOUT_MS` | `15000` | Per-request timeout. |
+
+## 4) After deploy
+
+- [ ] Confirm **Vercel** (or host) build logs show **migrate** success if migrations shipped.
+- [ ] Run **`smoke:apihub`** against production URL once (from a machine with outbound HTTPS).
+- [ ] If contract or operator flows changed, update **README** / **GAP_MAP** / **apply-operator-runbook** / **permissions-matrix** in a fast-follow if not in the same PR (see [RUNBOOK.md](./RUNBOOK.md)).
+
+## 5) Rollback
+
+- Revert the release commit or redeploy prior **Git** revision.
+- **Database:** rolling back *code* does not undo migrations; only run down/repair scripts if you have an approved DB rollback plan (rare). Document any manual DB steps in the incident notes.
+
+---
+
+**Related:** [RUNBOOK.md](./RUNBOOK.md) (docs-only PR workflow), [README.md](./README.md) (endpoint index), `npm run verify:apihub` (Slice 57).
