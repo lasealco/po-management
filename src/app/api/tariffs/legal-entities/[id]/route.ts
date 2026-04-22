@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { updateTariffLegalEntity } from "@/lib/tariff/legal-entities";
@@ -12,7 +13,9 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   if (gate) return gate;
 
   const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) {
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
+  }
 
   const { id } = await context.params;
 
@@ -20,10 +23,10 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON.", code: "BAD_INPUT", status: 400 });
   }
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "Expected object body." }, { status: 400 });
+    return toApiErrorResponse({ error: "Expected object body.", code: "BAD_INPUT", status: 400 });
   }
   const o = body as Record<string, unknown>;
 
@@ -35,7 +38,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   if (typeof o.status === "string") patch.status = o.status;
 
   if (Object.keys(patch).length === 0) {
-    return NextResponse.json({ error: "No fields to update." }, { status: 400 });
+    return toApiErrorResponse({ error: "No fields to update.", code: "BAD_INPUT", status: 400 });
   }
 
   try {

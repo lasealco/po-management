@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { recordTariffAuditLog } from "@/lib/tariff/audit-log";
 import { createTariffFreeTimeRule, listTariffFreeTimeRulesForTenantVersion } from "@/lib/tariff/free-time-rules";
@@ -23,7 +24,9 @@ export async function GET(_request: Request, context: { params: Promise<{ versio
   if (gate) return gate;
 
   const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) {
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
+  }
 
   const { versionId } = await context.params;
   try {
@@ -46,23 +49,23 @@ export async function POST(request: Request, context: { params: Promise<{ versio
   const tenant = await getDemoTenant();
   const actorId = await getActorUserId();
   if (!tenant || !actorId) {
-    return NextResponse.json({ error: "No active user." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   }
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON.", code: "BAD_INPUT", status: 400 });
   }
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "Expected object body." }, { status: 400 });
+    return toApiErrorResponse({ error: "Expected object body.", code: "BAD_INPUT", status: 400 });
   }
   const o = body as Record<string, unknown>;
   const ruleType = typeof o.ruleType === "string" ? o.ruleType.trim() : "";
   const freeDays = typeof o.freeDays === "number" ? o.freeDays : Number.NaN;
   if (!ruleType || !RULE_TYPES.has(ruleType) || !Number.isFinite(freeDays)) {
-    return NextResponse.json({ error: "ruleType and freeDays are required." }, { status: 400 });
+    return toApiErrorResponse({ error: "ruleType and freeDays are required.", code: "BAD_INPUT", status: 400 });
   }
 
   const { versionId } = await context.params;

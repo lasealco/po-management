@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { jsonFromTariffError } from "@/app/api/tariffs/_lib/tariff-api-error";
 import {
   createNormalizedChargeCode,
@@ -20,7 +21,7 @@ export async function GET(request: Request) {
     if (raw != null && raw !== "") {
       const n = Number(raw);
       if (!Number.isInteger(n) || n < 1) {
-        return NextResponse.json({ error: "Query take must be a positive integer." }, { status: 400 });
+        return toApiErrorResponse({ error: "Query take must be a positive integer.", code: "BAD_INPUT", status: 400 });
       }
       take = n;
     }
@@ -44,15 +45,15 @@ export async function POST(request: Request) {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON.", code: "BAD_INPUT", status: 400 });
   }
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "Expected object body." }, { status: 400 });
+    return toApiErrorResponse({ error: "Expected object body.", code: "BAD_INPUT", status: 400 });
   }
   try {
     const actorId = await getActorUserId();
     if (!actorId) {
-      return NextResponse.json({ error: "No active user." }, { status: 403 });
+      return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
     }
     const parsed = parseCreateNormalizedChargeCodeBody(body as Record<string, unknown>);
     const created = await createNormalizedChargeCode(parsed, { actorUserId: actorId });

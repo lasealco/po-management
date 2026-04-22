@@ -1,6 +1,7 @@
 import { TariffGeographyType } from "@prisma/client";
 import { NextResponse } from "next/server";
 
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { requireApiGrant } from "@/lib/authz";
 import { createTariffGeographyMember, listTariffGeographyMembersForGroup } from "@/lib/tariff/geography-members";
 import { jsonFromTariffError } from "@/app/api/tariffs/_lib/tariff-api-error";
@@ -41,16 +42,20 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON.", code: "BAD_INPUT", status: 400 });
   }
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "Expected object body." }, { status: 400 });
+    return toApiErrorResponse({ error: "Expected object body.", code: "BAD_INPUT", status: 400 });
   }
   const o = body as Record<string, unknown>;
   const memberCode = typeof o.memberCode === "string" ? o.memberCode.trim() : "";
   const memberType = parseGeographyType(o.memberType);
   if (!memberCode || !memberType) {
-    return NextResponse.json({ error: "memberCode and a valid memberType are required." }, { status: 400 });
+    return toApiErrorResponse({
+      error: "memberCode and a valid memberType are required.",
+      code: "BAD_INPUT",
+      status: 400,
+    });
   }
 
   try {

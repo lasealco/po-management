@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { recordTariffAuditLog } from "@/lib/tariff/audit-log";
 import { createTariffContractHeader, listTariffContractHeadersForTenant } from "@/lib/tariff/contract-headers";
@@ -16,7 +17,9 @@ export async function GET(request: Request) {
   if (gate) return gate;
 
   const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) {
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
+  }
 
   let take = 200;
   try {
@@ -24,7 +27,7 @@ export async function GET(request: Request) {
     if (raw != null && raw !== "") {
       const n = Number(raw);
       if (!Number.isInteger(n) || n < 1) {
-        return NextResponse.json({ error: "Query take must be a positive integer." }, { status: 400 });
+        return toApiErrorResponse({ error: "Query take must be a positive integer.", code: "BAD_INPUT", status: 400 });
       }
       take = Math.min(n, 300);
     }
@@ -48,30 +51,31 @@ export async function POST(request: Request) {
   const tenant = await getDemoTenant();
   const actorId = await getActorUserId();
   if (!tenant || !actorId) {
-    return NextResponse.json({ error: "No active user." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   }
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON.", code: "BAD_INPUT", status: 400 });
   }
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "Expected object body." }, { status: 400 });
+    return toApiErrorResponse({ error: "Expected object body.", code: "BAD_INPUT", status: 400 });
   }
   const o = body as Record<string, unknown>;
   const title = typeof o.title === "string" ? o.title.trim() : "";
   const providerId = typeof o.providerId === "string" ? o.providerId.trim() : "";
   const transportMode = typeof o.transportMode === "string" ? o.transportMode.trim() : "";
   if (!title || !providerId || !transportMode) {
-    return NextResponse.json(
-      { error: "title, providerId, and transportMode are required." },
-      { status: 400 },
-    );
+    return toApiErrorResponse({
+      error: "title, providerId, and transportMode are required.",
+      code: "BAD_INPUT",
+      status: 400,
+    });
   }
   if (!TARIFF_TRANSPORT_MODE_SET.has(transportMode)) {
-    return NextResponse.json({ error: "Invalid transportMode." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid transportMode.", code: "BAD_INPUT", status: 400 });
   }
 
   try {

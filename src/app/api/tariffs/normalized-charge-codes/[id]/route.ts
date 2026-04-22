@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { jsonFromTariffError } from "@/app/api/tariffs/_lib/tariff-api-error";
 import {
   parsePatchNormalizedChargeCodeBody,
@@ -14,21 +15,23 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   const gate = await requireApiGrant("org.tariffs", "edit");
   if (gate) return gate;
   const { id } = await context.params;
-  if (!id?.trim()) return NextResponse.json({ error: "Missing id." }, { status: 400 });
+  if (!id?.trim()) {
+    return toApiErrorResponse({ error: "Missing id.", code: "BAD_INPUT", status: 400 });
+  }
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON.", code: "BAD_INPUT", status: 400 });
   }
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "Expected object body." }, { status: 400 });
+    return toApiErrorResponse({ error: "Expected object body.", code: "BAD_INPUT", status: 400 });
   }
   try {
     const actorId = await getActorUserId();
     if (!actorId) {
-      return NextResponse.json({ error: "No active user." }, { status: 403 });
+      return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
     }
     const patch = parsePatchNormalizedChargeCodeBody(body as Record<string, unknown>);
     const updated = await updateNormalizedChargeCode({ id: id.trim(), actorUserId: actorId }, patch);

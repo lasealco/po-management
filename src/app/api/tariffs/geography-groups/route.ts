@@ -1,6 +1,7 @@
 import { TariffGeographyType } from "@prisma/client";
 import { NextResponse } from "next/server";
 
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { requireApiGrant } from "@/lib/authz";
 import { createTariffGeographyGroup, listTariffGeographyGroups } from "@/lib/tariff/geography-groups";
 import { jsonFromTariffError } from "@/app/api/tariffs/_lib/tariff-api-error";
@@ -27,7 +28,7 @@ export async function GET(request: Request) {
     if (raw != null && raw !== "") {
       const n = Number(raw);
       if (!Number.isInteger(n) || n < 1) {
-        return NextResponse.json({ error: "Query take must be a positive integer." }, { status: 400 });
+        return toApiErrorResponse({ error: "Query take must be a positive integer.", code: "BAD_INPUT", status: 400 });
       }
       take = Math.min(n, 500);
     }
@@ -50,16 +51,20 @@ export async function POST(request: Request) {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON.", code: "BAD_INPUT", status: 400 });
   }
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "Expected object body." }, { status: 400 });
+    return toApiErrorResponse({ error: "Expected object body.", code: "BAD_INPUT", status: 400 });
   }
   const o = body as Record<string, unknown>;
   const name = typeof o.name === "string" ? o.name.trim() : "";
   const geographyType = parseGeographyType(o.geographyType);
   if (!name || !geographyType) {
-    return NextResponse.json({ error: "name and a valid geographyType are required." }, { status: 400 });
+    return toApiErrorResponse({
+      error: "name and a valid geographyType are required.",
+      code: "BAD_INPUT",
+      status: 400,
+    });
   }
 
   try {

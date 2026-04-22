@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { recordTariffAuditLog } from "@/lib/tariff/audit-log";
 import { deleteTariffRateLine, updateTariffRateLine } from "@/lib/tariff/rate-lines";
@@ -19,17 +20,17 @@ export async function PATCH(
   const tenant = await getDemoTenant();
   const actorId = await getActorUserId();
   if (!tenant || !actorId) {
-    return NextResponse.json({ error: "No active user." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   }
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON.", code: "BAD_INPUT", status: 400 });
   }
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "Expected object body." }, { status: 400 });
+    return toApiErrorResponse({ error: "Expected object body.", code: "BAD_INPUT", status: 400 });
   }
   const o = body as Record<string, unknown>;
   const { lineId } = await context.params;
@@ -90,7 +91,7 @@ export async function DELETE(
   const tenant = await getDemoTenant();
   const actorId = await getActorUserId();
   if (!tenant || !actorId) {
-    return NextResponse.json({ error: "No active user." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   }
 
   const { lineId } = await context.params;

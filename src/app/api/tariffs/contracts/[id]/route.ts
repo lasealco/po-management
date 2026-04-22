@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { recordTariffAuditLog } from "@/lib/tariff/audit-log";
 import { getTariffContractHeaderForTenant, updateTariffContractHeader } from "@/lib/tariff/contract-headers";
@@ -20,7 +21,9 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   if (gate) return gate;
 
   const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) {
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
+  }
 
   const { id } = await context.params;
   try {
@@ -40,17 +43,17 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   const tenant = await getDemoTenant();
   const actorId = await getActorUserId();
   if (!tenant || !actorId) {
-    return NextResponse.json({ error: "No active user." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   }
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON.", code: "BAD_INPUT", status: 400 });
   }
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "Expected object body." }, { status: 400 });
+    return toApiErrorResponse({ error: "Expected object body.", code: "BAD_INPUT", status: 400 });
   }
   const o = body as Record<string, unknown>;
   const { id } = await context.params;
@@ -66,18 +69,20 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       legalEntityId: true,
     },
   });
-  if (!before) return NextResponse.json({ error: "Contract not found." }, { status: 404 });
+  if (!before) {
+    return toApiErrorResponse({ error: "Contract not found.", code: "NOT_FOUND", status: 404 });
+  }
 
   if (typeof o.transportMode === "string") {
     const tm = o.transportMode.trim();
     if (!TARIFF_TRANSPORT_MODE_SET.has(tm)) {
-      return NextResponse.json({ error: "Invalid transportMode." }, { status: 400 });
+      return toApiErrorResponse({ error: "Invalid transportMode.", code: "BAD_INPUT", status: 400 });
     }
   }
   if (typeof o.status === "string") {
     const st = o.status.trim();
     if (!TARIFF_CONTRACT_HEADER_STATUS_SET.has(st)) {
-      return NextResponse.json({ error: "Invalid status." }, { status: 400 });
+      return toApiErrorResponse({ error: "Invalid status.", code: "BAD_INPUT", status: 400 });
     }
   }
 
@@ -94,7 +99,9 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   }
   if (typeof o.title === "string") {
     const t = o.title.trim();
-    if (!t) return NextResponse.json({ error: "title cannot be empty." }, { status: 400 });
+    if (!t) {
+      return toApiErrorResponse({ error: "title cannot be empty.", code: "BAD_INPUT", status: 400 });
+    }
     patch.title = t;
   }
   if (typeof o.tradeScope === "string" || o.tradeScope === null) {
@@ -111,7 +118,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   }
 
   if (Object.keys(patch).length === 0) {
-    return NextResponse.json({ error: "No valid fields to update." }, { status: 400 });
+    return toApiErrorResponse({ error: "No valid fields to update.", code: "BAD_INPUT", status: 400 });
   }
 
   try {

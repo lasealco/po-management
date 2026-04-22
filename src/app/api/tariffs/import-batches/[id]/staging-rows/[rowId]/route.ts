@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { recordTariffAuditLog } from "@/lib/tariff/audit-log";
 import { updateTariffImportStagingRow } from "@/lib/tariff/import-staging-rows";
@@ -16,7 +17,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   const tenant = await getDemoTenant();
   const actorId = await getActorUserId();
   if (!tenant || !actorId) {
-    return NextResponse.json({ error: "No active user." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   }
 
   const { id: batchId, rowId } = await context.params;
@@ -25,10 +26,10 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON.", code: "BAD_INPUT", status: 400 });
   }
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "Expected object body." }, { status: 400 });
+    return toApiErrorResponse({ error: "Expected object body.", code: "BAD_INPUT", status: 400 });
   }
   const o = body as Record<string, unknown>;
 
@@ -36,27 +37,29 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   if (typeof o.approved === "boolean") patch.approved = o.approved;
   if (o.normalizedPayload !== undefined) {
     if (o.normalizedPayload !== null && (typeof o.normalizedPayload !== "object" || Array.isArray(o.normalizedPayload))) {
-      return NextResponse.json(
-        { error: "normalizedPayload must be null or a JSON object." },
-        { status: 400 },
-      );
+      return toApiErrorResponse({
+        error: "normalizedPayload must be null or a JSON object.",
+        code: "BAD_INPUT",
+        status: 400,
+      });
     }
     patch.normalizedPayload =
       o.normalizedPayload === null ? null : (o.normalizedPayload as Prisma.InputJsonValue);
   }
   if (o.unresolvedFlags !== undefined) {
     if (o.unresolvedFlags !== null && (typeof o.unresolvedFlags !== "object" || Array.isArray(o.unresolvedFlags))) {
-      return NextResponse.json(
-        { error: "unresolvedFlags must be null or a JSON object." },
-        { status: 400 },
-      );
+      return toApiErrorResponse({
+        error: "unresolvedFlags must be null or a JSON object.",
+        code: "BAD_INPUT",
+        status: 400,
+      });
     }
     patch.unresolvedFlags =
       o.unresolvedFlags === null ? null : (o.unresolvedFlags as Prisma.InputJsonValue);
   }
 
   if (Object.keys(patch).length === 0) {
-    return NextResponse.json({ error: "No valid fields to update." }, { status: 400 });
+    return toApiErrorResponse({ error: "No valid fields to update.", code: "BAD_INPUT", status: 400 });
   }
 
   try {

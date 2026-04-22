@@ -1,6 +1,7 @@
 import { TariffGeographyType } from "@prisma/client";
 import { NextResponse } from "next/server";
 
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { requireApiGrant } from "@/lib/authz";
 import { deleteTariffGeographyMember, updateTariffGeographyMember } from "@/lib/tariff/geography-members";
 import { jsonFromTariffError } from "@/app/api/tariffs/_lib/tariff-api-error";
@@ -28,22 +29,24 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON.", code: "BAD_INPUT", status: 400 });
   }
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "Expected object body." }, { status: 400 });
+    return toApiErrorResponse({ error: "Expected object body.", code: "BAD_INPUT", status: 400 });
   }
   const o = body as Record<string, unknown>;
 
   const memberType = parseGeographyType(o.memberType);
   if (o.memberType !== undefined && memberType === null) {
-    return NextResponse.json({ error: "Invalid memberType." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid memberType.", code: "BAD_INPUT", status: 400 });
   }
 
   const patch: Parameters<typeof updateTariffGeographyMember>[1] = {};
   if (typeof o.memberCode === "string") {
     const c = o.memberCode.trim();
-    if (!c) return NextResponse.json({ error: "memberCode cannot be empty." }, { status: 400 });
+    if (!c) {
+      return toApiErrorResponse({ error: "memberCode cannot be empty.", code: "BAD_INPUT", status: 400 });
+    }
     patch.memberCode = c;
   }
   if (typeof o.memberName === "string") patch.memberName = o.memberName.trim() || null;
@@ -53,7 +56,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   if (o.validTo !== undefined) patch.validTo = parseTariffDateField(o.validTo) ?? null;
 
   if (Object.keys(patch).length === 0) {
-    return NextResponse.json({ error: "No valid fields to update." }, { status: 400 });
+    return toApiErrorResponse({ error: "No valid fields to update.", code: "BAD_INPUT", status: 400 });
   }
 
   try {

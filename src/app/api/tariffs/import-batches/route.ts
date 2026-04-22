@@ -1,6 +1,7 @@
 import type { TariffSourceType } from "@prisma/client";
 import { NextResponse } from "next/server";
 
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { recordTariffAuditLog } from "@/lib/tariff/audit-log";
 import { createTariffImportBatch, listTariffImportBatchesForTenant } from "@/lib/tariff/import-batches";
@@ -22,7 +23,9 @@ export async function GET(request: Request) {
   if (gate) return gate;
 
   const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) {
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
+  }
 
   let take = 200;
   try {
@@ -31,7 +34,7 @@ export async function GET(request: Request) {
     if (raw != null && raw !== "") {
       const n = Number(raw);
       if (!Number.isInteger(n) || n < 1) {
-        return NextResponse.json({ error: "Query take must be a positive integer." }, { status: 400 });
+        return toApiErrorResponse({ error: "Query take must be a positive integer.", code: "BAD_INPUT", status: 400 });
       }
       take = Math.min(n, 300);
     }
@@ -50,19 +53,19 @@ export async function POST(request: Request) {
   const tenant = await getDemoTenant();
   const actorId = await getActorUserId();
   if (!tenant || !actorId) {
-    return NextResponse.json({ error: "No active user." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   }
 
   let form: FormData;
   try {
     form = await request.formData();
   } catch {
-    return NextResponse.json({ error: "Expected multipart form data." }, { status: 400 });
+    return toApiErrorResponse({ error: "Expected multipart form data.", code: "BAD_INPUT", status: 400 });
   }
 
   const file = form.get("file");
   if (!file || !(file instanceof File)) {
-    return NextResponse.json({ error: "Missing file field." }, { status: 400 });
+    return toApiErrorResponse({ error: "Missing file field.", code: "BAD_INPUT", status: 400 });
   }
 
   const legalEntityId: string | null =
@@ -74,7 +77,11 @@ export async function POST(request: Request) {
       select: { id: true },
     });
     if (!le) {
-      return NextResponse.json({ error: "Legal entity not found for this tenant." }, { status: 400 });
+      return toApiErrorResponse({
+        error: "Legal entity not found for this tenant.",
+        code: "BAD_INPUT",
+        status: 400,
+      });
     }
   }
 
@@ -82,7 +89,7 @@ export async function POST(request: Request) {
     assertTariffImportMime(file.type);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Invalid file type.";
-    return NextResponse.json({ error: msg }, { status: 400 });
+    return toApiErrorResponse({ error: msg, code: "BAD_INPUT", status: 400 });
   }
 
   const bytes = Buffer.from(await file.arrayBuffer());
@@ -96,7 +103,7 @@ export async function POST(request: Request) {
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Storage failed.";
     const status = msg.includes("not configured") ? 503 : 400;
-    return NextResponse.json({ error: msg }, { status });
+    return toApiErrorResponse({ error: msg, code: "UNHANDLED", status });
   }
 
   const uploadedFilename = file.name?.trim() || null;

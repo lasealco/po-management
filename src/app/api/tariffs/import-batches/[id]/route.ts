@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { recordTariffAuditLog } from "@/lib/tariff/audit-log";
 import { getTariffImportBatchForTenant, updateTariffImportBatch } from "@/lib/tariff/import-batches";
@@ -17,7 +18,9 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   if (gate) return gate;
 
   const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) {
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
+  }
 
   const { id } = await context.params;
   try {
@@ -37,7 +40,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   const tenant = await getDemoTenant();
   const actorId = await getActorUserId();
   if (!tenant || !actorId) {
-    return NextResponse.json({ error: "No active user." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   }
 
   const { id } = await context.params;
@@ -46,24 +49,26 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON.", code: "BAD_INPUT", status: 400 });
   }
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "Expected object body." }, { status: 400 });
+    return toApiErrorResponse({ error: "Expected object body.", code: "BAD_INPUT", status: 400 });
   }
   const o = body as Record<string, unknown>;
 
   const patch: Parameters<typeof updateTariffImportBatch>[2] = {};
   if (typeof o.parseStatus === "string") {
     const p = o.parseStatus.trim();
-    if (!TARIFF_IMPORT_PARSE_STATUS_SET.has(p))
-      return NextResponse.json({ error: "Invalid parseStatus." }, { status: 400 });
+    if (!TARIFF_IMPORT_PARSE_STATUS_SET.has(p)) {
+      return toApiErrorResponse({ error: "Invalid parseStatus.", code: "BAD_INPUT", status: 400 });
+    }
     patch.parseStatus = p;
   }
   if (typeof o.reviewStatus === "string") {
     const r = o.reviewStatus.trim();
-    if (!TARIFF_IMPORT_REVIEW_STATUS_SET.has(r))
-      return NextResponse.json({ error: "Invalid reviewStatus." }, { status: 400 });
+    if (!TARIFF_IMPORT_REVIEW_STATUS_SET.has(r)) {
+      return toApiErrorResponse({ error: "Invalid reviewStatus.", code: "BAD_INPUT", status: 400 });
+    }
     patch.reviewStatus = r;
   }
   if (typeof o.sourceReference === "string" || o.sourceReference === null) {
@@ -71,7 +76,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   }
 
   if (Object.keys(patch).length === 0) {
-    return NextResponse.json({ error: "No valid fields to update." }, { status: 400 });
+    return toApiErrorResponse({ error: "No valid fields to update.", code: "BAD_INPUT", status: 400 });
   }
 
   try {

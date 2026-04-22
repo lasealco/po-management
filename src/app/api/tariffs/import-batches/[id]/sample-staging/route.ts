@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { recordTariffAuditLog } from "@/lib/tariff/audit-log";
 import { getTariffImportBatchForTenant, updateTariffImportBatch } from "@/lib/tariff/import-batches";
@@ -24,7 +25,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   const tenant = await getDemoTenant();
   const actorId = await getActorUserId();
   if (!tenant || !actorId) {
-    return NextResponse.json({ error: "No active user." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   }
 
   const { id: batchId } = await context.params;
@@ -32,7 +33,11 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   try {
     const existing = await getTariffImportBatchForTenant({ tenantId: tenant.id, batchId });
     if (existing.reviewStatus === "APPLIED") {
-      return NextResponse.json({ error: "Batch already promoted; sample staging is not allowed." }, { status: 409 });
+      return toApiErrorResponse({
+        error: "Batch already promoted; sample staging is not allowed.",
+        code: "CONFLICT",
+        status: 409,
+      });
     }
   } catch (e) {
     const j = jsonFromTariffError(e);

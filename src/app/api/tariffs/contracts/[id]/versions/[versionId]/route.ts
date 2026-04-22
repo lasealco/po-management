@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { recordTariffAuditLog } from "@/lib/tariff/audit-log";
 import { TARIFF_CONTRACT_VERSION_SOURCE_TYPE_SET } from "@/lib/tariff/contract-version-source-types";
@@ -31,7 +32,9 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   if (gate) return gate;
 
   const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) {
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
+  }
 
   const { id: contractHeaderId, versionId } = await context.params;
   const version = await prisma.tariffContractVersion.findFirst({
@@ -49,7 +52,9 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
       freeTimeRules: { orderBy: { id: "asc" } },
     },
   });
-  if (!version) return NextResponse.json({ error: "Version not found." }, { status: 404 });
+  if (!version) {
+    return toApiErrorResponse({ error: "Version not found.", code: "NOT_FOUND", status: 404 });
+  }
 
   return NextResponse.json({ version });
 }
@@ -61,40 +66,42 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   const tenant = await getDemoTenant();
   const actorId = await getActorUserId();
   if (!tenant || !actorId) {
-    return NextResponse.json({ error: "No active user." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   }
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON.", code: "BAD_INPUT", status: 400 });
   }
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "Expected object body." }, { status: 400 });
+    return toApiErrorResponse({ error: "Expected object body.", code: "BAD_INPUT", status: 400 });
   }
   const o = body as Record<string, unknown>;
   const { versionId } = await context.params;
 
   const before = await getTariffContractVersionForTenant({ tenantId: tenant.id, versionId });
-  if (!before) return NextResponse.json({ error: "Version not found." }, { status: 404 });
+  if (!before) {
+    return toApiErrorResponse({ error: "Version not found.", code: "NOT_FOUND", status: 404 });
+  }
 
   if (typeof o.sourceType === "string") {
     const st = o.sourceType.trim();
     if (!TARIFF_CONTRACT_VERSION_SOURCE_TYPE_SET.has(st)) {
-      return NextResponse.json({ error: "Invalid sourceType." }, { status: 400 });
+      return toApiErrorResponse({ error: "Invalid sourceType.", code: "BAD_INPUT", status: 400 });
     }
   }
   if (typeof o.approvalStatus === "string") {
     const a = o.approvalStatus.trim();
     if (!TARIFF_APPROVAL_STATUS_SET.has(a)) {
-      return NextResponse.json({ error: "Invalid approvalStatus." }, { status: 400 });
+      return toApiErrorResponse({ error: "Invalid approvalStatus.", code: "BAD_INPUT", status: 400 });
     }
   }
   if (typeof o.status === "string") {
     const s = o.status.trim();
     if (!TARIFF_CONTRACT_HEADER_STATUS_SET.has(s)) {
-      return NextResponse.json({ error: "Invalid status." }, { status: 400 });
+      return toApiErrorResponse({ error: "Invalid status.", code: "BAD_INPUT", status: 400 });
     }
   }
 

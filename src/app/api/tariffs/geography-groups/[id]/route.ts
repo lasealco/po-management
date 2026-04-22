@@ -1,6 +1,7 @@
 import { TariffGeographyType } from "@prisma/client";
 import { NextResponse } from "next/server";
 
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { requireApiGrant } from "@/lib/authz";
 import {
   deleteTariffGeographyGroup,
@@ -47,23 +48,25 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON.", code: "BAD_INPUT", status: 400 });
   }
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "Expected object body." }, { status: 400 });
+    return toApiErrorResponse({ error: "Expected object body.", code: "BAD_INPUT", status: 400 });
   }
   const o = body as Record<string, unknown>;
 
   const geographyType = parseGeographyType(o.geographyType);
   if (o.geographyType !== undefined && geographyType === null) {
-    return NextResponse.json({ error: "Invalid geographyType." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid geographyType.", code: "BAD_INPUT", status: 400 });
   }
 
   const patch: Parameters<typeof updateTariffGeographyGroup>[1] = {};
   if (geographyType != null) patch.geographyType = geographyType;
   if (typeof o.name === "string") {
     const n = o.name.trim();
-    if (!n) return NextResponse.json({ error: "name cannot be empty." }, { status: 400 });
+    if (!n) {
+      return toApiErrorResponse({ error: "name cannot be empty.", code: "BAD_INPUT", status: 400 });
+    }
     patch.name = n;
   }
   if (typeof o.code === "string") patch.code = o.code.trim() || null;
@@ -75,7 +78,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   if (typeof o.active === "boolean") patch.active = o.active;
 
   if (Object.keys(patch).length === 0) {
-    return NextResponse.json({ error: "No valid fields to update." }, { status: 400 });
+    return toApiErrorResponse({ error: "No valid fields to update.", code: "BAD_INPUT", status: 400 });
   }
 
   try {
