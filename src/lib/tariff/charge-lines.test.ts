@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createTariffChargeLine,
   deleteTariffChargeLine,
+  getTariffChargeLineForTenant,
   listTariffChargeLinesForTenantVersion,
   updateTariffChargeLine,
 } from "./charge-lines";
@@ -47,6 +48,19 @@ const frozenVersionGuardRow = {
   approvalStatus: "APPROVED" as const,
   status: "APPROVED" as const,
 };
+
+describe("getTariffChargeLineForTenant", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("throws NOT_FOUND when charge line is not in tenant scope", async () => {
+    prismaMock.tariffChargeLine.findFirst.mockResolvedValue(null);
+    await expect(getTariffChargeLineForTenant({ tenantId: "t1", id: "cl-missing" })).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
+  });
+});
 
 describe("listTariffChargeLinesForTenantVersion", () => {
   beforeEach(() => {

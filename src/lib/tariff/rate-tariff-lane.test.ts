@@ -1,6 +1,19 @@
+import type { TariffLineRateType } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { rateTariffLane } from "./rating-engine";
+
+type LaneRateLineFixture = {
+  id: string;
+  rateType: TariffLineRateType;
+  equipmentType: string;
+  currency: string;
+  amount: { toString(): string };
+  serviceScope: string | null;
+  rawRateDescription: string | null;
+  originScope: { members: { memberCode: string }[] } | null;
+  destinationScope: { members: { memberCode: string }[] } | null;
+};
 
 const prismaMock = vi.hoisted(() => ({
   tariffContractHeader: { findMany: vi.fn() },
@@ -10,15 +23,15 @@ vi.mock("@/lib/prisma", () => ({
   prisma: prismaMock,
 }));
 
-function baseRateLine(id: string, pol: string, pod: string) {
+function baseRateLine(id: string, pol: string, pod: string): LaneRateLineFixture {
   return {
     id,
-    rateType: "BASE_RATE" as const,
+    rateType: "BASE_RATE",
     equipmentType: "40HC",
     currency: "USD",
     amount: { toString: () => "1000" },
     serviceScope: "FCL",
-    rawRateDescription: null as string | null,
+    rawRateDescription: null,
     originScope: { members: [{ memberCode: pol }] },
     destinationScope: { members: [{ memberCode: pod }] },
   };
@@ -28,7 +41,7 @@ function approvedVersion(overrides: {
   id?: string;
   validFrom?: Date | null;
   validTo?: Date | null;
-  rateLines?: ReturnType<typeof baseRateLine>[];
+  rateLines?: LaneRateLineFixture[];
   chargeLines?: Array<{
     id: string;
     rawChargeName: string;
@@ -227,5 +240,88 @@ describe("rateTariffLane", () => {
     });
     expect(res.candidates[0].lines.some((l) => l.payable === false)).toBe(true);
     expect(res.candidates[0].totalsByCurrency.USD ?? 0).toBe(0);
+  });
+
+  it("includes PRE_CARRIAGE when destination scope hits POL", async () => {
+    const main = baseRateLine("rl-main", "DEHAM", "USCHI");
+    const pre = {
+      id: "rl-pre",
+      rateType: "PRE_CARRIAGE" as const,
+      equipmentType: "40HC",
+      currency: "USD",
+      amount: { toString: () => "75" },
+      serviceScope: "INLAND",
+      rawRateDescription: null as string | null,
+      originScope: { members: [] as { memberCode: string }[] },
+      destinationScope: { members: [{ memberCode: "DEHAM" }] },
+    };
+    const v = approvedVersion({ rateLines: [main, pre] });
+    prismaMock.tariffContractHeader.findMany.mockResolvedValue([headerFixture("h1", v)]);
+    const res = await rateTariffLane({
+      tenantId: "t1",
+      pol: "DEHAM",
+      pod: "USCHI",
+      equipment: "40HC",
+      asOf,
+      transportMode: "OCEAN",
+    });
+    const preLine = res.candidates[0].lines.find((l) => l.id === "rl-pre");
+    expect(preLine?.matchReason).toContain("Pre-carriage");
+    expect(preLine?.amount).toBe(75);
+  });
+
+  it("includes ON_CARRIAGE when origin scope hits POD", async () => {
+    const main = baseRateLine("rl-main", "DEHAM", "USCHI");
+    const on = {
+      id: "rl-on",
+      rateType: "ON_CARRIAGE" as const,
+      equipmentType: "40HC",
+      currency: "USD",
+      amount: { toString: () => "60" },
+      serviceScope: "DRAY",
+      rawRateDescription: null as string | null,
+      originScope: { members: [{ memberCode: "USCHI" }] },
+      destinationScope: { members: [] as { memberCode: string }[] },
+    };
+    const v = approvedVersion({ rateLines: [main, on] });
+    prismaMock.tariffContractHeader.findMany.mockResolvedValue([headerFixture("h1", v)]);
+    const res = await rateTariffLane({
+      tenantId: "t1",
+      pol: "DEHAM",
+      pod: "USCHI",
+      equipment: "40HC",
+      asOf,
+      transportMode: "OCEAN",
+    });
+    const onLine = res.candidates[0].lines.find((l) => l.id === "rl-on");
+    expect(onLine?.matchReason).toContain("On-carriage");
+    expect(onLine?.amount).toBe(60);
+  });
+
+  it("drops charge lines whose geography scope misses both POL and POD", async () => {
+    const v = approvedVersion({
+      chargeLines: [
+        {
+          id: "c-bad",
+          rawChargeName: "LOCAL",
+          currency: "USD",
+          amount: { toString: () => "40" },
+          equipmentScope: null,
+          isIncluded: false,
+          normalizedChargeCode: null,
+          geographyScope: { members: [{ memberCode: "USNYC" }] },
+        },
+      ],
+    });
+    prismaMock.tariffContractHeader.findMany.mockResolvedValue([headerFixture("h1", v)]);
+    const res = await rateTariffLane({
+      tenantId: "t1",
+      pol: "DEHAM",
+      pod: "USCHI",
+      equipment: "40HC",
+      asOf,
+      transportMode: "OCEAN",
+    });
+    expect(res.candidates[0].lines.find((l) => l.id === "c-bad")).toBeUndefined();
   });
 });
