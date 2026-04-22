@@ -37,6 +37,24 @@ describe("appendAssistToSearchParams", () => {
     appendAssistToSearchParams(sp, { shipmentSource: undefined });
     expect(sp.has("shipmentSource")).toBe(false);
   });
+
+  it("sets customer, carrier, port codes, dispatch owner, and alert type", () => {
+    const sp = new URLSearchParams();
+    appendAssistToSearchParams(sp, {
+      customerCrmAccountId: " crm-1 ",
+      carrierSupplierId: " car-sup-1 ",
+      originCode: " DEHAM ",
+      destinationCode: " USNYC ",
+      dispatchOwnerUserId: " user-owner ",
+      alertType: " COLLAB_MENTION ",
+    });
+    expect(sp.get("customerCrmAccountId")).toBe("crm-1");
+    expect(sp.get("carrierSupplierId")).toBe("car-sup-1");
+    expect(sp.get("originCode")).toBe("DEHAM");
+    expect(sp.get("destinationCode")).toBe("USNYC");
+    expect(sp.get("dispatchOwnerUserId")).toBe("user-owner");
+    expect(sp.get("alertType")).toBe("COLLAB_MENTION");
+  });
 });
 
 describe("hasStructuredSearchInput", () => {
@@ -48,5 +66,12 @@ describe("hasStructuredSearchInput", () => {
     expect(hasStructuredSearchInput({ mode: "AIR" })).toBe(true);
     expect(hasStructuredSearchInput({ productTraceQ: "SKU" })).toBe(true);
     expect(hasStructuredSearchInput({ shipmentSource: "UNLINKED" })).toBe(true);
+  });
+
+  it("is false when only whitespace structured tokens are set", () => {
+    expect(hasStructuredSearchInput({ dispatchOwnerUserId: "   " })).toBe(false);
+    expect(hasStructuredSearchInput({ lane: "\t" })).toBe(false);
+    expect(hasStructuredSearchInput({ exceptionCode: "  " })).toBe(false);
+    expect(hasStructuredSearchInput({ productTraceQ: "" })).toBe(false);
   });
 });
