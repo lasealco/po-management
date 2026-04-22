@@ -513,6 +513,7 @@ export async function listControlTowerShipments(params: {
                 { soNumber: contains },
                 { externalRef: contains },
                 { customerName: contains },
+                { currency: contains },
                 { notes: contains },
                 {
                   createdBy: {
@@ -1243,6 +1244,45 @@ export async function listControlTowerShipments(params: {
                           creator: {
                             is: {
                               OR: [{ name: contains }, { email: contains }],
+                            },
+                          },
+                        },
+                        {
+                          invoiceIntakes: {
+                            some: {
+                              OR: [
+                                { externalInvoiceNo: contains },
+                                { vendorLabel: contains },
+                                { currency: contains },
+                                { polCode: contains },
+                                { podCode: contains },
+                                { rawSourceNotes: contains },
+                                { parseError: contains },
+                                { auditRunError: contains },
+                                { reviewNote: contains },
+                                { accountingApprovalNote: contains },
+                                {
+                                  reviewer: {
+                                    is: {
+                                      OR: [{ name: contains }, { email: contains }],
+                                    },
+                                  },
+                                },
+                                {
+                                  accountingApprover: {
+                                    is: {
+                                      OR: [{ name: contains }, { email: contains }],
+                                    },
+                                  },
+                                },
+                                {
+                                  creator: {
+                                    is: {
+                                      OR: [{ name: contains }, { email: contains }],
+                                    },
+                                  },
+                                },
+                              ],
                             },
                           },
                         },
