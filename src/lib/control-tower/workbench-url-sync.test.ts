@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildWorkbenchSearchString,
   controlTowerWorkbenchPath,
+  controlTowerWorkbenchPathForValidatedProductTrace,
   controlTowerWorkbenchPathFromEtaLaneLabel,
   readWorkbenchUrlState,
 } from "./workbench-url-sync";
@@ -156,6 +157,16 @@ describe("controlTowerWorkbenchPath", () => {
       "/control-tower/workbench?status=IN_TRANSIT",
     );
     expect(controlTowerWorkbenchPath({})).toBe("/control-tower/workbench");
+  });
+});
+
+describe("controlTowerWorkbenchPathForValidatedProductTrace", () => {
+  it("returns workbench with productTrace only for validated tokens", () => {
+    expect(controlTowerWorkbenchPathForValidatedProductTrace("  SKU-1.a  ")).toBe(
+      "/control-tower/workbench?productTrace=SKU-1.a",
+    );
+    expect(controlTowerWorkbenchPathForValidatedProductTrace("")).toBeNull();
+    expect(controlTowerWorkbenchPathForValidatedProductTrace("bad token")).toBeNull();
   });
 });
 

@@ -155,6 +155,7 @@ export function buildWorkbenchSearchString(state: WorkbenchUrlState, restrictedV
 /**
  * Builds `/control-tower/workbench?…` for deep links from dashboards and other pages.
  * Keys should match workbench URL params (`readWorkbenchUrlState`); values are not validated here.
+ * Common keys: `status`, `mode`, `q`, `productTrace`, lane/port filters, `routeAction`, etc.
  */
 export function controlTowerWorkbenchPath(query: Record<string, string>): string {
   const p = new URLSearchParams();
@@ -164,6 +165,15 @@ export function controlTowerWorkbenchPath(query: Record<string, string>): string
   }
   const s = p.toString();
   return s ? `/control-tower/workbench?${s}` : "/control-tower/workbench";
+}
+
+/**
+ * When the trace search box value is a validated SKU / buyer code, returns a workbench URL with `productTrace=`.
+ * Otherwise `null` (use the bare workbench path).
+ */
+export function controlTowerWorkbenchPathForValidatedProductTrace(q: string): string | null {
+  const t = parseControlTowerProductTraceParam(q.trim() || null);
+  return t ? controlTowerWorkbenchPath({ productTrace: t }) : null;
 }
 
 const PORT_TOKEN = /^[A-Z0-9]{3,10}$/;

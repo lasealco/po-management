@@ -7,8 +7,7 @@ import {
   userHasGlobalGrant,
   viewerHas,
 } from "@/lib/authz";
-import { parseControlTowerProductTraceParam } from "@/lib/control-tower/search-query";
-import { controlTowerWorkbenchPath } from "@/lib/control-tower/workbench-url-sync";
+import { controlTowerWorkbenchPathForValidatedProductTrace } from "@/lib/control-tower/workbench-url-sync";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { getProductTracePayload } from "@/lib/product-trace";
 
@@ -73,9 +72,7 @@ export async function ProductTraceWorkspace({
 
   const canSeeWms = await userHasGlobalGrant(actorUserId, "org.wms", "view");
   const canSeeCt = viewerHas(access.grantSet, "org.controltower", "view");
-  const productTraceToken = parseControlTowerProductTraceParam(q.length > 0 ? q : null);
-  const workbenchHrefFromTrace =
-    canSeeCt && productTraceToken ? controlTowerWorkbenchPath({ productTrace: productTraceToken }) : undefined;
+  const workbenchHrefFromTrace = canSeeCt ? controlTowerWorkbenchPathForValidatedProductTrace(q) ?? undefined : undefined;
 
   const trace =
     q.length > 0
