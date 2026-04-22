@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { requireApiGrant } from "@/lib/authz";
 import { getQuoteResponseForTenant, updateQuoteResponseWithLines, type QuoteResponseLineInput } from "@/lib/rfq/quote-responses";
+import { RfqRepoError } from "@/lib/rfq/rfq-repo-error";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { jsonFromRfqError } from "@/app/api/rfq/_lib/rfq-api-error";
 
@@ -11,13 +12,15 @@ export const dynamic = "force-dynamic";
 function parseLines(raw: unknown): QuoteResponseLineInput[] | null | undefined {
   if (raw === undefined) return undefined;
   if (raw === null) return null;
-  if (!Array.isArray(raw)) throw new Error("lines must be an array.");
+  if (!Array.isArray(raw)) throw new RfqRepoError("BAD_INPUT", "lines must be an array.");
   return raw.map((row, idx) => {
-    if (!row || typeof row !== "object") throw new Error("Invalid line.");
+    if (!row || typeof row !== "object") throw new RfqRepoError("BAD_INPUT", "Invalid line.");
     const r = row as Record<string, unknown>;
     const lineType = typeof r.lineType === "string" ? r.lineType : "";
     const label = typeof r.label === "string" ? r.label : "";
-    if (!lineType.trim() || !label.trim()) throw new Error("Each line needs lineType and label.");
+    if (!lineType.trim() || !label.trim()) {
+      throw new RfqRepoError("BAD_INPUT", "Each line needs lineType and label.");
+    }
     return {
       lineType,
       label,
@@ -110,9 +113,10 @@ export async function PATCH(request: Request, context: { params: Promise<{ respo
   let lines: QuoteResponseLineInput[] | null | undefined;
   try {
     lines = parseLines(o.lines);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Invalid lines.";
-    return NextResponse.json({ error: msg }, { status: 400 });
+  } catch (e) {
+    const j = jsonFromRfqError(e);
+    if (j) return j;
+    throw e;
   }
 
   if (

@@ -5,11 +5,11 @@ import { requireApiGrant } from "@/lib/authz";
 import { getQuoteRequestDetail, updateQuoteRequest } from "@/lib/rfq/quote-requests";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { jsonFromRfqError } from "@/app/api/rfq/_lib/rfq-api-error";
+import { TARIFF_TRANSPORT_MODE_SET } from "@/lib/tariff/tariff-enum-sets";
 
 export const dynamic = "force-dynamic";
 
 const STATUS = new Set<string>(["DRAFT", "OPEN", "CLOSED", "AWARDED", "CANCELLED"]);
-const TRANSPORT = new Set<string>(["OCEAN", "LCL", "AIR", "TRUCK", "RAIL", "LOCAL_SERVICE"]);
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
   const gate = await requireApiGrant("org.rfq", "view");
@@ -58,8 +58,10 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     patch.status = s as QuoteRequestStatus;
   }
   if (typeof o.transportMode === "string") {
-    const t = o.transportMode.trim();
-    if (!TRANSPORT.has(t)) return NextResponse.json({ error: "Invalid transportMode." }, { status: 400 });
+    const t = o.transportMode.trim().toUpperCase();
+    if (!TARIFF_TRANSPORT_MODE_SET.has(t)) {
+      return NextResponse.json({ error: "Invalid transportMode." }, { status: 400 });
+    }
     patch.transportMode = t as TariffTransportMode;
   }
   if (typeof o.originLabel === "string") patch.originLabel = o.originLabel;

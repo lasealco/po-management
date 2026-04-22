@@ -9,6 +9,11 @@ import { buildContractVersionSnapshotPayload } from "@/lib/booking-pricing-snaps
 import { buildQuoteResponseSnapshotPayload } from "@/lib/booking-pricing-snapshot/freeze-from-quote-response";
 import { SnapshotRepoError } from "@/lib/booking-pricing-snapshot/snapshot-repo-error";
 
+/** Bounded page size for snapshot lists (API and server components). */
+export function clampSnapshotListTake(take?: number): number {
+  return Math.min(Math.max(take ?? 100, 1), 300);
+}
+
 export async function assertShipmentBookingForTenant(params: { tenantId: string; shipmentBookingId: string }) {
   const b = await prisma.shipmentBooking.findFirst({
     where: { id: params.shipmentBookingId, shipment: { order: { tenantId: params.tenantId } } },
@@ -18,7 +23,7 @@ export async function assertShipmentBookingForTenant(params: { tenantId: string;
 }
 
 export async function listBookingPricingSnapshotsForTenant(params: { tenantId: string; take?: number }) {
-  const take = Math.min(params.take ?? 100, 300);
+  const take = clampSnapshotListTake(params.take);
   return prisma.bookingPricingSnapshot.findMany({
     where: { tenantId: params.tenantId },
     orderBy: [{ frozenAt: "desc" }, { id: "desc" }],

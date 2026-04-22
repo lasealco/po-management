@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { jsonFromSnapshotError } from "@/app/api/booking-pricing-snapshots/_lib/snapshot-api-error";
 import { serializeBookingPricingSnapshot } from "@/app/api/booking-pricing-snapshots/_lib/serialize-snapshot";
 import {
@@ -17,14 +18,25 @@ import { getDemoTenant } from "@/lib/demo-tenant";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
   const gate = await requirePricingSnapshotRead();
   if (gate) return gate;
 
   const tenant = await getDemoTenant();
   if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
 
-  const snapshots = await listBookingPricingSnapshotsForTenant({ tenantId: tenant.id, take: 200 });
+  const url = new URL(request.url);
+  const takeRaw = url.searchParams.get("take");
+  let take = 200;
+  if (takeRaw != null && takeRaw.trim() !== "") {
+    const n = Number(takeRaw);
+    if (!Number.isFinite(n)) {
+      return toApiErrorResponse({ error: "take must be a finite number.", code: "BAD_INPUT", status: 400 });
+    }
+    take = Math.floor(n);
+  }
+
+  const snapshots = await listBookingPricingSnapshotsForTenant({ tenantId: tenant.id, take });
   return NextResponse.json({
     snapshots: snapshots.map((s) => ({
       ...serializeBookingPricingSnapshot(s),
