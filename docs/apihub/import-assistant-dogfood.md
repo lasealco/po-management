@@ -19,7 +19,7 @@ Use this to walk **`/apihub/import-assistant`** end-to-end with **redacted** dat
 ## Steps (expected)
 
 1. **Purpose** — Choose **Shipments and visibility** (or another card on purpose).
-2. **Upload** — Use a fixture file; optional short note in “documentation” (remember the analysis job **note** is capped at **500** characters server-side).
+2. **Upload** — Use a fixture file; optional note in “documentation” (the persisted analysis job **note** is capped at **4000** characters server-side).
 3. **Confirm** — Complete the keyword check (keep or switch category if prompted).
 4. **Analyze** — **Run analysis**; if status stays **queued**, use **Process now** (same as the mapping analysis jobs panel).
 5. **Review** — Check **Origin → destination** rows and confidence badges; if any **Confirm with you**, tick the acknowledgment before **Save as mapping template** or **Materialize staging batch** (optional).
@@ -34,6 +34,6 @@ Use this to walk **`/apihub/import-assistant`** end-to-end with **redacted** dat
 
 - **CSV**: simple comma split only (no quoted commas); use numeric amounts without thousands separators in fixtures.
 - **XML**: generic browser parse; deep or heavily namespaced CargoWise exports may need a dedicated normalizer later.
-- **Documentation**: long excerpts are truncated for the persisted analysis **note** only; chat sends a longer excerpt in **context** but not stored on the job.
+- **Documentation**: very long excerpts may still be truncated to the analysis **note** cap (**4000** chars); chat context can include a separate excerpt and is not stored on the job row.
 
 Record any new gaps in **`docs/apihub/GAP_MAP.md`** or your issue tracker with repro file shape (redacted).

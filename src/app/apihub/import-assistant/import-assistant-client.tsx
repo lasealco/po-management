@@ -523,7 +523,7 @@ export function ImportAssistantClient({ canEdit }: Props) {
             Notes or documentation (optional)
             <textarea
               className="mt-2 h-24 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900"
-              placeholder="Short excerpt is best — only the first part is kept on the analysis job note (server limit)."
+              placeholder="Forwarded email or field list — trimmed to the analysis job note limit (see server cap in docs)."
               value={userDoc}
               onChange={(e) => setUserDoc(e.target.value)}
               disabled={!canEdit}

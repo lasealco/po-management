@@ -110,8 +110,8 @@ export type ApiHubMappingAnalysisJobStatus = (typeof APIHUB_MAPPING_ANALYSIS_JOB
 /** Max sample records accepted on `POST …/mapping-analysis-jobs` (bounded work). */
 export const APIHUB_MAPPING_ANALYSIS_MAX_RECORDS = 80;
 
-/** Max operator note length on analysis job create. */
-export const APIHUB_MAPPING_ANALYSIS_NOTE_MAX = 500;
+/** Max operator note length on analysis job create (import-assistant + manual jobs). */
+export const APIHUB_MAPPING_ANALYSIS_NOTE_MAX = 4000;
 
 /** Max target-field hints on create. */
 export const APIHUB_MAPPING_ANALYSIS_TARGET_FIELDS_MAX = 120;
