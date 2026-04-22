@@ -1,6 +1,7 @@
 import type { QuoteClarificationVisibility } from "@prisma/client";
 import { NextResponse } from "next/server";
 
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { addQuoteClarification } from "@/lib/rfq/quote-requests";
 import { getDemoTenant } from "@/lib/demo-tenant";
@@ -17,7 +18,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   const tenant = await getDemoTenant();
   const actorId = await getActorUserId();
   if (!tenant || !actorId) {
-    return NextResponse.json({ error: "No active user." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   }
 
   const { id } = await context.params;
@@ -26,20 +27,20 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON.", code: "BAD_INPUT", status: 400 });
   }
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "Expected object body." }, { status: 400 });
+    return toApiErrorResponse({ error: "Expected object body.", code: "BAD_INPUT", status: 400 });
   }
   const o = body as Record<string, unknown>;
   const text = typeof o.body === "string" ? o.body.trim() : "";
   if (!text) {
-    return NextResponse.json({ error: "body is required." }, { status: 400 });
+    return toApiErrorResponse({ error: "body is required.", code: "BAD_INPUT", status: 400 });
   }
 
   const visibilityRaw = typeof o.visibility === "string" ? o.visibility.trim() : "INTERNAL";
   if (!VIS.has(visibilityRaw)) {
-    return NextResponse.json({ error: "Invalid visibility." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid visibility.", code: "BAD_INPUT", status: 400 });
   }
 
   try {

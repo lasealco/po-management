@@ -1,6 +1,7 @@
 import type { QuoteRequestStatus, TariffTransportMode } from "@prisma/client";
 import { NextResponse } from "next/server";
 
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { requireApiGrant } from "@/lib/authz";
 import { getQuoteRequestDetail, updateQuoteRequest } from "@/lib/rfq/quote-requests";
 import { getDemoTenant } from "@/lib/demo-tenant";
@@ -16,7 +17,9 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   if (gate) return gate;
 
   const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) {
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
+  }
 
   const { id } = await context.params;
   try {
@@ -34,7 +37,9 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   if (gate) return gate;
 
   const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) {
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
+  }
 
   const { id } = await context.params;
 
@@ -42,10 +47,10 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON.", code: "BAD_INPUT", status: 400 });
   }
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "Expected object body." }, { status: 400 });
+    return toApiErrorResponse({ error: "Expected object body.", code: "BAD_INPUT", status: 400 });
   }
   const o = body as Record<string, unknown>;
 
@@ -54,13 +59,15 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   if (o.description !== undefined) patch.description = typeof o.description === "string" ? o.description : null;
   if (typeof o.status === "string") {
     const s = o.status.trim();
-    if (!STATUS.has(s)) return NextResponse.json({ error: "Invalid status." }, { status: 400 });
+    if (!STATUS.has(s)) {
+      return toApiErrorResponse({ error: "Invalid status.", code: "BAD_INPUT", status: 400 });
+    }
     patch.status = s as QuoteRequestStatus;
   }
   if (typeof o.transportMode === "string") {
     const t = o.transportMode.trim().toUpperCase();
     if (!TARIFF_TRANSPORT_MODE_SET.has(t)) {
-      return NextResponse.json({ error: "Invalid transportMode." }, { status: 400 });
+      return toApiErrorResponse({ error: "Invalid transportMode.", code: "BAD_INPUT", status: 400 });
     }
     patch.transportMode = t as TariffTransportMode;
   }
@@ -82,7 +89,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   }
 
   if (Object.keys(patch).length === 0) {
-    return NextResponse.json({ error: "No valid fields to update." }, { status: 400 });
+    return toApiErrorResponse({ error: "No valid fields to update.", code: "BAD_INPUT", status: 400 });
   }
 
   try {

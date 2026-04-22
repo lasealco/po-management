@@ -1,6 +1,7 @@
 import type { TariffTransportMode } from "@prisma/client";
 import { NextResponse } from "next/server";
 
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { createQuoteRequest, listQuoteRequestsForTenant } from "@/lib/rfq/quote-requests";
 import { getDemoTenant } from "@/lib/demo-tenant";
@@ -14,7 +15,9 @@ export async function GET() {
   if (gate) return gate;
 
   const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) {
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
+  }
 
   const requests = await listQuoteRequestsForTenant({ tenantId: tenant.id, take: 200 });
   return NextResponse.json({ requests });
@@ -27,32 +30,33 @@ export async function POST(request: Request) {
   const tenant = await getDemoTenant();
   const actorId = await getActorUserId();
   if (!tenant || !actorId) {
-    return NextResponse.json({ error: "No active user." }, { status: 403 });
+    return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   }
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON.", code: "BAD_INPUT", status: 400 });
   }
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "Expected object body." }, { status: 400 });
+    return toApiErrorResponse({ error: "Expected object body.", code: "BAD_INPUT", status: 400 });
   }
   const o = body as Record<string, unknown>;
   const title = typeof o.title === "string" ? o.title.trim() : "";
   const originLabel = typeof o.originLabel === "string" ? o.originLabel.trim() : "";
   const destinationLabel = typeof o.destinationLabel === "string" ? o.destinationLabel.trim() : "";
   if (!title || !originLabel || !destinationLabel) {
-    return NextResponse.json(
-      { error: "title, originLabel, and destinationLabel are required." },
-      { status: 400 },
-    );
+    return toApiErrorResponse({
+      error: "title, originLabel, and destinationLabel are required.",
+      code: "BAD_INPUT",
+      status: 400,
+    });
   }
 
   const transportModeRaw = typeof o.transportMode === "string" ? o.transportMode.trim().toUpperCase() : "OCEAN";
   if (!TARIFF_TRANSPORT_MODE_SET.has(transportModeRaw)) {
-    return NextResponse.json({ error: "Invalid transportMode." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid transportMode.", code: "BAD_INPUT", status: 400 });
   }
 
   try {

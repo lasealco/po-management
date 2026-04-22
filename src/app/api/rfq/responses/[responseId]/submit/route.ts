@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { requireApiGrant } from "@/lib/authz";
 import { submitQuoteResponse } from "@/lib/rfq/quote-responses";
 import { getDemoTenant } from "@/lib/demo-tenant";
@@ -12,7 +13,9 @@ export async function POST(_request: Request, context: { params: Promise<{ respo
   if (gate) return gate;
 
   const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) {
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
+  }
 
   const { responseId } = await context.params;
   try {

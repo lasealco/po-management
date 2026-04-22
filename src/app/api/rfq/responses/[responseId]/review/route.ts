@@ -1,6 +1,7 @@
 import type { QuoteResponseStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { requireApiGrant } from "@/lib/authz";
 import { updateQuoteResponseReview } from "@/lib/rfq/quote-responses";
 import { getDemoTenant } from "@/lib/demo-tenant";
@@ -15,7 +16,9 @@ export async function POST(request: Request, context: { params: Promise<{ respon
   if (gate) return gate;
 
   const tenant = await getDemoTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
+  if (!tenant) {
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
+  }
 
   const { responseId } = await context.params;
 
@@ -23,15 +26,15 @@ export async function POST(request: Request, context: { params: Promise<{ respon
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid JSON.", code: "BAD_INPUT", status: 400 });
   }
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "Expected object body." }, { status: 400 });
+    return toApiErrorResponse({ error: "Expected object body.", code: "BAD_INPUT", status: 400 });
   }
   const o = body as Record<string, unknown>;
   const status = typeof o.status === "string" ? o.status.trim() : "";
   if (!ALLOWED.has(status)) {
-    return NextResponse.json({ error: "Invalid review status." }, { status: 400 });
+    return toApiErrorResponse({ error: "Invalid review status.", code: "BAD_INPUT", status: 400 });
   }
 
   try {
