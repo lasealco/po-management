@@ -4,6 +4,7 @@ import { ShipmentMilestoneCode } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 import { ensureBookingConfirmationSlaAlerts } from "./booking-sla";
+import { isProbableControlTowerShipmentCuid } from "./search-query";
 import {
   controlTowerShipmentScopeWhere,
   type ControlTowerPortalContext,
@@ -21,10 +22,6 @@ const ROUTE_ACTION_PREFIXES = [
   "Record arrival",
   "Route complete",
 ] as const;
-
-function isProbableCuid(s: string): boolean {
-  return s.length >= 20 && s.length <= 32 && /^c[a-z0-9]+$/i.test(s);
-}
 
 /** Sanitized token for `CtException.type`, `CtAlert.type`, etc. (alphanumeric + `._-`, max 80). */
 function parseControlTowerTokenFilter(raw: string | undefined | null): string | undefined {
@@ -381,7 +378,7 @@ export async function listControlTowerShipments(params: {
   const q = query.q?.trim();
   if (q) {
     const contains = { contains: q, mode: "insensitive" as const };
-    const idOr: Prisma.ShipmentWhereInput[] = isProbableCuid(q) ? [{ id: q }] : [];
+    const idOr: Prisma.ShipmentWhereInput[] = isProbableControlTowerShipmentCuid(q) ? [{ id: q }] : [];
     const qLower = q.toLowerCase();
     const milestoneCodesMatching = (Object.values(ShipmentMilestoneCode) as ShipmentMilestoneCode[]).filter((code) =>
       code.toLowerCase().includes(qLower),

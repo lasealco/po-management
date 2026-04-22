@@ -1,5 +1,6 @@
 import type { ShipmentStatus, TransportMode } from "@prisma/client";
 
+import { isProbableControlTowerShipmentCuid } from "@/lib/control-tower/search-query";
 import { CT_URL_ROUTE_ACTION_PREFIXES } from "@/lib/control-tower/workbench-url-sync";
 
 /** Rule-based parse output for Search & assist (no LLM). */
@@ -66,10 +67,6 @@ const MODE_HINTS: Array<{ re: RegExp; mode: TransportMode; label: string }> = [
 
 function stripOnce(text: string, pattern: RegExp): string {
   return text.replace(pattern, " ").replace(/\s+/g, " ").trim();
-}
-
-function isProbableAssistCuid(s: string): boolean {
-  return s.length >= 20 && s.length <= 32 && /^c[a-z0-9]+$/i.test(s);
 }
 
 function normalizePortToken(raw: string): string | null {
@@ -162,7 +159,7 @@ export function assistControlTowerQuery(raw: string): {
   const supplierM = working.match(/\bsupplier\s*:\s*(\S+)/i);
   if (supplierM) {
     const v = supplierM[1].trim();
-    if (isProbableAssistCuid(v)) {
+    if (isProbableControlTowerShipmentCuid(v)) {
       suggestedFilters.supplierId = v;
       hints.push(`Using supplier id filter (${v.slice(0, 8)}…).`);
     } else {
@@ -174,7 +171,7 @@ export function assistControlTowerQuery(raw: string): {
   const customerM = working.match(/\bcustomer\s*:\s*(\S+)/i);
   if (customerM) {
     const v = customerM[1].trim();
-    if (isProbableAssistCuid(v)) {
+    if (isProbableControlTowerShipmentCuid(v)) {
       suggestedFilters.customerCrmAccountId = v;
       hints.push(`Using CRM customer id filter (${v.slice(0, 8)}…).`);
     } else {
@@ -186,7 +183,7 @@ export function assistControlTowerQuery(raw: string): {
   const carrierM = working.match(/\bcarrier\s*:\s*(\S+)/i);
   if (carrierM) {
     const v = carrierM[1].trim();
-    if (isProbableAssistCuid(v)) {
+    if (isProbableControlTowerShipmentCuid(v)) {
       suggestedFilters.carrierSupplierId = v;
       hints.push(`Using carrier supplier id filter (${v.slice(0, 8)}…).`);
     } else {
@@ -198,7 +195,7 @@ export function assistControlTowerQuery(raw: string): {
   const dispatchOwnerM = working.match(/\b(?:owner|assignee|dispatch)\s*:\s*(\S+)/i);
   if (dispatchOwnerM) {
     const v = dispatchOwnerM[1].trim();
-    if (isProbableAssistCuid(v)) {
+    if (isProbableControlTowerShipmentCuid(v)) {
       suggestedFilters.dispatchOwnerUserId = v;
       hints.push(`Dispatch owner filter on open queues (${v.slice(0, 8)}…).`);
     } else {

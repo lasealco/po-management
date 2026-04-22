@@ -7,6 +7,7 @@ import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { listControlTowerShipments } from "@/lib/control-tower/list-shipments";
 import {
   effectiveControlTowerQParam,
+  isProbableControlTowerShipmentCuid,
   parseControlTowerProductTraceParam,
 } from "@/lib/control-tower/search-query";
 import { getControlTowerPortalContext } from "@/lib/control-tower/viewer";
@@ -65,10 +66,13 @@ export async function GET(request: Request) {
   const carrierSupplierIdRaw = searchParams.get("carrierSupplierId")?.trim() ?? "";
   const originCodeRaw = searchParams.get("originCode")?.trim() ?? "";
   const destinationCodeRaw = searchParams.get("destinationCode")?.trim() ?? "";
-  const isProbableCuid = (s: string) => s.length >= 20 && s.length <= 32 && /^c[a-z0-9]+$/i.test(s);
-  const supplierId = isProbableCuid(supplierIdRaw) ? supplierIdRaw : undefined;
-  const customerCrmAccountId = isProbableCuid(customerCrmAccountIdRaw) ? customerCrmAccountIdRaw : undefined;
-  const carrierSupplierId = isProbableCuid(carrierSupplierIdRaw) ? carrierSupplierIdRaw : undefined;
+  const supplierId = isProbableControlTowerShipmentCuid(supplierIdRaw) ? supplierIdRaw : undefined;
+  const customerCrmAccountId = isProbableControlTowerShipmentCuid(customerCrmAccountIdRaw)
+    ? customerCrmAccountIdRaw
+    : undefined;
+  const carrierSupplierId = isProbableControlTowerShipmentCuid(carrierSupplierIdRaw)
+    ? carrierSupplierIdRaw
+    : undefined;
   const portToken = (s: string) => {
     const t = s.toUpperCase().replace(/[^A-Z0-9]/g, "");
     return t.length >= 3 && t.length <= 10 ? t : undefined;
@@ -79,7 +83,9 @@ export async function GET(request: Request) {
   const shipmentSource: "PO" | "UNLINKED" | undefined =
     shipmentSourceRaw === "PO" || shipmentSourceRaw === "UNLINKED" ? shipmentSourceRaw : undefined;
   const dispatchOwnerUserIdRaw = searchParams.get("dispatchOwnerUserId")?.trim() ?? "";
-  const dispatchOwnerUserId = isProbableCuid(dispatchOwnerUserIdRaw) ? dispatchOwnerUserIdRaw : undefined;
+  const dispatchOwnerUserId = isProbableControlTowerShipmentCuid(dispatchOwnerUserIdRaw)
+    ? dispatchOwnerUserIdRaw
+    : undefined;
   const exceptionCodeRaw = searchParams.get("exceptionCode")?.trim() ?? "";
   const exceptionCode =
     exceptionCodeRaw.length > 0 && exceptionCodeRaw.length <= 80 && /^[\w.-]+$/i.test(exceptionCodeRaw)

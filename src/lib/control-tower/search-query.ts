@@ -5,7 +5,7 @@ const MAX_PRODUCT_TRACE_LEN = 80;
 /**
  * Shipment primary keys in this app are typically Prisma/compact cuids starting with `c`.
  * Those should use list `q=` (id match) rather than `productTrace=` in URLs.
- * Kept in sync with `list-shipments` `isProbableCuid`.
+ * Shared across list-shipments, search route, and assist sanitization.
  */
 export function isProbableControlTowerShipmentCuid(s: string): boolean {
   return s.length >= 20 && s.length <= 32 && /^c[a-z0-9]+$/i.test(s);
