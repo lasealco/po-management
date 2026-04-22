@@ -112,6 +112,60 @@ describe("findDuplicatePromotableRows", () => {
     ]);
     expect(dup).toEqual({ firstRowId: "c1", duplicateRowId: "c2" });
   });
+
+  it("treats payloads as duplicates when keys differ only by undefined property values", () => {
+    const dup = findDuplicatePromotableRows([
+      {
+        id: "a",
+        rowType: "RATE_LINE_CANDIDATE",
+        normalizedPayload: {
+          rateType: "BASE_RATE",
+          currency: "USD",
+          unitBasis: "CONTAINER",
+          amount: "1",
+        },
+      },
+      {
+        id: "b",
+        rowType: "RATE_LINE_CANDIDATE",
+        normalizedPayload: {
+          rateType: "BASE_RATE",
+          currency: "USD",
+          unitBasis: "CONTAINER",
+          amount: "1",
+          notes: undefined,
+        },
+      },
+    ]);
+    expect(dup).toEqual({ firstRowId: "a", duplicateRowId: "b" });
+  });
+
+  it("does not treat numeric amount and equivalent string amount as the same fingerprint", () => {
+    expect(
+      findDuplicatePromotableRows([
+        {
+          id: "a",
+          rowType: "RATE_LINE_CANDIDATE",
+          normalizedPayload: {
+            rateType: "BASE_RATE",
+            currency: "USD",
+            unitBasis: "CONTAINER",
+            amount: 100,
+          },
+        },
+        {
+          id: "b",
+          rowType: "RATE_LINE_CANDIDATE",
+          normalizedPayload: {
+            rateType: "BASE_RATE",
+            currency: "USD",
+            unitBasis: "CONTAINER",
+            amount: "100",
+          },
+        },
+      ]),
+    ).toBeNull();
+  });
 });
 
 describe("assertApprovedPromotablePayloadsAreObjects", () => {
