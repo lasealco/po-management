@@ -2,9 +2,13 @@ import { describe, expect, it } from "vitest";
 
 import {
   TARIFFS_MODULE_BASE_PATH,
+  TARIFF_CHARGE_CODES_PATH,
   TARIFF_CONTRACTS_DIRECTORY_PATH,
   TARIFF_HELP_OPEN_PATHS,
+  TARIFF_IMPORT_NEW_PATH,
   TARIFF_NEW_CONTRACT_PATH,
+  TARIFF_PROVIDERS_PATH,
+  TARIFF_RATE_LOOKUP_PATH,
   TARIFF_RATING_PATH,
   tariffContractHeaderPath,
   tariffContractVersionPath,
@@ -19,6 +23,20 @@ describe("TARIFF_HELP_OPEN_PATHS", () => {
     for (const p of TARIFF_HELP_OPEN_PATHS) {
       expect(p === TARIFFS_MODULE_BASE_PATH || p.startsWith(`${TARIFFS_MODULE_BASE_PATH}/`)).toBe(true);
     }
+  });
+
+  it("includes rate lookup, providers, and charge-code admin routes", () => {
+    expect(TARIFF_HELP_OPEN_PATHS).toContain(TARIFF_RATE_LOOKUP_PATH);
+    expect(TARIFF_HELP_OPEN_PATHS).toContain(TARIFF_PROVIDERS_PATH);
+    expect(TARIFF_HELP_OPEN_PATHS).toContain(TARIFF_CHARGE_CODES_PATH);
+  });
+});
+
+describe("path constants", () => {
+  it("pins common segment paths under /tariffs", () => {
+    expect(TARIFF_RATE_LOOKUP_PATH).toBe(`${TARIFFS_MODULE_BASE_PATH}/rate-lookup`);
+    expect(TARIFF_IMPORT_NEW_PATH).toBe(`${TARIFFS_MODULE_BASE_PATH}/import/new`);
+    expect(TARIFF_CHARGE_CODES_PATH).toBe(`${TARIFFS_MODULE_BASE_PATH}/charge-codes`);
   });
 });
 
