@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  listTariffAuditLogsByObjectType,
   listTariffAuditLogsForContractScope,
   recordTariffAuditLog,
   TARIFF_AUDIT_LOG_MAX_TAKE,
@@ -108,5 +109,29 @@ describe("listTariffAuditLogsForContractScope", () => {
         },
       }),
     );
+  });
+});
+
+describe("listTariffAuditLogsByObjectType", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    prismaMock.tariffAuditLog.findMany.mockResolvedValue([]);
+  });
+
+  it("scopes by objectType and caps take", async () => {
+    await listTariffAuditLogsByObjectType({ objectType: "normalized_charge_code", take: 999 });
+    expect(prismaMock.tariffAuditLog.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { objectType: "normalized_charge_code" },
+        take: TARIFF_AUDIT_LOG_MAX_TAKE,
+        orderBy: { createdAt: "desc" },
+        include: { user: { select: { id: true, name: true, email: true } } },
+      }),
+    );
+  });
+
+  it("clamps take to at least 1", async () => {
+    await listTariffAuditLogsByObjectType({ objectType: "x", take: 0 });
+    expect(prismaMock.tariffAuditLog.findMany).toHaveBeenCalledWith(expect.objectContaining({ take: 1 }));
   });
 });
