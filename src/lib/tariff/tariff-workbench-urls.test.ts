@@ -61,6 +61,11 @@ describe("tariffLaneRatingPath", () => {
   it("appends shipmentId when provided", () => {
     expect(tariffLaneRatingPath({ shipmentId: "abc def" })).toBe(`${TARIFF_RATING_PATH}?shipmentId=abc%20def`);
   });
+
+  it("treats whitespace-only shipmentId as absent", () => {
+    expect(tariffLaneRatingPath({ shipmentId: "   " })).toBe(TARIFF_RATING_PATH);
+    expect(tariffLaneRatingPath({ shipmentId: "\t\n" })).toBe(TARIFF_RATING_PATH);
+  });
 });
 
 describe("tariffGeographyGroupPath / tariffImportBatchPath", () => {
