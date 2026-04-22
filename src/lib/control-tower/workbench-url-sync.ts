@@ -172,8 +172,10 @@ export function controlTowerWorkbenchPath(query: Record<string, string>): string
  * Otherwise `null` (use the bare workbench path).
  */
 export function controlTowerWorkbenchPathForValidatedProductTrace(q: string): string | null {
-  const t = parseControlTowerProductTraceParam(q.trim() || null);
-  return t ? controlTowerWorkbenchPath({ productTrace: t }) : null;
+  const t = q.trim();
+  if (!t) return null;
+  const pt = parseControlTowerProductTraceParam(t);
+  return pt ? controlTowerWorkbenchPath({ productTrace: pt }) : null;
 }
 
 const PORT_TOKEN = /^[A-Z0-9]{3,10}$/;

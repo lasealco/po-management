@@ -5,6 +5,7 @@ import {
   effectiveControlTowerQParam,
   hasStructuredSearchInput,
   controlTowerShipmentsTextQuery,
+  isProbableControlTowerShipmentCuid,
   mergeRawControlTowerSearchInput,
   parseControlTowerProductTraceParam,
 } from "./search-query";
@@ -19,6 +20,10 @@ describe("parseControlTowerProductTraceParam", () => {
     expect(parseControlTowerProductTraceParam("   ")).toBeUndefined();
     expect(parseControlTowerProductTraceParam("a".repeat(81))).toBeUndefined();
     expect(parseControlTowerProductTraceParam("bad code")).toBeUndefined();
+  });
+
+  it("rejects shipment cuid-shaped ids (use q= for id search)", () => {
+    expect(parseControlTowerProductTraceParam("cl9k2abcdefghijklmnopqrs")).toBeUndefined();
   });
 });
 
@@ -94,9 +99,23 @@ describe("appendAssistToSearchParams", () => {
   });
 });
 
+describe("isProbableControlTowerShipmentCuid", () => {
+  it("matches compact cuid-shaped ids used for shipment primary keys", () => {
+    expect(isProbableControlTowerShipmentCuid("cl9k2abcdefghijklmnopqrs")).toBe(true);
+    expect(isProbableControlTowerShipmentCuid("SKU-1")).toBe(false);
+    expect(isProbableControlTowerShipmentCuid("cshort")).toBe(false);
+  });
+});
+
 describe("controlTowerShipmentsTextQuery", () => {
   it("returns productTrace when the full trimmed input is a valid token", () => {
     expect(controlTowerShipmentsTextQuery("  SKU-1  ")).toEqual({ productTrace: "SKU-1" });
+  });
+
+  it("returns q for probable shipment ids, not productTrace", () => {
+    expect(controlTowerShipmentsTextQuery("cl9k2abcdefghijklmnopqrs")).toEqual({
+      q: "cl9k2abcdefghijklmnopqrs",
+    });
   });
 
   it("returns q for empty, whitespace-only, or non-trace text", () => {

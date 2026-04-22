@@ -95,6 +95,9 @@ describe("readWorkbenchUrlState", () => {
   it("reads validated productTrace and drops invalid tokens", () => {
     expect(readWorkbenchUrlState(sp({ productTrace: "SKU-1.a" }), false).productTraceFilter).toBe("SKU-1.a");
     expect(readWorkbenchUrlState(sp({ productTrace: "bad token" }), false).productTraceFilter).toBe("");
+    expect(readWorkbenchUrlState(sp({ productTrace: "cl9k2abcdefghijklmnopqrs" }), false).productTraceFilter).toBe(
+      "",
+    );
   });
 });
 
@@ -167,6 +170,10 @@ describe("controlTowerWorkbenchPathForValidatedProductTrace", () => {
     );
     expect(controlTowerWorkbenchPathForValidatedProductTrace("")).toBeNull();
     expect(controlTowerWorkbenchPathForValidatedProductTrace("bad token")).toBeNull();
+  });
+
+  it("returns null for shipment cuid-shaped ids", () => {
+    expect(controlTowerWorkbenchPathForValidatedProductTrace("cl9k2abcdefghijklmnopqrs")).toBeNull();
   });
 });
 

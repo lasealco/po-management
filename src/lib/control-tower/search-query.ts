@@ -2,11 +2,24 @@ import type { AssistSuggestedFilters } from "@/lib/control-tower/assist";
 
 const MAX_PRODUCT_TRACE_LEN = 80;
 
-/** Validate `productTrace` query param (same rules as assist catalog-style tokens). */
+/**
+ * Shipment primary keys in this app are typically Prisma/compact cuids starting with `c`.
+ * Those should use list `q=` (id match) rather than `productTrace=` in URLs.
+ * Kept in sync with `list-shipments` `isProbableCuid`.
+ */
+export function isProbableControlTowerShipmentCuid(s: string): boolean {
+  return s.length >= 20 && s.length <= 32 && /^c[a-z0-9]+$/i.test(s);
+}
+
+/**
+ * Validate `productTrace` query param (catalog-style token: alphanumeric + `._-`, max length).
+ * Shipment id-shaped cuids (`c` + alnum, length 20–32) are rejected so paste-id search uses `q=` instead.
+ */
 export function parseControlTowerProductTraceParam(raw: string | null | undefined): string | undefined {
   const t = raw?.trim() ?? "";
   if (!t || t.length > MAX_PRODUCT_TRACE_LEN) return undefined;
   if (!/^[\w.-]+$/i.test(t)) return undefined;
+  if (isProbableControlTowerShipmentCuid(t)) return undefined;
   return t;
 }
 
