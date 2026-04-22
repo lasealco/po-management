@@ -514,7 +514,7 @@ export async function listControlTowerShipments(params: {
                           {
                             category: {
                               is: {
-                                OR: [{ name: contains }, { code: contains }],
+                                OR: [{ name: contains }, { code: contains }, { description: contains }],
                               },
                             },
                           },
@@ -553,6 +553,24 @@ export async function listControlTowerShipments(params: {
           order: {
             splitProposal: {
               is: {
+                OR: [
+                  { comment: contains },
+                  {
+                    proposedBy: {
+                      is: {
+                        OR: [{ name: contains }, { email: contains }],
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        },
+        {
+          order: {
+            splitProposalsAsParent: {
+              some: {
                 OR: [
                   { comment: contains },
                   {
@@ -944,6 +962,25 @@ export async function listControlTowerShipments(params: {
                                     },
                                   },
                                 },
+                                {
+                                  legalEntity: {
+                                    is: {
+                                      OR: [
+                                        { name: contains },
+                                        { code: contains },
+                                        { countryCode: contains },
+                                        { status: contains },
+                                      ],
+                                    },
+                                  },
+                                },
+                                {
+                                  owner: {
+                                    is: {
+                                      OR: [{ name: contains }, { email: contains }],
+                                    },
+                                  },
+                                },
                               ],
                             },
                           },
@@ -953,6 +990,41 @@ export async function listControlTowerShipments(params: {
                   },
                 },
               ],
+            },
+          },
+        },
+        {
+          loadPlanShipment: {
+            is: {
+              loadPlan: {
+                is: {
+                  OR: [
+                    { reference: contains },
+                    { notes: contains },
+                    {
+                      warehouse: {
+                        is: {
+                          OR: [
+                            { name: contains },
+                            { code: contains },
+                            { addressLine1: contains },
+                            { city: contains },
+                            { region: contains },
+                            { countryCode: contains },
+                          ],
+                        },
+                      },
+                    },
+                    {
+                      createdBy: {
+                        is: {
+                          OR: [{ name: contains }, { email: contains }],
+                        },
+                      },
+                    },
+                  ],
+                },
+              },
             },
           },
         },
@@ -1043,6 +1115,26 @@ export async function listControlTowerShipments(params: {
                         { email: contains },
                         { phone: contains },
                         { notes: contains },
+                      ],
+                    },
+                  },
+                },
+                {
+                  pricingSnapshots: {
+                    some: {
+                      OR: [
+                        { sourceRecordId: contains },
+                        { sourceSummary: contains },
+                        { incoterm: contains },
+                        { basisSide: contains },
+                        { totalDerivation: contains },
+                        {
+                          creator: {
+                            is: {
+                              OR: [{ name: contains }, { email: contains }],
+                            },
+                          },
+                        },
                       ],
                     },
                   },

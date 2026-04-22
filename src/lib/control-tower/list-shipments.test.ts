@@ -212,6 +212,11 @@ describe("listControlTowerShipments", () => {
     expect(dumped).toContain("splitParent");
     expect(dumped).toContain("containerCargoLines");
     expect(dumped).toContain("tradingName");
+    expect(dumped).toContain("legalEntity");
+    expect(dumped).toContain("loadPlan");
+    expect(dumped).toContain("pricingSnapshots");
+    expect(dumped).toContain("sourceSummary");
+    expect(dumped).toContain("splitProposalsAsParent");
     expect(dumped).toContain("registeredCity");
     expect(dumped).toContain("forwarderOffice");
     expect(dumped).toContain("forwarderContact");
