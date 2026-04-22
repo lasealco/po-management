@@ -1,8 +1,12 @@
 import type { CtReportSchedule } from "@prisma/client";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { CtRunReportResult } from "./report-engine";
-import { formatReportRunForEmail, isReportScheduleDue } from "./report-schedule-delivery";
+import {
+  formatReportRunForEmail,
+  isReportScheduleDue,
+  sendScheduledReportEmail,
+} from "./report-schedule-delivery";
 
 function sched(pick: Pick<CtReportSchedule, "frequency" | "hourUtc"> & Partial<CtReportSchedule>): CtReportSchedule {
   return {
@@ -143,5 +147,66 @@ describe("formatReportRunForEmail", () => {
     };
     const { subject } = formatReportRunForEmail(r, "Fallback title");
     expect(subject).toContain("Fallback title");
+  });
+});
+
+describe("sendScheduledReportEmail", () => {
+  const savedKey = process.env.RESEND_API_KEY;
+  const savedFrom = process.env.CONTROL_TOWER_REPORTS_EMAIL_FROM;
+  const fetchMock = vi.fn();
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    fetchMock.mockReset();
+    if (savedKey === undefined) delete process.env.RESEND_API_KEY;
+    else process.env.RESEND_API_KEY = savedKey;
+    if (savedFrom === undefined) delete process.env.CONTROL_TOWER_REPORTS_EMAIL_FROM;
+    else process.env.CONTROL_TOWER_REPORTS_EMAIL_FROM = savedFrom;
+  });
+
+  it("returns failure when Resend env is not configured", async () => {
+    delete process.env.RESEND_API_KEY;
+    delete process.env.CONTROL_TOWER_REPORTS_EMAIL_FROM;
+    const r = await sendScheduledReportEmail({ to: "ops@example.com", subject: "S", text: "Body" });
+    expect(r).toEqual({
+      ok: false,
+      reason: "missing_RESEND_API_KEY_or_CONTROL_TOWER_REPORTS_EMAIL_FROM",
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("posts to Resend and returns ok when HTTP 200", async () => {
+    process.env.RESEND_API_KEY = "re_test_key";
+    process.env.CONTROL_TOWER_REPORTS_EMAIL_FROM = "reports@example.com";
+    vi.stubGlobal("fetch", fetchMock);
+    fetchMock.mockResolvedValue(new Response(null, { status: 200 }));
+
+    const r = await sendScheduledReportEmail({
+      to: "a@b.co",
+      subject: "Hello",
+      text: "Line",
+      attachments: [{ filename: "a.csv", contentBase64: "YWI=" }],
+    });
+
+    expect(r).toEqual({ ok: true });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(url).toBe("https://api.resend.com/emails");
+    expect(init?.method).toBe("POST");
+    const body = JSON.parse(String(init?.body));
+    expect(body.from).toBe("reports@example.com");
+    expect(body.to).toEqual(["a@b.co"]);
+    expect(body.attachments).toHaveLength(1);
+    expect(body.attachments[0].filename).toBe("a.csv");
+  });
+
+  it("returns resend_http reason when API responds with error status", async () => {
+    process.env.RESEND_API_KEY = "re_test_key";
+    process.env.CONTROL_TOWER_REPORTS_EMAIL_FROM = "reports@example.com";
+    vi.stubGlobal("fetch", fetchMock);
+    fetchMock.mockResolvedValue(new Response("bad request", { status: 422 }));
+
+    const r = await sendScheduledReportEmail({ to: "a@b.co", subject: "S", text: "T" });
+    expect(r).toEqual({ ok: false, reason: "resend_http_422:bad request" });
   });
 });
