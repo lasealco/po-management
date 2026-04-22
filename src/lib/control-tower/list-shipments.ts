@@ -396,6 +396,26 @@ export async function listControlTowerShipments(params: {
         { asnReference: contains },
         { notes: contains },
         { order: { orderNumber: contains } },
+        { order: { title: contains } },
+        { order: { buyerReference: contains } },
+        {
+          order: {
+            items: {
+              some: {
+                OR: [
+                  { description: contains },
+                  {
+                    product: {
+                      is: {
+                        OR: [{ sku: contains }, { productCode: contains }],
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        },
         { order: { supplier: { is: { name: contains } } } },
         { customerCrmAccount: { is: { name: contains } } },
         { ctReferences: { some: { refValue: contains } } },

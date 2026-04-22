@@ -169,6 +169,21 @@ describe("listControlTowerShipments", () => {
     expect(shipmentFindMany.mock.calls[0]![0].take).toBe(200);
   });
 
+  it("text q filter includes PO title, buyer ref, lines, and product sku/code", async () => {
+    await listControlTowerShipments({
+      tenantId: "tenant-1",
+      ctx: ctxInternal,
+      query: { q: "DEMO-SKU-1" },
+    });
+    const where = shipmentFindMany.mock.calls[0]![0].where as Prisma.ShipmentWhereInput;
+    const dumped = JSON.stringify(where);
+    expect(dumped).toContain("DEMO-SKU-1");
+    expect(dumped).toContain("buyerReference");
+    expect(dumped).toContain("items");
+    expect(dumped).toContain("productCode");
+    expect(dumped).toContain("sku");
+  });
+
   it("overscans DB when routeActionPrefix is set", async () => {
     await listControlTowerShipments({
       tenantId: "tenant-1",
