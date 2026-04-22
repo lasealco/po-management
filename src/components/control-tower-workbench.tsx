@@ -9,6 +9,7 @@ import {
   controlTowerListPrimaryTitle,
   controlTowerListSecondaryRef,
 } from "@/lib/control-tower/shipment-list-label";
+import { parseControlTowerProductTraceParam } from "@/lib/control-tower/search-query";
 import {
   buildWorkbenchSearchString,
   readWorkbenchUrlState,
@@ -182,6 +183,7 @@ function CtWorkbenchDemoTools({
 function workbenchUrlHasSearchFilters(sp: URLSearchParams): boolean {
   return Boolean(
     (sp.get("q") ?? "").trim() ||
+      parseControlTowerProductTraceParam(sp.get("productTrace")) ||
       (sp.get("status") ?? "").trim() ||
       (sp.get("mode") ?? "").trim() ||
       (sp.get("lane") ?? "").trim() ||
@@ -236,6 +238,7 @@ function ControlTowerWorkbenchInner({
   const [onlyOverdueEta, setOnlyOverdueEta] = useState(false);
   const [page, setPage] = useState(1);
   const [q, setQ] = useState("");
+  const [productTraceFilter, setProductTraceFilter] = useState("");
   const [laneFilter, setLaneFilter] = useState("");
   const [carrierSupplierIdFilter, setCarrierSupplierIdFilter] = useState("");
   const [supplierIdFilter, setSupplierIdFilter] = useState("");
@@ -296,6 +299,7 @@ function ControlTowerWorkbenchInner({
     setPage(s.page);
     setOnlyOverdueEta(s.onlyOverdueEta);
     setQ(s.q);
+    setProductTraceFilter(s.productTraceFilter);
     setLaneFilter(s.laneFilter);
     setCarrierSupplierIdFilter(s.carrierSupplierIdFilter);
     setSupplierIdFilter(s.supplierIdFilter);
@@ -321,6 +325,7 @@ function ControlTowerWorkbenchInner({
       page,
       onlyOverdueEta,
       q,
+      productTraceFilter,
       laneFilter,
       carrierSupplierIdFilter,
       supplierIdFilter,
@@ -343,6 +348,7 @@ function ControlTowerWorkbenchInner({
       page,
       onlyOverdueEta,
       q,
+      productTraceFilter,
       laneFilter,
       carrierSupplierIdFilter,
       supplierIdFilter,
@@ -389,6 +395,7 @@ function ControlTowerWorkbenchInner({
     setPage(s.page);
     setOnlyOverdueEta(s.onlyOverdueEta);
     setQ(s.q);
+    setProductTraceFilter(s.productTraceFilter);
     setLaneFilter(s.laneFilter);
     setCarrierSupplierIdFilter(s.carrierSupplierIdFilter);
     setSupplierIdFilter(s.supplierIdFilter);
@@ -415,6 +422,8 @@ function ControlTowerWorkbenchInner({
       if (status) sp.set("status", status);
       if (mode) sp.set("mode", mode);
       if (q.trim()) sp.set("q", q.trim());
+      const productTrace = parseControlTowerProductTraceParam(productTraceFilter || null);
+      if (productTrace) sp.set("productTrace", productTrace);
       if (laneFilter.trim()) sp.set("lane", laneFilter.trim());
       if (carrierSupplierIdFilter.trim()) sp.set("carrierSupplierId", carrierSupplierIdFilter.trim());
       if (supplierIdFilter.trim()) sp.set("supplierId", supplierIdFilter.trim());
@@ -466,6 +475,7 @@ function ControlTowerWorkbenchInner({
     status,
     mode,
     q,
+    productTraceFilter,
     laneFilter,
     carrierSupplierIdFilter,
     supplierIdFilter,
@@ -538,6 +548,7 @@ function ControlTowerWorkbenchInner({
       status?: string;
       mode?: string;
       q?: string;
+      productTraceFilter?: string;
       laneFilter?: string;
       carrierSupplierIdFilter?: string;
       supplierIdFilter?: string;
@@ -559,6 +570,11 @@ function ControlTowerWorkbenchInner({
     setStatus(typeof o.status === "string" ? o.status : "");
     setMode(typeof o.mode === "string" ? o.mode : "");
     setQ(typeof o.q === "string" ? o.q : "");
+    setProductTraceFilter(
+      parseControlTowerProductTraceParam(
+        typeof o.productTraceFilter === "string" ? o.productTraceFilter : null,
+      ) ?? "",
+    );
     setLaneFilter(typeof o.laneFilter === "string" ? o.laneFilter : "");
     setCarrierSupplierIdFilter(typeof o.carrierSupplierIdFilter === "string" ? o.carrierSupplierIdFilter : "");
     setSupplierIdFilter(typeof o.supplierIdFilter === "string" ? o.supplierIdFilter : "");
@@ -600,6 +616,7 @@ function ControlTowerWorkbenchInner({
           status,
           mode,
           q,
+          productTraceFilter,
           laneFilter,
           carrierSupplierIdFilter,
           supplierIdFilter,
@@ -835,9 +852,12 @@ function ControlTowerWorkbenchInner({
         <label className="min-w-[12rem] flex-1 text-xs text-zinc-600">
           Search
           <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="PO #, tracking, B/L ref…"
+            value={q.trim() ? q : productTraceFilter}
+            onChange={(e) => {
+              setQ(e.target.value);
+              if (productTraceFilter) setProductTraceFilter("");
+            }}
+            placeholder="PO #, SKU, tracking, B/L ref…"
             className="mt-1 block w-full rounded border border-zinc-300 px-2 py-1.5 text-sm"
           />
         </label>

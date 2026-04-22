@@ -90,6 +90,11 @@ describe("readWorkbenchUrlState", () => {
     expect(r.exceptionCodeFilter).toBe("DELAY");
     expect(r.alertTypeFilter).toBe("COLLAB_MENTION");
   });
+
+  it("reads validated productTrace and drops invalid tokens", () => {
+    expect(readWorkbenchUrlState(sp({ productTrace: "SKU-1.a" }), false).productTraceFilter).toBe("SKU-1.a");
+    expect(readWorkbenchUrlState(sp({ productTrace: "bad token" }), false).productTraceFilter).toBe("");
+  });
 });
 
 describe("buildWorkbenchSearchString", () => {
@@ -136,6 +141,12 @@ describe("buildWorkbenchSearchString", () => {
     const qs = buildWorkbenchSearchString(state, false);
     expect(qs).toContain("exceptionCode=LATE_DOC");
     expect(qs).toContain("alertType=OPS_PING");
+  });
+
+  it("round-trips productTrace", () => {
+    const state = readWorkbenchUrlState(sp({ productTrace: "BUYER.SKU_01" }), false);
+    const qs = buildWorkbenchSearchString(state, false);
+    expect(qs).toContain("productTrace=BUYER.SKU_01");
   });
 });
 

@@ -1,3 +1,5 @@
+import { parseControlTowerProductTraceParam } from "@/lib/control-tower/search-query";
+
 export const CT_URL_STATUSES = new Set([
   "BOOKING_DRAFT",
   "BOOKING_SUBMITTED",
@@ -29,6 +31,8 @@ export type WorkbenchUrlState = {
   page: number;
   onlyOverdueEta: boolean;
   q: string;
+  /** Validated SKU / buyer code (`productTrace` query param); empty if absent or invalid. */
+  productTraceFilter: string;
   laneFilter: string;
   carrierSupplierIdFilter: string;
   supplierIdFilter: string;
@@ -97,6 +101,7 @@ export function readWorkbenchUrlState(
     autoRefresh,
     ship360Tab,
     q: sp.get("q") ?? "",
+    productTraceFilter: parseControlTowerProductTraceParam(sp.get("productTrace")) ?? "",
     laneFilter: sp.get("lane") ?? "",
     carrierSupplierIdFilter: sp.get("carrierSupplierId") ?? "",
     supplierIdFilter: sp.get("supplierId") ?? "",
@@ -116,6 +121,8 @@ export function buildWorkbenchSearchString(state: WorkbenchUrlState, restrictedV
   if (state.status) p.set("status", state.status);
   if (state.mode) p.set("mode", state.mode);
   if (state.q.trim()) p.set("q", state.q.trim());
+  const productTrace = parseControlTowerProductTraceParam(state.productTraceFilter || null);
+  if (productTrace) p.set("productTrace", productTrace);
   if (state.laneFilter.trim()) p.set("lane", state.laneFilter.trim());
   if (state.carrierSupplierIdFilter.trim()) p.set("carrierSupplierId", state.carrierSupplierIdFilter.trim());
   if (state.supplierIdFilter.trim()) p.set("supplierId", state.supplierIdFilter.trim());
