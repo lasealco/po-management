@@ -193,6 +193,36 @@ describe("markRecipientInvited", () => {
       }),
     });
   });
+
+  it("uses stub metadata when metadata is null", async () => {
+    await markRecipientInvited({
+      tenantId: "t1",
+      quoteRequestId: "q1",
+      recipientId: "r1",
+      metadata: null,
+    });
+    expect(prismaMock.quoteRequestRecipient.update).toHaveBeenCalledWith({
+      where: { id: "r1" },
+      data: expect.objectContaining({
+        lastInviteMetadata: { stub: true, note: "No outbound email sent yet." },
+      }),
+    });
+  });
+
+  it("persists explicit metadata JSON", async () => {
+    await markRecipientInvited({
+      tenantId: "t1",
+      quoteRequestId: "q1",
+      recipientId: "r1",
+      metadata: { channel: "email", messageId: "m-1" },
+    });
+    expect(prismaMock.quoteRequestRecipient.update).toHaveBeenCalledWith({
+      where: { id: "r1" },
+      data: expect.objectContaining({
+        lastInviteMetadata: { channel: "email", messageId: "m-1" },
+      }),
+    });
+  });
 });
 
 describe("removeQuoteRequestRecipient", () => {
