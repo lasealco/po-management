@@ -23,6 +23,14 @@ function terminal(status: string) {
   return status === "succeeded" || status === "failed";
 }
 
+function formatJobCreatedShort(iso: string) {
+  try {
+    return new Date(iso).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" });
+  } catch {
+    return iso;
+  }
+}
+
 type RecordsDraftPreview =
   | { kind: "empty" }
   | { kind: "parse_error"; message: string }
@@ -415,9 +423,14 @@ export function MappingAnalysisJobsPanel({ initialJobs, canView, canEdit }: Prop
                     activeId === j.id ? "border-[var(--arscmp-primary)] bg-white" : "border-zinc-200 bg-white hover:border-zinc-300"
                   }`}
                 >
-                  <span className="font-mono text-xs text-zinc-500">{j.id.slice(0, 12)}…</span>
-                  <span className="ml-2 font-medium text-zinc-900">{j.status}</span>
-                  <span className="ml-2 text-xs text-zinc-500">{j.input.recordCount} records</span>
+                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                    <span className="font-mono text-xs text-zinc-500">{j.id.slice(0, 12)}…</span>
+                    <span className="font-medium text-zinc-900">{j.status}</span>
+                    <span className="text-xs text-zinc-500">{j.input.recordCount} records</span>
+                    <span className="text-[11px] text-zinc-500" title={j.createdAt}>
+                      {formatJobCreatedShort(j.createdAt)}
+                    </span>
+                  </div>
                   {j.status === "failed" && j.errorMessage ? (
                     <p
                       className="mt-1 line-clamp-2 text-[11px] leading-snug text-red-700"
