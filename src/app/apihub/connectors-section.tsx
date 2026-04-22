@@ -1,11 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 
 import { readApiHubErrorMessageFromJsonBody } from "@/lib/apihub/api-error";
 import type { ApiHubConnectorDto } from "@/lib/apihub/connector-dto";
 
+import { ApiHubAdvancedJsonDisclosure } from "./apihub-advanced-json";
 import { ConnectorAuditTimeline } from "./connector-audit-timeline";
 
 type Props = {
@@ -23,7 +24,13 @@ type LiveHealthPayload = {
   sourceKind: string;
 };
 
-type HealthProbeUi = { loading: boolean; error: string | null; data: LiveHealthPayload | null };
+type HealthProbeUi = {
+  loading: boolean;
+  error: string | null;
+  /** Parsed JSON body when the probe HTTP call failed (for Advanced). */
+  errorBody?: unknown;
+  data: LiveHealthPayload | null;
+};
 
 type BadgeTone = "green" | "amber" | "red" | "zinc";
 
@@ -98,10 +105,13 @@ export function ConnectorsSection({ initialConnectors, canCreate }: Props) {
   const [rowBusyId, setRowBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [timelineConnectorId, setTimelineConnectorId] = useState<string | null>(null);
+  const [expandedConnectorId, setExpandedConnectorId] = useState<string | null>(null);
   const [healthProbeById, setHealthProbeById] = useState<Record<string, HealthProbeUi>>({});
+  const [lastConnectorApiErrorBody, setLastConnectorApiErrorBody] = useState<unknown | null>(null);
 
   async function addStub() {
     setError(null);
+    setLastConnectorApiErrorBody(null);
     setBusy(true);
     try {
       const res = await fetch("/api/apihub/connectors", {
@@ -111,6 +121,7 @@ export function ConnectorsSection({ initialConnectors, canCreate }: Props) {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        setLastConnectorApiErrorBody(data);
         setError(readApiHubErrorMessageFromJsonBody(data, "Could not create connector."));
         return;
       }
@@ -126,7 +137,12 @@ export function ConnectorsSection({ initialConnectors, canCreate }: Props) {
     }
     setHealthProbeById((prev) => ({
       ...prev,
-      [connectorId]: { loading: true, error: null, data: prev[connectorId]?.data ?? null },
+      [connectorId]: {
+        loading: true,
+        error: null,
+        errorBody: undefined,
+        data: prev[connectorId]?.data ?? null,
+      },
     }));
     try {
       const res = await fetch(`/api/apihub/connectors/${encodeURIComponent(connectorId)}/health`);
@@ -140,6 +156,7 @@ export function ConnectorsSection({ initialConnectors, canCreate }: Props) {
           [connectorId]: {
             loading: false,
             error: readApiHubErrorMessageFromJsonBody(data, "Health probe failed."),
+            errorBody: data,
             data: null,
           },
         }));
@@ -147,18 +164,19 @@ export function ConnectorsSection({ initialConnectors, canCreate }: Props) {
       }
       setHealthProbeById((prev) => ({
         ...prev,
-        [connectorId]: { loading: false, error: null, data: data.health! },
+        [connectorId]: { loading: false, error: null, errorBody: undefined, data: data.health! },
       }));
     } catch {
       setHealthProbeById((prev) => ({
         ...prev,
-        [connectorId]: { loading: false, error: "Health probe failed.", data: null },
+        [connectorId]: { loading: false, error: "Health probe failed.", errorBody: undefined, data: null },
       }));
     }
   }
 
   async function applyLifecycle(connectorId: string, status: string, markSyncedNow: boolean) {
     setError(null);
+    setLastConnectorApiErrorBody(null);
     setRowBusyId(connectorId);
     try {
       const res = await fetch(`/api/apihub/connectors/${connectorId}`, {
@@ -168,6 +186,7 @@ export function ConnectorsSection({ initialConnectors, canCreate }: Props) {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        setLastConnectorApiErrorBody(data);
         setError(readApiHubErrorMessageFromJsonBody(data, "Could not update connector."));
         return;
       }
@@ -189,7 +208,9 @@ export function ConnectorsSection({ initialConnectors, canCreate }: Props) {
           <p className="mt-2 max-w-2xl text-sm text-zinc-600">
             Registry rows for partner or internal sources. This build stores{" "}
             <span className="font-medium">metadata + lifecycle events</span> — no secrets, OAuth, or background sync
-            worker yet.
+            worker yet. Use <span className="font-medium text-zinc-800">Detail → View</span> for readiness fields and the
+            full connector DTO; failed API calls include <span className="font-medium text-zinc-800">Advanced</span>{" "}
+            error bodies when JSON is returned.
           </p>
         </div>
         {canCreate ? (
@@ -214,9 +235,20 @@ export function ConnectorsSection({ initialConnectors, canCreate }: Props) {
       </div>
 
       {error ? (
-        <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">
-          {error}
-        </p>
+        <div className="mt-4 space-y-3">
+          <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">
+            {error}
+          </p>
+          {lastConnectorApiErrorBody != null ? (
+            <ApiHubAdvancedJsonDisclosure
+              value={lastConnectorApiErrorBody}
+              label="Advanced — last connector API error body"
+              description="Parsed JSON from the failed POST/PATCH (if the response was JSON)."
+              maxHeightClass="max-h-56"
+              dark={false}
+            />
+          ) : null}
+        </div>
       ) : null}
 
       {initialConnectors.length === 0 ? (
@@ -242,11 +274,13 @@ export function ConnectorsSection({ initialConnectors, canCreate }: Props) {
                 <th className="px-4 py-3">Actions</th>
                 <th className="px-4 py-3">Audit</th>
                 <th className="px-4 py-3">Updated</th>
+                <th className="px-4 py-3 w-24">Detail</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 bg-white text-zinc-800">
               {initialConnectors.map((c) => (
-                <tr key={c.id}>
+                <Fragment key={c.id}>
+                  <tr>
                   <td className="px-4 py-3 font-medium">{c.name}</td>
                   <td className="px-4 py-3 font-mono text-xs text-zinc-600">{c.sourceKind}</td>
                   <td className="px-4 py-3">{c.status}</td>
@@ -301,9 +335,19 @@ export function ConnectorsSection({ initialConnectors, canCreate }: Props) {
                         {healthProbeById[c.id]?.loading ? "Probing…" : "Run live health probe"}
                       </button>
                       {healthProbeById[c.id]?.error ? (
-                        <p className="text-xs text-red-700" role="alert">
-                          {healthProbeById[c.id]?.error}
-                        </p>
+                        <div className="space-y-2">
+                          <p className="text-xs text-red-700" role="alert">
+                            {healthProbeById[c.id]?.error}
+                          </p>
+                          {healthProbeById[c.id]?.errorBody != null ? (
+                            <ApiHubAdvancedJsonDisclosure
+                              value={healthProbeById[c.id]!.errorBody}
+                              label="Advanced — health probe response"
+                              maxHeightClass="max-h-40"
+                              dark={false}
+                            />
+                          ) : null}
+                        </div>
                       ) : null}
                       {healthProbeById[c.id]?.data ? (
                         <div className="rounded-lg border border-emerald-200 bg-emerald-50/80 px-2.5 py-2 text-xs text-emerald-950">
@@ -383,7 +427,122 @@ export function ConnectorsSection({ initialConnectors, canCreate }: Props) {
                     )}
                   </td>
                   <td className="px-4 py-3 text-zinc-600">{formatWhen(c.updatedAt)}</td>
+                  <td className="px-4 py-3 align-top">
+                    <button
+                      type="button"
+                      onClick={() => setExpandedConnectorId((cur) => (cur === c.id ? null : c.id))}
+                      className="rounded-lg border border-zinc-200 bg-white px-2.5 py-1 text-xs font-semibold text-zinc-800 hover:bg-zinc-50"
+                      aria-expanded={expandedConnectorId === c.id}
+                    >
+                      {expandedConnectorId === c.id ? "Hide" : "View"}
+                    </button>
+                  </td>
                 </tr>
+                  {expandedConnectorId === c.id ? (
+                    <tr className="bg-zinc-50/90">
+                      <td colSpan={10} className="p-0">
+                        <div className="border-t border-zinc-100 px-4 py-4 text-sm text-zinc-800">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Connector summary</p>
+                          <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-3">
+                            <div className="sm:col-span-2 lg:col-span-3">
+                              <dt className="text-zinc-500">Id</dt>
+                              <dd className="break-all font-mono text-[11px] text-zinc-900">{c.id}</dd>
+                            </div>
+                            <div>
+                              <dt className="text-zinc-500">Name</dt>
+                              <dd className="font-medium">{c.name}</dd>
+                            </div>
+                            <div>
+                              <dt className="text-zinc-500">Source kind</dt>
+                              <dd className="font-mono text-[11px]">{c.sourceKind}</dd>
+                            </div>
+                            <div>
+                              <dt className="text-zinc-500">Status</dt>
+                              <dd className="font-medium">{c.status}</dd>
+                            </div>
+                            <div>
+                              <dt className="text-zinc-500">Auth mode</dt>
+                              <dd className="font-mono text-[11px]">{c.authMode}</dd>
+                            </div>
+                            <div>
+                              <dt className="text-zinc-500">Readiness</dt>
+                              <dd className="font-medium capitalize">{c.readinessSummary.overall}</dd>
+                            </div>
+                            <div className="sm:col-span-2">
+                              <dt className="text-zinc-500">Readiness reasons</dt>
+                              <dd className="font-mono text-[11px]">
+                                {c.readinessSummary.reasons.length > 0
+                                  ? c.readinessSummary.reasons.join(", ")
+                                  : "—"}
+                              </dd>
+                            </div>
+                            <div>
+                              <dt className="text-zinc-500">Auth ready</dt>
+                              <dd>{c.readinessSummary.authReady ? "yes" : "no"}</dd>
+                            </div>
+                            <div>
+                              <dt className="text-zinc-500">Auth state</dt>
+                              <dd className="font-mono text-[11px]">{c.readinessSummary.authState}</dd>
+                            </div>
+                            <div>
+                              <dt className="text-zinc-500">Has auth config ref</dt>
+                              <dd>{c.readinessSummary.hasAuthConfigRef ? "yes" : "no"}</dd>
+                            </div>
+                            <div>
+                              <dt className="text-zinc-500">Lifecycle active</dt>
+                              <dd>{c.readinessSummary.lifecycleActive ? "yes" : "no"}</dd>
+                            </div>
+                            <div>
+                              <dt className="text-zinc-500">Sync observed</dt>
+                              <dd>{c.readinessSummary.syncObserved ? "yes" : "no"}</dd>
+                            </div>
+                            <div>
+                              <dt className="text-zinc-500">Last sync</dt>
+                              <dd className="text-xs">{c.lastSyncAt ? formatWhen(c.lastSyncAt) : "—"}</dd>
+                            </div>
+                            <div className="sm:col-span-2">
+                              <dt className="text-zinc-500">Health summary (stored)</dt>
+                              <dd className="text-zinc-700">{c.healthSummary?.trim() || "—"}</dd>
+                            </div>
+                            <div className="sm:col-span-2">
+                              <dt className="text-zinc-500">Ops note</dt>
+                              <dd className="text-zinc-700">{c.opsNote?.trim() || "—"}</dd>
+                            </div>
+                            <div>
+                              <dt className="text-zinc-500">Created</dt>
+                              <dd className="text-xs">{formatWhen(c.createdAt)}</dd>
+                            </div>
+                            <div>
+                              <dt className="text-zinc-500">Updated</dt>
+                              <dd className="text-xs">{formatWhen(c.updatedAt)}</dd>
+                            </div>
+                            <div>
+                              <dt className="text-zinc-500">Audit events (embedded)</dt>
+                              <dd className="tabular-nums">{c.auditTrail.length}</dd>
+                            </div>
+                          </dl>
+                          {healthProbeById[c.id]?.data ? (
+                            <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50/60 px-3 py-2 text-xs text-emerald-950">
+                              <p className="font-semibold uppercase tracking-wide text-emerald-900">Latest live probe</p>
+                              <p className="mt-1">
+                                {healthProbeById[c.id]!.data!.state} · {healthProbeById[c.id]!.data!.readinessOverall}
+                              </p>
+                              <p className="mt-1 text-emerald-900/90">{healthProbeById[c.id]!.data!.summary}</p>
+                            </div>
+                          ) : null}
+                          <div className="mt-4">
+                            <ApiHubAdvancedJsonDisclosure
+                              value={c}
+                              description="Full list-row DTO including embedded audit trail sample from GET /connectors."
+                              maxHeightClass="max-h-72"
+                              dark={false}
+                            />
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : null}
+                </Fragment>
               ))}
             </tbody>
           </table>

@@ -4,6 +4,8 @@ import { useState } from "react";
 
 import { readApiHubErrorMessageFromJsonBody } from "@/lib/apihub/api-error";
 
+import { ApiHubAdvancedJsonDisclosure } from "./apihub-advanced-json";
+
 type Props = {
   canUse: boolean;
 };
@@ -30,10 +32,12 @@ export function MappingPreviewExportPanel({ canUse }: Props) {
   const [sampleSize, setSampleSize] = useState("");
   const [format, setFormat] = useState<"json" | "csv">("csv");
   const [error, setError] = useState<string | null>(null);
+  const [exportErrorDetail, setExportErrorDetail] = useState<{ httpStatus: number; body: unknown } | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function download() {
     setError(null);
+    setExportErrorDetail(null);
     const id = jobId.trim();
     if (!id) {
       setError("Ingestion job id is required (same id used in mapping preview URLs).");
@@ -71,6 +75,7 @@ export function MappingPreviewExportPanel({ canUse }: Props) {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
+        setExportErrorDetail({ httpStatus: res.status, body: data });
         setError(readApiHubErrorMessageFromJsonBody(data, "Export failed."));
         return;
       }
@@ -98,7 +103,8 @@ export function MappingPreviewExportPanel({ canUse }: Props) {
       <p className="mt-2 max-w-2xl text-sm text-zinc-600">
         Download mapping preview issues as JSON (full payload) or CSV (one row per issue) for tickets and reviews.
         Uses the same validation as{" "}
-        <code className="rounded bg-zinc-100 px-1 font-mono text-xs">POST …/mapping-preview</code>.
+        <code className="rounded bg-zinc-100 px-1 font-mono text-xs">POST …/mapping-preview</code>. On failure, expand{" "}
+        <span className="font-medium text-zinc-800">Advanced</span> for the raw error body.
       </p>
 
       {!canUse ? (
@@ -177,9 +183,27 @@ export function MappingPreviewExportPanel({ canUse }: Props) {
       )}
 
       {error ? (
-        <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">
-          {error}
-        </p>
+        <div className="mt-4 space-y-3">
+          <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">
+            {error}
+          </p>
+          {exportErrorDetail ? (
+            <div className="rounded-xl border border-red-100 bg-red-50/50 p-3">
+              <p className="text-xs font-semibold text-red-900">
+                HTTP {exportErrorDetail.httpStatus}
+              </p>
+              <div className="mt-2">
+                <ApiHubAdvancedJsonDisclosure
+                  value={exportErrorDetail.body}
+                  label="Advanced — export error response"
+                  description="Parsed JSON from the export endpoint when available."
+                  maxHeightClass="max-h-64"
+                  dark={false}
+                />
+              </div>
+            </div>
+          ) : null}
+        </div>
       ) : null}
     </section>
   );

@@ -5,6 +5,8 @@ import { useState } from "react";
 
 import { readApiHubErrorMessageFromJsonBody } from "@/lib/apihub/api-error";
 
+import { ApiHubAdvancedJsonDisclosure } from "./apihub-advanced-json";
+
 type Props = {
   batchId: string;
   canDiscard: boolean;
@@ -14,6 +16,7 @@ export function StagingBatchDiscardButton({ batchId, canDiscard }: Props) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorBody, setErrorBody] = useState<unknown | null>(null);
 
   if (!canDiscard) {
     return null;
@@ -24,6 +27,7 @@ export function StagingBatchDiscardButton({ batchId, canDiscard }: Props) {
       return;
     }
     setError(null);
+    setErrorBody(null);
     setBusy(true);
     try {
       const res = await fetch(`/api/apihub/staging-batches/${encodeURIComponent(batchId)}/discard`, {
@@ -31,6 +35,7 @@ export function StagingBatchDiscardButton({ batchId, canDiscard }: Props) {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        setErrorBody(data);
         setError(readApiHubErrorMessageFromJsonBody(data, "Discard failed."));
         return;
       }
@@ -50,7 +55,19 @@ export function StagingBatchDiscardButton({ batchId, canDiscard }: Props) {
       >
         {busy ? "Discarding…" : "Discard batch"}
       </button>
-      {error ? <p className="mt-1 text-xs text-red-600">{error}</p> : null}
+      {error ? (
+        <div className="mt-2 space-y-2">
+          <p className="text-xs text-red-600">{error}</p>
+          {errorBody != null ? (
+            <ApiHubAdvancedJsonDisclosure
+              value={errorBody}
+              label="Advanced — discard error body"
+              maxHeightClass="max-h-40"
+              dark={false}
+            />
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
