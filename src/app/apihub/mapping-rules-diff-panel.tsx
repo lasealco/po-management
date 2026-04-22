@@ -6,6 +6,8 @@ import { readApiHubErrorMessageFromJsonBody } from "@/lib/apihub/api-error";
 import type { ApiHubMappingRulesDiffResult } from "@/lib/apihub/mapping-rules-diff";
 import type { ApiHubMappingTemplateDto } from "@/lib/apihub/mapping-template-dto";
 
+import { ApiHubAdvancedJsonDisclosure } from "./apihub-advanced-json";
+
 type Props = {
   templates: ApiHubMappingTemplateDto[];
 };
@@ -145,10 +147,21 @@ export function MappingRulesDiffPanel({ templates }: Props) {
           {result.added.length > 0 ? (
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Added in draft</p>
-              <ul className="mt-2 space-y-1 font-mono text-xs">
+              <ul className="mt-2 space-y-2 text-xs">
                 {result.added.map((r) => (
-                  <li key={r.targetField} className="rounded border border-sky-100 bg-sky-50/50 px-2 py-1">
-                    {r.targetField}: {JSON.stringify(r)}
+                  <li key={r.targetField} className="rounded border border-sky-100 bg-sky-50/50 px-2 py-2 text-zinc-800">
+                    <p className="font-semibold text-sky-950">{r.targetField}</p>
+                    <p className="mt-0.5 text-zinc-600">
+                      Source: <span className="font-mono text-[11px] text-zinc-800">{r.sourcePath}</span>
+                    </p>
+                    <div className="mt-2">
+                      <ApiHubAdvancedJsonDisclosure
+                        value={r}
+                        label="Advanced — full rule JSON"
+                        maxHeightClass="max-h-36"
+                        dark={false}
+                      />
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -158,10 +171,21 @@ export function MappingRulesDiffPanel({ templates }: Props) {
           {result.removed.length > 0 ? (
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Removed vs template</p>
-              <ul className="mt-2 space-y-1 font-mono text-xs">
+              <ul className="mt-2 space-y-2 text-xs">
                 {result.removed.map((r) => (
-                  <li key={r.targetField} className="rounded border border-zinc-200 bg-zinc-50 px-2 py-1">
-                    {r.targetField}: {JSON.stringify(r)}
+                  <li key={r.targetField} className="rounded border border-zinc-200 bg-zinc-50 px-2 py-2 text-zinc-800">
+                    <p className="font-semibold text-zinc-900">{r.targetField}</p>
+                    <p className="mt-0.5 text-zinc-600">
+                      Source: <span className="font-mono text-[11px] text-zinc-800">{r.sourcePath}</span>
+                    </p>
+                    <div className="mt-2">
+                      <ApiHubAdvancedJsonDisclosure
+                        value={r}
+                        label="Advanced — full rule JSON"
+                        maxHeightClass="max-h-36"
+                        dark={false}
+                      />
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -171,12 +195,24 @@ export function MappingRulesDiffPanel({ templates }: Props) {
           {result.changed.length > 0 ? (
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Same target, different rule</p>
-              <ul className="mt-2 space-y-2 text-xs">
+              <ul className="mt-2 space-y-3 text-xs">
                 {result.changed.map((c) => (
                   <li key={c.targetField} className="rounded border border-amber-200 bg-amber-50/40 px-2 py-2">
                     <p className="font-semibold text-amber-950">{c.targetField}</p>
-                    <p className="mt-1 text-zinc-600">Template: {JSON.stringify(c.baseline)}</p>
-                    <p className="mt-0.5 text-zinc-600">Draft: {JSON.stringify(c.compare)}</p>
+                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                      <ApiHubAdvancedJsonDisclosure
+                        value={c.baseline}
+                        label="Advanced — template rule"
+                        maxHeightClass="max-h-32"
+                        dark={false}
+                      />
+                      <ApiHubAdvancedJsonDisclosure
+                        value={c.compare}
+                        label="Advanced — draft rule"
+                        maxHeightClass="max-h-32"
+                        dark={false}
+                      />
+                    </div>
                   </li>
                 ))}
               </ul>

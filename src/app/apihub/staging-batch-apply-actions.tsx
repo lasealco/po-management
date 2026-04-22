@@ -6,11 +6,32 @@ import { useState } from "react";
 import { readApiHubErrorMessageFromJsonBody } from "@/lib/apihub/api-error";
 import type { ApiHubStagingApplyTarget } from "@/lib/apihub/constants";
 
+import { ApiHubAdvancedJsonDisclosure } from "./apihub-advanced-json";
+
 type Summary = {
   target: ApiHubStagingApplyTarget;
   dryRun: boolean;
-  rows: { rowIndex: number; ok: boolean; entityType?: string; entityId?: string; error?: string }[];
+  rows: {
+    rowIndex: number;
+    ok: boolean;
+    entityType?: string;
+    entityId?: string;
+    applyOp?: string;
+    error?: string;
+  }[];
 };
+
+function summarizeApplySummary(summary: Summary) {
+  const ok = summary.rows.filter((r) => r.ok).length;
+  const failed = summary.rows.length - ok;
+  const byType = new Map<string, number>();
+  for (const r of summary.rows) {
+    if (r.ok && r.entityType) {
+      byType.set(r.entityType, (byType.get(r.entityType) ?? 0) + 1);
+    }
+  }
+  return { ok, failed, byType };
+}
 
 type Props = {
   batchId: string;
@@ -116,9 +137,44 @@ export function StagingBatchApplyActions({
       </div>
       {error ? <p className="mt-2 text-xs text-red-600">{error}</p> : null}
       {lastSummary ? (
-        <pre className="mt-2 max-h-32 overflow-auto rounded border border-zinc-100 bg-zinc-50 p-2 font-mono text-[10px] text-zinc-800">
-          {JSON.stringify(lastSummary, null, 2)}
-        </pre>
+        <div className="mt-3 space-y-3">
+          <div className="rounded-lg border border-zinc-200 bg-white p-3 text-xs text-zinc-800 shadow-sm">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Last result</p>
+            <p className="mt-2">
+              <span className="text-zinc-500">Target:</span>{" "}
+              <span className="font-semibold capitalize">{lastSummary.target.replace(/_/g, " ")}</span>
+              {" · "}
+              <span className="text-zinc-500">Mode:</span>{" "}
+              <span className="font-semibold">{lastSummary.dryRun ? "dry-run" : "commit"}</span>
+            </p>
+            {(() => {
+              const s = summarizeApplySummary(lastSummary);
+              return (
+                <ul className="mt-2 space-y-1 text-zinc-700">
+                  <li>
+                    <span className="text-zinc-500">Rows:</span>{" "}
+                    <span className="tabular-nums font-semibold">{lastSummary.rows.length}</span> total ·{" "}
+                    <span className="tabular-nums text-emerald-800">{s.ok}</span> ok ·{" "}
+                    <span className="tabular-nums text-red-800">{s.failed}</span> failed
+                  </li>
+                  {s.byType.size > 0 ? (
+                    <li>
+                      <span className="text-zinc-500">By entity:</span>{" "}
+                      {[...s.byType.entries()]
+                        .map(([k, v]) => `${v}× ${k}`)
+                        .join(", ")}
+                    </li>
+                  ) : null}
+                </ul>
+              );
+            })()}
+          </div>
+          <ApiHubAdvancedJsonDisclosure
+            value={lastSummary}
+            description="Full apply response summary as returned by the API."
+            maxHeightClass="max-h-48"
+          />
+        </div>
       ) : null}
     </div>
   );

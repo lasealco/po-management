@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 
+import { ApiHubAdvancedJsonDisclosure } from "./apihub-advanced-json";
+
 type DemoStep = {
   key: string;
   label: string;
@@ -207,9 +209,17 @@ export function DemoSyncShowcase() {
               </button>
             </div>
           </div>
-          <pre className="mt-3 max-h-72 overflow-auto rounded-lg border border-zinc-200 bg-zinc-950 p-3 text-xs text-zinc-100">
-            {JSON.stringify(selectedView === "source" ? SOURCE_PAYLOAD : MAPPED_PAYLOAD, null, 2)}
-          </pre>
+          <p className="mt-2 text-xs text-zinc-600">
+            Sample payload for the walkthrough — open Advanced only if you need the full JSON.
+          </p>
+          <div className="mt-3">
+            <ApiHubAdvancedJsonDisclosure
+              value={selectedView === "source" ? SOURCE_PAYLOAD : MAPPED_PAYLOAD}
+              label="Advanced — payload JSON"
+              description="Illustrative structure only; not a live API response."
+              maxHeightClass="max-h-72"
+            />
+          </div>
         </div>
       </div>
 

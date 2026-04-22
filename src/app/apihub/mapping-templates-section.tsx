@@ -7,6 +7,7 @@ import { readApiHubErrorMessageFromJsonBody } from "@/lib/apihub/api-error";
 import type { ApiHubMappingTemplateAuditTrailDto } from "@/lib/apihub/mapping-template-audit-dto";
 import type { ApiHubMappingTemplateDto } from "@/lib/apihub/mapping-template-dto";
 
+import { ApiHubAdvancedJsonDisclosure } from "./apihub-advanced-json";
 import { MappingRulesDiffPanel } from "./mapping-rules-diff-panel";
 
 type Props = {
@@ -366,10 +367,33 @@ export function MappingTemplatesSection({ initialTemplates, canManage }: Props) 
                   </div>
                 ) : null}
               </div>
-              <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-zinc-500">Rules (JSON)</p>
-              <pre className="mt-2 max-h-64 overflow-auto rounded-lg border border-zinc-200 bg-white p-3 font-mono text-xs text-zinc-800">
-                {rulesToJson(selected.rules).trimEnd()}
-              </pre>
+              <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-zinc-500">Rules</p>
+              <p className="mt-1 text-sm text-zinc-700">
+                <span className="font-semibold tabular-nums">{selected.rules.length}</span> rule
+                {selected.rules.length === 1 ? "" : "s"}
+              </p>
+              {selected.rules.length > 0 ? (
+                <ul className="mt-2 flex max-h-28 flex-wrap gap-1 overflow-y-auto text-xs">
+                  {selected.rules.map((r, idx) => (
+                    <li
+                      key={`${idx}-${r.targetField}-${r.sourcePath}`}
+                      className="rounded-full border border-zinc-200 bg-zinc-50 px-2 py-0.5 font-mono text-[11px] text-zinc-800"
+                      title={r.sourcePath}
+                    >
+                      {r.targetField}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              <div className="mt-3">
+                <ApiHubAdvancedJsonDisclosure
+                  value={selected.rules}
+                  label="Advanced — rules JSON"
+                  description="Full rules array as stored on the template."
+                  maxHeightClass="max-h-64"
+                  dark={false}
+                />
+              </div>
               {auditRows ? (
                 <div className="mt-4 rounded-lg border border-zinc-200 bg-white p-3">
                   <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Recent audit</p>

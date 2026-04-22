@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import { readApiHubErrorMessageFromJsonBody } from "@/lib/apihub/api-error";
 import type { ApiHubIngestionRunDto } from "@/lib/apihub/ingestion-run-dto";
 
+import { ApiHubAdvancedJsonDisclosure } from "./apihub-advanced-json";
+
 type ObservabilityDto = {
   timings: {
     queueWaitMs: number | null;
@@ -353,17 +355,12 @@ export function IngestionRunDetailExpand({ runId }: Props) {
         </div>
       ) : null}
 
-      <details className="mt-6 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
-        <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-zinc-600">
-          Advanced — raw JSON
-        </summary>
-        <p className="mt-2 text-xs text-zinc-500">
-          Full API payload for debugging. Operators usually do not need this.
-        </p>
-        <pre className="mt-3 max-h-64 overflow-auto rounded-lg bg-zinc-950 p-3 text-[11px] leading-relaxed text-zinc-100">
-          {JSON.stringify(advancedPayload, null, 2)}
-        </pre>
-      </details>
+      <div className="mt-6">
+        <ApiHubAdvancedJsonDisclosure
+          value={advancedPayload}
+          description="Full API payload for debugging. Operators usually do not need this."
+        />
+      </div>
     </div>
   );
 }

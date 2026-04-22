@@ -6,6 +6,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { readApiHubErrorMessageFromJsonBody } from "@/lib/apihub/api-error";
 import type { ApiHubMappingAnalysisJobDto } from "@/lib/apihub/mapping-analysis-job-dto";
 
+import { ApiHubAdvancedJsonDisclosure } from "./apihub-advanced-json";
+
 type Props = {
   initialJobs: ApiHubMappingAnalysisJobDto[];
   canView: boolean;
@@ -370,9 +372,33 @@ export function MappingAnalysisJobsPanel({ initialJobs, canView, canEdit }: Prop
               {activeJob.outputProposal ? (
                 <>
                   <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">Proposed rules</p>
-                  <pre className="mt-2 max-h-40 overflow-auto rounded bg-zinc-50 p-2 font-mono text-[11px] text-zinc-800">
-                    {JSON.stringify(activeJob.outputProposal.rules, null, 2)}
-                  </pre>
+                  <p className="mt-1 text-xs text-zinc-600">
+                    <span className="font-semibold tabular-nums text-zinc-800">
+                      {activeJob.outputProposal.rules.length}
+                    </span>{" "}
+                    rule{activeJob.outputProposal.rules.length === 1 ? "" : "s"}
+                  </p>
+                  {activeJob.outputProposal.rules.length > 0 ? (
+                    <ul className="mt-2 flex max-h-20 flex-wrap gap-1 overflow-y-auto text-xs">
+                      {activeJob.outputProposal.rules.map((rule, idx) => (
+                        <li
+                          key={`${idx}-${rule.targetField}-${rule.sourcePath}`}
+                          className="rounded-full border border-zinc-200 bg-zinc-50 px-2 py-0.5 font-mono text-[11px] text-zinc-800"
+                          title={rule.sourcePath}
+                        >
+                          {rule.targetField}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  <div className="mt-2">
+                    <ApiHubAdvancedJsonDisclosure
+                      value={activeJob.outputProposal.rules}
+                      label="Advanced — proposed rules JSON"
+                      maxHeightClass="max-h-48"
+                      dark={false}
+                    />
+                  </div>
                   {activeJob.outputProposal.stagingPreview ? (
                     <>
                       <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">Staging preview</p>
@@ -380,12 +406,39 @@ export function MappingAnalysisJobsPanel({ initialJobs, canView, canEdit }: Prop
                         {activeJob.outputProposal.stagingPreview.sampling.previewedRecords} of{" "}
                         {activeJob.outputProposal.stagingPreview.sampling.totalRecords} records sampled
                       </p>
-                      <ul className="mt-2 max-h-36 space-y-1 overflow-y-auto text-xs text-zinc-700">
-                        {activeJob.outputProposal.stagingPreview.rows.slice(0, 6).map((row) => (
-                          <li key={row.recordIndex} className="rounded border border-zinc-100 bg-zinc-50/80 px-2 py-1 font-mono">
-                            #{row.recordIndex}: {JSON.stringify(row.mapped)}
-                          </li>
-                        ))}
+                      <ul className="mt-2 max-h-48 space-y-2 overflow-y-auto text-xs text-zinc-700">
+                        {activeJob.outputProposal.stagingPreview.rows.slice(0, 6).map((row) => {
+                          const mapped = row.mapped as unknown;
+                          const fieldKeys =
+                            mapped && typeof mapped === "object" && !Array.isArray(mapped)
+                              ? Object.keys(mapped as Record<string, unknown>)
+                              : [];
+                          const previewKeys = fieldKeys.slice(0, 10).join(", ");
+                          return (
+                            <li
+                              key={row.recordIndex}
+                              className="rounded border border-zinc-100 bg-zinc-50/80 px-2 py-2"
+                            >
+                              <p className="font-semibold text-zinc-900">Record {row.recordIndex}</p>
+                              {previewKeys ? (
+                                <p className="mt-1 text-[11px] text-zinc-600">
+                                  Fields: {previewKeys}
+                                  {fieldKeys.length > 10 ? "…" : ""}
+                                </p>
+                              ) : (
+                                <p className="mt-1 text-[11px] text-zinc-500">No mapped object on this row.</p>
+                              )}
+                              <div className="mt-2">
+                                <ApiHubAdvancedJsonDisclosure
+                                  value={row.mapped}
+                                  label="Advanced — mapped record JSON"
+                                  maxHeightClass="max-h-40"
+                                  dark={false}
+                                />
+                              </div>
+                            </li>
+                          );
+                        })}
                       </ul>
                     </>
                   ) : null}

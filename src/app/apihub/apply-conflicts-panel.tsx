@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useState } from "react";
+import { Fragment, useCallback, useState } from "react";
 
 import { readApiHubErrorMessageFromJsonBody } from "@/lib/apihub/api-error";
 import type { ApiHubApplyConflictListItemDto } from "@/lib/apihub/ingestion-apply-conflict-dto";
+
+import { ApiHubAdvancedJsonDisclosure } from "./apihub-advanced-json";
 
 type Props = {
   canView: boolean;
@@ -36,6 +38,7 @@ export function ApplyConflictsPanel({ canView, initialItems, initialNextCursor }
   const [loadMoreBusy, setLoadMoreBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copyMsg, setCopyMsg] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const refreshFirstPage = useCallback(async () => {
     setError(null);
@@ -113,7 +116,8 @@ export function ApplyConflictsPanel({ canView, initialItems, initialNextCursor }
           <p className="mt-2 max-w-2xl text-sm text-zinc-600">
             Client-error outcomes from <span className="font-medium text-zinc-800">POST apply</span> (409/400-class),
             sourced from audit metadata. Use <span className="font-medium text-zinc-800">Refresh</span> after
-            reproducing issues. Resolution actions below are scaffold controls for a future triage workflow.
+            reproducing issues. <span className="font-medium text-zinc-800">View</span> on a row shows a field summary;
+            expand <span className="font-medium text-zinc-800">Advanced</span> for the raw list DTO.
           </p>
         </div>
         <button
@@ -147,92 +151,163 @@ export function ApplyConflictsPanel({ canView, initialItems, initialNextCursor }
               <th className="px-4 py-3">Run</th>
               <th className="px-4 py-3">Flags</th>
               <th className="px-4 py-3">Actions</th>
+              <th className="px-4 py-3 w-24">Detail</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100 bg-white text-zinc-800">
             {items.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-sm text-zinc-600">
+                <td colSpan={7} className="px-4 py-8 text-center text-sm text-zinc-600">
                   No apply conflicts recorded yet. Failed apply attempts (4xx) will appear here.
                 </td>
               </tr>
             ) : (
               items.map((row) => (
-                <tr key={row.id}>
-                  <td className="whitespace-nowrap px-4 py-3 text-xs text-zinc-600">{formatWhen(row.createdAt)}</td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex max-w-[220px] truncate rounded-full border px-2 py-0.5 font-mono text-[11px] font-semibold ${resultBadgeClass(row.resultCode)}`}
-                      title={row.resultCode}
-                    >
-                      {row.resultCode}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 tabular-nums text-xs">{row.httpStatus}</td>
-                  <td className="px-4 py-3 font-mono text-[11px] text-zinc-700">{row.ingestionRunId}</td>
-                  <td className="px-4 py-3 text-xs text-zinc-600">
-                    {row.dryRun ? <span className="font-medium text-zinc-800">dry-run</span> : "live"}
-                    {row.idempotencyKeyPresent ? " · idem" : ""}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center">
-                      <a
-                        href={`/api/apihub/ingestion-jobs/${encodeURIComponent(row.ingestionRunId)}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-xs font-semibold text-[var(--arscmp-primary)] hover:underline"
+                <Fragment key={row.id}>
+                  <tr>
+                    <td className="whitespace-nowrap px-4 py-3 text-xs text-zinc-600">
+                      {formatWhen(row.createdAt)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-flex max-w-[220px] truncate rounded-full border px-2 py-0.5 font-mono text-[11px] font-semibold ${resultBadgeClass(row.resultCode)}`}
+                        title={row.resultCode}
                       >
-                        Open job JSON
-                      </a>
+                        {row.resultCode}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 tabular-nums text-xs">{row.httpStatus}</td>
+                    <td className="px-4 py-3 font-mono text-[11px] text-zinc-700">{row.ingestionRunId}</td>
+                    <td className="px-4 py-3 text-xs text-zinc-600">
+                      {row.dryRun ? <span className="font-medium text-zinc-800">dry-run</span> : "live"}
+                      {row.idempotencyKeyPresent ? " · idem" : ""}
+                      {row.idempotentReplay ? " · replay" : ""}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center">
+                        <a
+                          href={`/api/apihub/ingestion-jobs/${encodeURIComponent(row.ingestionRunId)}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs font-semibold text-[var(--arscmp-primary)] hover:underline"
+                        >
+                          Open job JSON
+                        </a>
+                        <button
+                          type="button"
+                          className="rounded-lg border border-zinc-200 bg-white px-2 py-1 text-left text-xs font-semibold text-zinc-700 hover:bg-zinc-50"
+                          onClick={() => void copyText("Run id", row.ingestionRunId)}
+                        >
+                          Copy run id
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded-lg border border-zinc-200 bg-white px-2 py-1 text-left text-xs font-semibold text-zinc-700 hover:bg-zinc-50"
+                          onClick={() =>
+                            void copyText(
+                              "Diagnostics",
+                              JSON.stringify(
+                                {
+                                  resultCode: row.resultCode,
+                                  httpStatus: row.httpStatus,
+                                  ingestionRunId: row.ingestionRunId,
+                                  requestId: row.requestId,
+                                  runStatusAtDecision: row.runStatusAtDecision,
+                                  connectorId: row.connectorId,
+                                  dryRun: row.dryRun,
+                                  idempotencyKeyPresent: row.idempotencyKeyPresent,
+                                  idempotentReplay: row.idempotentReplay,
+                                },
+                                null,
+                                2,
+                              ),
+                            )
+                          }
+                        >
+                          Copy diagnostics
+                        </button>
+                        <Link
+                          href="/apihub#ingestion-ops"
+                          className="text-xs font-semibold text-zinc-600 underline-offset-2 hover:text-zinc-900 hover:underline"
+                        >
+                          Runs list
+                        </Link>
+                        <button
+                          type="button"
+                          disabled
+                          title="Reserved for a future operator workflow"
+                          className="cursor-not-allowed rounded-lg border border-dashed border-zinc-300 bg-zinc-50 px-2 py-1 text-left text-xs font-semibold text-zinc-400"
+                        >
+                          Mark reviewed
+                        </button>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
                       <button
                         type="button"
-                        className="rounded-lg border border-zinc-200 bg-white px-2 py-1 text-left text-xs font-semibold text-zinc-700 hover:bg-zinc-50"
-                        onClick={() => void copyText("Run id", row.ingestionRunId)}
+                        onClick={() => setExpandedId((cur) => (cur === row.id ? null : row.id))}
+                        className="rounded-lg border border-zinc-200 bg-white px-2.5 py-1 text-xs font-semibold text-zinc-800 hover:bg-zinc-50"
+                        aria-expanded={expandedId === row.id}
                       >
-                        Copy run id
+                        {expandedId === row.id ? "Hide" : "View"}
                       </button>
-                      <button
-                        type="button"
-                        className="rounded-lg border border-zinc-200 bg-white px-2 py-1 text-left text-xs font-semibold text-zinc-700 hover:bg-zinc-50"
-                        onClick={() =>
-                          void copyText(
-                            "Diagnostics",
-                            JSON.stringify(
-                              {
-                                resultCode: row.resultCode,
-                                httpStatus: row.httpStatus,
-                                ingestionRunId: row.ingestionRunId,
-                                requestId: row.requestId,
-                                runStatusAtDecision: row.runStatusAtDecision,
-                                connectorId: row.connectorId,
-                                dryRun: row.dryRun,
-                                idempotencyKeyPresent: row.idempotencyKeyPresent,
-                              },
-                              null,
-                              2,
-                            ),
-                          )
-                        }
-                      >
-                        Copy diagnostics
-                      </button>
-                      <Link
-                        href="/apihub#ingestion-ops"
-                        className="text-xs font-semibold text-zinc-600 underline-offset-2 hover:text-zinc-900 hover:underline"
-                      >
-                        Runs list
-                      </Link>
-                      <button
-                        type="button"
-                        disabled
-                        title="Reserved for a future operator workflow"
-                        className="cursor-not-allowed rounded-lg border border-dashed border-zinc-300 bg-zinc-50 px-2 py-1 text-left text-xs font-semibold text-zinc-400"
-                      >
-                        Mark reviewed
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+                    </td>
+                  </tr>
+                  {expandedId === row.id ? (
+                    <tr className="bg-zinc-50/90">
+                      <td colSpan={7} className="p-0">
+                        <div className="border-t border-zinc-100 px-4 py-4 text-sm text-zinc-800">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Summary</p>
+                          <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
+                            <div>
+                              <dt className="text-zinc-500">Result code</dt>
+                              <dd className="font-mono font-medium text-zinc-900">{row.resultCode}</dd>
+                            </div>
+                            <div>
+                              <dt className="text-zinc-500">HTTP status</dt>
+                              <dd className="tabular-nums font-medium">{row.httpStatus}</dd>
+                            </div>
+                            <div>
+                              <dt className="text-zinc-500">Run id</dt>
+                              <dd className="break-all font-mono text-[11px]">{row.ingestionRunId}</dd>
+                            </div>
+                            <div>
+                              <dt className="text-zinc-500">Request id</dt>
+                              <dd className="break-all font-mono text-[11px]">{row.requestId ?? "—"}</dd>
+                            </div>
+                            <div>
+                              <dt className="text-zinc-500">Run status at decision</dt>
+                              <dd className="font-medium">{row.runStatusAtDecision ?? "—"}</dd>
+                            </div>
+                            <div>
+                              <dt className="text-zinc-500">Connector id</dt>
+                              <dd className="break-all font-mono text-[11px]">{row.connectorId ?? "—"}</dd>
+                            </div>
+                            <div>
+                              <dt className="text-zinc-500">Flags</dt>
+                              <dd>
+                                {row.dryRun ? "dry-run" : "live"}
+                                {row.idempotencyKeyPresent ? " · idempotency key" : ""}
+                                {row.idempotentReplay ? " · idempotent replay" : ""}
+                              </dd>
+                            </div>
+                            <div>
+                              <dt className="text-zinc-500">Actor</dt>
+                              <dd className="break-all font-mono text-[11px]">{row.actorUserId}</dd>
+                            </div>
+                          </dl>
+                          <div className="mt-4">
+                            <ApiHubAdvancedJsonDisclosure
+                              value={row}
+                              description="Exact list-row DTO from the apply-conflicts API."
+                              maxHeightClass="max-h-56"
+                            />
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : null}
+                </Fragment>
               ))
             )}
           </tbody>

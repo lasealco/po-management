@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useState } from "react";
+import { Fragment, useCallback, useState } from "react";
 
 import { readApiHubErrorMessageFromJsonBody } from "@/lib/apihub/api-error";
 import type { ApiHubIngestionAlertsSummaryDto } from "@/lib/apihub/ingestion-alerts-dto";
+
+import { ApiHubAdvancedJsonDisclosure } from "./apihub-advanced-json";
 
 type Props = {
   canView: boolean;
@@ -37,6 +39,7 @@ export function IngestionAlertsPanel({ canView, initialSummary }: Props) {
   const [summary, setSummary] = useState<ApiHubIngestionAlertsSummaryDto | null>(initialSummary);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [expandedAlertId, setExpandedAlertId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setError(null);
@@ -85,11 +88,13 @@ export function IngestionAlertsPanel({ canView, initialSummary }: Props) {
           <p className="mt-2 max-w-2xl text-sm text-zinc-600">
             Snapshot from <span className="font-medium text-zinc-800">GET /api/apihub/ingestion-alerts-summary</span>{" "}
             (recent apply/retry client errors in audit). Use{" "}
-            <span className="font-medium text-zinc-800">Refresh</span> after triage. Open the detailed{" "}
+            <span className="font-medium text-zinc-800">Refresh</span> after triage.{" "}
+            <span className="font-medium text-zinc-800">View</span> expands a summary plus Advanced JSON for each alert.
+            Open the{" "}
             <Link href="/apihub#apply-conflicts" className="font-medium text-[var(--arscmp-primary)] hover:underline">
               Apply conflicts
             </Link>{" "}
-            table for row-level diagnostics.
+            table for the full conflict list.
           </p>
           {summary ? (
             <p className="mt-2 text-xs text-zinc-500">
@@ -161,27 +166,106 @@ export function IngestionAlertsPanel({ canView, initialSummary }: Props) {
                     <th className="px-4 py-3">Issue</th>
                     <th className="px-4 py-3">Run</th>
                     <th className="px-4 py-3">When</th>
+                    <th className="px-4 py-3 w-24">Detail</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100 bg-white text-zinc-800">
                   {summary.alerts.map((a) => (
-                    <tr key={a.id}>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold capitalize ${severityChip(a.severity)}`}
-                        >
-                          {a.severity}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-xs capitalize text-zinc-600">{a.source}</td>
-                      <td className="max-w-xs px-4 py-3">
-                        <p className="font-medium text-zinc-900">{a.title}</p>
-                        <p className="mt-0.5 text-xs text-zinc-600">{a.detail}</p>
-                        <p className="mt-1 font-mono text-[10px] text-zinc-500">{a.resultCode}</p>
-                      </td>
-                      <td className="px-4 py-3 font-mono text-[11px] text-zinc-700">{a.ingestionRunId}</td>
-                      <td className="whitespace-nowrap px-4 py-3 text-xs text-zinc-600">{formatWhen(a.createdAt)}</td>
-                    </tr>
+                    <Fragment key={a.id}>
+                      <tr>
+                        <td className="px-4 py-3">
+                          <span
+                            className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold capitalize ${severityChip(a.severity)}`}
+                          >
+                            {a.severity}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-xs capitalize text-zinc-600">{a.source}</td>
+                        <td className="max-w-xs px-4 py-3">
+                          <p className="font-medium text-zinc-900">{a.title}</p>
+                          <p className="mt-0.5 text-xs text-zinc-600">{a.detail}</p>
+                          <p className="mt-1 font-mono text-[10px] text-zinc-500">{a.resultCode}</p>
+                        </td>
+                        <td className="px-4 py-3 font-mono text-[11px] text-zinc-700">{a.ingestionRunId}</td>
+                        <td className="whitespace-nowrap px-4 py-3 text-xs text-zinc-600">
+                          {formatWhen(a.createdAt)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <button
+                            type="button"
+                            onClick={() => setExpandedAlertId((cur) => (cur === a.id ? null : a.id))}
+                            className="rounded-lg border border-zinc-200 bg-white px-2.5 py-1 text-xs font-semibold text-zinc-800 hover:bg-zinc-50"
+                            aria-expanded={expandedAlertId === a.id}
+                          >
+                            {expandedAlertId === a.id ? "Hide" : "View"}
+                          </button>
+                        </td>
+                      </tr>
+                      {expandedAlertId === a.id ? (
+                        <tr className="bg-zinc-50/90">
+                          <td colSpan={6} className="p-0">
+                            <div className="border-t border-zinc-100 px-4 py-4 text-sm text-zinc-800">
+                              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Summary</p>
+                              <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
+                                <div>
+                                  <dt className="text-zinc-500">Severity</dt>
+                                  <dd className="capitalize font-medium">{a.severity}</dd>
+                                </div>
+                                <div>
+                                  <dt className="text-zinc-500">Source</dt>
+                                  <dd className="capitalize font-medium">{a.source}</dd>
+                                </div>
+                                <div className="sm:col-span-2">
+                                  <dt className="text-zinc-500">Title</dt>
+                                  <dd className="font-medium text-zinc-900">{a.title}</dd>
+                                </div>
+                                <div className="sm:col-span-2">
+                                  <dt className="text-zinc-500">Detail</dt>
+                                  <dd className="text-zinc-700">{a.detail}</dd>
+                                </div>
+                                <div>
+                                  <dt className="text-zinc-500">Result code</dt>
+                                  <dd className="font-mono text-[11px]">{a.resultCode}</dd>
+                                </div>
+                                <div>
+                                  <dt className="text-zinc-500">HTTP status</dt>
+                                  <dd className="tabular-nums font-medium">{a.httpStatus}</dd>
+                                </div>
+                                <div>
+                                  <dt className="text-zinc-500">Run id</dt>
+                                  <dd className="break-all font-mono text-[11px]">{a.ingestionRunId}</dd>
+                                </div>
+                                <div>
+                                  <dt className="text-zinc-500">Request id</dt>
+                                  <dd className="break-all font-mono text-[11px]">{a.requestId ?? "—"}</dd>
+                                </div>
+                              </dl>
+                              <div className="mt-4 flex flex-wrap gap-3">
+                                <Link
+                                  href="/apihub#ingestion-ops"
+                                  className="text-xs font-semibold text-[var(--arscmp-primary)] hover:underline"
+                                >
+                                  Open ingestion runs
+                                </Link>
+                                <Link
+                                  href="/apihub#apply-conflicts"
+                                  className="text-xs font-semibold text-[var(--arscmp-primary)] hover:underline"
+                                >
+                                  Apply conflicts
+                                </Link>
+                              </div>
+                              <div className="mt-4">
+                                <ApiHubAdvancedJsonDisclosure
+                                  value={a}
+                                  description="Exact alert DTO from the alerts-summary API."
+                                  maxHeightClass="max-h-48"
+                                />
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : null}
+                    </Fragment>
                   ))}
                 </tbody>
               </table>
