@@ -1,6 +1,10 @@
 import { prisma } from "@/lib/prisma";
 
-import type { ApiHubIngestionApplyMatchKey, ApiHubStagingApplyTarget } from "@/lib/apihub/constants";
+import type {
+  ApiHubIngestionApplyMatchKey,
+  ApiHubIngestionApplyWriteMode,
+  ApiHubStagingApplyTarget,
+} from "@/lib/apihub/constants";
 import {
   applyMappedRowsInTransaction,
   dryRunMappedRowsPreview,
@@ -29,6 +33,8 @@ export type ApplyIngestionRunDownstreamOpts = {
   actorUserId: string;
   bodyRows?: unknown;
   matchKey: ApiHubIngestionApplyMatchKey;
+  /** Default `create_only`. `upsert` requires matching ref `matchKey` (ingestion only). */
+  writeMode?: ApiHubIngestionApplyWriteMode;
 };
 
 export type ApplyApiHubIngestionRunOutcome =
@@ -161,10 +167,19 @@ export async function applyApiHubIngestionRun(opts: {
       }
       return { kind: "downstream_failed", message: resolved.message };
     }
-    const enforceSalesOrderExternalRefUnique =
-      downstream.target === "sales_order" && downstream.matchKey === "sales_order_external_ref";
-    const enforcePurchaseOrderBuyerReferenceUnique =
-      downstream.target === "purchase_order" && downstream.matchKey === "purchase_order_buyer_reference";
+    const writeMode = downstream.writeMode ?? "create_only";
+    const salesOrderExternalRefPolicy =
+      downstream.target === "sales_order" && downstream.matchKey === "sales_order_external_ref"
+        ? writeMode === "upsert"
+          ? "upsert"
+          : "reject_duplicate"
+        : "ignore";
+    const purchaseOrderBuyerRefPolicy =
+      downstream.target === "purchase_order" && downstream.matchKey === "purchase_order_buyer_reference"
+        ? writeMode === "upsert"
+          ? "upsert"
+          : "reject_duplicate"
+        : "ignore";
 
     if (dryRun) {
       const preview = await dryRunMappedRowsPreview({
@@ -176,7 +191,7 @@ export async function applyApiHubIngestionRun(opts: {
       if (anyInvalid) {
         return dryRunPreview(false, { type: "downstream_rows_invalid", summary: preview }, preview);
       }
-      if (enforceSalesOrderExternalRefUnique) {
+      if (salesOrderExternalRefPolicy === "reject_duplicate") {
         const dup = await dryRunSalesOrderExternalRefConflicts(tenantId, resolved.rows);
         if (dup) {
           return dryRunPreview(false, {
@@ -186,7 +201,7 @@ export async function applyApiHubIngestionRun(opts: {
           });
         }
       }
-      if (enforcePurchaseOrderBuyerReferenceUnique) {
+      if (purchaseOrderBuyerRefPolicy === "reject_duplicate") {
         const dupPo = await dryRunPurchaseOrderBuyerReferenceConflicts(tenantId, resolved.rows);
         if (dupPo) {
           return dryRunPreview(false, {
@@ -234,8 +249,8 @@ export async function applyApiHubIngestionRun(opts: {
           target: downstream.target,
           rows: resolved.rows,
           ctSource: { kind: "ingestion_run", runId },
-          enforceSalesOrderExternalRefUnique,
-          enforcePurchaseOrderBuyerReferenceUnique,
+          salesOrderExternalRefPolicy,
+          purchaseOrderBuyerRefPolicy,
         });
 
         const runRow = await tx.apiHubIngestionRun.findFirst({

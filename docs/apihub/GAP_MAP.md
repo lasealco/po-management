@@ -20,7 +20,7 @@
 | Prisma: **staging** | ✅ `ApiHubStagingBatch`, `ApiHubStagingRow`; `appliedAt` / `applySummary` | Materialize from succeeded analysis job; apply downstream; discard open batches |
 | Mapping engine + preview | ✅ | Export csv/json |
 | AI analysis job pipeline | ✅ | Heuristic + optional OpenAI; `outputProposal.llm`; **Save rules as template** via `POST /mapping-templates` + `sourceMappingAnalysisJobId` |
-| Deterministic **apply** (ingestion run) | ✅ | **P3:** optional `target` + `rows` / `resultSummary.rows` → same SO/PO/CT audit writers as staging; `matchKey` for SO `externalRef` + PO `buyerReference` de-dupe; 409 `APPLY_DOWNSTREAM_FAILED` on failure |
+| Deterministic **apply** (ingestion run) | ✅ | **P3:** optional `target` + rows; `matchKey` + **`writeMode`** (`create_only` / **`upsert`**) for ref keys; SO/PO/CT writers; `targetSummary.updated` when upsert; 409 `APPLY_DOWNSTREAM_FAILED` on failure |
 | Staging **apply** (domain) | ✅ | SO/PO/CT audit from mapped rows; cross-grants `org.orders` / `org.controltower` |
 | Background workers | 🟡 | Mapping jobs use `after()`; no dedicated queue consumer (see R2 closeout) |
 
@@ -37,5 +37,5 @@
 
 1. P0–P1 — shell, connectors, templates, ingestion — **shipped**.
 2. P2 — analysis jobs + staging + LLM + template-from-job — **shipped** (iterate on models/prompts).
-3. P3 — ingestion apply to SO/PO/CT (**shipped**); `matchKey` includes **`purchase_order_buyer_reference`**; extend further (idempotent upsert / merge) as needed.
+3. P3 — ingestion apply to SO/PO/CT (**shipped**); ref **`matchKey`** + ingestion-only **`writeMode` `upsert`** (SO header fields + PO single-line replace); staging remains create-only.
 4. P4 — **in progress:** centralized JSON body tiers (`request-budget.ts`), route conformance, stable `apiHubError` envelope test, **`safe-server-log`** + **leakage conformance** (no `console.*` with headers/auth/cookies in HTTP routes; no raw `console.*` in `lib/apihub` except `safe-server-log.ts`).

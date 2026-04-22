@@ -8,8 +8,16 @@ export type ApiHubStagingApplyRowResult = {
   ok: boolean;
   entityType?: string;
   entityId?: string;
+  /** Set for ingestion upsert paths (staging apply is always create-only). */
+  applyOp?: "created" | "updated";
   error?: string;
 };
+
+/** How to treat duplicate SO `externalRef` when matchKey is `sales_order_external_ref`. */
+export type ApiHubSalesOrderExternalRefPolicy = "ignore" | "reject_duplicate" | "upsert";
+
+/** How to treat duplicate PO `buyerReference` when matchKey is `purchase_order_buyer_reference`. */
+export type ApiHubPurchaseOrderBuyerRefPolicy = "ignore" | "reject_duplicate" | "upsert";
 
 export type ApiHubStagingApplySummary = {
   target: ApiHubStagingApplyTarget;
@@ -131,10 +139,10 @@ async function applySalesOrderRowLive(
     tenantId: string;
     actorUserId: string;
     row: ApiHubMappedApplyRow;
-    enforceExternalRefUnique: boolean;
+    externalRefPolicy: ApiHubSalesOrderExternalRefPolicy;
   },
 ): Promise<ApiHubStagingApplyRowResult> {
-  const { tenantId, actorUserId, row, enforceExternalRefUnique } = input;
+  const { tenantId, actorUserId, row, externalRefPolicy } = input;
   const rec = asRecord(row.mappedRecord);
   if (!rec) {
     return { rowIndex: row.rowIndex, ok: false, error: "mappedRecord must be an object." };
@@ -153,7 +161,39 @@ async function applySalesOrderRowLive(
   const soNumberRaw = readStr(rec, "soNumber");
   const soNumber = soNumberRaw || (await nextSalesOrderNumberInTx(tx, tenantId));
   const externalRef = readStr(rec, "externalRef");
-  if (enforceExternalRefUnique && externalRef) {
+  const rddRaw = readStr(rec, "requestedDeliveryDate");
+  const requestedDeliveryDate = rddRaw ? new Date(rddRaw) : null;
+  if (requestedDeliveryDate && Number.isNaN(requestedDeliveryDate.getTime())) {
+    return { rowIndex: row.rowIndex, ok: false, error: "Invalid requestedDeliveryDate." };
+  }
+  const notesVal = readStr(rec, "notes");
+
+  if (externalRefPolicy === "upsert" && externalRef) {
+    const existing = await tx.salesOrder.findFirst({
+      where: { tenantId, externalRef },
+      select: { id: true },
+    });
+    if (existing) {
+      await tx.salesOrder.update({
+        where: { id: existing.id },
+        data: {
+          customerName: account.name,
+          customerCrmAccountId: account.id,
+          requestedDeliveryDate,
+          notes: notesVal,
+        },
+      });
+      return {
+        rowIndex: row.rowIndex,
+        ok: true,
+        entityType: "SalesOrder",
+        entityId: existing.id,
+        applyOp: "updated",
+      };
+    }
+  }
+
+  if (externalRefPolicy === "reject_duplicate" && externalRef) {
     try {
       await assertNoSalesOrderExternalRefConflict(tx, tenantId, externalRef);
     } catch {
@@ -164,11 +204,7 @@ async function applySalesOrderRowLive(
       };
     }
   }
-  const rddRaw = readStr(rec, "requestedDeliveryDate");
-  const requestedDeliveryDate = rddRaw ? new Date(rddRaw) : null;
-  if (requestedDeliveryDate && Number.isNaN(requestedDeliveryDate.getTime())) {
-    return { rowIndex: row.rowIndex, ok: false, error: "Invalid requestedDeliveryDate." };
-  }
+
   const created = await tx.salesOrder.create({
     data: {
       tenantId,
@@ -177,12 +213,19 @@ async function applySalesOrderRowLive(
       customerCrmAccountId: account.id,
       externalRef,
       requestedDeliveryDate,
+      notes: notesVal,
       createdById: actorUserId,
       status: "DRAFT",
     },
     select: { id: true },
   });
-  return { rowIndex: row.rowIndex, ok: true, entityType: "SalesOrder", entityId: created.id };
+  return {
+    rowIndex: row.rowIndex,
+    ok: true,
+    entityType: "SalesOrder",
+    entityId: created.id,
+    applyOp: "created",
+  };
 }
 
 async function applyPurchaseOrderRowLive(
@@ -191,10 +234,10 @@ async function applyPurchaseOrderRowLive(
     tenantId: string;
     actorUserId: string;
     row: ApiHubMappedApplyRow;
-    enforceBuyerReferenceUnique: boolean;
+    buyerRefPolicy: ApiHubPurchaseOrderBuyerRefPolicy;
   },
 ): Promise<ApiHubStagingApplyRowResult> {
-  const { tenantId, actorUserId, row, enforceBuyerReferenceUnique } = input;
+  const { tenantId, actorUserId, row, buyerRefPolicy } = input;
   const rec = asRecord(row.mappedRecord);
   if (!rec) {
     return { rowIndex: row.rowIndex, ok: false, error: "mappedRecord must be an object." };
@@ -229,8 +272,6 @@ async function applyPurchaseOrderRowLive(
   if (!linked) {
     return { rowIndex: row.rowIndex, ok: false, error: "Product not found or not linked to supplier." };
   }
-  const { workflowId, statusId } = await loadDefaultWorkflowStart(tx, tenantId);
-  const orderNumber = readStr(rec, "orderNumber") || (await nextOrderNumberInTx(tx, tenantId));
   const lineNo = Math.max(1, Math.trunc(readNum(rec, "lineNo") ?? 1));
   const description =
     readStr(rec, "lineDescription") || readStr(rec, "description") || linked.name || "Imported line";
@@ -238,7 +279,63 @@ async function applyPurchaseOrderRowLive(
   const tax = subtotal * 0.08;
   const total = subtotal + tax;
   const buyerReference = readStr(rec, "buyerReference");
-  if (enforceBuyerReferenceUnique && buyerReference) {
+  const rddRaw = readStr(rec, "requestedDeliveryDate");
+  const requestedDeliveryDate = rddRaw ? new Date(`${rddRaw}T00:00:00.000Z`) : null;
+  if (requestedDeliveryDate && Number.isNaN(requestedDeliveryDate.getTime())) {
+    return { rowIndex: row.rowIndex, ok: false, error: "Invalid requestedDeliveryDate." };
+  }
+
+  if (buyerRefPolicy === "upsert" && buyerReference) {
+    const existing = await tx.purchaseOrder.findFirst({
+      where: { tenantId, buyerReference },
+      select: { id: true },
+    });
+    if (existing) {
+      const lineCount = await tx.purchaseOrderItem.count({ where: { orderId: existing.id } });
+      if (lineCount > 1) {
+        return {
+          rowIndex: row.rowIndex,
+          ok: false,
+          error:
+            "Upsert is not supported when the purchase order has multiple lines; reconcile manually or split imports.",
+        };
+      }
+      await tx.purchaseOrderItem.deleteMany({ where: { orderId: existing.id } });
+      await tx.purchaseOrder.update({
+        where: { id: existing.id },
+        data: {
+          title: readStr(rec, "title"),
+          requesterId: actorUserId,
+          supplierId,
+          subtotal: new Prisma.Decimal(subtotal.toFixed(2)),
+          taxAmount: new Prisma.Decimal(tax.toFixed(2)),
+          totalAmount: new Prisma.Decimal(total.toFixed(2)),
+          requestedDeliveryDate,
+          items: {
+            create: [
+              {
+                lineNo,
+                productId,
+                description,
+                quantity: new Prisma.Decimal(quantity.toFixed(3)),
+                unitPrice: new Prisma.Decimal(unitPrice.toFixed(4)),
+                lineTotal: new Prisma.Decimal(subtotal.toFixed(2)),
+              },
+            ],
+          },
+        },
+      });
+      return {
+        rowIndex: row.rowIndex,
+        ok: true,
+        entityType: "PurchaseOrder",
+        entityId: existing.id,
+        applyOp: "updated",
+      };
+    }
+  }
+
+  if (buyerRefPolicy === "reject_duplicate" && buyerReference) {
     try {
       await assertNoPurchaseOrderBuyerReferenceConflict(tx, tenantId, buyerReference);
     } catch {
@@ -249,11 +346,9 @@ async function applyPurchaseOrderRowLive(
       };
     }
   }
-  const rddRaw = readStr(rec, "requestedDeliveryDate");
-  const requestedDeliveryDate = rddRaw ? new Date(`${rddRaw}T00:00:00.000Z`) : null;
-  if (requestedDeliveryDate && Number.isNaN(requestedDeliveryDate.getTime())) {
-    return { rowIndex: row.rowIndex, ok: false, error: "Invalid requestedDeliveryDate." };
-  }
+
+  const { workflowId, statusId } = await loadDefaultWorkflowStart(tx, tenantId);
+  const orderNumber = readStr(rec, "orderNumber") || (await nextOrderNumberInTx(tx, tenantId));
   const created = await tx.purchaseOrder.create({
     data: {
       tenantId,
@@ -284,7 +379,13 @@ async function applyPurchaseOrderRowLive(
     },
     select: { id: true },
   });
-  return { rowIndex: row.rowIndex, ok: true, entityType: "PurchaseOrder", entityId: created.id };
+  return {
+    rowIndex: row.rowIndex,
+    ok: true,
+    entityType: "PurchaseOrder",
+    entityId: created.id,
+    applyOp: "created",
+  };
 }
 
 function dryRunPurchaseOrderRow(row: ApiHubMappedApplyRow): ApiHubStagingApplyRowResult {
@@ -449,8 +550,8 @@ export async function applyMappedRowsInTransaction(
     target: ApiHubStagingApplyTarget;
     rows: ApiHubMappedApplyRow[];
     ctSource: ApiHubCtAuditSource;
-    enforceSalesOrderExternalRefUnique: boolean;
-    enforcePurchaseOrderBuyerReferenceUnique: boolean;
+    salesOrderExternalRefPolicy: ApiHubSalesOrderExternalRefPolicy;
+    purchaseOrderBuyerRefPolicy: ApiHubPurchaseOrderBuyerRefPolicy;
   },
 ): Promise<ApiHubStagingApplySummary> {
   const sorted = [...input.rows].sort((a, b) => a.rowIndex - b.rowIndex);
@@ -462,14 +563,14 @@ export async function applyMappedRowsInTransaction(
         tenantId: input.tenantId,
         actorUserId: input.actorUserId,
         row,
-        enforceExternalRefUnique: input.enforceSalesOrderExternalRefUnique,
+        externalRefPolicy: input.salesOrderExternalRefPolicy,
       });
     } else if (input.target === "purchase_order") {
       r = await applyPurchaseOrderRowLive(tx, {
         tenantId: input.tenantId,
         actorUserId: input.actorUserId,
         row,
-        enforceBuyerReferenceUnique: input.enforcePurchaseOrderBuyerReferenceUnique,
+        buyerRefPolicy: input.purchaseOrderBuyerRefPolicy,
       });
     } else {
       r = await applyCtAuditRowLive(tx, {
@@ -515,7 +616,11 @@ export function downstreamSummaryToTargetCounts(summary: ApiHubStagingApplySumma
   let updated = 0;
   for (const r of summary.rows) {
     if (!r.ok) continue;
-    created += 1;
+    if (r.applyOp === "updated") {
+      updated += 1;
+    } else {
+      created += 1;
+    }
   }
   return { created, updated, skipped: 0 };
 }

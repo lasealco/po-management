@@ -12,8 +12,12 @@ import {
 import { resolveApplyTargetSummary, resolveDryRunTargetSummary } from "@/lib/apihub/apply-target-summary";
 import {
   APIHUB_INGESTION_APPLY_MATCH_KEYS,
+  APIHUB_INGESTION_APPLY_WRITE_MODES,
   APIHUB_STAGING_APPLY_TARGETS,
+  apiHubIngestionUpsertAllowed,
+  isApiHubIngestionApplyWriteMode,
   type ApiHubIngestionApplyMatchKey,
+  type ApiHubIngestionApplyWriteMode,
   type ApiHubStagingApplyTarget,
 } from "@/lib/apihub/constants";
 import { downstreamSummaryToTargetCounts } from "@/lib/apihub/downstream-mapped-rows-apply";
@@ -42,6 +46,8 @@ type ApplyJsonBody = {
   target?: unknown;
   rows?: unknown;
   matchKey?: unknown;
+  /** Ingestion only: `create_only` (default) or `upsert` (requires ref matchKey). */
+  writeMode?: unknown;
 };
 
 function parseApplyPostTarget(raw: unknown): ApiHubStagingApplyTarget | null {
@@ -57,6 +63,28 @@ function parseApplyMatchKey(raw: unknown): ApiHubIngestionApplyMatchKey {
   return (APIHUB_INGESTION_APPLY_MATCH_KEYS as readonly string[]).includes(raw)
     ? (raw as ApiHubIngestionApplyMatchKey)
     : "none";
+}
+
+function parseApplyWriteMode(
+  raw: unknown,
+): { ok: true; mode: ApiHubIngestionApplyWriteMode } | { ok: false; message: string } {
+  if (raw === undefined || raw === null) {
+    return { ok: true, mode: "create_only" };
+  }
+  if (typeof raw === "string" && raw.trim() === "") {
+    return { ok: true, mode: "create_only" };
+  }
+  if (typeof raw !== "string") {
+    return { ok: false, message: "writeMode must be a string when provided." };
+  }
+  const t = raw.trim();
+  if (!isApiHubIngestionApplyWriteMode(t)) {
+    return {
+      ok: false,
+      message: `writeMode must be one of: ${APIHUB_INGESTION_APPLY_WRITE_MODES.join(", ")}.`,
+    };
+  }
+  return { ok: true, mode: t };
 }
 
 async function readApplyJsonBody(request: Request, requestId: string): Promise<ApplyJsonBody | Response> {
@@ -395,11 +423,50 @@ export async function POST(request: Request, context: { params: Promise<{ jobId:
         });
       }
     }
+    const matchKey = parseApplyMatchKey(jsonBody.matchKey);
+    const writeParsed = parseApplyWriteMode(jsonBody.writeMode);
+    if (!writeParsed.ok) {
+      return finalizeApplyResponse({
+        response: apiHubValidationError(400, "VALIDATION_ERROR", "Ingestion apply validation failed.", [
+          { field: "writeMode", code: "INVALID_ENUM", message: writeParsed.message, severity: "error" },
+        ], requestId),
+        tenantId: tenant.id,
+        actorUserId: actorId,
+        runId: jobId,
+        requestId,
+        dryRun,
+        idempotencyKeyPresent,
+        resultCode: "APPLY_VALIDATION_ERROR",
+        outcome: null,
+      });
+    }
+    if (writeParsed.mode === "upsert" && !apiHubIngestionUpsertAllowed(target, matchKey)) {
+      return finalizeApplyResponse({
+        response: apiHubValidationError(400, "VALIDATION_ERROR", "Ingestion apply validation failed.", [
+          {
+            field: "writeMode",
+            code: "INVALID_COMBINATION",
+            message:
+              "upsert requires target sales_order with matchKey sales_order_external_ref, or target purchase_order with matchKey purchase_order_buyer_reference.",
+            severity: "error",
+          },
+        ], requestId),
+        tenantId: tenant.id,
+        actorUserId: actorId,
+        runId: jobId,
+        requestId,
+        dryRun,
+        idempotencyKeyPresent,
+        resultCode: "APPLY_VALIDATION_ERROR",
+        outcome: null,
+      });
+    }
     downstream = {
       target,
       actorUserId: actorId,
       bodyRows: jsonBody.rows,
-      matchKey: parseApplyMatchKey(jsonBody.matchKey),
+      matchKey,
+      writeMode: writeParsed.mode,
     };
   } else if (jsonBody.rows !== undefined) {
     return finalizeApplyResponse({
@@ -427,6 +494,7 @@ export async function POST(request: Request, context: { params: Promise<{ jobId:
       ? {
           target: downstream.target,
           matchKey: downstream.matchKey,
+          writeMode: downstream.writeMode ?? "create_only",
           bodyRows: downstream.bodyRows,
         }
       : undefined,
@@ -458,7 +526,7 @@ export async function POST(request: Request, context: { params: Promise<{ jobId:
           response: apiHubError(
             409,
             "APPLY_IDEMPOTENCY_PAYLOAD_MISMATCH",
-            "This idempotency key is already stored for a different apply payload (marker vs downstream, target, rows source, or matchKey). Use a new idempotency key when changing the apply shape.",
+            "This idempotency key is already stored for a different apply payload (marker vs downstream, target, rows source, matchKey, or writeMode). Use a new idempotency key when changing the apply shape.",
             requestId,
           ),
           tenantId: tenant.id,
@@ -524,7 +592,7 @@ export async function POST(request: Request, context: { params: Promise<{ jobId:
           response: apiHubError(
             409,
             "APPLY_IDEMPOTENCY_PAYLOAD_MISMATCH",
-            "This idempotency key is already stored for a different apply payload (marker vs downstream, target, rows source, or matchKey). Use a new idempotency key when changing the apply shape.",
+            "This idempotency key is already stored for a different apply payload (marker vs downstream, target, rows source, matchKey, or writeMode). Use a new idempotency key when changing the apply shape.",
             requestId,
           ),
           tenantId: tenant.id,

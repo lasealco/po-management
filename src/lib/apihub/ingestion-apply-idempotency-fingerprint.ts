@@ -1,10 +1,15 @@
 import { createHash } from "node:crypto";
 
-import type { ApiHubIngestionApplyMatchKey, ApiHubStagingApplyTarget } from "@/lib/apihub/constants";
+import type {
+  ApiHubIngestionApplyMatchKey,
+  ApiHubIngestionApplyWriteMode,
+  ApiHubStagingApplyTarget,
+} from "@/lib/apihub/constants";
 
 export type ApplyIdempotencyFingerprintDownstream = {
   target: ApiHubStagingApplyTarget;
   matchKey: ApiHubIngestionApplyMatchKey;
+  writeMode: ApiHubIngestionApplyWriteMode;
   /** When omitted, apply rows are resolved from `resultSummary` at execution time. */
   bodyRows?: unknown;
 };
@@ -43,6 +48,7 @@ function stableJsonPayload(input: ApplyIdempotencyFingerprintInput): string {
       mode: "downstream",
       target: input.downstream.target,
       matchKey: input.downstream.matchKey,
+      writeMode: input.downstream.writeMode,
       rows: rowsFingerprint,
     }),
   );

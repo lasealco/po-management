@@ -23,13 +23,14 @@ Same mapped-row shapes as **staging batch apply**. Requires **`org.orders` → e
 
 - **`target`:** `sales_order` \| `purchase_order` \| `control_tower_audit`
 - **`rows`:** optional array of `{ "rowIndex"?, "mappedRecord" }`. If omitted, the server reads **`rows`** or **`applyRows`** from the run’s **`resultSummary`** string when it is JSON.
-- **`matchKey`:** optional `none` (default), **`sales_order_external_ref`** (SO: rejects when `externalRef` is set and a sales order already exists for the tenant), or **`purchase_order_buyer_reference`** (PO: rejects when `buyerReference` is set and a purchase order already exists for the tenant).
+- **`matchKey`:** optional `none` (default), **`sales_order_external_ref`**, or **`purchase_order_buyer_reference`**.
+- **`writeMode`:** optional **`create_only`** (default) or **`upsert`**. **`upsert`** is only valid with **`sales_order`** + **`sales_order_external_ref`** or **`purchase_order`** + **`purchase_order_buyer_reference`**. It **updates** an existing SO/PO matched by `externalRef` / `buyerReference` instead of failing or creating a second row. SO updates: customer linkage, `requestedDeliveryDate`, `notes`. PO updates: header totals and **replaces lines** only when the PO has **at most one** line (otherwise apply fails with a clear error).
 
 **Dry-run** with `target` returns **`writeSummary.downstreamPreview`** when validation passes (row-level dry results).
 
 **409 `APPLY_DOWNSTREAM_FAILED`:** missing/invalid rows, row validation failures, or DB apply errors (message in `error.message`).
 
-**Idempotency:** replays require the same **fingerprint** as the stored row; changing **`target`**, **`matchKey`**, **`rows`** vs **`resultSummary`** source, or marker-only vs downstream returns **409 `APPLY_IDEMPOTENCY_PAYLOAD_MISMATCH`** so clients must use a **new key** when changing apply shape.
+**Idempotency:** replays require the same **fingerprint** as the stored row; changing **`target`**, **`matchKey`**, **`writeMode`**, **`rows`** vs **`resultSummary`** source, or marker-only vs downstream returns **409 `APPLY_IDEMPOTENCY_PAYLOAD_MISMATCH`** so clients must use a **new key** when changing apply shape.
 
 ## Dry-run (no `appliedAt` write)
 
@@ -41,10 +42,10 @@ Same mapped-row shapes as **staging batch apply**. Requires **`org.orders` → e
 ## Idempotency (safe replay)
 
 - Send **`Idempotency-Key`** header or **`idempotencyKey`** in JSON (header wins; max **128** characters), same pattern as **retry**.
-- **First response** is stored per **tenant + key** (including error bodies) with a **`requestFingerprint`**: marker-only apply vs downstream **`target` / `matchKey` / rows source** (body vs `resultSummary`) / normalized **`rows`** payload.
+- **First response** is stored per **tenant + key** (including error bodies) with a **`requestFingerprint`**: marker-only apply vs downstream **`target` / `matchKey` / `writeMode` / rows source** (body vs `resultSummary`) / normalized **`rows`** payload.
 - **Replays** return the **same** status and JSON plus **`idempotentReplay: true`**, when the **same** `jobId`, the **same** `dryRun` flag, and the **same** fingerprint are used.
 - **409 `APPLY_IDEMPOTENCY_KEY_CONFLICT`:** the key is already bound to a **different** apply request (different run or dry-run mismatch).
-- **409 `APPLY_IDEMPOTENCY_PAYLOAD_MISMATCH`:** the key exists for this run and dry-run mode but the **apply shape changed** (e.g. marker-only → downstream, different `target`, body rows vs `resultSummary`, or `matchKey`). Use a **new** idempotency key.
+- **409 `APPLY_IDEMPOTENCY_PAYLOAD_MISMATCH`:** the key exists for this run and dry-run mode but the **apply shape changed** (e.g. marker-only → downstream, different `target`, body rows vs `resultSummary`, `matchKey`, or `writeMode`). Use a **new** idempotency key.
 
 ## Live apply — HTTP conflicts (409)
 

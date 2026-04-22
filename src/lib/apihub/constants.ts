@@ -146,6 +146,28 @@ export const APIHUB_INGESTION_APPLY_MATCH_KEYS = [
 export type ApiHubIngestionApplyMatchKey = (typeof APIHUB_INGESTION_APPLY_MATCH_KEYS)[number];
 
 /**
+ * Ingestion apply only (staging stays create-only). **`upsert`** updates an existing SO/PO when the
+ * corresponding **`matchKey`** is set (`sales_order_external_ref` / `purchase_order_buyer_reference`).
+ */
+export const APIHUB_INGESTION_APPLY_WRITE_MODES = ["create_only", "upsert"] as const;
+export type ApiHubIngestionApplyWriteMode = (typeof APIHUB_INGESTION_APPLY_WRITE_MODES)[number];
+
+export function isApiHubIngestionApplyWriteMode(value: string): value is ApiHubIngestionApplyWriteMode {
+  return (APIHUB_INGESTION_APPLY_WRITE_MODES as readonly string[]).includes(value);
+}
+
+/** Whether `upsert` is allowed for this target + matchKey (CT audit is always create-only). */
+export function apiHubIngestionUpsertAllowed(
+  target: ApiHubStagingApplyTarget,
+  matchKey: ApiHubIngestionApplyMatchKey,
+): boolean {
+  if (target === "control_tower_audit") return false;
+  if (target === "sales_order" && matchKey === "sales_order_external_ref") return true;
+  if (target === "purchase_order" && matchKey === "purchase_order_buyer_reference") return true;
+  return false;
+}
+
+/**
  * Default max JSON body size (bytes) for API Hub POST/PATCH — abuse guard.
  * Heavy routes (mapping preview, analysis jobs, diff, large templates) use {@link APIHUB_JSON_BODY_MAX_BYTES_LARGE}.
  */
