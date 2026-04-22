@@ -306,6 +306,11 @@ describe("promoteApprovedStagingRowsToNewVersion (workflow)", () => {
 
     expect(out).toEqual({ versionId: "ver-new", rateLineCount: 1, chargeLineCount: 1 });
 
+    expect(h.headerFindFirst).toHaveBeenCalledWith({
+      where: { id: "hdr-1", tenantId: "t1" },
+      select: { id: true },
+    });
+
     expect(h.createTariffContractVersion).toHaveBeenCalledWith(
       expect.objectContaining({
         tenantId: "t1",

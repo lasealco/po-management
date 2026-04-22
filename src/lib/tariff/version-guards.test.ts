@@ -24,6 +24,7 @@ describe("assertTariffVersionAllowsLineMutations", () => {
     } catch (e) {
       expect(e).toBeInstanceOf(TariffRepoError);
       expect((e as TariffRepoError).code).toBe("VERSION_FROZEN");
+      expect((e as TariffRepoError).message).toMatch(/rate lines, charge lines, and free-time rules cannot be changed/);
     }
   });
 
@@ -36,9 +37,14 @@ describe("assertTariffVersionAllowsLineMutations", () => {
 
 describe("assertTariffVersionRowMutable", () => {
   it("throws VERSION_FROZEN when the version is frozen", () => {
-    expect(() => assertTariffVersionRowMutable({ approvalStatus: "APPROVED", status: "APPROVED" })).toThrow(
-      TariffRepoError,
-    );
+    try {
+      assertTariffVersionRowMutable({ approvalStatus: "APPROVED", status: "APPROVED" });
+      expect.fail("expected throw");
+    } catch (e) {
+      expect(e).toBeInstanceOf(TariffRepoError);
+      expect((e as TariffRepoError).code).toBe("VERSION_FROZEN");
+      expect((e as TariffRepoError).message).toMatch(/the version record cannot be updated/);
+    }
   });
 
   it("allows updates when not fully approved", () => {

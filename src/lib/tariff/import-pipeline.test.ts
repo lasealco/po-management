@@ -35,6 +35,13 @@ describe("import-pipeline staging row types", () => {
     expect(TARIFF_IMPORT_STAGING_ROW_TYPE_SET.has("RAW_ROW")).toBe(true);
     expect(TARIFF_IMPORT_STAGING_ROW_TYPE_SET.has("UNKNOWN")).toBe(false);
   });
+
+  it("set size matches the tuple so every staging type is listed exactly once", () => {
+    expect(TARIFF_IMPORT_STAGING_ROW_TYPE_SET.size).toBe(TARIFF_IMPORT_STAGING_ROW_TYPES.length);
+    for (const t of TARIFF_IMPORT_STAGING_ROW_TYPES) {
+      expect(TARIFF_IMPORT_STAGING_ROW_TYPE_SET.has(t)).toBe(true);
+    }
+  });
 });
 
 describe("import-pipeline normalized payload keys", () => {
