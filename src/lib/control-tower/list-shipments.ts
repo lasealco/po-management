@@ -393,6 +393,18 @@ export async function listControlTowerShipments(params: {
         { shipmentNo: contains },
         { trackingNo: contains },
         { carrier: contains },
+        {
+          carrierSupplier: {
+            is: {
+              OR: [
+                { name: contains },
+                { code: contains },
+                { legalName: contains },
+                { email: contains },
+              ],
+            },
+          },
+        },
         { asnReference: contains },
         { notes: contains },
         { cargoCommoditySummary: contains },
@@ -412,6 +424,27 @@ export async function listControlTowerShipments(params: {
         { order: { orderNumber: contains } },
         { order: { title: contains } },
         { order: { buyerReference: contains } },
+        { order: { supplierReference: contains } },
+        { order: { paymentTermsLabel: contains } },
+        { order: { incoterm: contains } },
+        { order: { internalNotes: contains } },
+        { order: { notesToSupplier: contains } },
+        { order: { shipToName: contains } },
+        { order: { shipToLine1: contains } },
+        { order: { shipToLine2: contains } },
+        { order: { shipToCity: contains } },
+        { order: { shipToRegion: contains } },
+        { order: { shipToPostalCode: contains } },
+        { order: { shipToCountryCode: contains } },
+        {
+          order: {
+            requester: {
+              is: {
+                OR: [{ name: contains }, { email: contains }],
+              },
+            },
+          },
+        },
         {
           order: {
             items: {
@@ -428,6 +461,11 @@ export async function listControlTowerShipments(params: {
                           { description: contains },
                           { ean: contains },
                           { customerName: contains },
+                          { hsCode: contains },
+                          { properShippingName: contains },
+                          { unNumber: contains },
+                          { dangerousGoodsClass: contains },
+                          { packagingNotes: contains },
                         ],
                       },
                     },
@@ -447,8 +485,27 @@ export async function listControlTowerShipments(params: {
             },
           },
         },
-        { order: { supplier: { is: { name: contains } } } },
-        { customerCrmAccount: { is: { name: contains } } },
+        {
+          order: {
+            supplier: {
+              is: {
+                OR: [
+                  { name: contains },
+                  { code: contains },
+                  { legalName: contains },
+                  { email: contains },
+                ],
+              },
+            },
+          },
+        },
+        {
+          customerCrmAccount: {
+            is: {
+              OR: [{ name: contains }, { legalName: contains }],
+            },
+          },
+        },
         { ctReferences: { some: { OR: [{ refValue: contains }, { refType: contains }] } } },
         {
           ctDocuments: {

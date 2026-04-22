@@ -179,11 +179,18 @@ describe("listControlTowerShipments", () => {
     const dumped = JSON.stringify(where);
     expect(dumped).toContain("DEMO-SKU-1");
     expect(dumped).toContain("buyerReference");
+    expect(dumped).toContain("supplierReference");
+    expect(dumped).toContain("internalNotes");
+    expect(dumped).toContain("shipToName");
+    expect(dumped).toContain("requester");
+    expect(dumped).toContain("carrierSupplier");
+    expect(dumped).toContain("legalName");
     expect(dumped).toContain("items");
     expect(dumped).toContain("productCode");
     expect(dumped).toContain("sku");
     expect(dumped).toContain("ean");
     expect(dumped).toContain("customerName");
+    expect(dumped).toContain("hsCode");
     expect(dumped).toContain("cargoCommoditySummary");
     expect(dumped).toContain("cargoDimensionsText");
     expect(dumped).toContain("soNumber");

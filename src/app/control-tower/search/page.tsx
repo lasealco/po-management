@@ -12,7 +12,8 @@ export default function ControlTowerSearchPage() {
         <p className="mt-1 text-sm text-zinc-600">
           R5: rule-based tokens (<code className="rounded bg-zinc-100 px-1">shipper:</code>,{" "}
           <code className="rounded bg-zinc-100 px-1">lane:</code>, status words) map to API filters; free text matches
-          PO/shipment id, tracking, carrier, container, milestones, booking, and references. With{" "}
+          PO/shipment id, tracking, carrier, container, milestones, booking, references, ship-to and PO notes, suppliers,
+          products (e.g. HS/DG fields), assignees, and audit text. With{" "}
           <code className="rounded bg-zinc-100 px-1">OPENAI_API_KEY</code> and{" "}
           <code className="rounded bg-zinc-100 px-1">CONTROL_TOWER_ASSIST_LLM=1</code>, each search also merges a
           small OpenAI JSON patch on top of the rules (no UI toggle).

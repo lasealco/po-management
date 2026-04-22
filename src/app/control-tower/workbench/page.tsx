@@ -43,8 +43,9 @@ export default async function ControlTowerWorkbenchPage() {
         <div>
           <h1 className="text-2xl font-semibold text-zinc-900">Tracking workbench</h1>
           <p className="mt-1 text-sm text-zinc-600">
-          High-volume list with status, mode, and text search across PO numbers, tracking, carriers, and saved B/L
-          references. Filters sync to the URL (debounced) for sharing. The first column prefers the PO when the stored
+          High-volume list with status, mode, and text search across PO numbers, ship-to and notes, suppliers, products,
+          tracking, carriers, documents, assignees, and saved B/L references. Filters sync to the URL (debounced) for
+          sharing. The first column prefers the PO when the stored
           shipment number looks like an ASN-style ref (e.g. ASN-GEN-…).
           {ctx.isRestrictedView
             ? " Your view is scoped to customer or supplier-visible shipments."
