@@ -88,4 +88,13 @@ describe("getApiHubIngestionAlertsSummary", () => {
     expect(out.alerts[0]?.source).toBe("retry");
     expect(out.alerts[0]?.title).toContain("Retry blocked");
   });
+
+  describe("tenant binding in raw SQL (Slice 61)", () => {
+    it("binds tenantId in Prisma.sql values", async () => {
+      h.$queryRaw.mockResolvedValue([]);
+      await getApiHubIngestionAlertsSummary({ tenantId: "tenant-alerts-zz", limit: 8 });
+      const sql = h.$queryRaw.mock.calls[0]![0] as { values: unknown[] };
+      expect(sql.values).toContain("tenant-alerts-zz");
+    });
+  });
 });

@@ -29,12 +29,14 @@ Vitest files assert representative `where` shapes for:
 - `staging-batches-repo.tenant-scope.test.ts`
 - `ingestion-runs-repo.tenant-scope.test.ts`
 - `connectors-repo.tenant-scope.test.ts`
+- `connectors-repo.lifecycle-tenant-scope.test.ts`
+- Raw SQL list endpoints: `ingestion-apply-conflicts-repo.test.ts` and `ingestion-alerts-summary-repo.test.ts` assert **`tenantId`** is bound in `Prisma.sql` **`values`**.
 
 Run: `npm run test:apihub`
 
 ## Follow-ups
 
-- Extend the same style of assertions to raw SQL repos (`$queryRaw`) if regressions appear; **`countInFlight`** / ops **`groupBy`** are covered in `ingestion-runs-repo.tenant-scope.test.ts`.
-- Enterprise tranche **Slice 61** in `agent_milestones_one_agent.md` is satisfied for **defense-in-depth mutations** + **contract tests**; a full formal verification of every line of SQL is still optional hardening.
+- **`mapping-analysis-job-claim.ts`** uses `$queryRaw` for worker claims; locking semantics live in **`mapping-analysis-job-claim.test.ts`** (not a tenant-string snapshot test).
+- Enterprise tranche **Slice 61** in `agent_milestones_one_agent.md` is satisfied for **defense-in-depth mutations** + **contract tests**; exhaustive review of every SQL fragment is still optional.
 
 **Last updated:** 2026-04-22

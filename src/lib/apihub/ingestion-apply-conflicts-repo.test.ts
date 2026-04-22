@@ -55,4 +55,24 @@ describe("listApiHubApplyConflicts", () => {
     expect(out.items[0]?.resultCode).toBe("APPLY_ALREADY_APPLIED");
     expect(out.nextCursor).toBeTruthy();
   });
+
+  describe("tenant binding in raw SQL (Slice 61)", () => {
+    it("binds tenantId for first page", async () => {
+      h.$queryRaw.mockResolvedValue([]);
+      await listApiHubApplyConflicts({ tenantId: "tenant-sql-a", limit: 10, cursor: null });
+      const sql = h.$queryRaw.mock.calls[0]![0] as { values: unknown[] };
+      expect(sql.values).toContain("tenant-sql-a");
+    });
+
+    it("binds tenantId when paginating with cursor", async () => {
+      h.$queryRaw.mockResolvedValue([]);
+      await listApiHubApplyConflicts({
+        tenantId: "tenant-sql-b",
+        limit: 10,
+        cursor: { createdAt: new Date("2026-01-01T00:00:00.000Z"), id: "c1" },
+      });
+      const sql = h.$queryRaw.mock.calls[0]![0] as { values: unknown[] };
+      expect(sql.values).toContain("tenant-sql-b");
+    });
+  });
 });
