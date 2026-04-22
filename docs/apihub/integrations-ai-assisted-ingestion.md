@@ -45,6 +45,10 @@ Carrier / forwarder sends **XML or flat file** first. Flow: **intent** (“creat
 
 **Same engine** for both; difference is **entry template**, **target entity**, and **default preview surface**.
 
+### Scenario C — Catalog, ASN, and tariff / contract documents
+
+**Products, inventory, ASN**, and **rate documents** (ocean FCL, trucking, air, LCL) share the same **propose → stage → confirm → promote** pattern; tariff rows additionally pass through **charge-code normalization** and the **pricing / contract** vertical. See **[ai-upload-playbook-catalog-tariffs.md](./ai-upload-playbook-catalog-tariffs.md)** for how AI assists (layout, extraction, glossary-backed language) vs how the platform owns rating semantics (all-in, surcharges, validity).
+
 ---
 
 ## 4. End-to-end UX (high level)
@@ -117,4 +121,5 @@ Exact Prisma names and relations are **P1+**; this table is the conceptual contr
 
 - Control Tower inbound: `docs/controltower/GAP_MAP.md` (R4).
 - Engineering agent list: `docs/engineering/agent-todos/integration-hub.md`.
+- **Catalog / tariff uploads (AI role vs deterministic pricing):** [ai-upload-playbook-catalog-tariffs.md](./ai-upload-playbook-catalog-tariffs.md).
 - **P0 implementation pointers:** app shell `src/app/apihub/`, health route `src/app/api/apihub/health/route.ts`, shared constants `src/lib/apihub/`.

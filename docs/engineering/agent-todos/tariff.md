@@ -6,6 +6,8 @@
 
 There is no single `docs/tariff/GAP_MAP.md` yet; backlog is spread across contracts UI, import pipeline, geography, rating, legal entities, invoice audit. Use **small issues** per vertical subdirectory.
 
+**AI + uploads (products, ASN, ocean/truck/air/LCL docs):** product framing and guardrails live in **`docs/apihub/ai-upload-playbook-catalog-tariffs.md`** (extraction vs deterministic rating; staging/promote pattern).
+
 ---
 
 ## Ongoing hygiene (after large merges)
