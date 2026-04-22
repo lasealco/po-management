@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { mainLegPolPodMatch, normalizeEquipmentType } from "@/lib/tariff/rating-engine";
+import {
+  TARIFF_MAIN_LEG_RATE_TYPES,
+  mainLegPolPodMatch,
+  normalizeEquipmentType,
+} from "@/lib/tariff/rating-engine";
 
 describe("normalizeEquipmentType", () => {
   it("normalizes 40' HC variants", () => {
@@ -16,6 +20,15 @@ describe("normalizeEquipmentType", () => {
 
   it("passes through unknown tokens uppercased", () => {
     expect(normalizeEquipmentType("45G1")).toBe("45G1");
+  });
+
+  it("normalizes spaced and quoted 40 high cube spellings", () => {
+    expect(normalizeEquipmentType("40 HIGH CUBE")).toBe("40HC");
+    expect(normalizeEquipmentType(`40' HIGH CUBE`)).toBe("40HC");
+  });
+
+  it("trims whitespace before normalization", () => {
+    expect(normalizeEquipmentType("  40hc  ")).toBe("40HC");
   });
 });
 
@@ -47,5 +60,19 @@ describe("mainLegPolPodMatch", () => {
     const origin = { members: [{ memberCode: "deham" }] };
     const dest = { members: [{ memberCode: "UsChi" }] };
     expect(mainLegPolPodMatch(origin, dest, "DEHAM", "uschi")).toEqual({ ok: true, score: 100 });
+  });
+
+  it("rejects when POL missing from origin scope (strict destination)", () => {
+    const origin = { members: [{ memberCode: "USNYC" }] };
+    const dest = { members: [{ memberCode: "USCHI" }] };
+    expect(mainLegPolPodMatch(origin, dest, "DEHAM", "USCHI")).toEqual({ ok: false, score: 0 });
+  });
+});
+
+describe("TARIFF_MAIN_LEG_RATE_TYPES", () => {
+  it("includes BASE_RATE and ALL_IN for main-leg selection", () => {
+    expect(TARIFF_MAIN_LEG_RATE_TYPES).toContain("BASE_RATE");
+    expect(TARIFF_MAIN_LEG_RATE_TYPES).toContain("ALL_IN");
+    expect(TARIFF_MAIN_LEG_RATE_TYPES).toHaveLength(2);
   });
 });
