@@ -36,7 +36,7 @@ npm run smoke:apihub
 APIHUB_SMOKE_BASE_URL="https://your-deployment.vercel.app" npm run smoke:apihub
 ```
 
-- [ ] **`smoke:apihub` exits 0** — checks `GET /api/apihub/health` (JSON), `GET /api/cron/apihub-mapping-analysis-jobs` without auth (**401**/**503** JSON error), `GET /apihub` (guided import shell), and `GET /apihub/workspace` (full workspace when signed in with **`org.apihub`**, otherwise the **API hub** access gate HTML).
+- [ ] **`smoke:apihub` exits 0** — checks `GET /api/apihub/health` (JSON body exactly **`ok`**, **`service`**=`apihub`, **`phase`** — no extra keys), `GET /api/cron/apihub-mapping-analysis-jobs` without auth (**401**/**503** JSON error), `GET /apihub` (guided import shell), and `GET /apihub/workspace` (full workspace when signed in with **`org.apihub`**, otherwise the **API hub** access gate HTML).
 - [ ] Optional: manually hit **`/apihub`** with a demo session and spot-check **Connectors**, **Ingestion runs**, **Alerts**, **Apply conflicts** (see [apply-operator-runbook.md](./apply-operator-runbook.md)).
 - [ ] When P3 ingestion **downstream** apply is in scope: confirm **`POST …/ingestion-jobs/:id/apply`** with **`target`** + grants matches [README](./README.md) / [apply-operator-runbook](./apply-operator-runbook.md) (dry-run, **`APPLY_DOWNSTREAM_FAILED`**, idempotency note).
 
