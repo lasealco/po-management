@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  STAGING_RAW_PAYLOAD_KEYS,
   TARIFF_IMPORT_PARSE_STATUSES,
   TARIFF_IMPORT_PARSE_STATUS_SET,
   TARIFF_IMPORT_REVIEW_STATUSES,
@@ -16,6 +17,16 @@ describe("parseStatusLabel", () => {
     expect(parseStatusLabel("PARSED_FAILED")).toBe("Parse failed");
   });
 
+  it("maps every declared parse status to a distinct human label", () => {
+    const labels = new Map<string, string>();
+    for (const s of TARIFF_IMPORT_PARSE_STATUSES) {
+      const label = parseStatusLabel(s);
+      expect(label.length).toBeGreaterThan(0);
+      expect(labels.has(label)).toBe(false);
+      labels.set(label, s);
+    }
+  });
+
   it("falls back to raw string for unknown values", () => {
     expect(parseStatusLabel("FUTURE_STATUS")).toBe("FUTURE_STATUS");
   });
@@ -27,8 +38,29 @@ describe("reviewStatusLabel", () => {
     expect(reviewStatusLabel("READY_TO_APPLY")).toBe("Ready to apply");
   });
 
+  it("maps every declared review status to a distinct human label", () => {
+    const labels = new Map<string, string>();
+    for (const s of TARIFF_IMPORT_REVIEW_STATUSES) {
+      const label = reviewStatusLabel(s);
+      expect(label.length).toBeGreaterThan(0);
+      expect(labels.has(label)).toBe(false);
+      labels.set(label, s);
+    }
+  });
+
   it("falls back to raw string for unknown values", () => {
     expect(reviewStatusLabel("UNKNOWN")).toBe("UNKNOWN");
+  });
+});
+
+describe("STAGING_RAW_PAYLOAD_KEYS", () => {
+  it("uses unique camelCase values aligned with property names", () => {
+    const entries = Object.entries(STAGING_RAW_PAYLOAD_KEYS);
+    const vals = Object.values(STAGING_RAW_PAYLOAD_KEYS);
+    expect(new Set(vals).size).toBe(vals.length);
+    for (const [prop, jsonKey] of entries) {
+      expect(jsonKey).toBe(prop);
+    }
   });
 });
 

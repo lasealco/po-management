@@ -10,4 +10,12 @@ describe("TariffRepoError", () => {
     expect(e.code).toBe("NOT_FOUND");
     expect(e.message).toBe("Missing row");
   });
+
+  it("supports all documented tariff error codes", () => {
+    const codes = ["NOT_FOUND", "BAD_INPUT", "TENANT_MISMATCH", "VERSION_FROZEN", "CONFLICT"] as const;
+    for (const code of codes) {
+      const e = new TariffRepoError(code, "x");
+      expect(e.code).toBe(code);
+    }
+  });
 });
