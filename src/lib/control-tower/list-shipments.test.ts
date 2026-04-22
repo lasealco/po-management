@@ -504,6 +504,40 @@ describe("listControlTowerShipments", () => {
     });
     where = shipmentFindMany.mock.calls[29]![0].where as Prisma.ShipmentWhereInput;
     expect(JSON.stringify(where)).toContain("POSTED");
+
+    await listControlTowerShipments({
+      tenantId: "tenant-1",
+      ctx: ctxInternal,
+      query: { q: "AWARDED" },
+    });
+    where = shipmentFindMany.mock.calls[30]![0].where as Prisma.ShipmentWhereInput;
+    const awardedDumped = JSON.stringify(where);
+    expect(awardedDumped).toContain("AWARDED");
+    expect(awardedDumped).toContain("quoteRequestRecipients");
+
+    await listControlTowerShipments({
+      tenantId: "tenant-1",
+      ctx: ctxInternal,
+      query: { q: "INVITED" },
+    });
+    where = shipmentFindMany.mock.calls[31]![0].where as Prisma.ShipmentWhereInput;
+    expect(JSON.stringify(where)).toContain("INVITED");
+
+    await listControlTowerShipments({
+      tenantId: "tenant-1",
+      ctx: ctxInternal,
+      query: { q: "SUBMITTED" },
+    });
+    where = shipmentFindMany.mock.calls[32]![0].where as Prisma.ShipmentWhereInput;
+    expect(JSON.stringify(where)).toContain("SUBMITTED");
+
+    await listControlTowerShipments({
+      tenantId: "tenant-1",
+      ctx: ctxInternal,
+      query: { q: "RECIPIENTS" },
+    });
+    where = shipmentFindMany.mock.calls[33]![0].where as Prisma.ShipmentWhereInput;
+    expect(JSON.stringify(where)).toContain("RECIPIENTS");
   });
 
   it("q enum token WARN matches severity on both ctAlerts and ctExceptions", async () => {

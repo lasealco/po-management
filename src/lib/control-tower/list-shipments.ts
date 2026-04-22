@@ -22,6 +22,10 @@ import {
   OutboundOrderStatus,
   PricingSnapshotSourceType,
   ProductDocumentKind,
+  QuoteClarificationVisibility,
+  QuoteRecipientInvitationStatus,
+  QuoteRequestStatus,
+  QuoteResponseStatus,
   SalesOrderStatus,
   ShipmentBookingStatus,
   ShipmentMilestoneCode,
@@ -573,6 +577,32 @@ export async function listControlTowerShipments(params: {
     const wmsBillingInvoiceStatusEnumMatch = (
       Object.values(WmsBillingInvoiceStatus) as WmsBillingInvoiceStatus[]
     ).filter((s) => s.toLowerCase() === qLower);
+    const quoteRequestStatusEnumMatch = (Object.values(QuoteRequestStatus) as QuoteRequestStatus[]).filter(
+      (s) => s.toLowerCase() === qLower,
+    );
+    const quoteRecipientInvitationStatusEnumMatch = (
+      Object.values(QuoteRecipientInvitationStatus) as QuoteRecipientInvitationStatus[]
+    ).filter((s) => s.toLowerCase() === qLower);
+    const quoteResponseStatusEnumMatch = (
+      Object.values(QuoteResponseStatus) as QuoteResponseStatus[]
+    ).filter((s) => s.toLowerCase() === qLower);
+    const quoteClarificationVisibilityEnumMatch = (
+      Object.values(QuoteClarificationVisibility) as QuoteClarificationVisibility[]
+    ).filter((s) => s.toLowerCase() === qLower);
+    /** RFQ rows hang off logistics/materials suppliers linked to the shipment, PO, or booking forwarder. */
+    const shipmentWhereForPartyQuoteRecipients = (
+      recipientPredicate: Prisma.QuoteRequestRecipientWhereInput,
+    ): Prisma.ShipmentWhereInput[] => [
+      { carrierSupplier: { is: { quoteRequestRecipients: { some: recipientPredicate } } } },
+      { order: { is: { supplier: { is: { quoteRequestRecipients: { some: recipientPredicate } } } } } },
+      {
+        booking: {
+          is: {
+            forwarderSupplier: { is: { quoteRequestRecipients: { some: recipientPredicate } } },
+          },
+        },
+      },
+    ];
     const enumTokenOr: Prisma.ShipmentWhereInput[] = [
       ...shipmentStatusEnumMatch.map((status) => ({ status })),
       ...transportModeEnumMatch.flatMap((mode) => [
@@ -753,7 +783,28 @@ export async function listControlTowerShipments(params: {
             },
           },
         },
+        ...shipmentWhereForPartyQuoteRecipients({
+          quoteRequest: { is: { transportMode } },
+        }),
       ]),
+      ...quoteRequestStatusEnumMatch.flatMap((status) =>
+        shipmentWhereForPartyQuoteRecipients({
+          quoteRequest: { is: { status } },
+        }),
+      ),
+      ...quoteRecipientInvitationStatusEnumMatch.flatMap((invitationStatus) =>
+        shipmentWhereForPartyQuoteRecipients({ invitationStatus }),
+      ),
+      ...quoteResponseStatusEnumMatch.flatMap((status) =>
+        shipmentWhereForPartyQuoteRecipients({
+          response: { is: { status } },
+        }),
+      ),
+      ...quoteClarificationVisibilityEnumMatch.flatMap((visibility) =>
+        shipmentWhereForPartyQuoteRecipients({
+          quoteRequest: { is: { clarifications: { some: { visibility } } } },
+        }),
+      ),
       ...splitProposalStatusEnumMatch.map((status) => ({
         order: {
           OR: [
