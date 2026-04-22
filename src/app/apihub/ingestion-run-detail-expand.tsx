@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { readApiHubErrorMessageFromJsonBody } from "@/lib/apihub/api-error";
+import { APIHUB_INGESTION_ERROR_STALE_RUNNING } from "@/lib/apihub/constants";
 import type { ApiHubIngestionRunDto } from "@/lib/apihub/ingestion-run-dto";
 
 import { ApiHubAdvancedJsonDisclosure } from "./apihub-advanced-json";
@@ -313,6 +314,19 @@ export function IngestionRunDetailExpand({ runId }: Props) {
               {run.errorCode && run.errorMessage ? " · " : null}
               {run.errorMessage ?? ""}
             </p>
+          ) : null}
+          {failed && run.errorCode === APIHUB_INGESTION_ERROR_STALE_RUNNING ? (
+            <div className="mt-3 rounded-xl border border-zinc-200 bg-zinc-50/90 p-3 text-xs leading-relaxed text-zinc-700 shadow-sm">
+              <p className="font-semibold text-zinc-900">Automatic stale reclaim</p>
+              <p className="mt-1.5">
+                The scheduled ApiHub worker marked this run failed after it stayed in{" "}
+                <span className="font-medium">Running</span> longer than{" "}
+                <span className="font-mono text-[11px]">APIHUB_INGESTION_RUN_STALE_RUNNING_MS</span> (default 24
+                hours, configurable up to 7 days). This is not necessarily an application bug. Use{" "}
+                <span className="font-mono text-[11px]">POST /api/apihub/ingestion-jobs/[id]/retry</span> when you are
+                ready for another attempt.
+              </p>
+            </div>
           ) : null}
           {succeeded ? (
             <ul className="mt-2 space-y-1 text-xs text-zinc-700">

@@ -58,4 +58,16 @@ describe("reclaimStaleApiHubIngestionRuns", () => {
     const call = updateManyMock.mock.calls[0]?.[0] as { where: { OR: unknown[] } };
     expect(call.where.OR[0]).toEqual({ startedAt: { lt: new Date(now.getTime() - 180_000) } });
   });
+
+  it("clamps APIHUB_INGESTION_RUN_STALE_RUNNING_MS to 7d cap", async () => {
+    process.env.APIHUB_INGESTION_RUN_STALE_RUNNING_MS = String(10 * 24 * 60 * 60 * 1000);
+    const { reclaimStaleApiHubIngestionRuns, APIHUB_INGESTION_RUN_STALE_RUNNING_MS_CAP } =
+      await import("./ingestion-run-stale-reclaim");
+    const now = new Date("2026-04-22T12:00:00.000Z");
+    await reclaimStaleApiHubIngestionRuns(now);
+    const call = updateManyMock.mock.calls[0]?.[0] as { where: { OR: unknown[] } };
+    expect(call.where.OR[0]).toEqual({
+      startedAt: { lt: new Date(now.getTime() - APIHUB_INGESTION_RUN_STALE_RUNNING_MS_CAP) },
+    });
+  });
 });

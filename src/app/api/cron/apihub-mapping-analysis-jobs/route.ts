@@ -15,8 +15,8 @@ export const dynamic = "force-dynamic";
  *
  * Optional query: `limit` (1–20 mapping-analysis jobs per sweep, default 5).
  *
- * Stale thresholds (milliseconds, each clamped 1m–24h): **`APIHUB_INGESTION_RUN_STALE_RUNNING_MS`** (default **24h**),
- * **`APIHUB_MAPPING_ANALYSIS_STALE_PROCESSING_MS`** (default **15m**).
+ * Stale thresholds: **`APIHUB_INGESTION_RUN_STALE_RUNNING_MS`** (ms, default **24h**, clamped **1m–7d**);
+ * **`APIHUB_MAPPING_ANALYSIS_STALE_PROCESSING_MS`** (ms, default **15m**, clamped **1m–24h**).
  *
  * Configure in `vercel.json` (Pro: sub-hourly; Hobby: may run at most once per day — still drains backlog when it fires).
  */
