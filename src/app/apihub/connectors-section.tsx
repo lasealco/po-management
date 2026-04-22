@@ -296,7 +296,9 @@ export function ConnectorsSection({ initialConnectors, canCreate }: Props) {
         <code className="rounded bg-zinc-100 px-1.5 py-0.5 font-mono">PATCH /api/apihub/connectors/:id</code> for status
         + sync timestamp updates with audit rows,{" "}
         <code className="rounded bg-zinc-100 px-1.5 py-0.5 font-mono">GET /api/apihub/connectors/:id/audit</code> for
-        paginated audit history.
+        paginated audit history,{" "}
+        <code className="rounded bg-zinc-100 px-1.5 py-0.5 font-mono">GET /api/apihub/connectors/:id/health</code> for
+        a lightweight readiness probe (no secrets).
       </p>
     </section>
   );
