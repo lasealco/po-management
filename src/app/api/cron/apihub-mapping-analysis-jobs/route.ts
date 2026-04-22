@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 
-
+import { acquireApiHubCronSweepLock } from "@/lib/apihub/apihub-cron-sweep-lock";
 import { reclaimStaleApiHubIngestionRuns } from "@/lib/apihub/ingestion-run-stale-reclaim";
 import { runApiHubMappingAnalysisWorkerSweep } from "@/lib/apihub/mapping-analysis-job-worker-sweep";
 
@@ -17,6 +17,9 @@ export const dynamic = "force-dynamic";
  *
  * Stale thresholds: **`APIHUB_INGESTION_RUN_STALE_RUNNING_MS`** (ms, default **24h**, clamped **1m–7d**);
  * **`APIHUB_MAPPING_ANALYSIS_STALE_PROCESSING_MS`** (ms, default **15m**, clamped **1m–24h**).
+ *
+ * Optional **Upstash Redis** (`UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`): mapping-analysis drain
+ * acquires a short-lived lock so overlapping cron invocations skip drain (response includes **`mappingSweepSkipped`**).
  *
  * Configure in `vercel.json` (Pro: sub-hourly; Hobby: may run at most once per day — still drains backlog when it fires).
  */
@@ -41,8 +44,27 @@ async function handleCron(request: Request) {
   }
 
   const reclaimedStaleIngestionRuns = await reclaimStaleApiHubIngestionRuns();
-  const summary = await runApiHubMappingAnalysisWorkerSweep(limit);
-  return NextResponse.json({ ok: true, reclaimedStaleIngestionRuns, ...summary });
+
+  const lock = await acquireApiHubCronSweepLock();
+  if (!lock.ok) {
+    return NextResponse.json({
+      ok: true,
+      reclaimedStaleIngestionRuns,
+      mappingSweepSkipped: lock.reason,
+    });
+  }
+
+  try {
+    const summary = await runApiHubMappingAnalysisWorkerSweep(limit);
+    return NextResponse.json({
+      ok: true,
+      reclaimedStaleIngestionRuns,
+      sweepLockMode: lock.mode,
+      ...summary,
+    });
+  } finally {
+    await lock.release();
+  }
 }
 
 export async function GET(request: Request) {

@@ -1,10 +1,15 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const sweepMock = vi.fn();
 const reclaimIngestionMock = vi.fn();
+const acquireLockMock = vi.fn();
 
 vi.mock("@/lib/apihub/ingestion-run-stale-reclaim", () => ({
   reclaimStaleApiHubIngestionRuns: reclaimIngestionMock,
+}));
+
+vi.mock("@/lib/apihub/apihub-cron-sweep-lock", () => ({
+  acquireApiHubCronSweepLock: acquireLockMock,
 }));
 
 vi.mock("@/lib/apihub/mapping-analysis-job-worker-sweep", () => ({
@@ -18,6 +23,10 @@ describe("GET /api/cron/apihub-mapping-analysis-jobs", () => {
   afterEach(() => {
     process.env.CRON_SECRET = prevSecret;
     vi.clearAllMocks();
+  });
+
+  beforeEach(() => {
+    acquireLockMock.mockResolvedValue({ ok: true, mode: "disabled", release: async () => {} });
   });
 
   it("returns 503 when CRON_SECRET is unset", async () => {
@@ -63,10 +72,35 @@ describe("GET /api/cron/apihub-mapping-analysis-jobs", () => {
       reclaimedStaleIngestionRuns: number;
       reclaimedStale: number;
       claimedAndFinished: number;
+      sweepLockMode?: string;
     };
     expect(body.ok).toBe(true);
     expect(body.reclaimedStaleIngestionRuns).toBe(1);
     expect(body.reclaimedStale).toBe(0);
     expect(body.claimedAndFinished).toBe(2);
+    expect(body.sweepLockMode).toBe("disabled");
+  });
+
+  it("skips mapping sweep when redis lock is busy", async () => {
+    process.env.CRON_SECRET = "secret-xyz";
+    reclaimIngestionMock.mockResolvedValue(2);
+    acquireLockMock.mockResolvedValue({ ok: false, reason: "redis_lock_busy" });
+    const { GET } = await import("./route");
+    const res = await GET(
+      new Request("http://localhost/api/cron/apihub-mapping-analysis-jobs", {
+        headers: { Authorization: "Bearer secret-xyz" },
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect(reclaimIngestionMock).toHaveBeenCalledTimes(1);
+    expect(sweepMock).not.toHaveBeenCalled();
+    const body = (await res.json()) as {
+      ok: boolean;
+      mappingSweepSkipped: string;
+      reclaimedStaleIngestionRuns: number;
+    };
+    expect(body.ok).toBe(true);
+    expect(body.mappingSweepSkipped).toBe("redis_lock_busy");
+    expect(body.reclaimedStaleIngestionRuns).toBe(2);
   });
 });

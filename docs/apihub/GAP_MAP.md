@@ -22,14 +22,14 @@
 | AI analysis job pipeline | ✅ | Heuristic + optional OpenAI; `outputProposal.llm`; **Save rules as template** via `POST /mapping-templates` + `sourceMappingAnalysisJobId`. Workspace **Recent jobs** list shows **created** time, **`failed`** **`errorMessage`** preview. |
 | Deterministic **apply** (ingestion run) | ✅ | **P3:** optional `target` + rows; `matchKey` + **`writeMode`** (`create_only` / **`upsert`**) for ref keys; SO/PO/CT writers; `targetSummary.updated` when upsert; 409 `APPLY_DOWNSTREAM_FAILED` on failure |
 | Staging **apply** (domain) | ✅ | SO/PO/CT audit from mapped rows; cross-grants `org.orders` / `org.controltower` |
-| Background workers | 🟡 | **Cron** `GET/POST /api/cron/apihub-mapping-analysis-jobs` (Bearer `CRON_SECRET`, `vercel.json` every **10m** UTC on Pro): fails stale **`running`** ingestion runs → **`failed`** (`STALE_RUNNING`, `APIHUB_INGESTION_RUN_STALE_RUNNING_MS`, default 24h, cap 7d) so **`POST …/retry`** applies; **reclaims** stale mapping-analysis **`processing`** → **`queued`** (`APIHUB_MAPPING_ANALYSIS_STALE_PROCESSING_MS`); drains mapping-analysis **`queued`** via `processApiHubMappingAnalysisJob`. Mapping jobs also use `after()` on create. No Redis queue. |
+| Background workers | 🟡 | **Cron** `GET/POST /api/cron/apihub-mapping-analysis-jobs` (Bearer `CRON_SECRET`, `vercel.json` every **10m** UTC on Pro): fails stale **`running`** ingestion runs → **`failed`** (`STALE_RUNNING`, …); **reclaims** stale mapping-analysis **`processing`** → **`queued`**; drains **`queued`** via **`FOR UPDATE SKIP LOCKED`** claim + **`executeApiHubMappingAnalysisJobForClaimedRow`** (parallelism **`APIHUB_MAPPING_ANALYSIS_WORKER_PARALLEL`**, default **1**, max **5**). Optional **Upstash Redis** (`UPSTASH_REDIS_REST_URL` + token): mapping drain skips when lock busy (`mappingSweepSkipped`). `after()` + **`POST …/process`** still use `processApiHubMappingAnalysisJob`. |
 
 ## Residual (from closeout, condensed)
 
 | ID | Status |
 |----|--------|
 | R1 Demo vs org RBAC | 🟡 **`org.apihub`** shipped; still demo tenant + actor for data scope |
-| R2 Workers | 🟡 **ApiHub cron** (mapping-analysis drain + stale **`processing`** reclaim + stale **`running`** ingestion reclaim). **Full ETL** / Redis still out of scope. |
+| R2 Workers | 🟡 **ApiHub cron** + optional **Redis** sweep lock + Postgres **SKIP LOCKED** multi-worker drain; **full ETL** / durable Redis job stream still out of scope. |
 | R3 Ingestion apply → downstream | ✅ Shared writers + documented policy | [downstream-apply-semantics.md](./downstream-apply-semantics.md) — staging create-only (`ignore` ref policies); ingestion `matchKey` / `writeMode` / PO `purchaseOrderLineMerge`; runbook PO wording aligned with code (**2026-04-22**). |
 | R5 Batch/staging tables | ✅ Shipped |
 

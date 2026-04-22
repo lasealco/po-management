@@ -18,6 +18,11 @@ type StoredInputPayload = {
   note?: unknown;
 };
 
+type JobCoreRow = {
+  id: string;
+  inputPayload: Prisma.JsonValue;
+};
+
 function parseJobInputPayload(raw: unknown): { records: unknown[]; targetFields: string[] | null } {
   if (!raw || typeof raw !== "object") {
     throw new Error("Invalid job payload.");
@@ -47,26 +52,8 @@ function finalizeRulesOrThrow(rules: unknown[]): { rules: ReturnType<typeof norm
   return { rules: normalized.rules };
 }
 
-/**
- * Claims a queued job (tenant-scoped), runs LLM (if configured) then deterministic heuristic fallback, persists outcome.
- * @returns `true` if this invocation claimed the job and ran it to success or failed status; `false` if the job was not queued (race / already processed).
- */
-export async function processApiHubMappingAnalysisJob(jobId: string, tenantId: string): Promise<boolean> {
-  const claimed = await prisma.apiHubMappingAnalysisJob.updateMany({
-    where: { id: jobId, tenantId, status: "queued" },
-    data: { status: "processing", startedAt: new Date() },
-  });
-  if (claimed.count === 0) {
-    return false;
-  }
-
-  const job = await prisma.apiHubMappingAnalysisJob.findFirst({
-    where: { id: jobId, tenantId },
-  });
-  if (!job) {
-    return false;
-  }
-
+async function runApiHubMappingAnalysisJobCore(job: JobCoreRow): Promise<void> {
+  const jobId = job.id;
   try {
     const { records, targetFields } = parseJobInputPayload(job.inputPayload);
 
@@ -150,7 +137,6 @@ export async function processApiHubMappingAnalysisJob(jobId: string, tenantId: s
         errorMessage: null,
       },
     });
-    return true;
   } catch (e) {
     const message = e instanceof Error ? e.message : "Analysis failed.";
     await prisma.apiHubMappingAnalysisJob.update({
@@ -162,6 +148,46 @@ export async function processApiHubMappingAnalysisJob(jobId: string, tenantId: s
         outputProposal: Prisma.DbNull,
       },
     });
-    return true;
   }
+}
+
+/**
+ * Runs analysis for a row already in **`processing`** (e.g. claimed via {@link claimNextQueuedApiHubMappingAnalysisJob}).
+ * @returns `false` if no matching **`processing`** job exists.
+ */
+export async function executeApiHubMappingAnalysisJobForClaimedRow(jobId: string, tenantId: string): Promise<boolean> {
+  const job = await prisma.apiHubMappingAnalysisJob.findFirst({
+    where: { id: jobId, tenantId, status: "processing" },
+    select: { id: true, inputPayload: true },
+  });
+  if (!job) {
+    return false;
+  }
+  await runApiHubMappingAnalysisJobCore(job);
+  return true;
+}
+
+/**
+ * Claims a queued job (tenant-scoped), runs LLM (if configured) then deterministic heuristic fallback, persists outcome.
+ * @returns `true` if this invocation claimed the job and ran it to success or failed status; `false` if the job was not queued (race / already processed).
+ */
+export async function processApiHubMappingAnalysisJob(jobId: string, tenantId: string): Promise<boolean> {
+  const claimed = await prisma.apiHubMappingAnalysisJob.updateMany({
+    where: { id: jobId, tenantId, status: "queued" },
+    data: { status: "processing", startedAt: new Date() },
+  });
+  if (claimed.count === 0) {
+    return false;
+  }
+
+  const job = await prisma.apiHubMappingAnalysisJob.findFirst({
+    where: { id: jobId, tenantId },
+    select: { id: true, inputPayload: true },
+  });
+  if (!job) {
+    return false;
+  }
+
+  await runApiHubMappingAnalysisJobCore(job);
+  return true;
 }

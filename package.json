@@ -62,6 +62,7 @@
   "dependencies": {
     "@prisma/adapter-pg": "^7.7.0",
     "@prisma/client": "^7.7.0",
+    "@upstash/redis": "^1.37.0",
     "@vercel/blob": "^2.3.3",
     "leaflet": "^1.9.4",
     "next": "16.2.2",

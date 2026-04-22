@@ -42,6 +42,19 @@ const checks = [
     },
   },
   {
+    key: "apihub_cron_unauthenticated",
+    url: "/api/cron/apihub-mapping-analysis-jobs",
+    accept: "application/json",
+    asJson: true,
+    /** Cron without `Authorization` should be rejected or unavailable (no `CRON_SECRET` locally). */
+    allowStatuses: [401, 503],
+    validate: (body, status) =>
+      (status === 401 || status === 503) &&
+      typeof body === "object" &&
+      body != null &&
+      typeof body.error === "string",
+  },
+  {
     key: "apihub_workspace_page",
     url: "/apihub/workspace",
     accept: "text/html",
@@ -118,9 +131,14 @@ async function main() {
       const result = await fetchStep(check);
       step.status = result.status;
       step.durationMs = result.durationMs;
-      if (!result.ok) {
+      const allowed = check.allowStatuses;
+      const statusAccepted =
+        Array.isArray(allowed) && allowed.length > 0
+          ? allowed.includes(result.status)
+          : result.ok;
+      if (!statusAccepted) {
         step.error = `HTTP_${result.status}`;
-      } else if (!check.validate(result.body)) {
+      } else if (!check.validate(result.body, result.status)) {
         step.error = "RESPONSE_SHAPE_INVALID";
       } else {
         step.ok = true;

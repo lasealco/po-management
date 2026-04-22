@@ -69,7 +69,7 @@ Authoritative guard semantics: [permissions-matrix.md](./permissions-matrix.md).
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| `GET`, `POST` | `/api/cron/apihub-mapping-analysis-jobs` | **Bearer `CRON_SECRET`** (same as Control Tower crons). Fails stale **`running`** ingestion runs (**`APIHUB_INGESTION_RUN_STALE_RUNNING_MS`**, default **24h**, clamped 1m–**7d**) with **`STALE_RUNNING`** so **`POST …/ingestion-jobs/:id/retry`** applies; **reclaims** stale **`processing`** mapping-analysis jobs (**`APIHUB_MAPPING_ANALYSIS_STALE_PROCESSING_MS`**); then drains oldest **`queued`** mapping-analysis jobs via `processApiHubMappingAnalysisJob` (default batch **`limit=5`**, max **20**, optional `?limit=`). Root **`vercel.json`**: `*/10 * * * *` UTC (Pro); Hobby may run less often. |
+| `GET`, `POST` | `/api/cron/apihub-mapping-analysis-jobs` | **Bearer `CRON_SECRET`**. Fails stale **`running`** ingestion runs; **reclaims** stale **`processing`** mapping-analysis jobs; drains **`queued`** jobs with a Postgres **`SKIP LOCKED`** claim (parallelism **`APIHUB_MAPPING_ANALYSIS_WORKER_PARALLEL`**, default **1**, max **5**; batch **`limit`** default **5**, max **20**). Optional **Upstash** (`UPSTASH_REDIS_REST_URL` + token): skips mapping drain when **`mappingSweepSkipped: redis_lock_busy`**. Root **`vercel.json`**: `*/10 * * * *` UTC (Pro). |
 
 ### Staging batches (persisted preview rows)
 

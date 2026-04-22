@@ -31,8 +31,8 @@ Constants and guards: `src/lib/apihub/constants.ts` (`apiHubIngestionUpsertAllow
 
 When policy is **`upsert`** and **`externalRef`** is present:
 
-- If a SO exists for **tenant + `externalRef`**, the row **updates** that SO (no second row). Updatable fields when present on the mapped record: **`customerCrmAccountId`** (CRM account must exist), **`requestedDeliveryDate`**, **`notes`** (string or null). Uses partial key presence (`hasMappedKey`) so omitted keys are not cleared.
-- If none exists, behavior matches **create**: **`customerCrmAccountId`** required, optional `soNumber`, `requestedDeliveryDate`, `notes`, `externalRef`.
+- If a SO exists for **tenant + `externalRef`**, the row **updates** that SO (no second row). Updatable fields when present on the mapped record: **`customerCrmAccountId`** (CRM account must exist), **`requestedDeliveryDate`**, **`requestedShipDate`**, **`currency`** (3-letter ISO; `null` → **USD**), **`notes`** (string or null). Uses partial key presence (`hasMappedKey`) so omitted keys are not cleared.
+- If none exists, behavior matches **create**: **`customerCrmAccountId`** required, optional `soNumber`, `requestedDeliveryDate`, `requestedShipDate`, `currency`, `notes`, `externalRef`.
 
 If **`externalRef`** is missing on the row, upsert path does not match; create path runs and **`customerCrmAccountId`** is required.
 
@@ -41,8 +41,8 @@ If **`externalRef`** is missing on the row, upsert path does not match; create p
 When policy is **`upsert`** and **`buyerReference`** is present:
 
 - **`purchaseOrderLineMerge`** (optional, default **`merge_by_line_no`**): only valid for PO + buyer ref + upsert.
-  - **`merge_by_line_no`**: for each row, upsert **one line** by **`lineNo`** on the existing PO; update header fields when keys present (`title`, `supplierId` must match or update header supplier, `requestedDeliveryDate`). Totals recomputed from items.
-  - **`replace_all`**: rows are **grouped by `buyerReference`**. For each group, **all lines** on the matched PO are deleted and recreated from **all rows in that group** in one step. Every row in the group must share the same **`supplierId`**; **`replace_all`** cannot mix suppliers.
+  - **`merge_by_line_no`**: for each row, upsert **one line** by **`lineNo`** on the existing PO; update header fields when keys present (`title`, `supplierId` must match or update header supplier, `requestedDeliveryDate`, plus optional scalars: **`currency`**, **`supplierReference`**, **`paymentTermsDays`** / **`paymentTermsLabel`**, **`incoterm`**, **`shipTo*`** address fields, **`internalNotes`**, **`notesToSupplier`**). Totals recomputed from items.
+  - **`replace_all`**: rows are **grouped by `buyerReference`**. For each group, **all lines** on the matched PO are deleted and recreated from **all rows in that group** in one step. Every row in the group must share the same **`supplierId`**; **`replace_all`** cannot mix suppliers. The same optional PO header scalars apply when patching the matched PO (first row of the group supplies header hints on create/update paths).
 
 When no PO exists for **`buyerReference`**, the row (or group) **creates** a new PO with workflow defaults.
 

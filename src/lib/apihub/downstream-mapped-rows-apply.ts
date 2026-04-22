@@ -60,6 +60,111 @@ function hasMappedKey(rec: Record<string, unknown>, key: string): boolean {
   return Object.prototype.hasOwnProperty.call(rec, key);
 }
 
+/** `null` clears to **USD** for optional currency patches (ingestion apply). */
+function readIso4217CurrencyField(raw: unknown, fieldLabel: string): string | { error: string } {
+  if (raw === null) {
+    return "USD";
+  }
+  if (typeof raw !== "string") {
+    return { error: `${fieldLabel} must be a string or null.` };
+  }
+  const u = raw.trim().toUpperCase();
+  if (!u) {
+    return { error: `${fieldLabel} cannot be empty when provided.` };
+  }
+  if (!/^[A-Z]{3}$/.test(u)) {
+    return { error: `${fieldLabel} must be a 3-letter ISO code.` };
+  }
+  return u;
+}
+
+/**
+ * Optional PO header scalars for ingestion apply (create + upsert). Mutates **`target`**.
+ * @returns operator-visible error or `null` when ok.
+ */
+function appendPurchaseOrderHeaderScalarsFromRecord(
+  rec: Record<string, unknown>,
+  target: Prisma.PurchaseOrderUpdateInput,
+): string | null {
+  if (hasMappedKey(rec, "currency")) {
+    const r = readIso4217CurrencyField(rec["currency"], "currency");
+    if (typeof r === "object") {
+      return r.error;
+    }
+    target.currency = r;
+  }
+  if (hasMappedKey(rec, "supplierReference")) {
+    target.supplierReference = readStr(rec, "supplierReference");
+  }
+  if (hasMappedKey(rec, "paymentTermsDays")) {
+    const v = rec["paymentTermsDays"];
+    if (v === null) {
+      target.paymentTermsDays = null;
+    } else {
+      const n = readNum(rec, "paymentTermsDays");
+      if (n == null || !Number.isInteger(n) || n < 0) {
+        return "paymentTermsDays must be a non-negative integer or null.";
+      }
+      target.paymentTermsDays = n;
+    }
+  }
+  if (hasMappedKey(rec, "paymentTermsLabel")) {
+    target.paymentTermsLabel = readStr(rec, "paymentTermsLabel");
+  }
+  if (hasMappedKey(rec, "incoterm")) {
+    target.incoterm = readStr(rec, "incoterm");
+  }
+  if (hasMappedKey(rec, "shipToName")) {
+    target.shipToName = readStr(rec, "shipToName");
+  }
+  if (hasMappedKey(rec, "shipToLine1")) {
+    target.shipToLine1 = readStr(rec, "shipToLine1");
+  }
+  if (hasMappedKey(rec, "shipToLine2")) {
+    target.shipToLine2 = readStr(rec, "shipToLine2");
+  }
+  if (hasMappedKey(rec, "shipToCity")) {
+    target.shipToCity = readStr(rec, "shipToCity");
+  }
+  if (hasMappedKey(rec, "shipToRegion")) {
+    target.shipToRegion = readStr(rec, "shipToRegion");
+  }
+  if (hasMappedKey(rec, "shipToPostalCode")) {
+    target.shipToPostalCode = readStr(rec, "shipToPostalCode");
+  }
+  if (hasMappedKey(rec, "shipToCountryCode")) {
+    const c = readStr(rec, "shipToCountryCode");
+    if (c == null) {
+      target.shipToCountryCode = null;
+    } else if (!/^[A-Za-z]{2}$/.test(c)) {
+      return "shipToCountryCode must be exactly two letters (ISO 3166-1 alpha-2).";
+    } else {
+      target.shipToCountryCode = c.toUpperCase();
+    }
+  }
+  if (hasMappedKey(rec, "internalNotes")) {
+    const v = rec["internalNotes"];
+    if (v === null) {
+      target.internalNotes = null;
+    } else if (typeof v === "string") {
+      target.internalNotes = v.trim() || null;
+    } else {
+      return "internalNotes must be a string or null.";
+    }
+  }
+  if (hasMappedKey(rec, "notesToSupplier")) {
+    const v = rec["notesToSupplier"];
+    if (v === null) {
+      target.notesToSupplier = null;
+    } else if (typeof v === "string") {
+      target.notesToSupplier = v.trim() || null;
+    } else {
+      return "notesToSupplier must be a string or null.";
+    }
+  }
+  return null;
+}
+
 async function recomputePurchaseOrderTotalsFromItems(
   tx: Prisma.TransactionClient,
   orderId: string,
@@ -291,6 +396,21 @@ async function applySalesOrderRowLive(
           return { rowIndex: row.rowIndex, ok: false, error: "notes must be a string or null." };
         }
       }
+      if (hasMappedKey(rec, "requestedShipDate")) {
+        const raw = readStr(rec, "requestedShipDate");
+        const requestedShipDate = raw ? new Date(raw) : null;
+        if (requestedShipDate && Number.isNaN(requestedShipDate.getTime())) {
+          return { rowIndex: row.rowIndex, ok: false, error: "Invalid requestedShipDate." };
+        }
+        data.requestedShipDate = requestedShipDate;
+      }
+      if (hasMappedKey(rec, "currency")) {
+        const r = readIso4217CurrencyField(rec["currency"], "currency");
+        if (typeof r === "object") {
+          return { rowIndex: row.rowIndex, ok: false, error: r.error };
+        }
+        data.currency = r;
+      }
       if (Object.keys(data).length > 0) {
         await tx.salesOrder.update({
           where: { id: existing.id },
@@ -329,7 +449,20 @@ async function applySalesOrderRowLive(
   if (requestedDeliveryDate && Number.isNaN(requestedDeliveryDate.getTime())) {
     return { rowIndex: row.rowIndex, ok: false, error: "Invalid requestedDeliveryDate." };
   }
+  const rsdRaw = readStr(rec, "requestedShipDate");
+  const requestedShipDate = rsdRaw ? new Date(rsdRaw) : null;
+  if (requestedShipDate && Number.isNaN(requestedShipDate.getTime())) {
+    return { rowIndex: row.rowIndex, ok: false, error: "Invalid requestedShipDate." };
+  }
   const notesVal = readStr(rec, "notes");
+  let soCurrency = "USD";
+  if (hasMappedKey(rec, "currency")) {
+    const r = readIso4217CurrencyField(rec["currency"], "currency");
+    if (typeof r === "object") {
+      return { rowIndex: row.rowIndex, ok: false, error: r.error };
+    }
+    soCurrency = r;
+  }
 
   if (externalRefPolicy === "reject_duplicate" && externalRef) {
     try {
@@ -351,6 +484,8 @@ async function applySalesOrderRowLive(
       customerCrmAccountId: account.id,
       externalRef,
       requestedDeliveryDate,
+      requestedShipDate,
+      currency: soCurrency,
       notes: notesVal,
       createdById: actorUserId,
       status: "DRAFT",
@@ -455,6 +590,10 @@ async function applyPoBuyerRefReplaceAllGroup(
       }
       header.requestedDeliveryDate = requestedDeliveryDate;
     }
+    const herr = appendPurchaseOrderHeaderScalarsFromRecord(firstRec, header);
+    if (herr) {
+      return sorted.map((row) => ({ rowIndex: row.rowIndex, ok: false, error: herr }));
+    }
     await tx.purchaseOrder.update({
       where: { id: existing.id },
       data: {
@@ -501,6 +640,12 @@ async function applyPoBuyerRefReplaceAllGroup(
   const tax = subtotal * 0.08;
   const total = subtotal + tax;
 
+  const poHeaderPatch: Prisma.PurchaseOrderUpdateInput = {};
+  const phErr = appendPurchaseOrderHeaderScalarsFromRecord(firstRec, poHeaderPatch);
+  if (phErr) {
+    return sorted.map((row) => ({ rowIndex: row.rowIndex, ok: false, error: phErr }));
+  }
+
   const created = await tx.purchaseOrder.create({
     data: {
       tenantId,
@@ -526,6 +671,7 @@ async function applyPoBuyerRefReplaceAllGroup(
           lineTotal: p.lineTotal,
         })),
       },
+      ...(poHeaderPatch as object),
     },
     select: { id: true },
   });
@@ -662,6 +808,10 @@ async function applyPurchaseOrderRowLive(
         }
         header.requestedDeliveryDate = rdd;
       }
+      const herr = appendPurchaseOrderHeaderScalarsFromRecord(rec, header);
+      if (herr) {
+        return { rowIndex: row.rowIndex, ok: false, error: herr };
+      }
       await tx.purchaseOrder.update({
         where: { id: existing.id },
         data: header,
@@ -692,6 +842,11 @@ async function applyPurchaseOrderRowLive(
 
   const { workflowId, statusId } = await loadDefaultWorkflowStart(tx, tenantId);
   const orderNumber = readStr(rec, "orderNumber") || (await nextOrderNumberInTx(tx, tenantId));
+  const poHeaderPatch: Prisma.PurchaseOrderUpdateInput = {};
+  const phErr = appendPurchaseOrderHeaderScalarsFromRecord(rec, poHeaderPatch);
+  if (phErr) {
+    return { rowIndex: row.rowIndex, ok: false, error: phErr };
+  }
   const created = await tx.purchaseOrder.create({
     data: {
       tenantId,
@@ -719,6 +874,7 @@ async function applyPurchaseOrderRowLive(
           },
         ],
       },
+      ...(poHeaderPatch as object),
     },
     select: { id: true },
   });

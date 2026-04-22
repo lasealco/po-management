@@ -1,10 +1,15 @@
-import { processApiHubMappingAnalysisJob } from "@/lib/apihub/mapping-analysis-job-process";
+import { claimNextQueuedApiHubMappingAnalysisJob } from "@/lib/apihub/mapping-analysis-job-claim";
+import { executeApiHubMappingAnalysisJobForClaimedRow } from "@/lib/apihub/mapping-analysis-job-process";
 import { prisma } from "@/lib/prisma";
 
 /** Default jobs attempted per cron invocation (each may no-op if lost a claim race). */
 export const APIHUB_MAPPING_ANALYSIS_WORKER_DEFAULT_LIMIT = 5;
 /** Hard cap per invocation to bound LLM / CPU time in one HTTP request. */
 export const APIHUB_MAPPING_ANALYSIS_WORKER_MAX_LIMIT = 20;
+/** Default concurrent drain tasks when **`APIHUB_MAPPING_ANALYSIS_WORKER_PARALLEL`** is unset. */
+export const APIHUB_MAPPING_ANALYSIS_WORKER_PARALLEL_DEFAULT = 1;
+/** Hard cap on parallel workers (each runs an independent claim + execute). */
+export const APIHUB_MAPPING_ANALYSIS_WORKER_PARALLEL_MAX = 5;
 
 /** Default age after which `processing` jobs are reset to `queued` (serverless crash / timeout). */
 export const APIHUB_MAPPING_ANALYSIS_STALE_PROCESSING_MS_DEFAULT = 15 * 60 * 1000;
@@ -21,6 +26,18 @@ function readStaleProcessingMs(): number {
     return APIHUB_MAPPING_ANALYSIS_STALE_PROCESSING_MS_DEFAULT;
   }
   return Math.min(STALE_MS_MAX, Math.max(STALE_MS_MIN, Math.floor(n)));
+}
+
+function readWorkerParallelism(): number {
+  const raw = process.env.APIHUB_MAPPING_ANALYSIS_WORKER_PARALLEL;
+  if (raw == null || String(raw).trim() === "") {
+    return APIHUB_MAPPING_ANALYSIS_WORKER_PARALLEL_DEFAULT;
+  }
+  const n = Number(raw);
+  if (!Number.isFinite(n)) {
+    return APIHUB_MAPPING_ANALYSIS_WORKER_PARALLEL_DEFAULT;
+  }
+  return Math.min(APIHUB_MAPPING_ANALYSIS_WORKER_PARALLEL_MAX, Math.max(1, Math.floor(n)));
 }
 
 /**
@@ -49,12 +66,14 @@ export async function reclaimStaleApiHubMappingAnalysisJobs(now?: Date): Promise
 export type ApiHubMappingAnalysisWorkerSweepResult = {
   /** Jobs reset from stale `processing` → `queued` before draining the queue. */
   reclaimedStale: number;
-  /** Jobs for which `processApiHubMappingAnalysisJob` returned `true` (claimed and finished). */
+  /** Jobs for which execute returned `true` (processing row found and finished). */
   claimedAndFinished: number;
-  /** Jobs we attempted (`findFirst` returned queued); includes races where claim was lost. */
+  /** Jobs we attempted (claimed a row); includes races where execute returned false (should be rare). */
   attempts: number;
-  /** Job ids passed to `process` in order (for observability). */
+  /** Job ids passed to execute in order (for observability). */
   jobIdsTried: string[];
+  /** Effective parallelism for this run (`APIHUB_MAPPING_ANALYSIS_WORKER_PARALLEL`). */
+  parallel: number;
 };
 
 function clampWorkerLimit(raw: number | undefined): number {
@@ -63,34 +82,48 @@ function clampWorkerLimit(raw: number | undefined): number {
 }
 
 /**
- * R2 — drain **queued** mapping analysis jobs (oldest first). Uses the same processor as `after()` and
- * `POST …/process`; atomic claim inside `processApiHubMappingAnalysisJob` avoids double execution.
+ * R2 — drain **queued** mapping analysis jobs (oldest first). Uses {@link claimNextQueuedApiHubMappingAnalysisJob}
+ * (`FOR UPDATE SKIP LOCKED`) plus {@link executeApiHubMappingAnalysisJobForClaimedRow} so concurrent workers never
+ * double-process the same job. Optional parallelism: **`APIHUB_MAPPING_ANALYSIS_WORKER_PARALLEL`** (default **1**, max **5**).
  */
 export async function runApiHubMappingAnalysisWorkerSweep(
   limit?: number,
 ): Promise<ApiHubMappingAnalysisWorkerSweepResult> {
   const reclaimedStale = await reclaimStaleApiHubMappingAnalysisJobs();
   const cap = clampWorkerLimit(limit);
+  const parallel = readWorkerParallelism();
   const jobIdsTried: string[] = [];
   let claimedAndFinished = 0;
   let attempts = 0;
 
-  for (let i = 0; i < cap; i++) {
-    const next = await prisma.apiHubMappingAnalysisJob.findFirst({
-      where: { status: "queued" },
-      orderBy: { createdAt: "asc" },
-      select: { id: true, tenantId: true },
-    });
-    if (!next) {
-      break;
+  while (attempts < cap) {
+    const batchSize = Math.min(parallel, cap - attempts);
+    const outcomes = await Promise.all(
+      Array.from({ length: batchSize }, async () => {
+        const row = await claimNextQueuedApiHubMappingAnalysisJob();
+        if (!row) {
+          return null;
+        }
+        const ran = await executeApiHubMappingAnalysisJobForClaimedRow(row.id, row.tenantId);
+        return { id: row.id, ran };
+      }),
+    );
+
+    let anyClaim = false;
+    for (const o of outcomes) {
+      if (!o) continue;
+      anyClaim = true;
+      attempts += 1;
+      jobIdsTried.push(o.id);
+      if (o.ran) {
+        claimedAndFinished += 1;
+      }
     }
-    attempts += 1;
-    jobIdsTried.push(next.id);
-    const ran = await processApiHubMappingAnalysisJob(next.id, next.tenantId);
-    if (ran) {
-      claimedAndFinished += 1;
+
+    if (!anyClaim) {
+      break;
     }
   }
 
-  return { reclaimedStale, claimedAndFinished, attempts, jobIdsTried };
+  return { reclaimedStale, claimedAndFinished, attempts, jobIdsTried, parallel };
 }

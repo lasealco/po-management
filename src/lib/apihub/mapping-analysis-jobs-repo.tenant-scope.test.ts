@@ -40,4 +40,22 @@ describe("mapping-analysis-jobs-repo tenant scoping", () => {
       select: expect.any(Object) as unknown,
     });
   });
+
+  it("uses distinct tenant ids in where clauses (non–demo tenant safe)", async () => {
+    findFirst.mockResolvedValue(null);
+    findMany.mockResolvedValue([]);
+    const { getApiHubMappingAnalysisJob, listApiHubMappingAnalysisJobs } = await import("./mapping-analysis-jobs-repo");
+    await getApiHubMappingAnalysisJob({ tenantId: "tenant-prod-99", jobId: "j1" });
+    await listApiHubMappingAnalysisJobs({ tenantId: "tenant-prod-99", limit: 10 });
+    expect(findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "j1", tenantId: "tenant-prod-99" },
+      }),
+    );
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { tenantId: "tenant-prod-99" },
+      }),
+    );
+  });
 });
