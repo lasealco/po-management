@@ -30,7 +30,7 @@
 |----|--------|
 | R1 Demo vs org RBAC | 🟡 **`org.apihub`** shipped; still demo tenant + actor for data scope |
 | R2 Workers | 🟡 No queue ETL |
-| R3 Ingestion apply → downstream | 🟡 Staging + ingestion **live apply** share row writers; full “upsert / merge” policy still TBD (P4) |
+| R3 Ingestion apply → downstream | ✅ Shared writers + documented policy | [downstream-apply-semantics.md](./downstream-apply-semantics.md) — staging create-only (`ignore` ref policies); ingestion `matchKey` / `writeMode` / PO `purchaseOrderLineMerge`; runbook PO wording aligned with code (**2026-04-22**). |
 | R5 Batch/staging tables | ✅ Shipped |
 
 ## Near-term build order

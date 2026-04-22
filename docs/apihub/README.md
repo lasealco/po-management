@@ -19,6 +19,7 @@ This folder is the **documentation home** for **integration / ingestion APIs and
 | [TENANT_SCOPING.md](./TENANT_SCOPING.md) | **Slice 61:** Tenant isolation — repo inventory + scoped mutation patterns |
 | [ACTOR_ATTRIBUTION.md](./ACTOR_ATTRIBUTION.md) | **Slice 62:** Actor id on audit rows and in JSON metadata where exports need it |
 | [AUDIT_SCHEMA.md](./AUDIT_SCHEMA.md) | **Slice 63:** Canonical `action` strings and ingestion-run audit `metadata` envelope |
+| [downstream-apply-semantics.md](./downstream-apply-semantics.md) | **R3:** Staging vs ingestion downstream apply — `matchKey`, `writeMode`, PO line merge, atomicity |
 
 **Gap map (spec ↔ code):** [GAP_MAP.md](./GAP_MAP.md)
 
@@ -70,7 +71,7 @@ Authoritative guard semantics: [permissions-matrix.md](./permissions-matrix.md).
 |--------|------|---------|
 | `GET`, `POST` | `/api/apihub/staging-batches` | List recent batches / create from **`mappingAnalysisJobId`** (succeeded job only; row cap server-side). |
 | `GET` | `/api/apihub/staging-batches/:batchId` | Batch metadata + rows (`rowLimit` query). |
-| `POST` | `/api/apihub/staging-batches/:batchId/apply` | Apply **open** batch rows to downstream modules: JSON `{ target: "sales_order" \| "purchase_order" \| "control_tower_audit", dryRun?: boolean }`. Requires **`org.apihub` → edit** plus **`org.orders` → edit** (SO/PO targets) or **`org.controltower` → edit** (CT audit). **SO** rows need `mappedRecord.customerCrmAccountId` (+ optional `soNumber`, `externalRef`, `requestedDeliveryDate`). **PO** rows need `supplierId`, `productId`, `quantity`, `unitPrice` (+ optional line/title/buyer refs). **CT audit** rows optionally set `mappedRecord.shipmentId` (must exist). Live apply sets batch **`promoted`** and **`appliedAt`**. |
+| `POST` | `/api/apihub/staging-batches/:batchId/apply` | Apply **open** batch rows to downstream modules: JSON `{ target: "sales_order" \| "purchase_order" \| "control_tower_audit", dryRun?: boolean }`. Requires **`org.apihub` → edit** plus **`org.orders` → edit** (SO/PO targets) or **`org.controltower` → edit** (CT audit). **Staging stays create-only** for SO/PO (no `matchKey` / `upsert`): duplicate `externalRef` / `buyerReference` are **not** pre-checked. **SO** rows need `mappedRecord.customerCrmAccountId` (+ optional `soNumber`, `externalRef`, `requestedDeliveryDate`). **PO** rows need `supplierId`, `productId`, `quantity`, `unitPrice` (+ optional line/title/buyer refs). **CT audit** rows optionally set `mappedRecord.shipmentId` (must exist). Live apply sets batch **`promoted`** and **`appliedAt`**. See [downstream-apply-semantics.md](./downstream-apply-semantics.md). |
 | `POST` | `/api/apihub/staging-batches/:batchId/discard` | Mark an **open** batch that was **never applied** as **`discarded`** (operator cleanup). **409** if already promoted/applied. |
 
 **Prisma:** `ApiHubMappingAnalysisJob` (`20260430120000_apihub_mapping_analysis_job`); `ApiHubStagingBatch`, `ApiHubStagingRow` (`20260430140000_apihub_staging_batch`, `20260430150000_apihub_staging_batch_apply` for `appliedAt` / `applySummary`).

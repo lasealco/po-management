@@ -23,6 +23,10 @@ function stagingEntityToMapped(row: ApiHubStagingRowEntity): ApiHubMappedApplyRo
   };
 }
 
+/**
+ * Applies staging rows downstream. SO/PO ref policies are fixed to **`ignore`** (create-only; no upsert).
+ * See `docs/apihub/downstream-apply-semantics.md`.
+ */
 export async function applyApiHubStagingBatchToDownstream(input: {
   tenantId: string;
   batchId: string;
