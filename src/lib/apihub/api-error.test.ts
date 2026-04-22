@@ -62,6 +62,36 @@ describe("apiHubError (P4 leakage guard — stable envelope)", () => {
     });
     expect(Object.keys(body.error).sort()).toEqual(["code", "message"]);
   });
+
+  it("top-level JSON has only ok + error keys", async () => {
+    const response = apiHubError(503, "UNAVAILABLE", "Try again.", "req-shape-1");
+    const body = (await response.json()) as Record<string, unknown>;
+    expect(Object.keys(body).sort()).toEqual(["error", "ok"]);
+  });
+});
+
+describe("apiHubValidationError (P4 — stable envelope)", () => {
+  it("error object exposes only code, message, details; details only issues + summary", async () => {
+    const response = apiHubValidationError(
+      422,
+      "VALIDATION_ERROR",
+      "Fix input.",
+      [{ field: "x", code: "BAD", message: "nope" }],
+      "req-val-1",
+    );
+    const body = (await response.json()) as {
+      ok: false;
+      error: Record<string, unknown> & {
+        details: { issues: unknown[]; summary: Record<string, unknown> };
+      };
+    };
+    expect(body.ok).toBe(false);
+    expect(Object.keys(body).sort()).toEqual(["error", "ok"]);
+    expect(Object.keys(body.error).sort()).toEqual(["code", "details", "message"]);
+    expect(Object.keys(body.error.details).sort()).toEqual(["issues", "summary"]);
+    expect(Array.isArray(body.error.details.issues)).toBe(true);
+    expect(body.error.details.issues).toHaveLength(1);
+  });
 });
 
 describe("readApiHubErrorMessageFromJsonBody", () => {

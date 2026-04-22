@@ -1,5 +1,6 @@
 import { apiHubError, apiHubJson } from "@/lib/apihub/api-error";
 import { resolveApiHubRequestId } from "@/lib/apihub/request-id";
+import { parseApiHubPostJsonForRouteWithBudget } from "@/lib/apihub/request-budget";
 import { apiHubEnsureTenantActorGrants } from "@/lib/apihub/route-guards";
 import { discardApiHubStagingBatch } from "@/lib/apihub/staging-batches-repo";
 
@@ -13,6 +14,13 @@ export async function POST(req: Request, ctx: { params: Promise<{ batchId: strin
   }
   const { tenant } = gate.ctx;
   const { batchId } = await ctx.params;
+
+  const parsedBody = await parseApiHubPostJsonForRouteWithBudget(req, requestId, "standard", {
+    emptyOnInvalid: true,
+  });
+  if (!parsedBody.ok) {
+    return parsedBody.response;
+  }
 
   const result = await discardApiHubStagingBatch({ tenantId: tenant.id, batchId });
   if (!result.ok) {

@@ -6,6 +6,7 @@ import { API_HUB_APPLY_ROLLBACK_STUB_ROLLBACK } from "@/lib/apihub/ingestion-app
 import { toApiHubIngestionRunDto } from "@/lib/apihub/ingestion-run-dto";
 import { getApiHubIngestionRunById } from "@/lib/apihub/ingestion-runs-repo";
 import { resolveApiHubRequestId } from "@/lib/apihub/request-id";
+import { parseApiHubPostJsonForRouteWithBudget } from "@/lib/apihub/request-budget";
 import { apiHubEnsureTenantActorGrants } from "@/lib/apihub/route-guards";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +22,13 @@ export async function POST(request: Request, context: { params: Promise<{ jobId:
     return gate.response;
   }
   const { tenant } = gate.ctx;
+
+  const parsedBody = await parseApiHubPostJsonForRouteWithBudget(request, requestId, "standard", {
+    emptyOnInvalid: true,
+  });
+  if (!parsedBody.ok) {
+    return parsedBody.response;
+  }
 
   const { jobId } = await context.params;
   const run = await getApiHubIngestionRunById({ tenantId: tenant.id, runId: jobId });
