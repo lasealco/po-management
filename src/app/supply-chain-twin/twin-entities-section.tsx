@@ -1,6 +1,7 @@
 "use client";
 
 import { useTwinCachedAsync } from "@/components/supply-chain-twin/use-twin-cached-async";
+import { twinApiClientErrorMessage } from "@/lib/supply-chain-twin/error-codes";
 
 type CatalogRow = { ref: { kind: string; id: string } };
 
@@ -13,11 +14,7 @@ async function fetchCatalog(): Promise<CatalogResult> {
     const res = await fetch("/api/supply-chain-twin/entities?q=", { cache: "no-store" });
     const body = (await res.json()) as unknown;
     if (!res.ok) {
-      const message =
-        typeof body === "object" && body != null && "error" in body && typeof (body as { error: unknown }).error === "string"
-          ? (body as { error: string }).error
-          : `Request failed (${res.status})`;
-      return { ok: false, message };
+      return { ok: false, message: twinApiClientErrorMessage(body, `Request failed (${res.status})`) };
     }
     if (
       typeof body !== "object" ||

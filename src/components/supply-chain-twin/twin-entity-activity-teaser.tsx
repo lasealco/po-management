@@ -1,5 +1,7 @@
 "use client";
 
+import { twinApiClientErrorMessage } from "@/lib/supply-chain-twin/error-codes";
+
 import { useTwinCachedAsync } from "./use-twin-cached-async";
 
 /** Slice 65: small teaser list; matches capped `GET /api/supply-chain-twin/events` page size. */
@@ -22,7 +24,7 @@ async function fetchWorkspaceIngestActivity(): Promise<TeaserResult> {
     const res = await fetch(`/api/supply-chain-twin/events?${params.toString()}`, { cache: "no-store" });
     const body: unknown = await res.json().catch(() => null);
     if (!res.ok) {
-      return { ok: false, message: "Twin activity could not be loaded for this session." };
+      return { ok: false, message: twinApiClientErrorMessage(body, "Twin activity could not be loaded for this session.") };
     }
     if (typeof body !== "object" || body == null || !("events" in body) || !Array.isArray((body as { events: unknown }).events)) {
       return { ok: false, message: "Unexpected response from ingest events." };

@@ -1,5 +1,6 @@
 "use client";
 
+import { twinApiClientErrorMessage } from "@/lib/supply-chain-twin/error-codes";
 import Link from "next/link";
 import { useState } from "react";
 import { TwinFallbackState } from "./twin-fallback-state";
@@ -25,7 +26,7 @@ async function fetchRiskSignalsTop(): Promise<RiskSignalsResult> {
     const res = await fetch("/api/supply-chain-twin/risk-signals?limit=5", { cache: "no-store" });
     const body: unknown = await res.json().catch(() => null);
     if (!res.ok) {
-      return { ok: false, message: "Risk signals could not be loaded." };
+      return { ok: false, message: twinApiClientErrorMessage(body, "Risk signals could not be loaded.") };
     }
     if (typeof body !== "object" || body == null || !("items" in body) || !Array.isArray((body as { items: unknown }).items)) {
       return { ok: false, message: "Unexpected response from risk signals." };

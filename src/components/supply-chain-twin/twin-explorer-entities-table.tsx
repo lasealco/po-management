@@ -1,5 +1,6 @@
 "use client";
 
+import { twinApiClientErrorMessage } from "@/lib/supply-chain-twin/error-codes";
 import Link from "next/link";
 import { useCallback, useLayoutEffect, useRef, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -36,15 +37,18 @@ async function fetchEntitiesCatalog(searchQ: string, cursor: string | null): Pro
         return { ok: false, message: "This workspace session cannot access Twin entities right now." };
       }
       if (res.status === 400) {
-        return { ok: false, message: "Explorer filters are invalid. Reset filters and retry." };
+        return {
+          ok: false,
+          message: twinApiClientErrorMessage(body, "Explorer filters are invalid. Reset filters and retry."),
+        };
       }
       if (res.status >= 500) {
-        return { ok: false, message: "Twin entities are temporarily unavailable. Retry in a moment." };
+        return {
+          ok: false,
+          message: twinApiClientErrorMessage(body, "Twin entities are temporarily unavailable. Retry in a moment."),
+        };
       }
-      if (typeof body === "object" && body != null && "error" in body && typeof (body as { error: unknown }).error === "string") {
-        return { ok: false, message: "The entity catalog could not be loaded." };
-      }
-      return { ok: false, message: "The entity catalog could not be loaded." };
+      return { ok: false, message: twinApiClientErrorMessage(body, "The entity catalog could not be loaded.") };
     }
     if (
       typeof body !== "object" ||

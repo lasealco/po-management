@@ -1,5 +1,6 @@
 "use client";
 
+import { twinApiClientErrorMessage } from "@/lib/supply-chain-twin/error-codes";
 import Link from "next/link";
 import { TwinFallbackState } from "./twin-fallback-state";
 import { useTwinCachedAsync } from "./use-twin-cached-async";
@@ -31,7 +32,7 @@ async function fetchEntityNeighbors(snapshotId: string): Promise<NeighborsResult
       if (res.status === 403) {
         return { ok: false, message: "This workspace session cannot access twin neighbors right now." };
       }
-      return { ok: false, message: "Neighbor data could not be loaded right now." };
+      return { ok: false, message: twinApiClientErrorMessage(body, "Neighbor data could not be loaded right now.") };
     }
     if (typeof body !== "object" || body == null || !("neighbors" in body) || !Array.isArray((body as { neighbors: unknown }).neighbors)) {
       return { ok: false, message: "Unexpected neighbors response from twin API." };

@@ -5,6 +5,8 @@ import {
   isTwinApiErrorCode,
   parseTwinApiErrorBody,
   parseTwinApiErrorCode,
+  readTwinApiResponseErrorCode,
+  twinApiClientErrorMessage,
   TWIN_API_ERROR_CODES,
 } from "./error-codes";
 
@@ -353,6 +355,39 @@ describe("TWIN_API_ERROR_CODES", () => {
       error: null,
     });
     expect(parseTwinApiErrorBody(null)).toEqual({ code: null, error: null });
+  });
+
+  describe("readTwinApiResponseErrorCode", () => {
+    it("returns trimmed codes including non-registry HTTP contract values", () => {
+      expect(readTwinApiResponseErrorCode({ code: "FORBIDDEN" })).toBe("FORBIDDEN");
+      expect(readTwinApiResponseErrorCode({ code: " NOT_FOUND " })).toBe("NOT_FOUND");
+    });
+
+    it("returns null for missing or blank code", () => {
+      expect(readTwinApiResponseErrorCode({})).toBeNull();
+      expect(readTwinApiResponseErrorCode({ code: "  " })).toBeNull();
+      expect(readTwinApiResponseErrorCode(null)).toBeNull();
+    });
+  });
+
+  describe("twinApiClientErrorMessage", () => {
+    it("appends code when not already in the message", () => {
+      expect(twinApiClientErrorMessage({ error: "Nope", code: "BAD_INPUT" }, "fallback")).toBe("Nope (BAD_INPUT)");
+    });
+
+    it("uses fallback when there is no error text", () => {
+      expect(twinApiClientErrorMessage({ code: "X" }, "fallback")).toBe("fallback (X)");
+    });
+
+    it("does not duplicate a code that appears in the message", () => {
+      expect(twinApiClientErrorMessage({ error: "Error BAD_INPUT", code: "BAD_INPUT" }, "f")).toBe("Error BAD_INPUT");
+    });
+  });
+
+  it("maps export error messages from HTTP contract codes", () => {
+    expect(getTwinEventsExportErrorMessage({ error: "Forbidden: no access", code: "FORBIDDEN" })).toBe("Forbidden: no access");
+    expect(getTwinEventsExportErrorMessage({ code: "FORBIDDEN" })).toMatch(/access to export/i);
+    expect(getTwinEventsExportErrorMessage({ code: "UNHANDLED" })).toMatch(/server issue/i);
   });
 
   it("maps export error messages from known code values", () => {

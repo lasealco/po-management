@@ -40,12 +40,20 @@ export function parseTwinApiErrorCode(body: unknown): TwinApiErrorCode | null {
   return isTwinApiErrorCode(normalized) ? normalized : null;
 }
 
-/**
- * Parses common Twin API error payload shape from unknown JSON:
- * `{ error?: string, code?: TwinApiErrorCode }`.
- */
-export function parseTwinApiErrorBody(body: unknown): { code: TwinApiErrorCode | null; error: string | null } {
-  const code = parseTwinApiErrorCode(body);
+/** Raw `code` string from Twin API JSON (any non-empty trimmed value), including HTTP contract codes like `FORBIDDEN`. */
+export function readTwinApiResponseErrorCode(body: unknown): string | null {
+  if (typeof body !== "object" || body == null) {
+    return null;
+  }
+  const raw = (body as { code?: unknown }).code;
+  if (typeof raw !== "string") {
+    return null;
+  }
+  const t = raw.trim();
+  return t.length > 0 ? t : null;
+}
+
+function extractTwinApiErrorTextFromJson(body: unknown): string | null {
   const hasObjectBody = typeof body === "object" && body != null;
   const rawError =
     hasObjectBody && "error" in body && typeof (body as { error: unknown }).error === "string"
@@ -56,13 +64,53 @@ export function parseTwinApiErrorBody(body: unknown): { code: TwinApiErrorCode |
       ? (body as { message: string }).message.trim()
       : null;
   const error = rawError && rawError.length > 0 ? rawError : rawMessage && rawMessage.length > 0 ? rawMessage : null;
+  return error && error.length > 0 ? error : null;
+}
+
+/**
+ * Human-readable line for UI toasts: server `error` text plus ` (code)` when a machine code is present
+ * and not already embedded in the message.
+ */
+export function twinApiClientErrorMessage(body: unknown, fallback: string): string {
+  const error = extractTwinApiErrorTextFromJson(body);
+  const rawCode = readTwinApiResponseErrorCode(body);
+  const base = error ?? fallback;
+  if (!rawCode) {
+    return base;
+  }
+  const codeUpper = rawCode.toUpperCase();
+  if (base.toUpperCase().includes(codeUpper)) {
+    return base;
+  }
+  return `${base} (${rawCode})`;
+}
+
+/**
+ * Parses common Twin API error payload shape from unknown JSON:
+ * `{ error?: string, code?: TwinApiErrorCode }`.
+ */
+export function parseTwinApiErrorBody(body: unknown): { code: TwinApiErrorCode | null; error: string | null } {
+  const code = parseTwinApiErrorCode(body);
+  const error = extractTwinApiErrorTextFromJson(body);
   return { code, error };
 }
 
 /** Shared copy mapping for events-export UI error messages. */
 export function getTwinEventsExportErrorMessage(body: unknown): string {
+  const responseCode = readTwinApiResponseErrorCode(body)?.toUpperCase() ?? null;
   const parsed = parseTwinApiErrorBody(body);
   const { code, error } = parsed;
+
+  if (responseCode === "FORBIDDEN" || responseCode === "UNAUTHORIZED") {
+    return error ?? "You do not have access to export twin events for this workspace.";
+  }
+  if (responseCode === "UNHANDLED" || responseCode === "UNAVAILABLE") {
+    return error ?? "Export failed due to a server issue. Retry in a moment.";
+  }
+  if (responseCode === "NOT_FOUND") {
+    return error ?? "Export could not be completed.";
+  }
+
   if (code === TWIN_API_ERROR_CODES.QUERY_VALIDATION_FAILED) {
     return "Export filters are invalid. Check time range and filter values, then retry.";
   }

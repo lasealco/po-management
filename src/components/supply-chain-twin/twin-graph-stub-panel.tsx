@@ -1,5 +1,6 @@
 "use client";
 
+import { twinApiClientErrorMessage } from "@/lib/supply-chain-twin/error-codes";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useId } from "react";
@@ -158,17 +159,11 @@ async function fetchGraphForSnapshot(snapshotId: string): Promise<GraphBundle> {
       const msg =
         resEnt.status === 404
           ? "Selected snapshot was not found for this tenant."
-          : typeof bodyEnt === "object" && bodyEnt != null && "error" in bodyEnt && typeof (bodyEnt as { error: unknown }).error === "string"
-            ? (bodyEnt as { error: string }).error
-            : "Entity snapshot request failed.";
+          : twinApiClientErrorMessage(bodyEnt, "Entity snapshot request failed.");
       return { ok: false, message: msg };
     }
     if (!resEdge.ok) {
-      const msg =
-        typeof bodyEdge === "object" && bodyEdge != null && "error" in bodyEdge && typeof (bodyEdge as { error: unknown }).error === "string"
-          ? (bodyEdge as { error: string }).error
-          : "Edges request failed.";
-      return { ok: false, message: msg };
+      return { ok: false, message: twinApiClientErrorMessage(bodyEdge, "Edges request failed.") };
     }
 
     if (
@@ -257,18 +252,10 @@ async function fetchGraphCatalogMode(searchQ: string): Promise<GraphBundle> {
     const bodyEdge: unknown = await resEdge.json().catch(() => null);
 
     if (!resEnt.ok) {
-      const msg =
-        typeof bodyEnt === "object" && bodyEnt != null && "error" in bodyEnt && typeof (bodyEnt as { error: unknown }).error === "string"
-          ? (bodyEnt as { error: string }).error
-          : "Entity catalog request failed.";
-      return { ok: false, message: msg };
+      return { ok: false, message: twinApiClientErrorMessage(bodyEnt, "Entity catalog request failed.") };
     }
     if (!resEdge.ok) {
-      const msg =
-        typeof bodyEdge === "object" && bodyEdge != null && "error" in bodyEdge && typeof (bodyEdge as { error: unknown }).error === "string"
-          ? (bodyEdge as { error: string }).error
-          : "Edge catalog request failed.";
-      return { ok: false, message: msg };
+      return { ok: false, message: twinApiClientErrorMessage(bodyEdge, "Edge catalog request failed.") };
     }
 
     if (

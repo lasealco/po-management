@@ -1,5 +1,7 @@
 "use client";
 
+import { twinApiClientErrorMessage } from "@/lib/supply-chain-twin/error-codes";
+
 import { TwinFallbackState } from "./twin-fallback-state";
 import { useTwinCachedAsync } from "./use-twin-cached-async";
 
@@ -33,11 +35,7 @@ async function fetchRecentIngestEvents(): Promise<EventsResult> {
     const res = await fetch(`/api/supply-chain-twin/events?${params.toString()}`, { cache: "no-store" });
     const body: unknown = await res.json().catch(() => null);
     if (!res.ok) {
-      const message =
-        typeof body === "object" && body != null && "error" in body && typeof (body as { error: unknown }).error === "string"
-          ? (body as { error: string }).error
-          : "Ingest events could not be loaded.";
-      return { ok: false, message };
+      return { ok: false, message: twinApiClientErrorMessage(body, "Ingest events could not be loaded.") };
     }
     if (typeof body !== "object" || body == null || !("events" in body) || !Array.isArray((body as { events: unknown }).events)) {
       return { ok: false, message: "Unexpected response from ingest events." };

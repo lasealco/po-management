@@ -1,5 +1,6 @@
 "use client";
 
+import { twinApiClientErrorMessage } from "@/lib/supply-chain-twin/error-codes";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -35,15 +36,16 @@ export function TwinScenarioTitleInlineEditor(props: TwinScenarioTitleInlineEdit
         router.refresh();
         return;
       }
+      const errBody: unknown = await response.json().catch(() => null);
       if (response.status === 403) {
-        setError("You no longer have access to edit this scenario draft.");
+        setError(twinApiClientErrorMessage(errBody, "You no longer have access to edit this scenario draft."));
         return;
       }
       if (response.status === 404) {
-        setError("This scenario draft no longer exists.");
+        setError(twinApiClientErrorMessage(errBody, "This scenario draft no longer exists."));
         return;
       }
-      setError("Unable to rename this scenario draft right now.");
+      setError(twinApiClientErrorMessage(errBody, "Unable to rename this scenario draft right now."));
     } catch {
       setError("Unable to rename this scenario draft right now.");
     } finally {

@@ -1,5 +1,7 @@
 /** Client helpers for `GET /api/supply-chain-twin/scenarios` (keyset list; Slice 51). */
 
+import { twinApiClientErrorMessage } from "@/lib/supply-chain-twin/error-codes";
+
 export type TwinScenarioDraftListRow = {
   id: string;
   title: string | null;
@@ -68,11 +70,7 @@ export async function fetchTwinScenarioDraftsPage(
     const res = await fetch(`/api/supply-chain-twin/scenarios?${params.toString()}`, { cache: "no-store" });
     const body = (await res.json()) as unknown;
     if (!res.ok) {
-      const message =
-        typeof body === "object" && body != null && "error" in body && typeof (body as { error: unknown }).error === "string"
-          ? (body as { error: string }).error
-          : "Scenario drafts could not be loaded.";
-      return { ok: false, message };
+      return { ok: false, message: twinApiClientErrorMessage(body, "Scenario drafts could not be loaded.") };
     }
     return parseTwinScenarioDraftsListPayload(body);
   } catch {

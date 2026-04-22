@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
+import { twinApiClientErrorMessage } from "@/lib/supply-chain-twin/error-codes";
 import {
   fetchTwinScenarioDraftsPage,
   type TwinScenarioDraftListRow,
@@ -72,11 +73,7 @@ export function TwinScenariosDraftsPanel() {
       });
       const body = (await res.json()) as unknown;
       if (!res.ok) {
-        const message =
-          typeof body === "object" && body != null && "error" in body && typeof (body as { error: unknown }).error === "string"
-            ? (body as { error: string }).error
-            : "Could not create a draft.";
-        setCreateError(message);
+        setCreateError(twinApiClientErrorMessage(body, "Could not create a draft."));
         return;
       }
       await reloadFirstPage();

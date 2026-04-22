@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+import { twinApiClientErrorMessage } from "@/lib/supply-chain-twin/error-codes";
 import { parseTwinCatalogMetricsResponseJson } from "@/lib/supply-chain-twin/twin-catalog-metrics-response";
 import type { TwinCatalogMetricsResponse } from "@/lib/supply-chain-twin/schemas/twin-api-responses";
 import { TWIN_ENTITY_KINDS } from "@/lib/supply-chain-twin/types";
@@ -85,7 +86,10 @@ async function fetchMetrics(): Promise<StripState> {
     const res = await fetch("/api/supply-chain-twin/metrics", { cache: "no-store" });
     const body: unknown = await res.json().catch(() => null);
     if (!res.ok) {
-      return { kind: "error", message: "Catalog counts could not be loaded for this session." };
+      return {
+        kind: "error",
+        message: twinApiClientErrorMessage(body, "Catalog counts could not be loaded for this session."),
+      };
     }
     const parsed = parseTwinCatalogMetricsResponseJson(body);
     if (!parsed.ok) {
