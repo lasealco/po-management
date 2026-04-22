@@ -11,9 +11,13 @@ export type MappingTemplateCreateBody = {
   name?: unknown;
   description?: unknown;
   rules?: unknown;
+  sourceMappingAnalysisJobId?: unknown;
 };
 
-export function collectMappingTemplateCreateMetaIssues(body: MappingTemplateCreateBody): ApiHubValidationIssue[] {
+/** Name + description only (e.g. when rules come from a mapping analysis job). */
+export function collectMappingTemplateNameDescriptionIssues(
+  body: Pick<MappingTemplateCreateBody, "name" | "description">,
+): ApiHubValidationIssue[] {
   const issues: ApiHubValidationIssue[] = [];
 
   if (typeof body.name !== "string" || body.name.trim().length === 0) {
@@ -50,6 +54,12 @@ export function collectMappingTemplateCreateMetaIssues(body: MappingTemplateCrea
       });
     }
   }
+
+  return issues;
+}
+
+export function collectMappingTemplateCreateMetaIssues(body: MappingTemplateCreateBody): ApiHubValidationIssue[] {
+  const issues: ApiHubValidationIssue[] = collectMappingTemplateNameDescriptionIssues(body);
 
   if (!Array.isArray(body.rules)) {
     issues.push({

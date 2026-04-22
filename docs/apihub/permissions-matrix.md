@@ -1,6 +1,6 @@
-# API Hub — permissions matrix (Slice 51)
+# API Hub — permissions matrix (Slice 51 + 52 baseline)
 
-This document matches **current route handlers** under `src/app/api/apihub/**`. It is the baseline for **Slice 52** (fine-grained `org.apihub.*` grants on APIs) and **Slice 53** (UI gating).
+This document matches **current route handlers** under `src/app/api/apihub/**`. **Slice 52 (shipped):** handlers use `apiHubEnsureTenantActorGrants` → **`org.apihub`** `view` or `edit` via `userHasGlobalGrant` (demo tenant + demo actor unchanged). Staging **apply** additionally requires **`org.orders`** or **`org.controltower`** `edit` per target.
 
 ## Legend
 
@@ -8,7 +8,7 @@ This document matches **current route handlers** under `src/app/api/apihub/**`. 
 |------|------------------|
 | **Public** | No `getDemoTenant()` / `getActorUserId()` in the handler; safe for unauthenticated discovery. |
 | **Demo tenant + actor** | Handler calls `getDemoTenant()` and `getActorUserId()` from `@/lib/demo-tenant` / `@/lib/authz`. Data is scoped to the resolved **demo tenant**; the **actor** is the active demo-session user (`getDemoActorEmail()` → `User` row for that tenant). |
-| **RBAC (future)** | No `org.apihub.*` (or similar) checks exist on these routes today; Slice 52 will align checks with the permission catalog. |
+| **`org.apihub` + module grants** | Non-health routes use **`apiHubEnsureTenantActorGrants`**; staging apply enforces **`org.orders`** / **`org.controltower`** as documented in [README](./README.md). |
 
 ## Failure responses (demo tenant + actor)
 
@@ -27,9 +27,9 @@ Helpers: `apiHubDemoTenantMissing`, `apiHubDemoActorMissing` in `src/lib/apihub/
 |--------|------|--------|
 | `GET` | `/api/apihub/health` | **Public** — returns JSON from `getApiHubHealthJson()`; no session or tenant resolution. |
 
-## Demo tenant + actor (all other API Hub HTTP handlers)
+## Demo tenant + actor + grants (all other API Hub HTTP handlers)
 
-Every other `route.ts` under `src/app/api/apihub/` uses **demo tenant + actor** before business logic.
+Every other `route.ts` under `src/app/api/apihub/` resolves **demo tenant + actor**, then checks **`org.apihub`** (and module grants where applicable).
 
 | Method(s) | Path | Purpose (short) |
 |-----------|------|------------------|
@@ -55,13 +55,16 @@ Every other `route.ts` under `src/app/api/apihub/` uses **demo tenant + actor** 
 | `GET`, `POST` | `/api/apihub/mapping-analysis-jobs` | List / queue mapping analysis job (P2) |
 | `GET` | `/api/apihub/mapping-analysis-jobs/:jobId` | Job detail + proposal |
 | `POST` | `/api/apihub/mapping-analysis-jobs/:jobId/process` | Manually claim/process a queued job (dev / retry) |
+| `GET`, `POST` | `/api/apihub/staging-batches` | List / create staging batch from analysis job |
+| `GET` | `/api/apihub/staging-batches/:batchId` | Batch + rows |
+| `POST` | `/api/apihub/staging-batches/:batchId/apply` | Downstream apply (SO/PO/CT); extra grants |
+| `POST` | `/api/apihub/staging-batches/:batchId/discard` | Discard open batch |
 
 ## App UI (`/apihub`)
 
 | Surface | Gate | Notes |
 |---------|------|--------|
-| `/apihub` (layout content) | `ApihubGate` in `src/app/apihub/apihub-gate.tsx` | Uses `getViewerGrantSet()`; blocks when `!access?.user` (same demo-actor resolution as APIs: tenant + demo email → user). Copy points to **Settings → Demo session** (`/settings/demo`). |
-| **RBAC (future)** | — | `grantSet` is loaded but not used for API Hub–specific hides yet (Slice 53). |
+| `/apihub` (layout content) | `ApihubGate` in `src/app/apihub/apihub-gate.tsx` | Uses `getViewerGrantSet()`; requires signed-in user + **`org.apihub` → view**. Page SSR uses **`org.apihub` → edit** for mutations (templates, connectors, analysis, staging, etc.) and module grants for staging apply. |
 
 ## Code pointers
 

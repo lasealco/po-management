@@ -2,30 +2,39 @@
 
 **Legend:** ✅ shipped · 🟡 partial / stub · ❌ not started
 
-**Last updated:** 2026-04-22 — **P2** mapping analysis jobs (async heuristic + `/apihub` UI + staging preview on job). **Phase 1 (module MVP)** remains closed — see [CLOSEOUT_AUDIT.md](./CLOSEOUT_AUDIT.md); LLM proposals + batch/staging tables + org RBAC remain future.
+**Last updated:** 2026-04-22 — Staging **persisted** tables, **LLM** optional on mapping analysis jobs, **`org.apihub`** RBAC, staging **apply** (SO/PO/CT audit), staging **discard**, **template from analysis job**.
 
 | Area | Repo reality | Notes |
 |------|--------------|--------|
 | Tenant scoping (repos) | ✅ [`TENANT_SCOPING.md`](./TENANT_SCOPING.md), `*.tenant-scope.test.ts` | Mapping template PATCH/DELETE use `updateMany`/`deleteMany` with `{ id, tenantId }`; sample repo `where` assertions |
-| Slice 60 handoff | ✅ [`CLOSEOUT_AUDIT.md`](./CLOSEOUT_AUDIT.md) | Inventory, verify commands, **residual risk log** (R1–R9), sign-off checklist |
-| Docs home | ✅ `docs/apihub/README.md`, specs | README includes **mapping API** table + **apply-operator-runbook** (operator triage) |
+| Slice 60 handoff | ✅ [`CLOSEOUT_AUDIT.md`](./CLOSEOUT_AUDIT.md) | Inventory, verify commands, **residual risk log** (R1–R9); some risks partially mitigated (see below) |
+| Docs home | ✅ `docs/apihub/README.md`, specs | Route index includes mapping analysis, staging, apply, discard, playbook for catalog/tariffs |
 | Docs runbook | ✅ `docs/apihub/RUNBOOK.md` | Docs-only workflow; points to README for live endpoint index |
-| Permissions matrix (docs ↔ guards) | ✅ [`permissions-matrix.md`](./permissions-matrix.md), optional `src/lib/apihub/apihub-access-model.ts` | Public = `GET /api/apihub/health` only; all other API Hub routes + `/apihub` UI use demo tenant + demo actor; fine-grained RBAC deferred to Slice 52–53 |
-| Ingestion spec | 🟡 `integrations-ai-assisted-ingestion.md` | Draft; phased table has footnote vs shipped deterministic mapping |
-| App route `/apihub` | ✅ `src/app/apihub/**` | Connectors + **mapping templates** UI + **diff** + **preview export** + **Alerts** + **Apply conflicts**; demo session required |
+| Permissions matrix | 🟡 [`permissions-matrix.md`](./permissions-matrix.md) | **Slice 52:** `org.apihub` view/edit on routes + `/apihub` gate; matrix row list may lag new paths — prefer README index |
+| Ingestion spec | 🟡 `integrations-ai-assisted-ingestion.md` | Draft; Scenario C links catalog/tariff playbook |
+| App route `/apihub` | ✅ `src/app/apihub/**` | Analysis jobs, staging list + apply + discard, templates, connectors, ingestion triage |
 | Health / discovery API | ✅ `GET /api/apihub/health` | `{ ok, service, phase }`; no secrets |
-| Prisma: **connector registry** | ✅ `ApiHubConnector` + `ApiHubConnectorAuditLog`; `GET/POST /api/apihub/connectors`; `PATCH /api/apihub/connectors/:id`; `GET …/connectors/:id/health` + `GET …/audit` | List/SSR includes recent audit + actor identity; `/apihub` **Run live health probe**; no secrets / OAuth / workers |
-| Prisma: **mapping templates** | ✅ `ApiHubMappingTemplate` + `ApiHubMappingTemplateAuditLog` | Full CRUD + list audit APIs; migrations `20260422160000_*`, `20260422170000_*` |
-| Prisma: batch / staging tables | ❌ | Spec “batch + staging” tables still future (rules live on templates + preview payloads) |
-| Mapping engine + preview | ✅ `src/lib/apihub/mapping-engine.ts`, `mapping-preview-run.ts` | `POST …/mapping-preview` + **export** (`json` \| `csv`); `sampleSize` cap |
-| Rule diff API | ✅ `POST /api/apihub/mapping-diff` | Keyed by `targetField`; used from `/apihub` |
-| AI analysis job pipeline | 🟡 | **P2:** `ApiHubMappingAnalysisJob` + `GET`/`POST` `/api/apihub/mapping-analysis-jobs` + `POST …/:id/process`; `after()` worker; deterministic **`deterministic_heuristic_v1`** proposals + **stagingPreview** on success; **LLM** still future |
-| Deterministic **apply** API | 🟡 `POST /api/apihub/ingestion-jobs/:id/apply` (+ dry-run, idempotency, rollback stub, audit, conflicts **GET**, alerts **GET**, `/apihub` triage) | Operator runbook: `apply-operator-runbook.md`; downstream CT/PO/SO wiring still scenario-specific |
+| Prisma: **connector registry** | ✅ `ApiHubConnector` + audit, CRUD + health + list | |
+| Prisma: **mapping templates** | ✅ + audit, CRUD, diff | |
+| Prisma: **staging** | ✅ `ApiHubStagingBatch`, `ApiHubStagingRow`; `appliedAt` / `applySummary` | Materialize from succeeded analysis job; apply downstream; discard open batches |
+| Mapping engine + preview | ✅ | Export csv/json |
+| AI analysis job pipeline | ✅ | Heuristic + optional OpenAI; `outputProposal.llm`; **Save rules as template** via `POST /mapping-templates` + `sourceMappingAnalysisJobId` |
+| Deterministic **apply** (ingestion run) | 🟡 | Marks `appliedAt`; CT/PO/SO via dedicated adapters elsewhere |
+| Staging **apply** (domain) | ✅ | SO/PO/CT audit from mapped rows; cross-grants `org.orders` / `org.controltower` |
+| Background workers | 🟡 | Mapping jobs use `after()`; no dedicated queue consumer (see R2 closeout) |
+
+## Residual (from closeout, condensed)
+
+| ID | Status |
+|----|--------|
+| R1 Demo vs org RBAC | 🟡 **`org.apihub`** shipped; still demo tenant + actor for data scope |
+| R2 Workers | 🟡 No queue ETL |
+| R3 Ingestion apply → downstream | 🟡 Staging apply adds SO/PO/CT path; ingestion apply still marker-centric |
+| R5 Batch/staging tables | ✅ Shipped |
 
 ## Near-term build order
 
-1. P0 — shell + health + docs links — **shipped**.
-2. P1 — **connector registry** + **mapping templates** + ingestion/apply operator surfaces — **shipped**; **batch/staging** Prisma still future (see R5 in closeout).
-3. P2 — async analysis job + richer editor — **shipped** (heuristic engine + `/apihub` panel + staging preview on job); LLM proposals still future.
-4. P3 — extend **apply** to production paths per scenario + idempotency hardening as needed.
-5. P4 — conflicts, match keys, hardening.
+1. P0–P1 — shell, connectors, templates, ingestion — **shipped**.
+2. P2 — analysis jobs + staging + LLM + template-from-job — **shipped** (iterate on models/prompts).
+3. P3 — ingestion apply to more production paths; **match keys**, conflict policy.
+4. P4 — centralized abuse budgets, conformance tests, leakage audit pack.

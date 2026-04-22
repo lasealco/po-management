@@ -7,9 +7,13 @@ const getDemoTenantMock = vi.fn();
 const getActorUserIdMock = vi.fn();
 const listApiHubMappingTemplatesMock = vi.fn();
 const createApiHubMappingTemplateMock = vi.fn();
+const getApiHubMappingAnalysisJobMock = vi.fn();
 
 vi.mock("@/lib/demo-tenant", () => ({ getDemoTenant: getDemoTenantMock }));
 vi.mock("@/lib/authz", () => ({ getActorUserId: getActorUserIdMock, userHasGlobalGrant: vi.fn().mockResolvedValue(true) }));
+vi.mock("@/lib/apihub/mapping-analysis-jobs-repo", () => ({
+  getApiHubMappingAnalysisJob: getApiHubMappingAnalysisJobMock,
+}));
 vi.mock("@/lib/apihub/mapping-templates-repo", () => ({
   listApiHubMappingTemplates: listApiHubMappingTemplatesMock,
   createApiHubMappingTemplate: createApiHubMappingTemplateMock,
@@ -77,6 +81,7 @@ describe("POST /api/apihub/mapping-templates", () => {
     vi.clearAllMocks();
     getDemoTenantMock.mockResolvedValue({ id: "tenant-1" });
     getActorUserIdMock.mockResolvedValue("user-1");
+    getApiHubMappingAnalysisJobMock.mockReset();
   });
 
   it("returns 400 when rules are empty", async () => {
@@ -162,5 +167,53 @@ describe("POST /api/apihub/mapping-templates", () => {
         updatedAt: updatedAt.toISOString(),
       },
     });
+  });
+
+  it("creates template from sourceMappingAnalysisJobId when job succeeded", async () => {
+    getApiHubMappingAnalysisJobMock.mockResolvedValue({
+      id: "job-1",
+      tenantId: "tenant-1",
+      requestedByUserId: "user-1",
+      status: "succeeded",
+      inputPayload: {},
+      outputProposal: { rules: [{ sourcePath: "x.y", targetField: "y", transform: "trim" }] },
+      errorMessage: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      startedAt: null,
+      finishedAt: null,
+    });
+    const createdAt = new Date("2026-04-22T11:00:00.000Z");
+    const updatedAt = new Date("2026-04-22T11:00:00.000Z");
+    createApiHubMappingTemplateMock.mockResolvedValue({
+      id: "tpl-job",
+      tenantId: "tenant-1",
+      name: "From analysis",
+      description: null,
+      rules: [{ sourcePath: "x.y", targetField: "y", transform: "trim", required: false }],
+      createdByUserId: "user-1",
+      createdAt,
+      updatedAt,
+    });
+    const { POST } = await import("./route");
+    const response = await POST(
+      new Request("http://localhost/api/apihub/mapping-templates", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          [APIHUB_REQUEST_ID_HEADER]: "mtpl-post-job",
+        },
+        body: JSON.stringify({
+          name: "From analysis",
+          sourceMappingAnalysisJobId: "job-1",
+        }),
+      }),
+    );
+    expect(response.status).toBe(201);
+    expect(getApiHubMappingAnalysisJobMock).toHaveBeenCalledWith({ tenantId: "tenant-1", jobId: "job-1" });
+    expect(createApiHubMappingTemplateMock).toHaveBeenCalled();
+    const call = createApiHubMappingTemplateMock.mock.calls[0]![0];
+    expect(call.name).toBe("From analysis");
+    expect(call.rules[0]?.sourcePath).toBe("x.y");
   });
 });

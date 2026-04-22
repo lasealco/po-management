@@ -1,10 +1,12 @@
 import type { ApiHubStagingBatchListItemDto } from "@/lib/apihub/staging-batch-dto";
 
 import { StagingBatchApplyActions } from "./staging-batch-apply-actions";
+import { StagingBatchDiscardButton } from "./staging-batch-discard-button";
 
 type Props = {
   initialBatches: ApiHubStagingBatchListItemDto[];
   canView: boolean;
+  canEdit: boolean;
   canApplySalesOrder: boolean;
   canApplyPurchaseOrder: boolean;
   canApplyCtAudit: boolean;
@@ -24,6 +26,7 @@ function formatWhen(iso: string) {
 export function StagingBatchesPanel({
   initialBatches,
   canView,
+  canEdit,
   canApplySalesOrder,
   canApplyPurchaseOrder,
   canApplyCtAudit,
@@ -80,12 +83,15 @@ export function StagingBatchesPanel({
                   <td className="px-4 py-3 text-xs text-zinc-600">{formatWhen(b.createdAt)}</td>
                   <td className="px-4 py-3 align-top text-xs">
                     {b.status === "open" && !b.appliedAt ? (
-                      <StagingBatchApplyActions
-                        batchId={b.id}
-                        canApplySalesOrder={canApplySalesOrder}
-                        canApplyPurchaseOrder={canApplyPurchaseOrder}
-                        canApplyCtAudit={canApplyCtAudit}
-                      />
+                      <>
+                        <StagingBatchApplyActions
+                          batchId={b.id}
+                          canApplySalesOrder={canApplySalesOrder}
+                          canApplyPurchaseOrder={canApplyPurchaseOrder}
+                          canApplyCtAudit={canApplyCtAudit}
+                        />
+                        <StagingBatchDiscardButton batchId={b.id} canDiscard={canEdit} />
+                      </>
                     ) : b.appliedAt ? (
                       <span className="text-zinc-500">Applied {formatWhen(b.appliedAt)}</span>
                     ) : (

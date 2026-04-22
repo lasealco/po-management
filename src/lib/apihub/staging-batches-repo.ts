@@ -124,6 +124,37 @@ export async function listApiHubStagingBatches(input: { tenantId: string; limit:
   });
 }
 
+export type DiscardApiHubStagingBatchResult =
+  | { ok: true }
+  | { ok: false; reason: "not_found" | "not_open" | "already_applied" };
+
+/**
+ * Marks an **open**, never-applied batch as discarded (operator cleanup).
+ */
+export async function discardApiHubStagingBatch(input: {
+  tenantId: string;
+  batchId: string;
+}): Promise<DiscardApiHubStagingBatchResult> {
+  const batch = await prisma.apiHubStagingBatch.findFirst({
+    where: { id: input.batchId, tenantId: input.tenantId },
+    select: { id: true, status: true, appliedAt: true },
+  });
+  if (!batch) {
+    return { ok: false, reason: "not_found" };
+  }
+  if (batch.appliedAt) {
+    return { ok: false, reason: "already_applied" };
+  }
+  if (batch.status !== "open") {
+    return { ok: false, reason: "not_open" };
+  }
+  await prisma.apiHubStagingBatch.update({
+    where: { id: input.batchId },
+    data: { status: "discarded" },
+  });
+  return { ok: true };
+}
+
 export async function getApiHubStagingBatchWithRows(input: {
   tenantId: string;
   batchId: string;

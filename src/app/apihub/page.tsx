@@ -208,6 +208,7 @@ export default async function ApihubHomePage() {
       <StagingBatchesPanel
         initialBatches={initialStagingBatches}
         canView={canViewHub}
+        canEdit={canEditHub}
         canApplySalesOrder={canApplyStagingSalesOrder}
         canApplyPurchaseOrder={canApplyStagingPurchaseOrder}
         canApplyCtAudit={canApplyStagingCtAudit}

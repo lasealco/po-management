@@ -125,6 +125,38 @@ export function MappingAnalysisJobsPanel({ initialJobs, canView, canEdit }: Prop
     }
   }
 
+  async function saveProposedRulesAsTemplate() {
+    if (!canEdit || !activeId || !activeJob || activeJob.status !== "succeeded" || !activeJob.outputProposal?.rules?.length) {
+      return;
+    }
+    const name = window.prompt("Template name (saved from this analysis job):", `Analysis ${activeId.slice(0, 8)}`);
+    if (!name || !name.trim()) {
+      return;
+    }
+    setError(null);
+    setInfo(null);
+    setBusy(true);
+    try {
+      const res = await fetch("/api/apihub/mapping-templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          sourceMappingAnalysisJobId: activeId,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(readApiHubErrorMessageFromJsonBody(data, "Could not create template."));
+        return;
+      }
+      setInfo("Mapping template created from this job. Open Mapping templates below to edit or audit.");
+      router.refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function materializeStaging() {
     if (!canEdit || !activeId || !activeJob || activeJob.status !== "succeeded") return;
     setError(null);
@@ -256,6 +288,20 @@ export function MappingAnalysisJobsPanel({ initialJobs, canView, canEdit }: Prop
               className="rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 hover:bg-zinc-50 disabled:opacity-50"
             >
               Materialize staging
+            </button>
+            <button
+              type="button"
+              disabled={
+                busy ||
+                !canEdit ||
+                !activeId ||
+                activeJob?.status !== "succeeded" ||
+                !(activeJob?.outputProposal?.rules && activeJob.outputProposal.rules.length > 0)
+              }
+              onClick={() => void saveProposedRulesAsTemplate()}
+              className="rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 hover:bg-zinc-50 disabled:opacity-50"
+            >
+              Save rules as template
             </button>
           </div>
         </div>
