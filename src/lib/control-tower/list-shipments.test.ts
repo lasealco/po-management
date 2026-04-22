@@ -182,6 +182,9 @@ describe("listControlTowerShipments", () => {
     expect(dumped).toContain("items");
     expect(dumped).toContain("productCode");
     expect(dumped).toContain("sku");
+    expect(dumped).toContain("cargoCommoditySummary");
+    expect(dumped).toContain("soNumber");
+    expect(dumped).toContain("externalRef");
   });
 
   it("overscans DB when routeActionPrefix is set", async () => {

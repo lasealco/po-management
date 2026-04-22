@@ -395,6 +395,14 @@ export async function listControlTowerShipments(params: {
         { carrier: contains },
         { asnReference: contains },
         { notes: contains },
+        { cargoCommoditySummary: contains },
+        {
+          salesOrder: {
+            is: {
+              OR: [{ soNumber: contains }, { externalRef: contains }, { customerName: contains }],
+            },
+          },
+        },
         { order: { orderNumber: contains } },
         { order: { title: contains } },
         { order: { buyerReference: contains } },
