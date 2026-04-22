@@ -461,7 +461,43 @@ export async function listControlTowerShipments(params: {
             },
           },
         },
-        { ctContainers: { some: { containerNumber: contains } } },
+        {
+          ctLegs: {
+            some: {
+              OR: [
+                { originCode: contains },
+                { destinationCode: contains },
+                { carrier: contains },
+                { notes: contains },
+              ],
+            },
+          },
+        },
+        {
+          ctCostLines: {
+            some: {
+              OR: [
+                { category: contains },
+                { description: contains },
+                { vendor: contains },
+                { invoiceNo: contains },
+              ],
+            },
+          },
+        },
+        {
+          ctContainers: {
+            some: {
+              OR: [
+                { containerNumber: contains },
+                { seal: contains },
+                { containerType: contains },
+                { status: contains },
+                { notes: contains },
+              ],
+            },
+          },
+        },
         ...(milestoneMatch ? [milestoneMatch] : []),
         {
           booking: {

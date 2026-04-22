@@ -191,6 +191,9 @@ describe("listControlTowerShipments", () => {
     expect(dumped).toContain("ctAlerts");
     expect(dumped).toContain("ctExceptions");
     expect(dumped).toContain("ctTrackingMilestones");
+    expect(dumped).toContain("ctLegs");
+    expect(dumped).toContain("ctCostLines");
+    expect(dumped).toContain("invoiceNo");
   });
 
   it("overscans DB when routeActionPrefix is set", async () => {
