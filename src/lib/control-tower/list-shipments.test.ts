@@ -198,6 +198,8 @@ describe("listControlTowerShipments", () => {
     expect(dumped).toContain("acknowledgedBy");
     expect(dumped).toContain("updatedBy");
     expect(dumped).toContain("splitProposal");
+    expect(dumped).toContain("sourceLine");
+    expect(dumped).toContain("lineType");
     expect(dumped).toContain("supplierOffice");
     expect(dumped).toContain("productSuppliers");
     expect(dumped).toContain("outboundOrderLines");

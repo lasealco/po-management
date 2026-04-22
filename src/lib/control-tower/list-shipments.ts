@@ -603,6 +603,51 @@ export async function listControlTowerShipments(params: {
         },
       },
     ];
+    const shipmentWhereForPartyQuoteResponseLines = (
+      linePredicate: Prisma.QuoteResponseLineWhereInput,
+    ): Prisma.ShipmentWhereInput[] => [
+      {
+        carrierSupplier: {
+          is: {
+            quoteRequestRecipients: {
+              some: {
+                response: { is: { lines: { some: linePredicate } } },
+              },
+            },
+          },
+        },
+      },
+      {
+        order: {
+          is: {
+            supplier: {
+              is: {
+                quoteRequestRecipients: {
+                  some: {
+                    response: { is: { lines: { some: linePredicate } } },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      {
+        booking: {
+          is: {
+            forwarderSupplier: {
+              is: {
+                quoteRequestRecipients: {
+                  some: {
+                    response: { is: { lines: { some: linePredicate } } },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    ];
     const enumTokenOr: Prisma.ShipmentWhereInput[] = [
       ...shipmentStatusEnumMatch.map((status) => ({ status })),
       ...transportModeEnumMatch.flatMap((mode) => [
@@ -1145,6 +1190,35 @@ export async function listControlTowerShipments(params: {
         },
       ],
     };
+    const quoteResponseLineTextMatch: Prisma.QuoteResponseLineWhereInput = {
+      OR: [
+        { label: contains },
+        { lineType: contains },
+        { unitBasis: contains },
+        { notes: contains },
+      ],
+    };
+    const splitProposalLineMatch: Prisma.SplitProposalLineWhereInput = {
+      sourceLine: {
+        is: {
+          OR: [
+            { description: contains },
+            {
+              product: {
+                is: {
+                  OR: [
+                    { sku: contains },
+                    { productCode: contains },
+                    { name: contains },
+                    { ean: contains },
+                  ],
+                },
+              },
+            },
+          ],
+        },
+      },
+    };
     const wmsTaskTextMatch: Prisma.WmsTaskWhereInput = {
       OR: [
         ...wmsTaskStatusEnumMatch.map((status) => ({ status })),
@@ -1263,6 +1337,7 @@ export async function listControlTowerShipments(params: {
       OR: [
         ...idOr,
         ...enumTokenOr,
+        ...shipmentWhereForPartyQuoteResponseLines(quoteResponseLineTextMatch),
         { shipmentNo: contains },
         { trackingNo: contains },
         { carrier: contains },
@@ -1473,6 +1548,7 @@ export async function listControlTowerShipments(params: {
                       },
                     },
                   },
+                  { lines: { some: splitProposalLineMatch } },
                 ],
               },
             },
@@ -1491,6 +1567,7 @@ export async function listControlTowerShipments(params: {
                       },
                     },
                   },
+                  { lines: { some: splitProposalLineMatch } },
                 ],
               },
             },
