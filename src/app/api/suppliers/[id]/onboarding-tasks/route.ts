@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
-import { requireApiGrant } from "@/lib/authz";
+import { getActorUserId, loadGlobalGrantsForUser, requireApiGrant, viewerHas } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
 import { ensureSupplierOnboardingTasks } from "@/lib/srm/ensure-supplier-onboarding-tasks";
@@ -44,6 +44,11 @@ export async function GET(
     },
   });
 
+  const actorId = await getActorUserId();
+  const grantSet = actorId ? await loadGlobalGrantsForUser(actorId) : new Set<string>();
+  const canViewSensitive =
+    viewerHas(grantSet, "org.suppliers", "edit") || viewerHas(grantSet, "org.suppliers", "approve");
+
   return NextResponse.json({
     tasks: tasks.map((t) => ({
       id: t.id,
@@ -52,9 +57,15 @@ export async function GET(
       sortOrder: t.sortOrder,
       done: t.done,
       assigneeUserId: t.assigneeUserId,
-      assignee: t.assignee,
+      assignee: t.assignee
+        ? {
+            id: t.assignee.id,
+            name: t.assignee.name,
+            email: canViewSensitive ? t.assignee.email : null,
+          }
+        : null,
       dueAt: t.dueAt?.toISOString() ?? null,
-      notes: t.notes,
+      notes: canViewSensitive ? t.notes : null,
     })),
   });
 }

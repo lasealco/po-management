@@ -159,6 +159,12 @@ export function SupplierOnboardingSection({
         Tip: on the SRM list, turn on <strong className="text-zinc-800">Assigned onboarding</strong> to see suppliers
         where you have open tasks.
       </p>
+      {!canEdit ? (
+        <p className="mt-3 text-xs text-amber-900/90">
+          Checklist <strong>editing</strong> and <strong>task notes</strong> in the API require <strong>org.suppliers</strong> →{" "}
+          <strong>edit</strong> or <strong>approve</strong>. You can still read titles and status with view-only access.
+        </p>
+      ) : null}
 
       {error ? (
         <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
@@ -176,7 +182,7 @@ export function SupplierOnboardingSection({
                 type="checkbox"
                 className="mt-1 rounded border-zinc-300"
                 checked={t.done}
-                disabled={busyId === t.id}
+                disabled={!canEdit || busyId === t.id}
                 onChange={(e) => void patchTask(t.id, { done: e.target.checked })}
               />
               <span className={t.done ? "text-zinc-500 line-through" : "text-zinc-900"}>{t.title}</span>
@@ -186,7 +192,7 @@ export function SupplierOnboardingSection({
               <select
                 className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm text-zinc-900"
                 value={t.assigneeUserId ?? ""}
-                disabled={busyId === t.id}
+                disabled={!canEdit || busyId === t.id}
                 onChange={(e) => {
                   const v = e.target.value;
                   void patchTask(t.id, { assigneeUserId: v === "" ? null : v });
@@ -199,7 +205,7 @@ export function SupplierOnboardingSection({
                   </option>
                 ))}
               </select>
-              {assigneeOptions.some((u) => u.id === viewerUserId) && t.assigneeUserId !== viewerUserId ? (
+              {canEdit && assigneeOptions.some((u) => u.id === viewerUserId) && t.assigneeUserId !== viewerUserId ? (
                 <button
                   type="button"
                   disabled={busyId === t.id}
@@ -215,7 +221,7 @@ export function SupplierOnboardingSection({
               <input
                 type="date"
                 className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm text-zinc-900"
-                disabled={busyId === t.id}
+                disabled={!canEdit || busyId === t.id}
                 value={t.dueAt ? t.dueAt.slice(0, 10) : ""}
                 onChange={(e) => {
                   const v = e.target.value;
@@ -230,10 +236,11 @@ export function SupplierOnboardingSection({
               <textarea
                 className="mt-1 w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm text-zinc-900"
                 rows={2}
-                disabled={busyId === t.id}
+                disabled={!canEdit || busyId === t.id}
                 defaultValue={t.notes ?? ""}
                 key={`${t.id}-${t.notes ?? ""}`}
                 onBlur={(e) => {
+                  if (!canEdit) return;
                   const next = e.target.value.trim() || null;
                   if (next !== (t.notes?.trim() || null)) {
                     void patchTask(t.id, { notes: next });

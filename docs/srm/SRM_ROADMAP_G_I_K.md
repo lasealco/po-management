@@ -19,6 +19,7 @@
 - **Redaction (server + initial 360):** in addition to prior fields (tax / credit / internal notes / contact free-text `notes`), view-only users now get **no values** for: `legalName`, company **email** & **phone**, full **registered address**, **payment** and **Incoterm** and **booking SLA** fields, **contact email** & **phone**, **office** location fields on `GET` (full address; snapshot only had city/country, now cleared), **capability** `geography` and `notes`. `GET /api/suppliers/[id]` and `redactSupplierDetailSnapshot` stay aligned.
 - **UI:** 360 & SRM read-only callouts (amber) for hidden blocks; **Capabilities** table masks geography/notes with an explanatory line.
 - **Field list in code** — `src/lib/srm/redact-supplier-sensitive.ts` (keep in sync when adding sensitive columns).
+- **Onboarding tasks API:** `GET /api/suppliers/[id]/onboarding-tasks` redacts per-task `notes` and assignee `email` for view-only (same **edit/approve** bar as 360). UI disables checklist controls when the user only has view.
 - **Not in K-v1:** per-role field matrix, SRM settings table, or rules engine (see table below).
 
 **Non-goals for this program (unless you re-prioritize):** **H** (supplier self-service portal), **J** (KPI/FX/ERP integration depth) — see [`SRM_FINISH_SLICES.md`](./SRM_FINISH_SLICES.md) Post-MVP.

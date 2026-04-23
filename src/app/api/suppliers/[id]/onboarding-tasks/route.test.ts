@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const requireApiGrantMock = vi.fn();
+const getActorUserIdMock = vi.fn();
+const loadGlobalGrantsForUserMock = vi.fn();
 const getDemoTenantMock = vi.fn();
 const supplierFindFirstMock = vi.fn();
 const taskFindManyMock = vi.fn();
@@ -8,6 +10,10 @@ const ensureMock = vi.fn();
 
 vi.mock("@/lib/authz", () => ({
   requireApiGrant: requireApiGrantMock,
+  getActorUserId: (...a: unknown[]) => getActorUserIdMock(...a),
+  loadGlobalGrantsForUser: (...a: unknown[]) => loadGlobalGrantsForUserMock(...a),
+  viewerHas: (set: Set<string>, resource: string, action: string) =>
+    set.has(`${resource}\u0000${action}`),
 }));
 
 vi.mock("@/lib/demo-tenant", () => ({
@@ -31,6 +37,10 @@ describe("GET /api/suppliers/[id]/onboarding-tasks", () => {
     requireApiGrantMock.mockResolvedValue(null);
     getDemoTenantMock.mockResolvedValue({ id: "tenant-1" });
     ensureMock.mockResolvedValue(undefined);
+    getActorUserIdMock.mockResolvedValue("u1");
+    loadGlobalGrantsForUserMock.mockResolvedValue(
+      new Set(["org.suppliers\u0000edit", "org.suppliers\u0000view"]),
+    );
   });
 
   it("returns gate when requireApiGrant denies", async () => {
@@ -90,5 +100,34 @@ describe("GET /api/suppliers/[id]/onboarding-tasks", () => {
     expect(body.tasks[0].id).toBe("t1");
     expect(body.tasks[0].title).toBe("Profile");
     expect(body.tasks[0].dueAt).toBe(due.toISOString());
+  });
+
+  it("redacts task notes and assignee email for view-only (suppliers view without edit/approve)", async () => {
+    loadGlobalGrantsForUserMock.mockResolvedValueOnce(new Set(["org.suppliers\u0000view"]));
+    supplierFindFirstMock.mockResolvedValueOnce({ id: "s1" });
+    taskFindManyMock.mockResolvedValueOnce([
+      {
+        id: "t1",
+        taskKey: "a",
+        title: "Profile",
+        sortOrder: 0,
+        done: false,
+        assigneeUserId: "u2",
+        dueAt: null,
+        notes: "secret",
+        assignee: { id: "u2", name: "Bob", email: "bob@x.com" },
+      },
+    ]);
+    const { GET } = await import("./route");
+    const res = await GET(new Request("http://localhost/api/s1/onboarding-tasks"), {
+      params: Promise.resolve({ id: "s1" }),
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      tasks: { notes: string | null; assignee: { email: string | null; name: string } | null }[];
+    };
+    expect(body.tasks[0].notes).toBeNull();
+    expect(body.tasks[0].assignee?.name).toBe("Bob");
+    expect(body.tasks[0].assignee?.email).toBeNull();
   });
 });

@@ -1,3 +1,4 @@
+import type { PrismaClient } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { maybeAutoClearSrmOnboardingStage } from "./maybe-auto-clear-srm-onboarding-stage";
 
@@ -11,7 +12,7 @@ const prisma = {
     update: updateSupplier,
   },
   supplierOnboardingTask: { findMany: findManyTask },
-} as any;
+} as unknown as PrismaClient;
 
 describe("maybeAutoClearSrmOnboardingStage (G-v1)", () => {
   beforeEach(() => {
