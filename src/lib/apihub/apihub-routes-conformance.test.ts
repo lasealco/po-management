@@ -33,7 +33,7 @@ function exportedHttpMethods(text: string): Set<string> {
 }
 
 /** Bump when adding or removing `route.ts` under `src/app/api/apihub` (sync permissions-matrix + README). */
-const APIHUB_ROUTE_TS_EXPECTED_COUNT = 29;
+const APIHUB_ROUTE_TS_EXPECTED_COUNT = 28;
 
 describe("apihub HTTP routes conformance", () => {
   it("tracks ApiHub route.ts surface count", () => {
