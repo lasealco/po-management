@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { AccessDenied } from "@/components/access-denied";
 import { PageTitleWithHint } from "@/components/page-title-with-hint";
+import { ScriRecommendationsPanel } from "@/components/risk-intelligence/scri-recommendations-panel";
 import { ScriRunMatchButton } from "@/components/risk-intelligence/scri-run-match-button";
 import { ScriTriagePanel } from "@/components/risk-intelligence/scri-triage-panel";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
@@ -169,6 +170,8 @@ export default async function RiskIntelligenceEventPage({
             </ul>
           ) : null}
         </section>
+
+        <ScriRecommendationsPanel canEdit={canRunMatch} recommendations={e.recommendations} />
 
         {e.shortSummary || e.longSummary ? (
           <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">

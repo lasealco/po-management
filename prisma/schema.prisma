@@ -95,6 +95,7 @@ model Tenant {
   scriEventAffectedEntities       ScriEventAffectedEntity[]
   scriEventReviewLogs             ScriEventReviewLog[]
   scriEventTaskLinks              ScriEventTaskLink[]
+  scriEventRecommendations        ScriEventRecommendation[]
 }
 
 /// Integration / API hub — registry row for an external or internal data source (Phase 1 stub).
@@ -3426,6 +3427,13 @@ enum ScriEventReviewState {
   RESOLVED
 }
 
+enum ScriRecommendationStatus {
+  ACTIVE
+  ACCEPTED
+  REJECTED
+  SNOOZED
+}
+
 /// SCRI R1: clustered external risk / disruption event (ingest + feed + detail).
 model ScriExternalEvent {
   id        String   @id @default(cuid())
@@ -3463,6 +3471,7 @@ model ScriExternalEvent {
   affectedEntities ScriEventAffectedEntity[]
   reviewLogs   ScriEventReviewLog[]
   taskLinks    ScriEventTaskLink[]
+  recommendations ScriEventRecommendation[]
 
   @@unique([tenantId, ingestKey])
   @@index([tenantId, discoveredTime])
@@ -3566,5 +3575,29 @@ model ScriEventTaskLink {
   createdBy User              @relation("ScriTaskLinkCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
 
   @@index([eventId, createdAt])
+  @@index([tenantId])
+}
+
+/// SCRI R5: rule-based recommendation row (regenerated when R2 match runs).
+model ScriEventRecommendation {
+  id                 String                   @id @default(cuid())
+  tenantId           String
+  eventId            String
+  recommendationType String                   @db.VarChar(64)
+  targetObjectType   String?                  @db.VarChar(32)
+  targetObjectId     String?
+  priority           Int                      @default(50)
+  confidence         Int                      @default(60)
+  expectedEffect     String?                  @db.Text
+  status             ScriRecommendationStatus @default(ACTIVE)
+  statusNote         String?                  @db.VarChar(2000)
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
+
+  tenant Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  event  ScriExternalEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, recommendationType])
+  @@index([eventId, status])
   @@index([tenantId])
 }

@@ -110,9 +110,10 @@ This workbook ties the **documentation pack** in `docs/SCRI/` to **concrete buil
 
 | Done | Task | Notes / spec pointer |
 |------|------|----------------------|
-| [ ] | **Schema:** `Recommendation` table + status lifecycle | Data model |
-| [ ] | **Engine v0:** Rule-based recommendations from event type + impacted object classes | Backlog R5 |
-| [ ] | **UI:** Recommendation Center or embedded panel on event | PRD |
+| [x] | **Schema:** `ScriEventRecommendation` + `ScriRecommendationStatus` (ACTIVE / ACCEPTED / REJECTED / SNOOZED) | Migration `20260522123000_scri_r5_recommendations` |
+| [x] | **Engine v0:** Deterministic rules from severity, event type, R2 rollup; full replace on each R2 run | `build-deterministic-recommendations`, `run-event-match` |
+| [x] | **API:** `PATCH /api/scri/recommendations/[id]` (status + optional note); clears recs when R2 exits early (no geo) | |
+| [x] | **UI:** Embedded panel on event detail (accept / reject / snooze) | `/risk-intelligence/[id]` |
 
 ---
 

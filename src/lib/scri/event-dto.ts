@@ -1,6 +1,7 @@
 import type {
   ScriEventAffectedEntity,
   ScriEventGeography,
+  ScriEventRecommendation,
   ScriEventReviewLog,
   ScriEventSource,
   ScriEventTaskLink,
@@ -13,6 +14,7 @@ import {
   scriMatchTier,
 } from "@/lib/scri/matching/impact-level";
 import { scriEventTypeLabel } from "@/lib/scri/event-type-taxonomy";
+import { scriRecommendationTypeLabel } from "@/lib/scri/recommendations/recommendation-labels";
 
 export function scriAiSummarySourceLabel(src: string | null | undefined): string {
   switch (src) {
@@ -43,6 +45,7 @@ type DetailRow = ScriExternalEvent & {
   affectedEntities: ScriEventAffectedEntity[];
   reviewLogs: (ScriEventReviewLog & { actor: ActorSnippet })[];
   taskLinks: (ScriEventTaskLink & { createdBy: ActorSnippet })[];
+  recommendations: ScriEventRecommendation[];
 };
 
 export function toScriEventListItemDto(row: ListRow) {
@@ -90,6 +93,7 @@ export function toScriEventDetailDto(row: DetailRow) {
     sources: row.sources.map(toSourceDetailDto),
     reviewLogs: row.reviewLogs.map(toReviewLogDto),
     taskLinks: row.taskLinks.map(toTaskLinkDto),
+    recommendations: row.recommendations.map(toRecommendationDto),
   };
 }
 
@@ -105,6 +109,23 @@ function toReviewLogDto(
     ownerUserIdTo: log.ownerUserIdTo,
     note: log.note,
     actor: { id: log.actor.id, name: log.actor.name, email: log.actor.email },
+  };
+}
+
+function toRecommendationDto(rec: ScriEventRecommendation) {
+  return {
+    id: rec.id,
+    recommendationType: rec.recommendationType,
+    recommendationTypeLabel: scriRecommendationTypeLabel(rec.recommendationType),
+    targetObjectType: rec.targetObjectType,
+    targetObjectId: rec.targetObjectId,
+    priority: rec.priority,
+    confidence: rec.confidence,
+    expectedEffect: rec.expectedEffect,
+    status: rec.status,
+    statusNote: rec.statusNote,
+    createdAt: rec.createdAt.toISOString(),
+    updatedAt: rec.updatedAt.toISOString(),
   };
 }
 

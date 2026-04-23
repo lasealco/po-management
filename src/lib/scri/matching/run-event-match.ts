@@ -8,6 +8,8 @@ import {
 } from "@/lib/scri/matching/geo-signals";
 import { resolveShipmentCandidates } from "@/lib/scri/matching/resolve-shipment-candidates";
 import { R2_MATCH_LIMITS } from "@/lib/scri/matching/run-event-match-limits";
+import { buildDeterministicScriRecommendations } from "@/lib/scri/recommendations/build-deterministic-recommendations";
+import { replaceScriEventRecommendations } from "@/lib/scri/recommendations/replace-event-recommendations";
 
 export type MatchRow = {
   tenantId: string;
@@ -36,7 +38,10 @@ export async function runScriEventMatching(tenantId: string, eventId: string): P
   const hasGeo =
     signals.countries.size > 0 || signals.unlocs.size > 0 || signals.regionTerms.length > 0;
   if (!hasGeo) {
-    await prisma.scriEventAffectedEntity.deleteMany({ where: { eventId } });
+    await prisma.$transaction(async (tx) => {
+      await tx.scriEventAffectedEntity.deleteMany({ where: { eventId } });
+      await tx.scriEventRecommendation.deleteMany({ where: { eventId } });
+    });
     return 0;
   }
 
@@ -311,6 +316,21 @@ export async function runScriEventMatching(tenantId: string, eventId: string): P
   }
   const finalRows = [...dedup.values()];
 
+  const affectedByType: Record<string, number> = {};
+  const firstObjectIdByType: Record<string, string> = {};
+  for (const m of finalRows) {
+    affectedByType[m.objectType] = (affectedByType[m.objectType] ?? 0) + 1;
+    if (!firstObjectIdByType[m.objectType]) firstObjectIdByType[m.objectType] = m.objectId;
+  }
+
+  const recommendationRows = buildDeterministicScriRecommendations({
+    event: eventRow,
+    candidateShipmentCount: candidateIds.length,
+    affectedMatchCount: finalRows.length,
+    affectedByType,
+    firstObjectIdByType,
+  });
+
   const now = new Date();
   await prisma.$transaction(async (tx) => {
     await tx.scriEventAffectedEntity.deleteMany({ where: { eventId } });
@@ -323,6 +343,7 @@ export async function runScriEventMatching(tenantId: string, eventId: string): P
       }));
       await tx.scriEventAffectedEntity.createMany({ data: chunk });
     }
+    await replaceScriEventRecommendations(tx, tenantId, eventId, recommendationRows);
   });
 
   return finalRows.length;

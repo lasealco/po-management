@@ -43,6 +43,9 @@ export async function getScriEventForTenant(tenantId: string, id: string) {
         take: 30,
         include: { createdBy: { select: { id: true, name: true, email: true } } },
       },
+      recommendations: {
+        orderBy: [{ priority: "desc" }, { recommendationType: "asc" }],
+      },
     },
   });
 }
