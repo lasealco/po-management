@@ -6,7 +6,18 @@
 
 **Baseline:** The app ships **tenant-scoped supplier master** with **product vs logistics** categories, **SRM list + create + 360** under `/srm`, and shared supplier APIs/components with the legacy `/suppliers` directory. PDFs describe **enterprise** depth (full lifecycle, compliance vault, integration mesh). Treat ❌ as "not here yet," not "ignored."
 
-**Module completion program:** 30 scoped engineering slices through MVP sign-off — see [`SRM_FINISH_SLICES.md`](./SRM_FINISH_SLICES.md). Track issue/PR links in a table (slice **1–3** instruct where to add the tracker).
+---
+
+## Completion program (SRM MVP)
+
+SRM “finished” for MVP is defined and sequenced in **[`SRM_FINISH_SLICES.md`](./SRM_FINISH_SLICES.md)** — **30 slices** (phases A–F), from UX and permissions through compliance, KPI, integration, and final sign-off.
+
+| Resource | Location |
+|----------|----------|
+| Slice list, acceptance hints, MVP definition | [`SRM_FINISH_SLICES.md`](./SRM_FINISH_SLICES.md) |
+| GitHub label & allowed paths | [`docs/engineering/agent-todos/srm.md`](../engineering/agent-todos/srm.md) |
+
+**Slice 1 — SRM completion index:** register the program in-repo (this section + cross-links above). **Slice 3** adds the issue/PR tracker table to this doc.
 
 ---
 

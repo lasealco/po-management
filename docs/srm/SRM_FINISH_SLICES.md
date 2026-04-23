@@ -28,7 +28,7 @@
 
 | # | Slice | Goal | Acceptance (checklist for the issue) |
 |---|--------|------|--------------------------------------|
-| **1** | **SRM completion index** | Register this program in-repo | Link `SRM_FINISH_SLICES.md` from `agent-todos/srm.md`; add a “Completion program” subsection in `GAP_MAP.md` pointing here. |
+| **1** | **SRM completion index** | Register this program in-repo | **Done:** `GAP_MAP.md` § **Completion program (SRM MVP)**; `agent-todos/srm.md` links here + GAP anchor. Slice 3 adds issue/PR tracker. |
 | **2** | **Definition-of-done checklist** | Single page reviewers use | Add a short “SRM MVP sign-off” checklist to `GAP_MAP.md` (or bottom of this file) listing: routes, grants, seeds, migrations, manual smoke URLs. |
 | **3** | **Slice tracker table** | Traceability | In `GAP_MAP.md`, add a table column or appendix: slice # → GitHub issue → PR (empty until filled). |
 | **4** | **List page polish** | `/srm` production feel | Empty/error/loading states; consistent filters (`kind`, `q`); mobile-friendly table or card fallback; primary actions use `--arscmp-primary`. |

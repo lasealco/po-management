@@ -6,7 +6,15 @@
 
 **Source of truth:** `docs/srm/*.pdf` (sprint plan, blueprint, PRD) + `docs/srm/GAP_MAP.md` (current PDF-to-repo mapping baseline).
 
-**Finish program (30 slices):** [`docs/srm/SRM_FINISH_SLICES.md`](../../srm/SRM_FINISH_SLICES.md) — module-by-module issues until SRM MVP is signed off in `GAP_MAP.md` (slice 30).
+**Finish program (30 slices):** [`docs/srm/SRM_FINISH_SLICES.md`](../../srm/SRM_FINISH_SLICES.md) — module-by-module issues until SRM MVP is signed off in `GAP_MAP.md` (slice 30). **Index:** [`docs/srm/GAP_MAP.md` § Completion program](../../srm/GAP_MAP.md#completion-program-srm-mvp).
+
+---
+
+## Finish program — slice status (update as you merge)
+
+- [x] **Slice 1 — SRM completion index** — `GAP_MAP.md` has **Completion program (SRM MVP)**; this file links the program + index anchor.
+- [ ] **Slice 2 — Definition-of-do checklist** (see `SRM_FINISH_SLICES.md`)
+- [ ] **Slice 3 — Slice tracker table** in `GAP_MAP.md`
 
 ---
 
