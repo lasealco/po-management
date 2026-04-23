@@ -6,7 +6,7 @@
 
 **Source of truth:** `docs/srm/*.pdf` (sprint plan, blueprint, PRD) + `docs/srm/GAP_MAP.md` (current PDF-to-repo mapping baseline).
 
-**Finish program (30 slices):** [`docs/srm/SRM_FINISH_SLICES.md`](../../srm/SRM_FINISH_SLICES.md) — module-by-module issues until SRM MVP is signed off in `GAP_MAP.md` (slice 30). **Index:** [`docs/srm/GAP_MAP.md` § Completion program](../../srm/GAP_MAP.md#completion-program-srm-mvp) · [MVP sign-off checklist](../../srm/GAP_MAP.md#srm-mvp-sign-off-checklist-reviewers).
+**Finish program (30 slices):** [`docs/srm/SRM_FINISH_SLICES.md`](../../srm/SRM_FINISH_SLICES.md) — all **30** slices are represented in `GAP_MAP.md` and `SRM_FINISH_SLICES.md`. **Index:** [`docs/srm/GAP_MAP.md` § Completion program](../../srm/GAP_MAP.md#completion-program-srm-mvp) · [MVP sign-off checklist](../../srm/GAP_MAP.md#srm-mvp-sign-off-checklist-reviewers).
 
 ---
 
@@ -20,6 +20,9 @@
 - [x] **Phase C (slices 16–20)** — compliance document vault: Prisma + APIs + `/srm/[id]` Compliance tab + audit log + read-only vs edit (`GAP_MAP.md` Phase C note)
 - [x] **Phase D (slices 21–24)** — `/srm/analytics` + aggregates + concentration + booking SLA panel + API (`GAP_MAP.md` Phase D note)
 - [x] **Phase E (slices 25–28)** — inbound upsert v1 + idempotency + export + `INTEGRATION.md` (`GAP_MAP.md` Phase E note)
+- [x] **Phase F (slices 29–30)** — `db:seed:srm-demo` + `docs/database-neon.md`; `GAP_MAP.md` Phase F + blueprint refresh + MVP sign-off (`GAP_MAP.md` Phase F note)
+
+**SRM MVP (finish program scope)** is **signed off in-repo**; use `GAP_MAP.md` for what is deferred beyond MVP.
 
 ---
 
@@ -29,14 +32,11 @@ Routes exist: `/srm`, `/srm/new`, `/srm/[id]`, supplier links from suppliers hub
 
 ---
 
-## Suggested agent-sized slices (create an issue per checkbox)
+## Suggested follow-ups (post–finish program; create an issue per item)
 
-- [ ] **Gap doc** — add `docs/srm/GAP_MAP.md` mirroring Control Tower/WMS style (PDF → repo reality table); no behavior change.
-- [ ] **Onboarding workflow** — implement next step from `srm_supplier_lifecycle_and_onboarding_spec` (define acceptance in issue).
-- [ ] **Permissions matrix** — map `srm_permission_and_visibility_matrix` to `org.*` grants + API guards (one slice at a time).
-- [ ] **Compliance / documents** — document control hooks from spec (likely read-only v1).
-- [ ] **Performance / KPI** — minimal dashboard or metrics from `srm_performance_risk_and_kpi_spec` (pick one chart/table first).
-- [ ] **Integration pack** — one inbound/outbound payload type from `srm_integration_and_api_payload_pack` + tests.
+- [ ] Deeper **lifecycle** — supplier portal, staged capture, in-app notifications (see PDF specs; out of **SRM MVP** in `SRM_FINISH_SLICES.md`).
+- [ ] **Field-level permissions** from `srm_permission_and_visibility_matrix_*.pdf` beyond current `org.*` grants.
+- [ ] **Pixel / wireframe parity** with `srm_ux_ui_design_guideline_and_wireframe_pack_*.pdf` where product asks for it.
 
 ---
 

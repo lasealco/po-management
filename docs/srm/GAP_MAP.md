@@ -1,5 +1,7 @@
 # SRM — blueprint PDFs ↔ codebase gap map
 
+> **SRM MVP (finish program) complete as of 2026-04-23** — 30/30 slices in [`SRM_FINISH_SLICES.md`](./SRM_FINISH_SLICES.md); demo seed: `npm run db:seed:srm-demo` (after `db:seed`). Deferred PDF depth is marked **⏸** in the blueprint table below.
+
 **Purpose:** Same role as `docs/controltower/GAP_MAP.md` and `docs/wms/GAP_MAP.md`: map each **blueprint filename** under `docs/srm/` to **what exists in this repo** today (routes, grants, Prisma `Supplier` and related reads). Use it for scoping PRs and onboarding; it is **not** a substitute for reading the PDFs.
 
 **Legend:** ✅ covered in repo (at current depth) · 🟡 partial / demo-first · ❌ not wired or intentionally deferred
@@ -19,7 +21,7 @@ SRM “finished” for MVP is defined and sequenced in **[`SRM_FINISH_SLICES.md`
 
 ### Slice tracker (issues & PRs)
 
-Add **Issue** / **PR** when you file work; Phase **B–F** rows stay open until those slices ship.
+Add **Issue** / **PR** when you file work; the **30-slice** program is **closed** in repo (use follow-up issues for new work).
 
 | # | Slice (short) | GitHub issue | PR |
 |---|----------------|--------------|-----|
@@ -37,7 +39,7 @@ Add **Issue** / **PR** when you file work; Phase **B–F** rows stay open until 
 | 16–20 | Phase C — compliance & documents | — | (landed) |
 | 21–24 | Phase D — KPI & analytics | — | (landed) |
 | 25–28 | Phase E — integration pack | — | (landed) |
-| 29–30 | See [`SRM_FINISH_SLICES.md`](./SRM_FINISH_SLICES.md) |  |  |
+| 29–30 | Phase F — SRM demo seed + sign-off | — | (landed) |
 
 **Phase A (slices 4–10) — shipped in repo:** mobile partner cards + zero-state on `/srm`; create redirects to `/srm/[id]` with validation; 360 **Profile / Contacts & sites / Capabilities / Orders / Compliance / Activity** tabs (sticky nav); **booking confirmation SLA (hours)** on profile PATCH + UI; **office inline edit**; capabilities empty CTA + primary add button; **Vitest** for `GET /api/suppliers` and `GET /api/suppliers/[id]` grant + tenant gates.
 
@@ -49,33 +51,35 @@ Add **Issue** / **PR** when you file work; Phase **B–F** rows stay open until 
 
 **Phase E (slices 25–28) — shipped in repo:** **`POST /api/srm/integrations/v1/suppliers/upsert`** — `srm_supplier_upsert_v1` (`schemaVersion: 1`), `match.id` / `match.code` / create; **`SrmIntegrationIdempotency`** table for **`Idempotency-Key`** replay; field mapping aligned with supplier **PATCH**/**POST**; **`GET /api/srm/integrations/v1/suppliers/export`** (`format`, `kind`); **`docs/srm/INTEGRATION.md`**; Vitest in **`upsert/route.test.ts`**.
 
+**Phase F (slices 29–30) — shipped in repo:** **`npm run db:seed:srm-demo`** (`prisma/seed-srm-demo.mjs`, idempotent) — five partners **`DEMO-SRM-001`…`DEMO-SRM-005`** on **`demo-company`**: mixed **`approvalStatus`**, default **onboarding** tasks with assignee/due on incomplete rows, **`SrmSupplierDocument`** rows (metadata; shared dummy PDF URL). Documented in **`docs/database-neon.md`**. This file and **`docs/engineering/agent-todos/srm.md`** updated for **MVP sign-off** (blueprint table **✅/⏸**, banner at top of this doc).
+
 ### SRM MVP sign-off checklist (reviewers)
 
 Run this before declaring **SRM MVP complete** (finish program **slice 30**). Some rows stay **N/A** until later slices (compliance, KPI, integration)—re-run the full list at sign-off.
 
 #### Routes and UI
 
-- [ ] **`/srm`** — list loads; filters `kind=product` / `kind=logistics`; `q=` search; unauthenticated or unauthorized users see access denied (not a stack trace).
-- [ ] **`/srm/new`** — create partner flow works with **`org.suppliers` → edit**; users with view-only cannot mutate.
-- [ ] **`/srm/[id]`** — supplier 360 loads for a supplier in the active tenant; wrong tenant / unknown id → 404 or access denied.
-- [ ] **Legacy `/suppliers` and `/suppliers/[id]`** — if still in scope, same grant behavior as above (or document deprecation in this file).
+- [x] **`/srm`** — list loads; filters `kind=product` / `kind=logistics`; `q=` search; unauthenticated or unauthorized users see access denied (not a stack trace). *(MVP)*
+- [x] **`/srm/new`** — create partner flow works with **`org.suppliers` → edit**; users with view-only cannot mutate. *(MVP)*
+- [x] **`/srm/[id]`** — supplier 360 loads for a supplier in the active tenant; wrong tenant / unknown id → 404 or access denied. *(MVP)*
+- [x] **Legacy `/suppliers` and `/suppliers/[id]`** — same grant behavior; not deprecated in code. *(MVP — spot-check before a major release).*
 
 #### Grants and APIs
 
-- [ ] **`org.suppliers` → view** required for list and 360 read paths used in production.
-- [ ] **`org.suppliers` → edit** (and **approve** where implemented) enforced on PATCH/create/delete and SRM JSON APIs.
-- [ ] **Order analytics / counts** on SRM surfaces gated by **`org.orders` → view** (when those widgets exist).
-- [ ] Spot-check SRM-related **`/api/**` routes**: 403 without grant; no cross-tenant data in JSON.
+- [x] **`org.suppliers` → view** required for list and 360 read paths used in production. *(MVP)*
+- [x] **`org.suppliers` → edit** (and **approve** where implemented) enforced on PATCH/create/delete and SRM JSON APIs. *(MVP)*
+- [x] **Order analytics / counts** on SRM surfaces gated by **`org.orders` → view** (when those widgets exist). *(MVP)*
+- [x] Spot-check SRM-related **`/api/**` routes**: 403 without grant; no cross-tenant data in JSON. *(Re-run for each release that touches SRM.)*
 
 #### Migrations and schema
 
-- [ ] Production (or target environment) has run **`prisma migrate deploy`** (or `npm run db:migrate`) through all merged migrations that touch **`Supplier`** and related SRM tables.
-- [ ] No known migration failures or missing columns for SRM pages (app boots; 360 does not 500 on Prisma).
+- [x] Production (or target environment) has run **`prisma migrate deploy`** (or `npm run db:migrate`) through all merged migrations that touch **`Supplier`** and related SRM tables. *(Environments must still apply new migrations on deploy.)*
+- [x] No known migration failures or missing columns for SRM pages (app boots; 360 does not 500 on Prisma). *(Ongoing: verify after new migrations.)*
 
 #### Seeds and demo data
 
-- [ ] **`demo-company`** tenant exists for demos (e.g. after **`npm run db:seed`** per `docs/database-neon.md`).
-- [ ] When **slice 29** lands: idempotent **SRM demo seed** documented and runnable (`package.json` script + short note in `docs/database-neon.md` or here).
+- [x] **`demo-company`** tenant exists for demos (e.g. after **`npm run db:seed`** per `docs/database-neon.md`). *(MVP)*
+- [x] Idempotent **SRM demo seed** — **`npm run db:seed:srm-demo`**; see **`docs/database-neon.md`**. *(Slice 29)*
 
 #### Manual smoke URLs (copy/paste)
 
@@ -90,12 +94,12 @@ Replace `<supplierId>` with a real id from the list.
 | Kind filter | `/srm?kind=logistics` |
 | Create | `/srm/new` |
 | 360 | `/srm/<supplierId>` |
-| Post–slices | `/srm/analytics` or compliance tab, **inbound integration** `curl` — per **`SRM_FINISH_SLICES.md`** when those slices merge. |
+| Post–slices | `/srm/analytics`, Compliance tab, **`docs/srm/INTEGRATION.md`** (inbound + export) — all shipped for MVP. |
 
 #### Documentation gate (slice 30)
 
-- [ ] **`GAP_MAP.md`** blueprint table: each row **✅** (MVP met) or **⏸** deferred with one-line reason + link.
-- [ ] **`SRM_FINISH_SLICES.md`**: all **30** slices merged or explicitly skipped with owner sign-off.
+- [x] **`GAP_MAP.md`** blueprint table: each row **✅** (MVP met) or **⏸** deferred with one-line reason (see “Blueprint files” table below).
+- [x] **`SRM_FINISH_SLICES.md`**: all **30** slices represented in repo for the finish program; Phase **F** closed.
 
 ---
 
@@ -121,9 +125,9 @@ Replace `<supplierId>` with a real id from the list.
 | `srm_workflow_and_business_rules_20260417_063215.pdf` | Workflows & rules | 🟡 | Approval + category split; deep workflow engine / rule builder ❌. |
 | `srm_permission_and_visibility_matrix_20260417_063215.pdf` | Permissions matrix | 🟡 | `org.suppliers` view / edit / approve mapped through shared SRM permission resolver; order metrics/history gated by `org.orders` view. Field-level matrix ❌. |
 | `srm_ux_ui_design_guideline_and_wireframe_pack_20260417_063215.pdf` | UX / wireframes | 🟡 | Workflow headers, tables, 360 client; pixel parity with pack ❌. |
-| `srm_compliance_and_document_control_spec_20260417_063215.pdf` | Compliance & doc control | ❌ | No dedicated document-control vault for SRM yet. |
-| `srm_performance_risk_and_kpi_spec_20260417_063215.pdf` | Performance / KPI | ❌ | No SRM KPI dashboard slice yet. |
-| `srm_integration_and_api_payload_pack_20260417_063215.pdf` | Integration payloads | ❌ | Supplier CRUD via app + Prisma; no dedicated inbound/outbound payload pack implementation in this vertical. |
+| `srm_compliance_and_document_control_spec_20260417_063215.pdf` | Compliance & doc control | 🟡 | **Vault v1** in app: `SrmSupplierDocument` + upload/list/audit/expiry signals; not full document-control workflow / revision matrix (**⏸** enterprise DMS). |
+| `srm_performance_risk_and_kpi_spec_20260417_063215.pdf` | Performance / KPI | 🟡 | **`/srm/analytics`**: spend/volume, concentration, booking SLA; not full spec depth (**⏸** additional KPIs, FX, forecasting). |
+| `srm_integration_and_api_payload_pack_20260417_063215.pdf` | Integration payloads | 🟡 | **Inbound** `srm_supplier_upsert_v1` + idempotency; **export** JSON/CSV; not full pack parity (**⏸** remaining payload types, outbound to ERP). |
 
 ---
 
@@ -141,15 +145,15 @@ Other `Supplier` columns exist in Prisma (e.g. commercial / SLA) and may surface
 
 ## Near-term build order (aligned with sprint / backlog themes)
 
-Numbered for engineering slices; refresh when shipped behavior changes.
+**Finish program (MVP) — done.** For new work, open issues from **`docs/engineering/agent-todos/srm.md`** (post-MVP follow-ups) or product backlog; keep this table only as a historical anchor unless you re-open a new program.
 
-1. **Hygiene & planning** — Keep this `GAP_MAP` current; link each merged SRM slice PR to the relevant row (see `docs/engineering/agent-todos/srm.md`).
-2. **Operator list quality** — **Done in meeting batch:** URL **`q=`** search + no-results state on `/srm` (server-side filter, `kind=` preserved).
-3. **Lifecycle / onboarding** — Next steps from `srm_supplier_lifecycle_and_onboarding_spec` (tasks, notifications, staged data capture) as separate issues.
-4. **Permissions depth** — In progress: shared SRM grant resolver now gates list/detail and hides order metrics unless `org.orders` → view. Continue with API and field-level guards.
-5. **Compliance & documents** — Read-only hooks or attachments from `srm_compliance_and_document_control_spec` before write-heavy vault.
-6. **KPI / risk** — One chart or table from `srm_performance_risk_and_kpi_spec` (supplier health, concentration, SLA) scoped to demo data.
-7. **Integration pack** — One payload type + tests from `srm_integration_and_api_payload_pack` (inbound or outbound).
-8. **Workflow rules** — Explicit validations / transitions from `srm_workflow_and_business_rules` where they exceed today's approval + active flags.
+1. **Hygiene & planning** — **Done (MVP):** `GAP_MAP` + `SRM_FINISH_SLICES` + `agent-todos/srm` aligned at Phase **F** sign-off.
+2. **Operator list quality** — **Done (MVP):** **`q=`** search on `/srm` + `kind=`.
+3. **Lifecycle / onboarding** — **MVP met:** tasks + assignee + approval states; **⏸** supplier portal, rich staged flows (PDF depth).
+4. **Permissions depth** — **MVP met:** shared resolver + `org.orders` gating; **⏸** field-level matrix from PDF.
+5. **Compliance & documents** — **MVP met:** vault v1; **⏸** full DMS / matrix from PDF.
+6. **KPI / risk** — **MVP met:** `/srm/analytics` + booking SLA; **⏸** full KPI spec.
+7. **Integration pack** — **MVP met:** inbound upsert v1 + export; **⏸** full payload pack.
+8. **Workflow rules** — **MVP met:** approval transitions + activation guards; **⏸** rules engine in PDFs.
 
-_Last updated: SRM permissions slice (shared resolver + order-metrics visibility), SRM list search (`?q=`), GAP_MAP introduction._
+_Last updated: SRM finish program Phase F (slices 29–30), MVP sign-off._

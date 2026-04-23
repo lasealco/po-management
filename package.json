@@ -53,6 +53,7 @@
     "db:seed:ct-volume:dry-run": "node prisma/ct-demo-shipments-volume.mjs --dry-run",
     "db:seed:ct-volume:balanced:dry-run": "CT_VOL_BALANCED=1 node prisma/ct-demo-shipments-volume.mjs --dry-run",
     "db:seed:crm-demo": "node prisma/crm-demo-seed.mjs",
+    "db:seed:srm-demo": "node prisma/seed-srm-demo.mjs",
     "db:seed:wms-demo": "node prisma/wms-demo-seed.mjs",
     "db:seed:demo-full": "node scripts/seed-demo-full.mjs",
     "db:seed:product-trace-demo": "node prisma/product-trace-demo-repair.mjs",

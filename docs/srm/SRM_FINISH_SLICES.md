@@ -97,6 +97,8 @@
 
 ## Phase F — Closeout (slices 29–30)
 
+**Status:** ✅ Landed (see `GAP_MAP.md` Phase F note).
+
 | # | Slice | Goal | Acceptance |
 |---|--------|------|------------|
 | **29** | **Seed & demo data** | Repeatable demo | `db:seed` or `db:seed:srm-demo` (idempotent): 3–5 suppliers with docs, tasks, varied approval states; documented in `docs/database-neon.md` if Neon-specific. |
