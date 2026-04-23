@@ -67,6 +67,9 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       transportMode: true,
       providerId: true,
       legalEntityId: true,
+      tradeScope: true,
+      ownerUserId: true,
+      notes: true,
     },
   });
   if (!before) {
@@ -121,6 +124,33 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     return toApiErrorResponse({ error: "No valid fields to update.", code: "BAD_INPUT", status: 400 });
   }
 
+  if (patch.providerId != null) {
+    const p = await prisma.tariffProvider.findFirst({
+      where: { id: patch.providerId, status: "ACTIVE" },
+      select: { id: true },
+    });
+    if (!p) {
+      return toApiErrorResponse({
+        error: "Provider not found or inactive.",
+        code: "BAD_INPUT",
+        status: 400,
+      });
+    }
+  }
+  if (patch.legalEntityId !== undefined && patch.legalEntityId !== null) {
+    const le = await prisma.tariffLegalEntity.findFirst({
+      where: { id: patch.legalEntityId, tenantId: tenant.id },
+      select: { id: true },
+    });
+    if (!le) {
+      return toApiErrorResponse({
+        error: "Legal entity not found for this tenant.",
+        code: "BAD_INPUT",
+        status: 400,
+      });
+    }
+  }
+
   try {
     const updated = await updateTariffContractHeader({ tenantId: tenant.id, id }, patch);
     await recordTariffAuditLog({
@@ -136,6 +166,9 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         transportMode: updated.transportMode,
         providerId: updated.providerId,
         legalEntityId: updated.legalEntityId,
+        tradeScope: updated.tradeScope,
+        ownerUserId: updated.ownerUserId,
+        notes: updated.notes,
       },
     });
     return NextResponse.json({ contract: updated });

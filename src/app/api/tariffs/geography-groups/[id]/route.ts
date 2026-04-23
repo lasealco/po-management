@@ -2,7 +2,8 @@ import { TariffGeographyType } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
-import { requireApiGrant } from "@/lib/authz";
+import { getActorUserId, requireApiGrant } from "@/lib/authz";
+import { recordTariffAuditLog } from "@/lib/tariff/audit-log";
 import {
   deleteTariffGeographyGroup,
   getTariffGeographyGroupById,
@@ -41,6 +42,11 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   const gate = await requireApiGrant("org.tariffs", "edit");
   if (gate) return gate;
+
+  const actorId = await getActorUserId();
+  if (!actorId) {
+    return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
+  }
 
   const { id } = await context.params;
 
@@ -82,7 +88,32 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   }
 
   try {
+    const before = await getTariffGeographyGroupById(id);
     const updated = await updateTariffGeographyGroup(id, patch);
+    await recordTariffAuditLog({
+      objectType: "geography_group",
+      objectId: id,
+      action: "update",
+      userId: actorId,
+      oldValue: {
+        name: before.name,
+        geographyType: before.geographyType,
+        code: before.code,
+        aliasSource: before.aliasSource,
+        validFrom: before.validFrom,
+        validTo: before.validTo,
+        active: before.active,
+      },
+      newValue: {
+        name: updated.name,
+        geographyType: updated.geographyType,
+        code: updated.code,
+        aliasSource: updated.aliasSource,
+        validFrom: updated.validFrom,
+        validTo: updated.validTo,
+        active: updated.active,
+      },
+    });
     return NextResponse.json({ group: updated });
   } catch (e) {
     const j = jsonFromTariffError(e);
@@ -95,9 +126,22 @@ export async function DELETE(_request: Request, context: { params: Promise<{ id:
   const gate = await requireApiGrant("org.tariffs", "edit");
   if (gate) return gate;
 
+  const actorId = await getActorUserId();
+  if (!actorId) {
+    return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
+  }
+
   const { id } = await context.params;
   try {
+    const before = await getTariffGeographyGroupById(id);
     await deleteTariffGeographyGroup(id);
+    await recordTariffAuditLog({
+      objectType: "geography_group",
+      objectId: id,
+      action: "delete",
+      userId: actorId,
+      oldValue: { name: before.name, geographyType: before.geographyType },
+    });
     return NextResponse.json({ ok: true });
   } catch (e) {
     const j = jsonFromTariffError(e);

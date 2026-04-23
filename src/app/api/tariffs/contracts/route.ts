@@ -9,6 +9,7 @@ import type { TariffTransportMode } from "@prisma/client";
 
 import { jsonFromTariffError } from "@/app/api/tariffs/_lib/tariff-api-error";
 import { TARIFF_TRANSPORT_MODE_SET } from "@/lib/tariff/tariff-enum-sets";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
@@ -78,10 +79,39 @@ export async function POST(request: Request) {
     return toApiErrorResponse({ error: "Invalid transportMode.", code: "BAD_INPUT", status: 400 });
   }
 
+  const legalEntityId =
+    typeof o.legalEntityId === "string" ? o.legalEntityId.trim() || null : null;
+
+  const providerRow = await prisma.tariffProvider.findFirst({
+    where: { id: providerId, status: "ACTIVE" },
+    select: { id: true },
+  });
+  if (!providerRow) {
+    return toApiErrorResponse({
+      error: "Provider not found or inactive.",
+      code: "BAD_INPUT",
+      status: 400,
+    });
+  }
+
+  if (legalEntityId) {
+    const le = await prisma.tariffLegalEntity.findFirst({
+      where: { id: legalEntityId, tenantId: tenant.id },
+      select: { id: true },
+    });
+    if (!le) {
+      return toApiErrorResponse({
+        error: "Legal entity not found for this tenant.",
+        code: "BAD_INPUT",
+        status: 400,
+      });
+    }
+  }
+
   try {
     const created = await createTariffContractHeader({
       tenantId: tenant.id,
-      legalEntityId: typeof o.legalEntityId === "string" ? o.legalEntityId.trim() || null : null,
+      legalEntityId,
       providerId,
       transportMode: transportMode as TariffTransportMode,
       contractNumber: typeof o.contractNumber === "string" ? o.contractNumber.trim() || null : null,

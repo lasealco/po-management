@@ -86,7 +86,7 @@ export function TariffContractHeaderClient({
             value={title}
             disabled={!canEdit}
             onChange={(e) => setTitle(e.target.value)}
-            className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm shadow-sm disabled:bg-zinc-100"
+            className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-[var(--arscmp-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--arscmp-primary)] disabled:bg-zinc-100"
           />
         </label>
         <label className="grid gap-1 text-sm">
@@ -95,7 +95,7 @@ export function TariffContractHeaderClient({
             value={contractNumber}
             disabled={!canEdit}
             onChange={(e) => setContractNumber(e.target.value)}
-            className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm shadow-sm disabled:bg-zinc-100"
+            className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-[var(--arscmp-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--arscmp-primary)] disabled:bg-zinc-100"
           />
         </label>
         <label className="grid gap-1 text-sm">
@@ -104,7 +104,7 @@ export function TariffContractHeaderClient({
             value={status}
             disabled={!canEdit}
             onChange={(e) => setStatus(e.target.value)}
-            className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm shadow-sm disabled:bg-zinc-100"
+            className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-[var(--arscmp-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--arscmp-primary)] disabled:bg-zinc-100"
           >
             {["DRAFT", "UNDER_REVIEW", "APPROVED", "EXPIRED", "SUPERSEDED", "ARCHIVED"].map((s) => (
               <option key={s} value={s}>

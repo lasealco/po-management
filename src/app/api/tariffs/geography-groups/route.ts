@@ -2,7 +2,8 @@ import { TariffGeographyType } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
-import { requireApiGrant } from "@/lib/authz";
+import { getActorUserId, requireApiGrant } from "@/lib/authz";
+import { recordTariffAuditLog } from "@/lib/tariff/audit-log";
 import { createTariffGeographyGroup, listTariffGeographyGroups } from "@/lib/tariff/geography-groups";
 import { jsonFromTariffError } from "@/app/api/tariffs/_lib/tariff-api-error";
 import { parseTariffDateField } from "@/app/api/tariffs/_lib/parse-tariff-date";
@@ -47,6 +48,11 @@ export async function POST(request: Request) {
   const gate = await requireApiGrant("org.tariffs", "edit");
   if (gate) return gate;
 
+  const actorId = await getActorUserId();
+  if (!actorId) {
+    return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
+  }
+
   let body: unknown;
   try {
     body = await request.json();
@@ -76,6 +82,18 @@ export async function POST(request: Request) {
       validFrom: parseTariffDateField(o.validFrom) ?? null,
       validTo: parseTariffDateField(o.validTo) ?? null,
       active: typeof o.active === "boolean" ? o.active : true,
+    });
+    await recordTariffAuditLog({
+      objectType: "geography_group",
+      objectId: created.id,
+      action: "create",
+      userId: actorId,
+      newValue: {
+        name: created.name,
+        geographyType: created.geographyType,
+        code: created.code,
+        active: created.active,
+      },
     });
     return NextResponse.json({ group: created });
   } catch (e) {

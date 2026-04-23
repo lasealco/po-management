@@ -6,6 +6,8 @@ import { prisma } from "@/lib/prisma";
  * Import / promote flows use `objectType` **`import_batch`** with actions such as **`upload`**, **`patch`**,
  * **`sample_staging`**, **`fixture_promotable_rows`**, and **`import_staging_row`** **`patch`**; promote completion
  * logs **`contract_version`** **`import_promote`** (see `promote-staging-import.ts` and import batch API routes).
+ *
+ * Geography maintenance uses **`geography_group`** with **`create`**, **`update`**, **`delete`** (see geography-groups API routes).
  */
 
 /** Upper bound for list endpoints (contract scope + object-type tail). */
