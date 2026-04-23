@@ -1,4 +1,5 @@
 import { SettingsUsersClient } from "@/components/settings-users-client";
+import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
 
@@ -39,6 +40,12 @@ export default async function SettingsUsersPage() {
     }),
   ]);
 
+  const access = await getViewerGrantSet();
+  const canEdit = Boolean(
+    access?.user && viewerHas(access.grantSet, "org.settings", "edit"),
+  );
+  const actorUserId = access?.user?.id ?? null;
+
   const rows = users.map((u) => ({
     id: u.id,
     email: u.email,
@@ -51,11 +58,18 @@ export default async function SettingsUsersPage() {
     <div>
       <h2 className="text-2xl font-semibold text-zinc-900">Users</h2>
       <p className="mt-1 text-sm text-zinc-600">
-        Tenant accounts for this organization. Deactivating a user is
-        reversible.
+        Tenant accounts for this organization. Admins (users with{" "}
+        <span className="whitespace-nowrap">org.settings → edit</span>) can create
+        users, assign roles, reset passwords, and activate or deactivate accounts.
+        Deactivation is reversible.
       </p>
       <div className="mt-8">
-        <SettingsUsersClient users={rows} roleCatalog={roleCatalog} />
+        <SettingsUsersClient
+          users={rows}
+          roleCatalog={roleCatalog}
+          canEdit={canEdit}
+          actorUserId={actorUserId}
+        />
       </div>
     </div>
   );

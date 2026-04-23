@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireApiGrant } from "@/lib/authz";
+import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { hashPassword } from "@/lib/password";
 import { prisma } from "@/lib/prisma";
@@ -78,6 +78,17 @@ export async function PATCH(
       return toApiErrorResponse({ error: "isActive must be a boolean.", code: "BAD_INPUT", status: 400 });
     }
     isActive = activeRaw;
+  }
+
+  if (isActive === false) {
+    const actorId = await getActorUserId();
+    if (actorId && actorId === id) {
+      return toApiErrorResponse({
+        error: "You cannot deactivate your own account.",
+        code: "BAD_INPUT",
+        status: 400,
+      });
+    }
   }
   let passwordHash: string | undefined;
   if (passwordRaw !== undefined) {
