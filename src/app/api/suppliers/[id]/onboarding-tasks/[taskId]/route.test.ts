@@ -20,6 +20,12 @@ vi.mock("@/lib/srm/emit-srm-operator-notification", () => ({
   SRM_NOTIFICATION_KIND: { ONBOARDING_TASK_ASSIGNED: "onboarding_task_assigned" },
 }));
 
+vi.mock("@/lib/srm/maybe-auto-clear-srm-onboarding-stage", () => ({
+  maybeAutoClearSrmOnboardingStage: vi
+    .fn()
+    .mockResolvedValue({ srmOnboardingStage: "diligence", didAutoAdvance: false }),
+}));
+
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     supplierOnboardingTask: { findFirst: findFirstMock, update: updateMock },
@@ -88,9 +94,14 @@ describe("PATCH /api/suppliers/[id]/onboarding-tasks/[taskId]", () => {
       { params: Promise.resolve({ id: "s1", taskId: "t1" }) },
     );
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { task: { done: boolean; title: string } };
+    const body = (await res.json()) as {
+      task: { done: boolean; title: string };
+      supplierOnboarding: { srmOnboardingStage: string; stageAutoCleared: boolean };
+    };
     expect(body.task.done).toBe(true);
     expect(body.task.title).toBe("Verify profile");
+    expect(body.supplierOnboarding.srmOnboardingStage).toBe("diligence");
+    expect(body.supplierOnboarding.stageAutoCleared).toBe(false);
     expect(updateMock).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: "t1" },

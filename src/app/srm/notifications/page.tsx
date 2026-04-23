@@ -43,7 +43,7 @@ export default async function SrmNotificationsPage() {
           <WorkflowHeader
             eyebrow="SRM · Phase G"
             title="In-app notifications"
-            description="Operator alerts (e.g. onboarding task assigned). Email and webhooks are out of scope for this slice."
+            description="Operator alerts (e.g. onboarding task assigned). G-v1: filter unread, mark all read, per-row mark read. Email and webhooks stay out of scope for now."
             steps={[]}
             className="border-0 bg-transparent p-0 shadow-none"
           />

@@ -7,6 +7,7 @@ import {
   emitSrmOperatorNotification,
   SRM_NOTIFICATION_KIND,
 } from "@/lib/srm/emit-srm-operator-notification";
+import { maybeAutoClearSrmOnboardingStage } from "@/lib/srm/maybe-auto-clear-srm-onboarding-stage";
 
 export async function PATCH(
   request: Request,
@@ -144,6 +145,8 @@ export async function PATCH(
     }
   }
 
+  const stageSync = await maybeAutoClearSrmOnboardingStage(prisma, tenant.id, supplierId);
+
   return NextResponse.json({
     task: {
       id: updated.id,
@@ -155,6 +158,10 @@ export async function PATCH(
       assignee: updated.assignee,
       dueAt: updated.dueAt?.toISOString() ?? null,
       notes: updated.notes,
+    },
+    supplierOnboarding: {
+      srmOnboardingStage: stageSync.srmOnboardingStage,
+      stageAutoCleared: stageSync.didAutoAdvance,
     },
   });
 }

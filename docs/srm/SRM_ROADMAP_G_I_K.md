@@ -2,6 +2,12 @@
 
 **Status:** This is a **new program** after the **30-slice MVP** (Phases A–F). It does **not** re-open slices 1–30; it tracks milestones for **Phase G** (operator lifecycle + notifications), **Phase I** (compliance / document control beyond vault v1), and **Phase K** (field-level and enterprise polish).
 
+### G-v1 (landed)
+
+- **Stage rule:** when **all** `SupplierOnboardingTask` rows for a supplier are `done`, and `srmOnboardingStage` is not already `cleared`, the server sets **`cleared`** (`maybeAutoClearSrmOnboardingStage` + `PATCH` onboarding task response `supplierOnboarding`). UI copy on the Onboarding tab explains the behavior; parent state updates from the response.
+- **Notifications:** `GET /api/srm/notifications?unread=1` filters to unread; **POST** `{ markAllRead: true }` marks all for the current user; notifications page: **Unread only** toggle, **Mark all as read** (primary CTA).
+- **Not in G-v1:** email, webhooks, custom stage automation beyond this single rule.
+
 **Non-goals for this program (unless you re-prioritize):** **H** (supplier self-service portal), **J** (KPI/FX/ERP integration depth) — see [`SRM_FINISH_SLICES.md`](./SRM_FINISH_SLICES.md) Post-MVP.
 
 ---

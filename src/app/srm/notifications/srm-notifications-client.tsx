@@ -18,12 +18,15 @@ type Row = {
 export function SrmNotificationsClient() {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadFilter, setUnreadFilter] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [markAllBusy, setMarkAllBusy] = useState(false);
 
   const load = useCallback(async () => {
     setError(null);
-    const res = await fetch("/api/srm/notifications");
+    const q = unreadFilter ? "?unread=1" : "";
+    const res = await fetch(`/api/srm/notifications${q}`);
     const payload: unknown = await res.json().catch(() => null);
     if (!res.ok) {
       setError(apiClientErrorMessage(payload ?? {}, "Could not load notifications."));
@@ -32,7 +35,7 @@ export function SrmNotificationsClient() {
     const p = payload as { notifications?: Row[]; unreadCount?: number };
     setRows(Array.isArray(p.notifications) ? p.notifications : []);
     setUnreadCount(typeof p.unreadCount === "number" ? p.unreadCount : 0);
-  }, []);
+  }, [unreadFilter]);
 
   useEffect(() => {
     void load();
@@ -55,21 +58,59 @@ export function SrmNotificationsClient() {
     await load();
   }
 
+  async function markAllRead() {
+    setMarkAllBusy(true);
+    setError(null);
+    const res = await fetch("/api/srm/notifications", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ markAllRead: true }),
+    });
+    const payload: unknown = await res.json().catch(() => null);
+    setMarkAllBusy(false);
+    if (!res.ok) {
+      setError(apiClientErrorMessage(payload ?? {}, "Update failed."));
+      return;
+    }
+    await load();
+  }
+
   if (rows === null) {
     return <p className="text-sm text-zinc-600">Loading…</p>;
   }
 
   return (
     <div>
-      <p className="text-sm text-zinc-600">
-        {unreadCount > 0 ? (
-          <span>
-            <strong className="text-zinc-900">{unreadCount}</strong> unread
-          </span>
-        ) : (
-          "No unread items."
-        )}
-      </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <p className="text-sm text-zinc-600">
+          {unreadCount > 0 ? (
+            <span>
+              <strong className="text-zinc-900">{unreadCount}</strong> unread
+            </span>
+          ) : (
+            "No unread items."
+          )}
+        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-zinc-700">
+            <input
+              type="checkbox"
+              className="rounded border-zinc-300"
+              checked={unreadFilter}
+              onChange={(e) => setUnreadFilter(e.target.checked)}
+            />
+            <span>Unread only</span>
+          </label>
+          <button
+            type="button"
+            disabled={unreadCount === 0 || markAllBusy}
+            onClick={() => void markAllRead()}
+            className="rounded-lg bg-[var(--arscmp-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {markAllBusy ? "Marking…" : "Mark all as read"}
+          </button>
+        </div>
+      </div>
       {error ? (
         <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
       ) : null}

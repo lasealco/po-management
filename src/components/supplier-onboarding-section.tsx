@@ -94,6 +94,13 @@ export function SupplierOnboardingSection({
       setError(apiClientErrorMessage(payload ?? {}, "Update failed."));
       return;
     }
+    const p = payload as {
+      supplierOnboarding?: { srmOnboardingStage: string; stageAutoCleared?: boolean };
+    };
+    const st = p.supplierOnboarding?.srmOnboardingStage;
+    if (st && ONBOARDING_STAGES.some((x) => x.value === st)) {
+      onStageUpdated(st as (typeof ONBOARDING_STAGES)[number]["value"]);
+    }
     await load();
   }
 
@@ -115,7 +122,7 @@ export function SupplierOnboardingSection({
         <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Operator pipeline (Phase G)</p>
         <p className="mt-1 text-xs text-zinc-600">
           Track where this partner sits in diligence — alongside the task checklist below. Does not replace approval
-          status.
+          status. <span className="text-zinc-500">(G-v1) When every checklist item is complete, the pipeline automatically moves to Cleared; you can still change the stage before that.</span>
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           {ONBOARDING_STAGES.map((s) => {

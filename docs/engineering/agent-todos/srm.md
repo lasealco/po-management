@@ -40,7 +40,7 @@ Routes exist: `/srm`, `/srm/new`, `/srm/[id]`, supplier links from suppliers hub
 
 Use the **phase table** in [`SRM_FINISH_SLICES.md` (Post-MVP)](../../srm/SRM_FINISH_SLICES.md) as the index; checkboxes here are a short hand-off:
 
-- [ ] **Phase G** — Deeper **lifecycle** (staged capture, notifications) — **priority 1** · roadmap: [`SRM_ROADMAP_G_I_K` § G](../../srm/SRM_ROADMAP_G_I_K.md) · *(started: `srmOnboardingStage` + `/srm/notifications` + task-assign notifications)*
+- [ ] **Phase G** — Deeper **lifecycle** (staged capture, notifications) — **priority 1** · roadmap: [`SRM_ROADMAP_G_I_K` § G](../../srm/SRM_ROADMAP_G_I_K.md) · **G-v1 shipped:** auto-**cleared** when all tasks done, notification unread filter + mark all read · *still open: email / webhooks, richer automation*
 - [ ] **Phase H** — **Supplier portal** (external login) — *de-prioritised for G/I/K program;* *(started: `User.portalLinkedSupplierId`, `/srm/portal`, `GET /api/srm/portal/me`)*
 - [ ] **Phase I** — **Compliance DMS v2** (beyond vault v1) — **priority 2** · roadmap: [`SRM_ROADMAP_G_I_K` § I](../../srm/SRM_ROADMAP_G_I_K.md) · *(started: revision groups + new-version upload + matrix UI)*
 - [ ] **Phase J** — **KPI + integration** depth (FX, more payloads, ERP) — *de-prioritised for G/I/K program;* *(started: operational signals on analytics + integration snapshot)*
