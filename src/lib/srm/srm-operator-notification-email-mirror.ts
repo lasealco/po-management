@@ -24,6 +24,8 @@ export async function sendSrmOperatorNotificationEmailMirror(params: {
   to: string;
   title: string;
   body: string | null;
+  /** When set, a “From: …” line is added (same assigner as in-app and webhook). */
+  actorName?: string | null;
 }): Promise<boolean> {
   if (!isSrmOperatorEmailMirrorEnabled()) return false;
   const apiKey = process.env.RESEND_API_KEY?.trim();
@@ -33,10 +35,14 @@ export async function sendSrmOperatorNotificationEmailMirror(params: {
   }
   const to = params.to.trim();
   if (!to) return false;
-  const text = [params.title, params.body || "", "", "This was sent because SRM in-app notifications are enabled for your account. Open the app to read or mark as read."]
-    .filter(Boolean)
-    .join("\n\n")
-    .slice(0, 100_000);
+  const fromLine = params.actorName?.trim();
+  const textParts: string[] = [params.title];
+  if (fromLine) textParts.push(`From: ${fromLine}`);
+  if (params.body?.trim()) textParts.push(params.body.trim());
+  textParts.push(
+    "This was sent because SRM in-app notifications are enabled for your account. Open the app to read or mark as read.",
+  );
+  const text = textParts.join("\n\n").slice(0, 100_000);
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {

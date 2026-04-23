@@ -39,15 +39,19 @@ export async function emitSrmOperatorNotification(
     },
   });
 
+  const needActorName =
+    Boolean(created.actorUserId) &&
+    (Boolean(getSrmOperatorWebhookUrl()) || isSrmOperatorEmailMirrorEnabled());
+  let actorName: string | null = null;
+  if (needActorName) {
+    const actor = await prisma.user.findFirst({
+      where: { id: created.actorUserId as string, tenantId: input.tenantId, isActive: true },
+      select: { name: true },
+    });
+    actorName = actor?.name?.trim() || null;
+  }
+
   if (getSrmOperatorWebhookUrl()) {
-    let actorName: string | null = null;
-    if (created.actorUserId) {
-      const actor = await prisma.user.findFirst({
-        where: { id: created.actorUserId, tenantId: input.tenantId, isActive: true },
-        select: { name: true },
-      });
-      actorName = actor?.name?.trim() || null;
-    }
     await postSrmOperatorNotificationWebhook({
       id: created.id,
       tenantId: created.tenantId,
@@ -75,6 +79,7 @@ export async function emitSrmOperatorNotification(
       to,
       title: input.title,
       body: input.body ?? null,
+      actorName,
     });
   } catch {
     /* best-effort; in-app row is the source of truth */
