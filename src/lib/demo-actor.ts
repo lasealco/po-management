@@ -5,7 +5,7 @@ export const PO_DEMO_USER_COOKIE = "po_demo_user";
 export const PO_AUTH_USER_COOKIE = "po_auth_user";
 
 export const DEFAULT_DEMO_USER_EMAIL = "buyer@demo-company.com";
-export const SUPERUSER_DEMO_EMAIL = "superuser@demo-company.com";
+export const SUPERUSER_DEMO_EMAIL = "superuser@arscmp.com";
 
 function isSuperuserEmail(value: string): boolean {
   return value.trim().toLowerCase() === SUPERUSER_DEMO_EMAIL;

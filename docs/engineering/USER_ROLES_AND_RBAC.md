@@ -22,9 +22,9 @@
 
 After **`npm run db:seed`** (or equivalent) against a database that includes the `demo-company` tenant, the seed creates a **Superuser** role and user:
 
-- **Email (recommended sign-in):** `superuser@demo-company.com`  
+- **Email:** `superuser@arscmp.com` (valid email for HTML `type="email"` and password managers; not a fake “username” without `@`.)  
 - **Password:** `superuser`  
-- **Alternative login id (demo only):** you may also type **`superuser`** in the sign-in “Email or username” field; the server maps it to `superuser@demo-company.com` for the demo tenant only (`src/lib/auth-login-identity.ts`).
+- **Migration:** older seeds used `superuser@demo-company.com`; re-run seed so `prisma/seed.mjs` can `updateMany` to `superuser@arscmp.com` and refresh the password hash.
 
 **Security:** This is a **known demo credential** for local/staging. Replace with proper identity, SSO, or at least strong unique passwords before any production that holds real data.
 

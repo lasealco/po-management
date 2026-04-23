@@ -79,6 +79,16 @@ async function seed() {
     console.warn("[db:seed] Could not load milestone-packs-seed.json:", e instanceof Error ? e.message : e);
   }
 
+  // Canonical superuser sign-in: real email (HTML `type=email`); migrate legacy `superuser@demo-company.com` row
+  const SUPERUSER_SEED_EMAIL = "superuser@arscmp.com";
+  const migrated = await prisma.user.updateMany({
+    where: { tenantId: tenant.id, email: "superuser@demo-company.com" },
+    data: { email: SUPERUSER_SEED_EMAIL },
+  });
+  if (migrated.count > 0) {
+    console.log("[db:seed] Migrated superuser email to superuser@arscmp.com (was superuser@demo-company.com).");
+  }
+
   const [buyer, approver, supplierUser, superuser] = await Promise.all([
     prisma.user.upsert({
       where: {
@@ -130,20 +140,19 @@ async function seed() {
     }),
     prisma.user.upsert({
       where: {
-        tenantId_email: { tenantId: tenant.id, email: "superuser@demo-company.com" },
+        tenantId_email: { tenantId: tenant.id, email: SUPERUSER_SEED_EMAIL },
       },
       update: {
         name: "Superuser",
         isActive: true,
         customerCrmAccountId: null,
-        // Password `superuser` — used when password login is live; see `docs/engineering/USER_ROLES_AND_RBAC.md`
-        passwordHash: seedPasswordHash("superuser", "superuser@demo-company.com"),
+        passwordHash: seedPasswordHash("superuser", SUPERUSER_SEED_EMAIL),
       },
       create: {
         tenantId: tenant.id,
-        email: "superuser@demo-company.com",
+        email: SUPERUSER_SEED_EMAIL,
         name: "Superuser",
-        passwordHash: seedPasswordHash("superuser", "superuser@demo-company.com"),
+        passwordHash: seedPasswordHash("superuser", SUPERUSER_SEED_EMAIL),
       },
     }),
   ]);

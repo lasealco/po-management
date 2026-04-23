@@ -1,7 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { PO_AUTH_USER_COOKIE, PO_DEMO_USER_COOKIE } from "@/lib/demo-actor";
-import { resolvePasswordLoginEmail } from "@/lib/auth-login-identity";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { httpSessionBase } from "@/lib/http-session-cookie";
 import { verifyPassword } from "@/lib/password";
@@ -24,16 +23,16 @@ export async function POST(request: Request) {
   }
   const emailRaw =
     body && typeof body === "object" && typeof (body as { email?: unknown }).email === "string"
-      ? (body as { email: string }).email.trim()
+      ? (body as { email: string }).email.trim().toLowerCase()
       : "";
-  const email = resolvePasswordLoginEmail(emailRaw, tenant.slug);
+  const email = emailRaw;
   const password =
     body && typeof body === "object" && typeof (body as { password?: unknown }).password === "string"
       ? (body as { password: string }).password
       : "";
   if (!email || !password) {
     return toApiErrorResponse({
-      error: "email (or username) and password are required.",
+      error: "email and password are required.",
       code: "BAD_INPUT",
       status: 400,
     });

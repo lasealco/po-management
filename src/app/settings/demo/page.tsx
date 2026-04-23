@@ -29,7 +29,7 @@ export default async function SettingsDemoSessionPage() {
       <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-600">
         Which user you act as drives permissions across the app. Use this while the product runs on
         demo accounts; it is replaced by real authentication in production. Choose the seeded{" "}
-        <span className="font-mono">superuser@demo-company.com</span> account for full access (all modules, no
+        <span className="font-mono">superuser@arscmp.com</span> account for full access (all modules, no
         portal restrictions).
       </p>
       <DemoUserPanel className="mt-8" />

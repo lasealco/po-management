@@ -110,9 +110,9 @@ export function DemoUserPanel({ className = "" }: { className?: string }) {
               /login
             </Link>{" "}
             (buyer@ / approver@ + <span className="font-mono">demo12345</span>, or{" "}
-            <span className="font-mono">superuser</span> / <span className="font-mono">superuser@demo-company.com</span>{" "}
-            + <span className="font-mono">superuser</span>). Superuser has broad module grants; deeper org-scoped RBAC
-            is roadmap — see repo <span className="font-mono">docs/engineering/USER_ROLES_AND_RBAC.md</span>.
+            <span className="font-mono">superuser@arscmp.com</span> + <span className="font-mono">superuser</span>).
+            Superuser has broad module grants; deeper org-scoped RBAC is roadmap — see repo{" "}
+            <span className="font-mono">docs/engineering/USER_ROLES_AND_RBAC.md</span>.
           </>
         ) : (
           <>
