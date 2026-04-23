@@ -57,13 +57,15 @@
 
 ## Phase C — Compliance & documents (slices 16–20)
 
+**Status:** ✅ Landed (see `GAP_MAP.md` Phase C note).
+
 | # | Slice | Goal | Acceptance |
 |---|--------|------|------------|
-| **16** | **Document schema v1** | Persist metadata | Prisma: supplier document type, status, `expiresAt`, storage key/URL, uploadedBy; migration + rollback note. |
-| **17** | **Document list & upload** | Vault v1 UI | 360 “Compliance” tab: list + upload (Vercel Blob or existing pattern); view/download; tenant-scoped. |
-| **18** | **Expiry signals** | Control tower or badge | Expiring soon / expired badges on list or 360; optional cron or query-time only—document choice. |
-| **19** | **Compliance read-only mode** | Grants | Role without `edit` sees documents but cannot upload/delete; tests. |
-| **20** | **Document audit trail** | Trust | Append-only log or `createdAt`/`updatedAt` + actor on row; show last change in UI. |
+| **16** | **Document schema v1** | Persist metadata | **Done:** `SrmSupplierDocument` + `SrmSupplierDocumentAuditLog`; migration `20260423140000_srm_phase_c_compliance_documents` (rollback SQL in header). |
+| **17** | **Document list & upload** | Vault v1 UI | **Done:** **`GET`/`POST`** `/api/suppliers/[id]/srm-documents` (multipart); **Compliance** tab list + upload; dev `public/uploads/srm-documents` or Vercel Blob when `BLOB_READ_WRITE_TOKEN` set. |
+| **18** | **Expiry signals** | Control tower or badge | **Done:** Query-time `expirySignal` on API + badge on 360 (30d “expiring soon”). |
+| **19** | **Compliance read-only mode** | Grants | **Done:** Upload/archive require **`org.suppliers` → edit**; view + audit + download with **view**; copy in UI for view-only users. |
+| **20** | **Document audit trail** | Trust | **Done:** Append-only audit log; **`GET`** `/api/suppliers/[id]/srm-documents/[docId]/audit-logs`; last change line + expandable trail in UI. |
 
 ---
 

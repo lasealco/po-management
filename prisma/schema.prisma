@@ -99,6 +99,8 @@ model Tenant {
   scriWatchlistRules              ScriWatchlistRule[]
   scriTenantTuning                ScriTenantTuning?
   supplierOnboardingTasks         SupplierOnboardingTask[]
+  srmSupplierDocuments            SrmSupplierDocument[]
+  srmSupplierDocumentAuditLogs    SrmSupplierDocumentAuditLog[]
 }
 
 /// Integration / API hub — registry row for an external or internal data source (Phase 1 stub).
@@ -436,6 +438,9 @@ model User {
   scriTaskLinksCreated            ScriEventTaskLink[]           @relation("ScriTaskLinkCreatedBy")
   scriTuningAutomationActorOf     ScriTenantTuning[]            @relation("ScriTuningAutomationActor")
   supplierOnboardingTasksAssigned  SupplierOnboardingTask[]      @relation("SupplierOnboardingTaskAssignee")
+  srmDocumentsUploaded             SrmSupplierDocument[]         @relation("SrmSupplierDocumentUploadedBy")
+  srmDocumentsLastTouched         SrmSupplierDocument[]         @relation("SrmSupplierDocumentLastTouchedBy")
+  srmSupplierDocumentAuditAuthored SrmSupplierDocumentAuditLog[] @relation("SrmSupplierDocumentAuditActor")
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -565,6 +570,7 @@ model Supplier {
   ctShipmentCostLinesVendor CtShipmentCostLine[] @relation("CtCostLineVendorSupplier")
   quoteRequestRecipients    QuoteRequestRecipient[]
   onboardingTasks           SupplierOnboardingTask[]
+  srmDocuments              SrmSupplierDocument[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -593,6 +599,71 @@ model SupplierOnboardingTask {
   @@unique([supplierId, taskKey])
   @@index([tenantId, supplierId])
   @@index([tenantId, assigneeUserId])
+}
+
+/// SRM Phase C — compliance vault: uploaded files tied to a supplier.
+enum SrmSupplierDocumentType {
+  certificate_of_insurance
+  w9
+  code_of_conduct
+  quality_agreement
+  tax_certificate
+  other
+}
+
+enum SrmSupplierDocumentStatus {
+  active
+  archived
+  superseded
+}
+
+/// Metadata + object storage URL for a supplier compliance document.
+model SrmSupplierDocument {
+  id           String  @id @default(cuid())
+  tenantId     String
+  supplierId   String
+  documentType SrmSupplierDocumentType
+  status         SrmSupplierDocumentStatus @default(active)
+  title          String? @db.VarChar(256)
+  fileName       String
+  mimeType       String
+  fileSize       Int
+  /// Blob object basename or local key; optional when `fileUrl` is self-sufficient.
+  storageKey     String? @db.VarChar(512)
+  fileUrl        String  @db.Text
+  expiresAt      DateTime?
+  uploadedById   String
+  lastModifiedById String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  supplier       Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  uploadedBy     User     @relation("SrmSupplierDocumentUploadedBy", fields: [uploadedById], references: [id], onDelete: Restrict)
+  lastModifiedBy User?    @relation("SrmSupplierDocumentLastTouchedBy", fields: [lastModifiedById], references: [id], onDelete: SetNull)
+  auditLogs      SrmSupplierDocumentAuditLog[]
+
+  @@index([tenantId, supplierId])
+  @@index([tenantId, status])
+  @@index([tenantId, expiresAt])
+}
+
+/// Append-only triage for supplier documents (upload + metadata/single updates).
+model SrmSupplierDocumentAuditLog {
+  id         String   @id @default(cuid())
+  tenantId   String
+  documentId String
+  at         DateTime @default(now())
+  actorUserId String
+  action     String   @db.VarChar(32)
+  details    Json?
+
+  tenant   Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  document SrmSupplierDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  actor    User                @relation("SrmSupplierDocumentAuditActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([documentId, at])
+  @@index([tenantId, at])
 }
 
 /// SRM: declared transport / service scope (modes, service lines, geography). See PRD “Service capabilities”.

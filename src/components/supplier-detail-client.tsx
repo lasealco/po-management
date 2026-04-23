@@ -5,6 +5,7 @@ import Link from "next/link";
 import { startTransition, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SupplierCapabilitiesSection } from "@/components/supplier-capabilities-section";
+import { SupplierComplianceSection } from "@/components/supplier-compliance-section";
 import { SupplierOnboardingSection } from "@/components/supplier-onboarding-section";
 import { SupplierOrderHistorySection } from "@/components/supplier-order-history";
 import type { SupplierCapabilityRow } from "@/lib/srm/supplier-capability-types";
@@ -1458,15 +1459,14 @@ export function SupplierDetailClient({
         </section>
       ) : null}
 
-      {isSrmShell && (srmTab === "compliance" || srmTab === "activity") ? (
+      {isSrmShell && srmTab === "compliance" ? (
+        <SupplierComplianceSection supplierId={initial.id} canEdit={canEdit} />
+      ) : null}
+      {isSrmShell && srmTab === "activity" ? (
         <section className="rounded-lg border border-dashed border-zinc-200 bg-zinc-50/80 p-8 text-center shadow-sm">
-          <p className="text-sm font-medium text-zinc-800">
-            {SRM_SUPPLIER_TABS.find((x) => x.id === srmTab)?.label ?? srmTab}
-          </p>
+          <p className="text-sm font-medium text-zinc-800">Activity</p>
           <p className="mt-2 text-xs text-zinc-600">
-            {srmTab === "compliance"
-              ? "Document vault and compliance checks are scheduled in Phase C (SRM finish program, slices 16–20)."
-              : "Supplier activity and audit timeline will appear here in a later slice."}
+            Supplier activity and cross-module audit timeline can be layered on in a later slice.
           </p>
         </section>
       ) : null}

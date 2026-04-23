@@ -1,0 +1,204 @@
+import { randomUUID } from "crypto";
+import { mkdir, writeFile } from "fs/promises";
+import { join } from "path";
+import { put } from "@vercel/blob";
+import type { SrmSupplierDocumentStatus, SrmSupplierDocumentType } from "@prisma/client";
+import { NextResponse } from "next/server";
+
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+import { getActorUserId, requireApiGrant } from "@/lib/authz";
+import { getDemoTenant } from "@/lib/demo-tenant";
+import { appendSrmSupplierDocumentAudit } from "@/lib/srm/srm-supplier-document-audit";
+import { parseSrmSupplierDocumentType, toSrmSupplierDocumentJson } from "@/lib/srm/srm-supplier-document-helpers";
+import { prisma } from "@/lib/prisma";
+
+export const runtime = "nodejs";
+
+const MAX_BYTES = 15 * 1024 * 1024;
+const ALLOWED = new Set([
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/msword",
+]);
+
+const MIME_EXT: Record<string, string> = {
+  "application/pdf": "pdf",
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+  "application/msword": "doc",
+};
+
+const listInclude = {
+  uploadedBy: { select: { id: true, name: true, email: true } },
+  lastModifiedBy: { select: { id: true, name: true, email: true } },
+} as const;
+
+export async function GET(
+  request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  const gate = await requireApiGrant("org.suppliers", "view");
+  if (gate) return gate;
+
+  const { id: supplierId } = await context.params;
+  const tenant = await getDemoTenant();
+  if (!tenant) {
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
+  }
+
+  const supplier = await prisma.supplier.findFirst({
+    where: { id: supplierId, tenantId: tenant.id },
+    select: { id: true },
+  });
+  if (!supplier) {
+    return toApiErrorResponse({ error: "Not found.", code: "NOT_FOUND", status: 404 });
+  }
+
+  const url = new URL(request.url);
+  const includeArchived = url.searchParams.get("includeArchived") === "1";
+  const where: {
+    tenantId: string;
+    supplierId: string;
+    status?: { in: SrmSupplierDocumentStatus[] } | SrmSupplierDocumentStatus;
+  } = {
+    tenantId: tenant.id,
+    supplierId,
+  };
+  if (!includeArchived) {
+    where.status = { in: ["active", "superseded"] };
+  }
+
+  const rows = await prisma.srmSupplierDocument.findMany({
+    where,
+    orderBy: [{ updatedAt: "desc" }],
+    include: listInclude,
+  });
+
+  return NextResponse.json({ documents: rows.map(toSrmSupplierDocumentJson) });
+}
+
+export async function POST(
+  request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  const gate = await requireApiGrant("org.suppliers", "edit");
+  if (gate) return gate;
+
+  const actorId = await getActorUserId();
+  if (!actorId) {
+    return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
+  }
+
+  const { id: supplierId } = await context.params;
+  const tenant = await getDemoTenant();
+  if (!tenant) {
+    return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
+  }
+
+  const supplier = await prisma.supplier.findFirst({
+    where: { id: supplierId, tenantId: tenant.id },
+    select: { id: true },
+  });
+  if (!supplier) {
+    return toApiErrorResponse({ error: "Not found.", code: "NOT_FOUND", status: 404 });
+  }
+
+  let form: FormData;
+  try {
+    form = await request.formData();
+  } catch {
+    return toApiErrorResponse({ error: "Expected multipart form data.", code: "BAD_INPUT", status: 400 });
+  }
+
+  const documentType = parseSrmSupplierDocumentType(String(form.get("documentType") ?? ""));
+  if (!documentType) {
+    return toApiErrorResponse({ error: "Invalid documentType.", code: "BAD_INPUT", status: 400 });
+  }
+  const titleRaw = String(form.get("title") ?? "").trim();
+  const title = titleRaw ? titleRaw.slice(0, 256) : null;
+  const expiresRaw = String(form.get("expiresAt") ?? "").trim();
+  let expiresAt: Date | null = null;
+  if (expiresRaw) {
+    const d = new Date(expiresRaw);
+    if (Number.isNaN(d.getTime())) {
+      return toApiErrorResponse({ error: "Invalid expiresAt.", code: "BAD_INPUT", status: 400 });
+    }
+    expiresAt = d;
+  }
+
+  const file = form.get("file");
+  if (!file || !(file instanceof File)) {
+    return toApiErrorResponse({ error: "Missing file field.", code: "BAD_INPUT", status: 400 });
+  }
+  if (!ALLOWED.has(file.type)) {
+    return toApiErrorResponse({
+      error: "Unsupported file type. Use PDF, Word, JPEG, PNG, or WebP.",
+      code: "BAD_INPUT",
+      status: 400,
+    });
+  }
+  if (file.size > MAX_BYTES) {
+    return toApiErrorResponse({ error: "File must be at most 15 MB.", code: "BAD_INPUT", status: 400 });
+  }
+
+  const ext = MIME_EXT[file.type] ?? "bin";
+  const basename = `srm-doc-${randomUUID()}.${ext}`;
+  const bytes = Buffer.from(await file.arrayBuffer());
+
+  let fileUrl: string;
+  const storageKey: string | null = basename;
+  if (process.env.BLOB_READ_WRITE_TOKEN) {
+    const blob = await put(basename, bytes, {
+      access: "public",
+      token: process.env.BLOB_READ_WRITE_TOKEN,
+      contentType: file.type,
+    });
+    fileUrl = blob.url;
+  } else if (process.env.NODE_ENV === "development") {
+    const dir = join(process.cwd(), "public", "uploads", "srm-documents");
+    await mkdir(dir, { recursive: true });
+    const path = join(dir, basename);
+    await writeFile(path, bytes);
+    fileUrl = `/uploads/srm-documents/${basename}`;
+  } else {
+    return toApiErrorResponse({
+      error: "Upload is not configured. Add BLOB_READ_WRITE_TOKEN for production, or run locally.",
+      code: "UNAVAILABLE",
+      status: 503,
+    });
+  }
+
+  const row = await prisma.srmSupplierDocument.create({
+    data: {
+      tenantId: tenant.id,
+      supplierId,
+      documentType: documentType as SrmSupplierDocumentType,
+      status: "active",
+      title,
+      fileName: file.name || basename,
+      mimeType: file.type,
+      fileSize: file.size,
+      storageKey,
+      fileUrl,
+      expiresAt,
+      uploadedById: actorId,
+      lastModifiedById: actorId,
+    },
+    include: listInclude,
+  });
+
+  await appendSrmSupplierDocumentAudit(prisma, {
+    tenantId: tenant.id,
+    documentId: row.id,
+    actorUserId: actorId,
+    action: "upload",
+    details: { fileName: row.fileName, documentType, title, expiresAt: expiresAt?.toISOString() ?? null },
+  });
+
+  return NextResponse.json({ document: toSrmSupplierDocumentJson(row) });
+}
