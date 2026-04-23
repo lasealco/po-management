@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ActionLink } from "@/components/action-button";
 import { AccessDenied } from "@/components/access-denied";
 import { SupplierKindTabs } from "@/components/supplier-kind-tabs";
+import { SrmNotificationsHeaderLink } from "@/components/srm/srm-notifications-header-link";
 import { WorkflowHeader } from "@/components/workflow-header";
 import { getViewerGrantSet } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
@@ -152,17 +153,7 @@ export default async function SrmPage({
             >
               Analytics
             </Link>
-            <Link
-              href="/srm/notifications"
-              className="text-sm font-medium text-[var(--arscmp-primary)] hover:underline"
-            >
-              Notifications
-              {unreadSrmNotifications > 0 ? (
-                <span className="ml-1 inline-flex min-w-[1.25rem] justify-center rounded-full bg-zinc-900 px-1.5 py-0.5 text-xs font-semibold text-white">
-                  {unreadSrmNotifications > 99 ? "99+" : unreadSrmNotifications}
-                </span>
-              ) : null}
-            </Link>
+            <SrmNotificationsHeaderLink unreadCount={unreadSrmNotifications} />
             <Link href={`/suppliers?kind=${kind}`} className="text-sm text-zinc-600 underline hover:text-zinc-900">
               Open legacy supplier directory view
             </Link>

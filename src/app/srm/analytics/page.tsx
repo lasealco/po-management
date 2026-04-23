@@ -7,6 +7,7 @@ import {
   SrmOperationalSignalsPanel,
   SrmOrderKpiPanel,
 } from "@/components/srm-analytics-panels";
+import { SrmNotificationsHeaderLink } from "@/components/srm/srm-notifications-header-link";
 import { WorkflowHeader } from "@/components/workflow-header";
 import { getViewerGrantSet } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
@@ -85,7 +86,7 @@ export default async function SrmAnalyticsPage({
   const { from: fromStart, to: toEnd, kind } = parsed;
   const { tenant } = access;
 
-  const [orderKpi, bookingSla, operationalSignals] = await Promise.all([
+  const [orderKpi, bookingSla, operationalSignals, unreadSrmNotifications] = await Promise.all([
     permissions.canViewOrders
       ? loadSrmOrderVolumeKpis(prisma, tenant.id, { from: fromStart, to: toEnd, srmKind: kind })
       : Promise.resolve(null),
@@ -93,19 +94,25 @@ export default async function SrmAnalyticsPage({
       ? loadSrmBookingSlaStats(prisma, tenant.id, { from: fromStart, to: toEnd })
       : Promise.resolve(null),
     loadSrmOperationalSignals(prisma, tenant.id, { srmKind: kind }),
+    prisma.srmOperatorNotification.count({
+      where: { tenantId: tenant.id, userId: access.user.id, readAt: null },
+    }),
   ]);
 
   return (
     <div className="min-h-screen bg-zinc-50">
       <main className="mx-auto max-w-7xl px-6 py-10">
-        <p className="text-sm">
-          <Link
-            href={`/srm?kind=${kind === "logistics" ? "logistics" : "product"}`}
-            className="font-medium text-[var(--arscmp-primary)] hover:underline"
-          >
-            ← SRM · {kind === "logistics" ? "Logistics partners" : "Product suppliers"}
-          </Link>
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+          <p>
+            <Link
+              href={`/srm?kind=${kind === "logistics" ? "logistics" : "product"}`}
+              className="font-medium text-[var(--arscmp-primary)] hover:underline"
+            >
+              ← SRM · {kind === "logistics" ? "Logistics partners" : "Product suppliers"}
+            </Link>
+          </p>
+          <SrmNotificationsHeaderLink unreadCount={unreadSrmNotifications} />
+        </div>
 
         <div className="mt-3 mb-5">
           <WorkflowHeader

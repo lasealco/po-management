@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AccessDenied } from "@/components/access-denied";
+import { SrmNotificationsHeaderLink } from "@/components/srm/srm-notifications-header-link";
 import { SupplierDetailClient } from "@/components/supplier-detail-client";
 import { WorkflowHeader } from "@/components/workflow-header";
 import { getViewerGrantSet } from "@/lib/authz";
@@ -108,17 +109,7 @@ export default async function SrmSupplierDetailPage({
               ← SRM · {kind === "logistics" ? "Logistics partners" : "Product suppliers"}
             </Link>
           </p>
-          <Link
-            href="/srm/notifications"
-            className="font-medium text-[var(--arscmp-primary)] hover:underline"
-          >
-            Notifications
-            {unreadSrmNotifications > 0 ? (
-              <span className="ml-1 inline-flex min-w-[1.25rem] justify-center rounded-full bg-zinc-900 px-1.5 py-0.5 text-xs font-semibold text-white">
-                {unreadSrmNotifications > 99 ? "99+" : unreadSrmNotifications}
-              </span>
-            ) : null}
-          </Link>
+          <SrmNotificationsHeaderLink unreadCount={unreadSrmNotifications} />
         </div>
         <div className="mt-3 mb-5">
           <WorkflowHeader

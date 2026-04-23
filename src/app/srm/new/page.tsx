@@ -1,8 +1,10 @@
 import Link from "next/link";
 
 import { AccessDenied } from "@/components/access-denied";
+import { SrmNotificationsHeaderLink } from "@/components/srm/srm-notifications-header-link";
 import { SupplierCreateForm } from "@/components/supplier-create-form";
 import { getViewerGrantSet } from "@/lib/authz";
+import { prisma } from "@/lib/prisma";
 import { resolveSrmPermissions } from "@/lib/srm/permissions";
 
 export const dynamic = "force-dynamic";
@@ -45,14 +47,27 @@ export default async function SrmNewSupplierPage({
     );
   }
 
+  const { tenant, user } = access;
+  const unreadSrmNotifications = permissions.canViewSuppliers
+    ? await prisma.srmOperatorNotification.count({
+        where: { tenantId: tenant.id, userId: user.id, readAt: null },
+      })
+    : 0;
+
   return (
     <div className="min-h-screen bg-zinc-50">
       <main className="mx-auto max-w-5xl px-6 py-10">
-        <p className="text-sm">
-          <Link href={`/srm?kind=${kind}`} className="font-medium text-[var(--arscmp-primary)] hover:underline">
-            ← Back to SRM {kind === "logistics" ? "logistics" : "product"} partners
-          </Link>
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+          <p>
+            <Link
+              href={`/srm?kind=${kind}`}
+              className="font-medium text-[var(--arscmp-primary)] hover:underline"
+            >
+              ← Back to SRM {kind === "logistics" ? "logistics" : "product"} partners
+            </Link>
+          </p>
+          {permissions.canViewSuppliers ? <SrmNotificationsHeaderLink unreadCount={unreadSrmNotifications} /> : null}
+        </div>
         <section className="mt-4 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
           <SupplierCreateForm defaultSrmCategory={kind} inPageShell />
         </section>
