@@ -187,12 +187,21 @@ export default async function RiskIntelligencePage({
           ))}
         </ul>
         {events.length === 0 ? (
-          <p className="py-8 text-center text-sm text-zinc-500">
-            No events yet. Run{" "}
-            <code className="rounded bg-zinc-100 px-1">npm run db:seed:scri</code> for SCRI demo rows, full{" "}
-            <code className="rounded bg-zinc-100 px-1">npm run db:seed</code> for volume, or ingest via{" "}
-            <code className="rounded bg-zinc-100 px-1">POST /api/scri/events</code>.
-          </p>
+          <div className="space-y-3 py-8 text-center text-sm text-zinc-500">
+            <p>
+              No events yet. Run{" "}
+              <code className="rounded bg-zinc-100 px-1">npm run db:seed:scri</code> for SCRI demo rows, full{" "}
+              <code className="rounded bg-zinc-100 px-1">npm run db:seed</code> for volume, or ingest via{" "}
+              <code className="rounded bg-zinc-100 px-1">POST /api/scri/events</code>.
+            </p>
+            <p className="text-xs text-zinc-400">
+              If you already seeded: use the same <code className="rounded bg-zinc-100 px-1">DATABASE_URL</code> as
+              this deployment (Vercel env vs local <code className="rounded bg-zinc-100 px-1">.env.local</code>). The
+              quick seed also re-attaches <code className="rounded bg-zinc-100 px-1">seed-scri-*</code> rows to{" "}
+              <code className="rounded bg-zinc-100 px-1">demo-company</code> when they were created under an old tenant
+              id.
+            </p>
+          </div>
         ) : null}
       </section>
     </main>

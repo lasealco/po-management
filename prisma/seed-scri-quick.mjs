@@ -40,6 +40,36 @@ async function scriTablesExist() {
   return Array.isArray(rows) && rows.length > 0;
 }
 
+const DEMO_SCRI_SEED_INGEST_PREFIX = "seed-scri-";
+
+/** Move demo seed rows that still point at an old tenant id so /risk-intelligence (demo-company) can see them. */
+async function rehomeOrphanSeedEvent(tenantId, ingestKey) {
+  if (!ingestKey.startsWith(DEMO_SCRI_SEED_INGEST_PREFIX)) return false;
+
+  const withKey = await prisma.scriExternalEvent.findMany({
+    where: { ingestKey },
+    select: { id: true, tenantId: true },
+  });
+  if (withKey.length !== 1) return false;
+  const only = withKey[0];
+  if (only.tenantId === tenantId) return false;
+
+  await prisma.$transaction(async (tx) => {
+    await tx.scriExternalEvent.update({
+      where: { id: only.id },
+      data: { tenantId },
+    });
+    await tx.scriEventAffectedEntity.updateMany({
+      where: { eventId: only.id },
+      data: { tenantId },
+    });
+  });
+  console.log(
+    `[db:seed:scri] Re-homed "${ingestKey}" to current demo-company tenant (was on another tenant id).`,
+  );
+  return true;
+}
+
 async function main() {
   const tenant = await prisma.tenant.findUnique({
     where: { slug: "demo-company" },
@@ -124,12 +154,18 @@ async function main() {
   ];
 
   let created = 0;
+  let rehomed = 0;
   for (const b of bundles) {
     const exists = await prisma.scriExternalEvent.findUnique({
       where: { tenantId_ingestKey: { tenantId: tenant.id, ingestKey: b.ingestKey } },
       select: { id: true },
     });
     if (exists) continue;
+
+    if (await rehomeOrphanSeedEvent(tenant.id, b.ingestKey)) {
+      rehomed += 1;
+      continue;
+    }
 
     await prisma.scriExternalEvent.create({
       data: {
@@ -158,7 +194,10 @@ async function main() {
     created += 1;
   }
 
-  console.log(`[db:seed:scri] Demo events: ${created} created, ${bundles.length - created} already present (idempotent).`);
+  const unchanged = bundles.length - created - rehomed;
+  console.log(
+    `[db:seed:scri] Demo events: ${created} created, ${rehomed} re-homed, ${unchanged} already on tenant (idempotent).`,
+  );
   console.log(`[db:seed:scri] Done for tenant "${tenant.slug}". Open /risk-intelligence and run network match on an event.`);
 }
 
