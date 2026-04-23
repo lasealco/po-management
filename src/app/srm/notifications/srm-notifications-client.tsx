@@ -11,11 +11,22 @@ type Row = {
   body: string | null;
   readAt: string | null;
   supplierId: string | null;
+  supplierName: string | null;
+  supplierCode: string | null;
   taskId: string | null;
   actorUserId: string | null;
   actorName: string | null;
   createdAt: string;
 };
+
+function formatSupplierMeta(name: string | null | undefined, code: string | null | undefined): string {
+  const sn = name?.trim() ?? "";
+  const sc = code?.trim() ?? "";
+  if (!sn && !sc) return "";
+  if (sn && sc) return ` · Supplier: ${sn} (${sc})`;
+  if (sn) return ` · Supplier: ${sn}`;
+  return ` · Supplier: ${sc}`;
+}
 
 export function SrmNotificationsClient() {
   const [rows, setRows] = useState<Row[] | null>(null);
@@ -132,6 +143,7 @@ export function SrmNotificationsClient() {
                   {new Date(n.createdAt).toLocaleString()}
                   {n.kind ? ` · ${n.kind}` : ""}
                   {n.actorName ? ` · From ${n.actorName}` : ""}
+                  {formatSupplierMeta(n.supplierName, n.supplierCode)}
                 </p>
                 {n.supplierId ? (
                   <Link

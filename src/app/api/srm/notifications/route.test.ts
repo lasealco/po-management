@@ -59,6 +59,7 @@ describe("GET /api/srm/notifications", () => {
         actorUserId: "a1",
         createdAt: new Date("2026-01-01T00:00:00.000Z"),
         actor: { name: "Alex" },
+        supplier: { name: "Acme Co", code: "AC-1" },
       },
     ]);
     countMock.mockResolvedValue(1);
@@ -66,10 +67,17 @@ describe("GET /api/srm/notifications", () => {
     const res = await GET(new Request("http://localhost/api/srm/notifications"));
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
-      notifications: { actorName: string | null; actorUserId: string | null }[];
+      notifications: {
+        actorName: string | null;
+        actorUserId: string | null;
+        supplierName: string | null;
+        supplierCode: string | null;
+      }[];
     };
     expect(body.notifications[0]?.actorName).toBe("Alex");
     expect(body.notifications[0]?.actorUserId).toBe("a1");
+    expect(body.notifications[0]?.supplierName).toBe("Acme Co");
+    expect(body.notifications[0]?.supplierCode).toBe("AC-1");
   });
 });
 
