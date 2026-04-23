@@ -1,14 +1,17 @@
 import type { PrismaClient } from "@prisma/client";
 
 import { isSrmOperatorEmailMirrorEnabled, sendSrmOperatorNotificationEmailMirror } from "@/lib/srm/srm-operator-notification-email-mirror";
+import { getSrmOperatorWebhookUrl, postSrmOperatorNotificationWebhook } from "@/lib/srm/srm-operator-notification-webhook-mirror";
 
 export const SRM_NOTIFICATION_KIND = {
   ONBOARDING_TASK_ASSIGNED: "ONBOARDING_TASK_ASSIGNED",
 } as const;
 
 /**
- * Persists an in-app row for buyers/operators (Phase G). Optional email mirror when
- * `SRM_OPERATOR_EMAIL_NOTIFICATIONS=1` and Resend env is set — see `srm-operator-notification-email-mirror.ts`.
+ * Persists an in-app row for buyers/operators (Phase G). Optional **email** mirror when
+ * `SRM_OPERATOR_EMAIL_NOTIFICATIONS=1` and Resend — see `srm-operator-notification-email-mirror.ts`.
+ * Optional **webhook** when `SRM_OPERATOR_WEBHOOK_URL` is set — see
+ * `srm-operator-notification-webhook-mirror.ts`.
  */
 export async function emitSrmOperatorNotification(
   prisma: PrismaClient,
@@ -23,7 +26,7 @@ export async function emitSrmOperatorNotification(
     actorUserId?: string | null;
   },
 ): Promise<void> {
-  await prisma.srmOperatorNotification.create({
+  const created = await prisma.srmOperatorNotification.create({
     data: {
       tenantId: input.tenantId,
       userId: input.userId,
@@ -35,6 +38,21 @@ export async function emitSrmOperatorNotification(
       actorUserId: input.actorUserId ?? null,
     },
   });
+
+  if (getSrmOperatorWebhookUrl()) {
+    await postSrmOperatorNotificationWebhook({
+      id: created.id,
+      tenantId: created.tenantId,
+      userId: created.userId,
+      kind: created.kind,
+      title: created.title,
+      body: created.body,
+      supplierId: created.supplierId,
+      taskId: created.taskId,
+      actorUserId: created.actorUserId,
+      createdAt: created.createdAt.toISOString(),
+    });
+  }
 
   if (!isSrmOperatorEmailMirrorEnabled()) return;
   const user = await prisma.user.findFirst({

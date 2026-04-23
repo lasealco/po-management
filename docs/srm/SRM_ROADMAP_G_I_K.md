@@ -7,7 +7,8 @@
 - **Stage rule:** when **all** `SupplierOnboardingTask` rows for a supplier are `done`, and `srmOnboardingStage` is not already `cleared`, the server sets **`cleared`** (`maybeAutoClearSrmOnboardingStage` + `PATCH` onboarding task response `supplierOnboarding`). UI copy on the Onboarding tab explains the behavior; parent state updates from the response.
 - **Notifications:** `GET /api/srm/notifications?unread=1` filters to unread; **POST** `{ markAllRead: true }` marks all for the current user; notifications page: **Unread only** toggle, **Mark all as read** (primary CTA).
 - **Optional email mirror (G follow-up):** set `SRM_OPERATOR_EMAIL_NOTIFICATIONS=1` plus existing Resend vars (`RESEND_API_KEY`, and `SRM_EMAIL_FROM` or `CONTROL_TOWER_REPORTS_EMAIL_FROM`) to send a plain-text email to the notification recipient when an in-app row is created (e.g. onboarding assignee). Off by default; in-app rows remain the source of truth.
-- **Not in G-v1:** webhooks, custom stage automation beyond this single rule (email mirror is optional and opt-in).
+- **Optional outbound webhook (G follow-up):** set `SRM_OPERATOR_WEBHOOK_URL` to a valid `http`/`https` URL to `POST` JSON (`specVersion: 1`, `event: srm.operator_notification.created`, `notification: { id, tenantId, … }`). Optional `SRM_OPERATOR_WEBHOOK_SECRET` is sent as `X-SRM-Webhook-Secret`. Off by default; in-app rows remain the source of truth.
+- **Not in G-v1 until follow-ups above:** no automation beyond the stage rule + these opt-in channels; no inbound webhooks, custom multi-step automation, or “notification bus” product.
 
 ### I-v1 (landed)
 
@@ -35,7 +36,7 @@
 
 | Phase | Already in repo (baseline) | Typical “v1” milestone (example — refine in issues) | Still heavy / v2+ |
 |-------|----------------------------|--------------------------------------------------------|-------------------|
-| **G** | `srmOnboardingStage` on `Supplier`, Onboarding tab UI, `SrmOperatorNotification`, `/srm/notifications`, assignee change → notification, webhook/email **not** wired | **G-v1:** define stage **rules** (e.g. auto-advance, blockers), notification **read/dismiss** polish, filter/snooze; optional **email** behind env + provider | Full lifecycle PDF, complex automation bus |
+| **G** | `srmOnboardingStage` on `Supplier`, Onboarding tab UI, `SrmOperatorNotification`, `/srm/notifications`, assignee change → notification; optional **outbound** email + webhook (env) | **G-v1 + follow-ups:** stage rule + notification UX; optional **email** + **outbound JSON webhook** (opt-in) | Full lifecycle PDF, complex automation bus, **inbound** webhooks to app |
 | **I** | `revisionGroupId` / `revisionNumber` / `supersedesDocumentId`, new-version upload path, matrix-by-family in Compliance, audit log with supersede | **I-v1:** document **state machine** (e.g. draft/review/approved) if product wants it, **retention** flags, export bundle; **approval routing** as separate epic | Full enterprise DMS, legal hold, e-sign |
 | **K** | `canViewSupplierSensitiveFields` (view + needs edit/approve for sensitive), `redactSupplierDetailSnapshot` on API + 360, read-only callouts | **K-v1:** expand **sensitive** field set + list in docs; optional **per-role** field map in `org` grants or a small SRM **settings** table | Full PDF permission matrix, pixel wireframe parity, **rules engine** (explicitly out of scope in finish doc until an epic) |
 
