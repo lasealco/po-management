@@ -252,19 +252,25 @@ async function main() {
     await client.end();
     return;
   }
+  // Run each statement in autocommit. A single transaction + "continue" on duplicate/relation
+  // errors leaves PostgreSQL in aborted state (25P02) for the rest of the batch.
   try {
-    await client.query("BEGIN");
     for (const q of stmts) {
       try {
         await client.query(q);
       } catch (e) {
-        if (ignorableStatementError(e)) continue;
+        if (ignorableStatementError(e)) {
+          console.log(
+            "[repair] Idempotent skip:",
+            e.code || "",
+            String(e.message || e).slice(0, 160),
+          );
+          continue;
+        }
         throw e;
       }
     }
-    await client.query("COMMIT");
   } catch (e) {
-    await client.query("ROLLBACK");
     await client.end();
     console.error("\n[repair] Applying SRM Phase B DDL failed:", e && e.message ? e.message : e);
     process.exit(1);
