@@ -6,6 +6,8 @@
 
 **Source of truth:** `docs/controltower/GAP_MAP.md` + PDFs in `docs/controltower/`.
 
+**Phased program (CT + WMS together):** [`docs/engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md`](../CONTROL_TOWER_WMS_PHASED_ROADMAP.md) (phases 0–3, exit criteria).
+
 ---
 
 ## Already filed as GitHub issues (do those first)

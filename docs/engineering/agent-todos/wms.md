@@ -6,6 +6,8 @@
 
 **Source of truth:** `docs/wms/GAP_MAP.md` + PDFs in `docs/wms/`.
 
+**Phased program (WMS + Control Tower):** [`docs/engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md`](../CONTROL_TOWER_WMS_PHASED_ROADMAP.md) — WMS is **Phase 2** in that file (after CT Phase 1 verticals; Phase 0 is hygiene for both).
+
 ---
 
 ## Phase A continuation (GAP “next optional increments”)
