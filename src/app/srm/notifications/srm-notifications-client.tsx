@@ -12,6 +12,8 @@ type Row = {
   readAt: string | null;
   supplierId: string | null;
   taskId: string | null;
+  actorUserId: string | null;
+  actorName: string | null;
   createdAt: string;
 };
 
@@ -129,6 +131,7 @@ export function SrmNotificationsClient() {
                 <p className="mt-2 text-xs text-zinc-400">
                   {new Date(n.createdAt).toLocaleString()}
                   {n.kind ? ` · ${n.kind}` : ""}
+                  {n.actorName ? ` · From ${n.actorName}` : ""}
                 </p>
                 {n.supplierId ? (
                   <Link

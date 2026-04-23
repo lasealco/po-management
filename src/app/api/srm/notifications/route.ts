@@ -43,7 +43,9 @@ export async function GET(request: Request) {
       readAt: true,
       supplierId: true,
       taskId: true,
+      actorUserId: true,
       createdAt: true,
+      actor: { select: { name: true } },
     },
   });
 
@@ -62,6 +64,8 @@ export async function GET(request: Request) {
       readAt: r.readAt?.toISOString() ?? null,
       supplierId: r.supplierId,
       taskId: r.taskId,
+      actorUserId: r.actorUserId,
+      actorName: r.actor?.name?.trim() || null,
       createdAt: r.createdAt.toISOString(),
     })),
   });

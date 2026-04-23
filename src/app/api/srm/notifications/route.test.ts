@@ -45,6 +45,32 @@ describe("GET /api/srm/notifications", () => {
       }),
     );
   });
+
+  it("includes actorName and actorUserId when the actor is linked", async () => {
+    findManyMock.mockResolvedValueOnce([
+      {
+        id: "n1",
+        kind: "ONBOARDING_TASK_ASSIGNED",
+        title: "Assigned",
+        body: null,
+        readAt: null,
+        supplierId: "s1",
+        taskId: "k1",
+        actorUserId: "a1",
+        createdAt: new Date("2026-01-01T00:00:00.000Z"),
+        actor: { name: "Alex" },
+      },
+    ]);
+    countMock.mockResolvedValue(1);
+    const { GET } = await import("./route");
+    const res = await GET(new Request("http://localhost/api/srm/notifications"));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      notifications: { actorName: string | null; actorUserId: string | null }[];
+    };
+    expect(body.notifications[0]?.actorName).toBe("Alex");
+    expect(body.notifications[0]?.actorUserId).toBe("a1");
+  });
 });
 
 describe("POST /api/srm/notifications (mark all read)", () => {
