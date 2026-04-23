@@ -4,6 +4,7 @@ import Link from "next/link";
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { PageTitleWithHint } from "@/components/page-title-with-hint";
+import { RefineTypeahead } from "@/components/refine-typeahead";
 import {
   defaultBoardQueue,
   type BoardQueueFilter,
@@ -139,6 +140,15 @@ export function OrdersBoard({
     }
     return [...m.entries()].sort((a, b) => a[1].localeCompare(b[1]));
   }, [data.orders]);
+
+  const supplierTypeaheadOptions = useMemo(
+    () => supplierOptions.map(([id, label]) => ({ id, label })),
+    [supplierOptions],
+  );
+  const requesterTypeaheadOptions = useMemo(
+    () => requesterOptions.map(([id, label]) => ({ id, label })),
+    [requesterOptions],
+  );
 
   const orderCount = useMemo(() => data.orders.length, [data.orders.length]);
   const nowDate = useMemo(() => new Date(nowMs), [nowMs]);
@@ -481,36 +491,22 @@ export function OrdersBoard({
 
         <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
           <span className="text-zinc-500">Refine</span>
-          <label className="flex items-center gap-1">
-            <span className="sr-only">Supplier</span>
-            <select
-              value={filterSupplierId ?? ""}
-              onChange={(e) => setFilterSupplierId(e.target.value ? e.target.value : null)}
-              className="rounded-md border border-zinc-300 bg-white px-2 py-1 text-zinc-800"
-            >
-              <option value="">Any supplier</option>
-              {supplierOptions.map(([id, name]) => (
-                <option key={id} value={id}>
-                  {name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex items-center gap-1">
-            <span className="sr-only">Requester</span>
-            <select
-              value={filterRequesterId ?? ""}
-              onChange={(e) => setFilterRequesterId(e.target.value ? e.target.value : null)}
-              className="rounded-md border border-zinc-300 bg-white px-2 py-1 text-zinc-800"
-            >
-              <option value="">Any requester</option>
-              {requesterOptions.map(([id, name]) => (
-                <option key={id} value={id}>
-                  {name}
-                </option>
-              ))}
-            </select>
-          </label>
+          <RefineTypeahead
+            label="Supplier filter"
+            placeholder="Search supplier…"
+            anyLabel="Any supplier"
+            options={supplierTypeaheadOptions}
+            valueId={filterSupplierId}
+            onChange={setFilterSupplierId}
+          />
+          <RefineTypeahead
+            label="Requester filter"
+            placeholder="Search requester…"
+            anyLabel="Any requester"
+            options={requesterTypeaheadOptions}
+            valueId={filterRequesterId}
+            onChange={setFilterRequesterId}
+          />
         </div>
 
         <div className="mt-3 flex items-center gap-2 text-xs">
