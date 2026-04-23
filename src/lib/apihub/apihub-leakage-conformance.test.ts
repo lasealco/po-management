@@ -12,10 +12,6 @@ import { logApiHubBackgroundError } from "./safe-server-log";
  */
 const APIHUB_HTTP_ROOT = path.join(process.cwd(), "src/app/api/apihub");
 const APIHUB_LIB_ROOT = path.join(process.cwd(), "src/lib/apihub");
-const APIHUB_CRON_SWEEP_ROUTE = path.join(
-  process.cwd(),
-  "src/app/api/cron/apihub-mapping-analysis-jobs/route.ts",
-);
 
 const CONSOLE_METHOD = /\bconsole\.(log|debug|info|warn|error|trace)\s*\(/;
 
