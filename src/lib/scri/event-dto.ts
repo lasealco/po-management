@@ -14,6 +14,17 @@ import {
 } from "@/lib/scri/matching/impact-level";
 import { scriEventTypeLabel } from "@/lib/scri/event-type-taxonomy";
 
+export function scriAiSummarySourceLabel(src: string | null | undefined): string {
+  switch (src) {
+    case "CONNECTOR":
+      return "Connector / model output";
+    case "DETERMINISTIC_V1":
+      return "Auto-generated template (no LLM)";
+    default:
+      return "Unspecified (legacy or pre-tracking)";
+  }
+}
+
 export type ScriEventListItemDto = ReturnType<typeof toScriEventListItemDto>;
 
 type ActorSnippet = Pick<User, "id" | "name" | "email">;
@@ -70,10 +81,13 @@ export function toScriEventDetailDto(row: DetailRow) {
     ...listPart,
     longSummary: row.longSummary,
     aiSummary: row.aiSummary,
+    aiSummarySource: row.aiSummarySource ?? null,
+    aiSummarySourceLabel: scriAiSummarySourceLabel(row.aiSummarySource),
     structuredPayload: row.structuredPayload,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     affectedEntities: row.affectedEntities.map(toAffectedDto),
+    sources: row.sources.map(toSourceDetailDto),
     reviewLogs: row.reviewLogs.map(toReviewLogDto),
     taskLinks: row.taskLinks.map(toTaskLinkDto),
   };
@@ -144,6 +158,19 @@ function toSourceDto(s: ScriEventSource) {
     headline: s.headline,
     publishedAt: s.publishedAt?.toISOString() ?? null,
     extractionConfidence: s.extractionConfidence,
+  };
+}
+
+function toSourceDetailDto(s: ScriEventSource) {
+  const preview =
+    s.extractedText && s.extractedText.length > 0
+      ? s.extractedText.length > 800
+        ? `${s.extractedText.slice(0, 800)}…`
+        : s.extractedText
+      : null;
+  return {
+    ...toSourceDto(s),
+    extractedTextPreview: preview,
   };
 }
 

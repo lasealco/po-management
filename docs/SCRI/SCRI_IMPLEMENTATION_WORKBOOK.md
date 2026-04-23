@@ -98,9 +98,9 @@ This workbook ties the **documentation pack** in `docs/SCRI/` to **concrete buil
 
 | Done | Task | Notes / spec pointer |
 |------|------|----------------------|
-| [ ] | **Populate `aiSummary`:** Batch or on-ingest pipeline with guardrails | AI spec |
-| [ ] | **Detail UI:** Distinct blocks for source text, structured payload, AI summary | UX: Event Detail |
-| [ ] | **Rationale:** Surface match `rationale` strings in impact panel | UX principles |
+| [x] | **Populate `aiSummary`:** Batch or on-ingest pipeline with guardrails | Ingest: optional `aiSummary` (CONNECTOR); else `build-deterministic-ai-summary` (DETERMINISTIC_V1); `aiSummary: null` clears |
+| [x] | **Detail UI:** Distinct blocks for source text, structured payload, AI summary | Ingest narrative → primary sources (+ excerpt) → geography → AI-assisted summary (provenance label) |
+| [x] | **Rationale:** Surface match `rationale` strings in impact panel | Exposure section intro + per-row rationale (existing) |
 
 ---
 

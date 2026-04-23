@@ -115,7 +115,7 @@ export default async function RiskIntelligenceEventPage({
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
-                Internal exposure
+                Internal exposure (R2)
               </p>
               <p className="mt-2 text-sm text-zinc-700">
                 {e.affectedTotal > 0 ? (
@@ -129,6 +129,11 @@ export default async function RiskIntelligenceEventPage({
                     No matches yet. Geography on this event is matched to live tenant data (R2).
                   </span>
                 )}
+              </p>
+              <p className="mt-2 text-xs text-zinc-500">
+                Each row includes a <span className="font-medium text-zinc-600">rationale</span> explaining the
+                geography or object rule used. Tentative matches are labeled; they need extra validation before
+                executive use.
               </p>
             </div>
             {canRunMatch ? <ScriRunMatchButton eventId={e.id} /> : null}
@@ -165,17 +170,57 @@ export default async function RiskIntelligenceEventPage({
           ) : null}
         </section>
 
-        {e.shortSummary ? (
+        {e.shortSummary || e.longSummary ? (
           <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Summary</p>
-            <p className="mt-2 text-sm text-zinc-700">{e.shortSummary}</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Ingest narrative</p>
+            <p className="mt-1 text-xs text-zinc-500">
+              Operator-facing text from the feed / connector. Distinct from the generated summary below.
+            </p>
+            {e.shortSummary ? (
+              <p className="mt-3 text-sm text-zinc-800">{e.shortSummary}</p>
+            ) : null}
+            {e.longSummary ? (
+              <p className="mt-3 whitespace-pre-wrap text-sm text-zinc-700">{e.longSummary}</p>
+            ) : null}
           </section>
         ) : null}
 
-        {e.longSummary ? (
+        {e.sources.length ? (
           <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Detail</p>
-            <p className="mt-2 whitespace-pre-wrap text-sm text-zinc-700">{e.longSummary}</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
+              Primary sources ({e.sources.length})
+            </p>
+            <p className="mt-1 text-xs text-zinc-500">
+              Facts trace to these rows. Excerpts are truncated for display.
+            </p>
+            <ul className="mt-3 space-y-4">
+              {e.sources.map((s) => (
+                <li key={s.id} className="text-sm text-zinc-700">
+                  <span className="font-medium text-zinc-900">{s.sourceType}</span>
+                  {s.publisher ? (
+                    <span className="text-zinc-500"> · {s.publisher}</span>
+                  ) : null}
+                  {s.headline ? ` — ${s.headline}` : null}
+                  {s.url ? (
+                    <div className="mt-1 truncate">
+                      <a
+                        href={s.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-amber-800 underline-offset-2 hover:underline"
+                      >
+                        {s.url}
+                      </a>
+                    </div>
+                  ) : null}
+                  {"extractedTextPreview" in s && s.extractedTextPreview ? (
+                    <p className="mt-2 rounded-lg border border-zinc-100 bg-zinc-50 p-2 text-xs leading-relaxed text-zinc-600">
+                      {s.extractedTextPreview}
+                    </p>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
           </section>
         ) : null}
 
@@ -199,41 +244,13 @@ export default async function RiskIntelligenceEventPage({
           </section>
         ) : null}
 
-        {e.sources.length ? (
-          <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
-              Sources ({e.sources.length})
-            </p>
-            <ul className="mt-3 space-y-3">
-              {e.sources.map((s) => (
-                <li key={s.id} className="text-sm text-zinc-700">
-                  <span className="font-medium text-zinc-900">{s.sourceType}</span>
-                  {s.publisher ? (
-                    <span className="text-zinc-500"> · {s.publisher}</span>
-                  ) : null}
-                  {s.headline ? ` — ${s.headline}` : null}
-                  {s.url ? (
-                    <div className="mt-1 truncate">
-                      <a
-                        href={s.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-amber-800 underline-offset-2 hover:underline"
-                      >
-                        {s.url}
-                      </a>
-                    </div>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-          </section>
-        ) : null}
-
         {e.aiSummary ? (
           <section className="rounded-2xl border border-amber-100 bg-amber-50/80 p-5 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-900/80">AI summary</p>
-            <p className="mt-2 text-sm text-amber-950">{e.aiSummary}</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-900/80">
+              AI-assisted summary
+            </p>
+            <p className="mt-1 text-xs text-amber-900/70">{e.aiSummarySourceLabel}</p>
+            <p className="mt-2 whitespace-pre-wrap text-sm text-amber-950">{e.aiSummary}</p>
           </section>
         ) : null}
 
@@ -300,7 +317,9 @@ export default async function RiskIntelligenceEventPage({
         ) : null}
 
         <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Structured payload</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
+            Structured payload (machine-readable)
+          </p>
           <pre className="mt-2 max-h-48 overflow-auto rounded-lg bg-zinc-50 p-3 text-xs text-zinc-800">
             {JSON.stringify(e.structuredPayload, null, 2)}
           </pre>

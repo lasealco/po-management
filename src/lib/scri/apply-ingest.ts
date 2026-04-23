@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 
+import { resolveIngestAiFields } from "@/lib/scri/build-deterministic-ai-summary";
 import type { ScriIngestBody } from "@/lib/scri/schemas/ingest-body";
 import { runScriEventMatching } from "@/lib/scri/matching/run-event-match";
 import { normalizeIngestGeography } from "@/lib/scri/normalize-ingest-geography";
@@ -13,6 +14,7 @@ export async function applyScriIngest(tenantId: string, body: ScriIngestBody) {
   const eventTime = body.eventTime ? new Date(body.eventTime) : null;
   const structuredPayload = (body.structuredPayload ?? {}) as Prisma.InputJsonValue;
   const reviewState = body.reviewState ?? undefined;
+  const { aiSummary, aiSummarySource } = resolveIngestAiFields(body);
 
   const eventId = await prisma.$transaction(async (tx) => {
     const row = await tx.scriExternalEvent.upsert({
@@ -47,6 +49,8 @@ export async function applyScriIngest(tenantId: string, body: ScriIngestBody) {
         ...(reviewState ? { reviewState } : {}),
         sourceTrustScore: body.sourceTrustScore ?? null,
         sourceCount: body.sources.length,
+        aiSummary,
+        aiSummarySource,
         structuredPayload,
       },
     });

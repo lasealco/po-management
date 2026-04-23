@@ -38,6 +38,11 @@ export const scriIngestBodySchema = z.object({
   confidence: z.number().int().min(0).max(100).optional().default(50),
   reviewState: reviewStateSchema.optional(),
   sourceTrustScore: z.number().int().min(0).max(100).optional().nullable(),
+  /**
+   * Optional narrative from a connector or LLM. When omitted, a deterministic template summary is stored.
+   * Set explicitly to `null` to clear both summary and source.
+   */
+  aiSummary: z.string().max(12000).optional().nullable(),
   structuredPayload: z.record(z.string(), z.unknown()).optional().nullable(),
   sources: z.array(scriIngestSourceSchema).min(1).max(50),
   geographies: z.array(scriIngestGeographySchema).max(30).optional(),

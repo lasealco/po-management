@@ -3449,6 +3449,8 @@ model ScriExternalEvent {
   sourceCount    Int      @default(0)
   sourceTrustScore Int?
   aiSummary      String?  @db.Text
+  /// CONNECTOR = supplied on ingest; DETERMINISTIC_V1 = platform template; null = legacy / none.
+  aiSummarySource String? @db.VarChar(32)
   structuredPayload Json  @default("{}")
 
   createdAt DateTime @default(now())
