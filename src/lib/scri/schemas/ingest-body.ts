@@ -1,8 +1,12 @@
 import { TwinRiskSeverity, ScriEventReviewState } from "@prisma/client";
 import { z } from "zod";
 
+import { SCR_EVENT_TYPES, type ScriEventTypeCode } from "@/lib/scri/event-type-taxonomy";
+
 const twinSeveritySchema = z.nativeEnum(TwinRiskSeverity);
 const reviewStateSchema = z.nativeEnum(ScriEventReviewState);
+
+const scriEventTypeEnum = z.enum(SCR_EVENT_TYPES as unknown as [ScriEventTypeCode, ...ScriEventTypeCode[]]);
 
 export const scriIngestSourceSchema = z.object({
   sourceType: z.string().min(1).max(64),
@@ -25,7 +29,7 @@ export const scriIngestGeographySchema = z.object({
 export const scriIngestBodySchema = z.object({
   ingestKey: z.string().min(1).max(256),
   clusterKey: z.string().max(256).optional().nullable(),
-  eventType: z.string().min(1).max(64),
+  eventType: scriEventTypeEnum,
   title: z.string().min(1).max(512),
   shortSummary: z.string().max(8000).optional().nullable(),
   longSummary: z.string().max(20000).optional().nullable(),

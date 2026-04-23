@@ -5,6 +5,8 @@ import type {
   ScriExternalEvent,
 } from "@prisma/client";
 
+import { scriEventTypeLabel } from "@/lib/scri/event-type-taxonomy";
+
 export type ScriEventListItemDto = ReturnType<typeof toScriEventListItemDto>;
 
 type ListRow = ScriExternalEvent & {
@@ -25,6 +27,7 @@ export function toScriEventListItemDto(row: ListRow) {
     ingestKey: row.ingestKey,
     clusterKey: row.clusterKey,
     eventType: row.eventType,
+    eventTypeLabel: scriEventTypeLabel(row.eventType),
     title: row.title,
     shortSummary: row.shortSummary,
     eventTime: row.eventTime?.toISOString() ?? null,
@@ -97,6 +100,7 @@ function toGeoDto(g: ScriEventGeography) {
     region: g.region,
     portUnloc: g.portUnloc,
     label: g.label,
+    raw: g.raw,
   };
 }
 

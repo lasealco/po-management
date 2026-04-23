@@ -54,13 +54,13 @@ This workbook ties the **documentation pack** in `docs/SCRI/` to **concrete buil
 
 | Done | Task | Notes / spec pointer |
 |------|------|----------------------|
-| [ ] | **Ingest:** Idempotent `ingestKey`, validate payload vs `ingest-body` schema; surface validation errors clearly | Integrations spec: idempotent ingest |
-| [ ] | **Sources:** Ensure multi-source events persist `ScriEventSource` rows when API sends them; show count + list on detail | PRD: Event Detail “source summary” |
-| [ ] | **Geography:** Normalize country / UN/LOC / region in ingest or on write; document required fields for matching | Data model: Event Geography |
-| [ ] | **Classification:** Event type vocabulary aligned with blueprint “Event Families”; avoid unbounded free text in UI | Blueprint, Event Families |
-| [ ] | **Clustering / dedup:** Define `clusterKey` behavior (when set, UI grouping); optional background job to merge duplicates | Backlog R1 |
-| [ ] | **Feed UX:** Event cards show severity, confidence, freshness, geography, impacted counts (from R2) | UX wireframes: Event Feed |
-| [ ] | **Ops visibility:** Log or table for failed ingest / match (per integrations spec) | Integrations: failed ingestion visible |
+| [x] | **Ingest:** Idempotent `ingestKey`, validate payload vs `ingest-body` schema; surface validation errors clearly | `400` returns `fieldErrors`, `formErrors`, `issues`; see `ingest-validation.ts` |
+| [x] | **Sources:** Ensure multi-source events persist `ScriEventSource` rows when API sends them; show count + list on detail | Already in `apply-ingest`; detail shows publisher + count |
+| [x] | **Geography:** Normalize country / UN/LOC / region in ingest or on write; document required fields for matching | `normalize-ingest-geography.ts`; invalid ISO-2 stored in `raw.invalidCountryCode` |
+| [x] | **Classification:** Event type vocabulary aligned with blueprint “Event Families”; avoid unbounded free text in UI | `event-type-taxonomy.ts` + Zod enum on ingest; UI uses labels |
+| [x] | **Clustering / dedup:** Define `clusterKey` behavior (when set, UI grouping); optional background job to merge duplicates | Feed: cluster badge + `?cluster=` filter; `GET ?clusterKey=` on API |
+| [x] | **Feed UX:** Event cards show severity, confidence, freshness, geography, impacted counts (from R2) | `formatScriFreshness`, source count, trust %, type labels |
+| [x] | **Ops visibility:** Log or table for failed ingest / match (per integrations spec) | Structured JSON line on ingest 500 (`module: scri`, `ingestKey`); DB table deferred |
 
 ---
 

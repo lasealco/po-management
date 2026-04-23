@@ -6,6 +6,10 @@ import { getDemoTenant } from "@/lib/demo-tenant";
 import { applyScriIngest } from "@/lib/scri/apply-ingest";
 import { toScriEventListItemDto } from "@/lib/scri/event-dto";
 import { listScriEventsForTenant } from "@/lib/scri/event-repo";
+import {
+  zodValidationApiExtra,
+  zodValidationSummary,
+} from "@/lib/scri/ingest-validation";
 import { scriIngestBodySchema } from "@/lib/scri/schemas/ingest-body";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +26,10 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const takeRaw = url.searchParams.get("take");
   const take = takeRaw ? Number(takeRaw) : 50;
-  const rows = await listScriEventsForTenant(tenant.id, Number.isFinite(take) ? take : 50);
+  const clusterKey = url.searchParams.get("clusterKey");
+  const rows = await listScriEventsForTenant(tenant.id, Number.isFinite(take) ? take : 50, {
+    clusterKey: clusterKey?.trim() || undefined,
+  });
 
   return NextResponse.json({
     events: rows.map(toScriEventListItemDto),
@@ -47,22 +54,36 @@ export async function POST(request: Request) {
 
   const parsed = scriIngestBodySchema.safeParse(body);
   if (!parsed.success) {
+    const extra = zodValidationApiExtra(parsed.error);
     return toApiErrorResponse({
-      error: parsed.error.flatten().formErrors.join("; ") || "Validation failed.",
+      error: zodValidationSummary(parsed.error),
       code: "BAD_INPUT",
       status: 400,
+      extra,
     });
   }
 
+  const ingestBody = parsed.data;
   try {
-    const id = await applyScriIngest(tenant.id, parsed.data);
+    const id = await applyScriIngest(tenant.id, ingestBody);
     return NextResponse.json({ ok: true, id });
   } catch (e) {
-    console.error(e);
+    const message = e instanceof Error ? e.message : String(e);
+    console.error(
+      JSON.stringify({
+        module: "scri",
+        op: "ingest",
+        tenantId: tenant.id,
+        ingestKey: ingestBody.ingestKey,
+        outcome: "error",
+        message,
+      }),
+    );
     return toApiErrorResponse({
       error: "Ingest failed.",
       code: "INTERNAL",
       status: 500,
+      extra: { ingestKey: ingestBody.ingestKey },
     });
   }
 }

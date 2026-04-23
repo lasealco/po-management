@@ -5,9 +5,17 @@ const baseInclude = {
   geographies: true,
 } as const;
 
-export async function listScriEventsForTenant(tenantId: string, take: number) {
+export async function listScriEventsForTenant(
+  tenantId: string,
+  take: number,
+  opts?: { clusterKey?: string | null },
+) {
+  const clusterKey = opts?.clusterKey?.trim();
   return prisma.scriExternalEvent.findMany({
-    where: { tenantId },
+    where: {
+      tenantId,
+      ...(clusterKey ? { clusterKey } : {}),
+    },
     orderBy: [{ discoveredTime: "desc" }, { id: "desc" }],
     take: Math.min(Math.max(take, 1), 100),
     include: {

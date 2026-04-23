@@ -6,6 +6,7 @@ import { PageTitleWithHint } from "@/components/page-title-with-hint";
 import { ScriRunMatchButton } from "@/components/risk-intelligence/scri-run-match-button";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { toScriEventDetailDto } from "@/lib/scri/event-dto";
+import { formatScriFreshness } from "@/lib/scri/format-freshness";
 import { getScriEventForTenant } from "@/lib/scri/event-repo";
 import { scriObjectHref } from "@/lib/scri/object-links";
 
@@ -58,9 +59,28 @@ export default async function RiskIntelligenceEventPage({
       <header className="mt-4">
         <PageTitleWithHint title={e.title} titleClassName="text-2xl font-semibold text-zinc-900" />
         <p className="mt-2 text-sm text-zinc-600">
-          {e.eventType} · {e.severity} · {e.reviewState.replace(/_/g, " ")} · discovered{" "}
-          {new Date(e.discoveredTime).toLocaleString()}
+          {e.eventTypeLabel} ({e.eventType}) · {e.severity} · {e.reviewState.replace(/_/g, " ")}
         </p>
+        <p className="mt-1 text-xs text-zinc-500">
+          Discovered {new Date(e.discoveredTime).toLocaleString()} ({formatScriFreshness(e.discoveredTime)})
+          {e.eventTime
+            ? ` · Event time ${new Date(e.eventTime).toLocaleString()}`
+            : ""}
+          {" · "}
+          {e.sourceCount} {e.sourceCount === 1 ? "source" : "sources"}
+          {e.sourceTrustScore != null ? ` · Source trust ${e.sourceTrustScore}%` : ""}
+        </p>
+        {e.clusterKey ? (
+          <p className="mt-1 text-xs text-zinc-500">
+            Cluster{" "}
+            <Link
+              href={`/risk-intelligence?cluster=${encodeURIComponent(e.clusterKey)}`}
+              className="font-medium text-amber-800 underline-offset-2 hover:underline"
+            >
+              {e.clusterKey}
+            </Link>
+          </p>
+        ) : null}
       </header>
 
       <div className="mt-6 space-y-4">
@@ -129,10 +149,17 @@ export default async function RiskIntelligenceEventPage({
         {e.geographies.length ? (
           <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Geography</p>
-            <ul className="mt-2 list-inside list-disc text-sm text-zinc-700">
+            <ul className="mt-2 space-y-2 text-sm text-zinc-700">
               {e.geographies.map((g) => (
-                <li key={g.id}>
-                  {[g.label, g.portUnloc, g.region, g.countryCode].filter(Boolean).join(" · ") || "—"}
+                <li key={g.id} className="list-inside list-disc">
+                  <span>
+                    {[g.label, g.portUnloc, g.region, g.countryCode].filter(Boolean).join(" · ") || "—"}
+                  </span>
+                  {g.raw != null ? (
+                    <pre className="mt-1 ml-4 max-w-full overflow-x-auto rounded border border-zinc-100 bg-zinc-50 p-2 text-[10px] leading-snug text-zinc-600">
+                      {JSON.stringify(g.raw, null, 2)}
+                    </pre>
+                  ) : null}
                 </li>
               ))}
             </ul>
@@ -141,11 +168,16 @@ export default async function RiskIntelligenceEventPage({
 
         {e.sources.length ? (
           <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Sources</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
+              Sources ({e.sources.length})
+            </p>
             <ul className="mt-3 space-y-3">
               {e.sources.map((s) => (
                 <li key={s.id} className="text-sm text-zinc-700">
                   <span className="font-medium text-zinc-900">{s.sourceType}</span>
+                  {s.publisher ? (
+                    <span className="text-zinc-500"> · {s.publisher}</span>
+                  ) : null}
                   {s.headline ? ` — ${s.headline}` : null}
                   {s.url ? (
                     <div className="mt-1 truncate">

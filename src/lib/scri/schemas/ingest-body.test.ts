@@ -21,7 +21,7 @@ describe("scriIngestBodySchema", () => {
   it("accepts runMatch flag", () => {
     const parsed = scriIngestBodySchema.safeParse({
       ingestKey: "k",
-      eventType: "X",
+      eventType: "OTHER_SUPPLY_CHAIN_RISK",
       title: "T",
       severity: "LOW",
       sources: [{ sourceType: "manual" }],
@@ -29,6 +29,17 @@ describe("scriIngestBodySchema", () => {
     });
     expect(parsed.success).toBe(true);
     if (parsed.success) expect(parsed.data.runMatch).toBe(true);
+  });
+
+  it("rejects unknown eventType", () => {
+    const parsed = scriIngestBodySchema.safeParse({
+      ingestKey: "k",
+      eventType: "UNKNOWN_TYPE_X",
+      title: "T",
+      severity: "LOW",
+      sources: [{ sourceType: "manual" }],
+    });
+    expect(parsed.success).toBe(false);
   });
 
   it("rejects empty sources", () => {

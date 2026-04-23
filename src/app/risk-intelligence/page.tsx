@@ -3,12 +3,25 @@ import Link from "next/link";
 import { AccessDenied } from "@/components/access-denied";
 import { PageTitleWithHint } from "@/components/page-title-with-hint";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
+import { formatScriFreshness } from "@/lib/scri/format-freshness";
 import { toScriEventListItemDto } from "@/lib/scri/event-dto";
 import { listScriEventsForTenant } from "@/lib/scri/event-repo";
 
 export const dynamic = "force-dynamic";
 
-export default async function RiskIntelligencePage() {
+function clusterFromSearch(
+  raw: string | string[] | undefined,
+): string | undefined {
+  const s = Array.isArray(raw) ? raw[0] : raw;
+  const t = s?.trim();
+  return t || undefined;
+}
+
+export default async function RiskIntelligencePage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const access = await getViewerGrantSet();
 
   if (!access?.user) {
@@ -33,7 +46,11 @@ export default async function RiskIntelligencePage() {
     );
   }
 
-  const rows = await listScriEventsForTenant(access.tenant.id, 80);
+  const sp = await searchParams;
+  const clusterFilter = clusterFromSearch(sp.cluster);
+  const rows = await listScriEventsForTenant(access.tenant.id, 80, {
+    clusterKey: clusterFilter,
+  });
   const events = rows.map(toScriEventListItemDto);
 
   return (
@@ -50,6 +67,15 @@ export default async function RiskIntelligencePage() {
             {events.length} {events.length === 1 ? "event" : "events"}
           </span>
         </p>
+        {clusterFilter ? (
+          <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50/90 px-3 py-2 text-sm text-amber-950">
+            Filtered by cluster{" "}
+            <code className="rounded bg-white/80 px-1 py-0.5 text-xs">{clusterFilter}</code>.{" "}
+            <Link href="/risk-intelligence" className="font-medium text-amber-900 underline-offset-2 hover:underline">
+              Clear filter
+            </Link>
+          </p>
+        ) : null}
       </header>
 
       <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
@@ -59,14 +85,28 @@ export default async function RiskIntelligencePage() {
             <li key={e.id} className="py-4 first:pt-0">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
-                  <Link
-                    href={`/risk-intelligence/${e.id}`}
-                    className="font-medium text-zinc-900 underline-offset-2 hover:underline"
-                  >
-                    {e.title}
-                  </Link>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Link
+                      href={`/risk-intelligence/${e.id}`}
+                      className="font-medium text-zinc-900 underline-offset-2 hover:underline"
+                    >
+                      {e.title}
+                    </Link>
+                    {e.clusterKey ? (
+                      <Link
+                        href={`/risk-intelligence?cluster=${encodeURIComponent(e.clusterKey)}`}
+                        className="shrink-0 rounded-md border border-zinc-200 bg-zinc-50 px-1.5 py-0.5 text-[10px] font-medium text-zinc-600 hover:border-zinc-300 hover:bg-zinc-100"
+                        title="Filter feed by this cluster key"
+                      >
+                        cluster
+                      </Link>
+                    ) : null}
+                  </div>
                   <p className="mt-1 text-xs text-zinc-500">
-                    {e.eventType} · {e.severity} · confidence {e.confidence}%
+                    {e.eventTypeLabel} · {e.severity} · confidence {e.confidence}% ·{" "}
+                    {formatScriFreshness(e.discoveredTime)} · {e.sourceCount}{" "}
+                    {e.sourceCount === 1 ? "source" : "sources"}
+                    {e.sourceTrustScore != null ? ` · trust ${e.sourceTrustScore}%` : ""}
                     {e.geographySummary ? ` · ${e.geographySummary}` : ""}
                   </p>
                   {e.shortSummary ? (
@@ -103,8 +143,9 @@ export default async function RiskIntelligencePage() {
         </ul>
         {events.length === 0 ? (
           <p className="py-8 text-center text-sm text-zinc-500">
-            No events yet. Run <code className="rounded bg-zinc-100 px-1">npm run db:seed</code> for demo
-            data, or ingest via{" "}
+            No events yet. Run{" "}
+            <code className="rounded bg-zinc-100 px-1">npm run db:seed:scri</code> for SCRI demo rows, full{" "}
+            <code className="rounded bg-zinc-100 px-1">npm run db:seed</code> for volume, or ingest via{" "}
             <code className="rounded bg-zinc-100 px-1">POST /api/scri/events</code>.
           </p>
         ) : null}

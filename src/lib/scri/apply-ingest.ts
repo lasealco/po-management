@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 
 import type { ScriIngestBody } from "@/lib/scri/schemas/ingest-body";
 import { runScriEventMatching } from "@/lib/scri/matching/run-event-match";
+import { normalizeIngestGeography } from "@/lib/scri/normalize-ingest-geography";
 
 export async function applyScriIngest(tenantId: string, body: ScriIngestBody) {
   const runMatch = Boolean(body.runMatch);
@@ -69,13 +70,23 @@ export async function applyScriIngest(tenantId: string, body: ScriIngestBody) {
     const geos = body.geographies ?? [];
     if (geos.length) {
       await tx.scriEventGeography.createMany({
-        data: geos.map((g) => ({
-          eventId: row.id,
-          countryCode: g.countryCode ?? null,
-          region: g.region ?? null,
-          portUnloc: g.portUnloc ?? null,
-          label: g.label ?? null,
-        })),
+        data: geos.map((g) => {
+          const n = normalizeIngestGeography({
+            countryCode: g.countryCode,
+            region: g.region,
+            portUnloc: g.portUnloc,
+            label: g.label,
+            raw: g.raw ?? undefined,
+          });
+          return {
+            eventId: row.id,
+            countryCode: n.countryCode,
+            region: n.region,
+            portUnloc: n.portUnloc,
+            label: n.label,
+            ...(n.raw != null ? { raw: n.raw } : {}),
+          };
+        }),
       });
     }
 
