@@ -41,7 +41,11 @@ Add **Issue** / **PR** when you file work; the **30-slice** program is **closed*
 | 13 | Phase B — onboarding task list v1 | — | (landed) |
 | 14 | Phase B — assignee & due (operator workflow) | — | (landed) |
 | 15 | Phase B — notification hook (stub) | — | (landed) |
-| 16–20 | Phase C — compliance & documents | — | (landed) |
+| 16 | Phase C — document schema (Prisma) | — | (landed) |
+| 17 | Phase C — list & upload API + Compliance tab | — | (landed) |
+| 18 | Phase C — expiry signals (badges) | — | (landed) |
+| 19 | Phase C — read-only vs edit grants | — | (landed) |
+| 20 | Phase C — document audit trail | — | (landed) |
 | 21–24 | Phase D — KPI & analytics | — | (landed) |
 | 25–28 | Phase E — integration pack | — | (landed) |
 | 29–30 | Phase F — SRM demo seed + sign-off | — | (landed) |
@@ -50,7 +54,7 @@ Add **Issue** / **PR** when you file work; the **30-slice** program is **closed*
 
 **Phase B (slices 11–15) — shipped in repo:** `supplier-approval-transitions` enforced on **`POST /api/suppliers/[id]/approval`** (`approve` / `reject` / `reopen`) and **`PATCH /api/suppliers/[id]`** when `approvalStatus` changes; **`supplierOperationalBlockReason`** on **`POST /api/orders`** (line supplier + forwarder); **`SupplierOnboardingTask`** model + **`GET/PATCH`** onboarding task APIs; default tasks seeded on create + first 360 load; **Onboarding** tab on `/srm/[id]` with assignee/due/notes + **Assigned onboarding** filter on `/srm`; **`srmNotificationHook`** structured log stub on approval decisions; docs: **`docs/srm/SRM_ACTIVATION_GUARDS.md`**; Vitest for approval transitions, list-query `onboardingMine`, and **`GET/PATCH` onboarding-task routes** (grant + 404 + happy path).
 
-**Phase C (slices 16–20) — shipped in repo:** **`SrmSupplierDocument`** + **`SrmSupplierDocumentAuditLog`** (Prisma); **`GET`/`POST`** `/api/suppliers/[id]/srm-documents`, **`PATCH`/`DELETE`** `/api/suppliers/[id]/srm-documents/[docId]` (archive), **`GET`** `.../audit-logs`; **Compliance** tab on `/srm/[id]` with upload (edit grant), list, expiry badges (query-time), view-only messaging, audit trail; local dev uploads under `public/uploads/srm-documents` or Blob in production; Vitest for document list + grant gate on POST.
+**Phase C (slices 16–20) — shipped in repo:** **`SrmSupplierDocument`** + **`SrmSupplierDocumentAuditLog`** (Prisma); **`GET`/`POST`** `/api/suppliers/[id]/srm-documents`, **`PATCH`/`DELETE`** `/api/suppliers/[id]/srm-documents/[docId]` (archive), **`GET`** `.../audit-logs`; **Compliance** tab on `/srm/[id]` with upload (edit grant), list, expiry badges (query-time), view-only messaging, audit trail; local dev uploads under `public/uploads/srm-documents` or Blob in production; Vitest for **`GET`/`POST` list route**, **grant on POST**, **`GET` audit-logs** (404 path), and **`PATCH`/`DELETE` document** (gates + 404/400 where applicable).
 
 **Phase D (slices 21–24) — shipped in repo:** **`/srm/analytics`** — parent **PO** volume + spend by **currency** (no FX) + **top-3 concentration** (order-count % and per-currency spend %); **`GET /api/srm/analytics`**; **PO metrics** require **`org.orders` → view** (session without it still opens the page for logistics **booking SLA** when `kind=logistics`). **Booking SLA:** `ShipmentBooking.bookingSentAt` vs first **`BOOKING_CONFIRMED`** milestone on the linked **Shipment** vs forwarder **`bookingConfirmationSlaHours`** (else 24h); sparse/missing milestone → indeterminate + UI callout. Implementation: **`src/lib/srm/srm-analytics-aggregates.ts`**.
 
