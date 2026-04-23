@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { actorIsSupplierPortalRestricted, getActorUserId, requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
+import { serializeOrderForBoard } from "@/lib/orders-board-serialize";
 import { prisma } from "@/lib/prisma";
-import { visibleOnBoard } from "@/lib/workflow-actions";
 import { Prisma } from "@prisma/client";
 import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 
@@ -88,7 +88,12 @@ export async function GET() {
         select: { id: true, code: true, label: true },
       },
       supplier: {
-        select: { id: true, name: true },
+        select: {
+          id: true,
+          name: true,
+          srmCategory: true,
+          approvalStatus: true,
+        },
       },
       requester: {
         select: { id: true, name: true, email: true },
@@ -113,6 +118,10 @@ export async function GET() {
       },
       shipments: {
         select: {
+          salesOrderId: true,
+          asnReference: true,
+          expectedReceiveAt: true,
+          booking: { select: { status: true } },
           items: {
             select: {
               quantityShipped: true,
@@ -155,93 +164,15 @@ export async function GET() {
     }
   }
 
-  const data = orders.map((order) => {
-    const allowedActions = order.workflow.transitions
-      .filter(
-        (transition) =>
-          transition.fromStatusId === order.statusId &&
-          visibleOnBoard(transition.actionCode),
-      )
-      .filter((transition) => {
-        if (supplierOnlyActionCodes.has(transition.actionCode)) {
-          return isSupplierPortalUser;
-        }
-        if (buyerOnlyActionCodes.has(transition.actionCode)) {
-          return !isSupplierPortalUser;
-        }
-        return true;
-      })
-      .map((transition) => ({
-        actionCode: transition.actionCode,
-        label: transition.label,
-        requiresComment: transition.requiresComment,
-        toStatus: transition.toStatus,
-      }));
-
-    const latestShared = latestSharedByOrder.get(order.id);
-    const fromSupplier = Boolean(
-      latestShared?.authorRoleNames.includes("Supplier portal"),
-    );
-    const awaitingReplyFrom: "buyer" | "supplier" | null = latestShared
-      ? fromSupplier
-        ? "buyer"
-        : "supplier"
-      : null;
-    const daysSinceLastShared = latestShared
-      ? Math.max(
-          0,
-          Math.floor(
-            (Date.now() - latestShared.createdAt.getTime()) /
-              (1000 * 60 * 60 * 24),
-          ),
-        )
-      : null;
-    const shippedTotal = order.shipments.reduce(
-      (sum, shipment) =>
-        sum +
-        shipment.items.reduce((s, row) => s + Number(row.quantityShipped), 0),
-      0,
-    );
-    const receivedTotal = order.shipments.reduce(
-      (sum, shipment) =>
-        sum +
-        shipment.items.reduce((s, row) => s + Number(row.quantityReceived), 0),
-      0,
-    );
-    const logisticsStatus: "NONE" | "SHIPPED" | "PARTIALLY_RECEIVED" | "RECEIVED" =
-      shippedTotal <= 0
-        ? "NONE"
-        : receivedTotal <= 0
-          ? "SHIPPED"
-          : receivedTotal < shippedTotal
-            ? "PARTIALLY_RECEIVED"
-            : "RECEIVED";
-
-    return {
-      id: order.id,
-      orderNumber: order.orderNumber,
-      title: order.title,
-      buyerReference: order.buyerReference,
-      requestedDeliveryDate: order.requestedDeliveryDate?.toISOString() ?? null,
-      totalAmount: order.totalAmount.toString(),
-      currency: order.currency,
-      status: order.status,
-      supplier: order.supplier,
-      requester: order.requester,
-      workflow: {
-        id: order.workflow.id,
-        name: order.workflow.name,
-      },
-      allowedActions,
-      conversationSla: {
-        awaitingReplyFrom,
-        daysSinceLastShared,
-        lastSharedAt: latestShared?.createdAt.toISOString() ?? null,
-      },
-      logisticsStatus,
-      createdAt: order.createdAt,
-    };
-  });
+  const data = orders.map((order) =>
+    serializeOrderForBoard({
+      order,
+      latestShared: latestSharedByOrder.get(order.id),
+      isSupplierPortalUser,
+      supplierOnlyActionCodes,
+      buyerOnlyActionCodes,
+    }),
+  );
 
   return NextResponse.json({
     viewerMode: isSupplierPortalUser ? "supplier" : "buyer",

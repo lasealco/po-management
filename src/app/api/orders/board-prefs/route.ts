@@ -30,13 +30,24 @@ export async function GET() {
   return NextResponse.json({
     queueFilter: parsed.queueFilter,
     sortMode: parsed.sortMode,
+    filterSupplierId: parsed.filterSupplierId,
+    filterRequesterId: parsed.filterRequesterId,
   });
 }
 
 type PatchBody = {
   queueFilter?: string;
   sortMode?: string;
+  filterSupplierId?: string | null;
+  filterRequesterId?: string | null;
 };
+
+function normalizeOptionalId(raw: unknown): string | null {
+  if (raw === null || raw === undefined) return null;
+  if (typeof raw !== "string") return null;
+  const t = raw.trim();
+  return t.length ? t : null;
+}
 
 export async function PATCH(request: Request) {
   const gate = await requireApiGrant("org.orders", "view");
@@ -64,6 +75,8 @@ export async function PATCH(request: Request) {
   const prev = readBoardPrefsFromJson(existing?.value);
   let nextQueue: BoardQueueFilter | null = prev.queueFilter;
   let nextSort: BoardSortMode | null = prev.sortMode;
+  let nextFilterSupplierId = prev.filterSupplierId;
+  let nextFilterRequesterId = prev.filterRequesterId;
 
   if (input.queueFilter !== undefined) {
     if (
@@ -80,10 +93,18 @@ export async function PATCH(request: Request) {
     }
     nextSort = input.sortMode;
   }
+  if (input.filterSupplierId !== undefined) {
+    nextFilterSupplierId = normalizeOptionalId(input.filterSupplierId);
+  }
+  if (input.filterRequesterId !== undefined) {
+    nextFilterRequesterId = normalizeOptionalId(input.filterRequesterId);
+  }
 
   const value = {
     queueFilter: nextQueue ?? "needs_my_action",
     sortMode: nextSort ?? "priority",
+    filterSupplierId: nextFilterSupplierId,
+    filterRequesterId: nextFilterRequesterId,
   };
 
   if (existing) {
