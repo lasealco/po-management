@@ -26,6 +26,8 @@ export type AppNavLinkVisibility = {
   supplyChainTwin: boolean;
   /** Supply Chain Risk Intelligence (external events + feed). */
   riskIntelligence: boolean;
+  /** Phase H: supplier self-service home; only for Supplier portal users. */
+  srmSupplierPortal: boolean;
 };
 
 export type PoMgmtSubNavVisibility = {
@@ -85,6 +87,7 @@ export async function resolveNavState(access: ViewerAccess | null): Promise<{
               invoiceAudit);
           const riskIntelligence =
             !isSupplierPortalUser && viewerHas(access.grantSet, "org.scri", "view");
+          const srmSupplierPortal = isSupplierPortalUser;
           return {
             poManagement,
             orders,
@@ -106,6 +109,7 @@ export async function resolveNavState(access: ViewerAccess | null): Promise<{
             apihub,
             supplyChainTwin,
             riskIntelligence,
+            srmSupplierPortal,
           };
         })()
       : undefined;
@@ -132,7 +136,8 @@ export async function resolveNavState(access: ViewerAccess | null): Promise<{
       linkVisibility.invoiceAudit ||
       linkVisibility.apihub ||
       linkVisibility.supplyChainTwin ||
-      linkVisibility.riskIntelligence
+      linkVisibility.riskIntelligence ||
+      linkVisibility.srmSupplierPortal
     );
 
   const poSubNavVisibility: PoMgmtSubNavVisibility = setupIncomplete

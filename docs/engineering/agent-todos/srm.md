@@ -39,7 +39,7 @@ Routes exist: `/srm`, `/srm/new`, `/srm/[id]`, supplier links from suppliers hub
 Use the **phase table** in [`SRM_FINISH_SLICES.md` (Post-MVP)](../../srm/SRM_FINISH_SLICES.md) as the index; checkboxes here are a short hand-off:
 
 - [ ] **Phase G** — Deeper **lifecycle** (staged capture, notifications) — not portal *(in progress: `srmOnboardingStage` + `/srm/notifications` + task-assign notifications)*
-- [ ] **Phase H** — **Supplier portal** (external login)
+- [ ] **Phase H** — **Supplier portal** (external login) *(in progress: `User.portalLinkedSupplierId`, `/srm/portal`, `GET /api/srm/portal/me`)*
 - [ ] **Phase I** — **Compliance DMS v2** (beyond vault v1)
 - [ ] **Phase J** — **KPI + integration** depth (FX, more payloads, ERP)
 - [ ] **Phase K** — **Field-level permissions**, **wireframe parity**, **rules engine** (as separate issues)

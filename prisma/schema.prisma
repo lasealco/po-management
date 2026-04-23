@@ -418,6 +418,9 @@ model User {
   /// When set, Control Tower (and similar) list/detail is limited to shipments tagged with this CRM account.
   customerCrmAccountId String?
   customerCrmAccount   CrmAccount? @relation("UserCustomerPortalScope", fields: [customerCrmAccountId], references: [id], onDelete: SetNull)
+  /// Phase H: supplier-portal user linked to the supplier org they represent (same tenant).
+  portalLinkedSupplierId String?
+  portalLinkedSupplier   Supplier?  @relation("UserPortalLinkedSupplier", fields: [portalLinkedSupplierId], references: [id], onDelete: SetNull)
   tariffContractHeadersOwned TariffContractHeader[] @relation("TariffContractHeaderOwner")
   tariffApprovalRecords      TariffApprovalRecord[] @relation("TariffApprovalApprover")
   tariffAuditLogs            TariffAuditLog[] @relation("TariffAuditLogActor")
@@ -449,6 +452,7 @@ model User {
   @@unique([tenantId, email])
   @@index([tenantId])
   @@index([customerCrmAccountId])
+  @@index([portalLinkedSupplierId])
 }
 
 model UserPreference {
@@ -573,6 +577,7 @@ model Supplier {
   updatedAt DateTime @updatedAt
 
   tenant           Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  portalLinkedUsers User[]            @relation("UserPortalLinkedSupplier")
   orders           PurchaseOrder[]
   offices          SupplierOffice[]
   contacts         SupplierContact[]

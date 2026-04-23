@@ -16,7 +16,13 @@ import { TARIFF_CONTRACTS_DIRECTORY_PATH, TARIFFS_MODULE_BASE_PATH } from "@/lib
 
 function isTopNavHrefActive(pathname: string, href: string): boolean {
   if (href === "/settings") return pathname.startsWith("/settings");
-  if (href === "/srm") return pathname === "/srm" || pathname.startsWith("/srm/");
+  if (href === "/srm") {
+    return (
+      (pathname === "/srm" || pathname.startsWith("/srm/")) &&
+      !pathname.startsWith("/srm/portal")
+    );
+  }
+  if (href === "/srm/portal") return pathname === "/srm/portal" || pathname.startsWith("/srm/portal/");
   if (href === "/sales-orders") return pathname === "/sales-orders" || pathname.startsWith("/sales-orders/");
   if (href === "/reporting") {
     return (
@@ -55,6 +61,7 @@ type TopNavItem =
   | { kind: "ratesAudit" };
 
 const topNavItems: TopNavItem[] = [
+  { kind: "link", key: "srmSupplierPortal", label: "Supplier workspace", href: "/srm/portal" },
   { kind: "link", key: "executive", label: "Executive", href: "/executive" },
   { kind: "link", key: "controlTower", label: "Control Tower", href: "/control-tower" },
   { kind: "link", key: "crm", label: "CRM", href: "/crm" },
@@ -80,6 +87,7 @@ function TopNavLinkLabel({ item }: { item: Exclude<TopNavItem, { kind: "ratesAud
   if (item.key === "apihub") return "API";
   if (item.key === "supplyChainTwin") return "Twin";
   if (item.key === "riskIntelligence") return "Risk";
+  if (item.key === "srmSupplierPortal") return "Workspace";
   return item.label;
 }
 

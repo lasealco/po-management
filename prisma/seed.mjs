@@ -491,6 +491,11 @@ async function seed() {
     },
   });
 
+  await prisma.user.update({
+    where: { id: supplierUser.id },
+    data: { portalLinkedSupplierId: supplier.id },
+  });
+
   await prisma.supplierContact.deleteMany({ where: { supplierId: supplier.id } });
   await prisma.supplierContact.createMany({
     data: [
