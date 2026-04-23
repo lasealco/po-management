@@ -109,8 +109,10 @@ export function DemoUserPanel({ className = "" }: { className?: string }) {
             <Link href="/login" className="font-medium underline underline-offset-2">
               /login
             </Link>{" "}
-            (buyer@, approver@, or <span className="font-mono">superuser@demo-company.com</span> +{" "}
-            <span className="font-mono">demo12345</span>). Superuser has every permission and bypasses supplier/customer portal scoping.
+            (buyer@ / approver@ + <span className="font-mono">demo12345</span>, or{" "}
+            <span className="font-mono">superuser</span> / <span className="font-mono">superuser@demo-company.com</span>{" "}
+            + <span className="font-mono">superuser</span>). Superuser has broad module grants; deeper org-scoped RBAC
+            is roadmap — see repo <span className="font-mono">docs/engineering/USER_ROLES_AND_RBAC.md</span>.
           </>
         ) : (
           <>

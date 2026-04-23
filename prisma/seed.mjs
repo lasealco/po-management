@@ -136,13 +136,14 @@ async function seed() {
         name: "Superuser",
         isActive: true,
         customerCrmAccountId: null,
-        passwordHash: seedPasswordHash("demo12345", "superuser@demo-company.com"),
+        // Password `superuser` — used when password login is live; see `docs/engineering/USER_ROLES_AND_RBAC.md`
+        passwordHash: seedPasswordHash("superuser", "superuser@demo-company.com"),
       },
       create: {
         tenantId: tenant.id,
         email: "superuser@demo-company.com",
         name: "Superuser",
-        passwordHash: seedPasswordHash("demo12345", "superuser@demo-company.com"),
+        passwordHash: seedPasswordHash("superuser", "superuser@demo-company.com"),
       },
     }),
   ]);

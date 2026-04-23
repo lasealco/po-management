@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { PO_AUTH_USER_COOKIE, PO_DEMO_USER_COOKIE } from "@/lib/demo-actor";
+import { resolvePasswordLoginEmail } from "@/lib/auth-login-identity";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { httpSessionBase } from "@/lib/http-session-cookie";
 import { verifyPassword } from "@/lib/password";
@@ -21,16 +22,21 @@ export async function POST(request: Request) {
   } catch {
     return toApiErrorResponse({ error: "Invalid JSON.", code: "BAD_INPUT", status: 400 });
   }
-  const email =
+  const emailRaw =
     body && typeof body === "object" && typeof (body as { email?: unknown }).email === "string"
-      ? (body as { email: string }).email.trim().toLowerCase()
+      ? (body as { email: string }).email.trim()
       : "";
+  const email = resolvePasswordLoginEmail(emailRaw, tenant.slug);
   const password =
     body && typeof body === "object" && typeof (body as { password?: unknown }).password === "string"
       ? (body as { password: string }).password
       : "";
   if (!email || !password) {
-    return toApiErrorResponse({ error: "email and password are required.", code: "BAD_INPUT", status: 400 });
+    return toApiErrorResponse({
+      error: "email (or username) and password are required.",
+      code: "BAD_INPUT",
+      status: 400,
+    });
   }
   const user = await prisma.user.findFirst({
     where: {

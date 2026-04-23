@@ -44,25 +44,26 @@ export default function LoginPage() {
     <main className="mx-auto max-w-md px-6 py-16">
       <h1 className="text-2xl font-semibold text-zinc-900">Sign in</h1>
       <p className="mt-2 text-sm text-zinc-600">
-        Enter your email and password below (the fields are not pre-filled). Demo seed accounts use{" "}
-        <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">demo12345</code>{" "}
-        with email{" "}
-        <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">buyer@demo-company.com</code> when
-        the{" "}
-        <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">demo-company</code> tenant is
-        seeded. If login still fails, run{" "}
-        <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">npm run db:seed</code> against
-        this environment&apos;s database.
+        Sign in with <strong>email or username</strong> and password. After{" "}
+        <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">npm run db:seed</code> on the
+        <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs"> demo-company</code> tenant:{" "}
+        <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">buyer@demo-company.com</code> /{" "}
+        <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">demo12345</code>, and full-access seed{" "}
+        <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">superuser@demo-company.com</code> (or
+        user         <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">superuser</code>) with password{" "}
+        <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">superuser</code>. For roles vs deeper RBAC
+        roadmap, see <code className="rounded bg-zinc-100 px-1">docs/engineering/USER_ROLES_AND_RBAC.md</code> in
+        the repo and <code className="rounded bg-zinc-100 px-1">docs/icp-and-tenancy.md</code>.
       </p>
       <div className="mt-6 space-y-3 rounded-lg border border-zinc-200 bg-white p-4">
         <label className="flex flex-col text-sm">
-          <span>Email</span>
+          <span>Email or username</span>
           <input
-            type="email"
+            type="text"
             name="email"
             autoComplete="username"
             required
-            placeholder="you@company.com"
+            placeholder="you@company.com or superuser"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="mt-1 rounded border border-zinc-300 px-3 py-2"

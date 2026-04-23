@@ -4,7 +4,7 @@
 **Typical allowed paths:** `prisma/schema.prisma` + `prisma/migrations/**` (only when issue explicitly includes migrations), `src/lib/authz.ts`, `src/lib/permission-catalog.ts`, `src/lib/viewer.ts`, user/org APIs under `src/app/api/**` as named in issue  
 **Warning:** High blast radius — prefer **design issue** with `needs-alex` before large schema work.
 
-**Source of truth:** `docs/icp-and-tenancy.md`.
+**Source of truth:** `docs/icp-and-tenancy.md`. **Users / roles / permissions (today vs deeper RBAC roadmap):** `docs/engineering/USER_ROLES_AND_RBAC.md`.
 
 ---
 
