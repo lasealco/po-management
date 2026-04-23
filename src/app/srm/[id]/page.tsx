@@ -7,6 +7,7 @@ import { WorkflowHeader } from "@/components/workflow-header";
 import { getViewerGrantSet } from "@/lib/authz";
 import { loadSupplierDetailSnapshot } from "@/lib/srm/load-supplier-detail-snapshot";
 import { redactSupplierDetailSnapshot } from "@/lib/srm/redact-supplier-sensitive";
+import { getSrmOperatorNotificationUnreadCount } from "@/lib/srm/srm-operator-notification-unread";
 import { resolveSrmPermissions } from "@/lib/srm/permissions";
 import { fetchSupplierOrderAnalytics } from "@/lib/supplier-order-analytics";
 import { prisma } from "@/lib/prisma";
@@ -92,9 +93,7 @@ export default async function SrmSupplierDetailPage({
       select: { id: true, name: true, email: true },
       orderBy: { name: "asc" },
     }),
-    prisma.srmOperatorNotification.count({
-      where: { tenantId: tenant.id, userId: access.user.id, readAt: null },
-    }),
+    getSrmOperatorNotificationUnreadCount(prisma, { tenantId: tenant.id, userId: access.user.id }),
   ]);
 
   return (

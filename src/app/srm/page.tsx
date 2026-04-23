@@ -8,6 +8,7 @@ import { WorkflowHeader } from "@/components/workflow-header";
 import { getViewerGrantSet } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { parseSrmListQuery } from "@/lib/srm/list-query";
+import { getSrmOperatorNotificationUnreadCount } from "@/lib/srm/srm-operator-notification-unread";
 import { resolveSrmPermissions } from "@/lib/srm/permissions";
 
 export const dynamic = "force-dynamic";
@@ -126,8 +127,9 @@ export default async function SrmPage({
   const hasNarrowingFilters = Boolean(q.trim()) || onboardingMine;
 
   const unreadSrmNotifications = access.user
-    ? await prisma.srmOperatorNotification.count({
-        where: { tenantId: access.tenant.id, userId: access.user.id, readAt: null },
+    ? await getSrmOperatorNotificationUnreadCount(prisma, {
+        tenantId: access.tenant.id,
+        userId: access.user.id,
       })
     : 0;
 

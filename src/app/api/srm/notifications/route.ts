@@ -3,6 +3,7 @@ import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
+import { getSrmOperatorNotificationUnreadCount } from "@/lib/srm/srm-operator-notification-unread";
 
 function unreadOnlyParam(url: URL): boolean {
   const v = url.searchParams.get("unread");
@@ -50,8 +51,9 @@ export async function GET(request: Request) {
     },
   });
 
-  const unreadCount = await prisma.srmOperatorNotification.count({
-    where: { tenantId: tenant.id, userId, readAt: null },
+  const unreadCount = await getSrmOperatorNotificationUnreadCount(prisma, {
+    tenantId: tenant.id,
+    userId,
   });
 
   return NextResponse.json({

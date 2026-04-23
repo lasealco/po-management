@@ -17,6 +17,7 @@ import {
   loadSrmOrderVolumeKpis,
 } from "@/lib/srm/srm-analytics-aggregates";
 import { parseSrmAnalyticsQuery } from "@/lib/srm/srm-analytics-request";
+import { getSrmOperatorNotificationUnreadCount } from "@/lib/srm/srm-operator-notification-unread";
 import { resolveSrmPermissions } from "@/lib/srm/permissions";
 
 export const dynamic = "force-dynamic";
@@ -94,9 +95,7 @@ export default async function SrmAnalyticsPage({
       ? loadSrmBookingSlaStats(prisma, tenant.id, { from: fromStart, to: toEnd })
       : Promise.resolve(null),
     loadSrmOperationalSignals(prisma, tenant.id, { srmKind: kind }),
-    prisma.srmOperatorNotification.count({
-      where: { tenantId: tenant.id, userId: access.user.id, readAt: null },
-    }),
+    getSrmOperatorNotificationUnreadCount(prisma, { tenantId: tenant.id, userId: access.user.id }),
   ]);
 
   return (

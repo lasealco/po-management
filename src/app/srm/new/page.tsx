@@ -5,6 +5,7 @@ import { SrmNotificationsHeaderLink } from "@/components/srm/srm-notifications-h
 import { SupplierCreateForm } from "@/components/supplier-create-form";
 import { getViewerGrantSet } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
+import { getSrmOperatorNotificationUnreadCount } from "@/lib/srm/srm-operator-notification-unread";
 import { resolveSrmPermissions } from "@/lib/srm/permissions";
 
 export const dynamic = "force-dynamic";
@@ -49,9 +50,7 @@ export default async function SrmNewSupplierPage({
 
   const { tenant, user } = access;
   const unreadSrmNotifications = permissions.canViewSuppliers
-    ? await prisma.srmOperatorNotification.count({
-        where: { tenantId: tenant.id, userId: user.id, readAt: null },
-      })
+    ? await getSrmOperatorNotificationUnreadCount(prisma, { tenantId: tenant.id, userId: user.id })
     : 0;
 
   return (
