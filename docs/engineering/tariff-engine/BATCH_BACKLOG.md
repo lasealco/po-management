@@ -1,10 +1,25 @@
 # Tariff / rates vertical — 60-slice batch backlog (3 tracks × 20)
 
+**Size:** exactly **60** slices — not repo-wide, only this vertical (tariffs + RFQ + booking pricing snapshots + scoped invoice-audit / pricing-snapshot UI per [`tariff-engine-scope.mdc`](../../../.cursor/rules/tariff-engine-scope.mdc)).
+
 **HTTP surface map:** [`API_ROUTE_INDEX.md`](./API_ROUTE_INDEX.md) — every `src/app/api/tariffs/**/route.ts` handler (maintain when routes change).
 
 **Domain lib map:** [`LIB_MODULE_INDEX.md`](./LIB_MODULE_INDEX.md) — every `src/lib/tariff/*.ts` module (maintain when files change).
 
 Use this when you want **parallel agents** without stomping the same files: each **track** is intentionally skewed toward different primary paths. Within a track, work **top to bottom** when in doubt.
+
+## Completion (waves)
+
+Slices are **audit / hardening / parity** tasks, not a greenfield todo list — many already have strong tests. Finish by **track** (A → B → C) or **row id** (e.g. A-07); after each wave run **`npm run verify:tariff-engine`**.
+
+| Wave | Goal | Status |
+|------|------|--------|
+| **0** | Workspace gate: full-repo `tsc` + tariff vertical tests green | Done — keep tree free of orphan `* 2.*` pages and half-wired API trees that are not in `schema.prisma` / generated client. |
+| **1** | Track A (A-01 … A-20) | Sign off row-by-row (import, reference data, geography lib/API). |
+| **2** | Track B (B-01 … B-20) | Contracts, version APIs, tariffs UI polish. |
+| **3** | Track C (C-01 … C-20) | Rating, shipments, RFQ, snapshots, invoice-audit wiring. |
+
+Optional: when a slice is signed off, add `[x]` and date in the table cell or a PR note (`module:tariff`, slice id).
 
 - **Track A** — Import pipeline, staging/promote, normalized charge codes, geography **catalog/lib**, providers/legal **lib**, matching **API** routes.
 - **Track B** — Contract headers/versions, charge/rate/free-time **lib**, contract + geography **API** (non-import), **tariffs UI** for contracts/geography/reference.
