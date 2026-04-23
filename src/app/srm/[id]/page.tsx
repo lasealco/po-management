@@ -85,23 +85,41 @@ export default async function SrmSupplierDetailPage({
     ? await fetchSupplierOrderAnalytics(prisma, tenant.id, snapshot.id)
     : null;
 
-  const onboardingAssigneeOptions = await prisma.user.findMany({
-    where: { tenantId: tenant.id, isActive: true },
-    select: { id: true, name: true, email: true },
-    orderBy: { name: "asc" },
-  });
+  const [onboardingAssigneeOptions, unreadSrmNotifications] = await Promise.all([
+    prisma.user.findMany({
+      where: { tenantId: tenant.id, isActive: true },
+      select: { id: true, name: true, email: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.srmOperatorNotification.count({
+      where: { tenantId: tenant.id, userId: access.user.id, readAt: null },
+    }),
+  ]);
 
   return (
     <div className="min-h-screen bg-zinc-50">
       <main className="mx-auto max-w-5xl px-6 py-10">
-        <p className="text-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+          <p>
+            <Link
+              href={`/srm?kind=${kind}`}
+              className="font-medium text-[var(--arscmp-primary)] hover:underline"
+            >
+              ← SRM · {kind === "logistics" ? "Logistics partners" : "Product suppliers"}
+            </Link>
+          </p>
           <Link
-            href={`/srm?kind=${kind}`}
+            href="/srm/notifications"
             className="font-medium text-[var(--arscmp-primary)] hover:underline"
           >
-            ← SRM · {kind === "logistics" ? "Logistics partners" : "Product suppliers"}
+            Notifications
+            {unreadSrmNotifications > 0 ? (
+              <span className="ml-1 inline-flex min-w-[1.25rem] justify-center rounded-full bg-zinc-900 px-1.5 py-0.5 text-xs font-semibold text-white">
+                {unreadSrmNotifications > 99 ? "99+" : unreadSrmNotifications}
+              </span>
+            ) : null}
           </Link>
-        </p>
+        </div>
         <div className="mt-3 mb-5">
           <WorkflowHeader
             eyebrow="SRM · Supplier 360"
