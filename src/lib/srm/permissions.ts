@@ -1,10 +1,21 @@
-import { viewerHas } from "@/lib/authz";
+import { getActorUserId, loadGlobalGrantsForUser, viewerHas } from "@/lib/authz";
 
 /**
  * K: `org.suppliers` → **edit** or **approve** (not `view` alone) — shared by API redaction, list/search, and 360.
  */
 export function canViewSupplierSensitiveFieldsForGrantSet(grantSet: Set<string>): boolean {
   return viewerHas(grantSet, "org.suppliers", "edit") || viewerHas(grantSet, "org.suppliers", "approve");
+}
+
+/**
+ * For API routes after `requireApiGrant` passes: whether the current user may see procurement-sensitive
+ * supplier data. **False** if there is no actor (should be rare once the gate allows the request through).
+ */
+export async function getCanViewSupplierSensitiveFieldsForActor(): Promise<boolean> {
+  const actorId = await getActorUserId();
+  if (!actorId) return false;
+  const grantSet = await loadGlobalGrantsForUser(actorId);
+  return canViewSupplierSensitiveFieldsForGrantSet(grantSet);
 }
 
 export type SrmPermissions = {

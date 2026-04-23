@@ -12,7 +12,7 @@ import { getDemoTenant } from "@/lib/demo-tenant";
 import { optionalStringField } from "@/lib/supplier-patch";
 import { prisma } from "@/lib/prisma";
 import { assertSupplierApprovalTransition } from "@/lib/srm/supplier-approval-transitions";
-import { canViewSupplierSensitiveFieldsForGrantSet } from "@/lib/srm/permissions";
+import { getCanViewSupplierSensitiveFieldsForActor } from "@/lib/srm/permissions";
 import { redactSupplierGetPayload } from "@/lib/srm/redact-supplier-sensitive";
 
 const supplierDetailInclude = {
@@ -48,9 +48,7 @@ export async function GET(
     return toApiErrorResponse({ error: "Not found.", code: "NOT_FOUND", status: 404 });
   }
 
-  const actorId = await getActorUserId();
-  const grantSet = actorId ? await loadGlobalGrantsForUser(actorId) : new Set<string>();
-  const canViewSensitive = canViewSupplierSensitiveFieldsForGrantSet(grantSet);
+  const canViewSensitive = await getCanViewSupplierSensitiveFieldsForActor();
 
   return NextResponse.json({ supplier: redactSupplierGetPayload(supplier, canViewSensitive) });
 }

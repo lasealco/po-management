@@ -3,16 +3,11 @@ import { SrmSupplierCategory, SupplierApprovalStatus } from "@prisma/client";
 import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 
 
-import {
-  getActorUserId,
-  loadGlobalGrantsForUser,
-  requireApiGrant,
-  viewerHas,
-} from "@/lib/authz";
+import { getActorUserId, loadGlobalGrantsForUser, requireApiGrant, viewerHas } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
 import { ensureSupplierOnboardingTasks } from "@/lib/srm/ensure-supplier-onboarding-tasks";
-import { canViewSupplierSensitiveFieldsForGrantSet } from "@/lib/srm/permissions";
+import { getCanViewSupplierSensitiveFieldsForActor } from "@/lib/srm/permissions";
 import { redactSupplierRecordForView } from "@/lib/srm/redact-supplier-sensitive";
 
 export async function GET() {
@@ -32,9 +27,7 @@ export async function GET() {
     },
   });
 
-  const actorId = await getActorUserId();
-  const grantSet = actorId ? await loadGlobalGrantsForUser(actorId) : new Set<string>();
-  const canViewSensitive = canViewSupplierSensitiveFieldsForGrantSet(grantSet);
+  const canViewSensitive = await getCanViewSupplierSensitiveFieldsForActor();
 
   return NextResponse.json({
     suppliers: suppliers.map((s) => redactSupplierRecordForView(s as unknown as Record<string, unknown>, canViewSensitive)),

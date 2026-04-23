@@ -2,7 +2,7 @@ import type { SupplierDetailSnapshot } from "@/components/supplier-detail-client
 
 /**
  * K-v1: Fields gated by `org.suppliers` → **edit** or **approve** (view-only does not see values).
- * Grant check: `canViewSupplierSensitiveFieldsForGrantSet` in `./permissions.ts`.
+ * Grant checks: `getCanViewSupplierSensitiveFieldsForActor` / `canViewSupplierSensitiveFieldsForGrantSet` in `./permissions.ts`.
  * Documented set — extend here and in `docs/srm/SRM_ROADMAP_G_I_K.md` when adding columns:
  * - Company: `legalName`, `email`, `phone`, `taxId`, registered address line/city/region/postal/country
  * - Commercial: `paymentTermsDays`, `paymentTermsLabel`, `creditLimit`, `creditCurrency`, `defaultIncoterm`, `bookingConfirmationSlaHours`, `internalNotes`
