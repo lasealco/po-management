@@ -37,6 +37,8 @@ export const scriIngestBodySchema = z.object({
   structuredPayload: z.record(z.string(), z.unknown()).optional().nullable(),
   sources: z.array(scriIngestSourceSchema).min(1).max(50),
   geographies: z.array(scriIngestGeographySchema).max(30).optional(),
+  /** When true, run deterministic network matching after ingest (org.scri edit). */
+  runMatch: z.boolean().optional().default(false),
 });
 
 export type ScriIngestBody = z.infer<typeof scriIngestBodySchema>;

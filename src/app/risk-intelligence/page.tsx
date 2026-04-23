@@ -72,6 +72,27 @@ export default async function RiskIntelligencePage() {
                   {e.shortSummary ? (
                     <p className="mt-2 line-clamp-2 text-sm text-zinc-600">{e.shortSummary}</p>
                   ) : null}
+                  <p className="mt-1 text-[11px] text-zinc-500">
+                    {e.affectedTotal > 0 ? (
+                      <>
+                        Exposure:{" "}
+                        <span className="font-medium text-zinc-700">{e.affectedTotal}</span>{" "}
+                        {e.affectedTotal === 1 ? "link" : "links"}
+                        {Object.keys(e.affectedCounts).length ? (
+                          <span className="text-zinc-400">
+                            {" "}
+                            (
+                            {Object.entries(e.affectedCounts)
+                              .map(([k, v]) => `${v}× ${k.replace(/_/g, " ")}`)
+                              .join(", ")}
+                            )
+                          </span>
+                        ) : null}
+                      </>
+                    ) : (
+                      <span className="text-zinc-400">No exposure match yet — open detail to run network match.</span>
+                    )}
+                  </p>
                 </div>
                 <span className="shrink-0 rounded-md bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-zinc-700">
                   {e.reviewState.replace(/_/g, " ")}

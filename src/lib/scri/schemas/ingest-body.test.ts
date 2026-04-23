@@ -18,6 +18,19 @@ describe("scriIngestBodySchema", () => {
     }
   });
 
+  it("accepts runMatch flag", () => {
+    const parsed = scriIngestBodySchema.safeParse({
+      ingestKey: "k",
+      eventType: "X",
+      title: "T",
+      severity: "LOW",
+      sources: [{ sourceType: "manual" }],
+      runMatch: true,
+    });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) expect(parsed.data.runMatch).toBe(true);
+  });
+
   it("rejects empty sources", () => {
     const parsed = scriIngestBodySchema.safeParse({
       ingestKey: "k",

@@ -1,13 +1,25 @@
-import type { ScriEventGeography, ScriEventSource, ScriExternalEvent } from "@prisma/client";
+import type {
+  ScriEventAffectedEntity,
+  ScriEventGeography,
+  ScriEventSource,
+  ScriExternalEvent,
+} from "@prisma/client";
 
 export type ScriEventListItemDto = ReturnType<typeof toScriEventListItemDto>;
 
-export function toScriEventListItemDto(
-  row: ScriExternalEvent & {
-    sources: ScriEventSource[];
-    geographies: ScriEventGeography[];
-  },
-) {
+type ListRow = ScriExternalEvent & {
+  sources: ScriEventSource[];
+  geographies: ScriEventGeography[];
+  affectedEntities: Pick<ScriEventAffectedEntity, "objectType">[];
+};
+
+type DetailRow = ScriExternalEvent & {
+  sources: ScriEventSource[];
+  geographies: ScriEventGeography[];
+  affectedEntities: ScriEventAffectedEntity[];
+};
+
+export function toScriEventListItemDto(row: ListRow) {
   return {
     id: row.id,
     ingestKey: row.ingestKey,
@@ -25,18 +37,45 @@ export function toScriEventListItemDto(
     geographySummary: summarizeGeographies(row.geographies),
     sources: row.sources.map(toSourceDto),
     geographies: row.geographies.map(toGeoDto),
+    affectedCounts: summarizeAffectedCounts(row.affectedEntities.map((a) => a.objectType)),
+    affectedTotal: row.affectedEntities.length,
   };
 }
 
-export function toScriEventDetailDto(row: Parameters<typeof toScriEventListItemDto>[0]) {
+export function toScriEventDetailDto(row: DetailRow) {
+  const listPart = toScriEventListItemDto({
+    ...row,
+    affectedEntities: row.affectedEntities.map((a) => ({ objectType: a.objectType })),
+  });
   return {
-    ...toScriEventListItemDto(row),
+    ...listPart,
     longSummary: row.longSummary,
     aiSummary: row.aiSummary,
     structuredPayload: row.structuredPayload,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
+    affectedEntities: row.affectedEntities.map(toAffectedDto),
   };
+}
+
+function toAffectedDto(a: ScriEventAffectedEntity) {
+  return {
+    id: a.id,
+    objectType: a.objectType,
+    objectId: a.objectId,
+    matchType: a.matchType,
+    matchConfidence: a.matchConfidence,
+    impactLevel: a.impactLevel,
+    rationale: a.rationale,
+  };
+}
+
+function summarizeAffectedCounts(objectTypes: string[]): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const t of objectTypes) {
+    out[t] = (out[t] ?? 0) + 1;
+  }
+  return out;
 }
 
 function toSourceDto(s: ScriEventSource) {

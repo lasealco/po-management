@@ -92,6 +92,7 @@ model Tenant {
   supplyChainTwinScenarioDrafts  SupplyChainTwinScenarioDraft[]
   supplyChainTwinScenarioRevisions SupplyChainTwinScenarioRevision[]
   scriExternalEvents              ScriExternalEvent[]
+  scriEventAffectedEntities       ScriEventAffectedEntity[]
 }
 
 /// Integration / API hub — registry row for an external or internal data source (Phase 1 stub).
@@ -3449,6 +3450,7 @@ model ScriExternalEvent {
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   sources      ScriEventSource[]
   geographies  ScriEventGeography[]
+  affectedEntities ScriEventAffectedEntity[]
 
   @@unique([tenantId, ingestKey])
   @@index([tenantId, discoveredTime])
@@ -3486,4 +3488,29 @@ model ScriEventGeography {
   event ScriExternalEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@index([eventId])
+}
+
+/// SCRI R2: deterministic link from an external event to an internal object (see docs/SCRI data model).
+model ScriEventAffectedEntity {
+  id        String   @id @default(cuid())
+  tenantId  String
+  eventId   String
+  /// e.g. SHIPMENT, PURCHASE_ORDER, SUPPLIER, SALES_ORDER
+  objectType   String @db.VarChar(32)
+  objectId     String
+  matchType    String @db.VarChar(64)
+  matchConfidence Int @default(50)
+  impactLevel  String? @db.VarChar(32)
+  rationale    String @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  event  ScriExternalEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, objectType, objectId, matchType])
+  @@index([tenantId, objectType])
+  @@index([eventId])
+  @@index([tenantId, eventId])
 }

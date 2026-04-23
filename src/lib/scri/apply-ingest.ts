@@ -3,13 +3,15 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 import type { ScriIngestBody } from "@/lib/scri/schemas/ingest-body";
+import { runScriEventMatching } from "@/lib/scri/matching/run-event-match";
 
 export async function applyScriIngest(tenantId: string, body: ScriIngestBody) {
+  const runMatch = Boolean(body.runMatch);
   const eventTime = body.eventTime ? new Date(body.eventTime) : null;
   const structuredPayload = (body.structuredPayload ?? {}) as Prisma.InputJsonValue;
   const reviewState = body.reviewState ?? undefined;
 
-  return prisma.$transaction(async (tx) => {
+  const eventId = await prisma.$transaction(async (tx) => {
     const row = await tx.scriExternalEvent.upsert({
       where: {
         tenantId_ingestKey: { tenantId, ingestKey: body.ingestKey },
@@ -79,4 +81,10 @@ export async function applyScriIngest(tenantId: string, body: ScriIngestBody) {
 
     return row.id;
   });
+
+  if (runMatch) {
+    await runScriEventMatching(tenantId, eventId);
+  }
+
+  return eventId;
 }

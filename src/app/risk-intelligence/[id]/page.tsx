@@ -3,9 +3,11 @@ import { notFound } from "next/navigation";
 
 import { AccessDenied } from "@/components/access-denied";
 import { PageTitleWithHint } from "@/components/page-title-with-hint";
+import { ScriRunMatchButton } from "@/components/risk-intelligence/scri-run-match-button";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { toScriEventDetailDto } from "@/lib/scri/event-dto";
 import { getScriEventForTenant } from "@/lib/scri/event-repo";
+import { scriObjectHref } from "@/lib/scri/object-links";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +44,7 @@ export default async function RiskIntelligenceEventPage({
   const row = await getScriEventForTenant(access.tenant.id, id);
   if (!row) notFound();
 
+  const canRunMatch = viewerHas(access.grantSet, "org.scri", "edit");
   const e = toScriEventDetailDto(row);
 
   return (
@@ -61,6 +64,54 @@ export default async function RiskIntelligenceEventPage({
       </header>
 
       <div className="mt-6 space-y-4">
+        <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
+                Internal exposure
+              </p>
+              <p className="mt-2 text-sm text-zinc-700">
+                {e.affectedTotal > 0 ? (
+                  <>
+                    <span className="font-semibold tabular-nums text-zinc-900">{e.affectedTotal}</span>{" "}
+                    deterministic match{e.affectedTotal === 1 ? "" : "es"} (shipments, POs, suppliers, sales
+                    orders).
+                  </>
+                ) : (
+                  <span className="text-zinc-500">
+                    No matches yet. Geography on this event is matched to live tenant data (R2).
+                  </span>
+                )}
+              </p>
+            </div>
+            {canRunMatch ? <ScriRunMatchButton eventId={e.id} /> : null}
+          </div>
+          {e.affectedEntities.length ? (
+            <ul className="mt-4 max-h-64 divide-y divide-zinc-100 overflow-auto border-t border-zinc-100 pt-3 text-sm">
+              {e.affectedEntities.map((a) => {
+                const href = scriObjectHref(a.objectType, a.objectId);
+                return (
+                  <li key={a.id} className="py-2 first:pt-0">
+                    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                      {href ? (
+                        <Link href={href} className="font-medium text-amber-800 underline-offset-2 hover:underline">
+                          {a.objectType.replace(/_/g, " ")}
+                        </Link>
+                      ) : (
+                        <span className="font-medium text-zinc-800">{a.objectType.replace(/_/g, " ")}</span>
+                      )}
+                      <span className="text-xs text-zinc-500">
+                        {a.matchType.replace(/_/g, " ")} · {a.matchConfidence}%
+                      </span>
+                    </div>
+                    <p className="mt-0.5 text-xs text-zinc-600">{a.rationale}</p>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : null}
+        </section>
+
         {e.shortSummary ? (
           <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Summary</p>
