@@ -533,14 +533,11 @@ export function SupplierDetailClient({
     "mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900";
   const label = "font-medium text-zinc-700";
 
-  function formatTerms() {
-    const parts = [];
-    if (initial.paymentTermsLabel)
-      parts.push(initial.paymentTermsLabel);
-    else if (initial.paymentTermsDays != null)
-      parts.push(`Net ${initial.paymentTermsDays}`);
-    if (initial.defaultIncoterm) parts.push(initial.defaultIncoterm);
-    return parts.length ? parts.join(" · ") : "—";
+  /** Payment label / net days only (Incoterm has its own row). */
+  function formatPaymentTermsReadOnly() {
+    if (initial.paymentTermsLabel) return initial.paymentTermsLabel;
+    if (initial.paymentTermsDays != null) return `Net ${initial.paymentTermsDays}`;
+    return "—";
   }
 
   return (
@@ -821,7 +818,14 @@ export function SupplierDetailClient({
               </div>
               <div className="text-sm sm:col-span-2">
                 <span className={label}>Legal name</span>
-                <p className="mt-1 text-zinc-900">{legalName || "—"}</p>
+                {canViewSupplierSensitiveFields ? (
+                  <p className="mt-1 text-zinc-900">{legalName || "—"}</p>
+                ) : (
+                  <p className="mt-1 rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-950">
+                    Hidden for read-only supplier access. Requires <strong>org.suppliers</strong> →{" "}
+                    <strong>edit</strong> or <strong>approve</strong>.
+                  </p>
+                )}
               </div>
               {canViewSupplierSensitiveFields ? (
                 <div className="text-sm">
@@ -854,14 +858,26 @@ export function SupplierDetailClient({
                   )}
                 </p>
               </div>
-              <div className="text-sm">
-                <span className={label}>Email</span>
-                <p className="mt-1 text-zinc-900">{email || "—"}</p>
-              </div>
-              <div className="text-sm">
-                <span className={label}>Phone</span>
-                <p className="mt-1 text-zinc-900">{phone || "—"}</p>
-              </div>
+              {canViewSupplierSensitiveFields ? (
+                <>
+                  <div className="text-sm">
+                    <span className={label}>Email</span>
+                    <p className="mt-1 text-zinc-900">{email || "—"}</p>
+                  </div>
+                  <div className="text-sm">
+                    <span className={label}>Phone</span>
+                    <p className="mt-1 text-zinc-900">{phone || "—"}</p>
+                  </div>
+                </>
+              ) : (
+                <div className="text-sm sm:col-span-2">
+                  <span className={label}>Email &amp; phone</span>
+                  <p className="mt-1 rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-950">
+                    Hidden for read-only supplier access. Requires <strong>org.suppliers</strong> →{" "}
+                    <strong>edit</strong> or <strong>approve</strong>.
+                  </p>
+                </div>
+              )}
               <div className="text-sm">
                 <span className={label}>SRM category</span>
                 <p className="mt-1 capitalize text-zinc-900">{initial.srmCategory}</p>
@@ -929,7 +945,7 @@ export function SupplierDetailClient({
                 />
               </label>
             </>
-          ) : (
+          ) : canViewSupplierSensitiveFields ? (
             <div className="text-sm sm:col-span-2">
               <p className="whitespace-pre-line text-zinc-900">
                 {[
@@ -940,6 +956,13 @@ export function SupplierDetailClient({
                 ]
                   .filter(Boolean)
                   .join("\n") || "—"}
+              </p>
+            </div>
+          ) : (
+            <div className="text-sm sm:col-span-2">
+              <p className="rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-950">
+                Registered address is hidden for read-only supplier access. Requires <strong>org.suppliers</strong> →{" "}
+                <strong>edit</strong> or <strong>approve</strong>.
               </p>
             </div>
           )}
@@ -1031,10 +1054,20 @@ export function SupplierDetailClient({
             </>
           ) : (
             <>
-              <div className="text-sm">
-                <span className={label}>Payment terms</span>
-                <p className="mt-1 text-zinc-900">{formatTerms()}</p>
-              </div>
+              {canViewSupplierSensitiveFields ? (
+                <div className="text-sm">
+                  <span className={label}>Payment terms</span>
+                  <p className="mt-1 text-zinc-900">{formatPaymentTermsReadOnly()}</p>
+                </div>
+              ) : (
+                <div className="text-sm rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2">
+                  <span className={label}>Payment terms</span>
+                  <p className="mt-1 text-xs text-amber-950">
+                    Hidden for read-only supplier access. Requires <strong>org.suppliers</strong> →{" "}
+                    <strong>edit</strong> or <strong>approve</strong>.
+                  </p>
+                </div>
+              )}
               {canViewSupplierSensitiveFields ? (
                 <div className="text-sm">
                   <span className={label}>Credit limit</span>
@@ -1053,18 +1086,38 @@ export function SupplierDetailClient({
                   </p>
                 </div>
               )}
-              <div className="text-sm">
-                <span className={label}>Default Incoterm</span>
-                <p className="mt-1 text-zinc-900">{incoterm || "—"}</p>
-              </div>
-              <div className="text-sm">
-                <span className={label}>Booking confirmation SLA</span>
-                <p className="mt-1 text-zinc-900">
-                  {initial.bookingConfirmationSlaHours != null
-                    ? `${initial.bookingConfirmationSlaHours} h`
-                    : "Tenant default"}
-                </p>
-              </div>
+              {canViewSupplierSensitiveFields ? (
+                <div className="text-sm">
+                  <span className={label}>Default Incoterm</span>
+                  <p className="mt-1 text-zinc-900">{incoterm || "—"}</p>
+                </div>
+              ) : (
+                <div className="text-sm rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2">
+                  <span className={label}>Default Incoterm</span>
+                  <p className="mt-1 text-xs text-amber-950">
+                    Hidden for read-only supplier access. Requires <strong>org.suppliers</strong> →{" "}
+                    <strong>edit</strong> or <strong>approve</strong>.
+                  </p>
+                </div>
+              )}
+              {canViewSupplierSensitiveFields ? (
+                <div className="text-sm">
+                  <span className={label}>Booking confirmation SLA</span>
+                  <p className="mt-1 text-zinc-900">
+                    {initial.bookingConfirmationSlaHours != null
+                      ? `${initial.bookingConfirmationSlaHours} h`
+                      : "Tenant default"}
+                  </p>
+                </div>
+              ) : (
+                <div className="text-sm rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2">
+                  <span className={label}>Booking confirmation SLA</span>
+                  <p className="mt-1 text-xs text-amber-950">
+                    Hidden for read-only supplier access. Requires <strong>org.suppliers</strong> →{" "}
+                    <strong>edit</strong> or <strong>approve</strong>.
+                  </p>
+                </div>
+              )}
               {canViewSupplierSensitiveFields ? (
                 <div className="text-sm sm:col-span-2">
                   <span className={label}>Internal notes</span>
@@ -1107,8 +1160,9 @@ export function SupplierDetailClient({
         </p>
         {!canViewSupplierSensitiveFields ? (
           <p className="mt-2 text-xs text-amber-900/90">
-            Per-contact <strong>notes</strong> are limited to users with <strong>org.suppliers</strong> →{" "}
-            <strong>edit</strong> or <strong>approve</strong> (name and phone remain visible when present).
+            <strong>Email</strong>, <strong>phone</strong>, and per-contact <strong>notes</strong> require{" "}
+            <strong>org.suppliers</strong> → <strong>edit</strong> or <strong>approve</strong>. Names, titles, and roles
+            stay visible for coordination.
           </p>
         ) : null}
         <ul className="mt-4 divide-y divide-zinc-100 border border-zinc-100 rounded-md">
@@ -1352,6 +1406,12 @@ export function SupplierDetailClient({
 
       <section className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
         <h2 className="text-sm font-semibold text-zinc-900">Offices &amp; sites</h2>
+        {!canViewSupplierSensitiveFields ? (
+          <p className="mt-2 text-xs text-amber-900/90">
+            City and country for each site are hidden for read-only access (requires <strong>org.suppliers</strong> →{" "}
+            <strong>edit</strong> or <strong>approve</strong>).
+          </p>
+        ) : null}
         <ul className="mt-4 divide-y divide-zinc-100 border border-zinc-100 rounded-md">
           {initial.offices.length === 0 ? (
             <li className="px-4 py-6 text-sm text-zinc-500">No offices yet.</li>
@@ -1495,6 +1555,7 @@ export function SupplierDetailClient({
           key={`${initial.id}-${initial.updatedAt}`}
           supplierId={initial.id}
           canEdit={canEdit}
+          canViewSupplierSensitiveFields={canViewSupplierSensitiveFields}
           initialRows={initial.capabilities}
         />
       )}

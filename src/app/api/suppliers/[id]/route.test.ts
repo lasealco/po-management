@@ -88,12 +88,31 @@ describe("GET /api/suppliers/[id]", () => {
     findFirstMock.mockResolvedValueOnce({
       id: "s1",
       name: "Acme",
+      legalName: "Leg",
+      email: "a@acme.com",
+      phone: "+1999",
       internalNotes: "secret",
       taxId: "EIN-1",
       creditLimit: "99",
       creditCurrency: "USD",
-      offices: [],
-      contacts: [{ id: "c1", notes: "n1", name: "x" }],
+      registeredCity: "NYC",
+      paymentTermsDays: 30,
+      paymentTermsLabel: null,
+      defaultIncoterm: "FOB",
+      bookingConfirmationSlaHours: 24,
+      offices: [
+        {
+          id: "o1",
+          name: "HQ",
+          city: "NYC",
+          countryCode: "US",
+          addressLine1: "1 Main",
+          addressLine2: null,
+          region: "NY",
+          postalCode: "10001",
+        },
+      ],
+      contacts: [{ id: "c1", notes: "n1", name: "x", email: "c@x.com", phone: "555" }],
       _count: { productSuppliers: 0, orders: 0 },
     });
     const { GET } = await import("./route");
@@ -103,17 +122,37 @@ describe("GET /api/suppliers/[id]", () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
       supplier: {
+        legalName: string | null;
+        email: string | null;
+        phone: string | null;
         internalNotes: string | null;
         taxId: string | null;
         creditLimit: unknown;
         creditCurrency: string | null;
-        contacts: { notes: string | null }[];
+        registeredCity: string | null;
+        paymentTermsDays: number | null;
+        defaultIncoterm: string | null;
+        bookingConfirmationSlaHours: number | null;
+        contacts: { notes: string | null; email: string | null; phone: string | null }[];
+        offices: { city: string | null; addressLine1: string | null; countryCode: string | null }[];
       };
     };
+    expect(body.supplier.legalName).toBeNull();
+    expect(body.supplier.email).toBeNull();
+    expect(body.supplier.phone).toBeNull();
     expect(body.supplier.internalNotes).toBeNull();
     expect(body.supplier.taxId).toBeNull();
     expect(body.supplier.creditLimit).toBeNull();
     expect(body.supplier.creditCurrency).toBeNull();
+    expect(body.supplier.registeredCity).toBeNull();
+    expect(body.supplier.paymentTermsDays).toBeNull();
+    expect(body.supplier.defaultIncoterm).toBeNull();
+    expect(body.supplier.bookingConfirmationSlaHours).toBeNull();
     expect(body.supplier.contacts[0].notes).toBeNull();
+    expect(body.supplier.contacts[0].email).toBeNull();
+    expect(body.supplier.contacts[0].phone).toBeNull();
+    expect(body.supplier.offices[0].addressLine1).toBeNull();
+    expect(body.supplier.offices[0].city).toBeNull();
+    expect(body.supplier.offices[0].countryCode).toBeNull();
   });
 });

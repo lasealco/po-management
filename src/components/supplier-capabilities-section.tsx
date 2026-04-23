@@ -11,10 +11,13 @@ const MODE_OPTIONS = ["", "OCEAN", "AIR", "ROAD", "RAIL"] as const;
 export function SupplierCapabilitiesSection({
   supplierId,
   canEdit,
+  canViewSupplierSensitiveFields,
   initialRows,
 }: {
   supplierId: string;
   canEdit: boolean;
+  /** Phase K: geography and free-text notes need edit/approve, not view-only. */
+  canViewSupplierSensitiveFields: boolean;
   initialRows: SupplierCapabilityRow[];
 }) {
   const router = useRouter();
@@ -137,6 +140,12 @@ export function SupplierCapabilitiesSection({
         Declared modes, services, and geography (SRM data model — qualification workflows can build on this
         later).
       </p>
+      {!canViewSupplierSensitiveFields ? (
+        <p className="mt-2 text-xs text-amber-900/90">
+          <strong>Geography</strong> and <strong>notes</strong> columns require <strong>org.suppliers</strong> →{" "}
+          <strong>edit</strong> or <strong>approve</strong>. Modes and service types stay visible.
+        </p>
+      ) : null}
 
       {error ? (
         <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -260,9 +269,14 @@ export function SupplierCapabilitiesSection({
                       <td className="px-3 py-2 text-zinc-800">{row.mode ?? "—"}</td>
                       <td className="px-3 py-2 text-zinc-700">{row.subMode ?? "—"}</td>
                       <td className="px-3 py-2 font-medium text-zinc-900">{row.serviceType}</td>
-                      <td className="px-3 py-2 text-zinc-700">{row.geography ?? "—"}</td>
-                      <td className="max-w-xs truncate px-3 py-2 text-zinc-600" title={row.notes ?? ""}>
-                        {row.notes ?? "—"}
+                      <td className="px-3 py-2 text-zinc-700">
+                        {canViewSupplierSensitiveFields ? row.geography ?? "—" : "—"}
+                      </td>
+                      <td
+                        className="max-w-xs truncate px-3 py-2 text-zinc-600"
+                        title={canViewSupplierSensitiveFields ? (row.notes ?? "") : ""}
+                      >
+                        {canViewSupplierSensitiveFields ? row.notes ?? "—" : "—"}
                       </td>
                       {canEdit ? (
                         <td className="px-3 py-2 text-right">

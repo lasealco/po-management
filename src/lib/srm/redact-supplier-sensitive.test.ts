@@ -54,12 +54,56 @@ describe("redactSupplierDetailSnapshot", () => {
   });
 
   it("clears sensitive fields when view-only", () => {
-    const r = redactSupplierDetailSnapshot(base, false);
+    const r = redactSupplierDetailSnapshot(
+      {
+        ...base,
+        legalName: "LegCo",
+        email: "co@x.com",
+        phone: "+1",
+        registeredAddressLine1: "1 St",
+        paymentTermsDays: 30,
+        defaultIncoterm: "FOB",
+        capabilities: [
+          {
+            id: "cap1",
+            mode: "OCEAN",
+            subMode: null,
+            serviceType: "FF",
+            geography: "EU",
+            notes: "sec cap",
+          },
+        ],
+        offices: [
+          { id: "o1", name: "WH", city: "Berlin", countryCode: "DE", isActive: true },
+        ],
+        contacts: [
+          {
+            ...base.contacts[0],
+            email: "p@x.com",
+            phone: "555",
+          },
+        ],
+      },
+      false,
+    );
+    expect(r.legalName).toBeNull();
+    expect(r.email).toBeNull();
+    expect(r.phone).toBeNull();
     expect(r.internalNotes).toBeNull();
     expect(r.taxId).toBeNull();
+    expect(r.registeredAddressLine1).toBeNull();
+    expect(r.paymentTermsDays).toBeNull();
+    expect(r.defaultIncoterm).toBeNull();
     expect(r.creditLimit).toBeNull();
     expect(r.creditCurrency).toBeNull();
     expect(r.contacts[0].notes).toBeNull();
+    expect(r.contacts[0].email).toBeNull();
+    expect(r.contacts[0].phone).toBeNull();
     expect(r.contacts[0].name).toBe("Pat");
+    expect(r.offices[0].city).toBeNull();
+    expect(r.offices[0].countryCode).toBeNull();
+    expect(r.capabilities[0].geography).toBeNull();
+    expect(r.capabilities[0].notes).toBeNull();
+    expect(r.capabilities[0].serviceType).toBe("FF");
   });
 });
