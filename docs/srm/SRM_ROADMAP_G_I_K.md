@@ -21,6 +21,7 @@
 - **Field list in code** — `src/lib/srm/redact-supplier-sensitive.ts` (keep in sync when adding sensitive columns).
 - **Onboarding tasks API:** `GET /api/suppliers/[id]/onboarding-tasks` redacts per-task `notes` and assignee `email` for view-only (same **edit/approve** bar as 360). UI disables checklist controls when the user only has view.
 - **Supplier list & export:** `GET /api/suppliers` and `GET` integration **supplier export** (JSON/CSV) apply the same top-level field redaction for view-only. SRM list search does not match on **email** without edit/approve; legacy `/suppliers` list hides contact and terms columns unless sensitive access.
+- **Grant helper (implementation):** `canViewSupplierSensitiveFieldsForGrantSet` in `src/lib/srm/permissions.ts` is the single check for “may see sensitive supplier fields” (edit **or** approve on `org.suppliers`). Use it for new supplier **read** routes instead of inlining `viewerHas` pairs.
 - **Not in K-v1:** per-role field matrix, SRM settings table, or rules engine (see table below).
 
 **Non-goals for this program (unless you re-prioritize):** **H** (supplier self-service portal), **J** (KPI/FX/ERP integration depth) — see [`SRM_FINISH_SLICES.md`](./SRM_FINISH_SLICES.md) Post-MVP.
