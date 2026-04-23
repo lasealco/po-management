@@ -41,6 +41,7 @@
     "db:repair:apihub-auth-columns-migration": "node scripts/repair-failed-apihub-auth-columns-migration.cjs",
     "db:repair:apihub-apply-fingerprint-migration": "node scripts/repair-failed-apihub-apply-fingerprint-migration.cjs",
     "db:repair:scri-r1-migration": "node scripts/repair-failed-scri-r1-migration.cjs",
+    "db:repair:scri-r2-migration": "node scripts/repair-failed-scri-r2-migration.cjs",
     "db:repair:gen-workbench": "node scripts/repair-gen-workbench-demo.mjs",
     "db:repair:scri-migrations": "node scripts/repair-scri-migration-history.mjs",
     "vercel-build": "node scripts/vercel-build.cjs",

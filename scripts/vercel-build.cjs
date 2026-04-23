@@ -27,7 +27,7 @@ function run(label, command, args) {
         "[vercel-build] P3009: ensure DATABASE_URL_UNPOOLED (direct Neon host) is set for migrate.\n" +
           "[vercel-build] Repair runs before migrate deploy; locally: npm run db:repair:supplier-migration,\n" +
           "db:repair:apihub-auth-columns-migration, db:repair:apihub-apply-fingerprint-migration,\n" +
-          "db:repair:scri-r1-migration.\n",
+          "db:repair:scri-r1-migration, db:repair:scri-r2-migration.\n",
       );
       console.error(
         "[vercel-build] Invoice audit (Phase 06): after migrate deploy, confirm folders through\n" +
@@ -71,6 +71,11 @@ if (process.env.SKIP_DB_MIGRATE === "1") {
     "pre-migrate: repair SCRI R1 P3009 if stuck",
     "node",
     ["scripts/repair-failed-scri-r1-migration.cjs"],
+  );
+  run(
+    "pre-migrate: repair SCRI R2 P3018 if stuck",
+    "node",
+    ["scripts/repair-failed-scri-r2-migration.cjs"],
   );
   run("prisma migrate deploy", "npm", ["run", "db:migrate"]);
 }
