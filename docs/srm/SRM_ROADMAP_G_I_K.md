@@ -6,7 +6,8 @@
 
 - **Stage rule:** when **all** `SupplierOnboardingTask` rows for a supplier are `done`, and `srmOnboardingStage` is not already `cleared`, the server sets **`cleared`** (`maybeAutoClearSrmOnboardingStage` + `PATCH` onboarding task response `supplierOnboarding`). UI copy on the Onboarding tab explains the behavior; parent state updates from the response.
 - **Notifications:** `GET /api/srm/notifications?unread=1` filters to unread; **POST** `{ markAllRead: true }` marks all for the current user; notifications page: **Unread only** toggle, **Mark all as read** (primary CTA).
-- **Not in G-v1:** email, webhooks, custom stage automation beyond this single rule.
+- **Optional email mirror (G follow-up):** set `SRM_OPERATOR_EMAIL_NOTIFICATIONS=1` plus existing Resend vars (`RESEND_API_KEY`, and `SRM_EMAIL_FROM` or `CONTROL_TOWER_REPORTS_EMAIL_FROM`) to send a plain-text email to the notification recipient when an in-app row is created (e.g. onboarding assignee). Off by default; in-app rows remain the source of truth.
+- **Not in G-v1:** webhooks, custom stage automation beyond this single rule (email mirror is optional and opt-in).
 
 ### I-v1 (landed)
 
