@@ -35,9 +35,11 @@ describe("buildSrmDocumentManifestCsv", () => {
     const lines = csv.split("\n");
     expect(lines[0]).toContain("supplierName");
     expect(lines[0]).toContain("uploadedByEmail");
+    expect(lines[0]).toContain("uploadedByName");
+    expect(lines[0]).toContain("lastModifiedByName");
     expect(lines[0]).not.toContain("fileUrl");
     expect(lines[1]).toContain("N,C,d1");
-    expect(lines[1]).toContain("u@x.com");
-    expect(lines[1]).toContain("v@x.com");
+    expect(lines[1]).toContain("u@x.com,U,");
+    expect(lines[1]).toContain("v@x.com,V");
   });
 });

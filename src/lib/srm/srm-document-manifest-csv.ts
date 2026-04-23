@@ -41,7 +41,9 @@ const HEADER = [
   "createdAt",
   "updatedAt",
   "uploadedByEmail",
+  "uploadedByName",
   "lastModifiedByEmail",
+  "lastModifiedByName",
 ] as const;
 
 export function buildSrmDocumentManifestCsv(
@@ -69,7 +71,9 @@ export function buildSrmDocumentManifestCsv(
         escapeSrmManifestCsvCell(r.createdAt.toISOString()),
         escapeSrmManifestCsvCell(r.updatedAt.toISOString()),
         escapeSrmManifestCsvCell(r.uploadedBy.email),
+        escapeSrmManifestCsvCell(r.uploadedBy.name),
         escapeSrmManifestCsvCell(r.lastModifiedBy?.email ?? ""),
+        escapeSrmManifestCsvCell(r.lastModifiedBy?.name ?? ""),
       ].join(","),
     ),
   ];

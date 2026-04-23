@@ -118,6 +118,8 @@ describe("GET /api/suppliers/[id]/srm-documents", () => {
     expect(res.headers.get("Content-Disposition")?.includes("attachment")).toBe(true);
     const text = await res.text();
     expect(text).toContain("supplierName,supplierCode");
+    expect(text).toContain("uploadedByName");
+    expect(text).toContain("lastModifiedByName");
     expect(text).toContain("Acme Co,AC-1");
     expect(text).not.toContain("fileUrl");
     expect(text).not.toContain("https://example.com");
