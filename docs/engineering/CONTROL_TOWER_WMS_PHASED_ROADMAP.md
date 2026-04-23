@@ -60,7 +60,7 @@ Work **one issue at a time** (parallel agents only on **non-overlapping paths**)
 
 | # | Track | What | GAP / todo |
 |---|--------|------|------------|
-| 2.1 | **Ledger** | **Saved** ledger / filter **views** (align with Control Tower saved-view UX if product wants) | WMS agent todos Phase A |
+| 2.1 | **Ledger** | **Saved** ledger / filter **views** (align with Control Tower saved-view UX if product wants) | **Done (2026-04-23)** — `WmsSavedLedgerView` + `/api/wms/saved-ledger-views`; see [`wms/GAP_MAP`](../wms/GAP_MAP.md) |
 | 2.2 | **ASN** | **Outbound** ASN parity vs blueprint where rows show 🟡 | WMS agent todos |
 | 2.3 | **Receiving** | Deeper **receiving** states — only after a **short spec issue** (state machine) | [`wms/GAP_MAP.md`](../wms/GAP_MAP.md) |
 | 2.4 | **UX** | Pick one: **packing / labels**, **wave / replenish** path verification, **dashboard** “At a glance” vs blueprint KPIs | WMS agent todos “UX / ops polish” |
@@ -114,4 +114,5 @@ Work **one issue at a time** (parallel agents only on **non-overlapping paths**)
 | Date | Change |
 |------|--------|
 | 2026-04-23 | **Phase 0 complete** (docs + GAP + ApiHub/verify gate); see Phase 0 table above. |
+| 2026-04-23 | **Phase 2.1 (WMS) — saved ledger views:** `WmsSavedLedgerView` + `/api/wms/saved-ledger-views`, `wms/GAP_MAP.md` + `wms.md` updated. |
 | 2026-04-23 | Initial phased roadmap for Control Tower + WMS (phases 0–3 + cross-cutting). |

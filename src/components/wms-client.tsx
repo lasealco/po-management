@@ -2132,6 +2132,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
             <h2 className="text-sm font-semibold text-zinc-900">Saved views</h2>
             <p className="mt-1 text-xs text-zinc-600">
               Save ledger filter combinations for faster operational review and repeatable stakeholder walkthroughs.
+              {!canEdit ? " Saving and deleting views requires WMS edit access." : ""}
             </p>
           </div>
           <button
@@ -2179,7 +2180,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
           </button>
           <button
             type="button"
-            disabled={!selectedSavedViewId}
+            disabled={!canEdit || !selectedSavedViewId}
             onClick={() => {
               if (!selectedSavedViewId) return;
               void deleteSavedView(selectedSavedViewId);
@@ -2198,7 +2199,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
           />
           <button
             type="button"
-            disabled={!newSavedViewName.trim()}
+            disabled={!canEdit || !newSavedViewName.trim()}
             onClick={() => void createSavedView()}
             className="rounded border border-[var(--arscmp-primary)] bg-[var(--arscmp-primary)] px-3 py-2 text-xs font-semibold text-white disabled:opacity-40"
           >

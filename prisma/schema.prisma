@@ -38,6 +38,7 @@ model Tenant {
   wmsBillingEvents        WmsBillingEvent[]
   wmsBillingInvoiceRuns   WmsBillingInvoiceRun[]
   wmsBillingInvoiceLines  WmsBillingInvoiceLine[]
+  wmsSavedLedgerViews WmsSavedLedgerView[]
   loadPlans         LoadPlan[]
   userPreferences   UserPreference[]
   workflows         Workflow[]
@@ -448,6 +449,7 @@ model User {
   srmDocumentsUploaded             SrmSupplierDocument[]         @relation("SrmSupplierDocumentUploadedBy")
   srmDocumentsLastTouched         SrmSupplierDocument[]         @relation("SrmSupplierDocumentLastTouchedBy")
   srmSupplierDocumentAuditAuthored SrmSupplierDocumentAuditLog[] @relation("SrmSupplierDocumentAuditActor")
+  wmsSavedLedgerViews WmsSavedLedgerView[]
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -2139,6 +2141,23 @@ model WmsTask {
   @@index([tenantId, warehouseId, status, taskType])
   @@index([referenceType, referenceId])
   @@index([waveId])
+}
+
+/// Per-user saved movement-ledger filter presets on WMS Stock (parity with `CtSavedFilter` for workbench).
+model WmsSavedLedgerView {
+  id          String   @id @default(cuid())
+  tenantId    String
+  userId      String
+  name        String
+  filtersJson Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, userId])
+  @@index([userId])
 }
 
 enum OutboundOrderStatus {
