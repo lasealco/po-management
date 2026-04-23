@@ -26,6 +26,8 @@
 
 **After MVP (not sliced):** optional **5 post-MVP phases (G–K)** — see [`SRM_FINISH_SLICES.md` § Post-MVP](../../srm/SRM_FINISH_SLICES.md) (lifecycle → portal → compliance v2 → KPI/integration depth → enterprise polish). Create issues per row when you prioritize; that is a **separate** program from slices **1–30**.
 
+**Current product priority (post-MVP program):** **G → I → K** (operator lifecycle + notifications, compliance depth, field-level / enterprise polish). **Not** the active focus in this pass: **H** (portal), **J** (KPI/FX/ERP). See **[`docs/srm/SRM_ROADMAP_G_I_K.md`](../../srm/SRM_ROADMAP_G_I_K.md)** for scope tiers, what already exists, and how to run milestones.
+
 ---
 
 ## Current app baseline (context)
@@ -38,11 +40,11 @@ Routes exist: `/srm`, `/srm/new`, `/srm/[id]`, supplier links from suppliers hub
 
 Use the **phase table** in [`SRM_FINISH_SLICES.md` (Post-MVP)](../../srm/SRM_FINISH_SLICES.md) as the index; checkboxes here are a short hand-off:
 
-- [ ] **Phase G** — Deeper **lifecycle** (staged capture, notifications) — not portal *(in progress: `srmOnboardingStage` + `/srm/notifications` + task-assign notifications)*
-- [ ] **Phase H** — **Supplier portal** (external login) *(in progress: `User.portalLinkedSupplierId`, `/srm/portal`, `GET /api/srm/portal/me`)*
-- [ ] **Phase I** — **Compliance DMS v2** (beyond vault v1) *(in progress: revision groups + new-version upload + matrix UI)*
-- [ ] **Phase J** — **KPI + integration** depth (FX, more payloads, ERP) *(in progress: operational signals on analytics + integration snapshot)*
-- [ ] **Phase K** — **Field-level permissions**, **wireframe parity**, **rules engine** (as separate issues) *(in progress: `internalNotes` + `canViewSupplierSensitiveFields` / API redaction)*
+- [ ] **Phase G** — Deeper **lifecycle** (staged capture, notifications) — **priority 1** · roadmap: [`SRM_ROADMAP_G_I_K` § G](../../srm/SRM_ROADMAP_G_I_K.md) · *(started: `srmOnboardingStage` + `/srm/notifications` + task-assign notifications)*
+- [ ] **Phase H** — **Supplier portal** (external login) — *de-prioritised for G/I/K program;* *(started: `User.portalLinkedSupplierId`, `/srm/portal`, `GET /api/srm/portal/me`)*
+- [ ] **Phase I** — **Compliance DMS v2** (beyond vault v1) — **priority 2** · roadmap: [`SRM_ROADMAP_G_I_K` § I](../../srm/SRM_ROADMAP_G_I_K.md) · *(started: revision groups + new-version upload + matrix UI)*
+- [ ] **Phase J** — **KPI + integration** depth (FX, more payloads, ERP) — *de-prioritised for G/I/K program;* *(started: operational signals on analytics + integration snapshot)*
+- [ ] **Phase K** — **Field-level permissions**, **wireframe parity**, **rules engine** — **priority 3** · roadmap: [`SRM_ROADMAP_G_I_K` § K](../../srm/SRM_ROADMAP_G_I_K.md) · *(started: `canViewSupplierSensitiveFields` + `redact-supplier-sensitive`)*
 
 ---
 
