@@ -17,7 +17,54 @@ SRM “finished” for MVP is defined and sequenced in **[`SRM_FINISH_SLICES.md`
 | Slice list, acceptance hints, MVP definition | [`SRM_FINISH_SLICES.md`](./SRM_FINISH_SLICES.md) |
 | GitHub label & allowed paths | [`docs/engineering/agent-todos/srm.md`](../engineering/agent-todos/srm.md) |
 
-**Slice 1 — SRM completion index:** register the program in-repo (this section + cross-links above). **Slice 3** adds the issue/PR tracker table to this doc.
+**Slice 1 — SRM completion index:** register the program in-repo (this section + cross-links above). **Slice 2 —** sign-off checklist below. **Slice 3** adds the issue/PR tracker table to this doc.
+
+### SRM MVP sign-off checklist (reviewers)
+
+Run this before declaring **SRM MVP complete** (finish program **slice 30**). Some rows stay **N/A** until later slices (compliance, KPI, integration)—re-run the full list at sign-off.
+
+#### Routes and UI
+
+- [ ] **`/srm`** — list loads; filters `kind=product` / `kind=logistics`; `q=` search; unauthenticated or unauthorized users see access denied (not a stack trace).
+- [ ] **`/srm/new`** — create partner flow works with **`org.suppliers` → edit**; users with view-only cannot mutate.
+- [ ] **`/srm/[id]`** — supplier 360 loads for a supplier in the active tenant; wrong tenant / unknown id → 404 or access denied.
+- [ ] **Legacy `/suppliers` and `/suppliers/[id]`** — if still in scope, same grant behavior as above (or document deprecation in this file).
+
+#### Grants and APIs
+
+- [ ] **`org.suppliers` → view** required for list and 360 read paths used in production.
+- [ ] **`org.suppliers` → edit** (and **approve** where implemented) enforced on PATCH/create/delete and SRM JSON APIs.
+- [ ] **Order analytics / counts** on SRM surfaces gated by **`org.orders` → view** (when those widgets exist).
+- [ ] Spot-check SRM-related **`/api/**` routes**: 403 without grant; no cross-tenant data in JSON.
+
+#### Migrations and schema
+
+- [ ] Production (or target environment) has run **`prisma migrate deploy`** (or `npm run db:migrate`) through all merged migrations that touch **`Supplier`** and related SRM tables.
+- [ ] No known migration failures or missing columns for SRM pages (app boots; 360 does not 500 on Prisma).
+
+#### Seeds and demo data
+
+- [ ] **`demo-company`** tenant exists for demos (e.g. after **`npm run db:seed`** per `docs/database-neon.md`).
+- [ ] When **slice 29** lands: idempotent **SRM demo seed** documented and runnable (`package.json` script + short note in `docs/database-neon.md` or here).
+
+#### Manual smoke URLs (copy/paste)
+
+Replace `<supplierId>` with a real id from the list.
+
+| Step | URL / action |
+|------|----------------|
+| Demo user | **Settings → Demo session** — user with `org.suppliers` **view** (and **edit** for create test). |
+| List | `/srm` |
+| Search | `/srm?q=test` |
+| Kind filter | `/srm?kind=logistics` |
+| Create | `/srm/new` |
+| 360 | `/srm/<supplierId>` |
+| Post–slices | `/srm/analytics` or compliance tab, **inbound integration** `curl` — per **`SRM_FINISH_SLICES.md`** when those slices merge. |
+
+#### Documentation gate (slice 30)
+
+- [ ] **`GAP_MAP.md`** blueprint table: each row **✅** (MVP met) or **⏸** deferred with one-line reason + link.
+- [ ] **`SRM_FINISH_SLICES.md`**: all **30** slices merged or explicitly skipped with owner sign-off.
 
 ---
 
