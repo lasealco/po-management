@@ -6,6 +6,8 @@
 
 **Source of truth:** `docs/srm/*.pdf` (sprint plan, blueprint, PRD) + `docs/srm/GAP_MAP.md` (current PDF-to-repo mapping baseline).
 
+**Finish program (30 slices):** [`docs/srm/SRM_FINISH_SLICES.md`](../../srm/SRM_FINISH_SLICES.md) — module-by-module issues until SRM MVP is signed off in `GAP_MAP.md` (slice 30).
+
 ---
 
 ## Current app baseline (context)

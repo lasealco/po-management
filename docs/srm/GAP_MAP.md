@@ -6,6 +6,8 @@
 
 **Baseline:** The app ships **tenant-scoped supplier master** with **product vs logistics** categories, **SRM list + create + 360** under `/srm`, and shared supplier APIs/components with the legacy `/suppliers` directory. PDFs describe **enterprise** depth (full lifecycle, compliance vault, integration mesh). Treat ❌ as "not here yet," not "ignored."
 
+**Module completion program:** 30 scoped engineering slices through MVP sign-off — see [`SRM_FINISH_SLICES.md`](./SRM_FINISH_SLICES.md). Track issue/PR links in a table (slice **1–3** instruct where to add the tracker).
+
 ---
 
 ## Routes and authorization (repo reality)
