@@ -108,6 +108,8 @@ export async function GET(
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
         "Content-Disposition": `attachment; filename="${filename}"`,
+        /** Audit scripts can assert count without fully parsing the CSV. */
+        "X-SRM-Manifest-Document-Count": String(rows.length),
       },
     });
   }

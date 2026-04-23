@@ -12,7 +12,7 @@
 
 ### I-v1 (landed)
 
-- **Audit-friendly manifest export:** `GET /api/suppliers/[id]/srm-documents?format=csv` returns **metadata only** (same filters as the JSON list, e.g. `includeArchived=1` when the operator checks **Include archived** on the Compliance tab). The CSV does **not** include `fileUrl` (safer to share in audits and tickets). The response is UTF-8 with a **BOM** so Excel and similar tools open encoding predictably. Columns include uploader/last editor **emails and display names**. The Compliance tab exposes **Download manifest (CSV)**.
+- **Audit-friendly manifest export:** `GET /api/suppliers/[id]/srm-documents?format=csv` returns **metadata only** (same filters as the JSON list, e.g. `includeArchived=1` when the operator checks **Include archived** on the Compliance tab). The CSV does **not** include `fileUrl` (safer to share in audits and tickets). The response is UTF-8 with a **BOM** so Excel and similar tools open encoding predictably. **`X-SRM-Manifest-Document-Count`** echoes the number of **document** rows in the file (excludes the header line) for quick audit/automation checks. Columns include uploader/last editor **emails and display names**. The Compliance tab exposes **Download manifest (CSV)**.
 - **Not in I-v1:** new Prisma document columns, DMS state machine, retention, approval routing.
 
 ### K-v1 (landed)

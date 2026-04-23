@@ -116,6 +116,7 @@ describe("GET /api/suppliers/[id]/srm-documents", () => {
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")?.includes("text/csv")).toBe(true);
     expect(res.headers.get("Content-Disposition")?.includes("attachment")).toBe(true);
+    expect(res.headers.get("X-SRM-Manifest-Document-Count")).toBe("1");
     const ab = await res.arrayBuffer();
     const bytes = new Uint8Array(ab);
     expect(bytes[0]).toBe(0xef);
