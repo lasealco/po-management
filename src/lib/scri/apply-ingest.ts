@@ -7,7 +7,9 @@ import { runScriEventMatching } from "@/lib/scri/matching/run-event-match";
 import { normalizeIngestGeography } from "@/lib/scri/normalize-ingest-geography";
 
 export async function applyScriIngest(tenantId: string, body: ScriIngestBody) {
-  const runMatch = Boolean(body.runMatch);
+  const shouldRunMatch =
+    Boolean(body.runMatch) ||
+    ((body.geographies?.length ?? 0) > 0 && body.autoRematch !== false);
   const eventTime = body.eventTime ? new Date(body.eventTime) : null;
   const structuredPayload = (body.structuredPayload ?? {}) as Prisma.InputJsonValue;
   const reviewState = body.reviewState ?? undefined;
@@ -93,7 +95,7 @@ export async function applyScriIngest(tenantId: string, body: ScriIngestBody) {
     return row.id;
   });
 
-  if (runMatch) {
+  if (shouldRunMatch) {
     await runScriEventMatching(tenantId, eventId);
   }
 

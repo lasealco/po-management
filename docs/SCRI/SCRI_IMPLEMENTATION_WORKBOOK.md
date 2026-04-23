@@ -71,11 +71,11 @@ This workbook ties the **documentation pack** in `docs/SCRI/` to **concrete buil
 | Done | Task | Notes / spec pointer |
 |------|------|----------------------|
 | [x] | **Geo / flow match (v1):** Deterministic pass for shipments, legs, PO ship-to, supplier country, sales order links | `run-event-match.ts` |
-| [ ] | **Matching:** Extend to additional object types in spec (sites/warehouses, inventory nodes, lanes as first-class) where data exists | Data model: Supply / Flow / Demand match |
-| [ ] | **Caps & performance:** Replace fixed scan caps with indexed queries or tenant-scoped windows; document limits | Matching spec |
-| [ ] | **Tentative matches:** Low-confidence or partial geo match flagged in UI (`matchConfidence`, copy) | Matching spec: tentative |
-| [ ] | **Impact levels:** Consistent `impactLevel` semantics and display | `ScriEventAffectedEntity.impactLevel` |
-| [ ] | **Re-run rules:** When ingest updates geographies, auto-queue or prompt re-match; define idempotency | Integrations |
+| [x] | **Matching:** Extend to additional object types in spec (sites/warehouses, inventory nodes, lanes as first-class) where data exists | `WAREHOUSE`, `INVENTORY_BALANCE`; UN/LOC via legs/booking |
+| [x] | **Caps & performance:** Replace fixed scan caps with indexed queries or tenant-scoped windows; document limits | `resolve-shipment-candidates.ts`, `run-event-match-limits.ts` |
+| [x] | **Tentative matches:** Low-confidence or partial geo match flagged in UI (`matchConfidence`, copy) | `scriMatchTier` + detail badge |
+| [x] | **Impact levels:** Consistent `impactLevel` semantics and display | PORT_UNLOC → HIGH; labels on DTO + detail |
+| [x] | **Re-run rules:** When ingest updates geographies, auto-queue or prompt re-match; define idempotency | `autoRematch` default true + `geographies` non-empty; `runMatch` forces |
 
 ---
 

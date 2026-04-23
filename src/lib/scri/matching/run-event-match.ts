@@ -6,9 +6,8 @@ import {
   normUnloc,
   regionLooselyMatches,
 } from "@/lib/scri/matching/geo-signals";
-
-const SHIPMENT_SCAN_CAP = 3500;
-const CREATE_MANY_CHUNK = 400;
+import { resolveShipmentCandidates } from "@/lib/scri/matching/resolve-shipment-candidates";
+import { R2_MATCH_LIMITS } from "@/lib/scri/matching/run-event-match-limits";
 
 export type MatchRow = {
   tenantId: string;
@@ -23,7 +22,8 @@ export type MatchRow = {
 
 /**
  * Replace all affected-entity rows for an event with a fresh deterministic pass (R2).
- * Uses booking / leg UN/LOC codes, PO ship-to country/region, supplier registered country, and linked sales orders.
+ * Uses indexed shipment candidates (UN/LOC, country), booking / legs, PO geo, suppliers,
+ * warehouses, inventory balances, and linked sales orders.
  */
 export async function runScriEventMatching(tenantId: string, eventId: string): Promise<number> {
   const eventRow = await prisma.scriExternalEvent.findFirst({
@@ -45,32 +45,38 @@ export async function runScriEventMatching(tenantId: string, eventId: string): P
     matches.push({ tenantId, eventId, ...m });
   };
 
-  const shipments = await prisma.shipment.findMany({
-    where: { order: { tenantId } },
-    take: SHIPMENT_SCAN_CAP,
-    orderBy: { updatedAt: "desc" },
-    select: {
-      id: true,
-      salesOrderId: true,
-      booking: { select: { originCode: true, destinationCode: true } },
-      order: {
-        select: {
-          id: true,
-          shipToCountryCode: true,
-          shipToRegion: true,
-          supplierId: true,
-          supplier: { select: { id: true, registeredCountryCode: true, name: true } },
-        },
-      },
-    },
-  });
+  const candidateIds = await resolveShipmentCandidates(tenantId, signals);
+  const shipments =
+    candidateIds.length === 0
+      ? []
+      : await prisma.shipment.findMany({
+          where: { id: { in: candidateIds }, order: { tenantId } },
+          select: {
+            id: true,
+            salesOrderId: true,
+            booking: { select: { originCode: true, destinationCode: true } },
+            order: {
+              select: {
+                id: true,
+                shipToCountryCode: true,
+                shipToRegion: true,
+                supplierId: true,
+                supplier: { select: { id: true, registeredCountryCode: true, name: true } },
+              },
+            },
+          },
+        });
 
-  const shipmentIds = shipments.map((s) => s.id);
+  const byShipmentId = new Map(shipments.map((s) => [s.id, s]));
+  const orderedShipments = candidateIds
+    .map((id) => byShipmentId.get(id))
+    .filter((s): s is NonNullable<typeof s> => Boolean(s));
+
   const legs =
-    shipmentIds.length === 0
+    candidateIds.length === 0
       ? []
       : await prisma.ctShipmentLeg.findMany({
-          where: { tenantId, shipmentId: { in: shipmentIds } },
+          where: { tenantId, shipmentId: { in: candidateIds } },
           select: { shipmentId: true, originCode: true, destinationCode: true },
         });
 
@@ -89,7 +95,7 @@ export async function runScriEventMatching(tenantId: string, eventId: string): P
 
   const matchedShipmentIds = new Set<string>();
 
-  for (const s of shipments) {
+  for (const s of orderedShipments) {
     const locCodes = new Set<string>();
     const bo = normUnloc(s.booking?.originCode);
     const bd = normUnloc(s.booking?.destinationCode);
@@ -105,7 +111,7 @@ export async function runScriEventMatching(tenantId: string, eventId: string): P
           objectId: s.id,
           matchType: "PORT_UNLOC",
           matchConfidence: 88,
-          impactLevel: "MEDIUM",
+          impactLevel: "HIGH",
           rationale: `Shipment booking or route references UN/LOC ${code}, which appears on this event.`,
         });
         matchedShipmentIds.add(s.id);
@@ -152,12 +158,12 @@ export async function runScriEventMatching(tenantId: string, eventId: string): P
     }
   }
 
-  if (signals.countries.size > 0) {
-    const countryList = [...signals.countries];
+  const countryList = [...signals.countries];
+  if (countryList.length > 0) {
     const suppliers = await prisma.supplier.findMany({
       where: { tenantId, registeredCountryCode: { in: countryList } },
       select: { id: true, name: true, registeredCountryCode: true },
-      take: 800,
+      take: R2_MATCH_LIMITS.maxSuppliersByCountry,
     });
     for (const sup of suppliers) {
       const c = normCountry(sup.registeredCountryCode);
@@ -188,7 +194,7 @@ export async function runScriEventMatching(tenantId: string, eventId: string): P
         supplierId: true,
         supplier: { select: { registeredCountryCode: true } },
       },
-      take: 2500,
+      take: R2_MATCH_LIMITS.maxPurchaseOrdersScan,
     });
 
     for (const p of pos) {
@@ -217,9 +223,74 @@ export async function runScriEventMatching(tenantId: string, eventId: string): P
     }
   }
 
+  const warehouseIdsForInventory = new Set<string>();
+  const warehouses = await prisma.warehouse.findMany({
+    where: { tenantId, isActive: true },
+    orderBy: { updatedAt: "desc" },
+    take: R2_MATCH_LIMITS.maxWarehouses,
+    select: {
+      id: true,
+      name: true,
+      code: true,
+      countryCode: true,
+      region: true,
+    },
+  });
+  for (const w of warehouses) {
+    const wc = normCountry(w.countryCode);
+    let hit = false;
+    if (wc && signals.countries.has(wc)) {
+      push({
+        objectType: "WAREHOUSE",
+        objectId: w.id,
+        matchType: "WAREHOUSE_COUNTRY",
+        matchConfidence: 68,
+        impactLevel: "MEDIUM",
+        rationale: `Warehouse ${w.code ? `${w.code} — ` : ""}${w.name} is in ${wc}, which appears on this event.`,
+      });
+      hit = true;
+    }
+    if (regionLooselyMatches(w.region, signals.regionTerms)) {
+      push({
+        objectType: "WAREHOUSE",
+        objectId: w.id,
+        matchType: "WAREHOUSE_REGION",
+        matchConfidence: 46,
+        impactLevel: "LOW",
+        rationale: `Warehouse ${w.code ? `${w.code} — ` : ""}${w.name} region may overlap event region keywords.`,
+      });
+      hit = true;
+    }
+    if (hit) warehouseIdsForInventory.add(w.id);
+  }
+
+  if (warehouseIdsForInventory.size > 0) {
+    const balances = await prisma.inventoryBalance.findMany({
+      where: {
+        tenantId,
+        warehouseId: { in: [...warehouseIdsForInventory] },
+        onHandQty: { gt: 0 },
+      },
+      select: { id: true, warehouseId: true, productId: true },
+      orderBy: { updatedAt: "desc" },
+      take: R2_MATCH_LIMITS.maxInventoryBalances,
+    });
+    for (const b of balances) {
+      push({
+        objectType: "INVENTORY_BALANCE",
+        objectId: b.id,
+        matchType: "STOCK_AT_AFFECTED_SITE",
+        matchConfidence: 55,
+        impactLevel: "LOW",
+        rationale: `On-hand inventory at an affected warehouse includes product ${b.productId} (balance ${b.id}).`,
+      });
+    }
+  }
+
+  const shipmentById = new Map(orderedShipments.map((s) => [s.id, s]));
   const salesOrderIds = new Set<string>();
   for (const sid of matchedShipmentIds) {
-    const sh = shipments.find((x) => x.id === sid);
+    const sh = shipmentById.get(sid);
     if (sh?.salesOrderId) salesOrderIds.add(sh.salesOrderId);
   }
   for (const soId of salesOrderIds) {
@@ -243,8 +314,9 @@ export async function runScriEventMatching(tenantId: string, eventId: string): P
   const now = new Date();
   await prisma.$transaction(async (tx) => {
     await tx.scriEventAffectedEntity.deleteMany({ where: { eventId } });
-    for (let i = 0; i < finalRows.length; i += CREATE_MANY_CHUNK) {
-      const chunk = finalRows.slice(i, i + CREATE_MANY_CHUNK).map((row) => ({
+    const chunkSize = R2_MATCH_LIMITS.createManyChunk;
+    for (let i = 0; i < finalRows.length; i += chunkSize) {
+      const chunk = finalRows.slice(i, i + chunkSize).map((row) => ({
         ...row,
         createdAt: now,
         updatedAt: now,

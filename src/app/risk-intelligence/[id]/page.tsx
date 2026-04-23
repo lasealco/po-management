@@ -95,7 +95,7 @@ export default async function RiskIntelligenceEventPage({
                   <>
                     <span className="font-semibold tabular-nums text-zinc-900">{e.affectedTotal}</span>{" "}
                     deterministic match{e.affectedTotal === 1 ? "" : "es"} (shipments, POs, suppliers, sales
-                    orders).
+                    orders, warehouses, inventory).
                   </>
                 ) : (
                   <span className="text-zinc-500">
@@ -122,7 +122,13 @@ export default async function RiskIntelligenceEventPage({
                       )}
                       <span className="text-xs text-zinc-500">
                         {a.matchType.replace(/_/g, " ")} · {a.matchConfidence}%
+                        {a.impactLevelLabel ? ` · ${a.impactLevelLabel}` : ""}
                       </span>
+                      {a.matchTier === "TENTATIVE" ? (
+                        <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-900">
+                          Tentative
+                        </span>
+                      ) : null}
                     </div>
                     <p className="mt-0.5 text-xs text-zinc-600">{a.rationale}</p>
                   </li>

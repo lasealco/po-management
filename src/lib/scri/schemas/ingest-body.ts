@@ -43,6 +43,11 @@ export const scriIngestBodySchema = z.object({
   geographies: z.array(scriIngestGeographySchema).max(30).optional(),
   /** When true, run deterministic network matching after ingest (org.scri edit). */
   runMatch: z.boolean().optional().default(false),
+  /**
+   * When false, skip automatic R2 rematch even if `geographies` are present.
+   * Does not affect `runMatch: true`.
+   */
+  autoRematch: z.boolean().optional().default(true),
 });
 
 export type ScriIngestBody = z.infer<typeof scriIngestBodySchema>;

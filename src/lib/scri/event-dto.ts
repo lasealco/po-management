@@ -5,6 +5,10 @@ import type {
   ScriExternalEvent,
 } from "@prisma/client";
 
+import {
+  scriImpactLevelLabel,
+  scriMatchTier,
+} from "@/lib/scri/matching/impact-level";
 import { scriEventTypeLabel } from "@/lib/scri/event-type-taxonomy";
 
 export type ScriEventListItemDto = ReturnType<typeof toScriEventListItemDto>;
@@ -62,6 +66,7 @@ export function toScriEventDetailDto(row: DetailRow) {
 }
 
 function toAffectedDto(a: ScriEventAffectedEntity) {
+  const matchTier = scriMatchTier(a.matchConfidence, a.matchType);
   return {
     id: a.id,
     objectType: a.objectType,
@@ -69,6 +74,8 @@ function toAffectedDto(a: ScriEventAffectedEntity) {
     matchType: a.matchType,
     matchConfidence: a.matchConfidence,
     impactLevel: a.impactLevel,
+    impactLevelLabel: scriImpactLevelLabel(a.impactLevel),
+    matchTier,
     rationale: a.rationale,
   };
 }

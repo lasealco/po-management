@@ -9,6 +9,10 @@ export function scriObjectHref(objectType: string, objectId: string): string | n
       return `/suppliers/${objectId}`;
     case "SALES_ORDER":
       return `/sales-orders/${objectId}`;
+    case "WAREHOUSE":
+      return `/wms/stock`;
+    case "INVENTORY_BALANCE":
+      return `/wms/stock`;
     default:
       return null;
   }
