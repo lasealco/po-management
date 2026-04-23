@@ -18,7 +18,7 @@
 - [x] **Phase A (slices 4–10)** — UX + `bookingConfirmationSlaHours` + office edit + supplier GET tests (see `GAP_MAP.md` tracker note)
 - [x] **Phase B (slices 11–15)** — approval state machine + PO activation guard + onboarding tasks + assignee/due + notification hook stub; route tests for **`GET`/`PATCH` onboarding-task APIs** (`GAP_MAP.md` Phase B note)
 - [x] **Phase C (slices 16–20)** — compliance document vault: Prisma + APIs + `/srm/[id]` Compliance tab + audit log + read-only vs edit; route tests for srm-documents, `[docId]` PATCH/DELETE, and **audit-logs** (`GAP_MAP.md` Phase C note)
-- [x] **Phase D (slices 21–24)** — `/srm/analytics` + aggregates + concentration + booking SLA panel + API (`GAP_MAP.md` Phase D note)
+- [x] **Phase D (slices 21–24)** — `/srm/analytics` + aggregates + concentration + booking SLA; API tests for **tenant 404**, **date-range 400**, **logistics `bookingSla`**, order-metrics gate (`GAP_MAP.md` Phase D note)
 - [x] **Phase E (slices 25–28)** — inbound upsert v1 + idempotency + export + `INTEGRATION.md` (`GAP_MAP.md` Phase E note)
 - [x] **Phase F (slices 29–30)** — `db:seed:srm-demo` + `docs/database-neon.md`; `GAP_MAP.md` Phase F + blueprint refresh + MVP sign-off (`GAP_MAP.md` Phase F note)
 

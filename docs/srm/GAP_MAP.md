@@ -46,7 +46,10 @@ Add **Issue** / **PR** when you file work; the **30-slice** program is **closed*
 | 18 | Phase C — expiry signals (badges) | — | (landed) |
 | 19 | Phase C — read-only vs edit grants | — | (landed) |
 | 20 | Phase C — document audit trail | — | (landed) |
-| 21–24 | Phase D — KPI & analytics | — | (landed) |
+| 21 | Phase D — KPI data (spend / volume) | — | (landed) |
+| 22 | Phase D — analytics dashboard + API | — | (landed) |
+| 23 | Phase D — concentration / top-N | — | (landed) |
+| 24 | Phase D — booking SLA widget (logistics) | — | (landed) |
 | 25–28 | Phase E — integration pack | — | (landed) |
 | 29–30 | Phase F — SRM demo seed + sign-off | — | (landed) |
 
@@ -56,7 +59,7 @@ Add **Issue** / **PR** when you file work; the **30-slice** program is **closed*
 
 **Phase C (slices 16–20) — shipped in repo:** **`SrmSupplierDocument`** + **`SrmSupplierDocumentAuditLog`** (Prisma); **`GET`/`POST`** `/api/suppliers/[id]/srm-documents`, **`PATCH`/`DELETE`** `/api/suppliers/[id]/srm-documents/[docId]` (archive), **`GET`** `.../audit-logs`; **Compliance** tab on `/srm/[id]` with upload (edit grant), list, expiry badges (query-time), view-only messaging, audit trail; local dev uploads under `public/uploads/srm-documents` or Blob in production; Vitest for **`GET`/`POST` list route**, **grant on POST**, **`GET` audit-logs** (404 path), and **`PATCH`/`DELETE` document** (gates + 404/400 where applicable).
 
-**Phase D (slices 21–24) — shipped in repo:** **`/srm/analytics`** — parent **PO** volume + spend by **currency** (no FX) + **top-3 concentration** (order-count % and per-currency spend %); **`GET /api/srm/analytics`**; **PO metrics** require **`org.orders` → view** (session without it still opens the page for logistics **booking SLA** when `kind=logistics`). **Booking SLA:** `ShipmentBooking.bookingSentAt` vs first **`BOOKING_CONFIRMED`** milestone on the linked **Shipment** vs forwarder **`bookingConfirmationSlaHours`** (else 24h); sparse/missing milestone → indeterminate + UI callout. Implementation: **`src/lib/srm/srm-analytics-aggregates.ts`**.
+**Phase D (slices 21–24) — shipped in repo:** **`/srm/analytics`** (workflow panel + invalid-range handling) — parent **PO** volume + spend by **currency** (no FX) + **top-3 concentration** (order-count % and per-currency spend %); **`GET /api/srm/analytics`** — **`org.suppliers` → view**; **PO metrics** require **`org.orders` → view** (API and UI set `orderKpi` null + flag when missing; page still shows operational signals, and **booking SLA** when `kind=logistics`). **404** if no tenant; **400** for `from` after `to`. **Booking SLA:** `ShipmentBooking.bookingSentAt` vs first **`BOOKING_CONFIRMED`** milestone vs `bookingConfirmationSlaHours` (else 24h). Implementation: **`src/lib/srm/srm-analytics-aggregates.ts`**, **`parseSrmAnalyticsQuery`**; Vitest: **`api/srm/analytics/route.test.ts`** (grants, tenant 404, bad range, logistics includes `bookingSla`). **`srm-analytics-request.test.ts`** for query parsing.
 
 **Phase E (slices 25–28) — shipped in repo:** **`POST /api/srm/integrations/v1/suppliers/upsert`** — `srm_supplier_upsert_v1` (`schemaVersion: 1`), `match.id` / `match.code` / create; **`SrmIntegrationIdempotency`** table for **`Idempotency-Key`** replay; field mapping aligned with supplier **PATCH**/**POST**; **`GET /api/srm/integrations/v1/suppliers/export`** (`format`, `kind`); **`docs/srm/INTEGRATION.md`**; Vitest in **`upsert/route.test.ts`**.
 

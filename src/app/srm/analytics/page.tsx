@@ -64,11 +64,21 @@ export default async function SrmAnalyticsPage({
   const parsed = parseSrmAnalyticsQuery(u, new Date());
   if (!parsed.ok) {
     return (
-      <div className="min-h-screen bg-zinc-50 px-6 py-16">
-        <p className="text-zinc-800">Invalid range: <strong>from</strong> is after <strong>to</strong>, or check dates.</p>
-        <Link href="/srm/analytics" className="mt-2 inline-block text-sm text-[var(--arscmp-primary)] hover:underline">
-          Reset
-        </Link>
+      <div className="min-h-screen bg-zinc-50">
+        <main className="mx-auto max-w-7xl px-6 py-10">
+          <section className="rounded-2xl border border-amber-200 bg-amber-50/60 p-6 shadow-sm">
+            <p className="text-sm font-semibold text-amber-900">Invalid date range</p>
+            <p className="mt-1 text-sm text-amber-950/90">
+              <span className="font-medium">from</span> must be on or before <span className="font-medium">to</span> (UTC dates).
+            </p>
+            <Link
+              href="/srm/analytics"
+              className="mt-4 inline-flex rounded-lg bg-[var(--arscmp-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:brightness-95"
+            >
+              Reset to default range
+            </Link>
+          </section>
+        </main>
       </div>
     );
   }
@@ -106,34 +116,36 @@ export default async function SrmAnalyticsPage({
           />
         </div>
 
-        <div className="mb-4 flex flex-wrap items-center gap-2 text-sm text-zinc-600">
-          <span>View:</span>
-          <Link
-            href={`/srm/analytics?kind=product&from=${fromStart.toISOString().slice(0, 10)}&to=${toEnd.toISOString().slice(0, 10)}`}
-            className={kind === "product" ? "font-semibold text-zinc-900" : "text-[var(--arscmp-primary)] hover:underline"}
-          >
-            Product
-          </Link>
-          <span className="text-zinc-300">|</span>
-          <Link
-            href={`/srm/analytics?kind=logistics&from=${fromStart.toISOString().slice(0, 10)}&to=${toEnd.toISOString().slice(0, 10)}`}
-            className={kind === "logistics" ? "font-semibold text-zinc-900" : "text-[var(--arscmp-primary)] hover:underline"}
-          >
-            Logistics
-          </Link>
-        </div>
+        <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+          <div className="mb-4 flex flex-wrap items-center gap-2 text-sm text-zinc-600">
+            <span>View:</span>
+            <Link
+              href={`/srm/analytics?kind=product&from=${fromStart.toISOString().slice(0, 10)}&to=${toEnd.toISOString().slice(0, 10)}`}
+              className={kind === "product" ? "font-semibold text-zinc-900" : "text-[var(--arscmp-primary)] hover:underline"}
+            >
+              Product
+            </Link>
+            <span className="text-zinc-300">|</span>
+            <Link
+              href={`/srm/analytics?kind=logistics&from=${fromStart.toISOString().slice(0, 10)}&to=${toEnd.toISOString().slice(0, 10)}`}
+              className={kind === "logistics" ? "font-semibold text-zinc-900" : "text-[var(--arscmp-primary)] hover:underline"}
+            >
+              Logistics
+            </Link>
+          </div>
 
-        <SrmAnalyticsDateForm kind={kind} from={fromStart.toISOString()} to={toEnd.toISOString()} />
+          <SrmAnalyticsDateForm kind={kind} from={fromStart.toISOString()} to={toEnd.toISOString()} />
 
-        <div className="mt-6">
-          <SrmOperationalSignalsPanel signals={operationalSignals} srmKind={kind} />
-        </div>
+          <div className="mt-6">
+            <SrmOperationalSignalsPanel signals={operationalSignals} srmKind={kind} />
+          </div>
 
-        <div className="mt-6">
-          <SrmOrderKpiPanel kpi={orderKpi} canViewOrders={permissions.canViewOrders} />
-        </div>
+          <div className="mt-6">
+            <SrmOrderKpiPanel kpi={orderKpi} canViewOrders={permissions.canViewOrders} />
+          </div>
 
-        {kind === "logistics" ? <SrmBookingSlaPanel summary={bookingSla} /> : null}
+          {kind === "logistics" ? <SrmBookingSlaPanel summary={bookingSla} /> : null}
+        </section>
       </main>
     </div>
   );

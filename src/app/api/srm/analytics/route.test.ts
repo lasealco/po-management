@@ -83,4 +83,41 @@ describe("GET /api/srm/analytics", () => {
     expect(body.orderMetricsRequiresOrdersView).toBe(true);
     expect(body.orderKpi).toBeNull();
   });
+
+  it("returns 404 when demo tenant is missing", async () => {
+    requireApiGrantMock.mockResolvedValue(null);
+    getDemoTenantMock.mockResolvedValueOnce(null);
+    const { GET } = await import("./route");
+    const res = await GET(new Request("http://localhost/api/srm/analytics"));
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 400 when from is after to", async () => {
+    requireApiGrantMock.mockImplementation(async (resource: string) => {
+      if (resource === "org.suppliers") return null;
+      if (resource === "org.orders") return null;
+      return new Response(null, { status: 403 });
+    });
+    const { GET } = await import("./route");
+    const res = await GET(
+      new Request("http://localhost/api/srm/analytics?from=2026-12-20&to=2026-01-01&kind=product"),
+    );
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { code?: string };
+    expect(body.code).toBe("BAD_INPUT");
+  });
+
+  it("includes bookingSla for logistics kind when suppliers view is ok", async () => {
+    requireApiGrantMock.mockImplementation(async (resource: string) => {
+      if (resource === "org.suppliers" || resource === "org.orders") return null;
+      return new Response(null, { status: 403 });
+    });
+    const { GET } = await import("./route");
+    const res = await GET(new Request("http://localhost/api/srm/analytics?kind=logistics"));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { kind: string; bookingSla: { isSparse: boolean } | null };
+    expect(body.kind).toBe("logistics");
+    expect(body.bookingSla).not.toBeNull();
+    expect(body.bookingSla?.isSparse).toBe(true);
+  });
 });
