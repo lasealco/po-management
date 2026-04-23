@@ -8,8 +8,11 @@ import { WorkflowHeader } from "@/components/workflow-header";
 
 export function SupplierCreateForm({
   defaultSrmCategory = "product",
+  /** When true, omit the card chrome — parent (e.g. `/srm/new`) provides the workflow panel. */
+  inPageShell = false,
 }: {
   defaultSrmCategory?: "product" | "logistics";
+  inPageShell?: boolean;
 }) {
   const router = useRouter();
   const [name, setName] = useState("");
@@ -91,7 +94,11 @@ export function SupplierCreateForm({
   return (
     <form
       onSubmit={onSubmit}
-      className="max-w-xl rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm"
+      className={
+        inPageShell
+          ? "max-w-xl"
+          : "max-w-xl rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm"
+      }
     >
       <WorkflowHeader
         eyebrow="Create supplier"

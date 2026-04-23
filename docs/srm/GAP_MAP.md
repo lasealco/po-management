@@ -29,13 +29,13 @@ Add **Issue** / **PR** when you file work; the **30-slice** program is **closed*
 | 1 | SRM completion index | — | (landed) |
 | 2 | MVP sign-off checklist | — | (landed) |
 | 3 | Slice tracker table | — | (this doc) |
-| 4 | List page polish |  |  |
-| 5 | Create partner wizard polish |  |  |
-| 6 | 360 layout & navigation |  |  |
-| 7 | 360 profile completeness |  |  |
-| 8 | Contacts & offices CRUD |  |  |
-| 9 | Capabilities matrix UX |  |  |
-| 10 | API guard pass (read) |  |  |
+| 4 | List page polish | — | (landed) |
+| 5 | Create partner wizard polish | — | (landed) |
+| 6 | 360 layout & navigation | — | (landed) |
+| 7 | 360 profile completeness | — | (landed) |
+| 8 | Contacts & offices CRUD | — | (landed) |
+| 9 | Capabilities matrix UX | — | (landed) |
+| 10 | API guard pass (read) | — | (landed) |
 | 11–15 | Phase B — lifecycle & onboarding | — | (landed) |
 | 16–20 | Phase C — compliance & documents | — | (landed) |
 | 21–24 | Phase D — KPI & analytics | — | (landed) |

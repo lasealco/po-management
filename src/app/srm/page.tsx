@@ -118,6 +118,9 @@ export default async function SrmPage({
   const canApprove = permissions.canApproveSuppliers;
   const canViewOrders = permissions.canViewOrders;
 
+  /** True zero-state: no partners in this kind without narrowing filters. `onboardingMine` is a filter — empty here must not look like a brand-new catalog. */
+  const hasNarrowingFilters = Boolean(q.trim()) || onboardingMine;
+
   const unreadSrmNotifications = access.user
     ? await prisma.srmOperatorNotification.count({
         where: { tenantId: access.tenant.id, userId: access.user.id, readAt: null },
@@ -302,7 +305,7 @@ export default async function SrmPage({
               ))}
             </ul>
             </>
-          ) : !q ? (
+          ) : !hasNarrowingFilters ? (
             <section className="mt-8 rounded-2xl border border-dashed border-zinc-300 bg-zinc-50/90 px-6 py-12 text-center shadow-sm">
               <h2 className="text-base font-semibold text-zinc-900">
                 No {kind === "logistics" ? "logistics" : "product"} partners yet
@@ -321,10 +324,21 @@ export default async function SrmPage({
             </section>
           ) : (
             <section className="mt-8 rounded-lg border border-dashed border-zinc-300 bg-zinc-50 px-6 py-10 text-center">
-              <h2 className="text-base font-semibold text-zinc-900">No partners match your search</h2>
+              <h2 className="text-base font-semibold text-zinc-900">
+                {q?.trim() && onboardingMine
+                  ? "No partners match your search and filters"
+                  : q?.trim()
+                    ? "No partners match your search"
+                    : onboardingMine
+                      ? "No partners with assigned onboarding"
+                      : "No partners match your filters"}
+              </h2>
               <p className="mt-2 text-sm text-zinc-600">
-                No {kind === "logistics" ? "logistics" : "product"} partners match
-                {q ? ` "${q}"` : " your current filters"}.
+                {q?.trim()
+                  ? `No ${kind === "logistics" ? "logistics" : "product"} partners match “${q.trim()}”${onboardingMine ? " with incomplete tasks assigned to you" : ""}.`
+                  : onboardingMine
+                    ? "No partners in this list have incomplete onboarding tasks assigned to you, or they sit in another SRM tab."
+                    : `No ${kind === "logistics" ? "logistics" : "product"} partners match your current filters.`}
               </p>
               <Link href={`/srm?kind=${kind}`} className="mt-4 inline-flex text-sm font-medium text-[var(--arscmp-primary)] hover:underline">
                 Reset and show all partners
