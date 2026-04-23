@@ -26,6 +26,38 @@ export type PatchRiskSignalAckResult =
   | { ok: false; reason: "not_found" };
 
 /**
+ * Upsert a risk signal by stable `code` (e.g. SCRI bridge: `SCRI:<ingestKey>`).
+ * Updates severity / title / detail on repeat launches from the same SCRI event.
+ */
+export async function upsertRiskSignalByCodeForTenant(
+  tenantId: string,
+  input: {
+    code: string;
+    severity: TwinRiskSeverity;
+    title: string;
+    detail: string | null;
+  },
+  tx: Prisma.TransactionClient | typeof prisma = prisma,
+): Promise<{ id: string; code: string }> {
+  return tx.supplyChainTwinRiskSignal.upsert({
+    where: { tenantId_code: { tenantId, code: input.code } },
+    create: {
+      tenantId,
+      code: input.code,
+      severity: input.severity,
+      title: input.title,
+      detail: input.detail,
+    },
+    update: {
+      severity: input.severity,
+      title: input.title,
+      detail: input.detail,
+    },
+    select: { id: true, code: true },
+  });
+}
+
+/**
  * Keyset-paged risk signals for a tenant (`createdAt` desc, `id` desc). `limit` is clamped to 1..100.
  */
 export async function listRiskSignalsForTenantPage(

@@ -6,12 +6,14 @@ import { PageTitleWithHint } from "@/components/page-title-with-hint";
 import { ScriRecommendationsPanel } from "@/components/risk-intelligence/scri-recommendations-panel";
 import { ScriRunMatchButton } from "@/components/risk-intelligence/scri-run-match-button";
 import { ScriTriagePanel } from "@/components/risk-intelligence/scri-triage-panel";
+import { ScriTwinLaunchPanel } from "@/components/risk-intelligence/scri-twin-launch-panel";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { toScriEventDetailDto } from "@/lib/scri/event-dto";
 import { formatScriFreshness } from "@/lib/scri/format-freshness";
 import { getScriEventForTenant } from "@/lib/scri/event-repo";
 import { scriObjectHref } from "@/lib/scri/object-links";
+import { requireTwinApiAccess } from "@/lib/supply-chain-twin/sctwin-api-access";
 
 export const dynamic = "force-dynamic";
 
@@ -49,6 +51,8 @@ export default async function RiskIntelligenceEventPage({
   if (!row) notFound();
 
   const canRunMatch = viewerHas(access.grantSet, "org.scri", "edit");
+  const twinLaunchGate = await requireTwinApiAccess();
+  const canLaunchTwinScenario = canRunMatch && twinLaunchGate.ok;
   const e = toScriEventDetailDto(row);
 
   const assignableUsers = await prisma.user.findMany({
@@ -172,6 +176,8 @@ export default async function RiskIntelligenceEventPage({
         </section>
 
         <ScriRecommendationsPanel canEdit={canRunMatch} recommendations={e.recommendations} />
+
+        <ScriTwinLaunchPanel eventId={e.id} enabled={canLaunchTwinScenario} />
 
         {e.shortSummary || e.longSummary ? (
           <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">

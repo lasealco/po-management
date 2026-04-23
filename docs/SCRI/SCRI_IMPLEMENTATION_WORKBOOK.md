@@ -123,8 +123,9 @@ This workbook ties the **documentation pack** in `docs/SCRI/` to **concrete buil
 
 | Done | Task | Notes / spec pointer |
 |------|------|----------------------|
-| [ ] | **Contract:** Define payload from SCRI event to Twin scenario create API | Integrations: twin scenario seeds |
-| [ ] | **UI:** “Launch scenario” from event detail / triage | UX: Triage Workspace |
+| [x] | **Contract:** `twin_scenario_seed_from_scri_v1` draft JSON + stable risk `code` `SCRI:<ingestKey>` + ingest `scri_scenario_launch` | `src/lib/scri/twin-bridge/scri-twin-scenario-contract.ts`, `build-twin-scenario-draft-from-scri-event.ts` |
+| [x] | **API:** `POST /api/scri/events/[id]/twin-scenario` (requires `org.scri` edit + twin session gate) | Upserts risk signal, creates scenario draft + revision, append ingest |
+| [x] | **UI:** “Launch twin scenario” on event detail | `ScriTwinLaunchPanel` on `/risk-intelligence/[id]` |
 
 ---
 
