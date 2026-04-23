@@ -6,6 +6,7 @@ import {
   TARIFF_IMPORT_STAGING_ROW_TYPE_SET,
   TARIFF_IMPORT_STAGING_ROW_TYPES,
 } from "@/lib/tariff/import-pipeline";
+import { TARIFF_IMPORT_STAGING_ROW_TYPES as stagingRowTypesFromBatchStatuses } from "@/lib/tariff/import-batch-statuses";
 
 describe("import-pipeline stages", () => {
   it("lists six ordered lifecycle stages for docs and UI", () => {
@@ -25,6 +26,10 @@ describe("import-pipeline stages", () => {
 });
 
 describe("import-pipeline staging row types", () => {
+  it("re-exports the same tuple through import-batch-statuses (single source of truth)", () => {
+    expect(stagingRowTypesFromBatchStatuses).toBe(TARIFF_IMPORT_STAGING_ROW_TYPES);
+  });
+
   it("includes documented row types", () => {
     expect(TARIFF_IMPORT_STAGING_ROW_TYPES).toContain("RATE_LINE_CANDIDATE");
     expect(TARIFF_IMPORT_STAGING_ROW_TYPES).toContain("CHARGE_LINE_CANDIDATE");

@@ -6,6 +6,7 @@ import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { recordTariffAuditLog } from "@/lib/tariff/audit-log";
 import { updateTariffImportStagingRow } from "@/lib/tariff/import-staging-rows";
 import { getDemoTenant } from "@/lib/demo-tenant";
+import { confidenceScoreFromPatchBody } from "@/app/api/tariffs/_lib/confidence-score-patch-field";
 import { jsonFromTariffError } from "@/app/api/tariffs/_lib/tariff-api-error";
 
 export const dynamic = "force-dynamic";
@@ -35,6 +36,13 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
 
   const patch: Parameters<typeof updateTariffImportStagingRow>[3] = {};
   if (typeof o.approved === "boolean") patch.approved = o.approved;
+  const confidencePatch = confidenceScoreFromPatchBody(o);
+  if (!confidencePatch.ok) {
+    return toApiErrorResponse({ error: confidencePatch.message, code: "BAD_INPUT", status: 400 });
+  }
+  if ("confidenceScore" in confidencePatch.patch) {
+    patch.confidenceScore = confidencePatch.patch.confidenceScore;
+  }
   if (o.normalizedPayload !== undefined) {
     if (o.normalizedPayload !== null && (typeof o.normalizedPayload !== "object" || Array.isArray(o.normalizedPayload))) {
       return toApiErrorResponse({

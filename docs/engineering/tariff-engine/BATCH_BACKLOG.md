@@ -15,7 +15,7 @@ Slices are **audit / hardening / parity** tasks, not a greenfield todo list — 
 | Wave | Goal | Status |
 |------|------|--------|
 | **0** | Workspace gate: full-repo `tsc` + tariff vertical tests green | Done — keep tree free of orphan `* 2.*` pages and half-wired API trees that are not in `schema.prisma` / generated client. |
-| **1** | Track A (A-01 … A-20) | Sign off row-by-row (import, reference data, geography lib/API). |
+| **1** | Track A (A-01 … A-20) | **Done (2026-04-23)** — audited import pipeline through audit-log; batch + staging PATCH **`confidenceScore`** parity with `import-batches` lib; shared validator + tests; import/UI label and enum parity tests extended; existing coverage retained for promote, geography catalog, normalized charge APIs. |
 | **2** | Track B (B-01 … B-20) | Contracts, version APIs, tariffs UI polish. |
 | **3** | Track C (C-01 … C-20) | Rating, shipments, RFQ, snapshots, invoice-audit wiring. |
 

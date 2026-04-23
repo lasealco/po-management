@@ -1,3 +1,4 @@
+import { TariffChargeFamily, TariffTransportMode } from "@prisma/client";
 import { describe, expect, it } from "vitest";
 
 import { TariffRepoError } from "@/lib/tariff/tariff-repo-error";
@@ -38,5 +39,15 @@ describe("option lists", () => {
     expect(TARIFF_CHARGE_FAMILY_OPTIONS).toContain("MAIN_CARRIAGE");
     expect(TARIFF_TRANSPORT_MODE_OPTIONS).toContain("OCEAN");
     expect(TARIFF_TRANSPORT_MODE_OPTIONS).toHaveLength(6);
+  });
+
+  it("lists every TariffChargeFamily and TariffTransportMode exactly once (UI selects stay in sync)", () => {
+    const prismaFamilies = new Set<string>(Object.values(TariffChargeFamily));
+    const libFamilies = new Set<string>(TARIFF_CHARGE_FAMILY_OPTIONS);
+    expect(libFamilies).toEqual(prismaFamilies);
+
+    const prismaModes = new Set<string>(Object.values(TariffTransportMode));
+    const libModes = new Set<string>(TARIFF_TRANSPORT_MODE_OPTIONS);
+    expect(libModes).toEqual(prismaModes);
   });
 });

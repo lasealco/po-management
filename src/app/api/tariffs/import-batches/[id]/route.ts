@@ -9,6 +9,7 @@ import {
   TARIFF_IMPORT_REVIEW_STATUS_SET,
 } from "@/lib/tariff/import-batch-statuses";
 import { getDemoTenant } from "@/lib/demo-tenant";
+import { confidenceScoreFromPatchBody } from "@/app/api/tariffs/_lib/confidence-score-patch-field";
 import { jsonFromTariffError } from "@/app/api/tariffs/_lib/tariff-api-error";
 
 export const dynamic = "force-dynamic";
@@ -74,6 +75,13 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   if (typeof o.sourceReference === "string" || o.sourceReference === null) {
     patch.sourceReference = typeof o.sourceReference === "string" ? o.sourceReference.trim() || null : null;
   }
+  const confidencePatch = confidenceScoreFromPatchBody(o);
+  if (!confidencePatch.ok) {
+    return toApiErrorResponse({ error: confidencePatch.message, code: "BAD_INPUT", status: 400 });
+  }
+  if ("confidenceScore" in confidencePatch.patch) {
+    patch.confidenceScore = confidencePatch.patch.confidenceScore;
+  }
 
   if (Object.keys(patch).length === 0) {
     return toApiErrorResponse({ error: "No valid fields to update.", code: "BAD_INPUT", status: 400 });
@@ -91,11 +99,13 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         parseStatus: before.parseStatus,
         reviewStatus: before.reviewStatus,
         sourceReference: before.sourceReference,
+        confidenceScore: before.confidenceScore,
       },
       newValue: {
         parseStatus: updated.parseStatus,
         reviewStatus: updated.reviewStatus,
         sourceReference: updated.sourceReference,
+        confidenceScore: updated.confidenceScore,
       },
     });
     return NextResponse.json({ batch: updated });
