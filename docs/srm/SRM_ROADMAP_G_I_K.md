@@ -8,6 +8,11 @@
 - **Notifications:** `GET /api/srm/notifications?unread=1` filters to unread; **POST** `{ markAllRead: true }` marks all for the current user; notifications page: **Unread only** toggle, **Mark all as read** (primary CTA).
 - **Not in G-v1:** email, webhooks, custom stage automation beyond this single rule.
 
+### I-v1 (landed)
+
+- **Audit-friendly manifest export:** `GET /api/suppliers/[id]/srm-documents?format=csv` returns **metadata only** (same filters as the JSON list, e.g. `includeArchived=1` when the operator checks **Include archived** on the Compliance tab). The CSV does **not** include `fileUrl` (safer to share in audits and tickets). The Compliance tab exposes **Download manifest (CSV)**.
+- **Not in I-v1:** new Prisma document columns, DMS state machine, retention, approval routing.
+
 **Non-goals for this program (unless you re-prioritize):** **H** (supplier self-service portal), **J** (KPI/FX/ERP integration depth) — see [`SRM_FINISH_SLICES.md`](./SRM_FINISH_SLICES.md) Post-MVP.
 
 ---

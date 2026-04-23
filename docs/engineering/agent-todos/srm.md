@@ -42,7 +42,7 @@ Use the **phase table** in [`SRM_FINISH_SLICES.md` (Post-MVP)](../../srm/SRM_FIN
 
 - [ ] **Phase G** — Deeper **lifecycle** (staged capture, notifications) — **priority 1** · roadmap: [`SRM_ROADMAP_G_I_K` § G](../../srm/SRM_ROADMAP_G_I_K.md) · **G-v1 shipped:** auto-**cleared** when all tasks done, notification unread filter + mark all read · *still open: email / webhooks, richer automation*
 - [ ] **Phase H** — **Supplier portal** (external login) — *de-prioritised for G/I/K program;* *(started: `User.portalLinkedSupplierId`, `/srm/portal`, `GET /api/srm/portal/me`)*
-- [ ] **Phase I** — **Compliance DMS v2** (beyond vault v1) — **priority 2** · roadmap: [`SRM_ROADMAP_G_I_K` § I](../../srm/SRM_ROADMAP_G_I_K.md) · *(started: revision groups + new-version upload + matrix UI)*
+- [ ] **Phase I** — **Compliance DMS v2** (beyond vault v1) — **priority 2** · roadmap: [`SRM_ROADMAP_G_I_K` § I](../../srm/SRM_ROADMAP_G_I_K.md) · **I-v1 shipped:** SRM document **metadata CSV** manifest on Compliance (`format=csv`, no `fileUrl`) · *still open: DMS state machine, retention, approval routing, export bundle with blobs*
 - [ ] **Phase J** — **KPI + integration** depth (FX, more payloads, ERP) — *de-prioritised for G/I/K program;* *(started: operational signals on analytics + integration snapshot)*
 - [ ] **Phase K** — **Field-level permissions**, **wireframe parity**, **rules engine** — **priority 3** · roadmap: [`SRM_ROADMAP_G_I_K` § K](../../srm/SRM_ROADMAP_G_I_K.md) · *(started: `canViewSupplierSensitiveFields` + `redact-supplier-sensitive`)*
 

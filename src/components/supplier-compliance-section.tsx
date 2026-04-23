@@ -64,6 +64,10 @@ export function SupplierComplianceSection({
   const [replaceTarget, setReplaceTarget] = useState<DocRow | null>(null);
 
   const q = includeArchived ? "?includeArchived=1" : "";
+  const manifestParams = new URLSearchParams({ format: "csv" });
+  if (includeArchived) manifestParams.set("includeArchived", "1");
+  const manifestHref = `/api/suppliers/${supplierId}/srm-documents?${manifestParams.toString()}`;
+
   const load = useCallback(async () => {
     setError(null);
     const res = await fetch(`/api/suppliers/${supplierId}/srm-documents${q}`);
@@ -254,16 +258,24 @@ export function SupplierComplianceSection({
         </p>
       )}
 
-      <div className="mt-6 flex items-center justify-between gap-2">
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Library</p>
-        <label className="flex items-center gap-2 text-xs text-zinc-600">
-          <input
-            type="checkbox"
-            checked={includeArchived}
-            onChange={(e) => setIncludeArchived(e.target.checked)}
-          />
-          Include archived
-        </label>
+        <div className="flex flex-wrap items-center gap-3">
+          <a
+            href={manifestHref}
+            className="text-xs font-medium text-[var(--arscmp-primary)] underline-offset-2 hover:underline"
+          >
+            Download manifest (CSV)
+          </a>
+          <label className="flex items-center gap-2 text-xs text-zinc-600">
+            <input
+              type="checkbox"
+              checked={includeArchived}
+              onChange={(e) => setIncludeArchived(e.target.checked)}
+            />
+            Include archived
+          </label>
+        </div>
       </div>
 
       {docs.length === 0 ? (

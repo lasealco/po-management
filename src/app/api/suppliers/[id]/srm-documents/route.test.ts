@@ -55,7 +55,7 @@ describe("GET /api/suppliers/[id]/srm-documents", () => {
   });
 
   it("returns documents when authorized", async () => {
-    findFirstMock.mockResolvedValueOnce({ id: "s1" });
+    findFirstMock.mockResolvedValueOnce({ id: "s1", name: "Acme", code: "ACME" });
     findManyMock.mockResolvedValueOnce([
       {
         id: "d1",
@@ -84,6 +84,43 @@ describe("GET /api/suppliers/[id]/srm-documents", () => {
     const body = (await res.json()) as { documents: { id: string }[] };
     expect(body.documents).toHaveLength(1);
     expect(body.documents[0].id).toBe("d1");
+  });
+
+  it("returns CSV manifest when format=csv (no fileUrl in body)", async () => {
+    findFirstMock.mockResolvedValueOnce({ id: "s1", name: "Acme Co", code: "AC-1" });
+    findManyMock.mockResolvedValueOnce([
+      {
+        id: "d1",
+        documentType: "other",
+        status: "active",
+        title: null,
+        fileName: "a.pdf",
+        mimeType: "application/pdf",
+        fileSize: 10,
+        fileUrl: "https://example.com/a.pdf",
+        expiresAt: null,
+        revisionGroupId: "d1",
+        revisionNumber: 1,
+        supersedesDocumentId: null,
+        createdAt: new Date("2026-01-01T00:00:00.000Z"),
+        updatedAt: new Date("2026-01-02T00:00:00.000Z"),
+        uploadedBy: { id: "u1", name: "A", email: "a@x.com" },
+        lastModifiedBy: null,
+      },
+    ]);
+    const { GET } = await import("./route");
+    const res = await GET(
+      new Request("http://localhost/api/s1/srm-documents?format=csv&includeArchived=1"),
+      { params: Promise.resolve({ id: "s1" }) },
+    );
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")?.includes("text/csv")).toBe(true);
+    expect(res.headers.get("Content-Disposition")?.includes("attachment")).toBe(true);
+    const text = await res.text();
+    expect(text).toContain("supplierName,supplierCode");
+    expect(text).toContain("Acme Co,AC-1");
+    expect(text).not.toContain("fileUrl");
+    expect(text).not.toContain("https://example.com");
   });
 });
 

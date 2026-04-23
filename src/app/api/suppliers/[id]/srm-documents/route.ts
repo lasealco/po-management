@@ -10,6 +10,7 @@ import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { appendSrmSupplierDocumentAudit } from "@/lib/srm/srm-supplier-document-audit";
+import { buildSrmDocumentManifestCsv } from "@/lib/srm/srm-document-manifest-csv";
 import { parseSrmSupplierDocumentType, toSrmSupplierDocumentJson } from "@/lib/srm/srm-supplier-document-helpers";
 import { prisma } from "@/lib/prisma";
 
@@ -63,15 +64,17 @@ export async function GET(
     return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   }
 
+  const url = new URL(request.url);
+  const wantsCsv = url.searchParams.get("format")?.toLowerCase() === "csv";
+
   const supplier = await prisma.supplier.findFirst({
     where: { id: supplierId, tenantId: tenant.id },
-    select: { id: true },
+    select: { id: true, name: true, code: true },
   });
   if (!supplier) {
     return toApiErrorResponse({ error: "Not found.", code: "NOT_FOUND", status: 404 });
   }
 
-  const url = new URL(request.url);
   const includeArchived = url.searchParams.get("includeArchived") === "1";
   const where: {
     tenantId: string;
@@ -90,6 +93,22 @@ export async function GET(
     orderBy: [{ updatedAt: "desc" }],
     include: listInclude,
   });
+
+  if (wantsCsv) {
+    const csv = buildSrmDocumentManifestCsv(
+      { name: supplier.name, code: supplier.code },
+      rows,
+    );
+    const slug = (supplier.code ?? supplier.id).replace(/[^\w.\-]+/g, "-").slice(0, 80) || "manifest";
+    const filename = `srm-documents-${slug}-manifest.csv`;
+    return new NextResponse(csv, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/csv; charset=utf-8",
+        "Content-Disposition": `attachment; filename="${filename}"`,
+      },
+    });
+  }
 
   return NextResponse.json({ documents: rows.map(toSrmSupplierDocumentJson) });
 }
