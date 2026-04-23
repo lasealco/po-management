@@ -16,7 +16,7 @@
 - [x] **Slice 2 — Definition-of-done checklist** — `GAP_MAP.md` § **SRM MVP sign-off checklist (reviewers)**.
 - [x] **Slice 3 — Slice tracker table** in `GAP_MAP.md`
 - [x] **Phase A (slices 4–10)** — UX + `bookingConfirmationSlaHours` + office edit + supplier GET tests (see `GAP_MAP.md` tracker note)
-- [x] **Phase B (slices 11–15)** — approval state machine + PO activation guard + onboarding tasks + assignee/due + notification hook stub (`GAP_MAP.md` Phase B note)
+- [x] **Phase B (slices 11–15)** — approval state machine + PO activation guard + onboarding tasks + assignee/due + notification hook stub; route tests for **`GET`/`PATCH` onboarding-task APIs** (`GAP_MAP.md` Phase B note)
 - [x] **Phase C (slices 16–20)** — compliance document vault: Prisma + APIs + `/srm/[id]` Compliance tab + audit log + read-only vs edit (`GAP_MAP.md` Phase C note)
 - [x] **Phase D (slices 21–24)** — `/srm/analytics` + aggregates + concentration + booking SLA panel + API (`GAP_MAP.md` Phase D note)
 - [x] **Phase E (slices 25–28)** — inbound upsert v1 + idempotency + export + `INTEGRATION.md` (`GAP_MAP.md` Phase E note)

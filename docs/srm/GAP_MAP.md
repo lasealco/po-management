@@ -36,7 +36,11 @@ Add **Issue** / **PR** when you file work; the **30-slice** program is **closed*
 | 8 | Contacts & offices CRUD | — | (landed) |
 | 9 | Capabilities matrix UX | — | (landed) |
 | 10 | API guard pass (read) | — | (landed) |
-| 11–15 | Phase B — lifecycle & onboarding | — | (landed) |
+| 11 | Phase B — approval / status transitions | — | (landed) |
+| 12 | Phase B — activation guard (PO usage) | — | (landed) |
+| 13 | Phase B — onboarding task list v1 | — | (landed) |
+| 14 | Phase B — assignee & due (operator workflow) | — | (landed) |
+| 15 | Phase B — notification hook (stub) | — | (landed) |
 | 16–20 | Phase C — compliance & documents | — | (landed) |
 | 21–24 | Phase D — KPI & analytics | — | (landed) |
 | 25–28 | Phase E — integration pack | — | (landed) |
@@ -44,7 +48,7 @@ Add **Issue** / **PR** when you file work; the **30-slice** program is **closed*
 
 **Phase A (slices 4–10) — shipped in repo:** mobile partner cards + zero-state on `/srm`; create redirects to `/srm/[id]` with validation; 360 **Profile / Contacts & sites / Capabilities / Orders / Compliance / Activity** tabs (sticky nav); **booking confirmation SLA (hours)** on profile PATCH + UI; **office inline edit**; capabilities empty CTA + primary add button; **Vitest** for `GET /api/suppliers` and `GET /api/suppliers/[id]` grant + tenant gates.
 
-**Phase B (slices 11–15) — shipped in repo:** `supplier-approval-transitions` enforced on **`POST /api/suppliers/[id]/approval`** (`approve` / `reject` / `reopen`) and **`PATCH /api/suppliers/[id]`** when `approvalStatus` changes; **`supplierOperationalBlockReason`** on **`POST /api/orders`** (line supplier + forwarder); **`SupplierOnboardingTask`** model + **`GET/PATCH`** onboarding task APIs; default tasks seeded on create + first 360 load; **Onboarding** tab on `/srm/[id]` with assignee/due/notes + **Assigned onboarding** filter on `/srm`; **`srmNotificationHook`** structured log stub on approval decisions; docs: **`docs/srm/SRM_ACTIVATION_GUARDS.md`**; Vitest for approval transitions + list-query `onboardingMine`.
+**Phase B (slices 11–15) — shipped in repo:** `supplier-approval-transitions` enforced on **`POST /api/suppliers/[id]/approval`** (`approve` / `reject` / `reopen`) and **`PATCH /api/suppliers/[id]`** when `approvalStatus` changes; **`supplierOperationalBlockReason`** on **`POST /api/orders`** (line supplier + forwarder); **`SupplierOnboardingTask`** model + **`GET/PATCH`** onboarding task APIs; default tasks seeded on create + first 360 load; **Onboarding** tab on `/srm/[id]` with assignee/due/notes + **Assigned onboarding** filter on `/srm`; **`srmNotificationHook`** structured log stub on approval decisions; docs: **`docs/srm/SRM_ACTIVATION_GUARDS.md`**; Vitest for approval transitions, list-query `onboardingMine`, and **`GET/PATCH` onboarding-task routes** (grant + 404 + happy path).
 
 **Phase C (slices 16–20) — shipped in repo:** **`SrmSupplierDocument`** + **`SrmSupplierDocumentAuditLog`** (Prisma); **`GET`/`POST`** `/api/suppliers/[id]/srm-documents`, **`PATCH`/`DELETE`** `/api/suppliers/[id]/srm-documents/[docId]` (archive), **`GET`** `.../audit-logs`; **Compliance** tab on `/srm/[id]` with upload (edit grant), list, expiry badges (query-time), view-only messaging, audit trail; local dev uploads under `public/uploads/srm-documents` or Blob in production; Vitest for document list + grant gate on POST.
 
