@@ -71,7 +71,9 @@ Work **one issue at a time** (parallel agents only on **non-overlapping paths**)
 
 ---
 
-## Phase 3 — Operations “map” & cross-surface visibility (epic — scope in issues first)
+## Phase 3 — Operations “map” & cross-surface visibility (epic)
+
+**Status (2026-04-23):** **3.1–3.3 done** — [product brief + layers](../engineering/CONTROL_TOWER_OPERATIONS_MAP_PHASE3.md), **Leaflet** + **`product-trace-geo`** (derived pins from booking/leg codes, no `Shipment` lat/lng), **`/control-tower/map`** + **`GET /api/control-tower/map-pins`** with workbench-parity query params. **3.4** (WMS floor / “globe”) still optional.
 
 **Intent:** Your product ask for a **map** (where shipments, orders, **action-required** work sits) is **not** a single checkbox in GAP; it is a **composed experience** that may pull from:
 
@@ -79,14 +81,14 @@ Work **one issue at a time** (parallel agents only on **non-overlapping paths**)
 - **WMS (warehouse):** existing **bin / rack** grid and zone visualization where 🟡 in GAP.
 - **Orders / CRM links** (read-only or deep links) depending on tenant grants.
 
-| Step | Action |
-|------|--------|
-| 3.1 | **Write one GitHub epic** (or product brief): map **layers** (shipments, orders, exception pins?, WMS site?), **tenant grants**, and **MVP: read-only + deep links** vs “live editing.” |
-| 3.2 | **Spike** — map library + GeoJSON or lat/lng source of truth (shipments/addresses already in model vs net-new). |
-| 3.3 | **MVP** — e.g. Control Tower “Map” tab or `/control-tower/map` that reuses list filters and shows pins + workbench link. |
-| 3.4 | **Iterate** — WMS floor map + CT globe only if 3.3 proves value. |
+| Step | Action | Status |
+|------|--------|--------|
+| 3.1 | **Product brief**: map **layers** (shipments, orders, exception pins?, WMS site?), **tenant grants**, **MVP: read-only + deep links** | **Done** — [`CONTROL_TOWER_OPERATIONS_MAP_PHASE3.md`](../engineering/CONTROL_TOWER_OPERATIONS_MAP_PHASE3.md) |
+| 3.2 | **Spike** — map library + source of truth for coordinates | **Done** — Leaflet (repo); pins from `product-trace-geo` + booking/leg codes |
+| 3.3 | **MVP** — `/control-tower/map` reuses workbench list filters, pins + 360 + workbench link | **Done** — subnav **Map**; `shipments-list-query-from-search-params.ts` shared with **`GET …/shipments`** |
+| 3.4 | **Iterate** — WMS floor map + CT globe | **Open** (defer until 3.3 adoption) |
 
-**Exit:** Either a **shipped MVP** behind `org.controltower` (and relevant WMS grants) or a **documented “parked”** decision in GAP (why we paused).
+**Exit (met for MVP):** Shipped read-only **Control Tower** map behind `org.controltower` **view**; WMS/CRM map layers still future.
 
 ---
 
@@ -115,4 +117,5 @@ Work **one issue at a time** (parallel agents only on **non-overlapping paths**)
 |------|--------|
 | 2026-04-23 | **Phase 0 complete** (docs + GAP + ApiHub/verify gate); see Phase 0 table above. |
 | 2026-04-23 | **Phase 2.1 (WMS) — saved ledger views:** `WmsSavedLedgerView` + `/api/wms/saved-ledger-views`, `wms/GAP_MAP.md` + `wms.md` updated. |
+| 2026-04-23 | **Phase 3 (CT operations map) MVP:** `/control-tower/map`, `GET /api/control-tower/map-pins`, `CONTROL_TOWER_OPERATIONS_MAP_PHASE3.md`, `controltower/GAP_MAP.md` R3 + route table. |
 | 2026-04-23 | Initial phased roadmap for Control Tower + WMS (phases 0–3 + cross-cutting). |

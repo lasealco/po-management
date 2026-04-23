@@ -16,6 +16,7 @@ const primaryBase: SubNavItem[] = [
   { href: "/control-tower", label: "Dashboard" },
   { href: "/control-tower/dashboard", label: "My Dashboard" },
   { href: "/control-tower/workbench", label: "Workbench" },
+  { href: "/control-tower/map", label: "Map" },
   { href: "/control-tower/shipments/new", label: "Booking", ariaLabel: "New booking" },
 ];
 
@@ -64,6 +65,8 @@ export function ControlTowerSubNav({ includeDigestNav = false }: { includeDigest
           ? pathname === "/control-tower"
           : href === "/control-tower/shipments/new"
             ? pathname === href
+            : href === "/control-tower/map"
+              ? pathname === href
             : href === "/control-tower/workbench"
               ? pathname === href ||
                 pathname.startsWith(`${href}/`) ||
