@@ -17,6 +17,7 @@ SRM “finished” for MVP is defined and sequenced in **[`SRM_FINISH_SLICES.md`
 | Resource | Location |
 |----------|----------|
 | Slice list, acceptance hints, MVP definition | [`SRM_FINISH_SLICES.md`](./SRM_FINISH_SLICES.md) |
+| **Post-MVP (optional) — 5 phases G–K** (⏸ / follow-ups; *not* slices 31+) | [`SRM_FINISH_SLICES.md` § Post-MVP](./SRM_FINISH_SLICES.md) |
 | GitHub label & allowed paths | [`docs/engineering/agent-todos/srm.md`](../engineering/agent-todos/srm.md) |
 
 ### Slice tracker (issues & PRs)

@@ -24,6 +24,8 @@
 
 **SRM MVP (finish program scope)** is **signed off in-repo**; use `GAP_MAP.md` for what is deferred beyond MVP.
 
+**After MVP (not sliced):** optional **5 post-MVP phases (G–K)** — see [`SRM_FINISH_SLICES.md` § Post-MVP](../../srm/SRM_FINISH_SLICES.md) (lifecycle → portal → compliance v2 → KPI/integration depth → enterprise polish). Create issues per row when you prioritize; that is a **separate** program from slices **1–30**.
+
 ---
 
 ## Current app baseline (context)
@@ -34,9 +36,13 @@ Routes exist: `/srm`, `/srm/new`, `/srm/[id]`, supplier links from suppliers hub
 
 ## Suggested follow-ups (post–finish program; create an issue per item)
 
-- [ ] Deeper **lifecycle** — supplier portal, staged capture, in-app notifications (see PDF specs; out of **SRM MVP** in `SRM_FINISH_SLICES.md`).
-- [ ] **Field-level permissions** from `srm_permission_and_visibility_matrix_*.pdf` beyond current `org.*` grants.
-- [ ] **Pixel / wireframe parity** with `srm_ux_ui_design_guideline_and_wireframe_pack_*.pdf` where product asks for it.
+Use the **phase table** in [`SRM_FINISH_SLICES.md` (Post-MVP)](../../srm/SRM_FINISH_SLICES.md) as the index; checkboxes here are a short hand-off:
+
+- [ ] **Phase G** — Deeper **lifecycle** (staged capture, notifications) — not portal
+- [ ] **Phase H** — **Supplier portal** (external login)
+- [ ] **Phase I** — **Compliance DMS v2** (beyond vault v1)
+- [ ] **Phase J** — **KPI + integration** depth (FX, more payloads, ERP)
+- [ ] **Phase K** — **Field-level permissions**, **wireframe parity**, **rules engine** (as separate issues)
 
 ---
 

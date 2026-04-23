@@ -106,6 +106,22 @@
 
 ---
 
+## Post-MVP (optional) — **5 phases (G–K)** — *not* part of the 30 slices
+
+After **Phase F** (slices 29–30), **no slice numbers** are defined in repo until you start a new program. The **⏸** rows in `GAP_MAP.md` and the follow-ups in `docs/engineering/agent-todos/srm.md` are grouped here for planning only — open **one epic/issue per row** when you prioritize.
+
+| Phase | Name | What it covers (deferred from MVP / PDFs) |
+|-------|------|---------------------------------------------|
+| **G** | **Deep lifecycle (operator-side)** | Staged capture beyond today’s checklist, notification bus (in-app / email), richer onboarding per lifecycle PDF — **excludes** external supplier login. |
+| **H** | **Supplier self-service portal** | External identity, supplier-facing flows, self-service (called out as post-MVP in the finish program). |
+| **I** | **Compliance / document control v2** | Full DMS-style workflow, revision matrix, beyond **vault v1** (`SrmSupplierDocument` + audit). |
+| **J** | **KPI, risk & integration depth** | Full **`srm_performance_risk_and_kpi_spec` depth** (e.g. FX, forecasting) + **remaining integration payloads** + outbound/ERP from **`srm_integration_and_api_payload_pack`**. |
+| **K** | **Enterprise polish** | **Field-level** permission matrix, **pixel/wireframe** pack parity, **workflow/rules** engine depth, multi-tenant cross-org (if in scope) — *pick as separate issues*. |
+
+**Count:** **5 phases** (G through K), separate from **6 MVP phases** (A–F). Slices **1–30** map only to **A–F**.
+
+---
+
 ## How to run this program
 
 1. Create **GitHub issue per slice** (Agent task template): title `srm(finish): slice N — &lt;short name&gt;`, body = copy the row + allowed paths + verify command.
