@@ -15,18 +15,32 @@ export type OnboardingTaskRow = {
   notes: string | null;
 };
 
+const ONBOARDING_STAGES = [
+  { value: "intake" as const, label: "Intake" },
+  { value: "diligence" as const, label: "Diligence" },
+  { value: "review" as const, label: "Review" },
+  { value: "cleared" as const, label: "Cleared" },
+];
+
 export function SupplierOnboardingSection({
   supplierId,
   assigneeOptions,
   viewerUserId,
+  srmOnboardingStage,
+  canEdit,
+  onStageUpdated,
 }: {
   supplierId: string;
   assigneeOptions: { id: string; name: string; email: string }[];
   viewerUserId: string;
+  srmOnboardingStage: (typeof ONBOARDING_STAGES)[number]["value"];
+  canEdit: boolean;
+  onStageUpdated: (next: (typeof ONBOARDING_STAGES)[number]["value"]) => void;
 }) {
   const [tasks, setTasks] = useState<OnboardingTaskRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [stageBusy, setStageBusy] = useState(false);
 
   const load = useCallback(async () => {
     setError(null);
@@ -47,6 +61,24 @@ export function SupplierOnboardingSection({
     }, 0);
     return () => window.clearTimeout(id);
   }, [load]);
+
+  async function patchStage(next: (typeof ONBOARDING_STAGES)[number]["value"]) {
+    if (!canEdit) return;
+    setStageBusy(true);
+    setError(null);
+    const res = await fetch(`/api/suppliers/${supplierId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ srmOnboardingStage: next }),
+    });
+    const payload: unknown = await res.json().catch(() => null);
+    setStageBusy(false);
+    if (!res.ok) {
+      setError(apiClientErrorMessage(payload ?? {}, "Could not update onboarding stage."));
+      return;
+    }
+    onStageUpdated(next);
+  }
 
   async function patchTask(taskId: string, body: Record<string, unknown>) {
     setBusyId(taskId);
@@ -79,7 +111,34 @@ export function SupplierOnboardingSection({
   return (
     <section className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
       <h2 className="text-sm font-semibold text-zinc-900">Onboarding checklist</h2>
-      <p className="mt-1 text-xs font-medium text-zinc-700">
+      <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50/80 p-4">
+        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Operator pipeline (Phase G)</p>
+        <p className="mt-1 text-xs text-zinc-600">
+          Track where this partner sits in diligence — alongside the task checklist below. Does not replace approval
+          status.
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {ONBOARDING_STAGES.map((s) => {
+            const active = srmOnboardingStage === s.value;
+            return (
+              <button
+                key={s.value}
+                type="button"
+                disabled={!canEdit || stageBusy}
+                onClick={() => void patchStage(s.value)}
+                className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                  active
+                    ? "border-[var(--arscmp-primary)] bg-white text-zinc-900 shadow-sm"
+                    : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300"
+                } disabled:opacity-50`}
+              >
+                {s.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <p className="mt-4 text-xs font-medium text-zinc-700">
         {doneCount} / {tasks.length} complete ({pct}%)
       </p>
       <p className="mt-1 text-xs text-zinc-500">

@@ -112,7 +112,7 @@ After **Phase F** (slices 29–30), **no slice numbers** are defined in repo unt
 
 | Phase | Name | What it covers (deferred from MVP / PDFs) |
 |-------|------|---------------------------------------------|
-| **G** | **Deep lifecycle (operator-side)** | Staged capture beyond today’s checklist, notification bus (in-app / email), richer onboarding per lifecycle PDF — **excludes** external supplier login. |
+| **G** | **Deep lifecycle (operator-side)** | Staged capture beyond today’s checklist, notification bus (in-app / email), richer onboarding per lifecycle PDF — **excludes** external supplier login. **Started in repo:** operator **pipeline stage** (`Supplier.srmOnboardingStage` on `/srm/[id]` Onboarding tab) + persisted **in-app notifications** (`SrmOperatorNotification`, assignee on onboarding task → `/srm/notifications`). Email/webhooks still future. |
 | **H** | **Supplier self-service portal** | External identity, supplier-facing flows, self-service (called out as post-MVP in the finish program). |
 | **I** | **Compliance / document control v2** | Full DMS-style workflow, revision matrix, beyond **vault v1** (`SrmSupplierDocument` + audit). |
 | **J** | **KPI, risk & integration depth** | Full **`srm_performance_risk_and_kpi_spec` depth** (e.g. FX, forecasting) + **remaining integration payloads** + outbound/ERP from **`srm_integration_and_api_payload_pack`**. |

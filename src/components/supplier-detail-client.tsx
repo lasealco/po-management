@@ -51,6 +51,8 @@ export type SupplierDetailSnapshot = {
   internalNotes: string | null;
   /** Hours to confirm booking (logistics); null = tenant default. */
   bookingConfirmationSlaHours: number | null;
+  /** Phase G: operator onboarding pipeline (parallel to checklist). */
+  srmOnboardingStage: "intake" | "diligence" | "review" | "cleared";
   contacts: SupplierContactRow[];
   offices: Array<{
     id: string;
@@ -93,6 +95,7 @@ export function SupplierDetailClient({
   detailNavContext = "suppliers",
   onboardingAssigneeOptions = undefined,
   viewerUserId = undefined,
+  initialSrmTab = undefined,
 }: {
   initial: SupplierDetailSnapshot;
   canEdit?: boolean;
@@ -103,6 +106,8 @@ export function SupplierDetailClient({
   detailNavContext?: "suppliers" | "srm";
   onboardingAssigneeOptions?: { id: string; name: string; email: string }[];
   viewerUserId?: string;
+  /** Deep-link from `/srm/[id]?tab=onboarding` etc. */
+  initialSrmTab?: SrmSupplierTabId;
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -150,6 +155,9 @@ export function SupplierDetailClient({
       ? String(initial.bookingConfirmationSlaHours)
       : "",
   );
+  const [srmOnboardingStage, setSrmOnboardingStage] = useState(
+    initial.srmOnboardingStage,
+  );
 
   useEffect(() => {
     startTransition(() => {
@@ -181,6 +189,7 @@ export function SupplierDetailClient({
           ? String(initial.bookingConfirmationSlaHours)
           : "",
       );
+      setSrmOnboardingStage(initial.srmOnboardingStage);
     });
     // Intentionally only re-sync when `initial.updatedAt` changes (full `initial` deps would over-reset).
     // eslint-disable-next-line react-hooks/exhaustive-deps -- initial.* fields track one payload version
@@ -206,7 +215,12 @@ export function SupplierDetailClient({
   const [editC, setEditC] = useState<Partial<SupplierContactRow>>({});
 
   const isSrmShell = detailNavContext === "srm";
-  const [srmTab, setSrmTab] = useState<SrmSupplierTabId>("overview");
+  const [srmTab, setSrmTab] = useState<SrmSupplierTabId>(() => {
+    if (initialSrmTab && SRM_SUPPLIER_TABS.some((t) => t.id === initialSrmTab)) {
+      return initialSrmTab;
+    }
+    return "overview";
+  });
 
   async function saveSupplierProfile() {
     setError(null);
@@ -1451,6 +1465,12 @@ export function SupplierDetailClient({
           supplierId={initial.id}
           assigneeOptions={onboardingAssigneeOptions}
           viewerUserId={viewerUserId}
+          srmOnboardingStage={srmOnboardingStage}
+          canEdit={canEdit}
+          onStageUpdated={(next) => {
+            setSrmOnboardingStage(next);
+            router.refresh();
+          }}
         />
       ) : null}
       {isSrmShell && srmTab === "onboarding" && (!onboardingAssigneeOptions || !viewerUserId) ? (

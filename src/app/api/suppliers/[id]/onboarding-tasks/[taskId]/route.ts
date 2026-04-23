@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
-import { requireApiGrant } from "@/lib/authz";
+import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
+import {
+  emitSrmOperatorNotification,
+  SRM_NOTIFICATION_KIND,
+} from "@/lib/srm/emit-srm-operator-notification";
 
 export async function PATCH(
   request: Request,
@@ -27,11 +31,16 @@ export async function PATCH(
     return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   }
 
-  const task = await prisma.supplierOnboardingTask.findFirst({
+  const taskBefore = await prisma.supplierOnboardingTask.findFirst({
     where: { id: taskId, tenantId: tenant.id, supplierId },
-    select: { id: true },
+    select: {
+      id: true,
+      assigneeUserId: true,
+      title: true,
+      supplier: { select: { name: true } },
+    },
   });
-  if (!task) {
+  if (!taskBefore) {
     return toApiErrorResponse({ error: "Not found.", code: "NOT_FOUND", status: 404 });
   }
 
@@ -97,6 +106,7 @@ export async function PATCH(
     return toApiErrorResponse({ error: "No valid fields to update.", code: "BAD_INPUT", status: 400 });
   }
 
+  const prevAssignee = taskBefore.assigneeUserId;
   const updated = await prisma.supplierOnboardingTask.update({
     where: { id: taskId },
     data,
@@ -112,6 +122,27 @@ export async function PATCH(
       assignee: { select: { id: true, name: true, email: true } },
     },
   });
+
+  if (
+    data.assigneeUserId !== undefined &&
+    typeof data.assigneeUserId === "string" &&
+    data.assigneeUserId &&
+    data.assigneeUserId !== prevAssignee
+  ) {
+    const actorUserId = await getActorUserId();
+    if (actorUserId && data.assigneeUserId !== actorUserId) {
+      await emitSrmOperatorNotification(prisma, {
+        tenantId: tenant.id,
+        userId: data.assigneeUserId,
+        kind: SRM_NOTIFICATION_KIND.ONBOARDING_TASK_ASSIGNED,
+        title: `Onboarding: ${taskBefore.supplier.name}`,
+        body: `You were assigned: ${taskBefore.title}`,
+        supplierId,
+        taskId,
+        actorUserId,
+      });
+    }
+  }
 
   return NextResponse.json({
     task: {

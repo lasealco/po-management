@@ -11,12 +11,38 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
+const SRM_TAB_IDS = new Set([
+  "overview",
+  "contacts",
+  "capabilities",
+  "onboarding",
+  "orders",
+  "compliance",
+  "activity",
+]);
+
 export default async function SrmSupplierDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { id } = await params;
+  const sp = (await searchParams) ?? {};
+  const raw = sp.tab;
+  const tabParam = Array.isArray(raw) ? raw[0] : raw;
+  const initialSrmTab =
+    typeof tabParam === "string" && SRM_TAB_IDS.has(tabParam)
+      ? (tabParam as
+          | "overview"
+          | "contacts"
+          | "capabilities"
+          | "onboarding"
+          | "orders"
+          | "compliance"
+          | "activity")
+      : undefined;
   const access = await getViewerGrantSet();
   if (!access) notFound();
 
@@ -89,6 +115,7 @@ export default async function SrmSupplierDetailPage({
           detailNavContext="srm"
           onboardingAssigneeOptions={onboardingAssigneeOptions}
           viewerUserId={access.user.id}
+          initialSrmTab={initialSrmTab}
         />
       </main>
     </div>

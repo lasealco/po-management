@@ -118,6 +118,12 @@ export default async function SrmPage({
   const canApprove = permissions.canApproveSuppliers;
   const canViewOrders = permissions.canViewOrders;
 
+  const unreadSrmNotifications = access.user
+    ? await prisma.srmOperatorNotification.count({
+        where: { tenantId: access.tenant.id, userId: access.user.id, readAt: null },
+      })
+    : 0;
+
   return (
     <div className="min-h-screen bg-zinc-50">
       <main className="mx-auto max-w-7xl px-6 py-10">
@@ -139,6 +145,17 @@ export default async function SrmPage({
               className="text-sm font-medium text-[var(--arscmp-primary)] hover:underline"
             >
               Analytics
+            </Link>
+            <Link
+              href="/srm/notifications"
+              className="text-sm font-medium text-[var(--arscmp-primary)] hover:underline"
+            >
+              Notifications
+              {unreadSrmNotifications > 0 ? (
+                <span className="ml-1 inline-flex min-w-[1.25rem] justify-center rounded-full bg-zinc-900 px-1.5 py-0.5 text-xs font-semibold text-white">
+                  {unreadSrmNotifications > 99 ? "99+" : unreadSrmNotifications}
+                </span>
+              ) : null}
             </Link>
             <Link href={`/suppliers?kind=${kind}`} className="text-sm text-zinc-600 underline hover:text-zinc-900">
               Open legacy supplier directory view

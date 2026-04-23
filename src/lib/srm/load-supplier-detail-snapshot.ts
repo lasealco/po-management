@@ -56,6 +56,16 @@ export async function loadSupplierDetailSnapshot(
 
   await ensureSupplierOnboardingTasks(prisma, tenantId, supplier.id);
 
+  const stage = supplier.srmOnboardingStage;
+  const srmOnboardingStage =
+    stage === "diligence"
+      ? "diligence"
+      : stage === "review"
+        ? "review"
+        : stage === "cleared"
+          ? "cleared"
+          : "intake";
+
   return {
     id: supplier.id,
     updatedAt: supplier.updatedAt.toISOString(),
@@ -87,6 +97,7 @@ export async function loadSupplierDetailSnapshot(
     defaultIncoterm: supplier.defaultIncoterm,
     internalNotes: supplier.internalNotes,
     bookingConfirmationSlaHours: supplier.bookingConfirmationSlaHours ?? null,
+    srmOnboardingStage,
     contacts: supplier.contacts,
     offices: supplier.offices,
     capabilities: supplier.serviceCapabilities.map((c) => ({

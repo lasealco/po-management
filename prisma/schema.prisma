@@ -102,6 +102,7 @@ model Tenant {
   srmSupplierDocuments            SrmSupplierDocument[]
   srmSupplierDocumentAuditLogs    SrmSupplierDocumentAuditLog[]
   srmIntegrationIdempotencies     SrmIntegrationIdempotency[]
+  srmOperatorNotifications        SrmOperatorNotification[]
 }
 
 /// Integration / API hub — registry row for an external or internal data source (Phase 1 stub).
@@ -439,6 +440,8 @@ model User {
   scriTaskLinksCreated            ScriEventTaskLink[]           @relation("ScriTaskLinkCreatedBy")
   scriTuningAutomationActorOf     ScriTenantTuning[]            @relation("ScriTuningAutomationActor")
   supplierOnboardingTasksAssigned  SupplierOnboardingTask[]      @relation("SupplierOnboardingTaskAssignee")
+  srmOperatorNotificationsReceived SrmOperatorNotification[]     @relation("SrmOperatorNotificationRecipient")
+  srmOperatorNotificationsAsActor  SrmOperatorNotification[]   @relation("SrmOperatorNotificationActor")
   srmDocumentsUploaded             SrmSupplierDocument[]         @relation("SrmSupplierDocumentUploadedBy")
   srmDocumentsLastTouched         SrmSupplierDocument[]         @relation("SrmSupplierDocumentLastTouchedBy")
   srmSupplierDocumentAuditAuthored SrmSupplierDocumentAuditLog[] @relation("SrmSupplierDocumentAuditActor")
@@ -518,6 +521,14 @@ enum SupplierApprovalStatus {
   rejected
 }
 
+/// Phase G (operator): coarse lifecycle step beyond the default checklist; not supplier portal.
+enum SrmOnboardingStage {
+  intake
+  diligence
+  review
+  cleared
+}
+
 model Supplier {
   id        String   @id @default(cuid())
   tenantId  String
@@ -531,6 +542,8 @@ model Supplier {
   srmCategory SrmSupplierCategory @default(product)
   /// Buyer-created suppliers start pending until an approver activates them.
   approvalStatus SupplierApprovalStatus @default(approved)
+  /// Operator-facing onboarding pipeline stage (Phase G; parallel to checklist tasks).
+  srmOnboardingStage SrmOnboardingStage @default(intake)
 
   /// Legal / registered business name if different from trade name.
   legalName String?
@@ -572,6 +585,7 @@ model Supplier {
   quoteRequestRecipients    QuoteRequestRecipient[]
   onboardingTasks           SupplierOnboardingTask[]
   srmDocuments              SrmSupplierDocument[]
+  srmOperatorNotifications SrmOperatorNotification[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -596,6 +610,7 @@ model SupplierOnboardingTask {
   tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
   assignee User?    @relation("SupplierOnboardingTaskAssignee", fields: [assigneeUserId], references: [id], onDelete: SetNull)
+  srmOperatorNotifications SrmOperatorNotification[]
 
   @@unique([supplierId, taskKey])
   @@index([tenantId, supplierId])
@@ -683,6 +698,32 @@ model SrmIntegrationIdempotency {
 
   @@unique([tenantId, surface, key])
   @@index([tenantId, createdAt])
+}
+
+/// Phase G: in-app row for buyers/operators (not supplier portal). Task assign + future hooks.
+model SrmOperatorNotification {
+  id         String   @id @default(cuid())
+  tenantId   String
+  userId     String
+  /// e.g. ONBOARDING_TASK_ASSIGNED
+  kind       String   @db.VarChar(64)
+  title      String   @db.VarChar(256)
+  body       String?  @db.Text
+  readAt     DateTime?
+  supplierId String?
+  /// Optional link for UI / deep-link.
+  taskId     String?
+  actorUserId String?
+  createdAt  DateTime @default(now())
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user     User     @relation("SrmOperatorNotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
+  supplier Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  task     SupplierOnboardingTask? @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  actor    User?    @relation("SrmOperatorNotificationActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, userId, readAt])
+  @@index([tenantId, userId, createdAt])
 }
 
 /// SRM: declared transport / service scope (modes, service lines, geography). See PRD “Service capabilities”.

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { Prisma, SrmSupplierCategory, SupplierApprovalStatus } from "@prisma/client";
+import { Prisma, SrmOnboardingStage, SrmSupplierCategory, SupplierApprovalStatus } from "@prisma/client";
 
 import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import {
@@ -140,6 +140,25 @@ export async function PATCH(
       }
     } else {
       return toApiErrorResponse({ error: "Invalid approvalStatus.", code: "BAD_INPUT", status: 400 });
+    }
+  }
+
+  if (o.srmOnboardingStage !== undefined) {
+    const v = o.srmOnboardingStage;
+    if (v === SrmOnboardingStage.intake || v === "intake") {
+      data.srmOnboardingStage = SrmOnboardingStage.intake;
+    } else if (v === SrmOnboardingStage.diligence || v === "diligence") {
+      data.srmOnboardingStage = SrmOnboardingStage.diligence;
+    } else if (v === SrmOnboardingStage.review || v === "review") {
+      data.srmOnboardingStage = SrmOnboardingStage.review;
+    } else if (v === SrmOnboardingStage.cleared || v === "cleared") {
+      data.srmOnboardingStage = SrmOnboardingStage.cleared;
+    } else {
+      return toApiErrorResponse({
+        error: "Invalid srmOnboardingStage (intake, diligence, review, cleared).",
+        code: "BAD_INPUT",
+        status: 400,
+      });
     }
   }
 
