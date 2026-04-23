@@ -56,6 +56,12 @@ export default async function SrmSupplierDetailPage({
     ? await fetchSupplierOrderAnalytics(prisma, tenant.id, snapshot.id)
     : null;
 
+  const onboardingAssigneeOptions = await prisma.user.findMany({
+    where: { tenantId: tenant.id, isActive: true },
+    select: { id: true, name: true, email: true },
+    orderBy: { name: "asc" },
+  });
+
   return (
     <div className="min-h-screen bg-zinc-50">
       <main className="mx-auto max-w-5xl px-6 py-10">
@@ -81,6 +87,8 @@ export default async function SrmSupplierDetailPage({
           canApprove={canApprove}
           orderHistory={orderHistory}
           detailNavContext="srm"
+          onboardingAssigneeOptions={onboardingAssigneeOptions}
+          viewerUserId={access.user.id}
         />
       </main>
     </div>

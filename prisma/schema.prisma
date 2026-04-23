@@ -98,6 +98,7 @@ model Tenant {
   scriEventRecommendations        ScriEventRecommendation[]
   scriWatchlistRules              ScriWatchlistRule[]
   scriTenantTuning                ScriTenantTuning?
+  supplierOnboardingTasks         SupplierOnboardingTask[]
 }
 
 /// Integration / API hub — registry row for an external or internal data source (Phase 1 stub).
@@ -434,6 +435,7 @@ model User {
   scriReviewLogsAuthored          ScriEventReviewLog[]          @relation("ScriReviewLogActor")
   scriTaskLinksCreated            ScriEventTaskLink[]           @relation("ScriTaskLinkCreatedBy")
   scriTuningAutomationActorOf     ScriTenantTuning[]            @relation("ScriTuningAutomationActor")
+  supplierOnboardingTasksAssigned  SupplierOnboardingTask[]      @relation("SupplierOnboardingTaskAssignee")
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -562,9 +564,35 @@ model Supplier {
   ctShipmentLegsCarrier CtShipmentLeg[] @relation("CtLegCarrierSupplier")
   ctShipmentCostLinesVendor CtShipmentCostLine[] @relation("CtCostLineVendorSupplier")
   quoteRequestRecipients    QuoteRequestRecipient[]
+  onboardingTasks           SupplierOnboardingTask[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
+}
+
+/// SRM Phase B: checklist rows for supplier onboarding (assignee, due date, done).
+model SupplierOnboardingTask {
+  id         String   @id @default(cuid())
+  tenantId   String
+  supplierId String
+  /// Idempotent default key, e.g. `supplier_profile`.
+  taskKey    String   @db.VarChar(64)
+  title      String   @db.VarChar(256)
+  sortOrder  Int      @default(0)
+  done       Boolean  @default(false)
+  assigneeUserId String?
+  dueAt      DateTime?
+  notes      String?  @db.Text
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  assignee User?    @relation("SupplierOnboardingTaskAssignee", fields: [assigneeUserId], references: [id], onDelete: SetNull)
+
+  @@unique([supplierId, taskKey])
+  @@index([tenantId, supplierId])
+  @@index([tenantId, assigneeUserId])
 }
 
 /// SRM: declared transport / service scope (modes, service lines, geography). See PRD “Service capabilities”.

@@ -1,5 +1,6 @@
 import type { SupplierDetailSnapshot } from "@/components/supplier-detail-client";
 import type { PrismaClient } from "@prisma/client";
+import { ensureSupplierOnboardingTasks } from "@/lib/srm/ensure-supplier-onboarding-tasks";
 
 /**
  * Loads supplier + offices + contacts for SRM / supplier 360 pages.
@@ -52,6 +53,8 @@ export async function loadSupplierDetailSnapshot(
   });
 
   if (!supplier) return null;
+
+  await ensureSupplierOnboardingTasks(prisma, tenantId, supplier.id);
 
   return {
     id: supplier.id,

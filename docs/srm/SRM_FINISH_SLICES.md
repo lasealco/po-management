@@ -43,13 +43,15 @@
 
 ## Phase B — Lifecycle & onboarding (slices 11–15)
 
+**Status:** ✅ Landed (see `GAP_MAP.md` Phase B note).
+
 | # | Slice | Goal | Acceptance |
 |---|--------|------|------------|
-| **11** | **Approval / status transitions** | Explicit state machine | Document allowed `approvalStatus` transitions; enforce on server; UI only offers valid next states; tests for illegal transitions. |
-| **12** | **Activation guard** | Align with PO/booking usage | If `isActive` or approval blocks usage, surface message in UI and enforce in supplier-linked APIs (minimal scope—document which APIs). |
-| **13** | **Onboarding task list v1** | Lifecycle spec foothold | New model **or** reuse existing task table: supplier-scoped checklist rows (e.g. profile, tax, insurance); % complete on 360. |
-| **14** | **Onboarding task assignee & due** | Operator workflow | Optional owner + due date; filter “my tasks”; grant: only editors mutate. |
-| **15** | **Notifications hook (optional)** | Future-ready | If product has in-app notifications pattern, emit one event on “supplier submitted” / “approved”; else stub `TODO` + doc flag **deferred** with issue link. |
+| **11** | **Approval / status transitions** | Explicit state machine | **Done:** `src/lib/srm/supplier-approval-transitions.ts` + enforcement on **`POST /api/suppliers/[id]/approval`** and **`PATCH /api/suppliers/[id]`**; UI: pending / rejected / revoke flows; Vitest for illegal edges. |
+| **12** | **Activation guard** | Align with PO/booking usage | **Done:** `supplierOperationalBlockReason` on **`POST /api/orders`** (supplier + forwarder); `docs/srm/SRM_ACTIVATION_GUARDS.md`; 360 copy for pending/rejected. |
+| **13** | **Onboarding task list v1** | Lifecycle spec foothold | **Done:** `SupplierOnboardingTask` + defaults; **Onboarding** tab with % complete; APIs **`GET /api/suppliers/[id]/onboarding-tasks`**, **`PATCH .../tasks/[taskId]`**. |
+| **14** | **Onboarding task assignee & due** | Operator workflow | **Done:** assignee + due + notes; **`/srm?onboardingMine=1`** filter; editors PATCH via `org.suppliers` → edit. |
+| **15** | **Notifications hook (optional)** | Future-ready | **Done (stub):** `src/lib/srm/srm-notification-hook.ts` logs JSON on approval POST; in-app/email **deferred** until a bus exists. |
 
 ---
 

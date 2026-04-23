@@ -11,6 +11,7 @@ import {
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { optionalStringField } from "@/lib/supplier-patch";
 import { prisma } from "@/lib/prisma";
+import { assertSupplierApprovalTransition } from "@/lib/srm/supplier-approval-transitions";
 
 const supplierDetailInclude = {
   offices: { orderBy: { name: "asc" as const } },
@@ -73,7 +74,7 @@ export async function PATCH(
 
   const existing = await prisma.supplier.findFirst({
     where: { id, tenantId: tenant.id },
-    select: { id: true },
+    select: { id: true, approvalStatus: true },
   });
   if (!existing) {
     return toApiErrorResponse({ error: "Not found.", code: "NOT_FOUND", status: 404 });
@@ -262,6 +263,16 @@ export async function PATCH(
 
   if (Object.keys(data).length === 0) {
     return toApiErrorResponse({ error: "No valid fields to update.", code: "BAD_INPUT", status: 400 });
+  }
+
+  if (data.approvalStatus !== undefined) {
+    const transition = assertSupplierApprovalTransition(
+      existing.approvalStatus,
+      data.approvalStatus as SupplierApprovalStatus,
+    );
+    if (!transition.ok) {
+      return toApiErrorResponse({ error: transition.error, code: "BAD_INPUT", status: 400 });
+    }
   }
 
   try {

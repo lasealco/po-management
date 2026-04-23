@@ -5,6 +5,7 @@ import { serializeOrderForBoard } from "@/lib/orders-board-serialize";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+import { supplierOperationalBlockReason } from "@/lib/srm/supplier-operational-eligibility";
 
 
 type CreateOrderItemInput = {
@@ -222,10 +223,12 @@ export async function POST(request: Request) {
   }
 
   const supplier = await prisma.supplier.findFirst({
-    where: { id: input.supplierId, tenantId: tenant.id, isActive: true },
+    where: { id: input.supplierId, tenantId: tenant.id },
     select: {
       id: true,
       name: true,
+      isActive: true,
+      approvalStatus: true,
       paymentTermsDays: true,
       paymentTermsLabel: true,
       defaultIncoterm: true,
@@ -233,6 +236,10 @@ export async function POST(request: Request) {
   });
   if (!supplier) {
     return toApiErrorResponse({ error: "Supplier not found.", code: "NOT_FOUND", status: 404 });
+  }
+  const supplierBlock = supplierOperationalBlockReason(supplier);
+  if (supplierBlock) {
+    return toApiErrorResponse({ error: supplierBlock, code: "BAD_INPUT", status: 400 });
   }
 
   const products = await prisma.product.findMany({
@@ -352,10 +359,18 @@ export async function POST(request: Request) {
   }
   if (forwarderSupplierId) {
     const fwd = await prisma.supplier.findFirst({
-      where: { id: forwarderSupplierId, tenantId: tenant.id, isActive: true },
-      select: { id: true, name: true },
+      where: { id: forwarderSupplierId, tenantId: tenant.id },
+      select: { id: true, name: true, isActive: true, approvalStatus: true },
     });
     if (!fwd) return toApiErrorResponse({ error: "Invalid forwarder.", code: "BAD_INPUT", status: 400 });
+    const fwdBlock = supplierOperationalBlockReason(fwd);
+    if (fwdBlock) {
+      return toApiErrorResponse({
+        error: `Forwarder: ${fwdBlock}`,
+        code: "BAD_INPUT",
+        status: 400,
+      });
+    }
     forwarderSupplierName = fwd.name;
     if (forwarderOfficeId) {
       const office = await prisma.supplierOffice.findFirst({

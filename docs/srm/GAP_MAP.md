@@ -33,9 +33,12 @@ Add **Issue** / **PR** when you file work; Phase **B–F** rows stay open until 
 | 8 | Contacts & offices CRUD |  |  |
 | 9 | Capabilities matrix UX |  |  |
 | 10 | API guard pass (read) |  |  |
-| 11–30 | See [`SRM_FINISH_SLICES.md`](./SRM_FINISH_SLICES.md) |  |  |
+| 11–15 | Phase B — lifecycle & onboarding | — | (landed) |
+| 16–30 | See [`SRM_FINISH_SLICES.md`](./SRM_FINISH_SLICES.md) |  |  |
 
 **Phase A (slices 4–10) — shipped in repo:** mobile partner cards + zero-state on `/srm`; create redirects to `/srm/[id]` with validation; 360 **Profile / Contacts & sites / Capabilities / Orders / Compliance / Activity** tabs (sticky nav); **booking confirmation SLA (hours)** on profile PATCH + UI; **office inline edit**; capabilities empty CTA + primary add button; **Vitest** for `GET /api/suppliers` and `GET /api/suppliers/[id]` grant + tenant gates.
+
+**Phase B (slices 11–15) — shipped in repo:** `supplier-approval-transitions` enforced on **`POST /api/suppliers/[id]/approval`** (`approve` / `reject` / `reopen`) and **`PATCH /api/suppliers/[id]`** when `approvalStatus` changes; **`supplierOperationalBlockReason`** on **`POST /api/orders`** (line supplier + forwarder); **`SupplierOnboardingTask`** model + **`GET/PATCH`** onboarding task APIs; default tasks seeded on create + first 360 load; **Onboarding** tab on `/srm/[id]` with assignee/due/notes + **Assigned onboarding** filter on `/srm`; **`srmNotificationHook`** structured log stub on approval decisions; docs: **`docs/srm/SRM_ACTIVATION_GUARDS.md`**; Vitest for approval transitions + list-query `onboardingMine`.
 
 ### SRM MVP sign-off checklist (reviewers)
 
@@ -74,6 +77,7 @@ Replace `<supplierId>` with a real id from the list.
 | Demo user | **Settings → Demo session** — user with `org.suppliers` **view** (and **edit** for create test). |
 | List | `/srm` |
 | Search | `/srm?q=test` |
+| Onboarding filter | `/srm?onboardingMine=1` (tasks assigned to demo user, incomplete) |
 | Kind filter | `/srm?kind=logistics` |
 | Create | `/srm/new` |
 | 360 | `/srm/<supplierId>` |

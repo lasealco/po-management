@@ -14,10 +14,14 @@ export const dynamic = "force-dynamic";
 export default async function SrmPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ kind?: string | string[]; q?: string | string[] }>;
+  searchParams?: Promise<{
+    kind?: string | string[];
+    q?: string | string[];
+    onboardingMine?: string | string[];
+  }>;
 }) {
   const sp = searchParams ? await searchParams : {};
-  const { kind, q } = parseSrmListQuery(sp);
+  const { kind, q, onboardingMine } = parseSrmListQuery(sp);
 
   const access = await getViewerGrantSet();
 
@@ -59,6 +63,16 @@ export default async function SrmPage({
     where: {
       tenantId: tenant.id,
       srmCategory: kind === "logistics" ? "logistics" : "product",
+      ...(onboardingMine
+        ? {
+            onboardingTasks: {
+              some: {
+                done: false,
+                assigneeUserId: access.user.id,
+              },
+            },
+          }
+        : {}),
       ...(q
         ? {
             OR: [
@@ -137,13 +151,17 @@ export default async function SrmPage({
                   className="h-10 rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-900 shadow-sm outline-none focus:border-[var(--arscmp-primary)] focus:ring-2 focus:ring-[var(--arscmp-primary)]/20"
                 />
               </label>
+              <label className="flex cursor-pointer items-center gap-2 text-sm text-zinc-700">
+                <input type="checkbox" name="onboardingMine" value="1" defaultChecked={onboardingMine} className="rounded border-zinc-300" />
+                <span className="whitespace-nowrap">Assigned onboarding</span>
+              </label>
               <button
                 type="submit"
                 className="h-10 rounded-lg bg-[var(--arscmp-primary)] px-4 text-sm font-semibold text-white transition hover:brightness-95"
               >
                 Search
               </button>
-              {q ? (
+              {q || onboardingMine ? (
                 <Link href={`/srm?kind=${kind}`} className="h-10 rounded-lg border border-zinc-300 px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-100">
                   Reset
                 </Link>

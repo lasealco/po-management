@@ -4,7 +4,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { loadSupplierDetailSnapshot } from "./load-supplier-detail-snapshot";
 
 function prismaWithSupplierFindFirst(findFirst: ReturnType<typeof vi.fn>) {
-  return { supplier: { findFirst } } as unknown as PrismaClient;
+  return {
+    supplier: { findFirst },
+    supplierOnboardingTask: { createMany: vi.fn().mockResolvedValue({ count: 0 }) },
+  } as unknown as PrismaClient;
 }
 
 function baseSupplierRow(overrides: Record<string, unknown> = {}) {

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { startTransition, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SupplierCapabilitiesSection } from "@/components/supplier-capabilities-section";
+import { SupplierOnboardingSection } from "@/components/supplier-onboarding-section";
 import { SupplierOrderHistorySection } from "@/components/supplier-order-history";
 import type { SupplierCapabilityRow } from "@/lib/srm/supplier-capability-types";
 import type { SupplierOrderAnalytics } from "@/lib/supplier-order-analytics";
@@ -74,6 +75,7 @@ const SRM_SUPPLIER_TABS = [
   { id: "overview", label: "Profile" },
   { id: "contacts", label: "Contacts & sites" },
   { id: "capabilities", label: "Capabilities" },
+  { id: "onboarding", label: "Onboarding" },
   { id: "orders", label: "Orders" },
   { id: "compliance", label: "Compliance" },
   { id: "activity", label: "Activity" },
@@ -88,6 +90,8 @@ export function SupplierDetailClient({
   orderHistory = null,
   /** `srm` = opened from `/srm/[id]` (directory back-link); `suppliers` = legacy directory. */
   detailNavContext = "suppliers",
+  onboardingAssigneeOptions = undefined,
+  viewerUserId = undefined,
 }: {
   initial: SupplierDetailSnapshot;
   canEdit?: boolean;
@@ -96,6 +100,8 @@ export function SupplierDetailClient({
   /** Present when viewer has org.orders → view. */
   orderHistory?: SupplierOrderAnalytics | null;
   detailNavContext?: "suppliers" | "srm";
+  onboardingAssigneeOptions?: { id: string; name: string; email: string }[];
+  viewerUserId?: string;
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -377,7 +383,7 @@ export function SupplierDetailClient({
     router.refresh();
   }
 
-  async function submitApproval(decision: "approve" | "reject") {
+  async function submitApproval(decision: "approve" | "reject" | "reopen") {
     setError(null);
     setBusy(true);
     const res = await fetch(`/api/suppliers/${initial.id}/approval`, {
@@ -392,7 +398,8 @@ export function SupplierDetailClient({
       return;
     }
     setBusy(false);
-    setIsActive(decision === "approve");
+    if (decision === "approve") setIsActive(true);
+    if (decision === "reject" || decision === "reopen") setIsActive(false);
     router.refresh();
   }
 
@@ -581,8 +588,8 @@ export function SupplierDetailClient({
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
           <p className="font-medium">Pending procurement approval</p>
           <p className="mt-1 text-xs text-amber-900/90">
-            This supplier is not active until an approver confirms it. SRM workflow is in
-            development.
+            This supplier is not active until an approver confirms it. Pending partners cannot be used
+            on new purchase orders or as forwarders.
           </p>
           {canApprove ? (
             <div className="mt-3 flex flex-wrap gap-2">
@@ -604,6 +611,55 @@ export function SupplierDetailClient({
               </button>
             </div>
           ) : null}
+        </div>
+      ) : null}
+
+      {initial.approvalStatus === "rejected" ? (
+        <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-950">
+          <p className="font-medium">Rejected supplier</p>
+          <p className="mt-1 text-xs text-rose-900/90">
+            This record cannot be used on new POs or as a forwarder until it is reopened or approved
+            again.
+          </p>
+          {canApprove ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void submitApproval("reopen")}
+                className="rounded-md border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-900 disabled:opacity-50"
+              >
+                Reopen (pending)
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void submitApproval("approve")}
+                className="rounded-md bg-[var(--arscmp-primary)] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+              >
+                Approve &amp; activate
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {initial.approvalStatus === "approved" && canApprove ? (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50/80 px-4 py-2 text-xs text-emerald-950">
+          <span className="font-medium">Approved and eligible for POs and forwarder selection.</span>{" "}
+          <button
+            type="button"
+            disabled={busy}
+            className="font-semibold text-rose-800 underline decoration-rose-300 hover:text-rose-900 disabled:opacity-50"
+            onClick={() => {
+              if (!window.confirm("Revoke approval? The supplier will be rejected and deactivated.")) {
+                return;
+              }
+              void submitApproval("reject");
+            }}
+          >
+            Revoke approval
+          </button>
         </div>
       ) : null}
 
@@ -1388,6 +1444,19 @@ export function SupplierDetailClient({
           initialRows={initial.capabilities}
         />
       )}
+
+      {isSrmShell && srmTab === "onboarding" && onboardingAssigneeOptions && viewerUserId ? (
+        <SupplierOnboardingSection
+          supplierId={initial.id}
+          assigneeOptions={onboardingAssigneeOptions}
+          viewerUserId={viewerUserId}
+        />
+      ) : null}
+      {isSrmShell && srmTab === "onboarding" && (!onboardingAssigneeOptions || !viewerUserId) ? (
+        <section className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
+          <p className="text-sm text-zinc-600">Onboarding checklist requires a signed-in user context.</p>
+        </section>
+      ) : null}
 
       {isSrmShell && (srmTab === "compliance" || srmTab === "activity") ? (
         <section className="rounded-lg border border-dashed border-zinc-200 bg-zinc-50/80 p-8 text-center shadow-sm">

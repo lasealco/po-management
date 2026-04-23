@@ -11,6 +11,7 @@ import {
 } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
+import { ensureSupplierOnboardingTasks } from "@/lib/srm/ensure-supplier-onboarding-tasks";
 
 export async function GET() {
   const gate = await requireApiGrant("org.suppliers", "view");
@@ -156,6 +157,7 @@ export async function POST(request: Request) {
         approvalStatus: true,
       },
     });
+    await ensureSupplierOnboardingTasks(prisma, tenant.id, supplier.id);
     return NextResponse.json({ supplier });
   } catch (e: unknown) {
     const codeErr =

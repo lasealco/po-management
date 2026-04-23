@@ -1,0 +1,172 @@
+"use client";
+
+import { apiClientErrorMessage } from "@/lib/api-client-error";
+import { useCallback, useEffect, useState } from "react";
+
+export type OnboardingTaskRow = {
+  id: string;
+  taskKey: string;
+  title: string;
+  sortOrder: number;
+  done: boolean;
+  assigneeUserId: string | null;
+  assignee: { id: string; name: string; email: string } | null;
+  dueAt: string | null;
+  notes: string | null;
+};
+
+export function SupplierOnboardingSection({
+  supplierId,
+  assigneeOptions,
+  viewerUserId,
+}: {
+  supplierId: string;
+  assigneeOptions: { id: string; name: string; email: string }[];
+  viewerUserId: string;
+}) {
+  const [tasks, setTasks] = useState<OnboardingTaskRow[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setError(null);
+    const res = await fetch(`/api/suppliers/${supplierId}/onboarding-tasks`);
+    const payload: unknown = await res.json().catch(() => null);
+    if (!res.ok) {
+      setError(apiClientErrorMessage(payload ?? {}, "Could not load onboarding tasks."));
+      return;
+    }
+    const list = (payload as { tasks?: OnboardingTaskRow[] }).tasks;
+    setTasks(Array.isArray(list) ? list : []);
+  }, [supplierId]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  async function patchTask(taskId: string, body: Record<string, unknown>) {
+    setBusyId(taskId);
+    setError(null);
+    const res = await fetch(`/api/suppliers/${supplierId}/onboarding-tasks/${taskId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const payload: unknown = await res.json().catch(() => null);
+    setBusyId(null);
+    if (!res.ok) {
+      setError(apiClientErrorMessage(payload ?? {}, "Update failed."));
+      return;
+    }
+    await load();
+  }
+
+  if (tasks === null) {
+    return (
+      <section className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
+        <p className="text-sm text-zinc-600">Loading onboarding checklist…</p>
+      </section>
+    );
+  }
+
+  const doneCount = tasks.filter((t) => t.done).length;
+  const pct = tasks.length ? Math.round((100 * doneCount) / tasks.length) : 0;
+
+  return (
+    <section className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
+      <h2 className="text-sm font-semibold text-zinc-900">Onboarding checklist</h2>
+      <p className="mt-1 text-xs font-medium text-zinc-700">
+        {doneCount} / {tasks.length} complete ({pct}%)
+      </p>
+      <p className="mt-1 text-xs text-zinc-500">
+        Default tasks are created for each supplier. Assign owners and due dates; mark items done as you complete
+        diligence.
+      </p>
+      <p className="mt-2 text-xs text-zinc-600">
+        Tip: on the SRM list, turn on <strong className="text-zinc-800">Assigned onboarding</strong> to see suppliers
+        where you have open tasks.
+      </p>
+
+      {error ? (
+        <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
+      ) : null}
+
+      <ul className="mt-4 divide-y divide-zinc-100">
+        {tasks.map((t) => (
+          <li key={t.id} className="flex flex-col gap-3 py-4 first:pt-0 sm:flex-row sm:flex-wrap sm:items-start">
+            <label className="flex min-w-[200px] flex-1 cursor-pointer items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="mt-1 rounded border-zinc-300"
+                checked={t.done}
+                disabled={busyId === t.id}
+                onChange={(e) => void patchTask(t.id, { done: e.target.checked })}
+              />
+              <span className={t.done ? "text-zinc-500 line-through" : "text-zinc-900"}>{t.title}</span>
+            </label>
+            <div className="flex min-w-[180px] flex-col gap-2 sm:w-48">
+              <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">Assignee</span>
+              <select
+                className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm text-zinc-900"
+                value={t.assigneeUserId ?? ""}
+                disabled={busyId === t.id}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  void patchTask(t.id, { assigneeUserId: v === "" ? null : v });
+                }}
+              >
+                <option value="">— Unassigned —</option>
+                {assigneeOptions.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name} ({u.email})
+                  </option>
+                ))}
+              </select>
+              {assigneeOptions.some((u) => u.id === viewerUserId) && t.assigneeUserId !== viewerUserId ? (
+                <button
+                  type="button"
+                  disabled={busyId === t.id}
+                  className="text-left text-xs font-medium text-[var(--arscmp-primary)] hover:underline disabled:opacity-50"
+                  onClick={() => void patchTask(t.id, { assigneeUserId: viewerUserId })}
+                >
+                  Assign to me
+                </button>
+              ) : null}
+            </div>
+            <div className="flex min-w-[160px] flex-col gap-2">
+              <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">Due</span>
+              <input
+                type="date"
+                className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm text-zinc-900"
+                disabled={busyId === t.id}
+                value={t.dueAt ? t.dueAt.slice(0, 10) : ""}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  void patchTask(t.id, {
+                    dueAt: v === "" ? null : `${v}T12:00:00.000Z`,
+                  });
+                }}
+              />
+            </div>
+            <div className="min-w-[220px] flex-1">
+              <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">Notes</span>
+              <textarea
+                className="mt-1 w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm text-zinc-900"
+                rows={2}
+                disabled={busyId === t.id}
+                defaultValue={t.notes ?? ""}
+                key={`${t.id}-${t.notes ?? ""}`}
+                onBlur={(e) => {
+                  const next = e.target.value.trim() || null;
+                  if (next !== (t.notes?.trim() || null)) {
+                    void patchTask(t.id, { notes: next });
+                  }
+                }}
+              />
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
