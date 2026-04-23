@@ -1,5 +1,12 @@
 import { viewerHas } from "@/lib/authz";
 
+/**
+ * K: `org.suppliers` → **edit** or **approve** (not `view` alone) — shared by API redaction, list/search, and 360.
+ */
+export function canViewSupplierSensitiveFieldsForGrantSet(grantSet: Set<string>): boolean {
+  return viewerHas(grantSet, "org.suppliers", "edit") || viewerHas(grantSet, "org.suppliers", "approve");
+}
+
 export type SrmPermissions = {
   canViewSuppliers: boolean;
   canEditSuppliers: boolean;
@@ -21,6 +28,6 @@ export function resolveSrmPermissions(grantSet: Set<string>): SrmPermissions {
     canEditSuppliers,
     canApproveSuppliers,
     canViewOrders: canViewSuppliers && viewerHas(grantSet, "org.orders", "view"),
-    canViewSupplierSensitiveFields: canEditSuppliers || canApproveSuppliers,
+    canViewSupplierSensitiveFields: canViewSupplierSensitiveFieldsForGrantSet(grantSet),
   };
 }

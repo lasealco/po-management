@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 
 import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
-import { getActorUserId, loadGlobalGrantsForUser, requireApiGrant, viewerHas } from "@/lib/authz";
+import { getActorUserId, loadGlobalGrantsForUser, requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
+import { canViewSupplierSensitiveFieldsForGrantSet } from "@/lib/srm/permissions";
 import { redactSupplierRecordForView } from "@/lib/srm/redact-supplier-sensitive";
 import type { SrmSupplierCategory } from "@prisma/client";
 
@@ -48,8 +49,7 @@ export async function GET(request: Request) {
 
   const actorId = await getActorUserId();
   const grantSet = actorId ? await loadGlobalGrantsForUser(actorId) : new Set<string>();
-  const canViewSensitive =
-    viewerHas(grantSet, "org.suppliers", "edit") || viewerHas(grantSet, "org.suppliers", "approve");
+  const canViewSensitive = canViewSupplierSensitiveFieldsForGrantSet(grantSet);
   const safeRows = rows.map((r) =>
     redactSupplierRecordForView(r as unknown as Record<string, unknown>, canViewSensitive),
   ) as typeof rows;

@@ -1,6 +1,20 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveSrmPermissions } from "./permissions";
+import { canViewSupplierSensitiveFieldsForGrantSet, resolveSrmPermissions } from "./permissions";
+
+describe("canViewSupplierSensitiveFieldsForGrantSet", () => {
+  it("is true only for edit or approve on org.suppliers", () => {
+    expect(canViewSupplierSensitiveFieldsForGrantSet(new Set(["org.suppliers\u0000view"]))).toBe(false);
+    expect(
+      canViewSupplierSensitiveFieldsForGrantSet(
+        new Set(["org.suppliers\u0000view", "org.suppliers\u0000edit"]),
+      ),
+    ).toBe(true);
+    expect(
+      canViewSupplierSensitiveFieldsForGrantSet(new Set(["org.suppliers\u0000approve"])),
+    ).toBe(true);
+  });
+});
 
 describe("resolveSrmPermissions", () => {
   it("returns all SRM permissions as false by default", () => {
