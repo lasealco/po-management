@@ -54,7 +54,8 @@ Add **Issue** / **PR** when you file work; the **30-slice** program is **closed*
 | 26 | Phase E — upsert contract tests (Vitest) | — | (landed) |
 | 27 | Phase E — export (JSON/CSV) | — | (landed) |
 | 28 | Phase E — `docs/srm/INTEGRATION.md` | — | (landed) |
-| 29–30 | Phase F — SRM demo seed + sign-off | — | (landed) |
+| 29 | Phase F — idempotent SRM demo seed | — | (landed) |
+| 30 | Phase F — GAP map + module sign-off | — | (landed) |
 
 **Phase A (slices 4–10) — shipped in repo:** mobile partner cards + zero-state on `/srm`; create redirects to `/srm/[id]` with validation; 360 **Profile / Contacts & sites / Capabilities / Orders / Compliance / Activity** tabs (sticky nav); **booking confirmation SLA (hours)** on profile PATCH + UI; **office inline edit**; capabilities empty CTA + primary add button; **Vitest** for `GET /api/suppliers` and `GET /api/suppliers/[id]` grant + tenant gates.
 
@@ -66,7 +67,7 @@ Add **Issue** / **PR** when you file work; the **30-slice** program is **closed*
 
 **Phase E (slices 25–28) — shipped in repo:** **`POST /api/srm/integrations/v1/suppliers/upsert`** — `srm_supplier_upsert_v1` (`schemaVersion: 1`), `match.id` / `match.code` / create; **`SrmIntegrationIdempotency`** for **`Idempotency-Key`** replay/conflict; **`GET /api/srm/integrations/v1/suppliers/export`** — `format=json` (default) or `csv`, optional `kind=product` \| `logistics`; **`docs/srm/INTEGRATION.md`**. **Vitest:** **`upsert/route.test.ts`** (edit gate, idempotency replay 201 + header, 409 conflict, **404** no tenant, **403** no actor) · **`export/route.test.ts`** (view gate, **404** tenant, JSON schema, `kind` filter, CSV stream).
 
-**Phase F (slices 29–30) — shipped in repo:** **`npm run db:seed:srm-demo`** (`prisma/seed-srm-demo.mjs`, idempotent) — five partners **`DEMO-SRM-001`…`DEMO-SRM-005`** on **`demo-company`**: mixed **`approvalStatus`**, default **onboarding** tasks with assignee/due on incomplete rows, **`SrmSupplierDocument`** rows (metadata; shared dummy PDF URL). Documented in **`docs/database-neon.md`**. This file and **`docs/engineering/agent-todos/srm.md`** updated for **MVP sign-off** (blueprint table **✅/⏸**, banner at top of this doc).
+**Phase F (slices 29–30) — shipped in repo:** **`npm run db:seed:srm-demo`** (`prisma/seed-srm-demo.mjs`, idempotent) — five partners **`DEMO-SRM-001`…`DEMO-SRM-005`** on **`demo-company`**: mixed **`approvalStatus`**, default **onboarding** tasks with assignee/due on incomplete rows, **`SrmSupplierDocument`** rows (metadata; shared dummy PDF URL). Documented in **`docs/database-neon.md`**. **Slice 30:** this **`GAP_MAP`**, blueprint **✅/⏸** rows, and **`docs/engineering/agent-todos/srm.md`**. **Vitest (no DB):** **`src/lib/srm/srm-demo-seed-file.contract.test.ts`** — `package.json` script wire + `seed-srm-demo.mjs` must retain **`DEMO-SRM-00x`** codes, **`srm-demo-seed`**, **`demo-company`** markers.
 
 ### SRM MVP sign-off checklist (reviewers)
 
