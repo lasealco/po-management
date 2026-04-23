@@ -57,4 +57,4 @@ Handlers live in `src/lib/wms/post-actions.ts` (route stays a thin shell).
 
 _Next optional increments:_ saved ledger views, outbound ASN parity, deeper receiving states — not required for Phase A exit above.
 
-_Last updated: inbound milestones UI, open-task type filter, balance search, movement CSV, GAP_MAP refresh._
+_Last updated: 2026-04-23 — Phase 0 hygiene (doc pass with [`CONTROL_TOWER_WMS_PHASED_ROADMAP`](../engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md)); prior row: inbound milestones UI, open-task type filter, balance search, movement CSV, GAP_MAP refresh._

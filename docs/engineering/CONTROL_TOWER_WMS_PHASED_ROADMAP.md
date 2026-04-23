@@ -7,7 +7,7 @@
 | Control Tower | [`docs/controltower/GAP_MAP.md`](../controltower/GAP_MAP.md) | [`agent-todos/control-tower.md`](./agent-todos/control-tower.md) |
 | WMS | [`docs/wms/GAP_MAP.md`](../wms/GAP_MAP.md) | [`agent-todos/wms.md`](./agent-todos/wms.md) |
 
-**Out of scope for this document** (track separately): Supply Chain **Twin** program (`docs/sctwin/`), **SRM** G/I/K follow-ups, **tariff** vertical, **product catalog margin / buy–sell analytics**, **telematics / RTCM / GPS asset** platforms, and **full enterprise RBAC** (see `docs/icp-and-tenancy.md`, `agent-todos/system.md`). Those can re-enter as ** later epics** once CT/WMS slices are moving.
+**Out of scope for this document** (track separately): Supply Chain **Twin** program (`docs/sctwin/`), **SRM** G/I/K follow-ups, **tariff** vertical, **product catalog margin / buy–sell analytics**, **telematics / RTCM / GPS asset** platforms, and **full enterprise RBAC** (see `docs/icp-and-tenancy.md`, `agent-todos/system.md`). Those can re-enter as **later** epics once CT/WMS slices are moving.
 
 ---
 
@@ -23,14 +23,16 @@
 
 **Goal:** No code required beyond tiny fixes; everything else unblocks clean sequencing.
 
-| # | Action | Owner notes |
-|---|--------|-------------|
-| 0.1 | Refresh **Control Tower** `GAP_MAP` near-term backlog vs code | Filed: **GitHub #3**; see [`controltower/GAP_MAP.md` § Near-term build order](../controltower/GAP_MAP.md#near-term-build-order-engineering-backlog) |
-| 0.2 | **WMS** `GAP_MAP` — “Last updated” + row notes after meaningful WMS work | See [`wms.md`](./agent-todos/wms.md) hygiene |
-| 0.3 | Triage **Control Tower** filed issues: **#4** webhook tests, **#5** report / exceptions, **#6** Assist checklist | [`control-tower.md`](./agent-todos/control-tower.md) |
-| 0.4 | Confirm no **duplicate / stray** API route trees (e.g. accidental `path 2/` folders) in CI; keep **ApiHub** route count test aligned with `git ls-files` | Prevents `verify:apihub` / conformance drift |
+| # | Action | Status (2026-04-23) |
+|---|--------|----------------------|
+| 0.1 | Refresh **Control Tower** `GAP_MAP` near-term backlog vs code | **Done** — Changelog + Phase 0 note; near-term **4–7** and **Suggested next PRs** re-affirmed vs `main` ([`controltower/GAP_MAP.md`](../controltower/GAP_MAP.md)) |
+| 0.2 | **WMS** `GAP_MAP` — “Last updated” + row notes | **Done** — `_Last updated_` line refreshed; row tables unchanged (no WMS code change in this pass) |
+| 0.3 | Triage **Control Tower** filed issues: **#4**–**#6** | **Done** — Triage in [`control-tower.md`](./agent-todos/control-tower.md); close or narrow on GitHub as needed |
+| 0.4 | No stray API route trees; **ApiHub** `route.ts` count = test | **Done** — `git ls-files` → **28** = `apihub-routes-conformance.test.ts`; `npm run verify:apihub` **passes**; do not add untracked duplicate route dirs (e.g. `…/health 2/`) that inflate local counts |
 
 **Exit:** GAP + todos reflect reality; open GitHub issues are the execution queue for Phase 1.
+
+**Phase 0 is complete** as of 2026-04-23 — start **Phase 1** with one Control Tower vertical when ready.
 
 ---
 
@@ -111,4 +113,5 @@ Work **one issue at a time** (parallel agents only on **non-overlapping paths**)
 
 | Date | Change |
 |------|--------|
+| 2026-04-23 | **Phase 0 complete** (docs + GAP + ApiHub/verify gate); see Phase 0 table above. |
 | 2026-04-23 | Initial phased roadmap for Control Tower + WMS (phases 0–3 + cross-cutting). |
