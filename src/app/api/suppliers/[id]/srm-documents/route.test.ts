@@ -116,7 +116,12 @@ describe("GET /api/suppliers/[id]/srm-documents", () => {
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")?.includes("text/csv")).toBe(true);
     expect(res.headers.get("Content-Disposition")?.includes("attachment")).toBe(true);
-    const text = await res.text();
+    const ab = await res.arrayBuffer();
+    const bytes = new Uint8Array(ab);
+    expect(bytes[0]).toBe(0xef);
+    expect(bytes[1]).toBe(0xbb);
+    expect(bytes[2]).toBe(0xbf);
+    const text = new TextDecoder("utf-8").decode(bytes.subarray(3));
     expect(text).toContain("supplierName,supplierCode");
     expect(text).toContain("uploadedByName");
     expect(text).toContain("lastModifiedByName");

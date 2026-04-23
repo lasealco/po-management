@@ -99,9 +99,11 @@ export async function GET(
       { name: supplier.name, code: supplier.code },
       rows,
     );
+    /** Excel and some desktop tools expect a UTF-8 BOM to recognize encoding on manifest CSV. */
+    const body = "\uFEFF" + csv;
     const slug = (supplier.code ?? supplier.id).replace(/[^\w.\-]+/g, "-").slice(0, 80) || "manifest";
     const filename = `srm-documents-${slug}-manifest.csv`;
-    return new NextResponse(csv, {
+    return new NextResponse(body, {
       status: 200,
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
