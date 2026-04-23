@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 
 import { AccessDenied } from "@/components/access-denied";
 import { PageTitleWithHint } from "@/components/page-title-with-hint";
+import { ScriCtAlertButton } from "@/components/risk-intelligence/scri-ct-alert-button";
+import { ScriImpactWorkspace } from "@/components/risk-intelligence/scri-impact-workspace";
 import { ScriRecommendationsPanel } from "@/components/risk-intelligence/scri-recommendations-panel";
 import { ScriRunMatchButton } from "@/components/risk-intelligence/scri-run-match-button";
 import { ScriTriagePanel } from "@/components/risk-intelligence/scri-triage-panel";
@@ -12,7 +14,6 @@ import { prisma } from "@/lib/prisma";
 import { toScriEventDetailDto } from "@/lib/scri/event-dto";
 import { formatScriFreshness } from "@/lib/scri/format-freshness";
 import { getScriEventForTenant } from "@/lib/scri/event-repo";
-import { scriObjectHref } from "@/lib/scri/object-links";
 import { requireTwinApiAccess } from "@/lib/supply-chain-twin/sctwin-api-access";
 
 export const dynamic = "force-dynamic";
@@ -53,6 +54,10 @@ export default async function RiskIntelligenceEventPage({
   const canRunMatch = viewerHas(access.grantSet, "org.scri", "edit");
   const twinLaunchGate = await requireTwinApiAccess();
   const canLaunchTwinScenario = canRunMatch && twinLaunchGate.ok;
+  const canCreateCtAlert =
+    canRunMatch &&
+    viewerHas(access.grantSet, "org.controltower", "edit") &&
+    row.affectedEntities.some((a) => a.objectType === "SHIPMENT");
   const e = toScriEventDetailDto(row);
 
   const assignableUsers = await prisma.user.findMany({
@@ -143,41 +148,15 @@ export default async function RiskIntelligenceEventPage({
             </div>
             {canRunMatch ? <ScriRunMatchButton eventId={e.id} /> : null}
           </div>
-          {e.affectedEntities.length ? (
-            <ul className="mt-4 max-h-64 divide-y divide-zinc-100 overflow-auto border-t border-zinc-100 pt-3 text-sm">
-              {e.affectedEntities.map((a) => {
-                const href = scriObjectHref(a.objectType, a.objectId);
-                return (
-                  <li key={a.id} className="py-2 first:pt-0">
-                    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                      {href ? (
-                        <Link href={href} className="font-medium text-amber-800 underline-offset-2 hover:underline">
-                          {a.objectType.replace(/_/g, " ")}
-                        </Link>
-                      ) : (
-                        <span className="font-medium text-zinc-800">{a.objectType.replace(/_/g, " ")}</span>
-                      )}
-                      <span className="text-xs text-zinc-500">
-                        {a.matchType.replace(/_/g, " ")} · {a.matchConfidence}%
-                        {a.impactLevelLabel ? ` · ${a.impactLevelLabel}` : ""}
-                      </span>
-                      {a.matchTier === "TENTATIVE" ? (
-                        <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-900">
-                          Tentative
-                        </span>
-                      ) : null}
-                    </div>
-                    <p className="mt-0.5 text-xs text-zinc-600">{a.rationale}</p>
-                  </li>
-                );
-              })}
-            </ul>
-          ) : null}
         </section>
+
+        {e.affectedEntities.length ? <ScriImpactWorkspace affected={e.affectedEntities} /> : null}
 
         <ScriRecommendationsPanel canEdit={canRunMatch} recommendations={e.recommendations} />
 
         <ScriTwinLaunchPanel eventId={e.id} enabled={canLaunchTwinScenario} />
+
+        <ScriCtAlertButton eventId={e.id} enabled={canCreateCtAlert} />
 
         {e.shortSummary || e.longSummary ? (
           <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">

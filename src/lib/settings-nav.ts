@@ -100,4 +100,14 @@ export const SETTINGS_SECTIONS: readonly SettingsNavSection[] = [
       },
     ],
   },
+  {
+    title: "Risk intelligence",
+    links: [
+      {
+        href: "/settings/risk-intelligence",
+        label: "Watchlists & tuning",
+        description: "Rules, trust floor, geo aliases, optional auto-watch on ingest",
+      },
+    ],
+  },
 ] as const;

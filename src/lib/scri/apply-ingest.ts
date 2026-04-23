@@ -5,9 +5,14 @@ import { prisma } from "@/lib/prisma";
 import { resolveIngestAiFields } from "@/lib/scri/build-deterministic-ai-summary";
 import type { ScriIngestBody } from "@/lib/scri/schemas/ingest-body";
 import { runScriEventMatching } from "@/lib/scri/matching/run-event-match";
+import { maybeApplyScriAutoWatchAfterIngest } from "@/lib/scri/maybe-auto-watch-after-ingest";
 import { normalizeIngestGeography } from "@/lib/scri/normalize-ingest-geography";
+import { getScriTuningForTenant } from "@/lib/scri/tuning-repo";
 
 export async function applyScriIngest(tenantId: string, body: ScriIngestBody) {
+  const { dto: tuningDto } = await getScriTuningForTenant(tenantId);
+  const countryAliases = tuningDto.geoAliases;
+
   const shouldRunMatch =
     Boolean(body.runMatch) ||
     ((body.geographies?.length ?? 0) > 0 && body.autoRematch !== false);
@@ -77,13 +82,16 @@ export async function applyScriIngest(tenantId: string, body: ScriIngestBody) {
     if (geos.length) {
       await tx.scriEventGeography.createMany({
         data: geos.map((g) => {
-          const n = normalizeIngestGeography({
-            countryCode: g.countryCode,
-            region: g.region,
-            portUnloc: g.portUnloc,
-            label: g.label,
-            raw: g.raw ?? undefined,
-          });
+          const n = normalizeIngestGeography(
+            {
+              countryCode: g.countryCode,
+              region: g.region,
+              portUnloc: g.portUnloc,
+              label: g.label,
+              raw: g.raw ?? undefined,
+            },
+            countryAliases,
+          );
           return {
             eventId: row.id,
             countryCode: n.countryCode,
@@ -102,6 +110,8 @@ export async function applyScriIngest(tenantId: string, body: ScriIngestBody) {
   if (shouldRunMatch) {
     await runScriEventMatching(tenantId, eventId);
   }
+
+  await maybeApplyScriAutoWatchAfterIngest(tenantId, eventId);
 
   return eventId;
 }

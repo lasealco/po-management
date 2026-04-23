@@ -96,6 +96,8 @@ model Tenant {
   scriEventReviewLogs             ScriEventReviewLog[]
   scriEventTaskLinks              ScriEventTaskLink[]
   scriEventRecommendations        ScriEventRecommendation[]
+  scriWatchlistRules              ScriWatchlistRule[]
+  scriTenantTuning                ScriTenantTuning?
 }
 
 /// Integration / API hub — registry row for an external or internal data source (Phase 1 stub).
@@ -431,6 +433,7 @@ model User {
   scriEventsOwned                 ScriExternalEvent[]           @relation("ScriEventOwner")
   scriReviewLogsAuthored          ScriEventReviewLog[]          @relation("ScriReviewLogActor")
   scriTaskLinksCreated            ScriEventTaskLink[]           @relation("ScriTaskLinkCreatedBy")
+  scriTuningAutomationActorOf     ScriTenantTuning[]            @relation("ScriTuningAutomationActor")
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -3600,4 +3603,48 @@ model ScriEventRecommendation {
   @@unique([eventId, recommendationType])
   @@index([eventId, status])
   @@index([tenantId])
+}
+
+/// SCRI R7: per-tenant tuning (trust floor, geo aliases, optional ingest automation).
+model ScriTenantTuning {
+  id        String   @id @default(cuid())
+  tenantId  String   @unique
+  /// Hide or flag ingest below this trust score in dashboards (null = off).
+  sourceTrustMin Int?
+  /// Minimum severity to highlight on the risk dashboard (null = off).
+  severityHighlightMin TwinRiskSeverity?
+  /// Map non-standard country tokens to ISO-3166 alpha-2 (e.g. `{"UK":"GB"}`), applied at ingest normalization.
+  geoAliases Json @default("{}")
+  /// When true, new/updated events at or above `automationMinSeverity` move from NEW → WATCH if an automation actor is set.
+  automationAutoWatch Boolean @default(false)
+  automationMinSeverity TwinRiskSeverity @default(MEDIUM)
+  automationActorUserId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant           Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  automationActor User?   @relation("ScriTuningAutomationActor", fields: [automationActorUserId], references: [id], onDelete: SetNull)
+}
+
+/// SCRI R7: watchlist rule (filter events by severity, type, geography).
+model ScriWatchlistRule {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String   @db.VarChar(256)
+  isActive  Boolean  @default(true)
+  /// Minimum event severity for this rule (null = any).
+  minSeverity TwinRiskSeverity?
+  /// JSON string[] of event type codes; empty array = match all types.
+  eventTypes Json @default("[]")
+  /// JSON string[] of ISO-2 country codes from event geographies; empty = any country.
+  countryCodes Json @default("[]")
+  sortOrder Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, isActive])
 }

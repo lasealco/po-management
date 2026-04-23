@@ -29,4 +29,10 @@ describe("normalizeIngestGeography", () => {
     });
     expect(n.raw).toEqual({ source: "unit-test", invalidCountryCode: "bad" });
   });
+
+  it("applies tenant country aliases when ISO-2 is not direct", () => {
+    const n = normalizeIngestGeography({ countryCode: "UK" }, { UK: "GB" });
+    expect(n.countryCode).toBe("GB");
+    expect(n.raw).toBeUndefined();
+  });
 });

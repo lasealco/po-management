@@ -12,13 +12,17 @@ export type NormalizedGeoRow = {
  * Normalize geography rows at ingest: ISO-2 uppercase, UN/LOC uppercase, trim text.
  * Invalid ISO-2 is cleared and noted under `raw.invalidCountryCode` when possible.
  */
-export function normalizeIngestGeography(g: {
-  countryCode?: string | null;
-  region?: string | null;
-  portUnloc?: string | null;
-  label?: string | null;
-  raw?: Record<string, unknown> | null;
-}): NormalizedGeoRow {
+export function normalizeIngestGeography(
+  g: {
+    countryCode?: string | null;
+    region?: string | null;
+    portUnloc?: string | null;
+    label?: string | null;
+    raw?: Record<string, unknown> | null;
+  },
+  /** Tenant-configured map (e.g. UK → GB); keys compared uppercase. */
+  countryAliases?: Readonly<Record<string, string>> | null,
+): NormalizedGeoRow {
   const rawBase =
     g.raw && typeof g.raw === "object" && !Array.isArray(g.raw)
       ? { ...g.raw }
@@ -26,7 +30,15 @@ export function normalizeIngestGeography(g: {
 
   const originalCountry = g.countryCode?.trim() || null;
   const upperCountry = originalCountry ? originalCountry.toUpperCase() : null;
-  const validCountry = upperCountry && /^[A-Z]{2}$/.test(upperCountry) ? upperCountry : null;
+  let validCountry: string | null = null;
+  if (upperCountry) {
+    const mapped = countryAliases?.[upperCountry];
+    if (mapped && /^[A-Z]{2}$/.test(mapped)) {
+      validCountry = mapped;
+    } else if (/^[A-Z]{2}$/.test(upperCountry)) {
+      validCountry = upperCountry;
+    }
+  }
   if (originalCountry && !validCountry) {
     rawBase.invalidCountryCode = originalCountry;
   }

@@ -3,9 +3,11 @@ import Link from "next/link";
 import { AccessDenied } from "@/components/access-denied";
 import { PageTitleWithHint } from "@/components/page-title-with-hint";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
-import { formatScriFreshness } from "@/lib/scri/format-freshness";
 import { toScriEventListItemDto } from "@/lib/scri/event-dto";
 import { listScriEventsForTenant } from "@/lib/scri/event-repo";
+import { formatScriFreshness } from "@/lib/scri/format-freshness";
+import { eventMatchesAnyActiveWatchlist } from "@/lib/scri/watchlist-match";
+import { listWatchlistRulesForTenant } from "@/lib/scri/watchlist-repo";
 
 export const dynamic = "force-dynamic";
 
@@ -48,10 +50,23 @@ export default async function RiskIntelligencePage({
 
   const sp = await searchParams;
   const clusterFilter = clusterFromSearch(sp.cluster);
-  const rows = await listScriEventsForTenant(access.tenant.id, 80, {
-    clusterKey: clusterFilter,
-  });
-  const events = rows.map(toScriEventListItemDto);
+  const [rows, watchlistRules] = await Promise.all([
+    listScriEventsForTenant(access.tenant.id, 80, {
+      clusterKey: clusterFilter,
+    }),
+    listWatchlistRulesForTenant(access.tenant.id),
+  ]);
+  const events = rows.map((row) => ({
+    ...toScriEventListItemDto(row),
+    watchlistHit: eventMatchesAnyActiveWatchlist(
+      {
+        eventType: row.eventType,
+        severity: row.severity,
+        geographies: row.geographies,
+      },
+      watchlistRules,
+    ),
+  }));
 
   return (
     <main className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6">
@@ -66,6 +81,25 @@ export default async function RiskIntelligencePage({
           <span className="text-zinc-500">
             {events.length} {events.length === 1 ? "event" : "events"}
           </span>
+        </p>
+        <p className="mt-2 text-sm">
+          <Link
+            href="/risk-intelligence/dashboard"
+            className="font-medium text-amber-800 underline-offset-2 hover:underline"
+          >
+            Open risk dashboard
+          </Link>
+          {viewerHas(access.grantSet, "org.scri", "edit") ? (
+            <>
+              {" · "}
+              <Link
+                href="/settings/risk-intelligence"
+                className="font-medium text-amber-800 underline-offset-2 hover:underline"
+              >
+                Watchlists & tuning
+              </Link>
+            </>
+          ) : null}
         </p>
         {clusterFilter ? (
           <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50/90 px-3 py-2 text-sm text-amber-950">
@@ -92,6 +126,11 @@ export default async function RiskIntelligencePage({
                     >
                       {e.title}
                     </Link>
+                    {e.watchlistHit ? (
+                      <span className="shrink-0 rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-900">
+                        Watchlist
+                      </span>
+                    ) : null}
                     {e.clusterKey ? (
                       <Link
                         href={`/risk-intelligence?cluster=${encodeURIComponent(e.clusterKey)}`}

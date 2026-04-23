@@ -36,7 +36,7 @@ This workbook ties the **documentation pack** in `docs/SCRI/` to **concrete buil
 
 **Matching (R2 partial):** Deterministic geo-related pass over shipments (booking/legs), PO ship-to, supplier country, linked sales orders — see `src/lib/scri/matching/run-event-match.ts`.
 
-**Not in schema yet (per data model spec):** dedicated tables for **Watchlist Rule**, **Recommendation**, **Event Review / Triage audit rows**, **Event Task Link** (today, `reviewState` is only a field on the event).
+**Schema additions after baseline:** **Recommendation** (`ScriEventRecommendation`), **Triage audit** (`ScriEventReviewLog`), **Task links** (`ScriEventTaskLink`), **R7 tuning** (`ScriTenantTuning`, `ScriWatchlistRule`). Legacy workbook note above is historical.
 
 ---
 
@@ -135,9 +135,9 @@ This workbook ties the **documentation pack** in `docs/SCRI/` to **concrete buil
 
 | Done | Task | Notes / spec pointer |
 |------|------|----------------------|
-| [ ] | **Watchlists:** `Watchlist Rule` CRUD + subscription center UI | Data model + PRD |
-| [ ] | **Trust / sensitivity:** Source trust weights, severity thresholds, geography aliases | PRD: Settings / Tuning |
-| [ ] | **Automation hooks:** Optional auto-watch, auto-task rules (feature-flagged) | Backlog R7 |
+| [x] | **Watchlists:** `ScriWatchlistRule` CRUD + Settings UI; feed badge when event matches an active rule | `watchlist-repo`, `/settings/risk-intelligence`, `POST/PATCH/DELETE /api/scri/watchlist-rules` |
+| [x] | **Trust / sensitivity:** `ScriTenantTuning` — source trust floor, severity highlight, `geoAliases` JSON (applied at ingest via `normalizeIngestGeography`) | `GET/PATCH /api/scri/tuning` |
+| [x] | **Automation:** Optional NEW→WATCH when severity ≥ `automationMinSeverity`, with `automationActorUserId` triage log; env kill `SCR_AUTOMATION_DISABLED=1` | `maybe-auto-watch-after-ingest.ts` |
 
 ---
 
@@ -147,9 +147,10 @@ This workbook ties the **documentation pack** in `docs/SCRI/` to **concrete buil
 
 | Done | Task | Notes / spec pointer |
 |------|------|----------------------|
-| [ ] | **Dashboard:** Critical events, watchlist, impacted shipments/POs/orders/suppliers aggregates | PRD: Risk Intelligence Dashboard |
-| [ ] | **Impact workspace:** Tabbed drill-down from event to object lists | PRD: Impact Workspace |
-| [ ] | **Downstream:** Control Tower alerts, PO/supplier flags per integrations spec | Integrations: Internal Outputs |
+| [x] | **Dashboard:** `/risk-intelligence/dashboard` — severity distribution, critical 30d, watchlist sample match count, tuning signals, R2 impact by object type (30d) | `dashboard-aggregates.ts`, `GET /api/scri/dashboard` |
+| [x] | **Impact workspace:** Tabbed `ScriImpactWorkspace` on event detail (by object type) | `/risk-intelligence/[id]` |
+| [x] | **Downstream (CT):** `POST /api/scri/events/[id]/control-tower-alert` creates `CtAlert` type `SCRI_EVENT` on top matched shipment (`org.scri` edit + `org.controltower` edit) | UI: `ScriCtAlertButton` |
+| [ ] | **PO/supplier row flags:** Deferred (no `PurchaseOrder` / `Supplier` columns in this slice); use R2 links + dashboard aggregates instead |
 
 ---
 
