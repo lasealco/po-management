@@ -33,6 +33,12 @@ vi.mock("@/lib/srm/srm-analytics-aggregates", () => ({
     isSparse: true,
     disclaimer: "test",
   }),
+  loadSrmOperationalSignals: async () => ({
+    suppliersInScope: 1,
+    byApprovalStatus: { pending_approval: 0, approved: 1, rejected: 0 },
+    onboardingTasksOpen: 0,
+    onboardingTasksOverdue: 0,
+  }),
 }));
 
 describe("GET /api/srm/analytics", () => {

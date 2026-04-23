@@ -1,4 +1,8 @@
-import type { SrmBookingSlaSummary, SrmOrderVolumeKpi } from "@/lib/srm/srm-analytics-aggregates";
+import type {
+  SrmBookingSlaSummary,
+  SrmOperationalSignals,
+  SrmOrderVolumeKpi,
+} from "@/lib/srm/srm-analytics-aggregates";
 import Link from "next/link";
 
 function isoDateInput(iso: string): string {
@@ -72,6 +76,58 @@ function BarStack({
         />
       </div>
     </div>
+  );
+}
+
+export function SrmOperationalSignalsPanel({
+  signals,
+  srmKind,
+}: {
+  signals: SrmOperationalSignals;
+  srmKind: "product" | "logistics";
+}) {
+  const { byApprovalStatus } = signals;
+  const maxAp = Math.max(
+    byApprovalStatus.pending_approval,
+    byApprovalStatus.approved,
+    byApprovalStatus.rejected,
+    1,
+  );
+  const kindLabel = srmKind === "logistics" ? "Logistics partners" : "Product suppliers";
+
+  return (
+    <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+      <h2 className="text-sm font-semibold text-zinc-900">Operational signals (Phase J)</h2>
+      <p className="mt-1 text-xs text-zinc-500">
+        Point-in-time for <strong>{kindLabel}</strong>: approval mix and onboarding task backlog (not limited to the date
+        range above).
+      </p>
+      <div className="mt-4 grid gap-4 sm:grid-cols-3">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">In scope</p>
+          <p className="mt-1 text-2xl font-semibold text-zinc-900">{signals.suppliersInScope}</p>
+          <p className="text-xs text-zinc-500">Suppliers in kind</p>
+        </div>
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Onboarding</p>
+          <p className="mt-1 text-2xl font-semibold text-zinc-900">{signals.onboardingTasksOpen}</p>
+          <p className="text-xs text-zinc-500">Open tasks</p>
+        </div>
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Overdue</p>
+          <p className="mt-1 text-2xl font-semibold text-rose-800">{signals.onboardingTasksOverdue}</p>
+          <p className="text-xs text-zinc-500">Open with past due</p>
+        </div>
+      </div>
+      <div className="mt-4">
+        <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Approval status mix</p>
+        <div className="mt-2 max-w-md space-y-2">
+          <BarStack label="Pending" value={byApprovalStatus.pending_approval} max={maxAp} />
+          <BarStack label="Approved" value={byApprovalStatus.approved} max={maxAp} />
+          <BarStack label="Rejected" value={byApprovalStatus.rejected} max={maxAp} />
+        </div>
+      </div>
+    </section>
   );
 }
 

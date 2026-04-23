@@ -38,6 +38,78 @@ export type SrmOrderVolumeKpi = {
 
 export type SrmKindParam = "product" | "logistics";
 
+/** Phase J: lifecycle / task signals for the current supplier kind (not order-windowed; point-in-time). */
+export type SrmOperationalSignals = {
+  /** Suppliers in tenant matching the selected SRM kind. */
+  suppliersInScope: number;
+  byApprovalStatus: {
+    pending_approval: number;
+    approved: number;
+    rejected: number;
+  };
+  /** Onboarding tasks not done for suppliers of this kind. */
+  onboardingTasksOpen: number;
+  /** Open tasks with due date in the past. */
+  onboardingTasksOverdue: number;
+};
+
+/**
+ * Point-in-time operational snapshot: approval mix + onboarding task backlog (Phase J).
+ * Independent of the analytics date window; use alongside PO/SLA metrics.
+ */
+export async function loadSrmOperationalSignals(
+  prisma: PrismaClient,
+  tenantId: string,
+  args: { srmKind: SrmKindParam },
+  options?: { now?: Date },
+): Promise<SrmOperationalSignals> {
+  const cat = srmCategoryFilter(args.srmKind);
+  const now = options?.now ?? new Date();
+  const supplierFilter = { tenantId, srmCategory: cat };
+
+  const [suppliersInScope, groups, onboardingTasksOpen, onboardingTasksOverdue] = await Promise.all([
+    prisma.supplier.count({ where: supplierFilter }),
+    prisma.supplier.groupBy({
+      by: ["approvalStatus"],
+      where: supplierFilter,
+      _count: { _all: true },
+    }),
+    prisma.supplierOnboardingTask.count({
+      where: {
+        tenantId,
+        done: false,
+        supplier: { srmCategory: cat },
+      },
+    }),
+    prisma.supplierOnboardingTask.count({
+      where: {
+        tenantId,
+        done: false,
+        dueAt: { not: null, lt: now },
+        supplier: { srmCategory: cat },
+      },
+    }),
+  ]);
+
+  const byApprovalStatus: SrmOperationalSignals["byApprovalStatus"] = {
+    pending_approval: 0,
+    approved: 0,
+    rejected: 0,
+  };
+  for (const g of groups) {
+    if (g.approvalStatus === "pending_approval") byApprovalStatus.pending_approval = g._count._all;
+    if (g.approvalStatus === "approved") byApprovalStatus.approved = g._count._all;
+    if (g.approvalStatus === "rejected") byApprovalStatus.rejected = g._count._all;
+  }
+
+  return {
+    suppliersInScope,
+    byApprovalStatus,
+    onboardingTasksOpen,
+    onboardingTasksOverdue,
+  };
+}
+
 export type SrmBookingSlaRow = {
   bookingId: string;
   forwarderId: string;

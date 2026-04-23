@@ -11,6 +11,10 @@ import {
   loadSrmOrderVolumeKpis,
 } from "@/lib/srm/srm-analytics-aggregates";
 
+/**
+ * Outbound: same analytics payload as `GET /api/srm/analytics` with a version stamp for ERP/BI consumers.
+ * See `docs/srm/INTEGRATION.md` § Analytics snapshot.
+ */
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
@@ -41,9 +45,12 @@ export async function GET(request: Request) {
   ]);
 
   return NextResponse.json({
+    schemaVersion: 1,
+    kind: "srm_analytics_snapshot_v1",
+    generatedAt: new Date().toISOString(),
     from: fromStart.toISOString(),
     to: toEnd.toISOString(),
-    kind,
+    supplierKind: kind,
     orderKpi,
     orderMetricsRequiresOrdersView: orderGate != null,
     bookingSla,

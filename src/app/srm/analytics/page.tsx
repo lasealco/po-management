@@ -4,31 +4,21 @@ import { AccessDenied } from "@/components/access-denied";
 import {
   SrmAnalyticsDateForm,
   SrmBookingSlaPanel,
+  SrmOperationalSignalsPanel,
   SrmOrderKpiPanel,
 } from "@/components/srm-analytics-panels";
 import { WorkflowHeader } from "@/components/workflow-header";
 import { getViewerGrantSet } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
-import { loadSrmBookingSlaStats, loadSrmOrderVolumeKpis } from "@/lib/srm/srm-analytics-aggregates";
+import {
+  loadSrmBookingSlaStats,
+  loadSrmOperationalSignals,
+  loadSrmOrderVolumeKpis,
+} from "@/lib/srm/srm-analytics-aggregates";
+import { parseSrmAnalyticsQuery } from "@/lib/srm/srm-analytics-request";
 import { resolveSrmPermissions } from "@/lib/srm/permissions";
 
 export const dynamic = "force-dynamic";
-
-function parseYmdToUtcStart(s: string | undefined, fallback: Date): Date {
-  if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return new Date(fallback);
-  const d = new Date(`${s}T00:00:00.000Z`);
-  return Number.isNaN(d.getTime()) ? new Date(fallback) : d;
-}
-
-function parseYmdToUtcEnd(s: string | undefined, fallback: Date): Date {
-  if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s)) {
-    const e = new Date(fallback);
-    e.setUTCHours(23, 59, 59, 999);
-    return e;
-  }
-  const d = new Date(`${s}T23:59:59.999Z`);
-  return Number.isNaN(d.getTime()) ? new Date(fallback) : d;
-}
 
 export default async function SrmAnalyticsPage({
   searchParams,
@@ -67,32 +57,33 @@ export default async function SrmAnalyticsPage({
     );
   }
 
-  const toDefault = new Date();
-  const fromDefault = new Date(toDefault);
-  fromDefault.setUTCDate(fromDefault.getUTCDate() - 90);
-
-  const fromStart = parseYmdToUtcStart(sp.from, fromDefault);
-  const toEnd = parseYmdToUtcEnd(sp.to, toDefault);
-  if (fromStart.getTime() > toEnd.getTime()) {
+  const u = new URL("http://local/srm/analytics");
+  if (sp.from) u.searchParams.set("from", sp.from);
+  if (sp.to) u.searchParams.set("to", sp.to);
+  if (sp.kind === "logistics") u.searchParams.set("kind", "logistics");
+  const parsed = parseSrmAnalyticsQuery(u, new Date());
+  if (!parsed.ok) {
     return (
       <div className="min-h-screen bg-zinc-50 px-6 py-16">
-        <p className="text-zinc-800">Invalid range: <strong>from</strong> is after <strong>to</strong>.</p>
+        <p className="text-zinc-800">Invalid range: <strong>from</strong> is after <strong>to</strong>, or check dates.</p>
         <Link href="/srm/analytics" className="mt-2 inline-block text-sm text-[var(--arscmp-primary)] hover:underline">
           Reset
         </Link>
       </div>
     );
   }
-
-  const kind = sp.kind === "logistics" ? "logistics" as const : "product" as const;
+  const { from: fromStart, to: toEnd, kind } = parsed;
   const { tenant } = access;
 
-  const orderKpi = permissions.canViewOrders
-    ? await loadSrmOrderVolumeKpis(prisma, tenant.id, { from: fromStart, to: toEnd, srmKind: kind })
-    : null;
-
-  const bookingSla =
-    kind === "logistics" ? await loadSrmBookingSlaStats(prisma, tenant.id, { from: fromStart, to: toEnd }) : null;
+  const [orderKpi, bookingSla, operationalSignals] = await Promise.all([
+    permissions.canViewOrders
+      ? loadSrmOrderVolumeKpis(prisma, tenant.id, { from: fromStart, to: toEnd, srmKind: kind })
+      : Promise.resolve(null),
+    kind === "logistics"
+      ? loadSrmBookingSlaStats(prisma, tenant.id, { from: fromStart, to: toEnd })
+      : Promise.resolve(null),
+    loadSrmOperationalSignals(prisma, tenant.id, { srmKind: kind }),
+  ]);
 
   return (
     <div className="min-h-screen bg-zinc-50">
@@ -109,9 +100,9 @@ export default async function SrmAnalyticsPage({
         <div className="mt-3 mb-5">
           <WorkflowHeader
             eyebrow="SRM · Analytics"
-            title="Volume, concentration, and booking SLA"
-            description="MVP: parent POs in a UTC date window; spend by PO currency (no conversion). Top-3 shares are a simple concentration signal — not a full risk model."
-            steps={["Step 1: Pick range & supplier kind", "Step 2: Review order mix", "Step 3: Check logistics booking SLA (if applicable)"]}
+            title="Volume, concentration, booking SLA, and operational signals"
+            description="MVP: parent POs in a UTC date window; spend by PO currency (no conversion). Approval and onboarding counts are current snapshot (not range-filtered). Top-3 is a simple concentration signal — not a full risk model or FX view."
+            steps={["Step 1: Pick range & supplier kind", "Step 2: Review order mix", "Step 3: Check logistics booking SLA (if applicable)", "Step 4: Review lifecycle & onboarding backlog"]}
           />
         </div>
 
@@ -133,6 +124,10 @@ export default async function SrmAnalyticsPage({
         </div>
 
         <SrmAnalyticsDateForm kind={kind} from={fromStart.toISOString()} to={toEnd.toISOString()} />
+
+        <div className="mt-6">
+          <SrmOperationalSignalsPanel signals={operationalSignals} srmKind={kind} />
+        </div>
 
         <div className="mt-6">
           <SrmOrderKpiPanel kpi={orderKpi} canViewOrders={permissions.canViewOrders} />

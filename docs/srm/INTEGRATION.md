@@ -110,6 +110,42 @@ curl -sS -H "Cookie: <session-cookie>" \
   -o suppliers.csv
 ```
 
+## Outbound — analytics snapshot (Phase J)
+
+**`GET /api/srm/integrations/v1/analytics/snapshot`**
+
+- **Grants:** **`org.suppliers` → `view`**. **Order and booking** blocks use the same rules as the in-app **SRM analytics** API (orders metrics require **`org.orders` → `view`**; booking SLA is only for `kind=logistics`).
+
+| Query | Values |
+|-------|--------|
+| `from` | Optional `YYYY-MM-DD` (UTC) — same default window as **SRM · Analytics** |
+| `to` | Optional `YYYY-MM-DD` (UTC) |
+| `kind` | `product` (default) or `logistics` |
+
+- **JSON** envelope:
+
+```json
+{
+  "schemaVersion": 1,
+  "kind": "srm_analytics_snapshot_v1",
+  "generatedAt": "2026-04-23T12:00:00.000Z",
+  "from": "...",
+  "to": "...",
+  "supplierKind": "product",
+  "orderKpi": { },
+  "orderMetricsRequiresOrdersView": false,
+  "bookingSla": null,
+  "operationalSignals": {
+    "suppliersInScope": 0,
+    "byApprovalStatus": { "pending_approval": 0, "approved": 0, "rejected": 0 },
+    "onboardingTasksOpen": 0,
+    "onboardingTasksOverdue": 0
+  }
+}
+```
+
+`operationalSignals` is a **point-in-time** snapshot (approval mix + onboarding backlog) for the selected supplier **kind**; it is not filtered by the `from`/`to` order window. Pair with **`GET /api/srm/analytics`** for the same body shape under `/api/srm/integrations/...` (with `schemaVersion` / `kind` / `generatedAt` on the integration route only).
+
 ## Database
 
 - Apply migrations through your normal pipeline so **`SrmIntegrationIdempotency`** exists before relying on idempotency in production.
