@@ -142,6 +142,50 @@ async function isComplete(client) {
   return fks[0] && fks[0].n === 3;
 }
 
+/**
+ * A stuck migration can leave a pre–Phase B table (no assigneeUserId) while
+ * `_prisma_migrations` is unfinished. Replaying migration.sql skips CREATE
+ * (42P07) and then index/FK on missing columns fails. Align columns to
+ * migration.sql before the idempotent statement loop.
+ */
+/**
+ * Add only columns that are safe when the table may already have rows: nullable
+ * fields, or NOT NULL with a DEFAULT. Avoid ADD … NOT NULL without default on
+ * a non-empty table (would error). This fixes a pre–Phase B table missing e.g.
+ * `assigneeUserId` when CREATE TABLE is skipped (42P07).
+ * Matches types/defaults in migration.sql.
+ */
+const ENSURE_PHASE_B_COLUMN_ALTERS = [
+  `ALTER TABLE "SupplierOnboardingTask" ADD COLUMN IF NOT EXISTS "sortOrder" INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE "SupplierOnboardingTask" ADD COLUMN IF NOT EXISTS "done" BOOLEAN NOT NULL DEFAULT false`,
+  `ALTER TABLE "SupplierOnboardingTask" ADD COLUMN IF NOT EXISTS "assigneeUserId" TEXT`,
+  `ALTER TABLE "SupplierOnboardingTask" ADD COLUMN IF NOT EXISTS "dueAt" TIMESTAMP(3)`,
+  `ALTER TABLE "SupplierOnboardingTask" ADD COLUMN IF NOT EXISTS "notes" TEXT`,
+  `ALTER TABLE "SupplierOnboardingTask" ADD COLUMN IF NOT EXISTS "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP`,
+  `ALTER TABLE "SupplierOnboardingTask" ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP`,
+];
+
+async function ensurePhaseBColumnShape(client) {
+  for (const q of ENSURE_PHASE_B_COLUMN_ALTERS) {
+    try {
+      await client.query(q);
+    } catch (e) {
+      if (ignorableStatementError(e)) {
+        console.log(
+          "[repair] Idempotent skip (column shape):",
+          e.code || "",
+          String(e.message || e).slice(0, 200),
+        );
+        continue;
+      }
+      throw e;
+    }
+  }
+  console.log(
+    "[repair] Ensured Phase B column set on SupplierOnboardingTask (ADD COLUMN IF NOT EXISTS).\n",
+  );
+}
+
 async function main() {
   const dry =
     process.argv.includes("--dry-run") || process.argv.includes("-n");
@@ -252,6 +296,7 @@ async function main() {
     await client.end();
     return;
   }
+  await ensurePhaseBColumnShape(client);
   // Run each statement in autocommit. A single transaction + "continue" on duplicate/relation
   // errors leaves PostgreSQL in aborted state (25P02) for the rest of the batch.
   try {
