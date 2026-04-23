@@ -26,6 +26,9 @@ export async function sendSrmOperatorNotificationEmailMirror(params: {
   body: string | null;
   /** When set, a “From: …” line is added (same assigner as in-app and webhook). */
   actorName?: string | null;
+  /** When set, a “Supplier: …” line is added (name and optional code). */
+  supplierName?: string | null;
+  supplierCode?: string | null;
 }): Promise<boolean> {
   if (!isSrmOperatorEmailMirrorEnabled()) return false;
   const apiKey = process.env.RESEND_API_KEY?.trim();
@@ -38,6 +41,15 @@ export async function sendSrmOperatorNotificationEmailMirror(params: {
   const fromLine = params.actorName?.trim();
   const textParts: string[] = [params.title];
   if (fromLine) textParts.push(`From: ${fromLine}`);
+  const supN = params.supplierName?.trim() ?? "";
+  const supC = params.supplierCode?.trim() ?? "";
+  if (supN && supC) {
+    textParts.push(`Supplier: ${supN} (${supC})`);
+  } else if (supN) {
+    textParts.push(`Supplier: ${supN}`);
+  } else if (supC) {
+    textParts.push(`Supplier: ${supC}`);
+  }
   if (params.body?.trim()) textParts.push(params.body.trim());
   textParts.push(
     "This was sent because SRM in-app notifications are enabled for your account. Open the app to read or mark as read.",

@@ -39,11 +39,12 @@ export async function emitSrmOperatorNotification(
     },
   });
 
-  const needActorName =
-    Boolean(created.actorUserId) &&
-    (Boolean(getSrmOperatorWebhookUrl()) || isSrmOperatorEmailMirrorEnabled());
+  const webhookUrl = getSrmOperatorWebhookUrl();
+  const emailOn = isSrmOperatorEmailMirrorEnabled();
+  const needExtras = Boolean(webhookUrl) || emailOn;
+
   let actorName: string | null = null;
-  if (needActorName) {
+  if (needExtras && created.actorUserId) {
     const actor = await prisma.user.findFirst({
       where: { id: created.actorUserId as string, tenantId: input.tenantId, isActive: true },
       select: { name: true },
@@ -51,7 +52,19 @@ export async function emitSrmOperatorNotification(
     actorName = actor?.name?.trim() || null;
   }
 
-  if (getSrmOperatorWebhookUrl()) {
+  let supplierName: string | null = null;
+  let supplierCode: string | null = null;
+  if (needExtras && created.supplierId) {
+    const sup = await prisma.supplier.findFirst({
+      where: { id: created.supplierId, tenantId: input.tenantId },
+      select: { name: true, code: true },
+    });
+    supplierName = sup?.name?.trim() || null;
+    const code = sup?.code?.trim();
+    supplierCode = code ? code : null;
+  }
+
+  if (webhookUrl) {
     await postSrmOperatorNotificationWebhook({
       id: created.id,
       tenantId: created.tenantId,
@@ -60,6 +73,8 @@ export async function emitSrmOperatorNotification(
       title: created.title,
       body: created.body,
       supplierId: created.supplierId,
+      supplierName,
+      supplierCode,
       taskId: created.taskId,
       actorUserId: created.actorUserId,
       actorName,
@@ -67,7 +82,7 @@ export async function emitSrmOperatorNotification(
     });
   }
 
-  if (!isSrmOperatorEmailMirrorEnabled()) return;
+  if (!emailOn) return;
   const user = await prisma.user.findFirst({
     where: { id: input.userId, tenantId: input.tenantId, isActive: true },
     select: { email: true },
@@ -80,6 +95,8 @@ export async function emitSrmOperatorNotification(
       title: input.title,
       body: input.body ?? null,
       actorName,
+      supplierName,
+      supplierCode,
     });
   } catch {
     /* best-effort; in-app row is the source of truth */

@@ -25,6 +25,8 @@ describe("srm-operator-notification-webhook-mirror", () => {
       title: "T",
       body: "b",
       supplierId: null,
+      supplierName: null,
+      supplierCode: null,
       taskId: null,
       actorUserId: null,
       actorName: null,
@@ -57,6 +59,8 @@ describe("srm-operator-notification-webhook-mirror", () => {
       title: "You were assigned",
       body: "Task body",
       supplierId: "s1",
+      supplierName: "Acme",
+      supplierCode: "AC-1",
       taskId: "k1",
       actorUserId: "a1",
       actorName: "Alex",
@@ -72,12 +76,20 @@ describe("srm-operator-notification-webhook-mirror", () => {
     const body = JSON.parse(init.body as string) as {
       specVersion: 1;
       event: string;
-      notification: { id: string; kind: string; actorName: string | null };
+      notification: {
+        id: string;
+        kind: string;
+        actorName: string | null;
+        supplierName: string | null;
+        supplierCode: string | null;
+      };
     };
     expect(body.specVersion).toBe(1);
     expect(body.event).toBe("srm.operator_notification.created");
     expect(body.notification.id).toBe("nid");
     expect(body.notification.kind).toBe("ONBOARDING_TASK_ASSIGNED");
     expect(body.notification.actorName).toBe("Alex");
+    expect(body.notification.supplierName).toBe("Acme");
+    expect(body.notification.supplierCode).toBe("AC-1");
   });
 });

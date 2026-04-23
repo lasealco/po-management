@@ -68,4 +68,26 @@ describe("srm-operator-notification-email-mirror", () => {
     const b = JSON.parse(init.body as string) as { text: string };
     expect(b.text).toContain("From: Pat");
   });
+
+  it("includes a Supplier: line when name or code is set", async () => {
+    process.env.SRM_OPERATOR_EMAIL_NOTIFICATIONS = "1";
+    process.env.RESEND_API_KEY = "re_key";
+    process.env.SRM_EMAIL_FROM = "noreply@example.com";
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200 });
+    vi.stubGlobal("fetch", fetchMock);
+    const { sendSrmOperatorNotificationEmailMirror } = await import(
+      "./srm-operator-notification-email-mirror"
+    );
+    const r = await sendSrmOperatorNotificationEmailMirror({
+      to: "u@x.com",
+      title: "T",
+      body: null,
+      supplierName: "Acme",
+      supplierCode: "S-99",
+    });
+    expect(r).toBe(true);
+    const init = fetchMock.mock.calls[0]![1] as RequestInit;
+    const b = JSON.parse(init.body as string) as { text: string };
+    expect(b.text).toContain("Supplier: Acme (S-99)");
+  });
 });
