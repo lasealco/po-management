@@ -22,6 +22,8 @@ export function scriAiSummarySourceLabel(src: string | null | undefined): string
       return "Connector / model output";
     case "DETERMINISTIC_V1":
       return "Auto-generated template (no LLM)";
+    case "OPENAI_GROUNDED_V1":
+      return "OpenAI summary (grounded on ingest + source URLs)";
     default:
       return "Unspecified (legacy or pre-tracking)";
   }

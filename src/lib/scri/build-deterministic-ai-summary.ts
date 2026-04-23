@@ -2,6 +2,7 @@ import type { TwinRiskSeverity } from "@prisma/client";
 
 import type { ScriIngestBody } from "@/lib/scri/schemas/ingest-body";
 import { scriEventTypeLabel } from "@/lib/scri/event-type-taxonomy";
+import { tryScriIngestAiLlm } from "@/lib/scri/scri-ingest-ai-llm";
 
 const MAX_LEN = 4500;
 
@@ -85,19 +86,29 @@ export function buildDeterministicScriAiSummary(input: BuilderInput): string | n
   return text.length > MAX_LEN ? `${text.slice(0, MAX_LEN)}…` : text;
 }
 
-export function resolveIngestAiFields(body: ScriIngestBody): {
-  aiSummary: string | null;
-  aiSummarySource: string | null;
-} {
+export type ScriConnectorAiResolution =
+  | { kind: "connector"; aiSummary: string | null; aiSummarySource: string | null }
+  | { kind: "auto" };
+
+/** Explicit connector / clear overrides only. `auto` means LLM or deterministic template. */
+export function resolveConnectorIngestAi(body: ScriIngestBody): ScriConnectorAiResolution {
   if (body.aiSummary === null) {
-    return { aiSummary: null, aiSummarySource: null };
+    return { kind: "connector", aiSummary: null, aiSummarySource: null };
   }
   if (body.aiSummary !== undefined) {
     const t = body.aiSummary.trim();
-    if (!t.length) return { aiSummary: null, aiSummarySource: null };
-    return { aiSummary: t, aiSummarySource: "CONNECTOR" };
+    if (!t.length) {
+      return { kind: "connector", aiSummary: null, aiSummarySource: null };
+    }
+    return { kind: "connector", aiSummary: t, aiSummarySource: "CONNECTOR" };
   }
+  return { kind: "auto" };
+}
 
+function resolveAutoIngestAiFields(body: ScriIngestBody): {
+  aiSummary: string | null;
+  aiSummarySource: string | null;
+} {
   const built = buildDeterministicScriAiSummary({
     title: body.title,
     shortSummary: body.shortSummary ?? null,
@@ -111,4 +122,35 @@ export function resolveIngestAiFields(body: ScriIngestBody): {
   });
   if (!built) return { aiSummary: null, aiSummarySource: null };
   return { aiSummary: built, aiSummarySource: "DETERMINISTIC_V1" };
+}
+
+export function resolveIngestAiFields(body: ScriIngestBody): {
+  aiSummary: string | null;
+  aiSummarySource: string | null;
+} {
+  const c = resolveConnectorIngestAi(body);
+  if (c.kind === "connector") {
+    return { aiSummary: c.aiSummary, aiSummarySource: c.aiSummarySource };
+  }
+  return resolveAutoIngestAiFields(body);
+}
+
+/**
+ * When `aiSummary` is omitted, tries OpenAI (if enabled and sources include https URLs), else deterministic template.
+ */
+export async function resolveIngestAiFieldsAsync(body: ScriIngestBody): Promise<{
+  aiSummary: string | null;
+  aiSummarySource: string | null;
+}> {
+  const c = resolveConnectorIngestAi(body);
+  if (c.kind === "connector") {
+    return { aiSummary: c.aiSummary, aiSummarySource: c.aiSummarySource };
+  }
+
+  const llm = await tryScriIngestAiLlm(body);
+  if (llm.ok) {
+    return { aiSummary: llm.text, aiSummarySource: "OPENAI_GROUNDED_V1" };
+  }
+
+  return resolveAutoIngestAiFields(body);
 }
