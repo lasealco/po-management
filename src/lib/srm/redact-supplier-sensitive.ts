@@ -8,7 +8,41 @@ import type { SupplierDetailSnapshot } from "@/components/supplier-detail-client
  * - Contacts: `email`, `phone`, `notes` (name/title/role/primary still visible for coordination)
  * - Offices (API payload): all address / location fields; snapshot exposes `city` + `countryCode` only
  * - Capabilities: `geography`, `notes` (service line still visible)
+ * - **List & export:** `GET /api/suppliers`, integration supplier export — same top-level keys as company/commercial, via {@link redactSupplierRecordForView}.
  */
+const SUPPLIER_FLAT_SENSITIVE_KEYS = [
+  "legalName",
+  "email",
+  "phone",
+  "taxId",
+  "internalNotes",
+  "registeredAddressLine1",
+  "registeredAddressLine2",
+  "registeredCity",
+  "registeredRegion",
+  "registeredPostalCode",
+  "registeredCountryCode",
+  "paymentTermsDays",
+  "paymentTermsLabel",
+  "creditLimit",
+  "creditCurrency",
+  "defaultIncoterm",
+  "bookingConfirmationSlaHours",
+  "website",
+] as const;
+
+/**
+ * Strips top-level sensitive supplier columns for view-only (flat row: list, export, or Prisma `include` payload without nested redaction).
+ */
+export function redactSupplierRecordForView<T extends Record<string, unknown>>(row: T, canViewSensitive: boolean): T {
+  if (canViewSensitive) return row;
+  const out = { ...row } as Record<string, unknown>;
+  for (const k of SUPPLIER_FLAT_SENSITIVE_KEYS) {
+    if (k in out) out[k] = null;
+  }
+  return out as T;
+}
+
 type ContactSensitive = {
   notes: string | null;
   email: string | null;

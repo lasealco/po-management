@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 
 import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
-import { requireApiGrant } from "@/lib/authz";
+import { getActorUserId, loadGlobalGrantsForUser, requireApiGrant, viewerHas } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
+import { redactSupplierRecordForView } from "@/lib/srm/redact-supplier-sensitive";
 import type { SrmSupplierCategory } from "@prisma/client";
 
 export const runtime = "nodejs";
@@ -45,14 +46,22 @@ export async function GET(request: Request) {
     },
   });
 
+  const actorId = await getActorUserId();
+  const grantSet = actorId ? await loadGlobalGrantsForUser(actorId) : new Set<string>();
+  const canViewSensitive =
+    viewerHas(grantSet, "org.suppliers", "edit") || viewerHas(grantSet, "org.suppliers", "approve");
+  const safeRows = rows.map((r) =>
+    redactSupplierRecordForView(r as unknown as Record<string, unknown>, canViewSensitive),
+  ) as typeof rows;
+
   if (format === "json") {
-    return NextResponse.json({ schemaVersion: 1, kind: kind ?? "all", suppliers: rows });
+    return NextResponse.json({ schemaVersion: 1, kind: kind ?? "all", suppliers: safeRows });
   }
 
   const header = ["id", "name", "code", "email", "phone", "isActive", "srmCategory", "approvalStatus", "updatedAt"];
   const lines = [
     header.join(","),
-    ...rows.map((r) =>
+    ...safeRows.map((r) =>
       [
         escapeCsvCell(r.id),
         escapeCsvCell(r.name),

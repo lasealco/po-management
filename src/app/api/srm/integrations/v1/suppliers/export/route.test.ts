@@ -1,11 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const requireApiGrantMock = vi.fn();
+const getActorUserIdMock = vi.fn();
+const loadGlobalGrantsForUserMock = vi.fn();
 const getDemoTenantMock = vi.fn();
 const findManyMock = vi.fn();
 
 vi.mock("@/lib/authz", () => ({
   requireApiGrant: requireApiGrantMock,
+  getActorUserId: (...a: unknown[]) => getActorUserIdMock(...a),
+  loadGlobalGrantsForUser: (...a: unknown[]) => loadGlobalGrantsForUserMock(...a),
+  viewerHas: (set: Set<string>, resource: string, action: string) =>
+    set.has(`${resource}\u0000${action}`),
 }));
 
 vi.mock("@/lib/demo-tenant", () => ({
@@ -36,6 +42,10 @@ describe("GET /api/srm/integrations/v1/suppliers/export", () => {
     requireApiGrantMock.mockResolvedValue(null);
     getDemoTenantMock.mockResolvedValue({ id: "tenant-1" });
     findManyMock.mockResolvedValue([sampleRow]);
+    getActorUserIdMock.mockResolvedValue("u1");
+    loadGlobalGrantsForUserMock.mockResolvedValue(
+      new Set(["org.suppliers\u0000edit", "org.suppliers\u0000view"]),
+    );
   });
 
   it("returns gate when org.suppliers view is denied", async () => {
@@ -58,14 +68,28 @@ describe("GET /api/srm/integrations/v1/suppliers/export", () => {
     const { GET } = await import("./route");
     const res = await GET(new Request("http://localhost/api/export?format=json"));
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { schemaVersion: number; kind: string; suppliers: { id: string }[] };
+    const body = (await res.json()) as {
+      schemaVersion: number;
+      kind: string;
+      suppliers: { id: string; email: string | null }[];
+    };
     expect(body.schemaVersion).toBe(1);
     expect(body.kind).toBe("all");
     expect(body.suppliers).toHaveLength(1);
     expect(body.suppliers[0].id).toBe("s-1");
+    expect(body.suppliers[0].email).toBe("a@x.com");
     expect(findManyMock).toHaveBeenCalledWith(
       expect.objectContaining({ where: { tenantId: "tenant-1" } }),
     );
+  });
+
+  it("redacts email and phone in JSON export for view-only", async () => {
+    loadGlobalGrantsForUserMock.mockResolvedValueOnce(new Set(["org.suppliers\u0000view"]));
+    const { GET } = await import("./route");
+    const res = await GET(new Request("http://localhost/api/export?format=json"));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { suppliers: { email: string | null; phone: string | null }[] };
+    expect(body.suppliers[0].email).toBeNull();
   });
 
   it("passes srmCategory filter for kind=logistics", async () => {

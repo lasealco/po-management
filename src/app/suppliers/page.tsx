@@ -6,6 +6,7 @@ import { SupplierKindTabs, type SupplierSrmKind } from "@/components/supplier-ki
 import { WorkflowHeader } from "@/components/workflow-header";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
+import { resolveSrmPermissions } from "@/lib/srm/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -55,8 +56,10 @@ export default async function SuppliersPage({
   }
 
   const { tenant } = access;
-  const canEdit = viewerHas(access.grantSet, "org.suppliers", "edit");
-  const canApprove = viewerHas(access.grantSet, "org.suppliers", "approve");
+  const srmPerms = resolveSrmPermissions(access.grantSet);
+  const canEdit = srmPerms.canEditSuppliers;
+  const canApprove = srmPerms.canApproveSuppliers;
+  const canViewSensitive = srmPerms.canViewSupplierSensitiveFields;
 
   const suppliers = await prisma.supplier.findMany({
     where: {
@@ -128,13 +131,15 @@ export default async function SuppliersPage({
                       {s.code ?? "—"}
                     </td>
                     <td className="px-4 py-3 text-zinc-600">
-                      {[s.email, s.phone].filter(Boolean).join(" · ") || "—"}
+                      {canViewSensitive
+                        ? [s.email, s.phone].filter(Boolean).join(" · ") || "—"
+                        : "—"}
                     </td>
                     <td className="px-4 py-3 text-zinc-600">
-                      {s.paymentTermsLabel ??
-                        (s.paymentTermsDays != null
-                          ? `Net ${s.paymentTermsDays}`
-                          : "—")}
+                      {canViewSensitive
+                        ? s.paymentTermsLabel ??
+                          (s.paymentTermsDays != null ? `Net ${s.paymentTermsDays}` : "—")
+                        : "—"}
                     </td>
                     <td className="px-4 py-3 text-center tabular-nums">
                       {s._count.offices}

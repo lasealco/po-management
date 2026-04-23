@@ -59,6 +59,17 @@ export default async function SrmPage({
 
   const { tenant } = access;
 
+  const canViewSensitiveList = permissions.canViewSupplierSensitiveFields;
+  const searchOr = q
+    ? [
+        { name: { contains: q, mode: "insensitive" as const } },
+        { code: { contains: q, mode: "insensitive" as const } },
+        ...(canViewSensitiveList
+          ? [{ email: { contains: q, mode: "insensitive" as const } }]
+          : []),
+      ]
+    : [];
+
   const suppliers = await prisma.supplier.findMany({
     where: {
       tenantId: tenant.id,
@@ -73,15 +84,7 @@ export default async function SrmPage({
             },
           }
         : {}),
-      ...(q
-        ? {
-            OR: [
-              { name: { contains: q, mode: "insensitive" } },
-              { code: { contains: q, mode: "insensitive" } },
-              { email: { contains: q, mode: "insensitive" } },
-            ],
-          }
-        : {}),
+      ...(searchOr.length ? { OR: searchOr } : {}),
     },
     orderBy: { name: "asc" },
     select: {
@@ -101,8 +104,8 @@ export default async function SrmPage({
     id: s.id,
     name: s.name,
     code: s.code,
-    email: s.email,
-    phone: s.phone,
+    email: canViewSensitiveList ? s.email : null,
+    phone: canViewSensitiveList ? s.phone : null,
     isActive: s.isActive,
     orderCount: permissions.canViewOrders && "_count" in s ? s._count.orders : null,
     srmCategory: s.srmCategory === "logistics" ? "logistics" as const : "product" as const,
@@ -173,7 +176,11 @@ export default async function SrmPage({
                 <input
                   name="q"
                   defaultValue={q}
-                  placeholder="Search by name, code, or email"
+                  placeholder={
+                    canViewSensitiveList
+                      ? "Search by name, code, or email"
+                      : "Search by name or code"
+                  }
                   className="h-10 rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-900 shadow-sm outline-none focus:border-[var(--arscmp-primary)] focus:ring-2 focus:ring-[var(--arscmp-primary)]/20"
                 />
               </label>

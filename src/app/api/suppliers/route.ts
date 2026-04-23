@@ -12,6 +12,7 @@ import {
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
 import { ensureSupplierOnboardingTasks } from "@/lib/srm/ensure-supplier-onboarding-tasks";
+import { redactSupplierRecordForView } from "@/lib/srm/redact-supplier-sensitive";
 
 export async function GET() {
   const gate = await requireApiGrant("org.suppliers", "view");
@@ -30,7 +31,14 @@ export async function GET() {
     },
   });
 
-  return NextResponse.json({ suppliers });
+  const actorId = await getActorUserId();
+  const grantSet = actorId ? await loadGlobalGrantsForUser(actorId) : new Set<string>();
+  const canViewSensitive =
+    viewerHas(grantSet, "org.suppliers", "edit") || viewerHas(grantSet, "org.suppliers", "approve");
+
+  return NextResponse.json({
+    suppliers: suppliers.map((s) => redactSupplierRecordForView(s as unknown as Record<string, unknown>, canViewSensitive)),
+  });
 }
 
 export async function POST(request: Request) {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { redactSupplierDetailSnapshot } from "@/lib/srm/redact-supplier-sensitive";
+import { redactSupplierDetailSnapshot, redactSupplierRecordForView } from "@/lib/srm/redact-supplier-sensitive";
 import type { SupplierDetailSnapshot } from "@/components/supplier-detail-client";
 
 const base: SupplierDetailSnapshot = {
@@ -105,5 +105,17 @@ describe("redactSupplierDetailSnapshot", () => {
     expect(r.capabilities[0].geography).toBeNull();
     expect(r.capabilities[0].notes).toBeNull();
     expect(r.capabilities[0].serviceType).toBe("FF");
+  });
+});
+
+describe("redactSupplierRecordForView", () => {
+  it("nulls flat sensitive keys when view-only", () => {
+    const r = redactSupplierRecordForView(
+      { id: "1", name: "A", email: "e@x.com", custom: "keep" },
+      false,
+    );
+    expect(r.email).toBeNull();
+    expect(r.name).toBe("A");
+    expect(r.custom).toBe("keep");
   });
 });
