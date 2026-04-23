@@ -40,6 +40,14 @@ export async function emitSrmOperatorNotification(
   });
 
   if (getSrmOperatorWebhookUrl()) {
+    let actorName: string | null = null;
+    if (created.actorUserId) {
+      const actor = await prisma.user.findFirst({
+        where: { id: created.actorUserId, tenantId: input.tenantId, isActive: true },
+        select: { name: true },
+      });
+      actorName = actor?.name?.trim() || null;
+    }
     await postSrmOperatorNotificationWebhook({
       id: created.id,
       tenantId: created.tenantId,
@@ -50,6 +58,7 @@ export async function emitSrmOperatorNotification(
       supplierId: created.supplierId,
       taskId: created.taskId,
       actorUserId: created.actorUserId,
+      actorName,
       createdAt: created.createdAt.toISOString(),
     });
   }

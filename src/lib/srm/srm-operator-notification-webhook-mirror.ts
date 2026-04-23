@@ -40,6 +40,8 @@ export type SrmOperatorNotificationWebhookPayload = {
     supplierId: string | null;
     taskId: string | null;
     actorUserId: string | null;
+    /** Display name of the actor when resolvable; null when absent. */
+    actorName: string | null;
     createdAt: string;
   };
 };

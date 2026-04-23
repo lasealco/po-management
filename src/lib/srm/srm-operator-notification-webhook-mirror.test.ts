@@ -27,6 +27,7 @@ describe("srm-operator-notification-webhook-mirror", () => {
       supplierId: null,
       taskId: null,
       actorUserId: null,
+      actorName: null,
       createdAt: "2020-01-01T00:00:00.000Z",
     });
     expect(r).toBe(false);
@@ -58,6 +59,7 @@ describe("srm-operator-notification-webhook-mirror", () => {
       supplierId: "s1",
       taskId: "k1",
       actorUserId: "a1",
+      actorName: "Alex",
       createdAt: "2020-01-01T00:00:00.000Z",
     });
     expect(r).toBe(true);
@@ -70,11 +72,12 @@ describe("srm-operator-notification-webhook-mirror", () => {
     const body = JSON.parse(init.body as string) as {
       specVersion: 1;
       event: string;
-      notification: { id: string; kind: string };
+      notification: { id: string; kind: string; actorName: string | null };
     };
     expect(body.specVersion).toBe(1);
     expect(body.event).toBe("srm.operator_notification.created");
     expect(body.notification.id).toBe("nid");
     expect(body.notification.kind).toBe("ONBOARDING_TASK_ASSIGNED");
+    expect(body.notification.actorName).toBe("Alex");
   });
 });
