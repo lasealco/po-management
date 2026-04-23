@@ -71,12 +71,14 @@
 
 ## Phase D — Performance, risk & KPI (slices 21–24)
 
+**Status:** ✅ Landed (see `GAP_MAP.md` Phase D note).
+
 | # | Slice | Goal | Acceptance |
 |---|--------|------|------------|
-| **21** | **KPI data: spend / volume by supplier** | Aggregates | One SQL/Prisma aggregate (PO or booking-linked) scoped to tenant; documented assumptions. |
-| **22** | **KPI dashboard route** | `/srm/analytics` or tab | Single page with 1–2 charts/tables + date range; respects `org.suppliers` view. |
-| **23** | **Concentration / top-N risk** | Simple risk signal | Table: % of spend or order count in top 3 suppliers; copy explains limitation (MVP). |
-| **24** | **SLA / booking SLA widget** | Uses existing fields | Surface `bookingConfirmationSlaHours` (or related) vs actuals if data exists; else **placeholder with real data hook** + GAP_MAP ⏸ note. |
+| **21** | **KPI data: spend / volume by supplier** | Aggregates | **Done:** `loadSrmOrderVolumeKpis` — parent POs in UTC range, `Supplier` category filter; spend by `totalAmount` + `currency` (no FX); see `src/lib/srm/srm-analytics-aggregates.ts`. |
+| **22** | **KPI dashboard route** | `/srm/analytics` or tab | **Done:** **`/srm/analytics`** + **`GET /api/srm/analytics`**; `org.suppliers` → view; PO metrics need `org.orders` → view (API returns `orderMetricsRequiresOrdersView` when blocked). |
+| **23** | **Concentration / top-N risk** | Simple risk signal | **Done:** Top-3 **order-count** % + per-currency **spend** top-3 % on dashboard; MVP copy explains limitation. |
+| **24** | **SLA / booking SLA widget** | Uses existing fields | **Done:** Logistics: `loadSrmBookingSlaStats` — `bookingSentAt` vs first `BOOKING_CONFIRMED` milestone vs `bookingConfirmationSlaHours` (default 24h); sparse-data callout; **GAP_MAP** Phase D caveat. |
 
 ---
 

@@ -134,6 +134,12 @@ export default async function SrmPage({
 
           <div className="mt-4 flex flex-wrap items-center gap-3">
             {canEdit ? <ActionLink href={`/srm/new?kind=${kind}`}>Create new partner</ActionLink> : null}
+            <Link
+              href={`/srm/analytics?kind=${kind === "logistics" ? "logistics" : "product"}`}
+              className="text-sm font-medium text-[var(--arscmp-primary)] hover:underline"
+            >
+              Analytics
+            </Link>
             <Link href={`/suppliers?kind=${kind}`} className="text-sm text-zinc-600 underline hover:text-zinc-900">
               Open legacy supplier directory view
             </Link>
