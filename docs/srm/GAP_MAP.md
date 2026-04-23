@@ -50,7 +50,10 @@ Add **Issue** / **PR** when you file work; the **30-slice** program is **closed*
 | 22 | Phase D — analytics dashboard + API | — | (landed) |
 | 23 | Phase D — concentration / top-N | — | (landed) |
 | 24 | Phase D — booking SLA widget (logistics) | — | (landed) |
-| 25–28 | Phase E — integration pack | — | (landed) |
+| 25 | Phase E — inbound upsert v1 + idempotency | — | (landed) |
+| 26 | Phase E — upsert contract tests (Vitest) | — | (landed) |
+| 27 | Phase E — export (JSON/CSV) | — | (landed) |
+| 28 | Phase E — `docs/srm/INTEGRATION.md` | — | (landed) |
 | 29–30 | Phase F — SRM demo seed + sign-off | — | (landed) |
 
 **Phase A (slices 4–10) — shipped in repo:** mobile partner cards + zero-state on `/srm`; create redirects to `/srm/[id]` with validation; 360 **Profile / Contacts & sites / Capabilities / Orders / Compliance / Activity** tabs (sticky nav); **booking confirmation SLA (hours)** on profile PATCH + UI; **office inline edit**; capabilities empty CTA + primary add button; **Vitest** for `GET /api/suppliers` and `GET /api/suppliers/[id]` grant + tenant gates.
@@ -61,7 +64,7 @@ Add **Issue** / **PR** when you file work; the **30-slice** program is **closed*
 
 **Phase D (slices 21–24) — shipped in repo:** **`/srm/analytics`** (workflow panel + invalid-range handling) — parent **PO** volume + spend by **currency** (no FX) + **top-3 concentration** (order-count % and per-currency spend %); **`GET /api/srm/analytics`** — **`org.suppliers` → view**; **PO metrics** require **`org.orders` → view** (API and UI set `orderKpi` null + flag when missing; page still shows operational signals, and **booking SLA** when `kind=logistics`). **404** if no tenant; **400** for `from` after `to`. **Booking SLA:** `ShipmentBooking.bookingSentAt` vs first **`BOOKING_CONFIRMED`** milestone vs `bookingConfirmationSlaHours` (else 24h). Implementation: **`src/lib/srm/srm-analytics-aggregates.ts`**, **`parseSrmAnalyticsQuery`**; Vitest: **`api/srm/analytics/route.test.ts`** (grants, tenant 404, bad range, logistics includes `bookingSla`). **`srm-analytics-request.test.ts`** for query parsing.
 
-**Phase E (slices 25–28) — shipped in repo:** **`POST /api/srm/integrations/v1/suppliers/upsert`** — `srm_supplier_upsert_v1` (`schemaVersion: 1`), `match.id` / `match.code` / create; **`SrmIntegrationIdempotency`** table for **`Idempotency-Key`** replay; field mapping aligned with supplier **PATCH**/**POST**; **`GET /api/srm/integrations/v1/suppliers/export`** (`format`, `kind`); **`docs/srm/INTEGRATION.md`**; Vitest in **`upsert/route.test.ts`**.
+**Phase E (slices 25–28) — shipped in repo:** **`POST /api/srm/integrations/v1/suppliers/upsert`** — `srm_supplier_upsert_v1` (`schemaVersion: 1`), `match.id` / `match.code` / create; **`SrmIntegrationIdempotency`** for **`Idempotency-Key`** replay/conflict; **`GET /api/srm/integrations/v1/suppliers/export`** — `format=json` (default) or `csv`, optional `kind=product` \| `logistics`; **`docs/srm/INTEGRATION.md`**. **Vitest:** **`upsert/route.test.ts`** (edit gate, idempotency replay 201 + header, 409 conflict, **404** no tenant, **403** no actor) · **`export/route.test.ts`** (view gate, **404** tenant, JSON schema, `kind` filter, CSV stream).
 
 **Phase F (slices 29–30) — shipped in repo:** **`npm run db:seed:srm-demo`** (`prisma/seed-srm-demo.mjs`, idempotent) — five partners **`DEMO-SRM-001`…`DEMO-SRM-005`** on **`demo-company`**: mixed **`approvalStatus`**, default **onboarding** tasks with assignee/due on incomplete rows, **`SrmSupplierDocument`** rows (metadata; shared dummy PDF URL). Documented in **`docs/database-neon.md`**. This file and **`docs/engineering/agent-todos/srm.md`** updated for **MVP sign-off** (blueprint table **✅/⏸**, banner at top of this doc).
 

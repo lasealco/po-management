@@ -93,4 +93,28 @@ describe("POST /api/srm/integrations/v1/suppliers/upsert", () => {
     const j = (await res.json()) as { code: string };
     expect(j.code).toBe("IDEMPOTENCY_CONFLICT");
   });
+
+  it("returns 404 when demo tenant is missing", async () => {
+    requireApiGrantMock.mockResolvedValue(null);
+    getDemoTenantMock.mockResolvedValueOnce(null);
+    const { POST } = await import("./route");
+    const res = await POST(
+      new Request("http://localhost/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ schemaVersion: 1, supplier: { name: "A" } }),
+      }),
+    );
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 403 when no actor user", async () => {
+    requireApiGrantMock.mockResolvedValue(null);
+    getActorUserIdMock.mockResolvedValueOnce(null);
+    const { POST } = await import("./route");
+    const res = await POST(
+      new Request("http://localhost/", { method: "POST", body: "{}", headers: { "Content-Type": "application/json" } }),
+    );
+    expect(res.status).toBe(403);
+  });
 });
