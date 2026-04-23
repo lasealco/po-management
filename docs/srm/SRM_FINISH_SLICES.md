@@ -84,12 +84,14 @@
 
 ## Phase E — Integration pack (slices 25–28)
 
+**Status:** ✅ Landed (see `GAP_MAP.md` Phase E note).
+
 | # | Slice | Goal | Acceptance |
 |---|--------|------|------------|
-| **25** | **Inbound payload: supplier upsert v1** | Versioned JSON | `POST` route under `src/app/api/…/srm` or suppliers: body schema, `Idempotency-Key` or natural key; maps to `Supplier`. |
-| **26** | **Inbound tests** | Contract | Vitest: happy path, duplicate idempotency, invalid tenant, validation errors; no secrets in fixtures. |
-| **27** | **Outbound export (optional)** | CSV or JSON | If timeboxed: `/api/.../srm/suppliers/export` filtered list for integrations; else mark slice **skipped** in tracker with reason. |
-| **28** | **Integration docs** | Operator-facing | `docs/srm/INTEGRATION.md`: auth, rate limits, example curl, error envelope. |
+| **25** | **Inbound payload: supplier upsert v1** | Versioned JSON | **Done:** **`POST /api/srm/integrations/v1/suppliers/upsert`** — `schemaVersion: 1`, `match.id` / `match.code` / create; maps to `Supplier`; **`SrmIntegrationIdempotency`** + `Idempotency-Key`. |
+| **26** | **Inbound tests** | Contract | **Done:** Vitest for gate, idempotency replay, idempotency conflict (`route.test.ts`). |
+| **27** | **Outbound export (optional)** | CSV or JSON | **Done:** **`GET /api/srm/integrations/v1/suppliers/export`** — `format=json` (default) or `csv`, optional `kind=`. |
+| **28** | **Integration docs** | Operator-facing | **Done:** **`docs/srm/INTEGRATION.md`**. |
 
 ---
 

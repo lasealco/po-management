@@ -101,6 +101,7 @@ model Tenant {
   supplierOnboardingTasks         SupplierOnboardingTask[]
   srmSupplierDocuments            SrmSupplierDocument[]
   srmSupplierDocumentAuditLogs    SrmSupplierDocumentAuditLog[]
+  srmIntegrationIdempotencies     SrmIntegrationIdempotency[]
 }
 
 /// Integration / API hub — registry row for an external or internal data source (Phase 1 stub).
@@ -664,6 +665,24 @@ model SrmSupplierDocumentAuditLog {
 
   @@index([documentId, at])
   @@index([tenantId, at])
+}
+
+/// SRM Phase E — replay cache for `POST` integration routes (e.g. supplier upsert) keyed by `Idempotency-Key`.
+model SrmIntegrationIdempotency {
+  id        String   @id @default(cuid())
+  tenantId  String
+  /// Route surface, e.g. `supplier_upsert_v1`.
+  surface   String   @db.VarChar(64)
+  key       String   @db.VarChar(256)
+  bodySha256 String  @db.VarChar(64)
+  statusCode Int
+  responseBody String @db.Text
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, surface, key])
+  @@index([tenantId, createdAt])
 }
 
 /// SRM: declared transport / service scope (modes, service lines, geography). See PRD “Service capabilities”.
