@@ -4,7 +4,7 @@ import type { PrismaClient } from "@prisma/client";
 import { srmIntegrationStableStringify } from "./srm-integration-stable-stringify";
 
 export const SRM_INTEGRATION_IDEMPOTENCY_KEY_MAX = 256;
-export const SRM_INTEGRATION_UPSURF_SUPPLIER_V1 = "supplier_upsert_v1" as const;
+export const SRM_INTEGRATION_UPSERT_SUPPLIER_V1 = "supplier_upsert_v1" as const;
 
 export function srmBodySha256(body: unknown): string {
   return createHash("sha256").update(srmIntegrationStableStringify(body), "utf8").digest("hex");

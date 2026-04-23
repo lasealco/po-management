@@ -30,7 +30,7 @@ vi.mock("@/lib/srm/srm-supplier-upsert-v1", () => ({
 }));
 
 vi.mock("@/lib/srm/srm-integration-idempotency", () => ({
-  SRM_INTEGRATION_UPSURF_SUPPLIER_V1: "supplier_upsert_v1",
+  SRM_INTEGRATION_UPSERT_SUPPLIER_V1: "supplier_upsert_v1",
   checkSrmIdempotency: vi.fn(),
   storeSrmIdempotency: vi.fn(),
   parseSrmIdempotencyKeyHeader: (req: Request) => {

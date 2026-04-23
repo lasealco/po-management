@@ -13,7 +13,7 @@ import {
   checkSrmIdempotency,
   parseSrmIdempotencyKeyHeader,
   srmBodySha256,
-  SRM_INTEGRATION_UPSURF_SUPPLIER_V1,
+  SRM_INTEGRATION_UPSERT_SUPPLIER_V1,
   storeSrmIdempotency,
 } from "@/lib/srm/srm-integration-idempotency";
 import { parseSrmSupplierUpsertV1Body, runSrmSupplierUpsertV1 } from "@/lib/srm/srm-supplier-upsert-v1";
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
   if (idemHeader.key) {
     const idem = await checkSrmIdempotency(prisma, {
       tenantId: tenant.id,
-      surface: SRM_INTEGRATION_UPSURF_SUPPLIER_V1,
+      surface: SRM_INTEGRATION_UPSERT_SUPPLIER_V1,
       idempotencyKey: idemHeader.key,
       bodyHash,
     });
@@ -92,7 +92,7 @@ export async function POST(request: Request) {
     const text = await res.clone().text();
     await storeSrmIdempotency(prisma, {
       tenantId: tenant.id,
-      surface: SRM_INTEGRATION_UPSURF_SUPPLIER_V1,
+      surface: SRM_INTEGRATION_UPSERT_SUPPLIER_V1,
       idempotencyKey: idemHeader.key,
       bodyHash,
       statusCode: res.status,

@@ -28,7 +28,7 @@ Add **Issue** / **PR** when you file work; the **30-slice** program is **closed*
 |---|----------------|--------------|-----|
 | 1 | SRM completion index | — | (landed) |
 | 2 | MVP sign-off checklist | — | (landed) |
-| 3 | Slice tracker table | — | (this doc) |
+| 3 | Slice tracker table | — | (landed) |
 | 4 | List page polish | — | (landed) |
 | 5 | Create partner wizard polish | — | (landed) |
 | 6 | 360 layout & navigation | — | (landed) |

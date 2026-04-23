@@ -48,7 +48,7 @@ Use the **phase table** in [`SRM_FINISH_SLICES.md` (Post-MVP)](../../srm/SRM_FIN
 
 ## Hygiene
 
-- [ ] Link each merged PR to a line in `docs/srm/GAP_MAP.md` once it exists.
+- [x] **Finish-program slice tracker** — `docs/srm/GAP_MAP.md` lists slices **1–30** with **(landed)** (optional: add GitHub issue/PR per row when you track work in issues).
 - [x] SRM gap baseline: [`docs/srm/GAP_MAP.md`](../../srm/GAP_MAP.md)
 - [x] Issue #13 (`[srm] Meeting batch (~2h): GAP_MAP + list search UX + tests`) maps to `docs/srm/GAP_MAP.md` sections: "Routes and authorization", "Supplier and list/detail usage", and near-term build order item 2.
 - [x] SRM permissions matrix slice: shared SRM permission resolver + list/detail order-metrics gating (`org.orders` → view), documented in `docs/srm/GAP_MAP.md` routes/permissions rows.

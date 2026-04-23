@@ -65,7 +65,7 @@ Optional full CRM demo bulk (in addition to main seed):
 SEED_CRM_DEMO=1 npm run db:seed
 ```
 
-## SRM (finish program) — demo partners on `demo-company`
+## SRM (finish program) ? demo partners on `demo-company`
 
 After **`USE_DOTENV_LOCAL=1 npm run db:seed`** (creates **`demo-company`**, `buyer@` / `approver@` users, and baseline suppliers), you can add **repeatable SRM vertical demo rows**:
 
@@ -73,9 +73,9 @@ After **`USE_DOTENV_LOCAL=1 npm run db:seed`** (creates **`demo-company`**, `buy
 USE_DOTENV_LOCAL=1 npm run db:seed:srm-demo
 ```
 
-- **Idempotent:** upserts five suppliers with codes **`DEMO-SRM-001`…`DEMO-SRM-005`**, recreates **compliance** file metadata rows (file names contain `srm-demo-seed`), and refreshes default **onboarding** tasks with mixed completion and assignees.
+- **Idempotent:** upserts five suppliers with codes **`DEMO-SRM-001`** through **`DEMO-SRM-005`**, recreates **compliance** file metadata rows (file names contain `srm-demo-seed`), and refreshes default **onboarding** tasks with mixed completion and assignees. Key strings in `prisma/seed-srm-demo.mjs` are covered by **`src/lib/srm/srm-demo-seed-file.contract.test.ts`** (CI, no DB).
 - **Requires** migrations that include **`SrmSupplierDocument`** (SRM Phase C). If the script errors on missing table, run **`npm run db:migrate`** (or `prisma migrate deploy` on the target URL) and retry.
-- **Neon / Vercel:** same as other add-on seeds — not run in `vercel-build` by default; run manually against the env’s **`DATABASE_URL`** when you need the slice-29 dataset on a fresh database.
+- **Neon / Vercel:** same as other add-on seeds ? not run in `vercel-build` by default; run manually against the environment **`DATABASE_URL`** when you need the slice-29 dataset on a fresh database.
 
 ## Vercel build: P3009 / failed migration (`20260422120000_supplier_onboarding_task_srm_phase_b`)
 
