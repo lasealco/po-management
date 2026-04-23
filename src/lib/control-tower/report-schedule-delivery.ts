@@ -8,6 +8,7 @@ import {
   type CtRunReportResult,
 } from "@/lib/control-tower/report-engine";
 import { buildControlTowerReportPdfBytes } from "@/lib/control-tower/report-pdf";
+import { loadReportPdfLogoFromEnv } from "@/lib/control-tower/report-pdf-load-logo";
 import {
   dimensionLabel,
   formatReportDateWindowLine,
@@ -210,6 +211,7 @@ export async function runControlTowerReportScheduleCron(now = new Date()): Promi
         })
       : [];
   const tenantNameById = new Map(tenantRows.map((t) => [t.id, t.name]));
+  const reportLogo = await loadReportPdfLogoFromEnv();
 
   for (const s of schedules) {
     if (!isReportScheduleDue(s, now)) continue;
@@ -265,6 +267,9 @@ export async function runControlTowerReportScheduleCron(now = new Date()): Promi
         reportDateField: result.config.dateField,
         reportDateFrom: result.config.dateFrom,
         reportDateTo: result.config.dateTo,
+        ...(reportLogo
+          ? { reportLogoPngOrJpegBytes: reportLogo.bytes, reportLogoMime: reportLogo.mime }
+          : {}),
       });
       const pdfB64 = Buffer.from(pdfBytes).toString("base64");
       const pdfFilename = scheduleReportPdfFilename(s.savedReport.name, result.generatedAt);

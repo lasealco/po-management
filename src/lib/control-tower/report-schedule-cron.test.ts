@@ -34,6 +34,10 @@ vi.mock("@/lib/control-tower/report-pdf", () => ({
   buildControlTowerReportPdfBytes: buildPdf,
 }));
 
+vi.mock("@/lib/control-tower/report-pdf-load-logo", () => ({
+  loadReportPdfLogoFromEnv: vi.fn().mockResolvedValue(null),
+}));
+
 import { runControlTowerReportScheduleCron } from "./report-schedule-delivery";
 
 function minimalRunResult(overrides: Partial<CtRunReportResult> = {}): CtRunReportResult {

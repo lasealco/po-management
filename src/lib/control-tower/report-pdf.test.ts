@@ -49,4 +49,27 @@ describe("buildControlTowerReportPdfBytes", () => {
     });
     expect(new TextDecoder().decode(bytes.slice(0, 5))).toBe("%PDF-");
   });
+
+  it("embeds a valid PNG in the first page when bytes + mime are provided", async () => {
+    const onePxPng = new Uint8Array(
+      Buffer.from(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAADQ+feXAAAADElEQVQIW2M4c+bf/w8ABAECEZ7m/8AAAAAASUVORK5CYII=",
+        "base64",
+      ),
+    );
+    const bytes = await buildControlTowerReportPdfBytes({
+      title: "With logo",
+      generatedAt: "2026-04-10T00:00:00.000Z",
+      shipmentsAggregated: 0,
+      totalShipmentsQueried: 0,
+      excludedByDateOrMissingDateField: 0,
+      rows: [{ label: "A", metrics: { ...emptyTotals(), shipments: 0 } }],
+      fullSeriesRows: [],
+      totals: { ...emptyTotals() },
+      reportLogoPngOrJpegBytes: onePxPng,
+      reportLogoMime: "image/png",
+    });
+    const doc = await PDFDocument.load(bytes);
+    expect(doc.getPageCount()).toBeGreaterThanOrEqual(1);
+  });
 });
