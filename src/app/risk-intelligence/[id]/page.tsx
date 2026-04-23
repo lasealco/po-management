@@ -4,7 +4,9 @@ import { notFound } from "next/navigation";
 import { AccessDenied } from "@/components/access-denied";
 import { PageTitleWithHint } from "@/components/page-title-with-hint";
 import { ScriRunMatchButton } from "@/components/risk-intelligence/scri-run-match-button";
+import { ScriTriagePanel } from "@/components/risk-intelligence/scri-triage-panel";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
+import { prisma } from "@/lib/prisma";
 import { toScriEventDetailDto } from "@/lib/scri/event-dto";
 import { formatScriFreshness } from "@/lib/scri/format-freshness";
 import { getScriEventForTenant } from "@/lib/scri/event-repo";
@@ -48,6 +50,13 @@ export default async function RiskIntelligenceEventPage({
   const canRunMatch = viewerHas(access.grantSet, "org.scri", "edit");
   const e = toScriEventDetailDto(row);
 
+  const assignableUsers = await prisma.user.findMany({
+    where: { tenantId: access.tenant.id, isActive: true },
+    select: { id: true, name: true, email: true },
+    orderBy: { name: "asc" },
+    take: 120,
+  });
+
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6">
       <p className="text-xs text-zinc-500">
@@ -81,9 +90,27 @@ export default async function RiskIntelligenceEventPage({
             </Link>
           </p>
         ) : null}
+        <p className="mt-1 text-xs text-zinc-500">
+          Owner:{" "}
+          {e.owner ? (
+            <span className="font-medium text-zinc-700">{e.owner.name}</span>
+          ) : (
+            <span className="text-zinc-400">Unassigned</span>
+          )}
+        </p>
       </header>
 
       <div className="mt-6 space-y-4">
+        {canRunMatch ? (
+          <ScriTriagePanel
+            key={e.updatedAt}
+            eventId={e.id}
+            initialReviewState={e.reviewState}
+            initialOwnerId={e.owner?.id ?? null}
+            assignableUsers={assignableUsers}
+          />
+        ) : null}
+
         <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
@@ -207,6 +234,68 @@ export default async function RiskIntelligenceEventPage({
           <section className="rounded-2xl border border-amber-100 bg-amber-50/80 p-5 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-900/80">AI summary</p>
             <p className="mt-2 text-sm text-amber-950">{e.aiSummary}</p>
+          </section>
+        ) : null}
+
+        {e.reviewLogs.length ? (
+          <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Triage log</p>
+            <ul className="mt-3 max-h-64 space-y-3 overflow-auto text-sm text-zinc-700">
+              {e.reviewLogs.map((log) => (
+                <li key={log.id} className="border-b border-zinc-100 pb-3 last:border-0 last:pb-0">
+                  <p className="text-xs text-zinc-500">
+                    {new Date(log.createdAt).toLocaleString()} · {log.actor.name}
+                  </p>
+                  <p className="mt-1">
+                    <span className="font-medium text-zinc-900">
+                      {log.reviewStateFrom.replace(/_/g, " ")} → {log.reviewStateTo.replace(/_/g, " ")}
+                    </span>
+                    {log.ownerUserIdFrom !== log.ownerUserIdTo ? (
+                      <span className="text-zinc-600"> · owner updated</span>
+                    ) : null}
+                  </p>
+                  {log.note ? <p className="mt-1 text-xs text-zinc-600">{log.note}</p> : null}
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+
+        {e.taskLinks.length ? (
+          <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Task links</p>
+            <ul className="mt-3 space-y-2 text-sm text-zinc-700">
+              {e.taskLinks.map((t) => {
+                const href =
+                  t.taskRef.startsWith("http://") || t.taskRef.startsWith("https://")
+                    ? t.taskRef
+                    : null;
+                return (
+                  <li key={t.id}>
+                    <span className="font-medium text-zinc-900">{t.sourceModule}</span>
+                    {t.status ? <span className="text-zinc-500"> · {t.status}</span> : null}
+                    <div className="mt-0.5 truncate">
+                      {href ? (
+                        <a
+                          href={href}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-amber-800 underline-offset-2 hover:underline"
+                        >
+                          {t.taskRef}
+                        </a>
+                      ) : (
+                        <span className="font-mono text-xs">{t.taskRef}</span>
+                      )}
+                    </div>
+                    {t.note ? <p className="text-xs text-zinc-500">{t.note}</p> : null}
+                    <p className="text-[10px] text-zinc-400">
+                      Added by {t.createdBy.name} · {new Date(t.createdAt).toLocaleString()}
+                    </p>
+                  </li>
+                );
+              })}
+            </ul>
           </section>
         ) : null}
 

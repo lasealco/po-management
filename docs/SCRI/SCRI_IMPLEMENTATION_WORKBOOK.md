@@ -85,10 +85,10 @@ This workbook ties the **documentation pack** in `docs/SCRI/` to **concrete buil
 
 | Done | Task | Notes / spec pointer |
 |------|------|----------------------|
-| [ ] | **Review API + UI:** PATCH event `reviewState`; optional owner assignment (user id) | PRD: Triage Workspace |
-| [ ] | **Audit trail:** Append-only triage history (who, when, decision, note) — new table per data model | Data model: Event Review / Triage |
-| [ ] | **Tasks:** Link events to existing task/workflow module via `task_ref` | Data model: Event Task Link |
-| [ ] | **Notifications:** Hook to platform notifications for ACTION_REQUIRED / escalation | Backlog R3 |
+| [x] | **Review API + UI:** PATCH event `reviewState`; optional owner assignment (user id) | `PATCH /api/scri/events/[id]`; `ScriTriagePanel` on detail |
+| [x] | **Audit trail:** Append-only triage history (who, when, decision, note) — new table per data model | `ScriEventReviewLog` + “Triage log” on detail |
+| [x] | **Tasks:** Link events to existing task/workflow module via `task_ref` | `POST /api/scri/events/[id]/task-links`; `ScriEventTaskLink` |
+| [x] | **Notifications:** Hook to platform notifications for ACTION_REQUIRED / escalation | `scri-notification-hook.ts` structured log (provider TBD) |
 
 ---
 

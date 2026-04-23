@@ -20,6 +20,7 @@ export async function listScriEventsForTenant(
     take: Math.min(Math.max(take, 1), 100),
     include: {
       ...baseInclude,
+      owner: { select: { id: true, name: true, email: true } },
       affectedEntities: { select: { objectType: true } },
     },
   });
@@ -30,7 +31,18 @@ export async function getScriEventForTenant(tenantId: string, id: string) {
     where: { id, tenantId },
     include: {
       ...baseInclude,
+      owner: { select: { id: true, name: true, email: true } },
       affectedEntities: { orderBy: { matchConfidence: "desc" } },
+      reviewLogs: {
+        orderBy: { createdAt: "desc" },
+        take: 50,
+        include: { actor: { select: { id: true, name: true, email: true } } },
+      },
+      taskLinks: {
+        orderBy: { createdAt: "desc" },
+        take: 30,
+        include: { createdBy: { select: { id: true, name: true, email: true } } },
+      },
     },
   });
 }

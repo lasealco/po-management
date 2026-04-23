@@ -113,6 +113,12 @@ export default async function RiskIntelligencePage({
                     <p className="mt-2 line-clamp-2 text-sm text-zinc-600">{e.shortSummary}</p>
                   ) : null}
                   <p className="mt-1 text-[11px] text-zinc-500">
+                    {e.owner ? (
+                      <>
+                        Owner: <span className="font-medium text-zinc-600">{e.owner.name}</span>
+                        {" · "}
+                      </>
+                    ) : null}
                     {e.affectedTotal > 0 ? (
                       <>
                         Exposure:{" "}

@@ -93,6 +93,8 @@ model Tenant {
   supplyChainTwinScenarioRevisions SupplyChainTwinScenarioRevision[]
   scriExternalEvents              ScriExternalEvent[]
   scriEventAffectedEntities       ScriEventAffectedEntity[]
+  scriEventReviewLogs             ScriEventReviewLog[]
+  scriEventTaskLinks              ScriEventTaskLink[]
 }
 
 /// Integration / API hub — registry row for an external or internal data source (Phase 1 stub).
@@ -425,6 +427,9 @@ model User {
   apiHubStagingBatchesCreated ApiHubStagingBatch[]
   invoiceIntakesAccountingApproved InvoiceIntake[]         @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated TariffShipmentApplication[] @relation("TariffShipmentApplicationCreator")
+  scriEventsOwned                 ScriExternalEvent[]           @relation("ScriEventOwner")
+  scriReviewLogsAuthored          ScriEventReviewLog[]          @relation("ScriReviewLogActor")
+  scriTaskLinksCreated            ScriEventTaskLink[]           @relation("ScriTaskLinkCreatedBy")
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -3439,6 +3444,8 @@ model ScriExternalEvent {
   /// 0–100 confidence in classification / relevance (R1 default from ingest).
   confidence     Int      @default(50)
   reviewState    ScriEventReviewState @default(NEW)
+  /// Optional assignee for triage (R3).
+  ownerUserId    String?
   sourceCount    Int      @default(0)
   sourceTrustScore Int?
   aiSummary      String?  @db.Text
@@ -3448,14 +3455,18 @@ model ScriExternalEvent {
   updatedAt DateTime @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  owner        User?    @relation("ScriEventOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
   sources      ScriEventSource[]
   geographies  ScriEventGeography[]
   affectedEntities ScriEventAffectedEntity[]
+  reviewLogs   ScriEventReviewLog[]
+  taskLinks    ScriEventTaskLink[]
 
   @@unique([tenantId, ingestKey])
   @@index([tenantId, discoveredTime])
   @@index([tenantId, reviewState, discoveredTime])
   @@index([tenantId, severity])
+  @@index([ownerUserId])
 }
 
 model ScriEventSource {
@@ -3513,4 +3524,45 @@ model ScriEventAffectedEntity {
   @@index([tenantId, objectType])
   @@index([eventId])
   @@index([tenantId, eventId])
+}
+
+/// SCRI R3: append-only triage / review history.
+model ScriEventReviewLog {
+  id              String               @id @default(cuid())
+  tenantId        String
+  eventId         String
+  actorUserId     String
+  reviewStateFrom ScriEventReviewState
+  reviewStateTo   ScriEventReviewState
+  ownerUserIdFrom String?
+  ownerUserIdTo   String?
+  note            String?              @db.VarChar(2000)
+  createdAt       DateTime             @default(now())
+
+  tenant Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  event  ScriExternalEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  actor  User              @relation("ScriReviewLogActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([eventId, createdAt])
+  @@index([tenantId, createdAt])
+}
+
+/// SCRI R3: link to an external task / ticket (Jira, email thread ID, etc.).
+model ScriEventTaskLink {
+  id           String   @id @default(cuid())
+  tenantId     String
+  eventId      String
+  sourceModule String   @db.VarChar(64)
+  taskRef      String   @db.VarChar(512)
+  status       String?  @db.VarChar(32)
+  note         String?  @db.Text
+  createdById  String
+  createdAt    DateTime @default(now())
+
+  tenant    Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  event     ScriExternalEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  createdBy User              @relation("ScriTaskLinkCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([eventId, createdAt])
+  @@index([tenantId])
 }

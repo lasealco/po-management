@@ -1,8 +1,11 @@
 import type {
   ScriEventAffectedEntity,
   ScriEventGeography,
+  ScriEventReviewLog,
   ScriEventSource,
+  ScriEventTaskLink,
   ScriExternalEvent,
+  User,
 } from "@prisma/client";
 
 import {
@@ -13,16 +16,22 @@ import { scriEventTypeLabel } from "@/lib/scri/event-type-taxonomy";
 
 export type ScriEventListItemDto = ReturnType<typeof toScriEventListItemDto>;
 
+type ActorSnippet = Pick<User, "id" | "name" | "email">;
+
 type ListRow = ScriExternalEvent & {
+  owner: ActorSnippet | null;
   sources: ScriEventSource[];
   geographies: ScriEventGeography[];
   affectedEntities: Pick<ScriEventAffectedEntity, "objectType">[];
 };
 
 type DetailRow = ScriExternalEvent & {
+  owner: ActorSnippet | null;
   sources: ScriEventSource[];
   geographies: ScriEventGeography[];
   affectedEntities: ScriEventAffectedEntity[];
+  reviewLogs: (ScriEventReviewLog & { actor: ActorSnippet })[];
+  taskLinks: (ScriEventTaskLink & { createdBy: ActorSnippet })[];
 };
 
 export function toScriEventListItemDto(row: ListRow) {
@@ -46,6 +55,9 @@ export function toScriEventListItemDto(row: ListRow) {
     geographies: row.geographies.map(toGeoDto),
     affectedCounts: summarizeAffectedCounts(row.affectedEntities.map((a) => a.objectType)),
     affectedTotal: row.affectedEntities.length,
+    owner: row.owner
+      ? { id: row.owner.id, name: row.owner.name, email: row.owner.email }
+      : null,
   };
 }
 
@@ -62,6 +74,41 @@ export function toScriEventDetailDto(row: DetailRow) {
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     affectedEntities: row.affectedEntities.map(toAffectedDto),
+    reviewLogs: row.reviewLogs.map(toReviewLogDto),
+    taskLinks: row.taskLinks.map(toTaskLinkDto),
+  };
+}
+
+function toReviewLogDto(
+  log: ScriEventReviewLog & { actor: ActorSnippet },
+) {
+  return {
+    id: log.id,
+    createdAt: log.createdAt.toISOString(),
+    reviewStateFrom: log.reviewStateFrom,
+    reviewStateTo: log.reviewStateTo,
+    ownerUserIdFrom: log.ownerUserIdFrom,
+    ownerUserIdTo: log.ownerUserIdTo,
+    note: log.note,
+    actor: { id: log.actor.id, name: log.actor.name, email: log.actor.email },
+  };
+}
+
+function toTaskLinkDto(
+  link: ScriEventTaskLink & { createdBy: ActorSnippet },
+) {
+  return {
+    id: link.id,
+    createdAt: link.createdAt.toISOString(),
+    sourceModule: link.sourceModule,
+    taskRef: link.taskRef,
+    status: link.status,
+    note: link.note,
+    createdBy: {
+      id: link.createdBy.id,
+      name: link.createdBy.name,
+      email: link.createdBy.email,
+    },
   };
 }
 
