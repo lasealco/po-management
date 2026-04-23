@@ -1,7 +1,10 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 
+/** Accepts `prisma` or a `$transaction` client — both expose `srmSupplierDocumentAuditLog.create`. */
+type SrmDocumentAuditLogClient = Pick<PrismaClient, "srmSupplierDocumentAuditLog">;
+
 export async function appendSrmSupplierDocumentAudit(
-  prisma: PrismaClient,
+  prisma: SrmDocumentAuditLogClient,
   args: {
     tenantId: string;
     documentId: string;

@@ -50,6 +50,9 @@ type DocListRow = {
   fileSize: number;
   fileUrl: string;
   expiresAt: Date | null;
+  revisionGroupId: string;
+  revisionNumber: number;
+  supersedesDocumentId: string | null;
   createdAt: Date;
   updatedAt: Date;
   uploadedBy: { id: string; name: string; email: string };
@@ -68,9 +71,30 @@ export function toSrmSupplierDocumentJson(d: DocListRow) {
     fileUrl: d.fileUrl,
     expiresAt: d.expiresAt ? d.expiresAt.toISOString() : null,
     expirySignal: computeSrmDocExpirySignal(d.expiresAt),
+    revisionGroupId: d.revisionGroupId,
+    revisionNumber: d.revisionNumber,
+    supersedesDocumentId: d.supersedesDocumentId,
     createdAt: d.createdAt.toISOString(),
     updatedAt: d.updatedAt.toISOString(),
     uploadedBy: d.uploadedBy,
     lastModifiedBy: d.lastModifiedBy,
   };
+}
+
+export type SrmDocumentJsonRow = ReturnType<typeof toSrmSupplierDocumentJson>;
+
+/** Group flat API rows by revision family for the compliance matrix. */
+export function groupSrmDocumentsByRevisionGroup<T extends { revisionGroupId: string; revisionNumber: number }>(
+  rows: T[],
+): Map<string, T[]> {
+  const map = new Map<string, T[]>();
+  for (const r of rows) {
+    const list = map.get(r.revisionGroupId) ?? [];
+    list.push(r);
+    map.set(r.revisionGroupId, list);
+  }
+  for (const list of map.values()) {
+    list.sort((a, b) => b.revisionNumber - a.revisionNumber);
+  }
+  return map;
 }

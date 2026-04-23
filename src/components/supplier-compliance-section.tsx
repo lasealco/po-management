@@ -3,9 +3,10 @@
 import { apiClientErrorMessage } from "@/lib/api-client-error";
 import {
   SRM_SUPPLIER_DOCUMENT_TYPE_LABEL,
+  groupSrmDocumentsByRevisionGroup,
   type SrmDocExpirySignal,
 } from "@/lib/srm/srm-supplier-document-helpers";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type DocRow = {
   id: string;
@@ -17,6 +18,9 @@ type DocRow = {
   expiresAt: string | null;
   expirySignal: SrmDocExpirySignal;
   updatedAt: string;
+  revisionGroupId: string;
+  revisionNumber: number;
+  supersedesDocumentId: string | null;
   uploadedBy: { id: string; name: string; email: string };
   lastModifiedBy: { id: string; name: string; email: string } | null;
 };
@@ -56,6 +60,8 @@ export function SupplierComplianceSection({
   const [docType, setDocType] = useState<(typeof DOC_TYPE_OPTIONS)[number]>("other");
   const [title, setTitle] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
+  /** When set, POST includes `supersedesDocumentId` (new revision in the same group). */
+  const [replaceTarget, setReplaceTarget] = useState<DocRow | null>(null);
 
   const q = includeArchived ? "?includeArchived=1" : "";
   const load = useCallback(async () => {
@@ -90,6 +96,16 @@ export function SupplierComplianceSection({
     setExpandedAudit((m) => ({ ...m, [docId]: Array.isArray(entries) ? entries : [] }));
   }
 
+  const grouped = useMemo(() => {
+    if (!docs) return [];
+    const map = groupSrmDocumentsByRevisionGroup(docs);
+    return Array.from(map.values()).sort((a, b) => {
+      const aMax = a[0];
+      const bMax = b[0];
+      return new Date(bMax.updatedAt).getTime() - new Date(aMax.updatedAt).getTime();
+    });
+  }, [docs]);
+
   async function onUpload(e: React.FormEvent) {
     e.preventDefault();
     if (!uploadFile) {
@@ -101,6 +117,9 @@ export function SupplierComplianceSection({
     const form = new FormData();
     form.set("file", uploadFile);
     form.set("documentType", docType);
+    if (replaceTarget) {
+      form.set("supersedesDocumentId", replaceTarget.id);
+    }
     if (title.trim()) form.set("title", title.trim());
     if (expiresAt) form.set("expiresAt", new Date(`${expiresAt}T12:00:00.000Z`).toISOString());
     const res = await fetch(`/api/suppliers/${supplierId}/srm-documents`, {
@@ -117,6 +136,7 @@ export function SupplierComplianceSection({
     setTitle("");
     setExpiresAt("");
     setDocType("other");
+    setReplaceTarget(null);
     await load();
   }
 
@@ -158,6 +178,23 @@ export function SupplierComplianceSection({
       {canEdit ? (
         <form onSubmit={onUpload} className="mt-6 space-y-3 rounded-xl border border-dashed border-zinc-200 bg-zinc-50/80 p-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Upload</p>
+          {replaceTarget ? (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+              <span>
+                New version replacing{" "}
+                <strong>rev {replaceTarget.revisionNumber}</strong> ({replaceTarget.fileName})
+              </span>
+              <button
+                type="button"
+                className="font-medium text-amber-900 underline"
+                onClick={() => {
+                  setReplaceTarget(null);
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          ) : null}
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="flex flex-col text-sm">
               <span>File *</span>
@@ -173,6 +210,7 @@ export function SupplierComplianceSection({
               <select
                 className="rounded-md border border-zinc-300 px-2 py-1.5"
                 value={docType}
+                disabled={Boolean(replaceTarget)}
                 onChange={(e) => setDocType(e.target.value as (typeof DOC_TYPE_OPTIONS)[number])}
               >
                 {DOC_TYPE_OPTIONS.map((k) => (
@@ -231,95 +269,141 @@ export function SupplierComplianceSection({
       {docs.length === 0 ? (
         <p className="mt-3 text-sm text-zinc-600">No documents yet{canEdit ? " — upload one above" : ""}.</p>
       ) : (
-        <ul className="mt-3 divide-y divide-zinc-100">
-          {docs.map((d) => {
-            const meta = (() => {
-              if (d.expiresAt) return EXPIRY_BADGE[d.expirySignal];
-              return EXPIRY_BADGE.none;
-            })();
+        <ul className="mt-3 space-y-6">
+          {grouped.map((chain) => {
+            const head = chain[0];
+            const typeLabel = SRM_SUPPLIER_DOCUMENT_TYPE_LABEL[head.documentType];
             return (
-              <li key={d.id} className="py-4 first:pt-0">
-                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-zinc-900">
-                      {d.title || d.fileName}
-                      {d.title ? (
-                        <span className="ml-2 text-xs font-normal text-zinc-500">({d.fileName})</span>
-                      ) : null}
-                    </p>
-                    <p className="text-xs text-zinc-500">
-                      {SRM_SUPPLIER_DOCUMENT_TYPE_LABEL[d.documentType]} ·{" "}
-                      <span
-                        className={
-                          d.status === "archived" ? "text-zinc-500" : d.status === "superseded" ? "text-amber-800" : ""
-                        }
-                      >
-                        {d.status}
-                      </span>
-                    </p>
-                    <p className="mt-1 text-xs text-zinc-500">
-                      Last change {new Date(d.updatedAt).toLocaleString()} ·{" "}
-                      {(d.lastModifiedBy ?? d.uploadedBy).name}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${meta.className}`}>
-                      {d.expiresAt
-                        ? `${meta.label} · ${d.expiresAt.slice(0, 10)}`
-                        : meta.label}
-                    </span>
-                    <a
-                      href={d.fileUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-sm font-medium text-[var(--arscmp-primary)] hover:underline"
-                    >
-                      View / download
-                    </a>
-                    {canEdit && d.status !== "archived" ? (
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() => void archiveDoc(d.id)}
-                        className="text-sm font-medium text-zinc-600 underline-offset-2 hover:underline disabled:opacity-50"
-                      >
-                        Archive
-                      </button>
-                    ) : null}
-                    <button
-                      type="button"
-                      className="text-sm font-medium text-zinc-600 underline-offset-2 hover:underline"
-                      onClick={() => {
-                        if (expandedAudit[d.id] && expandedAudit[d.id] !== "loading") {
-                          setExpandedAudit((m) => ({ ...m, [d.id]: null }));
-                        } else {
-                          void loadAudit(d.id);
-                        }
-                      }}
-                    >
-                      {expandedAudit[d.id] && expandedAudit[d.id] !== "loading" ? "Hide audit" : "Audit trail"}
-                    </button>
-                  </div>
+              <li key={head.revisionGroupId} className="rounded-xl border border-zinc-200 bg-zinc-50/40 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                  {typeLabel} · {chain.length} version{chain.length === 1 ? "" : "s"}
+                </p>
+                <div className="mt-3 overflow-x-auto">
+                  <table className="w-full min-w-[520px] border-collapse text-left text-sm">
+                    <thead>
+                      <tr className="border-b border-zinc-200 text-xs text-zinc-500">
+                        <th className="py-2 pr-2 font-medium">Rev</th>
+                        <th className="py-2 pr-2 font-medium">Name</th>
+                        <th className="py-2 pr-2 font-medium">Status</th>
+                        <th className="py-2 pr-2 font-medium">Expiry</th>
+                        <th className="py-2 pr-2 font-medium">Updated</th>
+                        <th className="py-2 font-medium">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {chain.map((d) => {
+                        const meta = d.expiresAt ? EXPIRY_BADGE[d.expirySignal] : EXPIRY_BADGE.none;
+                        return (
+                          <tr key={d.id} className="border-b border-zinc-100 last:border-0">
+                            <td className="py-2.5 pr-2 align-top font-mono text-xs text-zinc-700">#{d.revisionNumber}</td>
+                            <td className="py-2.5 pr-2 align-top">
+                              <div className="font-medium text-zinc-900">{d.title || d.fileName}</div>
+                              {d.title ? <div className="text-xs text-zinc-500">{d.fileName}</div> : null}
+                            </td>
+                            <td className="py-2.5 pr-2 align-top text-xs">
+                              <span
+                                className={
+                                  d.status === "archived"
+                                    ? "text-zinc-500"
+                                    : d.status === "superseded"
+                                      ? "text-amber-800"
+                                      : "text-emerald-800"
+                                }
+                              >
+                                {d.status}
+                              </span>
+                            </td>
+                            <td className="py-2.5 pr-2 align-top">
+                              <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${meta.className}`}>
+                                {d.expiresAt ? `${meta.label} · ${d.expiresAt.slice(0, 10)}` : meta.label}
+                              </span>
+                            </td>
+                            <td className="py-2.5 pr-2 align-top text-xs text-zinc-500">
+                              {new Date(d.updatedAt).toLocaleString()}
+                            </td>
+                            <td className="py-2.5 align-top">
+                              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                <a
+                                  href={d.fileUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-sm font-medium text-[var(--arscmp-primary)] hover:underline"
+                                >
+                                  Open
+                                </a>
+                                {canEdit && d.status === "active" ? (
+                                  <button
+                                    type="button"
+                                    className="text-sm font-medium text-zinc-700 underline-offset-2 hover:underline"
+                                    onClick={() => {
+                                      setDocType(d.documentType);
+                                      setReplaceTarget(d);
+                                    }}
+                                  >
+                                    New version
+                                  </button>
+                                ) : null}
+                                {canEdit && d.status !== "archived" ? (
+                                  <button
+                                    type="button"
+                                    disabled={busy}
+                                    onClick={() => void archiveDoc(d.id)}
+                                    className="text-sm font-medium text-zinc-500 underline-offset-2 hover:underline disabled:opacity-50"
+                                  >
+                                    Archive
+                                  </button>
+                                ) : null}
+                                <button
+                                  type="button"
+                                  className="text-sm font-medium text-zinc-600 underline-offset-2 hover:underline"
+                                  onClick={() => {
+                                    if (expandedAudit[d.id] && expandedAudit[d.id] !== "loading") {
+                                      setExpandedAudit((m) => ({ ...m, [d.id]: null }));
+                                    } else {
+                                      void loadAudit(d.id);
+                                    }
+                                  }}
+                                >
+                                  {expandedAudit[d.id] && expandedAudit[d.id] !== "loading" ? "Hide audit" : "Audit"}
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
-                {expandedAudit[d.id] === "loading" ? (
-                  <p className="mt-2 text-xs text-zinc-500">Loading…</p>
-                ) : Array.isArray(expandedAudit[d.id]) ? (
-                  (expandedAudit[d.id] as AuditEntry[]).length === 0 ? (
-                    <p className="mt-2 text-xs text-zinc-500">No audit entries yet.</p>
-                  ) : (
-                    <ul className="mt-2 space-y-1 border-l-2 border-zinc-200 pl-3 text-xs text-zinc-600">
-                      {(expandedAudit[d.id] as AuditEntry[]).map((a) => (
-                        <li key={a.id}>
-                          {new Date(a.at).toLocaleString()} — <strong>{a.action}</strong> by {a.actor.name}
-                          {a.details != null && typeof a.details === "object" ? (
-                            <pre className="mt-1 max-w-full overflow-x-auto rounded bg-zinc-50 p-1 text-[10px] text-zinc-500">
-                              {JSON.stringify(a.details, null, 2)}
-                            </pre>
-                          ) : null}
-                        </li>
-                      ))}
-                    </ul>
-                  )
+                {chain.some((d) => expandedAudit[d.id]) ? (
+                  <div className="mt-3 space-y-2 border-t border-zinc-200 pt-2">
+                    {chain.map((d) => (
+                      <div key={`audit-wrap-${d.id}`}>
+                        {expandedAudit[d.id] === "loading" ? (
+                          <p className="text-xs text-zinc-500">Loading audit for rev {d.revisionNumber}…</p>
+                        ) : Array.isArray(expandedAudit[d.id]) && expandedAudit[d.id] !== null ? (
+                          (expandedAudit[d.id] as AuditEntry[]).length === 0 ? (
+                            <p className="text-xs text-zinc-500">Rev {d.revisionNumber}: no audit entries yet.</p>
+                          ) : (
+                            <div>
+                              <p className="text-xs font-medium text-zinc-600">Rev {d.revisionNumber} — audit</p>
+                              <ul className="mt-1 space-y-1 border-l-2 border-zinc-200 pl-3 text-xs text-zinc-600">
+                                {(expandedAudit[d.id] as AuditEntry[]).map((a) => (
+                                  <li key={a.id}>
+                                    {new Date(a.at).toLocaleString()} — <strong>{a.action}</strong> by {a.actor.name}
+                                    {a.details != null && typeof a.details === "object" ? (
+                                      <pre className="mt-1 max-w-full overflow-x-auto rounded bg-white p-1 text-[10px] text-zinc-500">
+                                        {JSON.stringify(a.details, null, 2)}
+                                      </pre>
+                                    ) : null}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
                 ) : null}
               </li>
             );

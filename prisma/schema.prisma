@@ -655,6 +655,14 @@ model SrmSupplierDocument {
   expiresAt      DateTime?
   uploadedById   String
   lastModifiedById String?
+  /// Phase I: all revisions in a chain share the same id (v1: random UUID; legacy rows: id of first in chain or backfilled to own id).
+  revisionGroupId      String
+  /// Monotonic per revision group (1 = first upload in group).
+  revisionNumber       Int     @default(1)
+  /// When this row replaces a prior file, points to the previous document; prior row is set to `superseded`.
+  supersedesDocumentId String?
+  supersedesDocument   SrmSupplierDocument?  @relation("SrmDocumentRevision", fields: [supersedesDocumentId], references: [id], onDelete: SetNull)
+  supersedingDocuments SrmSupplierDocument[] @relation("SrmDocumentRevision")
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -664,9 +672,11 @@ model SrmSupplierDocument {
   lastModifiedBy User?    @relation("SrmSupplierDocumentLastTouchedBy", fields: [lastModifiedById], references: [id], onDelete: SetNull)
   auditLogs      SrmSupplierDocumentAuditLog[]
 
+  @@unique([revisionGroupId, revisionNumber])
   @@index([tenantId, supplierId])
   @@index([tenantId, status])
   @@index([tenantId, expiresAt])
+  @@index([tenantId, revisionGroupId])
 }
 
 /// Append-only triage for supplier documents (upload + metadata/single updates).

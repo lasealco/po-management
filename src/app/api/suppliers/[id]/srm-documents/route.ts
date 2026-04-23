@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 import { mkdir, writeFile } from "fs/promises";
 import { join } from "path";
 import { put } from "@vercel/blob";
+import { Prisma } from "@prisma/client";
 import type { SrmSupplierDocumentStatus, SrmSupplierDocumentType } from "@prisma/client";
 import { NextResponse } from "next/server";
 
@@ -13,6 +14,17 @@ import { parseSrmSupplierDocumentType, toSrmSupplierDocumentJson } from "@/lib/s
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
+
+class SrmDocumentUploadError extends Error {
+  constructor(
+    readonly status: number,
+    readonly code: string,
+    message: string,
+  ) {
+    super(message);
+    this.name = "SrmDocumentUploadError";
+  }
+}
 
 const MAX_BYTES = 15 * 1024 * 1024;
 const ALLOWED = new Set([
@@ -115,6 +127,9 @@ export async function POST(
     return toApiErrorResponse({ error: "Expected multipart form data.", code: "BAD_INPUT", status: 400 });
   }
 
+  const supersedesRaw = String(form.get("supersedesDocumentId") ?? "").trim();
+  const supersedesDocumentId = supersedesRaw || null;
+
   const documentType = parseSrmSupplierDocumentType(String(form.get("documentType") ?? ""));
   if (!documentType) {
     return toApiErrorResponse({ error: "Invalid documentType.", code: "BAD_INPUT", status: 400 });
@@ -173,32 +188,155 @@ export async function POST(
     });
   }
 
-  const row = await prisma.srmSupplierDocument.create({
-    data: {
+  if (!supersedesDocumentId) {
+    const revisionGroupId = randomUUID();
+    const row = await prisma.srmSupplierDocument.create({
+      data: {
+        tenantId: tenant.id,
+        supplierId,
+        documentType: documentType as SrmSupplierDocumentType,
+        status: "active",
+        title,
+        fileName: file.name || basename,
+        mimeType: file.type,
+        fileSize: file.size,
+        storageKey,
+        fileUrl,
+        expiresAt,
+        uploadedById: actorId,
+        lastModifiedById: actorId,
+        revisionGroupId,
+        revisionNumber: 1,
+        supersedesDocumentId: null,
+      },
+      include: listInclude,
+    });
+
+    await appendSrmSupplierDocumentAudit(prisma, {
       tenantId: tenant.id,
-      supplierId,
-      documentType: documentType as SrmSupplierDocumentType,
-      status: "active",
-      title,
-      fileName: file.name || basename,
-      mimeType: file.type,
-      fileSize: file.size,
-      storageKey,
-      fileUrl,
-      expiresAt,
-      uploadedById: actorId,
-      lastModifiedById: actorId,
-    },
-    include: listInclude,
-  });
+      documentId: row.id,
+      actorUserId: actorId,
+      action: "upload",
+      details: {
+        fileName: row.fileName,
+        documentType,
+        title,
+        expiresAt: expiresAt?.toISOString() ?? null,
+        revisionGroupId,
+        revisionNumber: 1,
+      },
+    });
 
-  await appendSrmSupplierDocumentAudit(prisma, {
-    tenantId: tenant.id,
-    documentId: row.id,
-    actorUserId: actorId,
-    action: "upload",
-    details: { fileName: row.fileName, documentType, title, expiresAt: expiresAt?.toISOString() ?? null },
-  });
+    return NextResponse.json({ document: toSrmSupplierDocumentJson(row) });
+  }
 
-  return NextResponse.json({ document: toSrmSupplierDocumentJson(row) });
+  // New revision: replace an active document; prior row → superseded in one transaction.
+  try {
+    const row = await prisma.$transaction(async (tx) => {
+      const previous = await tx.srmSupplierDocument.findFirst({
+        where: {
+          id: supersedesDocumentId,
+          tenantId: tenant.id,
+          supplierId,
+        },
+        select: {
+          id: true,
+          status: true,
+          documentType: true,
+          revisionGroupId: true,
+        },
+      });
+      if (!previous) {
+        throw new SrmDocumentUploadError(404, "not_found", "The document to replace was not found.");
+      }
+      if (previous.status !== "active") {
+        throw new SrmDocumentUploadError(
+          400,
+          "not_active",
+          "Only the active file in a chain can be replaced. Un-archive or add a new document type instead.",
+        );
+      }
+      if (previous.documentType !== (documentType as SrmSupplierDocumentType)) {
+        throw new SrmDocumentUploadError(
+          400,
+          "type_mismatch",
+          "Document type must match the file you are replacing (use the same type as the current revision).",
+        );
+      }
+      const agg = await tx.srmSupplierDocument.aggregate({
+        where: { tenantId: tenant.id, revisionGroupId: previous.revisionGroupId },
+        _max: { revisionNumber: true },
+      });
+      const nextRev = (agg._max.revisionNumber ?? 0) + 1;
+      if (nextRev < 2) {
+        throw new SrmDocumentUploadError(500, "revision", "Invalid revision state.");
+      }
+
+      const created = await tx.srmSupplierDocument.create({
+        data: {
+          tenantId: tenant.id,
+          supplierId,
+          documentType: documentType as SrmSupplierDocumentType,
+          status: "active",
+          title,
+          fileName: file.name || basename,
+          mimeType: file.type,
+          fileSize: file.size,
+          storageKey,
+          fileUrl,
+          expiresAt,
+          uploadedById: actorId,
+          lastModifiedById: actorId,
+          revisionGroupId: previous.revisionGroupId,
+          revisionNumber: nextRev,
+          supersedesDocumentId: previous.id,
+        },
+        include: listInclude,
+      });
+
+      await tx.srmSupplierDocument.update({
+        where: { id: previous.id },
+        data: { status: "superseded", lastModifiedById: actorId },
+      });
+
+      await appendSrmSupplierDocumentAudit(tx, {
+        tenantId: tenant.id,
+        documentId: previous.id,
+        actorUserId: actorId,
+        action: "superseded",
+        details: { replacedByDocumentId: created.id, revisionNumber: nextRev },
+      });
+
+      await appendSrmSupplierDocumentAudit(tx, {
+        tenantId: tenant.id,
+        documentId: created.id,
+        actorUserId: actorId,
+        action: "upload",
+        details: {
+          fileName: created.fileName,
+          documentType,
+          title,
+          expiresAt: expiresAt?.toISOString() ?? null,
+          supersedesDocumentId: previous.id,
+          revisionGroupId: previous.revisionGroupId,
+          revisionNumber: nextRev,
+        },
+      });
+
+      return created;
+    });
+    return NextResponse.json({ document: toSrmSupplierDocumentJson(row) });
+  } catch (e) {
+    if (e instanceof SrmDocumentUploadError) {
+      return toApiErrorResponse({ error: e.message, code: e.code, status: e.status });
+    }
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+      return toApiErrorResponse({
+        error: "A revision with this number already exists. Try again.",
+        code: "CONFLICT",
+        status: 409,
+      });
+    }
+    throw e;
+  }
 }
