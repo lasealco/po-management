@@ -10,6 +10,8 @@ const PUBLIC_PATHS = new Set([
   MARKETING_PRICING_PATH,
   ...LEGAL_PUBLIC_HELP_PATHS,
   "/login",
+  "/forgot-password",
+  "/reset-password",
   "/settings/demo",
 ]);
 

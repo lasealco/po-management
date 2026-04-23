@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 import { apiClientErrorMessage } from "@/lib/api-client-error";
@@ -70,19 +71,26 @@ export default function LoginPage() {
             className="mt-1 rounded border border-zinc-300 px-3 py-2"
           />
         </label>
-        <label className="flex flex-col text-sm">
-          <span>Password</span>
-          <input
-            type="password"
-            name="password"
-            autoComplete="current-password"
-            required
-            placeholder="••••••••"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="mt-1 rounded border border-zinc-300 px-3 py-2"
-          />
-        </label>
+        <div className="space-y-1">
+          <label className="flex flex-col text-sm">
+            <span>Password</span>
+            <input
+              type="password"
+              name="password"
+              autoComplete="current-password"
+              required
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="mt-1 rounded border border-zinc-300 px-3 py-2"
+            />
+          </label>
+          <p className="text-right text-xs">
+            <Link href="/forgot-password" className="text-zinc-600 underline">
+              Forgot password?
+            </Link>
+          </p>
+        </div>
         {error ? <p className="text-sm text-red-700">{error}</p> : null}
         <button
           type="button"

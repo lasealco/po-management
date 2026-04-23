@@ -38,6 +38,8 @@ const OPEN_PATH_ALLOWLIST = new Set([
   "/settings/users",
   "/settings/warehouses",
   "/login",
+  "/forgot-password",
+  "/reset-password",
   ...MARKETING_PUBLIC_HELP_PATHS,
   ...LEGAL_PUBLIC_HELP_PATHS,
   "/catalog",

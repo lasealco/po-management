@@ -450,11 +450,26 @@ model User {
   srmDocumentsLastTouched         SrmSupplierDocument[]         @relation("SrmSupplierDocumentLastTouchedBy")
   srmSupplierDocumentAuditAuthored SrmSupplierDocumentAuditLog[] @relation("SrmSupplierDocumentAuditActor")
   wmsSavedLedgerViews WmsSavedLedgerView[]
+  passwordResetTokens  PasswordResetToken[]
 
   @@unique([tenantId, email])
   @@index([tenantId])
   @@index([customerCrmAccountId])
   @@index([portalLinkedSupplierId])
+}
+
+/// Single-use email link to reset a password; raw token is never stored.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
 }
 
 model UserPreference {

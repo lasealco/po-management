@@ -44,6 +44,8 @@ const ALWAYS_ROUTE_HINT = new Set<string>([
   PLATFORM_HUB_PATH,
   MARKETING_PRICING_PATH,
   "/login",
+  "/forgot-password",
+  "/reset-password",
   LEGAL_PRIVACY_PATH,
   LEGAL_TERMS_PATH,
   LEGAL_COOKIES_PATH,
