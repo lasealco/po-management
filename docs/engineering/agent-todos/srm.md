@@ -13,7 +13,7 @@
 ## Finish program — slice status (update as you merge)
 
 - [x] **Slice 1 — SRM completion index** — `GAP_MAP.md` has **Completion program (SRM MVP)**; this file links the program + index anchor.
-- [ ] **Slice 2 — Definition-of-do checklist** (see `SRM_FINISH_SLICES.md`)
+- [ ] **Slice 2 — Definition-of-done checklist** (see `SRM_FINISH_SLICES.md`)
 - [ ] **Slice 3 — Slice tracker table** in `GAP_MAP.md`
 
 ---
