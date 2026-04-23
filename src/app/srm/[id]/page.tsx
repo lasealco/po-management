@@ -77,7 +77,11 @@ export default async function SrmSupplierDetailPage({
   const kind = snapshot.srmCategory === "logistics" ? "logistics" : "product";
   const canEdit = permissions.canEditSuppliers;
   const canApprove = permissions.canApproveSuppliers;
+  const canViewSupplierSensitiveFields = permissions.canViewSupplierSensitiveFields;
   const canViewOrders = permissions.canViewOrders;
+  const initialSnapshot = canViewSupplierSensitiveFields
+    ? snapshot
+    : { ...snapshot, internalNotes: null };
   const orderHistory = canViewOrders
     ? await fetchSupplierOrderAnalytics(prisma, tenant.id, snapshot.id)
     : null;
@@ -108,9 +112,10 @@ export default async function SrmSupplierDetailPage({
         </div>
         <SupplierDetailClient
           key={snapshot.id}
-          initial={snapshot}
+          initial={initialSnapshot}
           canEdit={canEdit}
           canApprove={canApprove}
+          canViewSupplierSensitiveFields={canViewSupplierSensitiveFields}
           orderHistory={orderHistory}
           detailNavContext="srm"
           onboardingAssigneeOptions={onboardingAssigneeOptions}

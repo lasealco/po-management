@@ -90,6 +90,8 @@ export function SupplierDetailClient({
   initial,
   canEdit = true,
   canApprove = false,
+  /** Phase K: internal notes and similar require edit or approve, not view-only. */
+  canViewSupplierSensitiveFields,
   orderHistory = null,
   /** `srm` = opened from `/srm/[id]` (directory back-link); `suppliers` = legacy directory. */
   detailNavContext = "suppliers",
@@ -101,6 +103,7 @@ export function SupplierDetailClient({
   canEdit?: boolean;
   /** Approver / admin: approve or reject supplier, change activation. */
   canApprove?: boolean;
+  canViewSupplierSensitiveFields: boolean;
   /** Present when viewer has org.orders → view. */
   orderHistory?: SupplierOrderAnalytics | null;
   detailNavContext?: "suppliers" | "srm";
@@ -1042,12 +1045,22 @@ export function SupplierDetailClient({
                     : "Tenant default"}
                 </p>
               </div>
-              <div className="text-sm sm:col-span-2">
-                <span className={label}>Internal notes</span>
-                <p className="mt-1 whitespace-pre-wrap text-zinc-900">
-                  {internalNotes || "—"}
-                </p>
-              </div>
+              {canViewSupplierSensitiveFields ? (
+                <div className="text-sm sm:col-span-2">
+                  <span className={label}>Internal notes</span>
+                  <p className="mt-1 whitespace-pre-wrap text-zinc-900">
+                    {internalNotes || "—"}
+                  </p>
+                </div>
+              ) : (
+                <div className="sm:col-span-2 rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-sm text-amber-950">
+                  <span className={label}>Internal notes</span>
+                  <p className="mt-1 text-xs leading-relaxed">
+                    Hidden for your role. Procurement notes require <strong>org.suppliers</strong> →{" "}
+                    <strong>edit</strong> or <strong>approve</strong> (read-only supplier view is not enough).
+                  </p>
+                </div>
+              )}
             </>
           )}
         </div>

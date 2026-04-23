@@ -46,7 +46,17 @@ export async function GET(
     return toApiErrorResponse({ error: "Not found.", code: "NOT_FOUND", status: 404 });
   }
 
-  return NextResponse.json({ supplier });
+  const actorId = await getActorUserId();
+  const grantSet = actorId ? await loadGlobalGrantsForUser(actorId) : new Set<string>();
+  const canViewSensitive =
+    viewerHas(grantSet, "org.suppliers", "edit") || viewerHas(grantSet, "org.suppliers", "approve");
+
+  const bodySupplier = {
+    ...supplier,
+    internalNotes: canViewSensitive ? supplier.internalNotes : null,
+  };
+
+  return NextResponse.json({ supplier: bodySupplier });
 }
 
 export async function PATCH(

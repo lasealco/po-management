@@ -42,7 +42,7 @@ Use the **phase table** in [`SRM_FINISH_SLICES.md` (Post-MVP)](../../srm/SRM_FIN
 - [ ] **Phase H** — **Supplier portal** (external login) *(in progress: `User.portalLinkedSupplierId`, `/srm/portal`, `GET /api/srm/portal/me`)*
 - [ ] **Phase I** — **Compliance DMS v2** (beyond vault v1) *(in progress: revision groups + new-version upload + matrix UI)*
 - [ ] **Phase J** — **KPI + integration** depth (FX, more payloads, ERP) *(in progress: operational signals on analytics + integration snapshot)*
-- [ ] **Phase K** — **Field-level permissions**, **wireframe parity**, **rules engine** (as separate issues)
+- [ ] **Phase K** — **Field-level permissions**, **wireframe parity**, **rules engine** (as separate issues) *(in progress: `internalNotes` + `canViewSupplierSensitiveFields` / API redaction)*
 
 ---
 

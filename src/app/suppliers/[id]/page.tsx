@@ -5,6 +5,7 @@ import { WorkflowHeader } from "@/components/workflow-header";
 import { SupplierDetailClient } from "@/components/supplier-detail-client";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { loadSupplierDetailSnapshot } from "@/lib/srm/load-supplier-detail-snapshot";
+import { resolveSrmPermissions } from "@/lib/srm/permissions";
 import { fetchSupplierOrderAnalytics } from "@/lib/supplier-order-analytics";
 import { prisma } from "@/lib/prisma";
 
@@ -46,12 +47,18 @@ export default async function SupplierDetailPage({
   const snapshot = await loadSupplierDetailSnapshot(prisma, tenant.id, id);
   if (!snapshot) notFound();
 
-  const canEdit = viewerHas(access.grantSet, "org.suppliers", "edit");
-  const canApprove = viewerHas(access.grantSet, "org.suppliers", "approve");
-  const canViewOrders = viewerHas(access.grantSet, "org.orders", "view");
+  const permissions = resolveSrmPermissions(access.grantSet);
+  const canEdit = permissions.canEditSuppliers;
+  const canApprove = permissions.canApproveSuppliers;
+  const canViewSupplierSensitiveFields = permissions.canViewSupplierSensitiveFields;
+  const canViewOrders = permissions.canViewOrders;
   const orderHistory = canViewOrders
     ? await fetchSupplierOrderAnalytics(prisma, tenant.id, snapshot.id)
     : null;
+
+  const initialSnapshot = canViewSupplierSensitiveFields
+    ? snapshot
+    : { ...snapshot, internalNotes: null };
 
   return (
     <div className="min-h-screen bg-zinc-50">
@@ -70,9 +77,10 @@ export default async function SupplierDetailPage({
         </div>
         <SupplierDetailClient
           key={snapshot.id}
-          initial={snapshot}
+          initial={initialSnapshot}
           canEdit={canEdit}
           canApprove={canApprove}
+          canViewSupplierSensitiveFields={canViewSupplierSensitiveFields}
           orderHistory={orderHistory}
           detailNavContext="suppliers"
         />

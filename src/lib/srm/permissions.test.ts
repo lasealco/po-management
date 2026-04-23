@@ -9,6 +9,7 @@ describe("resolveSrmPermissions", () => {
       canEditSuppliers: false,
       canApproveSuppliers: false,
       canViewOrders: false,
+      canViewSupplierSensitiveFields: false,
     });
   });
 
@@ -18,6 +19,17 @@ describe("resolveSrmPermissions", () => {
       canEditSuppliers: false,
       canApproveSuppliers: false,
       canViewOrders: false,
+      canViewSupplierSensitiveFields: false,
+    });
+  });
+
+  it("view-only suppliers do not get sensitive field access", () => {
+    expect(resolveSrmPermissions(new Set(["org.suppliers\u0000view"]))).toEqual({
+      canViewSuppliers: true,
+      canEditSuppliers: false,
+      canApproveSuppliers: false,
+      canViewOrders: false,
+      canViewSupplierSensitiveFields: false,
     });
   });
 
@@ -36,6 +48,7 @@ describe("resolveSrmPermissions", () => {
       canEditSuppliers: true,
       canApproveSuppliers: true,
       canViewOrders: true,
+      canViewSupplierSensitiveFields: true,
     });
   });
 });
