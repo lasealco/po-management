@@ -222,6 +222,8 @@ async function seed() {
     ["org.invoice_audit", "edit"],
     ["org.apihub", "view"],
     ["org.apihub", "edit"],
+    ["org.scri", "view"],
+    ["org.scri", "edit"],
   ];
   const approverGrants = [
     ...buyerGrants,
@@ -262,6 +264,8 @@ async function seed() {
     ["org.invoice_audit", "edit"],
     ["org.apihub", "view"],
     ["org.apihub", "edit"],
+    ["org.scri", "view"],
+    ["org.scri", "edit"],
   ];
 
   await replaceGlobalRolePermissions(roleBuyer.id, buyerGrants);
@@ -1848,6 +1852,85 @@ async function seed() {
   }
 
   await seedReferenceCatalog(prisma);
+
+  async function seedScriDemoEvents() {
+    const bundles = [
+      {
+        ingestKey: "seed-scri-shanghai-congestion-2026",
+        eventType: "PORT_CONGESTION",
+        title: "Shanghai: elevated berth delays",
+        shortSummary:
+          "Industry notices cite backlog at primary box terminals. Validate exposure on Asia–EU lanes and pending bookings.",
+        longSummary: null,
+        severity: "HIGH",
+        confidence: 68,
+        geographies: [{ countryCode: "CN", label: "Shanghai port area", portUnloc: "CNSHA" }],
+        sourceHeadline: "Terminal advisory — berth queue (demo seed)",
+      },
+      {
+        ingestKey: "seed-scri-panama-canal-draft-2026",
+        eventType: "CANAL_TRANSIT",
+        title: "Panama Canal: draft / transit restrictions",
+        shortSummary:
+          "Seasonal draft limits may add transit time for relevant strings. Check USEC–Asia routings using the canal.",
+        longSummary: null,
+        severity: "MEDIUM",
+        confidence: 55,
+        geographies: [{ countryCode: "PA", label: "Panama Canal", portUnloc: "PAPTY" }],
+        sourceHeadline: "Canal authority notice (demo seed)",
+      },
+      {
+        ingestKey: "seed-scri-border-customs-delay-2026",
+        eventType: "BORDER_DELAY",
+        title: "Border crossing: extended customs inspections",
+        shortSummary:
+          "Reports of stepped-up inspections on selected truck corridors. May affect inland legs after port discharge.",
+        longSummary: null,
+        severity: "MEDIUM",
+        confidence: 52,
+        geographies: [{ countryCode: "US", region: "Southwest", label: "Land border corridor (demo)" }],
+        sourceHeadline: "Trade press — inspection surge (demo seed)",
+      },
+    ];
+
+    for (const b of bundles) {
+      const exists = await prisma.scriExternalEvent.findUnique({
+        where: {
+          tenantId_ingestKey: { tenantId: tenant.id, ingestKey: b.ingestKey },
+        },
+        select: { id: true },
+      });
+      if (exists) continue;
+
+      await prisma.scriExternalEvent.create({
+        data: {
+          tenantId: tenant.id,
+          ingestKey: b.ingestKey,
+          eventType: b.eventType,
+          title: b.title,
+          shortSummary: b.shortSummary,
+          longSummary: b.longSummary,
+          severity: b.severity,
+          confidence: b.confidence,
+          sourceCount: 1,
+          structuredPayload: { demoSeed: true, pack: "SCRI_R1" },
+          sources: {
+            create: [
+              {
+                sourceType: "demo_seed",
+                publisher: "prisma/seed.mjs",
+                headline: b.sourceHeadline,
+              },
+            ],
+          },
+          geographies: { create: b.geographies },
+        },
+      });
+    }
+    console.log("[db:seed] SCRI demo events ensured (idempotent).");
+  }
+
+  await seedScriDemoEvents();
 
   const userCount = await prisma.user.count({ where: { tenantId: tenant.id } });
   console.log(

@@ -66,6 +66,11 @@ function mergeDemoLegacyGrants(
     ensure("org.apihub", "edit");
   }
 
+  if (!grantSet.has(grantKey("org.scri", "view"))) {
+    ensure("org.scri", "view");
+    ensure("org.scri", "edit");
+  }
+
   return next ?? grantSet;
 }
 

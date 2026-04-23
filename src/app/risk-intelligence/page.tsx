@@ -1,0 +1,93 @@
+import Link from "next/link";
+
+import { AccessDenied } from "@/components/access-denied";
+import { PageTitleWithHint } from "@/components/page-title-with-hint";
+import { getViewerGrantSet, viewerHas } from "@/lib/authz";
+import { toScriEventListItemDto } from "@/lib/scri/event-dto";
+import { listScriEventsForTenant } from "@/lib/scri/event-repo";
+
+export const dynamic = "force-dynamic";
+
+export default async function RiskIntelligencePage() {
+  const access = await getViewerGrantSet();
+
+  if (!access?.user) {
+    return (
+      <div className="min-h-screen bg-zinc-50">
+        <AccessDenied
+          title="Risk intelligence"
+          message="Choose an active demo user: Settings → Demo session (/settings/demo), then reload."
+        />
+      </div>
+    );
+  }
+
+  if (!viewerHas(access.grantSet, "org.scri", "view")) {
+    return (
+      <div className="min-h-screen bg-zinc-50">
+        <AccessDenied
+          title="Risk intelligence"
+          message="You do not have permission to view Supply Chain Risk Intelligence (org.scri → view)."
+        />
+      </div>
+    );
+  }
+
+  const rows = await listScriEventsForTenant(access.tenant.id, 80);
+  const events = rows.map(toScriEventListItemDto);
+
+  return (
+    <main className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6">
+      <header className="mb-6">
+        <PageTitleWithHint
+          title="Risk intelligence"
+          titleClassName="text-2xl font-semibold tracking-tight text-zinc-900"
+        />
+        <p className="mt-2 text-sm text-zinc-600">
+          External supply-chain events for{" "}
+          <span className="font-medium text-zinc-800">{access.tenant.name}</span>.{" "}
+          <span className="text-zinc-500">
+            {events.length} {events.length === 1 ? "event" : "events"}
+          </span>
+        </p>
+      </header>
+
+      <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Event feed</p>
+        <ul className="mt-4 divide-y divide-zinc-100">
+          {events.map((e) => (
+            <li key={e.id} className="py-4 first:pt-0">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <Link
+                    href={`/risk-intelligence/${e.id}`}
+                    className="font-medium text-zinc-900 underline-offset-2 hover:underline"
+                  >
+                    {e.title}
+                  </Link>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    {e.eventType} · {e.severity} · confidence {e.confidence}%
+                    {e.geographySummary ? ` · ${e.geographySummary}` : ""}
+                  </p>
+                  {e.shortSummary ? (
+                    <p className="mt-2 line-clamp-2 text-sm text-zinc-600">{e.shortSummary}</p>
+                  ) : null}
+                </div>
+                <span className="shrink-0 rounded-md bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-zinc-700">
+                  {e.reviewState.replace(/_/g, " ")}
+                </span>
+              </div>
+            </li>
+          ))}
+        </ul>
+        {events.length === 0 ? (
+          <p className="py-8 text-center text-sm text-zinc-500">
+            No events yet. Run <code className="rounded bg-zinc-100 px-1">npm run db:seed</code> for demo
+            data, or ingest via{" "}
+            <code className="rounded bg-zinc-100 px-1">POST /api/scri/events</code>.
+          </p>
+        ) : null}
+      </section>
+    </main>
+  );
+}

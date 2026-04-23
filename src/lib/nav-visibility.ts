@@ -24,6 +24,8 @@ export type AppNavLinkVisibility = {
   apihub: boolean;
   /** Supply Chain Twin — cross-module intelligence preview; no dedicated org.* grant yet. */
   supplyChainTwin: boolean;
+  /** Supply Chain Risk Intelligence (external events + feed). */
+  riskIntelligence: boolean;
 };
 
 export type PoMgmtSubNavVisibility = {
@@ -81,6 +83,8 @@ export async function resolveNavState(access: ViewerAccess | null): Promise<{
               tariffs ||
               rfq ||
               invoiceAudit);
+          const riskIntelligence =
+            !isSupplierPortalUser && viewerHas(access.grantSet, "org.scri", "view");
           return {
             poManagement,
             orders,
@@ -101,6 +105,7 @@ export async function resolveNavState(access: ViewerAccess | null): Promise<{
             invoiceAudit,
             apihub,
             supplyChainTwin,
+            riskIntelligence,
           };
         })()
       : undefined;
@@ -126,7 +131,8 @@ export async function resolveNavState(access: ViewerAccess | null): Promise<{
       linkVisibility.pricingSnapshots ||
       linkVisibility.invoiceAudit ||
       linkVisibility.apihub ||
-      linkVisibility.supplyChainTwin
+      linkVisibility.supplyChainTwin ||
+      linkVisibility.riskIntelligence
     );
 
   const poSubNavVisibility: PoMgmtSubNavVisibility = setupIncomplete

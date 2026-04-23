@@ -38,6 +38,7 @@ export type CommandPaletteGrants = {
   invoiceAudit: boolean;
   apihub: boolean;
   supplyChainTwin: boolean;
+  scri: boolean;
 };
 
 type CommandItem = {
@@ -103,6 +104,16 @@ export function CommandPalette({ grants }: { grants: CommandPaletteGrants }) {
         hint: "Cross-module intelligence layer (preview shell)",
         searchText: "twin sctwin supply chain graph scenario digital twin intelligence",
         action: go("/supply-chain-twin"),
+      });
+    }
+
+    if (grants.scri) {
+      list.push({
+        id: "risk-intelligence",
+        label: "Risk intelligence",
+        hint: "External events feed (Supply Chain Risk Intelligence)",
+        searchText: "scri risk intelligence supply chain events disruption news feed",
+        action: go("/risk-intelligence"),
       });
     }
 

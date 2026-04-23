@@ -91,6 +91,7 @@ model Tenant {
   supplyChainTwinRiskSignals     SupplyChainTwinRiskSignal[]
   supplyChainTwinScenarioDrafts  SupplyChainTwinScenarioDraft[]
   supplyChainTwinScenarioRevisions SupplyChainTwinScenarioRevision[]
+  scriExternalEvents              ScriExternalEvent[]
 }
 
 /// Integration / API hub — registry row for an external or internal data source (Phase 1 stub).
@@ -3407,4 +3408,82 @@ model SupplyChainTwinScenarioRevision {
   @@index([tenantId], map: "SupplyChainTwinScenarioRevision_tenantId_idx")
   @@index([tenantId, scenarioDraftId, createdAt], map: "sctwin_scen_rev_draft_created_idx")
   @@index([tenantId, scenarioDraftId, createdAt, id], map: "sctwin_scen_rev_draft_created_id_idx")
+}
+
+/// Supply Chain Risk Intelligence — triage state on an external event (docs/SCRI).
+enum ScriEventReviewState {
+  NEW
+  UNDER_REVIEW
+  WATCH
+  ACTION_REQUIRED
+  DISMISSED
+  RESOLVED
+}
+
+/// SCRI R1: clustered external risk / disruption event (ingest + feed + detail).
+model ScriExternalEvent {
+  id        String   @id @default(cuid())
+  tenantId  String
+  /// Idempotency key for ingest (stable per tenant).
+  ingestKey String   @db.VarChar(256)
+  /// Optional fingerprint for future clustering across sources.
+  clusterKey String? @db.VarChar(256)
+  eventType String   @db.VarChar(64)
+  title     String   @db.VarChar(512)
+  shortSummary String? @db.Text
+  longSummary  String? @db.Text
+  eventTime    DateTime?
+  discoveredTime DateTime @default(now())
+  severity       TwinRiskSeverity
+  /// 0–100 confidence in classification / relevance (R1 default from ingest).
+  confidence     Int      @default(50)
+  reviewState    ScriEventReviewState @default(NEW)
+  sourceCount    Int      @default(0)
+  sourceTrustScore Int?
+  aiSummary      String?  @db.Text
+  structuredPayload Json  @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sources      ScriEventSource[]
+  geographies  ScriEventGeography[]
+
+  @@unique([tenantId, ingestKey])
+  @@index([tenantId, discoveredTime])
+  @@index([tenantId, reviewState, discoveredTime])
+  @@index([tenantId, severity])
+}
+
+model ScriEventSource {
+  id        String   @id @default(cuid())
+  eventId   String
+  sourceType String  @db.VarChar(64)
+  publisher  String? @db.VarChar(256)
+  url        String? @db.VarChar(2000)
+  headline   String? @db.VarChar(512)
+  publishedAt DateTime?
+  extractedText String? @db.Text
+  extractionConfidence Int?
+
+  createdAt DateTime @default(now())
+
+  event ScriExternalEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+}
+
+model ScriEventGeography {
+  id        String  @id @default(cuid())
+  eventId   String
+  countryCode String? @db.VarChar(2)
+  region      String? @db.VarChar(128)
+  portUnloc   String? @db.VarChar(8)
+  label       String? @db.VarChar(256)
+  raw         Json?
+
+  event ScriExternalEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
 }

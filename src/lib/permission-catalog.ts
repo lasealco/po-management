@@ -158,6 +158,18 @@ export const GLOBAL_PERMISSION_CATALOG = [
     description:
       "Create or change connectors, templates, ingestion runs, mapping analysis jobs, staging batches, and staging downstream apply (SO/PO/CT still require their module grants).",
   },
+  {
+    resource: "org.scri",
+    action: "view",
+    label: "View risk intelligence",
+    description: "Supply Chain Risk Intelligence dashboard, event feed, and event detail (read-only).",
+  },
+  {
+    resource: "org.scri",
+    action: "edit",
+    label: "Manage risk intelligence",
+    description: "Ingest external events and run triage workflows (future phases).",
+  },
 ] as const;
 
 export type GlobalPermissionRow = (typeof GLOBAL_PERMISSION_CATALOG)[number];

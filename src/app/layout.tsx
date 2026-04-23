@@ -70,6 +70,7 @@ export default async function RootLayout({
     invoiceAudit: Boolean(access?.user && viewerHas(access.grantSet, "org.invoice_audit", "view")),
     apihub: Boolean(access?.user),
     supplyChainTwin: Boolean(linkVisibility?.supplyChainTwin),
+    scri: Boolean(linkVisibility?.riskIntelligence),
   };
 
   return (

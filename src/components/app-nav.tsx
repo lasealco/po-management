@@ -37,6 +37,9 @@ function isTopNavHrefActive(pathname: string, href: string): boolean {
   if (href === "/supply-chain-twin") {
     return pathname === "/supply-chain-twin" || pathname.startsWith("/supply-chain-twin/");
   }
+  if (href === "/risk-intelligence") {
+    return pathname === "/risk-intelligence" || pathname.startsWith("/risk-intelligence/");
+  }
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -61,6 +64,7 @@ const topNavItems: TopNavItem[] = [
   { kind: "link", key: "salesOrders", label: "Sales Orders", href: "/sales-orders" },
   { kind: "link", key: "reports", label: "Reporting", href: "/reporting" },
   { kind: "link", key: "supplyChainTwin", label: "Supply Chain Twin", href: "/supply-chain-twin" },
+  { kind: "link", key: "riskIntelligence", label: "Risk intelligence", href: "/risk-intelligence" },
   { kind: "ratesAudit" },
   { kind: "link", key: "apihub", label: "API Hub", href: "/apihub" },
   { kind: "link", key: "settings", label: "Settings", href: "/settings" },
@@ -75,6 +79,7 @@ function TopNavLinkLabel({ item }: { item: Exclude<TopNavItem, { kind: "ratesAud
   if (item.key === "reports") return "Reports";
   if (item.key === "apihub") return "API";
   if (item.key === "supplyChainTwin") return "Twin";
+  if (item.key === "riskIntelligence") return "Risk";
   return item.label;
 }
 
