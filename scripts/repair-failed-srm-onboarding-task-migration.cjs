@@ -10,7 +10,9 @@
  * vercel-build runs this before prisma migrate deploy when SKIP_DB_MIGRATE is unset.
  */
 const { spawnSync } = require("node:child_process");
+const { config } = require("dotenv");
 const fs = require("node:fs");
+const { resolve: pathResolve } = require("node:path");
 const path = require("node:path");
 const pg = require("pg");
 
@@ -22,27 +24,24 @@ const MIGRATION_DIR = path.join(
   MIGRATION,
 );
 
-function loadEnvFiles() {
-  for (const name of [".env.local", ".env"]) {
-    const p = path.join(process.cwd(), name);
-    if (!fs.existsSync(p)) continue;
-    const text = fs.readFileSync(p, "utf8");
-    for (const line of text.split("\n")) {
-      const t = line.trim();
-      if (!t || t.startsWith("#")) continue;
-      const eq = t.indexOf("=");
-      if (eq === -1) continue;
-      const key = t.slice(0, eq).trim();
-      let val = t.slice(eq + 1).trim();
-      if (
-        (val.startsWith('"') && val.endsWith('"')) ||
-        (val.startsWith("'") && val.endsWith("'"))
-      ) {
-        val = val.slice(1, -1);
-      }
-      if (process.env[key] === undefined) process.env[key] = val;
-    }
-  }
+/**
+ * Same as `prisma/seed.mjs` + `prisma.config.ts`: .env, then .env.local (override).
+ * Shell must win for one-off URLs (e.g. export before npm run).
+ */
+function loadEnvLikePrisma() {
+  const shellUnpooled = process.env.DATABASE_URL_UNPOOLED?.trim() || null;
+  const shellDirect = process.env.DIRECT_URL?.trim() || null;
+  const shellDb = process.env.DATABASE_URL?.trim() || null;
+  config({ path: pathResolve(process.cwd(), ".env") });
+  config({ path: pathResolve(process.cwd(), ".env.local"), override: true });
+  if (shellUnpooled) process.env.DATABASE_URL_UNPOOLED = shellUnpooled;
+  if (shellDirect) process.env.DIRECT_URL = shellDirect;
+  if (shellDb) process.env.DATABASE_URL = shellDb;
+}
+
+function dsnHost(connectionString) {
+  const m = String(connectionString).match(/@([^/?]+)/);
+  return m ? m[1] : "(unknown)";
 }
 
 function dsn() {
@@ -146,7 +145,7 @@ async function isComplete(client) {
 async function main() {
   const dry =
     process.argv.includes("--dry-run") || process.argv.includes("-n");
-  loadEnvFiles();
+  loadEnvLikePrisma();
   const connectionString = dsn();
   if (!connectionString) {
     console.error(
@@ -155,6 +154,9 @@ async function main() {
     );
     process.exit(1);
   }
+  console.log(
+    `[repair] Connecting to: ${dsnHost(connectionString)} (same DSN order as prisma.config: UNPOOLED → DIRECT → DATABASE_URL)`,
+  );
 
   const client = new pg.Client({ connectionString });
   await client.connect();
@@ -168,8 +170,28 @@ async function main() {
   const row = mig[0];
 
   if (!row) {
+    const { rows: anyUnfinished } = await client.query(
+      `SELECT migration_name, finished_at, started_at
+       FROM "_prisma_migrations"
+       WHERE finished_at IS NULL
+       ORDER BY started_at DESC
+       LIMIT 10`,
+    );
+    if (anyUnfinished.length) {
+      console.log(
+        "[repair] Unfinished migration rows on this database:",
+        anyUnfinished.map((r) => r.migration_name),
+      );
+    } else {
+      console.log(
+        "[repair] No unfinished migrations (finished_at IS NULL) in this database.",
+      );
+    }
     console.log(
-      `[repair] No _prisma_migrations row for ${MIGRATION} — not in a failed/stuck state. OK.`,
+      `[repair] No row named exactly ${MIGRATION} — if you still get P3009 for that name, ` +
+        `prisma is probably using a different connection than this script. ` +
+        `Compare the host above to the "Datasource" line from \`npx prisma migrate status\` or \`db:migrate\` — ` +
+        `and align .env / .env.local (prisma.config now loads .env.local over .env).`,
     );
     await client.end();
     return;
