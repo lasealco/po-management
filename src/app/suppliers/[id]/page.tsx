@@ -5,6 +5,7 @@ import { WorkflowHeader } from "@/components/workflow-header";
 import { SupplierDetailClient } from "@/components/supplier-detail-client";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { loadSupplierDetailSnapshot } from "@/lib/srm/load-supplier-detail-snapshot";
+import { redactSupplierDetailSnapshot } from "@/lib/srm/redact-supplier-sensitive";
 import { resolveSrmPermissions } from "@/lib/srm/permissions";
 import { fetchSupplierOrderAnalytics } from "@/lib/supplier-order-analytics";
 import { prisma } from "@/lib/prisma";
@@ -56,9 +57,7 @@ export default async function SupplierDetailPage({
     ? await fetchSupplierOrderAnalytics(prisma, tenant.id, snapshot.id)
     : null;
 
-  const initialSnapshot = canViewSupplierSensitiveFields
-    ? snapshot
-    : { ...snapshot, internalNotes: null };
+  const initialSnapshot = redactSupplierDetailSnapshot(snapshot, canViewSupplierSensitiveFields);
 
   return (
     <div className="min-h-screen bg-zinc-50">

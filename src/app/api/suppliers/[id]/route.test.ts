@@ -83,14 +83,17 @@ describe("GET /api/suppliers/[id]", () => {
     );
   });
 
-  it("redacts internalNotes for view-only supplier access", async () => {
+  it("redacts sensitive fields for view-only supplier access", async () => {
     loadGlobalGrantsForUserMock.mockResolvedValueOnce(new Set(["org.suppliers\u0000view"]));
     findFirstMock.mockResolvedValueOnce({
       id: "s1",
       name: "Acme",
       internalNotes: "secret",
+      taxId: "EIN-1",
+      creditLimit: "99",
+      creditCurrency: "USD",
       offices: [],
-      contacts: [],
+      contacts: [{ id: "c1", notes: "n1", name: "x" }],
       _count: { productSuppliers: 0, orders: 0 },
     });
     const { GET } = await import("./route");
@@ -98,7 +101,19 @@ describe("GET /api/suppliers/[id]", () => {
       params: Promise.resolve({ id: "s1" }),
     });
     expect(res.status).toBe(200);
-    const body = await res.json() as { supplier: { internalNotes: string | null } };
+    const body = (await res.json()) as {
+      supplier: {
+        internalNotes: string | null;
+        taxId: string | null;
+        creditLimit: unknown;
+        creditCurrency: string | null;
+        contacts: { notes: string | null }[];
+      };
+    };
     expect(body.supplier.internalNotes).toBeNull();
+    expect(body.supplier.taxId).toBeNull();
+    expect(body.supplier.creditLimit).toBeNull();
+    expect(body.supplier.creditCurrency).toBeNull();
+    expect(body.supplier.contacts[0].notes).toBeNull();
   });
 });

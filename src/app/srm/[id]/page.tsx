@@ -5,6 +5,7 @@ import { SupplierDetailClient } from "@/components/supplier-detail-client";
 import { WorkflowHeader } from "@/components/workflow-header";
 import { getViewerGrantSet } from "@/lib/authz";
 import { loadSupplierDetailSnapshot } from "@/lib/srm/load-supplier-detail-snapshot";
+import { redactSupplierDetailSnapshot } from "@/lib/srm/redact-supplier-sensitive";
 import { resolveSrmPermissions } from "@/lib/srm/permissions";
 import { fetchSupplierOrderAnalytics } from "@/lib/supplier-order-analytics";
 import { prisma } from "@/lib/prisma";
@@ -79,9 +80,7 @@ export default async function SrmSupplierDetailPage({
   const canApprove = permissions.canApproveSuppliers;
   const canViewSupplierSensitiveFields = permissions.canViewSupplierSensitiveFields;
   const canViewOrders = permissions.canViewOrders;
-  const initialSnapshot = canViewSupplierSensitiveFields
-    ? snapshot
-    : { ...snapshot, internalNotes: null };
+  const initialSnapshot = redactSupplierDetailSnapshot(snapshot, canViewSupplierSensitiveFields);
   const orderHistory = canViewOrders
     ? await fetchSupplierOrderAnalytics(prisma, tenant.id, snapshot.id)
     : null;

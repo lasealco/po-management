@@ -823,10 +823,20 @@ export function SupplierDetailClient({
                 <span className={label}>Legal name</span>
                 <p className="mt-1 text-zinc-900">{legalName || "—"}</p>
               </div>
-              <div className="text-sm">
-                <span className={label}>Tax / VAT ID</span>
-                <p className="mt-1 text-zinc-900">{taxId || "—"}</p>
-              </div>
+              {canViewSupplierSensitiveFields ? (
+                <div className="text-sm">
+                  <span className={label}>Tax / VAT ID</span>
+                  <p className="mt-1 text-zinc-900">{taxId || "—"}</p>
+                </div>
+              ) : (
+                <div className="text-sm rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2">
+                  <span className={label}>Tax / VAT ID</span>
+                  <p className="mt-1 text-xs text-amber-950">
+                    Hidden for read-only supplier access. Requires <strong>org.suppliers</strong> →{" "}
+                    <strong>edit</strong> or <strong>approve</strong>.
+                  </p>
+                </div>
+              )}
               <div className="text-sm">
                 <span className={label}>Website</span>
                 <p className="mt-1 text-zinc-900">
@@ -1025,14 +1035,24 @@ export function SupplierDetailClient({
                 <span className={label}>Payment terms</span>
                 <p className="mt-1 text-zinc-900">{formatTerms()}</p>
               </div>
-              <div className="text-sm">
-                <span className={label}>Credit limit</span>
-                <p className="mt-1 text-zinc-900">
-                  {initial.creditLimit
-                    ? `${initial.creditCurrency ?? ""} ${initial.creditLimit}`.trim()
-                    : "—"}
-                </p>
-              </div>
+              {canViewSupplierSensitiveFields ? (
+                <div className="text-sm">
+                  <span className={label}>Credit limit</span>
+                  <p className="mt-1 text-zinc-900">
+                    {initial.creditLimit
+                      ? `${initial.creditCurrency ?? ""} ${initial.creditLimit}`.trim()
+                      : "—"}
+                  </p>
+                </div>
+              ) : (
+                <div className="text-sm rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2">
+                  <span className={label}>Credit limit</span>
+                  <p className="mt-1 text-xs text-amber-950">
+                    Hidden for read-only supplier access. Requires <strong>org.suppliers</strong> →{" "}
+                    <strong>edit</strong> or <strong>approve</strong>.
+                  </p>
+                </div>
+              )}
               <div className="text-sm">
                 <span className={label}>Default Incoterm</span>
                 <p className="mt-1 text-zinc-900">{incoterm || "—"}</p>
@@ -1085,6 +1105,12 @@ export function SupplierDetailClient({
         <p className="mt-1 text-xs text-zinc-500">
           People for orders, AP, and operations (separate from the main company phone/email).
         </p>
+        {!canViewSupplierSensitiveFields ? (
+          <p className="mt-2 text-xs text-amber-900/90">
+            Per-contact <strong>notes</strong> are limited to users with <strong>org.suppliers</strong> →{" "}
+            <strong>edit</strong> or <strong>approve</strong> (name and phone remain visible when present).
+          </p>
+        ) : null}
         <ul className="mt-4 divide-y divide-zinc-100 border border-zinc-100 rounded-md">
           {initial.contacts.length === 0 ? (
             <li className="px-4 py-6 text-sm text-zinc-500">No contacts yet.</li>

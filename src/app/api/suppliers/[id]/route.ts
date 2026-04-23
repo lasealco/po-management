@@ -12,6 +12,7 @@ import { getDemoTenant } from "@/lib/demo-tenant";
 import { optionalStringField } from "@/lib/supplier-patch";
 import { prisma } from "@/lib/prisma";
 import { assertSupplierApprovalTransition } from "@/lib/srm/supplier-approval-transitions";
+import { redactSupplierGetPayload } from "@/lib/srm/redact-supplier-sensitive";
 
 const supplierDetailInclude = {
   offices: { orderBy: { name: "asc" as const } },
@@ -51,12 +52,7 @@ export async function GET(
   const canViewSensitive =
     viewerHas(grantSet, "org.suppliers", "edit") || viewerHas(grantSet, "org.suppliers", "approve");
 
-  const bodySupplier = {
-    ...supplier,
-    internalNotes: canViewSensitive ? supplier.internalNotes : null,
-  };
-
-  return NextResponse.json({ supplier: bodySupplier });
+  return NextResponse.json({ supplier: redactSupplierGetPayload(supplier, canViewSensitive) });
 }
 
 export async function PATCH(
