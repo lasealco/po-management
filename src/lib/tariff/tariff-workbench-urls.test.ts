@@ -13,6 +13,8 @@ import {
   tariffContractHeaderPath,
   tariffContractVersionPath,
   tariffGeographyGroupPath,
+  apiShipmentTariffApplicationsPath,
+  apiShipmentTariffRatingHintsPath,
   tariffImportBatchPath,
   tariffLaneRatingPath,
 } from "@/lib/tariff/tariff-workbench-urls";
@@ -72,6 +74,13 @@ describe("tariffGeographyGroupPath / tariffImportBatchPath", () => {
   it("builds segment paths under module base", () => {
     expect(tariffGeographyGroupPath("g1")).toBe(`${TARIFFS_MODULE_BASE_PATH}/geography/g1`);
     expect(tariffImportBatchPath("b1")).toBe(`${TARIFFS_MODULE_BASE_PATH}/import/b1`);
+  });
+});
+
+describe("apiShipmentTariffRatingHintsPath / apiShipmentTariffApplicationsPath", () => {
+  it("encodes shipment id for API routes", () => {
+    expect(apiShipmentTariffRatingHintsPath("s1")).toBe("/api/shipments/s1/tariff-rating-hints");
+    expect(apiShipmentTariffApplicationsPath("a/b")).toBe("/api/shipments/a%2Fb/tariff-applications");
   });
 });
 

@@ -73,3 +73,15 @@ export function tariffGeographyGroupPath(groupId: string): string {
 export function tariffImportBatchPath(batchId: string): string {
   return `${TARIFF_IMPORT_PATH}/${batchId}`;
 }
+
+/**
+ * REST paths for shipment-scoped tariff hooks (Next route handlers under `src/app/api/shipments/[id]/…`).
+ * Use from Control Tower / logistics when deep-linking or calling fetch from server components.
+ */
+export function apiShipmentTariffRatingHintsPath(shipmentId: string): string {
+  return `/api/shipments/${encodeURIComponent(shipmentId)}/tariff-rating-hints`;
+}
+
+export function apiShipmentTariffApplicationsPath(shipmentId: string): string {
+  return `/api/shipments/${encodeURIComponent(shipmentId)}/tariff-applications`;
+}

@@ -11,7 +11,8 @@ export default function TariffRateLookupPage() {
         <p className="mt-2 max-w-3xl text-sm text-zinc-600">
           Compare two pre-loaded ocean FCL options for Hamburg to Chicago: pre-carriage, carrier ocean base,
           forwarder-style accessorials, and on-carriage in one total per column. Figures are{" "}
-          <strong>tenant-scoped</strong> and require sign-in; this is not a public tariff feed or carrier offer.
+          <strong>tenant-scoped</strong>, require <strong>org.tariffs → view</strong> (signed-in demo session), and are
+          not a public tariff feed or carrier offer.
         </p>
         <div className="mt-8">
           <InvestorDoorRatesClient />

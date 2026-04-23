@@ -17,7 +17,7 @@ Slices are **audit / hardening / parity** tasks, not a greenfield todo list — 
 | **0** | Workspace gate: full-repo `tsc` + tariff vertical tests green | Done — keep tree free of orphan `* 2.*` pages and half-wired API trees that are not in `schema.prisma` / generated client. |
 | **1** | Track A (A-01 … A-20) | **Done (2026-04-23)** — audited import pipeline through audit-log; batch + staging PATCH **`confidenceScore`** parity with `import-batches` lib; shared validator + tests; import/UI label and enum parity tests extended; existing coverage retained for promote, geography catalog, normalized charge APIs. |
 | **2** | Track B (B-01 … B-20) | **Done (2026-04-23)** — contract POST/PATCH validates active provider + tenant-scoped legal entity; header audit includes trade scope, owner, notes; geography group POST/PATCH/DELETE writes `TariffAuditLog`; contract header form focus rings aligned with workflow DS. |
-| **3** | Track C (C-01 … C-20) | Rating, shipments, RFQ, snapshots, invoice-audit wiring. |
+| **3** | Track C (C-01 … C-20) | **Done (2026-04-23)** — lane rating POST body validation extracted to tested parser; workbench URLs include shipment tariff API path helpers; investor rate-lookup copy clarifies grant; existing tests cover rating engine, RFQ error mapping, snapshots serialize/freeze, invoice-audit tolerance/ocean matching. |
 
 Optional: when a slice is signed off, add `[x]` and date in the table cell or a PR note (`module:tariff`, slice id).
 
