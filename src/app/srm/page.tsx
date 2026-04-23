@@ -152,7 +152,8 @@ export default async function SrmPage({
           </section>
 
           {rows.length > 0 ? (
-            <section className="mt-8 overflow-x-auto rounded-lg border border-zinc-200">
+            <>
+            <section className="mt-8 hidden overflow-x-auto rounded-lg border border-zinc-200 md:block">
               <table className="min-w-full divide-y divide-zinc-200 text-sm">
                 <thead className="bg-zinc-50 text-left text-xs font-medium uppercase text-zinc-500">
                   <tr>
@@ -209,6 +210,73 @@ export default async function SrmPage({
                   ))}
                 </tbody>
               </table>
+            </section>
+            <ul className="mt-8 space-y-3 md:hidden">
+              {rows.map((s) => (
+                <li
+                  key={s.id}
+                  className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm"
+                >
+                  <p className="font-semibold text-zinc-900">{s.name}</p>
+                  <p className="mt-1 font-mono text-xs text-zinc-600">{s.code ?? "—"}</p>
+                  <p className="mt-2 text-xs text-zinc-600">
+                    {[s.email, s.phone].filter(Boolean).join(" · ") || "—"}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                    <span
+                      className={`rounded-full px-2 py-0.5 font-medium ${
+                        s.approvalStatus === "approved"
+                          ? "bg-emerald-100 text-emerald-800"
+                          : s.approvalStatus === "pending_approval"
+                            ? "bg-amber-100 text-amber-900"
+                            : "bg-rose-100 text-rose-800"
+                      }`}
+                    >
+                      {s.approvalStatus === "pending_approval"
+                        ? "Pending"
+                        : s.approvalStatus === "approved"
+                          ? "Approved"
+                          : "Rejected"}
+                    </span>
+                    <span
+                      className={`rounded-full px-2 py-0.5 font-medium ${
+                        s.isActive ? "bg-emerald-100 text-emerald-800" : "bg-zinc-200 text-zinc-600"
+                      }`}
+                    >
+                      {s.isActive ? "Active" : "Inactive"}
+                    </span>
+                    {canViewOrders ? (
+                      <span className="rounded-full bg-zinc-100 px-2 py-0.5 tabular-nums text-zinc-700">
+                        {s.orderCount} orders
+                      </span>
+                    ) : null}
+                  </div>
+                  <Link
+                    href={`/srm/${s.id}`}
+                    className="mt-4 inline-flex text-sm font-semibold text-[var(--arscmp-primary)] hover:underline"
+                  >
+                    {canEdit || canApprove ? "Open profile" : "View profile"}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            </>
+          ) : !q ? (
+            <section className="mt-8 rounded-2xl border border-dashed border-zinc-300 bg-zinc-50/90 px-6 py-12 text-center shadow-sm">
+              <h2 className="text-base font-semibold text-zinc-900">
+                No {kind === "logistics" ? "logistics" : "product"} partners yet
+              </h2>
+              <p className="mt-2 text-sm text-zinc-600">
+                Create your first partner to populate this list. You can add contacts and sites on the
+                supplier profile.
+              </p>
+              {canEdit ? (
+                <div className="mt-6">
+                  <ActionLink href={`/srm/new?kind=${kind}`}>Create first partner</ActionLink>
+                </div>
+              ) : (
+                <p className="mt-4 text-sm text-zinc-500">Your role is view-only for supplier master data.</p>
+              )}
             </section>
           ) : (
             <section className="mt-8 rounded-lg border border-dashed border-zinc-300 bg-zinc-50 px-6 py-10 text-center">

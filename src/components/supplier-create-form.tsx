@@ -40,6 +40,10 @@ export function SupplierCreateForm({
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (!name.trim()) {
+      setError("Partner name is required.");
+      return;
+    }
     setBusy(true);
     const res = await fetch("/api/suppliers", {
       method: "POST",
@@ -70,23 +74,15 @@ export function SupplierCreateForm({
       setError(apiClientErrorMessage(payload, "Failed."));
       return;
     }
-    setName("");
-    setCode("");
-    setEmail("");
-    setPhone("");
-    setLegalName("");
-    setWebsite("");
-    setTaxId("");
-    setRegisteredAddressLine1("");
-    setRegisteredCity("");
-    setRegisteredRegion("");
-    setRegisteredPostalCode("");
-    setRegisteredCountryCode("");
-    setPaymentTermsLabel("");
-    setPaymentTermsDays("");
-    setDefaultIncoterm("");
+    const created = payload as { supplier?: { id: string } };
+    if (created.supplier?.id) {
+      setBusy(false);
+      router.push(`/srm/${created.supplier.id}?kind=${srmCategory}`);
+      router.refresh();
+      return;
+    }
     setBusy(false);
-    router.refresh();
+    setError("Created supplier but response was missing id. Refresh the list.");
   }
 
   const f =

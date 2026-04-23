@@ -144,6 +144,16 @@ export function SupplierCapabilitiesSection({
         </div>
       ) : null}
 
+      {rows.length === 0 && canEdit ? (
+        <div className="mt-4 rounded-xl border border-dashed border-zinc-300 bg-zinc-50/80 p-5">
+          <p className="text-sm font-medium text-zinc-800">No capabilities yet</p>
+          <p className="mt-1 text-xs text-zinc-600">
+            Add modes (ocean, air, …), service lines, and geography so buyers can see how this partner can
+            help. Use the form below.
+          </p>
+        </div>
+      ) : null}
+
       <div className="mt-4 overflow-x-auto">
         <table className="min-w-full divide-y divide-zinc-200 text-sm">
           <thead className="bg-zinc-50 text-left text-xs font-medium uppercase text-zinc-500">
@@ -163,7 +173,9 @@ export function SupplierCapabilitiesSection({
                   colSpan={canEdit ? 6 : 5}
                   className="px-3 py-6 text-center text-zinc-500"
                 >
-                  No capability rows yet.
+                  {canEdit
+                    ? "Add your first capability using the form below."
+                    : "No capability rows recorded."}
                 </td>
               </tr>
             ) : (
@@ -343,7 +355,7 @@ export function SupplierCapabilitiesSection({
           <button
             type="submit"
             disabled={busy}
-            className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium disabled:opacity-50"
+            className="rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-50"
           >
             Add capability
           </button>

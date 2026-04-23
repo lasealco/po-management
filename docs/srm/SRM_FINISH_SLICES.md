@@ -30,14 +30,14 @@
 |---|--------|------|--------------------------------------|
 | **1** | **SRM completion index** | Register this program in-repo | **Done:** `GAP_MAP.md` § **Completion program (SRM MVP)**; `agent-todos/srm.md` links here + GAP anchor. Slice 3 adds issue/PR tracker. |
 | **2** | **Definition-of-done checklist** | Single page reviewers use | **Done:** `GAP_MAP.md` § **SRM MVP sign-off checklist** — routes, grants, migrations, seeds, manual smoke table, doc gate for slice 30. |
-| **3** | **Slice tracker table** | Traceability | In `GAP_MAP.md`, add a table column or appendix: slice # → GitHub issue → PR (empty until filled). |
-| **4** | **List page polish** | `/srm` production feel | Empty/error/loading states; consistent filters (`kind`, `q`); mobile-friendly table or card fallback; primary actions use `--arscmp-primary`. |
-| **5** | **Create partner wizard polish** | `/srm/new` | Step header (per design system); required-field validation messages; success path lands on 360; cancel/back safe. |
-| **6** | **360 layout & navigation** | `/srm/[id]` IA | Sticky sub-nav or tabs: Profile · Contacts · Sites · Capabilities · Orders (if granted) · Compliance · Activity; no dead links. |
-| **7** | **360 profile completeness** | Core supplier fields | All PRD “header” fields in snapshot editable with save/cancel; optimistic or refresh pattern documented; audit who changed what if pattern exists elsewhere. |
-| **8** | **Contacts & offices CRUD** | Sub-entities | Full create/edit/delete for `SupplierContact` and `SupplierOffice` with grants (`edit`); confirm dialogs; server actions or API + revalidate. |
-| **9** | **Capabilities matrix UX** | `SupplierServiceCapability` | Clear add/remove/edit; validation against taxonomy if present; empty state with CTA. |
-| **10** | **API guard pass (read)** | Hardening | Every SRM list/detail JSON route checks tenant + `org.suppliers` **view**; add or extend tests for 403/404. |
+| **3** | **Slice tracker table** | Traceability | **Done:** `GAP_MAP.md` § **Slice tracker** (+ Phase A ship note). |
+| **4** | **List page polish** | `/srm` production feel | **Done:** Zero-state without search; mobile card list (`md:hidden`); desktop table unchanged; primary **Create** via `ActionLink`. |
+| **5** | **Create partner wizard polish** | `/srm/new` | **Done:** Client **name** validation; success **`router.push(/srm/[id])`**; existing `WorkflowHeader` steps. |
+| **6** | **360 layout & navigation** | `/srm/[id]` IA | **Done:** Tabs Profile · Contacts & sites · Capabilities · Orders · Compliance · Activity; sticky nav; Compliance/Activity copy points to later phases. |
+| **7** | **360 profile completeness** | Core supplier fields | **Done:** **`bookingConfirmationSlaHours`** in snapshot, PATCH API, and commercial form (logistics SLA); remaining header fields already on 360. |
+| **8** | **Contacts & offices CRUD** | Sub-entities | **Done:** Office **PATCH** UI (edit inline); contacts unchanged; delete confirm preserved. |
+| **9** | **Capabilities matrix UX** | `SupplierServiceCapability` | **Done:** Empty-state panel + table hint; primary **Add capability** button (`--arscmp-primary`). |
+| **10** | **API guard pass (read)** | Hardening | **Done:** Vitest for **`GET /api/suppliers`** (gate, tenant 404, happy path) and **`GET /api/suppliers/[id]`** (gate, 404, happy path). |
 
 ---
 

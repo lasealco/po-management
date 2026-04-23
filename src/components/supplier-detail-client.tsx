@@ -47,6 +47,8 @@ export type SupplierDetailSnapshot = {
   creditCurrency: string | null;
   defaultIncoterm: string | null;
   internalNotes: string | null;
+  /** Hours to confirm booking (logistics); null = tenant default. */
+  bookingConfirmationSlaHours: number | null;
   contacts: SupplierContactRow[];
   offices: Array<{
     id: string;
@@ -69,16 +71,12 @@ const CONTACT_ROLES = [
 ] as const;
 
 const SRM_SUPPLIER_TABS = [
-  { id: "overview", label: "Overview" },
+  { id: "overview", label: "Profile" },
+  { id: "contacts", label: "Contacts & sites" },
   { id: "capabilities", label: "Capabilities" },
-  { id: "qualification", label: "Qualification" },
+  { id: "orders", label: "Orders" },
   { id: "compliance", label: "Compliance" },
-  { id: "contracts", label: "Contracts" },
-  { id: "performance", label: "Performance" },
-  { id: "risk", label: "Risk" },
-  { id: "relationship", label: "Relationship" },
-  { id: "documents", label: "Documents" },
-  { id: "alerts", label: "Alerts" },
+  { id: "activity", label: "Activity" },
 ] as const;
 
 type SrmSupplierTabId = (typeof SRM_SUPPLIER_TABS)[number]["id"];
@@ -140,6 +138,11 @@ export function SupplierDetailClient({
   const [internalNotes, setInternalNotes] = useState(
     initial.internalNotes ?? "",
   );
+  const [bookingSlaHours, setBookingSlaHours] = useState(
+    initial.bookingConfirmationSlaHours != null
+      ? String(initial.bookingConfirmationSlaHours)
+      : "",
+  );
 
   useEffect(() => {
     startTransition(() => {
@@ -166,6 +169,11 @@ export function SupplierDetailClient({
       setCreditCurrency(initial.creditCurrency ?? "");
       setIncoterm(initial.defaultIncoterm ?? "");
       setInternalNotes(initial.internalNotes ?? "");
+      setBookingSlaHours(
+        initial.bookingConfirmationSlaHours != null
+          ? String(initial.bookingConfirmationSlaHours)
+          : "",
+      );
     });
     // Intentionally only re-sync when `initial.updatedAt` changes (full `initial` deps would over-reset).
     // eslint-disable-next-line react-hooks/exhaustive-deps -- initial.* fields track one payload version
@@ -174,6 +182,10 @@ export function SupplierDetailClient({
   const [officeName, setOfficeName] = useState("");
   const [officeCity, setOfficeCity] = useState("");
   const [officeCountry, setOfficeCountry] = useState("");
+  const [editingOfficeId, setEditingOfficeId] = useState<string | null>(null);
+  const [editOfficeName, setEditOfficeName] = useState("");
+  const [editOfficeCity, setEditOfficeCity] = useState("");
+  const [editOfficeCountry, setEditOfficeCountry] = useState("");
 
   const [cName, setCName] = useState("");
   const [cTitle, setCTitle] = useState("");
@@ -204,6 +216,20 @@ export function SupplierDetailClient({
       setError("Payment terms (days) must be a whole number from 0 to 3650.");
       return;
     }
+    let bookingConfirmationSlaHours: number | null;
+    if (bookingSlaHours.trim() === "") {
+      bookingConfirmationSlaHours = null;
+    } else {
+      const sla = Number.parseInt(bookingSlaHours.trim(), 10);
+      if (Number.isNaN(sla) || sla < 1 || sla > 8760) {
+        setBusy(false);
+        setError(
+          "Booking confirmation SLA (hours) must be empty or a whole number from 1 to 8760.",
+        );
+        return;
+      }
+      bookingConfirmationSlaHours = sla;
+    }
     const baseBody: Record<string, unknown> = {
         name,
         code: code || null,
@@ -225,6 +251,7 @@ export function SupplierDetailClient({
         creditCurrency: creditCurrency.trim().toUpperCase() || null,
         defaultIncoterm: incoterm || null,
         internalNotes: internalNotes || null,
+        bookingConfirmationSlaHours,
     };
     if (canApprove) {
       baseBody.isActive = isActive;
@@ -271,6 +298,36 @@ export function SupplierDetailClient({
     router.refresh();
   }
 
+  async function saveOfficeEdit(officeId: string) {
+    if (!editOfficeName.trim()) {
+      setError("Office name is required.");
+      return;
+    }
+    setError(null);
+    setBusy(true);
+    const res = await fetch(`/api/suppliers/${initial.id}/offices/${officeId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: editOfficeName.trim(),
+        city: editOfficeCity.trim() || null,
+        countryCode: editOfficeCountry.trim() || null,
+      }),
+    });
+    const payload: unknown = await res.json();
+    if (!res.ok) {
+      setBusy(false);
+      setError(apiClientErrorMessage(payload, "Update failed."));
+      return;
+    }
+    setEditingOfficeId(null);
+    setEditOfficeName("");
+    setEditOfficeCity("");
+    setEditOfficeCountry("");
+    setBusy(false);
+    router.refresh();
+  }
+
   async function removeOffice(officeId: string) {
     if (
       !window.confirm(
@@ -312,7 +369,11 @@ export function SupplierDetailClient({
       return;
     }
     setBusy(false);
-    router.push("/suppliers");
+    router.push(
+      detailNavContext === "srm"
+        ? `/srm?kind=${initial.srmCategory === "logistics" ? "logistics" : "product"}`
+        : "/suppliers",
+    );
     router.refresh();
   }
 
@@ -548,7 +609,7 @@ export function SupplierDetailClient({
 
       {isSrmShell ? (
         <nav
-          className="-mx-1 flex flex-wrap gap-1 border-b border-zinc-200 pb-2"
+          className="sticky top-0 z-20 -mx-1 mb-4 flex flex-wrap gap-1 border-b border-zinc-200 bg-zinc-50/95 py-2 backdrop-blur-sm"
           aria-label="Supplier workspace"
         >
           {SRM_SUPPLIER_TABS.map((t) => (
@@ -568,12 +629,23 @@ export function SupplierDetailClient({
         </nav>
       ) : null}
 
+      {orderHistory && (!isSrmShell || srmTab === "orders") ? (
+        <SupplierOrderHistorySection analytics={orderHistory} />
+      ) : null}
+
+      {isSrmShell && srmTab === "orders" && !orderHistory ? (
+        <section className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
+          <h2 className="text-sm font-semibold text-zinc-900">Orders</h2>
+          <p className="mt-2 text-sm text-zinc-600">
+            Linked purchase-order history is hidden for your role. Grant{" "}
+            <strong className="text-zinc-800">org.orders</strong> → view to see counts and recent
+            rows here.
+          </p>
+        </section>
+      ) : null}
+
       {(!isSrmShell || srmTab === "overview") && (
         <>
-          {orderHistory ? (
-            <SupplierOrderHistorySection analytics={orderHistory} />
-          ) : null}
-
           <section className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
         <h2 className="text-sm font-semibold text-zinc-900">Company</h2>
         <p className="mt-1 text-xs text-zinc-500">
@@ -849,6 +921,19 @@ export function SupplierDetailClient({
                   placeholder="FOB, DDP, EXW…"
                 />
               </label>
+              <label className="flex flex-col text-sm">
+                <span className={label}>Booking confirmation SLA (hours)</span>
+                <input
+                  value={bookingSlaHours}
+                  onChange={(e) => setBookingSlaHours(e.target.value)}
+                  className={f}
+                  placeholder="e.g. 24 — logistics partners"
+                  inputMode="numeric"
+                />
+                <span className="mt-1 text-xs text-zinc-500">
+                  Leave blank to use tenant default. Range 1–8760.
+                </span>
+              </label>
               <label className="flex flex-col text-sm sm:col-span-2">
                 <span className={label}>Internal notes</span>
                 <textarea
@@ -878,6 +963,14 @@ export function SupplierDetailClient({
                 <span className={label}>Default Incoterm</span>
                 <p className="mt-1 text-zinc-900">{incoterm || "—"}</p>
               </div>
+              <div className="text-sm">
+                <span className={label}>Booking confirmation SLA</span>
+                <p className="mt-1 text-zinc-900">
+                  {initial.bookingConfirmationSlaHours != null
+                    ? `${initial.bookingConfirmationSlaHours} h`
+                    : "Tenant default"}
+                </p>
+              </div>
               <div className="text-sm sm:col-span-2">
                 <span className={label}>Internal notes</span>
                 <p className="mt-1 whitespace-pre-wrap text-zinc-900">
@@ -892,13 +985,17 @@ export function SupplierDetailClient({
             type="button"
             disabled={busy}
             onClick={() => void saveSupplierProfile()}
-            className="mt-6 rounded-md bg-arscmp-primary px-4 py-2 text-sm text-white disabled:opacity-50"
+            className="mt-6 rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-50"
           >
             {busy ? "Saving…" : "Save company & commercial details"}
           </button>
         ) : null}
       </section>
+        </>
+      )}
 
+      {(!isSrmShell || srmTab === "contacts") && (
+        <>
       <section className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
         <h2 className="text-sm font-semibold text-zinc-900">Contacts</h2>
         <p className="mt-1 text-xs text-zinc-500">
@@ -1152,24 +1249,87 @@ export function SupplierDetailClient({
             initial.offices.map((o) => (
               <li
                 key={o.id}
-                className="flex items-center justify-between gap-4 px-4 py-3 text-sm"
+                className="flex flex-col gap-2 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between"
               >
-                <div>
-                  <p className="font-medium text-zinc-900">{o.name}</p>
-                  <p className="text-zinc-600">
-                    {[o.city, o.countryCode].filter(Boolean).join(", ") || "—"}
-                  </p>
-                </div>
-                {canEdit ? (
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => void removeOffice(o.id)}
-                    className="text-red-700 hover:underline disabled:opacity-50"
-                  >
-                    Delete
-                  </button>
-                ) : null}
+                {editingOfficeId === o.id && canEdit ? (
+                  <div className="grid w-full gap-2 sm:grid-cols-3">
+                    <input
+                      value={editOfficeName}
+                      onChange={(e) => setEditOfficeName(e.target.value)}
+                      className={f}
+                      placeholder="Name"
+                    />
+                    <input
+                      value={editOfficeCity}
+                      onChange={(e) => setEditOfficeCity(e.target.value)}
+                      className={f}
+                      placeholder="City"
+                    />
+                    <input
+                      value={editOfficeCountry}
+                      onChange={(e) => setEditOfficeCountry(e.target.value)}
+                      className={f}
+                      placeholder="Country"
+                    />
+                    <div className="flex flex-wrap gap-2 sm:col-span-3">
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void saveOfficeEdit(o.id)}
+                        className="rounded-md bg-[var(--arscmp-primary)] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                      >
+                        Save
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => {
+                          setEditingOfficeId(null);
+                          setEditOfficeName("");
+                          setEditOfficeCity("");
+                          setEditOfficeCountry("");
+                        }}
+                        className="rounded-md border border-zinc-300 px-3 py-1.5 text-xs disabled:opacity-50"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div>
+                      <p className="font-medium text-zinc-900">{o.name}</p>
+                      <p className="text-zinc-600">
+                        {[o.city, o.countryCode].filter(Boolean).join(", ") || "—"}
+                      </p>
+                    </div>
+                    {canEdit ? (
+                      <div className="flex shrink-0 gap-3">
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => {
+                            setEditingOfficeId(o.id);
+                            setEditOfficeName(o.name);
+                            setEditOfficeCity(o.city ?? "");
+                            setEditOfficeCountry(o.countryCode ?? "");
+                          }}
+                          className="text-[var(--arscmp-primary)] hover:underline disabled:opacity-50"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => void removeOffice(o.id)}
+                          className="text-red-700 hover:underline disabled:opacity-50"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    ) : null}
+                  </>
+                )}
               </li>
             ))
           )}
@@ -1229,16 +1389,15 @@ export function SupplierDetailClient({
         />
       )}
 
-      {isSrmShell &&
-      srmTab !== "overview" &&
-      srmTab !== "capabilities" ? (
+      {isSrmShell && (srmTab === "compliance" || srmTab === "activity") ? (
         <section className="rounded-lg border border-dashed border-zinc-200 bg-zinc-50/80 p-8 text-center shadow-sm">
           <p className="text-sm font-medium text-zinc-800">
             {SRM_SUPPLIER_TABS.find((x) => x.id === srmTab)?.label ?? srmTab}
           </p>
           <p className="mt-2 text-xs text-zinc-600">
-            This workspace is planned in the SRM PRD; implementation follows in later slices (onboarding,
-            documents, scorecards, …).
+            {srmTab === "compliance"
+              ? "Document vault and compliance checks are scheduled in Phase C (SRM finish program, slices 16–20)."
+              : "Supplier activity and audit timeline will appear here in a later slice."}
           </p>
         </section>
       ) : null}

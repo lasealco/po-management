@@ -17,7 +17,25 @@ SRM “finished” for MVP is defined and sequenced in **[`SRM_FINISH_SLICES.md`
 | Slice list, acceptance hints, MVP definition | [`SRM_FINISH_SLICES.md`](./SRM_FINISH_SLICES.md) |
 | GitHub label & allowed paths | [`docs/engineering/agent-todos/srm.md`](../engineering/agent-todos/srm.md) |
 
-**Slice 1 — SRM completion index:** register the program in-repo (this section + cross-links above). **Slice 2 —** sign-off checklist below. **Slice 3** adds the issue/PR tracker table to this doc.
+### Slice tracker (issues & PRs)
+
+Add **Issue** / **PR** when you file work; Phase **B–F** rows stay open until those slices ship.
+
+| # | Slice (short) | GitHub issue | PR |
+|---|----------------|--------------|-----|
+| 1 | SRM completion index | — | (landed) |
+| 2 | MVP sign-off checklist | — | (landed) |
+| 3 | Slice tracker table | — | (this doc) |
+| 4 | List page polish |  |  |
+| 5 | Create partner wizard polish |  |  |
+| 6 | 360 layout & navigation |  |  |
+| 7 | 360 profile completeness |  |  |
+| 8 | Contacts & offices CRUD |  |  |
+| 9 | Capabilities matrix UX |  |  |
+| 10 | API guard pass (read) |  |  |
+| 11–30 | See [`SRM_FINISH_SLICES.md`](./SRM_FINISH_SLICES.md) |  |  |
+
+**Phase A (slices 4–10) — shipped in repo:** mobile partner cards + zero-state on `/srm`; create redirects to `/srm/[id]` with validation; 360 **Profile / Contacts & sites / Capabilities / Orders / Compliance / Activity** tabs (sticky nav); **booking confirmation SLA (hours)** on profile PATCH + UI; **office inline edit**; capabilities empty CTA + primary add button; **Vitest** for `GET /api/suppliers` and `GET /api/suppliers/[id]` grant + tenant gates.
 
 ### SRM MVP sign-off checklist (reviewers)
 

@@ -14,7 +14,8 @@
 
 - [x] **Slice 1 — SRM completion index** — `GAP_MAP.md` has **Completion program (SRM MVP)**; this file links the program + index anchor.
 - [x] **Slice 2 — Definition-of-done checklist** — `GAP_MAP.md` § **SRM MVP sign-off checklist (reviewers)**.
-- [ ] **Slice 3 — Slice tracker table** in `GAP_MAP.md`
+- [x] **Slice 3 — Slice tracker table** in `GAP_MAP.md`
+- [x] **Phase A (slices 4–10)** — UX + `bookingConfirmationSlaHours` + office edit + supplier GET tests (see `GAP_MAP.md` tracker note)
 
 ---
 

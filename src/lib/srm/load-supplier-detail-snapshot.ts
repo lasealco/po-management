@@ -83,6 +83,7 @@ export async function loadSupplierDetailSnapshot(
     creditCurrency: supplier.creditCurrency,
     defaultIncoterm: supplier.defaultIncoterm,
     internalNotes: supplier.internalNotes,
+    bookingConfirmationSlaHours: supplier.bookingConfirmationSlaHours ?? null,
     contacts: supplier.contacts,
     offices: supplier.offices,
     capabilities: supplier.serviceCapabilities.map((c) => ({

@@ -219,6 +219,21 @@ export async function PATCH(
     }
   }
 
+  if ("bookingConfirmationSlaHours" in o) {
+    const v = o.bookingConfirmationSlaHours;
+    if (v === null) {
+      data.bookingConfirmationSlaHours = null;
+    } else if (typeof v === "number" && Number.isInteger(v) && v >= 1 && v <= 8760) {
+      data.bookingConfirmationSlaHours = v;
+    } else {
+      return toApiErrorResponse({
+        error: "bookingConfirmationSlaHours must be null or an integer from 1 to 8760.",
+        code: "BAD_INPUT",
+        status: 400,
+      });
+    }
+  }
+
   if ("creditLimit" in o) {
     const v = o.creditLimit;
     if (v === null) {

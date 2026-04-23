@@ -33,6 +33,7 @@ function baseSupplierRow(overrides: Record<string, unknown> = {}) {
     creditCurrency: null,
     defaultIncoterm: "FOB",
     internalNotes: null,
+    bookingConfirmationSlaHours: null,
     contacts: [
       {
         id: "ct1",
@@ -108,6 +109,7 @@ describe("loadSupplierDetailSnapshot", () => {
     expect(r!.productLinkCount).toBe(3);
     expect(r!.orderCount).toBe(12);
     expect(r!.updatedAt).toBe("2024-06-01T10:00:00.000Z");
+    expect(r!.bookingConfirmationSlaHours).toBeNull();
   });
 
   it("maps rejected approval and defaults non-logistics category to product", async () => {
