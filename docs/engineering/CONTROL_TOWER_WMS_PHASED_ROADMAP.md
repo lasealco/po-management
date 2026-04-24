@@ -6,6 +6,7 @@
 |--------|----------------------|------------|
 | Control Tower | [`docs/controltower/GAP_MAP.md`](../controltower/GAP_MAP.md) | [`agent-todos/control-tower.md`](./agent-todos/control-tower.md) |
 | WMS | [`docs/wms/GAP_MAP.md`](../wms/GAP_MAP.md) | [`agent-todos/wms.md`](./agent-todos/wms.md) |
+| **Post-tranche backlog (5 phases)** | [`CONTROL_TOWER_WMS_BACKLOG_5_PHASES.md`](./CONTROL_TOWER_WMS_BACKLOG_5_PHASES.md) | Steering rollup; GAP + one issue per PR for execution |
 
 **Out of scope for this document** (track separately): Supply Chain **Twin** program (`docs/sctwin/`), **SRM** G/I/K follow-ups, **tariff** vertical, **product catalog margin / buy–sell analytics**, **telematics / RTCM / GPS asset** platforms, and **full enterprise RBAC** (see `docs/icp-and-tenancy.md`, `agent-todos/system.md`). Those can re-enter as **later** epics once CT/WMS slices are moving.
 
@@ -119,7 +120,7 @@ Work **one issue at a time** (parallel agents only on **non-overlapping paths**)
 
 **Explicit backlog (not blockers to exit this tranche):** Assist **audited tool calls** (suggested next PR), full **chatbot / sessions / PDF** parity ([issue #6](https://github.com/lasealco/po-management/issues/6), GAP R3, near-term **#5–#7**), report per-row exception analytics ([issue #5](https://github.com/lasealco/po-management/issues/5)), WMS **2.3** + optional polish (packing, dashboard), deferred **❌** epics in `wms/GAP_MAP` (appointments, VAS, commercial quotes), Phase **3.4** floor/globe.
 
-**Next step:** file **new** GitHub issues for any backlog line you schedule; the phased **0→3** line as documented here is **handed off**.
+**Next step:** file **new** GitHub issues for any backlog line you schedule; the phased **0→3** line as documented here is **handed off**. **Portfolio view:** [Five-phase backlog](./CONTROL_TOWER_WMS_BACKLOG_5_PHASES.md) (Assist → reporting → workbench & inbound → WMS → map & long-tail).
 
 ---
 
@@ -137,6 +138,7 @@ Work **one issue at a time** (parallel agents only on **non-overlapping paths**)
 | Date | Change |
 |------|--------|
 | 2026-04-26 | **Program tranche handoff:** table **“closed vs backlog”** (Phases 0–3, near-term 1–4, WMS 2.1/2.2/2.4). |
+| 2026-04-26 | **Post-tranche 5-phase backlog** — [`CONTROL_TOWER_WMS_BACKLOG_5_PHASES.md`](./CONTROL_TOWER_WMS_BACKLOG_5_PHASES.md). |
 | 2026-04-25 | **Near-term #4 slice:** `postActionToolCatalog` on **`POST …/assist`** + Search UI (`assist-tool-catalog.ts`); `controltower/GAP_MAP`. |
 | 2026-04-25 | **Phase 1 doc:** Assist/chatbot PDF gap vs **1A→1E vertical PRs** (avoid monolithic chatbot v2). |
 | 2026-04-25 | **Control Tower Phase 3.4 (partial):** `/wms` → shipment map and `/control-tower/map` → WMS when dual grants; `CONTROL_TOWER_OPERATIONS_MAP_PHASE3.md`. |
