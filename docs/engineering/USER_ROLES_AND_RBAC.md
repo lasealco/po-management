@@ -14,7 +14,7 @@
 | **Binding** | `UserRole` — many-to-many user ↔ role. |
 | **Permissions** | `RolePermission` — `(resource, action, effect)` pairs such as `org.controltower` + `view` / `edit`. Checked in `src/lib/authz.ts` and route handlers. Catalog: `src/lib/permission-catalog.ts`. |
 
-**Not implemented:** per-resource object ACLs, org-unit subtrees, inherited roles, or “row-level” security beyond a few explicit scoping fields (e.g. CT list scope by CRM account for portal users).
+**Not implemented:** per-resource object ACLs, org-unit subtrees, inherited roles, or “row-level” security beyond a few explicit scoping fields (e.g. CT list scope by CRM account for portal users). **Practical read scoping** (org / product-division / customer / portal) is implemented in code via helpers; inventory and an advisory API audit: `docs/engineering/READ_SCOPE_INVENTORY.md`, barrel `src/lib/viewer-scopes.ts`.
 
 ---
 

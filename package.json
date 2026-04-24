@@ -18,6 +18,7 @@
     "test:tariff-rfq": "vitest run src/lib/rfq src/lib/tariff src/app/api/tariffs src/app/api/rfq",
     "test:apihub": "vitest run src/lib/apihub src/app/api/apihub src/app/api/cron/apihub-mapping-analysis-jobs",
     "verify:apihub": "npm run test:apihub && npx tsc --noEmit",
+    "read-scope:audit-hints": "node scripts/read-scope-audit-hints.mjs",
     "smoke:apihub": "node scripts/apihub-smoke-pack.mjs",
     "test:sctwin": "vitest run src/lib/supply-chain-twin src/app/api/supply-chain-twin",
     "test:sctwin:contracts": "vitest run src/app/api/supply-chain-twin/happy-path.contract.test.ts src/app/api/supply-chain-twin/schema-conformance.contract.test.ts src/app/api/supply-chain-twin/contract-snapshot-baseline.contract.test.ts",
