@@ -1,6 +1,7 @@
 /**
  * Read-only catalog of `action` values handled by `POST /api/control-tower` (see `post-actions.ts`).
- * Exposed in `POST /api/control-tower/assist` for Search / future tool-calling — not executable from assist alone.
+ * Exposed in `POST /api/control-tower/assist` for Search / tool-calling. A small subset also runs via
+ * `POST /api/control-tower/assist/execute-post-action` (see `assist-post-action-allowlist.ts`).
  */
 
 export type ControlTowerPostActionToolRef = {
@@ -31,6 +32,12 @@ const ROSTER: ControlTowerPostActionToolRef[] = [
     action: "apply_ct_milestone_pack",
     label: "Apply milestone template pack",
     description: "Apply a template pack to seed milestone codes (see milestone-pack-catalog API).",
+  },
+  {
+    group: "Notes",
+    action: "create_ct_note",
+    label: "Create shipment note",
+    description: "Add an internal or shared note on a shipment (also allowlisted for assist execution).",
   },
   {
     group: "Alerts",

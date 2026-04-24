@@ -33,7 +33,7 @@
 
 These are **optional** product bets, not unfinished “program gaps”:
 
-- [x] **Assist** — Phase **1A** + near-term **#4** tool catalog (2026-04-25/26). **Next:** [audited tool calls](../../controltower/GAP_MAP.md#suggested-next-prs) (suggested PR).
+- [x] **Assist** — Phase **1A** + near-term **#4** (tool catalog + allowlisted `execute-post-action` 2026-04-23). **Next:** expand allowlist, optional LLM-suggested + confirm.
 - [ ] **Reporting PDFs** — multi-section / tenant logo UX if product wants (beyond 1B).
 - [x] **Workbench bulk** — 1C landed (ops + alerts bulk). **Next:** GAP **near-term #6** (exception owner bulk or default columns).
 - [x] **Inbound** — 1E `sea_port_track_v1` + mapper. **Next:** next carrier `payloadFormat`.

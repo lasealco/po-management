@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getActorUserId, getViewerGrantSet, requireApiGrant, viewerHas } from "@/lib/authz";
 import { getControlTowerPostActionToolCatalog } from "@/lib/control-tower/assist-tool-catalog";
+import { getAssistExecutablePostActionToolRefs } from "@/lib/control-tower/assist-post-action-allowlist";
 import { runControlTowerAssist } from "@/lib/control-tower/assist-llm";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
@@ -66,6 +67,8 @@ export async function POST(request: Request) {
     capabilities: result.capabilities,
     usedLlm: result.usedLlm,
     postActionToolCatalog: getControlTowerPostActionToolCatalog(),
+    assistExecutablePostActionToolCatalog: getAssistExecutablePostActionToolRefs(),
+    assistExecutePostActionPath: "/api/control-tower/assist/execute-post-action",
     canExecuteControlTowerPostActions: canExecutePostActions,
   });
 }

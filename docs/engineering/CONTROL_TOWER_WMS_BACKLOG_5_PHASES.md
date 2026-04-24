@@ -30,7 +30,7 @@
 | Retrieval: re-rank, chunking, optional corpus | After embeddings; GAP R3 |
 | Longer arc: multi-turn sessions, guardrails, PDF-scale parity | [issue #6](https://github.com/lasealco/po-management/issues/6) |
 
-**Exit (steering):** each scheduled slice is a **closed issue** with a merge; GAP #4 / R3 checklist updated.
+**Exit (steering):** each scheduled slice is a **closed issue** with a merge; GAP #4 / R3 checklist updated. **2026-04-23:** first allowlisted **`POST /api/control-tower/assist/execute-post-action`** (two actions, confirm gate, audit) + Search — not full PDF / sessions.
 
 ---
 
@@ -82,4 +82,5 @@
 
 | Date | Change |
 |------|--------|
+| 2026-04-23 | Phase 1 (Assist): link **execute-post-action** / Search confirm slice after merge. |
 | 2026-04-26 | Initial 5-phase rollup (post [program tranche handoff](./CONTROL_TOWER_WMS_PHASED_ROADMAP.md#program-tranche-handoff-2026-04-26)). |

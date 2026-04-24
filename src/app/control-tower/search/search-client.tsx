@@ -53,11 +53,79 @@ export function ControlTowerSearchClient() {
   >([]);
   const [canExecuteControlTowerPostActions, setCanExecuteControlTowerPostActions] = useState(false);
   const [postActionHandlerCount, setPostActionHandlerCount] = useState<number | null>(null);
+  const [assistExecCatalog, setAssistExecCatalog] = useState<
+    Array<{ action: string; group: string; label: string; description: string }>
+  >([]);
+  const [assistExecutePath, setAssistExecutePath] = useState<string | null>(null);
+  const [execAction, setExecAction] = useState<"acknowledge_ct_alert" | "create_ct_note">(
+    "acknowledge_ct_alert",
+  );
+  const [execAlertId, setExecAlertId] = useState("");
+  const [execNoteShipmentId, setExecNoteShipmentId] = useState("");
+  const [execNoteBody, setExecNoteBody] = useState("");
+  const [execNoteVisibility, setExecNoteVisibility] = useState<"INTERNAL" | "SHARED">("INTERNAL");
+  const [execBusy, setExecBusy] = useState(false);
+  const [execMessage, setExecMessage] = useState<string | null>(null);
+  const [execError, setExecError] = useState<string | null>(null);
 
   const workbenchHref = useMemo(() => {
     if (!suggested && !q.trim()) return "/control-tower/workbench";
     return buildWorkbenchUrl(suggested ?? {}, q);
   }, [suggested, q]);
+
+  const runAssistExecute = useCallback(async () => {
+    if (!canExecuteControlTowerPostActions || !assistExecutePath) return;
+    setExecBusy(true);
+    setExecError(null);
+    setExecMessage(null);
+    try {
+      const payload =
+        execAction === "acknowledge_ct_alert"
+          ? { alertId: execAlertId.trim() }
+          : {
+              shipmentId: execNoteShipmentId.trim(),
+              body: execNoteBody,
+              visibility: execNoteVisibility,
+            };
+      if (execAction === "acknowledge_ct_alert" && !execAlertId.trim()) {
+        throw new Error("Enter the alert id (cuid) from the shipment 360 or alert row.");
+      }
+      if (execAction === "create_ct_note") {
+        if (!execNoteShipmentId.trim() || !execNoteBody.trim()) {
+          throw new Error("Shipment id and note text are required.");
+        }
+      }
+      const res = await fetch(assistExecutePath, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: execAction,
+          payload,
+          confirmed: true,
+          assistContext: {
+            lastSearchQuery: q.trim() || undefined,
+            clientRequestId: globalThis.crypto?.randomUUID?.() ?? `assist-${Date.now()}`,
+          },
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) throw new Error(data.error || res.statusText);
+      setExecMessage("Change applied. Review Shipment 360 or audit for details.");
+    } catch (e) {
+      setExecError(e instanceof Error ? e.message : "Request failed");
+    } finally {
+      setExecBusy(false);
+    }
+  }, [
+    assistExecutePath,
+    canExecuteControlTowerPostActions,
+    execAction,
+    execAlertId,
+    execNoteBody,
+    execNoteShipmentId,
+    execNoteVisibility,
+    q,
+  ]);
 
   const productTraceHref = useMemo(() => {
     const trimmed = q.trim();
@@ -78,6 +146,10 @@ export function ControlTowerSearchClient() {
     setPostActionToolCatalog([]);
     setCanExecuteControlTowerPostActions(false);
     setPostActionHandlerCount(null);
+    setAssistExecCatalog([]);
+    setAssistExecutePath(null);
+    setExecMessage(null);
+    setExecError(null);
     try {
       const assistRes = await fetch("/api/control-tower/assist", {
         method: "POST",
@@ -97,6 +169,13 @@ export function ControlTowerSearchClient() {
           description: string;
         }>;
         canExecuteControlTowerPostActions?: boolean;
+        assistExecutablePostActionToolCatalog?: Array<{
+          action: string;
+          group: string;
+          label: string;
+          description: string;
+        }>;
+        assistExecutePostActionPath?: string;
       } = {};
       try {
         assistJson = (await assistRes.json()) as typeof assistJson;
@@ -114,6 +193,8 @@ export function ControlTowerSearchClient() {
           Boolean(assistJson.canExecuteControlTowerPostActions),
         );
         setPostActionHandlerCount(CONTROL_TOWER_POST_ACTION_HANDLER_COUNT);
+        setAssistExecCatalog(assistJson.assistExecutablePostActionToolCatalog ?? []);
+        setAssistExecutePath(assistJson.assistExecutePostActionPath ?? null);
       } else {
         setHints([]);
         setSuggested(null);
@@ -123,6 +204,8 @@ export function ControlTowerSearchClient() {
         setPostActionToolCatalog([]);
         setCanExecuteControlTowerPostActions(false);
         setPostActionHandlerCount(null);
+        setAssistExecCatalog([]);
+        setAssistExecutePath(null);
         const detail = assistJson.error?.trim() || assistRes.statusText || `HTTP ${assistRes.status}`;
         setAssistWarn(
           `Assist unavailable (${detail}). Search is using your raw query only — structured tokens were not applied.`,
@@ -272,6 +355,92 @@ export function ControlTowerSearchClient() {
             ))}
           </ul>
         </details>
+      ) : null}
+      {canExecuteControlTowerPostActions &&
+      assistExecutePath &&
+      assistExecCatalog.length > 0 ? (
+        <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Workflow</p>
+          <h3 className="mt-1 text-sm font-semibold text-zinc-900">Step 1 — allowlisted action from Search</h3>
+          <p className="mt-2 text-xs text-zinc-600">
+            A tiny allowlist runs over <code className="rounded bg-zinc-100 px-1">POST {assistExecutePath}</code> with{" "}
+            <code className="rounded bg-zinc-100 px-1">confirmed: true</code> (you must use the button below). Same audit
+            rules as 360; an extra <code className="rounded bg-zinc-100 px-1">AssistPostAction</code> log links this run to
+            your last search text.
+          </p>
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
+            <label className="block flex-1 text-xs font-medium text-zinc-700">
+              Action
+              <select
+                className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-2 py-1.5 text-sm"
+                value={execAction}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === "acknowledge_ct_alert" || v === "create_ct_note") setExecAction(v);
+                }}
+              >
+                {assistExecCatalog.map((t) => (
+                  <option key={t.action} value={t.action}>
+                    {t.label} ({t.action})
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          {execAction === "acknowledge_ct_alert" ? (
+            <label className="mt-3 block text-xs font-medium text-zinc-700">
+              Alert id (cuid)
+              <input
+                value={execAlertId}
+                onChange={(e) => setExecAlertId(e.target.value)}
+                placeholder="From Shipment 360 → open alert"
+                className="mt-1 w-full rounded-lg border border-zinc-300 px-2 py-1.5 font-mono text-sm"
+                autoComplete="off"
+              />
+            </label>
+          ) : (
+            <div className="mt-3 space-y-2">
+              <label className="block text-xs font-medium text-zinc-700">
+                Shipment id (cuid)
+                <input
+                  value={execNoteShipmentId}
+                  onChange={(e) => setExecNoteShipmentId(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-zinc-300 px-2 py-1.5 font-mono text-sm"
+                  autoComplete="off"
+                />
+              </label>
+              <label className="block text-xs font-medium text-zinc-700">
+                Note
+                <textarea
+                  value={execNoteBody}
+                  onChange={(e) => setExecNoteBody(e.target.value)}
+                  rows={3}
+                  className="mt-1 w-full rounded-lg border border-zinc-300 px-2 py-1.5 text-sm"
+                />
+              </label>
+              <label className="flex items-center gap-2 text-xs text-zinc-700">
+                <input
+                  type="checkbox"
+                  checked={execNoteVisibility === "SHARED"}
+                  onChange={(e) => setExecNoteVisibility(e.target.checked ? "SHARED" : "INTERNAL")}
+                />
+                Shared (otherwise internal)
+              </label>
+            </div>
+          )}
+          <div className="mt-4">
+            <button
+              type="button"
+              disabled={execBusy}
+              onClick={() => void runAssistExecute()}
+              className="rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              {execBusy ? "Running…" : "Confirm and run action"}
+            </button>
+          </div>
+          {execMessage ? <p className="mt-2 text-sm text-emerald-800">{execMessage}</p> : null}
+          {execError ? <p className="mt-2 text-sm text-red-700">{execError}</p> : null}
+        </section>
       ) : null}
       {assistWarn ? (
         <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">{assistWarn}</p>
