@@ -157,6 +157,8 @@ Phases are **ordered**; some work can **overlap** in later steps once foundation
 
 ### Phase 6 (optional) — “Acting in context” for global power users
 
+**Status:** **Shipped (MVP)** (2026-04-24): `UserPreference` key `orders.defaultServedOrgUnit_v1` — JSON `{ "servedOrgUnitId": "…" }` per user; `updatedAt` is the audit surface. **GET/PUT** `/api/settings/served-order-default` (put requires `servedOrgUnitId: string | null` to set/clear, validates org in tenant; stale org ids are removed on read). **Create PO** and **Create SO** pre-fill the “order for” select when a default exists, show a **primary-colored banner** + **clear saved default**, and optional **checkbox** to persist the current selection for the next new order. Not a substitute for `servedOrgUnitId` on each document.
+
 **Objective:** **Session** or **default** “**order for**” for users who work **many** entities daily (reduces clicks; not a substitute for (E) on the row).
 
 **Outcomes**
@@ -190,12 +192,13 @@ Phases are **ordered**; some work can **overlap** in later steps once foundation
 
 ---
 
-*Document version: 1.4 (2026-04-24). Changelog: Phase 5 served-org roll-ups; Phase 4 policy; Phase 3 read scope; Phase 1 operating roles.*
+*Document version: 1.5 (2026-04-24). Changelog: Phase 6 user default for “order for”; Phase 5 roll-ups; Phase 4 policy.*
 
 ### Changelog
 
 | Date | Change |
 |------|--------|
+| 2026-04-24 | **Phase 6 (MVP) delivered:** `UserPreference` for default served org; `/api/settings/served-order-default`; create PO/SO pre-fill, banner, checkbox to save default, `updatedAt` audit on preference row. |
 | 2026-04-24 | **Phase 5 (MVP) delivered:** Executive “order-for” open-PO table (served org + operating tags); report `orders_by_served_org`; seed **PLANT** on Chicago plant demo org; documented tariff legal ↔ `OrgUnit` alignment as a future optional FK, not in schema yet. |
 | 2026-04-24 | **Phase 4 (MVP) delivered:** `assertSendToSupplierServedOrgPolicy` — `send_to_supplier` respects served org + `OrgUnitRoleAssignment` (GROUP_PROCUREMENT / REGIONAL_HQ) for cross-node release; list/detail and transition API; seed PO-1004 + org `US-CHI-PL1` + role on `US`. |
 | 2026-04-24 | **Phase 3 delivered:** `getPurchaseOrderScopeWhere` — org-scoped users also see POs whose `servedOrgUnitId` is in their org subtree (OR with requester-based rule); `controlTowerShipmentAccessWhere` and other `mergePurchaseOrderWhere` call sites pick this up via the same helper. |

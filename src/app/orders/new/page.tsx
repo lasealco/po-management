@@ -1,6 +1,7 @@
 import { AccessDenied } from "@/components/access-denied";
 import { OrderCreateForm } from "@/components/order-create-form";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
+import { getOrdersServedDefaultPreference } from "@/lib/orders-served-default-pref";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -28,7 +29,7 @@ export default async function NewOrderPage() {
     );
   }
 
-  const [suppliers, products, warehouses, forwarders, orgUnits] = await Promise.all([
+  const [suppliers, products, warehouses, forwarders, orgUnits, servedDefault] = await Promise.all([
     prisma.supplier.findMany({
       where: {
         tenantId: access.tenant.id,
@@ -116,6 +117,7 @@ export default async function NewOrderPage() {
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
       select: { id: true, name: true, code: true, kind: true },
     }),
+    getOrdersServedDefaultPreference(access.tenant.id, access.user.id),
   ]);
 
   return (
@@ -127,6 +129,7 @@ export default async function NewOrderPage() {
         warehouses={warehouses}
         forwarders={forwarders}
         orgUnits={orgUnits}
+        defaultServedOrgFromPref={servedDefault.defaultOrg}
         products={products.map((p) => ({
           id: p.id,
           name: p.name,

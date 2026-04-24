@@ -89,6 +89,7 @@ export function OrderCreateForm({
   forwarders,
   products,
   orgUnits = [],
+  defaultServedOrgFromPref = null,
 }: {
   buyerUser: { id: string; name: string; email: string };
   canSendDirect: boolean;
@@ -98,6 +99,8 @@ export function OrderCreateForm({
   products: ProductOption[];
   /** In-tenant org units for "Order for" (optional). */
   orgUnits?: OrgUnitOption[];
+  /** Phase 6: pre-selected from `UserPreference` (not a substitute for the PO row’s served org). */
+  defaultServedOrgFromPref?: OrgUnitOption | null;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -123,6 +126,8 @@ export function OrderCreateForm({
   const [destinationCode, setDestinationCode] = useState("");
   const [tagsInput, setTagsInput] = useState("");
   const [servedOrgUnitId, setServedOrgUnitId] = useState("");
+  const [rememberServedAsDefault, setRememberServedAsDefault] = useState(false);
+  const [servedDefaultCleared, setServedDefaultCleared] = useState(false);
   const [requestedDeliveryDate, setRequestedDeliveryDate] = useState("");
   const [shipToName, setShipToName] = useState("");
   const [shipToLine1, setShipToLine1] = useState("");
@@ -264,6 +269,14 @@ export function OrderCreateForm({
   const total = taxable + tax;
 
   useEffect(() => {
+    if (!defaultServedOrgFromPref || servedDefaultCleared) return;
+    if (!orgUnits.some((u) => u.id === defaultServedOrgFromPref.id)) return;
+    startTransition(() => {
+      setServedOrgUnitId(defaultServedOrgFromPref.id);
+    });
+  }, [defaultServedOrgFromPref, orgUnits, servedDefaultCleared]);
+
+  useEffect(() => {
     if (useAlternateDelivery) return;
     startTransition(() => {
       setShipToName(buyerWarehouse?.name ?? "");
@@ -356,6 +369,17 @@ export function OrderCreateForm({
       setError(apiClientErrorMessage(parsed, "Could not create order."));
       return;
     }
+    if (rememberServedAsDefault && orgUnits.length > 0 && servedOrgUnitId.trim()) {
+      try {
+        await fetch("/api/settings/served-order-default", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ servedOrgUnitId: servedOrgUnitId.trim() }),
+        });
+      } catch {
+        // non-blocking
+      }
+    }
     if (mode === "send" && canSendDirect) {
       const sendRes = await fetch(`/api/orders/${payload.id}/transition`, {
         method: "POST",
@@ -368,6 +392,24 @@ export function OrderCreateForm({
       }
     }
     router.push(`/orders/${payload.id}`);
+  }
+
+  async function clearSavedServedDefault() {
+    setBusy(true);
+    try {
+      const res = await fetch("/api/settings/served-order-default", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ servedOrgUnitId: null }),
+      });
+      if (res.ok) {
+        setServedDefaultCleared(true);
+        setServedOrgUnitId("");
+        router.refresh();
+      }
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function quickCreateWarehouse() {
@@ -443,6 +485,28 @@ export function OrderCreateForm({
         </p>
       ) : null}
 
+      {orgUnits.length > 0 && defaultServedOrgFromPref && !servedDefaultCleared ? (
+        <div
+          className="mb-4 flex flex-col gap-2 rounded-2xl border border-[var(--arscmp-primary)]/30 bg-[var(--arscmp-primary)]/5 px-4 py-3 text-sm text-zinc-800 sm:flex-row sm:items-center sm:justify-between"
+          role="status"
+        >
+          <p>
+            <span className="font-semibold text-zinc-900">Order-for default active: </span>
+            {defaultServedOrgFromPref.name}
+            {defaultServedOrgFromPref.code ? ` (${defaultServedOrgFromPref.code})` : ""} ·{" "}
+            {defaultServedOrgFromPref.kind}. The field below is pre-filled; change it for this order only.
+          </p>
+          <button
+            type="button"
+            className="shrink-0 rounded-xl border border-zinc-300 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-800 hover:bg-zinc-50 disabled:opacity-50"
+            onClick={() => void clearSavedServedDefault()}
+            disabled={busy}
+          >
+            Clear saved default
+          </button>
+        </div>
+      ) : null}
+
       {orgUnits.length > 0 ? (
         <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
           <label className="flex max-w-xl flex-col gap-1 text-sm">
@@ -465,6 +529,17 @@ export function OrderCreateForm({
                 </option>
               ))}
             </select>
+          </label>
+          <label className="mt-3 flex cursor-pointer items-center gap-2 text-xs text-zinc-600">
+            <input
+              type="checkbox"
+              className="rounded border-zinc-400"
+              checked={rememberServedAsDefault}
+              onChange={(e) => setRememberServedAsDefault(e.target.checked)}
+              disabled={busy}
+            />
+            Save the selected &quot;order for&quot; org as my default for the next new PO (stored on your
+            user, updated when you check this and create the order).
           </label>
         </section>
       ) : null}

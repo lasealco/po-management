@@ -13,6 +13,7 @@ This note supports **auditing** and **hardening** data reads so we do not rely o
 | Customer portal (hide internal nav) | `actorIsCustomerCrmScoped` in `src/lib/authz.ts` | Re-exported from `viewer-scopes.ts` |
 | Delegation (admin) | `src/lib/delegation-guard.ts` | User/role changes, not list reads |
 | New code that needs several layers at once | `loadViewerReadScopeBundle` in `src/lib/viewer-scopes.ts` | One call: WMS read scope + PO merge helper + portal flags (bundle does **not** replace every specialized compositor) |
+| Create-order “order for” default (Phase 6) | `getOrdersServedDefaultPreference` / `setOrdersServedDefaultPreference` in `src/lib/orders-served-default-pref.ts` — **not** read-scope for listing; per-user `UserPreference` for UX prefill | `GET`/`PUT` `/api/settings/served-order-default` |
 
 Imports can use either the **concrete** module (e.g. `org-scope`) or the **barrel** `@/lib/viewer-scopes` for discoverability; both are valid.
 
