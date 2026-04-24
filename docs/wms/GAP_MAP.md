@@ -57,4 +57,4 @@ Handlers live in `src/lib/wms/post-actions.ts` (route stays a thin shell).
 
 _Next optional increments:_ ~~saved ledger views~~ (**landed** 2026-04-23: `WmsSavedLedgerView` + `/api/wms/saved-ledger-views`); **outbound ASN** parity, deeper receiving states — not required for Phase A exit above.
 
-_Last updated: 2026-04-23 — Phase 2.1: saved movement-ledger views (DB + API + Stock UI `canEdit` for save/delete); prior: Phase 0 hygiene doc pass, inbound milestones UI, open-task type filter, balance search, movement CSV._
+_Last updated: 2026-04-25 — Program Phase 0 re-pass (roadmap + CT `GAP_MAP` + `verify:apihub`); prior: 2026-04-23 Phase 2.1 saved movement-ledger views (DB + API + Stock UI `canEdit` for save/delete); Phase 0 hygiene, inbound milestones UI, open-task type filter, balance search, movement CSV._

@@ -23,16 +23,16 @@
 
 **Goal:** No code required beyond tiny fixes; everything else unblocks clean sequencing.
 
-| # | Action | Status (2026-04-23) |
+| # | Action | Status (2026-04-25) |
 |---|--------|----------------------|
-| 0.1 | Refresh **Control Tower** `GAP_MAP` near-term backlog vs code | **Done** — Changelog + Phase 0 note; near-term **4–7** and **Suggested next PRs** re-affirmed vs `main` ([`controltower/GAP_MAP.md`](../controltower/GAP_MAP.md)) |
-| 0.2 | **WMS** `GAP_MAP` — “Last updated” + row notes | **Done** — `_Last updated_` line refreshed; row tables unchanged (no WMS code change in this pass) |
-| 0.3 | Triage **Control Tower** filed issues: **#4**–**#6** | **Done** — Triage in [`control-tower.md`](./agent-todos/control-tower.md); close or narrow on GitHub as needed |
-| 0.4 | No stray API route trees; **ApiHub** `route.ts` count = test | **Done** — `git ls-files` → **28** = `apihub-routes-conformance.test.ts`; `npm run verify:apihub` **passes**; do not add untracked duplicate route dirs (e.g. `…/health 2/`) that inflate local counts |
+| 0.1 | Refresh **Control Tower** `GAP_MAP` near-term backlog vs code | **Done** — Re-checked near-term **4–7** + **Suggested next PRs** vs `main` ([`controltower/GAP_MAP.md`](../controltower/GAP_MAP.md)); changelog line added |
+| 0.2 | **WMS** `GAP_MAP` — “Last updated” + row notes | **Done** — `_Last updated_` line refreshed; row tables unchanged (no WMS code change) |
+| 0.3 | Triage **Control Tower** filed issues: **#4**–**#6** | **Done (standing)** — Handoff in [`control-tower.md`](./agent-todos/control-tower.md); maintainers close or narrow on GitHub as needed |
+| 0.4 | No stray API route trees; **ApiHub** `route.ts` count = test | **Done** — `APIHUB_ROUTE_TS_EXPECTED_COUNT` **28** = `git ls-files` count; `npm run verify:apihub` **passes**; no `* 2` duplicate route paths under `src/app/api` |
 
 **Exit:** GAP + todos reflect reality; open GitHub issues are the execution queue for Phase 1.
 
-**Phase 0 is complete** as of 2026-04-23 — start **Phase 1** with one Control Tower vertical when ready.
+**Phase 0 re-pass (2026-04-25):** hygiene verified; no CT code change. **Start Phase 1** when ready (one vertical: Assist 1A, Reporting 1B, Workbench 1C, report engine 1D, or inbound 1E per [`controltower/GAP_MAP.md`](../controltower/GAP_MAP.md#suggested-next-prs)).
 
 ---
 
@@ -115,6 +115,7 @@ Work **one issue at a time** (parallel agents only on **non-overlapping paths**)
 
 | Date | Change |
 |------|--------|
+| 2026-04-25 | **CT + WMS Phase 0 re-pass (docs + verify):** `controltower/GAP_MAP` + WMS GAP “last updated”; `npm run verify:apihub` + `APIHUB_ROUTE_TS_EXPECTED_COUNT` **28**; no duplicate `* 2` API routes. |
 | 2026-04-23 | **Phase 0 complete** (docs + GAP + ApiHub/verify gate); see Phase 0 table above. |
 | 2026-04-23 | **Phase 2.1 (WMS) — saved ledger views:** `WmsSavedLedgerView` + `/api/wms/saved-ledger-views`, `wms/GAP_MAP.md` + `wms.md` updated. |
 | 2026-04-23 | **Phase 3 (CT operations map) MVP:** `/control-tower/map`, `GET /api/control-tower/map-pins`, `CONTROL_TOWER_OPERATIONS_MAP_PHASE3.md`, `controltower/GAP_MAP.md` R3 + route table. |

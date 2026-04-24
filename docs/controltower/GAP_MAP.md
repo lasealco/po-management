@@ -123,7 +123,7 @@ High-level groups: **references** · **tracking milestones** (+ pack apply) · *
 
 Use this list when slicing PRs; refresh it whenever Control Tower behavior or `report-engine` contracts change ([issue #3](https://github.com/lasealco/po-management/issues/3)). **1–3** are hygiene plus already-shipped foundations; **4–7** are the active near-term product gaps.
 
-**Phase 0 (2026-04-23):** Documentation pass for [`docs/engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md`](../engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md) — re-checked this section and **Suggested next PRs** against `main` at this date; no CT code change in that pass. Keep [issue #3](https://github.com/lasealco/po-management/issues/3) open or close with this refresh per maintainer preference.
+**Phase 0 (2026-04-25 re-pass):** Re-checked **Near-term 4–7** and **Suggested next PRs** vs `main` (assist: `assist-retrieval.ts` + `POST …/assist`; workbench: `bulk_acknowledge_ct_alerts` in `post-actions.ts`; reporting: `report-pdf` / `report-engine`; inbound: `inbound-webhook.ts` + `POST /api/integrations/control-tower/inbound`). `npm run verify:apihub` passes; ApiHub `route.ts` count **28**. No CT app code change—docs only. [issue #3](https://github.com/lasealco/po-management/issues/3) — maintainers may close as recurring hygiene or keep open.
 
 1. **Keep this file current** when merging Control Tower PRs (checkbox discipline).
 2. ~~**Exception catalog admin**~~ — ✅ Settings page + `GET /api/control-tower/exception-codes` + `upsert_ct_exception_code` POST action.
@@ -164,6 +164,7 @@ File **one GitHub issue per bullet** when scheduling (titles are suggestions; ke
 
 | Date | Change |
 |------|--------|
+| 2026-04-25 | **Phase 0 re-pass:** near-term 4–7 + suggested next PRs re-checked vs `main`; `verify:apihub` + route count 28; see [`CONTROL_TOWER_WMS_PHASED_ROADMAP`](../engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md). |
 | 2026-04-23 | **CT + WMS Phase 0 (docs only):** near-term + suggested PRs re-affirmed; see [`docs/engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md`](../engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md). |
 | 2026-04-20 | **Workbench bulk operator:** added row multi-select and **Acknowledge open alerts** action on `/control-tower/workbench`, backed by `POST /api/control-tower` action **`bulk_acknowledge_ct_alerts`** (tenant-scoped OPEN → ACKNOWLEDGED only, per-alert audit writes). |
 | 2026-04-20 | **Reporting phase 2:** report builder + engine now accept **`filters.exceptionCode`** (case-insensitive open/in-progress filter), and backlog **#7** reflects that exception analytics are live (`exceptionCatalog` + `openExceptions`). |

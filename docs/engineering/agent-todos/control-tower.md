@@ -6,11 +6,11 @@
 
 **Source of truth:** `docs/controltower/GAP_MAP.md` + PDFs in `docs/controltower/`.
 
-**Phased program (CT + WMS together):** [`docs/engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md`](../CONTROL_TOWER_WMS_PHASED_ROADMAP.md) (phases 0–3, exit criteria). **Phase 0 = complete** (2026-04-23) — see triage block below; next = **Phase 1** in that doc.
+**Phased program (CT + WMS together):** [`docs/engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md`](../CONTROL_TOWER_WMS_PHASED_ROADMAP.md) (phases 0–3, exit criteria). **Phase 0 re-pass complete** (2026-04-25) — `verify:apihub`, GAP near-term re-check; see triage block below; next = **Phase 1** (1A–1E) in that doc.
 
-### Phase 0 triage (2026-04-23)
+### Phase 0 triage (2026-04-25 re-pass)
 
-- **[#3](https://github.com/lasealco/po-management/issues/3) (GAP refresh)** — Addressed in-repo: `docs/controltower/GAP_MAP.md` near-term + changelog + Phase 0 note; maintainers may **close** #3 or leave it as recurring hygiene.
+- **[#3](https://github.com/lasealco/po-management/issues/3) (GAP refresh)** — Re-pass logged in `controltower/GAP_MAP.md` + `CONTROL_TOWER_WMS_PHASED_ROADMAP.md` changelog; maintainers may **close** #3 or keep as recurring hygiene.
 - **[#4](https://github.com/lasealco/po-management/issues/4) (inbound webhook tests)** — `src/lib/control-tower/inbound-webhook.test.ts` exists with idempotency + batch coverage; re-read #4 for any **remaining** acceptance; close or add follow-up issues for gaps.
 - **[#5](https://github.com/lasealco/po-management/issues/5) (report / exceptions per row)** — **Product/engineering** — follow latest issue comments vs `report-engine` + workbench; not changed in Phase 0.
 - **[#6](https://github.com/lasealco/po-management/issues/6) (Assist / chatbot checklist)** — `GAP_MAP` **R3** subsection is the **docs-only** parity checklist; runtime unchanged. Close or keep #6 for future embedding/tool work per Phase 1.

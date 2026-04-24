@@ -6,7 +6,7 @@
 
 **Source of truth:** `docs/wms/GAP_MAP.md` + PDFs in `docs/wms/`.
 
-**Phased program (WMS + Control Tower):** [`docs/engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md`](../CONTROL_TOWER_WMS_PHASED_ROADMAP.md) — WMS is **Phase 2** in that file (after CT Phase 1 verticals; **Phase 0 complete** 2026-04-23: `docs/wms/GAP_MAP.md` last-updated line).
+**Phased program (WMS + Control Tower):** [`docs/engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md`](../CONTROL_TOWER_WMS_PHASED_ROADMAP.md) — WMS is **Phase 2** in that file (after CT Phase 1 verticals; **Program Phase 0 re-pass** 2026-04-25 refreshed `docs/wms/GAP_MAP.md` _Last updated_).
 
 ---
 
