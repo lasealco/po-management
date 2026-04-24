@@ -5,6 +5,7 @@ import { serializeOrderForBoard } from "@/lib/orders-board-serialize";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+import { getPurchaseOrderScopeWhere } from "@/lib/org-scope";
 import { supplierOperationalBlockReason } from "@/lib/srm/supplier-operational-eligibility";
 
 
@@ -65,6 +66,9 @@ export async function GET() {
   const actorId = await getActorUserId();
   const isSupplierPortalUser =
     actorId !== null && (await actorIsSupplierPortalRestricted(actorId));
+  const poScope = await getPurchaseOrderScopeWhere(tenant.id, actorId, {
+    isSupplierPortalUser,
+  });
   const supplierOnlyActionCodes = new Set([
     "confirm",
     "decline",
@@ -83,6 +87,7 @@ export async function GET() {
       tenantId: tenant.id,
       splitParentId: null,
       ...(isSupplierPortalUser ? { workflow: { supplierPortalOn: true } } : {}),
+      ...(poScope ?? {}),
     },
     include: {
       status: {

@@ -2,11 +2,13 @@ import { NextResponse } from "next/server";
 
 import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import {
+  actorIsSupplierPortalRestricted,
   getActorUserId,
   requireApiGrant,
   userHasGlobalGrant,
 } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
+import { getPurchaseOrderScopeWhere } from "@/lib/org-scope";
 import { prisma } from "@/lib/prisma";
 
 const MAX_LEN = 8000;
@@ -25,15 +27,21 @@ export async function POST(
 
   const { id: orderId } = await context.params;
 
+  const msgActorId = await getActorUserId();
+  const msgIsSupplier =
+    msgActorId !== null && (await actorIsSupplierPortalRestricted(msgActorId));
+  const msgScope = await getPurchaseOrderScopeWhere(tenant.id, msgActorId, {
+    isSupplierPortalUser: msgIsSupplier,
+  });
   const order = await prisma.purchaseOrder.findFirst({
-    where: { id: orderId, tenantId: tenant.id },
+    where: { id: orderId, tenantId: tenant.id, ...(msgScope ?? {}) },
     select: { id: true },
   });
   if (!order) {
     return toApiErrorResponse({ error: "Order not found.", code: "NOT_FOUND", status: 404 });
   }
 
-  const actorId = await getActorUserId();
+  const actorId = msgActorId;
   if (!actorId) {
     return toApiErrorResponse({ error: "No active demo user for this session.", code: "FORBIDDEN", status: 403 });
   }

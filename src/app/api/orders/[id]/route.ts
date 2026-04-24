@@ -12,6 +12,7 @@ import {
   viewerHas,
 } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
+import { getPurchaseOrderScopeWhere } from "@/lib/org-scope";
 import { optionalStringField } from "@/lib/supplier-patch";
 import { prisma } from "@/lib/prisma";
 import { addTariffShipmentApplicationSourceLabel } from "@/lib/tariff/tariff-shipment-application-labels";
@@ -52,8 +53,15 @@ export async function GET(
 
   const { id } = await context.params;
 
+  const actorId = await getActorUserId();
+  const isSupplierPortalUser =
+    actorId !== null && (await actorIsSupplierPortalRestricted(actorId));
+  const poScope = await getPurchaseOrderScopeWhere(tenant.id, actorId, {
+    isSupplierPortalUser,
+  });
+
   const order = await prisma.purchaseOrder.findFirst({
-    where: { id, tenantId: tenant.id },
+    where: { id, tenantId: tenant.id, ...(poScope ?? {}) },
     include: {
       status: true,
       supplier: {
@@ -170,9 +178,6 @@ export async function GET(
       : [];
   const statusById = new Map(statusRows.map((s) => [s.id, s]));
 
-  const actorId = await getActorUserId();
-  const isSupplierPortalUser =
-    actorId !== null && (await actorIsSupplierPortalRestricted(actorId));
   const isForwarderUser =
     actorId !== null && (await userHasRoleNamed(actorId, "Forwarder"));
   if (isSupplierPortalUser && !order.workflow.supplierPortalOn) {
@@ -589,8 +594,14 @@ export async function PATCH(
     return toApiErrorResponse({ error: "Expected object.", code: "BAD_INPUT", status: 400 });
   }
 
+  const patchActorId = await getActorUserId();
+  const patchIsSupplier =
+    patchActorId !== null && (await actorIsSupplierPortalRestricted(patchActorId));
+  const patchScope = await getPurchaseOrderScopeWhere(tenant.id, patchActorId, {
+    isSupplierPortalUser: patchIsSupplier,
+  });
   const existing = await prisma.purchaseOrder.findFirst({
-    where: { id, tenantId: tenant.id },
+    where: { id, tenantId: tenant.id, ...(patchScope ?? {}) },
     select: { id: true },
   });
   if (!existing) {

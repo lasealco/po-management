@@ -3,8 +3,9 @@ import { NextResponse } from "next/server";
 import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 
 
-import { getActorUserId, requireApiGrant } from "@/lib/authz";
+import { actorIsSupplierPortalRestricted, getActorUserId, requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
+import { getPurchaseOrderScopeWhere } from "@/lib/org-scope";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -28,11 +29,16 @@ export async function GET(request: Request) {
   }
 
   const idExact = /^c[a-z0-9]{24}$/i.test(q) ? q : null;
+  const isSupplier = await actorIsSupplierPortalRestricted(actorId);
+  const poScope = await getPurchaseOrderScopeWhere(tenant.id, actorId, {
+    isSupplierPortalUser: isSupplier,
+  });
   const orders = await prisma.purchaseOrder.findMany({
     where: {
       tenantId: tenant.id,
       splitParentId: null,
       OR: [{ orderNumber: { contains: q, mode: "insensitive" } }, ...(idExact ? [{ id: idExact }] : [])],
+      ...(poScope ?? {}),
     },
     orderBy: { createdAt: "desc" },
     take: 25,

@@ -1,3 +1,5 @@
+import { actorIsSupplierPortalRestricted } from "@/lib/authz";
+import { purchaseOrderWhereWithViewerScope } from "@/lib/org-scope";
 import type { ReportDefinition } from "@/lib/reports/types";
 
 export const ordersBySupplierReport: ReportDefinition = {
@@ -8,9 +10,16 @@ export const ordersBySupplierReport: ReportDefinition = {
   category: "orders",
   requires: [{ resource: "org.orders", action: "view" }],
   run: async (ctx) => {
+    const isSupplier = await actorIsSupplierPortalRestricted(ctx.actorUserId);
+    const where = await purchaseOrderWhereWithViewerScope(
+      ctx.tenantId,
+      ctx.actorUserId,
+      { tenantId: ctx.tenantId, splitParentId: null },
+      { isSupplierPortalUser: isSupplier },
+    );
     const grouped = await ctx.prisma.purchaseOrder.groupBy({
       by: ["supplierId", "currency"],
-      where: { tenantId: ctx.tenantId, splitParentId: null },
+      where,
       _count: { _all: true },
       _sum: { totalAmount: true },
     });

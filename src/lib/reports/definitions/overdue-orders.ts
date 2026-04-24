@@ -1,3 +1,5 @@
+import { actorIsSupplierPortalRestricted } from "@/lib/authz";
+import { purchaseOrderWhereWithViewerScope } from "@/lib/org-scope";
 import type { ReportDefinition } from "@/lib/reports/types";
 
 export const overdueOrdersReport: ReportDefinition = {
@@ -11,12 +13,20 @@ export const overdueOrdersReport: ReportDefinition = {
     const startOfTodayUtc = new Date();
     startOfTodayUtc.setUTCHours(0, 0, 0, 0);
 
-    const orders = await ctx.prisma.purchaseOrder.findMany({
-      where: {
+    const isSupplier = await actorIsSupplierPortalRestricted(ctx.actorUserId);
+    const where = await purchaseOrderWhereWithViewerScope(
+      ctx.tenantId,
+      ctx.actorUserId,
+      {
         tenantId: ctx.tenantId,
         splitParentId: null,
         requestedDeliveryDate: { lt: startOfTodayUtc },
       },
+      { isSupplierPortalUser: isSupplier },
+    );
+
+    const orders = await ctx.prisma.purchaseOrder.findMany({
+      where,
       orderBy: [{ requestedDeliveryDate: "asc" }],
       select: {
         orderNumber: true,

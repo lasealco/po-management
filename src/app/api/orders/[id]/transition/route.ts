@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { actorIsSupplierPortalRestricted, getActorUserId, requireApiGrant } from "@/lib/authz";
+import { getDemoTenant } from "@/lib/demo-tenant";
+import { getPurchaseOrderScopeWhere } from "@/lib/org-scope";
 import { prisma } from "@/lib/prisma";
 import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 
@@ -27,8 +29,19 @@ export async function POST(
     return toApiErrorResponse({ error: "Use POST /api/orders/:id/split-proposal with line allocations instead.", code: "BAD_INPUT", status: 400 });
   }
 
-  const order = await prisma.purchaseOrder.findUnique({
-    where: { id: orderId },
+  const tenant = await getDemoTenant();
+  if (!tenant) {
+    return toApiErrorResponse({ error: "Demo tenant not found.", code: "NOT_FOUND", status: 404 });
+  }
+  const trActorId = await getActorUserId();
+  const trIsSupplier =
+    trActorId !== null && (await actorIsSupplierPortalRestricted(trActorId));
+  const trScope = await getPurchaseOrderScopeWhere(tenant.id, trActorId, {
+    isSupplierPortalUser: trIsSupplier,
+  });
+
+  const order = await prisma.purchaseOrder.findFirst({
+    where: { id: orderId, tenantId: tenant.id, ...(trScope ?? {}) },
     include: {
       workflow: {
         include: {
@@ -60,12 +73,12 @@ export async function POST(
     return toApiErrorResponse({ error: "A comment is required for this transition.", code: "BAD_INPUT", status: 400 });
   }
 
-  const actorId = await getActorUserId();
+  const actorId = trActorId;
   if (!actorId) {
     return toApiErrorResponse({ error: "Could not resolve demo actor for this tenant.", code: "FORBIDDEN", status: 403 });
   }
 
-  const isSupplierPortalUser = await actorIsSupplierPortalRestricted(actorId);
+  const isSupplierPortalUser = trIsSupplier;
   if (isSupplierPortalUser && !order.workflow.supplierPortalOn) {
     return toApiErrorResponse({ error: "Supplier users can only act on supplier-portal orders.", code: "FORBIDDEN", status: 403 });
   }

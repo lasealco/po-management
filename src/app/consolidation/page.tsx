@@ -6,6 +6,7 @@ import {
   getViewerGrantSet,
   viewerHas,
 } from "@/lib/authz";
+import { getPurchaseOrderScopeWhere } from "@/lib/org-scope";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -43,10 +44,21 @@ export default async function ConsolidationPage() {
     );
   }
 
+  const consolPoScope = access.user
+    ? await getPurchaseOrderScopeWhere(access.tenant.id, access.user.id, {
+        isSupplierPortalUser: false,
+      })
+    : undefined;
+
   const [shipments, warehouses, loadPlans, assignedRows] = await Promise.all([
     prisma.shipment.findMany({
       where: {
-        order: { tenantId: access.tenant.id },
+        order: {
+          is: {
+            tenantId: access.tenant.id,
+            ...(consolPoScope ?? {}),
+          },
+        },
       },
       orderBy: { shippedAt: "desc" },
       include: {

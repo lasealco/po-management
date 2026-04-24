@@ -1,6 +1,7 @@
 import { actorIsSupplierPortalRestricted, viewerHas, type ViewerAccess } from "@/lib/authz";
 import { HELP_PLAYBOOKS, type HelpPlaybookDoAction } from "@/lib/help-playbooks";
 import { LEGAL_PUBLIC_HELP_PATHS } from "@/lib/legal-public-paths";
+import { getPurchaseOrderScopeWhere } from "@/lib/org-scope";
 import { MARKETING_PUBLIC_HELP_PATHS } from "@/lib/marketing-public-paths";
 import { prisma } from "@/lib/prisma";
 import { TARIFF_HELP_OPEN_PATHS, TARIFFS_MODULE_BASE_PATH } from "@/lib/tariff/tariff-workbench-urls";
@@ -286,12 +287,18 @@ export async function executeHelpDoAction(
     const focusRaw = typeof payload.focus === "string" ? payload.focus.trim() : "";
     const focus = ORDER_FOCUS.has(focusRaw) ? focusRaw : undefined;
 
+    const helpActorId = access.user.id;
+    const isSupplierPortalUser = await actorIsSupplierPortalRestricted(helpActorId);
+    const poOpenScope = await getPurchaseOrderScopeWhere(access.tenant.id, helpActorId, {
+      isSupplierPortalUser,
+    });
     const order = await prisma.purchaseOrder.findFirst({
       where: {
         tenantId: access.tenant.id,
         OR: candidates.map((c) => ({
           orderNumber: { equals: c, mode: "insensitive" as const },
         })),
+        ...(poOpenScope ?? {}),
       },
       select: {
         id: true,
@@ -304,8 +311,6 @@ export async function executeHelpDoAction(
       return { ok: false, error: `No order matched “${orderNumberRaw.trim()}” in your tenant.` };
     }
 
-    const actorId = access.user.id;
-    const isSupplierPortalUser = await actorIsSupplierPortalRestricted(actorId);
     if (isSupplierPortalUser && !order.workflow.supplierPortalOn) {
       return {
         ok: false,

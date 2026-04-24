@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { actorIsSupplierPortalRestricted, getActorUserId, requireApiGrant } from "@/lib/authz";
+import { getDemoTenant } from "@/lib/demo-tenant";
+import { getPurchaseOrderScopeWhere } from "@/lib/org-scope";
 import { prisma } from "@/lib/prisma";
 import { allocateTotals } from "@/lib/split";
 import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
@@ -35,8 +37,19 @@ export async function POST(
     return toApiErrorResponse({ error: "lines[] is required with allocations per parent line.", code: "BAD_INPUT", status: 400 });
   }
 
-  const order = await prisma.purchaseOrder.findUnique({
-    where: { id: orderId },
+  const tenant = await getDemoTenant();
+  if (!tenant) {
+    return toApiErrorResponse({ error: "Demo tenant not found.", code: "NOT_FOUND", status: 404 });
+  }
+  const spActorId = await getActorUserId();
+  const spIsSupplier =
+    spActorId !== null && (await actorIsSupplierPortalRestricted(spActorId));
+  const spScope = await getPurchaseOrderScopeWhere(tenant.id, spActorId, {
+    isSupplierPortalUser: spIsSupplier,
+  });
+
+  const order = await prisma.purchaseOrder.findFirst({
+    where: { id: orderId, tenantId: tenant.id, ...(spScope ?? {}) },
     include: {
       items: { orderBy: { lineNo: "asc" } },
       status: true,
@@ -129,7 +142,7 @@ export async function POST(
     return toApiErrorResponse({ error: "No propose_split transition is configured for this status.", code: "BAD_INPUT", status: 400 });
   }
 
-  const actorId = await getActorUserId();
+  const actorId = spActorId;
   if (!actorId) {
     return toApiErrorResponse({ error: "Could not resolve demo actor for this tenant.", code: "FORBIDDEN", status: 403 });
   }

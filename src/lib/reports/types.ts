@@ -36,6 +36,8 @@ export type ReportParamSpec =
 export type ReportContext = {
   tenantId: string;
   prisma: PrismaClient;
+  /** Viewer running the report (for org/division scoping on operational data). */
+  actorUserId: string;
 };
 
 export type ReportDefinition = {

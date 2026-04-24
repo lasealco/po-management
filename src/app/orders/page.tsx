@@ -10,6 +10,7 @@ import {
   type BoardSortMode,
 } from "@/lib/orders-board-prefs";
 import { serializeOrderForBoard } from "@/lib/orders-board-serialize";
+import { getPurchaseOrderScopeWhere } from "@/lib/org-scope";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -71,6 +72,9 @@ export default async function OrdersPage({
 
   const { tenant } = access;
   const isSupplierPortalUser = await actorIsSupplierPortalRestricted(access.user.id);
+  const poScope = await getPurchaseOrderScopeWhere(tenant.id, access.user.id, {
+    isSupplierPortalUser,
+  });
   const viewerMode: "supplier" | "buyer" = isSupplierPortalUser ? "supplier" : "buyer";
   const supplierOnlyActionCodes = new Set([
     "confirm",
@@ -90,6 +94,7 @@ export default async function OrdersPage({
       tenantId: tenant.id,
       splitParentId: null,
       ...(isSupplierPortalUser ? { workflow: { supplierPortalOn: true } } : {}),
+      ...(poScope ?? {}),
     },
     include: {
       status: { select: { id: true, code: true, label: true } },

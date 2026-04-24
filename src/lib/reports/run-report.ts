@@ -61,6 +61,7 @@ export async function executeReport(params: {
   const ctx: ReportContext = {
     tenantId: params.tenantId,
     prisma: params.prisma,
+    actorUserId: params.userId,
   };
 
   try {

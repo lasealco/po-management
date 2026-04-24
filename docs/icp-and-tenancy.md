@@ -89,6 +89,7 @@ For **global → regional → country** (and similar) admin patterns, product in
 
 ## Changelog
 
+- **2026-04-25:** **Phase 2 (partial):** org/division **read scope** on **purchase orders** (lists, detail, transitions, messages, control-tower order picker, consolidation shipment list) and order-based **reports**; uses requester’s primary org subtree + optional product-division line match. Superusers and supplier-portal views bypass internal org filter; other modules (CRM, WMS, CT shipment lists, etc.) not yet org-scoped.
 - **2026-04-24:** Shipped **Phase 1** of in-tenant org: `OrgUnit` tree, user **primary org** + **product division** matrix in Settings; permissions remain tenant-wide; enforcement in ops modules TBD.
 - **2026-04-20:** Chose tenancy representation for system scope: keep **single tenant isolation** and model hierarchy with **in-tenant org units**; documented rationale and non-goals.
 - **2026-04-18:** Added **scoped admin / delegation subset rule** (cannot grant permissions or scope you don’t hold) and matching engineering todo.
