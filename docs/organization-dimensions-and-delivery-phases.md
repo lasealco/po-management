@@ -1,0 +1,185 @@
+# Organization dimensions, operating roles, and phased delivery
+
+This document describes a **multi-dimensional** model for enterprise structure and procurement, aligned with use cases such as **centralized procurement** (headquarters buying **for** a subsidiary) and **global vs. regional** supply chain visibility. It complements [`icp-and-tenancy.md`](./icp-and-tenancy.md) and the implementation inventory in [`engineering/READ_SCOPE_INVENTORY.md`](./engineering/READ_SCOPE_INVENTORY.md).
+
+**Status:** *Design and delivery plan* — not a committed implementation checklist for a single release. Prioritize with product and adjust phases after discovery.
+
+---
+
+## 1. Problem statement
+
+A single org tree, used alone, cannot express all real-world needs:
+
+- **Where a user “sits”** in the company (home organization, for access and community).
+- **Whose budget or legal shell** a purchase or shipment serves (**on whose behalf** the transaction runs) — often different from the buyer’s home org in **centralized procurement**.
+- **What** category or product line applies (product / commercial **matrix**).
+- **What application permissions** the user has (RBAC), independent of “this node is regional HQ in the business model.”
+
+Conflating these into one field (for example, only `User.primaryOrgUnitId`) leads to either incorrect visibility or contrived master data (duplicated users, fake org placement).
+
+**Design goal:** work in **named dimensions**, wire them in **increments**, and keep **read scope** and **workflows** explicit and testable per module.
+
+---
+
+## 2. Conceptual model: dimensions (summary)
+
+| Dimension | Question it answers | Typical carriers (target shape) | Notes |
+|-----------|----------------------|----------------------------------|--------|
+| **A. Isolation** | Which account owns all data? | `Tenant` | Unchanged: single hard boundary per environment. |
+| **B. Structure** | Where does an entity **sit** (legal, geographic, site hierarchy)? | `OrgUnit` tree (`kind`, parent/child) | Already in product (Settings → Org & sites). Uniquely codes nodes per tenant. |
+| **C. Operating / functional role** | **What part of the model** is this node (regional HQ, plant, shared service center, …)? | Flags, **tags**, or a controlled vocabulary on `OrgUnit` (not the same as app RBAC) | *Roadmap* — does not replace `kind` but refines it for **process and routing** (e.g. “this region **runs** procurement for children”). |
+| **D. Product / category matrix** | **What** is bought or sold? | `ProductDivision` + `UserProductDivision` (and line-level product) | In use; intersects with org for scoping. |
+| **E. Document / transaction context** | **For which org or legal** is this PO, requisition, or SO? | Optional FKs on `PurchaseOrder`, `SalesOrder`, etc. | *Roadmap* — the missing piece for **“HQ orders for entity X”** when the requester is **not** in node X. |
+| **F. App permissions** | **Who** may do **what** (`org.orders` edit, …)? | `Role` + `RolePermission` | [`USER_ROLES_AND_RBAC.md`](./engineering/USER_ROLES_AND_RBAC.md); distinct from (C). |
+| **G. Read scope (today)** | What rows can this **user** list or open? | Composed: org subtree + product divisions + optional customer CRM; requester/owner-based for PO/CRM | `src/lib/org-scope.ts`, `src/lib/crm-scope.ts` — see §3. |
+| **H. Contracting (tariff vertical)** | **Our** legal for **pricing** contracts? | `TariffLegalEntity` (DB `legal_entities`) | Coexistence / alignment with (B) and (E) is a **data governance** product decision. |
+
+**Principle:** (B) and (C) describe **master data**; (E) describes **operational fact** on each document; (F) and (G) describe **access** — do not use one to silently mean the others.
+
+---
+
+## 3. Current implementation baseline (honest)
+
+The following is accurate for the codebase at the time of this writing; re-verify in schema and `org-scope` / `crm-scope` as you ship.
+
+- **Tenant** is the top isolation level; `OrgUnit` is an in-tenant **hierarchy** with kinds such as `GROUP`, `LEGAL_ENTITY`, `REGION`, `COUNTRY`, `SITE`, `OFFICE`.
+- **Users** can have `primaryOrgUnitId` and links to **product divisions**; permissions remain **tenant-wide** grants, with **read** scoping in application code for many modules.
+- **Purchase order visibility** (non–superuser, non–supplier-portal) filters largely by the **order requester’s** `primaryOrgUnitId` within the **viewer’s** org **subtree**, with a **lenient** match for requesters with no org yet. Product-division scoping can further restrict by **line** product. See `getPurchaseOrderScopeWhere` in `src/lib/org-scope.ts`.
+- **CRM** visibility follows **account owner** (`User`) with analogous org/division leniency — `src/lib/crm-scope.ts`.
+- **Control Tower** shipment reads combine portal/customer context with the same PO-linked org/division idea where implemented — `controlTowerShipmentAccessWhere` in `src/lib/control-tower/viewer.ts`.
+- **PO/SO headers** do not yet require a first-class “**served** / **ordering** org” separate from the requester; **centralized procurement** (“buy for entity X”) is therefore **not fully modeled** in the document layer until (E) exists.
+
+This baseline is **compatible** with a phased add-on: introduce **(E)**, then evolve **(G)** with explicit product rules, without removing the tenant model.
+
+---
+
+## 4. Design guardrails (non-negotiables for later phases)
+
+1. **Server-side enforcement** — any scope that protects data must be applied in **APIs and jobs**, not only in the UI.
+2. **Backwards compatibility** — existing tenants without new fields should keep working (nullable FKs, lenient rules until migration).
+3. **One vocabulary for “org role”** — if (C) is added, use a **small controlled set** (enum or tag table) to avoid unbounded string chaos.
+4. **Delegation** — when admins assign users to orgs or roles, **subset-of-scope** rules (see `icp-and-tenancy.md`, `delegation-guard`) must still hold.
+5. **Unify with tariff / legal** deliberately — if `TariffLegalEntity` and `OrgUnit` (LEGAL_ENTITY) should converge, do it as a **governed** migration, not ad hoc duplicate entry.
+
+---
+
+## 5. Phased delivery plan
+
+Phases are **ordered**; some work can **overlap** in later steps once foundations exist. Each phase should end with **testable** behavior and, where possible, a **short release note** for operators.
+
+### Phase 1 — Foundation: language, governance, and optional org “operating” metadata
+
+**Objective:** Stabilize **(B)**, document **(C)** as a product list, and optionally persist **(C)** without changing PO semantics yet.
+
+**Outcomes**
+
+- Published glossary and dimension table (this document + in-app help where appropriate).
+- Decision record: which **org role** values the product v1 supports (e.g. `REGional_HQ`, `PLANT`, `GROUP_PROCUREMENT` — **examples only; finalize with product**).
+- Optional schema: `OrgUnit` **tags** or `OrgUnitRole` join (tenant-scoped), **administered** under Settings, **validated** against allowed kinds.
+- **No change** to `getPurchaseOrderScopeWhere` behavior unless a **feature flag** and explicit QA sign-off (default off).
+
+**Risks:** Tag sprawl — mitigate with **required review** and a small catalog.
+
+**Exit criteria:** Product can point to a single place describing dimensions; data model for (C) is clear whether v1 is “tags only” or “enum on unit.”
+
+---
+
+### Phase 2 — Transaction context: “on behalf of” / served organization on documents
+
+**Objective:** Introduce **(E)** for the highest-value object first (e.g. **PurchaseOrder**, then **SalesOrder** as needed).
+
+**Outcomes**
+
+- Nullable `servedOrgUnitId` (name indicative) or equivalent, plus optional future `billTo` / `legalEntity` alignment — **exact column names and FK targets** to be specified in a schema PRD.
+- Create/edit APIs and UI: buyer selects **served** org when **creating** a PO (for users allowed to do so); validation: served org must be in tenant and, if rules require, under a subtree the buyer is allowed to buy for.
+- **Reporting and exports** can group by **served** org, not only by requester.
+
+**Dependencies:** Phase 1 recommended so **which nodes can be “served”** is clear (e.g. only `LEGAL_ENTITY` and below).
+
+**Risks:** Double entry — mitigate with **defaults** (default served org from a template, copy from requisition) later.
+
+**Exit criteria:** A centralized buyer can create a PO **for** entity X; the field is **persisted** and **auditable**.
+
+---
+
+### Phase 3 — Read scope: combine actor scope with document context
+
+**Objective:** Evolve **(G)** so list/detail **reflect** the new dimension when present, without surprise data loss for legacy rows.
+
+**Outcomes**
+
+- **Documented rules** (e.g.): user sees a PO if current rules pass **or** the PO’s **served** org is in the viewer’s subtree, **or** the user is a **superuser** — **product must sign the matrix**.
+- Update `getPurchaseOrderScopeWhere` and consumers (Control Tower, reports) per [`READ_SCOPE_INVENTORY.md`](./engineering/READ_SCOPE_INVENTORY.md).
+- **Tests** for cross-org buyers, regional readers, and superusers.
+- `read-scope-audit` script re-run; gaps closed for touched routes.
+
+**Risks:** Over-broad access if OR rules are wrong — require **security review** and fixture tests.
+
+**Exit criteria:** Aligned **visibility** for subsidiary vs. HQ use cases, with no regression for existing tenants under chosen lenient mode.
+
+---
+
+### Phase 4 — Workflows and policy hooks
+
+**Objective:** Use **(C) + (E)** for **approvals, routing, and SOD** (e.g. “regional HQ approves up to N for sites in region”).
+
+**Outcomes**
+
+- Workflow or status rules can reference **served** org and **org role** tags.
+- Optional: **delegation** updates so admins cannot assign “buy for” scope outside their branch.
+
+**Dependencies:** Phases 2–3 stable.
+
+**Exit criteria:** At least one **end-to-end** path (e.g. PO creation → approval) respects **served** org + **operating** role in rules.
+
+---
+
+### Phase 5 — Convergence, reporting, and long-tail modules
+
+**Objective:** **Dashboards and roll-ups** (executive, WMS, CT) use the same **dimensions**; **Tariff** `legal_entities` and **OrgUnit** `LEGAL_ENTITY` **alignment** decided and partially automated (link or sync rules).
+
+**Outcomes**
+
+- Reporting definitions updated to key off **served** org and org tags where product requires.
+- Documented path for new modules: **use** `viewer-scopes` / org helpers per inventory.
+
+**Exit criteria:** Stakeholder sign-off on **one** global dashboard slice using **(E)**.
+
+---
+
+### Phase 6 (optional) — “Acting in context” for global power users
+
+**Objective:** **Session** or **default** “**order for**” for users who work **many** entities daily (reduces clicks; not a substitute for (E) on the row).
+
+**Outcomes**
+
+- User preference or session `defaultServedOrgUnitId` (with audit).
+- UI: clear **banner** of active context when creating orders.
+
+**Risks:** Wrong-org orders — mitigate with **confirmation** and **defaults** from last selection.
+
+**Exit criteria:** Usability tested with **centralized procurement** persona.
+
+---
+
+## 6. Open questions (to resolve in product/tech reviews)
+
+- Should **served** org be required for all new POs, or optional in early rollout?
+- How do **matrix organizations** (same site, two divisions) get **two** “hat” contexts?
+- **Legal entity** on PO vs. **served** `OrgUnit` — one FK, or both with validation rules?
+- **3PL** customers: does **(E)** for “our” side differ from `customerCrmAccountId` for the shipper — document clearly.
+
+---
+
+## 7. References
+
+- [`docs/icp-and-tenancy.md`](./icp-and-tenancy.md) — tenancy, org tree decision, Phase 5–8 notes  
+- [`docs/engineering/READ_SCOPE_INVENTORY.md`](./engineering/READ_SCOPE_INVENTORY.md) — scope helpers and audit  
+- [`docs/engineering/USER_ROLES_AND_RBAC.md`](./engineering/USER_ROLES_AND_RBAC.md) — roles vs. read scope  
+- `src/lib/org-scope.ts` — purchase order scope  
+- `src/lib/crm-scope.ts` — CRM owner scope  
+- `src/lib/control-tower/viewer.ts` — Control Tower composition  
+
+---
+
+*Document version: 1.0 (2026-04-23). Maintain changelog here if phases shift materially.*

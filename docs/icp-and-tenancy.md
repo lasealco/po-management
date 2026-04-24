@@ -32,6 +32,8 @@ This document captures **who we want to sell to** and how that maps to **today�
 | 3PL customer isolation | Partial (CRM tree; CT user scope) | Consistent **customer dimension** on ops entities + portal roles |
 | Reporting / cockpit | Aggregates by `tenantId` | Scoped and roll-up queries by org / customer when models exist |
 
+**Multi-dimensional org (design + phased delivery):** for **structural** hierarchy vs. **operating** roles (e.g. regional HQ) vs. **on-document “served”** org (centralized procurement) and a **staged build plan** (Phases 1–6), see [`organization-dimensions-and-delivery-phases.md`](./organization-dimensions-and-delivery-phases.md). It does not replace the phase table below (customer scope, portals, reporting, policy audit) but extends it for **order-level** and **org-role** work.
+
 ## System tenancy representation decision
 
 **Decision (Wave 3):** use a **single tenant as the hard isolation boundary** and add **org units inside the tenant** for hierarchy and scoped access.
