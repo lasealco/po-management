@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 
 
-import { getActorUserId, requireApiGrant, userHasGlobalGrant } from "@/lib/authz";
-import { crmTenantFilter } from "@/lib/crm-scope";
+import { getActorUserId, requireApiGrant } from "@/lib/authz";
+import { crmOwnerRelationClause, getCrmAccessScope } from "@/lib/crm-scope";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
 
@@ -19,11 +19,8 @@ export async function GET(request: Request) {
     return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   }
 
-  const scope = await crmTenantFilter(tenant.id, actorId);
-  const ownerClause =
-    "ownerUserId" in scope && scope.ownerUserId
-      ? { ownerUserId: scope.ownerUserId }
-      : {};
+  const scope = await getCrmAccessScope(tenant.id, actorId);
+  const ownerClause = crmOwnerRelationClause(scope);
 
   const { searchParams } = new URL(request.url);
   const accountId = searchParams.get("accountId")?.trim();
@@ -93,12 +90,12 @@ export async function POST(request: Request) {
     return toApiErrorResponse({ error: "accountId and title are required.", code: "BAD_INPUT", status: 400 });
   }
 
-  const canEditAll = await userHasGlobalGrant(actorId, "org.crm", "edit");
+  const scope = await getCrmAccessScope(tenant.id, actorId);
   const account = await prisma.crmAccount.findFirst({
     where: {
       id: accountId,
       tenantId: tenant.id,
-      ...(canEditAll ? {} : { ownerUserId: actorId }),
+      ...crmOwnerRelationClause(scope),
     },
     select: { id: true },
   });
@@ -113,7 +110,7 @@ export async function POST(request: Request) {
         id: opportunityId,
         tenantId: tenant.id,
         accountId,
-        ...(canEditAll ? {} : { ownerUserId: actorId }),
+        ...crmOwnerRelationClause(scope),
       },
       select: { id: true },
     });

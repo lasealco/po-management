@@ -4,6 +4,7 @@ const requireApiGrantMock = vi.fn();
 const getActorUserIdMock = vi.fn();
 const userHasGlobalGrantMock = vi.fn();
 const getDemoTenantMock = vi.fn();
+const getCrmAccessScopeMock = vi.fn();
 
 const crmLeadFindFirstMock = vi.fn();
 const crmAccountFindFirstMock = vi.fn();
@@ -18,6 +19,11 @@ vi.mock("@/lib/authz", () => ({
 vi.mock("@/lib/demo-tenant", () => ({
   getDemoTenant: getDemoTenantMock,
 }));
+
+vi.mock("@/lib/crm-scope", async (importOriginal) => {
+  const mod = await importOriginal<typeof import("@/lib/crm-scope")>();
+  return { ...mod, getCrmAccessScope: getCrmAccessScopeMock };
+});
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -40,6 +46,7 @@ describe("CRM lead conversion route contract", () => {
     getDemoTenantMock.mockResolvedValue({ id: "tenant-1" });
     getActorUserIdMock.mockResolvedValue("user-1");
     userHasGlobalGrantMock.mockResolvedValue(false);
+    getCrmAccessScopeMock.mockResolvedValue({ mode: "tenant" });
   });
 
   it("returns 400 parity error for invalid JSON payload", async () => {

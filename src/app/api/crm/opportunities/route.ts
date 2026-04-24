@@ -4,7 +4,7 @@ import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 
 
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
-import { crmTenantFilter } from "@/lib/crm-scope";
+import { crmOwnerRelationClause, getCrmAccessScope } from "@/lib/crm-scope";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
 
@@ -41,11 +41,8 @@ export async function GET() {
     return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   }
 
-  const scope = await crmTenantFilter(tenant.id, actorId);
-  const where =
-    "ownerUserId" in scope && scope.ownerUserId
-      ? { tenantId: tenant.id, ownerUserId: scope.ownerUserId }
-      : { tenantId: tenant.id };
+  const scope = await getCrmAccessScope(tenant.id, actorId);
+  const where = { tenantId: tenant.id, ...crmOwnerRelationClause(scope) };
 
   const opportunities = await prisma.crmOpportunity.findMany({
     where,
@@ -103,23 +100,17 @@ export async function POST(request: Request) {
     return toApiErrorResponse({ error: "accountId and name are required.", code: "BAD_INPUT", status: 400 });
   }
 
+  const scope = await getCrmAccessScope(tenant.id, actorId);
   const account = await prisma.crmAccount.findFirst({
-    where: { id: accountId, tenantId: tenant.id },
+    where: {
+      id: accountId,
+      tenantId: tenant.id,
+      ...crmOwnerRelationClause(scope),
+    },
     select: { id: true },
   });
   if (!account) {
     return toApiErrorResponse({ error: "Account not found.", code: "NOT_FOUND", status: 404 });
-  }
-
-  const scope = await crmTenantFilter(tenant.id, actorId);
-  if ("ownerUserId" in scope && scope.ownerUserId) {
-    const owns = await prisma.crmAccount.findFirst({
-      where: { id: accountId, tenantId: tenant.id, ownerUserId: actorId },
-      select: { id: true },
-    });
-    if (!owns) {
-      return toApiErrorResponse({ error: "You can only add opportunities for accounts you own.", code: "FORBIDDEN", status: 403 });
-    }
   }
 
   const opportunity = await prisma.crmOpportunity.create({

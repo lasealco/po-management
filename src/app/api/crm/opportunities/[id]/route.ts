@@ -9,18 +9,19 @@ import {
   isCrmOpportunityStage,
   validateOpportunityStageChange,
 } from "@/lib/crm/opportunity-stage-change";
+import { crmOwnerRelationClause, getCrmAccessScope } from "@/lib/crm-scope";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
 async function loadOpportunity(tenantId: string, oppId: string, actorId: string) {
-  const canEditAll = await userHasGlobalGrant(actorId, "org.crm", "edit");
+  const scope = await getCrmAccessScope(tenantId, actorId);
   return prisma.crmOpportunity.findFirst({
     where: {
       id: oppId,
       tenantId,
-      ...(canEditAll ? {} : { ownerUserId: actorId }),
+      ...crmOwnerRelationClause(scope),
     },
     include: {
       account: { select: { id: true, name: true } },

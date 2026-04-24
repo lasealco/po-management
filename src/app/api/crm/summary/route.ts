@@ -3,7 +3,7 @@ import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 
 
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
-import { crmTenantFilter } from "@/lib/crm-scope";
+import { crmOwnerRelationClause, getCrmAccessScope } from "@/lib/crm-scope";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
 
@@ -19,11 +19,8 @@ export async function GET() {
     return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   }
 
-  const scope = await crmTenantFilter(tenant.id, actorId);
-  const ownerClause =
-    "ownerUserId" in scope && scope.ownerUserId
-      ? { ownerUserId: scope.ownerUserId }
-      : {};
+  const scope = await getCrmAccessScope(tenant.id, actorId);
+  const ownerClause = crmOwnerRelationClause(scope);
 
   const startOfToday = new Date();
   startOfToday.setUTCHours(0, 0, 0, 0);

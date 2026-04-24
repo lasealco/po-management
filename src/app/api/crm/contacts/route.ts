@@ -3,7 +3,7 @@ import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 
 
 import { getActorUserId, requireApiGrant, userHasGlobalGrant } from "@/lib/authz";
-import { crmTenantFilter } from "@/lib/crm-scope";
+import { crmAccountInScope, getCrmAccessScope } from "@/lib/crm-scope";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
 
@@ -14,12 +14,11 @@ async function assertAccountAccess(
   accountId: string,
   actorId: string,
 ) {
-  const canEditAll = await userHasGlobalGrant(actorId, "org.crm", "edit");
+  const scope = await getCrmAccessScope(tenantId, actorId);
   const account = await prisma.crmAccount.findFirst({
     where: {
       id: accountId,
-      tenantId,
-      ...(canEditAll ? {} : { ownerUserId: actorId }),
+      ...crmAccountInScope(tenantId, scope),
     },
     select: { id: true },
   });
@@ -40,14 +39,11 @@ export async function GET(request: Request) {
   const accountId = searchParams.get("accountId")?.trim();
 
   if (!accountId) {
-    const scope = await crmTenantFilter(tenant.id, actorId);
-    const contactWhere =
-      "ownerUserId" in scope && scope.ownerUserId
-        ? {
-            tenantId: tenant.id,
-            account: { ownerUserId: scope.ownerUserId },
-          }
-        : { tenantId: tenant.id };
+    const scope = await getCrmAccessScope(tenant.id, actorId);
+    const contactWhere = {
+      tenantId: tenant.id,
+      account: { is: crmAccountInScope(tenant.id, scope) },
+    };
 
     const contacts = await prisma.crmContact.findMany({
       where: contactWhere,

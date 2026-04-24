@@ -3,6 +3,7 @@ import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 
 
 import { getActorUserId, requireApiGrant, userHasGlobalGrant } from "@/lib/authz";
+import { crmAccountInScope, getCrmAccessScope } from "@/lib/crm-scope";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
 
@@ -54,13 +55,14 @@ export async function POST(
   }
 
   const existingAccountId = body.existingAccountId?.trim() || null;
+  const crmAccessScope = await getCrmAccessScope(tenant.id, actorId);
 
   if (existingAccountId) {
     const acc = await prisma.crmAccount.findFirst({
       where: {
         id: existingAccountId,
-        tenantId: tenant.id,
-        ...(canEditAll ? {} : { ownerUserId: lead.ownerUserId }),
+        ...crmAccountInScope(tenant.id, crmAccessScope),
+        ...(!canEditAll ? { ownerUserId: lead.ownerUserId } : {}),
       },
       select: { id: true },
     });

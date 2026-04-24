@@ -4,6 +4,7 @@ import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 
 
 import { getActorUserId, requireApiGrant, userHasGlobalGrant } from "@/lib/authz";
+import { crmOwnerRelationClause, getCrmAccessScope } from "@/lib/crm-scope";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
 
@@ -18,12 +19,12 @@ const STATUSES: CrmQuoteStatus[] = [
 ];
 
 async function loadQuote(tenantId: string, quoteId: string, actorId: string) {
-  const canEditAll = await userHasGlobalGrant(actorId, "org.crm", "edit");
+  const scope = await getCrmAccessScope(tenantId, actorId);
   return prisma.crmQuote.findFirst({
     where: {
       id: quoteId,
       tenantId,
-      ...(canEditAll ? {} : { ownerUserId: actorId }),
+      ...crmOwnerRelationClause(scope),
     },
     include: {
       account: { select: { id: true, name: true } },

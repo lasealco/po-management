@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const requireApiGrantMock = vi.fn();
 const getActorUserIdMock = vi.fn();
 const getDemoTenantMock = vi.fn();
-const crmTenantFilterMock = vi.fn();
+const getCrmAccessScopeMock = vi.fn();
 
 const crmAccountFindManyMock = vi.fn();
 const crmAccountCreateMock = vi.fn();
@@ -17,9 +17,10 @@ vi.mock("@/lib/demo-tenant", () => ({
   getDemoTenant: getDemoTenantMock,
 }));
 
-vi.mock("@/lib/crm-scope", () => ({
-  crmTenantFilter: crmTenantFilterMock,
-}));
+vi.mock("@/lib/crm-scope", async (importOriginal) => {
+  const mod = await importOriginal<typeof import("@/lib/crm-scope")>();
+  return { ...mod, getCrmAccessScope: getCrmAccessScopeMock };
+});
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -38,7 +39,7 @@ describe("CRM accounts route contract", () => {
     requireApiGrantMock.mockResolvedValue(null);
     getDemoTenantMock.mockResolvedValue({ id: "tenant-1" });
     getActorUserIdMock.mockResolvedValue("user-1");
-    crmTenantFilterMock.mockResolvedValue({ tenantId: "tenant-1" });
+    getCrmAccessScopeMock.mockResolvedValue({ mode: "tenant" });
   });
 
   it("GET returns 403 auth shape when actor is missing", async () => {

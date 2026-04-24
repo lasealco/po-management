@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 
 import { userHasGlobalGrant } from "@/lib/authz";
-import { crmTenantFilter } from "@/lib/crm-scope";
+import { crmAccountInScope, getCrmAccessScope } from "@/lib/crm-scope";
 import { movementLedgerWhere, type ParsedMovementLedgerQuery } from "@/lib/wms/movement-ledger-query";
 import { prisma } from "@/lib/prisma";
 
@@ -12,13 +12,9 @@ export async function getWmsDashboardPayload(
   movementLedger?: ParsedMovementLedgerQuery | null,
 ) {
   const canPickCrmAccounts = await userHasGlobalGrant(actorUserId, "org.crm", "view");
-  let crmAccountListWhere: { tenantId: string; ownerUserId?: string } = { tenantId };
-  if (canPickCrmAccounts) {
-    const scope = await crmTenantFilter(tenantId, actorUserId);
-    if ("ownerUserId" in scope && scope.ownerUserId) {
-      crmAccountListWhere = { tenantId, ownerUserId: scope.ownerUserId };
-    }
-  }
+  const crmAccountListWhere: Prisma.CrmAccountWhereInput = canPickCrmAccounts
+    ? crmAccountInScope(tenantId, await getCrmAccessScope(tenantId, actorUserId))
+    : { tenantId };
 
   const recentMovementWhere = movementLedger
     ? movementLedgerWhere(tenantId, movementLedger)

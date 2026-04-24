@@ -73,7 +73,7 @@ For **global → regional → country** (and similar) admin patterns, product in
 ## Path toward scoped RBAC (pragmatic)
 
 1. **Now shipped:** `tenantId` + flat `RolePermission` + **user org** + **product divisions**; **read filters** in `src/lib/org-scope.ts` and **delegation** in `src/lib/delegation-guard.ts`.
-2. **In progress, module by module:** same org/division read rules on **Control Tower** (workbench, hub, ops/reports summaries, digest, `runControlTowerReport`, product trace) by scoping on the shipment’s **linked purchase order** (requester + line divisions).
+2. **In progress, module by module:** same org/division read rules on **Control Tower** (workbench, hub, ops/reports summaries, digest, `runControlTowerReport`, product trace) by scoping on the shipment’s **linked purchase order** (requester + line divisions). **CRM** list/detail/convert and **WMS** CRM account pickers/links apply the same org/division idea to the CRM record **owner** (`getCrmAccessScope` in `src/lib/crm-scope.ts`).
 3. **Later (product call):** **policies** as a formal **policy engine** (conditions, effects, evaluation) rather than only code paths.
 
 ## Engineering todos (backlog—prioritize with product)
