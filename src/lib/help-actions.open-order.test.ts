@@ -1,5 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const { getPurchaseOrderScopeWhereMock } = vi.hoisted(() => ({
+  getPurchaseOrderScopeWhereMock: vi.fn(),
+}));
+
+vi.mock("@/lib/org-scope", async (importOriginal) => {
+  const mod = await importOriginal<typeof import("@/lib/org-scope")>();
+  return { ...mod, getPurchaseOrderScopeWhere: getPurchaseOrderScopeWhereMock };
+});
+
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     purchaseOrder: {
@@ -37,6 +46,8 @@ describe("executeHelpDoAction open_order", () => {
     findFirst.mockReset();
     supplierPortalRestricted.mockReset();
     supplierPortalRestricted.mockResolvedValue(false);
+    getPurchaseOrderScopeWhereMock.mockReset();
+    getPurchaseOrderScopeWhereMock.mockResolvedValue(undefined);
   });
 
   it("requires org.orders view", async () => {
