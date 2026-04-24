@@ -93,7 +93,7 @@ This is the **order we talk about the remaining work in**, not a promise of buil
 
 | Phase | Theme | What ships (outcome) | Ties to open backlog line |
 |--------|--------|----------------------|----------------------------|
-| **5** | **Customer as scope** | A consistent **shipper / BCO customer** (or `customerAccountId`–style) dimension on the **ops** entities that need 3PL isolation—**shipments, billing, WMS**, etc.—**aligned to CRM** so CT/WMS/AR aren’t the only levers. | **(b) Customer as scope** |
+| **5** | **Customer as scope** (*in progress*) | A consistent **shipper / BCO customer** (or `customerAccountId`–style) dimension on the **ops** entities that need 3PL isolation—**shipments, billing, WMS**, etc.—**aligned to CRM** so CT/WMS/AR aren’t the only levers. **Shipped so far:** `PurchaseOrder.customerCrmAccountId`, inheritance into new **shipments**, WMS billing linkage for **inbound** `SHIPMENT_ITEM` movements. | **(b) Customer as scope** |
 | **6** | **Portals** | **External users** (customers’ users), **invites**, and **least-privilege roles**; **visibility rules** for those users, building on the early CT customer scope rather than re-inventing per module. | **(b) Portals** |
 | **7** | **Reporting** | **Cockpits and report hubs** that still assume **one tenant = one view of all data** get **the same active org / product / customer** scope that ops APIs use, **as each dataset** supports it. | **Reporting** |
 | **8** | **Policy + read-model audit** | **Policy engine** or equivalent **formal** scoped rules (per **§3** and **“Phase 4, product”** in notes); **audit** to close `tenantId`-only reads. | **(a) Scoped permissions / policy layer** |
@@ -103,12 +103,13 @@ This is the **order we talk about the remaining work in**, not a promise of buil
 
 ## Related code (for implementers)
 
-- Prisma: `Tenant`, `User` (`tenantId`, `primaryOrgUnitId`, `customerCrmAccountId`), `OrgUnit`, `UserProductDivision`, `CrmAccount` (`parentAccountId`).
+- Prisma: `Tenant`, `User` (`tenantId`, `primaryOrgUnitId`, `customerCrmAccountId`), `OrgUnit`, `UserProductDivision`, `CrmAccount` (`parentAccountId`). **Phase 5:** `PurchaseOrder.customerCrmAccountId` (optional 3PL/BCO customer) aligns with `Shipment.customerCrmAccountId` / `SalesOrder.customerCrmAccountId`; supplier ASN shipment create and CT logistics shipment create copy from the PO when present; WMS billing CRM resolution includes `SHIPMENT_ITEM` movements via the linked shipment.
 - Permissions: `src/lib/permission-catalog.ts`, `src/lib/authz.ts`, `Role` / `RolePermission` in `prisma/schema.prisma`.
 - **Modular SaaS / shop / bundles:** `docs/modular-product-and-crm-strategy.md` (entitlements + Stripe-shaped plan).
 
 ## Changelog
 
+- **2026-04-24:** **Phase 5 (started):** optional `PurchaseOrder.customerCrmAccountId` (FK to `CrmAccount`); `GET`/`PATCH` order detail expose and allow **internal** editors to set/clear it; new ASN and CT logistics shipments inherit customer on the **Shipment** row; `resolveCrmAccountIdsByMovementIds` ties **putaway** movements (`SHIPMENT_ITEM` ref) to `Shipment.customerCrmAccountId` for WMS billing profile linkage.
 - **2026-04-25:** **Control Tower + product trace (org read scope):** internal users with primary org and/or product divisions see only **shipments** whose linked **PO** passes the same rules as the PO workbench; hub overview, workbench list, map pins, search, digest, report runs, ops/reports summaries, and `getProductTracePayload` use `controlTowerShipmentAccessWhere` / merged PO `where`. Superusers and supplier portal bypass unchanged; **Phase 4 policy engine** remains a separate product track.
 - **2026-04-23:** **Phase 3:** **delegation guardrails** on user create/update and role `PUT` permissions: assigner must hold every permission on the roles they assign, **or** be a **Superuser**; primary org and product-division links must stay within the assigner’s scope; non-superusers cannot assign the **Superuser** role or edit that role’s permission rows. Clearing another user’s primary org is disallowed for admins who themselves have a primary org.
 - **2026-04-25:** **Phase 2 (partial):** org/division **read scope** on **purchase orders** (lists, detail, transitions, messages, control-tower order picker, consolidation shipment list) and order-based **reports**; uses requester’s primary org subtree + optional product-division line match. Superusers and supplier-portal views bypass internal org filter. **CRM** and **WMS** read API surfaces (see path #2) follow the org/division rollout.

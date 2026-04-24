@@ -114,6 +114,7 @@ export async function POST(
     const created = await tx.shipment.create({
       data: {
         orderId: order.id,
+        customerCrmAccountId: order.customerCrmAccountId ?? null,
         shipmentNo: input.shipmentNo?.trim() || null,
         shippedAt,
         trackingNo: input.trackingNo?.trim() || null,

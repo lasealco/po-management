@@ -63,6 +63,7 @@ export async function GET(
   const order = await prisma.purchaseOrder.findFirst({
     where: { id, tenantId: tenant.id, ...(poScope ?? {}) },
     include: {
+      customerCrmAccount: { select: { id: true, name: true, legalName: true } },
       status: true,
       supplier: {
         select: {
@@ -92,6 +93,10 @@ export async function GET(
           shipToCountryCode: true,
           internalNotes: true,
           notesToSupplier: true,
+          customerCrmAccountId: true,
+          customerCrmAccount: {
+            select: { id: true, name: true, legalName: true },
+          },
         },
       },
       requester: true,
@@ -259,6 +264,9 @@ export async function GET(
       order.notesToSupplier,
       order.splitParent?.notesToSupplier,
     ),
+    customerCrmAccount: order.customerCrmAccountId
+      ? order.customerCrmAccount
+      : (order.splitParent?.customerCrmAccount ?? null),
   };
 
   let childPlannedShipDates: string[] = [];
@@ -415,6 +423,13 @@ export async function GET(
       shipToCountryCode: effective.shipToCountryCode,
       internalNotes: canSeeInternalFields ? effective.internalNotes : null,
       notesToSupplier: effective.notesToSupplier,
+      customerCrmAccount: effective.customerCrmAccount
+        ? {
+            id: effective.customerCrmAccount.id,
+            name: effective.customerCrmAccount.name,
+            legalName: effective.customerCrmAccount.legalName,
+          }
+        : null,
       status: order.status,
       workflow: {
         id: order.workflow.id,
@@ -629,6 +644,43 @@ export async function PATCH(
   if ("notesToSupplier" in o) {
     const v = optionalStringField(o, "notesToSupplier");
     if (v !== undefined) data.notesToSupplier = v;
+  }
+
+  if ("customerCrmAccountId" in o) {
+    if (patchIsSupplier) {
+      return toApiErrorResponse({
+        error: "customerCrmAccountId cannot be set from the supplier portal.",
+        code: "FORBIDDEN",
+        status: 403,
+      });
+    }
+    const v = o.customerCrmAccountId;
+    if (v === null) {
+      data.customerCrmAccount = { disconnect: true };
+    } else if (typeof v === "string") {
+      const id = v.trim();
+      if (!id) {
+        return toApiErrorResponse({
+          error: "customerCrmAccountId must be a non-empty id or null.",
+          code: "BAD_INPUT",
+          status: 400,
+        });
+      }
+      const acc = await prisma.crmAccount.findFirst({
+        where: { id, tenantId: tenant.id },
+        select: { id: true },
+      });
+      if (!acc) {
+        return toApiErrorResponse({
+          error: "Unknown CRM account for this tenant.",
+          code: "BAD_INPUT",
+          status: 400,
+        });
+      }
+      data.customerCrmAccount = { connect: { id } };
+    } else {
+      return toApiErrorResponse({ error: "Invalid customerCrmAccountId.", code: "BAD_INPUT", status: 400 });
+    }
   }
 
   if ("paymentTermsDays" in o) {

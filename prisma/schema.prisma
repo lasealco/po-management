@@ -1107,7 +1107,8 @@ model PurchaseOrder {
   splitParentId String?
   splitIndex    Int?
   splitProposalId String?
-
+  /// 3PL / BCO: commercial shipper customer (same tenant `CrmAccount` as `Shipment.customerCrmAccountId`); optional.
+  customerCrmAccountId String?
   /// Buyer / internal reference (e.g. requisition #).
   buyerReference    String?
   /// Supplier acknowledgment or their order #.
@@ -1131,6 +1132,7 @@ model PurchaseOrder {
   tenant        Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   workflow      Workflow             @relation(fields: [workflowId], references: [id], onDelete: Restrict)
   requester     User                 @relation(fields: [requesterId], references: [id], onDelete: Restrict)
+  customerCrmAccount CrmAccount?     @relation("PurchaseOrderCustomerCrm", fields: [customerCrmAccountId], references: [id], onDelete: SetNull)
   supplier      Supplier?            @relation(fields: [supplierId], references: [id], onDelete: SetNull)
   status        WorkflowStatus       @relation(fields: [statusId], references: [id], onDelete: Restrict)
   splitProposal SplitProposal?       @relation("SplitProposalDraftOrders", fields: [splitProposalId], references: [id], onDelete: SetNull)
@@ -1149,6 +1151,7 @@ model PurchaseOrder {
   @@index([workflowId])
   @@index([splitParentId])
   @@index([splitProposalId])
+  @@index([tenantId, customerCrmAccountId])
 }
 
 model PurchaseOrderItem {
@@ -2526,6 +2529,7 @@ model CrmAccount {
   outboundOrders OutboundOrder[]
   wmsBillingEvents WmsBillingEvent[]
   shipmentsAsCustomer Shipment[] @relation("ShipmentCustomerAccount")
+  purchaseOrdersAsCustomer PurchaseOrder[] @relation("PurchaseOrderCustomerCrm")
   salesOrders         SalesOrder[]
   customerPortalUsers User[] @relation("UserCustomerPortalScope")
 

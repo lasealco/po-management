@@ -88,6 +88,7 @@ export async function createLogisticsShipment(
       where: { id: effectiveOrderId, tenantId },
       select: {
         id: true,
+        customerCrmAccountId: true,
         items: { select: { id: true, lineNo: true, quantity: true } },
       },
     });
@@ -110,7 +111,7 @@ export async function createLogisticsShipment(
       };
     });
     resolvedOrderId = order.id;
-    resolvedCustomerCrmAccountId = null;
+    resolvedCustomerCrmAccountId = order.customerCrmAccountId ?? null;
   } else {
     const defaultWorkflow = await prisma.workflow.findFirst({
       where: { tenantId, isDefault: true },
