@@ -2,6 +2,7 @@ import { SettingsOrgStructureClient } from "@/components/settings-org-structure-
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { buildOrgUnitTree } from "@/lib/org-unit";
+import { mapRoleAssignmentsToRoles } from "@/lib/org-unit-operating-roles";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +22,7 @@ export default async function SettingsOrgStructurePage() {
     prisma.orgUnit.findMany({
       where: { tenantId: tenant.id },
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      include: { roleAssignments: { select: { role: true } } },
     }),
     prisma.referenceCountry.findMany({
       where: { isActive: true },
@@ -43,6 +45,15 @@ export default async function SettingsOrgStructurePage() {
       sortOrder: o.sortOrder,
     })),
   );
+  const orgFlat = orgUnits.map((o) => ({
+    id: o.id,
+    parentId: o.parentId,
+    name: o.name,
+    code: o.code,
+    kind: o.kind,
+    sortOrder: o.sortOrder,
+    operatingRoles: mapRoleAssignmentsToRoles(o.roleAssignments),
+  }));
 
   return (
     <div>
@@ -59,20 +70,15 @@ export default async function SettingsOrgStructurePage() {
         </a>
         — org units here are for structure and assignment only. Assign each user a <strong>primary org</strong> and optional{" "}
         <strong>product division</strong> scope under Settings → Users. Permissions (roles) stay
-        tenant-wide; row-level scoping from org is a future phase.
+        tenant-wide; row-level scoping from org is a future phase. Optional{" "}
+        <strong>operating roles</strong> (e.g. regional HQ, group procurement) describe how a node
+        works in the business; they are not app sign-in permissions.
       </p>
       <div className="mt-8">
         <SettingsOrgStructureClient
           canEdit={canEdit}
           initialTree={tree}
-          allFlat={orgUnits.map((o) => ({
-            id: o.id,
-            parentId: o.parentId,
-            name: o.name,
-            code: o.code,
-            kind: o.kind,
-            sortOrder: o.sortOrder,
-          }))}
+          allFlat={orgFlat}
           referenceCountries={referenceCountries}
         />
       </div>

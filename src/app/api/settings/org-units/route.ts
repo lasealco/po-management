@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getDemoTenant } from "@/lib/demo-tenant";
+import { mapRoleAssignmentsToRoles, parseOperatingRolesInput } from "@/lib/org-unit-operating-roles";
 import { validateOrgUnitCodeForKind } from "@/lib/org-unit-code-validate";
 import { prisma } from "@/lib/prisma";
 import { requireApiGrant } from "@/lib/authz";
@@ -28,9 +29,27 @@ export async function GET() {
   const orgUnits = await prisma.orgUnit.findMany({
     where: { tenantId: tenant.id },
     orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-    select: { id: true, parentId: true, name: true, code: true, kind: true, sortOrder: true },
+    select: {
+      id: true,
+      parentId: true,
+      name: true,
+      code: true,
+      kind: true,
+      sortOrder: true,
+      roleAssignments: { select: { role: true } },
+    },
   });
-  return NextResponse.json({ orgUnits });
+  return NextResponse.json({
+    orgUnits: orgUnits.map((u) => ({
+      id: u.id,
+      parentId: u.parentId,
+      name: u.name,
+      code: u.code,
+      kind: u.kind,
+      sortOrder: u.sortOrder,
+      operatingRoles: mapRoleAssignmentsToRoles(u.roleAssignments),
+    })),
+  });
 }
 
 export async function POST(request: Request) {
@@ -52,6 +71,10 @@ export async function POST(request: Request) {
   const parentId = o.parentId === null || o.parentId === "" ? null : (o.parentId as string);
   const kind = o.kind;
   const sortOrder = typeof o.sortOrder === "number" && Number.isFinite(o.sortOrder) ? o.sortOrder : 0;
+  const roleParse = parseOperatingRolesInput("operatingRoles" in o ? o.operatingRoles : []);
+  if (!roleParse.ok) {
+    return toApiErrorResponse({ error: roleParse.error, code: "BAD_INPUT", status: 400 });
+  }
 
   if (!name.length) {
     return toApiErrorResponse({ error: "name is required.", code: "BAD_INPUT", status: 400 });
@@ -90,10 +113,31 @@ export async function POST(request: Request) {
         code: codeRes.code,
         kind: kind as OrgUnitKind,
         sortOrder,
+        roleAssignments: {
+          create: roleParse.roles.map((role) => ({ role })),
+        },
       },
-      select: { id: true, parentId: true, name: true, code: true, kind: true, sortOrder: true },
+      select: {
+        id: true,
+        parentId: true,
+        name: true,
+        code: true,
+        kind: true,
+        sortOrder: true,
+        roleAssignments: { select: { role: true } },
+      },
     });
-    return NextResponse.json({ orgUnit: created });
+    return NextResponse.json({
+      orgUnit: {
+        id: created.id,
+        parentId: created.parentId,
+        name: created.name,
+        code: created.code,
+        kind: created.kind,
+        sortOrder: created.sortOrder,
+        operatingRoles: mapRoleAssignmentsToRoles(created.roleAssignments),
+      },
+    });
   } catch {
     return toApiErrorResponse({
       error: "Could not create org unit (code may already exist in this tenant).",

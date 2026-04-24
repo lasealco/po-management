@@ -15,6 +15,19 @@ enum OrgUnitKind {
   OFFICE
 }
 
+/// Process / operating role of an org node (regional hub, plant, GBS) — not app RBAC; see `docs/organization-dimensions-and-delivery-phases.md`.
+enum OrgUnitOperatingRole {
+  REGIONAL_HQ
+  GROUP_PROCUREMENT
+  PLANT
+  DIST_CENTER
+  SALES_HUB
+  SHARED_SERVICE
+  R_AND_D
+  CORPORATE_FUNCTION
+  LOGISTICS_HUB
+}
+
 model Tenant {
   id        String   @id @default(cuid())
   name      String
@@ -505,11 +518,26 @@ model OrgUnit {
   parent   OrgUnit?  @relation("OrgUnitHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
   children OrgUnit[] @relation("OrgUnitHierarchy")
   usersPrimary User[] @relation("UserPrimaryOrgUnit")
+  roleAssignments OrgUnitRoleAssignment[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
   @@index([tenantId, parentId])
   @@index([parentId])
+}
+
+/// Zero or more operating-role tags per org unit (unique per org + role).
+model OrgUnitRoleAssignment {
+  id        String   @id @default(cuid())
+  orgUnitId String
+  role      OrgUnitOperatingRole
+  createdAt DateTime @default(now())
+
+  orgUnit OrgUnit @relation(fields: [orgUnitId], references: [id], onDelete: Cascade)
+
+  @@unique([orgUnitId, role])
+  @@index([orgUnitId])
+  @@map("org_unit_role_assignments")
 }
 
 /** Matrix: user responsibility for one or more product divisions (e.g. global category lead). */

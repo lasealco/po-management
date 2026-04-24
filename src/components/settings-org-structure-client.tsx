@@ -7,7 +7,8 @@ import {
   ORG_CODE_PRESETS_REGION,
 } from "@/lib/org-code-presets";
 import { isPresetGroupCode, isPresetRegionCode } from "@/lib/org-code-presets";
-import type { OrgUnitKind } from "@prisma/client";
+import { formatOperatingRolesShort, ORG_UNIT_OPERATING_ROLE_CATALOG } from "@/lib/org-unit-operating-roles";
+import type { OrgUnitKind, OrgUnitOperatingRole } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
@@ -185,7 +186,15 @@ type FlatRow = {
   code: string;
   kind: OrgUnitKind;
   sortOrder: number;
+  operatingRoles: OrgUnitOperatingRole[];
 };
+
+function sameOperatingRoleList(a: readonly OrgUnitOperatingRole[], b: readonly OrgUnitOperatingRole[]) {
+  if (a.length !== b.length) return false;
+  const sa = [...a].map(String).sort();
+  const sb = [...b].map(String).sort();
+  return sa.every((v, i) => v === sb[i]);
+}
 
 function isCreateCodeComplete(
   kind: OrgUnitKind,
@@ -219,13 +228,22 @@ export function SettingsOrgStructureClient({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<{
+    name: string;
+    code: string;
+    kind: OrgUnitKind;
+    parentId: string;
+    sortOrder: number;
+    facilityCodeMode: "preset" | "custom";
+    operatingRoles: OrgUnitOperatingRole[];
+  }>({
     name: "",
     code: "",
-    kind: "REGION" as OrgUnitKind,
-    parentId: "" as string,
+    kind: "REGION",
+    parentId: "",
     sortOrder: 0,
-    facilityCodeMode: "preset" as "preset" | "custom",
+    facilityCodeMode: "preset",
+    operatingRoles: [],
   });
 
   const parentSelectRows = useMemo(() => {
@@ -249,6 +267,7 @@ export function SettingsOrgStructureClient({
         kind: form.kind,
         parentId: form.parentId || null,
         sortOrder: form.sortOrder,
+        operatingRoles: form.operatingRoles,
       }),
     });
     const data: unknown = await res.json();
@@ -264,13 +283,21 @@ export function SettingsOrgStructureClient({
       parentId: "",
       sortOrder: 0,
       facilityCodeMode: "preset",
+      operatingRoles: [],
     });
     router.refresh();
   }
 
   async function updateUnit(
     id: string,
-    patch: { name?: string; code?: string; kind?: OrgUnitKind; parentId?: string | null; sortOrder?: number },
+    patch: {
+      name?: string;
+      code?: string;
+      kind?: OrgUnitKind;
+      parentId?: string | null;
+      sortOrder?: number;
+      operatingRoles?: OrgUnitOperatingRole[];
+    },
   ) {
     if (!canEdit) return;
     setBusy(true);
@@ -412,6 +439,41 @@ export function SettingsOrgStructureClient({
               </button>
             </div>
           </div>
+          <div className="mt-4 rounded-xl border border-zinc-100 bg-zinc-50/80 p-4">
+            <p className="text-xs font-medium text-zinc-700">Operating roles (optional)</p>
+            <p className="mt-1 text-[11px] leading-snug text-zinc-500">
+              Mark how this org node operates in the business (e.g. regional HQ, group procurement).
+              This is <strong>not</strong> app sign-in or permission roles; those are under Settings →
+              Users / Roles.
+            </p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {ORG_UNIT_OPERATING_ROLE_CATALOG.map((o) => (
+                <label
+                  key={o.value}
+                  className="flex cursor-pointer items-start gap-2 rounded-lg border border-transparent px-1 py-1 text-xs text-zinc-700 hover:border-zinc-200"
+                >
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 rounded border-zinc-300"
+                    checked={form.operatingRoles.includes(o.value)}
+                    onChange={() =>
+                      setForm((f) => ({
+                        ...f,
+                        operatingRoles: f.operatingRoles.includes(o.value)
+                          ? f.operatingRoles.filter((x) => x !== o.value)
+                          : [...f.operatingRoles, o.value],
+                      }))
+                    }
+                    disabled={busy}
+                  />
+                  <span>
+                    <span className="font-medium">{o.label}</span>
+                    <span className="block text-[10px] text-zinc-500">{o.shortHint}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
         </section>
       ) : null}
 
@@ -422,18 +484,22 @@ export function SettingsOrgStructureClient({
               <th className="px-3 py-2">Org unit</th>
               <th className="px-3 py-2">Code</th>
               <th className="px-3 py-2">Type</th>
+              <th className="px-3 py-2 min-w-[12rem]">Operating roles</th>
               <th className="px-3 py-2 w-32" />
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100">
             {initialTree.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-3 py-6 text-center text-sm text-zinc-500">
+                <td colSpan={5} className="px-3 py-6 text-center text-sm text-zinc-500">
                   No org units yet. Add a global or regional node to start.
                 </td>
               </tr>
             ) : null}
-            {initialTree.map((r) => (
+            {initialTree.map((r) => {
+              const flat = allFlat.find((o) => o.id === r.id);
+              const oroles = flat?.operatingRoles ?? [];
+              return (
               <tr key={r.id} className="text-zinc-800">
                 <td className="px-3 py-2">
                   <span
@@ -445,6 +511,9 @@ export function SettingsOrgStructureClient({
                 </td>
                 <td className="px-3 py-2 font-mono text-xs text-zinc-600">{r.code}</td>
                 <td className="px-3 py-2 text-xs text-zinc-600">{r.kind}</td>
+                <td className="px-3 py-2 text-xs text-zinc-600" title={oroles.join(", ")}>
+                  {formatOperatingRolesShort(oroles, 2)}
+                </td>
                 <td className="px-3 py-2 text-right">
                   {canEdit ? (
                     <div className="flex justify-end gap-2">
@@ -468,7 +537,8 @@ export function SettingsOrgStructureClient({
                   ) : null}
                 </td>
               </tr>
-            ))}
+            );
+            })}
           </tbody>
         </table>
       </div>
@@ -503,7 +573,14 @@ function EditOrgForm({
   allFlat: FlatRow[];
   referenceCountries: RefCountry[];
   busy: boolean;
-  onSave: (p: { name?: string; code?: string; kind?: OrgUnitKind; parentId?: string | null; sortOrder?: number }) => void;
+  onSave: (p: {
+    name?: string;
+    code?: string;
+    kind?: OrgUnitKind;
+    parentId?: string | null;
+    sortOrder?: number;
+    operatingRoles?: OrgUnitOperatingRole[];
+  }) => void;
   onCancel: () => void;
 }) {
   const [name, setName] = useState(row.name);
@@ -511,6 +588,7 @@ function EditOrgForm({
   const [kind, setKind] = useState<OrgUnitKind>(row.kind);
   const [parentId, setParentId] = useState(row.parentId ?? "");
   const [sortOrder, setSortOrder] = useState(row.sortOrder);
+  const [opRoles, setOpRoles] = useState<OrgUnitOperatingRole[]>(row.operatingRoles);
   const [facilityCodeMode, setFacilityCodeMode] = useState<"preset" | "custom">(() =>
     isFacilityKind(row.kind) && !PRESET_FACILITY.includes(row.code) ? "custom" : "preset",
   );
@@ -535,7 +613,7 @@ function EditOrgForm({
           onChange={(e) => setParentId(e.target.value)}
           disabled={busy}
         >
-          <option value="">(root level)</option>
+          <option value="">Top level (no parent under tenant)</option>
           {parentOptions.map((o) => (
             <option key={o.id} value={o.id}>
               {o.label}
@@ -596,6 +674,31 @@ function EditOrgForm({
           disabled={busy}
         />
       </label>
+      <div className="sm:col-span-2 lg:col-span-4">
+        <p className="text-xs font-medium text-zinc-600">Operating roles</p>
+        <p className="text-[10px] text-zinc-500">Business / process context only — not app sign-in permissions.</p>
+        <div className="mt-2 grid max-h-48 grid-cols-2 gap-1 overflow-y-auto sm:max-h-none sm:grid-cols-2 lg:grid-cols-3">
+          {ORG_UNIT_OPERATING_ROLE_CATALOG.map((o) => (
+            <label
+              key={o.value}
+              className="flex cursor-pointer items-start gap-1.5 rounded border border-zinc-100 bg-white px-1.5 py-1 text-[11px] text-zinc-700"
+            >
+              <input
+                type="checkbox"
+                className="mt-0.5 rounded border-zinc-300"
+                checked={opRoles.includes(o.value)}
+                onChange={() =>
+                  setOpRoles((list) =>
+                    list.includes(o.value) ? list.filter((x) => x !== o.value) : [...list, o.value],
+                  )
+                }
+                disabled={busy}
+              />
+              <span>{o.label}</span>
+            </label>
+          ))}
+        </div>
+      </div>
       <div className="flex items-end gap-2 sm:col-span-2">
         <button
           type="button"
@@ -616,6 +719,9 @@ function EditOrgForm({
               parentId:
                 (parentId || null) !== (row.parentId ?? null) ? (parentId || null) : undefined,
               sortOrder: sortOrder !== row.sortOrder ? sortOrder : undefined,
+              operatingRoles: sameOperatingRoleList(opRoles, row.operatingRoles)
+                ? undefined
+                : opRoles,
             })
           }
           className="rounded-xl bg-[var(--arscmp-primary)] px-4 py-2 text-sm font-semibold text-white"

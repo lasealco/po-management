@@ -69,18 +69,20 @@ Phases are **ordered**; some work can **overlap** in later steps once foundation
 
 ### Phase 1 — Foundation: language, governance, and optional org “operating” metadata
 
-**Objective:** Stabilize **(B)**, document **(C)** as a product list, and optionally persist **(C)** without changing PO semantics yet.
+**Status:** **Shipped** (see `OrgUnitOperatingRole` enum, `org_unit_role_assignments` table, Settings → Org & sites UI, `src/lib/org-unit-operating-roles.ts`).
 
-**Outcomes**
+**Objective:** Stabilize **(B)**, document **(C)** as a product list, and persist **(C)** without changing PO semantics yet.
 
-- Published glossary and dimension table (this document + in-app help where appropriate).
-- Decision record: which **org role** values the product v1 supports (e.g. `REGional_HQ`, `PLANT`, `GROUP_PROCUREMENT` — **examples only; finalize with product**).
-- Optional schema: `OrgUnit` **tags** or `OrgUnitRole` join (tenant-scoped), **administered** under Settings, **validated** against allowed kinds.
-- **No change** to `getPurchaseOrderScopeWhere` behavior unless a **feature flag** and explicit QA sign-off (default off).
+**Outcomes (delivered)**
 
-**Risks:** Tag sprawl — mitigate with **required review** and a small catalog.
+- Dimension glossary remains this document; **Org & sites** page copy explains **operating roles** vs. app sign-in / permissions.
+- **V1 role catalog (fixed enum):** `REGIONAL_HQ`, `GROUP_PROCUREMENT`, `PLANT`, `DIST_CENTER`, `SALES_HUB`, `SHARED_SERVICE`, `R_AND_D`, `CORPORATE_FUNCTION`, `LOGISTICS_HUB` — extend only via new migrations + catalog updates.
+- **Schema:** `OrgUnitRoleAssignment` rows (`org_unit_role_assignments`), one row per (org unit, role); API validates with `parseOperatingRolesInput` on create/update; **Settings UI** for add + edit + list column.
+- **Read scope:** `getPurchaseOrderScopeWhere` is **unchanged** (no use of operating roles in filters in Phase 1).
 
-**Exit criteria:** Product can point to a single place describing dimensions; data model for (C) is clear whether v1 is “tags only” or “enum on unit.”
+**Risks:** Tag sprawl — mitigated by **enum** (not free text). Future: optional rules “role R only for `OrgUnitKind` K” are **not** enforced in v1 (product can add later).
+
+**Exit criteria:** Met — (C) is persisted, documented, and admin-editable; (G) for POs unchanged.
 
 ---
 
@@ -182,4 +184,11 @@ Phases are **ordered**; some work can **overlap** in later steps once foundation
 
 ---
 
-*Document version: 1.0 (2026-04-23). Maintain changelog here if phases shift materially.*
+*Document version: 1.1 (2026-04-24). Changelog: Phase 1 operating roles shipped (enum + join table + Settings UI; PO scope unchanged).*
+
+### Changelog
+
+| Date | Change |
+|------|--------|
+| 2026-04-24 | **Phase 1 delivered:** `OrgUnitOperatingRole` + `org_unit_role_assignments`; `GET`/`POST`/`PATCH` `/api/settings/org-units` carry `operatingRoles`; no change to `org-scope` PO filters. |
+| 2026-04-23 | Initial v1.0. |

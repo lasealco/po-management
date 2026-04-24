@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { orgUnitReparentIsValid } from "@/lib/org-unit";
+import { mapRoleAssignmentsToRoles, parseOperatingRolesInput } from "@/lib/org-unit-operating-roles";
 import { validateOrgUnitCodeForKind } from "@/lib/org-unit-code-validate";
 import { prisma } from "@/lib/prisma";
+import type { OrgUnitOperatingRole } from "@prisma/client";
 import { requireApiGrant } from "@/lib/authz";
 import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import type { OrgUnitKind } from "@prisma/client";
@@ -111,17 +113,62 @@ export async function PATCH(
     updates.parentId = p;
   }
 
-  if (Object.keys(updates).length === 0) {
+  const roleInBody = Object.prototype.hasOwnProperty.call(o, "operatingRoles");
+  let newRoles: OrgUnitOperatingRole[] | null = null;
+  if (roleInBody) {
+    const p = parseOperatingRolesInput(o.operatingRoles);
+    if (!p.ok) {
+      return toApiErrorResponse({ error: p.error, code: "BAD_INPUT", status: 400 });
+    }
+    newRoles = p.roles;
+  }
+
+  if (Object.keys(updates).length === 0 && !roleInBody) {
     return toApiErrorResponse({ error: "No changes provided.", code: "BAD_INPUT", status: 400 });
   }
 
+  const selectOut = {
+    id: true,
+    parentId: true,
+    name: true,
+    code: true,
+    kind: true,
+    sortOrder: true,
+    roleAssignments: { select: { role: true } },
+  } as const;
+
   try {
-    const orgUnit = await prisma.orgUnit.update({
-      where: { id },
-      data: updates,
-      select: { id: true, parentId: true, name: true, code: true, kind: true, sortOrder: true },
+    const orgUnit = await prisma.$transaction(async (tx) => {
+      if (Object.keys(updates).length > 0) {
+        await tx.orgUnit.update({ where: { id }, data: updates });
+      }
+      if (roleInBody && newRoles) {
+        await tx.orgUnitRoleAssignment.deleteMany({ where: { orgUnitId: id } });
+        if (newRoles.length > 0) {
+          await tx.orgUnitRoleAssignment.createMany({
+            data: newRoles.map((role) => ({ orgUnitId: id, role })),
+          });
+        }
+      }
+      return tx.orgUnit.findFirst({
+        where: { id, tenantId: tenant.id },
+        select: selectOut,
+      });
     });
-    return NextResponse.json({ orgUnit });
+    if (!orgUnit) {
+      return toApiErrorResponse({ error: "Org unit not found.", code: "NOT_FOUND", status: 404 });
+    }
+    return NextResponse.json({
+      orgUnit: {
+        id: orgUnit.id,
+        parentId: orgUnit.parentId,
+        name: orgUnit.name,
+        code: orgUnit.code,
+        kind: orgUnit.kind,
+        sortOrder: orgUnit.sortOrder,
+        operatingRoles: mapRoleAssignmentsToRoles(orgUnit.roleAssignments),
+      },
+    });
   } catch {
     return toApiErrorResponse({
       error: "Update failed (code may already be in use).",
