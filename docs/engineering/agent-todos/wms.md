@@ -6,7 +6,7 @@
 
 **Source of truth:** `docs/wms/GAP_MAP.md` + PDFs in `docs/wms/`.
 
-**Phased program (WMS + Control Tower):** [`docs/engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md`](../CONTROL_TOWER_WMS_PHASED_ROADMAP.md) — WMS is **Phase 2** in that file (after CT Phase 1 verticals; **Program Phase 0 re-pass** 2026-04-25 refreshed `docs/wms/GAP_MAP.md` _Last updated_).
+**Phased program (WMS + Control Tower):** [`docs/engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md`](../CONTROL_TOWER_WMS_PHASED_ROADMAP.md) — WMS is **Phase 2** in that file. **Tranche handoff (2026-04-26):** **2.1 / 2.2 / 2.4** (replenish) **closed**; optional backlog = **2.3**, dashboard/packing, deferred ❌ — see [roadmap § handoff](../CONTROL_TOWER_WMS_PHASED_ROADMAP.md#program-tranche-handoff-2026-04-26).
 
 ---
 
@@ -36,4 +36,4 @@
 
 ## Hygiene
 
-- [ ] After meaningful WMS PR: refresh `docs/wms/GAP_MAP.md` “Last updated” + row notes.
+- [x] **2026-04-26** — `docs/wms/GAP_MAP.md` _Last updated_ + handoff blockquote; ongoing PRs should still refresh the GAP.

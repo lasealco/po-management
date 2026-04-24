@@ -6,6 +6,8 @@
 
 **Phase A / R1–R2 demo exit (this repo):** setup + receiving/putaway + stock inquiry (ledger + balance filter + CSV) + outbound pick/pack/ship + holds + replenishment tasks + waves + cycle count + inbound ASN fields + **shipment milestones** (log + last milestone in UI) + billing event materialization to CRM account where linked. **Explicitly deferred:** zone hierarchy beyond flat zone/bin, lot master, field-level WMS permission matrix, multi-strategy allocation, dock appointments, VAS/work orders, commercial quotes (see R3).
 
+> **Tranche handoff (2026-04-26):** Optional increments **2.1** (saved ledger), **2.2** (outbound ASN), and **2.4** (REPLENISH source→target) are **closed** on `main`. Remaining WMS GAP **🟡 / ❌** rows are **MVP, deferred, or need a spec** (e.g. **2.3** receiving states) — see [`CONTROL_TOWER_WMS_PHASED_ROADMAP` § Program tranche handoff](../engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md#program-tranche-handoff-2026-04-26).
+
 ## R1 — Foundation (setup, receiving path basics, inquiry, outbound basic, permissions)
 
 | Blueprint area | Repo reality | Notes |
@@ -57,4 +59,4 @@ Handlers live in `src/lib/wms/post-actions.ts` (route stays a thin shell).
 
 _Next optional increments:_ ~~saved ledger views~~ (**landed** 2026-04-23: `WmsSavedLedgerView` + `/api/wms/saved-ledger-views`); ~~**outbound ASN** parity~~ (**landed** 2026-04-25: `OutboundOrder.asnReference` + `requestedShipDate` in payload + `set_outbound_order_asn_fields`); deeper receiving states — not required for Phase A exit above.
 
-_Last updated: 2026-04-25 — `/wms` home **Open shipment map** when actor also has Control Tower view (Phase 3 cross-surface); Phase 2.4 REPLENISH pins; Phase 2.2 outbound ASN; prior: 2026-04-23 Phase 2.1 saved ledger views._
+_Last updated: 2026-04-26 — Program tranche handoff (optional Phase 2 slices + map cross-surface + roadmap table); 2026-04-25 cross-link to CT map, REPLENISH, outbound ASN._

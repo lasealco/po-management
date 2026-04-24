@@ -6,6 +6,8 @@
 
 **Phase note:** The app ships a **credible demo + internal ops depth** slice. PDFs describe **enterprise** depth (integration mesh, full event bus, customer portals at scale). Treat ❌ as “not here yet,” not “forgotten.”
 
+> **Tranche handoff (2026-04-26):** The **phased program** slices we actively executed (Phase **0**, Control Tower **1A–1E**, GAP **near-term 1–4**, WMS **2.1 / 2.2 / 2.4** replenish, Phase **3** map MVP + **3.4** cross-links) are **closed** on `main` — see [`CONTROL_TOWER_WMS_PHASED_ROADMAP` § Program tranche handoff](../engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md#program-tranche-handoff-2026-04-26). Remaining **🟡** cells are **MVP** or “next PR,” not a single open project gap. Ongoing **PDF** parity and **#5** / **#6** are **backlog** issues.
+
 ---
 
 ## R1 — Visibility, workbench, shipment workspace, permissions
@@ -171,6 +173,7 @@ File **one GitHub issue per bullet** when scheduling (titles are suggestions; ke
 
 | Date | Change |
 |------|--------|
+| 2026-04-26 | **Program handoff (docs only):** intro blockquote + roadmap **§ Program tranche handoff** — phased line closed; backlog = issues + 🟡 MVP rows. |
 | 2026-04-25 | **Near-term #4 (Assist):** `POST /api/control-tower/assist` + Search — **`postActionToolCatalog`**, `canExecuteControlTowerPostActions`, `assist-tool-catalog.ts`, `assist-retrieval` snippet. |
 | 2026-04-25 | **Docs:** Assist vs chatbot PDF — **Phase 1 sequencing** (1A→1E) and **no monolithic chatbot v2**; `CONTROL_TOWER_WMS_PHASED_ROADMAP`, near-term intro, R3 guardrail, `control-tower.md`. |
 | 2026-04-25 | **Phase 1E (Inbound):** `payloadFormat` **`sea_port_track_v1`**, `inbound-carrier-mappers.ts` (`mapSeaPortTrackEventToGenericCarrierPayload`), Vitest for mapper + webhook; assist **inbound-webhook** snippet. **GAP** R4, route table, near-term #3, suggested PR. |

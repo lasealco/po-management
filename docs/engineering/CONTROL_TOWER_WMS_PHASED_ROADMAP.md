@@ -104,6 +104,25 @@ Work **one issue at a time** (parallel agents only on **non-overlapping paths**)
 
 ---
 
+## Program tranche handoff (2026-04-26)
+
+**Intent:** “Closing gaps” in this repo does **not** mean every 🟡 row in the PDF **GAP** tables is enterprise-complete — the maps are **evergreen** (MVP + deferred). This section records what is **closed for the current program line** (merged on `main` + honest docs) so the team can **move on**; remaining work is **backlog** (issues), not a hidden failure state.
+
+| Area | Status for this tranche |
+|------|-------------------------|
+| **Phase 0** | **Closed** — hygiene, GAP re-checks, `npm run verify:apihub` (see Phase 0 table). |
+| **Control Tower Phase 1 (1A–1E)** | **Closed** — per roadmap table (Assist embeddings, report PDF pass, workbench bulk + assignee API, `openExceptionRatePct`, `sea_port_track_v1` + mapper + tests). |
+| **CT GAP near-term 1–4** | **Closed** — (1) GAP living doc, (2) exception catalog + API, (3) inbound webhooks + formats + tests, (4) Assist: read-only `postActionToolCatalog` on assist + Search. |
+| **WMS Phase 2 (tracked slices)** | **Closed** for **2.1** (saved ledger), **2.2** (outbound ASN), **2.4** REPLENISH **source → target** in open tasks. **Not** 2.3 (receiving state machine — spec first). |
+| **Phase 3 (map)** | **MVP + partial 3.4 closed** — `/control-tower/map`, `map-pins`, dual-grant WMS↔map links. **Open:** floor / globe / CRM map layers. |
+| **Sequencing policy** | **Closed in docs** — Phase 1 vertical PRs vs full chatbot PDF; no monolithic “chatbot v2.” |
+
+**Explicit backlog (not blockers to exit this tranche):** Assist **audited tool calls** (suggested next PR), full **chatbot / sessions / PDF** parity ([issue #6](https://github.com/lasealco/po-management/issues/6), GAP R3, near-term **#5–#7**), report per-row exception analytics ([issue #5](https://github.com/lasealco/po-management/issues/5)), WMS **2.3** + optional polish (packing, dashboard), deferred **❌** epics in `wms/GAP_MAP` (appointments, VAS, commercial quotes), Phase **3.4** floor/globe.
+
+**Next step:** file **new** GitHub issues for any backlog line you schedule; the phased **0→3** line as documented here is **handed off**.
+
+---
+
 ## How to use this in Cursor / agents
 
 1. **Pick a phase** (0 → 1 → 2; 3 when product greenlights the epic).
@@ -117,6 +136,7 @@ Work **one issue at a time** (parallel agents only on **non-overlapping paths**)
 
 | Date | Change |
 |------|--------|
+| 2026-04-26 | **Program tranche handoff:** table **“closed vs backlog”** (Phases 0–3, near-term 1–4, WMS 2.1/2.2/2.4). |
 | 2026-04-25 | **Near-term #4 slice:** `postActionToolCatalog` on **`POST …/assist`** + Search UI (`assist-tool-catalog.ts`); `controltower/GAP_MAP`. |
 | 2026-04-25 | **Phase 1 doc:** Assist/chatbot PDF gap vs **1A→1E vertical PRs** (avoid monolithic chatbot v2). |
 | 2026-04-25 | **Control Tower Phase 3.4 (partial):** `/wms` → shipment map and `/control-tower/map` → WMS when dual grants; `CONTROL_TOWER_OPERATIONS_MAP_PHASE3.md`. |

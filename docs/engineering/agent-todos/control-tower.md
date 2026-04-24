@@ -8,41 +8,40 @@
 
 **Engineering sequence (read this before a big Assist change):** The biggest gap to `control_tower_search_and_chatbot_spec_*.pdf` is **Assist + RAG + tools + chat sessions**—but shipping that as one PR is the wrong default. **Sequence along Phase 1** in the roadmap table (**1A → 1B → 1C → 1D → 1E**, one **vertical** per issue/PR) and carve **Assist** work into the **smallest** follow-ups in `GAP_MAP` near-term **#4** (not “chatbot v2”). R3 PDF checklist + [#6](https://github.com/lasealco/po-management/issues/6) for planning, not a monolithic runtime drop.
 
-**Phased program (CT + WMS together):** [`docs/engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md`](../CONTROL_TOWER_WMS_PHASED_ROADMAP.md) (phases 0–3, exit criteria). **Phase 0 re-pass complete** (2026-04-25) — `verify:apihub`, GAP near-term re-check; see triage block below. **Phase 3.4 (partial, 2026-04-25):** `/wms` home → **Open shipment map**; `/control-tower/map` → **WMS workspace**; when the actor has both `org.wms` and `org.controltower` view.
+**Phased program (CT + WMS together):** [`docs/engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md`](../CONTROL_TOWER_WMS_PHASED_ROADMAP.md) (phases 0–3, exit criteria). **Tranche handoff (2026-04-26):** Phases **0** + **1A–1E** + GAP **near-term 1–4** + **Phase 3** map MVP + **3.4** cross-surface are **closed** for this line — see [§ Program tranche handoff](../CONTROL_TOWER_WMS_PHASED_ROADMAP.md#program-tranche-handoff-2026-04-26). Ongoing = **backlog** (issues, 🟡 MVP rows in GAP).
 
-### Phase 0 triage (2026-04-25 re-pass)
+### Phase 0 triage (standing)
 
-- **[#3](https://github.com/lasealco/po-management/issues/3) (GAP refresh)** — Re-pass logged in `controltower/GAP_MAP.md` + `CONTROL_TOWER_WMS_PHASED_ROADMAP.md` changelog; maintainers may **close** #3 or keep as recurring hygiene.
-- **[#4](https://github.com/lasealco/po-management/issues/4) (inbound webhook tests)** — `src/lib/control-tower/inbound-webhook.test.ts` exists with idempotency + batch coverage; re-read #4 for any **remaining** acceptance; close or add follow-up issues for gaps.
-- **[#5](https://github.com/lasealco/po-management/issues/5) (report / exceptions per row)** — **Product/engineering** — follow latest issue comments vs `report-engine` + workbench; not changed in Phase 0.
-- **[#6](https://github.com/lasealco/po-management/issues/6) (Assist / chatbot checklist)** — `GAP_MAP` **R3** subsection is the **docs-only** parity checklist; runtime unchanged. Close or keep #6 for future embedding/tool work per Phase 1.
-
----
-
-## Already filed as GitHub issues (do those first)
-
-Track in GitHub; check off here when merged.
-
-- [ ] **#3** — Refresh GAP_MAP near-term backlog (docs only)
-- [ ] **#4** — Vitest for inbound webhook (`inbound-webhook.ts`)
-- [ ] **#5** — Report engine: open **exceptions** counted **per exception row**, dimension = catalog code + label (see latest comment on #5)
-- [ ] **#6** — Assist/chatbot: spec parity checklist in GAP_MAP (docs only)
+- **[#3](https://github.com/lasealco/po-management/issues/3) (GAP refresh)** — **Met on `main` (2026-04-26 re-pass);** maintainers may **close** #3 on GitHub or keep as hygiene.
+- **[#4](https://github.com/lasealco/po-management/issues/4) (inbound webhook tests)** — `src/lib/control-tower/inbound-webhook.test.ts` + mapper tests; **met on `main` —** close on GitHub if issue acceptance matches.
+- **[#5](https://github.com/lasealco/po-management/issues/5) (report / exceptions per row)** — **Backlog** — product/eng vs `report-engine`.
+- **[#6](https://github.com/lasealco/po-management/issues/6) (Assist / chatbot checklist)** — **Backlog** (PDF parity); planning checklist lives in `GAP_MAP` R3; runtime = incremental PRs (not one drop).
 
 ---
 
-## Next slices (from GAP_MAP “near-term” / partials)
+## Filed issues (backlog; not tranche blockers)
 
-Turn each into an **Agent task** issue before starting if not already covered above.
+| Status | Item |
+|--------|------|
+| (maintainers) | **#3** / **#4** — close on GitHub if comments agree after handoff. |
+| Open | **#5** — per-exception report dimension / product. |
+| Open | **#6** — full chatbot / sessions vs PDF. |
 
-- [x] **Assist / chatbot — embedding hybrid (Phase 1A)** — `assist-retrieval-embed.ts` + `CONTROL_TOWER_ASSIST_EMBEDDINGS=1`; keyword fallback.
-- [x] **Assist — read-only POST action catalog (near-term #4 slice)** — `assist-tool-catalog.ts` + `postActionToolCatalog` / `canExecuteControlTowerPostActions` on **`POST /api/control-tower/assist`**; Search page disclosure; `assist-retrieval` snippet `control-tower-post-actions` (**2026-04-25**). **Next:** audited tool calls (suggested next PR) or re-rank.
-- [ ] **Reporting PDFs** — richer branded templates vs `control_tower_reporting_and_kpi_spec` (likely needs design input first).
-- [ ] **Workbench** — saved ledger views (if still desired after GAP “optional increments”).
-- [ ] **Inbound** — carrier-specific mapper example + tests (extend `inbound-webhook.ts` patterns).
-- [ ] **Command center / ops** — deeper parity with PDF where GAP shows 🟡.
+---
+
+## Next slices (from GAP_MAP — post-handoff)
+
+These are **optional** product bets, not unfinished “program gaps”:
+
+- [x] **Assist** — Phase **1A** + near-term **#4** tool catalog (2026-04-25/26). **Next:** [audited tool calls](../../controltower/GAP_MAP.md#suggested-next-prs) (suggested PR).
+- [ ] **Reporting PDFs** — multi-section / tenant logo UX if product wants (beyond 1B).
+- [x] **Workbench bulk** — 1C landed (ops + alerts bulk). **Next:** GAP **near-term #6** (exception owner bulk or default columns).
+- [x] **Inbound** — 1E `sea_port_track_v1` + mapper. **Next:** next carrier `payloadFormat`.
+- [x] **Report engine** — 1D `openExceptionRatePct`. **Next:** GAP **#7** (rootCause / NC).
+- [ ] **Command center / ops** — deeper PDF parity where GAP shows 🟡 (optional).
 
 ---
 
 ## Hygiene
 
-- [ ] After each CT PR: update **changelog** + “Near-term build order” in `docs/controltower/GAP_MAP.md` (can be its own small issue).
+- [x] **2026-04-26** — GAP + roadmap handoff; future PRs should still **append changelog** in `controltower/GAP_MAP.md` when changing CT.
