@@ -32,7 +32,7 @@ Track in GitHub; check off here when merged.
 
 Turn each into an **Agent task** issue before starting if not already covered above.
 
-- [ ] **Assist / chatbot** — embeddings or vector retrieval spike (after doc checklist in #6); keep inside `assist*.ts` + docs until approved.
+- [x] **Assist / chatbot — embedding hybrid (Phase 1A)** — `assist-retrieval-embed.ts` + `CONTROL_TOWER_ASSIST_EMBEDDINGS=1`; keyword fallback. **Next:** audited tool calls or re-rank (separate issues).
 - [ ] **Reporting PDFs** — richer branded templates vs `control_tower_reporting_and_kpi_spec` (likely needs design input first).
 - [ ] **Workbench** — saved ledger views (if still desired after GAP “optional increments”).
 - [ ] **Inbound** — carrier-specific mapper example + tests (extend `inbound-webhook.ts` patterns).

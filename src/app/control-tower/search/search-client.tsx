@@ -40,6 +40,7 @@ export function ControlTowerSearchClient() {
   const [suggested, setSuggested] = useState<AssistSuggestedFilters | null>(null);
   const [llmAvailable, setLlmAvailable] = useState(false);
   const [usedLlm, setUsedLlm] = useState(false);
+  const [assistDocEmbeddings, setAssistDocEmbeddings] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   /** Shown when assist fails but search still runs on raw / partial input. */
@@ -77,7 +78,7 @@ export function ControlTowerSearchClient() {
       let assistJson: {
         hints?: string[];
         suggestedFilters?: AssistSuggestedFilters;
-        capabilities?: { llmAssist?: boolean };
+        capabilities?: { llmAssist?: boolean; assistDocEmbeddings?: boolean };
         usedLlm?: boolean;
         error?: string;
       } = {};
@@ -91,11 +92,13 @@ export function ControlTowerSearchClient() {
         setSuggested(assistJson.suggestedFilters ?? {});
         setLlmAvailable(Boolean(assistJson.capabilities?.llmAssist));
         setUsedLlm(Boolean(assistJson.usedLlm));
+        setAssistDocEmbeddings(Boolean(assistJson.capabilities?.assistDocEmbeddings));
       } else {
         setHints([]);
         setSuggested(null);
         setLlmAvailable(false);
         setUsedLlm(false);
+        setAssistDocEmbeddings(false);
         const detail = assistJson.error?.trim() || assistRes.statusText || `HTTP ${assistRes.status}`;
         setAssistWarn(
           `Assist unavailable (${detail}). Search is using your raw query only — structured tokens were not applied.`,
@@ -189,6 +192,12 @@ export function ControlTowerSearchClient() {
       )}
       {usedLlm ? (
         <p className="text-xs font-medium text-violet-800">Last search used AI-assisted filter merge.</p>
+      ) : null}
+      {assistDocEmbeddings ? (
+        <p className="text-xs text-zinc-600">
+          Assist doc hints used <strong>semantic</strong> retrieval over the Control Tower help corpus (env{" "}
+          <code className="rounded bg-zinc-100 px-1">CONTROL_TOWER_ASSIST_EMBEDDINGS=1</code>).
+        </p>
       ) : null}
       {structuredSummary}
       <div className="flex flex-wrap gap-2 text-xs">

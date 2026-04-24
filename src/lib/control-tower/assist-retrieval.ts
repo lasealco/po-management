@@ -1,6 +1,7 @@
 /**
- * Keyword retrieval for Search & assist — no embeddings; scores operator queries
- * against a small in-repo corpus (doc-style notes aligned with Control Tower specs).
+ * Lexical (keyword) retrieval for Search & assist; scores operator queries against a
+ * small in-repo corpus. Optional **semantic** hybrid is in `assist-retrieval-embed.ts`
+ * when `CONTROL_TOWER_ASSIST_EMBEDDINGS=1` and `OPENAI_API_KEY` are set.
  */
 
 export type AssistRetrievedSnippet = {
@@ -364,6 +365,21 @@ function termScore(queryLc: string, term: string): number {
 
 function snippetScore(queryLc: string, s: AssistRetrievedSnippet): number {
   return s.terms.reduce((acc, term) => acc + termScore(queryLc, term), 0);
+}
+
+/** Raw keyword hit counts per corpus id (for hybrid embedding + keyword ranking). */
+export function keywordScoresForAllSnippets(raw: string): Map<string, number> {
+  const queryLc = raw.trim().toLowerCase();
+  const m = new Map<string, number>();
+  for (const s of SNIPPETS) {
+    m.set(s.id, snippetScore(queryLc, s));
+  }
+  return m;
+}
+
+/** Stable corpus for embedding-backed assist (Phase 1A); same rows as keyword retrieval. */
+export function getAssistRetrievalCorpus(): readonly AssistRetrievedSnippet[] {
+  return SNIPPETS;
 }
 
 export type AssistRetrievalResult = {

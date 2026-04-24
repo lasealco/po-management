@@ -1,9 +1,11 @@
 import { assistControlTowerQuery, type AssistSuggestedFilters } from "@/lib/control-tower/assist";
-import { retrieveAssistSnippets } from "@/lib/control-tower/assist-retrieval";
+import { retrieveAssistSnippetsWithOptionalEmbeddings } from "@/lib/control-tower/assist-retrieval-embed";
 import { mergeAssistSuggestedFilters, sanitizeAssistSuggestedFilters } from "@/lib/control-tower/assist-sanitize";
 
 export type ControlTowerAssistCapabilities = {
   llmAssist: boolean;
+  /** True when `CONTROL_TOWER_ASSIST_EMBEDDINGS=1` and semantic ranking was applied to doc snippets. */
+  assistDocEmbeddings?: boolean;
 };
 
 export type ControlTowerAssistResult = {
@@ -147,7 +149,7 @@ async function fetchLlmAssistPatch(params: {
     "You may receive savedControlTowerReports (name, shared, mine). Use only to write hints — never add unknown keys to suggestedFilters.",
     "If the query clearly references one saved report by name, hint to open Control Tower → Reports to run it; shipment search filters stay separate.",
     "You may receive savedWorkbenchFilterNames ({ name } only). Use only for hints — suggest Workbench to apply a saved view; never put view names into suggestedFilters.",
-    "You may receive retrievedDocSnippets (short internal notes from keyword retrieval). Use only to improve hint wording and disambiguation; never invent shipment ids, cuids, or secrets. Do not add suggestedFilters keys that contradict ruleSuggestedFilters unless the user query clearly overrides.",
+    "You may receive retrievedDocSnippets (short internal notes from keyword and/or optional semantic retrieval over the same corpus). Use only to improve hint wording and disambiguation; never invent shipment ids, cuids, or secrets. Do not add suggestedFilters keys that contradict ruleSuggestedFilters unless the user query clearly overrides.",
   ].join(" ");
 
   const user = JSON.stringify({
@@ -203,16 +205,24 @@ export async function runControlTowerAssist(params: {
   const rule = assistControlTowerQuery(params.raw);
   const filterHints = savedWorkbenchFilterAssistHints(params.raw, filterBrief);
   const reportHints = savedReportAssistHints(params.raw, reportBrief);
-  const retrieval = retrieveAssistSnippets(params.raw, { maxHints: 2, maxLlmDetails: 2, minScore: 1 });
+  const retrieval = await retrieveAssistSnippetsWithOptionalEmbeddings(params.raw, {
+    maxHints: 2,
+    maxLlmDetails: 2,
+    minScore: 1,
+  });
   const prefix = [...filterHints, ...reportHints, ...retrieval.hintLines];
   const baseHints = prefix.length ? [...prefix, ...rule.hints] : rule.hints;
   const capable = controlTowerAssistLlmCapable();
+  const capBase = {
+    llmAssist: capable,
+    assistDocEmbeddings: retrieval.usedEmbeddings,
+  };
 
   if (!capable) {
     return {
       hints: baseHints,
       suggestedFilters: sanitizeAssistSuggestedFilters(rule.suggestedFilters),
-      capabilities: { llmAssist: capable },
+      capabilities: capBase,
       usedLlm: false,
     };
   }
@@ -230,7 +240,7 @@ export async function runControlTowerAssist(params: {
       return {
         hints: ["AI assist did not return usable JSON; using rule-based filters only.", ...baseHints],
         suggestedFilters: sanitizeAssistSuggestedFilters(rule.suggestedFilters),
-        capabilities: { llmAssist: true },
+        capabilities: { ...capBase, llmAssist: true },
         usedLlm: false,
       };
     }
@@ -246,14 +256,14 @@ export async function runControlTowerAssist(params: {
     return {
       hints: mergedHints.length ? mergedHints : baseHints,
       suggestedFilters: sanitizeAssistSuggestedFilters(mergedFilters),
-      capabilities: { llmAssist: true },
+      capabilities: { ...capBase, llmAssist: true },
       usedLlm: true,
     };
   } catch {
     return {
       hints: ["AI assist failed; using rule-based filters only.", ...baseHints],
       suggestedFilters: sanitizeAssistSuggestedFilters(rule.suggestedFilters),
-      capabilities: { llmAssist: true },
+      capabilities: { ...capBase, llmAssist: true },
       usedLlm: false,
     };
   }

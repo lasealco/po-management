@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { retrieveAssistSnippets } from "./assist-retrieval";
+import { getAssistRetrievalCorpus, keywordScoresForAllSnippets, retrieveAssistSnippets } from "./assist-retrieval";
 
 describe("retrieveAssistSnippets", () => {
   it("returns empty result for short queries", () => {
@@ -35,5 +35,11 @@ describe("retrieveAssistSnippets", () => {
     const r = retrieveAssistSnippets("webhook", { minScore: 50 });
     expect(r.hintLines).toEqual([]);
     expect(r.matchedIds).toEqual([]);
+  });
+
+  it("keywordScoresForAllSnippets and corpus export", () => {
+    const m = keywordScoresForAllSnippets("webhook");
+    expect(m.get("inbound-webhook") ?? 0).toBeGreaterThan(0);
+    expect(getAssistRetrievalCorpus().length).toBeGreaterThan(5);
   });
 });
