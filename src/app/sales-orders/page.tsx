@@ -46,7 +46,10 @@ export default async function SalesOrdersPage({
     where,
     orderBy: { createdAt: "desc" },
     take: 200,
-    include: { _count: { select: { shipments: true } } },
+    include: {
+      _count: { select: { shipments: true } },
+      servedOrgUnit: { select: { id: true, name: true, code: true, kind: true } },
+    },
   });
 
   const hasFilters = Boolean(listQuery.status.trim() || listQuery.q.trim());
@@ -88,6 +91,7 @@ export default async function SalesOrdersPage({
               <th className="px-3 py-2">SO</th>
               <th className="px-3 py-2">Status</th>
               <th className="px-3 py-2">Customer</th>
+              <th className="px-3 py-2">For org</th>
               <th className="px-3 py-2">External ref</th>
               <th className="px-3 py-2">Req. delivery</th>
               <th className="px-3 py-2">Shipments</th>
@@ -96,7 +100,7 @@ export default async function SalesOrdersPage({
           <tbody className="divide-y divide-zinc-200 text-zinc-900">
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-3 py-8 text-center text-zinc-500">
+                <td colSpan={7} className="px-3 py-8 text-center text-zinc-500">
                   {emptyCopy}
                 </td>
               </tr>
@@ -113,6 +117,11 @@ export default async function SalesOrdersPage({
                   </td>
                   <td className="px-3 py-2">{r.status}</td>
                   <td className="px-3 py-2">{r.customerName}</td>
+                  <td className="px-3 py-2">
+                    {r.servedOrgUnit
+                      ? [r.servedOrgUnit.name, r.servedOrgUnit.code].filter(Boolean).join(" · ") || "—"
+                      : "—"}
+                  </td>
                   <td className="px-3 py-2">{r.externalRef || "—"}</td>
                   <td className="px-3 py-2">
                     {r.requestedDeliveryDate ? new Date(r.requestedDeliveryDate).toLocaleDateString() : "—"}

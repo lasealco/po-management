@@ -14,6 +14,7 @@ export function SalesOrderCreateForm({
   shipmentHint,
   crmAccounts,
   forwarderSuppliers = [],
+  orgUnits = [],
 }: {
   soNumberHint: string;
   shipmentHint: {
@@ -28,6 +29,7 @@ export function SalesOrderCreateForm({
     accountType: string;
   }>;
   forwarderSuppliers?: Array<{ id: string; name: string; legalName: string | null }>;
+  orgUnits?: Array<{ id: string; name: string; code: string; kind: string }>;
 }) {
   const router = useRouter();
   const [soNumber, setSoNumber] = useState(soNumberHint);
@@ -40,6 +42,7 @@ export function SalesOrderCreateForm({
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [servedOrgUnitId, setServedOrgUnitId] = useState("");
   const customerOptions = useMemo(() => {
     const crmNameLower = new Set(crmAccounts.map((a) => a.name.trim().toLowerCase()));
     const crmOpts = crmAccounts.map((a) => {
@@ -79,6 +82,7 @@ export function SalesOrderCreateForm({
         externalRef: externalRef.trim() || null,
         requestedDeliveryDate: requestedDeliveryDate || null,
         shipmentId: shipmentHint?.id || null,
+        servedOrgUnitId: servedOrgUnitId.trim() || null,
       }),
     });
     const parsed: unknown = await res.json();
@@ -146,6 +150,27 @@ export function SalesOrderCreateForm({
             className="mt-1 w-full rounded border border-zinc-300 px-3 py-2"
           />
         </label>
+        {orgUnits.length > 0 ? (
+          <label className="text-sm font-medium text-zinc-800">
+            Order for (optional)
+            <span className="mt-0.5 block text-xs font-normal text-zinc-500">
+              Which in-tenant org this sales order is for, if you need a dimension beyond customer.
+            </span>
+            <select
+              value={servedOrgUnitId}
+              onChange={(e) => setServedOrgUnitId(e.target.value)}
+              className="mt-1 w-full rounded border border-zinc-300 px-3 py-2"
+            >
+              <option value="">Not specified</option>
+              {orgUnits.map((ou) => (
+                <option key={ou.id} value={ou.id}>
+                  {ou.name}
+                  {ou.code ? ` (${ou.code})` : ""} · {ou.kind}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
       </section>
 
       <div className="mt-4 flex flex-wrap gap-3 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">

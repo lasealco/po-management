@@ -14,6 +14,7 @@ import {
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { getPurchaseOrderScopeWhere } from "@/lib/org-scope";
 import { optionalStringField } from "@/lib/supplier-patch";
+import { resolveServedOrgUnitIdForTenant } from "@/lib/served-org-unit";
 import { prisma } from "@/lib/prisma";
 import { addTariffShipmentApplicationSourceLabel } from "@/lib/tariff/tariff-shipment-application-labels";
 
@@ -63,6 +64,7 @@ export async function GET(
   const order = await prisma.purchaseOrder.findFirst({
     where: { id, tenantId: tenant.id, ...(poScope ?? {}) },
     include: {
+      servedOrgUnit: { select: { id: true, name: true, code: true, kind: true } },
       customerCrmAccount: { select: { id: true, name: true, legalName: true } },
       status: true,
       supplier: {
@@ -439,6 +441,14 @@ export async function GET(
       },
       supplier: order.supplier,
       requester: order.requester,
+      servedOrgUnit: order.servedOrgUnit
+        ? {
+            id: order.servedOrgUnit.id,
+            name: order.servedOrgUnit.name,
+            code: order.servedOrgUnit.code,
+            kind: order.servedOrgUnit.kind,
+          }
+        : null,
       splitParentId: order.splitParentId,
       splitParent: order.splitParent
         ? {
@@ -706,6 +716,32 @@ export async function PATCH(
     }
     if (parsed !== undefined) {
       data.requestedDeliveryDate = parsed;
+    }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(o, "servedOrgUnitId")) {
+    if (patchIsSupplier) {
+      return toApiErrorResponse({
+        error: "servedOrgUnitId cannot be set from the supplier portal.",
+        code: "FORBIDDEN",
+        status: 403,
+      });
+    }
+    const raw = o.servedOrgUnitId;
+    if (raw === null || raw === "") {
+      data.servedOrgUnit = { disconnect: true };
+    } else if (typeof raw === "string") {
+      const resolved = await resolveServedOrgUnitIdForTenant(tenant.id, raw);
+      if (!resolved.ok) {
+        return toApiErrorResponse({ error: resolved.error, code: "BAD_INPUT", status: 400 });
+      }
+      if (resolved.value) {
+        data.servedOrgUnit = { connect: { id: resolved.value } };
+      } else {
+        data.servedOrgUnit = { disconnect: true };
+      }
+    } else {
+      return toApiErrorResponse({ error: "Invalid servedOrgUnitId.", code: "BAD_INPUT", status: 400 });
     }
   }
 

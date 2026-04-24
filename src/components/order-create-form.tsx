@@ -79,6 +79,8 @@ type LineDraft = {
   unitPrice: string;
 };
 
+type OrgUnitOption = { id: string; name: string; code: string; kind: string };
+
 export function OrderCreateForm({
   buyerUser,
   canSendDirect,
@@ -86,6 +88,7 @@ export function OrderCreateForm({
   warehouses,
   forwarders,
   products,
+  orgUnits = [],
 }: {
   buyerUser: { id: string; name: string; email: string };
   canSendDirect: boolean;
@@ -93,6 +96,8 @@ export function OrderCreateForm({
   warehouses: WarehouseOption[];
   forwarders: ForwarderOption[];
   products: ProductOption[];
+  /** In-tenant org units for "Order for" (optional). */
+  orgUnits?: OrgUnitOption[];
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -117,6 +122,7 @@ export function OrderCreateForm({
   const [originCode, setOriginCode] = useState("");
   const [destinationCode, setDestinationCode] = useState("");
   const [tagsInput, setTagsInput] = useState("");
+  const [servedOrgUnitId, setServedOrgUnitId] = useState("");
   const [requestedDeliveryDate, setRequestedDeliveryDate] = useState("");
   const [shipToName, setShipToName] = useState("");
   const [shipToLine1, setShipToLine1] = useState("");
@@ -340,6 +346,7 @@ export function OrderCreateForm({
         discountPercent: Number(discountPercent),
         discountAmount: Number(discountAmount),
         items: payloadLines,
+        servedOrgUnitId: servedOrgUnitId.trim() || null,
       }),
     });
     const parsed: unknown = await response.json();
@@ -434,6 +441,32 @@ export function OrderCreateForm({
         <p className="mb-4 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
           {error}
         </p>
+      ) : null}
+
+      {orgUnits.length > 0 ? (
+        <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
+          <label className="flex max-w-xl flex-col gap-1 text-sm">
+            <span className="font-medium text-zinc-800">Order for (org unit)</span>
+            <span className="text-xs font-normal text-zinc-500">
+              Optional. Which company / site in your hierarchy this purchase is for (e.g. centralized
+              procurement buying for a subsidiary). Does not change requester; it records commercial
+              context.
+            </span>
+            <select
+              className="mt-1 rounded-md border border-zinc-300 bg-white px-3 py-2"
+              value={servedOrgUnitId}
+              onChange={(e) => setServedOrgUnitId(e.target.value)}
+              disabled={busy}
+            >
+              <option value="">— Not set —</option>
+              {orgUnits.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name} ({u.code}) · {u.kind}
+                </option>
+              ))}
+            </select>
+          </label>
+        </section>
       ) : null}
 
       <section className="mb-4 grid gap-3 rounded-lg border border-zinc-200 bg-white p-4 sm:grid-cols-3">

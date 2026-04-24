@@ -4,6 +4,7 @@ import { AccessDenied } from "@/components/access-denied";
 import { OrderDetail } from "@/components/order-detail";
 import { WorkflowHeader } from "@/components/workflow-header";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +47,12 @@ export default async function OrderPage({
   const canEditHeader = viewerHas(access.grantSet, "org.orders", "edit");
   const canViewProducts = viewerHas(access.grantSet, "org.products", "view");
 
+  const orgUnitOptions = await prisma.orgUnit.findMany({
+    where: { tenantId: access.tenant.id },
+    orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+    select: { id: true, name: true, code: true, kind: true },
+  });
+
   return (
     <div className="min-h-screen bg-zinc-50">
       <main className="mx-auto w-full max-w-7xl px-6 pt-8">
@@ -74,6 +81,7 @@ export default async function OrderPage({
           canEditHeader={canEditHeader}
           canViewProducts={canViewProducts}
           canViewInternalNotes={canEditHeader}
+          orgUnitOptions={orgUnitOptions}
         />
       </Suspense>
     </div>

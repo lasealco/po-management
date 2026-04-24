@@ -55,7 +55,7 @@ export default async function NewSalesOrderPage({
         })
       : Promise.resolve(null),
   ]);
-  const [crmAccounts, forwarderSuppliers] = await Promise.all([
+  const [crmAccounts, forwarderSuppliers, orgUnits] = await Promise.all([
     prisma.crmAccount.findMany({
       where: { tenantId: tenant.id, lifecycle: "ACTIVE" },
       orderBy: { name: "asc" },
@@ -71,6 +71,11 @@ export default async function NewSalesOrderPage({
       orderBy: { name: "asc" },
       select: { id: true, name: true, legalName: true },
     }),
+    prisma.orgUnit.findMany({
+      where: { tenantId: tenant.id },
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      select: { id: true, name: true, code: true, kind: true },
+    }),
   ]);
 
   return (
@@ -80,6 +85,7 @@ export default async function NewSalesOrderPage({
         shipmentHint={shipmentHint}
         crmAccounts={crmAccounts}
         forwarderSuppliers={forwarderSuppliers}
+        orgUnits={orgUnits}
       />
     </div>
   );

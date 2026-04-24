@@ -519,6 +519,8 @@ model OrgUnit {
   children OrgUnit[] @relation("OrgUnitHierarchy")
   usersPrimary User[] @relation("UserPrimaryOrgUnit")
   roleAssignments OrgUnitRoleAssignment[]
+  servedOnPurchaseOrders PurchaseOrder[] @relation("PurchaseOrderServedOrg")
+  servedOnSalesOrders   SalesOrder[]   @relation("SalesOrderServedOrg")
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -1147,6 +1149,8 @@ model PurchaseOrder {
   splitParentId String?
   splitIndex    Int?
   splitProposalId String?
+  /// Optional org (subsidiary / site) this PO is for — centralized procurement; see Phase 2 in `docs/organization-dimensions-and-delivery-phases.md`.
+  servedOrgUnitId String?
   /// 3PL / BCO: commercial shipper customer (same tenant `CrmAccount` as `Shipment.customerCrmAccountId`); optional.
   customerCrmAccountId String?
   /// Buyer / internal reference (e.g. requisition #).
@@ -1172,6 +1176,7 @@ model PurchaseOrder {
   tenant        Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   workflow      Workflow             @relation(fields: [workflowId], references: [id], onDelete: Restrict)
   requester     User                 @relation(fields: [requesterId], references: [id], onDelete: Restrict)
+  servedOrgUnit  OrgUnit?  @relation("PurchaseOrderServedOrg", fields: [servedOrgUnitId], references: [id], onDelete: SetNull)
   customerCrmAccount CrmAccount?     @relation("PurchaseOrderCustomerCrm", fields: [customerCrmAccountId], references: [id], onDelete: SetNull)
   supplier      Supplier?            @relation(fields: [supplierId], references: [id], onDelete: SetNull)
   status        WorkflowStatus       @relation(fields: [statusId], references: [id], onDelete: Restrict)
@@ -1192,6 +1197,7 @@ model PurchaseOrder {
   @@index([splitParentId])
   @@index([splitProposalId])
   @@index([tenantId, customerCrmAccountId])
+  @@index([tenantId, servedOrgUnitId])
 }
 
 model PurchaseOrderItem {
@@ -1219,6 +1225,8 @@ model SalesOrder {
   soNumber            String
   status              SalesOrderStatus @default(DRAFT)
   customerName        String
+  /// Optional org this SO is for (same intent as `PurchaseOrder.servedOrgUnitId`).
+  servedOrgUnitId     String?
   customerCrmAccountId String?
   externalRef         String?
   requestedShipDate   DateTime?
@@ -1230,6 +1238,7 @@ model SalesOrder {
   updatedAt           DateTime         @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  servedOrgUnit OrgUnit? @relation("SalesOrderServedOrg", fields: [servedOrgUnitId], references: [id], onDelete: SetNull)
   customerCrmAccount CrmAccount? @relation(fields: [customerCrmAccountId], references: [id], onDelete: SetNull)
   createdBy User @relation(fields: [createdById], references: [id], onDelete: Restrict)
   shipments Shipment[]
@@ -1237,6 +1246,7 @@ model SalesOrder {
   @@unique([tenantId, soNumber])
   @@index([tenantId, status, createdAt])
   @@index([customerCrmAccountId])
+  @@index([tenantId, servedOrgUnitId])
 }
 
 enum ShipmentStatus {

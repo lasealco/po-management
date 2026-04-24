@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { AccessDenied } from "@/components/access-denied";
+import { SalesOrderServedOrgField } from "@/components/sales-order-served-org-field";
 import { SalesOrderStatusActions } from "@/components/sales-order-status-actions";
 import { WorkflowHeader } from "@/components/workflow-header";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
@@ -38,23 +39,31 @@ export default async function SalesOrderDetailPage({
   const listBackQs = salesOrdersListQueryString(parseSalesOrdersListQueryFromNext(rawList));
   const listHref = listBackQs ? `/sales-orders?${listBackQs}` : "/sales-orders";
 
-  const row = await prisma.salesOrder.findFirst({
-    where: { id, tenantId: tenant.id },
-    include: {
-      shipments: {
-        orderBy: { createdAt: "desc" },
-        select: {
-          id: true,
-          shipmentNo: true,
-          status: true,
-          transportMode: true,
-          carrier: true,
-          trackingNo: true,
-          createdAt: true,
+  const [row, orgUnitOptions] = await Promise.all([
+    prisma.salesOrder.findFirst({
+      where: { id, tenantId: tenant.id },
+      include: {
+        servedOrgUnit: { select: { id: true, name: true, code: true, kind: true } },
+        shipments: {
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            shipmentNo: true,
+            status: true,
+            transportMode: true,
+            carrier: true,
+            trackingNo: true,
+            createdAt: true,
+          },
         },
       },
-    },
-  });
+    }),
+    prisma.orgUnit.findMany({
+      where: { tenantId: tenant.id },
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      select: { id: true, name: true, code: true, kind: true },
+    }),
+  ]);
   if (!row) {
     return (
       <div className="min-h-screen bg-zinc-50 px-6 py-16">
@@ -65,6 +74,7 @@ export default async function SalesOrderDetailPage({
   const activeShipmentCount = row.shipments.filter((s) =>
     ["SHIPPED", "VALIDATED", "BOOKED", "IN_TRANSIT"].includes(s.status),
   ).length;
+  const canEditServedOrg = viewerHas(access.grantSet, "org.orders", "edit");
 
   return (
     <main className="mx-auto w-full max-w-5xl px-6 py-8">
@@ -104,6 +114,17 @@ export default async function SalesOrderDetailPage({
         <p>
           <span className="text-zinc-500">Customer: </span>
           {row.customerName}
+        </p>
+        <p className="sm:col-span-2">
+          <span className="text-zinc-500">Order for: </span>
+          <div className="mt-1 text-zinc-900">
+            <SalesOrderServedOrgField
+              salesOrderId={row.id}
+              orgUnitOptions={orgUnitOptions}
+              canEdit={canEditServedOrg}
+              initial={row.servedOrgUnit}
+            />
+          </div>
         </p>
         <p>
           <span className="text-zinc-500">External ref: </span>

@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { getPurchaseOrderScopeWhere } from "@/lib/org-scope";
+import { resolveServedOrgUnitIdForTenant } from "@/lib/served-org-unit";
 import { supplierOperationalBlockReason } from "@/lib/srm/supplier-operational-eligibility";
 
 
@@ -38,6 +39,8 @@ type CreateOrderBody = {
   destinationCode?: string | null;
   tags?: string[] | null;
   items?: CreateOrderItemInput[];
+  /** Org unit (subsidiary / site) this purchase is for — optional. */
+  servedOrgUnitId?: string | null;
 };
 
 async function nextOrderNumber(tenantId: string) {
@@ -104,6 +107,7 @@ export async function GET() {
       requester: {
         select: { id: true, name: true, email: true },
       },
+      servedOrgUnit: { select: { id: true, name: true, code: true, kind: true } },
       workflow: {
         select: {
           id: true,
@@ -323,6 +327,11 @@ export async function POST(request: Request) {
   const forwarderOfficeId = input.forwarderOfficeId?.trim() || null;
   const forwarderContactId = input.forwarderContactId?.trim() || null;
 
+  const servedResolved = await resolveServedOrgUnitIdForTenant(tenant.id, input.servedOrgUnitId);
+  if (!servedResolved.ok) {
+    return toApiErrorResponse({ error: servedResolved.error, code: "BAD_INPUT", status: 400 });
+  }
+
   let buyerWarehouseName: string | null = null;
   let cfsWarehouseName: string | null = null;
   let forwarderSupplierName: string | null = null;
@@ -425,6 +434,7 @@ export async function POST(request: Request) {
       orderNumber,
       title: `Purchase order for ${supplier.name}`,
       requesterId,
+      servedOrgUnitId: servedResolved.value,
       supplierId: supplier.id,
       statusId: startStatus.id,
       currency,

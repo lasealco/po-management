@@ -8,6 +8,7 @@ import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
 import { nextSalesOrderNumber, parseSalesOrdersListQuery, salesOrdersListPrismaWhere } from "@/lib/sales-orders";
+import { resolveServedOrgUnitIdForTenant } from "@/lib/served-org-unit";
 
 /** Matches `SalesOrderCreateForm` option values for logistics-only SRM suppliers. */
 const SUPPLIER_CUSTOMER_PREFIX = "__supplier__:";
@@ -35,6 +36,7 @@ export async function GET(request: Request) {
       externalRef: true,
       requestedDeliveryDate: true,
       createdAt: true,
+      servedOrgUnit: { select: { id: true, name: true, code: true, kind: true } },
       _count: { select: { shipments: true } },
     },
   });
@@ -42,6 +44,14 @@ export async function GET(request: Request) {
   return NextResponse.json({
     salesOrders: rows.map((r) => ({
       ...r,
+      servedOrgUnit: r.servedOrgUnit
+        ? {
+            id: r.servedOrgUnit.id,
+            name: r.servedOrgUnit.name,
+            code: r.servedOrgUnit.code,
+            kind: r.servedOrgUnit.kind,
+          }
+        : null,
       requestedDeliveryDate: r.requestedDeliveryDate?.toISOString() ?? null,
       createdAt: r.createdAt.toISOString(),
       shipmentCount: r._count.shipments,
@@ -80,6 +90,10 @@ export async function POST(request: Request) {
     return toApiErrorResponse({ error: "Invalid requestedDeliveryDate.", code: "BAD_INPUT", status: 400 });
   }
   const shipmentId = typeof o.shipmentId === "string" ? o.shipmentId.trim() : "";
+  const servedResolved = await resolveServedOrgUnitIdForTenant(tenantId, o.servedOrgUnitId);
+  if (!servedResolved.ok) {
+    return toApiErrorResponse({ error: servedResolved.error, code: "BAD_INPUT", status: 400 });
+  }
 
   async function resolveBillToAccount(
     tx: Prisma.TransactionClient,
@@ -160,6 +174,7 @@ export async function POST(request: Request) {
           requestedDeliveryDate,
           createdById: actorId,
           status: "DRAFT",
+          servedOrgUnitId: servedResolved.value,
         },
         select: { id: true, soNumber: true },
       });

@@ -544,7 +544,7 @@ export function OrdersBoard({
 
       <div className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-sm">
         <div className="max-h-[min(78vh,calc(100dvh-9rem))] overflow-auto">
-          <table className="w-full min-w-[980px] table-fixed border-collapse text-left">
+          <table className="w-full min-w-[1080px] table-fixed border-collapse text-left">
             <thead className="sticky top-0 z-20 border-b border-zinc-200 bg-zinc-50/95 backdrop-blur-sm">
               <tr className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
                 <th
@@ -553,7 +553,15 @@ export function OrdersBoard({
                 >
                   PO / next step
                 </th>
-                <th className="w-[72px] px-2 py-2">Ref</th>
+                <th className="w-[72px] px-2 py-2" title="Buyer / internal ref">
+                  Ref
+                </th>
+                <th
+                  className="w-[min(120px,14vw)] px-2 py-2"
+                  title="Org this PO is for (if set)"
+                >
+                  For org
+                </th>
                 <th className="w-[76px] px-2 py-2">Due</th>
                 <th className="w-[44px] px-1 py-2 text-right">Age</th>
                 <th className="w-[min(140px,12vw)] px-2 py-2" title="Supplier and SRM signals">
@@ -623,6 +631,15 @@ export function OrdersBoard({
                     <span className="line-clamp-2 break-words" title={order.buyerReference ?? ""}>
                       {order.buyerReference ?? "—"}
                     </span>
+                  </td>
+                  <td className="px-2 py-2 align-top text-[11px] text-zinc-600">
+                    {order.servedOrg ? (
+                      <span className="line-clamp-2 break-words" title={`${order.servedOrg.name} (${order.servedOrg.code})`}>
+                        {order.servedOrg.name}
+                      </span>
+                    ) : (
+                      "—"
+                    )}
                   </td>
                   <td className="px-2 py-2 align-top tabular-nums text-[11px] text-zinc-600">
                     {(() => {

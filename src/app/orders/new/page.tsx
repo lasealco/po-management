@@ -28,7 +28,7 @@ export default async function NewOrderPage() {
     );
   }
 
-  const [suppliers, products, warehouses, forwarders] = await Promise.all([
+  const [suppliers, products, warehouses, forwarders, orgUnits] = await Promise.all([
     prisma.supplier.findMany({
       where: {
         tenantId: access.tenant.id,
@@ -111,6 +111,11 @@ export default async function NewOrderPage() {
         },
       },
     }),
+    prisma.orgUnit.findMany({
+      where: { tenantId: access.tenant.id },
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      select: { id: true, name: true, code: true, kind: true },
+    }),
   ]);
 
   return (
@@ -121,6 +126,7 @@ export default async function NewOrderPage() {
         suppliers={suppliers}
         warehouses={warehouses}
         forwarders={forwarders}
+        orgUnits={orgUnits}
         products={products.map((p) => ({
           id: p.id,
           name: p.name,

@@ -35,6 +35,8 @@ export type OrderBoardSerialized = {
     approvalStatus: "pending_approval" | "approved" | "rejected";
   } | null;
   requester: { id: string; name: string; email: string };
+  /** Org this PO is for (optional). */
+  servedOrg: { id: string; name: string; code: string; kind: string } | null;
   workflow: { id: string; name: string };
   allowedActions: {
     actionCode: string;
@@ -81,6 +83,7 @@ export function serializeOrderForBoard(params: {
       approvalStatus: "pending_approval" | "approved" | "rejected";
     } | null;
     requester: { id: string; name: string; email: string };
+    servedOrgUnit?: { id: string; name: string; code: string; kind: string } | null;
     workflow: {
       id: string;
       name: string;
@@ -161,6 +164,14 @@ export function serializeOrderForBoard(params: {
     status: order.status,
     supplier: order.supplier,
     requester: order.requester,
+    servedOrg: order.servedOrgUnit
+      ? {
+          id: order.servedOrgUnit.id,
+          name: order.servedOrgUnit.name,
+          code: order.servedOrgUnit.code,
+          kind: order.servedOrgUnit.kind,
+        }
+      : null,
     workflow: {
       id: order.workflow.id,
       name: order.workflow.name,

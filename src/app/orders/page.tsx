@@ -107,6 +107,7 @@ export default async function OrdersPage({
         },
       },
       requester: { select: { id: true, name: true, email: true } },
+      servedOrgUnit: { select: { id: true, name: true, code: true, kind: true } },
       workflow: {
         select: {
           id: true,

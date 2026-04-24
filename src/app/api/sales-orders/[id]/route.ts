@@ -10,6 +10,7 @@ import {
   parseSalesOrderRouteId,
   parseTargetSalesOrderStatus,
 } from "@/lib/sales-orders/patch-status";
+import { resolveServedOrgUnitIdForTenant } from "@/lib/served-org-unit";
 
 export async function GET(
   _request: Request,
@@ -34,6 +35,7 @@ export async function GET(
   const row = await prisma.salesOrder.findFirst({
     where: { id, tenantId: tenant.id },
     include: {
+      servedOrgUnit: { select: { id: true, name: true, code: true, kind: true } },
       shipments: {
         orderBy: { createdAt: "desc" },
         select: {
@@ -52,6 +54,14 @@ export async function GET(
 
   return NextResponse.json({
     ...row,
+    servedOrgUnit: row.servedOrgUnit
+      ? {
+          id: row.servedOrgUnit.id,
+          name: row.servedOrgUnit.name,
+          code: row.servedOrgUnit.code,
+          kind: row.servedOrgUnit.kind,
+        }
+      : null,
     requestedShipDate: row.requestedShipDate?.toISOString() ?? null,
     requestedDeliveryDate: row.requestedDeliveryDate?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),
@@ -64,9 +74,6 @@ export async function PATCH(
   request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
-  const gate = await requireApiGrant("org.orders", "transition");
-  if (gate) return gate;
-
   const tenant = await getDemoTenant();
   if (!tenant) return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   const { id: rawId } = await context.params;
@@ -95,12 +102,74 @@ export async function PATCH(
       status: parsedBody.status,
     });
   }
+  const record = parsedBody.record;
+  const hasStatus = Object.prototype.hasOwnProperty.call(record, "status");
+  const hasServed = Object.prototype.hasOwnProperty.call(record, "servedOrgUnitId");
 
-  const parsedStatus = parseTargetSalesOrderStatus(parsedBody.record);
+  if (hasServed && !hasStatus) {
+    const editGate = await requireApiGrant("org.orders", "edit");
+    if (editGate) return editGate;
+    const servedResolved = await resolveServedOrgUnitIdForTenant(tenant.id, record.servedOrgUnitId);
+    if (!servedResolved.ok) {
+      return toApiErrorResponse({ error: servedResolved.error, code: "BAD_INPUT", status: 400 });
+    }
+    const existing = await prisma.salesOrder.findFirst({
+      where: { id, tenantId: tenant.id },
+      select: { id: true },
+    });
+    if (!existing) {
+      return toApiErrorResponse({ error: "Sales order not found.", code: "NOT_FOUND", status: 404 });
+    }
+    const headerUpdated = await prisma.salesOrder.update({
+      where: { id: existing.id },
+      data: {
+        servedOrgUnit: servedResolved.value
+          ? { connect: { id: servedResolved.value } }
+          : { disconnect: true },
+      },
+      select: {
+        id: true,
+        servedOrgUnit: { select: { id: true, name: true, code: true, kind: true } },
+      },
+    });
+    return NextResponse.json({
+      ok: true,
+      id: headerUpdated.id,
+      servedOrgUnit: headerUpdated.servedOrgUnit
+        ? {
+            id: headerUpdated.servedOrgUnit.id,
+            name: headerUpdated.servedOrgUnit.name,
+            code: headerUpdated.servedOrgUnit.code,
+            kind: headerUpdated.servedOrgUnit.kind,
+          }
+        : null,
+    });
+  }
+
+  if (hasServed && hasStatus) {
+    return toApiErrorResponse({
+      error: "Send `status` and `servedOrgUnitId` in separate requests.",
+      code: "BAD_INPUT",
+      status: 400,
+    });
+  }
+
+  if (!hasStatus) {
+    return toApiErrorResponse({
+      error: "Field `status` is required, or use `servedOrgUnitId` alone to update order-for org.",
+      code: "BAD_INPUT",
+      status: 400,
+    });
+  }
+
+  const parsedStatus = parseTargetSalesOrderStatus(record);
   if (!parsedStatus.ok) {
     return toApiErrorResponse({ error: parsedStatus.error, code: "BAD_INPUT", status: 400 });
   }
   const targetStatus = parsedStatus.status;
+
+  const transitionGate = await requireApiGrant("org.orders", "transition");
+  if (transitionGate) return transitionGate;
 
   const row = await prisma.salesOrder.findFirst({
     where: { id, tenantId: tenant.id },

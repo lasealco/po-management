@@ -48,6 +48,7 @@ type OrderDetailResponse = {
       defaultIncoterm: string | null;
     } | null;
     requester: { id: string; name: string; email: string };
+    servedOrgUnit: { id: string; name: string; code: string; kind: string } | null;
     splitParentId: string | null;
     splitParent: { id: string; orderNumber: string } | null;
     splitIndex: number | null;
@@ -247,6 +248,7 @@ export function OrderDetail({
   canEditHeader = false,
   canViewProducts = false,
   canViewInternalNotes = false,
+  orgUnitOptions = [],
 }: {
   orderId: string;
   canTransition?: boolean;
@@ -256,6 +258,8 @@ export function OrderDetail({
   canViewProducts?: boolean;
   /** Buyer/internal only. */
   canViewInternalNotes?: boolean;
+  /** In-tenant org units for “Order for” when editing header. */
+  orgUnitOptions?: Array<{ id: string; name: string; code: string; kind: string }>;
 }) {
   const [data, setData] = useState<OrderDetailResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -273,6 +277,7 @@ export function OrderDetail({
   const [requestedDeliveryDate, setRequestedDeliveryDate] = useState("");
   const [internalNotes, setInternalNotes] = useState("");
   const [notesToSupplier, setNotesToSupplier] = useState("");
+  const [servedOrgUnitId, setServedOrgUnitId] = useState("");
 
   const [newMessageBody, setNewMessageBody] = useState("");
   const [newMessageInternal, setNewMessageInternal] = useState(false);
@@ -362,6 +367,7 @@ export function OrderDetail({
       setRequestedDeliveryDate(deliveryDateInputValue(o.requestedDeliveryDate));
       setInternalNotes(o.internalNotes ?? "");
       setNotesToSupplier(o.notesToSupplier ?? "");
+      setServedOrgUnitId(o.servedOrgUnit?.id ?? "");
       setAsnQtyByItemId((prev) => {
         const next: Record<string, string> = { ...prev };
         for (const item of data.items) {
@@ -488,6 +494,7 @@ export function OrderDetail({
         requestedDeliveryDate: requestedDeliveryDate.trim() || null,
         internalNotes: internalNotes || null,
         notesToSupplier: notesToSupplier || null,
+        servedOrgUnitId: servedOrgUnitId.trim() || null,
       }),
     });
     const parsed: unknown = await res.json();
@@ -929,6 +936,18 @@ export function OrderDetail({
             </div>
             <div>
               <dt className="text-xs font-medium uppercase text-zinc-500">
+                Order for
+              </dt>
+              <dd className="text-zinc-900">
+                {data.order.servedOrgUnit
+                  ? [data.order.servedOrgUnit.name, data.order.servedOrgUnit.code]
+                      .filter(Boolean)
+                      .join(" · ") || "—"
+                  : "—"}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium uppercase text-zinc-500">
                 Terms
               </dt>
               <dd className="text-zinc-900">
@@ -1013,6 +1032,40 @@ export function OrderDetail({
                   className={f}
                 />
               </label>
+              {orgUnitOptions.length > 0 ? (
+                <label className="flex flex-col text-sm sm:col-span-2">
+                  <span className="font-medium text-zinc-800">Order for</span>
+                  <span className="text-xs text-zinc-500">
+                    Optional. Which in-tenant org this PO is for.
+                  </span>
+                  <select
+                    value={servedOrgUnitId}
+                    onChange={(e) => setServedOrgUnitId(e.target.value)}
+                    className={f}
+                  >
+                    <option value="">Not specified</option>
+                    {orgUnitOptions.map((ou) => (
+                      <option key={ou.id} value={ou.id}>
+                        {ou.name}
+                        {ou.code ? ` (${ou.code})` : ""} · {ou.kind}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+              {orgUnitOptions.length === 0 && data.order.servedOrgUnit ? (
+                <p className="text-sm sm:col-span-2">
+                  <span className="font-medium text-zinc-800">Order for: </span>
+                  <span className="text-zinc-700">
+                    {[
+                      data.order.servedOrgUnit.name,
+                      data.order.servedOrgUnit.code,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </span>
+                </p>
+              ) : null}
               <label className="flex flex-col text-sm">
                 <span className="font-medium text-zinc-800">
                   Payment terms (days)
