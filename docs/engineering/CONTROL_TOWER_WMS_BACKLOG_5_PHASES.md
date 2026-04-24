@@ -2,6 +2,8 @@
 
 **Status:** Portfolio rollup only. **Does not** replace [`CONTROL_TOWER_WMS_PHASED_ROADMAP.md`](./CONTROL_TOWER_WMS_PHASED_ROADMAP.md) Phases 0–3, [`docs/controltower/GAP_MAP.md`](../controltower/GAP_MAP.md), or [`docs/wms/GAP_MAP.md`](../wms/GAP_MAP.md). Use this for steering; use GAP + **one GitHub issue per PR** for execution.
 
+> **Numbering:** This file defines exactly **five** post-tranche phases (**1–5**). There is **no “Phase 15”** in this program line. If you meant a different product (e.g. Supply Chain Twin, SCRI, tariff engine), use that module’s backlog — not this document.
+
 **Last updated:** 2026-04-26
 
 ---
@@ -73,6 +75,7 @@
 |----------|----------|
 | **3.4** WMS floor / world map (globe) / CRM map layers (if product wants adoption-based depth) | [`CONTROL_TOWER_OPERATIONS_MAP_PHASE3.md`](./CONTROL_TOWER_OPERATIONS_MAP_PHASE3.md) |
 | WMS **❌** epics: dock appointments, VAS / work orders, commercial quotes | [`wms/GAP_MAP`](../wms/GAP_MAP.md) deferred rows |
+| **Execution / parking (steering)** | [`PHASE5_MAP_WMS_LONGTAIL.md`](./PHASE5_MAP_WMS_LONGTAIL.md) |
 
 **Exit:** each deferred epic is **funded and filed** as its own issue before coding; map 3.4 is optional and adoption-gated in the phase-3 doc.
 
@@ -82,6 +85,7 @@
 
 | Date | Change |
 |------|--------|
+| 2026-04-26 | **Phase 5 (clarity):** numbering note (1–5, not 15) + [Phase 5 long-tail notes](./PHASE5_MAP_WMS_LONGTAIL.md). |
 | 2026-04-23 | Phase 4 (WMS): [receiving state machine spec](../wms/WMS_RECEIVING_STATE_MACHINE_SPEC.md) + GAP/roadmap links. |
 | 2026-04-23 | Phase 3 (Workbench & inbound): bulk exception owner + `simple_carrier_event_v1`. |
 | 2026-04-23 | Phase 2 (Reporting): `exceptionRootCause` dimension; Phase 1 assist execute. |
