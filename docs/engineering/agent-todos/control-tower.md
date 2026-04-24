@@ -6,6 +6,8 @@
 
 **Source of truth:** `docs/controltower/GAP_MAP.md` + PDFs in `docs/controltower/`.
 
+**Engineering sequence (read this before a big Assist change):** The biggest gap to `control_tower_search_and_chatbot_spec_*.pdf` is **Assist + RAG + tools + chat sessions**—but shipping that as one PR is the wrong default. **Sequence along Phase 1** in the roadmap table (**1A → 1B → 1C → 1D → 1E**, one **vertical** per issue/PR) and carve **Assist** work into the **smallest** follow-ups in `GAP_MAP` near-term **#4** (not “chatbot v2”). R3 PDF checklist + [#6](https://github.com/lasealco/po-management/issues/6) for planning, not a monolithic runtime drop.
+
 **Phased program (CT + WMS together):** [`docs/engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md`](../CONTROL_TOWER_WMS_PHASED_ROADMAP.md) (phases 0–3, exit criteria). **Phase 0 re-pass complete** (2026-04-25) — `verify:apihub`, GAP near-term re-check; see triage block below. **Phase 3.4 (partial, 2026-04-25):** `/wms` home → **Open shipment map**; `/control-tower/map` → **WMS workspace**; when the actor has both `org.wms` and `org.controltower` view.
 
 ### Phase 0 triage (2026-04-25 re-pass)

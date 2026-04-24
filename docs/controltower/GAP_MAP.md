@@ -58,6 +58,8 @@
 
 **Issue scope guardrail:** the PDF checklist below stays a **planning** aid (not a substitute for reading the PDF). **Runtime** now includes optional embedding hybrid (`assist-retrieval-embed.ts`, feature-flagged); the issue **#6** “docs-only” freeze applied to an **earlier** pass — new assist work should still be reviewed against guardrails (tenant scope, no secret leakage).
 
+**Delivery guardrail:** Use the roadmap **Phase 1** sequence (**1A → 1B → 1C → 1D → 1E**, one vertical at a time) and **near-term #4** smallest slices—**not** a monolithic “chatbot v2” PR that bundles RAG + tools + sessions to match the PDF in one drop. See **Near-term build order** intro above.
+
 **Spec parity checklist** (read the PDF for authoritative requirements; use this as a **triage list**, not a substitute):
 
 - **Retrieval** — Expect PDF-level depth to include **semantic / vector** retrieval (embeddings, chunking, re-ranking) over **approved** corpora plus operational data. Repo today: **keyword-scored** snippets from a curated map; **optional** OpenAI **text-embedding-3-small** (or `OPENAI_EMBEDDING_MODEL`) over the **same** static corpus when `CONTROL_TOWER_ASSIST_EMBEDDINGS=1` (no separate vector DB; in-process corpus cache per deploy).
@@ -125,6 +127,8 @@ High-level groups: **references** · **tracking milestones** (+ pack apply) · *
 
 Use this list when slicing PRs; refresh it whenever Control Tower behavior or `report-engine` contracts change ([issue #3](https://github.com/lasealco/po-management/issues/3)). **1–3** are hygiene plus already-shipped foundations; **4–7** are the active near-term product gaps.
 
+**Sequencing (Assist vs PDF):** The spec PDF describes **full** search/chatbot + RAG depth; the largest long-term architecture gap is **Assist + retrieval + tools + sessions** (see **R3** + [issue #6](https://github.com/lasealco/po-management/issues/6)). **Do not** attempt to close that in a single “chatbot v2” PR. Prefer the program order in [`CONTROL_TOWER_WMS_PHASED_ROADMAP`](../engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md) **Phase 1** table (**1A → 1B → 1C → 1D → 1E**—one vertical per merge), then **smallest** Assist increments under item **#4** below (tools, re-rank, sessions) as separate issues.
+
 **Phase 0 (2026-04-25 re-pass):** Re-checked **Near-term 4–7** and **Suggested next PRs** vs `main` (assist: `assist-retrieval.ts` + `POST …/assist`; workbench: `bulk_acknowledge_ct_alerts` in `post-actions.ts`; reporting: `report-pdf` / `report-engine`; inbound: `inbound-webhook.ts` + `POST /api/integrations/control-tower/inbound`). `npm run verify:apihub` passes; ApiHub `route.ts` count **28**. No CT app code change—docs only. [issue #3](https://github.com/lasealco/po-management/issues/3) — maintainers may close as recurring hygiene or keep open.
 
 1. **Keep this file current** when merging Control Tower PRs (checkbox discipline).
@@ -167,6 +171,7 @@ File **one GitHub issue per bullet** when scheduling (titles are suggestions; ke
 
 | Date | Change |
 |------|--------|
+| 2026-04-25 | **Docs:** Assist vs chatbot PDF — **Phase 1 sequencing** (1A→1E) and **no monolithic chatbot v2**; `CONTROL_TOWER_WMS_PHASED_ROADMAP`, near-term intro, R3 guardrail, `control-tower.md`. |
 | 2026-04-25 | **Phase 1E (Inbound):** `payloadFormat` **`sea_port_track_v1`**, `inbound-carrier-mappers.ts` (`mapSeaPortTrackEventToGenericCarrierPayload`), Vitest for mapper + webhook; assist **inbound-webhook** snippet. **GAP** R4, route table, near-term #3, suggested PR. |
 | 2026-04-25 | **Phase 1D (Report engine):** measure **`openExceptionRatePct`** in `report-engine.ts` + `report-csv` / `report-pdf` / builder / dashboard chart kit; scheduled email **Totals** line includes avg bucket rate. **GAP** R3, near-term #7, suggested PR. |
 | 2026-04-25 | **Phase 1A (Assist):** OpenAI **embedding hybrid** for assist doc snippets (`assist-retrieval-embed.ts`); env `CONTROL_TOWER_ASSIST_EMBEDDINGS=1`; Search page shows semantic footnote when used. |

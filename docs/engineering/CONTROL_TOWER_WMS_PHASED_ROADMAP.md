@@ -40,7 +40,9 @@
 
 **Source:** [`controltower/GAP_MAP.md`](../controltower/GAP_MAP.md) **Suggested next PRs** and **R3** Assist / reporting / workbench notes.
 
-Work **one issue at a time** (parallel agents only on **non-overlapping paths**). Suggested order is **not** rigid—pick the slice that matches the week’s product bet:
+Work **one issue at a time** (parallel agents only on **non-overlapping paths**). Suggested order is **not** rigid—pick the slice that matches the week’s product bet.
+
+**Assist vs the search/chatbot PDF (architecture reality):** The biggest product gap to `control_tower_search_and_chatbot_spec_*.pdf` is **Assist + RAG + tools + multi-turn sessions** (see [`controltower/GAP_MAP.md`](../controltower/GAP_MAP.md) **R3** + [issue #6](https://github.com/lasealco/po-management/issues/6)). The **right engineering path** is still **one Phase 1 vertical per PR** along **1A → 1B → 1C → 1D → 1E** (or a deliberate swap for the week’s bet)—**not** a monolithic “chatbot v2” that tries to close the whole PDF in one change set.
 
 | Priority | Track | What | Why |
 |----------|--------|------|-----|
@@ -115,6 +117,7 @@ Work **one issue at a time** (parallel agents only on **non-overlapping paths**)
 
 | Date | Change |
 |------|--------|
+| 2026-04-25 | **Phase 1 doc:** Assist/chatbot PDF gap vs **1A→1E vertical PRs** (avoid monolithic chatbot v2). |
 | 2026-04-25 | **Control Tower Phase 3.4 (partial):** `/wms` → shipment map and `/control-tower/map` → WMS when dual grants; `CONTROL_TOWER_OPERATIONS_MAP_PHASE3.md`. |
 | 2026-04-25 | **WMS Phase 2.4 (REPLENISH UX):** `openTasks` includes `sourceBin` for **From → To** in open tasks; `wms/GAP_MAP.md` R2 replenishment. |
 | 2026-04-25 | **WMS Phase 2.2 (Outbound ASN):** `asnReference` on `OutboundOrder`, `set_outbound_order_asn_fields`, WMS operations UI + payload; `wms/GAP_MAP.md`. |
