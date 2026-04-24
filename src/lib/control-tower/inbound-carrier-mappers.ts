@@ -24,6 +24,12 @@ function sanitizeMilestoneCode(raw: string): string | null {
 export const SEA_PORT_TRACK_V1_FORMAT = "sea_port_track_v1" as const;
 
 /**
+ * Public name for a **flat** one-row carrier push (shipment + code + time at top level).
+ * Maps to the same `carrierPayload` shape as `generic_carrier_v1` (see `inbound-webhook.ts`).
+ */
+export const SIMPLE_CARRIER_EVENT_V1_FORMAT = "simple_carrier_event_v1" as const;
+
+/**
  * Fictional **SeaPort Track** push API: nested `seaPortEvent` uses shipping-line verbs
  * instead of our milestone codes. Maps to `generic_carrier_v1` fields.
  *
@@ -110,6 +116,50 @@ export function mapSeaPortTrackEventToGenericCarrierPayload(
       event_time: eventTime.toISOString(),
       ...(freeText ? { message: freeText } : {}),
       ...(eventRef ? { external_ref: eventRef } : {}),
+    },
+  };
+}
+
+/**
+ * Flat partner body: `shipmentId`, `eventCode` | `event_code`, `eventTime` | `event_time` (ISO), optional `message` | `externalRef`.
+ */
+export function mapSimpleCarrierEventV1ToGenericCarrierPayload(
+  body: Record<string, unknown>,
+): { ok: true; carrierPayload: Record<string, unknown> } | { ok: false; error: string } {
+  const shipmentId = typeof body.shipmentId === "string" ? body.shipmentId.trim() : "";
+  const codeRaw =
+    (typeof body.eventCode === "string" && body.eventCode.trim()) ||
+    (typeof body.event_code === "string" && body.event_code.trim()) ||
+    "";
+  if (!shipmentId) {
+    return { ok: false, error: "shipmentId required" };
+  }
+  const eventCode = sanitizeMilestoneCode(codeRaw);
+  if (!eventCode) {
+    return { ok: false, error: "eventCode | event_code required (alphanumeric / ._-)" };
+  }
+  const tsRaw = body.eventTime ?? body.event_time;
+  const eventTime = parseIsoDate(tsRaw);
+  if (eventTime === "invalid") return { ok: false, error: "invalid eventTime | event_time" };
+  if (eventTime == null) {
+    return { ok: false, error: "eventTime | event_time (ISO) required" };
+  }
+  const message =
+    (typeof body.message === "string" && body.message.trim().slice(0, 4000)) ||
+    (typeof body.notes === "string" && body.notes.trim().slice(0, 4000)) ||
+    "";
+  const externalRef =
+    (typeof body.externalRef === "string" && body.externalRef.trim().slice(0, 240)) ||
+    (typeof body.external_ref === "string" && body.external_ref.trim().slice(0, 240)) ||
+    "";
+  return {
+    ok: true,
+    carrierPayload: {
+      shipment_id: shipmentId,
+      event_code: eventCode,
+      event_time: eventTime.toISOString(),
+      ...(message ? { message } : {}),
+      ...(externalRef ? { external_ref: externalRef } : {}),
     },
   };
 }

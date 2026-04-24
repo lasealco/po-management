@@ -271,6 +271,7 @@ function ControlTowerWorkbenchInner({
   const [bulkOpsAssigneeChoices, setBulkOpsAssigneeChoices] = useState<Array<{ id: string; name: string }>>([]);
   /** Empty string = clear assignee (Unassigned). */
   const [bulkOpsAssigneeUserId, setBulkOpsAssigneeUserId] = useState("");
+  const [bulkExceptionOwnerUserId, setBulkExceptionOwnerUserId] = useState("");
 
   useLayoutEffect(() => {
     const patch = parseWorkbenchColumnVisibility(window.localStorage.getItem(WORKBENCH_COLUMN_STORAGE_KEY));
@@ -780,6 +781,10 @@ function ControlTowerWorkbenchInner({
   const selectedShipmentSet = useMemo(() => new Set(selectedShipmentIds), [selectedShipmentIds]);
   const selectedEligibleShipmentIds = useMemo(
     () => rows.filter((r) => selectedShipmentSet.has(r.id) && (r.openQueueCounts?.openAlerts ?? 0) > 0).map((r) => r.id),
+    [rows, selectedShipmentSet],
+  );
+  const selectedEligibleExceptionShipmentIds = useMemo(
+    () => rows.filter((r) => selectedShipmentSet.has(r.id) && (r.openQueueCounts?.openExceptions ?? 0) > 0).map((r) => r.id),
     [rows, selectedShipmentSet],
   );
   const pagedRowIds = useMemo(() => pagedRows.map((r) => r.id), [pagedRows]);
@@ -1536,6 +1541,62 @@ function ControlTowerWorkbenchInner({
             >
               Apply to selected
             </button>
+          </div>
+          <div className="flex min-w-0 flex-wrap items-center gap-2 border-t border-zinc-200 pt-2 sm:w-full sm:border-l sm:border-t-0 sm:pl-3 sm:pt-0">
+            <label className="flex min-w-0 max-w-full items-center gap-1.5">
+              <span className="shrink-0 text-zinc-600">Exception owner</span>
+              <select
+                className="max-w-[12rem] rounded border border-zinc-300 bg-white px-2 py-1 text-zinc-900"
+                value={bulkExceptionOwnerUserId}
+                onChange={(e) => setBulkExceptionOwnerUserId(e.target.value)}
+              >
+                <option value="">Unassigned</option>
+                {bulkOpsAssigneeChoices.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              disabled={selectedEligibleExceptionShipmentIds.length === 0}
+              className="rounded border border-zinc-300 bg-white px-2 py-1 font-medium text-zinc-900 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40"
+              onClick={async () => {
+                const shipmentIds = selectedEligibleExceptionShipmentIds;
+                if (shipmentIds.length === 0) {
+                  window.alert("Select at least one shipment with open exceptions.");
+                  return;
+                }
+                const res = await fetch("/api/control-tower", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    action: "bulk_assign_ct_exception_owner",
+                    shipmentIds,
+                    ownerUserId: bulkExceptionOwnerUserId.trim() || null,
+                  }),
+                });
+                const parsed: unknown = await res.json();
+                if (!res.ok) {
+                  window.alert(apiClientErrorMessage(parsed, "Could not update exception owners."));
+                  return;
+                }
+                const payload = parsed as { updatedExceptionCount?: number; openExceptionCount?: number };
+                window.alert(
+                  `Updated owner on ${payload.updatedExceptionCount ?? 0} of ${
+                    payload.openExceptionCount ?? 0
+                  } open / in-progress exception(s).`,
+                );
+                setSelectedShipmentIds([]);
+                await load();
+              }}
+            >
+              Apply to open exceptions
+            </button>
+            <span className="text-zinc-600">
+              With open exceptions: <strong>{selectedEligibleExceptionShipmentIds.length}</strong>
+            </span>
           </div>
         </div>
       ) : null}

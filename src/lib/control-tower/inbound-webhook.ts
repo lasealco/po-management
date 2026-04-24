@@ -3,7 +3,12 @@ import { createHash } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 
 import { writeCtAudit } from "@/lib/control-tower/audit";
-import { mapSeaPortTrackEventToGenericCarrierPayload, SEA_PORT_TRACK_V1_FORMAT } from "@/lib/control-tower/inbound-carrier-mappers";
+import {
+  mapSeaPortTrackEventToGenericCarrierPayload,
+  mapSimpleCarrierEventV1ToGenericCarrierPayload,
+  SEA_PORT_TRACK_V1_FORMAT,
+  SIMPLE_CARRIER_EVENT_V1_FORMAT,
+} from "@/lib/control-tower/inbound-carrier-mappers";
 import { prisma } from "@/lib/prisma";
 
 export type InboundWebhookHttpResult = { status: number; body: Record<string, unknown> };
@@ -151,6 +156,16 @@ function normalizeInboundBody(body: Record<string, unknown>): { ok: true; data: 
       return { ok: false, error: `seaPortEvent object required for ${SEA_PORT_TRACK_V1_FORMAT}` };
     }
     const mapped = mapSeaPortTrackEventToGenericCarrierPayload(sp as Record<string, unknown>);
+    if (!mapped.ok) return { ok: false, error: mapped.error };
+    return normalizeInboundBody({
+      ...body,
+      payloadFormat: "generic_carrier_v1",
+      carrierPayload: mapped.carrierPayload,
+    });
+  }
+
+  if (format === SIMPLE_CARRIER_EVENT_V1_FORMAT) {
+    const mapped = mapSimpleCarrierEventV1ToGenericCarrierPayload(body);
     if (!mapped.ok) return { ok: false, error: mapped.error };
     return normalizeInboundBody({
       ...body,
@@ -366,7 +381,7 @@ function normalizeInboundBody(body: Record<string, unknown>): { ok: true; data: 
 
   return {
     ok: false,
-    error: `Unknown payloadFormat "${format}" (use canonical, generic_carrier_v1, ${SEA_PORT_TRACK_V1_FORMAT}, carrier_webhook_v1, tms_event_v1, or visibility_flat_v1)`,
+    error: `Unknown payloadFormat "${format}" (use canonical, generic_carrier_v1, ${SEA_PORT_TRACK_V1_FORMAT}, ${SIMPLE_CARRIER_EVENT_V1_FORMAT}, carrier_webhook_v1, tms_event_v1, or visibility_flat_v1)`,
   };
 }
 

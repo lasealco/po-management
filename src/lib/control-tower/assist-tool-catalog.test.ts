@@ -11,6 +11,6 @@ describe("assist-tool-catalog", () => {
     expect(cat.length).toBeGreaterThan(5);
     const actions = new Set(cat.map((c) => c.action));
     expect(actions.size).toBe(cat.length);
-    expect(CONTROL_TOWER_POST_ACTION_HANDLER_COUNT).toBe(44);
+    expect(CONTROL_TOWER_POST_ACTION_HANDLER_COUNT).toBe(45);
   });
 });

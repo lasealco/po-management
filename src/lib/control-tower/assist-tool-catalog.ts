@@ -12,7 +12,7 @@ export type ControlTowerPostActionToolRef = {
 };
 
 /** Count of `if (action === "…")` arms in `post-actions.ts` (main Control Tower action router). */
-export const CONTROL_TOWER_POST_ACTION_HANDLER_COUNT = 44;
+export const CONTROL_TOWER_POST_ACTION_HANDLER_COUNT = 45;
 
 const ROSTER: ControlTowerPostActionToolRef[] = [
   {
@@ -74,6 +74,12 @@ const ROSTER: ControlTowerPostActionToolRef[] = [
     action: "assign_ct_exception_owner",
     label: "Assign exception owner",
     description: "Set owner on an open or in-progress exception.",
+  },
+  {
+    group: "Exceptions",
+    action: "bulk_assign_ct_exception_owner",
+    label: "Bulk assign exception owner",
+    description: "Set owner on all open / in-progress exceptions for selected workbench rows.",
   },
   {
     group: "Booking & dispatch",

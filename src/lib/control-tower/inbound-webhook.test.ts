@@ -356,6 +356,31 @@ describe("processControlTowerInboundWebhook", () => {
         }),
       );
     });
+
+    it("accepts simple_carrier_event_v1 (flat → generic_carrier_v1)", async () => {
+      const res = await processControlTowerInboundWebhook({
+        tenantId,
+        actorUserId,
+        body: {
+          payloadFormat: "simple_carrier_event_v1",
+          event: "simple.push",
+          shipmentId,
+          eventCode: "GATE_IN",
+          eventTime: "2026-04-10T10:00:00.000Z",
+          message: "At CY",
+        },
+      });
+      expect(res.status).toBe(200);
+      expect(res.body.ok).toBe(true);
+      expect(prismaMock.ctTrackingMilestone.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            code: "GATE_IN",
+            notes: "At CY",
+          }),
+        }),
+      );
+    });
   });
 
   describe("400 without DB reads (shape / missing shipment id)", () => {
@@ -368,6 +393,7 @@ describe("processControlTowerInboundWebhook", () => {
       expect(res.status).toBe(400);
       expect(res.body.error).toContain("Unknown payloadFormat");
       expect(String(res.body.error)).toContain("sea_port_track_v1");
+      expect(String(res.body.error)).toContain("simple_carrier_event_v1");
       expect(prismaMock.shipment.findFirst).not.toHaveBeenCalled();
     });
 

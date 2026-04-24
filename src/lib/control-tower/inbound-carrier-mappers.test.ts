@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { mapSeaPortTrackEventToGenericCarrierPayload, SEA_PORT_TRACK_V1_FORMAT } from "./inbound-carrier-mappers";
+import {
+  mapSeaPortTrackEventToGenericCarrierPayload,
+  mapSimpleCarrierEventV1ToGenericCarrierPayload,
+  SEA_PORT_TRACK_V1_FORMAT,
+  SIMPLE_CARRIER_EVENT_V1_FORMAT,
+} from "./inbound-carrier-mappers";
 
 describe("mapSeaPortTrackEventToGenericCarrierPayload", () => {
   it("maps known activities to internal milestone codes", () => {
@@ -70,5 +75,31 @@ describe("mapSeaPortTrackEventToGenericCarrierPayload", () => {
 describe("SEA_PORT_TRACK_V1_FORMAT", () => {
   it("is stable for payloadFormat and docs", () => {
     expect(SEA_PORT_TRACK_V1_FORMAT).toBe("sea_port_track_v1");
+  });
+});
+
+describe("mapSimpleCarrierEventV1ToGenericCarrierPayload", () => {
+  it("builds generic_carrier_v1 fields", () => {
+    const r = mapSimpleCarrierEventV1ToGenericCarrierPayload({
+      shipmentId: "ship-1",
+      event_code: "OCEAN_DEP",
+      event_time: "2026-05-01T12:00:00.000Z",
+      externalRef: "ref-1",
+    });
+    expect(r).toEqual({
+      ok: true,
+      carrierPayload: {
+        shipment_id: "ship-1",
+        event_code: "OCEAN_DEP",
+        event_time: "2026-05-01T12:00:00.000Z",
+        external_ref: "ref-1",
+      },
+    });
+  });
+});
+
+describe("SIMPLE_CARRIER_EVENT_V1_FORMAT", () => {
+  it("is stable for payloadFormat and docs", () => {
+    expect(SIMPLE_CARRIER_EVENT_V1_FORMAT).toBe("simple_carrier_event_v1");
   });
 });

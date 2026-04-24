@@ -1,4 +1,4 @@
-import { Prisma, ShipmentMilestoneCode, type TransportMode } from "@prisma/client";
+import { CtExceptionStatus, Prisma, ShipmentMilestoneCode, type TransportMode } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { toApiErrorResponseFromStatus } from "@/app/api/_lib/api-error-contract";
@@ -714,6 +714,80 @@ export async function handleControlTowerPost(
       ok: true,
       updatedCount: ids.length,
       selectedCount: shipmentIds.length,
+    });
+  }
+
+  if (action === "bulk_assign_ct_exception_owner") {
+    const shipmentIds = parseBulkShipmentIds(body.shipmentIds);
+    if (shipmentIds === "invalid") {
+      return bad("shipmentIds must contain 1-100 IDs");
+    }
+    const ownerUserId =
+      body.ownerUserId === null || body.ownerUserId === ""
+        ? null
+        : typeof body.ownerUserId === "string"
+          ? body.ownerUserId.trim()
+          : undefined;
+    if (ownerUserId === undefined) {
+      return bad("ownerUserId required (or null to clear)");
+    }
+    if (ownerUserId) {
+      const u = await prisma.user.findFirst({
+        where: { id: ownerUserId, tenantId, isActive: true },
+        select: { id: true },
+      });
+      if (!u) return bad("Owner not found in tenant", 404);
+    }
+    const inTenant = await prisma.shipment.findMany({
+      where: { id: { in: shipmentIds }, order: { tenantId } },
+      select: { id: true },
+    });
+    if (inTenant.length === 0) {
+      return NextResponse.json({
+        ok: true,
+        updatedExceptionCount: 0,
+        openExceptionCount: 0,
+        selectedShipmentCount: shipmentIds.length,
+        affectedShipments: 0,
+      });
+    }
+    const allowedIds = new Set(inTenant.map((r) => r.id));
+    const exceptions = await prisma.ctException.findMany({
+      where: {
+        tenantId,
+        shipmentId: { in: Array.from(allowedIds) },
+        status: { in: [CtExceptionStatus.OPEN, CtExceptionStatus.IN_PROGRESS] },
+      },
+      select: { id: true, shipmentId: true, ownerUserId: true },
+    });
+    let updatedExceptionCount = 0;
+    for (const ex of exceptions) {
+      if (ex.ownerUserId === ownerUserId) continue;
+      await prisma.ctException.update({
+        where: { id: ex.id },
+        data: { ownerUserId },
+      });
+      await writeCtAudit({
+        tenantId,
+        shipmentId: ex.shipmentId,
+        entityType: "CtException",
+        entityId: ex.id,
+        action: "assign_owner",
+        actorUserId: actorId,
+        payload: {
+          ownerUserId,
+          previousOwnerUserId: ex.ownerUserId,
+          via: "bulk_workbench",
+        },
+      });
+      updatedExceptionCount += 1;
+    }
+    return NextResponse.json({
+      ok: true,
+      updatedExceptionCount,
+      openExceptionCount: exceptions.length,
+      selectedShipmentCount: shipmentIds.length,
+      affectedShipments: allowedIds.size,
     });
   }
 

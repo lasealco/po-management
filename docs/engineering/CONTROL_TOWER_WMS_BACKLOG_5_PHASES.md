@@ -52,7 +52,7 @@
 | Bulk **exception** owner **or** server-stored default column visibility | GAP near-term #6 |
 | Next **real** inbound partner: `payloadFormat` / mappers in `inbound-carrier-mappers` pattern | GAP R4, post–`sea_port_track_v1` |
 
-**Exit:** workbench and webhook paths stay **tenant-scoped**; new formats get tests + audit pattern like existing inbound.
+**Exit:** workbench and webhook paths stay **tenant-scoped**; new formats get tests + audit pattern like existing inbound. **2026-04-23:** bulk **exception owner** on workbench; **`simple_carrier_event_v1`** inbound format. **Next:** default column visibility per actor (still GAP **#6**).
 
 ---
 
@@ -82,6 +82,7 @@
 
 | Date | Change |
 |------|--------|
+| 2026-04-23 | Phase 3 (Workbench & inbound): bulk exception owner + `simple_carrier_event_v1`. |
 | 2026-04-23 | Phase 2 (Reporting): `exceptionRootCause` dimension; Phase 1 assist execute. |
 | 2026-04-23 | Phase 1 (Assist): link **execute-post-action** / Search confirm slice after merge. |
 | 2026-04-26 | Initial 5-phase rollup (post [program tranche handoff](./CONTROL_TOWER_WMS_PHASED_ROADMAP.md#program-tranche-handoff-2026-04-26)). |
