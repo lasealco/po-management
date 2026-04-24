@@ -290,6 +290,49 @@ export default async function ExecutiveDashboardPage({
 
       <section className="mx-auto max-w-7xl px-6 pt-5">
         <article className={panelClass}>
+          <h2 className="text-lg font-semibold text-white">Order-for org exposure (open PO)</h2>
+          <p className="mt-1 text-xs text-zinc-400">
+            Phase 5: roll-up of in-scope open parent POs by document <span className="text-zinc-300">served</span> org
+            and operating role tags on that org (same dimensions as org settings and PO workflow).
+            Totals use the same mixed-currency sum convention as the headline open-PO value.
+          </p>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full min-w-[520px] border-collapse text-left text-sm">
+              <thead>
+                <tr className="border-b border-white/10 text-xs uppercase tracking-wide text-zinc-400">
+                  <th className="py-2 pr-3">Order for</th>
+                  <th className="py-2 pr-3">Code</th>
+                  <th className="py-2 pr-3">Operating tags</th>
+                  <th className="py-2 pr-3 text-right">Orders</th>
+                  <th className="py-2 text-right">Value</th>
+                </tr>
+              </thead>
+              <tbody className="text-zinc-200">
+                {summary.openProcurementByServedOrg.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-4 text-sm text-zinc-500">
+                      No open parent orders in your current view.
+                    </td>
+                  </tr>
+                ) : (
+                  summary.openProcurementByServedOrg.map((row, idx) => (
+                    <tr key={`served-po-${idx}-${row.servedOrgCode || row.servedOrgName}`} className="border-b border-white/5">
+                      <td className="py-2 pr-3 text-white">{row.servedOrgName}</td>
+                      <td className="py-2 pr-3 font-mono text-xs text-zinc-400">{row.servedOrgCode || "—"}</td>
+                      <td className="max-w-[220px] py-2 pr-3 text-xs text-zinc-300">{row.operatingTagsShort}</td>
+                      <td className="py-2 pr-3 text-right tabular-nums">{row.openPoCount}</td>
+                      <td className="py-2 text-right tabular-nums text-emerald-200/90">{money(row.openPoValue)}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-6 pt-5">
+        <article className={panelClass}>
           <h2 className="text-lg font-semibold text-white">Decisions for next 7 days</h2>
           <p className="mt-1 text-xs text-zinc-400">
             Suggested executive interventions generated from current risk and momentum signals.

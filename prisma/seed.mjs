@@ -790,6 +790,11 @@ async function seed() {
     create: { orgUnitId: ouUsa.id, role: "GROUP_PROCUREMENT" },
     update: {},
   });
+  await prisma.orgUnitRoleAssignment.upsert({
+    where: { orgUnitId_role: { orgUnitId: ouUsChiPlant.id, role: "PLANT" } },
+    create: { orgUnitId: ouUsChiPlant.id, role: "PLANT" },
+    update: {},
+  });
 
   const hqOffice = await prisma.supplierOffice.upsert({
     where: { supplierId_name: { supplierId: supplier.id, name: "Headquarters" } },

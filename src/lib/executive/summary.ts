@@ -2,6 +2,7 @@ import { CrmOpportunityStage, CtExceptionStatus, ShipmentStatus, type Prisma } f
 
 import { actorIsSupplierPortalRestricted } from "@/lib/authz";
 import { crmOwnerRelationClause } from "@/lib/crm-scope";
+import { formatOperatingRolesShort, mapRoleAssignmentsToRoles } from "@/lib/org-unit-operating-roles";
 import { loadWmsViewReadScope } from "@/lib/wms/wms-read-scope";
 import { purchaseOrderWhereWithViewerScope } from "@/lib/org-scope";
 import { prisma } from "@/lib/prisma";
@@ -63,6 +64,15 @@ export type ExecutiveSummary = {
     weightedPipelineValue: number;
     openPoValue: number;
     estimatedLogisticsSpend: number;
+  }>;
+  /** Open (non-end) parent POs by document “order for” org — Phase 5 dimension (E) slice. */
+  openProcurementByServedOrg: Array<{
+    servedOrgName: string;
+    servedOrgCode: string;
+    openPoCount: number;
+    openPoValue: number;
+    /** Operating role tags on the served `OrgUnit` (when set). */
+    operatingTagsShort: string;
   }>;
   actionPanel: {
     stockOutRisks: Array<{
@@ -253,6 +263,53 @@ export async function buildExecutiveSummary(params: {
         take: 2000,
       }),
     ]);
+
+  const openPoServedGroupRows = await prisma.purchaseOrder.groupBy({
+    by: ["servedOrgUnitId"],
+    where: openPoWhere,
+    _count: { _all: true },
+    _sum: { totalAmount: true },
+  });
+  const servedOrgIds = openPoServedGroupRows
+    .map((g) => g.servedOrgUnitId)
+    .filter((id): id is string => id != null);
+  const servedOrgs =
+    servedOrgIds.length > 0
+      ? await prisma.orgUnit.findMany({
+          where: { id: { in: servedOrgIds }, tenantId },
+          select: {
+            id: true,
+            name: true,
+            code: true,
+            roleAssignments: { select: { role: true } },
+          },
+        })
+      : [];
+  const orgByServedId = new Map(servedOrgs.map((o) => [o.id, o]));
+  const openProcurementByServedOrg = openPoServedGroupRows
+    .map((g) => {
+      const id = g.servedOrgUnitId;
+      if (id == null) {
+        return {
+          servedOrgName: "Not specified",
+          servedOrgCode: "",
+          openPoCount: g._count._all,
+          openPoValue: n(g._sum.totalAmount),
+          operatingTagsShort: "—",
+        };
+      }
+      const ou = orgByServedId.get(id);
+      const roleTags = mapRoleAssignmentsToRoles(ou?.roleAssignments ?? []);
+      return {
+        servedOrgName: ou?.name ?? id,
+        servedOrgCode: ou?.code ?? "",
+        openPoCount: g._count._all,
+        openPoValue: n(g._sum.totalAmount),
+        operatingTagsShort: formatOperatingRolesShort(roleTags, 3),
+      };
+    })
+    .sort((a, b) => b.openPoValue - a.openPoValue)
+    .slice(0, 12);
 
   const delayedInbound = delayedInboundRows.map((s) => {
     const etaDate = s.booking?.latestEta ?? s.booking?.eta ?? null;
@@ -528,6 +585,7 @@ export async function buildExecutiveSummary(params: {
       stockOutRiskPctVsPrev30d: pctDelta(stockRiskLast30, stockRiskPrev30),
     },
     trends: Array.from(trendBuckets.values()),
+    openProcurementByServedOrg,
     actionPanel: {
       stockOutRisks,
       delayedInbound: delayedInbound.slice(0, 5),

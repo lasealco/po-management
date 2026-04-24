@@ -22,7 +22,7 @@ Imports can use either the **concrete** module (e.g. `org-scope`) or the **barre
 - **Control Tower** — `controlTowerShipmentAccessWhere` and related; customer CRM on `User` applies.
 - **CRM** — `getCrmAccessScope` on list/detail and conversions as implemented.
 - **WMS** — `loadWmsViewReadScope` for dashboard, tasks, billing lists, etc.
-- **Executive & reporting cockpits** — `loadWmsViewReadScope`, `purchaseOrderWhereWithViewerScope`, CRM owner scope; see `src/lib/executive/summary.ts`, `src/lib/reporting/cockpit-data.ts`, `src/lib/reports/definitions/*`.
+- **Executive & reporting cockpits** — `loadWmsViewReadScope`, `purchaseOrderWhereWithViewerScope`, CRM owner scope; see `src/lib/executive/summary.ts` (Phase 5: open PO by served org + operating tags), `src/lib/reporting/cockpit-data.ts`, `src/lib/reports/definitions/*` (e.g. `orders_by_served_org`).
 - **Verticals with own guards** — e.g. Supply Chain Twin (`sctwin-api-access`), SCRI, invoice-audit slices — use module-specific access layers; they are **not** required to import `viewer-scopes` for the audit script to be satisfied.
 
 ## Advisory audit script

@@ -1,4 +1,5 @@
 import { loadPlansByStatusReport } from "@/lib/reports/definitions/load-plans-by-status";
+import { ordersByServedOrgReport } from "@/lib/reports/definitions/orders-by-served-org";
 import { ordersByStatusReport } from "@/lib/reports/definitions/orders-by-status";
 import { ordersBySupplierReport } from "@/lib/reports/definitions/orders-by-supplier";
 import { overdueOrdersReport } from "@/lib/reports/definitions/overdue-orders";
@@ -9,6 +10,7 @@ import type { ReportDefinition, ReportListItem } from "@/lib/reports/types";
 const REPORTS: ReportDefinition[] = [
   ordersByStatusReport,
   ordersBySupplierReport,
+  ordersByServedOrgReport,
   supplierPerformanceReport,
   overdueOrdersReport,
   shipmentStatusSummaryReport,
