@@ -29,7 +29,7 @@
 ## UX / ops polish (🟡 areas)
 
 - [ ] **Packing / labels** — extend workflow beyond current “limited” note in GAP (issue must list acceptance).
-- [ ] **Wave / replenishment** — verify UI covers all `REPLENISH` / wave paths; fix gaps found.
+- [x] **Wave / replenishment** — **REPLENISH** open tasks: **source bin → target bin** in Operations (`sourceBin` in `GET /api/wms`); wave release/complete unchanged; **landed** 2026-04-25.
 - [ ] **Dashboards** — deepen `/wms` “At a glance” vs blueprint KPIs.
 
 ---

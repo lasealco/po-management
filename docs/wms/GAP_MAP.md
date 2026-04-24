@@ -28,7 +28,7 @@
 |----------------|--------------|
 | QC / quarantine holds | 🟡 `InventoryBalance.onHold` + `holdReason`; picks / wave allocation skip held bins; UI on Stock page |
 | Appointment scheduling | ❌ |
-| Replenishment execution | 🟡 `ReplenishmentRule` + `create_replenishment_tasks` + REPLENISH tasks | Verify UI covers REPLENISH |
+| Replenishment execution | 🟡 `ReplenishmentRule` + `create_replenishment_tasks` + REPLENISH tasks | **Open tasks** (Operations) show **source → target** bin per task (`sourceBin` + `bin` in `GET /api/wms`); setup has short copy pointing to the list |
 | Wave planning | 🟡 `WmsWave` + release/complete | |
 | Packing / labels | 🟡 Line `packedQty` exists; limited workflow | |
 | Cycle count | 🟡 `CYCLE_COUNT` tasks: create from balance + complete with counted qty → `ADJUSTMENT` |
@@ -57,4 +57,4 @@ Handlers live in `src/lib/wms/post-actions.ts` (route stays a thin shell).
 
 _Next optional increments:_ ~~saved ledger views~~ (**landed** 2026-04-23: `WmsSavedLedgerView` + `/api/wms/saved-ledger-views`); ~~**outbound ASN** parity~~ (**landed** 2026-04-25: `OutboundOrder.asnReference` + `requestedShipDate` in payload + `set_outbound_order_asn_fields`); deeper receiving states — not required for Phase A exit above.
 
-_Last updated: 2026-04-25 — Phase 2.2 outbound ASN (`asnReference`, `set_outbound_order_asn_fields`, WMS UI); Program Phase 0 re-pass; prior: 2026-04-23 Phase 2.1 saved ledger views._
+_Last updated: 2026-04-25 — Phase 2.4 REPLENISH open-task source/target bins + GAP R2 row; Phase 2.2 outbound ASN; Program Phase 0 re-pass; prior: 2026-04-23 Phase 2.1 saved ledger views._

@@ -222,6 +222,19 @@ export async function getWmsDashboardPayload(
     prisma.inventoryMovement.count({ where: recentMovementScoped }),
   ]);
 
+  const replenSourceBinIds = new Set<string>();
+  for (const t of openTasks) {
+    if (t.taskType === "REPLENISH" && t.referenceId) replenSourceBinIds.add(t.referenceId);
+  }
+  const replenSourceBins =
+    replenSourceBinIds.size === 0
+      ? []
+      : await prisma.warehouseBin.findMany({
+          where: { tenantId, id: { in: [...replenSourceBinIds] } },
+          select: { id: true, code: true, name: true },
+        });
+  const replenSourceBinById = new Map(replenSourceBins.map((b) => [b.id, b]));
+
   const putawayByShipmentItem = new Map<string, number>();
   const pickedByOutboundLine = new Map<string, number>();
   for (const mv of movementRows) {
@@ -309,21 +322,28 @@ export async function getWmsDashboardPayload(
       onHold: Boolean(b.onHold),
       holdReason: b.holdReason ?? null,
     })),
-    openTasks: openTasks.map((t) => ({
-      id: t.id,
-      taskType: t.taskType,
-      quantity: t.quantity.toString(),
-      warehouse: t.warehouse,
-      bin: t.bin,
-      product: t.product,
-      shipment: t.shipment,
-      order: t.order,
-      wave: t.wave,
-      note: t.note,
-      referenceType: t.referenceType,
-      referenceId: t.referenceId,
-      createdAt: t.createdAt.toISOString(),
-    })),
+    openTasks: openTasks.map((t) => {
+      const sourceBin: { id: string; code: string; name: string } | null =
+        t.taskType === "REPLENISH" && t.referenceId
+          ? replenSourceBinById.get(t.referenceId) ?? null
+          : null;
+      return {
+        id: t.id,
+        taskType: t.taskType,
+        quantity: t.quantity.toString(),
+        warehouse: t.warehouse,
+        bin: t.bin,
+        sourceBin,
+        product: t.product,
+        shipment: t.shipment,
+        order: t.order,
+        wave: t.wave,
+        note: t.note,
+        referenceType: t.referenceType,
+        referenceId: t.referenceId,
+        createdAt: t.createdAt.toISOString(),
+      };
+    }),
     waves: waves.map((w) => ({
       id: w.id,
       waveNo: w.waveNo,

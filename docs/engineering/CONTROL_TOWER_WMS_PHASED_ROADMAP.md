@@ -63,7 +63,7 @@ Work **one issue at a time** (parallel agents only on **non-overlapping paths**)
 | 2.1 | **Ledger** | **Saved** ledger / filter **views** (align with Control Tower saved-view UX if product wants) | **Done (2026-04-23)** — `WmsSavedLedgerView` + `/api/wms/saved-ledger-views`; see [`wms/GAP_MAP`](../wms/GAP_MAP.md) |
 | 2.2 | **ASN** | **Outbound** ASN parity vs blueprint | **Done (2026-04-25)** — `OutboundOrder.asnReference` + `requestedShipDate` in `GET /api/wms` + `set_outbound_order_asn_fields` + create optional fields; WMS **Outbound flow** UI |
 | 2.3 | **Receiving** | Deeper **receiving** states — only after a **short spec issue** (state machine) | [`wms/GAP_MAP.md`](../wms/GAP_MAP.md) |
-| 2.4 | **UX** | Pick one: **packing / labels**, **wave / replenish** path verification, **dashboard** “At a glance” vs blueprint KPIs | WMS agent todos “UX / ops polish” |
+| 2.4 | **UX** | Pick one: **packing / labels**, **wave / replenish** path verification, **dashboard** “At a glance” vs blueprint KPIs | **Replenish slice done (2026-04-25):** `GET /api/wms` `openTasks[].sourceBin` for REPLENISH + **From → To** in Operations; setup hint. **optional:** packing/labels, dashboard KPI depth — [`wms.md`](../agent-todos/wms.md) |
 
 **Deferred (epic-sized, split before code):** appointment scheduling, VAS / work orders, commercial quotes — see [`wms.md` § Gaps](agent-todos/wms.md).
 
@@ -115,6 +115,7 @@ Work **one issue at a time** (parallel agents only on **non-overlapping paths**)
 
 | Date | Change |
 |------|--------|
+| 2026-04-25 | **WMS Phase 2.4 (REPLENISH UX):** `openTasks` includes `sourceBin` for **From → To** in open tasks; `wms/GAP_MAP.md` R2 replenishment. |
 | 2026-04-25 | **WMS Phase 2.2 (Outbound ASN):** `asnReference` on `OutboundOrder`, `set_outbound_order_asn_fields`, WMS operations UI + payload; `wms/GAP_MAP.md`. |
 | 2026-04-25 | **Control Tower Phase 1A:** optional OpenAI **embedding hybrid** for assist (`assist-retrieval-embed.ts`); see `controltower/GAP_MAP.md`. |
 | 2026-04-25 | **Control Tower Phase 1E (Inbound):** `sea_port_track_v1` + `inbound-carrier-mappers.ts`, tests, assist snippet. See `controltower/GAP_MAP.md`. |

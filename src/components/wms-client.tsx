@@ -90,6 +90,8 @@ type WmsData = {
     quantity: string;
     warehouse: { id: string; code: string | null; name: string };
     bin: { id: string; code: string; name: string } | null;
+    /** For REPLENISH: reserve / bulk `referenceId` bin (source). */
+    sourceBin: { id: string; code: string; name: string } | null;
     product: { id: string; productCode: string | null; sku: string | null; name: string } | null;
     shipment: { id: string; shipmentNo: string | null; status: string } | null;
     order: { id: string; orderNumber: string } | null;
@@ -1539,6 +1541,11 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
           >
             Generate replenishment tasks
           </ActionButton>
+          <p className="mt-1 text-xs text-zinc-500">
+            <span className="font-medium text-zinc-600">Open tasks</span> labels each REPLENISH as{" "}
+            <span className="whitespace-nowrap">source bin → target (pick) bin</span> so the move
+            direction is obvious before you complete the task.
+          </p>
         </div>
       </section>
         </>
@@ -2161,7 +2168,19 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                 <span className="text-zinc-700">{t.quantity}</span>
                 <span className="text-zinc-700">{t.product?.name ?? "—"}</span>
                 <span className="text-zinc-500">{t.warehouse.code || t.warehouse.name}</span>
-                {t.bin ? <span className="text-zinc-500">Bin {t.bin.code}</span> : null}
+                {t.taskType === "REPLENISH" ? (
+                  <span className="text-zinc-500">
+                    {t.sourceBin || t.referenceId ? (
+                      <>
+                        From {t.sourceBin?.code ?? t.referenceId?.slice(0, 8) ?? "?"}
+                        {" → "}
+                      </>
+                    ) : null}
+                    To {t.bin?.code ?? "—"}
+                  </span>
+                ) : t.bin ? (
+                  <span className="text-zinc-500">Bin {t.bin.code}</span>
+                ) : null}
                 {t.shipment ? <span className="text-zinc-500">Shipment {t.shipment.shipmentNo || t.shipment.id.slice(0, 6)}</span> : null}
                 {t.order ? <span className="text-zinc-500">Order {t.order.orderNumber}</span> : null}
                 {t.wave ? <span className="text-zinc-500">Wave {t.wave.waveNo}</span> : null}
