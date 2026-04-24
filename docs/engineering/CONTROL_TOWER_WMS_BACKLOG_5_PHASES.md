@@ -60,10 +60,10 @@
 
 | Includes | Pointers |
 |----------|----------|
-| **2.3** Receiving — state machine: **spec issue first** | Roadmap Phase 2, [`wms/GAP_MAP`](../wms/GAP_MAP.md) |
-| Optional: packing/labels, dashboard “at a glance” | Roadmap 2.4, [`agent-todos/wms.md`](./agent-todos/wms.md) |
+| **2.3** Receiving — state machine | Roadmap Phase 2, [`wms/GAP_MAP`](../wms/GAP_MAP.md) · [**spec**](../wms/WMS_RECEIVING_STATE_MACHINE_SPEC.md) |
+| Optional: packing/labels, dashboard depth | Roadmap 2.4, [`agent-todos/wms.md`](./agent-todos/wms.md) — `/wms` **At a glance** already ships triage tiles; more KPIs = product issue |
 
-**Exit:** 2.3 either **in progress with published spec** or **explicitly deferred** with a one-line GAP reason.
+**Exit (this tranche):** 2.3 **published spec (2026-04-23)**; code when a dedicated issue picks schema + first transitions. Optional 2.4 remains product-gated.
 
 ---
 
@@ -82,6 +82,7 @@
 
 | Date | Change |
 |------|--------|
+| 2026-04-23 | Phase 4 (WMS): [receiving state machine spec](../wms/WMS_RECEIVING_STATE_MACHINE_SPEC.md) + GAP/roadmap links. |
 | 2026-04-23 | Phase 3 (Workbench & inbound): bulk exception owner + `simple_carrier_event_v1`. |
 | 2026-04-23 | Phase 2 (Reporting): `exceptionRootCause` dimension; Phase 1 assist execute. |
 | 2026-04-23 | Phase 1 (Assist): link **execute-post-action** / Search confirm slice after merge. |

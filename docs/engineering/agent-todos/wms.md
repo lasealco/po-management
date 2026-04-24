@@ -14,7 +14,7 @@
 
 - [x] **Saved ledger views** — `WmsSavedLedgerView` + `/api/wms/saved-ledger-views` (GET list, POST create, DELETE by id); Stock page UI was already wired; **landed** 2026-04-23 (parity with per-user `CtSavedFilter` pattern).
 - [x] **Outbound ASN parity** — `OutboundOrder.asnReference` + `requestedShipDate` in API + `set_outbound_order_asn_fields` + WMS **Outbound flow**; **landed** 2026-04-25.
-- [ ] **Deeper receiving states** — if product defines the state machine in an issue first.
+- [x] **Deeper receiving states — spec** — [WMS_RECEIVING_STATE_MACHINE_SPEC.md](../wms/WMS_RECEIVING_STATE_MACHINE_SPEC.md) (2026-04-23). **Next:** file implementation issue (schema option A/B/C + first transitions); not started in code.
 
 ---
 

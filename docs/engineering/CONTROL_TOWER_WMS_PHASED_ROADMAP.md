@@ -65,7 +65,7 @@ Work **one issue at a time** (parallel agents only on **non-overlapping paths**)
 |---|--------|------|------------|
 | 2.1 | **Ledger** | **Saved** ledger / filter **views** (align with Control Tower saved-view UX if product wants) | **Done (2026-04-23)** — `WmsSavedLedgerView` + `/api/wms/saved-ledger-views`; see [`wms/GAP_MAP`](../wms/GAP_MAP.md) |
 | 2.2 | **ASN** | **Outbound** ASN parity vs blueprint | **Done (2026-04-25)** — `OutboundOrder.asnReference` + `requestedShipDate` in `GET /api/wms` + `set_outbound_order_asn_fields` + create optional fields; WMS **Outbound flow** UI |
-| 2.3 | **Receiving** | Deeper **receiving** states — only after a **short spec issue** (state machine) | [`wms/GAP_MAP.md`](../wms/GAP_MAP.md) |
+| 2.3 | **Receiving** | Deeper **receiving** states — **spec:** [`WMS_RECEIVING_STATE_MACHINE_SPEC.md`](../wms/WMS_RECEIVING_STATE_MACHINE_SPEC.md) (2026-04-23); implementation = separate issue | [`wms/GAP_MAP.md`](../wms/GAP_MAP.md) |
 | 2.4 | **UX** | Pick one: **packing / labels**, **wave / replenish** path verification, **dashboard** “At a glance” vs blueprint KPIs | **Replenish slice done (2026-04-25):** `GET /api/wms` `openTasks[].sourceBin` for REPLENISH + **From → To** in Operations; setup hint. **optional:** packing/labels, dashboard KPI depth — [`wms.md`](../agent-todos/wms.md) |
 
 **Deferred (epic-sized, split before code):** appointment scheduling, VAS / work orders, commercial quotes — see [`wms.md` § Gaps](agent-todos/wms.md).
@@ -137,6 +137,7 @@ Work **one issue at a time** (parallel agents only on **non-overlapping paths**)
 
 | Date | Change |
 |------|--------|
+| 2026-04-23 | **WMS Phase 2.3 (receiving):** [spec](../wms/WMS_RECEIVING_STATE_MACHINE_SPEC.md) published; implementation backlog. |
 | 2026-04-26 | **Program tranche handoff:** table **“closed vs backlog”** (Phases 0–3, near-term 1–4, WMS 2.1/2.2/2.4). |
 | 2026-04-26 | **Post-tranche 5-phase backlog** — [`CONTROL_TOWER_WMS_BACKLOG_5_PHASES.md`](./CONTROL_TOWER_WMS_BACKLOG_5_PHASES.md). |
 | 2026-04-25 | **Near-term #4 slice:** `postActionToolCatalog` on **`POST …/assist`** + Search UI (`assist-tool-catalog.ts`); `controltower/GAP_MAP`. |

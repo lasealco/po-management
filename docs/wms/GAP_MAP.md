@@ -6,7 +6,7 @@
 
 **Phase A / R1–R2 demo exit (this repo):** setup + receiving/putaway + stock inquiry (ledger + balance filter + CSV) + outbound pick/pack/ship + holds + replenishment tasks + waves + cycle count + inbound ASN fields + **shipment milestones** (log + last milestone in UI) + billing event materialization to CRM account where linked. **Explicitly deferred:** zone hierarchy beyond flat zone/bin, lot master, field-level WMS permission matrix, multi-strategy allocation, dock appointments, VAS/work orders, commercial quotes (see R3).
 
-> **Tranche handoff (2026-04-26):** Optional increments **2.1** (saved ledger), **2.2** (outbound ASN), and **2.4** (REPLENISH source→target) are **closed** on `main`. Remaining WMS GAP **🟡 / ❌** rows are **MVP, deferred, or need a spec** (e.g. **2.3** receiving states) — see [`CONTROL_TOWER_WMS_PHASED_ROADMAP` § Program tranche handoff](../engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md#program-tranche-handoff-2026-04-26).
+> **Tranche handoff (2026-04-26):** Optional increments **2.1** (saved ledger), **2.2** (outbound ASN), and **2.4** (REPLENISH source→target) are **closed** on `main`. **2.3** receiving states: **spec published** — [`WMS_RECEIVING_STATE_MACHINE_SPEC.md`](./WMS_RECEIVING_STATE_MACHINE_SPEC.md) (implementation backlog). Other **🟡 / ❌** rows remain MVP or deferred — see [`CONTROL_TOWER_WMS_PHASED_ROADMAP` § Program tranche handoff](../engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md#program-tranche-handoff-2026-04-26).
 
 ## R1 — Foundation (setup, receiving path basics, inquiry, outbound basic, permissions)
 
@@ -57,6 +57,6 @@ Handlers live in `src/lib/wms/post-actions.ts` (route stays a thin shell).
 3. **`WmsCustomer`** or reuse **CRM `CrmAccount`** — **done** for outbound (optional link + `set_outbound_crm_account`).  
 4. Split `src/app/api/wms/route.ts` into `src/lib/wms/*.ts` — **done:** `post-actions.ts` (POST), `get-wms-payload.ts` (GET), `wms-body.ts`, `wave.ts`, billing modules.
 
-_Next optional increments:_ ~~saved ledger views~~ (**landed** 2026-04-23: `WmsSavedLedgerView` + `/api/wms/saved-ledger-views`); ~~**outbound ASN** parity~~ (**landed** 2026-04-25: `OutboundOrder.asnReference` + `requestedShipDate` in payload + `set_outbound_order_asn_fields`); deeper receiving states — not required for Phase A exit above.
+_Next optional increments:_ ~~saved ledger views~~ (**landed** 2026-04-23: `WmsSavedLedgerView` + `/api/wms/saved-ledger-views`); ~~**outbound ASN** parity~~ (**landed** 2026-04-25: `OutboundOrder.asnReference` + `requestedShipDate` in payload + `set_outbound_order_asn_fields`); **2.3 deeper receiving states** — **spec published 2026-04-23:** [WMS_RECEIVING_STATE_MACHINE_SPEC.md](./WMS_RECEIVING_STATE_MACHINE_SPEC.md) (implementation still backlog); not required for Phase A exit above.
 
-_Last updated: 2026-04-26 — Program tranche handoff (optional Phase 2 slices + map cross-surface + roadmap table); 2026-04-25 cross-link to CT map, REPLENISH, outbound ASN._
+_Last updated: 2026-04-23 — Phase 4: receiving state machine spec; 2026-04-26 tranche handoff; 2026-04-25 cross-link to CT map, REPLENISH, outbound ASN._
