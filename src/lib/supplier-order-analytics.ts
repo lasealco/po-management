@@ -1,6 +1,8 @@
 import { Prisma } from "@prisma/client";
 import type { PrismaClient } from "@prisma/client";
 
+import { purchaseOrderWhereWithViewerScope } from "@/lib/org-scope";
+
 export type SupplierOrderAnalytics = {
   /** Parent POs only (matches board / reports convention). */
   parentOrderCount: number;
@@ -577,9 +579,22 @@ export async function fetchSupplierPerformanceSummary(
   prisma: PrismaClient,
   tenantId: string,
   supplierId: string,
+  options: { actorUserId: string; isSupplierPortalUser: boolean },
 ): Promise<{ parentOrderCount: number; performance: SupplierPerformanceMetrics }> {
+  const { actorUserId, isSupplierPortalUser } = options;
+  const where = await purchaseOrderWhereWithViewerScope(
+    tenantId,
+    actorUserId,
+    {
+      tenantId,
+      supplierId,
+      splitParentId: null,
+      ...(isSupplierPortalUser ? { workflow: { supplierPortalOn: true } } : {}),
+    },
+    { isSupplierPortalUser },
+  );
   const parentRows = await prisma.purchaseOrder.findMany({
-    where: { tenantId, supplierId, splitParentId: null },
+    where,
     select: { id: true, requestedDeliveryDate: true },
   });
   const performance = await computeSupplierPerformance(prisma, tenantId, parentRows);

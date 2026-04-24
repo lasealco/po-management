@@ -1,3 +1,4 @@
+import { getControlTowerPortalContext, controlTowerShipmentAccessWhere } from "@/lib/control-tower/viewer";
 import type { ReportDefinition } from "@/lib/reports/types";
 
 export const loadPlansByStatusReport: ReportDefinition = {
@@ -7,9 +8,14 @@ export const loadPlansByStatusReport: ReportDefinition = {
   category: "planning",
   requires: [{ resource: "org.orders", action: "view" }],
   run: async (ctx) => {
+    const portalCtx = await getControlTowerPortalContext(ctx.actorUserId);
+    const shipmentWhere = await controlTowerShipmentAccessWhere(ctx.tenantId, portalCtx, ctx.actorUserId);
     const grouped = await ctx.prisma.loadPlan.groupBy({
       by: ["status"],
-      where: { tenantId: ctx.tenantId },
+      where: {
+        tenantId: ctx.tenantId,
+        assignments: { some: { shipment: shipmentWhere } },
+      },
       _count: { _all: true },
     });
 

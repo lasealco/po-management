@@ -1,6 +1,9 @@
-import { CrmOpportunityStage, CtExceptionStatus, ShipmentStatus } from "@prisma/client";
+import { CrmOpportunityStage, CtExceptionStatus, ShipmentStatus, type Prisma } from "@prisma/client";
 
-import { getControlTowerPortalContext } from "@/lib/control-tower/viewer";
+import { actorIsSupplierPortalRestricted } from "@/lib/authz";
+import { crmOwnerRelationClause } from "@/lib/crm-scope";
+import { loadWmsViewReadScope } from "@/lib/wms/wms-read-scope";
+import { purchaseOrderWhereWithViewerScope } from "@/lib/org-scope";
 import { prisma } from "@/lib/prisma";
 
 function n(v: unknown): number {
@@ -95,85 +98,85 @@ export async function buildExecutiveSummary(params: {
   actorUserId: string;
 }): Promise<ExecutiveSummary> {
   const { tenantId, actorUserId } = params;
-  const ctx = await getControlTowerPortalContext(actorUserId);
+  const [wms, isSupplier] = await Promise.all([
+    loadWmsViewReadScope(tenantId, actorUserId),
+    actorIsSupplierPortalRestricted(actorUserId),
+  ]);
+  const scopeShipment = wms.shipment;
   const now = new Date();
   const sixMonthsAgo = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 5, 1));
   const last30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
   const prev30 = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
 
-  const [
-    openPoAgg,
-    weightedOppRows,
-    exceptionCount,
-    stockRiskRows,
-    delayedInboundRows,
-    weightedOppLast30,
-    weightedOppPrev30,
-    exceptionLast30,
-    exceptionPrev30,
-    delayedInboundLast30,
-    delayedInboundPrev30,
-    stockRiskLast30Rows,
-    stockRiskPrev30Rows,
-  ] =
+  const withInventoryProductScope = (
+    w: Prisma.InventoryBalanceWhereInput,
+  ): Prisma.InventoryBalanceWhereInput =>
+    wms.inventoryProduct ? { ...w, product: { is: wms.inventoryProduct } } : w;
+
+  const openPoWhere = await purchaseOrderWhereWithViewerScope(
+    tenantId,
+    actorUserId,
+    {
+      tenantId,
+      splitParentId: null,
+      status: { isEnd: false },
+      ...(isSupplier ? { workflow: { supplierPortalOn: true } } : {}),
+    },
+    { isSupplierPortalUser: isSupplier },
+  );
+
+  const oppStageBase: Prisma.CrmOpportunityWhereInput = {
+    tenantId,
+    ...crmOwnerRelationClause(wms.crmAccess),
+    stage: {
+      notIn: [
+        CrmOpportunityStage.WON_IMPLEMENTATION_PENDING,
+        CrmOpportunityStage.WON_LIVE,
+        CrmOpportunityStage.LOST,
+      ],
+    },
+    estimatedRevenue: { not: null },
+  };
+
+  const delayedInboundFilter = {
+    status: { in: [ShipmentStatus.BOOKED, ShipmentStatus.IN_TRANSIT, ShipmentStatus.DELIVERED] } as const,
+    receivedAt: null,
+    booking: {
+      is: {
+        OR: [{ latestEta: { lt: now } }, { eta: { lt: now } }],
+      },
+    },
+  } satisfies Prisma.ShipmentWhereInput;
+
+  const [openPoAgg, weightedOppRows, exceptionCount, stockRiskRows, delayedInboundRows, weightedOppLast30, weightedOppPrev30, exceptionLast30, exceptionPrev30, delayedInboundLast30, delayedInboundPrev30, stockRiskLast30Rows, stockRiskPrev30Rows] =
     await Promise.all([
       prisma.purchaseOrder.aggregate({
-        where: {
-          tenantId,
-          splitParentId: null,
-          status: { isEnd: false },
-        },
+        where: openPoWhere,
         _sum: { totalAmount: true },
       }),
       prisma.crmOpportunity.findMany({
-        where: {
-          tenantId,
-          stage: {
-            notIn: [
-              CrmOpportunityStage.WON_IMPLEMENTATION_PENDING,
-              CrmOpportunityStage.WON_LIVE,
-              CrmOpportunityStage.LOST,
-            ],
-          },
-          estimatedRevenue: { not: null },
-          createdAt: { gte: sixMonthsAgo },
-        },
-        select: {
-          estimatedRevenue: true,
-          probability: true,
-          createdAt: true,
-        },
+        where: { ...oppStageBase, createdAt: { gte: sixMonthsAgo } },
+        select: { estimatedRevenue: true, probability: true, createdAt: true },
       }),
       prisma.ctException.count({
         where: {
           tenantId,
           status: { in: [CtExceptionStatus.OPEN, CtExceptionStatus.IN_PROGRESS] },
+          shipment: scopeShipment,
         },
       }),
       prisma.inventoryBalance.findMany({
-        where: { tenantId },
+        where: withInventoryProductScope({ tenantId }),
         select: {
           productId: true,
           onHandQty: true,
           allocatedQty: true,
-          product: {
-            select: { productCode: true, sku: true, name: true },
-          },
+          product: { select: { productCode: true, sku: true, name: true } },
         },
         take: 2000,
       }),
       prisma.shipment.findMany({
-        where: {
-          order: { tenantId },
-          customerCrmAccountId: ctx.customerCrmAccountId ?? undefined,
-          status: { in: [ShipmentStatus.BOOKED, ShipmentStatus.IN_TRANSIT, ShipmentStatus.DELIVERED] },
-          receivedAt: null,
-          booking: {
-            is: {
-              OR: [{ latestEta: { lt: now } }, { eta: { lt: now } }],
-            },
-          },
-        },
+        where: { AND: [scopeShipment, delayedInboundFilter] },
         select: {
           id: true,
           shipmentNo: true,
@@ -198,33 +201,11 @@ export async function buildExecutiveSummary(params: {
         take: 50,
       }),
       prisma.crmOpportunity.findMany({
-        where: {
-          tenantId,
-          stage: {
-            notIn: [
-              CrmOpportunityStage.WON_IMPLEMENTATION_PENDING,
-              CrmOpportunityStage.WON_LIVE,
-              CrmOpportunityStage.LOST,
-            ],
-          },
-          estimatedRevenue: { not: null },
-          createdAt: { gte: last30 },
-        },
+        where: { ...oppStageBase, createdAt: { gte: last30 } },
         select: { estimatedRevenue: true, probability: true },
       }),
       prisma.crmOpportunity.findMany({
-        where: {
-          tenantId,
-          stage: {
-            notIn: [
-              CrmOpportunityStage.WON_IMPLEMENTATION_PENDING,
-              CrmOpportunityStage.WON_LIVE,
-              CrmOpportunityStage.LOST,
-            ],
-          },
-          estimatedRevenue: { not: null },
-          createdAt: { gte: prev30, lt: last30 },
-        },
+        where: { ...oppStageBase, createdAt: { gte: prev30, lt: last30 } },
         select: { estimatedRevenue: true, probability: true },
       }),
       prisma.ctException.count({
@@ -232,6 +213,7 @@ export async function buildExecutiveSummary(params: {
           tenantId,
           status: { in: [CtExceptionStatus.OPEN, CtExceptionStatus.IN_PROGRESS] },
           createdAt: { gte: last30 },
+          shipment: scopeShipment,
         },
       }),
       prisma.ctException.count({
@@ -239,43 +221,34 @@ export async function buildExecutiveSummary(params: {
           tenantId,
           status: { in: [CtExceptionStatus.OPEN, CtExceptionStatus.IN_PROGRESS] },
           createdAt: { gte: prev30, lt: last30 },
+          shipment: scopeShipment,
         },
       }),
       prisma.shipment.count({
         where: {
-          order: { tenantId },
-          customerCrmAccountId: ctx.customerCrmAccountId ?? undefined,
-          status: { in: [ShipmentStatus.BOOKED, ShipmentStatus.IN_TRANSIT, ShipmentStatus.DELIVERED] },
-          receivedAt: null,
-          booking: {
-            is: {
-              OR: [{ latestEta: { lt: now } }, { eta: { lt: now } }],
-            },
-          },
-          createdAt: { gte: last30 },
+          AND: [
+            scopeShipment,
+            delayedInboundFilter,
+            { createdAt: { gte: last30 } } satisfies Prisma.ShipmentWhereInput,
+          ],
         },
       }),
       prisma.shipment.count({
         where: {
-          order: { tenantId },
-          customerCrmAccountId: ctx.customerCrmAccountId ?? undefined,
-          status: { in: [ShipmentStatus.BOOKED, ShipmentStatus.IN_TRANSIT, ShipmentStatus.DELIVERED] },
-          receivedAt: null,
-          booking: {
-            is: {
-              OR: [{ latestEta: { lt: now } }, { eta: { lt: now } }],
-            },
-          },
-          createdAt: { gte: prev30, lt: last30 },
+          AND: [
+            scopeShipment,
+            delayedInboundFilter,
+            { createdAt: { gte: prev30, lt: last30 } } satisfies Prisma.ShipmentWhereInput,
+          ],
         },
       }),
       prisma.inventoryBalance.findMany({
-        where: { tenantId, updatedAt: { gte: last30 } },
+        where: withInventoryProductScope({ tenantId, updatedAt: { gte: last30 } }),
         select: { onHandQty: true, allocatedQty: true },
         take: 2000,
       }),
       prisma.inventoryBalance.findMany({
-        where: { tenantId, updatedAt: { gte: prev30, lt: last30 } },
+        where: withInventoryProductScope({ tenantId, updatedAt: { gte: prev30, lt: last30 } }),
         select: { onHandQty: true, allocatedQty: true },
         take: 2000,
       }),
@@ -495,13 +468,20 @@ export async function buildExecutiveSummary(params: {
     const probability = Math.min(100, Math.max(0, n(row.probability)));
     bucket.weightedPipelineValue += (n(row.estimatedRevenue) * probability) / 100;
   }
-  const poRows = await prisma.purchaseOrder.findMany({
-    where: {
+  const poTrendWhere = await purchaseOrderWhereWithViewerScope(
+    tenantId,
+    actorUserId,
+    {
       tenantId,
       splitParentId: null,
       status: { isEnd: false },
       createdAt: { gte: sixMonthsAgo },
+      ...(isSupplier ? { workflow: { supplierPortalOn: true } } : {}),
     },
+    { isSupplierPortalUser: isSupplier },
+  );
+  const poRows = await prisma.purchaseOrder.findMany({
+    where: poTrendWhere,
     select: { createdAt: true, totalAmount: true },
     take: 3000,
   });

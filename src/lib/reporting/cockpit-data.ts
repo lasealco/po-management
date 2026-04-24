@@ -1,5 +1,14 @@
-import { CrmOpportunityStage, CtExceptionStatus, ShipmentStatus } from "@prisma/client";
+import {
+  CrmOpportunityStage,
+  CtExceptionStatus,
+  ShipmentStatus,
+  type Prisma,
+} from "@prisma/client";
 
+import { actorIsSupplierPortalRestricted } from "@/lib/authz";
+import { crmOwnerRelationClause } from "@/lib/crm-scope";
+import { loadWmsViewReadScope } from "@/lib/wms/wms-read-scope";
+import { purchaseOrderWhereWithViewerScope } from "@/lib/org-scope";
 import { prisma } from "@/lib/prisma";
 
 import type {
@@ -51,6 +60,66 @@ export async function buildReportingCockpitSnapshot(params: {
   const last7Start = new Date(now.getTime() - ms7);
   const prev7Start = new Date(now.getTime() - 2 * ms7);
 
+  const actorId = params.actorUserId?.trim() || null;
+  const [wms, isSupplier] = actorId
+    ? await Promise.all([
+        loadWmsViewReadScope(params.tenantId, actorId),
+        actorIsSupplierPortalRestricted(actorId),
+      ])
+    : [null, false];
+
+  const scopeShip = wms?.shipment;
+  const withInvProduct = (w: Prisma.InventoryBalanceWhereInput): Prisma.InventoryBalanceWhereInput =>
+    wms?.inventoryProduct ? { ...w, product: { is: wms.inventoryProduct } } : w;
+  const supplierPoExtra = isSupplier ? { workflow: { supplierPortalOn: true } } : {};
+
+  const poScoped = async (base: Prisma.PurchaseOrderWhereInput) => {
+    if (!actorId) return base;
+    return purchaseOrderWhereWithViewerScope(
+      params.tenantId,
+      actorId,
+      { ...base, ...supplierPoExtra },
+      { isSupplierPortalUser: isSupplier },
+    );
+  };
+
+  const oppOpenStages = {
+    stage: {
+      notIn: [
+        CrmOpportunityStage.WON_IMPLEMENTATION_PENDING,
+        CrmOpportunityStage.WON_LIVE,
+        CrmOpportunityStage.LOST,
+      ],
+    },
+  } satisfies Prisma.CrmOpportunityWhereInput;
+
+  const crmOppBase = (extra: Prisma.CrmOpportunityWhereInput): Prisma.CrmOpportunityWhereInput => ({
+    tenantId: params.tenantId,
+    ...oppOpenStages,
+    ...extra,
+    ...(wms ? crmOwnerRelationClause(wms.crmAccess) : {}),
+  });
+
+  const crmActBase = (extra: Prisma.CrmActivityWhereInput): Prisma.CrmActivityWhereInput => ({
+    tenantId: params.tenantId,
+    ...extra,
+    ...(wms ? crmOwnerRelationClause(wms.crmAccess) : {}),
+  });
+
+  const inTransitWhere = (extra: Prisma.ShipmentWhereInput): Prisma.ShipmentWhereInput =>
+    scopeShip
+      ? { AND: [scopeShip, { status: { in: [ShipmentStatus.BOOKED, ShipmentStatus.IN_TRANSIT] } }, extra] }
+      : { order: { tenantId: params.tenantId }, status: { in: [ShipmentStatus.BOOKED, ShipmentStatus.IN_TRANSIT] }, ...extra };
+
+  const shipmentCreatedWhere = (createdAt: Prisma.DateTimeFilter): Prisma.ShipmentWhereInput =>
+    scopeShip
+      ? { AND: [scopeShip, { createdAt }] }
+      : { order: { tenantId: params.tenantId }, createdAt };
+
+  const wmsUninvoicedWhere: Prisma.WmsBillingEventWhereInput = wms
+    ? { AND: [{ tenantId: params.tenantId, invoiceRunId: null }, wms.wmsBillingEvent] }
+    : { tenantId: params.tenantId, invoiceRunId: null };
+
   const [
     openPoCount,
     overduePoCount,
@@ -67,81 +136,55 @@ export async function buildReportingCockpitSnapshot(params: {
     uninvoicedBillingAgg,
   ] = await Promise.all([
     prisma.purchaseOrder.count({
-      where: { tenantId: params.tenantId },
+      where: await poScoped({ tenantId: params.tenantId, ...supplierPoExtra }),
     }),
     prisma.purchaseOrder.count({
-      where: {
+      where: await poScoped({
         tenantId: params.tenantId,
+        ...supplierPoExtra,
         requestedDeliveryDate: { lt: now },
-      },
+      }),
     }),
     prisma.shipment.count({
-      where: {
-        order: { tenantId: params.tenantId },
-        status: { in: [ShipmentStatus.BOOKED, ShipmentStatus.IN_TRANSIT] },
-      },
+      where: inTransitWhere({}),
     }),
     prisma.ctException.count({
       where: {
         tenantId: params.tenantId,
         status: { in: [CtExceptionStatus.OPEN, CtExceptionStatus.IN_PROGRESS] },
+        ...(scopeShip ? { shipment: scopeShip } : {}),
       },
     }),
+    prisma.crmOpportunity.count({ where: crmOppBase({}) }),
     prisma.crmOpportunity.count({
-      where: {
-        tenantId: params.tenantId,
-        stage: {
-          notIn: [CrmOpportunityStage.WON_IMPLEMENTATION_PENDING, CrmOpportunityStage.WON_LIVE, CrmOpportunityStage.LOST],
-        },
-      },
-    }),
-    prisma.crmOpportunity.count({
-      where: {
-        tenantId: params.tenantId,
-        closeDate: { lt: now },
-        stage: {
-          notIn: [CrmOpportunityStage.WON_IMPLEMENTATION_PENDING, CrmOpportunityStage.WON_LIVE, CrmOpportunityStage.LOST],
-        },
-      },
+      where: crmOppBase({ closeDate: { lt: now } }),
     }),
     prisma.crmActivity.count({
-      where: {
-        tenantId: params.tenantId,
-        dueDate: { lt: now },
-        status: { not: "DONE" },
-      },
+      where: crmActBase({ dueDate: { lt: now }, status: { not: "DONE" } }),
     }),
     prisma.inventoryBalance.count({
-      where: { tenantId: params.tenantId, onHold: true },
+      where: withInvProduct({ tenantId: params.tenantId, onHold: true }),
     }),
     prisma.inventoryBalance.aggregate({
-      where: { tenantId: params.tenantId, onHold: true },
+      where: withInvProduct({ tenantId: params.tenantId, onHold: true }),
       _sum: { onHandQty: true },
     }),
     prisma.purchaseOrder.aggregate({
-      where: { tenantId: params.tenantId },
+      where: await poScoped({ tenantId: params.tenantId, ...supplierPoExtra }),
       _sum: { totalAmount: true },
     }),
     prisma.shipment.findMany({
-      where: {
-        order: { tenantId: params.tenantId },
-        status: { in: [ShipmentStatus.BOOKED, ShipmentStatus.IN_TRANSIT] },
-      },
+      where: inTransitWhere({}),
       select: { order: { select: { totalAmount: true } } },
       take: 5000,
     }),
     prisma.crmOpportunity.findMany({
-      where: {
-        tenantId: params.tenantId,
-        stage: {
-          notIn: [CrmOpportunityStage.WON_IMPLEMENTATION_PENDING, CrmOpportunityStage.WON_LIVE, CrmOpportunityStage.LOST],
-        },
-      },
+      where: crmOppBase({}),
       select: { estimatedRevenue: true, probability: true },
       take: 2000,
     }),
     prisma.wmsBillingEvent.aggregate({
-      where: { tenantId: params.tenantId, invoiceRunId: null },
+      where: wmsUninvoicedWhere,
       _sum: { amount: true },
     }),
   ]);
@@ -157,43 +200,40 @@ export async function buildReportingCockpitSnapshot(params: {
     crmActivitiesPrev7,
   ] = await Promise.all([
     prisma.purchaseOrder.count({
-      where: { tenantId: params.tenantId, createdAt: { gte: last7Start } },
+      where: await poScoped({ tenantId: params.tenantId, ...supplierPoExtra, createdAt: { gte: last7Start } }),
     }),
     prisma.purchaseOrder.count({
-      where: {
+      where: await poScoped({
         tenantId: params.tenantId,
+        ...supplierPoExtra,
         createdAt: { gte: prev7Start, lt: last7Start },
-      },
+      }),
     }),
     prisma.shipment.count({
+      where: shipmentCreatedWhere({ gte: last7Start }),
+    }),
+    prisma.shipment.count({
+      where: shipmentCreatedWhere({ gte: prev7Start, lt: last7Start }),
+    }),
+    prisma.ctException.count({
       where: {
-        order: { tenantId: params.tenantId },
+        tenantId: params.tenantId,
         createdAt: { gte: last7Start },
+        ...(scopeShip ? { shipment: scopeShip } : {}),
       },
-    }),
-    prisma.shipment.count({
-      where: {
-        order: { tenantId: params.tenantId },
-        createdAt: { gte: prev7Start, lt: last7Start },
-      },
-    }),
-    prisma.ctException.count({
-      where: { tenantId: params.tenantId, createdAt: { gte: last7Start } },
     }),
     prisma.ctException.count({
       where: {
         tenantId: params.tenantId,
         createdAt: { gte: prev7Start, lt: last7Start },
+        ...(scopeShip ? { shipment: scopeShip } : {}),
       },
     }),
     prisma.crmActivity.count({
-      where: { tenantId: params.tenantId, createdAt: { gte: last7Start } },
+      where: crmActBase({ createdAt: { gte: last7Start } }),
     }),
     prisma.crmActivity.count({
-      where: {
-        tenantId: params.tenantId,
-        createdAt: { gte: prev7Start, lt: last7Start },
-      },
+      where: crmActBase({ createdAt: { gte: prev7Start, lt: last7Start } }),
     }),
   ]);
 
@@ -218,7 +258,6 @@ export async function buildReportingCockpitSnapshot(params: {
   };
 
   let headlineChange: CockpitHeadlineChange | null = null;
-  const actorId = params.actorUserId?.trim();
   const persistBaseline = Boolean(actorId) && params.persistHeadlineBaseline !== false;
   if (actorId) {
     const pref = await prisma.userPreference.findUnique({

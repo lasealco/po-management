@@ -1,3 +1,4 @@
+import { getControlTowerPortalContext, controlTowerShipmentAccessWhere } from "@/lib/control-tower/viewer";
 import type { ReportDefinition } from "@/lib/reports/types";
 
 export const shipmentStatusSummaryReport: ReportDefinition = {
@@ -7,9 +8,11 @@ export const shipmentStatusSummaryReport: ReportDefinition = {
   category: "logistics",
   requires: [{ resource: "org.orders", action: "view" }],
   run: async (ctx) => {
+    const portalCtx = await getControlTowerPortalContext(ctx.actorUserId);
+    const where = await controlTowerShipmentAccessWhere(ctx.tenantId, portalCtx, ctx.actorUserId);
     const grouped = await ctx.prisma.shipment.groupBy({
       by: ["status"],
-      where: { order: { tenantId: ctx.tenantId } },
+      where,
       _count: { _all: true },
     });
 

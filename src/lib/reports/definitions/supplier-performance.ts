@@ -1,3 +1,4 @@
+import { actorIsSupplierPortalRestricted } from "@/lib/authz";
 import { fetchSupplierPerformanceSummary } from "@/lib/supplier-order-analytics";
 import type { ReportDefinition } from "@/lib/reports/types";
 
@@ -12,6 +13,7 @@ export const supplierPerformanceReport: ReportDefinition = {
     { resource: "org.suppliers", action: "view" },
   ],
   run: async (ctx) => {
+    const isSupplier = await actorIsSupplierPortalRestricted(ctx.actorUserId);
     const suppliers = await ctx.prisma.supplier.findMany({
       where: { tenantId: ctx.tenantId, isActive: true },
       select: { id: true, name: true, code: true },
@@ -24,6 +26,7 @@ export const supplierPerformanceReport: ReportDefinition = {
         ctx.prisma,
         ctx.tenantId,
         s.id,
+        { actorUserId: ctx.actorUserId, isSupplierPortalUser: isSupplier },
       );
       if (parentOrderCount === 0) continue;
 
