@@ -722,6 +722,28 @@ export function ControlTowerReportBuilder({
     const { buildControlTowerReportPdfBytes } = await import("@/lib/control-tower/report-pdf");
     const title = (config.title || result.config?.title || "report").trim() || "report";
     const cov = result.coverage;
+
+    let reportLogoPngOrJpegBytes: Uint8Array | undefined;
+    let reportLogoMime: "image/png" | "image/jpeg" | undefined;
+    try {
+      const logoRes = await fetch("/api/control-tower/report-pdf-logo", { method: "GET" });
+      if (logoRes.ok) {
+        const buf = new Uint8Array(await logoRes.arrayBuffer());
+        if (buf.length > 0) {
+          const ct = (logoRes.headers.get("content-type") ?? "").toLowerCase();
+          if (ct.includes("png") || (buf[0] === 0x89 && buf[1] === 0x50)) {
+            reportLogoPngOrJpegBytes = buf;
+            reportLogoMime = "image/png";
+          } else if (ct.includes("jpeg") || ct.includes("jpg") || (buf[0] === 0xff && buf[1] === 0xd8)) {
+            reportLogoPngOrJpegBytes = buf;
+            reportLogoMime = "image/jpeg";
+          }
+        }
+      }
+    } catch {
+      /* optional brand mark — same as scheduled email when env unset or fetch fails */
+    }
+
     const bytes = await buildControlTowerReportPdfBytes({
       rows: result.rows,
       fullSeriesRows: result.fullSeriesRows ?? [],
@@ -737,6 +759,9 @@ export function ControlTowerReportBuilder({
       reportDateField: result.config?.dateField ?? config.dateField,
       reportDateFrom: result.config?.dateFrom ?? config.dateFrom ?? null,
       reportDateTo: result.config?.dateTo ?? config.dateTo ?? null,
+      ...(reportLogoPngOrJpegBytes && reportLogoMime
+        ? { reportLogoPngOrJpegBytes, reportLogoMime }
+        : {}),
     });
     const slug =
       title

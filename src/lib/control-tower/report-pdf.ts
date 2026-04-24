@@ -26,18 +26,30 @@ export type ControlTowerReportPdfInput = ReportCsvBuildInput & {
 const PAGE_W = 612;
 const PAGE_H = 792;
 const M = 44;
-const ROW_H = 12;
+/** Phase 1B: roomier table rows + slightly larger type for scanability. */
+const ROW_H = 14;
 const BUCKET_W = 118;
 const COL_W = 54;
-const MIN_Y = M + 28;
+const MIN_Y = M + 32;
 
-const T_TITLE = 14;
-const T_SUB = 9;
-const T_COVERAGE = 8;
-const T_TABLE = 7;
-const LOGO_MAX_W = 100;
-const LOGO_MAX_H = 40;
+const T_TITLE = 15;
+const T_SUB = 9.5;
+const T_COVERAGE = 8.5;
+const T_TABLE = 8;
+const T_FOOT = 7.5;
+const LOGO_MAX_W = 110;
+const LOGO_MAX_H = 44;
 const CONTENT_MAX_W = PAGE_W - 2 * M;
+
+const C = {
+  ink: { strong: rgb(0.1, 0.11, 0.14), body: rgb(0.12, 0.14, 0.18), muted: rgb(0.3, 0.32, 0.36), light: rgb(0.44, 0.46, 0.5) },
+  line: rgb(0.86, 0.88, 0.91),
+  table: {
+    headerFill: rgb(0.93, 0.94, 0.97),
+    headerBorder: rgb(0.8, 0.83, 0.88),
+    zebra: rgb(0.985, 0.988, 0.992),
+  },
+};
 
 function abbrevMeasure(key: (typeof REPORT_CSV_MEASURES)[number]): string {
   switch (key) {
@@ -124,7 +136,7 @@ export async function buildControlTowerReportPdfBytes(
     text: string,
     size: number,
     bold = false,
-    color = rgb(0.12, 0.14, 0.18),
+    color = C.ink.body,
     maxW = CONTENT_MAX_W,
   ) => {
     ensureSpace(size + 6);
@@ -136,12 +148,12 @@ export async function buildControlTowerReportPdfBytes(
       color,
       maxWidth: maxW,
     });
-    y -= size + (size >= 11 ? 6 : 4);
+    y -= size + (size >= 12 ? 7 : 4);
   };
 
-  drawLine(input.title, T_TITLE, true, rgb(0.12, 0.14, 0.18), headerTextMaxW);
+  drawLine(input.title, T_TITLE, true, C.ink.strong, headerTextMaxW);
   if (orgLine) {
-    drawLine(orgLine, T_SUB, false, rgb(0.32, 0.34, 0.38), headerTextMaxW);
+    drawLine(orgLine, T_SUB, false, C.ink.muted, headerTextMaxW);
   }
   drawLine(`Generated (UTC): ${input.generatedAt}`, T_SUB, false, undefined, headerTextMaxW);
   drawLine(
@@ -156,7 +168,7 @@ export async function buildControlTowerReportPdfBytes(
   if (measKey || dimKey) {
     const m = measKey ? metricLabel(measKey) : "—";
     const d = dimKey ? dimensionLabel(dimKey) : "—";
-    drawLine(`${m} · ${d}`, T_SUB, false, rgb(0.28, 0.3, 0.34), headerTextMaxW);
+    drawLine(`${m} · ${d}`, T_SUB, false, C.ink.muted, headerTextMaxW);
   }
   const dateLine =
     input.reportDateField != null
@@ -167,21 +179,63 @@ export async function buildControlTowerReportPdfBytes(
         })
       : null;
   if (dateLine) {
-    drawLine(dateLine, T_COVERAGE, false, rgb(0.28, 0.3, 0.34), headerTextMaxW);
+    drawLine(dateLine, T_COVERAGE, false, C.ink.muted, headerTextMaxW);
   }
-  y -= 4;
+  y -= 2;
+  page.drawLine({
+    start: { x: M, y },
+    end: { x: PAGE_W - M, y },
+    thickness: 0.65,
+    color: C.line,
+  });
+  y -= 8;
 
-  const drawTableRow = (cells: string[], bold: boolean) => {
-    ensureSpace(ROW_H + 4);
+  type RowKind = "header" | "data" | "total";
+
+  const drawTableRow = (cells: string[], opts: { bold: boolean; kind: RowKind; dataIndex?: number }) => {
+    const { bold, kind, dataIndex = 0 } = opts;
+    ensureSpace(ROW_H + 6);
     const f = bold ? fontBold : font;
+    const yBaseline = y;
+    const barH = ROW_H + 2;
+    const barY = yBaseline - barH + 1;
+
+    if (kind === "header") {
+      page.drawRectangle({
+        x: M,
+        y: barY,
+        width: PAGE_W - 2 * M,
+        height: barH,
+        color: C.table.headerFill,
+        borderColor: C.table.headerBorder,
+        borderWidth: 0.45,
+      });
+    } else if (kind === "data" && dataIndex % 2 === 1) {
+      page.drawRectangle({
+        x: M,
+        y: barY,
+        width: PAGE_W - 2 * M,
+        height: barH - 1,
+        color: C.table.zebra,
+      });
+    } else if (kind === "total") {
+      page.drawLine({
+        start: { x: M, y: yBaseline + 3 },
+        end: { x: PAGE_W - M, y: yBaseline + 3 },
+        thickness: 0.55,
+        color: C.table.headerBorder,
+      });
+    }
+
+    const textColor = kind === "header" ? C.ink.strong : rgb(0.08, 0.09, 0.11);
     let x = M;
     const bucket = truncate(cells[0] ?? "", 42);
     page.drawText(bucket, {
       x,
-      y,
+      y: yBaseline,
       size: T_TABLE,
       font: f,
-      color: rgb(0.08, 0.09, 0.11),
+      color: textColor,
       maxWidth: BUCKET_W,
     });
     x += BUCKET_W + 6;
@@ -190,36 +244,39 @@ export async function buildControlTowerReportPdfBytes(
       const w = f.widthOfTextAtSize(txt, T_TABLE);
       page.drawText(txt, {
         x: x + COL_W - w,
-        y,
+        y: yBaseline,
         size: T_TABLE,
         font: f,
-        color: rgb(0.08, 0.09, 0.11),
+        color: textColor,
       });
       x += COL_W + 4;
     }
     y -= ROW_H;
+    if (kind === "header") y -= 1;
   };
 
-  drawTableRow(["Bucket", ...REPORT_CSV_MEASURES.map(abbrevMeasure)], true);
-  y -= 2;
+  drawTableRow(["Bucket", ...REPORT_CSV_MEASURES.map(abbrevMeasure)], { bold: true, kind: "header" });
+  y -= 1;
 
+  let idx = 0;
   for (const row of dataRows) {
     drawTableRow(
       [row.label, ...REPORT_CSV_MEASURES.map((m) => fmtCell(m, row.metrics[m] ?? 0))],
-      false,
+      { bold: false, kind: "data", dataIndex: idx },
     );
+    idx += 1;
   }
 
   drawTableRow(
     ["TOTAL", ...REPORT_CSV_MEASURES.map((m) => fmtCell(m, input.totals[m] ?? 0))],
-    true,
+    { bold: true, kind: "total" },
   );
 
-  y -= 6;
+  y -= 8;
   const footerTagline = orgLine
     ? `${orgLine} · Control Tower — report snapshot (full series in CSV when attached).`
     : "Control Tower — report snapshot (full series in CSV when attached).";
-  drawLine(footerTagline, T_TABLE, false, rgb(0.42, 0.44, 0.48));
+  drawLine(footerTagline, T_FOOT, false, C.ink.light);
 
   const pages = pdfDoc.getPages();
   for (let i = 0; i < pages.length; i++) {
@@ -227,7 +284,7 @@ export async function buildControlTowerReportPdfBytes(
     pg.drawText(`Page ${i + 1} of ${pages.length}`, {
       x: PAGE_W - M - 72,
       y: 22,
-      size: T_TABLE,
+      size: T_FOOT,
       font,
       color: rgb(0.55, 0.57, 0.6),
     });
@@ -235,7 +292,7 @@ export async function buildControlTowerReportPdfBytes(
       pg.drawText(truncate(orgLine, 44), {
         x: M,
         y: 22,
-        size: T_TABLE,
+        size: T_FOOT,
         font,
         color: rgb(0.55, 0.57, 0.6),
         maxWidth: PAGE_W - 2 * M - 88,
