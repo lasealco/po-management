@@ -742,6 +742,18 @@ async function seed() {
     },
     update: { name: "Germany", parentId: ouApac.id, kind: "COUNTRY" },
   });
+  const ouUsChiPlant = await prisma.orgUnit.upsert({
+    where: { tenantId_code: { tenantId: tenant.id, code: "US-CHI-PL1" } },
+    create: {
+      tenantId: tenant.id,
+      parentId: ouUsa.id,
+      name: "Chicago plant (demo)",
+      code: "US-CHI-PL1",
+      kind: "SITE",
+      sortOrder: 20,
+    },
+    update: { name: "Chicago plant (demo)", parentId: ouUsa.id, kind: "SITE" },
+  });
 
   await prisma.$transaction(async (tx) => {
     await tx.userProductDivision.deleteMany({
@@ -771,6 +783,12 @@ async function seed() {
     await tx.userProductDivision.createMany({
       data: [{ userId: approver.id, productDivisionId: divProcurement.id }],
     });
+  });
+
+  await prisma.orgUnitRoleAssignment.upsert({
+    where: { orgUnitId_role: { orgUnitId: ouUsa.id, role: "GROUP_PROCUREMENT" } },
+    create: { orgUnitId: ouUsa.id, role: "GROUP_PROCUREMENT" },
+    update: {},
   });
 
   const hqOffice = await prisma.supplierOffice.upsert({
@@ -1311,6 +1329,7 @@ async function seed() {
       statusId: supplierDraft.id,
       requesterId: buyer.id,
       supplierId: supplier.id,
+      servedOrgUnitId: ouUsChiPlant.id,
       subtotal: "1800.00",
       taxAmount: "180.00",
       totalAmount: "1980.00",
@@ -1357,6 +1376,7 @@ async function seed() {
         shipToCountryCode: order.shipToCountryCode ?? null,
         internalNotes: order.internalNotes ?? null,
         notesToSupplier: order.notesToSupplier ?? null,
+        servedOrgUnitId: order.servedOrgUnitId ?? null,
       },
       create: {
         tenantId: tenant.id,
@@ -1366,6 +1386,7 @@ async function seed() {
         statusId: order.statusId,
         requesterId: order.requesterId,
         supplierId: order.supplierId,
+        servedOrgUnitId: order.servedOrgUnitId ?? null,
         subtotal: order.subtotal,
         taxAmount: order.taxAmount,
         totalAmount: order.totalAmount,

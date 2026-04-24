@@ -125,12 +125,14 @@ Phases are **ordered**; some work can **overlap** in later steps once foundation
 
 ### Phase 4 — Workflows and policy hooks
 
+**Status:** **Shipped (MVP)** (2026-04-24): buyer transition **`send_to_supplier`** (draft → sent) is gated when `servedOrgUnitId` is set: served org must lie under the actor’s **primary org** subtree; if served ≠ primary, the primary org must have **GROUP_PROCUREMENT** or **REGIONAL_HQ** in `org_unit_role_assignments`. **Superusers** bypass. `GET` order detail **hides** the action when policy fails. Implementation: `src/lib/po-served-org-workflow-policy.ts`, `POST /api/orders/:id/transition`, `GET /api/orders/:id`. Demo seed: **GROUP_PROCUREMENT** on org **US** (buyer) + draft **PO-1004** with **“order for”** `US-CHI-PL1` (Chicago plant).
+
 **Objective:** Use **(C) + (E)** for **approvals, routing, and SOD** (e.g. “regional HQ approves up to N for sites in region”).
 
 **Outcomes**
 
 - Workflow or status rules can reference **served** org and **org role** tags.
-- Optional: **delegation** updates so admins cannot assign “buy for” scope outside their branch.
+- Optional: **delegation** updates so admins cannot assign “buy for” scope outside their branch. *(Primary-org delegation already uses subtree checks in `delegation-guard`; no change required for this MVP.)*
 
 **Dependencies:** Phases 2–3 stable.
 
@@ -186,12 +188,13 @@ Phases are **ordered**; some work can **overlap** in later steps once foundation
 
 ---
 
-*Document version: 1.2 (2026-04-24). Changelog: Phase 3 read scope for `servedOrgUnitId` on POs; Phase 1 operating roles.*
+*Document version: 1.3 (2026-04-24). Changelog: Phase 4 `send_to_supplier` policy; Phase 3 read scope; Phase 1 operating roles.*
 
 ### Changelog
 
 | Date | Change |
 |------|--------|
+| 2026-04-24 | **Phase 4 (MVP) delivered:** `assertSendToSupplierServedOrgPolicy` — `send_to_supplier` respects served org + `OrgUnitRoleAssignment` (GROUP_PROCUREMENT / REGIONAL_HQ) for cross-node release; list/detail and transition API; seed PO-1004 + org `US-CHI-PL1` + role on `US`. |
 | 2026-04-24 | **Phase 3 delivered:** `getPurchaseOrderScopeWhere` — org-scoped users also see POs whose `servedOrgUnitId` is in their org subtree (OR with requester-based rule); `controlTowerShipmentAccessWhere` and other `mergePurchaseOrderWhere` call sites pick this up via the same helper. |
 | 2026-04-24 | **Phase 1 delivered:** `OrgUnitOperatingRole` + `org_unit_role_assignments`; `GET`/`POST`/`PATCH` `/api/settings/org-units` carry `operatingRoles`; no change to `org-scope` PO filters. |
 | 2026-04-23 | Initial v1.0. |

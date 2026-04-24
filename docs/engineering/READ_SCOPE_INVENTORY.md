@@ -6,7 +6,7 @@ This note supports **auditing** and **hardening** data reads so we do not rely o
 
 | Concern | Primary APIs | Note |
 |--------|----------------|------|
-| Purchase orders, order-linked reads | `getPurchaseOrderScopeWhere`, `purchaseOrderWhereWithViewerScope` in `src/lib/org-scope.ts` (org + **served** `servedOrgUnitId` per Phase 3) | Also re-exported from `src/lib/viewer-scopes.ts` |
+| Purchase orders, order-linked reads | `getPurchaseOrderScopeWhere`, `purchaseOrderWhereWithViewerScope` in `src/lib/org-scope.ts` (org + **served** `servedOrgUnitId` per Phase 3); **Phase 4** — `assertSendToSupplierServedOrgPolicy` in `src/lib/po-served-org-workflow-policy.ts` (buyer `send_to_supplier` when served org is set) | Also re-exported from `src/lib/viewer-scopes.ts` |
 | CRM (owner = user) | `getCrmAccessScope`, `crmOwnerRelationClause`, `crmAccountInScope` in `src/lib/crm-scope.ts` | Re-exported from `viewer-scopes.ts` |
 | Control Tower shipments | `getControlTowerPortalContext`, `controlTowerShipmentAccessWhere` in `src/lib/control-tower/viewer.ts` | Re-exported from `viewer-scopes.ts` |
 | WMS + inventory + CT shipment for ops | `loadWmsViewReadScope` in `src/lib/wms/wms-read-scope.ts` | Re-exported from `viewer-scopes.ts` |

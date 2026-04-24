@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { actorIsSupplierPortalRestricted, getActorUserId, requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { getPurchaseOrderScopeWhere } from "@/lib/org-scope";
+import { assertSendToSupplierServedOrgPolicy } from "@/lib/po-served-org-workflow-policy";
 import { prisma } from "@/lib/prisma";
 import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 
@@ -103,6 +104,17 @@ export async function POST(
   }
   if (buyerOnlyActions.has(selectedTransition.actionCode) && isSupplierPortalUser) {
     return toApiErrorResponse({ error: `Action '${selectedTransition.actionCode}' is buyer-only.`, code: "FORBIDDEN", status: 403 });
+  }
+
+  if (selectedTransition.actionCode === "send_to_supplier" && order.servedOrgUnitId) {
+    const sendPolicy = await assertSendToSupplierServedOrgPolicy(
+      tenant.id,
+      actorId,
+      order.servedOrgUnitId,
+    );
+    if (!sendPolicy.ok) {
+      return toApiErrorResponse({ error: sendPolicy.error, code: "FORBIDDEN", status: 403 });
+    }
   }
 
   const updatedOrder = await prisma.$transaction(async (tx) => {

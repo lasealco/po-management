@@ -14,6 +14,7 @@ import {
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { getPurchaseOrderScopeWhere } from "@/lib/org-scope";
 import { optionalStringField } from "@/lib/supplier-patch";
+import { assertSendToSupplierServedOrgPolicy } from "@/lib/po-served-org-workflow-policy";
 import { resolveServedOrgUnitIdForTenant } from "@/lib/served-org-unit";
 import { prisma } from "@/lib/prisma";
 import { addTariffShipmentApplicationSourceLabel } from "@/lib/tariff/tariff-shipment-application-labels";
@@ -203,19 +204,29 @@ export async function GET(
     "buyer_reject_proposal",
     "buyer_cancel",
   ]);
-  const allowedActions = order.workflow.transitions
+  let transitionRows = order.workflow.transitions
     .filter((t) => t.fromStatusId === order.statusId)
     .filter((t) => {
       if (supplierOnlyActions.has(t.actionCode)) return isSupplierPortalUser;
       if (buyerOnlyActions.has(t.actionCode)) return !isSupplierPortalUser;
       return true;
-    })
-    .map((t) => ({
-      actionCode: t.actionCode,
-      label: t.label,
-      requiresComment: t.requiresComment,
-      toStatus: t.toStatus,
-    }));
+    });
+  if (actorId && !isSupplierPortalUser && order.servedOrgUnitId) {
+    const sendPolicy = await assertSendToSupplierServedOrgPolicy(
+      tenant.id,
+      actorId,
+      order.servedOrgUnitId,
+    );
+    if (!sendPolicy.ok) {
+      transitionRows = transitionRows.filter((t) => t.actionCode !== "send_to_supplier");
+    }
+  }
+  const allowedActions = transitionRows.map((t) => ({
+    actionCode: t.actionCode,
+    label: t.label,
+    requiresComment: t.requiresComment,
+    toStatus: t.toStatus,
+  }));
 
   const pendingProposal = order.splitProposalsAsParent[0] ?? null;
 
