@@ -16,6 +16,7 @@ const CT_REPORT_MEASURES = [
   "onTimePct",
   "avgDelayDays",
   "openExceptions",
+  "openExceptionRatePct",
 ] as const;
 type CtReportMeasure = (typeof CT_REPORT_MEASURES)[number];
 
@@ -90,7 +91,7 @@ export function formatAxisTick(measure: string, value: number): string {
 export function formatMetric(measure: string, value: number): string {
   if (measure === "shipments") return formatInteger(value);
   if (measure === "openExceptions") return formatInteger(value);
-  if (measure === "onTimePct") return `${formatDecimal(value, 2)}%`;
+  if (measure === "onTimePct" || measure === "openExceptionRatePct") return `${formatDecimal(value, 2)}%`;
   if (measure === "shippingSpend") return formatDecimal(value, 2);
   if (measure === "avgDelayDays") return formatDecimal(value, 2);
   return formatDecimal(value, 2);

@@ -9,6 +9,7 @@ const MEASURE_LABELS: Record<string, string> = {
   onTimePct: "On-time %",
   avgDelayDays: "Avg delay (days)",
   openExceptions: "Open exceptions (count)",
+  openExceptionRatePct: "Shipments with open exception %",
 };
 
 function truncate(s: string, max: number): string {

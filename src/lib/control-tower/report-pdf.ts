@@ -67,6 +67,8 @@ function abbrevMeasure(key: (typeof REPORT_CSV_MEASURES)[number]): string {
       return "Dly";
     case "openExceptions":
       return "Exc";
+    case "openExceptionRatePct":
+      return "Ex%";
     default:
       return key;
   }
@@ -74,7 +76,7 @@ function abbrevMeasure(key: (typeof REPORT_CSV_MEASURES)[number]): string {
 
 function fmtCell(key: (typeof REPORT_CSV_MEASURES)[number], n: number): string {
   if (!Number.isFinite(n)) return "—";
-  if (key === "onTimePct") return n.toFixed(1);
+  if (key === "onTimePct" || key === "openExceptionRatePct") return n.toFixed(1);
   if (key === "shippingSpend") return n.toFixed(0);
   if (key === "volumeCbm") return n.toFixed(1);
   if (key === "weightKg") return n.toFixed(0);

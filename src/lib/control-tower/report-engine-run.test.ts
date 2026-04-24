@@ -114,6 +114,24 @@ describe("runControlTowerReport", () => {
     expect(r.totals.shipments).toBe(1);
   });
 
+  it("computes openExceptionRatePct as % of shipments with any open exception per bucket", async () => {
+    findManyShipments.mockResolvedValueOnce([
+      shipmentRow("s1", { customer: "Alpha", ctExceptions: [{ type: "MISS" }] }),
+      shipmentRow("s2", { customer: "Alpha", ctExceptions: [] }),
+      shipmentRow("s3", { customer: "Beta", ctExceptions: [{ type: "MISS" }] }),
+    ]);
+    const r = await runControlTowerReport({
+      tenantId: "t1",
+      ctx: portalCtx,
+      actorUserId: "a1",
+      configInput: { dimension: "customer", measure: "openExceptionRatePct", topN: 12 },
+    });
+    const alpha = r.fullSeriesRows.find((x) => x.key === "Alpha");
+    const beta = r.fullSeriesRows.find((x) => x.key === "Beta");
+    expect(alpha?.metrics.openExceptionRatePct).toBe(50);
+    expect(beta?.metrics.openExceptionRatePct).toBe(100);
+  });
+
   it("excludes shipments outside the date window on shippedAt", async () => {
     findManyShipments.mockResolvedValueOnce([shipmentRow("s1", { shippedAt: new Date("2026-02-01T00:00:00.000Z") })]);
     const r = await runControlTowerReport({

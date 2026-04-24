@@ -53,5 +53,6 @@ function zeroMetrics() {
     onTimePct: 0,
     avgDelayDays: 0,
     openExceptions: 0,
+    openExceptionRatePct: 0,
   };
 }

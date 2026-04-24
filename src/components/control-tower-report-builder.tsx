@@ -15,7 +15,8 @@ type Measure =
   | "shippingSpend"
   | "onTimePct"
   | "avgDelayDays"
-  | "openExceptions";
+  | "openExceptions"
+  | "openExceptionRatePct";
 type Dimension =
   | "none"
   | "status"
@@ -116,6 +117,7 @@ const MEASURE_LABELS: Record<Measure, string> = {
   onTimePct: "On-time %",
   avgDelayDays: "Avg delay (days)",
   openExceptions: "Open exceptions",
+  openExceptionRatePct: "Shipments w/ open ex. %",
 };
 
 const DEFAULT_CONFIG: ReportConfig = {
@@ -231,6 +233,7 @@ function toRunPayload(config: ReportConfig) {
 
 function formatMetric(measure: Measure, value: number): string {
   if (measure === "onTimePct") return `${value.toFixed(2)}%`;
+  if (measure === "openExceptionRatePct") return `${value.toFixed(2)}%`;
   if (measure === "shippingSpend") return `$${value.toFixed(2)}`;
   if (measure === "avgDelayDays") return `${value.toFixed(2)}d`;
   if (measure === "openExceptions") return String(Math.round(value));
@@ -1044,6 +1047,21 @@ export function ControlTowerReportBuilder({
                 }
               >
                 On-time performance
+              </button>
+              <button
+                type="button"
+                className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-left text-xs font-bold text-slate-700 transition hover:border-slate-300"
+                onClick={() =>
+                  setConfig((c) => ({
+                    ...c,
+                    title: "Open exception rate by lane",
+                    chartType: "bar",
+                    dimension: "lane",
+                    measure: "openExceptionRatePct",
+                  }))
+                }
+              >
+                Open exception rate
               </button>
               <button
                 type="button"

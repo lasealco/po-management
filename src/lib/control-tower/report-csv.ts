@@ -10,6 +10,7 @@ export const REPORT_CSV_MEASURES = [
   "onTimePct",
   "avgDelayDays",
   "openExceptions",
+  "openExceptionRatePct",
 ] as const;
 
 export type ReportCsvRow = { label: string; metrics: Record<string, number> };

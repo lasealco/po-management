@@ -42,7 +42,7 @@
 
 | Area | Repo reality | Notes |
 |------|--------------|--------|
-| Report builder + run | ✅ `/control-tower/reports`, `report-engine.ts`, run/summary/insight APIs | **`POST …/reports/run`** includes **`runSummary`** (`report-run-summary.ts`); builder shows a **scope strip** after each run. Insight LLM (`report-insight-llm.ts`): model JSON includes **dateFrom** / **dateTo** / **dateWindowLine** + **compareMeasure**; **`POST …/reports/insight`** returns **`runSummary`** on success and on **503** (LLM off/failure) so the scope card can render either way |
+| Report builder + run | ✅ `/control-tower/reports`, `report-engine.ts`, run/summary/insight APIs | **`POST …/reports/run`** includes **`runSummary`** (`report-run-summary.ts`); builder shows a **scope strip** after each run. Measures include **openExceptionRatePct** (share of shipments in each bucket with ≥1 open/in-progress exception). Insight LLM (`report-insight-llm.ts`): model JSON includes **dateFrom** / **dateTo** / **dateWindowLine** + **compareMeasure**; **`POST …/reports/insight`** returns **`runSummary`** on success and on **503** (LLM off/failure) so the scope card can render either way |
 | Saved reports + pin | ✅ Saved CRUD + dashboard widgets + modal drill | `GET …/dashboard/widgets` embeds **`runSummary`** on each **`report`** (same as `reports/run`); hub + **My dashboard** cards show date window / compare; modal insight UX matches report builder (**503** keeps scope card); **My dashboard** header links **Reporting hub** (`/reporting?focus=control-tower`) + report builder |
 | Search | ✅ `/control-tower/search` + `search-query.ts` + API + **`exceptionCode`** / **`alertType`** (open queue rows); **`GET …/search`** returns **`searchLimit`** / **`itemCount`** / **`truncated`** (default take **60**, max **200**); search page header links **Reporting hub** + **Workbench** | `list-shipments.ts`, assist **`exception:`** / **`ex:`**, **`alertType:`** / **`ctAlert:`** |
 | **Operations map (Phase 3 MVP)** | ✅ `/control-tower/map` + **`GET …/map-pins`** (workbench-parity query params, pins from `origin`/`dest` + `product-trace-geo`); subnav **Map**; no DB lat/lng on `Shipment` — derived pins only | [`CONTROL_TOWER_OPERATIONS_MAP_PHASE3`](../engineering/CONTROL_TOWER_OPERATIONS_MAP_PHASE3.md) brief; `map-pins.ts`, `shipments-list-query-from-search-params.ts` shared with **`GET …/shipments`** |
@@ -144,9 +144,9 @@ Use this list when slicing PRs; refresh it whenever Control Tower behavior or `r
    - **Next smallest slice:** bulk **exception** owner on selected rows’ open exceptions **or** **server-stored default column visibility** per actor.
 7. **(Low priority)** **Report builder — exception / “NC” style analytics**
    - **Done elsewhere:** exceptions are first-class in **workbench**, **search**, **Shipment 360**, and **exception catalog** (`CtException` / `CtExceptionCode`); list/search APIs accept **`exceptionCode`** / **`alertType`** for open-queue style cuts.
-   - **Now in `report-engine`:** `CT_REPORT_DIMENSIONS` includes **`exceptionCatalog`** and `CT_REPORT_MEASURES` includes **`openExceptions`** (`report-engine.ts`), with catalog label mapping in report rows.
+   - **Now in `report-engine`:** `CT_REPORT_DIMENSIONS` includes **`exceptionCatalog`** and `CT_REPORT_MEASURES` includes **`openExceptions`** + **`openExceptionRatePct`** (Phase **1D**); catalog label mapping in **exception** dimension rows; rate = % of **shipments** in bucket with any open / in-progress exception.
    - **Now in report filters:** builder + run config support **`filters.exceptionCode`** (case-insensitive OPEN / IN_PROGRESS match), so operators can scope any report to a specific exception type.
-   - **Next smallest slice:** add one rate-style metric (e.g. **shipments with open exception %**) and optional grouped trends (e.g. exception by lane/month) before unstructured **rootCause** / external NC codes.
+   - **Next smallest slice:** **rootCause** / external **NC** codes in reports, or richer exception trend **templates** (same engine; product-owned).
 
 ---
 
@@ -157,8 +157,8 @@ File **one GitHub issue per bullet** when scheduling (titles are suggestions; ke
 - ~~**`[tower] Assist: embedding-backed retrieval`**~~ — **Landed (2026-04-25):** `assist-retrieval-embed.ts` + `CONTROL_TOWER_ASSIST_EMBEDDINGS=1` + `OPENAI_API_KEY`; `OPENAI_EMBEDDING_MODEL` optional; keyword fallback. Further work: re-rank, chunking, or tools (separate issues).
 - **`[tower] Assist: audited tool calls for Control Tower POST actions`** — Small allowlisted mutation set + schema for the LLM path; explicit operator confirmation in UI where needed.
 - ~~**`[tower] Reporting: logo + typography pass on tabular PDF`**~~ — **Landed (2026-04-23):** `GET /api/control-tower/report-pdf-logo` + in-app **Download PDF** fetches same raster as env/cron; `report-pdf.ts` table/header typography + light banding. **Next:** richer KPI spec sections or tenant logo UX (separate issues).
-- **`[tower] Workbench: multi-select + bulk operator action`** — e.g. bulk alert ack or bulk assignee, reusing tenant scope and existing `POST /api/control-tower` patterns.
-- **`[tower] Report engine: exception-aware dimensions / measures`** — Extend `report-engine.ts` + builder UI with exception catalog labels and/or “open exception rate” style measures; optional `exceptionCode` filter parity with workbench.
+- ~~**`[tower] Workbench: multi-select + bulk operator action`**~~ — **Landed (2026-04-23):** `bulk_update_shipment_ops_assignee` + `bulk_acknowledge_ct_alerts`. **Next:** exception-owner bulk or default columns.
+- ~~**`[tower] Report engine: exception-aware dimensions / measures`**~~ — **Landed (2026-04-25):** `openExceptionRatePct` + builder preset **Open exception rate**; CSV/PDF/insight/schedule text extended. **Next:** rootCause / NC-style fields if product wants.
 
 ---
 
@@ -166,6 +166,7 @@ File **one GitHub issue per bullet** when scheduling (titles are suggestions; ke
 
 | Date | Change |
 |------|--------|
+| 2026-04-25 | **Phase 1D (Report engine):** measure **`openExceptionRatePct`** in `report-engine.ts` + `report-csv` / `report-pdf` / builder / dashboard chart kit; scheduled email **Totals** line includes avg bucket rate. **GAP** R3, near-term #7, suggested PR. |
 | 2026-04-25 | **Phase 1A (Assist):** OpenAI **embedding hybrid** for assist doc snippets (`assist-retrieval-embed.ts`); env `CONTROL_TOWER_ASSIST_EMBEDDINGS=1`; Search page shows semantic footnote when used. |
 | 2026-04-25 | **Phase 0 re-pass:** near-term 4–7 + suggested next PRs re-checked vs `main`; `verify:apihub` + route count 28; see [`CONTROL_TOWER_WMS_PHASED_ROADMAP`](../engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md). |
 | 2026-04-23 | **Phase 1C (Workbench):** **`POST …/control-tower`** action **`bulk_update_shipment_ops_assignee`**; **`GET /api/control-tower/workbench-assignees`**; workbench bulk **Ops assignee** apply. **GAP** near-term #6, suggested PR, route table, assist snippet. |

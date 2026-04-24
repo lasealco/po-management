@@ -10,6 +10,7 @@ export function metricLabel(measure: string): string {
   if (measure === "volumeCbm") return "Volume (CBM)";
   if (measure === "weightKg") return "Weight (kg)";
   if (measure === "openExceptions") return "Open exceptions (count)";
+  if (measure === "openExceptionRatePct") return "Shipments with open exception %";
   return "Shipments";
 }
 

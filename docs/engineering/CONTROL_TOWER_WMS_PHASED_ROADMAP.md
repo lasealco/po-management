@@ -47,7 +47,7 @@ Work **one issue at a time** (parallel agents only on **non-overlapping paths**)
 | 1A | **Assist** | ~~Embedding-backed retrieval~~ **Landed 2026-04-25:** `assist-retrieval-embed.ts` + `CONTROL_TOWER_ASSIST_EMBEDDINGS=1` + `OPENAI_API_KEY`; keyword fallback | Next: tools / re-rank / chunking per [`GAP_MAP` R3](../controltower/GAP_MAP.md) |
 | 1B | **Reporting** | ~~Logo + typography pass on **tabular PDF** (`report-pdf.ts`)~~ **Landed 2026-04-23:** `report-pdf-logo` API + in-app **Download PDF** fetches same raster as cron; table/header typography + light banding | Unlocks branded PDF without a full template engine rewrite |
 | 1C | **Workbench** | ~~One more **bulk** operator (ops assignee) *or* server-stored default column visibility~~ **Landed 2026-04-23:** `bulk_update_shipment_ops_assignee` + workbench UI + `GET …/workbench-assignees` | **Next:** exception-owner bulk or default columns per actor |
-| 1D | **Report engine** | Exception-aware measures / rates if product wants analytics beyond workbench | [`GAP_map` #7 / suggested PRs](../controltower/GAP_MAP.md#suggested-next-prs) |
+| 1D | **Report engine** | ~~**`openExceptionRatePct`** + exports/builder~~ **Landed 2026-04-25** | **Next:** rootCause/NC in reports ([`GAP` #7](../controltower/GAP_MAP.md#near-term-build-order-engineering-backlog)) |
 | 1E | **Inbound** | Carrier-specific **mapper** example + tests on `inbound-webhook` patterns | Extends real-world integration; [`control-tower.md`](./agent-todos/control-tower.md) |
 
 **Exit:** At least one **1A–1E** item merged per iteration while Phase 0 stays current; Assist / PDF / workbench / inbound each move one step (not “all PDF parity”).
@@ -116,6 +116,7 @@ Work **one issue at a time** (parallel agents only on **non-overlapping paths**)
 | Date | Change |
 |------|--------|
 | 2026-04-25 | **Control Tower Phase 1A:** optional OpenAI **embedding hybrid** for assist (`assist-retrieval-embed.ts`); see `controltower/GAP_MAP.md`. |
+| 2026-04-25 | **Control Tower Phase 1D (Report engine):** `openExceptionRatePct` measure, CSV/PDF/scheduled email, report builder template. See `controltower/GAP_MAP.md`. |
 | 2026-04-23 | **Control Tower Phase 1C (Workbench):** `bulk_update_shipment_ops_assignee`, `GET /api/control-tower/workbench-assignees`, workbench **Ops assignee** bulk. See `controltower/GAP_MAP.md`. |
 | 2026-04-23 | **Control Tower Phase 1B (Reporting / PDF):** `GET /api/control-tower/report-pdf-logo`; report builder **Download PDF** includes optional env logo; `report-pdf.ts` table/header styling pass. See `controltower/GAP_MAP.md`. |
 | 2026-04-25 | **CT + WMS Phase 0 re-pass (docs + verify):** `controltower/GAP_MAP` + WMS GAP “last updated”; `npm run verify:apihub` + `APIHUB_ROUTE_TS_EXPECTED_COUNT` **28**; no duplicate `* 2` API routes. |

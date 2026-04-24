@@ -33,6 +33,8 @@ export const CT_REPORT_MEASURES = [
   "onTimePct",
   "avgDelayDays",
   "openExceptions",
+  /** % of shipments in the bucket with at least one open / in-progress exception. */
+  "openExceptionRatePct",
 ] as const;
 export type CtReportMeasure = (typeof CT_REPORT_MEASURES)[number];
 
@@ -292,6 +294,7 @@ function makeZeroMetrics(): Record<CtReportMeasure, number> {
     onTimePct: 0,
     avgDelayDays: 0,
     openExceptions: 0,
+    openExceptionRatePct: 0,
   };
 }
 
@@ -503,6 +506,7 @@ export async function runControlTowerReport(params: {
     const existing = grouped.get(key) ?? { key, label: key, metrics: makeZeroMetrics() };
     existing.metrics.shipments += 1;
     existing.metrics.openExceptions += r.ctExceptions.length;
+    if (r.ctExceptions.length > 0) existing.metrics.openExceptionRatePct += 1;
     existing.metrics.volumeCbm += decimalToNumber(r.estimatedVolumeCbm);
     existing.metrics.weightKg += decimalToNumber(r.estimatedWeightKg);
     if (r.ctCostLines.length > 0) {
@@ -537,6 +541,10 @@ export async function runControlTowerReport(params: {
     const avgDelaySum = row.metrics.avgDelayDays;
     row.metrics.onTimePct = count ? Number(((onTimeCount / count) * 100).toFixed(2)) : 0;
     row.metrics.avgDelayDays = count ? Number((avgDelaySum / count).toFixed(2)) : 0;
+    const withOpenExCount = row.metrics.openExceptionRatePct;
+    row.metrics.openExceptionRatePct = count
+      ? Number(((withOpenExCount / count) * 100).toFixed(2))
+      : 0;
     return row;
   });
 
@@ -559,6 +567,9 @@ export async function runControlTowerReport(params: {
   }
   totals.onTimePct = sliced.length ? Number((totals.onTimePct / sliced.length).toFixed(2)) : 0;
   totals.avgDelayDays = sliced.length ? Number((totals.avgDelayDays / sliced.length).toFixed(2)) : 0;
+  totals.openExceptionRatePct = sliced.length
+    ? Number((totals.openExceptionRatePct / sliced.length).toFixed(2))
+    : 0;
 
   return {
     config: {

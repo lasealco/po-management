@@ -40,6 +40,7 @@ function baseMetrics(p: Partial<Record<string, number>>) {
     onTimePct: 0,
     avgDelayDays: 0,
     openExceptions: 0,
+    openExceptionRatePct: 0,
     ...p,
   };
 }
