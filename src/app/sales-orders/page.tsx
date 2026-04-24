@@ -7,6 +7,7 @@ import { SalesOrdersListFilters } from "@/components/sales-orders-list-filters";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
+import { mapOrgUnitIdsToCompanyLegalNames } from "@/lib/sales-order-company-legal";
 import {
   parseSalesOrdersListQueryFromNext,
   salesOrdersListPrismaWhere,
@@ -52,6 +53,11 @@ export default async function SalesOrdersPage({
     },
   });
 
+  const servedOrgIds = rows
+    .map((r) => r.servedOrgUnit?.id)
+    .filter((x): x is string => Boolean(x));
+  const sellingLegalNameByOrg = await mapOrgUnitIdsToCompanyLegalNames(tenant.id, servedOrgIds);
+
   const hasFilters = Boolean(listQuery.status.trim() || listQuery.q.trim());
   const emptyCopy = hasFilters
     ? "No sales orders match these filters. Try clearing search or choosing a different status."
@@ -92,6 +98,7 @@ export default async function SalesOrdersPage({
               <th className="px-3 py-2">Status</th>
               <th className="px-3 py-2">Customer</th>
               <th className="px-3 py-2">For org</th>
+              <th className="px-3 py-2">Selling (legal)</th>
               <th className="px-3 py-2">External ref</th>
               <th className="px-3 py-2">Req. delivery</th>
               <th className="px-3 py-2">Shipments</th>
@@ -100,7 +107,7 @@ export default async function SalesOrdersPage({
           <tbody className="divide-y divide-zinc-200 text-zinc-900">
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-3 py-8 text-center text-zinc-500">
+                <td colSpan={8} className="px-3 py-8 text-center text-zinc-500">
                   {emptyCopy}
                 </td>
               </tr>
@@ -120,6 +127,11 @@ export default async function SalesOrdersPage({
                   <td className="px-3 py-2">
                     {r.servedOrgUnit
                       ? [r.servedOrgUnit.name, r.servedOrgUnit.code].filter(Boolean).join(" · ") || "—"
+                      : "—"}
+                  </td>
+                  <td className="max-w-[14rem] truncate px-3 py-2 text-xs text-zinc-700" title={r.servedOrgUnit ? sellingLegalNameByOrg.get(r.servedOrgUnit.id) ?? undefined : undefined}>
+                    {r.servedOrgUnit && sellingLegalNameByOrg.get(r.servedOrgUnit.id)
+                      ? sellingLegalNameByOrg.get(r.servedOrgUnit.id)
                       : "—"}
                   </td>
                   <td className="px-3 py-2">{r.externalRef || "—"}</td>

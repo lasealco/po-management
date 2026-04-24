@@ -8,6 +8,10 @@ import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
 import { nextSalesOrderNumber, parseSalesOrdersListQuery, salesOrdersListPrismaWhere } from "@/lib/sales-orders";
+import {
+  loadSerializedCompanyLegalForServedOrg,
+  mapOrgUnitIdsToCompanyLegalNames,
+} from "@/lib/sales-order-company-legal";
 import { resolveServedOrgUnitIdForTenant } from "@/lib/served-org-unit";
 
 /** Matches `SalesOrderCreateForm` option values for logistics-only SRM suppliers. */
@@ -41,6 +45,11 @@ export async function GET(request: Request) {
     },
   });
 
+  const servedIds = rows
+    .map((r) => r.servedOrgUnit?.id)
+    .filter((x): x is string => Boolean(x));
+  const legalNameByOrgUnit = await mapOrgUnitIdsToCompanyLegalNames(tenant.id, servedIds);
+
   return NextResponse.json({
     salesOrders: rows.map((r) => ({
       ...r,
@@ -52,6 +61,9 @@ export async function GET(request: Request) {
             kind: r.servedOrgUnit.kind,
           }
         : null,
+      /** Registered legal name from Settings → Legal entities when a profile exists for the served org. */
+      sellingEntityLegalName:
+        r.servedOrgUnit ? legalNameByOrgUnit.get(r.servedOrgUnit.id) ?? null : null,
       requestedDeliveryDate: r.requestedDeliveryDate?.toISOString() ?? null,
       createdAt: r.createdAt.toISOString(),
       shipmentCount: r._count.shipments,
@@ -205,5 +217,9 @@ export async function POST(request: Request) {
     throw e;
   }
 
-  return NextResponse.json({ ok: true, id: created.id, soNumber: created.soNumber });
+  const companyLegalEntity = await loadSerializedCompanyLegalForServedOrg(
+    tenantId,
+    servedResolved.value,
+  );
+  return NextResponse.json({ ok: true, id: created.id, soNumber: created.soNumber, companyLegalEntity });
 }

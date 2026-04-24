@@ -1,6 +1,7 @@
 import { AccessDenied } from "@/components/access-denied";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
+import { serializeCompanyLegalEntity } from "@/lib/company-legal-entity";
 import { getOrdersServedDefaultPreference } from "@/lib/orders-served-default-pref";
 import { prisma } from "@/lib/prisma";
 import { nextSalesOrderNumber } from "@/lib/sales-orders";
@@ -56,7 +57,7 @@ export default async function NewSalesOrderPage({
         })
       : Promise.resolve(null),
   ]);
-  const [crmAccounts, forwarderSuppliers, orgUnits, servedDefault] = await Promise.all([
+  const [crmAccounts, forwarderSuppliers, orgUnits, servedDefault, companyLegalRows] = await Promise.all([
     prisma.crmAccount.findMany({
       where: { tenantId: tenant.id, lifecycle: "ACTIVE" },
       orderBy: { name: "asc" },
@@ -78,7 +79,14 @@ export default async function NewSalesOrderPage({
       select: { id: true, name: true, code: true, kind: true },
     }),
     getOrdersServedDefaultPreference(tenant.id, access.user.id),
+    prisma.companyLegalEntity.findMany({
+      where: { tenantId: tenant.id },
+      include: { orgUnit: { select: { id: true, name: true, code: true, kind: true } } },
+    }),
   ]);
+  const legalByOrgUnitId: Record<string, ReturnType<typeof serializeCompanyLegalEntity>> = Object.fromEntries(
+    companyLegalRows.map((c) => [c.orgUnitId, serializeCompanyLegalEntity(c)] as const),
+  );
 
   return (
     <div className="min-h-screen bg-zinc-50">
@@ -89,6 +97,8 @@ export default async function NewSalesOrderPage({
         forwarderSuppliers={forwarderSuppliers}
         orgUnits={orgUnits}
         defaultServedOrgFromPref={servedDefault.defaultOrg}
+        legalByOrgUnitId={legalByOrgUnitId}
+        canViewLegalSettings={viewerHas(access.grantSet, "org.settings", "view")}
       />
     </div>
   );

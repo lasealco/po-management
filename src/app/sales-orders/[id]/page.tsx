@@ -1,12 +1,14 @@
 import Link from "next/link";
 
 import { AccessDenied } from "@/components/access-denied";
+import { SalesOrderCompanyLegalSnapshot } from "@/components/sales-order-company-legal-snapshot";
 import { SalesOrderServedOrgField } from "@/components/sales-order-served-org-field";
 import { SalesOrderStatusActions } from "@/components/sales-order-status-actions";
 import { WorkflowHeader } from "@/components/workflow-header";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
+import { loadSerializedCompanyLegalForServedOrg } from "@/lib/sales-order-company-legal";
 import { parseSalesOrdersListQueryFromNext, salesOrdersListQueryString } from "@/lib/sales-orders";
 
 export const dynamic = "force-dynamic";
@@ -75,6 +77,11 @@ export default async function SalesOrderDetailPage({
     ["SHIPPED", "VALIDATED", "BOOKED", "IN_TRANSIT"].includes(s.status),
   ).length;
   const canEditServedOrg = viewerHas(access.grantSet, "org.orders", "edit");
+  const canViewLegalSettings = viewerHas(access.grantSet, "org.settings", "view");
+  const companyLegalForServed = await loadSerializedCompanyLegalForServedOrg(
+    tenant.id,
+    row.servedOrgUnitId,
+  );
 
   return (
     <main className="mx-auto w-full max-w-5xl px-6 py-8">
@@ -127,6 +134,14 @@ export default async function SalesOrderDetailPage({
             />
           </div>
         </p>
+        <div className="sm:col-span-2">
+          <span className="text-sm text-zinc-500">Legal (order-for) snapshot: </span>
+          <SalesOrderCompanyLegalSnapshot
+            servedOrg={row.servedOrgUnit}
+            companyLegal={companyLegalForServed}
+            canViewSettings={canViewLegalSettings}
+          />
+        </div>
         <p>
           <span className="text-zinc-500">External ref: </span>
           {row.externalRef || "—"}

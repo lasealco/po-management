@@ -10,6 +10,7 @@ import {
   parseSalesOrderRouteId,
   parseTargetSalesOrderStatus,
 } from "@/lib/sales-orders/patch-status";
+import { loadSerializedCompanyLegalForServedOrg } from "@/lib/sales-order-company-legal";
 import { resolveServedOrgUnitIdForTenant } from "@/lib/served-org-unit";
 
 export async function GET(
@@ -52,8 +53,11 @@ export async function GET(
   });
   if (!row) return toApiErrorResponse({ error: "Sales order not found.", code: "NOT_FOUND", status: 404 });
 
+  const companyLegalEntity = await loadSerializedCompanyLegalForServedOrg(tenant.id, row.servedOrgUnitId);
+
   return NextResponse.json({
     ...row,
+    companyLegalEntity,
     servedOrgUnit: row.servedOrgUnit
       ? {
           id: row.servedOrgUnit.id,
@@ -129,12 +133,18 @@ export async function PATCH(
       },
       select: {
         id: true,
+        servedOrgUnitId: true,
         servedOrgUnit: { select: { id: true, name: true, code: true, kind: true } },
       },
     });
+    const companyLegalEntity = await loadSerializedCompanyLegalForServedOrg(
+      tenant.id,
+      headerUpdated.servedOrgUnitId,
+    );
     return NextResponse.json({
       ok: true,
       id: headerUpdated.id,
+      companyLegalEntity,
       servedOrgUnit: headerUpdated.servedOrgUnit
         ? {
             id: headerUpdated.servedOrgUnit.id,

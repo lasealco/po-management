@@ -1,10 +1,12 @@
 "use client";
 
 import { apiClientErrorMessage } from "@/lib/api-client-error";
+import type { SerializedCompanyLegalEntity } from "@/lib/company-legal-entity";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { ActionButton } from "@/components/action-button";
 import { SearchableSelectField } from "@/components/searchable-select-field";
+import { SalesOrderCompanyLegalSnapshot } from "@/components/sales-order-company-legal-snapshot";
 import { WorkflowHeader } from "@/components/workflow-header";
 
 const SUPPLIER_CUSTOMER_PREFIX = "__supplier__:";
@@ -16,6 +18,8 @@ export function SalesOrderCreateForm({
   forwarderSuppliers = [],
   orgUnits = [],
   defaultServedOrgFromPref = null,
+  legalByOrgUnitId = {},
+  canViewLegalSettings = false,
 }: {
   soNumberHint: string;
   shipmentHint: {
@@ -32,6 +36,8 @@ export function SalesOrderCreateForm({
   forwarderSuppliers?: Array<{ id: string; name: string; legalName: string | null }>;
   orgUnits?: Array<{ id: string; name: string; code: string; kind: string }>;
   defaultServedOrgFromPref?: { id: string; name: string; code: string; kind: string } | null;
+  legalByOrgUnitId?: Record<string, SerializedCompanyLegalEntity>;
+  canViewLegalSettings?: boolean;
 }) {
   const router = useRouter();
   const [soNumber, setSoNumber] = useState(soNumberHint);
@@ -53,6 +59,16 @@ export function SalesOrderCreateForm({
     if (!orgUnits.some((u) => u.id === defaultServedOrgFromPref.id)) return;
     setServedOrgUnitId(defaultServedOrgFromPref.id);
   }, [defaultServedOrgFromPref, orgUnits, servedDefaultCleared]);
+
+  const selectedServedOrg = useMemo(() => {
+    if (!servedOrgUnitId.trim()) return null;
+    return orgUnits.find((u) => u.id === servedOrgUnitId) ?? null;
+  }, [servedOrgUnitId, orgUnits]);
+
+  const selectedCompanyLegal = useMemo(() => {
+    if (!servedOrgUnitId.trim()) return null;
+    return legalByOrgUnitId[servedOrgUnitId] ?? null;
+  }, [servedOrgUnitId, legalByOrgUnitId]);
 
   const customerOptions = useMemo(() => {
     const crmNameLower = new Set(crmAccounts.map((a) => a.name.trim().toLowerCase()));
@@ -231,6 +247,18 @@ export function SalesOrderCreateForm({
               ))}
             </select>
           </label>
+        ) : null}
+        {orgUnits.length > 0 ? (
+          <div className="rounded-xl border border-zinc-100 bg-zinc-50/80 px-3 py-2">
+            <p className="text-xs font-medium text-zinc-600">Order-for legal (preview)</p>
+            <div className="mt-1">
+              <SalesOrderCompanyLegalSnapshot
+                servedOrg={selectedServedOrg}
+                companyLegal={selectedCompanyLegal}
+                canViewSettings={canViewLegalSettings}
+              />
+            </div>
+          </div>
         ) : null}
         {orgUnits.length > 0 ? (
           <label className="flex cursor-pointer items-center gap-2 text-xs text-zinc-600">
