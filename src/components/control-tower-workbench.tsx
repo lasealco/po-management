@@ -268,6 +268,9 @@ function ControlTowerWorkbenchInner({
   const [healthQuickFilter, setHealthQuickFilter] = useState<HealthState | null>(null);
   const [colVis, setColVis] = useState<Record<WorkbenchTogglableColumn, boolean>>(defaultWorkbenchColumnVisibility);
   const [selectedShipmentIds, setSelectedShipmentIds] = useState<string[]>([]);
+  const [bulkOpsAssigneeChoices, setBulkOpsAssigneeChoices] = useState<Array<{ id: string; name: string }>>([]);
+  /** Empty string = clear assignee (Unassigned). */
+  const [bulkOpsAssigneeUserId, setBulkOpsAssigneeUserId] = useState("");
 
   useLayoutEffect(() => {
     const patch = parseWorkbenchColumnVisibility(window.localStorage.getItem(WORKBENCH_COLUMN_STORAGE_KEY));
@@ -747,7 +750,25 @@ function ControlTowerWorkbenchInner({
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
 
-  const canUseBulkAlertAck = canEdit && !restrictedView;
+  const canUseWorkbenchBulk = canEdit && !restrictedView;
+  useEffect(() => {
+    if (!canUseWorkbenchBulk) {
+      setBulkOpsAssigneeChoices([]);
+      return;
+    }
+    let cancel = false;
+    void (async () => {
+      const res = await fetch("/api/control-tower/workbench-assignees");
+      const parsed: unknown = await res.json();
+      if (cancel) return;
+      if (!res.ok) return;
+      const list = (parsed as { assignees?: Array<{ id: string; name: string }> }).assignees ?? [];
+      setBulkOpsAssigneeChoices(list);
+    })();
+    return () => {
+      cancel = true;
+    };
+  }, [canUseWorkbenchBulk]);
   useEffect(() => {
     setSelectedShipmentIds((prev) => {
       if (prev.length === 0) return prev;
@@ -766,8 +787,8 @@ function ControlTowerWorkbenchInner({
     pagedRowIds.length > 0 && pagedRowIds.every((shipmentId) => selectedShipmentSet.has(shipmentId));
 
   const tableColSpan = useMemo(
-    () => workbenchVisibleColumnCount(colVis, Boolean(restrictedView)) + (canUseBulkAlertAck ? 1 : 0),
-    [canUseBulkAlertAck, colVis, restrictedView],
+    () => workbenchVisibleColumnCount(colVis, Boolean(restrictedView)) + (canUseWorkbenchBulk ? 1 : 0),
+    [canUseWorkbenchBulk, colVis, restrictedView],
   );
 
   const setExternalOrderRef = useCallback(
@@ -1411,60 +1432,111 @@ function ControlTowerWorkbenchInner({
           </button>
         </div>
       </details>
-      {canUseBulkAlertAck ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-700">
-          <button
-            type="button"
-            className="rounded border border-zinc-300 bg-white px-2 py-1 hover:bg-zinc-100"
-            onClick={() => {
-              setSelectedShipmentIds((prev) => {
-                if (allRowsOnPageSelected) {
-                  const pageSet = new Set(pagedRowIds);
-                  return prev.filter((id) => !pageSet.has(id));
+      {canUseWorkbenchBulk ? (
+        <div className="flex flex-col gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-700 sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              className="rounded border border-zinc-300 bg-white px-2 py-1 hover:bg-zinc-100"
+              onClick={() => {
+                setSelectedShipmentIds((prev) => {
+                  if (allRowsOnPageSelected) {
+                    const pageSet = new Set(pagedRowIds);
+                    return prev.filter((id) => !pageSet.has(id));
+                  }
+                  const next = new Set(prev);
+                  for (const rowId of pagedRowIds) next.add(rowId);
+                  return Array.from(next);
+                });
+              }}
+            >
+              {allRowsOnPageSelected ? "Clear page selection" : "Select page"}
+            </button>
+            <button
+              type="button"
+              disabled={selectedEligibleShipmentIds.length === 0}
+              className="rounded border border-arscmp-primary bg-arscmp-primary px-2 py-1 font-medium text-white disabled:cursor-not-allowed disabled:opacity-40"
+              onClick={async () => {
+                const shipmentIds = selectedEligibleShipmentIds;
+                if (shipmentIds.length === 0) {
+                  window.alert("Select at least one shipment with open alerts.");
+                  return;
                 }
-                const next = new Set(prev);
-                for (const rowId of pagedRowIds) next.add(rowId);
-                return Array.from(next);
-              });
-            }}
-          >
-            {allRowsOnPageSelected ? "Clear page selection" : "Select page"}
-          </button>
-          <button
-            type="button"
-            disabled={selectedEligibleShipmentIds.length === 0}
-            className="rounded border border-arscmp-primary bg-arscmp-primary px-2 py-1 font-medium text-white disabled:cursor-not-allowed disabled:opacity-40"
-            onClick={async () => {
-              const shipmentIds = selectedEligibleShipmentIds;
-              if (shipmentIds.length === 0) {
-                window.alert("Select at least one shipment with open alerts.");
-                return;
-              }
-              const res = await fetch("/api/control-tower", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  action: "bulk_acknowledge_ct_alerts",
-                  shipmentIds,
-                }),
-              });
-              const parsed: unknown = await res.json();
-              if (!res.ok) {
-                window.alert(apiClientErrorMessage(parsed, "Could not acknowledge alerts."));
-                return;
-              }
-              const payload = parsed as { acknowledgedAlertCount?: number };
-              window.alert(`Acknowledged ${payload.acknowledgedAlertCount ?? 0} open alerts.`);
-              setSelectedShipmentIds([]);
-              await load();
-            }}
-          >
-            Acknowledge open alerts
-          </button>
-          <span>
-            Selected shipments: <strong>{selectedShipmentIds.length}</strong> · with open alerts:{" "}
-            <strong>{selectedEligibleShipmentIds.length}</strong>
-          </span>
+                const res = await fetch("/api/control-tower", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    action: "bulk_acknowledge_ct_alerts",
+                    shipmentIds,
+                  }),
+                });
+                const parsed: unknown = await res.json();
+                if (!res.ok) {
+                  window.alert(apiClientErrorMessage(parsed, "Could not acknowledge alerts."));
+                  return;
+                }
+                const payload = parsed as { acknowledgedAlertCount?: number };
+                window.alert(`Acknowledged ${payload.acknowledgedAlertCount ?? 0} open alerts.`);
+                setSelectedShipmentIds([]);
+                await load();
+              }}
+            >
+              Acknowledge open alerts
+            </button>
+            <span>
+              Selected shipments: <strong>{selectedShipmentIds.length}</strong> · with open alerts:{" "}
+              <strong>{selectedEligibleShipmentIds.length}</strong>
+            </span>
+          </div>
+          <div className="flex min-w-0 flex-wrap items-center gap-2 border-t border-zinc-200 pt-2 sm:border-l sm:border-t-0 sm:pl-3 sm:pt-0">
+            <label className="flex min-w-0 max-w-full items-center gap-1.5">
+              <span className="shrink-0 text-zinc-600">Ops assignee</span>
+              <select
+                className="max-w-[12rem] rounded border border-zinc-300 bg-white px-2 py-1 text-zinc-900"
+                value={bulkOpsAssigneeUserId}
+                onChange={(e) => setBulkOpsAssigneeUserId(e.target.value)}
+              >
+                <option value="">Unassigned</option>
+                {bulkOpsAssigneeChoices.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              disabled={selectedShipmentIds.length === 0}
+              className="rounded border border-zinc-300 bg-white px-2 py-1 font-medium text-zinc-900 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40"
+              onClick={async () => {
+                const shipmentIds = selectedShipmentIds;
+                if (shipmentIds.length === 0) {
+                  window.alert("Select at least one shipment.");
+                  return;
+                }
+                const res = await fetch("/api/control-tower", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    action: "bulk_update_shipment_ops_assignee",
+                    shipmentIds,
+                    opsAssigneeUserId: bulkOpsAssigneeUserId.trim() || null,
+                  }),
+                });
+                const parsed: unknown = await res.json();
+                if (!res.ok) {
+                  window.alert(apiClientErrorMessage(parsed, "Could not update ops assignee."));
+                  return;
+                }
+                const payload = parsed as { updatedCount?: number };
+                window.alert(`Updated ops assignee on ${payload.updatedCount ?? 0} shipment(s).`);
+                setSelectedShipmentIds([]);
+                await load();
+              }}
+            >
+              Apply to selected
+            </button>
+          </div>
         </div>
       ) : null}
 
@@ -1472,7 +1544,7 @@ function ControlTowerWorkbenchInner({
         <table className="min-w-full text-sm">
           <thead className="bg-zinc-100 text-left text-xs font-semibold uppercase text-zinc-800">
             <tr>
-              {canUseBulkAlertAck ? (
+              {canUseWorkbenchBulk ? (
                 <th className="w-10 px-2 py-2 text-center">
                   <input
                     type="checkbox"
@@ -1535,7 +1607,7 @@ function ControlTowerWorkbenchInner({
                         : ""
                   }`}
                 >
-                  {canUseBulkAlertAck ? (
+                  {canUseWorkbenchBulk ? (
                     <td className="px-2 py-2 text-center align-top">
                       <input
                         type="checkbox"

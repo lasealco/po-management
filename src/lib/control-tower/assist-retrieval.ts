@@ -202,7 +202,7 @@ const SNIPPETS: AssistRetrievedSnippet[] = [
       "update_shipment_ops_assignee",
     ],
     summary:
-      "Shipment 360 / POST actions: set_shipment_customer_crm_account (CRM link for digest + SO flows), set_shipment_carrier_supplier (active Supplier as carrier), update_shipment_ops_assignee (Shipment.opsAssigneeUserId). Not the same as workbench dispatch-owner tokens (open alert/exception queue filters).",
+      "Shipment 360 / POST actions: set_shipment_customer_crm_account (CRM link for digest + SO flows), set_shipment_carrier_supplier (active Supplier as carrier), update_shipment_ops_assignee (Shipment.opsAssigneeUserId); workbench bulk **bulk_update_shipment_ops_assignee** + **GET /api/control-tower/workbench-assignees** for the assignee list. Not the same as workbench dispatch-owner tokens (open alert/exception queue filters).",
     detail:
       "All actions take shipmentId and tenant-scoped checks; writeCtAudit on updates. Customer CRM link gates create_sales_order_from_shipment; carrier supplier drives booking and reporting joins. Pair with workbench supplier:/customer:/carrier: cuid search filters when triaging lists.",
   },

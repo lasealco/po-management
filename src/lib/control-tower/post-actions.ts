@@ -660,6 +660,63 @@ export async function handleControlTowerPost(
     });
   }
 
+  if (action === "bulk_update_shipment_ops_assignee") {
+    const shipmentIds = parseBulkShipmentIds(body.shipmentIds);
+    if (shipmentIds === "invalid") {
+      return bad("shipmentIds must contain 1-100 IDs");
+    }
+    const opsAssigneeUserId =
+      body.opsAssigneeUserId === null || body.opsAssigneeUserId === ""
+        ? null
+        : typeof body.opsAssigneeUserId === "string"
+          ? body.opsAssigneeUserId.trim()
+          : undefined;
+    if (opsAssigneeUserId === undefined) {
+      return bad("opsAssigneeUserId required (or null to clear)");
+    }
+    if (opsAssigneeUserId) {
+      const u = await prisma.user.findFirst({
+        where: { id: opsAssigneeUserId, tenantId, isActive: true },
+        select: { id: true },
+      });
+      if (!u) return bad("Assignee not found in tenant", 404);
+    }
+    const inTenant = await prisma.shipment.findMany({
+      where: { id: { in: shipmentIds }, order: { tenantId } },
+      select: { id: true },
+    });
+    if (inTenant.length === 0) {
+      return NextResponse.json({
+        ok: true,
+        updatedCount: 0,
+        selectedCount: shipmentIds.length,
+      });
+    }
+    const ids = inTenant.map((r) => r.id);
+    await prisma.shipment.updateMany({
+      where: { id: { in: ids } },
+      data: { opsAssigneeUserId },
+    });
+    await Promise.all(
+      ids.map((shipmentId) =>
+        writeCtAudit({
+          tenantId,
+          shipmentId,
+          entityType: "Shipment",
+          entityId: shipmentId,
+          action: "update_ops_assignee",
+          actorUserId: actorId,
+          payload: { opsAssigneeUserId, via: "bulk_workbench" },
+        }),
+      ),
+    );
+    return NextResponse.json({
+      ok: true,
+      updatedCount: ids.length,
+      selectedCount: shipmentIds.length,
+    });
+  }
+
   if (action === "close_ct_alert") {
     const alertId = typeof body.alertId === "string" ? body.alertId : "";
     if (!alertId) return bad("alertId required");
