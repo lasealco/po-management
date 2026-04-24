@@ -119,6 +119,7 @@ export default async function SalesOrderDetailPage({
           <span className="text-zinc-500">Order for: </span>
           <div className="mt-1 text-zinc-900">
             <SalesOrderServedOrgField
+              key={row.servedOrgUnit?.id ?? "served-none"}
               salesOrderId={row.id}
               orgUnitOptions={orgUnitOptions}
               canEdit={canEditServedOrg}

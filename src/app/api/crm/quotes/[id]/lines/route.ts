@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 
 
-import { getActorUserId, requireApiGrant, userHasGlobalGrant } from "@/lib/authz";
+import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { recalcQuoteSubtotal } from "@/lib/crm-quote-recalc";
 import { crmOwnerRelationClause, getCrmAccessScope } from "@/lib/crm-scope";
 import { getDemoTenant } from "@/lib/demo-tenant";

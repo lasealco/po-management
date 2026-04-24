@@ -2,7 +2,7 @@
 
 import { apiClientErrorMessage } from "@/lib/api-client-error";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ActionButton } from "@/components/action-button";
 
 export function SalesOrderServedOrgField({
@@ -20,10 +20,6 @@ export function SalesOrderServedOrgField({
   const [value, setValue] = useState(initial?.id ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setValue(initial?.id ?? "");
-  }, [initial?.id]);
 
   async function save() {
     setBusy(true);

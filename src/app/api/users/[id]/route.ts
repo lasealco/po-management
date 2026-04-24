@@ -41,7 +41,6 @@ export async function PATCH(
   const roleIdsParsed = strIds(o.roleIds);
   const passwordRaw = o.password;
   const productDivisionIdsParsed = strIds(o.productDivisionIds);
-  const primaryOrgUnitIdRaw = o.primaryOrgUnitId;
 
   let roleIds: string[] | undefined;
   if (o.roleIds !== undefined) {
