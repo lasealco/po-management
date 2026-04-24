@@ -22,6 +22,8 @@ export const CT_REPORT_DIMENSIONS = [
   "destination",
   "month",
   "exceptionCatalog",
+  /** Open / in-progress exceptions grouped by `CtException.rootCause` (free text) — NC-style / ops notes. */
+  "exceptionRootCause",
 ] as const;
 export type CtReportDimension = (typeof CT_REPORT_DIMENSIONS)[number];
 
@@ -168,7 +170,7 @@ export function sanitizeCtReportConfig(input: unknown): CtReportConfig {
   let measure = CT_REPORT_MEASURES.includes(o.measure as CtReportMeasure)
     ? (o.measure as CtReportMeasure)
     : "shipments";
-  if (dimension === "exceptionCatalog") measure = "openExceptions";
+  if (dimension === "exceptionCatalog" || dimension === "exceptionRootCause") measure = "openExceptions";
   const compareMeasure = CT_REPORT_MEASURES.includes(o.compareMeasure as CtReportMeasure)
     ? (o.compareMeasure as CtReportMeasure)
     : null;
@@ -234,8 +236,18 @@ type ShipmentRow = {
     amountMinor: bigint;
     currency: string;
   }>;
-  ctExceptions: Array<{ type: string }>;
+  ctExceptions: Array<{ type: string; rootCause: string | null }>;
 };
+
+/** Bucket for exceptionRootCause dimension (one row per distinct trimmed root-cause string). */
+export function rootCauseReportBucket(raw: string | null | undefined): { rowKey: string; rowLabel: string } {
+  const t = raw?.trim() ?? "";
+  if (!t) {
+    return { rowKey: "(none)", rowLabel: "No root cause set" };
+  }
+  const label = t.length > 120 ? `${t.slice(0, 117)}…` : t;
+  return { rowKey: t, rowLabel: label };
+}
 
 function decimalToNumber(v: Prisma.Decimal | null | undefined): number {
   const n = Number(v ?? 0);
@@ -281,6 +293,8 @@ function rowDimensionValue(row: ShipmentRow, dim: CtReportDimension): string {
     case "month":
       return monthKey(row.shippedAt);
     case "exceptionCatalog":
+      return "—";
+    case "exceptionRootCause":
       return "—";
   }
 }
@@ -407,7 +421,7 @@ export async function runControlTowerReport(params: {
       },
       ctExceptions: {
         where: { status: { in: [CtExceptionStatus.OPEN, CtExceptionStatus.IN_PROGRESS] } },
-        select: { type: true },
+        select: { type: true, rootCause: true },
       },
     },
   })) as ShipmentRow[];
@@ -494,6 +508,17 @@ export async function runControlTowerReport(params: {
           rawType: raw,
           catalogByNormalizedCode: catalogByNorm,
         });
+        const existing = grouped.get(rowKey) ?? { key: rowKey, label: rowLabel, metrics: makeZeroMetrics() };
+        existing.label = rowLabel;
+        existing.metrics.openExceptions += 1;
+        grouped.set(rowKey, existing);
+      }
+      continue;
+    }
+
+    if (dim === "exceptionRootCause") {
+      for (const exc of r.ctExceptions) {
+        const { rowKey, rowLabel } = rootCauseReportBucket(exc.rootCause);
         const existing = grouped.get(rowKey) ?? { key: rowKey, label: rowLabel, metrics: makeZeroMetrics() };
         existing.label = rowLabel;
         existing.metrics.openExceptions += 1;

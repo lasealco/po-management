@@ -41,7 +41,7 @@
 | Richer tabular / KPI PDF story, tenant logo path | GAP near-term #5 |
 | `rootCause` / NC-style measures, exception trend templates | GAP near-term #7 (report-engine) |
 
-**Exit:** product picks **one** of #5 depth vs #7 depth per quarter if capacity is tight.
+**Exit:** product picks **one** of #5 depth vs #7 depth per quarter if capacity is tight. **2026-04-23:** **`exceptionRootCause`** report dimension (open exceptions by `CtException.rootCause` text) — not full #5 PDF story.
 
 ---
 
@@ -82,5 +82,6 @@
 
 | Date | Change |
 |------|--------|
+| 2026-04-23 | Phase 2 (Reporting): `exceptionRootCause` dimension; Phase 1 assist execute. |
 | 2026-04-23 | Phase 1 (Assist): link **execute-post-action** / Search confirm slice after merge. |
 | 2026-04-26 | Initial 5-phase rollup (post [program tranche handoff](./CONTROL_TOWER_WMS_PHASED_ROADMAP.md#program-tranche-handoff-2026-04-26)). |

@@ -37,7 +37,7 @@ These are **optional** product bets, not unfinished “program gaps”:
 - [ ] **Reporting PDFs** — multi-section / tenant logo UX if product wants (beyond 1B).
 - [x] **Workbench bulk** — 1C landed (ops + alerts bulk). **Next:** GAP **near-term #6** (exception owner bulk or default columns).
 - [x] **Inbound** — 1E `sea_port_track_v1` + mapper. **Next:** next carrier `payloadFormat`.
-- [x] **Report engine** — 1D `openExceptionRatePct`. **Next:** GAP **#7** (rootCause / NC).
+- [x] **Report engine** — 1D `openExceptionRatePct` + **exceptionRootCause** (2026-04-23). **Next:** GAP **#7** (NC catalog / templates) or **#5** (PDF/tenant logo).
 - [ ] **Command center / ops** — deeper PDF parity where GAP shows 🟡 (optional).
 
 ---

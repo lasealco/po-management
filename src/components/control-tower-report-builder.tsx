@@ -28,7 +28,8 @@ type Dimension =
   | "origin"
   | "destination"
   | "month"
-  | "exceptionCatalog";
+  | "exceptionCatalog"
+  | "exceptionRootCause";
 type ChartType = "table" | "bar" | "line" | "pie";
 
 type ReportConfig = {
@@ -1123,7 +1124,10 @@ export function ControlTowerReportBuilder({
                     setConfig((c) => ({
                       ...c,
                       dimension,
-                      measure: dimension === "exceptionCatalog" ? "openExceptions" : c.measure,
+                      measure:
+                        dimension === "exceptionCatalog" || dimension === "exceptionRootCause"
+                          ? "openExceptions"
+                          : c.measure,
                     }));
                   }}
                   className="mt-1.5 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-800"
@@ -1139,6 +1143,7 @@ export function ControlTowerReportBuilder({
                     "origin",
                     "destination",
                     "exceptionCatalog",
+                    "exceptionRootCause",
                     "none",
                   ].map((d) => (
                     <option key={d} value={d}>
@@ -1548,7 +1553,8 @@ export function ControlTowerReportBuilder({
                 ship360Tab={
                   result.config.measure === "onTimePct" ||
                   result.config.measure === "avgDelayDays" ||
-                  result.config.dimension === "exceptionCatalog"
+                  result.config.dimension === "exceptionCatalog" ||
+                  result.config.dimension === "exceptionRootCause"
                     ? "milestones"
                     : undefined
                 }

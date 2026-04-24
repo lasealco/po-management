@@ -34,7 +34,7 @@ function shipmentRow(
   pick: {
     shippedAt?: Date;
     customer?: string;
-    ctExceptions?: Array<{ type: string }>;
+    ctExceptions?: Array<{ type: string; rootCause?: string | null }>;
     ctCostLines?: Array<{ amountMinor: bigint; currency: string }>;
   } = {},
 ) {
@@ -219,6 +219,29 @@ describe("runControlTowerReport", () => {
     expect(r.rows[0]!.key).toBe("LATE_DOC");
     expect(r.rows[0]!.metrics.openExceptions).toBe(2);
     expect(r.rows[0]!.metrics.shipments).toBe(0);
+  });
+
+  it("groups exceptionRootCause from open exception rootCause text", async () => {
+    findManyShipments.mockResolvedValueOnce([
+      shipmentRow("s1", {
+        ctExceptions: [
+          { type: "D", rootCause: "Carrier rolled booking" },
+          { type: "D", rootCause: "Carrier rolled booking" },
+          { type: "X", rootCause: null },
+        ],
+      }),
+    ]);
+    const r = await runControlTowerReport({
+      tenantId: "t1",
+      ctx: portalCtx,
+      actorUserId: "a1",
+      configInput: { dimension: "exceptionRootCause", measure: "shipments" },
+    });
+    expect(findManyExceptionCodes).not.toHaveBeenCalled();
+    expect(r.config.measure).toBe("openExceptions");
+    const byKey = new Map(r.fullSeriesRows.map((x) => [x.key, x]));
+    expect(byKey.get("Carrier rolled booking")?.metrics.openExceptions).toBe(2);
+    expect(byKey.get("(none)")?.metrics.openExceptions).toBe(1);
   });
 
   it("loads display currency preference when actorUserId is set", async () => {

@@ -121,6 +121,23 @@ describe("buildControlTowerWorkbenchDrillQuery", () => {
     ).toBeNull();
   });
 
+  it("drills exceptionRootCause via q= search (rootCause contains)", () => {
+    expect(
+      buildControlTowerWorkbenchDrillQuery({
+        dimension: "exceptionRootCause",
+        rowKey: "port congestion",
+        rowLabel: "port congestion",
+      }),
+    ).toBe("q=port+congestion");
+    expect(
+      buildControlTowerWorkbenchDrillQuery({
+        dimension: "exceptionRootCause",
+        rowKey: "(none)",
+        rowLabel: "No root cause",
+      }),
+    ).toBeNull();
+  });
+
   it("adds ship360Tab when requested", () => {
     expect(
       buildControlTowerWorkbenchDrillQuery({

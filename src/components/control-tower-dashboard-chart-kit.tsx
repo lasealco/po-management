@@ -1066,7 +1066,8 @@ export function ControlTowerDashboardWidgetModal(props: {
                 ship360Tab={
                   report.config.measure === "onTimePct" ||
                   report.config.measure === "avgDelayDays" ||
-                  report.config.dimension === "exceptionCatalog"
+                  report.config.dimension === "exceptionCatalog" ||
+                  report.config.dimension === "exceptionRootCause"
                     ? "milestones"
                     : undefined
                 }

@@ -26,6 +26,7 @@ export function dimensionLabel(dimension: string): string {
   if (dimension === "status") return "Status";
   if (dimension === "none") return "All";
   if (dimension === "exceptionCatalog") return "Exception catalog (code)";
+  if (dimension === "exceptionRootCause") return "Exception root cause (text)";
   return "Category";
 }
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { exceptionCatalogBucket, normalizeExceptionTypeKey } from "./report-engine";
+import { exceptionCatalogBucket, normalizeExceptionTypeKey, rootCauseReportBucket } from "./report-engine";
 
 describe("normalizeExceptionTypeKey", () => {
   it("trims and lowercases", () => {
@@ -43,5 +43,19 @@ describe("exceptionCatalogBucket", () => {
       rowKey: "CUSTOM-XYZ",
       rowLabel: "Unlisted (CUSTOM-XYZ)",
     });
+  });
+});
+
+describe("rootCauseReportBucket", () => {
+  it("maps empty to (none)", () => {
+    expect(rootCauseReportBucket(null)).toEqual({ rowKey: "(none)", rowLabel: "No root cause set" });
+    expect(rootCauseReportBucket("  ")).toEqual({ rowKey: "(none)", rowLabel: "No root cause set" });
+  });
+
+  it("truncates label for long text", () => {
+    const long = "x".repeat(130);
+    const b = rootCauseReportBucket(long);
+    expect(b.rowKey).toBe(long);
+    expect(b.rowLabel.length).toBeLessThanOrEqual(120);
   });
 });

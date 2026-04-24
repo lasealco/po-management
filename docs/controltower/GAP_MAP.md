@@ -152,7 +152,7 @@ Use this list when slicing PRs; refresh it whenever Control Tower behavior or `r
    - **Done elsewhere:** exceptions are first-class in **workbench**, **search**, **Shipment 360**, and **exception catalog** (`CtException` / `CtExceptionCode`); list/search APIs accept **`exceptionCode`** / **`alertType`** for open-queue style cuts.
    - **Now in `report-engine`:** `CT_REPORT_DIMENSIONS` includes **`exceptionCatalog`** and `CT_REPORT_MEASURES` includes **`openExceptions`** + **`openExceptionRatePct`** (Phase **1D**); catalog label mapping in **exception** dimension rows; rate = % of **shipments** in bucket with any open / in-progress exception.
    - **Now in report filters:** builder + run config support **`filters.exceptionCode`** (case-insensitive OPEN / IN_PROGRESS match), so operators can scope any report to a specific exception type.
-   - **Next smallest slice:** **rootCause** / external **NC** codes in reports, or richer exception trend **templates** (same engine; product-owned).
+   - **2026-04-23:** **Group by** dimension **`exceptionRootCause`** — buckets open / in-progress **`CtException`** rows by **trimmed `rootCause` text** (or **No root cause set**); measure locked to **open exception count**; workbench drill uses **`q=`** (shipment `q` search matches `rootCause`). **Next smallest slice:** external **NC** as a first-class field or catalog, or richer exception **templates** (product-owned).
 
 ---
 
@@ -173,6 +173,7 @@ File **one GitHub issue per bullet** when scheduling (titles are suggestions; ke
 
 | Date | Change |
 |------|--------|
+| 2026-04-23 | **Report engine (near-term #7):** `exceptionRootCause` dimension + workbench `q` drill. |
 | 2026-04-23 | **Assist (near-term #4):** `POST …/assist/execute-post-action` allowlist (`acknowledge_ct_alert`, `create_ct_note`) + Search confirm UI + `AssistPostAction` audit; suggested-PR line struck. |
 | 2026-04-26 | **Program handoff (docs only):** intro blockquote + roadmap **§ Program tranche handoff** — phased line closed; backlog = issues + 🟡 MVP rows. |
 | 2026-04-25 | **Near-term #4 (Assist):** `POST /api/control-tower/assist` + Search — **`postActionToolCatalog`**, `canExecuteControlTowerPostActions`, `assist-tool-catalog.ts`, `assist-retrieval` snippet. |

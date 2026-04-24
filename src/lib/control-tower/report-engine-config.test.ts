@@ -18,6 +18,14 @@ describe("sanitizeCtReportConfig", () => {
     expect(config.measure).toBe("openExceptions");
   });
 
+  it("forces openExceptions measure for exceptionRootCause dimension", () => {
+    const config = sanitizeCtReportConfig({
+      dimension: "exceptionRootCause",
+      measure: "volumeCbm",
+    });
+    expect(config.measure).toBe("openExceptions");
+  });
+
   it("applies defaults and clamps topN for invalid input", () => {
     expect(sanitizeCtReportConfig(null)).toMatchObject({
       chartType: "bar",
