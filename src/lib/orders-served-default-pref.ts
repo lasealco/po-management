@@ -1,7 +1,16 @@
+import { canActorAccessOrgUnitSubtree } from "@/lib/org-unit-admin-scope";
 import { prisma } from "@/lib/prisma";
 
 /** Stored under `UserPreference.key` — JSON: `{ "servedOrgUnitId": string }`. */
 export const USER_PREF_ORDERS_SERVED_DEFAULT = "orders.defaultServedOrgUnit_v1";
+
+/** Thrown when the target org is outside the actor’s org subtree (Phase 5/6 scope alignment). */
+export class OrdersServedDefaultScopeError extends Error {
+  constructor() {
+    super("You cannot set a default for that org (outside your scope).");
+    this.name = "OrdersServedDefaultScopeError";
+  }
+}
 
 type PrefBody = { servedOrgUnitId: string };
 
@@ -21,7 +30,8 @@ export type OrdersServedDefaultResult = {
 };
 
 /**
- * Load saved default "order for" org for PO/SO create flows. Invalidates stale org ids.
+ * Load saved default "order for" org for PO/SO create flows. Invalidates stale org ids
+ * and preferences outside the user’s org subtree (same rules as `canActorAccessOrgUnitSubtree`).
  */
 export async function getOrdersServedDefaultPreference(
   tenantId: string,
@@ -50,6 +60,14 @@ export async function getOrdersServedDefaultPreference(
       .catch(() => undefined);
     return { defaultOrg: null, preferenceUpdatedAt: null };
   }
+  if (!(await canActorAccessOrgUnitSubtree(userId, tenantId, org.id))) {
+    await prisma.userPreference
+      .delete({
+        where: { userId_key: { userId, key: USER_PREF_ORDERS_SERVED_DEFAULT } },
+      })
+      .catch(() => undefined);
+    return { defaultOrg: null, preferenceUpdatedAt: null };
+  }
   return {
     defaultOrg: {
       id: org.id,
@@ -62,7 +80,8 @@ export async function getOrdersServedDefaultPreference(
 }
 
 /**
- * Set or clear the user’s default; validates org is in-tenant. Audit trail: `UserPreference.updatedAt`.
+ * Set or clear the user’s default; validates org is in-tenant and in the user’s org subtree
+ * when a primary org is set. Audit trail: `UserPreference.updatedAt`.
  */
 export async function setOrdersServedDefaultPreference(
   tenantId: string,
@@ -84,6 +103,9 @@ export async function setOrdersServedDefaultPreference(
   });
   if (!org) {
     throw new Error("Org unit not found in this company.");
+  }
+  if (!(await canActorAccessOrgUnitSubtree(userId, tenantId, org.id))) {
+    throw new OrdersServedDefaultScopeError();
   }
   const value: PrefBody = { servedOrgUnitId: org.id };
   const row = await prisma.userPreference.upsert({

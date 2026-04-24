@@ -4,6 +4,7 @@ import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import {
   getOrdersServedDefaultPreference,
+  OrdersServedDefaultScopeError,
   setOrdersServedDefaultPreference,
 } from "@/lib/orders-served-default-pref";
 
@@ -74,6 +75,9 @@ export async function PUT(request: Request) {
       preferenceUpdatedAt: data.preferenceUpdatedAt,
     });
   } catch (e) {
+    if (e instanceof OrdersServedDefaultScopeError) {
+      return toApiErrorResponse({ error: e.message, code: "FORBIDDEN", status: 403 });
+    }
     const msg = e instanceof Error ? e.message : "Could not save preference.";
     return toApiErrorResponse({ error: msg, code: "BAD_INPUT", status: 400 });
   }

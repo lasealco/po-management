@@ -32,6 +32,7 @@ export function SettingsCompanyLegalEntitiesClient({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [auditReload, setAuditReload] = useState(0);
 
   useEffect(() => {
     setRows(initialEntities);
@@ -107,6 +108,7 @@ export function SettingsCompanyLegalEntitiesClient({
               onSuccess={() => {
                 setError(null);
                 setCreateOpen(false);
+                setAuditReload((k) => k + 1);
                 router.refresh();
               }}
             />
@@ -200,11 +202,14 @@ export function SettingsCompanyLegalEntitiesClient({
             onSuccess={() => {
               setError(null);
               setEditingId(null);
+              setAuditReload((k) => k + 1);
               router.refresh();
             }}
           />
         </section>
       ) : null}
+
+      <LegalEntityChangeHistory reloadKey={auditReload} />
     </div>
   );
 
@@ -223,8 +228,110 @@ export function SettingsCompanyLegalEntitiesClient({
     }
     setRows((prev) => prev.filter((r) => r.id !== id));
     if (editingId === id) setEditingId(null);
+    setAuditReload((k) => k + 1);
     router.refresh();
   }
+}
+
+type AuditEntry = {
+  id: string;
+  action: string;
+  createdAt: string;
+  orgUnit: { id: string; name: string; code: string; kind: string };
+  companyLegalEntityId: string | null;
+  metadata: unknown;
+  actor: { id: string; email: string; name: string | null };
+};
+
+function LegalEntityChangeHistory({ reloadKey }: { reloadKey: number }) {
+  const [entries, setEntries] = useState<AuditEntry[] | null>(null);
+  const [auditError, setAuditError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      setAuditError(null);
+      const res = await fetch("/api/settings/company-legal-entity-audit-logs");
+      const data: unknown = await res.json().catch(() => ({}));
+      if (cancelled) return;
+      if (!res.ok) {
+        setAuditError(apiClientErrorMessage(data, "Could not load change history."));
+        setEntries([]);
+        return;
+      }
+      const o = data as { entries?: AuditEntry[] };
+      setEntries(o.entries ?? []);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadKey]);
+
+  return (
+    <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+      <h3 className="text-sm font-semibold text-zinc-900">Change history</h3>
+      <p className="mt-1 text-xs text-zinc-600">
+        Recent create, update, and delete actions on legal profiles (scoped to orgs you administer).
+      </p>
+      {auditError ? (
+        <p className="mt-3 text-sm text-rose-800" role="alert">
+          {auditError}
+        </p>
+      ) : null}
+      {entries === null ? (
+        <p className="mt-3 text-sm text-zinc-500">Loading…</p>
+      ) : entries.length === 0 ? (
+        <p className="mt-3 text-sm text-zinc-500">No recorded changes yet.</p>
+      ) : (
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full min-w-[640px] text-left text-xs text-zinc-800">
+            <thead className="border-b border-zinc-200 text-[0.65rem] font-semibold uppercase tracking-wide text-zinc-500">
+              <tr>
+                <th className="py-2 pr-2">When (UTC)</th>
+                <th className="py-2 pr-2">Action</th>
+                <th className="py-2 pr-2">Org unit</th>
+                <th className="py-2 pr-2">Actor</th>
+                <th className="py-2">Details</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-100">
+              {entries.map((e) => (
+                <tr key={e.id} className="align-top">
+                  <td className="py-2 pr-2 font-mono text-zinc-600">
+                    {e.createdAt.slice(0, 19).replace("T", " ")}
+                  </td>
+                  <td className="py-2 pr-2">
+                    <span className="rounded-md bg-zinc-100 px-1.5 py-0.5 font-medium">{e.action}</span>
+                  </td>
+                  <td className="py-2 pr-2">
+                    {e.orgUnit.name}
+                    <span className="ml-1 font-mono text-zinc-500">({e.orgUnit.code})</span>
+                  </td>
+                  <td className="py-2 pr-2 break-all">{e.actor.email}</td>
+                  <td className="py-2 font-mono text-[0.65rem] text-zinc-600">
+                    {formatAuditMetadata(e.metadata)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function formatAuditMetadata(m: unknown): string {
+  if (m == null) return "—";
+  if (typeof m === "object" && m !== null && !Array.isArray(m)) {
+    const o = m as Record<string, unknown>;
+    if (Array.isArray(o.changedKeys)) {
+      return `fields: ${(o.changedKeys as string[]).join(", ")}`;
+    }
+    const s = JSON.stringify(m);
+    return s.length > 120 ? `${s.slice(0, 117)}…` : s;
+  }
+  return String(m);
 }
 
 function CreateLegalForm({
