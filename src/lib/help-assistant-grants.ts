@@ -125,7 +125,13 @@ export function helpAssistantOpenPathAllowed(path: string, g: HelpAssistantGrant
   if (path === "/orders") return g.ordersView;
   if (path === "/consolidation") return g.consolidationNav;
   if (path === "/suppliers") return g.suppliersView;
-  if (path === "/settings/users" || path === "/settings/warehouses") return g.settingsView;
+  if (
+    path === "/settings/users" ||
+    path === "/settings/organization/structure" ||
+    path === "/settings/warehouses"
+  ) {
+    return g.settingsView;
+  }
   if (path === "/catalog" || path === "/products") return g.productsView;
   if (path === "/product-trace") return g.ordersView;
   if (path.startsWith("/control-tower")) return g.controlTowerView;

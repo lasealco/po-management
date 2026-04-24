@@ -29,6 +29,11 @@ export const SETTINGS_SECTIONS: readonly SettingsNavSection[] = [
         description: "Display name and tenant identifier",
       },
       {
+        href: "/settings/organization/structure",
+        label: "Org & sites",
+        description: "Geographic and legal hierarchy (HQ, regions, countries, sites)",
+      },
+      {
         href: "/settings/warehouses",
         label: "CFS & Warehouses",
         description: "Create and manage consolidation locations",

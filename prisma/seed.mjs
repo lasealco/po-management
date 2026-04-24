@@ -649,6 +649,102 @@ async function seed() {
     },
   });
 
+  const ouGlobal = await prisma.orgUnit.upsert({
+    where: { tenantId_code: { tenantId: tenant.id, code: "GLOBAL" } },
+    create: {
+      tenantId: tenant.id,
+      parentId: null,
+      name: "Global HQ (demo)",
+      code: "GLOBAL",
+      kind: "GROUP",
+      sortOrder: 0,
+    },
+    update: {
+      name: "Global HQ (demo)",
+      kind: "GROUP",
+      parentId: null,
+      sortOrder: 0,
+    },
+  });
+  const ouApac = await prisma.orgUnit.upsert({
+    where: { tenantId_code: { tenantId: tenant.id, code: "APAC" } },
+    create: {
+      tenantId: tenant.id,
+      parentId: ouGlobal.id,
+      name: "Asia Pacific",
+      code: "APAC",
+      kind: "REGION",
+      sortOrder: 10,
+    },
+    update: { name: "Asia Pacific", parentId: ouGlobal.id, kind: "REGION" },
+  });
+  const ouAmericas = await prisma.orgUnit.upsert({
+    where: { tenantId_code: { tenantId: tenant.id, code: "AMERICAS" } },
+    create: {
+      tenantId: tenant.id,
+      parentId: ouGlobal.id,
+      name: "Americas",
+      code: "AMERICAS",
+      kind: "REGION",
+      sortOrder: 20,
+    },
+    update: { name: "Americas", parentId: ouGlobal.id, kind: "REGION" },
+  });
+  const ouUsa = await prisma.orgUnit.upsert({
+    where: { tenantId_code: { tenantId: tenant.id, code: "US" } },
+    create: {
+      tenantId: tenant.id,
+      parentId: ouAmericas.id,
+      name: "United States",
+      code: "US",
+      kind: "COUNTRY",
+      sortOrder: 10,
+    },
+    update: { name: "United States", parentId: ouAmericas.id, kind: "COUNTRY" },
+  });
+  const ouDe = await prisma.orgUnit.upsert({
+    where: { tenantId_code: { tenantId: tenant.id, code: "DE" } },
+    create: {
+      tenantId: tenant.id,
+      parentId: ouApac.id,
+      name: "Germany",
+      code: "DE",
+      kind: "COUNTRY",
+      sortOrder: 10,
+    },
+    update: { name: "Germany", parentId: ouApac.id, kind: "COUNTRY" },
+  });
+
+  await prisma.$transaction(async (tx) => {
+    await tx.userProductDivision.deleteMany({
+      where: { userId: { in: [superuser.id, buyer.id, approver.id] } },
+    });
+    await tx.user.update({
+      where: { id: superuser.id },
+      data: { primaryOrgUnitId: ouGlobal.id },
+    });
+    await tx.userProductDivision.createMany({
+      data: [
+        { userId: superuser.id, productDivisionId: divOperations.id },
+        { userId: superuser.id, productDivisionId: divProcurement.id },
+      ],
+    });
+    await tx.user.update({
+      where: { id: buyer.id },
+      data: { primaryOrgUnitId: ouUsa.id },
+    });
+    await tx.userProductDivision.createMany({
+      data: [{ userId: buyer.id, productDivisionId: divOperations.id }],
+    });
+    await tx.user.update({
+      where: { id: approver.id },
+      data: { primaryOrgUnitId: ouDe.id },
+    });
+    await tx.userProductDivision.createMany({
+      data: [{ userId: approver.id, productDivisionId: divProcurement.id }],
+    });
+  });
+
   const hqOffice = await prisma.supplierOffice.upsert({
     where: { supplierId_name: { supplierId: supplier.id, name: "Headquarters" } },
     update: {

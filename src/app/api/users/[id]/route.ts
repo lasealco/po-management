@@ -39,6 +39,8 @@ export async function PATCH(
   const activeRaw = o.isActive;
   const roleIdsParsed = strIds(o.roleIds);
   const passwordRaw = o.password;
+  const productDivisionIdsParsed = strIds(o.productDivisionIds);
+  const primaryOrgUnitIdRaw = o.primaryOrgUnitId;
 
   let roleIds: string[] | undefined;
   if (o.roleIds !== undefined) {
@@ -52,9 +54,15 @@ export async function PATCH(
     nameRaw === undefined &&
     activeRaw === undefined &&
     roleIds === undefined &&
-    passwordRaw === undefined
+    passwordRaw === undefined &&
+    o.primaryOrgUnitId === undefined &&
+    o.productDivisionIds === undefined
   ) {
-    return toApiErrorResponse({ error: "Provide name, isActive, and/or roleIds.", code: "BAD_INPUT", status: 400 });
+    return toApiErrorResponse({
+      error: "Provide name, isActive, roleIds, password, primaryOrgUnitId, and/or productDivisionIds.",
+      code: "BAD_INPUT",
+      status: 400,
+    });
   }
 
   let name: string | undefined;
@@ -121,14 +129,59 @@ export async function PATCH(
     }
   }
 
+  let primaryOrgUnitId: string | null | undefined;
+  if (o.primaryOrgUnitId !== undefined) {
+    if (o.primaryOrgUnitId === null || o.primaryOrgUnitId === "") {
+      primaryOrgUnitId = null;
+    } else if (typeof o.primaryOrgUnitId === "string") {
+      const row = await prisma.orgUnit.findFirst({
+        where: { id: o.primaryOrgUnitId, tenantId: tenant.id },
+        select: { id: true },
+      });
+      if (!row) {
+        return toApiErrorResponse({ error: "primaryOrgUnitId is not a valid org unit for this tenant.", code: "BAD_INPUT", status: 400 });
+      }
+      primaryOrgUnitId = row.id;
+    } else {
+      return toApiErrorResponse({ error: "primaryOrgUnitId must be a string, null, or empty.", code: "BAD_INPUT", status: 400 });
+    }
+  }
+
+  let productDivisionIds: string[] | undefined;
+  if (o.productDivisionIds !== undefined) {
+    if (productDivisionIdsParsed === null) {
+      return toApiErrorResponse({ error: "productDivisionIds must be an array of non-empty strings.", code: "BAD_INPUT", status: 400 });
+    }
+    productDivisionIds = productDivisionIdsParsed;
+    if (productDivisionIds.length > 0) {
+      const found = await prisma.productDivision.findMany({
+        where: { tenantId: tenant.id, id: { in: productDivisionIds } },
+        select: { id: true },
+      });
+      if (found.length !== productDivisionIds.length) {
+        return toApiErrorResponse({
+          error: "One or more product divisions are invalid for this tenant.",
+          code: "BAD_INPUT",
+          status: 400,
+        });
+      }
+    }
+  }
+
   await prisma.$transaction(async (tx) => {
-    if (name !== undefined || isActive !== undefined || passwordHash !== undefined) {
+    if (
+      name !== undefined ||
+      isActive !== undefined ||
+      passwordHash !== undefined ||
+      primaryOrgUnitId !== undefined
+    ) {
       await tx.user.update({
         where: { id },
         data: {
           ...(name !== undefined ? { name } : {}),
           ...(isActive !== undefined ? { isActive } : {}),
           ...(passwordHash !== undefined ? { passwordHash } : {}),
+          ...(primaryOrgUnitId !== undefined ? { primaryOrgUnitId } : {}),
         },
       });
     }
@@ -137,6 +190,14 @@ export async function PATCH(
       if (roleIds.length > 0) {
         await tx.userRole.createMany({
           data: roleIds.map((roleId) => ({ userId: id, roleId })),
+        });
+      }
+    }
+    if (productDivisionIds !== undefined) {
+      await tx.userProductDivision.deleteMany({ where: { userId: id } });
+      if (productDivisionIds.length > 0) {
+        await tx.userProductDivision.createMany({
+          data: productDivisionIds.map((productDivisionId) => ({ userId: id, productDivisionId })),
         });
       }
     }
@@ -149,6 +210,13 @@ export async function PATCH(
       email: true,
       name: true,
       isActive: true,
+      primaryOrgUnitId: true,
+      primaryOrgUnit: {
+        select: { id: true, name: true, code: true, kind: true },
+      },
+      productDivisionScope: {
+        select: { productDivision: { select: { id: true, name: true, code: true } } },
+      },
       userRoles: {
         select: { role: { select: { id: true, name: true, isSystem: true } } },
       },
@@ -159,10 +227,12 @@ export async function PATCH(
     return toApiErrorResponse({ error: "User not found.", code: "NOT_FOUND", status: 404 });
   }
 
-  const { userRoles, ...rest } = user;
+  const { userRoles, productDivisionScope, primaryOrgUnit, ...rest } = user;
   return NextResponse.json({
     user: {
       ...rest,
+      primaryOrgUnit: primaryOrgUnit ?? null,
+      productDivisions: productDivisionScope.map((p) => p.productDivision),
       roles: userRoles.map((ur) => ur.role),
     },
   });

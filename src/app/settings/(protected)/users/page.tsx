@@ -15,7 +15,7 @@ export default async function SettingsUsersPage() {
     );
   }
 
-  const [users, roleCatalog] = await Promise.all([
+  const [users, roleCatalog, orgUnits, productDivisionCatalog] = await Promise.all([
     prisma.user.findMany({
       where: { tenantId: tenant.id },
       orderBy: [{ isActive: "desc" }, { email: "asc" }],
@@ -24,6 +24,13 @@ export default async function SettingsUsersPage() {
         email: true,
         name: true,
         isActive: true,
+        primaryOrgUnitId: true,
+        primaryOrgUnit: {
+          select: { id: true, name: true, code: true, kind: true },
+        },
+        productDivisionScope: {
+          select: { productDivision: { select: { id: true, name: true, code: true } } },
+        },
         userRoles: {
           select: {
             role: {
@@ -38,6 +45,16 @@ export default async function SettingsUsersPage() {
       orderBy: { name: "asc" },
       select: { id: true, name: true, isSystem: true },
     }),
+    prisma.orgUnit.findMany({
+      where: { tenantId: tenant.id },
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      select: { id: true, name: true, code: true, kind: true },
+    }),
+    prisma.productDivision.findMany({
+      where: { tenantId: tenant.id },
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      select: { id: true, name: true, code: true },
+    }),
   ]);
 
   const access = await getViewerGrantSet();
@@ -51,6 +68,9 @@ export default async function SettingsUsersPage() {
     email: u.email,
     name: u.name,
     isActive: u.isActive,
+    primaryOrgUnitId: u.primaryOrgUnitId,
+    primaryOrgUnit: u.primaryOrgUnit,
+    productDivisions: u.productDivisionScope.map((p) => p.productDivision),
     roles: u.userRoles.map((ur) => ur.role),
   }));
 
@@ -60,13 +80,16 @@ export default async function SettingsUsersPage() {
       <p className="mt-1 text-sm text-zinc-600">
         Tenant accounts for this organization. Admins (users with{" "}
         <span className="whitespace-nowrap">org.settings → edit</span>) can create
-        users, assign roles, reset passwords, and activate or deactivate accounts.
-        Deactivation is reversible.
+        users, assign a <strong>primary org</strong> and <strong>product division</strong> scope
+        (matrix), roles, reset passwords, and activate or deactivate accounts. Permissions stay
+        tenant-wide; org-scoped data rules ship in a later phase. Deactivation is reversible.
       </p>
       <div className="mt-8">
         <SettingsUsersClient
           users={rows}
           roleCatalog={roleCatalog}
+          orgUnits={orgUnits}
+          productDivisionCatalog={productDivisionCatalog}
           canEdit={canEdit}
           actorUserId={actorUserId}
         />

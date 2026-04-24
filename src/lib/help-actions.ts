@@ -36,6 +36,7 @@ const OPEN_PATH_ALLOWLIST = new Set([
   "/consolidation",
   "/suppliers",
   "/settings/users",
+  "/settings/organization/structure",
   "/settings/warehouses",
   "/login",
   "/forgot-password",
@@ -162,7 +163,11 @@ export async function executeHelpDoAction(
       if (!viewerHas(access.grantSet, "org.suppliers", "view")) {
         return { ok: false, error: "You do not have permission to view suppliers." };
       }
-    } else if (path === "/settings/users" || path === "/settings/warehouses") {
+    } else if (
+      path === "/settings/users" ||
+      path === "/settings/organization/structure" ||
+      path === "/settings/warehouses"
+    ) {
       if (!viewerHas(access.grantSet, "org.settings", "view")) {
         return { ok: false, error: "You do not have permission to open settings." };
       }

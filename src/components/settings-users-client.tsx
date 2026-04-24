@@ -10,9 +10,15 @@ export type SettingsUserRow = {
   name: string;
   isActive: boolean;
   roles: { id: string; name: string; isSystem: boolean }[];
+  primaryOrgUnitId: string | null;
+  primaryOrgUnit: { id: string; name: string; code: string; kind: string } | null;
+  productDivisions: { id: string; name: string; code: string | null }[];
 };
 
 export type RoleCatalogEntry = { id: string; name: string; isSystem: boolean };
+
+export type OrgUnitOption = { id: string; name: string; code: string; kind: string };
+export type ProductDivisionOption = { id: string; name: string; code: string | null };
 
 function roleIdsSignature(ids: string[]) {
   return [...ids].sort().join("\0");
@@ -22,24 +28,43 @@ function userFromPatchResponse(data: unknown): {
   name: string;
   isActive: boolean;
   roles: SettingsUserRow["roles"];
+  primaryOrgUnitId: string | null;
+  primaryOrgUnit: SettingsUserRow["primaryOrgUnit"];
+  productDivisions: SettingsUserRow["productDivisions"];
 } | null {
-  const body = data as { user?: { name: string; isActive: boolean; roles: SettingsUserRow["roles"] } };
+  const body = data as {
+    user?: {
+      name: string;
+      isActive: boolean;
+      roles: SettingsUserRow["roles"];
+      primaryOrgUnitId?: string | null;
+      primaryOrgUnit?: SettingsUserRow["primaryOrgUnit"];
+      productDivisions?: SettingsUserRow["productDivisions"];
+    };
+  };
   if (!body.user) return null;
   return {
     name: body.user.name,
     isActive: body.user.isActive,
     roles: body.user.roles ?? [],
+    primaryOrgUnitId: body.user.primaryOrgUnitId ?? null,
+    primaryOrgUnit: body.user.primaryOrgUnit ?? null,
+    productDivisions: body.user.productDivisions ?? [],
   };
 }
 
 export function SettingsUsersClient({
   users,
   roleCatalog,
+  orgUnits,
+  productDivisionCatalog,
   canEdit,
   actorUserId,
 }: {
   users: SettingsUserRow[];
   roleCatalog: RoleCatalogEntry[];
+  orgUnits: OrgUnitOption[];
+  productDivisionCatalog: ProductDivisionOption[];
   canEdit: boolean;
   actorUserId: string | null;
 }) {
@@ -55,6 +80,8 @@ export function SettingsUsersClient({
           name: u.name,
           isActive: u.isActive,
           roleKey: roleIdsSignature(u.roles.map((r) => r.id)),
+          primaryOrgUnitId: u.primaryOrgUnitId,
+          productDivisionKey: roleIdsSignature(u.productDivisions.map((d) => d.id)),
         },
       ]),
     ),
@@ -65,13 +92,25 @@ export function SettingsUsersClient({
   const [createName, setCreateName] = useState("");
   const [createPassword, setCreatePassword] = useState("");
   const [createRoleIds, setCreateRoleIds] = useState<Set<string>>(() => new Set());
+  const [createPrimaryOrgId, setCreatePrimaryOrgId] = useState<string>("");
+  const [createProductDivIds, setCreateProductDivIds] = useState<Set<string>>(() => new Set());
   const [creating, setCreating] = useState(false);
 
   const isSelf = (id: string) => actorUserId != null && id === actorUserId;
 
   function updateRow(
     id: string,
-    patch: Partial<Pick<SettingsUserRow, "name" | "isActive" | "roles">>,
+    patch: Partial<
+      Pick<
+        SettingsUserRow,
+        | "name"
+        | "isActive"
+        | "roles"
+        | "primaryOrgUnitId"
+        | "primaryOrgUnit"
+        | "productDivisions"
+      >
+    >,
   ) {
     setRows((prev) =>
       prev.map((u) => (u.id === id ? { ...u, ...patch } : u)),
@@ -116,6 +155,43 @@ export function SettingsUsersClient({
     setError(null);
   }
 
+  function toggleUserProductDivision(userId: string, divisionId: string, checked: boolean) {
+    if (!canEdit) return;
+    setRows((prev) =>
+      prev.map((u) => {
+        if (u.id !== userId) return u;
+        const set = new Set(u.productDivisions.map((d) => d.id));
+        if (checked) {
+          const meta = productDivisionCatalog.find((d) => d.id === divisionId);
+          if (!meta) return u;
+          if (set.has(divisionId)) return u;
+          return {
+            ...u,
+            productDivisions: [
+              ...u.productDivisions,
+              { id: meta.id, name: meta.name, code: meta.code },
+            ],
+          };
+        }
+        return {
+          ...u,
+          productDivisions: u.productDivisions.filter((d) => d.id !== divisionId),
+        };
+      }),
+    );
+    setError(null);
+  }
+
+  function toggleCreateProductDiv(divisionId: string, checked: boolean) {
+    setCreateProductDivIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(divisionId);
+      else next.delete(divisionId);
+      return next;
+    });
+    setError(null);
+  }
+
   async function patchUser(id: string, body: Record<string, unknown>) {
     const res = await fetch(`/api/users/${id}`, {
       method: "PATCH",
@@ -134,6 +210,8 @@ export function SettingsUsersClient({
           name: u.name,
           isActive: u.isActive,
           roleKey: roleIdsSignature(u.roles.map((r) => r.id)),
+          primaryOrgUnitId: u.primaryOrgUnitId,
+          productDivisionKey: roleIdsSignature(u.productDivisions.map((d) => d.id)),
         },
       }));
       setRows((prev) =>
@@ -144,6 +222,9 @@ export function SettingsUsersClient({
                 name: u.name,
                 isActive: u.isActive,
                 roles: u.roles,
+                primaryOrgUnitId: u.primaryOrgUnitId,
+                primaryOrgUnit: u.primaryOrgUnit,
+                productDivisions: u.productDivisions,
               }
             : r,
         ),
@@ -160,10 +241,13 @@ export function SettingsUsersClient({
     if (!b) return;
 
     const roleKey = roleIdsSignature(u.roles.map((r) => r.id));
+    const divKey = roleIdsSignature(u.productDivisions.map((d) => d.id));
     const payload: {
       name?: string;
       isActive?: boolean;
       roleIds?: string[];
+      primaryOrgUnitId?: string | null;
+      productDivisionIds?: string[];
     } = {};
     if (u.name.trim() !== b.name) payload.name = u.name.trim();
     if (u.isActive !== b.isActive) {
@@ -174,6 +258,12 @@ export function SettingsUsersClient({
       payload.isActive = u.isActive;
     }
     if (roleKey !== b.roleKey) payload.roleIds = u.roles.map((r) => r.id);
+    if (u.primaryOrgUnitId !== b.primaryOrgUnitId) {
+      payload.primaryOrgUnitId = u.primaryOrgUnitId;
+    }
+    if (divKey !== b.productDivisionKey) {
+      payload.productDivisionIds = u.productDivisions.map((d) => d.id);
+    }
 
     if (Object.keys(payload).length === 0) return;
 
@@ -217,6 +307,8 @@ export function SettingsUsersClient({
         name: createName,
         password: createPassword,
         roleIds: [...createRoleIds],
+        ...(createPrimaryOrgId ? { primaryOrgUnitId: createPrimaryOrgId } : {}),
+        productDivisionIds: [...createProductDivIds],
       }),
     });
     const data: unknown = await res.json().catch(() => null);
@@ -229,6 +321,8 @@ export function SettingsUsersClient({
     setCreateName("");
     setCreatePassword("");
     setCreateRoleIds(new Set());
+    setCreatePrimaryOrgId("");
+    setCreateProductDivIds(new Set());
     router.refresh();
   }
 
@@ -317,6 +411,43 @@ export function SettingsUsersClient({
               </ul>
             </div>
           ) : null}
+          {orgUnits.length > 0 ? (
+            <label className="mt-4 block text-xs font-medium text-zinc-700">
+              Primary org (optional)
+              <select
+                className="mt-1 w-full max-w-md rounded-xl border border-zinc-300 px-2 py-2 text-sm"
+                value={createPrimaryOrgId}
+                onChange={(e) => setCreatePrimaryOrgId(e.target.value)}
+              >
+                <option value="">— None —</option>
+                {orgUnits.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.name} ({o.code})
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+          {productDivisionCatalog.length > 0 ? (
+            <div className="mt-3">
+              <p className="text-xs font-medium text-zinc-700">Product division scope (optional matrix)</p>
+              <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-2">
+                {productDivisionCatalog.map((d) => (
+                  <li key={d.id}>
+                    <label className="flex cursor-pointer items-center gap-2 text-xs text-zinc-800">
+                      <input
+                        type="checkbox"
+                        checked={createProductDivIds.has(d.id)}
+                        onChange={(e) => toggleCreateProductDiv(d.id, e.target.checked)}
+                        className="rounded border-zinc-300"
+                      />
+                      {d.name}
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </section>
       ) : null}
 
@@ -327,11 +458,13 @@ export function SettingsUsersClient({
       ) : null}
 
       <div className="overflow-x-auto rounded-2xl border border-zinc-200 bg-white shadow-sm">
-        <table className="w-full min-w-[720px] text-left text-sm">
+        <table className="w-full min-w-[1100px] text-left text-sm">
           <thead className="border-b border-zinc-200 bg-zinc-50 text-xs font-semibold uppercase tracking-wide text-zinc-500">
             <tr>
               <th className="px-3 py-2 font-medium">Email</th>
               <th className="px-3 py-2 font-medium">Name</th>
+              <th className="px-3 py-2 font-medium">Primary org</th>
+              <th className="px-3 py-2 font-medium">Product divisions</th>
               <th className="px-3 py-2 font-medium">Roles</th>
               <th className="px-3 py-2 font-medium">Status</th>
               <th className="px-3 py-2 font-medium" />
@@ -341,13 +474,17 @@ export function SettingsUsersClient({
             {rows.map((u) => {
               const b = baseline[u.id];
               const roleKeyNow = roleIdsSignature(u.roles.map((r) => r.id));
+              const divKeyNow = roleIdsSignature(u.productDivisions.map((d) => d.id));
               const dirty =
                 canEdit &&
                 !!b &&
                 (u.name.trim() !== b.name ||
                   u.isActive !== b.isActive ||
-                  roleKeyNow !== b.roleKey);
+                  roleKeyNow !== b.roleKey ||
+                  u.primaryOrgUnitId !== b.primaryOrgUnitId ||
+                  divKeyNow !== b.productDivisionKey);
               const assigned = new Set(u.roles.map((r) => r.id));
+              const divAssigned = new Set(u.productDivisions.map((d) => d.id));
               const selfRow = isSelf(u.id);
               return (
                 <tr
@@ -372,6 +509,71 @@ export function SettingsUsersClient({
                       />
                     ) : (
                       <span>{u.name}</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2 min-w-[11rem]">
+                    {orgUnits.length === 0 ? (
+                      <span className="text-xs text-zinc-400">Define org under Settings → Org &amp; sites</span>
+                    ) : canEdit ? (
+                      <select
+                        className="h-8 w-full max-w-[14rem] rounded-xl border border-zinc-300 px-2 text-xs"
+                        value={u.primaryOrgUnitId ?? ""}
+                        onChange={(e) => {
+                          const v = e.target.value || null;
+                          const ou = v ? orgUnits.find((x) => x.id === v) : null;
+                          updateRow(u.id, {
+                            primaryOrgUnitId: v,
+                            primaryOrgUnit: ou
+                              ? {
+                                  id: ou.id,
+                                  name: ou.name,
+                                  code: ou.code,
+                                  kind: ou.kind,
+                                }
+                              : null,
+                          });
+                        }}
+                      >
+                        <option value="">— None —</option>
+                        {orgUnits.map((o) => (
+                          <option key={o.id} value={o.id}>
+                            {o.name} ({o.code})
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="text-xs text-zinc-700">
+                        {u.primaryOrgUnit ? `${u.primaryOrgUnit.name} (${u.primaryOrgUnit.code})` : "—"}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2 min-w-[9rem]">
+                    {productDivisionCatalog.length === 0 ? (
+                      <span className="text-xs text-zinc-400">—</span>
+                    ) : canEdit ? (
+                      <ul className="flex flex-col gap-1">
+                        {productDivisionCatalog.map((d) => (
+                          <li key={d.id}>
+                            <label className="flex cursor-pointer items-center gap-2 text-xs text-zinc-800">
+                              <input
+                                type="checkbox"
+                                checked={divAssigned.has(d.id)}
+                                onChange={(e) =>
+                                  toggleUserProductDivision(u.id, d.id, e.target.checked)
+                                }
+                                className="rounded border-zinc-300"
+                              />
+                              {d.name}
+                            </label>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <span className="text-xs text-zinc-700">
+                        {u.productDivisions.length
+                          ? u.productDivisions.map((d) => d.name).join(", ")
+                          : "—"}
+                      </span>
                     )}
                   </td>
                   <td className="px-3 py-2">
@@ -469,9 +671,9 @@ export function SettingsUsersClient({
       </div>
       {canEdit ? (
         <p className="text-xs text-zinc-500">
-          Click <strong>Save</strong> after changing name or roles. Use <strong>Activate</strong> /{" "}
-          <strong>Deactivate</strong> to change account status without other edits, or use{" "}
-          <strong>Password</strong> to set a new password. Users sign in at <code>/login</code>.
+          Define the org tree under <strong>Settings → Org &amp; sites</strong>. Click <strong>Save</strong>{" "}
+          after changing name, org, product divisions, or roles. <strong>Activate</strong> /{" "}
+          <strong>Deactivate</strong> and <strong>Password</strong> apply immediately to status / credentials.
         </p>
       ) : null}
     </div>

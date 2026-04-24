@@ -6,6 +6,15 @@ datasource db {
   provider = "postgresql"
 }
 
+enum OrgUnitKind {
+  GROUP
+  LEGAL_ENTITY
+  REGION
+  COUNTRY
+  SITE
+  OFFICE
+}
+
 model Tenant {
   id        String   @id @default(cuid())
   name      String
@@ -14,6 +23,7 @@ model Tenant {
   updatedAt DateTime @updatedAt
 
   users             User[]
+  orgUnits          OrgUnit[]
   roles             Role[]
   suppliers         Supplier[]
   products          Product[]
@@ -451,11 +461,54 @@ model User {
   srmSupplierDocumentAuditAuthored SrmSupplierDocumentAuditLog[] @relation("SrmSupplierDocumentAuditActor")
   wmsSavedLedgerViews WmsSavedLedgerView[]
   passwordResetTokens  PasswordResetToken[]
+  /// Primary org node (geography / legal hierarchy). Matrix: see `productDivisionScope`.
+  primaryOrgUnitId String?
+  primaryOrgUnit   OrgUnit?  @relation("UserPrimaryOrgUnit", fields: [primaryOrgUnitId], references: [id], onDelete: SetNull)
+  productDivisionScope UserProductDivision[]
 
   @@unique([tenantId, email])
   @@index([tenantId])
   @@index([customerCrmAccountId])
   @@index([portalLinkedSupplierId])
+  @@index([primaryOrgUnitId])
+}
+
+/**
+ * Hierarchical org chart inside a tenant (global HQ → region → country → site, etc.).
+ * Does not replace `ProductDivision` (product / commercial matrix); use both via `User`.
+ */
+model OrgUnit {
+  id        String   @id @default(cuid())
+  tenantId  String
+  parentId  String?
+  name      String
+  /// Unique per tenant (e.g. GLOBAL, APAC, US, US-TX-HOU)
+  code      String
+  kind      OrgUnitKind
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  parent   OrgUnit?  @relation("OrgUnitHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children OrgUnit[] @relation("OrgUnitHierarchy")
+  usersPrimary User[] @relation("UserPrimaryOrgUnit")
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@index([tenantId, parentId])
+  @@index([parentId])
+}
+
+/** Matrix: user responsibility for one or more product divisions (e.g. global category lead). */
+model UserProductDivision {
+  userId            String
+  productDivisionId String
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productDivision   ProductDivision @relation(fields: [productDivisionId], references: [id], onDelete: Cascade)
+
+  @@id([userId, productDivisionId])
+  @@index([productDivisionId])
 }
 
 /// Single-use email link to reset a password; raw token is never stored.
@@ -833,6 +886,7 @@ model ProductDivision {
 
   tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   products Product[]
+  userProductDivisions UserProductDivision[]
 
   @@unique([tenantId, name])
   @@index([tenantId])
