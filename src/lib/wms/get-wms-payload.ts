@@ -280,6 +280,8 @@ export async function getWmsDashboardPayload(
       id: o.id,
       outboundNo: o.outboundNo,
       customerRef: o.customerRef,
+      asnReference: o.asnReference,
+      requestedShipDate: o.requestedShipDate?.toISOString() ?? null,
       shipToName: o.shipToName,
       shipToCity: o.shipToCity,
       shipToCountryCode: o.shipToCountryCode,

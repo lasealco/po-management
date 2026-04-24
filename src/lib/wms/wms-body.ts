@@ -8,7 +8,10 @@ export type WmsBody = {
   shipmentItemId?: string;
   orderItemId?: string;
   shipmentId?: string;
-  /** ASN / notice reference or scheduled receive window (inbound). */
+  /**
+   * Inbound: ASN / notice on `set_shipment_inbound_fields`. Outbound: ship notice / ASN on
+   * `create_outbound_order` and `set_outbound_order_asn_fields`.
+   */
   asnReference?: string | null;
   /** ISO datetime string or null to clear. */
   expectedReceiveAt?: string | null;
@@ -27,6 +30,8 @@ export type WmsBody = {
   /** CRM account to attach (requires org.crm → view); omit or null to leave unset / clear. */
   crmAccountId?: string | null;
   customerRef?: string;
+  /** ISO datetime for outbound requested ship (parallels inbound `expectedReceiveAt`). */
+  requestedShipDate?: string | null;
   shipToName?: string;
   shipToLine1?: string;
   shipToCity?: string;

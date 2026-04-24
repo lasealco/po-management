@@ -13,7 +13,7 @@
 ## Phase A continuation (GAP “next optional increments”)
 
 - [x] **Saved ledger views** — `WmsSavedLedgerView` + `/api/wms/saved-ledger-views` (GET list, POST create, DELETE by id); Stock page UI was already wired; **landed** 2026-04-23 (parity with per-user `CtSavedFilter` pattern).
-- [ ] **Outbound ASN parity** — deepen outbound ASN vs blueprint where GAP shows 🟡.
+- [x] **Outbound ASN parity** — `OutboundOrder.asnReference` + `requestedShipDate` in API + `set_outbound_order_asn_fields` + WMS **Outbound flow**; **landed** 2026-04-25.
 - [ ] **Deeper receiving states** — if product defines the state machine in an issue first.
 
 ---

@@ -243,6 +243,19 @@ export async function handleWmsPost(
       return toApiErrorResponseFromStatus("CRM account not found.", 404);
     }
     const outboundNo = `OUT-${Date.now().toString().slice(-8)}`;
+    let requestedShipDate: Date | null | undefined;
+    if (input.requestedShipDate !== undefined) {
+      const raw = input.requestedShipDate;
+      if (raw === null || raw === "") {
+        requestedShipDate = null;
+      } else {
+        const d = new Date(String(raw).trim());
+        if (Number.isNaN(d.getTime())) {
+          return toApiErrorResponseFromStatus("Invalid requestedShipDate.", 400);
+        }
+        requestedShipDate = d;
+      }
+    }
     const created = await prisma.outboundOrder.create({
       data: {
         tenantId,
@@ -250,10 +263,17 @@ export async function handleWmsPost(
         outboundNo,
         crmAccountId,
         customerRef: input.customerRef?.trim() || null,
+        asnReference:
+          input.asnReference !== undefined
+            ? input.asnReference?.trim()
+              ? input.asnReference.trim()
+              : null
+            : undefined,
         shipToName: crmAccount.name,
         shipToLine1: null,
         shipToCity: null,
         shipToCountryCode: null,
+        ...(input.requestedShipDate !== undefined ? { requestedShipDate } : {}),
         notes: input.note?.trim() || null,
         createdById: actorId,
         lines: {
@@ -270,6 +290,54 @@ export async function handleWmsPost(
       select: { id: true, outboundNo: true },
     });
     return NextResponse.json({ ok: true, outboundOrder: created });
+  }
+
+  if (action === "set_outbound_order_asn_fields") {
+    const outboundOrderId = input.outboundOrderId?.trim();
+    if (!outboundOrderId) {
+      return toApiErrorResponseFromStatus("outboundOrderId required.", 400);
+    }
+    const order = await prisma.outboundOrder.findFirst({
+      where: { id: outboundOrderId, tenantId },
+      select: { id: true, status: true },
+    });
+    if (!order) {
+      return toApiErrorResponseFromStatus("Outbound order not found.", 404);
+    }
+    if (
+      order.status === "SHIPPED" ||
+      order.status === "CANCELLED" ||
+      order.status === "PACKED"
+    ) {
+      return toApiErrorResponseFromStatus(
+        "Cannot edit outbound ASN fields after pack, when shipped, or when cancelled.",
+        400,
+      );
+    }
+    const data: Prisma.OutboundOrderUpdateInput = {};
+    if (input.asnReference !== undefined) {
+      data.asnReference = input.asnReference?.trim() ? input.asnReference.trim() : null;
+    }
+    if (input.requestedShipDate !== undefined) {
+      const raw = input.requestedShipDate;
+      if (raw === null || raw === "") {
+        data.requestedShipDate = null;
+      } else {
+        const d = new Date(String(raw).trim());
+        if (Number.isNaN(d.getTime())) {
+          return toApiErrorResponseFromStatus("Invalid requestedShipDate.", 400);
+        }
+        data.requestedShipDate = d;
+      }
+    }
+    if (Object.keys(data).length === 0) {
+      return toApiErrorResponseFromStatus("No outbound ASN fields to update.", 400);
+    }
+    await prisma.outboundOrder.update({
+      where: { id: order.id },
+      data,
+    });
+    return NextResponse.json({ ok: true });
   }
 
   if (action === "set_outbound_crm_account") {

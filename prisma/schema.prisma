@@ -2371,6 +2371,8 @@ model OutboundOrder {
   warehouseId       String
   outboundNo        String
   customerRef       String?
+  /** Outbound ship notice / ASN reference (856-style id), distinct from customer PO ref. */
+  asnReference      String?
   shipToName        String?
   shipToLine1       String?
   shipToCity        String?

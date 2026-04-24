@@ -55,6 +55,8 @@ type WmsData = {
     id: string;
     outboundNo: string;
     customerRef: string | null;
+    asnReference: string | null;
+    requestedShipDate: string | null;
     shipToName: string | null;
     shipToCity: string | null;
     shipToCountryCode: string | null;
@@ -303,6 +305,11 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
   const [inboundEdits, setInboundEdits] = useState<
     Record<string, { asn: string; expectedReceiveAt: string }>
   >({});
+  const [outboundAsnEdits, setOutboundAsnEdits] = useState<
+    Record<string, { asn: string; requestedShip: string }>
+  >({});
+  const [outboundCreateAsn, setOutboundCreateAsn] = useState("");
+  const [outboundCreateRequestedShip, setOutboundCreateRequestedShip] = useState("");
   const [cycleBalanceId, setCycleBalanceId] = useState("");
   const [cycleCountQtyByTask, setCycleCountQtyByTask] = useState<Record<string, string>>({});
   const [ledgerSince, setLedgerSince] = useState("");
@@ -497,6 +504,20 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
         };
       }
       setInboundEdits(next);
+    });
+  }, [data]);
+
+  useEffect(() => {
+    if (!data) return;
+    startTransition(() => {
+      const next: Record<string, { asn: string; requestedShip: string }> = {};
+      for (const o of data.outboundOrders) {
+        next[o.id] = {
+          asn: o.asnReference ?? "",
+          requestedShip: o.requestedShipDate ? o.requestedShipDate.slice(0, 16) : "",
+        };
+      }
+      setOutboundAsnEdits(next);
     });
   }, [data]);
 
@@ -1782,8 +1803,9 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
       <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
         <h2 className="text-sm font-semibold text-zinc-900">Outbound flow</h2>
         <p className="mt-1 text-xs text-zinc-600">
-          Optional CRM account links this outbound to a 3PL owner for billing and reporting (requires
-          org.crm → view to pick accounts).
+          Outbound ship notice (ASN) reference and requested ship time mirror the inbound ASN row;
+          optional CRM account links this outbound to a 3PL owner (requires org.crm → view to pick
+          accounts).
         </p>
         <div className="mt-2 grid gap-2 sm:grid-cols-6">
           <input value={outboundRef} onChange={(e) => setOutboundRef(e.target.value)} placeholder="Customer ref" className="rounded border border-zinc-300 px-3 py-2 text-sm" />
@@ -1794,6 +1816,19 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
             ))}
           </select>
           <input value={outboundLineQty} onChange={(e)=>setOutboundLineQty(e.target.value)} placeholder="Qty" className="rounded border border-zinc-300 px-3 py-2 text-sm" />
+          <input
+            value={outboundCreateAsn}
+            onChange={(e) => setOutboundCreateAsn(e.target.value)}
+            placeholder="ASN / notice # (opt)"
+            className="rounded border border-zinc-300 px-3 py-2 text-sm"
+          />
+          <input
+            type="datetime-local"
+            value={outboundCreateRequestedShip}
+            onChange={(e) => setOutboundCreateRequestedShip(e.target.value)}
+            className="rounded border border-zinc-300 px-3 py-2 text-sm"
+            title="Requested ship (optional)"
+          />
         </div>
         {data.crmAccountOptions.length > 0 ? (
           <div className="mt-2">
@@ -1817,8 +1852,8 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
           <button
             type="button"
             disabled={!canEdit || busy || !selectedWarehouseId}
-            onClick={() =>
-              void runAction({
+            onClick={() => {
+              const body: Record<string, unknown> = {
                 action: "create_outbound_order",
                 warehouseId: selectedWarehouseId,
                 customerRef: outboundRef,
@@ -1826,8 +1861,13 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                 lines: outboundProductId
                   ? [{ productId: outboundProductId, quantity: Number(outboundLineQty) }]
                   : [],
-              })
-            }
+              };
+              if (outboundCreateAsn.trim()) body.asnReference = outboundCreateAsn.trim();
+              if (outboundCreateRequestedShip.trim()) {
+                body.requestedShipDate = new Date(outboundCreateRequestedShip).toISOString();
+              }
+              void runAction(body);
+            }}
             className="rounded border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-800 disabled:opacity-40"
           >
             Create outbound order
@@ -1841,6 +1881,12 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
               o.status !== "SHIPPED" &&
               o.status !== "CANCELLED" &&
               o.status !== "PACKED";
+            const showOutboundAsnEditor =
+              canEdit &&
+              o.status !== "SHIPPED" &&
+              o.status !== "CANCELLED" &&
+              o.status !== "PACKED";
+            const asnDraft = outboundAsnEdits[o.id] ?? { asn: "", requestedShip: "" };
             const allPicked = o.lines.every((l) => Number(l.pickedQty) >= Number(l.quantity));
             const allPacked = o.lines.every((l) => Number(l.packedQty) >= Number(l.quantity));
             return (
@@ -1911,6 +1957,62 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                   </button>
                 ) : null}
               </div>
+              {showOutboundAsnEditor ? (
+                <div className="mt-2 flex flex-wrap items-end gap-2 border-t border-zinc-100 pt-2">
+                  <div className="min-w-[8rem]">
+                    <p className="text-[10px] font-medium uppercase text-zinc-500">ASN ref</p>
+                    <input
+                      value={asnDraft.asn}
+                      onChange={(e) =>
+                        setOutboundAsnEdits((prev) => ({
+                          ...prev,
+                          [o.id]: { ...asnDraft, asn: e.target.value },
+                        }))
+                      }
+                      placeholder="Ship notice / ASN"
+                      className="mt-0.5 w-full min-w-[10rem] rounded border border-zinc-300 px-2 py-1 text-xs"
+                    />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-medium uppercase text-zinc-500">Requested ship</p>
+                    <input
+                      type="datetime-local"
+                      value={asnDraft.requestedShip}
+                      onChange={(e) =>
+                        setOutboundAsnEdits((prev) => ({
+                          ...prev,
+                          [o.id]: { ...asnDraft, requestedShip: e.target.value },
+                        }))
+                      }
+                      className="mt-0.5 rounded border border-zinc-300 px-2 py-1 text-xs"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() =>
+                      void runAction({
+                        action: "set_outbound_order_asn_fields",
+                        outboundOrderId: o.id,
+                        asnReference: asnDraft.asn.trim() || null,
+                        requestedShipDate: asnDraft.requestedShip.trim()
+                          ? new Date(asnDraft.requestedShip).toISOString()
+                          : null,
+                      })
+                    }
+                    className="rounded border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-800 disabled:opacity-40"
+                  >
+                    Save ASN
+                  </button>
+                </div>
+              ) : (
+                <p className="mt-1 text-xs text-zinc-500">
+                  ASN: {o.asnReference || "—"}
+                  {o.requestedShipDate
+                    ? ` · Req. ship: ${new Date(o.requestedShipDate).toLocaleString()}`
+                    : null}
+                </p>
+              )}
               <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-zinc-600">
                 {o.lines.map((l) => (
                   <span key={l.id}>

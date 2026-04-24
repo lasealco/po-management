@@ -19,7 +19,7 @@
 | **Inbound ASN** | 🟡 **Orders + `Shipment` / `ShipmentItem`** | `Shipment.asnReference` + `expectedReceiveAt`; WMS inbound table + `set_shipment_inbound_fields`; putaway unchanged |
 | Receiving / putaway | ✅ `WmsTask` PUTAWAY + `InventoryMovement` PUTAWAY | Matches “directed putaway” at demo depth |
 | **Inventory inquiry** | ✅ `InventoryBalance` + **movement ledger** 🟡 | Stock page: server ledger filters `mvWarehouse`, `mvType`, `mvSince`/`mvUntil`, `mvLimit` (≤300); **client text filter** on balances; **Export CSV** for visible ledger rows; **per-user saved ledger views** (`WmsSavedLedgerView`, `GET/POST /api/wms/saved-ledger-views`, `DELETE …/[id]`) |
-| Outbound order | 🟡 `OutboundOrder` / `OutboundOrderLine` | Pick → **Mark packed** → **Mark shipped** (`SHIPMENT` movements); CRM link locked after pack |
+| Outbound order | 🟡 `OutboundOrder` / `OutboundOrderLine` | Pick → **Mark packed** → **Mark shipped** (`SHIPMENT` movements); **ASN ref** (`asnReference`) + **requested ship** (`requestedShipDate`) on order; WMS **Outbound flow** + `set_outbound_order_asn_fields` / `create_outbound_order` (optional); CRM link locked after pack |
 | Allocation | 🟡 Line `allocatedQty` on balance + pick tasks | Not full multi-strategy allocation engine |
 
 ## R2 — Inbound depth, QC, replenishment UI, packing, waves, counts
@@ -44,7 +44,7 @@
 
 ## Existing API actions (`POST /api/wms`)
 
-`create_zone`, `create_bin`, `update_bin_profile`, `set_replenishment_rule`, `create_replenishment_tasks`, `create_outbound_order` (optional `crmAccountId`), `set_outbound_crm_account`, `release_outbound_order`, `create_putaway_task`, `complete_putaway_task`, `create_pick_task`, `create_pick_wave`, `release_wave`, `complete_wave`, `complete_pick_task`, `mark_outbound_packed`, `mark_outbound_shipped`, `set_shipment_inbound_fields`, `record_shipment_milestone`, `set_balance_hold`, `clear_balance_hold`, `complete_replenish_task`, `create_cycle_count_task`, `complete_cycle_count_task`.
+`create_zone`, `create_bin`, `update_bin_profile`, `set_replenishment_rule`, `create_replenishment_tasks`, `create_outbound_order` (optional `crmAccountId`, optional `asnReference` + `requestedShipDate`), `set_outbound_crm_account`, `set_outbound_order_asn_fields`, `release_outbound_order`, `create_putaway_task`, `complete_putaway_task`, `create_pick_task`, `create_pick_wave`, `release_wave`, `complete_wave`, `complete_pick_task`, `mark_outbound_packed`, `mark_outbound_shipped`, `set_shipment_inbound_fields`, `record_shipment_milestone`, `set_balance_hold`, `clear_balance_hold`, `complete_replenish_task`, `create_cycle_count_task`, `complete_cycle_count_task`.
 
 Handlers live in `src/lib/wms/post-actions.ts` (route stays a thin shell).
 
@@ -55,6 +55,6 @@ Handlers live in `src/lib/wms/post-actions.ts` (route stays a thin shell).
 3. **`WmsCustomer`** or reuse **CRM `CrmAccount`** — **done** for outbound (optional link + `set_outbound_crm_account`).  
 4. Split `src/app/api/wms/route.ts` into `src/lib/wms/*.ts` — **done:** `post-actions.ts` (POST), `get-wms-payload.ts` (GET), `wms-body.ts`, `wave.ts`, billing modules.
 
-_Next optional increments:_ ~~saved ledger views~~ (**landed** 2026-04-23: `WmsSavedLedgerView` + `/api/wms/saved-ledger-views`); **outbound ASN** parity, deeper receiving states — not required for Phase A exit above.
+_Next optional increments:_ ~~saved ledger views~~ (**landed** 2026-04-23: `WmsSavedLedgerView` + `/api/wms/saved-ledger-views`); ~~**outbound ASN** parity~~ (**landed** 2026-04-25: `OutboundOrder.asnReference` + `requestedShipDate` in payload + `set_outbound_order_asn_fields`); deeper receiving states — not required for Phase A exit above.
 
-_Last updated: 2026-04-25 — Program Phase 0 re-pass (roadmap + CT `GAP_MAP` + `verify:apihub`); prior: 2026-04-23 Phase 2.1 saved movement-ledger views (DB + API + Stock UI `canEdit` for save/delete); Phase 0 hygiene, inbound milestones UI, open-task type filter, balance search, movement CSV._
+_Last updated: 2026-04-25 — Phase 2.2 outbound ASN (`asnReference`, `set_outbound_order_asn_fields`, WMS UI); Program Phase 0 re-pass; prior: 2026-04-23 Phase 2.1 saved ledger views._
