@@ -34,6 +34,11 @@ export const SETTINGS_SECTIONS: readonly SettingsNavSection[] = [
         description: "Geographic and legal hierarchy (HQ, regions, countries, sites)",
       },
       {
+        href: "/settings/organization/legal-entities",
+        label: "Legal entities",
+        description: "Statutory name, address, and tax ids per legal-entity org node",
+      },
+      {
         href: "/settings/warehouses",
         label: "CFS & Warehouses",
         description: "Create and manage consolidation locations",

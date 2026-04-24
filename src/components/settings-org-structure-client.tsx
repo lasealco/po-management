@@ -9,6 +9,7 @@ import {
 import { isPresetGroupCode, isPresetRegionCode } from "@/lib/org-code-presets";
 import { formatOperatingRolesShort, ORG_UNIT_OPERATING_ROLE_CATALOG } from "@/lib/org-unit-operating-roles";
 import type { OrgUnitKind, OrgUnitOperatingRole } from "@prisma/client";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
@@ -218,11 +219,14 @@ export function SettingsOrgStructureClient({
   initialTree,
   allFlat,
   referenceCountries,
+  legalProfileIdByOrgUnitId = {},
 }: {
   canEdit: boolean;
   initialTree: OrgUnitTreeRow[];
   allFlat: FlatRow[];
   referenceCountries: RefCountry[];
+  /** Company legal profile id when one exists for this org unit (LEGAL_ENTITY only). */
+  legalProfileIdByOrgUnitId?: Record<string, string>;
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -485,13 +489,14 @@ export function SettingsOrgStructureClient({
               <th className="px-3 py-2">Code</th>
               <th className="px-3 py-2">Type</th>
               <th className="px-3 py-2 min-w-[12rem]">Operating roles</th>
+              <th className="px-3 py-2 w-[7rem]">Legal</th>
               <th className="px-3 py-2 w-32" />
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100">
             {initialTree.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-3 py-6 text-center text-sm text-zinc-500">
+                <td colSpan={6} className="px-3 py-6 text-center text-sm text-zinc-500">
                   No org units yet. Add a global or regional node to start.
                 </td>
               </tr>
@@ -513,6 +518,27 @@ export function SettingsOrgStructureClient({
                 <td className="px-3 py-2 text-xs text-zinc-600">{r.kind}</td>
                 <td className="px-3 py-2 text-xs text-zinc-600" title={oroles.join(", ")}>
                   {formatOperatingRolesShort(oroles, 2)}
+                </td>
+                <td className="px-3 py-2 text-xs text-zinc-600">
+                  {r.kind === "LEGAL_ENTITY" ? (
+                    legalProfileIdByOrgUnitId[r.id] ? (
+                      <Link
+                        href={`/settings/organization/legal-entities?edit=${legalProfileIdByOrgUnitId[r.id]}`}
+                        className="font-medium text-[var(--arscmp-primary)] hover:underline"
+                      >
+                        Profile
+                      </Link>
+                    ) : (
+                      <Link
+                        href={`/settings/organization/legal-entities?add=${r.id}`}
+                        className="font-medium text-[var(--arscmp-primary)] hover:underline"
+                      >
+                        Add
+                      </Link>
+                    )
+                  ) : (
+                    "—"
+                  )}
                 </td>
                 <td className="px-3 py-2 text-right">
                   {canEdit ? (

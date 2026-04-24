@@ -128,6 +128,7 @@ export function helpAssistantOpenPathAllowed(path: string, g: HelpAssistantGrant
   if (
     path === "/settings/users" ||
     path === "/settings/organization/structure" ||
+    path === "/settings/organization/legal-entities" ||
     path === "/settings/warehouses"
   ) {
     return g.settingsView;

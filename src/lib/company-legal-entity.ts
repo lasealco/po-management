@@ -380,6 +380,8 @@ export function serializeCompanyLegalEntity(row: CleWithOrg) {
   };
 }
 
+export type SerializedCompanyLegalEntity = ReturnType<typeof serializeCompanyLegalEntity>;
+
 /**
  * @returns `null` if the row is missing, or the actor is not in scope.
  */

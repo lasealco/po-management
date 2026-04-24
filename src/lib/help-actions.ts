@@ -38,6 +38,7 @@ const OPEN_PATH_ALLOWLIST = new Set([
   "/suppliers",
   "/settings/users",
   "/settings/organization/structure",
+  "/settings/organization/legal-entities",
   "/settings/warehouses",
   "/login",
   "/forgot-password",
@@ -167,6 +168,7 @@ export async function executeHelpDoAction(
     } else if (
       path === "/settings/users" ||
       path === "/settings/organization/structure" ||
+      path === "/settings/organization/legal-entities" ||
       path === "/settings/warehouses"
     ) {
       if (!viewerHas(access.grantSet, "org.settings", "view")) {

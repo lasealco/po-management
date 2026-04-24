@@ -17,7 +17,7 @@ export default async function SettingsOrgStructurePage() {
     );
   }
 
-  const [access, orgUnits, referenceCountries] = await Promise.all([
+  const [access, orgUnits, referenceCountries, companyLegalIndex] = await Promise.all([
     getViewerGrantSet(),
     prisma.orgUnit.findMany({
       where: { tenantId: tenant.id },
@@ -29,7 +29,14 @@ export default async function SettingsOrgStructurePage() {
       orderBy: { name: "asc" },
       select: { isoAlpha2: true, name: true },
     }),
+    prisma.companyLegalEntity.findMany({
+      where: { tenantId: tenant.id },
+      select: { id: true, orgUnitId: true },
+    }),
   ]);
+  const legalProfileIdByOrgUnitId = Object.fromEntries(
+    companyLegalIndex.map((c) => [c.orgUnitId, c.id] as const),
+  );
 
   const canEdit = Boolean(
     access?.user && viewerHas(access.grantSet, "org.settings", "edit"),
@@ -72,7 +79,12 @@ export default async function SettingsOrgStructurePage() {
         <strong>product division</strong> scope under Settings → Users. Permissions (roles) stay
         tenant-wide; row-level scoping from org is a future phase. Optional{" "}
         <strong>operating roles</strong> (e.g. regional HQ, group procurement) describe how a node
-        works in the business; they are not app sign-in permissions.
+        works in the business; they are not app sign-in permissions. For <strong>Legal entity / subsidiary</strong>{" "}
+        nodes, use the <strong>Legal</strong> column to open the statutory profile under{" "}
+        <a className="font-medium text-[var(--arscmp-primary)] underline" href="/settings/organization/legal-entities">
+          Legal entities
+        </a>
+        .
       </p>
       <div className="mt-8">
         <SettingsOrgStructureClient
@@ -80,6 +92,7 @@ export default async function SettingsOrgStructurePage() {
           initialTree={tree}
           allFlat={orgFlat}
           referenceCountries={referenceCountries}
+          legalProfileIdByOrgUnitId={legalProfileIdByOrgUnitId}
         />
       </div>
     </div>
