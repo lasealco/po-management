@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { getDemoTenant } from "@/lib/demo-tenant";
-import { normalizeOrgUnitCode, orgUnitReparentIsValid } from "@/lib/org-unit";
+import { orgUnitReparentIsValid } from "@/lib/org-unit";
+import { validateOrgUnitCodeForKind } from "@/lib/org-unit-code-validate";
 import { prisma } from "@/lib/prisma";
 import { requireApiGrant } from "@/lib/authz";
 import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
@@ -32,7 +33,7 @@ export async function PATCH(
 
   const existing = await prisma.orgUnit.findFirst({
     where: { id, tenantId: tenant.id },
-    select: { id: true, parentId: true },
+    select: { id: true, parentId: true, name: true, code: true, kind: true, sortOrder: true },
   });
   if (!existing) {
     return toApiErrorResponse({ error: "Org unit not found.", code: "NOT_FOUND", status: 404 });
@@ -45,6 +46,8 @@ export async function PATCH(
     parentId?: string | null;
     sortOrder?: number;
   } = {};
+  const codeProvided = o.code !== undefined;
+  const kindProvided = o.kind !== undefined;
 
   if (o.name !== undefined) {
     if (typeof o.name !== "string" || !o.name.trim().length) {
@@ -59,17 +62,27 @@ export async function PATCH(
     if (typeof o.code !== "string") {
       return toApiErrorResponse({ error: "code must be a string.", code: "BAD_INPUT", status: 400 });
     }
-    const codeNorm = normalizeOrgUnitCode(o.code);
-    if (!codeNorm.ok) {
-      return toApiErrorResponse({ error: codeNorm.error, code: "BAD_INPUT", status: 400 });
-    }
-    updates.code = codeNorm.code;
   }
   if (o.kind !== undefined) {
     if (typeof o.kind !== "string" || !KINDS.has(o.kind)) {
       return toApiErrorResponse({ error: "Invalid kind.", code: "BAD_INPUT", status: 400 });
     }
-    updates.kind = o.kind as OrgUnitKind;
+  }
+
+  const nextKind: OrgUnitKind = kindProvided ? (o.kind as OrgUnitKind) : (existing.kind as OrgUnitKind);
+
+  if (codeProvided || kindProvided) {
+    const nextCodeRaw = codeProvided && typeof o.code === "string" ? o.code : existing.code;
+    const v = await validateOrgUnitCodeForKind(prisma, nextKind, nextCodeRaw);
+    if (!v.ok) {
+      return toApiErrorResponse({ error: v.error, code: "BAD_INPUT", status: 400 });
+    }
+    if (codeProvided) {
+      updates.code = v.code;
+    }
+    if (kindProvided) {
+      updates.kind = nextKind;
+    }
   }
   if (o.sortOrder !== undefined) {
     if (typeof o.sortOrder !== "number" || !Number.isFinite(o.sortOrder)) {

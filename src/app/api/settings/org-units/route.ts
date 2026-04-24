@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getDemoTenant } from "@/lib/demo-tenant";
-import { normalizeOrgUnitCode } from "@/lib/org-unit";
+import { validateOrgUnitCodeForKind } from "@/lib/org-unit-code-validate";
 import { prisma } from "@/lib/prisma";
 import { requireApiGrant } from "@/lib/authz";
 import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
@@ -66,9 +66,9 @@ export async function POST(request: Request) {
       status: 400,
     });
   }
-  const codeNorm = normalizeOrgUnitCode(codeRaw);
-  if (!codeNorm.ok) {
-    return toApiErrorResponse({ error: codeNorm.error, code: "BAD_INPUT", status: 400 });
+  const codeRes = await validateOrgUnitCodeForKind(prisma, kind as OrgUnitKind, codeRaw);
+  if (!codeRes.ok) {
+    return toApiErrorResponse({ error: codeRes.error, code: "BAD_INPUT", status: 400 });
   }
 
   if (parentId) {
@@ -87,7 +87,7 @@ export async function POST(request: Request) {
         tenantId: tenant.id,
         parentId,
         name,
-        code: codeNorm.code,
+        code: codeRes.code,
         kind: kind as OrgUnitKind,
         sortOrder,
       },

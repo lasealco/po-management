@@ -1,6 +1,12 @@
 "use client";
 
 import { apiClientErrorMessage } from "@/lib/api-client-error";
+import {
+  ORG_CODE_PRESETS_FACILITY,
+  ORG_CODE_PRESETS_GROUP,
+  ORG_CODE_PRESETS_REGION,
+} from "@/lib/org-code-presets";
+import { isPresetGroupCode, isPresetRegionCode } from "@/lib/org-code-presets";
 import type { OrgUnitKind } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -16,6 +22,162 @@ const KIND_OPTIONS: { value: OrgUnitKind; label: string }[] = [
   { value: "OFFICE", label: "Office" },
 ];
 
+const PRESET_FACILITY = ORG_CODE_PRESETS_FACILITY as readonly string[];
+
+const FACILITY_OTHER = "__other__";
+
+function isFacilityKind(k: OrgUnitKind) {
+  return k === "LEGAL_ENTITY" || k === "SITE" || k === "OFFICE";
+}
+
+type RefCountry = { isoAlpha2: string; name: string };
+
+function OrgUnitCodeField({
+  kind,
+  value,
+  onChange,
+  referenceCountries,
+  facilityMode,
+  onFacilityMode,
+  allowLegacyValue,
+  disabled,
+  selectClassName = "mt-1 rounded-xl border border-zinc-300 px-2 py-2 text-sm",
+}: {
+  kind: OrgUnitKind;
+  value: string;
+  onChange: (v: string) => void;
+  referenceCountries: RefCountry[];
+  facilityMode: "preset" | "custom";
+  onFacilityMode: (m: "preset" | "custom") => void;
+  allowLegacyValue?: string | null;
+  disabled: boolean;
+  selectClassName?: string;
+}) {
+  const regions = ORG_CODE_PRESETS_REGION as readonly string[];
+  const groups = ORG_CODE_PRESETS_GROUP as readonly string[];
+
+  if (kind === "REGION") {
+    return (
+      <select
+        className={selectClassName}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+      >
+        <option value="">— Select region code —</option>
+        {regions.map((c) => (
+          <option key={c} value={c}>
+            {c}
+          </option>
+        ))}
+        {allowLegacyValue && !isPresetRegionCode(allowLegacyValue) ? (
+          <option value={allowLegacyValue}>{`Keep (legacy): ${allowLegacyValue}`}</option>
+        ) : null}
+      </select>
+    );
+  }
+  if (kind === "GROUP") {
+    return (
+      <select
+        className={selectClassName}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+      >
+        <option value="">— Select group / global code —</option>
+        {groups.map((c) => (
+          <option key={c} value={c}>
+            {c}
+          </option>
+        ))}
+        {allowLegacyValue && !isPresetGroupCode(allowLegacyValue) ? (
+          <option value={allowLegacyValue}>{`Keep (legacy): ${allowLegacyValue}`}</option>
+        ) : null}
+      </select>
+    );
+  }
+  if (kind === "COUNTRY") {
+    return (
+      <select
+        className={selectClassName}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+      >
+        <option value="">— Select ISO-2 country —</option>
+        {referenceCountries.map((c) => (
+          <option key={c.isoAlpha2} value={c.isoAlpha2}>
+            {c.isoAlpha2} — {c.name}
+          </option>
+        ))}
+        {allowLegacyValue && !referenceCountries.some((c) => c.isoAlpha2 === allowLegacyValue) ? (
+          <option value={allowLegacyValue}>{`Keep (legacy): ${allowLegacyValue}`}</option>
+        ) : null}
+      </select>
+    );
+  }
+
+  if (isFacilityKind(kind)) {
+    if (facilityMode === "custom") {
+      return (
+        <div className="mt-1 space-y-2">
+          <input
+            className="w-full rounded-xl border border-zinc-300 px-2 py-2 text-sm font-mono"
+            value={value}
+            onChange={(e) => onChange(e.target.value.toUpperCase())}
+            placeholder="2–32 chars, A–Z, 0–9, hyphens"
+            maxLength={32}
+            disabled={disabled}
+            autoCapitalize="characters"
+            spellCheck={false}
+          />
+          <button
+            type="button"
+            className="text-xs font-medium text-zinc-600 underline"
+            onClick={() => {
+              onFacilityMode("preset");
+              onChange("");
+            }}
+            disabled={disabled}
+          >
+            Use standard code list
+          </button>
+        </div>
+      );
+    }
+    const inPreset = PRESET_FACILITY.includes(value);
+    const selectValue = inPreset || value === "" ? value : FACILITY_OTHER;
+    return (
+      <div className="mt-1 space-y-1">
+        <select
+          className={selectClassName}
+          value={selectValue}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v === FACILITY_OTHER) {
+              onFacilityMode("custom");
+              onChange("");
+            } else {
+              onChange(v);
+            }
+          }}
+          disabled={disabled}
+        >
+          <option value="">— Standard code —</option>
+          {PRESET_FACILITY.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+          <option value={FACILITY_OTHER}>Other (type validated code)…</option>
+        </select>
+      </div>
+    );
+  }
+
+  return null;
+}
+
 type FlatRow = {
   id: string;
   parentId: string | null;
@@ -25,14 +187,33 @@ type FlatRow = {
   sortOrder: number;
 };
 
+function isCreateCodeComplete(
+  kind: OrgUnitKind,
+  code: string,
+  facilityMode: "preset" | "custom",
+): boolean {
+  const t = code.trim();
+  if (!t) return false;
+  if (kind === "REGION") return isPresetRegionCode(t);
+  if (kind === "GROUP") return isPresetGroupCode(t);
+  if (kind === "COUNTRY") return /^[A-Z]{2}$/.test(t);
+  if (isFacilityKind(kind)) {
+    if (facilityMode === "custom") return t.length >= 2;
+    return PRESET_FACILITY.includes(t);
+  }
+  return false;
+}
+
 export function SettingsOrgStructureClient({
   canEdit,
   initialTree,
   allFlat,
+  referenceCountries,
 }: {
   canEdit: boolean;
   initialTree: OrgUnitTreeRow[];
   allFlat: FlatRow[];
+  referenceCountries: RefCountry[];
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -44,6 +225,7 @@ export function SettingsOrgStructureClient({
     kind: "REGION" as OrgUnitKind,
     parentId: "" as string,
     sortOrder: 0,
+    facilityCodeMode: "preset" as "preset" | "custom",
   });
 
   const parentSelectRows = useMemo(() => {
@@ -75,7 +257,14 @@ export function SettingsOrgStructureClient({
       setError(apiClientErrorMessage(data, "Create failed."));
       return;
     }
-    setForm({ name: "", code: "", kind: "REGION", parentId: "", sortOrder: 0 });
+    setForm({
+      name: "",
+      code: "",
+      kind: "REGION",
+      parentId: "",
+      sortOrder: 0,
+      facilityCodeMode: "preset",
+    });
     router.refresh();
   }
 
@@ -137,11 +326,12 @@ export function SettingsOrgStructureClient({
         <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
           <h3 className="text-sm font-semibold text-zinc-900">Add org unit</h3>
           <p className="mt-1 text-xs text-zinc-600">
-            Code is a stable key (e.g. APAC, US, DE) — unique per company. It appears in user
-            assignment dropdowns.
+            Code is a stable key, unique per company, and appears in user assignment dropdowns.
+            Regions, groups, and countries use <strong>standardized</strong> lists; sites and legal
+            entities use a short list or a validated custom code.
           </p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
-            <label className="flex flex-col text-xs">
+            <label className="flex flex-col text-xs sm:col-span-2">
               <span className="text-zinc-600">Parent</span>
               <select
                 className="mt-1 rounded-xl border border-zinc-300 px-2 py-2 text-sm"
@@ -149,13 +339,17 @@ export function SettingsOrgStructureClient({
                 onChange={(e) => setForm((f) => ({ ...f, parentId: e.target.value }))}
                 disabled={busy}
               >
-                <option value="">(root level)</option>
+                <option value="">Top level (no parent under tenant)</option>
                 {parentSelectRows.map((o) => (
                   <option key={o.id} value={o.id}>
                     {o.label}
                   </option>
                 ))}
               </select>
+              <span className="mt-1 text-[11px] leading-snug text-zinc-500">
+                Nesting appears after you create at least one unit. The tenant (company) is not a row
+                here—pick top level for your first region or group, then add children under it.
+              </span>
             </label>
             <label className="flex flex-col text-xs sm:col-span-2">
               <span className="text-zinc-600">Display name</span>
@@ -169,12 +363,15 @@ export function SettingsOrgStructureClient({
             </label>
             <label className="flex flex-col text-xs">
               <span className="text-zinc-600">Code</span>
-              <input
-                className="mt-1 rounded-xl border border-zinc-300 px-2 py-2 text-sm"
+              <OrgUnitCodeField
+                kind={form.kind}
                 value={form.code}
-                onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
-                placeholder="EMEA, DE, …"
+                onChange={(v) => setForm((f) => ({ ...f, code: v }))}
+                referenceCountries={referenceCountries}
+                facilityMode={form.facilityCodeMode}
+                onFacilityMode={(m) => setForm((f) => ({ ...f, facilityCodeMode: m }))}
                 disabled={busy}
+                selectClassName="mt-1 rounded-xl border border-zinc-300 px-2 py-2 text-sm"
               />
             </label>
             <label className="flex flex-col text-xs sm:col-span-2">
@@ -182,9 +379,15 @@ export function SettingsOrgStructureClient({
               <select
                 className="mt-1 rounded-xl border border-zinc-300 px-2 py-2 text-sm"
                 value={form.kind}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, kind: e.target.value as OrgUnitKind }))
-                }
+                onChange={(e) => {
+                  const kind = e.target.value as OrgUnitKind;
+                  setForm((f) => ({
+                    ...f,
+                    kind,
+                    code: "",
+                    facilityCodeMode: isFacilityKind(kind) ? "preset" : f.facilityCodeMode,
+                  }));
+                }}
                 disabled={busy}
               >
                 {KIND_OPTIONS.map((k) => (
@@ -197,7 +400,11 @@ export function SettingsOrgStructureClient({
             <div className="flex items-end">
               <button
                 type="button"
-                disabled={busy || !form.name.trim() || !form.code.trim()}
+                disabled={
+                  busy ||
+                  !form.name.trim() ||
+                  !isCreateCodeComplete(form.kind, form.code, form.facilityCodeMode)
+                }
                 onClick={() => void createUnit()}
                 className="h-[42px] w-full rounded-xl bg-[var(--arscmp-primary)] px-4 text-sm font-semibold text-white disabled:opacity-40"
               >
@@ -270,8 +477,10 @@ export function SettingsOrgStructureClient({
         <section className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
           <h4 className="text-sm font-semibold text-zinc-900">Edit: {editing.name}</h4>
           <EditOrgForm
+            key={editing.id}
             row={editing}
             allFlat={allFlat}
+            referenceCountries={referenceCountries}
             busy={busy}
             onSave={(patch) => void updateUnit(editing.id, patch)}
             onCancel={() => setEditingId(null)}
@@ -285,12 +494,14 @@ export function SettingsOrgStructureClient({
 function EditOrgForm({
   row,
   allFlat,
+  referenceCountries,
   busy,
   onSave,
   onCancel,
 }: {
   row: FlatRow;
   allFlat: FlatRow[];
+  referenceCountries: RefCountry[];
   busy: boolean;
   onSave: (p: { name?: string; code?: string; kind?: OrgUnitKind; parentId?: string | null; sortOrder?: number }) => void;
   onCancel: () => void;
@@ -300,6 +511,9 @@ function EditOrgForm({
   const [kind, setKind] = useState<OrgUnitKind>(row.kind);
   const [parentId, setParentId] = useState(row.parentId ?? "");
   const [sortOrder, setSortOrder] = useState(row.sortOrder);
+  const [facilityCodeMode, setFacilityCodeMode] = useState<"preset" | "custom">(() =>
+    isFacilityKind(row.kind) && !PRESET_FACILITY.includes(row.code) ? "custom" : "preset",
+  );
 
   const parentOptions = useMemo(() => {
     const t = buildOrgUnitTree(allFlat);
@@ -340,11 +554,16 @@ function EditOrgForm({
       </label>
       <label className="text-xs text-zinc-600">
         Code
-        <input
-          className="mt-1 w-full rounded-xl border border-zinc-300 bg-white px-2 py-2 text-sm"
+        <OrgUnitCodeField
+          kind={kind}
           value={code}
-          onChange={(e) => setCode(e.target.value)}
+          onChange={setCode}
+          referenceCountries={referenceCountries}
+          facilityMode={facilityCodeMode}
+          onFacilityMode={setFacilityCodeMode}
+          allowLegacyValue={row.code}
           disabled={busy}
+          selectClassName="mt-1 w-full rounded-xl border border-zinc-300 bg-white px-2 py-2 text-sm"
         />
       </label>
       <label className="text-xs text-zinc-600">
@@ -352,7 +571,12 @@ function EditOrgForm({
         <select
           className="mt-1 w-full rounded-xl border border-zinc-300 bg-white px-2 py-2 text-sm"
           value={kind}
-          onChange={(e) => setKind(e.target.value as OrgUnitKind)}
+          onChange={(e) => {
+            const k = e.target.value as OrgUnitKind;
+            setKind(k);
+            setCode("");
+            setFacilityCodeMode("preset");
+          }}
           disabled={busy}
         >
           {KIND_OPTIONS.map((k) => (
