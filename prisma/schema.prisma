@@ -29,143 +29,144 @@ enum OrgUnitOperatingRole {
 }
 
 model Tenant {
-  id        String   @id @default(cuid())
-  name      String
-  slug      String   @unique
+  id                 String   @id @default(cuid())
+  name               String
+  slug               String   @unique
   /// Optional legal / registered name (e.g. for documents) — may differ from `name`.
-  legalName            String?
-  phone                String?
-  website              String?
-  addressLine1         String?
-  addressLine2         String?
-  addressCity          String?
-  addressRegion        String?
-  addressPostalCode    String?
-  addressCountryCode   String?  @db.VarChar(2)
-  linkedinUrl          String?
-  twitterUrl           String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  legalName          String?
+  phone              String?
+  website            String?
+  addressLine1       String?
+  addressLine2       String?
+  addressCity        String?
+  addressRegion      String?
+  addressPostalCode  String?
+  addressCountryCode String?  @db.VarChar(2)
+  linkedinUrl        String?
+  twitterUrl         String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
-  users             User[]
-  orgUnits          OrgUnit[]
-  roles             Role[]
-  suppliers         Supplier[]
-  products          Product[]
-  productCategories ProductCategory[]
-  productDivisions  ProductDivision[]
-  supplierOffices   SupplierOffice[]
-  supplierContacts  SupplierContact[]
-  supplierServiceCapabilities SupplierServiceCapability[]
-  orders            PurchaseOrder[]
-  salesOrders       SalesOrder[]
-  warehouses        Warehouse[]
-  warehouseZones    WarehouseZone[]
-  warehouseBins     WarehouseBin[]
-  inventoryBalances InventoryBalance[]
-  inventoryMovements InventoryMovement[]
-  wmsTasks          WmsTask[]
-  wmsWaves          WmsWave[]
-  replenishmentRules ReplenishmentRule[]
-  outboundOrders    OutboundOrder[]
-  outboundOrderLines OutboundOrderLine[]
-  wmsBillingRates         WmsBillingRate[]
-  wmsBillingEvents        WmsBillingEvent[]
-  wmsBillingInvoiceRuns   WmsBillingInvoiceRun[]
-  wmsBillingInvoiceLines  WmsBillingInvoiceLine[]
-  wmsSavedLedgerViews WmsSavedLedgerView[]
-  loadPlans         LoadPlan[]
-  userPreferences   UserPreference[]
-  workflows         Workflow[]
-  crmLeads          CrmLead[]
-  crmAccounts       CrmAccount[]
-  crmContacts       CrmContact[]
-  crmOpportunities  CrmOpportunity[]
-  crmActivities     CrmActivity[]
-  crmQuotes         CrmQuote[]
-  ctTrackingMilestones CtTrackingMilestone[]
-  ctShipmentDocuments CtShipmentDocument[]
-  ctShipmentNotes   CtShipmentNote[]
-  ctFinancialSnapshots CtShipmentFinancialSnapshot[]
-  ctAlerts            CtAlert[]
-  ctExceptions        CtException[]
-  ctAuditLogs         CtAuditLog[]
-  ctSavedFilters      CtSavedFilter[]
-  ctSavedReports      CtSavedReport[]
-  ctDashboardWidgets  CtDashboardWidget[]
-  ctShipmentLegs     CtShipmentLeg[]
-  ctShipmentContainers CtShipmentContainer[]
-  ctFxRates          CtFxRate[]
-  ctShipmentCostLines CtShipmentCostLine[]
-  ctMilestoneTemplatePacks CtMilestoneTemplatePack[]
-  ctContainerCargoLines CtContainerCargoLine[]
-  ctExceptionCodes      CtExceptionCode[]
-  locationCodes         LocationCode[]
-  ctReportSchedules     CtReportSchedule[]
-  tariffLegalEntities   TariffLegalEntity[]
-  tariffContractHeaders TariffContractHeader[]
-  tariffImportBatches   TariffImportBatch[]
-  tariffShipmentApplications TariffShipmentApplication[]
-  quoteRequests         QuoteRequest[]
-  bookingPricingSnapshots BookingPricingSnapshot[]
-  invoiceIntakes        InvoiceIntake[]
-  invoiceToleranceRules InvoiceToleranceRule[]
-  invoiceChargeAliases  InvoiceChargeAlias[]
-  apiHubConnectors      ApiHubConnector[]
-  apiHubConnectorAuditLogs ApiHubConnectorAuditLog[]
-  apiHubIngestionRuns   ApiHubIngestionRun[]
+  users                             User[]
+  orgUnits                          OrgUnit[]
+  roles                             Role[]
+  suppliers                         Supplier[]
+  products                          Product[]
+  productCategories                 ProductCategory[]
+  productDivisions                  ProductDivision[]
+  supplierOffices                   SupplierOffice[]
+  supplierContacts                  SupplierContact[]
+  supplierServiceCapabilities       SupplierServiceCapability[]
+  orders                            PurchaseOrder[]
+  salesOrders                       SalesOrder[]
+  warehouses                        Warehouse[]
+  warehouseZones                    WarehouseZone[]
+  warehouseBins                     WarehouseBin[]
+  inventoryBalances                 InventoryBalance[]
+  inventoryMovements                InventoryMovement[]
+  wmsTasks                          WmsTask[]
+  wmsWaves                          WmsWave[]
+  replenishmentRules                ReplenishmentRule[]
+  outboundOrders                    OutboundOrder[]
+  outboundOrderLines                OutboundOrderLine[]
+  wmsBillingRates                   WmsBillingRate[]
+  wmsBillingEvents                  WmsBillingEvent[]
+  wmsBillingInvoiceRuns             WmsBillingInvoiceRun[]
+  wmsBillingInvoiceLines            WmsBillingInvoiceLine[]
+  wmsSavedLedgerViews               WmsSavedLedgerView[]
+  loadPlans                         LoadPlan[]
+  userPreferences                   UserPreference[]
+  workflows                         Workflow[]
+  crmLeads                          CrmLead[]
+  crmAccounts                       CrmAccount[]
+  crmContacts                       CrmContact[]
+  crmOpportunities                  CrmOpportunity[]
+  crmActivities                     CrmActivity[]
+  crmQuotes                         CrmQuote[]
+  ctTrackingMilestones              CtTrackingMilestone[]
+  ctShipmentDocuments               CtShipmentDocument[]
+  ctShipmentNotes                   CtShipmentNote[]
+  ctFinancialSnapshots              CtShipmentFinancialSnapshot[]
+  ctAlerts                          CtAlert[]
+  ctExceptions                      CtException[]
+  ctAuditLogs                       CtAuditLog[]
+  ctSavedFilters                    CtSavedFilter[]
+  ctSavedReports                    CtSavedReport[]
+  ctDashboardWidgets                CtDashboardWidget[]
+  ctShipmentLegs                    CtShipmentLeg[]
+  ctShipmentContainers              CtShipmentContainer[]
+  ctFxRates                         CtFxRate[]
+  ctShipmentCostLines               CtShipmentCostLine[]
+  ctMilestoneTemplatePacks          CtMilestoneTemplatePack[]
+  ctContainerCargoLines             CtContainerCargoLine[]
+  ctExceptionCodes                  CtExceptionCode[]
+  locationCodes                     LocationCode[]
+  ctReportSchedules                 CtReportSchedule[]
+  tariffLegalEntities               TariffLegalEntity[]
+  tariffContractHeaders             TariffContractHeader[]
+  tariffImportBatches               TariffImportBatch[]
+  tariffShipmentApplications        TariffShipmentApplication[]
+  quoteRequests                     QuoteRequest[]
+  bookingPricingSnapshots           BookingPricingSnapshot[]
+  invoiceIntakes                    InvoiceIntake[]
+  invoiceToleranceRules             InvoiceToleranceRule[]
+  invoiceChargeAliases              InvoiceChargeAlias[]
+  apiHubConnectors                  ApiHubConnector[]
+  apiHubConnectorAuditLogs          ApiHubConnectorAuditLog[]
+  apiHubIngestionRuns               ApiHubIngestionRun[]
   apiHubIngestionApplyIdempotencies ApiHubIngestionApplyIdempotency[]
-  apiHubIngestionRunAuditLogs ApiHubIngestionRunAuditLog[]
-  apiHubMappingTemplates ApiHubMappingTemplate[]
-  apiHubMappingTemplateAuditLogs ApiHubMappingTemplateAuditLog[]
-  apiHubMappingAnalysisJobs ApiHubMappingAnalysisJob[]
-  apiHubStagingBatches ApiHubStagingBatch[]
-  apiHubStagingRows ApiHubStagingRow[]
-  supplyChainTwinEntitySnapshots SupplyChainTwinEntitySnapshot[]
-  supplyChainTwinEntityEdges     SupplyChainTwinEntityEdge[]
-  supplyChainTwinIngestEvents    SupplyChainTwinIngestEvent[]
-  supplyChainTwinRiskSignals     SupplyChainTwinRiskSignal[]
-  supplyChainTwinScenarioDrafts  SupplyChainTwinScenarioDraft[]
-  supplyChainTwinScenarioRevisions SupplyChainTwinScenarioRevision[]
-  scriExternalEvents              ScriExternalEvent[]
-  scriEventAffectedEntities       ScriEventAffectedEntity[]
-  scriEventReviewLogs             ScriEventReviewLog[]
-  scriEventTaskLinks              ScriEventTaskLink[]
-  scriEventRecommendations        ScriEventRecommendation[]
-  scriWatchlistRules              ScriWatchlistRule[]
-  scriTenantTuning                ScriTenantTuning?
-  supplierOnboardingTasks         SupplierOnboardingTask[]
-  srmSupplierDocuments            SrmSupplierDocument[]
-  srmSupplierDocumentAuditLogs    SrmSupplierDocumentAuditLog[]
-  srmIntegrationIdempotencies     SrmIntegrationIdempotency[]
-  srmOperatorNotifications        SrmOperatorNotification[]
+  apiHubIngestionRunAuditLogs       ApiHubIngestionRunAuditLog[]
+  apiHubMappingTemplates            ApiHubMappingTemplate[]
+  apiHubMappingTemplateAuditLogs    ApiHubMappingTemplateAuditLog[]
+  apiHubMappingAnalysisJobs         ApiHubMappingAnalysisJob[]
+  apiHubStagingBatches              ApiHubStagingBatch[]
+  apiHubStagingRows                 ApiHubStagingRow[]
+  supplyChainTwinEntitySnapshots    SupplyChainTwinEntitySnapshot[]
+  supplyChainTwinEntityEdges        SupplyChainTwinEntityEdge[]
+  supplyChainTwinIngestEvents       SupplyChainTwinIngestEvent[]
+  supplyChainTwinRiskSignals        SupplyChainTwinRiskSignal[]
+  supplyChainTwinScenarioDrafts     SupplyChainTwinScenarioDraft[]
+  supplyChainTwinScenarioRevisions  SupplyChainTwinScenarioRevision[]
+  scriExternalEvents                ScriExternalEvent[]
+  scriEventAffectedEntities         ScriEventAffectedEntity[]
+  scriEventReviewLogs               ScriEventReviewLog[]
+  scriEventTaskLinks                ScriEventTaskLink[]
+  scriEventRecommendations          ScriEventRecommendation[]
+  scriWatchlistRules                ScriWatchlistRule[]
+  scriTenantTuning                  ScriTenantTuning?
+  supplierOnboardingTasks           SupplierOnboardingTask[]
+  srmSupplierDocuments              SrmSupplierDocument[]
+  srmSupplierDocumentAuditLogs      SrmSupplierDocumentAuditLog[]
+  srmIntegrationIdempotencies       SrmIntegrationIdempotency[]
+  srmOperatorNotifications          SrmOperatorNotification[]
+  companyLegalEntities              CompanyLegalEntity[]
 }
 
 /// Integration / API hub — registry row for an external or internal data source (Phase 1 stub).
 model ApiHubConnector {
-  id        String   @id @default(cuid())
-  tenantId  String
-  name      String
+  id            String    @id @default(cuid())
+  tenantId      String
+  name          String
   /// High-level source label until taxonomy lands (e.g. `stub`, `file`, `api`).
-  sourceKind String  @default("unspecified")
+  sourceKind    String    @default("unspecified")
   /// Auth mode metadata only (no credential values in this table).
-  authMode  String   @default("none")
+  authMode      String    @default("none")
   /// Secret manager / vault reference, never plaintext credentials.
   authConfigRef String?
   /// Operator-facing configuration readiness state.
-  authState String   @default("not_configured")
-  status    String   @default("draft")
+  authState     String    @default("not_configured")
+  status        String    @default("draft")
   /// Populated when sync jobs exist; nullable for stub rows.
-  lastSyncAt DateTime?
+  lastSyncAt    DateTime?
   /// Operator-facing health / connectivity summary (no secrets).
   healthSummary String?
   /// Operator-written metadata (non-secret); capped in API layer.
-  opsNote   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  opsNote       String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  auditLogs ApiHubConnectorAuditLog[]
+  tenant        Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  auditLogs     ApiHubConnectorAuditLog[]
   ingestionRuns ApiHubIngestionRun[]
 
   @@index([tenantId])
@@ -195,34 +196,35 @@ model ApiHubConnectorAuditLog {
 }
 
 model ApiHubIngestionRun {
-  id                String   @id @default(cuid())
+  id                String    @id @default(cuid())
   tenantId          String
   connectorId       String?
   requestedByUserId String
   idempotencyKey    String?
-  status            String   @default("queued")
+  status            String    @default("queued")
   /// How the run was triggered (`manual` | `api` | `scheduled`); list filter in Slice 22.
-  triggerKind       String   @default("api")
-  attempt           Int      @default(1)
-  maxAttempts       Int      @default(3)
+  triggerKind       String    @default("api")
+  attempt           Int       @default(1)
+  maxAttempts       Int       @default(3)
   resultSummary     String?
   errorCode         String?
   errorMessage      String?
-  enqueuedAt        DateTime @default(now())
+  enqueuedAt        DateTime  @default(now())
   startedAt         DateTime?
   finishedAt        DateTime?
   retryOfRunId      String?
   /// Set when mapping/results were applied to downstream systems (Slice 28).
   appliedAt         DateTime?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
-  tenant      Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  connector   ApiHubConnector?  @relation(fields: [connectorId], references: [id], onDelete: SetNull)
-  requestedBy User              @relation(fields: [requestedByUserId], references: [id], onDelete: Restrict)
-  retryOf     ApiHubIngestionRun? @relation("ApiHubIngestionRunRetryChain", fields: [retryOfRunId], references: [id], onDelete: SetNull)
+  tenant      Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  connector   ApiHubConnector?     @relation(fields: [connectorId], references: [id], onDelete: SetNull)
+  requestedBy User                 @relation(fields: [requestedByUserId], references: [id], onDelete: Restrict)
+  retryOf     ApiHubIngestionRun?  @relation("ApiHubIngestionRunRetryChain", fields: [retryOfRunId], references: [id], onDelete: SetNull)
   retries     ApiHubIngestionRun[] @relation("ApiHubIngestionRunRetryChain")
 
+  @@unique([tenantId, idempotencyKey])
   @@index([tenantId, createdAt])
   @@index([tenantId, status, createdAt])
   @@index([connectorId, createdAt])
@@ -236,21 +238,20 @@ model ApiHubIngestionRun {
   @@index([tenantId, triggerKind, createdAt])
   /// Retry-tree expansion under tenant scope (Slice 58).
   @@index([tenantId, retryOfRunId])
-  @@unique([tenantId, idempotencyKey])
 }
 
 /// Cached apply POST outcomes for safe client retries (Slice 42).
 model ApiHubIngestionApplyIdempotency {
-  id               String   @id @default(cuid())
-  tenantId         String
-  idempotencyKey   String
-  ingestionRunId   String
-  dryRun           Boolean
+  id                 String   @id @default(cuid())
+  tenantId           String
+  idempotencyKey     String
+  ingestionRunId     String
+  dryRun             Boolean
   /// Stable hash of apply shape (marker vs downstream target/rows/matchKey) for safe idempotent replay.
-  requestFingerprint String @default("v1:marker")
-  responseStatus   Int
-  responseBody     Json
-  createdAt        DateTime @default(now())
+  requestFingerprint String   @default("v1:marker")
+  responseStatus     Int
+  responseBody       Json
+  createdAt          DateTime @default(now())
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
@@ -318,23 +319,23 @@ model ApiHubMappingTemplateAuditLog {
 
 /// P2 — async mapping analysis job: structured rule proposals (deterministic heuristic today; LLM optional later).
 model ApiHubMappingAnalysisJob {
-  id                String   @id @default(cuid())
+  id                String    @id @default(cuid())
   tenantId          String
   requestedByUserId String
   /// `queued` | `processing` | `succeeded` | `failed`
-  status            String   @default("queued")
+  status            String    @default("queued")
   /// `{ schemaVersion, records, targetFields?, note? }` — no secrets; size-capped in API.
   inputPayload      Json
   /// `{ schemaVersion, engine, rules, notes?, stagingPreview? }` when succeeded.
   outputProposal    Json?
   errorMessage      String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
   startedAt         DateTime?
   finishedAt        DateTime?
 
-  tenant       Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  requestedBy  User   @relation(fields: [requestedByUserId], references: [id], onDelete: Restrict)
+  tenant         Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  requestedBy    User                 @relation(fields: [requestedByUserId], references: [id], onDelete: Restrict)
   stagingBatches ApiHubStagingBatch[]
 
   @@index([tenantId, createdAt])
@@ -343,23 +344,23 @@ model ApiHubMappingAnalysisJob {
 
 /// Normalized staging batch (pre-commit rows) for operator review — linked from mapping analysis or future ingest.
 model ApiHubStagingBatch {
-  id                         String   @id @default(cuid())
+  id                         String    @id @default(cuid())
   tenantId                   String
   createdByUserId            String
   sourceMappingAnalysisJobId String?
   title                      String?
   /// `open` | `promoted` | `discarded`
-  status                     String   @default("open")
-  rowCount                   Int      @default(0)
+  status                     String    @default("open")
+  rowCount                   Int       @default(0)
   /// Set when rows were applied to downstream modules (SO/PO/CT audit) via API Hub apply.
   appliedAt                  DateTime?
   /// Last apply outcome: target, dryRun, row results (ids/errors).
   applySummary               Json?
-  createdAt                  DateTime @default(now())
-  updatedAt                  DateTime @updatedAt
+  createdAt                  DateTime  @default(now())
+  updatedAt                  DateTime  @updatedAt
 
-  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  createdBy User   @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
+  tenant    Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy User                      @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
   sourceJob ApiHubMappingAnalysisJob? @relation(fields: [sourceMappingAnalysisJobId], references: [id], onDelete: SetNull)
   rows      ApiHubStagingRow[]
 
@@ -403,93 +404,93 @@ model CtMilestoneTemplatePack {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  tenantId  String
-  email     String
-  name      String
+  id           String   @id @default(cuid())
+  tenantId     String
+  email        String
+  name         String
   passwordHash String?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  userRoles           UserRole[]
-  orderChats          OrderChatMessage[]
-  purchaseOrders      PurchaseOrder[]
-  salesOrdersCreated  SalesOrder[]
-  orderTransitionLogs OrderTransitionLog[]
-  splitProposals      SplitProposal[]
-  shipmentsCreated    Shipment[]
-  shipmentBookingsCreated ShipmentBooking[] @relation("ShipmentBookingCreatedBy")
-  shipmentBookingsUpdated ShipmentBooking[] @relation("ShipmentBookingUpdatedBy")
-  shipmentMilestonesUpdated ShipmentMilestone[]
-  inventoryMovementsCreated InventoryMovement[]
-  wmsTasksCreated    WmsTask[] @relation("WmsTaskCreatedBy")
-  wmsTasksCompleted  WmsTask[] @relation("WmsTaskCompletedBy")
-  wmsWavesCreated    WmsWave[]
-  outboundOrdersCreated OutboundOrder[]
-  loadPlansCreated    LoadPlan[]
-  preferences         UserPreference[]
-  crmLeadsOwned       CrmLead[]          @relation("CrmLeadOwner")
-  crmAccountsOwned    CrmAccount[]      @relation("CrmAccountOwner")
-  crmContactsOwned    CrmContact[]      @relation("CrmContactOwner")
-  crmOpportunitiesOwned CrmOpportunity[] @relation("CrmOpportunityOwner")
-  crmActivitiesOwned  CrmActivity[]      @relation("CrmActivityOwner")
-  crmQuotesOwned      CrmQuote[]         @relation("CrmQuoteOwner")
-  wmsBillingInvoiceRunsCreated WmsBillingInvoiceRun[] @relation("WmsBillingInvoiceRunCreatedBy")
-  ctTrackingMilestonesUpdated CtTrackingMilestone[]
-  ctShipmentDocumentsUploaded CtShipmentDocument[]
-  ctShipmentNotesCreated CtShipmentNote[]
-  ctFinancialSnapshotsCreated CtShipmentFinancialSnapshot[]
-  ctAlertsOwned CtAlert[] @relation("CtAlertOwner")
-  ctAlertsAcknowledged CtAlert[] @relation("CtAlertAckBy")
-  ctExceptionsOwned CtException[] @relation("CtExceptionOwner")
-  ctAuditLogsActor CtAuditLog[]
-  ctSavedFilters CtSavedFilter[]
-  ctSavedReports CtSavedReport[]
-  ctDashboardWidgets CtDashboardWidget[]
-  ctReportSchedules CtReportSchedule[]
-  ctShipmentCostLinesCreated CtShipmentCostLine[]
-  shipmentsOpsAssigned       Shipment[] @relation("ShipmentOpsAssignee")
+  tenant                             Tenant                          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userRoles                          UserRole[]
+  orderChats                         OrderChatMessage[]
+  purchaseOrders                     PurchaseOrder[]
+  salesOrdersCreated                 SalesOrder[]
+  orderTransitionLogs                OrderTransitionLog[]
+  splitProposals                     SplitProposal[]
+  shipmentsCreated                   Shipment[]
+  shipmentBookingsCreated            ShipmentBooking[]               @relation("ShipmentBookingCreatedBy")
+  shipmentBookingsUpdated            ShipmentBooking[]               @relation("ShipmentBookingUpdatedBy")
+  shipmentMilestonesUpdated          ShipmentMilestone[]
+  inventoryMovementsCreated          InventoryMovement[]
+  wmsTasksCreated                    WmsTask[]                       @relation("WmsTaskCreatedBy")
+  wmsTasksCompleted                  WmsTask[]                       @relation("WmsTaskCompletedBy")
+  wmsWavesCreated                    WmsWave[]
+  outboundOrdersCreated              OutboundOrder[]
+  loadPlansCreated                   LoadPlan[]
+  preferences                        UserPreference[]
+  crmLeadsOwned                      CrmLead[]                       @relation("CrmLeadOwner")
+  crmAccountsOwned                   CrmAccount[]                    @relation("CrmAccountOwner")
+  crmContactsOwned                   CrmContact[]                    @relation("CrmContactOwner")
+  crmOpportunitiesOwned              CrmOpportunity[]                @relation("CrmOpportunityOwner")
+  crmActivitiesOwned                 CrmActivity[]                   @relation("CrmActivityOwner")
+  crmQuotesOwned                     CrmQuote[]                      @relation("CrmQuoteOwner")
+  wmsBillingInvoiceRunsCreated       WmsBillingInvoiceRun[]          @relation("WmsBillingInvoiceRunCreatedBy")
+  ctTrackingMilestonesUpdated        CtTrackingMilestone[]
+  ctShipmentDocumentsUploaded        CtShipmentDocument[]
+  ctShipmentNotesCreated             CtShipmentNote[]
+  ctFinancialSnapshotsCreated        CtShipmentFinancialSnapshot[]
+  ctAlertsOwned                      CtAlert[]                       @relation("CtAlertOwner")
+  ctAlertsAcknowledged               CtAlert[]                       @relation("CtAlertAckBy")
+  ctExceptionsOwned                  CtException[]                   @relation("CtExceptionOwner")
+  ctAuditLogsActor                   CtAuditLog[]
+  ctSavedFilters                     CtSavedFilter[]
+  ctSavedReports                     CtSavedReport[]
+  ctDashboardWidgets                 CtDashboardWidget[]
+  ctReportSchedules                  CtReportSchedule[]
+  ctShipmentCostLinesCreated         CtShipmentCostLine[]
+  shipmentsOpsAssigned               Shipment[]                      @relation("ShipmentOpsAssignee")
   /// When set, Control Tower (and similar) list/detail is limited to shipments tagged with this CRM account.
-  customerCrmAccountId String?
-  customerCrmAccount   CrmAccount? @relation("UserCustomerPortalScope", fields: [customerCrmAccountId], references: [id], onDelete: SetNull)
+  customerCrmAccountId               String?
+  customerCrmAccount                 CrmAccount?                     @relation("UserCustomerPortalScope", fields: [customerCrmAccountId], references: [id], onDelete: SetNull)
   /// Phase H: supplier-portal user linked to the supplier org they represent (same tenant).
-  portalLinkedSupplierId String?
-  portalLinkedSupplier   Supplier?  @relation("UserPortalLinkedSupplier", fields: [portalLinkedSupplierId], references: [id], onDelete: SetNull)
-  tariffContractHeadersOwned TariffContractHeader[] @relation("TariffContractHeaderOwner")
-  tariffApprovalRecords      TariffApprovalRecord[] @relation("TariffApprovalApprover")
-  tariffAuditLogs            TariffAuditLog[] @relation("TariffAuditLogActor")
-  quoteRequestsOwned         QuoteRequest[]         @relation("QuoteRequestOwner")
-  quoteClarificationsAuthored QuoteClarificationMessage[] @relation("QuoteClarificationAuthor")
-  bookingPricingSnapshotsCreated BookingPricingSnapshot[] @relation("BookingPricingSnapshotCreator")
-  invoiceIntakesCreated          InvoiceIntake[]          @relation("InvoiceIntakeCreator")
-  invoiceIntakesReviewed         InvoiceIntake[]          @relation("InvoiceIntakeReviewer")
-  apiHubConnectorAuditLogs       ApiHubConnectorAuditLog[]
-  apiHubIngestionRunsRequested   ApiHubIngestionRun[]
-  apiHubMappingTemplatesCreated  ApiHubMappingTemplate[] @relation("ApiHubMappingTemplateCreatedBy")
-  apiHubMappingTemplateAuditLogs ApiHubMappingTemplateAuditLog[]
-  apiHubIngestionRunAuditLogs ApiHubIngestionRunAuditLog[]
+  portalLinkedSupplierId             String?
+  portalLinkedSupplier               Supplier?                       @relation("UserPortalLinkedSupplier", fields: [portalLinkedSupplierId], references: [id], onDelete: SetNull)
+  tariffContractHeadersOwned         TariffContractHeader[]          @relation("TariffContractHeaderOwner")
+  tariffApprovalRecords              TariffApprovalRecord[]          @relation("TariffApprovalApprover")
+  tariffAuditLogs                    TariffAuditLog[]                @relation("TariffAuditLogActor")
+  quoteRequestsOwned                 QuoteRequest[]                  @relation("QuoteRequestOwner")
+  quoteClarificationsAuthored        QuoteClarificationMessage[]     @relation("QuoteClarificationAuthor")
+  bookingPricingSnapshotsCreated     BookingPricingSnapshot[]        @relation("BookingPricingSnapshotCreator")
+  invoiceIntakesCreated              InvoiceIntake[]                 @relation("InvoiceIntakeCreator")
+  invoiceIntakesReviewed             InvoiceIntake[]                 @relation("InvoiceIntakeReviewer")
+  apiHubConnectorAuditLogs           ApiHubConnectorAuditLog[]
+  apiHubIngestionRunsRequested       ApiHubIngestionRun[]
+  apiHubMappingTemplatesCreated      ApiHubMappingTemplate[]         @relation("ApiHubMappingTemplateCreatedBy")
+  apiHubMappingTemplateAuditLogs     ApiHubMappingTemplateAuditLog[]
+  apiHubIngestionRunAuditLogs        ApiHubIngestionRunAuditLog[]
   apiHubMappingAnalysisJobsRequested ApiHubMappingAnalysisJob[]
-  apiHubStagingBatchesCreated ApiHubStagingBatch[]
-  invoiceIntakesAccountingApproved InvoiceIntake[]         @relation("InvoiceIntakeAccountingApprover")
-  tariffShipmentApplicationsCreated TariffShipmentApplication[] @relation("TariffShipmentApplicationCreator")
-  scriEventsOwned                 ScriExternalEvent[]           @relation("ScriEventOwner")
-  scriReviewLogsAuthored          ScriEventReviewLog[]          @relation("ScriReviewLogActor")
-  scriTaskLinksCreated            ScriEventTaskLink[]           @relation("ScriTaskLinkCreatedBy")
-  scriTuningAutomationActorOf     ScriTenantTuning[]            @relation("ScriTuningAutomationActor")
-  supplierOnboardingTasksAssigned  SupplierOnboardingTask[]      @relation("SupplierOnboardingTaskAssignee")
-  srmOperatorNotificationsReceived SrmOperatorNotification[]     @relation("SrmOperatorNotificationRecipient")
-  srmOperatorNotificationsAsActor  SrmOperatorNotification[]   @relation("SrmOperatorNotificationActor")
-  srmDocumentsUploaded             SrmSupplierDocument[]         @relation("SrmSupplierDocumentUploadedBy")
-  srmDocumentsLastTouched         SrmSupplierDocument[]         @relation("SrmSupplierDocumentLastTouchedBy")
-  srmSupplierDocumentAuditAuthored SrmSupplierDocumentAuditLog[] @relation("SrmSupplierDocumentAuditActor")
-  wmsSavedLedgerViews WmsSavedLedgerView[]
-  passwordResetTokens  PasswordResetToken[]
+  apiHubStagingBatchesCreated        ApiHubStagingBatch[]
+  invoiceIntakesAccountingApproved   InvoiceIntake[]                 @relation("InvoiceIntakeAccountingApprover")
+  tariffShipmentApplicationsCreated  TariffShipmentApplication[]     @relation("TariffShipmentApplicationCreator")
+  scriEventsOwned                    ScriExternalEvent[]             @relation("ScriEventOwner")
+  scriReviewLogsAuthored             ScriEventReviewLog[]            @relation("ScriReviewLogActor")
+  scriTaskLinksCreated               ScriEventTaskLink[]             @relation("ScriTaskLinkCreatedBy")
+  scriTuningAutomationActorOf        ScriTenantTuning[]              @relation("ScriTuningAutomationActor")
+  supplierOnboardingTasksAssigned    SupplierOnboardingTask[]        @relation("SupplierOnboardingTaskAssignee")
+  srmOperatorNotificationsReceived   SrmOperatorNotification[]       @relation("SrmOperatorNotificationRecipient")
+  srmOperatorNotificationsAsActor    SrmOperatorNotification[]       @relation("SrmOperatorNotificationActor")
+  srmDocumentsUploaded               SrmSupplierDocument[]           @relation("SrmSupplierDocumentUploadedBy")
+  srmDocumentsLastTouched            SrmSupplierDocument[]           @relation("SrmSupplierDocumentLastTouchedBy")
+  srmSupplierDocumentAuditAuthored   SrmSupplierDocumentAuditLog[]   @relation("SrmSupplierDocumentAuditActor")
+  wmsSavedLedgerViews                WmsSavedLedgerView[]
+  passwordResetTokens                PasswordResetToken[]
   /// Primary org node (geography / legal hierarchy). Matrix: see `productDivisionScope`.
-  primaryOrgUnitId String?
-  primaryOrgUnit   OrgUnit?  @relation("UserPrimaryOrgUnit", fields: [primaryOrgUnitId], references: [id], onDelete: SetNull)
-  productDivisionScope UserProductDivision[]
+  primaryOrgUnitId                   String?
+  primaryOrgUnit                     OrgUnit?                        @relation("UserPrimaryOrgUnit", fields: [primaryOrgUnitId], references: [id], onDelete: SetNull)
+  productDivisionScope               UserProductDivision[]
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -503,24 +504,26 @@ model User {
  * Does not replace `ProductDivision` (product / commercial matrix); use both via `User`.
  */
 model OrgUnit {
-  id        String   @id @default(cuid())
+  id        String      @id @default(cuid())
   tenantId  String
   parentId  String?
   name      String
   /// Unique per tenant (e.g. GLOBAL, APAC, US, US-TX-HOU)
   code      String
   kind      OrgUnitKind
-  sortOrder Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  sortOrder Int         @default(0)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
 
-  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  parent   OrgUnit?  @relation("OrgUnitHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
-  children OrgUnit[] @relation("OrgUnitHierarchy")
-  usersPrimary User[] @relation("UserPrimaryOrgUnit")
-  roleAssignments OrgUnitRoleAssignment[]
-  servedOnPurchaseOrders PurchaseOrder[] @relation("PurchaseOrderServedOrg")
-  servedOnSalesOrders   SalesOrder[]   @relation("SalesOrderServedOrg")
+  tenant                 Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  parent                 OrgUnit?                @relation("OrgUnitHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children               OrgUnit[]               @relation("OrgUnitHierarchy")
+  usersPrimary           User[]                  @relation("UserPrimaryOrgUnit")
+  roleAssignments        OrgUnitRoleAssignment[]
+  servedOnPurchaseOrders PurchaseOrder[]         @relation("PurchaseOrderServedOrg")
+  servedOnSalesOrders    SalesOrder[]            @relation("SalesOrderServedOrg")
+  /// Statutory / document profile (optional; Phase 1). Distinct from `TariffLegalEntity` (tariff pricing).
+  companyLegalEntity     CompanyLegalEntity?
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -528,12 +531,53 @@ model OrgUnit {
   @@index([parentId])
 }
 
+/**
+ * In-tenant statutory / document identity for a single org node (typically `OrgUnitKind.LEGAL_ENTITY`).
+ * Used for sales / contracting footers, invoicing, and regional admin; not the same as `TariffLegalEntity`
+ * (tariff contracts, table `legal_entities`). At most one row per `orgUnitId`.
+ */
+model CompanyLegalEntity {
+  id        String @id @default(cuid())
+  tenantId  String
+  /// Org node this legal profile extends (1:1). Kind `LEGAL_ENTITY` is enforced in application/API layers.
+  orgUnitId String @unique
+
+  registeredLegalName String
+  tradeName           String?
+  /// VAT / USt-IdNr. / etc. (format validation in later phases)
+  taxVatId            String?
+  taxLocalId          String?
+
+  addressLine1       String?
+  addressLine2       String?
+  addressCity        String?
+  addressRegion      String?
+  addressPostalCode  String?
+  addressCountryCode String? @db.VarChar(2)
+  phone              String?
+  companyEmail       String?
+
+  effectiveFrom DateTime? @db.Date
+  effectiveTo   DateTime? @db.Date
+  /// ACTIVE | INACTIVE
+  status        String    @default("ACTIVE")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  orgUnit OrgUnit @relation(fields: [orgUnitId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("company_legal_entities")
+}
+
 /// Zero or more operating-role tags per org unit (unique per org + role).
 model OrgUnitRoleAssignment {
-  id        String   @id @default(cuid())
+  id        String               @id @default(cuid())
   orgUnitId String
   role      OrgUnitOperatingRole
-  createdAt DateTime @default(now())
+  createdAt DateTime             @default(now())
 
   orgUnit OrgUnit @relation(fields: [orgUnitId], references: [id], onDelete: Cascade)
 
@@ -542,7 +586,9 @@ model OrgUnitRoleAssignment {
   @@map("org_unit_role_assignments")
 }
 
-/** Matrix: user responsibility for one or more product divisions (e.g. global category lead). */
+/**
+ * Matrix: user responsibility for one or more product divisions (e.g. global category lead).
+ */
 model UserProductDivision {
   userId            String
   productDivisionId String
@@ -646,20 +692,20 @@ enum SrmOnboardingStage {
 }
 
 model Supplier {
-  id        String   @id @default(cuid())
-  tenantId  String
-  code      String?
-  name      String
-  email     String?
-  phone     String?
-  isActive  Boolean  @default(true)
+  id       String  @id @default(cuid())
+  tenantId String
+  code     String?
+  name     String
+  email    String?
+  phone    String?
+  isActive Boolean @default(true)
 
   /// Procurement: materials vs logistics partners (forwarders, carriers-as-parties, etc.).
-  srmCategory SrmSupplierCategory @default(product)
+  srmCategory        SrmSupplierCategory    @default(product)
   /// Buyer-created suppliers start pending until an approver activates them.
-  approvalStatus SupplierApprovalStatus @default(approved)
+  approvalStatus     SupplierApprovalStatus @default(approved)
   /// Operator-facing onboarding pipeline stage (Phase G; parallel to checklist tasks).
-  srmOnboardingStage SrmOnboardingStage @default(intake)
+  srmOnboardingStage SrmOnboardingStage     @default(intake)
 
   /// Legal / registered business name if different from trade name.
   legalName String?
@@ -675,12 +721,12 @@ model Supplier {
   registeredCountryCode  String? @db.VarChar(2)
 
   /// e.g. 30 for Net 30; use with paymentTermsLabel.
-  paymentTermsDays   Int?
-  paymentTermsLabel  String?
-  creditLimit        Decimal? @db.Decimal(14, 2)
-  creditCurrency     String?  @db.VarChar(3)
-  defaultIncoterm    String?
-  internalNotes      String?  @db.Text
+  paymentTermsDays  Int?
+  paymentTermsLabel String?
+  creditLimit       Decimal? @db.Decimal(14, 2)
+  creditCurrency    String?  @db.VarChar(3)
+  defaultIncoterm   String?
+  internalNotes     String?  @db.Text
 
   /// Hours allowed for booking confirmation after send (logistics partners). Null = tenant default (24h).
   bookingConfirmationSlaHours Int?
@@ -688,21 +734,21 @@ model Supplier {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tenant           Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  portalLinkedUsers User[]            @relation("UserPortalLinkedSupplier")
-  orders           PurchaseOrder[]
-  offices          SupplierOffice[]
-  contacts         SupplierContact[]
-  serviceCapabilities SupplierServiceCapability[]
-  productSuppliers ProductSupplier[]
-  shipmentBookings ShipmentBooking[]
-  shipmentsCarrier Shipment[] @relation("ShipmentCarrierSupplier")
-  ctShipmentLegsCarrier CtShipmentLeg[] @relation("CtLegCarrierSupplier")
-  ctShipmentCostLinesVendor CtShipmentCostLine[] @relation("CtCostLineVendorSupplier")
+  tenant                    Tenant                      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  portalLinkedUsers         User[]                      @relation("UserPortalLinkedSupplier")
+  orders                    PurchaseOrder[]
+  offices                   SupplierOffice[]
+  contacts                  SupplierContact[]
+  serviceCapabilities       SupplierServiceCapability[]
+  productSuppliers          ProductSupplier[]
+  shipmentBookings          ShipmentBooking[]
+  shipmentsCarrier          Shipment[]                  @relation("ShipmentCarrierSupplier")
+  ctShipmentLegsCarrier     CtShipmentLeg[]             @relation("CtLegCarrierSupplier")
+  ctShipmentCostLinesVendor CtShipmentCostLine[]        @relation("CtCostLineVendorSupplier")
   quoteRequestRecipients    QuoteRequestRecipient[]
   onboardingTasks           SupplierOnboardingTask[]
   srmDocuments              SrmSupplierDocument[]
-  srmOperatorNotifications SrmOperatorNotification[]
+  srmOperatorNotifications  SrmOperatorNotification[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -710,23 +756,23 @@ model Supplier {
 
 /// SRM Phase B: checklist rows for supplier onboarding (assignee, due date, done).
 model SupplierOnboardingTask {
-  id         String   @id @default(cuid())
-  tenantId   String
-  supplierId String
+  id             String    @id @default(cuid())
+  tenantId       String
+  supplierId     String
   /// Idempotent default key, e.g. `supplier_profile`.
-  taskKey    String   @db.VarChar(64)
-  title      String   @db.VarChar(256)
-  sortOrder  Int      @default(0)
-  done       Boolean  @default(false)
+  taskKey        String    @db.VarChar(64)
+  title          String    @db.VarChar(256)
+  sortOrder      Int       @default(0)
+  done           Boolean   @default(false)
   assigneeUserId String?
-  dueAt      DateTime?
-  notes      String?  @db.Text
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  dueAt          DateTime?
+  notes          String?   @db.Text
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
-  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
-  assignee User?    @relation("SupplierOnboardingTaskAssignee", fields: [assigneeUserId], references: [id], onDelete: SetNull)
+  tenant                   Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  supplier                 Supplier                  @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  assignee                 User?                     @relation("SupplierOnboardingTaskAssignee", fields: [assigneeUserId], references: [id], onDelete: SetNull)
   srmOperatorNotifications SrmOperatorNotification[]
 
   @@unique([supplierId, taskKey])
@@ -752,36 +798,36 @@ enum SrmSupplierDocumentStatus {
 
 /// Metadata + object storage URL for a supplier compliance document.
 model SrmSupplierDocument {
-  id           String  @id @default(cuid())
-  tenantId     String
-  supplierId   String
-  documentType SrmSupplierDocumentType
-  status         SrmSupplierDocumentStatus @default(active)
-  title          String? @db.VarChar(256)
-  fileName       String
-  mimeType       String
-  fileSize       Int
+  id                   String                    @id @default(cuid())
+  tenantId             String
+  supplierId           String
+  documentType         SrmSupplierDocumentType
+  status               SrmSupplierDocumentStatus @default(active)
+  title                String?                   @db.VarChar(256)
+  fileName             String
+  mimeType             String
+  fileSize             Int
   /// Blob object basename or local key; optional when `fileUrl` is self-sufficient.
-  storageKey     String? @db.VarChar(512)
-  fileUrl        String  @db.Text
-  expiresAt      DateTime?
-  uploadedById   String
-  lastModifiedById String?
+  storageKey           String?                   @db.VarChar(512)
+  fileUrl              String                    @db.Text
+  expiresAt            DateTime?
+  uploadedById         String
+  lastModifiedById     String?
   /// Phase I: all revisions in a chain share the same id (v1: random UUID; legacy rows: id of first in chain or backfilled to own id).
   revisionGroupId      String
   /// Monotonic per revision group (1 = first upload in group).
-  revisionNumber       Int     @default(1)
+  revisionNumber       Int                       @default(1)
   /// When this row replaces a prior file, points to the previous document; prior row is set to `superseded`.
   supersedesDocumentId String?
-  supersedesDocument   SrmSupplierDocument?  @relation("SrmDocumentRevision", fields: [supersedesDocumentId], references: [id], onDelete: SetNull)
-  supersedingDocuments SrmSupplierDocument[] @relation("SrmDocumentRevision")
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  supersedesDocument   SrmSupplierDocument?      @relation("SrmDocumentRevision", fields: [supersedesDocumentId], references: [id], onDelete: SetNull)
+  supersedingDocuments SrmSupplierDocument[]     @relation("SrmDocumentRevision")
+  createdAt            DateTime                  @default(now())
+  updatedAt            DateTime                  @updatedAt
 
-  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  supplier       Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
-  uploadedBy     User     @relation("SrmSupplierDocumentUploadedBy", fields: [uploadedById], references: [id], onDelete: Restrict)
-  lastModifiedBy User?    @relation("SrmSupplierDocumentLastTouchedBy", fields: [lastModifiedById], references: [id], onDelete: SetNull)
+  tenant         Tenant                        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  supplier       Supplier                      @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  uploadedBy     User                          @relation("SrmSupplierDocumentUploadedBy", fields: [uploadedById], references: [id], onDelete: Restrict)
+  lastModifiedBy User?                         @relation("SrmSupplierDocumentLastTouchedBy", fields: [lastModifiedById], references: [id], onDelete: SetNull)
   auditLogs      SrmSupplierDocumentAuditLog[]
 
   @@unique([revisionGroupId, revisionNumber])
@@ -793,13 +839,13 @@ model SrmSupplierDocument {
 
 /// Append-only triage for supplier documents (upload + metadata/single updates).
 model SrmSupplierDocumentAuditLog {
-  id         String   @id @default(cuid())
-  tenantId   String
-  documentId String
-  at         DateTime @default(now())
+  id          String   @id @default(cuid())
+  tenantId    String
+  documentId  String
+  at          DateTime @default(now())
   actorUserId String
-  action     String   @db.VarChar(32)
-  details    Json?
+  action      String   @db.VarChar(32)
+  details     Json?
 
   tenant   Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   document SrmSupplierDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
@@ -811,15 +857,15 @@ model SrmSupplierDocumentAuditLog {
 
 /// SRM Phase E — replay cache for `POST` integration routes (e.g. supplier upsert) keyed by `Idempotency-Key`.
 model SrmIntegrationIdempotency {
-  id        String   @id @default(cuid())
-  tenantId  String
+  id           String   @id @default(cuid())
+  tenantId     String
   /// Route surface, e.g. `supplier_upsert_v1`.
-  surface   String   @db.VarChar(64)
-  key       String   @db.VarChar(256)
-  bodySha256 String  @db.VarChar(64)
-  statusCode Int
-  responseBody String @db.Text
-  createdAt DateTime @default(now())
+  surface      String   @db.VarChar(64)
+  key          String   @db.VarChar(256)
+  bodySha256   String   @db.VarChar(64)
+  statusCode   Int
+  responseBody String   @db.Text
+  createdAt    DateTime @default(now())
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
@@ -829,25 +875,25 @@ model SrmIntegrationIdempotency {
 
 /// Phase G: in-app row for buyers/operators (not supplier portal). Task assign + future hooks.
 model SrmOperatorNotification {
-  id         String   @id @default(cuid())
-  tenantId   String
-  userId     String
+  id          String    @id @default(cuid())
+  tenantId    String
+  userId      String
   /// e.g. ONBOARDING_TASK_ASSIGNED
-  kind       String   @db.VarChar(64)
-  title      String   @db.VarChar(256)
-  body       String?  @db.Text
-  readAt     DateTime?
-  supplierId String?
+  kind        String    @db.VarChar(64)
+  title       String    @db.VarChar(256)
+  body        String?   @db.Text
+  readAt      DateTime?
+  supplierId  String?
   /// Optional link for UI / deep-link.
-  taskId     String?
+  taskId      String?
   actorUserId String?
-  createdAt  DateTime @default(now())
+  createdAt   DateTime  @default(now())
 
-  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user     User     @relation("SrmOperatorNotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
-  supplier Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  tenant   Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user     User                    @relation("SrmOperatorNotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
+  supplier Supplier?               @relation(fields: [supplierId], references: [id], onDelete: SetNull)
   task     SupplierOnboardingTask? @relation(fields: [taskId], references: [id], onDelete: SetNull)
-  actor    User?    @relation("SrmOperatorNotificationActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  actor    User?                   @relation("SrmOperatorNotificationActor", fields: [actorUserId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, userId, readAt])
   @@index([tenantId, userId, createdAt])
@@ -890,8 +936,8 @@ model SupplierContact {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  supplier         Supplier          @relation(fields: [supplierId], references: [id], onDelete: Cascade)
   shipmentBookings ShipmentBooking[]
 
   @@index([tenantId])
@@ -926,8 +972,8 @@ model ProductDivision {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  products Product[]
+  tenant               Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  products             Product[]
   userProductDivisions UserProductDivision[]
 
   @@unique([tenantId, name])
@@ -950,9 +996,9 @@ model SupplierOffice {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  supplier Supplier  @relation(fields: [supplierId], references: [id], onDelete: Cascade)
-  products Product[]
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  supplier         Supplier          @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  products         Product[]
   shipmentBookings ShipmentBooking[]
 
   @@unique([supplierId, name])
@@ -975,13 +1021,13 @@ model Product {
   divisionId String?
   division   ProductDivision? @relation(fields: [divisionId], references: [id], onDelete: SetNull)
 
-  ean           String? @db.VarChar(32)
-  customerName  String? @db.Text
+  ean             String? @db.VarChar(32)
+  customerName    String? @db.Text
   /// Legacy “product image” until blob storage is wired; can be a CDN URL.
   primaryImageUrl String?
-  hsCode        String?
+  hsCode          String?
 
-  isDangerousGoods    Boolean @default(false)
+  isDangerousGoods    Boolean  @default(false)
   dangerousGoodsClass String?
   unNumber            String?
   properShippingName  String?
@@ -992,12 +1038,12 @@ model Product {
 
   isTemperatureControlled Boolean @default(false)
   temperatureRangeText    String?
-  temperatureUnit       String?
-  coolingType           String?
-  packagingNotes        String? @db.Text
-  humidityRequirements  String?
-  storageDescription    String? @db.Text
-  isForReexport         Boolean @default(false)
+  temperatureUnit         String?
+  coolingType             String?
+  packagingNotes          String? @db.Text
+  humidityRequirements    String?
+  storageDescription      String? @db.Text
+  isForReexport           Boolean @default(false)
 
   supplierOfficeId String?
   supplierOffice   SupplierOffice? @relation(fields: [supplierOfficeId], references: [id], onDelete: SetNull)
@@ -1006,16 +1052,16 @@ model Product {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tenant         Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  orderItems     PurchaseOrderItem[]
-  inventoryBalances InventoryBalance[]
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  orderItems         PurchaseOrderItem[]
+  inventoryBalances  InventoryBalance[]
   inventoryMovements InventoryMovement[]
-  wmsBillingEvents WmsBillingEvent[]
-  wmsTasks WmsTask[]
+  wmsBillingEvents   WmsBillingEvent[]
+  wmsTasks           WmsTask[]
   replenishmentRules ReplenishmentRule[]
   outboundOrderLines OutboundOrderLine[]
-  documents      ProductDocument[]
-  productSuppliers ProductSupplier[]
+  documents          ProductDocument[]
+  productSuppliers   ProductSupplier[]
 
   @@unique([tenantId, sku])
   @@unique([tenantId, productCode])
@@ -1132,63 +1178,63 @@ model WorkflowAction {
 }
 
 model PurchaseOrder {
-  id            String   @id @default(cuid())
-  tenantId      String
-  workflowId    String
-  orderNumber   String
-  title         String?
-  requesterId   String
-  supplierId    String?
-  statusId      String
-  currency      String   @default("USD")
-  subtotal      Decimal  @db.Decimal(14, 2)
-  taxAmount     Decimal  @db.Decimal(14, 2)
-  totalAmount   Decimal  @db.Decimal(14, 2)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  splitParentId String?
-  splitIndex    Int?
-  splitProposalId String?
+  id                    String    @id @default(cuid())
+  tenantId              String
+  workflowId            String
+  orderNumber           String
+  title                 String?
+  requesterId           String
+  supplierId            String?
+  statusId              String
+  currency              String    @default("USD")
+  subtotal              Decimal   @db.Decimal(14, 2)
+  taxAmount             Decimal   @db.Decimal(14, 2)
+  totalAmount           Decimal   @db.Decimal(14, 2)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  splitParentId         String?
+  splitIndex            Int?
+  splitProposalId       String?
   /// Optional org (subsidiary / site) this PO is for — centralized procurement; see Phase 2 in `docs/organization-dimensions-and-delivery-phases.md`.
-  servedOrgUnitId String?
+  servedOrgUnitId       String?
   /// 3PL / BCO: commercial shipper customer (same tenant `CrmAccount` as `Shipment.customerCrmAccountId`); optional.
-  customerCrmAccountId String?
+  customerCrmAccountId  String?
   /// Buyer / internal reference (e.g. requisition #).
-  buyerReference    String?
+  buyerReference        String?
   /// Supplier acknowledgment or their order #.
-  supplierReference String?
-  paymentTermsDays   Int?
-  paymentTermsLabel  String?
-  incoterm           String?
+  supplierReference     String?
+  paymentTermsDays      Int?
+  paymentTermsLabel     String?
+  incoterm              String?
   requestedDeliveryDate DateTime?
 
-  shipToName         String?
-  shipToLine1        String?
-  shipToLine2        String?
-  shipToCity         String?
-  shipToRegion       String?
-  shipToPostalCode   String?
-  shipToCountryCode  String? @db.VarChar(2)
+  shipToName        String?
+  shipToLine1       String?
+  shipToLine2       String?
+  shipToCity        String?
+  shipToRegion      String?
+  shipToPostalCode  String?
+  shipToCountryCode String? @db.VarChar(2)
 
   internalNotes   String? @db.Text
   notesToSupplier String? @db.Text
 
-  tenant        Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  workflow      Workflow             @relation(fields: [workflowId], references: [id], onDelete: Restrict)
-  requester     User                 @relation(fields: [requesterId], references: [id], onDelete: Restrict)
-  servedOrgUnit  OrgUnit?  @relation("PurchaseOrderServedOrg", fields: [servedOrgUnitId], references: [id], onDelete: SetNull)
-  customerCrmAccount CrmAccount?     @relation("PurchaseOrderCustomerCrm", fields: [customerCrmAccountId], references: [id], onDelete: SetNull)
-  supplier      Supplier?            @relation(fields: [supplierId], references: [id], onDelete: SetNull)
-  status        WorkflowStatus       @relation(fields: [statusId], references: [id], onDelete: Restrict)
-  splitProposal SplitProposal?       @relation("SplitProposalDraftOrders", fields: [splitProposalId], references: [id], onDelete: SetNull)
-  items         PurchaseOrderItem[]
-  shipments     Shipment[]
-  wmsTasks      WmsTask[]
-  transitions   OrderTransitionLog[]
-  chats         OrderChatMessage[]
-  splitChildren PurchaseOrder[]      @relation("OrderSplitParent")
-  splitParent   PurchaseOrder?       @relation("OrderSplitParent", fields: [splitParentId], references: [id])
-  splitProposalsAsParent SplitProposal[] @relation("SplitProposalParent")
+  tenant                 Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  workflow               Workflow             @relation(fields: [workflowId], references: [id], onDelete: Restrict)
+  requester              User                 @relation(fields: [requesterId], references: [id], onDelete: Restrict)
+  servedOrgUnit          OrgUnit?             @relation("PurchaseOrderServedOrg", fields: [servedOrgUnitId], references: [id], onDelete: SetNull)
+  customerCrmAccount     CrmAccount?          @relation("PurchaseOrderCustomerCrm", fields: [customerCrmAccountId], references: [id], onDelete: SetNull)
+  supplier               Supplier?            @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  status                 WorkflowStatus       @relation(fields: [statusId], references: [id], onDelete: Restrict)
+  splitProposal          SplitProposal?       @relation("SplitProposalDraftOrders", fields: [splitProposalId], references: [id], onDelete: SetNull)
+  items                  PurchaseOrderItem[]
+  shipments              Shipment[]
+  wmsTasks               WmsTask[]
+  transitions            OrderTransitionLog[]
+  chats                  OrderChatMessage[]
+  splitChildren          PurchaseOrder[]      @relation("OrderSplitParent")
+  splitParent            PurchaseOrder?       @relation("OrderSplitParent", fields: [splitParentId], references: [id])
+  splitProposalsAsParent SplitProposal[]      @relation("SplitProposalParent")
 
   @@unique([tenantId, orderNumber])
   @@index([tenantId, createdAt])
@@ -1210,8 +1256,8 @@ model PurchaseOrderItem {
   unitPrice   Decimal @db.Decimal(14, 4)
   lineTotal   Decimal @db.Decimal(14, 2)
 
-  order              PurchaseOrder      @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product            Product?           @relation(fields: [productId], references: [id], onDelete: SetNull)
+  order              PurchaseOrder       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product            Product?            @relation(fields: [productId], references: [id], onDelete: SetNull)
   splitProposalLines SplitProposalLine[]
   shipmentItems      ShipmentItem[]
 
@@ -1220,28 +1266,28 @@ model PurchaseOrderItem {
 }
 
 model SalesOrder {
-  id                  String           @id @default(cuid())
-  tenantId            String
-  soNumber            String
-  status              SalesOrderStatus @default(DRAFT)
-  customerName        String
+  id                    String           @id @default(cuid())
+  tenantId              String
+  soNumber              String
+  status                SalesOrderStatus @default(DRAFT)
+  customerName          String
   /// Optional org this SO is for (same intent as `PurchaseOrder.servedOrgUnitId`).
-  servedOrgUnitId     String?
-  customerCrmAccountId String?
-  externalRef         String?
-  requestedShipDate   DateTime?
+  servedOrgUnitId       String?
+  customerCrmAccountId  String?
+  externalRef           String?
+  requestedShipDate     DateTime?
   requestedDeliveryDate DateTime?
-  currency            String           @default("USD") @db.VarChar(3)
-  notes               String?          @db.Text
-  createdById         String
-  createdAt           DateTime         @default(now())
-  updatedAt           DateTime         @updatedAt
+  currency              String           @default("USD") @db.VarChar(3)
+  notes                 String?          @db.Text
+  createdById           String
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  servedOrgUnit OrgUnit? @relation("SalesOrderServedOrg", fields: [servedOrgUnitId], references: [id], onDelete: SetNull)
+  tenant             Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  servedOrgUnit      OrgUnit?    @relation("SalesOrderServedOrg", fields: [servedOrgUnitId], references: [id], onDelete: SetNull)
   customerCrmAccount CrmAccount? @relation(fields: [customerCrmAccountId], references: [id], onDelete: SetNull)
-  createdBy User @relation(fields: [createdById], references: [id], onDelete: Restrict)
-  shipments Shipment[]
+  createdBy          User        @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  shipments          Shipment[]
 
   @@unique([tenantId, soNumber])
   @@index([tenantId, status, createdAt])
@@ -1301,62 +1347,62 @@ enum SalesOrderStatus {
 }
 
 model Shipment {
-  id           String         @id @default(cuid())
-  orderId      String
-  salesOrderId String?
-  shipmentNo   String?
-  status       ShipmentStatus @default(BOOKING_DRAFT)
-  shippedAt    DateTime
-  receivedAt   DateTime?
+  id                      String         @id @default(cuid())
+  orderId                 String
+  salesOrderId            String?
+  shipmentNo              String?
+  status                  ShipmentStatus @default(BOOKING_DRAFT)
+  shippedAt               DateTime
+  receivedAt              DateTime?
   /// Supplier / forwarder ASN or notice id (WMS receiving layer).
-  asnReference     String?
+  asnReference            String?
   /// Expected arrival at CFS / warehouse for receiving planning.
-  expectedReceiveAt DateTime?
-  carrierSupplierId String?
-  carrier      String?
-  trackingNo   String?
-  transportMode TransportMode?
-  estimatedVolumeCbm Decimal? @db.Decimal(12, 3)
-  estimatedWeightKg Decimal? @db.Decimal(12, 3)
+  expectedReceiveAt       DateTime?
+  carrierSupplierId       String?
+  carrier                 String?
+  trackingNo              String?
+  transportMode           TransportMode?
+  estimatedVolumeCbm      Decimal?       @db.Decimal(12, 3)
+  estimatedWeightKg       Decimal?       @db.Decimal(12, 3)
   /// Outward package / collo count (forwarder cargo).
-  cargoOuterPackageCount Int?
+  cargoOuterPackageCount  Int?
   /// Chargeable / billable weight where different from estimatedWeightKg (e.g. air).
-  cargoChargeableWeightKg Decimal? @db.Decimal(12, 3)
+  cargoChargeableWeightKg Decimal?       @db.Decimal(12, 3)
   /// Freeform dimensions (e.g. 120×80×100 cm) until structured L/W/H exist.
-  cargoDimensionsText String? @db.VarChar(512)
+  cargoDimensionsText     String?        @db.VarChar(512)
   /// Main commodity description for customs / booking screens.
-  cargoCommoditySummary String? @db.Text
-  notes        String?
+  cargoCommoditySummary   String?        @db.Text
+  notes                   String?
   /// Logistics customer (e.g. 3PL shipper account) for visibility and reporting.
-  customerCrmAccountId String?
+  customerCrmAccountId    String?
   /// Primary Control Tower / ops owner for this shipment (optional).
-  opsAssigneeUserId String?
-  createdById  String
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  opsAssigneeUserId       String?
+  createdById             String
+  createdAt               DateTime       @default(now())
+  updatedAt               DateTime       @updatedAt
 
-  order     PurchaseOrder  @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  salesOrder SalesOrder?   @relation(fields: [salesOrderId], references: [id], onDelete: SetNull)
-  carrierSupplier Supplier? @relation("ShipmentCarrierSupplier", fields: [carrierSupplierId], references: [id], onDelete: SetNull)
-  customerCrmAccount CrmAccount? @relation("ShipmentCustomerAccount", fields: [customerCrmAccountId], references: [id], onDelete: SetNull)
-  opsAssignee User? @relation("ShipmentOpsAssignee", fields: [opsAssigneeUserId], references: [id], onDelete: SetNull)
-  createdBy User           @relation(fields: [createdById], references: [id], onDelete: Restrict)
-  items     ShipmentItem[]
-  loadPlanShipment LoadPlanShipment?
-  booking ShipmentBooking?
-  milestones ShipmentMilestone[]
-  wmsTasks WmsTask[]
-  ctReferences CtShipmentReference[]
-  ctTrackingMilestones CtTrackingMilestone[]
-  ctDocuments CtShipmentDocument[]
-  ctNotes CtShipmentNote[]
-  ctFinancialSnapshots CtShipmentFinancialSnapshot[]
-  ctAlerts CtAlert[]
-  ctExceptions CtException[]
-  ctAuditLogs CtAuditLog[]
-  ctLegs     CtShipmentLeg[]
-  ctContainers CtShipmentContainer[]
-  ctCostLines CtShipmentCostLine[]
+  order                      PurchaseOrder                 @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  salesOrder                 SalesOrder?                   @relation(fields: [salesOrderId], references: [id], onDelete: SetNull)
+  carrierSupplier            Supplier?                     @relation("ShipmentCarrierSupplier", fields: [carrierSupplierId], references: [id], onDelete: SetNull)
+  customerCrmAccount         CrmAccount?                   @relation("ShipmentCustomerAccount", fields: [customerCrmAccountId], references: [id], onDelete: SetNull)
+  opsAssignee                User?                         @relation("ShipmentOpsAssignee", fields: [opsAssigneeUserId], references: [id], onDelete: SetNull)
+  createdBy                  User                          @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  items                      ShipmentItem[]
+  loadPlanShipment           LoadPlanShipment?
+  booking                    ShipmentBooking?
+  milestones                 ShipmentMilestone[]
+  wmsTasks                   WmsTask[]
+  ctReferences               CtShipmentReference[]
+  ctTrackingMilestones       CtTrackingMilestone[]
+  ctDocuments                CtShipmentDocument[]
+  ctNotes                    CtShipmentNote[]
+  ctFinancialSnapshots       CtShipmentFinancialSnapshot[]
+  ctAlerts                   CtAlert[]
+  ctExceptions               CtException[]
+  ctAuditLogs                CtAuditLog[]
+  ctLegs                     CtShipmentLeg[]
+  ctContainers               CtShipmentContainer[]
+  ctCostLines                CtShipmentCostLine[]
   tariffShipmentApplications TariffShipmentApplication[]
 
   @@index([orderId, createdAt])
@@ -1368,58 +1414,58 @@ model Shipment {
 }
 
 model ShipmentItem {
-  id               String   @id @default(cuid())
-  shipmentId       String
-  orderItemId      String
-  quantityShipped  Decimal  @db.Decimal(14, 3)
-  quantityReceived Decimal  @default(0) @db.Decimal(14, 3)
-  plannedShipDate  DateTime?
+  id                  String    @id @default(cuid())
+  shipmentId          String
+  orderItemId         String
+  quantityShipped     Decimal   @db.Decimal(14, 3)
+  quantityReceived    Decimal   @default(0) @db.Decimal(14, 3)
+  plannedShipDate     DateTime?
   /// Line-level outward packages (optional; may differ from PO qty unit).
-  cargoPackageCount Int?
-  cargoGrossWeightKg Decimal? @db.Decimal(14, 3)
-  cargoVolumeCbm   Decimal? @db.Decimal(12, 6)
-  cargoDimensionsText String? @db.VarChar(512)
+  cargoPackageCount   Int?
+  cargoGrossWeightKg  Decimal?  @db.Decimal(14, 3)
+  cargoVolumeCbm      Decimal?  @db.Decimal(12, 6)
+  cargoDimensionsText String?   @db.VarChar(512)
 
-  shipment  Shipment          @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
-  orderItem  PurchaseOrderItem @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
+  shipment            Shipment               @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  orderItem           PurchaseOrderItem      @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
   containerCargoLines CtContainerCargoLine[]
 
+  @@unique([shipmentId, orderItemId])
   @@index([shipmentId])
   @@index([orderItemId])
-  @@unique([shipmentId, orderItemId])
 }
 
 model ShipmentBooking {
-  id                  String                @id @default(cuid())
-  shipmentId          String                @unique
-  status              ShipmentBookingStatus @default(DRAFT)
-  bookingNo           String?
-  serviceLevel        String?
-  forwarderSupplierId String?
-  forwarderOfficeId   String?
-  forwarderContactId  String?
-  mode                TransportMode?
-  originCode          String?
-  destinationCode     String?
-  etd                 DateTime?
-  eta                 DateTime?
-  latestEta           DateTime?
+  id                     String                @id @default(cuid())
+  shipmentId             String                @unique
+  status                 ShipmentBookingStatus @default(DRAFT)
+  bookingNo              String?
+  serviceLevel           String?
+  forwarderSupplierId    String?
+  forwarderOfficeId      String?
+  forwarderContactId     String?
+  mode                   TransportMode?
+  originCode             String?
+  destinationCode        String?
+  etd                    DateTime?
+  eta                    DateTime?
+  latestEta              DateTime?
   /// When the booking request was submitted to the forwarder (EDI / email / portal).
-  bookingSentAt           DateTime?
+  bookingSentAt          DateTime?
   /// Deadline for forwarder booking confirmation per SLA (derived from Supplier or default).
   bookingConfirmSlaDueAt DateTime?
-  notes               String?
-  createdById         String
-  updatedById         String
-  createdAt           DateTime              @default(now())
-  updatedAt           DateTime              @updatedAt
+  notes                  String?
+  createdById            String
+  updatedById            String
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
 
-  shipment        Shipment        @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
-  forwarderSupplier Supplier?     @relation(fields: [forwarderSupplierId], references: [id], onDelete: SetNull)
-  forwarderOffice SupplierOffice? @relation(fields: [forwarderOfficeId], references: [id], onDelete: SetNull)
-  forwarderContact SupplierContact? @relation(fields: [forwarderContactId], references: [id], onDelete: SetNull)
-  createdBy       User            @relation("ShipmentBookingCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
-  updatedBy       User            @relation("ShipmentBookingUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  shipment          Shipment                 @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  forwarderSupplier Supplier?                @relation(fields: [forwarderSupplierId], references: [id], onDelete: SetNull)
+  forwarderOffice   SupplierOffice?          @relation(fields: [forwarderOfficeId], references: [id], onDelete: SetNull)
+  forwarderContact  SupplierContact?         @relation(fields: [forwarderContactId], references: [id], onDelete: SetNull)
+  createdBy         User                     @relation("ShipmentBookingCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy         User                     @relation("ShipmentBookingUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
   pricingSnapshots  BookingPricingSnapshot[]
 
   @@index([status])
@@ -1446,11 +1492,11 @@ model ShipmentMilestone {
 
 /// Extra reference numbers (master/house B/L, AWB, etc.) for Control Tower.
 model CtShipmentReference {
-  id          String   @id @default(cuid())
+  id         String   @id @default(cuid())
   shipmentId String
-  refType     String
-  refValue    String
-  createdAt   DateTime @default(now())
+  refType    String
+  refValue   String
+  createdAt  DateTime @default(now())
 
   shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
 
@@ -1495,23 +1541,23 @@ enum CtShipmentDocumentSource {
 }
 
 model CtShipmentDocument {
-  id           String          @id @default(cuid())
-  tenantId     String
-  shipmentId   String
+  id                  String                   @id @default(cuid())
+  tenantId            String
+  shipmentId          String
   /// Canonical code (see `shipment-document-types.ts`) or integration-specific code.
-  docType      String
-  fileName     String
+  docType             String
+  fileName            String
   /// File URL in object storage (or public path in local dev) — not the file bytes.
-  blobUrl      String
-  visibility   CtDocVisibility @default(INTERNAL)
-  version      Int             @default(1)
-  uploadedById String
-  createdAt    DateTime        @default(now())
-  source                    CtShipmentDocumentSource @default(UPLOAD)
+  blobUrl             String
+  visibility          CtDocVisibility          @default(INTERNAL)
+  version             Int                      @default(1)
+  uploadedById        String
+  createdAt           DateTime                 @default(now())
+  source              CtShipmentDocumentSource @default(UPLOAD)
   /// When `source` is INTEGRATION: e.g. CARGOWISE, FREIGHTOS.
-  integrationProvider       String?
+  integrationProvider String?
   /// External document / message id for dedupe and support (optional).
-  externalRef               String?
+  externalRef         String?
 
   tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   shipment   Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
@@ -1543,17 +1589,17 @@ model CtShipmentNote {
 }
 
 model CtShipmentFinancialSnapshot {
-  id                   String    @id @default(cuid())
-  tenantId             String
-  shipmentId           String
-  customerVisibleCost  Decimal?  @db.Decimal(14, 2)
-  internalCost         Decimal?  @db.Decimal(14, 2)
-  internalRevenue      Decimal?  @db.Decimal(14, 2)
-  internalNet          Decimal?  @db.Decimal(14, 2)
-  internalMarginPct    Decimal?  @db.Decimal(9, 4)
-  currency             String    @default("USD") @db.VarChar(3)
-  asOf                 DateTime  @default(now())
-  createdById          String
+  id                  String   @id @default(cuid())
+  tenantId            String
+  shipmentId          String
+  customerVisibleCost Decimal? @db.Decimal(14, 2)
+  internalCost        Decimal? @db.Decimal(14, 2)
+  internalRevenue     Decimal? @db.Decimal(14, 2)
+  internalNet         Decimal? @db.Decimal(14, 2)
+  internalMarginPct   Decimal? @db.Decimal(9, 4)
+  currency            String   @default("USD") @db.VarChar(3)
+  asOf                DateTime @default(now())
+  createdById         String
 
   tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   shipment  Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
@@ -1575,19 +1621,19 @@ enum CtAlertStatus {
 }
 
 model CtAlert {
-  id                 String          @id @default(cuid())
-  tenantId           String
-  shipmentId         String
-  type               String
-  severity           CtAlertSeverity @default(WARN)
-  title              String
-  body               String?         @db.Text
-  ownerUserId        String?
-  acknowledgedAt     DateTime?
+  id               String          @id @default(cuid())
+  tenantId         String
+  shipmentId       String
+  type             String
+  severity         CtAlertSeverity @default(WARN)
+  title            String
+  body             String?         @db.Text
+  ownerUserId      String?
+  acknowledgedAt   DateTime?
   acknowledgedById String?
-  status             CtAlertStatus    @default(OPEN)
-  createdAt          DateTime        @default(now())
-  updatedAt          DateTime        @updatedAt
+  status           CtAlertStatus   @default(OPEN)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
 
   tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   shipment       Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
@@ -1607,15 +1653,15 @@ enum CtExceptionStatus {
 
 /// Tenant catalog of exception types for Control Tower (dropdown + defaults).
 model CtExceptionCode {
-  id               String          @id @default(cuid())
-  tenantId         String
-  code             String
-  label            String
-  defaultSeverity  CtAlertSeverity @default(WARN)
-  sortOrder        Int             @default(0)
-  isActive         Boolean         @default(true)
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
+  id              String          @id @default(cuid())
+  tenantId        String
+  code            String
+  label           String
+  defaultSeverity CtAlertSeverity @default(WARN)
+  sortOrder       Int             @default(0)
+  isActive        Boolean         @default(true)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
@@ -1715,19 +1761,19 @@ model CtReportSchedule {
 }
 
 model CtSavedReport {
-  id          String         @id @default(cuid())
+  id          String        @id @default(cuid())
   tenantId    String
   userId      String
   name        String
   description String?
   configJson  Json
-  isShared    Boolean        @default(false)
-  dataset     ReportDataset  @default(CONTROL_TOWER)
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  isShared    Boolean       @default(false)
+  dataset     ReportDataset @default(CONTROL_TOWER)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant           Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   dashboardWidgets CtDashboardWidget[]
   reportSchedules  CtReportSchedule[]
 
@@ -1773,25 +1819,25 @@ model CtFxRate {
 }
 
 model CtShipmentCostLine {
-  id          String   @id @default(cuid())
-  tenantId    String
-  shipmentId  String
-  category    String
-  description String?
+  id               String    @id @default(cuid())
+  tenantId         String
+  shipmentId       String
+  category         String
+  description      String?
   vendorSupplierId String?
-  vendor      String?
-  invoiceNo   String?
-  invoiceDate DateTime?
-  amountMinor BigInt
-  currency    String   @db.VarChar(3)
-  createdById String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  vendor           String?
+  invoiceNo        String?
+  invoiceDate      DateTime?
+  amountMinor      BigInt
+  currency         String    @db.VarChar(3)
+  createdById      String
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
-  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  tenant         Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  shipment       Shipment  @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
   vendorSupplier Supplier? @relation("CtCostLineVendorSupplier", fields: [vendorSupplierId], references: [id], onDelete: SetNull)
-  createdBy User    @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  createdBy      User      @relation(fields: [createdById], references: [id], onDelete: Restrict)
 
   @@index([tenantId, shipmentId, createdAt])
   @@index([shipmentId, currency])
@@ -1800,27 +1846,27 @@ model CtShipmentCostLine {
 
 /// Multi-leg routing (ocean/air/truck segments) for Control Tower.
 model CtShipmentLeg {
-  id               String          @id @default(cuid())
-  tenantId         String
-  shipmentId       String
-  legNo            Int             @default(1)
-  originCode      String?
-  destinationCode String?
+  id                String         @id @default(cuid())
+  tenantId          String
+  shipmentId        String
+  legNo             Int            @default(1)
+  originCode        String?
+  destinationCode   String?
   carrierSupplierId String?
-  carrier          String?
-  transportMode    TransportMode?
-  plannedEtd       DateTime?
-  plannedEta       DateTime?
-  actualAtd        DateTime?
-  actualAta        DateTime?
-  notes            String?         @db.Text
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
+  carrier           String?
+  transportMode     TransportMode?
+  plannedEtd        DateTime?
+  plannedEta        DateTime?
+  actualAtd         DateTime?
+  actualAta         DateTime?
+  notes             String?        @db.Text
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
 
-  tenant    Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  shipment  Shipment             @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
-  carrierSupplier Supplier?      @relation("CtLegCarrierSupplier", fields: [carrierSupplierId], references: [id], onDelete: SetNull)
-  containers CtShipmentContainer[]
+  tenant          Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  shipment        Shipment              @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  carrierSupplier Supplier?             @relation("CtLegCarrierSupplier", fields: [carrierSupplierId], references: [id], onDelete: SetNull)
+  containers      CtShipmentContainer[]
 
   @@unique([shipmentId, legNo])
   @@index([tenantId, shipmentId])
@@ -1828,23 +1874,23 @@ model CtShipmentLeg {
 }
 
 model CtShipmentContainer {
-  id               String    @id @default(cuid())
-  tenantId         String
-  shipmentId       String
-  legId            String?
-  containerNumber  String
-  containerType    String?
-  seal             String?
-  status           String?
-  gateInAt         DateTime?
-  gateOutAt        DateTime?
-  notes            String?   @db.Text
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id              String    @id @default(cuid())
+  tenantId        String
+  shipmentId      String
+  legId           String?
+  containerNumber String
+  containerType   String?
+  seal            String?
+  status          String?
+  gateInAt        DateTime?
+  gateOutAt       DateTime?
+  notes           String?   @db.Text
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
-  tenant   Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  shipment Shipment      @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
-  leg      CtShipmentLeg? @relation(fields: [legId], references: [id], onDelete: SetNull)
+  tenant     Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  shipment   Shipment               @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  leg        CtShipmentLeg?         @relation(fields: [legId], references: [id], onDelete: SetNull)
   cargoLines CtContainerCargoLine[]
 
   @@index([shipmentId])
@@ -1864,9 +1910,9 @@ model CtContainerCargoLine {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  tenant       Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  container    CtShipmentContainer  @relation(fields: [containerId], references: [id], onDelete: Cascade)
-  shipmentItem ShipmentItem         @relation(fields: [shipmentItemId], references: [id], onDelete: Cascade)
+  tenant       Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  container    CtShipmentContainer @relation(fields: [containerId], references: [id], onDelete: Cascade)
+  shipmentItem ShipmentItem        @relation(fields: [shipmentItemId], references: [id], onDelete: Cascade)
 
   @@unique([containerId, shipmentItemId])
   @@index([tenantId, containerId])
@@ -1918,17 +1964,17 @@ model Warehouse {
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
-  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  loadPlans LoadPlan[]
-  zones     WarehouseZone[]
-  bins      WarehouseBin[]
-  inventoryBalances InventoryBalance[]
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  loadPlans          LoadPlan[]
+  zones              WarehouseZone[]
+  bins               WarehouseBin[]
+  inventoryBalances  InventoryBalance[]
   inventoryMovements InventoryMovement[]
-  wmsTasks  WmsTask[]
-  wmsWaves  WmsWave[]
+  wmsTasks           WmsTask[]
+  wmsWaves           WmsWave[]
   replenishmentRules ReplenishmentRule[]
-  outboundOrders OutboundOrder[]
-  wmsBillingEvents WmsBillingEvent[]
+  outboundOrders     OutboundOrder[]
+  wmsBillingEvents   WmsBillingEvent[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -1954,9 +2000,9 @@ model WarehouseZone {
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
 
-  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
-  bins      WarehouseBin[]
+  tenant      Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  warehouse   Warehouse           @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  bins        WarehouseBin[]
   sourceRules ReplenishmentRule[] @relation("ReplenishmentSourceZone")
   targetRules ReplenishmentRule[] @relation("ReplenishmentTargetZone")
 
@@ -1973,33 +2019,33 @@ enum BinStorageType {
 }
 
 model WarehouseBin {
-  id          String   @id @default(cuid())
-  tenantId    String
-  warehouseId String
-  zoneId      String?
-  code        String
-  name        String
-  storageType BinStorageType @default(PALLET)
-  isPickFace  Boolean        @default(false)
-  maxPallets  Int?
+  id            String         @id @default(cuid())
+  tenantId      String
+  warehouseId   String
+  zoneId        String?
+  code          String
+  name          String
+  storageType   BinStorageType @default(PALLET)
+  isPickFace    Boolean        @default(false)
+  maxPallets    Int?
   /// Groups bins into one physical rack / bay run for layout maps (e.g. `R-A01`).
-  rackCode       String? @db.VarChar(64)
-  aisle          String? @db.VarChar(32)
-  bay            String? @db.VarChar(32)
+  rackCode      String?        @db.VarChar(64)
+  aisle         String?        @db.VarChar(32)
+  bay           String?        @db.VarChar(32)
   /// 1-based shelf level (floor = 1) when using rack maps.
-  level          Int?
+  level         Int?
   /// 1-based slot along the rack front (width axis) for grid columns.
-  positionIndex  Int?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  positionIndex Int?
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
-  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  warehouse Warehouse  @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
-  zone      WarehouseZone? @relation(fields: [zoneId], references: [id], onDelete: SetNull)
-  inventoryBalances InventoryBalance[]
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  warehouse          Warehouse           @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  zone               WarehouseZone?      @relation(fields: [zoneId], references: [id], onDelete: SetNull)
+  inventoryBalances  InventoryBalance[]
   inventoryMovements InventoryMovement[]
-  wmsTasks WmsTask[]
+  wmsTasks           WmsTask[]
 
   @@unique([warehouseId, code])
   @@index([tenantId, warehouseId])
@@ -2008,24 +2054,24 @@ model WarehouseBin {
 }
 
 model ReplenishmentRule {
-  id             String   @id @default(cuid())
-  tenantId       String
-  warehouseId    String
-  productId      String
-  sourceZoneId   String?
-  targetZoneId   String?
-  minPickQty     Decimal  @db.Decimal(14, 3)
-  maxPickQty     Decimal  @db.Decimal(14, 3)
-  replenishQty   Decimal  @db.Decimal(14, 3)
-  isActive       Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id           String   @id @default(cuid())
+  tenantId     String
+  warehouseId  String
+  productId    String
+  sourceZoneId String?
+  targetZoneId String?
+  minPickQty   Decimal  @db.Decimal(14, 3)
+  maxPickQty   Decimal  @db.Decimal(14, 3)
+  replenishQty Decimal  @db.Decimal(14, 3)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  tenant      Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  warehouse   Warehouse     @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
-  product     Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
-  sourceZone  WarehouseZone? @relation("ReplenishmentSourceZone", fields: [sourceZoneId], references: [id], onDelete: SetNull)
-  targetZone  WarehouseZone? @relation("ReplenishmentTargetZone", fields: [targetZoneId], references: [id], onDelete: SetNull)
+  tenant     Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  warehouse  Warehouse      @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  product    Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sourceZone WarehouseZone? @relation("ReplenishmentSourceZone", fields: [sourceZoneId], references: [id], onDelete: SetNull)
+  targetZone WarehouseZone? @relation("ReplenishmentTargetZone", fields: [targetZoneId], references: [id], onDelete: SetNull)
 
   @@unique([warehouseId, productId])
   @@index([tenantId, warehouseId])
@@ -2040,46 +2086,46 @@ enum InventoryMovementType {
 }
 
 model InventoryBalance {
-  id          String   @id @default(cuid())
-  tenantId    String
-  warehouseId String
-  binId       String
-  productId   String
-  onHandQty   Decimal  @default(0) @db.Decimal(14, 3)
-  allocatedQty Decimal @default(0) @db.Decimal(14, 3)
+  id           String   @id @default(cuid())
+  tenantId     String
+  warehouseId  String
+  binId        String
+  productId    String
+  onHandQty    Decimal  @default(0) @db.Decimal(14, 3)
+  allocatedQty Decimal  @default(0) @db.Decimal(14, 3)
   /// QC / quarantine: when true, picks and wave allocation skip this bin-product row.
-  onHold      Boolean  @default(false)
-  holdReason  String?  @db.VarChar(500)
-  updatedAt   DateTime @updatedAt
+  onHold       Boolean  @default(false)
+  holdReason   String?  @db.VarChar(500)
+  updatedAt    DateTime @updatedAt
 
-  tenant    Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  warehouse Warehouse   @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  tenant    Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  warehouse Warehouse    @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
   bin       WarehouseBin @relation(fields: [binId], references: [id], onDelete: Cascade)
-  product   Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product   Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([warehouseId, binId, productId])
   @@index([tenantId, warehouseId])
 }
 
 model InventoryMovement {
-  id             String               @id @default(cuid())
-  tenantId       String
-  warehouseId    String
-  binId          String?
-  productId      String
-  movementType   InventoryMovementType
-  quantity       Decimal              @db.Decimal(14, 3)
-  referenceType  String?
-  referenceId    String?
-  note           String?
-  createdById    String
-  createdAt      DateTime             @default(now())
+  id            String                @id @default(cuid())
+  tenantId      String
+  warehouseId   String
+  binId         String?
+  productId     String
+  movementType  InventoryMovementType
+  quantity      Decimal               @db.Decimal(14, 3)
+  referenceType String?
+  referenceId   String?
+  note          String?
+  createdById   String
+  createdAt     DateTime              @default(now())
 
-  tenant    Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  warehouse Warehouse     @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
-  bin       WarehouseBin? @relation(fields: [binId], references: [id], onDelete: SetNull)
-  product   Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
-  createdBy User          @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  warehouse       Warehouse        @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  bin             WarehouseBin?    @relation(fields: [binId], references: [id], onDelete: SetNull)
+  product         Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdBy       User             @relation(fields: [createdById], references: [id], onDelete: Restrict)
   wmsBillingEvent WmsBillingEvent?
 
   @@index([tenantId, warehouseId, createdAt])
@@ -2098,16 +2144,16 @@ enum WmsBillingInvoiceStatus {
 
 /// Tenant-defined unit price per inventory movement type (Phase B billing foundation).
 model WmsBillingRate {
-  id             String   @id @default(cuid())
-  tenantId       String
-  code           String
-  description    String?
-  movementType   InventoryMovementType?
-  amountPerUnit  Decimal  @db.Decimal(14, 4)
-  currency       String   @default("USD") @db.VarChar(3)
-  isActive       Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id            String                 @id @default(cuid())
+  tenantId      String
+  code          String
+  description   String?
+  movementType  InventoryMovementType?
+  amountPerUnit Decimal                @db.Decimal(14, 4)
+  currency      String                 @default("USD") @db.VarChar(3)
+  isActive      Boolean                @default(true)
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
@@ -2122,7 +2168,7 @@ model WmsBillingEvent {
   profileSource       WmsBillingProfileSource @default(MANUAL)
   /// When set, ties the charge to a 3PL owner (from linked outbound or future inbound rules).
   crmAccountId        String?
-  inventoryMovementId String?               @unique
+  inventoryMovementId String?                 @unique
   movementType        InventoryMovementType
   warehouseId         String
   productId           String
@@ -2135,11 +2181,11 @@ model WmsBillingEvent {
   invoiceRunId        String?
   createdAt           DateTime                @default(now())
 
-  tenant            Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  warehouse         Warehouse            @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
-  product           Product              @relation(fields: [productId], references: [id], onDelete: Cascade)
-  crmAccount        CrmAccount?          @relation(fields: [crmAccountId], references: [id], onDelete: SetNull)
-  inventoryMovement InventoryMovement?   @relation(fields: [inventoryMovementId], references: [id], onDelete: SetNull)
+  tenant            Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  warehouse         Warehouse             @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  product           Product               @relation(fields: [productId], references: [id], onDelete: Cascade)
+  crmAccount        CrmAccount?           @relation(fields: [crmAccountId], references: [id], onDelete: SetNull)
+  inventoryMovement InventoryMovement?    @relation(fields: [inventoryMovementId], references: [id], onDelete: SetNull)
   invoiceRun        WmsBillingInvoiceRun? @relation(fields: [invoiceRunId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, occurredAt])
@@ -2171,14 +2217,14 @@ model WmsBillingInvoiceRun {
 }
 
 model WmsBillingInvoiceLine {
-  id           String   @id @default(cuid())
+  id           String  @id @default(cuid())
   tenantId     String
   invoiceRunId String
   lineNo       Int
   description  String
-  quantity     Decimal  @db.Decimal(14, 3)
-  unitAmount   Decimal  @db.Decimal(14, 4)
-  lineAmount   Decimal  @db.Decimal(14, 2)
+  quantity     Decimal @db.Decimal(14, 3)
+  unitAmount   Decimal @db.Decimal(14, 4)
+  lineAmount   Decimal @db.Decimal(14, 2)
 
   tenant     Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   invoiceRun WmsBillingInvoiceRun @relation(fields: [invoiceRunId], references: [id], onDelete: Cascade)
@@ -2230,7 +2276,7 @@ model WmsWave {
 }
 
 model WmsTask {
-  id            String       @id @default(cuid())
+  id            String        @id @default(cuid())
   tenantId      String
   warehouseId   String
   taskType      WmsTaskType
@@ -2242,23 +2288,23 @@ model WmsTask {
   binId         String?
   referenceType String?
   referenceId   String?
-  quantity      Decimal      @default(0) @db.Decimal(14, 3)
+  quantity      Decimal       @default(0) @db.Decimal(14, 3)
   note          String?
   createdById   String
   completedById String?
   completedAt   DateTime?
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
-  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  warehouse   Warehouse    @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
-  shipment    Shipment?    @relation(fields: [shipmentId], references: [id], onDelete: SetNull)
+  tenant      Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  warehouse   Warehouse      @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  shipment    Shipment?      @relation(fields: [shipmentId], references: [id], onDelete: SetNull)
   order       PurchaseOrder? @relation(fields: [orderId], references: [id], onDelete: SetNull)
-  wave        WmsWave?     @relation(fields: [waveId], references: [id], onDelete: SetNull)
-  product     Product?     @relation(fields: [productId], references: [id], onDelete: SetNull)
-  bin         WarehouseBin? @relation(fields: [binId], references: [id], onDelete: SetNull)
-  createdBy   User         @relation("WmsTaskCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
-  completedBy User?        @relation("WmsTaskCompletedBy", fields: [completedById], references: [id], onDelete: SetNull)
+  wave        WmsWave?       @relation(fields: [waveId], references: [id], onDelete: SetNull)
+  product     Product?       @relation(fields: [productId], references: [id], onDelete: SetNull)
+  bin         WarehouseBin?  @relation(fields: [binId], references: [id], onDelete: SetNull)
+  createdBy   User           @relation("WmsTaskCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  completedBy User?          @relation("WmsTaskCompletedBy", fields: [completedById], references: [id], onDelete: SetNull)
 
   @@index([tenantId, warehouseId, status, taskType])
   @@index([referenceType, referenceId])
@@ -2292,29 +2338,31 @@ enum OutboundOrderStatus {
 }
 
 model OutboundOrder {
-  id            String              @id @default(cuid())
-  tenantId      String
-  warehouseId   String
-  outboundNo    String
-  customerRef   String?
-  shipToName    String?
-  shipToLine1   String?
-  shipToCity    String?
-  shipToCountryCode String? @db.VarChar(2)
+  id                String              @id @default(cuid())
+  tenantId          String
+  warehouseId       String
+  outboundNo        String
+  customerRef       String?
+  shipToName        String?
+  shipToLine1       String?
+  shipToCity        String?
+  shipToCountryCode String?             @db.VarChar(2)
   requestedShipDate DateTime?
-  status        OutboundOrderStatus @default(DRAFT)
-  notes         String?
-  /** Optional 3PL owner / bill-to CRM account (same tenant). */
-  crmAccountId  String?
-  createdById   String
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
+  status            OutboundOrderStatus @default(DRAFT)
+  notes             String?
+  /**
+   * Optional 3PL owner / bill-to CRM account (same tenant).
+   */
+  crmAccountId      String?
+  createdById       String
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
 
-  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  warehouse   Warehouse   @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
-  crmAccount  CrmAccount? @relation(fields: [crmAccountId], references: [id], onDelete: SetNull)
-  createdBy   User        @relation(fields: [createdById], references: [id], onDelete: Restrict)
-  lines       OutboundOrderLine[]
+  tenant     Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  warehouse  Warehouse           @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  crmAccount CrmAccount?         @relation(fields: [crmAccountId], references: [id], onDelete: SetNull)
+  createdBy  User                @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  lines      OutboundOrderLine[]
 
   @@unique([tenantId, outboundNo])
   @@index([tenantId, warehouseId, status])
@@ -2322,17 +2370,17 @@ model OutboundOrder {
 }
 
 model OutboundOrderLine {
-  id             String   @id @default(cuid())
-  tenantId       String
+  id              String   @id @default(cuid())
+  tenantId        String
   outboundOrderId String
-  lineNo         Int
-  productId      String
-  quantity       Decimal  @db.Decimal(14, 3)
-  pickedQty      Decimal  @default(0) @db.Decimal(14, 3)
-  packedQty      Decimal  @default(0) @db.Decimal(14, 3)
-  shippedQty     Decimal  @default(0) @db.Decimal(14, 3)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  lineNo          Int
+  productId       String
+  quantity        Decimal  @db.Decimal(14, 3)
+  pickedQty       Decimal  @default(0) @db.Decimal(14, 3)
+  packedQty       Decimal  @default(0) @db.Decimal(14, 3)
+  shippedQty      Decimal  @default(0) @db.Decimal(14, 3)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   outboundOrder OutboundOrder @relation(fields: [outboundOrderId], references: [id], onDelete: Cascade)
@@ -2358,23 +2406,23 @@ enum ContainerSize {
 }
 
 model LoadPlan {
-  id          String         @id @default(cuid())
-  tenantId    String
-  reference   String
-  warehouseId String
-  transportMode TransportMode @default(OCEAN)
-  containerSize ContainerSize @default(LCL)
-  plannedEta  DateTime?
-  status      LoadPlanStatus @default(DRAFT)
-  notes       String?
-  createdById String
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  id            String         @id @default(cuid())
+  tenantId      String
+  reference     String
+  warehouseId   String
+  transportMode TransportMode  @default(OCEAN)
+  containerSize ContainerSize  @default(LCL)
+  plannedEta    DateTime?
+  status        LoadPlanStatus @default(DRAFT)
+  notes         String?
+  createdById   String
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
-  tenant       Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  warehouse    Warehouse          @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
-  createdBy    User               @relation(fields: [createdById], references: [id], onDelete: Restrict)
-  assignments  LoadPlanShipment[]
+  tenant      Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  warehouse   Warehouse          @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  createdBy   User               @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  assignments LoadPlanShipment[]
 
   @@unique([tenantId, reference])
   @@index([tenantId, createdAt])
@@ -2410,10 +2458,10 @@ model SplitProposal {
   createdAt        DateTime            @default(now())
   resolvedAt       DateTime?
 
-  parentOrder    PurchaseOrder       @relation("SplitProposalParent", fields: [parentOrderId], references: [id], onDelete: Cascade)
-  proposedBy     User                @relation(fields: [proposedByUserId], references: [id], onDelete: Restrict)
-  lines          SplitProposalLine[]
-  draftChildOrders PurchaseOrder[]   @relation("SplitProposalDraftOrders")
+  parentOrder      PurchaseOrder       @relation("SplitProposalParent", fields: [parentOrderId], references: [id], onDelete: Cascade)
+  proposedBy       User                @relation(fields: [proposedByUserId], references: [id], onDelete: Restrict)
+  lines            SplitProposalLine[]
+  draftChildOrders PurchaseOrder[]     @relation("SplitProposalDraftOrders")
 
   @@index([parentOrderId])
   @@index([status])
@@ -2427,8 +2475,8 @@ model SplitProposalLine {
   plannedShipDate DateTime
   childIndex      Int
 
-  proposal   SplitProposal      @relation(fields: [proposalId], references: [id], onDelete: Cascade)
-  sourceLine PurchaseOrderItem  @relation(fields: [sourceLineId], references: [id], onDelete: Cascade)
+  proposal   SplitProposal     @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  sourceLine PurchaseOrderItem @relation(fields: [sourceLineId], references: [id], onDelete: Cascade)
 
   @@index([proposalId])
   @@index([sourceLineId])
@@ -2518,30 +2566,30 @@ enum CrmQuoteStatus {
 }
 
 model CrmLead {
-  id        String @id @default(cuid())
-  tenantId  String
+  id          String @id @default(cuid())
+  tenantId    String
   ownerUserId String
 
-  companyName       String
-  contactFirstName  String?
-  contactLastName   String?
-  contactEmail      String?
-  contactPhone      String?
-  status            CrmLeadStatus @default(NEW)
-  source            String        @default("MANUAL")
-  serviceInterest   String?
-  qualificationNotes String?      @db.Text
-  estimatedAnnualSpend Decimal?   @db.Decimal(14, 2)
-  targetStartDate   DateTime?
+  companyName          String
+  contactFirstName     String?
+  contactLastName      String?
+  contactEmail         String?
+  contactPhone         String?
+  status               CrmLeadStatus @default(NEW)
+  source               String        @default("MANUAL")
+  serviceInterest      String?
+  qualificationNotes   String?       @db.Text
+  estimatedAnnualSpend Decimal?      @db.Decimal(14, 2)
+  targetStartDate      DateTime?
 
-  convertedAt         DateTime?
+  convertedAt        DateTime?
   convertedAccountId String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  owner    User   @relation("CrmLeadOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  owner  User   @relation("CrmLeadOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
 
   @@index([tenantId, status])
   @@index([tenantId, ownerUserId])
@@ -2549,39 +2597,39 @@ model CrmLead {
 }
 
 model CrmAccount {
-  id         String @id @default(cuid())
-  tenantId   String
+  id          String @id @default(cuid())
+  tenantId    String
   ownerUserId String
 
-  name       String
-  legalName  String?
-  website    String?
-  accountType CrmAccountType @default(PROSPECT)
-  lifecycle CrmAccountLifecycle @default(ACTIVE)
-  industry  String?
-  segment   String?
-  strategicFlag Boolean @default(false)
+  name          String
+  legalName     String?
+  website       String?
+  accountType   CrmAccountType      @default(PROSPECT)
+  lifecycle     CrmAccountLifecycle @default(ACTIVE)
+  industry      String?
+  segment       String?
+  strategicFlag Boolean             @default(false)
 
   parentAccountId String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  owner    User   @relation("CrmAccountOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  tenant   Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  owner    User         @relation("CrmAccountOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
   parent   CrmAccount?  @relation("CrmAccountHierarchy", fields: [parentAccountId], references: [id], onDelete: SetNull)
   children CrmAccount[] @relation("CrmAccountHierarchy")
 
-  contacts      CrmContact[]
-  opportunities CrmOpportunity[]
-  activities    CrmActivity[] @relation("CrmActivityAccount")
-  quotes          CrmQuote[]
-  outboundOrders OutboundOrder[]
-  wmsBillingEvents WmsBillingEvent[]
-  shipmentsAsCustomer Shipment[] @relation("ShipmentCustomerAccount")
-  purchaseOrdersAsCustomer PurchaseOrder[] @relation("PurchaseOrderCustomerCrm")
-  salesOrders         SalesOrder[]
-  customerPortalUsers User[] @relation("UserCustomerPortalScope")
+  contacts                 CrmContact[]
+  opportunities            CrmOpportunity[]
+  activities               CrmActivity[]     @relation("CrmActivityAccount")
+  quotes                   CrmQuote[]
+  outboundOrders           OutboundOrder[]
+  wmsBillingEvents         WmsBillingEvent[]
+  shipmentsAsCustomer      Shipment[]        @relation("ShipmentCustomerAccount")
+  purchaseOrdersAsCustomer PurchaseOrder[]   @relation("PurchaseOrderCustomerCrm")
+  salesOrders              SalesOrder[]
+  customerPortalUsers      User[]            @relation("UserCustomerPortalScope")
 
   @@index([tenantId, lifecycle])
   @@index([tenantId, ownerUserId])
@@ -2589,61 +2637,61 @@ model CrmAccount {
 }
 
 model CrmContact {
-  id         String @id @default(cuid())
-  tenantId   String
-  accountId  String
+  id          String @id @default(cuid())
+  tenantId    String
+  accountId   String
   ownerUserId String
 
-  firstName   String
-  lastName    String
-  email       String?
-  phone       String?
-  title       String?
-  department  String?
+  firstName    String
+  lastName     String
+  email        String?
+  phone        String?
+  title        String?
+  department   String?
   decisionRole String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tenant       Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  account      CrmAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  owner        User   @relation("CrmContactOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
-  primaryFor   CrmOpportunity[] @relation("CrmOpportunityPrimaryContact")
-  activities   CrmActivity[] @relation("CrmActivityContact")
+  tenant     Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  account    CrmAccount       @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  owner      User             @relation("CrmContactOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  primaryFor CrmOpportunity[] @relation("CrmOpportunityPrimaryContact")
+  activities CrmActivity[]    @relation("CrmActivityContact")
 
   @@index([tenantId, accountId])
   @@index([tenantId, email])
 }
 
 model CrmOpportunity {
-  id         String @id @default(cuid())
-  tenantId   String
-  accountId  String
-  ownerUserId String
+  id               String  @id @default(cuid())
+  tenantId         String
+  accountId        String
+  ownerUserId      String
   primaryContactId String?
 
-  name        String
-  stage       CrmOpportunityStage @default(IDENTIFIED)
-  probability Int                 @default(10)
-  forecastCategory String?
-  estimatedRevenue    Decimal? @db.Decimal(14, 2)
-  estimatedNetRevenue Decimal? @db.Decimal(14, 2)
-  currency    String? @db.VarChar(3)
-  closeDate   DateTime?
-  nextStep    String? @db.Text
-  nextStepDate DateTime?
-  competitorName String?
-  lostReason  String? @db.Text
+  name                String
+  stage               CrmOpportunityStage @default(IDENTIFIED)
+  probability         Int                 @default(10)
+  forecastCategory    String?
+  estimatedRevenue    Decimal?            @db.Decimal(14, 2)
+  estimatedNetRevenue Decimal?            @db.Decimal(14, 2)
+  currency            String?             @db.VarChar(3)
+  closeDate           DateTime?
+  nextStep            String?             @db.Text
+  nextStepDate        DateTime?
+  competitorName      String?
+  lostReason          String?             @db.Text
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  account  CrmAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  owner    User   @relation("CrmOpportunityOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
-  primaryContact CrmContact? @relation("CrmOpportunityPrimaryContact", fields: [primaryContactId], references: [id], onDelete: SetNull)
-  activities CrmActivity[] @relation("CrmActivityOpportunity")
-  quotes     CrmQuote[]
+  tenant         Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  account        CrmAccount    @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  owner          User          @relation("CrmOpportunityOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  primaryContact CrmContact?   @relation("CrmOpportunityPrimaryContact", fields: [primaryContactId], references: [id], onDelete: SetNull)
+  activities     CrmActivity[] @relation("CrmActivityOpportunity")
+  quotes         CrmQuote[]
 
   @@index([tenantId, stage])
   @@index([tenantId, ownerUserId])
@@ -2652,18 +2700,18 @@ model CrmOpportunity {
 }
 
 model CrmActivity {
-  id         String @id @default(cuid())
-  tenantId   String
+  id          String @id @default(cuid())
+  tenantId    String
   ownerUserId String
 
   type    CrmActivityType
   subject String
-  body    String? @db.Text
-  status  String  @default("OPEN")
+  body    String?         @db.Text
+  status  String          @default("OPEN")
 
-  dueDate    DateTime?
-  startTime  DateTime?
-  endTime    DateTime?
+  dueDate   DateTime?
+  startTime DateTime?
+  endTime   DateTime?
 
   relatedAccountId     String?
   relatedContactId     String?
@@ -2672,8 +2720,8 @@ model CrmActivity {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tenant       Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  owner        User   @relation("CrmActivityOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  tenant             Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  owner              User            @relation("CrmActivityOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
   relatedAccount     CrmAccount?     @relation("CrmActivityAccount", fields: [relatedAccountId], references: [id], onDelete: SetNull)
   relatedContact     CrmContact?     @relation("CrmActivityContact", fields: [relatedContactId], references: [id], onDelete: SetNull)
   relatedOpportunity CrmOpportunity? @relation("CrmActivityOpportunity", fields: [relatedOpportunityId], references: [id], onDelete: SetNull)
@@ -2685,26 +2733,26 @@ model CrmActivity {
 }
 
 model CrmQuote {
-  id              String          @id @default(cuid())
-  tenantId        String
-  ownerUserId     String
-  accountId       String
-  opportunityId   String?
+  id            String  @id @default(cuid())
+  tenantId      String
+  ownerUserId   String
+  accountId     String
+  opportunityId String?
 
-  title           String
-  status          CrmQuoteStatus  @default(DRAFT)
-  quoteNumber     String?
-  validUntil      DateTime?
-  currency        String          @default("USD") @db.VarChar(3)
-  notes           String?         @db.Text
-  subtotal        Decimal?        @db.Decimal(14, 2)
+  title       String
+  status      CrmQuoteStatus @default(DRAFT)
+  quoteNumber String?
+  validUntil  DateTime?
+  currency    String         @default("USD") @db.VarChar(3)
+  notes       String?        @db.Text
+  subtotal    Decimal?       @db.Decimal(14, 2)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tenant      Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  owner       User           @relation("CrmQuoteOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
-  account     CrmAccount     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  tenant      Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  owner       User            @relation("CrmQuoteOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  account     CrmAccount      @relation(fields: [accountId], references: [id], onDelete: Cascade)
   opportunity CrmOpportunity? @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
   lines       CrmQuoteLine[]
 
@@ -2913,8 +2961,8 @@ model TariffGeographyGroup {
   createdAt     DateTime            @default(now())
 
   members                TariffGeographyMember[]
-  rateLinesAsOrigin      TariffRateLine[]      @relation("TariffRateLineOrigin")
-  rateLinesAsDestination TariffRateLine[]      @relation("TariffRateLineDestination")
+  rateLinesAsOrigin      TariffRateLine[]        @relation("TariffRateLineOrigin")
+  rateLinesAsDestination TariffRateLine[]        @relation("TariffRateLineDestination")
   chargeLines            TariffChargeLine[]
   freeTimeRules          TariffFreeTimeRule[]
 
@@ -2937,15 +2985,15 @@ model TariffGeographyMember {
 }
 
 model TariffNormalizedChargeCode {
-  id              String               @id @default(cuid())
-  code            String               @unique
-  displayName     String
-  chargeFamily    TariffChargeFamily
-  transportMode   TariffTransportMode?
-  isLocalCharge   Boolean              @default(false)
-  isSurcharge     Boolean              @default(false)
-  active          Boolean              @default(true)
-  createdAt       DateTime             @default(now())
+  id            String               @id @default(cuid())
+  code          String               @unique
+  displayName   String
+  chargeFamily  TariffChargeFamily
+  transportMode TariffTransportMode?
+  isLocalCharge Boolean              @default(false)
+  isSurcharge   Boolean              @default(false)
+  active        Boolean              @default(true)
+  createdAt     DateTime             @default(now())
 
   aliases     TariffChargeAlias[]
   chargeLines TariffChargeLine[]
@@ -2954,14 +3002,14 @@ model TariffNormalizedChargeCode {
 }
 
 model TariffChargeAlias {
-  id                     String @id @default(cuid())
+  id                     String  @id @default(cuid())
   normalizedChargeCodeId String
   aliasText              String
   providerId             String?
   notes                  String? @db.Text
 
   normalizedChargeCode TariffNormalizedChargeCode @relation(fields: [normalizedChargeCodeId], references: [id], onDelete: Cascade)
-  provider               TariffProvider?            @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  provider             TariffProvider?            @relation(fields: [providerId], references: [id], onDelete: SetNull)
 
   @@index([normalizedChargeCodeId])
   @@index([providerId])
@@ -2969,25 +3017,25 @@ model TariffChargeAlias {
 }
 
 model TariffContractHeader {
-  id             String              @id @default(cuid())
+  id             String               @id @default(cuid())
   tenantId       String
   legalEntityId  String?
   providerId     String
   transportMode  TariffTransportMode
   contractNumber String?
   title          String
-  tradeScope     String?             @db.Text
+  tradeScope     String?              @db.Text
   status         TariffContractStatus @default(DRAFT)
   ownerUserId    String?
-  notes          String?             @db.Text
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
+  notes          String?              @db.Text
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
 
-  tenant       Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  legalEntity  TariffLegalEntity?  @relation(fields: [legalEntityId], references: [id], onDelete: SetNull)
-  provider     TariffProvider      @relation(fields: [providerId], references: [id], onDelete: Restrict)
-  owner        User?               @relation("TariffContractHeaderOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
-  versions     TariffContractVersion[]
+  tenant      Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  legalEntity TariffLegalEntity?      @relation(fields: [legalEntityId], references: [id], onDelete: SetNull)
+  provider    TariffProvider          @relation(fields: [providerId], references: [id], onDelete: Restrict)
+  owner       User?                   @relation("TariffContractHeaderOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  versions    TariffContractVersion[]
 
   @@index([tenantId])
   @@index([providerId])
@@ -3013,10 +3061,10 @@ model TariffContractVersion {
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
 
-  contractHeader TariffContractHeader @relation(fields: [contractHeaderId], references: [id], onDelete: Cascade)
-  rateLines      TariffRateLine[]
-  chargeLines    TariffChargeLine[]
-  freeTimeRules  TariffFreeTimeRule[]
+  contractHeader       TariffContractHeader        @relation(fields: [contractHeaderId], references: [id], onDelete: Cascade)
+  rateLines            TariffRateLine[]
+  chargeLines          TariffChargeLine[]
+  freeTimeRules        TariffFreeTimeRule[]
   shipmentApplications TariffShipmentApplication[]
 
   @@unique([contractHeaderId, versionNo])
@@ -3026,23 +3074,23 @@ model TariffContractVersion {
 }
 
 model TariffRateLine {
-  id                  String             @id @default(cuid())
-  contractVersionId   String
-  originScopeId       String?
-  destinationScopeId  String?
-  rateType            TariffLineRateType
-  equipmentType       String?
-  commodityScope      String?            @db.Text
-  serviceScope        String?            @db.Text
-  unitBasis           String
-  currency            String             @db.VarChar(3)
-  amount              Decimal            @db.Decimal(18, 4)
-  includedChargeSet Json?
-  excludedChargeSet Json?
-  rawRateDescription  String?            @db.Text
-  validFrom           DateTime?          @db.Date
-  validTo             DateTime?          @db.Date
-  notes               String?            @db.Text
+  id                 String             @id @default(cuid())
+  contractVersionId  String
+  originScopeId      String?
+  destinationScopeId String?
+  rateType           TariffLineRateType
+  equipmentType      String?
+  commodityScope     String?            @db.Text
+  serviceScope       String?            @db.Text
+  unitBasis          String
+  currency           String             @db.VarChar(3)
+  amount             Decimal            @db.Decimal(18, 4)
+  includedChargeSet  Json?
+  excludedChargeSet  Json?
+  rawRateDescription String?            @db.Text
+  validFrom          DateTime?          @db.Date
+  validTo            DateTime?          @db.Date
+  notes              String?            @db.Text
 
   contractVersion  TariffContractVersion @relation(fields: [contractVersionId], references: [id], onDelete: Cascade)
   originScope      TariffGeographyGroup? @relation("TariffRateLineOrigin", fields: [originScopeId], references: [id], onDelete: SetNull)
@@ -3053,7 +3101,7 @@ model TariffRateLine {
 }
 
 model TariffChargeLine {
-  id                     String  @id @default(cuid())
+  id                     String    @id @default(cuid())
   contractVersionId      String
   normalizedChargeCodeId String?
   rawChargeName          String
@@ -3062,33 +3110,33 @@ model TariffChargeLine {
   equipmentScope         String?
   conditionScope         String?
   unitBasis              String
-  currency               String  @db.VarChar(3)
-  amount                 Decimal @db.Decimal(18, 4)
-  isIncluded             Boolean @default(false)
-  isMandatory            Boolean @default(true)
+  currency               String    @db.VarChar(3)
+  amount                 Decimal   @db.Decimal(18, 4)
+  isIncluded             Boolean   @default(false)
+  isMandatory            Boolean   @default(true)
   validFrom              DateTime? @db.Date
   validTo                DateTime? @db.Date
   notes                  String?   @db.Text
 
-  contractVersion      TariffContractVersion      @relation(fields: [contractVersionId], references: [id], onDelete: Cascade)
+  contractVersion      TariffContractVersion       @relation(fields: [contractVersionId], references: [id], onDelete: Cascade)
   normalizedChargeCode TariffNormalizedChargeCode? @relation(fields: [normalizedChargeCodeId], references: [id], onDelete: SetNull)
-  geographyScope       TariffGeographyGroup?      @relation(fields: [geographyScopeId], references: [id], onDelete: SetNull)
+  geographyScope       TariffGeographyGroup?       @relation(fields: [geographyScopeId], references: [id], onDelete: SetNull)
 
   @@index([contractVersionId])
   @@map("charge_lines")
 }
 
 model TariffFreeTimeRule {
-  id                 String         @id @default(cuid())
-  contractVersionId  String
-  geographyScopeId   String?
-  importExportScope  String?
-  equipmentScope     String?
-  ruleType           TariffRuleType
-  freeDays           Int
-  validFrom          DateTime?      @db.Date
-  validTo            DateTime?      @db.Date
-  notes              String?        @db.Text
+  id                String         @id @default(cuid())
+  contractVersionId String
+  geographyScopeId  String?
+  importExportScope String?
+  equipmentScope    String?
+  ruleType          TariffRuleType
+  freeDays          Int
+  validFrom         DateTime?      @db.Date
+  validTo           DateTime?      @db.Date
+  notes             String?        @db.Text
 
   contractVersion TariffContractVersion @relation(fields: [contractVersionId], references: [id], onDelete: Cascade)
   geographyScope  TariffGeographyGroup? @relation(fields: [geographyScopeId], references: [id], onDelete: SetNull)
@@ -3104,11 +3152,15 @@ model TariffImportBatch {
   sourceType       TariffSourceType
   uploadedFilename String?
   sourceReference  String?
-  /** Stored file URL (Vercel Blob or dev /uploads/tariffs/...). */
+  /**
+   * Stored file URL (Vercel Blob or dev /uploads/tariffs/...).
+   */
   sourceFileUrl    String?          @db.Text
   sourceMimeType   String?
   sourceByteSize   Int?
-  /** Original client metadata: checksum, headers, uploader id, etc. */
+  /**
+   * Original client metadata: checksum, headers, uploader id, etc.
+   */
   sourceMetadata   Json?
   parseStatus      String           @default("UPLOADED")
   confidenceScore  Decimal?         @db.Decimal(5, 2)
@@ -3116,9 +3168,9 @@ model TariffImportBatch {
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 
-  tenant       Tenant?            @relation(fields: [tenantId], references: [id], onDelete: SetNull)
-  legalEntity  TariffLegalEntity? @relation(fields: [legalEntityId], references: [id], onDelete: SetNull)
-  stagingRows  TariffImportStagingRow[]
+  tenant      Tenant?                  @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  legalEntity TariffLegalEntity?       @relation(fields: [legalEntityId], references: [id], onDelete: SetNull)
+  stagingRows TariffImportStagingRow[]
 
   @@index([tenantId])
   @@map("import_batches")
@@ -3190,10 +3242,10 @@ model TariffShipmentApplication {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  tenant            Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  shipment          Shipment                @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
-  contractVersion   TariffContractVersion   @relation(fields: [contractVersionId], references: [id], onDelete: Restrict)
-  createdBy         User?                   @relation("TariffShipmentApplicationCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  tenant          Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  shipment        Shipment              @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  contractVersion TariffContractVersion @relation(fields: [contractVersionId], references: [id], onDelete: Restrict)
+  createdBy       User?                 @relation("TariffShipmentApplicationCreator", fields: [createdById], references: [id], onDelete: SetNull)
 
   @@unique([shipmentId, contractVersionId])
   @@index([tenantId, shipmentId])
@@ -3220,8 +3272,8 @@ model QuoteRequest {
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
 
-  tenant         Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  owner          User?                     @relation("QuoteRequestOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  tenant         Tenant                      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  owner          User?                       @relation("QuoteRequestOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
   recipients     QuoteRequestRecipient[]
   responses      QuoteResponse[]
   clarifications QuoteClarificationMessage[]
@@ -3232,21 +3284,21 @@ model QuoteRequest {
 }
 
 model QuoteRequestRecipient {
-  id                String                         @id @default(cuid())
-  quoteRequestId    String
-  supplierId        String?
-  displayName       String
-  contactEmail      String?                        @db.VarChar(320)
-  invitationStatus  QuoteRecipientInvitationStatus @default(PENDING)
-  invitedAt         DateTime?
-  respondedAt       DateTime?
+  id                 String                         @id @default(cuid())
+  quoteRequestId     String
+  supplierId         String?
+  displayName        String
+  contactEmail       String?                        @db.VarChar(320)
+  invitationStatus   QuoteRecipientInvitationStatus @default(PENDING)
+  invitedAt          DateTime?
+  respondedAt        DateTime?
   /// Future outbound integration: template id, message id, last error, etc.
   lastInviteMetadata Json?
-  createdAt         DateTime                       @default(now())
+  createdAt          DateTime                       @default(now())
 
-  quoteRequest QuoteRequest  @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
-  supplier     Supplier?     @relation(fields: [supplierId], references: [id], onDelete: SetNull)
-  response     QuoteResponse?
+  quoteRequest   QuoteRequest                @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
+  supplier       Supplier?                   @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  response       QuoteResponse?
   clarifications QuoteClarificationMessage[]
 
   @@index([quoteRequestId])
@@ -3255,26 +3307,26 @@ model QuoteRequestRecipient {
 }
 
 model QuoteResponse {
-  id                    String             @id @default(cuid())
-  quoteRequestId       String
-  recipientId          String             @unique
-  status                QuoteResponseStatus @default(DRAFT)
-  currency              String             @default("USD") @db.VarChar(3)
-  totalAllInAmount      Decimal?           @db.Decimal(18, 4)
-  validityFrom          DateTime?          @db.Date
-  validityTo            DateTime?          @db.Date
-  includedChargesJson   Json?
-  excludedChargesJson   Json?
-  freeTimeSummaryJson   Json?
-  reviewNotes           String?            @db.Text
-  submittedAt           DateTime?
-  reviewedAt            DateTime?
-  createdAt             DateTime           @default(now())
-  updatedAt             DateTime           @updatedAt
+  id                  String              @id @default(cuid())
+  quoteRequestId      String
+  recipientId         String              @unique
+  status              QuoteResponseStatus @default(DRAFT)
+  currency            String              @default("USD") @db.VarChar(3)
+  totalAllInAmount    Decimal?            @db.Decimal(18, 4)
+  validityFrom        DateTime?           @db.Date
+  validityTo          DateTime?           @db.Date
+  includedChargesJson Json?
+  excludedChargesJson Json?
+  freeTimeSummaryJson Json?
+  reviewNotes         String?             @db.Text
+  submittedAt         DateTime?
+  reviewedAt          DateTime?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
 
-  quoteRequest QuoteRequest           @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
-  recipient    QuoteRequestRecipient  @relation(fields: [recipientId], references: [id], onDelete: Cascade)
-  lines        QuoteResponseLine[]
+  quoteRequest   QuoteRequest                @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
+  recipient      QuoteRequestRecipient       @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  lines          QuoteResponseLine[]
   clarifications QuoteClarificationMessage[]
 
   @@index([quoteRequestId])
@@ -3311,10 +3363,10 @@ model QuoteClarificationMessage {
   metadata        Json?
   createdAt       DateTime                     @default(now())
 
-  quoteRequest  QuoteRequest          @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
+  quoteRequest  QuoteRequest           @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
   recipient     QuoteRequestRecipient? @relation(fields: [recipientId], references: [id], onDelete: SetNull)
-  quoteResponse QuoteResponse?        @relation(fields: [quoteResponseId], references: [id], onDelete: SetNull)
-  author        User?                 @relation("QuoteClarificationAuthor", fields: [authorUserId], references: [id], onDelete: SetNull)
+  quoteResponse QuoteResponse?         @relation(fields: [quoteResponseId], references: [id], onDelete: SetNull)
+  author        User?                  @relation("QuoteClarificationAuthor", fields: [authorUserId], references: [id], onDelete: SetNull)
 
   @@index([quoteRequestId])
   @@map("quote_clarification_messages")
@@ -3323,31 +3375,31 @@ model QuoteClarificationMessage {
 /// Immutable capture of estimated booking economics at a point in time (contract or RFQ basis).
 /// Rows are never updated when underlying tariffs/quotes change — create a new snapshot instead.
 model BookingPricingSnapshot {
-  id                 String                     @id @default(cuid())
+  id                 String                    @id @default(cuid())
   tenantId           String
-  shipmentBookingId String?
+  shipmentBookingId  String?
   sourceType         PricingSnapshotSourceType
   /// Contract version id or quote response id (matches sourceType).
   sourceRecordId     String
-  sourceSummary      String?                    @db.Text
-  currency           String                     @db.VarChar(3)
-  totalEstimatedCost Decimal                    @db.Decimal(18, 4)
+  sourceSummary      String?                   @db.Text
+  currency           String                    @db.VarChar(3)
+  totalEstimatedCost Decimal                   @db.Decimal(18, 4)
   breakdownJson      Json
   freeTimeBasisJson  Json
   /// Documents how totalEstimatedCost was derived (MVP: sum of rate + charge amounts).
-  totalDerivation    String                     @default("SUM_RATE_AND_CHARGE_AMOUNTS")
-  frozenAt           DateTime                   @default(now())
+  totalDerivation    String                    @default("SUM_RATE_AND_CHARGE_AMOUNTS")
+  frozenAt           DateTime                  @default(now())
   createdByUserId    String?
   /// Reserved for buy/sell split, margin, counterparty totals, etc.
   commercialJson     Json?
   /// Reserved e.g. BUY | SELL when dual-basis UI exists.
-  basisSide          String?                    @db.VarChar(16)
+  basisSide          String?                   @db.VarChar(16)
   /// Commercial term label (FOB, EXW, DDP, …) captured at freeze; drives which legs you include in practice.
-  incoterm           String?                    @db.VarChar(16)
+  incoterm           String?                   @db.VarChar(16)
 
-  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  shipmentBooking  ShipmentBooking?  @relation(fields: [shipmentBookingId], references: [id], onDelete: SetNull)
-  creator            User?             @relation("BookingPricingSnapshotCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  shipmentBooking     ShipmentBooking?     @relation(fields: [shipmentBookingId], references: [id], onDelete: SetNull)
+  creator             User?                @relation("BookingPricingSnapshotCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
   invoiceIntakes      InvoiceIntake[]
   invoiceAuditResults InvoiceAuditResult[]
 
@@ -3389,21 +3441,21 @@ enum InvoiceReviewDecision {
 
 /// Tenant-scoped tolerance defaults for invoice vs snapshot amount comparison.
 model InvoiceToleranceRule {
-  id                   String   @id @default(cuid())
-  tenantId             String
-  name                 String
-  priority             Int      @default(0)
-  active               Boolean  @default(true)
+  id                 String   @id @default(cuid())
+  tenantId           String
+  name               String
+  priority           Int      @default(0)
+  active             Boolean  @default(true)
   /// Absolute amount difference allowed (same currency as invoice line).
-  amountAbsTolerance   Decimal? @db.Decimal(18, 4)
+  amountAbsTolerance Decimal? @db.Decimal(18, 4)
   /// Relative tolerance as ratio, e.g. 0.01 = 1%.
-  percentTolerance     Decimal? @db.Decimal(9, 6)
+  percentTolerance   Decimal? @db.Decimal(9, 6)
   /// When set, rule applies only to intakes in this currency (ISO 4217).
-  currencyScope        String?  @db.VarChar(3)
+  currencyScope      String?  @db.VarChar(3)
   /// Optional JSON list of discrepancy category keys this rule optimizes for (MVP: unused).
-  categoryScope        Json?
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  categoryScope      Json?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   tenant       Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   auditResults InvoiceAuditResult[]
@@ -3414,50 +3466,50 @@ model InvoiceToleranceRule {
 
 /// Carrier / forwarder invoice uploaded or keyed in for audit against a frozen pricing snapshot.
 model InvoiceIntake {
-  id                         String                   @id @default(cuid())
+  id                         String                    @id @default(cuid())
   tenantId                   String
-  status                     InvoiceIntakeStatus      @default(RECEIVED)
+  status                     InvoiceIntakeStatus       @default(RECEIVED)
   bookingPricingSnapshotId   String
-  externalInvoiceNo          String?                  @db.VarChar(128)
-  vendorLabel                String?                  @db.VarChar(256)
-  invoiceDate                DateTime?                @db.Date
-  currency                   String                   @default("USD") @db.VarChar(3)
+  externalInvoiceNo          String?                   @db.VarChar(128)
+  vendorLabel                String?                   @db.VarChar(256)
+  invoiceDate                DateTime?                 @db.Date
+  currency                   String                    @default("USD") @db.VarChar(3)
   /// Optional port of loading (UN/LOCODE or 5-letter) for geography-aware matching.
-  polCode                    String?                  @db.VarChar(8)
+  polCode                    String?                   @db.VarChar(8)
   /// Optional port of discharge for geography-aware matching.
-  podCode                    String?                  @db.VarChar(8)
-  rawSourceNotes             String?                  @db.Text
+  podCode                    String?                   @db.VarChar(8)
+  rawSourceNotes             String?                   @db.Text
   /// Parser or importer hard failure — surfaced to UI (no silent failures).
-  parseError                 String?                  @db.Text
+  parseError                 String?                   @db.Text
   parseWarnings              Json?
   /// Last audit engine failure (distinct from line-level RED outcomes).
-  auditRunError              String?                  @db.Text
+  auditRunError              String?                   @db.Text
   lastAuditAt                DateTime?
   rollupOutcome              InvoiceAuditRollupOutcome @default(NONE)
-  greenLineCount             Int                      @default(0)
-  amberLineCount             Int                      @default(0)
-  redLineCount               Int                      @default(0)
-  unknownLineCount           Int                      @default(0)
-  reviewDecision             InvoiceReviewDecision    @default(NONE)
-  reviewNote                 String?                  @db.Text
+  greenLineCount             Int                       @default(0)
+  amberLineCount             Int                       @default(0)
+  redLineCount               Int                       @default(0)
+  unknownLineCount           Int                       @default(0)
+  reviewDecision             InvoiceReviewDecision     @default(NONE)
+  reviewNote                 String?                   @db.Text
   reviewedByUserId           String?
   reviewedAt                 DateTime?
   /// When true, finance has cleared this audited intake for downstream accounting / export (separate from APPROVED/OVERRIDDEN review).
-  approvedForAccounting      Boolean                  @default(false)
+  approvedForAccounting      Boolean                   @default(false)
   accountingApprovedAt       DateTime?
   accountingApprovedByUserId String?
-  accountingApprovalNote     String?                  @db.Text
+  accountingApprovalNote     String?                   @db.Text
   createdByUserId            String?
-  receivedAt                 DateTime                 @default(now())
-  updatedAt                  DateTime                 @updatedAt
+  receivedAt                 DateTime                  @default(now())
+  updatedAt                  DateTime                  @updatedAt
 
   tenant                 Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   bookingPricingSnapshot BookingPricingSnapshot @relation(fields: [bookingPricingSnapshotId], references: [id], onDelete: Restrict)
   reviewer               User?                  @relation("InvoiceIntakeReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
   accountingApprover     User?                  @relation("InvoiceIntakeAccountingApprover", fields: [accountingApprovedByUserId], references: [id], onDelete: SetNull)
   creator                User?                  @relation("InvoiceIntakeCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  lines                    InvoiceLine[]
-  auditResults             InvoiceAuditResult[]
+  lines                  InvoiceLine[]
+  auditResults           InvoiceAuditResult[]
 
   @@index([tenantId])
   @@index([tenantId, receivedAt])
@@ -3467,26 +3519,26 @@ model InvoiceIntake {
 
 /// Parsed charge lines from the supplier invoice.
 model InvoiceLine {
-  id               String   @id @default(cuid())
-  invoiceIntakeId  String
-  lineNo           Int
-  rawDescription   String   @db.Text
-  normalizedLabel String? @db.VarChar(512)
-  currency         String   @db.VarChar(3)
-  amount           Decimal  @db.Decimal(18, 4)
-  unitBasis        String?  @db.VarChar(64)
-  quantity         Decimal? @db.Decimal(18, 6)
+  id                  String   @id @default(cuid())
+  invoiceIntakeId     String
+  lineNo              Int
+  rawDescription      String   @db.Text
+  normalizedLabel     String?  @db.VarChar(512)
+  currency            String   @db.VarChar(3)
+  amount              Decimal  @db.Decimal(18, 4)
+  unitBasis           String?  @db.VarChar(64)
+  quantity            Decimal? @db.Decimal(18, 6)
   /// e.g. 40HC, 20DV — improves rate-line matching.
-  equipmentType    String?  @db.VarChar(32)
+  equipmentType       String?  @db.VarChar(32)
   /// ALL_IN = compare to snapshot basket / RFQ total; ITEMIZED = per-line; null = auto-detect from description.
-  chargeStructureHint String? @db.VarChar(24)
-  sourceRowJson    Json?
-  parseConfidence  String?  @db.VarChar(32)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  chargeStructureHint String?  @db.VarChar(24)
+  sourceRowJson       Json?
+  parseConfidence     String?  @db.VarChar(32)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
-  intake       InvoiceIntake        @relation(fields: [invoiceIntakeId], references: [id], onDelete: Cascade)
-  auditResult  InvoiceAuditResult?
+  intake      InvoiceIntake       @relation(fields: [invoiceIntakeId], references: [id], onDelete: Cascade)
+  auditResult InvoiceAuditResult?
 
   @@unique([invoiceIntakeId, lineNo])
   @@index([invoiceIntakeId])
@@ -3495,19 +3547,19 @@ model InvoiceLine {
 
 /// Tenant dictionary: invoice text patterns → canonical tokens for better snapshot line matching.
 model InvoiceChargeAlias {
-  id               String   @id @default(cuid())
-  tenantId         String
-  name             String?  @db.Text
+  id              String   @id @default(cuid())
+  tenantId        String
+  name            String?  @db.Text
   /// Normalized substring match on invoice description (lowercase storage recommended).
-  pattern          String   @db.Text
+  pattern         String   @db.Text
   /// JSON string array of tokens that strongly associate with a snapshot charge/rate label.
-  canonicalTokens  Json
+  canonicalTokens Json
   /// When set, only boost candidates of this kind (CONTRACT_RATE | CONTRACT_CHARGE | RFQ_LINE).
-  targetKind       String?  @db.VarChar(24)
-  priority         Int      @default(0)
-  active           Boolean  @default(true)
-  createdAt        DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  targetKind      String?  @db.VarChar(24)
+  priority        Int      @default(0)
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
@@ -3517,24 +3569,24 @@ model InvoiceChargeAlias {
 
 /// Per invoice-line match against a booking pricing snapshot (immutable audit trail).
 model InvoiceAuditResult {
-  id                         String                 @id @default(cuid())
-  invoiceIntakeId            String
-  invoiceLineId              String                 @unique
-  bookingPricingSnapshotId   String
-  toleranceRuleId            String?
-  outcome                    InvoiceAuditLineOutcome
-  discrepancyCategories      Json
-  expectedAmount             Decimal?               @db.Decimal(18, 4)
-  amountVariance             Decimal?               @db.Decimal(18, 4)
-  percentVariance            Decimal?               @db.Decimal(9, 6)
-  snapshotMatchedJson        Json?
-  explanation                String                 @db.Text
-  createdAt                  DateTime               @default(now())
+  id                       String                  @id @default(cuid())
+  invoiceIntakeId          String
+  invoiceLineId            String                  @unique
+  bookingPricingSnapshotId String
+  toleranceRuleId          String?
+  outcome                  InvoiceAuditLineOutcome
+  discrepancyCategories    Json
+  expectedAmount           Decimal?                @db.Decimal(18, 4)
+  amountVariance           Decimal?                @db.Decimal(18, 4)
+  percentVariance          Decimal?                @db.Decimal(9, 6)
+  snapshotMatchedJson      Json?
+  explanation              String                  @db.Text
+  createdAt                DateTime                @default(now())
 
-  intake       InvoiceIntake          @relation(fields: [invoiceIntakeId], references: [id], onDelete: Cascade)
-  line         InvoiceLine            @relation(fields: [invoiceLineId], references: [id], onDelete: Cascade)
-  snapshot     BookingPricingSnapshot @relation(fields: [bookingPricingSnapshotId], references: [id], onDelete: Restrict)
-  toleranceRule InvoiceToleranceRule? @relation(fields: [toleranceRuleId], references: [id], onDelete: SetNull)
+  intake        InvoiceIntake          @relation(fields: [invoiceIntakeId], references: [id], onDelete: Cascade)
+  line          InvoiceLine            @relation(fields: [invoiceLineId], references: [id], onDelete: Cascade)
+  snapshot      BookingPricingSnapshot @relation(fields: [bookingPricingSnapshotId], references: [id], onDelete: Restrict)
+  toleranceRule InvoiceToleranceRule?  @relation(fields: [toleranceRuleId], references: [id], onDelete: SetNull)
 
   @@index([invoiceIntakeId])
   @@index([bookingPricingSnapshotId])
@@ -3551,14 +3603,14 @@ model InvoiceAuditResult {
 /// ISO 3166-1 country/territory (alpha-2 + alpha-3 + common English name).
 model ReferenceCountry {
   id         String   @id @default(cuid())
-  isoAlpha2 String   @unique @db.VarChar(2)
-  isoAlpha3 String   @unique @db.VarChar(3)
-  name      String
+  isoAlpha2  String   @unique @db.VarChar(2)
+  isoAlpha3  String   @unique @db.VarChar(3)
+  name       String
   /// Optional macro-region for tariffs / lanes (e.g. EU, NA, APAC, LATAM, MEA, OCE).
-  regionCode String? @db.VarChar(16)
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  regionCode String?  @db.VarChar(16)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@index([regionCode, isActive])
   @@map("reference_countries")
@@ -3566,12 +3618,12 @@ model ReferenceCountry {
 
 /// Ocean mainline / VOCC identifiers (SCAC-style codes used in contracts and EDI).
 model ReferenceOceanCarrier {
-  id       String   @id @default(cuid())
+  id        String   @id @default(cuid())
   /// Standard Carrier Alpha Code or equivalent 2–4 letter code.
-  scac     String   @unique @db.VarChar(4)
-  name     String
-  notes    String?  @db.Text
-  isActive Boolean  @default(true)
+  scac      String   @unique @db.VarChar(4)
+  name      String
+  notes     String?  @db.Text
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -3608,18 +3660,18 @@ enum TwinRiskSeverity {
 
 /// Tenant-scoped risk or alert signal row (minimal slice-22 foundation).
 model SupplyChainTwinRiskSignal {
-  id        String           @id @default(cuid())
-  tenantId  String
+  id                    String           @id @default(cuid())
+  tenantId              String
   /// Stable code for upserts and routing (e.g. `DEMO-SCTWIN-SEED-RISK`).
-  code      String
-  severity  TwinRiskSeverity
-  title     String
-  detail    String?
-  acknowledged           Boolean  @default(false)
-  acknowledgedAt         DateTime?
-  acknowledgedByActorId  String?
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
+  code                  String
+  severity              TwinRiskSeverity
+  title                 String
+  detail                String?
+  acknowledged          Boolean          @default(false)
+  acknowledgedAt        DateTime?
+  acknowledgedByActorId String?
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
@@ -3643,7 +3695,7 @@ model SupplyChainTwinEntitySnapshot {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant        Tenant                      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   outgoingEdges SupplyChainTwinEntityEdge[] @relation("TwinEntityEdgeFrom")
   incomingEdges SupplyChainTwinEntityEdge[] @relation("TwinEntityEdgeTo")
 
@@ -3665,7 +3717,7 @@ model SupplyChainTwinEntityEdge {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  tenant       Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant       Tenant                        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   fromSnapshot SupplyChainTwinEntitySnapshot @relation("TwinEntityEdgeFrom", fields: [fromSnapshotId], references: [id], onDelete: Cascade)
   toSnapshot   SupplyChainTwinEntitySnapshot @relation("TwinEntityEdgeTo", fields: [toSnapshotId], references: [id], onDelete: Cascade)
 
@@ -3677,15 +3729,15 @@ model SupplyChainTwinEntityEdge {
 /// Append-only “twin saw X” ingestion spine (no background worker in this slice).
 /// **Payload policy:** max serialized JSON byte length must be enforced in the writer slice (reject oversize before insert).
 model SupplyChainTwinIngestEvent {
-  id          String   @id @default(cuid())
-  tenantId    String
+  id             String   @id @default(cuid())
+  tenantId       String
   /// Event discriminator (e.g. `entity_upsert`, `edge_upsert`, `signal`) — vocabulary owned by writers.
-  type        String
+  type           String
   /// JSON body; keep small — hard cap enforced in application code, not in the database.
-  payloadJson Json     @default("{}")
+  payloadJson    Json     @default("{}")
   /// When set (via `Idempotency-Key` on POST), duplicate appends for the same tenant return the first row (no second insert).
   idempotencyKey String?
-  createdAt   DateTime @default(now())
+  createdAt      DateTime @default(now())
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
@@ -3698,16 +3750,16 @@ model SupplyChainTwinIngestEvent {
 
 /// Tenant-scoped what-if scenario draft (JSON only; no solver in Slice 24).
 model SupplyChainTwinScenarioDraft {
-  id         String   @id @default(cuid())
-  tenantId   String
-  title      String?
+  id        String   @id @default(cuid())
+  tenantId  String
+  title     String?
   /// Workflow state label (e.g. `draft`); vocabulary may evolve with scenario engine.
-  status     String   @default("draft")
-  draftJson  Json     @default("{}")
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  status    String   @default("draft")
+  draftJson Json     @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant    Tenant                            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   revisions SupplyChainTwinScenarioRevision[]
 
   @@index([tenantId])
@@ -3717,18 +3769,18 @@ model SupplyChainTwinScenarioDraft {
 
 /// Append-only metadata revisions for scenario audit timeline (no draftJson payload copies).
 model SupplyChainTwinScenarioRevision {
-  id          String   @id @default(cuid())
-  tenantId    String
+  id              String   @id @default(cuid())
+  tenantId        String
   scenarioDraftId String
-  actorId     String?
-  action      String
-  titleBefore String?
-  titleAfter  String?
-  statusBefore String?
-  statusAfter  String?
-  createdAt   DateTime @default(now())
+  actorId         String?
+  action          String
+  titleBefore     String?
+  titleAfter      String?
+  statusBefore    String?
+  statusAfter     String?
+  createdAt       DateTime @default(now())
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant        Tenant                       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   scenarioDraft SupplyChainTwinScenarioDraft @relation(fields: [scenarioDraftId], references: [id], onDelete: Cascade)
 
   @@index([tenantId], map: "SupplyChainTwinScenarioRevision_tenantId_idx")
@@ -3755,42 +3807,42 @@ enum ScriRecommendationStatus {
 
 /// SCRI R1: clustered external risk / disruption event (ingest + feed + detail).
 model ScriExternalEvent {
-  id        String   @id @default(cuid())
-  tenantId  String
+  id                String               @id @default(cuid())
+  tenantId          String
   /// Idempotency key for ingest (stable per tenant).
-  ingestKey String   @db.VarChar(256)
+  ingestKey         String               @db.VarChar(256)
   /// Optional fingerprint for future clustering across sources.
-  clusterKey String? @db.VarChar(256)
-  eventType String   @db.VarChar(64)
-  title     String   @db.VarChar(512)
-  shortSummary String? @db.Text
-  longSummary  String? @db.Text
-  eventTime    DateTime?
-  discoveredTime DateTime @default(now())
-  severity       TwinRiskSeverity
+  clusterKey        String?              @db.VarChar(256)
+  eventType         String               @db.VarChar(64)
+  title             String               @db.VarChar(512)
+  shortSummary      String?              @db.Text
+  longSummary       String?              @db.Text
+  eventTime         DateTime?
+  discoveredTime    DateTime             @default(now())
+  severity          TwinRiskSeverity
   /// 0–100 confidence in classification / relevance (R1 default from ingest).
-  confidence     Int      @default(50)
-  reviewState    ScriEventReviewState @default(NEW)
+  confidence        Int                  @default(50)
+  reviewState       ScriEventReviewState @default(NEW)
   /// Optional assignee for triage (R3).
-  ownerUserId    String?
-  sourceCount    Int      @default(0)
-  sourceTrustScore Int?
-  aiSummary      String?  @db.Text
+  ownerUserId       String?
+  sourceCount       Int                  @default(0)
+  sourceTrustScore  Int?
+  aiSummary         String?              @db.Text
   /// CONNECTOR = supplied on ingest; DETERMINISTIC_V1 = platform template; null = legacy / none.
-  aiSummarySource String? @db.VarChar(32)
-  structuredPayload Json  @default("{}")
+  aiSummarySource   String?              @db.VarChar(32)
+  structuredPayload Json                 @default("{}")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  owner        User?    @relation("ScriEventOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
-  sources      ScriEventSource[]
-  geographies  ScriEventGeography[]
+  tenant           Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  owner            User?                     @relation("ScriEventOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  sources          ScriEventSource[]
+  geographies      ScriEventGeography[]
   affectedEntities ScriEventAffectedEntity[]
-  reviewLogs   ScriEventReviewLog[]
-  taskLinks    ScriEventTaskLink[]
-  recommendations ScriEventRecommendation[]
+  reviewLogs       ScriEventReviewLog[]
+  taskLinks        ScriEventTaskLink[]
+  recommendations  ScriEventRecommendation[]
 
   @@unique([tenantId, ingestKey])
   @@index([tenantId, discoveredTime])
@@ -3800,14 +3852,14 @@ model ScriExternalEvent {
 }
 
 model ScriEventSource {
-  id        String   @id @default(cuid())
-  eventId   String
-  sourceType String  @db.VarChar(64)
-  publisher  String? @db.VarChar(256)
-  url        String? @db.VarChar(2000)
-  headline   String? @db.VarChar(512)
-  publishedAt DateTime?
-  extractedText String? @db.Text
+  id                   String    @id @default(cuid())
+  eventId              String
+  sourceType           String    @db.VarChar(64)
+  publisher            String?   @db.VarChar(256)
+  url                  String?   @db.VarChar(2000)
+  headline             String?   @db.VarChar(512)
+  publishedAt          DateTime?
+  extractedText        String?   @db.Text
   extractionConfidence Int?
 
   createdAt DateTime @default(now())
@@ -3818,8 +3870,8 @@ model ScriEventSource {
 }
 
 model ScriEventGeography {
-  id        String  @id @default(cuid())
-  eventId   String
+  id          String  @id @default(cuid())
+  eventId     String
   countryCode String? @db.VarChar(2)
   region      String? @db.VarChar(128)
   portUnloc   String? @db.VarChar(8)
@@ -3833,21 +3885,21 @@ model ScriEventGeography {
 
 /// SCRI R2: deterministic link from an external event to an internal object (see docs/SCRI data model).
 model ScriEventAffectedEntity {
-  id        String   @id @default(cuid())
-  tenantId  String
-  eventId   String
+  id              String  @id @default(cuid())
+  tenantId        String
+  eventId         String
   /// e.g. SHIPMENT, PURCHASE_ORDER, SUPPLIER, SALES_ORDER
-  objectType   String @db.VarChar(32)
-  objectId     String
-  matchType    String @db.VarChar(64)
-  matchConfidence Int @default(50)
-  impactLevel  String? @db.VarChar(32)
-  rationale    String @db.Text
+  objectType      String  @db.VarChar(32)
+  objectId        String
+  matchType       String  @db.VarChar(64)
+  matchConfidence Int     @default(50)
+  impactLevel     String? @db.VarChar(32)
+  rationale       String  @db.Text
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   event  ScriExternalEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@unique([eventId, objectType, objectId, matchType])
@@ -3923,39 +3975,39 @@ model ScriEventRecommendation {
 
 /// SCRI R7: per-tenant tuning (trust floor, geo aliases, optional ingest automation).
 model ScriTenantTuning {
-  id        String   @id @default(cuid())
-  tenantId  String   @unique
+  id                    String            @id @default(cuid())
+  tenantId              String            @unique
   /// Hide or flag ingest below this trust score in dashboards (null = off).
-  sourceTrustMin Int?
+  sourceTrustMin        Int?
   /// Minimum severity to highlight on the risk dashboard (null = off).
-  severityHighlightMin TwinRiskSeverity?
+  severityHighlightMin  TwinRiskSeverity?
   /// Map non-standard country tokens to ISO-3166 alpha-2 (e.g. `{"UK":"GB"}`), applied at ingest normalization.
-  geoAliases Json @default("{}")
+  geoAliases            Json              @default("{}")
   /// When true, new/updated events at or above `automationMinSeverity` move from NEW → WATCH if an automation actor is set.
-  automationAutoWatch Boolean @default(false)
-  automationMinSeverity TwinRiskSeverity @default(MEDIUM)
+  automationAutoWatch   Boolean           @default(false)
+  automationMinSeverity TwinRiskSeverity  @default(MEDIUM)
   automationActorUserId String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tenant           Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  automationActor User?   @relation("ScriTuningAutomationActor", fields: [automationActorUserId], references: [id], onDelete: SetNull)
+  tenant          Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  automationActor User?  @relation("ScriTuningAutomationActor", fields: [automationActorUserId], references: [id], onDelete: SetNull)
 }
 
 /// SCRI R7: watchlist rule (filter events by severity, type, geography).
 model ScriWatchlistRule {
-  id        String   @id @default(cuid())
-  tenantId  String
-  name      String   @db.VarChar(256)
-  isActive  Boolean  @default(true)
+  id           String            @id @default(cuid())
+  tenantId     String
+  name         String            @db.VarChar(256)
+  isActive     Boolean           @default(true)
   /// Minimum event severity for this rule (null = any).
-  minSeverity TwinRiskSeverity?
+  minSeverity  TwinRiskSeverity?
   /// JSON string[] of event type codes; empty array = match all types.
-  eventTypes Json @default("[]")
+  eventTypes   Json              @default("[]")
   /// JSON string[] of ISO-2 country codes from event geographies; empty = any country.
-  countryCodes Json @default("[]")
-  sortOrder Int @default(0)
+  countryCodes Json              @default("[]")
+  sortOrder    Int               @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
