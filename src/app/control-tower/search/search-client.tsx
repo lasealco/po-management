@@ -16,6 +16,17 @@ import {
   parseControlTowerProductTraceParam,
 } from "@/lib/control-tower/search-query";
 
+function parseWorkbenchStyleShipmentIds(raw: string): string[] {
+  return Array.from(
+    new Set(
+      raw
+        .split(/[\s,]+/)
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0),
+    ),
+  ).slice(0, 100);
+}
+
 type Hit = {
   id: string;
   orderNumber: string;
@@ -57,13 +68,14 @@ export function ControlTowerSearchClient() {
     Array<{ action: string; group: string; label: string; description: string }>
   >([]);
   const [assistExecutePath, setAssistExecutePath] = useState<string | null>(null);
-  const [execAction, setExecAction] = useState<"acknowledge_ct_alert" | "create_ct_note">(
-    "acknowledge_ct_alert",
-  );
+  const [execAction, setExecAction] = useState("acknowledge_ct_alert");
   const [execAlertId, setExecAlertId] = useState("");
   const [execNoteShipmentId, setExecNoteShipmentId] = useState("");
   const [execNoteBody, setExecNoteBody] = useState("");
   const [execNoteVisibility, setExecNoteVisibility] = useState<"INTERNAL" | "SHARED">("INTERNAL");
+  const [execBulkShipmentIdsText, setExecBulkShipmentIdsText] = useState("");
+  const [execExceptionId, setExecExceptionId] = useState("");
+  const [execOwnerUserId, setExecOwnerUserId] = useState("");
   const [execBusy, setExecBusy] = useState(false);
   const [execMessage, setExecMessage] = useState<string | null>(null);
   const [execError, setExecError] = useState<string | null>(null);
@@ -79,14 +91,33 @@ export function ControlTowerSearchClient() {
     setExecError(null);
     setExecMessage(null);
     try {
-      const payload =
-        execAction === "acknowledge_ct_alert"
-          ? { alertId: execAlertId.trim() }
-          : {
-              shipmentId: execNoteShipmentId.trim(),
-              body: execNoteBody,
-              visibility: execNoteVisibility,
-            };
+      let payload: Record<string, unknown>;
+      if (execAction === "acknowledge_ct_alert") {
+        payload = { alertId: execAlertId.trim() };
+      } else if (execAction === "create_ct_note") {
+        payload = {
+          shipmentId: execNoteShipmentId.trim(),
+          body: execNoteBody,
+          visibility: execNoteVisibility,
+        };
+      } else if (execAction === "bulk_acknowledge_ct_alerts") {
+        payload = { shipmentIds: parseWorkbenchStyleShipmentIds(execBulkShipmentIdsText) };
+      } else if (execAction === "assign_ct_exception_owner") {
+        const t = execOwnerUserId.trim();
+        payload = {
+          exceptionId: execExceptionId.trim(),
+          ownerUserId: t.length ? t : null,
+        };
+      } else if (execAction === "bulk_assign_ct_exception_owner") {
+        const t = execOwnerUserId.trim();
+        payload = {
+          shipmentIds: parseWorkbenchStyleShipmentIds(execBulkShipmentIdsText),
+          ownerUserId: t.length ? t : null,
+        };
+      } else {
+        throw new Error("Unknown action.");
+      }
+
       if (execAction === "acknowledge_ct_alert" && !execAlertId.trim()) {
         throw new Error("Enter the alert id (cuid) from the shipment 360 or alert row.");
       }
@@ -94,6 +125,15 @@ export function ControlTowerSearchClient() {
         if (!execNoteShipmentId.trim() || !execNoteBody.trim()) {
           throw new Error("Shipment id and note text are required.");
         }
+      }
+      if (execAction === "bulk_acknowledge_ct_alerts" || execAction === "bulk_assign_ct_exception_owner") {
+        const shipmentIds = parseWorkbenchStyleShipmentIds(execBulkShipmentIdsText);
+        if (shipmentIds.length === 0) {
+          throw new Error("Enter at least one shipment id (up to 100, separated by commas or new lines).");
+        }
+      }
+      if (execAction === "assign_ct_exception_owner" && !execExceptionId.trim()) {
+        throw new Error("Exception id (cuid) is required.");
       }
       const res = await fetch(assistExecutePath, {
         method: "POST",
@@ -121,9 +161,12 @@ export function ControlTowerSearchClient() {
     canExecuteControlTowerPostActions,
     execAction,
     execAlertId,
+    execBulkShipmentIdsText,
+    execExceptionId,
     execNoteBody,
     execNoteShipmentId,
     execNoteVisibility,
+    execOwnerUserId,
     q,
   ]);
 
@@ -374,10 +417,7 @@ export function ControlTowerSearchClient() {
               <select
                 className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-2 py-1.5 text-sm"
                 value={execAction}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  if (v === "acknowledge_ct_alert" || v === "create_ct_note") setExecAction(v);
-                }}
+                onChange={(e) => setExecAction(e.target.value)}
               >
                 {assistExecCatalog.map((t) => (
                   <option key={t.action} value={t.action}>
@@ -398,6 +438,51 @@ export function ControlTowerSearchClient() {
                 autoComplete="off"
               />
             </label>
+          ) : execAction === "bulk_acknowledge_ct_alerts" || execAction === "bulk_assign_ct_exception_owner" ? (
+            <div className="mt-3 space-y-2">
+              <label className="block text-xs font-medium text-zinc-700">
+                Shipment ids (1–100; comma or line separated)
+                <textarea
+                  value={execBulkShipmentIdsText}
+                  onChange={(e) => setExecBulkShipmentIdsText(e.target.value)}
+                  rows={4}
+                  placeholder="One shipment cuid per line or comma-separated"
+                  className="mt-1 w-full rounded-lg border border-zinc-300 px-2 py-1.5 font-mono text-sm"
+                />
+              </label>
+              {execAction === "bulk_assign_ct_exception_owner" ? (
+                <label className="block text-xs font-medium text-zinc-700">
+                  Owner user id (cuid, leave empty to clear)
+                  <input
+                    value={execOwnerUserId}
+                    onChange={(e) => setExecOwnerUserId(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-zinc-300 px-2 py-1.5 font-mono text-sm"
+                    autoComplete="off"
+                  />
+                </label>
+              ) : null}
+            </div>
+          ) : execAction === "assign_ct_exception_owner" ? (
+            <div className="mt-3 space-y-2">
+              <label className="block text-xs font-medium text-zinc-700">
+                Exception id (cuid)
+                <input
+                  value={execExceptionId}
+                  onChange={(e) => setExecExceptionId(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-zinc-300 px-2 py-1.5 font-mono text-sm"
+                  autoComplete="off"
+                />
+              </label>
+              <label className="block text-xs font-medium text-zinc-700">
+                Owner user id (cuid, leave empty to clear)
+                <input
+                  value={execOwnerUserId}
+                  onChange={(e) => setExecOwnerUserId(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-zinc-300 px-2 py-1.5 font-mono text-sm"
+                  autoComplete="off"
+                />
+              </label>
+            </div>
           ) : (
             <div className="mt-3 space-y-2">
               <label className="block text-xs font-medium text-zinc-700">

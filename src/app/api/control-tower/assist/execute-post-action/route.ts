@@ -69,6 +69,19 @@ export async function POST(request: Request) {
       });
       shipmentIdForAudit = al?.shipmentId ?? null;
     }
+    if (!shipmentIdForAudit && action === "assign_ct_exception_owner" && typeof built.body.exceptionId === "string") {
+      const ex = await prisma.ctException.findFirst({
+        where: { id: built.body.exceptionId, tenantId: tenant.id },
+        select: { shipmentId: true },
+      });
+      shipmentIdForAudit = ex?.shipmentId ?? null;
+    }
+    if (!shipmentIdForAudit) {
+      const bulkIds = (built.body as { shipmentIds?: unknown }).shipmentIds;
+      if (Array.isArray(bulkIds) && typeof bulkIds[0] === "string" && bulkIds[0].trim()) {
+        shipmentIdForAudit = bulkIds[0].trim();
+      }
+    }
 
     await writeCtAudit({
       tenantId: tenant.id,

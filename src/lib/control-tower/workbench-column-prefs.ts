@@ -1,6 +1,9 @@
 /** Browser key for workbench table column visibility (non–PO/shipment columns). */
 export const WORKBENCH_COLUMN_STORAGE_KEY = "ct-workbench-columns-v1";
 
+/** `UserPreference.key` for cross-device workbench column defaults (server sync). */
+export const CT_WORKBENCH_COLUMN_USER_PREF_KEY = "controlTower.workbenchColumnVisibility";
+
 export const WORKBENCH_TOGGABLE_COLUMNS = [
   "status",
   "mode",

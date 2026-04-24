@@ -4,7 +4,7 @@
 
 > **Numbering:** This file defines exactly **five** post-tranche phases (**1–5**). There is **no “Phase 15”** in this program line. If you meant a different product (e.g. Supply Chain Twin, SCRI, tariff engine), use that module’s backlog — not this document.
 
-**Last updated:** 2026-04-26
+**Last updated:** 2026-04-23
 
 ---
 
@@ -32,7 +32,7 @@
 | Retrieval: re-rank, chunking, optional corpus | After embeddings; GAP R3 |
 | Longer arc: multi-turn sessions, guardrails, PDF-scale parity | [issue #6](https://github.com/lasealco/po-management/issues/6) |
 
-**Exit (steering):** each scheduled slice is a **closed issue** with a merge; GAP #4 / R3 checklist updated. **2026-04-23:** first allowlisted **`POST /api/control-tower/assist/execute-post-action`** (two actions, confirm gate, audit) + Search — not full PDF / sessions.
+**Exit (steering):** each scheduled slice is a **closed issue** with a merge; GAP #4 / R3 checklist updated. **2026-04-23:** allowlisted **`POST /api/control-tower/assist/execute-post-action`** (ack / bulk ack, notes, single + bulk exception owner; confirm gate, audit) + Search — not full PDF / sessions.
 
 ---
 
@@ -54,7 +54,7 @@
 | Bulk **exception** owner **or** server-stored default column visibility | GAP near-term #6 |
 | Next **real** inbound partner: `payloadFormat` / mappers in `inbound-carrier-mappers` pattern | GAP R4, post–`sea_port_track_v1` |
 
-**Exit:** workbench and webhook paths stay **tenant-scoped**; new formats get tests + audit pattern like existing inbound. **2026-04-23:** bulk **exception owner** on workbench; **`simple_carrier_event_v1`** inbound format. **Next:** default column visibility per actor (still GAP **#6**).
+**Exit:** workbench and webhook paths stay **tenant-scoped**; new formats get tests + audit pattern like existing inbound. **2026-04-23:** bulk **exception owner** on workbench; **`simple_carrier_event_v1`** inbound; **server-stored** default workbench **column** visibility (UserPreference + `Save columns as my default`). **Next:** more inbound `payloadFormat` / carriers (GAP R4).
 
 ---
 
@@ -85,6 +85,7 @@
 
 | Date | Change |
 |------|--------|
+| 2026-04-23 | **Phase 1:** assist `execute-post-action` allowlist + Search UI: bulk alert ack, bulk + single exception owner (same confirm + audit). **Phase 3:** [GAP #6] server + UI for workbench default column visibility (`/api/control-tower/workbench-column-prefs`). |
 | 2026-04-26 | **Phase 5 (clarity):** numbering note (1–5, not 15) + [Phase 5 long-tail notes](./PHASE5_MAP_WMS_LONGTAIL.md). |
 | 2026-04-23 | Phase 4 (WMS): [receiving state machine spec](../wms/WMS_RECEIVING_STATE_MACHINE_SPEC.md) + GAP/roadmap links. |
 | 2026-04-23 | Phase 3 (Workbench & inbound): bulk exception owner + `simple_carrier_event_v1`. |

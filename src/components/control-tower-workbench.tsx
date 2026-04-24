@@ -272,12 +272,42 @@ function ControlTowerWorkbenchInner({
   /** Empty string = clear assignee (Unassigned). */
   const [bulkOpsAssigneeUserId, setBulkOpsAssigneeUserId] = useState("");
   const [bulkExceptionOwnerUserId, setBulkExceptionOwnerUserId] = useState("");
+  /**
+   * True once the user (or a saved view) has applied column choices this session,
+   * or sessionStorage had a non-empty column patch. Used so an in-flight server default fetch
+   * cannot overwrite a quick toggle on first paint.
+   */
+  const workbenchUserChoseColumnVisibilityRef = useRef(false);
 
   useLayoutEffect(() => {
     const patch = parseWorkbenchColumnVisibility(window.localStorage.getItem(WORKBENCH_COLUMN_STORAGE_KEY));
     if (Object.keys(patch).length > 0) {
+      workbenchUserChoseColumnVisibilityRef.current = true;
       setColVis({ ...defaultWorkbenchColumnVisibility(), ...patch });
     }
+  }, []);
+
+  /** When there is no browser-stored column choice, apply per-user server defaults (cross-device). */
+  useEffect(() => {
+    const localPatch = parseWorkbenchColumnVisibility(window.localStorage.getItem(WORKBENCH_COLUMN_STORAGE_KEY));
+    if (Object.keys(localPatch).length > 0) return;
+    if (workbenchUserChoseColumnVisibilityRef.current) return;
+
+    (async () => {
+      try {
+        const res = await fetch("/api/control-tower/workbench-column-prefs");
+        if (!res.ok) return;
+        if (workbenchUserChoseColumnVisibilityRef.current) return;
+        const data = (await res.json()) as { columnVisibility?: Record<string, unknown> };
+        if (!data.columnVisibility || typeof data.columnVisibility !== "object") return;
+        const patch = parseWorkbenchColumnVisibility(JSON.stringify(data.columnVisibility));
+        if (Object.keys(patch).length === 0) return;
+        if (workbenchUserChoseColumnVisibilityRef.current) return;
+        setColVis({ ...defaultWorkbenchColumnVisibility(), ...patch });
+      } catch {
+        // ignore — workbench remains on built-in defaults
+      }
+    })();
   }, []);
 
   useEffect(() => {
@@ -600,6 +630,7 @@ function ControlTowerWorkbenchInner({
     if (o.columnVisibility && typeof o.columnVisibility === "object") {
       const patch = parseWorkbenchColumnVisibility(JSON.stringify(o.columnVisibility));
       if (Object.keys(patch).length > 0) {
+        workbenchUserChoseColumnVisibilityRef.current = true;
         setColVis({ ...defaultWorkbenchColumnVisibility(), ...patch });
       }
     }
@@ -1431,10 +1462,39 @@ function ControlTowerWorkbenchInner({
           <button
             type="button"
             className="rounded border border-zinc-300 bg-white px-2 py-1 text-xs text-zinc-800 hover:bg-zinc-100"
-            onClick={() => setColVis(defaultWorkbenchColumnVisibility())}
+            onClick={() => {
+              workbenchUserChoseColumnVisibilityRef.current = true;
+              setColVis(defaultWorkbenchColumnVisibility());
+            }}
           >
             Reset columns
           </button>
+          {canEdit ? (
+            <button
+              type="button"
+              className="rounded-xl bg-[var(--arscmp-primary)] px-3 py-1 text-xs font-semibold text-white hover:opacity-95"
+              onClick={async () => {
+                workbenchUserChoseColumnVisibilityRef.current = true;
+                try {
+                  const res = await fetch("/api/control-tower/workbench-column-prefs", {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ columnVisibility: colVis }),
+                  });
+                  const parsed: unknown = await res.json();
+                  if (!res.ok) {
+                    window.alert(apiClientErrorMessage(parsed, "Could not save column defaults."));
+                    return;
+                  }
+                  window.alert("Saved your workbench column defaults for this account (applies on new browsers when no local choice).");
+                } catch (e) {
+                  window.alert(e instanceof Error ? e.message : "Could not save column defaults.");
+                }
+              }}
+            >
+              Save columns as my default
+            </button>
+          ) : null}
         </div>
       </details>
       {canUseWorkbenchBulk ? (
