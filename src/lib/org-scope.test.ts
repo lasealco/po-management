@@ -1,6 +1,22 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { orgUnitSubtreeIds } from "./org-scope";
+const userIsSuperuserMock = vi.hoisted(() => vi.fn());
+
+vi.mock("@/lib/authz", () => ({
+  userIsSuperuser: userIsSuperuserMock,
+}));
+
+const prismaUserFindFirst = vi.hoisted(() => vi.fn());
+
+vi.mock("@/lib/prisma", () => ({
+  prisma: {
+    orgUnit: { findMany: vi.fn() },
+    user: { findFirst: prismaUserFindFirst },
+  },
+}));
+
+import { getPurchaseOrderScopeWhere, orgUnitSubtreeIds } from "./org-scope";
+import { prisma } from "@/lib/prisma";
 
 describe("orgUnitSubtreeIds", () => {
   const rows = [
@@ -20,5 +36,48 @@ describe("orgUnitSubtreeIds", () => {
 
   it("returns single node when no children", () => {
     expect(orgUnitSubtreeIds(rows, "us")).toEqual(["us"]);
+  });
+});
+
+describe("getPurchaseOrderScopeWhere", () => {
+  const loadOrg = vi.mocked(prisma.orgUnit.findMany);
+
+  beforeEach(() => {
+    userIsSuperuserMock.mockReset();
+    userIsSuperuserMock.mockResolvedValue(false);
+    prismaUserFindFirst.mockReset();
+    loadOrg.mockReset();
+  });
+
+  it("returns only matching CRM account when user is customer-scoped", async () => {
+    prismaUserFindFirst.mockResolvedValue({
+      customerCrmAccountId: "crm-a",
+      primaryOrgUnitId: null,
+      productDivisionScope: [],
+    } as Awaited<ReturnType<typeof prismaUserFindFirst>>);
+
+    const w = await getPurchaseOrderScopeWhere("t-1", "u-1", {});
+    expect(w).toEqual({ customerCrmAccountId: "crm-a" });
+  });
+
+  it("ands CRM customer with org subtree", async () => {
+    prismaUserFindFirst.mockResolvedValue({
+      customerCrmAccountId: "crm-a",
+      primaryOrgUnitId: "g",
+      productDivisionScope: [],
+    } as Awaited<ReturnType<typeof prismaUserFindFirst>>);
+    loadOrg.mockResolvedValue([{ id: "g", parentId: null }] as never);
+
+    const w = await getPurchaseOrderScopeWhere("t-1", "u-1", {});
+    expect(w).toEqual({
+      AND: [
+        { customerCrmAccountId: "crm-a" },
+        {
+          requester: {
+            OR: [{ primaryOrgUnitId: { in: ["g"] } }, { primaryOrgUnitId: null }],
+          },
+        },
+      ],
+    });
   });
 });

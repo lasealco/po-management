@@ -39,11 +39,7 @@ export default async function RootLayout({
   const commandGrants = {
     orders: Boolean(access?.user && viewerHas(access.grantSet, "org.orders", "view")),
     reports: Boolean(access?.user && viewerHas(access.grantSet, "org.reports", "view")),
-    consolidation: Boolean(
-      access?.user &&
-        viewerHas(access.grantSet, "org.orders", "view") &&
-        !isSupplierPortalUser,
-    ),
+    consolidation: Boolean(linkVisibility?.consolidation),
     wms: Boolean(access?.user && viewerHas(access.grantSet, "org.wms", "view")),
     controlTower: Boolean(
       access?.user && viewerHas(access.grantSet, "org.controltower", "view"),

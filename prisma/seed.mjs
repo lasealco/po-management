@@ -399,7 +399,11 @@ async function seed() {
     update: {},
     create: { tenantId: tenant.id, name: "Customer portal", isSystem: true },
   });
-  await replaceGlobalRolePermissions(roleCustomerPortal.id, [["org.controltower", "view"]]);
+  await replaceGlobalRolePermissions(roleCustomerPortal.id, [
+    ["org.controltower", "view"],
+    /** Read purchase orders and product trace limited to `User.customerCrmAccountId` (see getPurchaseOrderScopeWhere). */
+    ["org.orders", "view"],
+  ]);
 
   let demoLogisticsCrmAccount = await prisma.crmAccount.findFirst({
     where: { tenantId: tenant.id, name: "Demo Logistics Customer" },

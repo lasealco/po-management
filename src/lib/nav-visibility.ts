@@ -1,4 +1,9 @@
-import { actorIsSupplierPortalRestricted, viewerHas, type ViewerAccess } from "@/lib/authz";
+import {
+  actorIsCustomerCrmScoped,
+  actorIsSupplierPortalRestricted,
+  viewerHas,
+  type ViewerAccess,
+} from "@/lib/authz";
 
 export type AppNavLinkVisibility = {
   /** True if any PO Management child is visible. */
@@ -46,6 +51,8 @@ export async function resolveNavState(access: ViewerAccess | null): Promise<{
 }> {
   const isSupplierPortalUser =
     access?.user != null && (await actorIsSupplierPortalRestricted(access.user.id));
+  const isCustomerCrmScoped =
+    access?.user != null && (await actorIsCustomerCrmScoped(access.user.id));
 
   const linkVisibility: AppNavLinkVisibility | undefined =
     access?.user != null
@@ -53,7 +60,7 @@ export async function resolveNavState(access: ViewerAccess | null): Promise<{
           const orders = viewerHas(access.grantSet, "org.orders", "view");
           const reports = viewerHas(access.grantSet, "org.reports", "view");
           const executive = reports;
-          const consolidation = orders;
+          const consolidation = orders && !isCustomerCrmScoped;
           const wms = viewerHas(access.grantSet, "org.wms", "view");
           const controlTower = viewerHas(access.grantSet, "org.controltower", "view");
           const crm =
@@ -75,6 +82,7 @@ export async function resolveNavState(access: ViewerAccess | null): Promise<{
           /** Preview entry: anyone with meaningful cross-module workspace access (not supplier-portal-only). */
           const supplyChainTwin =
             !isSupplierPortalUser &&
+            !isCustomerCrmScoped &&
             (controlTower ||
               orders ||
               wms ||
@@ -86,7 +94,9 @@ export async function resolveNavState(access: ViewerAccess | null): Promise<{
               rfq ||
               invoiceAudit);
           const riskIntelligence =
-            !isSupplierPortalUser && viewerHas(access.grantSet, "org.scri", "view");
+            !isSupplierPortalUser &&
+            !isCustomerCrmScoped &&
+            viewerHas(access.grantSet, "org.scri", "view");
           const srmSupplierPortal = isSupplierPortalUser;
           return {
             poManagement,

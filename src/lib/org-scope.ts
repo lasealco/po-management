@@ -39,12 +39,13 @@ export async function loadOrgUnitSubtreeIds(
 }
 
 /**
- * Phase 2: PO list/detail visibility.
+ * Phase 2 + Phase 6: PO list/detail visibility.
  * - Superusers: no extra filter.
  * - Supplier portal users: no filter (caller should still apply supplier workflow rules).
+ * - Users with `User.customerCrmAccountId` (customer portal / CT customer scope): only POs whose `customerCrmAccountId` matches (Phase 5 dimension); **AND** with org/division when both are set.
  * - Users with a primary org: only POs where the requester's org is in that subtree, or the requester has no org yet (lenient for legacy data).
  * - Users with product-division links: only POs that have at least one line whose product is in those divisions.
- * - Org + division combine with AND. Neither set → no org/division filter (see all in tenant, same as Phase 1).
+ * - Org + division + customer combine with AND. None of these sets → no extra filter (see all in tenant, same as Phase 1).
  */
 export async function getPurchaseOrderScopeWhere(
   tenantId: string,
@@ -58,6 +59,7 @@ export async function getPurchaseOrderScopeWhere(
   const user = await prisma.user.findFirst({
     where: { id: actorUserId, tenantId, isActive: true },
     select: {
+      customerCrmAccountId: true,
       primaryOrgUnitId: true,
       productDivisionScope: { select: { productDivisionId: true } },
     },
@@ -66,10 +68,15 @@ export async function getPurchaseOrderScopeWhere(
     return { id: { equals: "___no_access___" } } satisfies Prisma.PurchaseOrderWhereInput;
   }
 
+  const customerCrmId = user.customerCrmAccountId?.trim();
   const divIds = user.productDivisionScope.map((s) => s.productDivisionId);
   const orgId = user.primaryOrgUnitId;
 
   const parts: Prisma.PurchaseOrderWhereInput[] = [];
+
+  if (customerCrmId) {
+    parts.push({ customerCrmAccountId: customerCrmId });
+  }
 
   if (orgId) {
     const subtree = await loadOrgUnitSubtreeIds(tenantId, orgId);

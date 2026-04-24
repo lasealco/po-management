@@ -1,6 +1,7 @@
 import { AccessDenied } from "@/components/access-denied";
 import { ConsolidationPlanner } from "@/components/consolidation-planner";
 import {
+  actorIsCustomerCrmScoped,
   actorIsSupplierPortalRestricted,
   getActorUserId,
   getViewerGrantSet,
@@ -40,6 +41,15 @@ export default async function ConsolidationPage() {
       <AccessDenied
         title="Buyer view only"
         message="Consolidation planning is for buyer operations."
+      />
+    );
+  }
+
+  if (actorId !== null && (await actorIsCustomerCrmScoped(actorId))) {
+    return (
+      <AccessDenied
+        title="Buyer view only"
+        message="Consolidation planning is for internal operations. Your account is customer-scoped."
       />
     );
   }

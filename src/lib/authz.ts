@@ -103,6 +103,19 @@ export const actorIsSupplierPortalRestricted = cache(async (actorUserId: string)
   return userHasRoleNamed(actorUserId, "Supplier portal");
 });
 
+/**
+ * True when the user is **CRM-customer–scoped** (`User.customerCrmAccountId` set), e.g. customer
+ * portal / Control Tower “customer” view. Superusers are never treated as customer-scoped.
+ */
+export const actorIsCustomerCrmScoped = cache(async (actorUserId: string): Promise<boolean> => {
+  if (await userIsSuperuser(actorUserId)) return false;
+  const row = await prisma.user.findFirst({
+    where: { id: actorUserId, isActive: true },
+    select: { customerCrmAccountId: true },
+  });
+  return Boolean(row?.customerCrmAccountId);
+});
+
 export async function loadGlobalGrantsForUser(userId: string) {
   const [perms, user, isSuperuser] = await Promise.all([
     prisma.rolePermission.findMany({
