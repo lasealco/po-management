@@ -6,6 +6,7 @@ import {
   parseCreateCompanyLegalBody,
   serializeCompanyLegalEntity,
 } from "@/lib/company-legal-entity";
+import { recordCompanyLegalEntityAudit } from "@/lib/company-legal-audit";
 import { getActorUserId, requireApiGrant, userIsSuperuser } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { orgUnitSubtreeIds } from "@/lib/org-scope";
@@ -113,27 +114,38 @@ export async function POST(request: Request) {
   }
 
   try {
-    const created = await prisma.companyLegalEntity.create({
-      data: {
+    const created = await prisma.$transaction(async (tx) => {
+      const row = await tx.companyLegalEntity.create({
+        data: {
+          tenantId: tenant.id,
+          orgUnitId: data.orgUnitId,
+          registeredLegalName: data.registeredLegalName,
+          tradeName: data.tradeName,
+          taxVatId: data.taxVatId,
+          taxLocalId: data.taxLocalId,
+          addressLine1: data.addressLine1,
+          addressLine2: data.addressLine2,
+          addressCity: data.addressCity,
+          addressRegion: data.addressRegion,
+          addressPostalCode: data.addressPostalCode,
+          addressCountryCode: data.addressCountryCode,
+          phone: data.phone,
+          companyEmail: data.companyEmail,
+          effectiveFrom: data.effectiveFrom,
+          effectiveTo: data.effectiveTo,
+          status: data.status,
+        },
+        include: { orgUnit: { select: { id: true, name: true, code: true, kind: true } } },
+      });
+      await recordCompanyLegalEntityAudit(tx, {
         tenantId: tenant.id,
         orgUnitId: data.orgUnitId,
-        registeredLegalName: data.registeredLegalName,
-        tradeName: data.tradeName,
-        taxVatId: data.taxVatId,
-        taxLocalId: data.taxLocalId,
-        addressLine1: data.addressLine1,
-        addressLine2: data.addressLine2,
-        addressCity: data.addressCity,
-        addressRegion: data.addressRegion,
-        addressPostalCode: data.addressPostalCode,
-        addressCountryCode: data.addressCountryCode,
-        phone: data.phone,
-        companyEmail: data.companyEmail,
-        effectiveFrom: data.effectiveFrom,
-        effectiveTo: data.effectiveTo,
-        status: data.status,
-      },
-      include: { orgUnit: { select: { id: true, name: true, code: true, kind: true } } },
+        actorUserId: actorId,
+        action: "CREATE",
+        companyLegalEntityId: row.id,
+        metadata: { registeredLegalName: data.registeredLegalName },
+      });
+      return row;
     });
     return NextResponse.json({ companyLegalEntity: serializeCompanyLegalEntity(created) });
   } catch (e) {

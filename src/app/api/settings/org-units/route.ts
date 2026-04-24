@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 
+import { getActorUserId, requireApiGrant, userIsSuperuser } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { mapRoleAssignmentsToRoles, parseOperatingRolesInput } from "@/lib/org-unit-operating-roles";
+import { canActorAccessOrgUnitSubtree, canActorCreateOrReparentToTopLevelOrg } from "@/lib/org-unit-admin-scope";
+import { orgUnitSubtreeIds } from "@/lib/org-scope";
 import { validateOrgUnitCodeForKind } from "@/lib/org-unit-code-validate";
 import { prisma } from "@/lib/prisma";
-import { requireApiGrant } from "@/lib/authz";
 import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { OrgUnitKind } from "@prisma/client";
 
@@ -26,6 +28,10 @@ export async function GET() {
   if (!tenant) {
     return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   }
+  const actorId = await getActorUserId();
+  if (!actorId) {
+    return toApiErrorResponse({ error: "No active user for this session.", code: "FORBIDDEN", status: 403 });
+  }
   const orgUnits = await prisma.orgUnit.findMany({
     where: { tenantId: tenant.id },
     orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
@@ -39,8 +45,24 @@ export async function GET() {
       roleAssignments: { select: { role: true } },
     },
   });
+  let visible = orgUnits;
+  if (!(await userIsSuperuser(actorId))) {
+    const user = await prisma.user.findFirst({
+      where: { id: actorId, tenantId: tenant.id, isActive: true },
+      select: { primaryOrgUnitId: true },
+    });
+    if (user?.primaryOrgUnitId) {
+      const sub = new Set(
+        orgUnitSubtreeIds(
+          orgUnits.map((u) => ({ id: u.id, parentId: u.parentId })),
+          user.primaryOrgUnitId,
+        ),
+      );
+      visible = orgUnits.filter((u) => sub.has(u.id));
+    }
+  }
   return NextResponse.json({
-    orgUnits: orgUnits.map((u) => ({
+    orgUnits: visible.map((u) => ({
       id: u.id,
       parentId: u.parentId,
       name: u.name,
@@ -94,6 +116,10 @@ export async function POST(request: Request) {
     return toApiErrorResponse({ error: codeRes.error, code: "BAD_INPUT", status: 400 });
   }
 
+  const actorId = await getActorUserId();
+  if (!actorId) {
+    return toApiErrorResponse({ error: "No active user for this session.", code: "FORBIDDEN", status: 403 });
+  }
   if (parentId) {
     const p = await prisma.orgUnit.findFirst({
       where: { id: parentId, tenantId: tenant.id },
@@ -102,6 +128,19 @@ export async function POST(request: Request) {
     if (!p) {
       return toApiErrorResponse({ error: "parent org unit not found in this tenant.", code: "BAD_INPUT", status: 400 });
     }
+    if (!(await canActorAccessOrgUnitSubtree(actorId, tenant.id, parentId))) {
+      return toApiErrorResponse({
+        error: "You cannot add org units under that parent (outside your scope).",
+        code: "FORBIDDEN",
+        status: 403,
+      });
+    }
+  } else if (!(await canActorCreateOrReparentToTopLevelOrg(actorId, tenant.id))) {
+    return toApiErrorResponse({
+      error: "Only full tenant admins can create a top-level org node.",
+      code: "FORBIDDEN",
+      status: 403,
+    });
   }
 
   try {

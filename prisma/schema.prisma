@@ -140,6 +140,7 @@ model Tenant {
   srmIntegrationIdempotencies       SrmIntegrationIdempotency[]
   srmOperatorNotifications          SrmOperatorNotification[]
   companyLegalEntities              CompanyLegalEntity[]
+  companyLegalEntityAuditLogs       CompanyLegalEntityAuditLog[]
 }
 
 /// Integration / API hub — registry row for an external or internal data source (Phase 1 stub).
@@ -485,6 +486,7 @@ model User {
   srmDocumentsUploaded               SrmSupplierDocument[]           @relation("SrmSupplierDocumentUploadedBy")
   srmDocumentsLastTouched            SrmSupplierDocument[]           @relation("SrmSupplierDocumentLastTouchedBy")
   srmSupplierDocumentAuditAuthored   SrmSupplierDocumentAuditLog[]   @relation("SrmSupplierDocumentAuditActor")
+  companyLegalEntityAudits           CompanyLegalEntityAuditLog[]
   wmsSavedLedgerViews                WmsSavedLedgerView[]
   passwordResetTokens                PasswordResetToken[]
   /// Primary org node (geography / legal hierarchy). Matrix: see `productDivisionScope`.
@@ -515,15 +517,16 @@ model OrgUnit {
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
 
-  tenant                 Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  parent                 OrgUnit?                @relation("OrgUnitHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
-  children               OrgUnit[]               @relation("OrgUnitHierarchy")
-  usersPrimary           User[]                  @relation("UserPrimaryOrgUnit")
-  roleAssignments        OrgUnitRoleAssignment[]
-  servedOnPurchaseOrders PurchaseOrder[]         @relation("PurchaseOrderServedOrg")
-  servedOnSalesOrders    SalesOrder[]            @relation("SalesOrderServedOrg")
+  tenant                      Tenant                       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  parent                      OrgUnit?                     @relation("OrgUnitHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children                    OrgUnit[]                    @relation("OrgUnitHierarchy")
+  usersPrimary                User[]                       @relation("UserPrimaryOrgUnit")
+  roleAssignments             OrgUnitRoleAssignment[]
+  servedOnPurchaseOrders      PurchaseOrder[]              @relation("PurchaseOrderServedOrg")
+  servedOnSalesOrders         SalesOrder[]                 @relation("SalesOrderServedOrg")
   /// Statutory / document profile (optional; Phase 1). Distinct from `TariffLegalEntity` (tariff pricing).
-  companyLegalEntity     CompanyLegalEntity?
+  companyLegalEntity          CompanyLegalEntity?
+  companyLegalEntityAuditLogs CompanyLegalEntityAuditLog[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -565,11 +568,36 @@ model CompanyLegalEntity {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  orgUnit OrgUnit @relation(fields: [orgUnitId], references: [id], onDelete: Cascade)
+  tenant    Tenant                       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  orgUnit   OrgUnit                      @relation(fields: [orgUnitId], references: [id], onDelete: Cascade)
+  auditLogs CompanyLegalEntityAuditLog[]
 
   @@index([tenantId])
   @@map("company_legal_entities")
+}
+
+/// Append-only history for company legal profile changes (Phase 5).
+model CompanyLegalEntityAuditLog {
+  id                   String   @id @default(cuid())
+  tenantId             String
+  companyLegalEntityId String?
+  orgUnitId            String
+  actorUserId          String
+  /// CREATE | UPDATE | DELETE
+  action               String
+  metadata             Json?
+  createdAt            DateTime @default(now())
+
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  orgUnit            OrgUnit             @relation(fields: [orgUnitId], references: [id], onDelete: Cascade)
+  companyLegalEntity CompanyLegalEntity? @relation(fields: [companyLegalEntityId], references: [id], onDelete: SetNull)
+  actor              User                @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, createdAt])
+  @@index([orgUnitId])
+  @@index([companyLegalEntityId])
+  @@index([actorUserId])
+  @@map("company_legal_entity_audit_logs")
 }
 
 /// Zero or more operating-role tags per org unit (unique per org + role).

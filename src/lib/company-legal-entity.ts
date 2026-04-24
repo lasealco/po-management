@@ -1,6 +1,7 @@
 import type { CompanyLegalEntity, OrgUnitKind, Prisma } from "@prisma/client";
 
 import { userIsSuperuser } from "@/lib/authz";
+import { canActorAccessOrgUnitSubtree } from "@/lib/org-unit-admin-scope";
 import { orgUnitSubtreeIds } from "@/lib/org-scope";
 import { prisma } from "@/lib/prisma";
 
@@ -68,26 +69,14 @@ function validateOptionalCountry(code: string | null): { ok: true; value: string
 
 /**
  * When `orgUnitId` is set, returns whether the actor may read/write company-legal data for that org node
- * (superuser; or no primary org = tenant-wide; or target is in the actor’s org subtree).
+ * (see `canActorAccessOrgUnitSubtree` in `org-unit-admin-scope.ts`).
  */
 export async function canActorAccessOrgUnitForCompanyLegal(
   actorUserId: string,
   tenantId: string,
   orgUnitId: string,
 ): Promise<boolean> {
-  if (await userIsSuperuser(actorUserId)) return true;
-  const actor = await prisma.user.findFirst({
-    where: { id: actorUserId, tenantId, isActive: true },
-    select: { primaryOrgUnitId: true },
-  });
-  if (!actor) return false;
-  if (!actor.primaryOrgUnitId) return true;
-  const rows = await prisma.orgUnit.findMany({
-    where: { tenantId },
-    select: { id: true, parentId: true },
-  });
-  const sub = new Set(orgUnitSubtreeIds(rows, actor.primaryOrgUnitId));
-  return sub.has(orgUnitId);
+  return canActorAccessOrgUnitSubtree(actorUserId, tenantId, orgUnitId);
 }
 
 export function parseCreateCompanyLegalBody(

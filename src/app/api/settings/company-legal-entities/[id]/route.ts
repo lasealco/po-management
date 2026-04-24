@@ -6,6 +6,7 @@ import {
   parsePatchCompanyLegalBody,
   serializeCompanyLegalEntity,
 } from "@/lib/company-legal-entity";
+import { recordCompanyLegalEntityAudit } from "@/lib/company-legal-audit";
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
@@ -73,10 +74,21 @@ export async function PATCH(
   }
 
   try {
-    const updated = await prisma.companyLegalEntity.update({
-      where: { id, tenantId: tenant.id },
-      data: parsed.value,
-      include: { orgUnit: { select: { id: true, name: true, code: true, kind: true } } },
+    const updated = await prisma.$transaction(async (tx) => {
+      const row = await tx.companyLegalEntity.update({
+        where: { id, tenantId: tenant.id },
+        data: parsed.value,
+        include: { orgUnit: { select: { id: true, name: true, code: true, kind: true } } },
+      });
+      await recordCompanyLegalEntityAudit(tx, {
+        tenantId: tenant.id,
+        orgUnitId: row.orgUnitId,
+        actorUserId: actorId,
+        action: "UPDATE",
+        companyLegalEntityId: id,
+        metadata: { changedKeys: Object.keys(parsed.value) },
+      });
+      return row;
     });
     return NextResponse.json({ companyLegalEntity: serializeCompanyLegalEntity(updated) });
   } catch (e) {
@@ -106,8 +118,21 @@ export async function DELETE(
     return toApiErrorResponse({ error: "Legal profile not found.", code: "NOT_FOUND", status: 404 });
   }
 
-  await prisma.companyLegalEntity.delete({
-    where: { id, tenantId: tenant.id },
+  await prisma.$transaction(async (tx) => {
+    await recordCompanyLegalEntityAudit(tx, {
+      tenantId: tenant.id,
+      orgUnitId: existing.orgUnitId,
+      actorUserId: actorId,
+      action: "DELETE",
+      companyLegalEntityId: id,
+      metadata: {
+        companyLegalEntityId: id,
+        registeredLegalName: existing.registeredLegalName,
+      },
+    });
+    await tx.companyLegalEntity.delete({
+      where: { id, tenantId: tenant.id },
+    });
   });
   return new NextResponse(null, { status: 204 });
 }

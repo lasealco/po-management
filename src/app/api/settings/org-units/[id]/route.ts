@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 
+import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { orgUnitReparentIsValid } from "@/lib/org-unit";
+import { canActorAccessOrgUnitSubtree, canActorCreateOrReparentToTopLevelOrg } from "@/lib/org-unit-admin-scope";
 import { mapRoleAssignmentsToRoles, parseOperatingRolesInput } from "@/lib/org-unit-operating-roles";
 import { validateOrgUnitCodeForKind } from "@/lib/org-unit-code-validate";
 import { prisma } from "@/lib/prisma";
 import type { OrgUnitOperatingRole } from "@prisma/client";
-import { requireApiGrant } from "@/lib/authz";
 import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import type { OrgUnitKind } from "@prisma/client";
 
@@ -38,6 +39,13 @@ export async function PATCH(
     select: { id: true, parentId: true, name: true, code: true, kind: true, sortOrder: true },
   });
   if (!existing) {
+    return toApiErrorResponse({ error: "Org unit not found.", code: "NOT_FOUND", status: 404 });
+  }
+  const actorId = await getActorUserId();
+  if (!actorId) {
+    return toApiErrorResponse({ error: "No active user for this session.", code: "FORBIDDEN", status: 403 });
+  }
+  if (!(await canActorAccessOrgUnitSubtree(actorId, tenant.id, id))) {
     return toApiErrorResponse({ error: "Org unit not found.", code: "NOT_FOUND", status: 404 });
   }
 
@@ -109,6 +117,21 @@ export async function PATCH(
     });
     if (!orgUnitReparentIsValid(flat, id, p)) {
       return toApiErrorResponse({ error: "That parent would create a cycle.", code: "BAD_INPUT", status: 400 });
+    }
+    if (p) {
+      if (!(await canActorAccessOrgUnitSubtree(actorId, tenant.id, p))) {
+        return toApiErrorResponse({
+          error: "You cannot move this org under that parent (outside your scope).",
+          code: "FORBIDDEN",
+          status: 403,
+        });
+      }
+    } else if (!(await canActorCreateOrReparentToTopLevelOrg(actorId, tenant.id))) {
+      return toApiErrorResponse({
+        error: "Only full tenant admins can make an org a top-level node.",
+        code: "FORBIDDEN",
+        status: 403,
+      });
     }
     updates.parentId = p;
   }
@@ -195,6 +218,13 @@ export async function DELETE(
     select: { id: true },
   });
   if (!row) {
+    return toApiErrorResponse({ error: "Org unit not found.", code: "NOT_FOUND", status: 404 });
+  }
+  const actorId = await getActorUserId();
+  if (!actorId) {
+    return toApiErrorResponse({ error: "No active user for this session.", code: "FORBIDDEN", status: 403 });
+  }
+  if (!(await canActorAccessOrgUnitSubtree(actorId, tenant.id, id))) {
     return toApiErrorResponse({ error: "Org unit not found.", code: "NOT_FOUND", status: 404 });
   }
 
