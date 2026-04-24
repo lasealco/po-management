@@ -26,7 +26,7 @@ export const SETTINGS_SECTIONS: readonly SettingsNavSection[] = [
       {
         href: "/settings/organization",
         label: "Company profile",
-        description: "Display name and tenant identifier",
+        description: "Legal name, address, web & social, links to users and CRM contacts",
       },
       {
         href: "/settings/organization/structure",

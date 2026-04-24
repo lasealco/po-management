@@ -19,6 +19,18 @@ model Tenant {
   id        String   @id @default(cuid())
   name      String
   slug      String   @unique
+  /// Optional legal / registered name (e.g. for documents) — may differ from `name`.
+  legalName            String?
+  phone                String?
+  website              String?
+  addressLine1         String?
+  addressLine2         String?
+  addressCity          String?
+  addressRegion        String?
+  addressPostalCode    String?
+  addressCountryCode   String?  @db.VarChar(2)
+  linkedinUrl          String?
+  twitterUrl           String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

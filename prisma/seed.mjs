@@ -40,10 +40,34 @@ async function seed() {
     `${identitySalt.toLowerCase()}:${scryptSync(password, identitySalt.toLowerCase(), 64).toString("hex")}`;
   const tenant = await prisma.tenant.upsert({
     where: { slug: "demo-company" },
-    update: { name: "Demo Company" },
+    update: {
+      name: "Demo Company",
+      legalName: "Demo Company LLC",
+      phone: "+1 312-555-0100",
+      website: "https://example.com",
+      addressLine1: "200 Commerce Drive",
+      addressLine2: "Suite 400",
+      addressCity: "Chicago",
+      addressRegion: "IL",
+      addressPostalCode: "60601",
+      addressCountryCode: "US",
+      linkedinUrl: "https://www.linkedin.com/company/example",
+      twitterUrl: "https://twitter.com/example",
+    },
     create: {
       name: "Demo Company",
       slug: "demo-company",
+      legalName: "Demo Company LLC",
+      phone: "+1 312-555-0100",
+      website: "https://example.com",
+      addressLine1: "200 Commerce Drive",
+      addressLine2: "Suite 400",
+      addressCity: "Chicago",
+      addressRegion: "IL",
+      addressPostalCode: "60601",
+      addressCountryCode: "US",
+      linkedinUrl: "https://www.linkedin.com/company/example",
+      twitterUrl: "https://twitter.com/example",
     },
   });
 
