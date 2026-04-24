@@ -80,12 +80,26 @@ For **global → regional → country** (and similar) admin patterns, product in
 
 - [x] **Decide representation:** in-tenant `OrgUnit` tree; single-tenant hard boundary; see **System tenancy representation** above.
 - [x] **(a) Enterprise hierarchy (v1):** `OrgUnit` + `User.primaryOrgUnitId` + `UserProductDivision` + Settings UI; entity→org links and roll-up reporting are incremental.
-- [ ] **(a) Scoped permissions / policy layer:** extend RBAC or add a policy engine; audit remaining `tenantId`-only queries (CRM, WMS, other CT surfaces, etc.).
+- [ ] **(a) Scoped permissions / policy layer:** extend RBAC or add a policy engine; audit remaining `tenantId`-only queries (CRM, WMS, other CT surfaces, etc.). → *Phase 8*
 - [x] **(a) Delegation guardrails:** on `POST`/`PATCH` users and role permission updates, enforce **subset-of-assigner’s-effective-grants** + **org / product-division scope**; **Superuser** role/permission edits are **superuser-only**; document break-glass roles (e.g. platform super-admin only).
-- [ ] **(b) Customer as scope:** standardize `customerAccountId` (or shipper org id) on shipments, billing, WMS where needed; align with CRM account.
-- [ ] **(b) Portals:** customer users, invitation flow, least-privilege roles; extend visibility rules beyond Control Tower.
-- [ ] **Reporting:** remaining hubs respect **active scope** (PO-based reports and CT **shipment** reports use org scope; widen to other datasets as modeled).
-- [ ] **Investor / GTM:** keep slide language aligned with this doc—**MVP = single tenant / single company**; hierarchy = **roadmap**, not implied shipped.
+- [ ] **(b) Customer as scope:** standardize `customerAccountId` (or shipper org id) on shipments, billing, WMS where needed; align with CRM account. → *Phase 5*
+- [ ] **(b) Portals:** customer users, invitation flow, least-privilege roles; extend visibility rules beyond Control Tower. → *Phase 6*
+- [ ] **Reporting:** remaining hubs respect **active scope** (PO-based reports and CT **shipment** reports use org scope; widen to other datasets as modeled). → *Phase 7*
+- [ ] **Investor / GTM:** keep slide language aligned with this doc—**MVP = single tenant / single company**; hierarchy = **roadmap**, not implied shipped. → *Ongoing*
+
+### Phased roadmap: customer, portals, reporting, platform backlog
+
+This is the **order we talk about the remaining work in**, not a promise of build order. The earlier **“Path toward scoped RBAC”** pass (§1–2, plus CT/CRM/WMS in §2) is the **in-module read-scope** track; the phases below are the **next vertical slices** after that shape is proven.
+
+| Phase | Theme | What ships (outcome) | Ties to open backlog line |
+|--------|--------|----------------------|----------------------------|
+| **5** | **Customer as scope** | A consistent **shipper / BCO customer** (or `customerAccountId`–style) dimension on the **ops** entities that need 3PL isolation—**shipments, billing, WMS**, etc.—**aligned to CRM** so CT/WMS/AR aren’t the only levers. | **(b) Customer as scope** |
+| **6** | **Portals** | **External users** (customers’ users), **invites**, and **least-privilege roles**; **visibility rules** for those users, building on the early CT customer scope rather than re-inventing per module. | **(b) Portals** |
+| **7** | **Reporting** | **Cockpits and report hubs** that still assume **one tenant = one view of all data** get **the same active org / product / customer** scope that ops APIs use, **as each dataset** supports it. | **Reporting** |
+| **8** | **Policy + read-model audit** | **Policy engine** or equivalent **formal** scoped rules (per **§3** and **“Phase 4, product”** in notes); **audit** to close `tenantId`-only reads. | **(a) Scoped permissions / policy layer** |
+| **—** | **GTM (ongoing)** | Slides, investor, and GTM: **MVP = single-tenant**; **hierarchy and scope = roadmap** until a phase above is truly live. | **Investor / GTM** |
+
+**Dependency hint (soft):** Phase **5** makes **6** and **7** much easier. Phase **8** is often a **product** decision; implementation can trail **5–7** or overlap once scope fields exist on enough entities.
 
 ## Related code (for implementers)
 
