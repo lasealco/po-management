@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
-import { getActorUserId, requireApiGrant } from "@/lib/authz";
+import { getActorUserId, getViewerGrantSet, requireApiGrant, viewerHas } from "@/lib/authz";
+import { getControlTowerPostActionToolCatalog } from "@/lib/control-tower/assist-tool-catalog";
 import { runControlTowerAssist } from "@/lib/control-tower/assist-llm";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
@@ -49,6 +50,11 @@ export async function POST(request: Request) {
     savedWorkbenchFiltersBrief = filterRows.map((r) => ({ name: r.name }));
   }
 
+  const access = await getViewerGrantSet();
+  const canExecutePostActions = Boolean(
+    access?.user && viewerHas(access.grantSet, "org.controltower", "edit"),
+  );
+
   const result = await runControlTowerAssist({
     raw: q,
     savedReportsBrief,
@@ -59,5 +65,7 @@ export async function POST(request: Request) {
     suggestedFilters: result.suggestedFilters,
     capabilities: result.capabilities,
     usedLlm: result.usedLlm,
+    postActionToolCatalog: getControlTowerPostActionToolCatalog(),
+    canExecuteControlTowerPostActions: canExecutePostActions,
   });
 }

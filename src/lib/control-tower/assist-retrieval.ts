@@ -77,6 +77,22 @@ const SNIPPETS: AssistRetrievedSnippet[] = [
       "Exception catalog: CtExceptionCode per tenant, Settings UI at /settings/control-tower-exception-codes, GET exception-codes, and post-actions upsert_ct_exception_code for API-driven catalog sync.",
   },
   {
+    id: "control-tower-post-actions",
+    terms: [
+      "post action",
+      "POST /api/control-tower",
+      "mutation",
+      "bulk",
+      "acknowledge",
+      "upsert",
+      "save_ct_filter",
+    ],
+    summary:
+      "All Control Tower state changes go through POST /api/control-tower with an action field (e.g. acknowledge_ct_alert, save_ct_filter) — not from Search. Assist now returns a read-only postActionToolCatalog; running mutations requires org.controltower edit (see canExecuteControlTowerPostActions in assist JSON).",
+    detail:
+      "post-actions.ts is the main router. Search page documents representative actions in a collapsible list; the assist API exposes the same catalog plus a boolean when the user has edit. Future tool-calling should stay allowlisted and audited — see GAP near-term #4 and issue #6.",
+  },
+  {
     id: "product-trace",
     terms: ["product trace", "trace", "sku", "buyer code", "map", "po to stock"],
     summary:

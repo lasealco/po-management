@@ -117,6 +117,7 @@ Work **one issue at a time** (parallel agents only on **non-overlapping paths**)
 
 | Date | Change |
 |------|--------|
+| 2026-04-25 | **Near-term #4 slice:** `postActionToolCatalog` on **`POST …/assist`** + Search UI (`assist-tool-catalog.ts`); `controltower/GAP_MAP`. |
 | 2026-04-25 | **Phase 1 doc:** Assist/chatbot PDF gap vs **1A→1E vertical PRs** (avoid monolithic chatbot v2). |
 | 2026-04-25 | **Control Tower Phase 3.4 (partial):** `/wms` → shipment map and `/control-tower/map` → WMS when dual grants; `CONTROL_TOWER_OPERATIONS_MAP_PHASE3.md`. |
 | 2026-04-25 | **WMS Phase 2.4 (REPLENISH UX):** `openTasks` includes `sourceBin` for **From → To** in open tasks; `wms/GAP_MAP.md` R2 replenishment. |

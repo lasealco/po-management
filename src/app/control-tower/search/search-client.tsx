@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 
 import type { AssistSuggestedFilters } from "@/lib/control-tower/assist";
+import { CONTROL_TOWER_POST_ACTION_HANDLER_COUNT } from "@/lib/control-tower/assist-tool-catalog";
 import {
   controlTowerListPrimaryTitle,
   controlTowerListSecondaryRef,
@@ -47,6 +48,11 @@ export function ControlTowerSearchClient() {
   const [assistWarn, setAssistWarn] = useState<string | null>(null);
   const [searchTruncated, setSearchTruncated] = useState(false);
   const [searchLimit, setSearchLimit] = useState<number | null>(null);
+  const [postActionToolCatalog, setPostActionToolCatalog] = useState<
+    Array<{ action: string; group: string; label: string; description: string }>
+  >([]);
+  const [canExecuteControlTowerPostActions, setCanExecuteControlTowerPostActions] = useState(false);
+  const [postActionHandlerCount, setPostActionHandlerCount] = useState<number | null>(null);
 
   const workbenchHref = useMemo(() => {
     if (!suggested && !q.trim()) return "/control-tower/workbench";
@@ -69,6 +75,9 @@ export function ControlTowerSearchClient() {
     setAssistWarn(null);
     setSearchTruncated(false);
     setSearchLimit(null);
+    setPostActionToolCatalog([]);
+    setCanExecuteControlTowerPostActions(false);
+    setPostActionHandlerCount(null);
     try {
       const assistRes = await fetch("/api/control-tower/assist", {
         method: "POST",
@@ -81,6 +90,13 @@ export function ControlTowerSearchClient() {
         capabilities?: { llmAssist?: boolean; assistDocEmbeddings?: boolean };
         usedLlm?: boolean;
         error?: string;
+        postActionToolCatalog?: Array<{
+          action: string;
+          group: string;
+          label: string;
+          description: string;
+        }>;
+        canExecuteControlTowerPostActions?: boolean;
       } = {};
       try {
         assistJson = (await assistRes.json()) as typeof assistJson;
@@ -93,12 +109,20 @@ export function ControlTowerSearchClient() {
         setLlmAvailable(Boolean(assistJson.capabilities?.llmAssist));
         setUsedLlm(Boolean(assistJson.usedLlm));
         setAssistDocEmbeddings(Boolean(assistJson.capabilities?.assistDocEmbeddings));
+        setPostActionToolCatalog(assistJson.postActionToolCatalog ?? []);
+        setCanExecuteControlTowerPostActions(
+          Boolean(assistJson.canExecuteControlTowerPostActions),
+        );
+        setPostActionHandlerCount(CONTROL_TOWER_POST_ACTION_HANDLER_COUNT);
       } else {
         setHints([]);
         setSuggested(null);
         setLlmAvailable(false);
         setUsedLlm(false);
         setAssistDocEmbeddings(false);
+        setPostActionToolCatalog([]);
+        setCanExecuteControlTowerPostActions(false);
+        setPostActionHandlerCount(null);
         const detail = assistJson.error?.trim() || assistRes.statusText || `HTTP ${assistRes.status}`;
         setAssistWarn(
           `Assist unavailable (${detail}). Search is using your raw query only — structured tokens were not applied.`,
@@ -222,6 +246,32 @@ export function ControlTowerSearchClient() {
             <li key={h}>· {h}</li>
           ))}
         </ul>
+      ) : null}
+      {postActionToolCatalog.length > 0 && postActionHandlerCount != null ? (
+        <details className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-700">
+          <summary className="cursor-pointer font-medium text-zinc-800">
+            Control Tower POST <code className="rounded bg-zinc-200 px-1">action</code> reference (
+            {postActionToolCatalog.length} shown · {postActionHandlerCount} in router)
+          </summary>
+          <p className="mt-2 text-zinc-600">
+            Mutations use <code className="rounded bg-zinc-100 px-1">POST /api/control-tower</code> with{" "}
+            <code className="rounded bg-zinc-100 px-1">action</code> and payload — not this search. Your session:{" "}
+            <span className="font-medium text-zinc-800">
+              {canExecuteControlTowerPostActions
+                ? "org.controltower → edit (can run actions in-app / API)"
+                : "view only (see actions in 360; API POST requires edit)"}
+            </span>
+            .
+          </p>
+          <ul className="mt-2 max-h-48 space-y-2 overflow-y-auto pr-1">
+            {postActionToolCatalog.map((t) => (
+              <li key={t.action}>
+                <span className="text-[10px] font-semibold uppercase text-zinc-500">{t.group}</span>{" "}
+                <code className="text-[11px] text-zinc-800">{t.action}</code> — {t.label}. {t.description}
+              </li>
+            ))}
+          </ul>
+        </details>
       ) : null}
       {assistWarn ? (
         <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">{assistWarn}</p>

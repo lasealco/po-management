@@ -34,7 +34,8 @@ Track in GitHub; check off here when merged.
 
 Turn each into an **Agent task** issue before starting if not already covered above.
 
-- [x] **Assist / chatbot — embedding hybrid (Phase 1A)** — `assist-retrieval-embed.ts` + `CONTROL_TOWER_ASSIST_EMBEDDINGS=1`; keyword fallback. **Next:** audited tool calls or re-rank (separate issues).
+- [x] **Assist / chatbot — embedding hybrid (Phase 1A)** — `assist-retrieval-embed.ts` + `CONTROL_TOWER_ASSIST_EMBEDDINGS=1`; keyword fallback.
+- [x] **Assist — read-only POST action catalog (near-term #4 slice)** — `assist-tool-catalog.ts` + `postActionToolCatalog` / `canExecuteControlTowerPostActions` on **`POST /api/control-tower/assist`**; Search page disclosure; `assist-retrieval` snippet `control-tower-post-actions` (**2026-04-25**). **Next:** audited tool calls (suggested next PR) or re-rank.
 - [ ] **Reporting PDFs** — richer branded templates vs `control_tower_reporting_and_kpi_spec` (likely needs design input first).
 - [ ] **Workbench** — saved ledger views (if still desired after GAP “optional increments”).
 - [ ] **Inbound** — carrier-specific mapper example + tests (extend `inbound-webhook.ts` patterns).
