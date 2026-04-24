@@ -327,6 +327,35 @@ describe("processControlTowerInboundWebhook", () => {
         }),
       );
     });
+
+    it("accepts sea_port_track_v1 (carrier mapper → generic_carrier_v1)", async () => {
+      const res = await processControlTowerInboundWebhook({
+        tenantId,
+        actorUserId,
+        body: {
+          payloadFormat: "sea_port_track_v1",
+          event: "seaport.push",
+          seaPortEvent: {
+            consignmentCuid: shipmentId,
+            activityType: "DISCH",
+            eventTimestamp: "2026-04-01T16:30:00.000Z",
+            freeText: "Discharge start",
+            eventRef: "t-disch-1",
+          },
+        },
+      });
+      expect(res.status).toBe(200);
+      expect(res.body.ok).toBe(true);
+      expect(prismaMock.ctTrackingMilestone.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            code: "PORT_DISCH",
+            notes: "Discharge start",
+            sourceRef: "t-disch-1",
+          }),
+        }),
+      );
+    });
   });
 
   describe("400 without DB reads (shape / missing shipment id)", () => {
@@ -338,6 +367,18 @@ describe("processControlTowerInboundWebhook", () => {
       });
       expect(res.status).toBe(400);
       expect(res.body.error).toContain("Unknown payloadFormat");
+      expect(String(res.body.error)).toContain("sea_port_track_v1");
+      expect(prismaMock.shipment.findFirst).not.toHaveBeenCalled();
+    });
+
+    it("returns 400 for sea_port_track_v1 without seaPortEvent", async () => {
+      const res = await processControlTowerInboundWebhook({
+        tenantId,
+        actorUserId,
+        body: { payloadFormat: "sea_port_track_v1" },
+      });
+      expect(res.status).toBe(400);
+      expect(String(res.body.error)).toContain("seaPortEvent");
       expect(prismaMock.shipment.findFirst).not.toHaveBeenCalled();
     });
 

@@ -74,7 +74,7 @@
 
 | Area | Repo reality | Notes |
 |------|--------------|--------|
-| Inbound webhooks (carrier, forwarder) | 🟡 Secret + audit + idempotent milestone upsert + **`generic_carrier_v1`** + **`carrier_webhook_v1`** (`data[]` batch, default cap **50**, env **`CONTROL_TOWER_INBOUND_CARRIER_WEBHOOK_MAX_ROWS`** up to **200**; responses + batch audit include **`maxBatchRows`**) + **`tms_event_v1`** + **`visibility_flat_v1`** | `POST /api/integrations/control-tower/inbound`, `inbound-webhook.ts`; Vitest **`inbound-webhook.test.ts`** covers idempotent replay + batch cap ([**#4**](https://github.com/lasealco/po-management/issues/4), landed with [**#9**](https://github.com/lasealco/po-management/issues/9)); add carrier-specific mappers as needed |
+| Inbound webhooks (carrier, forwarder) | 🟡 Secret + audit + idempotent milestone upsert + **`generic_carrier_v1`** + example **`sea_port_track_v1`** (`seaPortEvent` → `inbound-carrier-mappers.ts` → same path as generic) + **`carrier_webhook_v1`** (`data[]` batch, default cap **50**, env **`CONTROL_TOWER_INBOUND_CARRIER_WEBHOOK_MAX_ROWS`** up to **200**; responses + batch audit include **`maxBatchRows`**) + **`tms_event_v1`** + **`visibility_flat_v1`** | `POST /api/integrations/control-tower/inbound`, `inbound-webhook.ts`; Vitest **`inbound-webhook.test.ts`** + **`inbound-carrier-mappers.test.ts`**; add more carrier mappers alongside **`inbound-carrier-mappers.ts`** as needed |
 | Normalized event stream / idempotency keys | 🟡 Audit + milestone `sourceType` | Not a dedicated event bus table |
 | Master / house B/L, AWB as first-class sync | 🟡 `CtShipmentReference` + manual add | assist snippet **`shipment-refs-sales-order`** |
 | **SIMULATED** vs **INTEGRATION** provenance | 🟡 `sourceType` on `CtTrackingMilestone` + **Shipment 360** chips/legend (`milestone-provenance.ts`); workflow milestone source pills | Demo **enrich / regenerate** on workbench + **Milestones** tab (this shipment); POST actions accept optional **`shipmentId`** + regenerate **`demoProfile`**; carrier-specific feeds |
@@ -117,7 +117,7 @@ High-level groups: **references** · **tracking milestones** (+ pack apply) · *
 | `GET …/ops/summary`, `POST …/ops/run-escalation` | Ops |
 | `POST …/documents/upload` | Blob upload |
 | `GET …/customer/digest` | Portal digest (max **250** items, **`digestLimit`** / **`itemCount`** / **`truncated`** on JSON); in-app **`/control-tower/digest`** uses the same builder |
-| `POST …/integrations/control-tower/inbound` | Inbound webhook: secret + audit + **`idempotencyKey`**, **`generic_carrier_v1`** / **`carrier_webhook_v1`** (batch cap **50** default, env up to **200**; **`maxBatchRows`** on JSON + audit) / **`tms_event_v1`** / **`visibility_flat_v1`**, **`CtTrackingMilestone`** upsert (`INTEGRATION`) |
+| `POST …/integrations/control-tower/inbound` | Inbound webhook: secret + audit + **`idempotencyKey`**, **`generic_carrier_v1`** / **`sea_port_track_v1`** ( **`seaPortEvent`** → `inbound-carrier-mappers.ts` ) / **`carrier_webhook_v1`** (batch cap **50** default, env up to **200**; **`maxBatchRows`** on JSON + audit) / **`tms_event_v1`** / **`visibility_flat_v1`**, **`CtTrackingMilestone`** upsert (`INTEGRATION`) |
 
 ---
 
@@ -129,7 +129,7 @@ Use this list when slicing PRs; refresh it whenever Control Tower behavior or `r
 
 1. **Keep this file current** when merging Control Tower PRs (checkbox discipline).
 2. ~~**Exception catalog admin**~~ — ✅ Settings page + `GET /api/control-tower/exception-codes` + `upsert_ct_exception_code` POST action.
-3. ~~**Integration stub**~~ — 🟡 `POST /api/integrations/control-tower/inbound` + audit; **idempotent replays** (`idempotencyKey` + `INBOUND_WEBHOOK_EVENT` audit), **`generic_carrier_v1` / `carrier_webhook_v1` / `tms_event_v1` / `visibility_flat_v1`** + canonical milestone mapping, **`CtTrackingMilestone`** upsert — extend with carrier-specific mappers as needed (`carrier_webhook_v1` batch cap: env up to 200).
+3. ~~**Integration stub**~~ — 🟡 `POST /api/integrations/control-tower/inbound` + audit; **idempotent replays** (`idempotencyKey` + `INBOUND_WEBHOOK_EVENT` audit), **`generic_carrier_v1` / `sea_port_track_v1` / `carrier_webhook_v1` / `tms_event_v1` / `visibility_flat_v1`** + canonical milestone mapping, **`CtTrackingMilestone`** upsert — **Phase 1E:** example mapper `inbound-carrier-mappers.ts` + `seaPortEvent`; add more partners in the same file or split by carrier (`carrier_webhook_v1` batch cap: env up to 200).
 4. **Assist / chatbot** (vs **`control_tower_search_and_chatbot_spec_*.pdf`** — **Assist / chatbot — gap vs PDF** subsection under **R3** + [issue #6](https://github.com/lasealco/po-management/issues/6))
    - **Done:** rule-based routing + optional LLM merge; **keyword** doc retrieval (`assist-retrieval.ts`) + optional **embedding hybrid** (`assist-retrieval-embed.ts`, `CONTROL_TOWER_ASSIST_EMBEDDINGS=1`, keyword fallback on failure or low confidence) feeding hints + `retrievedDocSnippets`; saved **CT report** names + saved **workbench filter** names in assist payload; broad snippet set (search, schedules, cron routes, digest, parties, legs/cargo, etc.) — see **R3 Assist** row above; **gap checklist** for the next implementer lives in the **R3** subsection (issue **#6**).
    - **Partial:** **per-request** assistant, not threaded chat sessions; no dedicated **vector DB** / chunking pipeline — embeddings are over the **static** assist corpus only; no allowlisted **tool-calling** loop that executes `POST /api/control-tower` actions with operator confirmation — today the model path is mostly **suggestive** (deep links + hints), not autonomous agent loops.
@@ -159,6 +159,7 @@ File **one GitHub issue per bullet** when scheduling (titles are suggestions; ke
 - ~~**`[tower] Reporting: logo + typography pass on tabular PDF`**~~ — **Landed (2026-04-23):** `GET /api/control-tower/report-pdf-logo` + in-app **Download PDF** fetches same raster as env/cron; `report-pdf.ts` table/header typography + light banding. **Next:** richer KPI spec sections or tenant logo UX (separate issues).
 - ~~**`[tower] Workbench: multi-select + bulk operator action`**~~ — **Landed (2026-04-23):** `bulk_update_shipment_ops_assignee` + `bulk_acknowledge_ct_alerts`. **Next:** exception-owner bulk or default columns.
 - ~~**`[tower] Report engine: exception-aware dimensions / measures`**~~ — **Landed (2026-04-25):** `openExceptionRatePct` + builder preset **Open exception rate**; CSV/PDF/insight/schedule text extended. **Next:** rootCause / NC-style fields if product wants.
+- ~~**`[tower] Inbound: carrier-specific mapper example`**~~ — **Landed (2026-04-25):** `sea_port_track_v1` + `inbound-carrier-mappers.ts` + tests. **Next:** next real carrier `payloadFormat` or shared mapper util.
 
 ---
 
@@ -166,6 +167,7 @@ File **one GitHub issue per bullet** when scheduling (titles are suggestions; ke
 
 | Date | Change |
 |------|--------|
+| 2026-04-25 | **Phase 1E (Inbound):** `payloadFormat` **`sea_port_track_v1`**, `inbound-carrier-mappers.ts` (`mapSeaPortTrackEventToGenericCarrierPayload`), Vitest for mapper + webhook; assist **inbound-webhook** snippet. **GAP** R4, route table, near-term #3, suggested PR. |
 | 2026-04-25 | **Phase 1D (Report engine):** measure **`openExceptionRatePct`** in `report-engine.ts` + `report-csv` / `report-pdf` / builder / dashboard chart kit; scheduled email **Totals** line includes avg bucket rate. **GAP** R3, near-term #7, suggested PR. |
 | 2026-04-25 | **Phase 1A (Assist):** OpenAI **embedding hybrid** for assist doc snippets (`assist-retrieval-embed.ts`); env `CONTROL_TOWER_ASSIST_EMBEDDINGS=1`; Search page shows semantic footnote when used. |
 | 2026-04-25 | **Phase 0 re-pass:** near-term 4–7 + suggested next PRs re-checked vs `main`; `verify:apihub` + route count 28; see [`CONTROL_TOWER_WMS_PHASED_ROADMAP`](../engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md). |
