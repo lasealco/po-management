@@ -6,7 +6,7 @@
 
 **Source of truth:** `docs/controltower/GAP_MAP.md` + PDFs in `docs/controltower/`.
 
-**Phased program (CT + WMS together):** [`docs/engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md`](../CONTROL_TOWER_WMS_PHASED_ROADMAP.md) (phases 0–3, exit criteria). **Phase 0 re-pass complete** (2026-04-25) — `verify:apihub`, GAP near-term re-check; see triage block below; next = **Phase 1** (1A–1E) in that doc.
+**Phased program (CT + WMS together):** [`docs/engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md`](../CONTROL_TOWER_WMS_PHASED_ROADMAP.md) (phases 0–3, exit criteria). **Phase 0 re-pass complete** (2026-04-25) — `verify:apihub`, GAP near-term re-check; see triage block below. **Phase 3.4 (partial, 2026-04-25):** `/wms` home → **Open shipment map**; `/control-tower/map` → **WMS workspace**; when the actor has both `org.wms` and `org.controltower` view.
 
 ### Phase 0 triage (2026-04-25 re-pass)
 

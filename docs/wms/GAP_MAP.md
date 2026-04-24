@@ -57,4 +57,4 @@ Handlers live in `src/lib/wms/post-actions.ts` (route stays a thin shell).
 
 _Next optional increments:_ ~~saved ledger views~~ (**landed** 2026-04-23: `WmsSavedLedgerView` + `/api/wms/saved-ledger-views`); ~~**outbound ASN** parity~~ (**landed** 2026-04-25: `OutboundOrder.asnReference` + `requestedShipDate` in payload + `set_outbound_order_asn_fields`); deeper receiving states — not required for Phase A exit above.
 
-_Last updated: 2026-04-25 — Phase 2.4 REPLENISH open-task source/target bins + GAP R2 row; Phase 2.2 outbound ASN; Program Phase 0 re-pass; prior: 2026-04-23 Phase 2.1 saved ledger views._
+_Last updated: 2026-04-25 — `/wms` home **Open shipment map** when actor also has Control Tower view (Phase 3 cross-surface); Phase 2.4 REPLENISH pins; Phase 2.2 outbound ASN; prior: 2026-04-23 Phase 2.1 saved ledger views._

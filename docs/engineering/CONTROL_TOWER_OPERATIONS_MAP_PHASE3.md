@@ -22,4 +22,5 @@
 
 ## Next (3.4) — if product wants depth
 
+- **2026-04-25 (cross-surface, no floor geometry):** `/wms` home shows **Open shipment map** when the actor has `org.controltower` → `view` (in addition to WMS). `/control-tower/map` shows **WMS workspace** when the actor has `org.wms` → `view`.
 - WMS rack/floor where GAP is 🟡; richer world map (globe) only if `/control-tower/map` shows adoption.

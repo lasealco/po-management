@@ -36,6 +36,9 @@ export default async function WmsPage() {
   const canEdit = Boolean(
     access?.user && viewerHas(access.grantSet, "org.wms", "edit"),
   );
+  const canViewControlTowerMap = Boolean(
+    access?.user && viewerHas(access.grantSet, "org.controltower", "view"),
+  );
 
   return (
     <main className="mx-auto w-full max-w-7xl px-6 py-10">
@@ -71,6 +74,21 @@ export default async function WmsPage() {
             You have view-only WMS access; create and complete actions stay disabled until{" "}
             <span className="font-medium">org.wms → edit</span> is granted.
           </p>
+        ) : null}
+        {canViewControlTowerMap ? (
+          <div className="mt-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Control Tower</p>
+            <p className="mt-1 text-sm text-zinc-700">
+              Open a read-only lane map of workbench-scoped shipments (pins from booking origin/destination; use
+              the same query parameters as the workbench when you add them to the URL).
+            </p>
+            <Link
+              href="/control-tower/map"
+              className="mt-3 inline-flex items-center justify-center rounded-xl bg-[var(--arscmp-primary)] px-4 py-2.5 text-sm font-semibold text-white"
+            >
+              Open shipment map
+            </Link>
+          </div>
         ) : null}
       </header>
 

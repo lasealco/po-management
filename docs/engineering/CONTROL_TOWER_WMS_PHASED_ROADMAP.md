@@ -86,7 +86,7 @@ Work **one issue at a time** (parallel agents only on **non-overlapping paths**)
 | 3.1 | **Product brief**: map **layers** (shipments, orders, exception pins?, WMS site?), **tenant grants**, **MVP: read-only + deep links** | **Done** — [`CONTROL_TOWER_OPERATIONS_MAP_PHASE3.md`](../engineering/CONTROL_TOWER_OPERATIONS_MAP_PHASE3.md) |
 | 3.2 | **Spike** — map library + source of truth for coordinates | **Done** — Leaflet (repo); pins from `product-trace-geo` + booking/leg codes |
 | 3.3 | **MVP** — `/control-tower/map` reuses workbench list filters, pins + 360 + workbench link | **Done** — subnav **Map**; `shipments-list-query-from-search-params.ts` shared with **`GET …/shipments`** |
-| 3.4 | **Iterate** — WMS floor map + CT globe | **Open** (defer until 3.3 adoption) |
+| 3.4 | **Iterate** — WMS floor map + CT globe + **cross-surface** deep links | **Partial (2026-04-25):** dual-grant **WMS ↔ map** entry points; floor / globe still open — [`CONTROL_TOWER_OPERATIONS_MAP_PHASE3.md`](../CONTROL_TOWER_OPERATIONS_MAP_PHASE3.md) |
 
 **Exit (met for MVP):** Shipped read-only **Control Tower** map behind `org.controltower` **view**; WMS/CRM map layers still future.
 
@@ -115,6 +115,7 @@ Work **one issue at a time** (parallel agents only on **non-overlapping paths**)
 
 | Date | Change |
 |------|--------|
+| 2026-04-25 | **Control Tower Phase 3.4 (partial):** `/wms` → shipment map and `/control-tower/map` → WMS when dual grants; `CONTROL_TOWER_OPERATIONS_MAP_PHASE3.md`. |
 | 2026-04-25 | **WMS Phase 2.4 (REPLENISH UX):** `openTasks` includes `sourceBin` for **From → To** in open tasks; `wms/GAP_MAP.md` R2 replenishment. |
 | 2026-04-25 | **WMS Phase 2.2 (Outbound ASN):** `asnReference` on `OutboundOrder`, `set_outbound_order_asn_fields`, WMS operations UI + payload; `wms/GAP_MAP.md`. |
 | 2026-04-25 | **Control Tower Phase 1A:** optional OpenAI **embedding hybrid** for assist (`assist-retrieval-embed.ts`); see `controltower/GAP_MAP.md`. |
