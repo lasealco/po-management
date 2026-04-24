@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
-import { requireApiGrant } from "@/lib/authz";
+import { getActorUserId, requireApiGrant } from "@/lib/authz";
+import { validateRolePermissionGrants } from "@/lib/delegation-guard";
 import {
   GLOBAL_PERMISSION_CATALOG,
   isValidGlobalPermission,
@@ -109,6 +110,19 @@ export async function PUT(
   });
   if (!role) {
     return toApiErrorResponse({ error: "Role not found.", code: "NOT_FOUND", status: 404 });
+  }
+
+  const actorId = await getActorUserId();
+  if (!actorId) {
+    return toApiErrorResponse({
+      error: "No active session user to evaluate delegation.",
+      code: "FORBIDDEN",
+      status: 403,
+    });
+  }
+  const del = await validateRolePermissionGrants(actorId, role, grants);
+  if (!del.ok) {
+    return toApiErrorResponse({ error: del.error, code: "FORBIDDEN", status: 403 });
   }
 
   await prisma.$transaction(async (tx) => {

@@ -75,7 +75,7 @@ For **global → regional → country** (and similar) admin patterns, product in
 - [ ] **Decide representation:** org units inside one tenant vs multiple tenants vs hybrid; document the choice.
 - [ ] **(a) Enterprise hierarchy:** model (e.g. `OrgUnit`, `UserOrgUnit`, entity→org links); admin UI; migration story for existing tenants.
 - [ ] **(a) Scoped permissions:** extend RBAC (resource/action + scope) or equivalent; audit all `tenantId` queries.
-- [ ] **(a) Delegation guardrails:** on role assignment / user invite APIs, enforce **subset-of-assigner’s-effective-grants** + **scope contained in assigner’s org subtree** (once `OrgUnit` exists); document break-glass roles (e.g. platform super-admin only).
+- [x] **(a) Delegation guardrails:** on `POST`/`PATCH` users and role permission updates, enforce **subset-of-assigner’s-effective-grants** + **org / product-division scope**; **Superuser** role/permission edits are **superuser-only**; document break-glass roles (e.g. platform super-admin only).
 - [ ] **(b) Customer as scope:** standardize `customerAccountId` (or shipper org id) on shipments, billing, WMS where needed; align with CRM account.
 - [ ] **(b) Portals:** customer users, invitation flow, least-privilege roles; extend visibility rules beyond Control Tower.
 - [ ] **Reporting:** cockpit and reports respect **active scope** (tenant + org + customer) once scopes exist.
@@ -89,6 +89,7 @@ For **global → regional → country** (and similar) admin patterns, product in
 
 ## Changelog
 
+- **2026-04-23:** **Phase 3:** **delegation guardrails** on user create/update and role `PUT` permissions: assigner must hold every permission on the roles they assign, **or** be a **Superuser**; primary org and product-division links must stay within the assigner’s scope; non-superusers cannot assign the **Superuser** role or edit that role’s permission rows. Clearing another user’s primary org is disallowed for admins who themselves have a primary org.
 - **2026-04-25:** **Phase 2 (partial):** org/division **read scope** on **purchase orders** (lists, detail, transitions, messages, control-tower order picker, consolidation shipment list) and order-based **reports**; uses requester’s primary org subtree + optional product-division line match. Superusers and supplier-portal views bypass internal org filter; other modules (CRM, WMS, CT shipment lists, etc.) not yet org-scoped.
 - **2026-04-24:** Shipped **Phase 1** of in-tenant org: `OrgUnit` tree, user **primary org** + **product division** matrix in Settings; permissions remain tenant-wide; enforcement in ops modules TBD.
 - **2026-04-20:** Chose tenancy representation for system scope: keep **single tenant isolation** and model hierarchy with **in-tenant org units**; documented rationale and non-goals.

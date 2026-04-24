@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { requireApiGrant } from "@/lib/authz";
+import { getActorUserId, requireApiGrant } from "@/lib/authz";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+import { validateUserAdminDelegation } from "@/lib/delegation-guard";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { hashPassword } from "@/lib/password";
 import { prisma } from "@/lib/prisma";
-import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 
 
 type CreateUserBody = {
@@ -79,6 +80,24 @@ export async function POST(request: Request) {
     if (found.length !== roleIds.length) {
       return toApiErrorResponse({ error: "One or more roles are invalid for this tenant.", code: "BAD_INPUT", status: 400 });
     }
+  }
+  const actorId = await getActorUserId();
+  if (!actorId) {
+    return toApiErrorResponse({
+      error: "No active session user to evaluate delegation.",
+      code: "FORBIDDEN",
+      status: 403,
+    });
+  }
+  const del = await validateUserAdminDelegation({
+    actorUserId: actorId,
+    tenantId: tenant.id,
+    targetRoleIds: roleIds,
+    targetPrimaryOrgUnitId: primaryOrgUnitId,
+    targetProductDivisionIds: productDivisionIds,
+  });
+  if (!del.ok) {
+    return toApiErrorResponse({ error: del.error, code: "FORBIDDEN", status: 403 });
   }
   try {
     const created = await prisma.$transaction(async (tx) => {

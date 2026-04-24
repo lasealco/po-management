@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
+import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
+import { validateUserAdminDelegation } from "@/lib/delegation-guard";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { hashPassword } from "@/lib/password";
 import { prisma } from "@/lib/prisma";
-import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 
 
 const MAX_NAME = 120;
@@ -111,11 +112,16 @@ export async function PATCH(
     return toApiErrorResponse({ error: "Demo tenant not found. Run `npm run db:seed` to create starter data.", code: "NOT_FOUND", status: 404 });
   }
 
-  const existing = await prisma.user.findFirst({
+  const preExisting = await prisma.user.findFirst({
     where: { id, tenantId: tenant.id },
-    select: { id: true },
+    select: {
+      id: true,
+      primaryOrgUnitId: true,
+      userRoles: { select: { roleId: true } },
+      productDivisionScope: { select: { productDivisionId: true } },
+    },
   });
-  if (!existing) {
+  if (!preExisting) {
     return toApiErrorResponse({ error: "User not found.", code: "NOT_FOUND", status: 404 });
   }
 
@@ -165,6 +171,40 @@ export async function PATCH(
           status: 400,
         });
       }
+    }
+  }
+
+  const needsDelegationCheck =
+    roleIds !== undefined ||
+    o.primaryOrgUnitId !== undefined ||
+    o.productDivisionIds !== undefined;
+  if (needsDelegationCheck) {
+    const actorId = await getActorUserId();
+    if (!actorId) {
+      return toApiErrorResponse({
+        error: "No active session user to evaluate delegation.",
+        code: "FORBIDDEN",
+        status: 403,
+      });
+    }
+    const effRoleIds = roleIds ?? preExisting.userRoles.map((r) => r.roleId);
+    const effPrimaryOrg =
+      primaryOrgUnitId !== undefined
+        ? primaryOrgUnitId
+        : preExisting.primaryOrgUnitId;
+    const effProductDivisionIds =
+      productDivisionIds !== undefined
+        ? productDivisionIds
+        : preExisting.productDivisionScope.map((s) => s.productDivisionId);
+    const del = await validateUserAdminDelegation({
+      actorUserId: actorId,
+      tenantId: tenant.id,
+      targetRoleIds: effRoleIds,
+      targetPrimaryOrgUnitId: effPrimaryOrg,
+      targetProductDivisionIds: effProductDivisionIds,
+    });
+    if (!del.ok) {
+      return toApiErrorResponse({ error: del.error, code: "FORBIDDEN", status: 403 });
     }
   }
 
