@@ -2,10 +2,11 @@ import type { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import {
-  controlTowerShipmentScopeWhere,
+  controlTowerShipmentAccessWhere,
   getControlTowerPortalContext,
   type ControlTowerPortalContext,
 } from "@/lib/control-tower/viewer";
+import { getPurchaseOrderScopeWhere } from "@/lib/org-scope";
 import {
   coordinatesFromCityCountry,
   coordinatesFromLaneCode,
@@ -97,11 +98,12 @@ export type ProductTracePayload = {
   mapPins: ProductTraceMapPin[];
 };
 
-function purchaseOrderWhereForProductTrace(
+async function purchaseOrderWhereForProductTrace(
   tenantId: string,
   productId: string,
   ctx: ControlTowerPortalContext,
-): Prisma.PurchaseOrderWhereInput {
+  actorUserId: string,
+): Promise<Prisma.PurchaseOrderWhereInput> {
   const w: Prisma.PurchaseOrderWhereInput = {
     tenantId,
     items: { some: { productId } },
@@ -114,7 +116,13 @@ function purchaseOrderWhereForProductTrace(
       some: { customerCrmAccountId: ctx.customerCrmAccountId },
     };
   }
-  return w;
+  const orgScope = await getPurchaseOrderScopeWhere(tenantId, actorUserId, {
+    isSupplierPortalUser: ctx.isSupplierPortal,
+  });
+  if (!orgScope) {
+    return w;
+  }
+  return { AND: [w, orgScope] };
 }
 
 async function resolveProduct(tenantId: string, raw: string) {
@@ -364,11 +372,19 @@ export async function getProductTracePayload(input: {
   if (!product) return { ok: false, error: "product_not_found" };
 
   const ctx = await getControlTowerPortalContext(input.actorUserId);
-  const orderWhere = purchaseOrderWhereForProductTrace(
-    input.tenantId,
-    product.id,
-    ctx,
-  );
+  const [orderWhere, ctShipmentScope] = await Promise.all([
+    purchaseOrderWhereForProductTrace(
+      input.tenantId,
+      product.id,
+      ctx,
+      input.actorUserId,
+    ),
+    controlTowerShipmentAccessWhere(
+      input.tenantId,
+      ctx,
+      input.actorUserId,
+    ),
+  ]);
 
   const [lines, shipmentsRaw, inventoryRows] = await Promise.all([
     prisma.purchaseOrderItem.findMany({
@@ -403,7 +419,7 @@ export async function getProductTracePayload(input: {
     prisma.shipment.findMany({
       where: {
         AND: [
-          controlTowerShipmentScopeWhere(input.tenantId, ctx),
+          ctShipmentScope,
           {
             items: {
               some: { orderItem: { productId: product.id } },

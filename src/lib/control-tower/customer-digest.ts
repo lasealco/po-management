@@ -1,5 +1,7 @@
-import type { ControlTowerPortalContext } from "@/lib/control-tower/viewer";
-import { controlTowerShipmentScopeWhere } from "@/lib/control-tower/viewer";
+import {
+  type ControlTowerPortalContext,
+  controlTowerShipmentAccessWhere,
+} from "@/lib/control-tower/viewer";
 import { prisma } from "@/lib/prisma";
 
 /** Max rows returned (most recently updated first). */
@@ -31,9 +33,10 @@ export type ControlTowerDigestPayload = {
 export async function buildControlTowerDigest(params: {
   tenantId: string;
   ctx: ControlTowerPortalContext;
+  actorUserId: string;
 }): Promise<ControlTowerDigestPayload> {
-  const { tenantId, ctx } = params;
-  const scope = controlTowerShipmentScopeWhere(tenantId, ctx);
+  const { tenantId, ctx, actorUserId } = params;
+  const scope = await controlTowerShipmentAccessWhere(tenantId, ctx, actorUserId);
   const shipments = await prisma.shipment.findMany({
     where: scope,
     select: {

@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const findManyShipments = vi.hoisted(() => vi.fn());
+const getPurchaseOrderScopeWhereMock = vi.hoisted(() => vi.fn());
+
+vi.mock("@/lib/org-scope", async (importOriginal) => {
+  const act = await importOriginal<typeof import("@/lib/org-scope")>();
+  return { ...act, getPurchaseOrderScopeWhere: getPurchaseOrderScopeWhereMock };
+});
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -40,7 +46,7 @@ describe("buildControlTowerDigest", () => {
         milestones: [{ code: "M1", actualAt: null }],
       },
     ]);
-    const out = await buildControlTowerDigest({ tenantId: "t1", ctx });
+    const out = await buildControlTowerDigest({ tenantId: "t1", ctx, actorUserId: "a1" });
     expect(findManyShipments).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { order: { tenantId: "t1" } },
@@ -74,7 +80,7 @@ describe("buildControlTowerDigest", () => {
       milestones: [],
     }));
     findManyShipments.mockResolvedValue(rows);
-    const out = await buildControlTowerDigest({ tenantId: "t1", ctx });
+    const out = await buildControlTowerDigest({ tenantId: "t1", ctx, actorUserId: "a1" });
     expect(out.truncated).toBe(true);
     expect(out.itemCount).toBe(DIGEST_MAX_ITEMS);
   });
@@ -88,6 +94,7 @@ describe("buildControlTowerDigest", () => {
         isSupplierPortal: true,
         customerCrmAccountId: "crm-x",
       },
+      actorUserId: "a1",
     });
     expect(out.view).toEqual({
       restricted: true,

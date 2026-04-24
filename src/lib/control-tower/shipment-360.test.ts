@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const findFirstShipment = vi.hoisted(() => vi.fn());
+const getPurchaseOrderScopeWhereMock = vi.hoisted(() => vi.fn());
+
+vi.mock("@/lib/org-scope", async (importOriginal) => {
+  const act = await importOriginal<typeof import("@/lib/org-scope")>();
+  return { ...act, getPurchaseOrderScopeWhere: getPurchaseOrderScopeWhereMock };
+});
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -13,7 +19,9 @@ import { getShipment360 } from "./shipment-360";
 describe("getShipment360", () => {
   beforeEach(() => {
     findFirstShipment.mockReset();
+    getPurchaseOrderScopeWhereMock.mockReset();
     findFirstShipment.mockResolvedValue(null);
+    getPurchaseOrderScopeWhereMock.mockResolvedValue(undefined);
   });
 
   it("returns null when shipment is not found for tenant scope", async () => {

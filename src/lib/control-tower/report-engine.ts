@@ -6,7 +6,7 @@ import { convertAmount, minorToAmount, normalizeCurrency } from "@/lib/control-t
 import { buildControlTowerReportCsv as buildReportCsvSnapshot } from "./report-csv";
 
 import {
-  controlTowerShipmentScopeWhere,
+  controlTowerShipmentAccessWhere,
   type ControlTowerPortalContext,
 } from "./viewer";
 
@@ -299,10 +299,15 @@ export async function runControlTowerReport(params: {
   tenantId: string;
   ctx: ControlTowerPortalContext;
   configInput: unknown;
-  actorUserId?: string;
+  /** Used for org/division read scope on shipment rows (same as PO scope via linked `order`). */
+  actorUserId: string;
 }): Promise<CtRunReportResult> {
   const config = sanitizeCtReportConfig(params.configInput);
-  const scope = controlTowerShipmentScopeWhere(params.tenantId, params.ctx);
+  const scope = await controlTowerShipmentAccessWhere(
+    params.tenantId,
+    params.ctx,
+    params.actorUserId,
+  );
 
   const where: Prisma.ShipmentWhereInput = { ...scope };
   const ands: Prisma.ShipmentWhereInput[] = [];

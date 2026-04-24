@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { convertAmount, minorToAmount, normalizeCurrency } from "@/lib/control-tower/currency";
 
 import {
-  controlTowerShipmentScopeWhere,
+  controlTowerShipmentAccessWhere,
   type ControlTowerPortalContext,
 } from "./viewer";
 import { computeCtMilestoneSummary } from "./milestone-summary";
@@ -117,7 +117,7 @@ export async function getShipment360(params: {
   actorUserId: string;
 }) {
   const { tenantId, shipmentId, ctx, actorUserId } = params;
-  const scope = controlTowerShipmentScopeWhere(tenantId, ctx);
+  const scope = await controlTowerShipmentAccessWhere(tenantId, ctx, actorUserId);
   const restricted = ctx.isRestrictedView;
 
   const s = await prisma.shipment.findFirst({

@@ -30,6 +30,10 @@ export async function GET() {
     return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   }
   const ctx = await getControlTowerPortalContext(actorId);
-  const payload = await buildControlTowerDigest({ tenantId: tenant.id, ctx });
+  const payload = await buildControlTowerDigest({
+    tenantId: tenant.id,
+    ctx,
+    actorUserId: actorId,
+  });
   return NextResponse.json(payload);
 }

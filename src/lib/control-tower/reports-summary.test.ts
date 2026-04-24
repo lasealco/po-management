@@ -8,6 +8,12 @@ const ctAlertGroupBy = vi.hoisted(() => vi.fn());
 const ctExceptionCount = vi.hoisted(() => vi.fn());
 const ctExceptionGroupBy = vi.hoisted(() => vi.fn());
 const userFindMany = vi.hoisted(() => vi.fn());
+const getPurchaseOrderScopeWhereMock = vi.hoisted(() => vi.fn());
+
+vi.mock("@/lib/org-scope", async (importOriginal) => {
+  const act = await importOriginal<typeof import("@/lib/org-scope")>();
+  return { ...act, getPurchaseOrderScopeWhere: getPurchaseOrderScopeWhereMock };
+});
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -79,7 +85,11 @@ describe("getControlTowerReportsSummary", () => {
     ctExceptionGroupBy.mockResolvedValueOnce([{ ownerUserId: "u1", _count: { _all: 3 } }]);
     userFindMany.mockResolvedValueOnce([{ id: "u1", name: "Alex" }]);
 
-    const out = await getControlTowerReportsSummary({ tenantId: "t1", ctx: ctxInternal });
+    const out = await getControlTowerReportsSummary({
+      tenantId: "t1",
+      ctx: ctxInternal,
+      actorUserId: "a1",
+    });
 
     expect(out.isCustomerView).toBe(false);
     expect(out.totals.shipments).toBe(3);
@@ -121,6 +131,7 @@ describe("getControlTowerReportsSummary", () => {
         isSupplierPortal: false,
         customerCrmAccountId: "crm-1",
       },
+      actorUserId: "a1",
     });
 
     expect(out.isCustomerView).toBe(true);

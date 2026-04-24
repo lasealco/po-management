@@ -73,6 +73,7 @@ describe("GET /api/control-tower/ops/summary", () => {
     expect(getControlTowerOpsSummaryMock).toHaveBeenCalledWith({
       tenantId: "tenant-1",
       ctx: { timezone: "UTC" },
+      actorUserId: "user-1",
     });
   });
 });

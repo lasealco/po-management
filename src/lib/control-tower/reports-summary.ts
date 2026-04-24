@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 
 import { ctSlaBreachedSeverityBranches } from "./sla-breach-where";
 import {
-  controlTowerShipmentScopeWhere,
+  controlTowerShipmentAccessWhere,
   type ControlTowerPortalContext,
 } from "./viewer";
 
@@ -10,9 +10,10 @@ import {
 export async function getControlTowerReportsSummary(params: {
   tenantId: string;
   ctx: ControlTowerPortalContext;
+  actorUserId: string;
 }) {
-  const { tenantId, ctx } = params;
-  const scope = controlTowerShipmentScopeWhere(tenantId, ctx);
+  const { tenantId, ctx, actorUserId } = params;
+  const scope = await controlTowerShipmentAccessWhere(tenantId, ctx, actorUserId);
   const restricted = ctx.isRestrictedView;
 
   const now = new Date();

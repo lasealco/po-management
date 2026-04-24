@@ -26,7 +26,9 @@ export default async function ControlTowerOpsPage({
           customerCrmAccountId: null,
         };
   const summary =
-    tenant != null ? await getControlTowerOpsSummary({ tenantId: tenant.id, ctx }) : null;
+    tenant != null && actorId != null
+      ? await getControlTowerOpsSummary({ tenantId: tenant.id, ctx, actorUserId: actorId })
+      : null;
 
   return (
     <main className="mx-auto w-full max-w-7xl px-6 py-10">

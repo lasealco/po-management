@@ -31,6 +31,7 @@ export async function GET() {
   const overview = await getControlTowerOverview({
     tenantId: tenant.id,
     ctx,
+    actorUserId: actorId,
   });
   return NextResponse.json(overview);
 }

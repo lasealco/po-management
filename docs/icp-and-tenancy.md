@@ -68,17 +68,23 @@ For **global → regional → country** (and similar) admin patterns, product in
 
 **Baby-language summary:** *What I don’t have, I cannot hand to someone else* — correct, and it must be **enforced server-side** on every role/user change, not only hidden in the UI.
 
-**Implementation note:** today’s flat `RolePermission` per tenant does not encode org scope or assigner checks; adding hierarchy implies new tables **and** validators on invitation / role-assignment APIs.
+**Implementation note:** today’s flat `RolePermission` per tenant does not encode org scope in the table shape; org placement, read filters, and assignment validators are layered in application code; a **policy engine** (Phase 4, product) would formalize that.
+
+## Path toward scoped RBAC (pragmatic)
+
+1. **Now shipped:** `tenantId` + flat `RolePermission` + **user org** + **product divisions**; **read filters** in `src/lib/org-scope.ts` and **delegation** in `src/lib/delegation-guard.ts`.
+2. **In progress, module by module:** same org/division read rules on **Control Tower** (workbench, hub, ops/reports summaries, digest, `runControlTowerReport`, product trace) by scoping on the shipment’s **linked purchase order** (requester + line divisions).
+3. **Later (product call):** **policies** as a formal **policy engine** (conditions, effects, evaluation) rather than only code paths.
 
 ## Engineering todos (backlog—prioritize with product)
 
-- [ ] **Decide representation:** org units inside one tenant vs multiple tenants vs hybrid; document the choice.
-- [ ] **(a) Enterprise hierarchy:** model (e.g. `OrgUnit`, `UserOrgUnit`, entity→org links); admin UI; migration story for existing tenants.
-- [ ] **(a) Scoped permissions:** extend RBAC (resource/action + scope) or equivalent; audit all `tenantId` queries.
+- [x] **Decide representation:** in-tenant `OrgUnit` tree; single-tenant hard boundary; see **System tenancy representation** above.
+- [x] **(a) Enterprise hierarchy (v1):** `OrgUnit` + `User.primaryOrgUnitId` + `UserProductDivision` + Settings UI; entity→org links and roll-up reporting are incremental.
+- [ ] **(a) Scoped permissions / policy layer:** extend RBAC or add a policy engine; audit remaining `tenantId`-only queries (CRM, WMS, other CT surfaces, etc.).
 - [x] **(a) Delegation guardrails:** on `POST`/`PATCH` users and role permission updates, enforce **subset-of-assigner’s-effective-grants** + **org / product-division scope**; **Superuser** role/permission edits are **superuser-only**; document break-glass roles (e.g. platform super-admin only).
 - [ ] **(b) Customer as scope:** standardize `customerAccountId` (or shipper org id) on shipments, billing, WMS where needed; align with CRM account.
 - [ ] **(b) Portals:** customer users, invitation flow, least-privilege roles; extend visibility rules beyond Control Tower.
-- [ ] **Reporting:** cockpit and reports respect **active scope** (tenant + org + customer) once scopes exist.
+- [ ] **Reporting:** remaining hubs respect **active scope** (PO-based reports and CT **shipment** reports use org scope; widen to other datasets as modeled).
 - [ ] **Investor / GTM:** keep slide language aligned with this doc—**MVP = single tenant / single company**; hierarchy = **roadmap**, not implied shipped.
 
 ## Related code (for implementers)
@@ -89,8 +95,9 @@ For **global → regional → country** (and similar) admin patterns, product in
 
 ## Changelog
 
+- **2026-04-25:** **Control Tower + product trace (org read scope):** internal users with primary org and/or product divisions see only **shipments** whose linked **PO** passes the same rules as the PO workbench; hub overview, workbench list, map pins, search, digest, report runs, ops/reports summaries, and `getProductTracePayload` use `controlTowerShipmentAccessWhere` / merged PO `where`. Superusers and supplier portal bypass unchanged; **Phase 4 policy engine** remains a separate product track.
 - **2026-04-23:** **Phase 3:** **delegation guardrails** on user create/update and role `PUT` permissions: assigner must hold every permission on the roles they assign, **or** be a **Superuser**; primary org and product-division links must stay within the assigner’s scope; non-superusers cannot assign the **Superuser** role or edit that role’s permission rows. Clearing another user’s primary org is disallowed for admins who themselves have a primary org.
-- **2026-04-25:** **Phase 2 (partial):** org/division **read scope** on **purchase orders** (lists, detail, transitions, messages, control-tower order picker, consolidation shipment list) and order-based **reports**; uses requester’s primary org subtree + optional product-division line match. Superusers and supplier-portal views bypass internal org filter; other modules (CRM, WMS, CT shipment lists, etc.) not yet org-scoped.
+- **2026-04-25:** **Phase 2 (partial):** org/division **read scope** on **purchase orders** (lists, detail, transitions, messages, control-tower order picker, consolidation shipment list) and order-based **reports**; uses requester’s primary org subtree + optional product-division line match. Superusers and supplier-portal views bypass internal org filter. Other modules (CRM, WMS, etc.) not yet org-scoped.
 - **2026-04-24:** Shipped **Phase 1** of in-tenant org: `OrgUnit` tree, user **primary org** + **product division** matrix in Settings; permissions remain tenant-wide; enforcement in ops modules TBD.
 - **2026-04-20:** Chose tenancy representation for system scope: keep **single tenant isolation** and model hierarchy with **in-tenant org units**; documented rationale and non-goals.
 - **2026-04-18:** Added **scoped admin / delegation subset rule** (cannot grant permissions or scope you don’t hold) and matching engineering todo.

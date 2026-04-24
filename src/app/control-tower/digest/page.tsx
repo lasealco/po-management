@@ -28,7 +28,11 @@ export default async function ControlTowerDigestPage() {
     );
   }
   const ctx = await getControlTowerPortalContext(actorId);
-  const digest = await buildControlTowerDigest({ tenantId: tenant.id, ctx });
+  const digest = await buildControlTowerDigest({
+    tenantId: tenant.id,
+    ctx,
+    actorUserId: actorId,
+  });
   const csvRows = digest.items.map((row) => ({
     id: row.id,
     shipmentNo: row.shipmentNo,

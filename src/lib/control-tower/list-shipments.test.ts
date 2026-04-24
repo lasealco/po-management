@@ -3,12 +3,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const shipmentFindMany = vi.hoisted(() => vi.fn());
 const ensureBookingConfirmationSlaAlerts = vi.hoisted(() => vi.fn());
+const getPurchaseOrderScopeWhereMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     shipment: { findMany: shipmentFindMany },
   },
 }));
+
+vi.mock("@/lib/org-scope", async (importOriginal) => {
+  const act = await importOriginal<typeof import("@/lib/org-scope")>();
+  return { ...act, getPurchaseOrderScopeWhere: getPurchaseOrderScopeWhereMock };
+});
 
 vi.mock("./booking-sla", () => ({
   ensureBookingConfirmationSlaAlerts,
@@ -136,14 +142,17 @@ describe("listControlTowerShipments", () => {
   beforeEach(() => {
     shipmentFindMany.mockReset();
     ensureBookingConfirmationSlaAlerts.mockReset();
+    getPurchaseOrderScopeWhereMock.mockReset();
     shipmentFindMany.mockResolvedValue([]);
     ensureBookingConfirmationSlaAlerts.mockResolvedValue(undefined);
+    getPurchaseOrderScopeWhereMock.mockResolvedValue(undefined);
   });
 
   it("uses default take 80 and runs booking SLA sweep for internal lists", async () => {
     const out = await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxInternal,
+      actorUserId: "actor-1",
       query: {},
     });
     expect(out.rows).toEqual([]);
@@ -163,6 +172,7 @@ describe("listControlTowerShipments", () => {
     const out = await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxInternal,
+      actorUserId: "actor-1",
       query: { take: 999 },
     });
     expect(out.listLimit).toBe(200);
@@ -173,6 +183,7 @@ describe("listControlTowerShipments", () => {
     await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxInternal,
+      actorUserId: "actor-1",
       query: { q: "DEMO-SKU-1" },
     });
     const where = shipmentFindMany.mock.calls[0]![0].where as Prisma.ShipmentWhereInput;
@@ -279,6 +290,7 @@ describe("listControlTowerShipments", () => {
     await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxInternal,
+      actorUserId: "actor-1",
       query: { q: "IN_TRANSIT" },
     });
     let where = shipmentFindMany.mock.calls[0]![0].where as Prisma.ShipmentWhereInput;
@@ -287,6 +299,7 @@ describe("listControlTowerShipments", () => {
     await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxInternal,
+      actorUserId: "actor-1",
       query: { q: "OCEAN" },
     });
     where = shipmentFindMany.mock.calls[1]![0].where as Prisma.ShipmentWhereInput;
@@ -295,6 +308,7 @@ describe("listControlTowerShipments", () => {
     await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxInternal,
+      actorUserId: "actor-1",
       query: { q: "CONFIRMED" },
     });
     where = shipmentFindMany.mock.calls[2]![0].where as Prisma.ShipmentWhereInput;
@@ -303,6 +317,7 @@ describe("listControlTowerShipments", () => {
     await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxInternal,
+      actorUserId: "actor-1",
       query: { q: "GREEN" },
     });
     where = shipmentFindMany.mock.calls[3]![0].where as Prisma.ShipmentWhereInput;
@@ -311,6 +326,7 @@ describe("listControlTowerShipments", () => {
     await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxInternal,
+      actorUserId: "actor-1",
       query: { q: "PARSED" },
     });
     where = shipmentFindMany.mock.calls[4]![0].where as Prisma.ShipmentWhereInput;
@@ -319,6 +335,7 @@ describe("listControlTowerShipments", () => {
     await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxInternal,
+      actorUserId: "actor-1",
       query: { q: "PICK" },
     });
     where = shipmentFindMany.mock.calls[5]![0].where as Prisma.ShipmentWhereInput;
@@ -327,6 +344,7 @@ describe("listControlTowerShipments", () => {
     await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxInternal,
+      actorUserId: "actor-1",
       query: { q: "FCL_40HC" },
     });
     where = shipmentFindMany.mock.calls[6]![0].where as Prisma.ShipmentWhereInput;
@@ -335,6 +353,7 @@ describe("listControlTowerShipments", () => {
     await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxInternal,
+      actorUserId: "actor-1",
       query: { q: "INTEGRATION" },
     });
     where = shipmentFindMany.mock.calls[7]![0].where as Prisma.ShipmentWhereInput;
@@ -343,6 +362,7 @@ describe("listControlTowerShipments", () => {
     await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxInternal,
+      actorUserId: "actor-1",
       query: { q: "SHARED" },
     });
     where = shipmentFindMany.mock.calls[8]![0].where as Prisma.ShipmentWhereInput;
@@ -351,6 +371,7 @@ describe("listControlTowerShipments", () => {
     await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxInternal,
+      actorUserId: "actor-1",
       query: { q: "SUPPLIER" },
     });
     where = shipmentFindMany.mock.calls[9]![0].where as Prisma.ShipmentWhereInput;
@@ -359,6 +380,7 @@ describe("listControlTowerShipments", () => {
     await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxInternal,
+      actorUserId: "actor-1",
       query: { q: "logistics" },
     });
     where = shipmentFindMany.mock.calls[10]![0].where as Prisma.ShipmentWhereInput;
@@ -367,6 +389,7 @@ describe("listControlTowerShipments", () => {
     await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxInternal,
+      actorUserId: "actor-1",
       query: { q: "TARIFF_CONTRACT_VERSION" },
     });
     where = shipmentFindMany.mock.calls[11]![0].where as Prisma.ShipmentWhereInput;
@@ -375,6 +398,7 @@ describe("listControlTowerShipments", () => {
     await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxInternal,
+      actorUserId: "actor-1",
       query: { q: "PALLET" },
     });
     where = shipmentFindMany.mock.calls[12]![0].where as Prisma.ShipmentWhereInput;
@@ -383,6 +407,7 @@ describe("listControlTowerShipments", () => {
     await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxInternal,
+      actorUserId: "actor-1",
       query: { q: "UNDER_REVIEW" },
     });
     where = shipmentFindMany.mock.calls[13]![0].where as Prisma.ShipmentWhereInput;
@@ -391,6 +416,7 @@ describe("listControlTowerShipments", () => {
     await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxInternal,
+      actorUserId: "actor-1",
       query: { q: "WAREHOUSE" },
     });
     where = shipmentFindMany.mock.calls[14]![0].where as Prisma.ShipmentWhereInput;
@@ -399,6 +425,7 @@ describe("listControlTowerShipments", () => {
     await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxInternal,
+      actorUserId: "actor-1",
       query: { q: "ACCEPTED" },
     });
     where = shipmentFindMany.mock.calls[15]![0].where as Prisma.ShipmentWhereInput;
@@ -407,6 +434,7 @@ describe("listControlTowerShipments", () => {
     await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxInternal,
+      actorUserId: "actor-1",
       query: { q: "NVOCC" },
     });
     where = shipmentFindMany.mock.calls[16]![0].where as Prisma.ShipmentWhereInput;
@@ -415,6 +443,7 @@ describe("listControlTowerShipments", () => {
     await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxInternal,
+      actorUserId: "actor-1",
       query: { q: "PROSPECT" },
     });
     where = shipmentFindMany.mock.calls[17]![0].where as Prisma.ShipmentWhereInput;
@@ -423,6 +452,7 @@ describe("listControlTowerShipments", () => {
     await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxInternal,
+      actorUserId: "actor-1",
       query: { q: "DEMURRAGE" },
     });
     where = shipmentFindMany.mock.calls[18]![0].where as Prisma.ShipmentWhereInput;
@@ -431,6 +461,7 @@ describe("listControlTowerShipments", () => {
     await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxInternal,
+      actorUserId: "actor-1",
       query: { q: "BASE_RATE" },
     });
     where = shipmentFindMany.mock.calls[19]![0].where as Prisma.ShipmentWhereInput;
@@ -439,6 +470,7 @@ describe("listControlTowerShipments", () => {
     await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxInternal,
+      actorUserId: "actor-1",
       query: { q: "MAIN_CARRIAGE" },
     });
     where = shipmentFindMany.mock.calls[20]![0].where as Prisma.ShipmentWhereInput;
@@ -447,6 +479,7 @@ describe("listControlTowerShipments", () => {
     await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxInternal,
+      actorUserId: "actor-1",
       query: { q: "MSDS" },
     });
     where = shipmentFindMany.mock.calls[21]![0].where as Prisma.ShipmentWhereInput;
@@ -455,6 +488,7 @@ describe("listControlTowerShipments", () => {
     await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxInternal,
+      actorUserId: "actor-1",
       query: { q: "PORT" },
     });
     where = shipmentFindMany.mock.calls[22]![0].where as Prisma.ShipmentWhereInput;
@@ -465,6 +499,7 @@ describe("listControlTowerShipments", () => {
     await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxInternal,
+      actorUserId: "actor-1",
       query: { q: "NEGOTIATION" },
     });
     where = shipmentFindMany.mock.calls[23]![0].where as Prisma.ShipmentWhereInput;
@@ -473,6 +508,7 @@ describe("listControlTowerShipments", () => {
     await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxInternal,
+      actorUserId: "actor-1",
       query: { q: "MEETING" },
     });
     where = shipmentFindMany.mock.calls[24]![0].where as Prisma.ShipmentWhereInput;
@@ -481,6 +517,7 @@ describe("listControlTowerShipments", () => {
     await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxInternal,
+      actorUserId: "actor-1",
       query: { q: "EXPIRED" },
     });
     where = shipmentFindMany.mock.calls[25]![0].where as Prisma.ShipmentWhereInput;
@@ -489,6 +526,7 @@ describe("listControlTowerShipments", () => {
     await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxInternal,
+      actorUserId: "actor-1",
       query: { q: "PACKED" },
     });
     where = shipmentFindMany.mock.calls[26]![0].where as Prisma.ShipmentWhereInput;
@@ -497,6 +535,7 @@ describe("listControlTowerShipments", () => {
     await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxInternal,
+      actorUserId: "actor-1",
       query: { q: "RECEIPT" },
     });
     where = shipmentFindMany.mock.calls[27]![0].where as Prisma.ShipmentWhereInput;
@@ -505,6 +544,7 @@ describe("listControlTowerShipments", () => {
     await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxInternal,
+      actorUserId: "actor-1",
       query: { q: "CRM_ACCOUNT" },
     });
     where = shipmentFindMany.mock.calls[28]![0].where as Prisma.ShipmentWhereInput;
@@ -513,6 +553,7 @@ describe("listControlTowerShipments", () => {
     await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxInternal,
+      actorUserId: "actor-1",
       query: { q: "POSTED" },
     });
     where = shipmentFindMany.mock.calls[29]![0].where as Prisma.ShipmentWhereInput;
@@ -521,6 +562,7 @@ describe("listControlTowerShipments", () => {
     await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxInternal,
+      actorUserId: "actor-1",
       query: { q: "AWARDED" },
     });
     where = shipmentFindMany.mock.calls[30]![0].where as Prisma.ShipmentWhereInput;
@@ -531,6 +573,7 @@ describe("listControlTowerShipments", () => {
     await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxInternal,
+      actorUserId: "actor-1",
       query: { q: "INVITED" },
     });
     where = shipmentFindMany.mock.calls[31]![0].where as Prisma.ShipmentWhereInput;
@@ -539,6 +582,7 @@ describe("listControlTowerShipments", () => {
     await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxInternal,
+      actorUserId: "actor-1",
       query: { q: "SUBMITTED" },
     });
     where = shipmentFindMany.mock.calls[32]![0].where as Prisma.ShipmentWhereInput;
@@ -547,6 +591,7 @@ describe("listControlTowerShipments", () => {
     await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxInternal,
+      actorUserId: "actor-1",
       query: { q: "RECIPIENTS" },
     });
     where = shipmentFindMany.mock.calls[33]![0].where as Prisma.ShipmentWhereInput;
@@ -557,6 +602,7 @@ describe("listControlTowerShipments", () => {
     await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxInternal,
+      actorUserId: "actor-1",
       query: { q: "WARN" },
     });
     const dumped = JSON.stringify(shipmentFindMany.mock.calls[0]![0].where);
@@ -569,6 +615,7 @@ describe("listControlTowerShipments", () => {
     await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxInternal,
+      actorUserId: "actor-1",
       query: { routeActionPrefix: "Plan leg", take: 10 },
     });
     expect(shipmentFindMany.mock.calls[0]![0].take).toBe(120);
@@ -578,6 +625,7 @@ describe("listControlTowerShipments", () => {
     await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxRestricted,
+      actorUserId: "actor-1",
       query: { take: 25 },
     });
     expect(ensureBookingConfirmationSlaAlerts).not.toHaveBeenCalled();
@@ -591,6 +639,7 @@ describe("listControlTowerShipments", () => {
     const out = await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxRestricted,
+      actorUserId: "actor-1",
       query: {},
     });
     const sel = shipmentFindMany.mock.calls[0]![0].select as Record<string, unknown>;
@@ -615,6 +664,7 @@ describe("listControlTowerShipments", () => {
     const out = await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxInternal,
+      actorUserId: "actor-1",
       query: {},
     });
     expect(out.rows[0]!.shipmentSource).toBe("UNLINKED");
@@ -630,6 +680,7 @@ describe("listControlTowerShipments", () => {
     const out = await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxInternal,
+      actorUserId: "actor-1",
       query: {},
     });
     expect(out.rows).toHaveLength(1);
@@ -648,6 +699,7 @@ describe("listControlTowerShipments", () => {
     const out = await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxInternal,
+      actorUserId: "actor-1",
       query: {},
     });
     expect(out.rows[0]!.nextAction).toBe("Plan leg 1");
@@ -677,6 +729,7 @@ describe("listControlTowerShipments", () => {
     const out = await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxInternal,
+      actorUserId: "actor-1",
       query: { routeActionPrefix: "Plan leg", take: 5 },
     });
     expect(out.rows).toHaveLength(1);
@@ -689,8 +742,10 @@ describe("listControlTowerShipments booking SLA flag", () => {
   beforeEach(() => {
     shipmentFindMany.mockReset();
     ensureBookingConfirmationSlaAlerts.mockReset();
+    getPurchaseOrderScopeWhereMock.mockReset();
     shipmentFindMany.mockResolvedValue([]);
     ensureBookingConfirmationSlaAlerts.mockResolvedValue(undefined);
+    getPurchaseOrderScopeWhereMock.mockResolvedValue(undefined);
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-20T12:00:00.000Z"));
   });
@@ -712,6 +767,7 @@ describe("listControlTowerShipments booking SLA flag", () => {
     const out = await listControlTowerShipments({
       tenantId: "tenant-1",
       ctx: ctxInternal,
+      actorUserId: "actor-1",
       query: {},
     });
     expect(out.rows[0]!.nextAction).toBe("Escalate booking SLA");

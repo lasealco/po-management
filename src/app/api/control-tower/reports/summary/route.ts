@@ -27,6 +27,7 @@ export async function GET() {
   const summary = await getControlTowerReportsSummary({
     tenantId: tenant.id,
     ctx,
+    actorUserId: actorId,
   });
   return NextResponse.json(summary);
 }

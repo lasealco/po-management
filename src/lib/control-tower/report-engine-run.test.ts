@@ -5,6 +5,7 @@ const findManyShipments = vi.hoisted(() => vi.fn());
 const findManyExceptionCodes = vi.hoisted(() => vi.fn());
 const findUniquePref = vi.hoisted(() => vi.fn());
 const findManyFx = vi.hoisted(() => vi.fn());
+const getPurchaseOrderScopeWhereMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -14,6 +15,11 @@ vi.mock("@/lib/prisma", () => ({
     ctFxRate: { findMany: findManyFx },
   },
 }));
+
+vi.mock("@/lib/org-scope", async (importOriginal) => {
+  const act = await importOriginal<typeof import("@/lib/org-scope")>();
+  return { ...act, getPurchaseOrderScopeWhere: getPurchaseOrderScopeWhereMock };
+});
 
 import { runControlTowerReport } from "./report-engine";
 
@@ -63,16 +69,19 @@ describe("runControlTowerReport", () => {
     findManyExceptionCodes.mockReset();
     findUniquePref.mockReset();
     findManyFx.mockReset();
+    getPurchaseOrderScopeWhereMock.mockReset();
     findManyShipments.mockResolvedValue([]);
     findManyExceptionCodes.mockResolvedValue([]);
     findUniquePref.mockResolvedValue(null);
     findManyFx.mockResolvedValue([]);
+    getPurchaseOrderScopeWhereMock.mockResolvedValue(undefined);
   });
 
   it("returns empty series and zero totals when no shipments match", async () => {
     const r = await runControlTowerReport({
       tenantId: "t1",
       ctx: portalCtx,
+      actorUserId: "a1",
       configInput: { dimension: "month", measure: "shipments" },
     });
     expect(r.rows).toEqual([]);
@@ -85,7 +94,7 @@ describe("runControlTowerReport", () => {
     expect(r.totals.shipments).toBe(0);
     expect(findManyShipments).toHaveBeenCalledTimes(1);
     expect(findManyExceptionCodes).not.toHaveBeenCalled();
-    expect(findUniquePref).not.toHaveBeenCalled();
+    expect(findUniquePref).toHaveBeenCalledTimes(1);
     expect(findManyFx).not.toHaveBeenCalled();
   });
 
@@ -94,6 +103,7 @@ describe("runControlTowerReport", () => {
     const r = await runControlTowerReport({
       tenantId: "t1",
       ctx: portalCtx,
+      actorUserId: "a1",
       configInput: { dimension: "month", measure: "shipments" },
     });
     expect(r.rows).toHaveLength(1);
@@ -109,6 +119,7 @@ describe("runControlTowerReport", () => {
     const r = await runControlTowerReport({
       tenantId: "t1",
       ctx: portalCtx,
+      actorUserId: "a1",
       configInput: {
         dimension: "month",
         measure: "shipments",
@@ -132,6 +143,7 @@ describe("runControlTowerReport", () => {
     await runControlTowerReport({
       tenantId: "t1",
       ctx: portalCtx,
+      actorUserId: "a1",
       configInput: {
         dimension: "customer",
         measure: "shipments",
@@ -149,6 +161,7 @@ describe("runControlTowerReport", () => {
     const r = await runControlTowerReport({
       tenantId: "t1",
       ctx: portalCtx,
+      actorUserId: "a1",
       configInput: {
         dimension: "customer",
         measure: "shipments",
@@ -175,6 +188,7 @@ describe("runControlTowerReport", () => {
     const r = await runControlTowerReport({
       tenantId: "t1",
       ctx: portalCtx,
+      actorUserId: "a1",
       configInput: { dimension: "exceptionCatalog", measure: "shipments" },
     });
     expect(findManyExceptionCodes).toHaveBeenCalledWith(

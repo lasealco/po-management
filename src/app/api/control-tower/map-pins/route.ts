@@ -34,6 +34,7 @@ export async function GET(request: Request) {
   const listResult = await listControlTowerShipments({
     tenantId: tenant.id,
     ctx,
+    actorUserId: actorId,
     query: parsed.query,
   });
 

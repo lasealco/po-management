@@ -58,7 +58,7 @@ import { prisma } from "@/lib/prisma";
 import { ensureBookingConfirmationSlaAlerts } from "./booking-sla";
 import { isProbableControlTowerShipmentCuid } from "./search-query";
 import {
-  controlTowerShipmentScopeWhere,
+  controlTowerShipmentAccessWhere,
   type ControlTowerPortalContext,
 } from "./viewer";
 import { computeCtMilestoneSummary } from "./milestone-summary";
@@ -396,9 +396,11 @@ export type ListControlTowerShipmentsResult = {
 export async function listControlTowerShipments(params: {
   tenantId: string;
   ctx: ControlTowerPortalContext;
+  /** Requester: org/division read scope is applied in addition to portal/customer scope. */
+  actorUserId: string;
   query: ListShipmentsQuery;
 }): Promise<ListControlTowerShipmentsResult> {
-  const { tenantId, ctx, query } = params;
+  const { tenantId, ctx, actorUserId, query } = params;
   const rawTake = query.take;
   const requestedTake =
     typeof rawTake === "number" && Number.isFinite(rawTake)
@@ -410,7 +412,7 @@ export async function listControlTowerShipments(params: {
       ? query.routeActionPrefix
       : "";
   const dbTake = routePrefix ? Math.min(600, Math.max(requestedTake * 5, 120)) : requestedTake;
-  const scope = controlTowerShipmentScopeWhere(tenantId, ctx);
+  const scope = await controlTowerShipmentAccessWhere(tenantId, ctx, actorUserId);
   const now = new Date();
 
   const where: Prisma.ShipmentWhereInput = {

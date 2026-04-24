@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 
 import {
-  controlTowerShipmentScopeWhere,
+  controlTowerShipmentAccessWhere,
   type ControlTowerPortalContext,
 } from "./viewer";
 
@@ -13,9 +13,10 @@ function pct(part: number, whole: number) {
 export async function getControlTowerOpsSummary(params: {
   tenantId: string;
   ctx: ControlTowerPortalContext;
+  actorUserId: string;
 }) {
-  const { tenantId, ctx } = params;
-  const scope = controlTowerShipmentScopeWhere(tenantId, ctx);
+  const { tenantId, ctx, actorUserId } = params;
+  const scope = await controlTowerShipmentAccessWhere(tenantId, ctx, actorUserId);
   const restricted = ctx.isRestrictedView;
   const now = new Date();
   const d1 = new Date(now.getTime() - 24 * 3_600_000);

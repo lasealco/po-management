@@ -5,6 +5,12 @@ const shipmentCount = vi.hoisted(() => vi.fn());
 const shipmentFindMany = vi.hoisted(() => vi.fn());
 const ctAlertCount = vi.hoisted(() => vi.fn());
 const ctExceptionCount = vi.hoisted(() => vi.fn());
+const getPurchaseOrderScopeWhereMock = vi.hoisted(() => vi.fn());
+
+vi.mock("@/lib/org-scope", async (importOriginal) => {
+  const act = await importOriginal<typeof import("@/lib/org-scope")>();
+  return { ...act, getPurchaseOrderScopeWhere: getPurchaseOrderScopeWhereMock };
+});
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -33,6 +39,8 @@ describe("getControlTowerOverview", () => {
     shipmentFindMany.mockReset();
     ctAlertCount.mockReset();
     ctExceptionCount.mockReset();
+    getPurchaseOrderScopeWhereMock.mockReset();
+    getPurchaseOrderScopeWhereMock.mockResolvedValue(undefined);
   });
 
   it("aggregates counts for internal viewers", async () => {
@@ -56,7 +64,11 @@ describe("getControlTowerOverview", () => {
       .mockResolvedValueOnce(7);
     shipmentFindMany.mockResolvedValueOnce([]);
 
-    const out = await getControlTowerOverview({ tenantId: "t1", ctx: ctxInternal });
+    const out = await getControlTowerOverview({
+      tenantId: "t1",
+      ctx: ctxInternal,
+      actorUserId: "a1",
+    });
 
     expect(out.isCustomerView).toBe(false);
     expect(out.counts.active).toBe(6);
@@ -98,6 +110,7 @@ describe("getControlTowerOverview", () => {
         isSupplierPortal: true,
         customerCrmAccountId: null,
       },
+      actorUserId: "a1",
     });
 
     expect(out.isCustomerView).toBe(true);
@@ -139,7 +152,11 @@ describe("getControlTowerOverview", () => {
       },
     ]);
 
-    const out = await getControlTowerOverview({ tenantId: "t1", ctx: ctxInternal });
+    const out = await getControlTowerOverview({
+      tenantId: "t1",
+      ctx: ctxInternal,
+      actorUserId: "a1",
+    });
     expect(out.staleTop).toEqual([
       {
         id: "s1",

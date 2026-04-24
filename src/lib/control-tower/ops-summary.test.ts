@@ -8,6 +8,12 @@ const userFindMany = vi.hoisted(() => vi.fn());
 const ctExceptionGroupBy = vi.hoisted(() => vi.fn());
 const shipmentFindMany = vi.hoisted(() => vi.fn());
 const ctShipmentNoteCount = vi.hoisted(() => vi.fn());
+const getPurchaseOrderScopeWhereMock = vi.hoisted(() => vi.fn());
+
+vi.mock("@/lib/org-scope", async (importOriginal) => {
+  const act = await importOriginal<typeof import("@/lib/org-scope")>();
+  return { ...act, getPurchaseOrderScopeWhere: getPurchaseOrderScopeWhereMock };
+});
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -38,6 +44,8 @@ describe("getControlTowerOpsSummary", () => {
     ctExceptionGroupBy.mockReset();
     shipmentFindMany.mockReset();
     ctShipmentNoteCount.mockReset();
+    getPurchaseOrderScopeWhereMock.mockReset();
+    getPurchaseOrderScopeWhereMock.mockResolvedValue(undefined);
   });
 
   it("aggregates SLA, owners, exceptions, route ETA, and ops console for internal users", async () => {
@@ -65,7 +73,7 @@ describe("getControlTowerOpsSummary", () => {
     shipmentFindMany.mockResolvedValueOnce([{ id: "s1", booking: { eta }, receivedAt }]);
     ctShipmentNoteCount.mockResolvedValueOnce(7);
 
-    const out = await getControlTowerOpsSummary({ tenantId: "t1", ctx: ctxInternal });
+    const out = await getControlTowerOpsSummary({ tenantId: "t1", ctx: ctxInternal, actorUserId: "a1" });
 
     expect(out.isCustomerView).toBe(false);
     expect(out.slaOps).toEqual({
@@ -116,6 +124,7 @@ describe("getControlTowerOpsSummary", () => {
         isSupplierPortal: true,
         customerCrmAccountId: null,
       },
+      actorUserId: "a1",
     });
 
     expect(out.isCustomerView).toBe(true);

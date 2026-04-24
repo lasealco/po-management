@@ -27,7 +27,13 @@ export default async function ControlTowerReportsPage() {
   );
 
   const summary =
-    tenant != null ? await getControlTowerReportsSummary({ tenantId: tenant.id, ctx }) : null;
+    tenant != null && actorId != null
+      ? await getControlTowerReportsSummary({
+          tenantId: tenant.id,
+          ctx,
+          actorUserId: actorId,
+        })
+      : null;
   const [supplierChoices, crmAccountChoices] = tenant
     ? await Promise.all([
         prisma.supplier.findMany({
