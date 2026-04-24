@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client";
 
-import { userIsSuperuser } from "@/lib/authz";
+import { actorIsSupplierPortalRestricted, userIsSuperuser } from "@/lib/authz";
 import {
   type CrmAccessScope,
   crmAccountInScope,
@@ -68,8 +68,14 @@ export async function loadWmsViewReadScope(
     };
   }
 
+  const isSupplier = await actorIsSupplierPortalRestricted(actorUserId);
   const [poWhere, userW, crmAcc, inventoryProduct, ctCtx] = await Promise.all([
-    purchaseOrderWhereWithViewerScope(tenantId, actorUserId, { tenantId }),
+    purchaseOrderWhereWithViewerScope(
+      tenantId,
+      actorUserId,
+      { tenantId },
+      { isSupplierPortalUser: isSupplier },
+    ),
     getCrmOwnerUserScopeWhere(tenantId, actorUserId),
     getCrmAccessScope(tenantId, actorUserId),
     wmsProductDivisionWhere(tenantId, actorUserId),
