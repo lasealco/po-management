@@ -19,6 +19,8 @@ export type WmsViewReadScope = {
   /** Inventory balances / movements / replenishment product filter (undefined = tenant-wide by product). */
   inventoryProduct: Prisma.ProductWhereInput | undefined;
   wmsBillingEvent: Prisma.WmsBillingEventWhereInput;
+  /** Invoice run list / detail: runs you created (org-scoped user) or that contain at least one visible billing event. */
+  wmsInvoiceRun: Prisma.WmsBillingInvoiceRunWhereInput;
   shipment: Prisma.ShipmentWhereInput;
   shipmentItem: Prisma.ShipmentItemWhereInput;
 };
@@ -63,6 +65,7 @@ export async function loadWmsViewReadScope(
       outboundOrder: {},
       inventoryProduct: undefined,
       wmsBillingEvent: {},
+      wmsInvoiceRun: {},
       shipment: sh,
       shipmentItem: { shipment: sh },
     };
@@ -123,6 +126,15 @@ export async function loadWmsViewReadScope(
   const wmsBillingEvent: Prisma.WmsBillingEventWhereInput =
     beParts.length === 1 ? beParts[0]! : { AND: beParts };
 
+  const eventInScope: Prisma.WmsBillingEventWhereInput = {
+    AND: [{ tenantId }, wmsBillingEvent],
+  };
+  const wmsInvoiceRun: Prisma.WmsBillingInvoiceRunWhereInput = userW
+    ? {
+        OR: [{ createdBy: { is: userW } }, { events: { some: eventInScope } }],
+      }
+    : {};
+
   const shipment = await controlTowerShipmentAccessWhere(tenantId, ctCtx, actorUserId);
 
   return {
@@ -132,6 +144,7 @@ export async function loadWmsViewReadScope(
     outboundOrder,
     inventoryProduct,
     wmsBillingEvent,
+    wmsInvoiceRun,
     shipment,
     shipmentItem: { shipment },
   };

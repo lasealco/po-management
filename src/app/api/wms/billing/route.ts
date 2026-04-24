@@ -14,6 +14,14 @@ import { getDemoTenant } from "@/lib/demo-tenant";
 import { loadWmsViewReadScope } from "@/lib/wms/wms-read-scope";
 import { prisma } from "@/lib/prisma";
 
+function wmsBillingInvoiceRunReadWhere(
+  tenantId: string,
+  extra: Prisma.WmsBillingInvoiceRunWhereInput,
+): Prisma.WmsBillingInvoiceRunWhereInput {
+  if (!extra || Object.keys(extra).length === 0) return { tenantId };
+  return { AND: [{ tenantId }, extra] };
+}
+
 type BillingBody = {
   action?: string;
   since?: string;
@@ -42,11 +50,12 @@ export async function GET(request: Request) {
     viewScope.wmsBillingEvent && Object.keys(viewScope.wmsBillingEvent).length > 0
       ? { AND: [{ tenantId: tenant.id }, viewScope.wmsBillingEvent] }
       : { tenantId: tenant.id };
+  const invoiceRunWhere = wmsBillingInvoiceRunReadWhere(tenant.id, viewScope.wmsInvoiceRun);
 
   const csvRunId = new URL(request.url).searchParams.get("csvRun");
   if (csvRunId) {
     const row = await prisma.wmsBillingInvoiceRun.findFirst({
-      where: { id: csvRunId, tenantId: tenant.id },
+      where: { AND: [invoiceRunWhere, { id: csvRunId }] },
       select: { csvSnapshot: true, runNo: true },
     });
     if (!row?.csvSnapshot) {
@@ -88,7 +97,7 @@ export async function GET(request: Request) {
       },
     }),
     prisma.wmsBillingInvoiceRun.findMany({
-      where: { tenantId: tenant.id },
+      where: invoiceRunWhere,
       orderBy: { createdAt: "desc" },
       take: 15,
       include: {
@@ -198,8 +207,10 @@ export async function POST(request: Request) {
     if (!invoiceRunId) {
       return toApiErrorResponse({ error: "invoiceRunId required.", code: "BAD_INPUT", status: 400 });
     }
+    const viewScope = await loadWmsViewReadScope(tenant.id, actorId);
+    const invoiceRunWhere = wmsBillingInvoiceRunReadWhere(tenant.id, viewScope.wmsInvoiceRun);
     const updated = await prisma.wmsBillingInvoiceRun.updateMany({
-      where: { id: invoiceRunId, tenantId: tenant.id, status: "DRAFT" },
+      where: { AND: [invoiceRunWhere, { id: invoiceRunId, status: "DRAFT" }] },
       data: { status: "POSTED" },
     });
     if (updated.count === 0) {
