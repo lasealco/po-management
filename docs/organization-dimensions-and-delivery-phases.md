@@ -88,6 +88,8 @@ Phases are **ordered**; some work can **overlap** in later steps once foundation
 
 ### Phase 2 — Transaction context: “on behalf of” / served organization on documents
 
+**Status:** **Shipped** (2026-04-24): nullable `servedOrgUnitId` on **`PurchaseOrder`** and **`SalesOrder`** (Prisma + order create/edit APIs and UIs). Served org is validated in-tenant; buyer subtree and workflow rules are layered in Phases 4 and 5–6. Reporting can group by served org (e.g. **Phase 5** `orders_by_served_org`).
+
 **Objective:** Introduce **(E)** for the highest-value object first (e.g. **PurchaseOrder**, then **SalesOrder** as needed).
 
 **Outcomes**
@@ -192,12 +194,13 @@ Phases are **ordered**; some work can **overlap** in later steps once foundation
 
 ---
 
-*Document version: 1.5 (2026-04-24). Changelog: Phase 6 user default for “order for”; Phase 5 roll-ups; Phase 4 policy.*
+*Document version: 1.6 (2026-04-25). Changelog: Phase 2 marked Shipped in §5; Phase 6 user default; Phase 5 roll-ups; Phase 4 policy.*
 
 ### Changelog
 
 | Date | Change |
 |------|--------|
+| 2026-04-25 | **Housekeeping:** Phase 2 in §5 marked **Shipped** (aligns with `servedOrgUnitId` on PO/SO and downstream phases). |
 | 2026-04-24 | **Phase 6 (MVP) delivered:** `UserPreference` for default served org; `/api/settings/served-order-default`; create PO/SO pre-fill, banner, checkbox to save default, `updatedAt` audit on preference row. |
 | 2026-04-24 | **Phase 5 (MVP) delivered:** Executive “order-for” open-PO table (served org + operating tags); report `orders_by_served_org`; seed **PLANT** on Chicago plant demo org; documented tariff legal ↔ `OrgUnit` alignment as a future optional FK, not in schema yet. |
 | 2026-04-24 | **Phase 4 (MVP) delivered:** `assertSendToSupplierServedOrgPolicy` — `send_to_supplier` respects served org + `OrgUnitRoleAssignment` (GROUP_PROCUREMENT / REGIONAL_HQ) for cross-node release; list/detail and transition API; seed PO-1004 + org `US-CHI-PL1` + role on `US`. |

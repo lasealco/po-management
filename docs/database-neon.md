@@ -77,6 +77,10 @@ USE_DOTENV_LOCAL=1 npm run db:seed:srm-demo
 - **Requires** migrations that include **`SrmSupplierDocument`** (SRM Phase C). If the script errors on missing table, run **`npm run db:migrate`** (or `prisma migrate deploy` on the target URL) and retry.
 - **Neon / Vercel:** same as other add-on seeds ? not run in `vercel-build` by default; run manually against the environment **`DATABASE_URL`** when you need the slice-29 dataset on a fresh database.
 
+## Settings ? company legal audit (org dimensions Phase 5)
+
+- **Table:** `company_legal_entity_audit_logs` (append-only history for **Settings ? Organization ? Legal entities**). **Migration:** `prisma/migrations/20260523130000_company_legal_entity_audit_logs/`. If it is not applied, create/update/delete on company legal APIs (and the **Change history** block) can fail with Prisma/schema errors. Use the same **`DATABASE_URL`** as the app: **`npx prisma migrate deploy`** (or your normal Vercel build path, which includes migrate when configured). No separate seed is required for the audit table.
+
 ## Vercel build: P3009 / failed migration (`20260422120000_supplier_onboarding_task_srm_phase_b`)
 
 If **`prisma migrate deploy`** fails with **P3009** and lists this **SRM Phase B** migration as **failed** (Neon pooler timeout, etc.), **`scripts/vercel-build.cjs`** now runs **`scripts/repair-failed-srm-onboarding-task-migration.cjs`** before migrate (same pattern as other stuck migrations). Locally, with a direct (`UNPOOLED`) URL: **`npm run db:repair:srm-onboarding-task-migration`**, then **`npm run db:migrate`**. Keep **`DATABASE_URL_UNPOOLED`** (or **`DIRECT_URL`**) on Vercel for reliable `migrate deploy`.
