@@ -1,9 +1,15 @@
 import { Prisma } from "@prisma/client";
 
 import { userHasGlobalGrant } from "@/lib/authz";
-import { crmAccountInScope, getCrmAccessScope } from "@/lib/crm-scope";
+import { crmAccountInScope } from "@/lib/crm-scope";
 import { movementLedgerWhere, type ParsedMovementLedgerQuery } from "@/lib/wms/movement-ledger-query";
+import { loadWmsViewReadScope } from "@/lib/wms/wms-read-scope";
 import { prisma } from "@/lib/prisma";
+
+function andWhereClauses<T>(base: T, extra: object): T {
+  if (!extra || Object.keys(extra).length === 0) return base;
+  return { AND: [base, extra] } as T;
+}
 
 /** Serializable JSON for `GET /api/wms` (WMS client + pages). */
 export async function getWmsDashboardPayload(
@@ -11,15 +17,42 @@ export async function getWmsDashboardPayload(
   actorUserId: string,
   movementLedger?: ParsedMovementLedgerQuery | null,
 ) {
-  const canPickCrmAccounts = await userHasGlobalGrant(actorUserId, "org.crm", "view");
+  const [canPickCrmAccounts, viewScope] = await Promise.all([
+    userHasGlobalGrant(actorUserId, "org.crm", "view"),
+    loadWmsViewReadScope(tenantId, actorUserId),
+  ]);
   const crmAccountListWhere: Prisma.CrmAccountWhereInput = canPickCrmAccounts
-    ? crmAccountInScope(tenantId, await getCrmAccessScope(tenantId, actorUserId))
+    ? crmAccountInScope(tenantId, viewScope.crmAccess)
     : { tenantId };
 
   const recentMovementWhere = movementLedger
     ? movementLedgerWhere(tenantId, movementLedger)
     : { tenantId };
   const recentMovementTake = movementLedger?.limit ?? 80;
+  const balanceWhere: Prisma.InventoryBalanceWhereInput = viewScope.inventoryProduct
+    ? { AND: [{ tenantId }, { product: viewScope.inventoryProduct }] }
+    : { tenantId };
+  const replenRuleWhere: Prisma.ReplenishmentRuleWhereInput = viewScope.inventoryProduct
+    ? { AND: [{ tenantId, isActive: true }, { product: viewScope.inventoryProduct }] }
+    : { tenantId, isActive: true };
+  const outboundWhere = andWhereClauses<Prisma.OutboundOrderWhereInput>(
+    { tenantId, status: { in: ["DRAFT", "RELEASED", "PICKING", "PACKED"] } },
+    viewScope.outboundOrder,
+  );
+  const openTaskWhere = andWhereClauses<Prisma.WmsTaskWhereInput>(
+    { tenantId, status: "OPEN" },
+    viewScope.wmsTask,
+  );
+  const openWaveWhere = andWhereClauses<Prisma.WmsWaveWhereInput>(
+    { tenantId, status: { in: ["OPEN", "RELEASED"] } },
+    viewScope.wmsWave,
+  );
+  const movementWhereForRows: Prisma.InventoryMovementWhereInput = viewScope.inventoryProduct
+    ? { AND: [{ tenantId }, { product: viewScope.inventoryProduct }] }
+    : { tenantId };
+  const recentMovementScoped: Prisma.InventoryMovementWhereInput = viewScope.inventoryProduct
+    ? { AND: [recentMovementWhere, { product: viewScope.inventoryProduct }] }
+    : recentMovementWhere;
 
   const [
     warehouses,
@@ -56,7 +89,7 @@ export async function getWmsDashboardPayload(
       },
     }),
     prisma.replenishmentRule.findMany({
-      where: { tenantId, isActive: true },
+      where: replenRuleWhere,
       orderBy: [{ warehouse: { name: "asc" } }, { product: { name: "asc" } }],
       include: {
         warehouse: { select: { id: true, code: true, name: true } },
@@ -66,7 +99,7 @@ export async function getWmsDashboardPayload(
       },
     }),
     prisma.outboundOrder.findMany({
-      where: { tenantId, status: { in: ["DRAFT", "RELEASED", "PICKING", "PACKED"] } },
+      where: outboundWhere,
       orderBy: { createdAt: "desc" },
       include: {
         warehouse: { select: { id: true, code: true, name: true } },
@@ -88,7 +121,7 @@ export async function getWmsDashboardPayload(
         })
       : Promise.resolve([]),
     prisma.inventoryBalance.findMany({
-      where: { tenantId },
+      where: balanceWhere,
       orderBy: [{ warehouse: { name: "asc" } }, { bin: { code: "asc" } }],
       include: {
         warehouse: { select: { id: true, code: true, name: true } },
@@ -97,7 +130,7 @@ export async function getWmsDashboardPayload(
       },
     }),
     prisma.wmsTask.findMany({
-      where: { tenantId, status: "OPEN" },
+      where: openTaskWhere,
       orderBy: { createdAt: "asc" },
       include: {
         warehouse: { select: { id: true, code: true, name: true } },
@@ -109,7 +142,7 @@ export async function getWmsDashboardPayload(
       },
     }),
     prisma.wmsWave.findMany({
-      where: { tenantId, status: { in: ["OPEN", "RELEASED"] } },
+      where: openWaveWhere,
       orderBy: { createdAt: "desc" },
       include: {
         warehouse: { select: { id: true, code: true, name: true } },
@@ -120,7 +153,7 @@ export async function getWmsDashboardPayload(
       },
     }),
     prisma.shipmentItem.findMany({
-      where: { shipment: { order: { tenantId } } },
+      where: { shipment: viewScope.shipment },
       orderBy: { shipment: { shippedAt: "desc" } },
       take: 200,
       include: {
@@ -140,7 +173,7 @@ export async function getWmsDashboardPayload(
       },
     }),
     prisma.shipment.findMany({
-      where: { order: { tenantId } },
+      where: viewScope.shipment,
       orderBy: { shippedAt: "desc" },
       take: 35,
       select: {
@@ -167,7 +200,7 @@ export async function getWmsDashboardPayload(
       },
     }),
     prisma.inventoryMovement.findMany({
-      where: { tenantId },
+      where: movementWhereForRows,
       select: {
         referenceType: true,
         referenceId: true,
@@ -176,7 +209,7 @@ export async function getWmsDashboardPayload(
       },
     }),
     prisma.inventoryMovement.findMany({
-      where: recentMovementWhere,
+      where: recentMovementScoped,
       orderBy: { createdAt: "desc" },
       take: recentMovementTake,
       include: {
@@ -186,7 +219,7 @@ export async function getWmsDashboardPayload(
         createdBy: { select: { id: true, name: true, email: true } },
       },
     }),
-    prisma.inventoryMovement.count({ where: recentMovementWhere }),
+    prisma.inventoryMovement.count({ where: recentMovementScoped }),
   ]);
 
   const putawayByShipmentItem = new Map<string, number>();

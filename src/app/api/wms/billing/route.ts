@@ -11,6 +11,7 @@ import {
 } from "@/lib/wms/billing-materialize";
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
+import { loadWmsViewReadScope } from "@/lib/wms/wms-read-scope";
 import { prisma } from "@/lib/prisma";
 
 type BillingBody = {
@@ -31,6 +32,16 @@ export async function GET(request: Request) {
   if (gate) return gate;
   const tenant = await getDemoTenant();
   if (!tenant) return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
+
+  const actorId = await getActorUserId();
+  if (!actorId) {
+    return toApiErrorResponse({ error: "No active actor.", code: "FORBIDDEN", status: 403 });
+  }
+  const viewScope = await loadWmsViewReadScope(tenant.id, actorId);
+  const billingEventWhere: Prisma.WmsBillingEventWhereInput =
+    viewScope.wmsBillingEvent && Object.keys(viewScope.wmsBillingEvent).length > 0
+      ? { AND: [{ tenantId: tenant.id }, viewScope.wmsBillingEvent] }
+      : { tenantId: tenant.id };
 
   const csvRunId = new URL(request.url).searchParams.get("csvRun");
   if (csvRunId) {
@@ -66,7 +77,7 @@ export async function GET(request: Request) {
       },
     }),
     prisma.wmsBillingEvent.findMany({
-      where: { tenantId: tenant.id },
+      where: billingEventWhere,
       orderBy: { occurredAt: "desc" },
       take: 80,
       include: {
@@ -85,7 +96,7 @@ export async function GET(request: Request) {
       },
     }),
     prisma.wmsBillingEvent.count({
-      where: { tenantId: tenant.id, invoiceRunId: null },
+      where: { AND: [billingEventWhere, { invoiceRunId: null }] },
     }),
   ]);
 
