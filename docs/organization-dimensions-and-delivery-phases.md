@@ -106,6 +106,8 @@ Phases are **ordered**; some work can **overlap** in later steps once foundation
 
 ### Phase 3 — Read scope: combine actor scope with document context
 
+**Status:** **Shipped** (2026-04-24): `getPurchaseOrderScopeWhere` treats a PO as org-visible if the requester still matches the existing lenient requester rule **or** `servedOrgUnitId` is in the viewer’s org subtree; superusers and supplier portal unchanged. Consumers (CT shipments, reports, order APIs) use the same helper.
+
 **Objective:** Evolve **(G)** so list/detail **reflect** the new dimension when present, without surprise data loss for legacy rows.
 
 **Outcomes**
@@ -184,11 +186,12 @@ Phases are **ordered**; some work can **overlap** in later steps once foundation
 
 ---
 
-*Document version: 1.1 (2026-04-24). Changelog: Phase 1 operating roles shipped (enum + join table + Settings UI; PO scope unchanged).*
+*Document version: 1.2 (2026-04-24). Changelog: Phase 3 read scope for `servedOrgUnitId` on POs; Phase 1 operating roles.*
 
 ### Changelog
 
 | Date | Change |
 |------|--------|
+| 2026-04-24 | **Phase 3 delivered:** `getPurchaseOrderScopeWhere` — org-scoped users also see POs whose `servedOrgUnitId` is in their org subtree (OR with requester-based rule); `controlTowerShipmentAccessWhere` and other `mergePurchaseOrderWhere` call sites pick this up via the same helper. |
 | 2026-04-24 | **Phase 1 delivered:** `OrgUnitOperatingRole` + `org_unit_role_assignments`; `GET`/`POST`/`PATCH` `/api/settings/org-units` carry `operatingRoles`; no change to `org-scope` PO filters. |
 | 2026-04-23 | Initial v1.0. |

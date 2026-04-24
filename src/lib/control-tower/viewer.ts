@@ -72,8 +72,8 @@ export function controlTowerShipmentScopeWhere(
 
 /**
  * Full CT shipment read scope: portal/customer rules plus the same org/division rules as purchase orders
- * (via the linked `order.requester` + line product divisions). Superusers and supplier portal bypass org filter
- * inside `getPurchaseOrderScopeWhere`.
+ * (linked `order.requester`, `order.servedOrgUnitId`, + line product divisions). Superusers and supplier portal
+ * bypass org filter inside `getPurchaseOrderScopeWhere`.
  */
 export async function controlTowerShipmentAccessWhere(
   tenantId: string,

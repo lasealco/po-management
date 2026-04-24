@@ -73,10 +73,42 @@ describe("getPurchaseOrderScopeWhere", () => {
       AND: [
         { customerCrmAccountId: "crm-a" },
         {
+          OR: [
+            {
+              requester: {
+                OR: [{ primaryOrgUnitId: { in: ["g"] } }, { primaryOrgUnitId: null }],
+              },
+            },
+            { servedOrgUnitId: { in: ["g"] } },
+          ],
+        },
+      ],
+    });
+  });
+
+  it("org-only scope allows served org in subtree (Phase 3) or matching requester", async () => {
+    prismaUserFindFirst.mockResolvedValue({
+      customerCrmAccountId: null,
+      primaryOrgUnitId: "hq",
+      productDivisionScope: [],
+    } as Awaited<ReturnType<typeof prismaUserFindFirst>>);
+    loadOrg.mockResolvedValue([
+      { id: "hq", parentId: null },
+      { id: "site-a", parentId: "hq" },
+    ] as never);
+
+    const w = await getPurchaseOrderScopeWhere("t-1", "u-1", {});
+    expect(w).toEqual({
+      OR: [
+        {
           requester: {
-            OR: [{ primaryOrgUnitId: { in: ["g"] } }, { primaryOrgUnitId: null }],
+            OR: [
+              { primaryOrgUnitId: { in: ["hq", "site-a"] } },
+              { primaryOrgUnitId: null },
+            ],
           },
         },
+        { servedOrgUnitId: { in: ["hq", "site-a"] } },
       ],
     });
   });

@@ -39,11 +39,11 @@ export async function loadOrgUnitSubtreeIds(
 }
 
 /**
- * Phase 2 + Phase 6: PO list/detail visibility.
+ * Phase 3: PO list/detail visibility (actor scope + document context).
  * - Superusers: no extra filter.
  * - Supplier portal users: no filter (caller should still apply supplier workflow rules).
  * - Users with `User.customerCrmAccountId` (customer portal / CT customer scope): only POs whose `customerCrmAccountId` matches (Phase 5 dimension); **AND** with org/division when both are set.
- * - Users with a primary org: only POs where the requester's org is in that subtree, or the requester has no org yet (lenient for legacy data).
+ * - Users with a primary org: POs where the requester’s org is in that subtree (or the requester has no org yet, lenient for legacy) **or** the PO’s **`servedOrgUnitId`** (when set) is in that subtree (Phase 3 — centralized “order for” visibility).
  * - Users with product-division links: only POs that have at least one line whose product is in those divisions.
  * - Org + division + customer combine with AND. None of these sets → no extra filter (see all in tenant, same as Phase 1).
  */
@@ -81,12 +81,17 @@ export async function getPurchaseOrderScopeWhere(
   if (orgId) {
     const subtree = await loadOrgUnitSubtreeIds(tenantId, orgId);
     parts.push({
-      requester: {
-        OR: [
-          { primaryOrgUnitId: { in: subtree } },
-          { primaryOrgUnitId: null },
-        ],
-      },
+      OR: [
+        {
+          requester: {
+            OR: [
+              { primaryOrgUnitId: { in: subtree } },
+              { primaryOrgUnitId: null },
+            ],
+          },
+        },
+        { servedOrgUnitId: { in: subtree } },
+      ],
     });
   }
 
