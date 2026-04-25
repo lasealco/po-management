@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { getActorUserId, getViewerGrantSet, requireApiGrant, viewerHas } from "@/lib/authz";
+import { isAssistantEmailPilotEnabled } from "@/lib/assistant/email-pilot";
 import { buildAssistantInbox } from "@/lib/assistant/inbox-aggregate";
 import { getControlTowerPortalContext } from "@/lib/control-tower/viewer";
 import { getDemoTenant } from "@/lib/demo-tenant";
@@ -46,6 +47,7 @@ export async function GET(request: Request) {
     ctAlerts: canCt,
     ctExceptions: canCt,
     soDrafts: canOrders,
+    emailThreads: canOrders && isAssistantEmailPilotEnabled(),
   };
 
   const payload = await buildAssistantInbox({

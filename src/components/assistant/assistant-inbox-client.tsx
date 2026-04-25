@@ -9,11 +9,13 @@ const KIND_LABEL: Record<AssistantInboxItem["kind"], string> = {
   ct_alert: "Open alert",
   ct_exception: "Exception",
   so_draft: "Draft sales order",
+  email_thread: "Email (pilot)",
 };
 
 function kindStyle(kind: AssistantInboxItem["kind"]): string {
   if (kind === "ct_alert") return "border-amber-200 bg-amber-50 text-amber-950";
   if (kind === "ct_exception") return "border-rose-200 bg-rose-50 text-rose-950";
+  if (kind === "email_thread") return "border-violet-200 bg-violet-50 text-violet-950";
   return "border-sky-200 bg-sky-50 text-sky-950";
 }
 
@@ -120,7 +122,10 @@ export function AssistantInboxClient({
       {items.length === 0 && !busy ? (
         <div className="rounded-2xl border border-dashed border-zinc-200 bg-white p-8 text-center text-sm text-zinc-600">
           <p className="font-medium text-zinc-800">You’re all caught up</p>
-          <p className="mt-1">No open alerts, no open exceptions, and no draft sales orders in scope — or your tenant is empty.</p>
+          <p className="mt-1">
+            No open alerts, no open exceptions, no open email (pilot), and no draft sales orders in scope — or your
+            tenant is empty.
+          </p>
           <p className="mt-3">
             <Link className="font-medium text-[var(--arscmp-primary)] hover:underline" href="/assistant">
               Go to Chat

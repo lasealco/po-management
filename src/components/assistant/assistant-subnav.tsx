@@ -12,6 +12,7 @@ import { appNavActiveClass, appNavInactiveClass } from "@/lib/subnav-active-clas
 export function AssistantSubnav() {
   const pathname = usePathname() ?? "";
   const [inboxCount, setInboxCount] = useState<number | null>(null);
+  const [emailPilot, setEmailPilot] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -29,8 +30,21 @@ export function AssistantSubnav() {
     })();
   }, [pathname]);
 
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/assistant/email-pilot");
+        const d = (await res.json()) as { enabled?: boolean };
+        setEmailPilot(d.enabled === true);
+      } catch {
+        setEmailPilot(false);
+      }
+    })();
+  }, []);
+
   const chat = pathname === "/assistant" || pathname === "/assistant/";
   const inbox = pathname.startsWith("/assistant/inbox");
+  const mail = pathname.startsWith("/assistant/mail");
 
   return (
     <div className="mb-6 flex flex-wrap gap-2 border-b border-zinc-200 pb-3 text-sm">
@@ -53,6 +67,15 @@ export function AssistantSubnav() {
           </span>
         ) : null}
       </Link>
+      {emailPilot ? (
+        <Link
+          href="/assistant/mail"
+          className={mail ? appNavActiveClass : appNavInactiveClass}
+          title="Email pilot (manual import, confirm before send)"
+        >
+          Mail
+        </Link>
+      ) : null}
     </div>
   );
 }

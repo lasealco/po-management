@@ -5,7 +5,7 @@ import { controlTowerShipmentAccessWhere } from "@/lib/control-tower/viewer";
 import type { ControlTowerPortalContext } from "@/lib/control-tower/viewer";
 import { prisma } from "@/lib/prisma";
 
-export type AssistantInboxItemKind = "ct_alert" | "ct_exception" | "so_draft";
+export type AssistantInboxItemKind = "ct_alert" | "ct_exception" | "so_draft" | "email_thread";
 
 export type AssistantInboxItem = {
   id: string;
@@ -25,7 +25,7 @@ export type AssistantInboxPayload = {
   items: AssistantInboxItem[];
   /** Count of rows in this response (for badge) */
   total: number;
-  producers: { ctAlerts: boolean; ctExceptions: boolean; soDrafts: boolean };
+  producers: { ctAlerts: boolean; ctExceptions: boolean; soDrafts: boolean; emailThreads: boolean };
 };
 
 /**
@@ -36,7 +36,7 @@ export async function buildAssistantInbox(params: {
   tenantId: string;
   actorUserId: string;
   ctCtx: ControlTowerPortalContext;
-  include: { ctAlerts: boolean; ctExceptions: boolean; soDrafts: boolean };
+  include: { ctAlerts: boolean; ctExceptions: boolean; soDrafts: boolean; emailThreads: boolean };
 }): Promise<AssistantInboxPayload> {
   const { tenantId, actorUserId, ctCtx, include } = params;
   const items: AssistantInboxItem[] = [];
@@ -109,6 +109,32 @@ export async function buildAssistantInbox(params: {
     }
   }
 
+  if (include.emailThreads) {
+    const emails = await prisma.assistantEmailThread.findMany({
+      where: { tenantId, status: "OPEN" },
+      orderBy: { receivedAt: "desc" },
+      take: 50,
+      select: {
+        id: true,
+        subject: true,
+        fromAddress: true,
+        preview: true,
+        receivedAt: true,
+      },
+    });
+    for (const e of emails) {
+      const pv = e.preview.length > 120 ? `${e.preview.slice(0, 120)}…` : e.preview;
+      items.push({
+        id: `email-${e.id}`,
+        kind: "email_thread",
+        title: e.subject,
+        subtitle: `From ${e.fromAddress} · ${pv}`,
+        href: `/assistant/mail?thread=${e.id}`,
+        createdAt: e.receivedAt.toISOString(),
+      });
+    }
+  }
+
   if (include.soDrafts) {
     const drafts = await prisma.salesOrder.findMany({
       where: { tenantId, status: "DRAFT" },
@@ -143,6 +169,7 @@ export async function buildAssistantInbox(params: {
       ctAlerts: include.ctAlerts,
       ctExceptions: include.ctExceptions,
       soDrafts: include.soDrafts,
+      emailThreads: include.emailThreads,
     },
   };
 }

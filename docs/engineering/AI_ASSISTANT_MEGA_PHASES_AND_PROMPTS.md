@@ -3,7 +3,7 @@
 **Purpose:** Fix a real problem: *strategy docs and micro-slices are hard to “prompt,”* and **you** mainly validate **the product when you can see and click it**. This document defines (1) **how to prompt** the implementation agent, (2) **big phases** the agent can execute **without** waiting for you on every sub-task, and (3) **Mega-Phase 1** in enough detail to build toward your **“John at ABC, corr-roll, $100, pickup Tuesday”** story.
 
 **Audience:** You (product owner) + anyone implementing in Cursor.  
-**Last updated:** 2026-04-23 (MP3)
+**Last updated:** 2026-04-25 (MP4)
 
 **Related:** [`AI_ASSISTANT_UX_GTM_AND_DELIVERY_PLAN.md`](./AI_ASSISTANT_UX_GTM_AND_DELIVERY_PLAN.md) (narrative + workstreams), [`PLATFORM_AI_FIRST_OPERATIONS_ROADMAP.md`](./PLATFORM_AI_FIRST_OPERATIONS_ROADMAP.md) (platform strategy).
 
@@ -125,6 +125,7 @@ Use **one** of these. They are designed so the implementer (human or agent) does
 
 | Date | Change |
 |------|--------|
+| 2026-04-25 | **MP4 shipped (MVP, flagged):** `ASSISTANT_EMAIL_PILOT=1` — `AssistantEmailThread` in DB; `GET/POST /api/assistant/email-threads`, `GET/PATCH /api/assistant/email-threads/[id]`, `POST .../confirm-send` (records confirmation + **mailto** handoff, no default server send); `/assistant/mail` three-pane **mail client** (import/paste, CRM link, draft, confirm modal); open items merged into **assistant Inbox**; subnav **Mail** when pilot enabled. |
 | 2026-04-23 | **MP3 shipped (MVP):** `POST /api/assistant/answer-operations` with heuristics for stock / trace / “where is it” vs sales-order flow; reuses `getProductTracePayload` (PO + in-transit + WMS on-hand when granted); `AssistantMp1Client` runs operations first, shows narrative + **evidence links** (product, product-trace, WMS, Control Tower shipment, PO). |
 | 2026-04-23 | **MP2 shipped (MVP):** `GET /api/assistant/inbox` aggregating open CT alerts, open/in-progress CT exceptions, and DRAFT sales orders (scoped to viewer); `/assistant/inbox` + `AssistantInbox` client; top nav + platform visibility for Inbox; subnav between Chat and Inbox with badge. |
 | 2026-04-23 | **MP1 shipped:** `/assistant` split UI (conversation + proposed action), heuristic `parse-sales-order-intent` API, CRM/product disambiguation, `POST /api/sales-orders` with optional `notes`, nav + platform hub entry. |

@@ -141,6 +141,48 @@ model Tenant {
   srmOperatorNotifications          SrmOperatorNotification[]
   companyLegalEntities              CompanyLegalEntity[]
   companyLegalEntityAuditLogs       CompanyLegalEntityAuditLog[]
+  /// MP4: assistant / sales email pilot (inbound items + staged reply, confirm-before-send).
+  assistantEmailThreads             AssistantEmailThread[]
+}
+
+/// Mega-Phase 4: external mail thread as an attention item (pilot; feature-flagged in app).
+enum AssistantEmailThreadStatus {
+  OPEN
+  REPLIED
+  RESOLVED
+}
+
+/// One inbound “thread” row (MVP: one message per row; extensible to multi-message threads).
+model AssistantEmailThread {
+  id             String  @id @default(cuid())
+  tenantId       String
+  /// When present, used to deduplicate re-ingest (e.g. Message-Id, provider id).
+  providerMsgId  String? @db.VarChar(500)
+  subject        String
+  fromAddress    String
+  toAddress      String
+  /// Short preview for lists (first ~300 chars of body, plain text).
+  preview        String  @db.VarChar(500)
+  bodyText       String  @db.Text
+  receivedAt     DateTime
+  status         AssistantEmailThreadStatus @default(OPEN)
+  /// Staged reply text — never auto-sent.
+  draftReply     String?  @db.Text
+  lastSendConfirmAt  DateTime?
+  lastSendConfirmById String?
+  lastSendMode       String? @db.VarChar(32) /// e.g. mailto, audit_only, smtp
+  /// Optional link to CRM account when user associates the conversation.
+  linkedCrmAccountId String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenant              Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  lastSendConfirmBy   User?      @relation("AssistantEmailSendConfirmBy", fields: [lastSendConfirmById], references: [id], onDelete: SetNull)
+  linkedCrmAccount    CrmAccount? @relation(fields: [linkedCrmAccountId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, receivedAt])
+  @@index([tenantId, status])
+  @@unique([tenantId, providerMsgId])
 }
 
 /// Integration / API hub — registry row for an external or internal data source (Phase 1 stub).
@@ -488,6 +530,7 @@ model User {
   srmSupplierDocumentAuditAuthored   SrmSupplierDocumentAuditLog[]   @relation("SrmSupplierDocumentAuditActor")
   companyLegalEntityAudits           CompanyLegalEntityAuditLog[]
   wmsSavedLedgerViews                WmsSavedLedgerView[]
+  assistantEmailSendConfirms         AssistantEmailThread[]         @relation("AssistantEmailSendConfirmBy")
   passwordResetTokens                PasswordResetToken[]
   /// Primary org node (geography / legal hierarchy). Matrix: see `productDivisionScope`.
   primaryOrgUnitId                   String?
@@ -2660,6 +2703,7 @@ model CrmAccount {
   purchaseOrdersAsCustomer PurchaseOrder[]   @relation("PurchaseOrderCustomerCrm")
   salesOrders              SalesOrder[]
   customerPortalUsers      User[]            @relation("UserCustomerPortalScope")
+  assistantEmailThreads   AssistantEmailThread[]
 
   @@index([tenantId, lifecycle])
   @@index([tenantId, ownerUserId])
