@@ -98,6 +98,11 @@ export function DockedAssistantPanel({
         setAnswer(context);
         return;
       }
+      const impact = await postAssistantAnswer("/api/assistant/answer-impact", prompt);
+      if (impact.kind !== "defer") {
+        setAnswer(impact);
+        return;
+      }
       const operations = await postAssistantAnswer("/api/assistant/answer-operations", prompt);
       setAnswer(operations);
     } catch (e) {

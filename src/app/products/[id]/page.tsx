@@ -116,9 +116,9 @@ export default async function ProductDetailPage({
           </h1>
           <p className="mt-1 text-sm text-zinc-500">View only</p>
           <AssistantContextCard
-            title="Ask stock and trace"
-            description="Open the assistant with this product prefilled for stock, trace, shipment, and PO evidence."
-            prompt={`How much ${product.productCode || product.sku || product.name} do we have in stock, and where is it moving?`}
+            title="Ask product impact"
+            description="Open the assistant with this product prefilled for stock, trace, shipments, POs, and customer exposure."
+            prompt={`What is impacted for product ${product.id} (${product.productCode || product.sku || product.name}) across stock, purchase orders, shipments, and sales orders?`}
           />
           <ProductReadOnly product={readProduct} />
         </main>
@@ -172,9 +172,9 @@ export default async function ProductDetailPage({
         </Link>
         <div className="mt-2">
           <AssistantContextCard
-            title="Ask stock and trace"
-            description="Open the assistant with this product prefilled for stock, trace, shipment, and PO evidence."
-            prompt={`How much ${product.productCode || product.sku || product.name} do we have in stock, and where is it moving?`}
+            title="Ask product impact"
+            description="Open the assistant with this product prefilled for stock, trace, shipments, POs, and customer exposure."
+            prompt={`What is impacted for product ${product.id} (${product.productCode || product.sku || product.name}) across stock, purchase orders, shipments, and sales orders?`}
           />
           <ProductEditClient
             productId={product.id}
