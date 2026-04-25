@@ -20,6 +20,11 @@ type AnswerOperationsResult =
   | { kind: "clarify"; message: string; options: ProductOption[] }
   | { kind: "answer"; message: string; evidence: { label: string; href: string }[] };
 
+type AnswerContextResult =
+  | { kind: "defer" }
+  | { kind: "not_found"; message: string }
+  | { kind: "answer"; message: string; evidence: { label: string; href: string }[] };
+
 type Turn = {
   role: "user" | "assistant";
   content: string;
@@ -121,6 +126,26 @@ export function AssistantMp1Client({ canCreateSalesOrder }: { canCreateSalesOrde
     [],
   );
 
+  const runAnswerContext = useCallback(async (text: string) => {
+    setBusy(true);
+    setErr(null);
+    const res = await fetch("/api/assistant/answer-context", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
+    const raw = (await res.json().catch(() => ({}))) as { error?: string } & Partial<AnswerContextResult>;
+    setBusy(false);
+    if (!res.ok) {
+      setErr(raw.error || "Could not load context answer.");
+      return "error" as const;
+    }
+    if (raw.kind === "defer") return { kind: "defer" } as AnswerContextResult;
+    if (raw.kind === "not_found" || raw.kind === "answer") return raw as AnswerContextResult;
+    setErr("Invalid response from assistant.");
+    return "error" as const;
+  }, []);
+
   const submitText = async () => {
     const text = input.trim();
     if (!text) return;
@@ -131,6 +156,25 @@ export function AssistantMp1Client({ canCreateSalesOrder }: { canCreateSalesOrde
     setTurns((t) => [...t, { role: "user", content: text }]);
     setPending(null);
     setLastOpEvidence(null);
+
+    const contextual = await runAnswerContext(text);
+    if (contextual === "error") return;
+    if (contextual.kind !== "defer") {
+      if (contextual.kind === "not_found") {
+        setTurns((t) => [...t, { role: "assistant", content: contextual.message }]);
+        return;
+      }
+      setLastOpEvidence({ message: contextual.message, evidence: contextual.evidence });
+      setTurns((t) => [
+        ...t,
+        {
+          role: "assistant",
+          content: contextual.message,
+          operationsEvidence: contextual.evidence,
+        },
+      ]);
+      return;
+    }
 
     const op = await runAnswerOperations(text, undefined);
     if (op === "error") return;

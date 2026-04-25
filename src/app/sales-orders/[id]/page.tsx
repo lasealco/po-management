@@ -129,7 +129,7 @@ export default async function SalesOrderDetailPage({
       <AssistantContextCard
         title="Ask about this sales order"
         description="Use the assistant to summarize the customer commitment, draft a reply, or ask what still needs action."
-        prompt={`Summarize sales order ${row.soNumber} for ${row.customerName}. What is the next best action?`}
+        prompt={`Summarize sales order ${row.id} (${row.soNumber}) for ${row.customerName}. What is the next best action?`}
       />
       <SalesOrderStatusActions
         salesOrderId={row.id}
