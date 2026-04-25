@@ -12,9 +12,8 @@ function MailDisabled() {
     <div className="rounded-2xl border border-amber-200 bg-amber-50/80 p-6 text-sm text-amber-950">
       <p className="font-semibold">Assistant email pilot is off</p>
       <p className="mt-2 text-amber-900/90">
-        Set <code className="rounded bg-amber-200/60 px-1.5">ASSISTANT_EMAIL_PILOT=1</code> (and optionally{" "}
-        <code className="rounded bg-amber-200/60 px-1.5">NEXT_PUBLIC_ASSISTANT_EMAIL_PILOT=1</code> for nav hints) in your
-        environment, redeploy, then return here.
+        Remove <code className="rounded bg-amber-200/60 px-1.5">ASSISTANT_EMAIL_PILOT=0</code> (or set it to{" "}
+        <code className="rounded bg-amber-200/60 px-1.5">1</code>) in your environment, redeploy, then return here.
       </p>
     </div>
   );

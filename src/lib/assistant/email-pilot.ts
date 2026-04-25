@@ -1,12 +1,9 @@
 /**
- * MP4: optional assistant email pilot (inbound + staged reply, confirm before send).
- * Enable with `ASSISTANT_EMAIL_PILOT=1` and/or `NEXT_PUBLIC_ASSISTANT_EMAIL_PILOT=1` (latter for client nav hints).
+ * MP4: assistant email pilot (copy/paste inbound + staged reply, confirm before send).
+ * Enabled by default for the no-provider pilot; set `ASSISTANT_EMAIL_PILOT=0` to hide/disable.
  */
 export function isAssistantEmailPilotEnabled(): boolean {
-  return (
-    process.env.ASSISTANT_EMAIL_PILOT === "1" ||
-    process.env.NEXT_PUBLIC_ASSISTANT_EMAIL_PILOT === "1"
-  );
+  return process.env.ASSISTANT_EMAIL_PILOT !== "0";
 }
 
 export function emailPreviewFromBody(body: string, max = 500): string {

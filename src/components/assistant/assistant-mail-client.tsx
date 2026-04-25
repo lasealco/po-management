@@ -128,6 +128,29 @@ export function AssistantMailClient({
     await loadDetail(detail.id);
   };
 
+  const draftFromEmail = async () => {
+    if (!detail) return;
+    setBusy(true);
+    setErr(null);
+    const res = await fetch(`/api/assistant/email-threads/${detail.id}/draft-reply`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+    const parsed = (await res.json().catch(() => ({}))) as {
+      ok?: boolean;
+      draftReply?: string;
+      error?: string;
+    };
+    setBusy(false);
+    if (!res.ok) {
+      setErr(parsed.error || "Could not draft reply.");
+      return;
+    }
+    setDraft(parsed.draftReply ?? "");
+    await loadList();
+    await loadDetail(detail.id);
+  };
+
   const saveLink = async () => {
     if (!detail) return;
     setBusy(true);
@@ -368,6 +391,14 @@ export function AssistantMailClient({
                 <button
                   type="button"
                   disabled={busy}
+                  onClick={() => void draftFromEmail()}
+                  className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-2.5 text-sm font-semibold text-sky-950 hover:bg-sky-100 disabled:opacity-50"
+                >
+                  Draft reply from email
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
                   onClick={() => void saveDraft()}
                   className="rounded-xl bg-[var(--arscmp-primary)] px-4 py-2.5 text-sm font-semibold text-white"
                 >
@@ -409,9 +440,8 @@ export function AssistantMailClient({
           <p className="font-medium text-zinc-800">Connector roadmap</p>
           <p className="mt-1">
             Gmail and Microsoft 365 OAuth are not enabled in this build. The pilot uses <strong>manual import</strong>{" "}
-            and a <strong>mailto</strong> handoff so nothing is sent from the server without your mail client. Configure{" "}
-            <code className="rounded bg-zinc-200/80 px-1">ASSISTANT_EMAIL_PILOT=1</code> on the server to show Mail and
-            merge open email into the assistant Inbox.
+            and a <strong>mailto</strong> handoff so nothing is sent from the server without your mail client. Set{" "}
+            <code className="rounded bg-zinc-200/80 px-1">ASSISTANT_EMAIL_PILOT=0</code> to hide this pilot if needed.
           </p>
         </div>
       </section>
