@@ -10,9 +10,17 @@ export type AssistantContextAnswer =
       kind: "answer";
       message: string;
       evidence: { label: string; href: string }[];
+      quality?: AssistantAnswerQuality;
       playbook?: AssistantPlaybook;
       actions?: AssistantProposedAction[];
     };
+
+export type AssistantAnswerQuality = {
+  mode: "deterministic";
+  groundedBy: string[];
+  limitations: string[];
+  generatedAt: string;
+};
 
 export type AssistantPlaybook = {
   id: string;
@@ -71,6 +79,15 @@ function salesOrderNextAction(status: string, activeCount: number, shipmentCount
   if (status === "OPEN" && shipmentCount === 0) return "Next action: create or attach a shipment so operations can execute against this customer commitment.";
   if (status === "CLOSED") return "Next action: no operational action is required unless a customer follow-up or exception reopens the work.";
   return "Next action: review status and linked shipments before committing another customer update.";
+}
+
+function quality(groundedBy: string[], limitations: string[] = []): AssistantAnswerQuality {
+  return {
+    mode: "deterministic",
+    groundedBy,
+    limitations,
+    generatedAt: new Date().toISOString(),
+  };
 }
 
 export async function answerSalesOrderContext({
@@ -132,6 +149,10 @@ export async function answerSalesOrderContext({
         href: `/assistant/mail?thread=${t.id}`,
       })),
     ],
+    quality: quality(
+      ["SalesOrder", "Shipment", "AssistantEmailThread"],
+      row.shipments.length === 0 ? ["No linked shipment exists yet, so execution risk is incomplete."] : [],
+    ),
     playbook: {
       id: "sales-order-follow-up",
       title: "Sales order follow-up",
@@ -295,6 +316,13 @@ export async function answerShipmentContext({
       { label: `Purchase order ${row.order.orderNumber}`, href: `/orders/${row.order.id}` },
       ...(row.salesOrder ? [{ label: `Sales order ${row.salesOrder.soNumber}`, href: `/sales-orders/${row.salesOrder.id}` }] : []),
     ],
+    quality: quality(
+      ["Shipment", "PurchaseOrder", "ShipmentBooking", "CtAlert", "CtException", "SalesOrder"],
+      [
+        ...(row.ctAlerts.length === 0 ? ["No open Control Tower alerts are attached to this shipment."] : []),
+        ...(row.ctExceptions.length === 0 ? ["No open Control Tower exceptions are attached to this shipment."] : []),
+      ],
+    ),
     playbook: {
       id: "shipment-triage",
       title: "Shipment triage",

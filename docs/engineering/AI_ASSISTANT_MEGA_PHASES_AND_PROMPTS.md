@@ -68,6 +68,7 @@ Use **one** of these. They are designed so the implementer (human or agent) does
 | **MP11** | **Reusable playbooks** — common workflows appear as guided steps | SO follow-up and shipment triage show step-by-step playbooks tied to actions |
 | **MP12** | **Cross-object impact answers** — product risk/impact spans modules | Product impact answers link stock, POs, shipments, and sales orders with playbooks/actions |
 | **MP13** | **Proactive assistant inbox** — open work includes suggested next actions | Inbox items explain what to do next and link directly to the right workspace/tab |
+| **MP14** | **AI quality, audit, and feedback** — grounding is visible and feedback is captured | Docked answers show source grounding, limitations, timestamp, and feedback controls |
 
 *Docs and small fixes can happen anytime; they are not a substitute for **MP1** if your goal is “I can *see* it.”*
 
@@ -134,6 +135,7 @@ Use **one** of these. They are designed so the implementer (human or agent) does
 
 | Date | Change |
 |------|--------|
+| 2026-04-25 | **MP14 shipped (MVP):** context/impact answers now include quality metadata (deterministic mode, grounded-by sources, limitations, timestamp), and the dock displays grounding plus local Helpful / Needs review feedback controls. |
 | 2026-04-25 | **MP13 shipped (MVP):** Assistant Inbox items now include proactive suggested next actions for CT alerts, CT exceptions, open email threads, and draft sales orders, with direct “Start action” links to the relevant workspace/tab. |
 | 2026-04-25 | **MP12 shipped (MVP):** added `POST /api/assistant/answer-impact` for product impact questions; product assistant cards now ask for stock/PO/shipment/SO exposure, and the dock tries impact answers before stock trace fallback. |
 | 2026-04-25 | **MP11 shipped (MVP):** context answers now include reusable playbooks (`sales-order-follow-up`, `shipment-triage`) with visible step status and action bindings in the docked assistant. |

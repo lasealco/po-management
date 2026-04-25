@@ -14,6 +14,12 @@ export type AssistantImpactAnswer =
       kind: "answer";
       message: string;
       evidence: { label: string; href: string }[];
+      quality: {
+        mode: "deterministic";
+        groundedBy: string[];
+        limitations: string[];
+        generatedAt: string;
+      };
       playbook: {
         id: string;
         title: string;
@@ -153,6 +159,15 @@ export async function answerProductImpact(input: {
         href: `/sales-orders/${so.id}`,
       })),
     ],
+    quality: {
+      mode: "deterministic",
+      groundedBy: ["Product", "ProductTrace", "PurchaseOrderItem", "Shipment", "InventoryBalance", "SalesOrder"],
+      limitations: [
+        ...(input.canWms ? [] : ["WMS inventory quantities are hidden for this viewer."]),
+        ...(salesOrders.length === 0 ? ["No linked sales orders were found through shipments for this product."] : []),
+      ],
+      generatedAt: new Date().toISOString(),
+    },
     playbook: {
       id: "product-impact-review",
       title: "Product impact review",

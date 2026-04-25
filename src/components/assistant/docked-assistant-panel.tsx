@@ -12,9 +12,17 @@ type AnswerResult =
       kind: "answer";
       message: string;
       evidence: { label: string; href: string }[];
+      quality?: AnswerQuality;
       playbook?: AssistantPlaybook;
       actions?: ProposedAction[];
     };
+
+type AnswerQuality = {
+  mode: "deterministic";
+  groundedBy: string[];
+  limitations: string[];
+  generatedAt: string;
+};
 
 type AssistantPlaybook = {
   id: string;
@@ -81,6 +89,7 @@ export function DockedAssistantPanel({
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [copiedActionId, setCopiedActionId] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<"helpful" | "not_helpful" | null>(null);
   const actionById =
     answer?.kind === "answer" && answer.actions
       ? new Map(answer.actions.map((action) => [action.id, action]))
@@ -92,6 +101,7 @@ export function DockedAssistantPanel({
     setErr(null);
     setAnswer(null);
     setCopiedActionId(null);
+    setFeedback(null);
     try {
       const context = await postAssistantAnswer("/api/assistant/answer-context", prompt);
       if (context.kind !== "defer") {
@@ -168,6 +178,31 @@ export function DockedAssistantPanel({
             {answer?.kind === "answer" ? (
               <div className="space-y-3 rounded-2xl border border-zinc-200 bg-white p-4 text-sm shadow-sm">
                 <p className="whitespace-pre-wrap text-zinc-800">{answer.message}</p>
+                <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-3 text-xs text-emerald-950">
+                  <p className="font-semibold uppercase tracking-wide">Quality & grounding</p>
+                  <p className="mt-1">
+                    Mode: {answer.quality?.mode ?? "deterministic"} · Generated:{" "}
+                    {answer.quality?.generatedAt
+                      ? new Date(answer.quality.generatedAt).toLocaleString()
+                      : "just now"}
+                  </p>
+                  <p className="mt-1">
+                    Grounded by:{" "}
+                    {(answer.quality?.groundedBy && answer.quality.groundedBy.length > 0
+                      ? answer.quality.groundedBy
+                      : ["evidence links"]
+                    ).join(", ")}
+                  </p>
+                  {answer.quality?.limitations && answer.quality.limitations.length > 0 ? (
+                    <ul className="mt-2 list-inside list-disc space-y-0.5 text-amber-950">
+                      {answer.quality.limitations.map((limitation) => (
+                        <li key={limitation}>{limitation}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-1 text-emerald-900">No known data limitations were reported by this answer.</p>
+                  )}
+                </div>
                 {answer.evidence.length > 0 ? (
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Evidence</p>
@@ -276,6 +311,41 @@ export function DockedAssistantPanel({
                     </div>
                   </div>
                 ) : null}
+                <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Feedback</p>
+                  <p className="mt-1 text-xs text-zinc-600">
+                    This MVP records feedback locally in the drawer; backend audit persistence is the next quality step.
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setFeedback("helpful")}
+                      className={`rounded-lg border px-3 py-1.5 text-xs font-medium ${
+                        feedback === "helpful"
+                          ? "border-emerald-300 bg-emerald-100 text-emerald-900"
+                          : "border-zinc-300 bg-white text-zinc-800 hover:bg-zinc-50"
+                      }`}
+                    >
+                      Helpful
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFeedback("not_helpful")}
+                      className={`rounded-lg border px-3 py-1.5 text-xs font-medium ${
+                        feedback === "not_helpful"
+                          ? "border-amber-300 bg-amber-100 text-amber-950"
+                          : "border-zinc-300 bg-white text-zinc-800 hover:bg-zinc-50"
+                      }`}
+                    >
+                      Needs review
+                    </button>
+                  </div>
+                  {feedback ? (
+                    <p className="mt-2 text-xs text-zinc-600">
+                      Feedback marked: {feedback === "helpful" ? "Helpful" : "Needs review"}.
+                    </p>
+                  ) : null}
+                </div>
               </div>
             ) : null}
             {answer && answer.kind !== "answer" && answer.kind !== "defer" ? (
