@@ -9,11 +9,26 @@ import { useCallback, useRef, useState } from "react";
 const SAMPLE =
   "John from ABC customer called and wants 100 corr-roll for 100 USD a piece. He will send a truck to pick up at our demo warehouse next week tuesday.";
 
+const SAMPLE_STOCK = "How much corr-roll do we have in stock at the demo warehouse?";
+
+type ProductOption = { id: string; name: string; productCode: string | null; sku: string | null };
+
+type AnswerOperationsResult =
+  | { kind: "defer" }
+  | { kind: "no_hint"; message: string }
+  | { kind: "not_found"; message: string }
+  | { kind: "clarify"; message: string; options: ProductOption[] }
+  | { kind: "answer"; message: string; evidence: { label: string; href: string }[] };
+
 type Turn = {
   role: "user" | "assistant";
   content: string;
   /** set when we need structured clarify */
   result?: SalesOrderIntentResult;
+  /** MP3: product disambiguation for stock / trace (not a sales draft) */
+  opsClarify?: { message: string; options: ProductOption[] };
+  /** MP3: answer with deep links to evidence */
+  operationsEvidence?: { label: string; href: string }[];
 };
 
 export function AssistantMp1Client({ canCreateSalesOrder }: { canCreateSalesOrder: boolean }) {
@@ -23,7 +38,7 @@ export function AssistantMp1Client({ canCreateSalesOrder }: { canCreateSalesOrde
     {
       role: "assistant",
       content:
-        "Describe a customer order in natural language. I’ll match **CRM customers** and **products**, then create a **draft sales order** (with notes) you can open and refine — including line items and shipments when you’re ready.",
+        "Describe a customer order in natural language, or ask about **stock / where product is** (e.g. “How much corr-roll is in stock?”). I match CRM and products, then either create a **draft sales order** or return **on-hand, shipments, and PO** evidence with links — no auto commits beyond drafts you confirm.",
     },
   ]);
   const [busy, setBusy] = useState(false);
@@ -33,6 +48,10 @@ export function AssistantMp1Client({ canCreateSalesOrder }: { canCreateSalesOrde
   const [pending, setPending] = useState<{
     text: string;
     result: Extract<SalesOrderIntentResult, { kind: "ready" }> | null;
+  } | null>(null);
+  const [lastOpEvidence, setLastOpEvidence] = useState<{
+    message: string;
+    evidence: { label: string; href: string }[];
   } | null>(null);
   const lastUserText = useRef("");
 
@@ -60,6 +79,39 @@ export function AssistantMp1Client({ canCreateSalesOrder }: { canCreateSalesOrde
     [],
   );
 
+  const runAnswerOperations = useCallback(
+    async (text: string, resolvedProductId: string | undefined) => {
+      setBusy(true);
+      setErr(null);
+      const res = await fetch("/api/assistant/answer-operations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text,
+          resolvedProductId: resolvedProductId || undefined,
+        }),
+      });
+      const raw = (await res.json().catch(() => ({}))) as { error?: string } & Partial<AnswerOperationsResult>;
+      setBusy(false);
+      if (!res.ok) {
+        setErr(raw.error || "Could not load operations answer.");
+        return "error" as const;
+      }
+      if (raw.kind === "defer") return "defer" as const;
+      if (
+        raw.kind === "no_hint" ||
+        raw.kind === "not_found" ||
+        raw.kind === "clarify" ||
+        raw.kind === "answer"
+      ) {
+        return raw as AnswerOperationsResult;
+      }
+      setErr("Invalid response from assistant.");
+      return "error" as const;
+    },
+    [],
+  );
+
   const submitText = async () => {
     const text = input.trim();
     if (!text) return;
@@ -69,6 +121,43 @@ export function AssistantMp1Client({ canCreateSalesOrder }: { canCreateSalesOrde
     setResolvedProductId(null);
     setTurns((t) => [...t, { role: "user", content: text }]);
     setPending(null);
+    setLastOpEvidence(null);
+
+    const op = await runAnswerOperations(text, undefined);
+    if (op === "error") return;
+    if (op && op !== "defer") {
+      if (op.kind === "no_hint") {
+        setTurns((t) => [...t, { role: "assistant", content: op.message }]);
+        return;
+      }
+      if (op.kind === "not_found") {
+        setTurns((t) => [...t, { role: "assistant", content: op.message }]);
+        return;
+      }
+      if (op.kind === "clarify") {
+        setTurns((t) => [
+          ...t,
+          {
+            role: "assistant",
+            content: op.message,
+            opsClarify: { message: op.message, options: op.options },
+          },
+        ]);
+        return;
+      }
+      if (op.kind === "answer") {
+        setLastOpEvidence({ message: op.message, evidence: op.evidence });
+        setTurns((t) => [
+          ...t,
+          {
+            role: "assistant",
+            content: op.message,
+            operationsEvidence: op.evidence,
+          },
+        ]);
+        return;
+      }
+    }
 
     const r = await runParse(text, null, null);
     if (!r) return;
@@ -147,6 +236,42 @@ export function AssistantMp1Client({ canCreateSalesOrder }: { canCreateSalesOrde
     })();
   };
 
+  const pickProductForOps = (id: string, label: string) => {
+    setTurns((turns) => [...turns, { role: "user", content: `Use product: ${label}` }]);
+    void (async () => {
+      const t = lastUserText.current;
+      if (!t) return;
+      const op = await runAnswerOperations(t, id);
+      if (op === "error" || !op || op === "defer") return;
+      if (op.kind === "not_found" || op.kind === "no_hint") {
+        setTurns((x) => [...x, { role: "assistant", content: op.message }]);
+        return;
+      }
+      if (op.kind === "clarify") {
+        setTurns((x) => [
+          ...x,
+          {
+            role: "assistant",
+            content: op.message,
+            opsClarify: { message: op.message, options: op.options },
+          },
+        ]);
+        return;
+      }
+      if (op.kind === "answer") {
+        setLastOpEvidence({ message: op.message, evidence: op.evidence });
+        setTurns((x) => [
+          ...x,
+          {
+            role: "assistant",
+            content: op.message,
+            operationsEvidence: op.evidence,
+          },
+        ]);
+      }
+    })();
+  };
+
   const createDraft = async () => {
     if (!canCreateSalesOrder) {
       window.alert("You need org.orders → edit to create a sales order.");
@@ -200,10 +325,11 @@ export function AssistantMp1Client({ canCreateSalesOrder }: { canCreateSalesOrde
     <div className="grid gap-6 lg:grid-cols-2">
       <section className="flex min-h-[420px] flex-col rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Conversation</p>
-        <h2 className="mt-1 text-lg font-semibold text-zinc-900">Sales assistant (MP1)</h2>
+        <h2 className="mt-1 text-lg font-semibold text-zinc-900">Sales & operations (MP1 + MP3)</h2>
         <p className="mt-1 text-sm text-zinc-600">
-          Drafts only — you stay in control. Traces appear in the sales order <strong>notes</strong> and{" "}
-          <strong>external ref</strong>.
+          Drafts only for SO creation. For inventory questions, answers include links to <strong>product</strong>,{" "}
+          <strong>product trace</strong>, <strong>shipments</strong>, and <strong>POs</strong> (when data exists in your
+          tenant and grants allow).
         </p>
         <div className="mt-4 flex-1 space-y-3 overflow-y-auto rounded-lg border border-zinc-100 bg-zinc-50/80 p-3 text-sm text-zinc-800">
           {turns.map((m, i) => (
@@ -219,6 +345,20 @@ export function AssistantMp1Client({ canCreateSalesOrder }: { canCreateSalesOrde
                 {m.role === "user" ? "You" : "Assistant"}
               </p>
               <p className="mt-1 whitespace-pre-wrap">{m.content}</p>
+              {m.operationsEvidence && m.operationsEvidence.length > 0 ? (
+                <ul className="mt-2 space-y-1 text-xs text-zinc-600">
+                  {m.operationsEvidence.map((e) => (
+                    <li key={e.label + e.href}>
+                      <Link
+                        className="font-medium text-[var(--arscmp-primary)] hover:underline"
+                        href={e.href}
+                      >
+                        {e.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
               {m.result?.kind === "clarify_account" ? (
                 <div className="mt-2 flex flex-wrap gap-2">
                   {m.result.options.map((a) => (
@@ -251,6 +391,24 @@ export function AssistantMp1Client({ canCreateSalesOrder }: { canCreateSalesOrde
                   ))}
                 </div>
               ) : null}
+              {m.opsClarify ? (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {m.opsClarify.options.map((p) => (
+                    <button
+                      type="button"
+                      key={p.id}
+                      className="rounded-lg border border-amber-300 bg-amber-50/80 px-2.5 py-1.5 text-left text-xs font-medium text-amber-950 hover:bg-amber-100"
+                      onClick={() => pickProductForOps(p.id, p.name)}
+                    >
+                      {p.name}
+                      {p.sku ? <span className="block text-[10px] text-amber-800/90">{p.sku}</span> : null}
+                      {p.productCode ? (
+                        <span className="block text-[10px] text-amber-800/80">{p.productCode}</span>
+                      ) : null}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
             </div>
           ))}
         </div>
@@ -264,7 +422,7 @@ export function AssistantMp1Client({ canCreateSalesOrder }: { canCreateSalesOrde
           <textarea
             id="assist-in"
             className="min-h-[100px] w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
-            placeholder="Paste a customer request…"
+            placeholder="Customer order, or e.g. “How much corr-roll is in stock?”"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             disabled={busy}
@@ -288,6 +446,16 @@ export function AssistantMp1Client({ canCreateSalesOrder }: { canCreateSalesOrde
             >
               Fill sample scenario
             </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                setInput(SAMPLE_STOCK);
+              }}
+              className="rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-sm text-amber-950 hover:bg-amber-100"
+            >
+              Try stock / trace
+            </button>
             <Link
               href="/sales-orders"
               className="inline-flex items-center rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-800 hover:bg-zinc-50"
@@ -302,9 +470,27 @@ export function AssistantMp1Client({ canCreateSalesOrder }: { canCreateSalesOrde
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Proposed action</p>
         <h2 className="mt-1 text-lg font-semibold text-zinc-900">Summary & evidence</h2>
         <p className="mt-1 text-sm text-zinc-600">
-          When a draft is ready, review facts here before opening the record. Add **shipments and line details** on the
-          sales order page.
+          When a draft is ready, review here before creating the record. For inventory / trace questions, the same
+          evidence appears in the thread with links to product trace, WMS, and shipments.
         </p>
+        {lastOpEvidence ? (
+          <div className="mt-4 space-y-2 rounded-xl border border-sky-200 bg-sky-50/50 p-4 text-sm text-zinc-800">
+            <p className="font-medium text-sky-950">Last operations answer (MP3)</p>
+            <p className="line-clamp-4 whitespace-pre-wrap text-xs text-zinc-600">{lastOpEvidence.message}</p>
+            <ul className="space-y-1 text-xs">
+              {lastOpEvidence.evidence.map((e) => (
+                <li key={e.label + e.href}>
+                  <Link
+                    className="font-medium text-[var(--arscmp-primary)] hover:underline"
+                    href={e.href}
+                  >
+                    {e.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
         {pending?.result ? (
           <div className="mt-4 space-y-3 rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 text-sm text-zinc-800">
             <p className="font-medium text-emerald-950">Ready to create</p>
@@ -362,11 +548,11 @@ export function AssistantMp1Client({ canCreateSalesOrder }: { canCreateSalesOrde
               A second run will ask you to confirm again so we don’t duplicate orders by accident.
             </p>
           </div>
-        ) : (
+        ) : !lastOpEvidence ? (
           <p className="mt-4 rounded-lg border border-dashed border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-500">
-            No pending draft. Send a message on the left to extract customer, product, and pricing hints.
+            No pending draft. Ask for stock or trace, or send a customer order to extract a draft.
           </p>
-        )}
+        ) : null}
       </section>
     </div>
   );

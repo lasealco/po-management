@@ -198,7 +198,7 @@ export function extractRequestedDate(text: string, now = new Date()): string | n
   return d.toISOString().slice(0, 10);
 }
 
-function extractProductHints(text: string): string[] {
+export function extractProductHints(text: string): string[] {
   const t = text.toLowerCase();
   const out: string[] = [];
   const corr = t.match(/corr[-\s]?roll/g);

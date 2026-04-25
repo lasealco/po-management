@@ -35,8 +35,9 @@ export default async function AssistantLayout({ children }: { children: React.Re
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Workspace</p>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">Assistant</h1>
         <p className="mt-2 max-w-3xl text-sm text-zinc-600">
-          <strong>Chat</strong> turns messages into sales-order drafts. <strong>Inbox</strong> pulls open Control Tower
-          work and draft sales orders in one list so you can clear items without opening five modules.
+          <strong>Chat</strong> can draft sales orders and answer stock / product-trace questions with links to
+          evidence. <strong>Inbox</strong> pulls open Control Tower work and draft sales orders in one list so you can
+          clear items without opening every module.
         </p>
         <AssistantSubnav />
         {children}
