@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { emailPreviewFromBody, isAssistantEmailPilotEnabled } from "@/lib/assistant/email-pilot";
-import { getActorUserId, requireApiGrant, viewerHas } from "@/lib/authz";
+import { requireApiGrant, viewerHas } from "@/lib/authz";
 import { getViewerGrantSet } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";

@@ -84,15 +84,22 @@ export function AssistantMailClient({
   }, []);
 
   useEffect(() => {
-    void loadList();
+    const timer = window.setTimeout(() => {
+      void loadList();
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [loadList]);
 
   useEffect(() => {
-    if (threadId) void loadDetail(threadId);
-    else {
+    const timer = window.setTimeout(() => {
+      if (threadId) {
+        void loadDetail(threadId);
+        return;
+      }
       setDetail(null);
       setDraft("");
-    }
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [threadId, loadDetail]);
 
   useEffect(() => {
