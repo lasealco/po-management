@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const findUnique = vi.hoisted(() => vi.fn());
 const findFirst = vi.hoisted(() => vi.fn());
+const userRoleFindFirst = vi.hoisted(() => vi.fn());
+const userFindFirst = vi.hoisted(() => vi.fn());
 const deleteMock = vi.hoisted(() => vi.fn());
 const upsert = vi.hoisted(() => vi.fn());
 
@@ -9,6 +11,8 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     userPreference: { findUnique: findUnique, delete: deleteMock, upsert: upsert },
     orgUnit: { findFirst: findFirst },
+    userRole: { findFirst: userRoleFindFirst },
+    user: { findFirst: userFindFirst },
   },
 }));
 
@@ -19,7 +23,11 @@ describe("getOrdersServedDefaultPreference", () => {
   beforeEach(() => {
     findUnique.mockReset();
     findFirst.mockReset();
+    userRoleFindFirst.mockReset();
+    userFindFirst.mockReset();
     deleteMock.mockReset();
+    userRoleFindFirst.mockResolvedValue(null);
+    userFindFirst.mockResolvedValue({ primaryOrgUnitId: null });
   });
 
   it("returns null when no preference", async () => {
