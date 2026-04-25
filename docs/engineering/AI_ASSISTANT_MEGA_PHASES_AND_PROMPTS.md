@@ -125,4 +125,5 @@ Use **one** of these. They are designed so the implementer (human or agent) does
 
 | Date | Change |
 |------|--------|
+| 2026-04-23 | **MP1 shipped:** `/assistant` split UI (conversation + proposed action), heuristic `parse-sales-order-intent` API, CRM/product disambiguation, `POST /api/sales-orders` with optional `notes`, nav + platform hub entry. |
 | 2026-04-23 | Initial: UI-first rule, copy-paste prompts, MP1–MP4, full MP1 spec (John/ABC/corr-roll). |

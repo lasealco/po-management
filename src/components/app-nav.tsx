@@ -24,6 +24,7 @@ function isTopNavHrefActive(pathname: string, href: string): boolean {
   }
   if (href === "/srm/portal") return pathname === "/srm/portal" || pathname.startsWith("/srm/portal/");
   if (href === "/sales-orders") return pathname === "/sales-orders" || pathname.startsWith("/sales-orders/");
+  if (href === "/assistant") return pathname === "/assistant" || pathname.startsWith("/assistant/");
   if (href === "/reporting") {
     return (
       pathname === "/reporting" ||
@@ -69,6 +70,7 @@ const topNavItems: TopNavItem[] = [
   { kind: "link", key: "wms", label: "WMS", href: "/wms" },
   { kind: "po", key: "poManagement", label: "PO Management", href: "/orders" },
   { kind: "link", key: "salesOrders", label: "Sales Orders", href: "/sales-orders" },
+  { kind: "link", key: "assistant", label: "AI Assistant", href: "/assistant" },
   { kind: "link", key: "reports", label: "Reporting", href: "/reporting" },
   { kind: "link", key: "supplyChainTwin", label: "Supply Chain Twin", href: "/supply-chain-twin" },
   { kind: "link", key: "riskIntelligence", label: "Risk intelligence", href: "/risk-intelligence" },
@@ -82,6 +84,7 @@ function TopNavLinkLabel({ item }: { item: Exclude<TopNavItem, { kind: "ratesAud
   if (item.kind === "po") return "Purchase";
   if (item.key === "controlTower") return "Tower";
   if (item.key === "salesOrders") return "Sales";
+  if (item.key === "assistant") return "AI";
   if (item.key === "executive") return "Exec";
   if (item.key === "reports") return "Reports";
   if (item.key === "apihub") return "API";

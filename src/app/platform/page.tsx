@@ -59,6 +59,14 @@ export default async function PlatformHomePage() {
       description: "Track customer demand, status transitions, and fulfillment handoff readiness.",
     });
   }
+  if (v?.assistant) {
+    modules.push({
+      href: "/assistant",
+      title: "AI Sales assistant",
+      description:
+        "Natural language to draft sales orders: match CRM customers and products, clarify when needed, open the real SO in one click.",
+    });
+  }
   if (v?.reports) {
     modules.push({
       href: "/executive",

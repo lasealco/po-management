@@ -33,6 +33,8 @@ export type AppNavLinkVisibility = {
   riskIntelligence: boolean;
   /** Phase H: supplier self-service home; only for Supplier portal users. */
   srmSupplierPortal: boolean;
+  /** AI sales assistant (MP1); same gate as sales orders. */
+  assistant: boolean;
 };
 
 export type PoMgmtSubNavVisibility = {
@@ -98,6 +100,7 @@ export async function resolveNavState(access: ViewerAccess | null): Promise<{
             !isCustomerCrmScoped &&
             viewerHas(access.grantSet, "org.scri", "view");
           const srmSupplierPortal = isSupplierPortalUser;
+          const assistant = salesOrders;
           return {
             poManagement,
             orders,
@@ -112,6 +115,7 @@ export async function resolveNavState(access: ViewerAccess | null): Promise<{
             suppliers,
             srm,
             salesOrders,
+            assistant,
             tariffs,
             rfq,
             pricingSnapshots,
@@ -147,7 +151,8 @@ export async function resolveNavState(access: ViewerAccess | null): Promise<{
       linkVisibility.apihub ||
       linkVisibility.supplyChainTwin ||
       linkVisibility.riskIntelligence ||
-      linkVisibility.srmSupplierPortal
+      linkVisibility.srmSupplierPortal ||
+      linkVisibility.assistant
     );
 
   const poSubNavVisibility: PoMgmtSubNavVisibility = setupIncomplete

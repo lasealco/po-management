@@ -96,6 +96,8 @@ export async function POST(request: Request) {
   const soNumberRaw = typeof o.soNumber === "string" ? o.soNumber.trim() : "";
   const soNumber = soNumberRaw || (await nextSalesOrderNumber(tenantId));
   const externalRef = typeof o.externalRef === "string" ? o.externalRef.trim() || null : null;
+  const notesRaw = typeof o.notes === "string" ? o.notes.trim() : "";
+  const notes = notesRaw ? notesRaw.slice(0, 12_000) : null;
   const requestedDeliveryDateRaw = typeof o.requestedDeliveryDate === "string" ? o.requestedDeliveryDate.trim() : "";
   const requestedDeliveryDate = requestedDeliveryDateRaw ? new Date(requestedDeliveryDateRaw) : null;
   if (requestedDeliveryDate && Number.isNaN(requestedDeliveryDate.getTime())) {
@@ -183,6 +185,7 @@ export async function POST(request: Request) {
           customerName: account.name,
           customerCrmAccountId: account.id,
           externalRef,
+          notes,
           requestedDeliveryDate,
           createdById: actorId,
           status: "DRAFT",
