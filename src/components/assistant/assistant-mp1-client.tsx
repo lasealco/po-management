@@ -40,6 +40,7 @@ export function AssistantMp1Client({ canCreateSalesOrder }: { canCreateSalesOrde
   const router = useRouter();
   const searchParams = useSearchParams();
   const promptParam = searchParams.get("prompt");
+  const shouldRunPrompt = searchParams.get("run") === "1";
   const [input, setInput] = useState(promptParam ?? "");
   const [turns, setTurns] = useState<Turn[]>([
     {
@@ -61,6 +62,7 @@ export function AssistantMp1Client({ canCreateSalesOrder }: { canCreateSalesOrde
     evidence: { label: string; href: string }[];
   } | null>(null);
   const lastUserText = useRef("");
+  const autoRunKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -146,8 +148,8 @@ export function AssistantMp1Client({ canCreateSalesOrder }: { canCreateSalesOrde
     return "error" as const;
   }, []);
 
-  const submitText = async () => {
-    const text = input.trim();
+  const submitPrompt = useCallback(async (rawText: string) => {
+    const text = rawText.trim();
     if (!text) return;
     setInput("");
     lastUserText.current = text;
@@ -241,6 +243,21 @@ export function AssistantMp1Client({ canCreateSalesOrder }: { canCreateSalesOrde
       setTurns((t) => [...t, { role: "assistant", content: r.message }]);
       setPending({ text, result: r });
     }
+  }, [runAnswerContext, runAnswerOperations, runParse]);
+
+  useEffect(() => {
+    if (!shouldRunPrompt || !promptParam) return;
+    const key = promptParam;
+    if (autoRunKeyRef.current === key) return;
+    autoRunKeyRef.current = key;
+    const timer = window.setTimeout(() => {
+      void submitPrompt(promptParam);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [promptParam, shouldRunPrompt, submitPrompt]);
+
+  const submitText = async () => {
+    await submitPrompt(input);
   };
 
   const pickAccount = (id: string, label: string) => {
