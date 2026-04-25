@@ -19,6 +19,11 @@ export type AssistantInboxItem = {
   /** Shipment context for CT rows */
   shipmentId?: string;
   shipmentNo?: string | null;
+  suggestedAction?: {
+    label: string;
+    description: string;
+    href: string;
+  };
 };
 
 export type AssistantInboxPayload = {
@@ -66,11 +71,16 @@ export async function buildAssistantInbox(params: {
         kind: "ct_alert",
         title: a.title,
         subtitle: a.shipment?.shipmentNo ? `Shipment ${a.shipment.shipmentNo}` : "Shipment",
-        href: `/control-tower/shipments/${a.shipmentId}`,
+        href: `/control-tower/shipments/${a.shipmentId}?tab=alerts`,
         createdAt: a.createdAt.toISOString(),
         alertId: a.id,
         shipmentId: a.shipmentId,
         shipmentNo: a.shipment?.shipmentNo ?? null,
+        suggestedAction: {
+          label: "Review alert and decide customer impact",
+          description: "Open the shipment alerts tab, confirm whether the alert is material, then acknowledge only after review.",
+          href: `/control-tower/shipments/${a.shipmentId}?tab=alerts`,
+        },
       });
     }
   }
@@ -101,10 +111,15 @@ export async function buildAssistantInbox(params: {
         kind: "ct_exception",
         title: e.type || "Exception",
         subtitle: `${e.status} · ${e.shipment?.shipmentNo ? `Shipment ${e.shipment.shipmentNo}` : "Shipment"}`,
-        href: `/control-tower/shipments/${e.shipmentId}`,
+        href: `/control-tower/shipments/${e.shipmentId}?tab=exceptions`,
         createdAt: e.createdAt.toISOString(),
         shipmentId: e.shipmentId,
         shipmentNo: e.shipment?.shipmentNo ?? null,
+        suggestedAction: {
+          label: "Work exception before customer update",
+          description: "Open the exception workspace, review root cause/recovery, then prepare an update when the plan is clear.",
+          href: `/control-tower/shipments/${e.shipmentId}?tab=exceptions`,
+        },
       });
     }
   }
@@ -131,6 +146,11 @@ export async function buildAssistantInbox(params: {
         subtitle: `From ${e.fromAddress} · ${pv}`,
         href: `/assistant/mail?thread=${e.id}`,
         createdAt: e.receivedAt.toISOString(),
+        suggestedAction: {
+          label: "Classify email and draft next step",
+          description: "Open the mail pilot, link the CRM account if needed, then create a draft SO or draft a reply.",
+          href: `/assistant/mail?thread=${e.id}`,
+        },
       });
     }
   }
@@ -156,6 +176,11 @@ export async function buildAssistantInbox(params: {
         subtitle: s.customerName + (s.externalRef ? ` · ${s.externalRef.slice(0, 80)}` : ""),
         href: `/sales-orders/${s.id}`,
         createdAt: s.updatedAt.toISOString(),
+        suggestedAction: {
+          label: "Complete or clean up draft SO",
+          description: "Review customer commitment, linked execution work, and decide whether to progress or close the draft.",
+          href: `/sales-orders/${s.id}`,
+        },
       });
     }
   }

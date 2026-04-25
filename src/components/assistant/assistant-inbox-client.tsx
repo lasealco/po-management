@@ -149,6 +149,13 @@ export function AssistantInboxClient({
               <p className="mt-1 text-[11px] text-zinc-500">
                 {new Date(row.createdAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
               </p>
+              {row.suggestedAction ? (
+                <div className="mt-3 rounded-xl border border-white/70 bg-white/70 p-3 text-xs text-zinc-700">
+                  <p className="font-semibold text-zinc-900">Suggested next action</p>
+                  <p className="mt-1 font-medium">{row.suggestedAction.label}</p>
+                  <p className="mt-1 text-zinc-600">{row.suggestedAction.description}</p>
+                </div>
+              ) : null}
             </div>
             <div className="flex flex-wrap gap-2">
               <Link
@@ -157,6 +164,14 @@ export function AssistantInboxClient({
               >
                 Open
               </Link>
+              {row.suggestedAction ? (
+                <Link
+                  href={row.suggestedAction.href}
+                  className="inline-flex items-center justify-center rounded-xl bg-[var(--arscmp-primary)] px-3 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90"
+                >
+                  Start action
+                </Link>
+              ) : null}
               {row.kind === "ct_alert" && row.alertId ? (
                 <button
                   type="button"
