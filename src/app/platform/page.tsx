@@ -59,12 +59,22 @@ export default async function PlatformHomePage() {
       description: "Track customer demand, status transitions, and fulfillment handoff readiness.",
     });
   }
+  if (v?.inbox && !v?.assistant) {
+    modules.push({
+      href: "/assistant/inbox",
+      title: "Assistant Inbox",
+      description:
+        "One attention list: open Control Tower alerts and exceptions, plus draft sales orders, so you can work items without opening every module.",
+    });
+  }
   if (v?.assistant) {
     modules.push({
       href: "/assistant",
       title: "AI Sales assistant",
       description:
-        "Natural language to draft sales orders: match CRM customers and products, clarify when needed, open the real SO in one click.",
+        v?.controlTower && v?.inbox
+          ? "Natural language to draft sales orders: match CRM customers and products, clarify when needed, open the real SO in one click. Use the Inbox tab in Assistant for open Tower work and other drafts."
+          : "Natural language to draft sales orders: match CRM customers and products, clarify when needed, open the real SO in one click.",
     });
   }
   if (v?.reports) {
