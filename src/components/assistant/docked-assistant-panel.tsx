@@ -8,7 +8,28 @@ type AnswerResult =
   | { kind: "not_found"; message: string }
   | { kind: "no_hint"; message: string }
   | { kind: "clarify"; message: string; options: Array<{ id: string; name: string; productCode?: string | null; sku?: string | null }> }
-  | { kind: "answer"; message: string; evidence: { label: string; href: string }[] };
+  | {
+      kind: "answer";
+      message: string;
+      evidence: { label: string; href: string }[];
+      actions?: ProposedAction[];
+    };
+
+type ProposedAction =
+  | {
+      id: string;
+      kind: "navigate";
+      label: string;
+      description: string;
+      href: string;
+    }
+  | {
+      id: string;
+      kind: "copy_text";
+      label: string;
+      description: string;
+      text: string;
+    };
 
 async function postAssistantAnswer(url: string, text: string): Promise<AnswerResult> {
   const res = await fetch(url, {
@@ -45,12 +66,14 @@ export function DockedAssistantPanel({
   const [answer, setAnswer] = useState<AnswerResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [copiedActionId, setCopiedActionId] = useState<string | null>(null);
 
   const askHere = async () => {
     setOpen(true);
     setBusy(true);
     setErr(null);
     setAnswer(null);
+    setCopiedActionId(null);
     try {
       const context = await postAssistantAnswer("/api/assistant/answer-context", prompt);
       if (context.kind !== "defer") {
@@ -63,6 +86,15 @@ export function DockedAssistantPanel({
       setErr(e instanceof Error ? e.message : "Assistant failed.");
     } finally {
       setBusy(false);
+    }
+  };
+
+  const copyActionText = async (action: Extract<ProposedAction, { kind: "copy_text" }>) => {
+    try {
+      await navigator.clipboard.writeText(action.text);
+      setCopiedActionId(action.id);
+    } catch {
+      setErr("Could not copy text. Select and copy it manually from the draft.");
     }
   };
 
@@ -125,6 +157,40 @@ export function DockedAssistantPanel({
                         </li>
                       ))}
                     </ul>
+                  </div>
+                ) : null}
+                {answer.actions && answer.actions.length > 0 ? (
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Proposed actions</p>
+                    <div className="mt-2 space-y-2">
+                      {answer.actions.map((action) => (
+                        <div key={action.id} className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+                          <p className="text-sm font-semibold text-zinc-900">{action.label}</p>
+                          <p className="mt-1 text-xs text-zinc-600">{action.description}</p>
+                          {action.kind === "navigate" ? (
+                            <Link
+                              href={action.href}
+                              className="mt-2 inline-flex rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-800 hover:bg-zinc-50"
+                            >
+                              Open
+                            </Link>
+                          ) : (
+                            <div className="mt-2">
+                              <button
+                                type="button"
+                                onClick={() => void copyActionText(action)}
+                                className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-800 hover:bg-zinc-50"
+                              >
+                                {copiedActionId === action.id ? "Copied" : "Copy draft"}
+                              </button>
+                              <pre className="mt-2 max-h-32 overflow-y-auto whitespace-pre-wrap rounded-lg border border-zinc-200 bg-white p-2 text-xs text-zinc-700">
+                                {action.text}
+                              </pre>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 ) : null}
               </div>

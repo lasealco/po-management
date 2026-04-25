@@ -6,7 +6,28 @@ import { prisma } from "@/lib/prisma";
 export type AssistantContextAnswer =
   | { kind: "defer" }
   | { kind: "not_found"; message: string }
-  | { kind: "answer"; message: string; evidence: { label: string; href: string }[] };
+  | {
+      kind: "answer";
+      message: string;
+      evidence: { label: string; href: string }[];
+      actions?: AssistantProposedAction[];
+    };
+
+export type AssistantProposedAction =
+  | {
+      id: string;
+      kind: "navigate";
+      label: string;
+      description: string;
+      href: string;
+    }
+  | {
+      id: string;
+      kind: "copy_text";
+      label: string;
+      description: string;
+      text: string;
+    };
 
 function extractTokenAfter(text: string, labels: string[]) {
   for (const label of labels) {
@@ -95,6 +116,50 @@ export async function answerSalesOrderContext({
         href: `/assistant/mail?thread=${t.id}`,
       })),
     ],
+    actions: [
+      {
+        id: "open-sales-order",
+        kind: "navigate",
+        label: "Open sales order",
+        description: "Review the SO before changing status or adding operational details.",
+        href: `/sales-orders/${row.id}`,
+      },
+      ...(newestShipment
+        ? [
+            {
+              id: "open-latest-shipment",
+              kind: "navigate" as const,
+              label: "Open latest shipment",
+              description: "Check carrier, tracking, milestones, alerts, and exceptions before updating the customer.",
+              href: `/control-tower/shipments/${newestShipment.id}`,
+            },
+          ]
+        : []),
+      ...(linkedMail
+        ? [
+            {
+              id: "open-linked-mail",
+              kind: "navigate" as const,
+              label: "Open linked mail",
+              description: "Review the source conversation and draft reply before sending anything.",
+              href: `/assistant/mail?thread=${linkedMail.id}`,
+            },
+          ]
+        : []),
+      {
+        id: "copy-customer-update",
+        kind: "copy_text",
+        label: "Copy customer update",
+        description: "Copy a draft update; you decide where and whether to send it.",
+        text: [
+          `Sales order ${row.soNumber} is currently ${row.status}.`,
+          newestShipment
+            ? `Latest shipment ${newestShipment.shipmentNo ?? newestShipment.id} is ${newestShipment.status}${newestShipment.trackingNo ? ` with tracking ${newestShipment.trackingNo}` : ""}.`
+            : "No shipment is linked yet.",
+          "We will confirm the next operational update after review.",
+        ].join("\n"),
+      },
+    ],
   };
 }
 
@@ -174,6 +239,50 @@ export async function answerShipmentContext({
       { label: `Shipment ${row.shipmentNo ?? row.id}`, href: `/control-tower/shipments/${row.id}` },
       { label: `Purchase order ${row.order.orderNumber}`, href: `/orders/${row.order.id}` },
       ...(row.salesOrder ? [{ label: `Sales order ${row.salesOrder.soNumber}`, href: `/sales-orders/${row.salesOrder.id}` }] : []),
+    ],
+    actions: [
+      {
+        id: "open-shipment-workspace",
+        kind: "navigate",
+        label: row.ctExceptions.length > 0 ? "Open exceptions tab" : row.ctAlerts.length > 0 ? "Open alerts tab" : "Open shipment",
+        description: "Review the source record before changing status or sending an update.",
+        href: `/control-tower/shipments/${row.id}${
+          row.ctExceptions.length > 0 ? "?tab=exceptions" : row.ctAlerts.length > 0 ? "?tab=alerts" : ""
+        }`,
+      },
+      {
+        id: "open-purchase-order",
+        kind: "navigate",
+        label: "Open purchase order",
+        description: "Check the commercial/order context behind this shipment.",
+        href: `/orders/${row.order.id}`,
+      },
+      ...(row.salesOrder
+        ? [
+            {
+              id: "open-linked-sales-order",
+              kind: "navigate" as const,
+              label: "Open linked sales order",
+              description: "Review the customer commitment tied to this shipment.",
+              href: `/sales-orders/${row.salesOrder.id}`,
+            },
+          ]
+        : []),
+      {
+        id: "copy-status-update",
+        kind: "copy_text",
+        label: "Copy customer update",
+        description: "Copy a draft update; sending still happens outside this action.",
+        text: [
+          `Shipment ${row.shipmentNo ?? row.id} is currently ${row.status}.`,
+          `Route: ${route}. ETA/latest ETA: ${dateLabel(eta)}.`,
+          row.ctExceptions[0]
+            ? `We are reviewing an open ${row.ctExceptions[0].type} exception and will confirm the recovery plan.`
+            : row.ctAlerts[0]
+              ? `We are reviewing alert: ${row.ctAlerts[0].title}.`
+              : "We will keep monitoring milestones and share any material update.",
+        ].join("\n"),
+      },
     ],
   };
 }
