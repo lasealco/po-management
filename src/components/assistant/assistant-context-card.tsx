@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { DockedAssistantPanel } from "@/components/assistant/docked-assistant-panel";
 
 export function AssistantContextCard({
   title,
@@ -21,12 +21,9 @@ export function AssistantContextCard({
           <h2 className="text-base font-semibold text-zinc-900">{title}</h2>
           <p className="mt-1 max-w-2xl text-sm text-zinc-600">{description}</p>
         </div>
-        <Link
-          href={assistantHref}
-          className="rounded-xl bg-[var(--arscmp-primary)] px-4 py-2.5 text-sm font-semibold text-white"
-        >
-          Ask now
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <DockedAssistantPanel title={title} prompt={prompt} assistantHref={assistantHref} />
+        </div>
       </div>
     </section>
   );

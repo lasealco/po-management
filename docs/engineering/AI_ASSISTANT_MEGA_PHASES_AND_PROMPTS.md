@@ -63,6 +63,7 @@ Use **one** of these. They are designed so the implementer (human or agent) does
 | **MP6** | **Playbook runner** — visible steps for email order/reply work | You see review → detect → create → reply as a guided flow, not hidden automation |
 | **MP7** | **Object timeline** — assistant actions are traceable on the real record | A draft SO shows which email/action created it and links back to the source |
 | **MP8** | **Embedded entry points** — assistant launch cards on key detail pages | Product, shipment, and SO pages can open the assistant with contextual prompts |
+| **MP9** | **Docked assistant everywhere** — answer from object pages without leaving context | Product, shipment, and SO pages can answer in an in-page drawer with evidence links |
 
 *Docs and small fixes can happen anytime; they are not a substitute for **MP1** if your goal is “I can *see* it.”*
 
@@ -129,6 +130,7 @@ Use **one** of these. They are designed so the implementer (human or agent) does
 
 | Date | Change |
 |------|--------|
+| 2026-04-25 | **MP9 shipped (MVP):** assistant context cards now include an in-page **Docked assistant** drawer that runs context/stock answers with evidence links while preserving a path to the full `/assistant` workspace. |
 | 2026-04-25 | **Embedded assistant handoff improved:** object-page assistant cards now open `/assistant?run=1` and safely auto-run the contextual prompt once, so users land on an answer with evidence instead of a prefilled textarea. |
 | 2026-04-25 | **Context answering shipped (MP8 follow-up):** `POST /api/assistant/answer-context` now recognizes sales-order and shipment prompts from embedded assistant cards, summarizes real object state, recommends next action, and returns evidence links before falling back to stock/order-intent flows. |
 | 2026-04-25 | **MP5-MP8 shipped (MVP):** `/assistant/mail` now has an **Action playbook** with detected sales-order intent, create/open draft SO action, and reply drafting; `POST /api/assistant/email-threads/[id]/actions` creates a linked draft SO; `AssistantEmailThread.salesOrderId` migration adds traceability; sales-order detail shows an **Assistant timeline** for linked mail actions; product, shipment, and sales-order detail pages include contextual **Ask assistant** cards that prefill `/assistant`. |
