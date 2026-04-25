@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AccessDenied } from "@/components/access-denied";
+import { AssistantContextCard } from "@/components/assistant/assistant-context-card";
 import { ProductEditClient } from "@/components/product-edit-client";
 import type { ProductFormInitial } from "@/components/product-catalog-form";
 import { ProductReadOnly } from "@/components/product-read-only";
@@ -114,6 +115,11 @@ export default async function ProductDetailPage({
             {product.name}
           </h1>
           <p className="mt-1 text-sm text-zinc-500">View only</p>
+          <AssistantContextCard
+            title="Ask stock and trace"
+            description="Open the assistant with this product prefilled for stock, trace, shipment, and PO evidence."
+            prompt={`How much ${product.productCode || product.sku || product.name} do we have in stock, and where is it moving?`}
+          />
           <ProductReadOnly product={readProduct} />
         </main>
       </div>
@@ -165,6 +171,11 @@ export default async function ProductDetailPage({
           ← Product catalog
         </Link>
         <div className="mt-2">
+          <AssistantContextCard
+            title="Ask stock and trace"
+            description="Open the assistant with this product prefilled for stock, trace, shipment, and PO evidence."
+            prompt={`How much ${product.productCode || product.sku || product.name} do we have in stock, and where is it moving?`}
+          />
           <ProductEditClient
             productId={product.id}
             initial={initial}

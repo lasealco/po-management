@@ -18,6 +18,7 @@ type ThreadRow = {
   lastSendMode: string | null;
   linkedCrmAccountId: string | null;
   linkedCrmAccount: { id: string; name: string } | null;
+  salesOrder: { id: string; soNumber: string; status: string } | null;
 };
 
 type ThreadDetail = ThreadRow & {
@@ -26,6 +27,28 @@ type ThreadDetail = ThreadRow & {
 };
 
 type CrmAccountOpt = { id: string; name: string };
+type EmailActionIntent =
+  | {
+      kind: "ready";
+      message: string;
+      summary: {
+        accountName: string;
+        productName: string;
+        quantity: number | null;
+        unitPrice: number | null;
+        requestedDate: string | null;
+        warehouseLabel: string | null;
+        servedOrgLabel: string | null;
+      };
+    }
+  | { kind: "clarify_account" | "clarify_product"; message: string; options: Array<{ id: string; name: string }> }
+  | { kind: "not_found_account" | "not_found_product"; message: string };
+type ActionStep = { id: string; label: string; status: "done" | "needs_input" | "available" };
+type ActionState = {
+  existingSalesOrder: { id: string; soNumber: string; status: string } | null;
+  intent: EmailActionIntent | null;
+  steps: ActionStep[];
+};
 
 export function AssistantMailClient({
   canConfirmSend,
@@ -54,6 +77,8 @@ export function AssistantMailClient({
   const [mailtoHref, setMailtoHref] = useState<string | null>(null);
   const [crmAccounts, setCrmAccounts] = useState<CrmAccountOpt[]>([]);
   const [linkAccountId, setLinkAccountId] = useState<string>("");
+  const [actionState, setActionState] = useState<ActionState | null>(null);
+  const [actionBusy, setActionBusy] = useState(false);
 
   const loadList = useCallback(async () => {
     setErr(null);
@@ -64,6 +89,20 @@ export function AssistantMailClient({
       return;
     }
     setThreads(j.threads ?? []);
+  }, []);
+
+  const loadActions = useCallback(async (id: string) => {
+    const res = await fetch(`/api/assistant/email-threads/${id}/actions`);
+    const j = (await res.json().catch(() => ({}))) as ActionState & { ok?: boolean; error?: string };
+    if (!res.ok) {
+      setActionState(null);
+      return;
+    }
+    setActionState({
+      existingSalesOrder: j.existingSalesOrder ?? null,
+      intent: j.intent ?? null,
+      steps: j.steps ?? [],
+    });
   }, []);
 
   const loadDetail = useCallback(async (id: string) => {
@@ -81,7 +120,8 @@ export function AssistantMailClient({
     setDetail(t);
     setDraft(t?.draftReply ?? "");
     setLinkAccountId(t?.linkedCrmAccountId ?? "");
-  }, []);
+    if (t?.id) await loadActions(t.id);
+  }, [loadActions]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -98,6 +138,7 @@ export function AssistantMailClient({
       }
       setDetail(null);
       setDraft("");
+      setActionState(null);
     }, 0);
     return () => window.clearTimeout(timer);
   }, [threadId, loadDetail]);
@@ -154,6 +195,31 @@ export function AssistantMailClient({
       return;
     }
     setDraft(parsed.draftReply ?? "");
+    await loadList();
+    await loadDetail(detail.id);
+  };
+
+  const createSalesOrderFromEmail = async () => {
+    if (!detail) return;
+    setActionBusy(true);
+    setErr(null);
+    const res = await fetch(`/api/assistant/email-threads/${detail.id}/actions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "create_sales_order" }),
+    });
+    const parsed = (await res.json().catch(() => ({}))) as {
+      ok?: boolean;
+      salesOrder?: { id: string; soNumber: string; status: string };
+      error?: string;
+    };
+    setActionBusy(false);
+    if (!res.ok) {
+      setErr(parsed.error || "Could not create sales order from this email.");
+      await loadActions(detail.id);
+      return;
+    }
+    await loadActions(detail.id);
     await loadList();
     await loadDetail(detail.id);
   };
@@ -323,6 +389,9 @@ export function AssistantMailClient({
                 <p className="text-[11px] text-zinc-500">
                   {t.status} · {new Date(t.receivedAt).toLocaleString()}
                 </p>
+                {t.salesOrder ? (
+                  <p className="mt-1 text-[11px] font-medium text-emerald-700">SO {t.salesOrder.soNumber}</p>
+                ) : null}
               </button>
             </li>
           ))}
@@ -352,8 +421,81 @@ export function AssistantMailClient({
                   </Link>
                 </p>
               ) : null}
+              {detail.salesOrder ? (
+                <p className="mt-2 text-sm">
+                  <span className="font-medium">Sales order</span>{" "}
+                  <Link className="text-[var(--arscmp-primary)] hover:underline" href={`/sales-orders/${detail.salesOrder.id}`}>
+                    {detail.salesOrder.soNumber}
+                  </Link>{" "}
+                  <span className="text-xs text-zinc-500">({detail.salesOrder.status})</span>
+                </p>
+              ) : null}
               <div className="mt-3 whitespace-pre-wrap rounded-lg border border-zinc-100 bg-zinc-50/80 p-3 text-sm text-zinc-800">
                 {detail.bodyText}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-sky-200 bg-sky-50/50 p-4 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-wide text-sky-800">Action playbook</p>
+              <h3 className="mt-1 text-base font-semibold text-zinc-900">Email to order / reply</h3>
+              <div className="mt-3 grid gap-2 sm:grid-cols-4">
+                {(actionState?.steps ?? []).map((step, idx) => (
+                  <div key={step.id} className="rounded-xl border border-white/70 bg-white p-3 text-xs shadow-sm">
+                    <p className="font-semibold text-zinc-900">Step {idx + 1}</p>
+                    <p className="mt-1 text-zinc-700">{step.label}</p>
+                    <p
+                      className={`mt-2 inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                        step.status === "done"
+                          ? "bg-emerald-100 text-emerald-800"
+                          : step.status === "needs_input"
+                            ? "bg-amber-100 text-amber-900"
+                            : "bg-zinc-100 text-zinc-700"
+                      }`}
+                    >
+                      {step.status.replace("_", " ")}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              {actionState?.intent?.kind === "ready" ? (
+                <div className="mt-3 rounded-xl border border-white/70 bg-white p-3 text-sm">
+                  <p className="font-medium text-zinc-900">Detected order</p>
+                  <p className="mt-1 text-zinc-600">
+                    {actionState.intent.summary.accountName} · {actionState.intent.summary.productName} · Qty{" "}
+                    {actionState.intent.summary.quantity ?? "?"} · {actionState.intent.summary.requestedDate ?? "date TBD"}
+                  </p>
+                </div>
+              ) : actionState?.intent ? (
+                <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+                  {actionState.intent.message}
+                </p>
+              ) : null}
+              <div className="mt-3 flex flex-wrap gap-2">
+                {actionState?.existingSalesOrder || detail.salesOrder ? (
+                  <Link
+                    href={`/sales-orders/${(actionState?.existingSalesOrder ?? detail.salesOrder)!.id}`}
+                    className="rounded-xl bg-[var(--arscmp-primary)] px-4 py-2.5 text-sm font-semibold text-white"
+                  >
+                    Open draft SO
+                  </Link>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={actionBusy || actionState?.intent?.kind !== "ready"}
+                    onClick={() => void createSalesOrderFromEmail()}
+                    className="rounded-xl bg-[var(--arscmp-primary)] px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {actionBusy ? "Creating..." : "Create draft SO"}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void draftFromEmail()}
+                  className="rounded-xl border border-sky-200 bg-white px-4 py-2.5 text-sm font-semibold text-sky-950 hover:bg-sky-50 disabled:opacity-50"
+                >
+                  Draft reply
+                </button>
               </div>
             </div>
 

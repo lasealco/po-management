@@ -3,7 +3,7 @@
 **Purpose:** Fix a real problem: *strategy docs and micro-slices are hard to “prompt,”* and **you** mainly validate **the product when you can see and click it**. This document defines (1) **how to prompt** the implementation agent, (2) **big phases** the agent can execute **without** waiting for you on every sub-task, and (3) **Mega-Phase 1** in enough detail to build toward your **“John at ABC, corr-roll, $100, pickup Tuesday”** story.
 
 **Audience:** You (product owner) + anyone implementing in Cursor.  
-**Last updated:** 2026-04-25 (MP4)
+**Last updated:** 2026-04-25 (MP5-MP8)
 
 **Related:** [`AI_ASSISTANT_UX_GTM_AND_DELIVERY_PLAN.md`](./AI_ASSISTANT_UX_GTM_AND_DELIVERY_PLAN.md) (narrative + workstreams), [`PLATFORM_AI_FIRST_OPERATIONS_ROADMAP.md`](./PLATFORM_AI_FIRST_OPERATIONS_ROADMAP.md) (platform strategy).
 
@@ -59,6 +59,10 @@ Use **one** of these. They are designed so the implementer (human or agent) does
 | **MP2** | **Attention** — “what needs me” (MVP inbox or unified list) + assistant entry always visible in shell | You see **open items** and can clear them from one place |
 | **MP3** | **Deepen the golden path** — inventory / product trace / stock checks in assistant answers (still human-gated commits) | Scenarios from the platform doc (stock yes/no, “where is it,” etc.) **show** in UI with **links to evidence** |
 | **MP4** | **Email (optional, flagged)** — inbound thread → inbox item, **confirm before send** for replies | You can run a **pilot** with your mailbox without fear of silent send |
+| **MP5** | **Email-to-action** — copy/paste inbound → create draft SO or reply from one panel | You can import a message, see the detected action, and create/open the draft SO |
+| **MP6** | **Playbook runner** — visible steps for email order/reply work | You see review → detect → create → reply as a guided flow, not hidden automation |
+| **MP7** | **Object timeline** — assistant actions are traceable on the real record | A draft SO shows which email/action created it and links back to the source |
+| **MP8** | **Embedded entry points** — assistant launch cards on key detail pages | Product, shipment, and SO pages can open the assistant with contextual prompts |
 
 *Docs and small fixes can happen anytime; they are not a substitute for **MP1** if your goal is “I can *see* it.”*
 
@@ -125,6 +129,7 @@ Use **one** of these. They are designed so the implementer (human or agent) does
 
 | Date | Change |
 |------|--------|
+| 2026-04-25 | **MP5-MP8 shipped (MVP):** `/assistant/mail` now has an **Action playbook** with detected sales-order intent, create/open draft SO action, and reply drafting; `POST /api/assistant/email-threads/[id]/actions` creates a linked draft SO; `AssistantEmailThread.salesOrderId` migration adds traceability; sales-order detail shows an **Assistant timeline** for linked mail actions; product, shipment, and sales-order detail pages include contextual **Ask assistant** cards that prefill `/assistant`. |
 | 2026-04-25 | **MP4 shipped (MVP, flagged):** `ASSISTANT_EMAIL_PILOT=1` — `AssistantEmailThread` in DB; `GET/POST /api/assistant/email-threads`, `GET/PATCH /api/assistant/email-threads/[id]`, `POST .../confirm-send` (records confirmation + **mailto** handoff, no default server send); `/assistant/mail` three-pane **mail client** (import/paste, CRM link, draft, confirm modal); open items merged into **assistant Inbox**; subnav **Mail** when pilot enabled. |
 | 2026-04-23 | **MP3 shipped (MVP):** `POST /api/assistant/answer-operations` with heuristics for stock / trace / “where is it” vs sales-order flow; reuses `getProductTracePayload` (PO + in-transit + WMS on-hand when granted); `AssistantMp1Client` runs operations first, shows narrative + **evidence links** (product, product-trace, WMS, Control Tower shipment, PO). |
 | 2026-04-23 | **MP2 shipped (MVP):** `GET /api/assistant/inbox` aggregating open CT alerts, open/in-progress CT exceptions, and DRAFT sales orders (scoped to viewer); `/assistant/inbox` + `AssistantInbox` client; top nav + platform visibility for Inbox; subnav between Chat and Inbox with badge. |

@@ -48,6 +48,7 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
     where: { id, tenantId: tenant.id },
     include: {
       linkedCrmAccount: { select: { id: true, name: true, legalName: true } },
+      salesOrder: { select: { id: true, soNumber: true, status: true } },
     },
   });
   if (!row) {

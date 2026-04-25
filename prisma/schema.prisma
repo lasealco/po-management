@@ -173,15 +173,19 @@ model AssistantEmailThread {
   lastSendMode       String? @db.VarChar(32) /// e.g. mailto, audit_only, smtp
   /// Optional link to CRM account when user associates the conversation.
   linkedCrmAccountId String?
+  /// Optional draft sales order created from this email (MP5/MP7 traceability).
+  salesOrderId String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   tenant              Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   lastSendConfirmBy   User?      @relation("AssistantEmailSendConfirmBy", fields: [lastSendConfirmById], references: [id], onDelete: SetNull)
   linkedCrmAccount    CrmAccount? @relation(fields: [linkedCrmAccountId], references: [id], onDelete: SetNull)
+  salesOrder          SalesOrder? @relation(fields: [salesOrderId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, receivedAt])
   @@index([tenantId, status])
+  @@index([tenantId, salesOrderId])
   @@unique([tenantId, providerMsgId])
 }
 
@@ -1359,6 +1363,7 @@ model SalesOrder {
   customerCrmAccount CrmAccount? @relation(fields: [customerCrmAccountId], references: [id], onDelete: SetNull)
   createdBy          User        @relation(fields: [createdById], references: [id], onDelete: Restrict)
   shipments          Shipment[]
+  assistantEmailThreads AssistantEmailThread[]
 
   @@unique([tenantId, soNumber])
   @@index([tenantId, status, createdAt])

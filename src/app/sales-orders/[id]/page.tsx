@@ -1,6 +1,8 @@
 import Link from "next/link";
 
 import { AccessDenied } from "@/components/access-denied";
+import { AssistantContextCard } from "@/components/assistant/assistant-context-card";
+import { AssistantObjectTimeline } from "@/components/assistant/assistant-object-timeline";
 import { SalesOrderCompanyLegalSnapshot } from "@/components/sales-order-company-legal-snapshot";
 import { SalesOrderServedOrgField } from "@/components/sales-order-served-org-field";
 import { SalesOrderStatusActions } from "@/components/sales-order-status-actions";
@@ -58,6 +60,18 @@ export default async function SalesOrderDetailPage({
             createdAt: true,
           },
         },
+        assistantEmailThreads: {
+          orderBy: { updatedAt: "desc" },
+          select: {
+            id: true,
+            subject: true,
+            fromAddress: true,
+            status: true,
+            createdAt: true,
+            draftReply: true,
+            lastSendConfirmAt: true,
+          },
+        },
       },
     }),
     prisma.orgUnit.findMany({
@@ -112,6 +126,11 @@ export default async function SalesOrderDetailPage({
           <p className="mt-1 text-sm font-semibold text-zinc-900">{activeShipmentCount}</p>
         </div>
       </section>
+      <AssistantContextCard
+        title="Ask about this sales order"
+        description="Use the assistant to summarize the customer commitment, draft a reply, or ask what still needs action."
+        prompt={`Summarize sales order ${row.soNumber} for ${row.customerName}. What is the next best action?`}
+      />
       <SalesOrderStatusActions
         salesOrderId={row.id}
         status={row.status}
@@ -187,6 +206,45 @@ export default async function SalesOrderDetailPage({
           ))
         )}
       </ul>
+      <AssistantObjectTimeline
+        events={row.assistantEmailThreads.flatMap((thread) => {
+          const base = [
+            {
+              id: `${thread.id}:created`,
+              label: "Email converted to draft SO",
+              description: `${thread.fromAddress} · ${thread.subject} · ${thread.status}`,
+              href: `/assistant/mail?thread=${thread.id}`,
+              at: thread.createdAt,
+            },
+          ];
+          if (!thread.draftReply && !thread.lastSendConfirmAt) return base;
+          return [
+            ...base,
+            ...(thread.draftReply
+              ? [
+                  {
+                    id: `${thread.id}:draft`,
+                    label: "Assistant reply drafted",
+                    description: "A customer reply draft is saved on the linked mail thread.",
+                    href: `/assistant/mail?thread=${thread.id}`,
+                    at: thread.createdAt,
+                  },
+                ]
+              : []),
+            ...(thread.lastSendConfirmAt
+              ? [
+                  {
+                    id: `${thread.id}:confirm`,
+                    label: "Send confirmation logged",
+                    description: "A user confirmed the mailto handoff for this thread.",
+                    href: `/assistant/mail?thread=${thread.id}`,
+                    at: thread.lastSendConfirmAt,
+                  },
+                ]
+              : []),
+          ];
+        })}
+      />
     </main>
   );
 }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AssistantContextCard } from "@/components/assistant/assistant-context-card";
 import { WorkflowHeader } from "@/components/workflow-header";
 import { getActorUserId, getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { ControlTowerReportingHubWorkbenchLinks } from "@/components/control-tower-reporting-hub-workbench-links";
@@ -78,6 +79,11 @@ export default async function ControlTowerShipmentPage({
           hidden.
         </p>
       ) : null}
+      <AssistantContextCard
+        title="Ask about this shipment"
+        description="Open the assistant with this shipment id to prepare a customer update or investigate next action."
+        prompt={`Summarize shipment ${id}. What status, exception, or customer update should I send next?`}
+      />
       <ControlTowerShipment360 shipmentId={id} canEdit={canEdit} initialTab={initialTab} />
     </main>
   );

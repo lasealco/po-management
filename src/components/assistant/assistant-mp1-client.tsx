@@ -3,8 +3,8 @@
 import { apiClientErrorMessage } from "@/lib/api-client-error";
 import type { SalesOrderIntentResult } from "@/lib/assistant/sales-order-intent";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useCallback, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const SAMPLE =
   "John from ABC customer called and wants 100 corr-roll for 100 USD a piece. He will send a truck to pick up at our demo warehouse next week tuesday.";
@@ -33,7 +33,9 @@ type Turn = {
 
 export function AssistantMp1Client({ canCreateSalesOrder }: { canCreateSalesOrder: boolean }) {
   const router = useRouter();
-  const [input, setInput] = useState("");
+  const searchParams = useSearchParams();
+  const promptParam = searchParams.get("prompt");
+  const [input, setInput] = useState(promptParam ?? "");
   const [turns, setTurns] = useState<Turn[]>([
     {
       role: "assistant",
@@ -54,6 +56,13 @@ export function AssistantMp1Client({ canCreateSalesOrder }: { canCreateSalesOrde
     evidence: { label: string; href: string }[];
   } | null>(null);
   const lastUserText = useRef("");
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      if (promptParam) setInput(promptParam);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [promptParam]);
 
   const runParse = useCallback(
     async (text: string, resAcc: string | null, resProd: string | null) => {

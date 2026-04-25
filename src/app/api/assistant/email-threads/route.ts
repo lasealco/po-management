@@ -59,6 +59,7 @@ export async function GET() {
       lastSendMode: true,
       linkedCrmAccountId: true,
       linkedCrmAccount: { select: { id: true, name: true } },
+      salesOrder: { select: { id: true, soNumber: true, status: true } },
     },
   });
 
