@@ -10,8 +10,24 @@ export type AssistantContextAnswer =
       kind: "answer";
       message: string;
       evidence: { label: string; href: string }[];
+      playbook?: AssistantPlaybook;
       actions?: AssistantProposedAction[];
     };
+
+export type AssistantPlaybook = {
+  id: string;
+  title: string;
+  description: string;
+  steps: AssistantPlaybookStep[];
+};
+
+export type AssistantPlaybookStep = {
+  id: string;
+  label: string;
+  description: string;
+  status: "done" | "available" | "needs_review";
+  actionIds?: string[];
+};
 
 export type AssistantProposedAction =
   | {
@@ -116,6 +132,45 @@ export async function answerSalesOrderContext({
         href: `/assistant/mail?thread=${t.id}`,
       })),
     ],
+    playbook: {
+      id: "sales-order-follow-up",
+      title: "Sales order follow-up",
+      description: "Review the customer commitment, inspect linked execution work, then prepare a human-approved update.",
+      steps: [
+        {
+          id: "review-so",
+          label: "Review the sales order",
+          description: "Confirm customer, status, requested delivery, notes, and order-for organization.",
+          status: "available",
+          actionIds: ["open-sales-order"],
+        },
+        {
+          id: "review-execution",
+          label: newestShipment ? "Review linked shipment" : "Create or attach execution work",
+          description: newestShipment
+            ? "Check carrier, tracking, milestones, alerts, and exceptions before promising an update."
+            : "No shipment is linked yet; operations needs an execution record before fulfillment can be tracked.",
+          status: newestShipment ? "available" : "needs_review",
+          actionIds: newestShipment ? ["open-latest-shipment"] : ["open-sales-order"],
+        },
+        {
+          id: "review-thread",
+          label: linkedMail ? "Review source conversation" : "Check communication context",
+          description: linkedMail
+            ? "Open the linked mail thread before sending or revising a customer reply."
+            : "No linked mail thread is attached; keep outbound communication in the customer context.",
+          status: linkedMail ? "available" : "needs_review",
+          actionIds: linkedMail ? ["open-linked-mail"] : undefined,
+        },
+        {
+          id: "draft-update",
+          label: "Prepare customer update",
+          description: "Copy the drafted update and decide where and whether to send it.",
+          status: "available",
+          actionIds: ["copy-customer-update"],
+        },
+      ],
+    },
     actions: [
       {
         id: "open-sales-order",
@@ -240,6 +295,51 @@ export async function answerShipmentContext({
       { label: `Purchase order ${row.order.orderNumber}`, href: `/orders/${row.order.id}` },
       ...(row.salesOrder ? [{ label: `Sales order ${row.salesOrder.soNumber}`, href: `/sales-orders/${row.salesOrder.id}` }] : []),
     ],
+    playbook: {
+      id: "shipment-triage",
+      title: "Shipment triage",
+      description: "Ground the status, review operational risk, then prepare the next customer-safe update.",
+      steps: [
+        {
+          id: "review-shipment",
+          label:
+            row.ctExceptions.length > 0
+              ? "Open exception workspace"
+              : row.ctAlerts.length > 0
+                ? "Open alert workspace"
+                : "Open shipment workspace",
+          description: "Start from the shipment record and inspect the most relevant operational tab.",
+          status: "available",
+          actionIds: ["open-shipment-workspace"],
+        },
+        {
+          id: "review-commercial-context",
+          label: "Review commercial context",
+          description: "Open the PO and any linked SO so the update matches the commitment behind the move.",
+          status: "available",
+          actionIds: row.salesOrder ? ["open-purchase-order", "open-linked-sales-order"] : ["open-purchase-order"],
+        },
+        {
+          id: "resolve-risk",
+          label: row.ctExceptions.length > 0 ? "Work open exception" : row.ctAlerts.length > 0 ? "Review alert" : "Monitor milestones",
+          description:
+            row.ctExceptions.length > 0
+              ? "Resolve or progress the exception before promising recovery."
+              : row.ctAlerts.length > 0
+                ? "Confirm whether the alert is material enough for a proactive update."
+                : "No open exception or alert is visible; keep watching milestone and ETA movement.",
+          status: row.ctExceptions.length > 0 || row.ctAlerts.length > 0 ? "needs_review" : "available",
+          actionIds: ["open-shipment-workspace"],
+        },
+        {
+          id: "draft-update",
+          label: "Prepare customer update",
+          description: "Copy the suggested update and send only after human review.",
+          status: "available",
+          actionIds: ["copy-status-update"],
+        },
+      ],
+    },
     actions: [
       {
         id: "open-shipment-workspace",

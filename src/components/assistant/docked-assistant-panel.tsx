@@ -12,8 +12,22 @@ type AnswerResult =
       kind: "answer";
       message: string;
       evidence: { label: string; href: string }[];
+      playbook?: AssistantPlaybook;
       actions?: ProposedAction[];
     };
+
+type AssistantPlaybook = {
+  id: string;
+  title: string;
+  description: string;
+  steps: Array<{
+    id: string;
+    label: string;
+    description: string;
+    status: "done" | "available" | "needs_review";
+    actionIds?: string[];
+  }>;
+};
 
 type ProposedAction =
   | {
@@ -67,6 +81,10 @@ export function DockedAssistantPanel({
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [copiedActionId, setCopiedActionId] = useState<string | null>(null);
+  const actionById =
+    answer?.kind === "answer" && answer.actions
+      ? new Map(answer.actions.map((action) => [action.id, action]))
+      : new Map<string, ProposedAction>();
 
   const askHere = async () => {
     setOpen(true);
@@ -157,6 +175,66 @@ export function DockedAssistantPanel({
                         </li>
                       ))}
                     </ul>
+                  </div>
+                ) : null}
+                {answer.playbook ? (
+                  <div className="rounded-2xl border border-sky-100 bg-sky-50/60 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-sky-800">Playbook</p>
+                    <h3 className="mt-1 text-sm font-semibold text-zinc-900">{answer.playbook.title}</h3>
+                    <p className="mt-1 text-xs text-zinc-600">{answer.playbook.description}</p>
+                    <ol className="mt-3 space-y-2">
+                      {answer.playbook.steps.map((step, idx) => (
+                        <li key={step.id} className="rounded-xl border border-white/80 bg-white p-3">
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <div>
+                              <p className="text-xs font-semibold text-zinc-500">Step {idx + 1}</p>
+                              <p className="mt-0.5 text-sm font-semibold text-zinc-900">{step.label}</p>
+                              <p className="mt-1 text-xs text-zinc-600">{step.description}</p>
+                            </div>
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                                step.status === "done"
+                                  ? "bg-emerald-100 text-emerald-800"
+                                  : step.status === "needs_review"
+                                    ? "bg-amber-100 text-amber-900"
+                                    : "bg-zinc-100 text-zinc-700"
+                              }`}
+                            >
+                              {step.status.replace("_", " ")}
+                            </span>
+                          </div>
+                          {step.actionIds && step.actionIds.length > 0 ? (
+                            <div className="mt-2 flex flex-wrap gap-1.5">
+                              {step.actionIds.map((id) => {
+                                const action = actionById.get(id);
+                                if (!action) return null;
+                                if (action.kind === "navigate") {
+                                  return (
+                                    <Link
+                                      key={id}
+                                      href={action.href}
+                                      className="rounded-lg border border-zinc-300 bg-white px-2.5 py-1 text-xs font-medium text-zinc-800 hover:bg-zinc-50"
+                                    >
+                                      {action.label}
+                                    </Link>
+                                  );
+                                }
+                                return (
+                                  <button
+                                    key={id}
+                                    type="button"
+                                    onClick={() => void copyActionText(action)}
+                                    className="rounded-lg border border-zinc-300 bg-white px-2.5 py-1 text-xs font-medium text-zinc-800 hover:bg-zinc-50"
+                                  >
+                                    {copiedActionId === action.id ? "Copied" : action.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ol>
                   </div>
                 ) : null}
                 {answer.actions && answer.actions.length > 0 ? (

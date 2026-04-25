@@ -65,6 +65,7 @@ Use **one** of these. They are designed so the implementer (human or agent) does
 | **MP8** | **Embedded entry points** — assistant launch cards on key detail pages | Product, shipment, and SO pages can open the assistant with contextual prompts |
 | **MP9** | **Docked assistant everywhere** — answer from object pages without leaving context | Product, shipment, and SO pages can answer in an in-page drawer with evidence links |
 | **MP10** | **Human-approved actions** — suggested actions are explicit, reviewable, and never silent | The dock proposes open/copy actions and the user must click before anything happens |
+| **MP11** | **Reusable playbooks** — common workflows appear as guided steps | SO follow-up and shipment triage show step-by-step playbooks tied to actions |
 
 *Docs and small fixes can happen anytime; they are not a substitute for **MP1** if your goal is “I can *see* it.”*
 
@@ -131,6 +132,7 @@ Use **one** of these. They are designed so the implementer (human or agent) does
 
 | Date | Change |
 |------|--------|
+| 2026-04-25 | **MP11 shipped (MVP):** context answers now include reusable playbooks (`sales-order-follow-up`, `shipment-triage`) with visible step status and action bindings in the docked assistant. |
 | 2026-04-25 | **MP10 shipped (MVP):** context answers now return explicit proposed actions (`navigate`, `copy_text`) and the dock renders them as user-clicked buttons, including copyable customer update drafts; no record mutation or sending is automatic. |
 | 2026-04-25 | **MP9 shipped (MVP):** assistant context cards now include an in-page **Docked assistant** drawer that runs context/stock answers with evidence links while preserving a path to the full `/assistant` workspace. |
 | 2026-04-25 | **Embedded assistant handoff improved:** object-page assistant cards now open `/assistant?run=1` and safely auto-run the contextual prompt once, so users land on an answer with evidence instead of a prefilled textarea. |
