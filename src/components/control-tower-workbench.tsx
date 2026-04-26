@@ -256,6 +256,7 @@ function ControlTowerWorkbenchInner({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<string | null>(null);
   const [saved, setSaved] = useState<Array<{ id: string; name: string; filtersJson: unknown }>>([]);
   const [savedFiltersErr, setSavedFiltersErr] = useState<string | null>(null);
@@ -827,6 +828,49 @@ function ControlTowerWorkbenchInner({
     [canUseWorkbenchBulk, colVis, restrictedView],
   );
 
+  const activeFilterCount = useMemo(
+    () =>
+      [
+        status,
+        mode,
+        q.trim(),
+        productTraceFilter,
+        laneFilter.trim(),
+        carrierSupplierIdFilter,
+        supplierIdFilter,
+        customerCrmAccountIdFilter,
+        originCodeFilter.trim(),
+        destinationCodeFilter.trim(),
+        exceptionCodeFilter.trim(),
+        alertTypeFilter.trim(),
+        shipmentSource,
+        !restrictedView ? ownerFilter : "",
+        routeHealth,
+        routeAction,
+        onlyOverdueEta ? "onlyOverdueEta" : "",
+      ].filter(Boolean).length,
+    [
+      alertTypeFilter,
+      carrierSupplierIdFilter,
+      customerCrmAccountIdFilter,
+      destinationCodeFilter,
+      exceptionCodeFilter,
+      laneFilter,
+      mode,
+      onlyOverdueEta,
+      originCodeFilter,
+      ownerFilter,
+      productTraceFilter,
+      q,
+      restrictedView,
+      routeAction,
+      routeHealth,
+      shipmentSource,
+      status,
+      supplierIdFilter,
+    ],
+  );
+
   const setExternalOrderRef = useCallback(
     async (row: Row) => {
       const current = row.externalOrderRef || "";
@@ -872,12 +916,70 @@ function ControlTowerWorkbenchInner({
         setTimelineBusy={setTimelineBusy}
         load={load}
       />
-      <div className="flex flex-wrap items-end gap-3 rounded-lg border border-zinc-200 bg-white p-4">
-        <p className="w-full text-[11px] text-zinc-500">
-          Filters update the address bar after you pause typing (~400ms) so you can copy or bookmark the exact list query.
-          Auto-refresh off is stored as <span className="font-mono text-zinc-600">autoRefresh=0</span> (default on omits the param).
-          Use <span className="font-mono text-zinc-600">ship360Tab=milestones</span> so PO/shipment links open Shipment 360 on the Milestones tab.
-        </p>
+      <div className="rounded-lg border border-zinc-200 bg-white p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-zinc-900">Workbench controls</p>
+            <p className="mt-0.5 text-xs text-zinc-500">
+              {activeFilterCount > 0
+                ? `${activeFilterCount} filter${activeFilterCount === 1 ? "" : "s"} active`
+                : "No filters active"}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setFiltersOpen((v) => !v)}
+              className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+              aria-expanded={filtersOpen}
+            >
+              {filtersOpen ? "Hide filters" : "Filters"}
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void load()}
+              className="rounded border border-arscmp-primary bg-arscmp-primary px-3 py-2 text-sm font-medium text-white disabled:opacity-40"
+            >
+              Refresh
+            </button>
+            <button
+              type="button"
+              onClick={() => setAutoRefresh((v) => !v)}
+              className={`rounded border px-3 py-2 text-sm font-medium ${
+                autoRefresh
+                  ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                  : "border-zinc-300 text-zinc-700"
+              }`}
+            >
+              Auto-refresh: {autoRefresh ? "On" : "Off"}
+            </button>
+            <button
+              type="button"
+              disabled={chipFilteredRows.length === 0}
+              onClick={exportCsv}
+              className="rounded border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-800 disabled:opacity-40"
+            >
+              Export CSV
+            </button>
+            {canEdit ? (
+              <button
+                type="button"
+                onClick={() => void saveCurrentFilter()}
+                className="rounded border border-sky-600 px-3 py-2 text-sm font-medium text-sky-900"
+              >
+                Save view
+              </button>
+            ) : null}
+          </div>
+        </div>
+        {filtersOpen ? (
+          <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-zinc-100 pt-4">
+            <p className="w-full text-[11px] text-zinc-500">
+              Filters update the address bar after you pause typing (~400ms) so you can copy or bookmark the exact list query.
+              Auto-refresh off is stored as <span className="font-mono text-zinc-600">autoRefresh=0</span> (default on omits the param).
+              Use <span className="font-mono text-zinc-600">ship360Tab=milestones</span> so PO/shipment links open Shipment 360 on the Milestones tab.
+            </p>
         <label className="text-xs text-zinc-600">
           Status
           <select
@@ -1101,42 +1203,6 @@ function ControlTowerWorkbenchInner({
           />
           Shipment links → Milestones tab
         </label>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => void load()}
-          className="rounded border border-arscmp-primary bg-arscmp-primary px-3 py-2 text-sm font-medium text-white disabled:opacity-40"
-        >
-          Refresh
-        </button>
-        <button
-          type="button"
-          onClick={() => setAutoRefresh((v) => !v)}
-          className={`rounded border px-3 py-2 text-sm font-medium ${
-            autoRefresh
-              ? "border-emerald-300 bg-emerald-50 text-emerald-900"
-              : "border-zinc-300 text-zinc-700"
-          }`}
-        >
-          Auto-refresh: {autoRefresh ? "On" : "Off"}
-        </button>
-        <button
-          type="button"
-          disabled={chipFilteredRows.length === 0}
-          onClick={exportCsv}
-          className="rounded border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-800 disabled:opacity-40"
-        >
-          Export CSV
-        </button>
-        {canEdit ? (
-          <button
-            type="button"
-            onClick={() => void saveCurrentFilter()}
-            className="rounded border border-sky-600 px-3 py-2 text-sm font-medium text-sky-900"
-          >
-            Save view
-          </button>
-        ) : null}
         {saved.length > 0 ? (
           <div className="flex flex-col gap-1 text-xs text-zinc-600">
             <span>Saved views</span>
@@ -1202,6 +1268,8 @@ function ControlTowerWorkbenchInner({
             >
               Clear default
             </button>
+          </div>
+        ) : null}
           </div>
         ) : null}
       </div>
