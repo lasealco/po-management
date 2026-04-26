@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { controlTowerWorkbenchPath } from "@/lib/control-tower/workbench-url-sync";
 
@@ -130,7 +130,6 @@ export function ControlTowerOpsClient({ initialSummary, focus }: { initialSummar
 
   const ownerRows = summary.ownerBalancing?.topOwners ?? [];
   const runs = summary.opsConsole?.recentRuns ?? [];
-  const json = useMemo(() => JSON.stringify(summary, null, 2), [summary]);
 
   return (
     <div className="space-y-6">
@@ -305,21 +304,6 @@ export function ControlTowerOpsClient({ initialSummary, focus }: { initialSummar
         </div>
       ) : null}
 
-      <div className="rounded-lg border border-zinc-200 bg-white p-4">
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-zinc-900">Ops snapshot JSON</h2>
-          <button
-            type="button"
-            className="rounded border border-zinc-300 px-3 py-1 text-xs font-medium text-zinc-800"
-            onClick={() => void navigator.clipboard.writeText(json)}
-          >
-            Copy
-          </button>
-        </div>
-        <pre className="max-h-[22rem] overflow-auto rounded-md border border-zinc-300 bg-white p-4 font-mono text-sm leading-relaxed text-zinc-950 shadow-inner">
-          {json}
-        </pre>
-      </div>
     </div>
   );
 }
