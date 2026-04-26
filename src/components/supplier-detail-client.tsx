@@ -92,6 +92,7 @@ export function SupplierDetailClient({
   canApprove = false,
   /** Phase K: internal notes and similar require edit or approve, not view-only. */
   canViewSupplierSensitiveFields,
+  canViewOrders = false,
   orderHistory = null,
   /** `srm` = opened from `/srm/[id]` (directory back-link); `suppliers` = legacy directory. */
   detailNavContext = "suppliers",
@@ -104,6 +105,7 @@ export function SupplierDetailClient({
   /** Approver / admin: approve or reject supplier, change activation. */
   canApprove?: boolean;
   canViewSupplierSensitiveFields: boolean;
+  canViewOrders?: boolean;
   /** Present when viewer has org.orders → view. */
   orderHistory?: SupplierOrderAnalytics | null;
   detailNavContext?: "suppliers" | "srm";
@@ -115,6 +117,9 @@ export function SupplierDetailClient({
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [orderAnalytics, setOrderAnalytics] = useState<SupplierOrderAnalytics | null>(orderHistory);
+  const [orderAnalyticsLoading, setOrderAnalyticsLoading] = useState(false);
+  const [orderAnalyticsError, setOrderAnalyticsError] = useState<string | null>(null);
 
   const [name, setName] = useState(initial.name);
   const [code, setCode] = useState(initial.code ?? "");
@@ -224,6 +229,35 @@ export function SupplierDetailClient({
     }
     return "overview";
   });
+
+  useEffect(() => {
+    setOrderAnalytics(orderHistory);
+  }, [initial.id, orderHistory]);
+
+  useEffect(() => {
+    if (!isSrmShell || srmTab !== "orders" || !canViewOrders || orderAnalytics || orderAnalyticsLoading) return;
+    const controller = new AbortController();
+    setOrderAnalyticsError(null);
+    setOrderAnalyticsLoading(true);
+    fetch(`/api/suppliers/${initial.id}/order-analytics`, { signal: controller.signal })
+      .then(async (res) => {
+        const payload: unknown = await res.json().catch(() => null);
+        if (!res.ok) {
+          throw new Error(apiClientErrorMessage(payload ?? {}, "Could not load supplier order analytics."));
+        }
+        const analytics = (payload as { analytics?: SupplierOrderAnalytics }).analytics;
+        if (!analytics) throw new Error("Supplier order analytics response was empty.");
+        setOrderAnalytics(analytics);
+      })
+      .catch((e) => {
+        if (e instanceof DOMException && e.name === "AbortError") return;
+        setOrderAnalyticsError(e instanceof Error ? e.message : "Could not load supplier order analytics.");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setOrderAnalyticsLoading(false);
+      });
+    return () => controller.abort();
+  }, [canViewOrders, initial.id, isSrmShell, orderAnalytics, orderAnalyticsLoading, srmTab]);
 
   async function saveSupplierProfile() {
     setError(null);
@@ -700,18 +734,24 @@ export function SupplierDetailClient({
         </nav>
       ) : null}
 
-      {orderHistory && (!isSrmShell || srmTab === "orders") ? (
-        <SupplierOrderHistorySection analytics={orderHistory} />
+      {orderAnalytics && (!isSrmShell || srmTab === "orders") ? (
+        <SupplierOrderHistorySection analytics={orderAnalytics} />
       ) : null}
 
-      {isSrmShell && srmTab === "orders" && !orderHistory ? (
+      {isSrmShell && srmTab === "orders" && !orderAnalytics ? (
         <section className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
           <h2 className="text-sm font-semibold text-zinc-900">Orders</h2>
-          <p className="mt-2 text-sm text-zinc-600">
-            Linked purchase-order history is hidden for your role. Grant{" "}
-            <strong className="text-zinc-800">org.orders</strong> → view to see counts and recent
-            rows here.
-          </p>
+          {orderAnalyticsLoading ? (
+            <p className="mt-2 text-sm text-zinc-600">Loading linked purchase-order history…</p>
+          ) : orderAnalyticsError ? (
+            <p className="mt-2 text-sm text-amber-900">{orderAnalyticsError}</p>
+          ) : (
+            <p className="mt-2 text-sm text-zinc-600">
+              Linked purchase-order history is hidden for your role. Grant{" "}
+              <strong className="text-zinc-800">org.orders</strong> → view to see counts and recent
+              rows here.
+            </p>
+          )}
         </section>
       ) : null}
 

@@ -80,6 +80,7 @@ export default async function SupplierDetailPage({
           canEdit={canEdit}
           canApprove={canApprove}
           canViewSupplierSensitiveFields={canViewSupplierSensitiveFields}
+          canViewOrders={canViewOrders}
           orderHistory={orderHistory}
           detailNavContext="suppliers"
         />
