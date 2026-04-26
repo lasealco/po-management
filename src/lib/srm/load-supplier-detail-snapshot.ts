@@ -1,6 +1,7 @@
 import type { SupplierDetailSnapshot } from "@/components/supplier-detail-client";
 import type { PrismaClient } from "@prisma/client";
 import { ensureSupplierOnboardingTasks } from "@/lib/srm/ensure-supplier-onboarding-tasks";
+import type { SupplierCapabilityRow } from "@/lib/srm/supplier-capability-types";
 
 /**
  * Loads supplier + offices + contacts for SRM / supplier 360 pages.
@@ -37,24 +38,38 @@ export async function loadSupplierDetailSnapshot(
           isPrimary: true,
         },
       },
-      serviceCapabilities: {
-        orderBy: [{ serviceType: "asc" }, { id: "asc" }],
-        select: {
-          id: true,
-          mode: true,
-          subMode: true,
-          serviceType: true,
-          geography: true,
-          notes: true,
-        },
-      },
       _count: { select: { productSuppliers: true, orders: true } },
     },
   });
 
   if (!supplier) return null;
 
-  await ensureSupplierOnboardingTasks(prisma, tenantId, supplier.id);
+  await ensureSupplierOnboardingTasks(prisma, tenantId, supplier.id).catch(() => undefined);
+
+  const capabilities: SupplierCapabilityRow[] = await prisma.supplierServiceCapability
+    .findMany({
+      where: { tenantId, supplierId: supplier.id },
+      orderBy: [{ serviceType: "asc" }, { id: "asc" }],
+      select: {
+        id: true,
+        mode: true,
+        subMode: true,
+        serviceType: true,
+        geography: true,
+        notes: true,
+      },
+    })
+    .then((rows) =>
+      rows.map((c) => ({
+        id: c.id,
+        mode: c.mode,
+        subMode: c.subMode,
+        serviceType: c.serviceType,
+        geography: c.geography,
+        notes: c.notes,
+      })),
+    )
+    .catch(() => []);
 
   const stage = supplier.srmOnboardingStage;
   const srmOnboardingStage =
@@ -100,14 +115,7 @@ export async function loadSupplierDetailSnapshot(
     srmOnboardingStage,
     contacts: supplier.contacts,
     offices: supplier.offices,
-    capabilities: supplier.serviceCapabilities.map((c) => ({
-      id: c.id,
-      mode: c.mode,
-      subMode: c.subMode,
-      serviceType: c.serviceType,
-      geography: c.geography,
-      notes: c.notes,
-    })),
+    capabilities,
     productLinkCount: supplier._count.productSuppliers,
     orderCount: supplier._count.orders,
   };
