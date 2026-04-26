@@ -90,6 +90,10 @@ function pick(arr, rand) {
   return arr[Math.floor(rand() * arr.length)];
 }
 
+function customerizeDemoAccountName(name) {
+  return name.replace(/\s+forwarder\s+—\s+/i, " customer — ");
+}
+
 /** ~12 months past → ~1 month future (14 months span). */
 function windowBounds() {
   const now = Date.now();
@@ -928,7 +932,7 @@ async function main() {
         tenantId: tenant.id,
         soNumber: `${SALES_ORDER_PREFIX}${String(i + 1).padStart(6, "0")}`,
         status: i % 8 === 0 ? "DRAFT" : i % 8 === 1 ? "CLOSED" : "OPEN",
-        customerName: c.name,
+        customerName: customerizeDemoAccountName(c.name),
         customerCrmAccountId: c.id,
         externalRef: `CUST-REF-${String(10_000 + i)}`,
         requestedDeliveryDate: new Date(Date.now() - Math.floor(rand() * 360) * DAY_MS),

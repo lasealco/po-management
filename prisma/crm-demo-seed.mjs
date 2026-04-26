@@ -187,14 +187,14 @@ export async function runCrmDemoSeed(prisma, tenantId, { buyerId, approverId }) 
     accountRows.push({
       tenantId,
       ownerUserId: owner(i),
-      name: `${vert} forwarder — ${city} (${suffix})`,
-      legalName: `${vert} Logistics ${suffix} LLC`,
+      name: `${vert} customer — ${city} (${suffix})`,
+      legalName: `${vert} Customer ${suffix} LLC`,
       accountType: "CUSTOMER",
       lifecycle: "ACTIVE",
       industry: vert,
       segment: DEMO_SEGMENT,
       strategicFlag: rand() < 0.12,
-      website: `https://example-logistics-${suffix}.example`,
+      website: `https://example-customer-${suffix}.example`,
     });
   }
   await prisma.crmAccount.createMany({ data: accountRows });
