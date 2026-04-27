@@ -34,6 +34,10 @@ function clampScore(value: number) {
   return Math.max(0, Math.min(100, Math.round(value)));
 }
 
+function dataScore(value: number, target: number) {
+  return clampScore(percent(value, target));
+}
+
 function sortedCountRows(map: Map<string, number>, limit = 6) {
   return Array.from(map.entries())
     .map(([label, count]) => ({ label, count }))
@@ -647,6 +651,164 @@ export async function GET() {
         }
       : null,
   ].filter((item): item is { id: string; label: string; count: number; recommendation: string } => Boolean(item));
+  const programLayers = [
+    {
+      id: "mp50-mp54",
+      range: "MP50-MP54",
+      title: "Governance baseline",
+      score: rolloutScore,
+      summary: "Control baseline for expanding assistant usage without silent automation.",
+      items: [
+        {
+          mp: "MP50",
+          label: "Governance baseline scorecard",
+          status: rolloutScore >= 60 ? "ready" : "watch",
+          detail: `Rollout readiness is ${rolloutScore}/100 with ${groundingCoveragePct}% grounding coverage.`,
+        },
+        {
+          mp: "MP51",
+          label: "Control objectives",
+          status: riskRegister.length === 0 ? "ready" : "watch",
+          detail: `${riskRegister.length} control risk(s) currently flagged.`,
+        },
+        {
+          mp: "MP52",
+          label: "Access posture",
+          status: canCt && canOrders ? "ready" : "watch",
+          detail: `Command center includes ${canCt ? "Control Tower" : "no Control Tower"} and ${canOrders ? "Orders" : "no Orders"} scope.`,
+        },
+        {
+          mp: "MP53",
+          label: "Retention and sampling plan",
+          status: recentAuditEvents.length >= 10 ? "ready" : "watch",
+          detail: `${recentAuditEvents.length} recent audit event(s) sampled from ${auditTotal} total.`,
+        },
+        {
+          mp: "MP54",
+          label: "Approval gate posture",
+          status: pendingActionCount <= doneActionCount ? "ready" : "watch",
+          detail: `${pendingActionCount} pending action(s), ${doneActionCount} done action(s).`,
+        },
+      ],
+    },
+    {
+      id: "mp55-mp59",
+      range: "MP55-MP59",
+      title: "Value realization",
+      score: clampScore((helpfulCount + doneActionCount + completedPlaybookCount) * 10 - pendingActionCount * 3),
+      summary: "Lightweight value signals from answer usefulness, completed actions, and workflow throughput.",
+      items: [
+        {
+          mp: "MP55",
+          label: "Value proxy",
+          status: helpfulCount + doneActionCount > 0 ? "ready" : "watch",
+          detail: `${helpfulCount} helpful answer(s), ${doneActionCount} completed action(s).`,
+        },
+        {
+          mp: "MP56",
+          label: "Cycle-time proxy",
+          status: stalePlaybookCount === 0 && pendingActionAgeBuckets.older === 0 ? "ready" : "watch",
+          detail: `${stalePlaybookCount} stale playbook(s), ${pendingActionAgeBuckets.older} action(s) older than 7 days.`,
+        },
+        {
+          mp: "MP57",
+          label: "Capacity proxy",
+          status: inbox.total + pendingActionCount < 15 ? "ready" : "watch",
+          detail: `${inbox.total} inbox item(s), ${pendingActionCount} pending action(s).`,
+        },
+        {
+          mp: "MP58",
+          label: "Deflection signal",
+          status: trainingPositive.length > 0 ? "ready" : "watch",
+          detail: `${trainingPositive.length} helpful grounded answer(s) available as self-service examples.`,
+        },
+        {
+          mp: "MP59",
+          label: "Value backlog",
+          status: experimentBacklog.length > 0 ? "ready" : "watch",
+          detail: `${experimentBacklog.length} experiment(s) available for value improvement.`,
+        },
+      ],
+    },
+    {
+      id: "mp60-mp64",
+      range: "MP60-MP64",
+      title: "Domain expansion",
+      score: clampScore(dataScore(objectCoverageMap.size, 8) * 0.5 + groundingCoveragePct * 0.5),
+      summary: "Expansion candidates based on object coverage, surface usage, evidence debt, and playbook gaps.",
+      items: [
+        {
+          mp: "MP60",
+          label: "Domain expansion ranking",
+          status: objectCoverageMap.size > 1 ? "ready" : "watch",
+          detail: `${objectCoverageMap.size} object domain(s) represented in recent assistant data.`,
+        },
+        {
+          mp: "MP61",
+          label: "Data dependency map",
+          status: ungroundedEvents.length === 0 && objectlessEvents.length === 0 ? "ready" : "watch",
+          detail: `${ungroundedEvents.length} ungrounded answer(s), ${objectlessEvents.length} objectless answer(s).`,
+        },
+        {
+          mp: "MP62",
+          label: "Integration readiness",
+          status: surfaceCounts.size > 1 || recentActions.length > 0 ? "ready" : "watch",
+          detail: `${surfaceCounts.size} surface(s), ${recentActions.length} recent action event(s).`,
+        },
+        {
+          mp: "MP63",
+          label: "Workflow gap map",
+          status: templateRecommendations.length > 0 ? "ready" : "watch",
+          detail: `${templateRecommendations.length} reusable workflow/template candidate(s).`,
+        },
+        {
+          mp: "MP64",
+          label: "Expansion cards",
+          status: objectCoverageMap.size > 0 ? "ready" : "watch",
+          detail: `${Array.from(objectCoverageMap.keys()).slice(0, 3).join(", ") || "No domain candidates yet"}.`,
+        },
+      ],
+    },
+    {
+      id: "mp65-mp69",
+      range: "MP65-MP69",
+      title: "Scale operations",
+      score: clampScore((rolloutScore + actionCompletionPct + playbookCompletionPct + groundingCoveragePct) / 4),
+      summary: "Scale plan that turns adoption, incidents, KPIs, and milestones into a 30-day operating roadmap.",
+      items: [
+        {
+          mp: "MP65",
+          label: "Enablement plan",
+          status: actorRows.size > 0 && promptLibraryCandidates.length > 0 ? "ready" : "watch",
+          detail: `${actorRows.size} actor(s), ${promptLibraryCandidates.length} prompt starter(s).`,
+        },
+        {
+          mp: "MP66",
+          label: "Release train",
+          status: milestonePlan.length >= 3 ? "ready" : "watch",
+          detail: `${milestonePlan.length} milestone horizon(s) available.`,
+        },
+        {
+          mp: "MP67",
+          label: "Incident runbook",
+          status: riskRegister.length > 0 ? "ready" : "watch",
+          detail: `${riskRegister.length} risk(s) mapped to mitigation steps.`,
+        },
+        {
+          mp: "MP68",
+          label: "KPI board",
+          status: "ready",
+          detail: `Rollout ${rolloutScore}, action completion ${actionCompletionPct}%, evidence ${groundingCoveragePct}%.`,
+        },
+        {
+          mp: "MP69",
+          label: "30-day operating roadmap",
+          status: experimentBacklog.length > 0 || riskRegister.length > 0 ? "ready" : "watch",
+          detail: `Next: ${milestonePlan[0]?.title ?? "Continue monitoring assistant operations"}.`,
+        },
+      ],
+    },
+  ];
 
   return NextResponse.json({
     ok: true,
@@ -934,5 +1096,6 @@ export async function GET() {
     signalHygiene: {
       items: signalHygieneItems,
     },
+    programLayers,
   });
 }

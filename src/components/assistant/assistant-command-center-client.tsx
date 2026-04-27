@@ -227,6 +227,14 @@ type CommandCenterPayload = {
   signalHygiene: {
     items: Array<{ id: string; label: string; count: number; recommendation: string }>;
   };
+  programLayers: Array<{
+    id: string;
+    range: string;
+    title: string;
+    score: number;
+    summary: string;
+    items: Array<{ mp: string; label: string; status: string; detail: string }>;
+  }>;
 };
 
 function formatDate(value: string) {
@@ -319,12 +327,12 @@ export function AssistantCommandCenterClient() {
       <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">MP20-MP49</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">MP20-MP69</p>
             <h2 className="mt-1 text-xl font-semibold text-zinc-950">Assistant command center</h2>
             <p className="mt-2 max-w-3xl text-sm text-zinc-600">
               One operating view for cross-workspace work, feedback quality, queued actions, active playbooks, recent
               memory, assistant health, priority lanes, review queues, automation readiness, rollout confidence,
-              adoption, experiments, daily cadence, handoff, evidence, training, and milestone planning.
+              adoption, experiments, daily cadence, handoff, evidence, training, governance, value, expansion, and scale planning.
             </p>
             <p className="mt-2 text-xs text-zinc-500">Generated {formatDate(data.generatedAt)}</p>
           </div>
@@ -346,6 +354,49 @@ export function AssistantCommandCenterClient() {
         {metricCard("Grounding", `${data.health.groundingCoveragePct}%`, "Recent answers with quality/evidence")}
         {metricCard("Action queue", data.health.pendingActionCount, "Pending user-approved actions", "border-sky-200 bg-sky-50")}
         {metricCard("Active playbooks", data.health.activePlaybookCount, `${data.health.stalePlaybookCount} stale`)}
+      </section>
+
+      <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">MP50-MP69</p>
+            <h3 className="mt-1 text-base font-semibold text-zinc-950">Assistant program layers</h3>
+            <p className="mt-1 max-w-3xl text-sm text-zinc-600">
+              The next 20 mega phases are grouped into governance, value, domain expansion, and scale operations so the roadmap stays usable.
+            </p>
+          </div>
+        </div>
+        <div className="mt-4 grid gap-4 xl:grid-cols-4">
+          {data.programLayers.map((layer) => (
+            <div key={layer.id} className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{layer.range}</p>
+                  <h4 className="mt-1 font-semibold text-zinc-950">{layer.title}</h4>
+                </div>
+                <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-zinc-800 shadow-sm">{layer.score}/100</span>
+              </div>
+              <p className="mt-2 text-xs text-zinc-600">{layer.summary}</p>
+              <div className="mt-4 space-y-2">
+                {layer.items.map((item) => (
+                  <div key={item.mp} className="rounded-xl border border-white bg-white p-3 text-sm shadow-sm">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="font-semibold text-zinc-900">{item.mp} · {item.label}</p>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                          item.status === "ready" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
+                        }`}
+                      >
+                        {item.status}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-zinc-600">{item.detail}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">

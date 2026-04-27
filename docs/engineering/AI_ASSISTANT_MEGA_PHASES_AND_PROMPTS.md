@@ -104,6 +104,26 @@ Use **one** of these. They are designed so the implementer (human or agent) does
 | **MP47** | **Prompt library candidates** — repeat prompts become reusable starts | Frequent answer kinds / object contexts suggest prompt templates |
 | **MP48** | **Decision journal** — assistant decisions are traceable over time | Recent feedback, action, and playbook events are shown as one timeline |
 | **MP49** | **Signal hygiene** — noisy assistant telemetry is visible | Duplicate prompts, missing feedback, missing grounding, and unlinked memory produce cleanup items |
+| **MP50** | **Governance baseline scorecard** — the assistant has a control baseline | Rollout, grounding, feedback, action, and stale-work indicators are summarized |
+| **MP51** | **Control objectives** — assistant controls are explicit | Human approval, auditability, grounding, feedback, and inbox visibility show pass/watch status |
+| **MP52** | **Access posture** — assistant scope is visible | Command center shows which workspace grants are represented in assistant operations |
+| **MP53** | **Retention and sampling plan** — audit sample size is visible | Recent sample size and total audit volume are shown as the current evidence base |
+| **MP54** | **Approval gate posture** — automation stays human-gated | Pending/done action counts show whether approval flow is under control |
+| **MP55** | **Value proxy** — assistant value is measurable | Answers, actions, playbooks, and inbox deflection produce a lightweight value score |
+| **MP56** | **Cycle-time proxy** — stale work indicates time risk | Stale playbooks and old actions are summarized as cycle-time drag |
+| **MP57** | **Capacity proxy** — assistant workload is visible | Open inbox, pending actions, and review queue provide a workload estimate |
+| **MP58** | **Deflection signal** — assistant self-service is visible | Helpful grounded answers are counted as candidate deflections |
+| **MP59** | **Value backlog** — improvements are tied to value | Experiment backlog and prompt candidates identify next value opportunities |
+| **MP60** | **Domain expansion ranking** — next domains are prioritized | Object coverage ranks candidate domains for expansion |
+| **MP61** | **Data dependency map** — missing evidence/context is explicit | Domain gaps and evidence debt list data dependencies before expansion |
+| **MP62** | **Integration readiness** — entry surfaces are measurable | Surface mix and action types show which integrations are already active |
+| **MP63** | **Workflow gap map** — playbook gaps are visible | Template recommendations identify workflows without reusable playbooks |
+| **MP64** | **Expansion cards** — domain candidates are packaged | Command center shows candidate domain, reason, and next human-approved step |
+| **MP65** | **Enablement plan** — humans know how to adopt the assistant | Adoption heatmap and prompt library produce coaching targets |
+| **MP66** | **Release train** — next assistant releases are sequenced | Now / Next / Later milestones become release-train cards |
+| **MP67** | **Incident runbook** — assistant risks have response steps | Risk register items map to concrete response actions |
+| **MP68** | **KPI board** — assistant operating KPIs are grouped | Rollout, SLA, quality, action, and evidence KPIs appear in one board |
+| **MP69** | **30-day operating roadmap** — next month is visible | Command center summarizes governance, value, expansion, and scale next steps |
 
 *Docs and small fixes can happen anytime; they are not a substitute for **MP1** if your goal is “I can *see* it.”*
 
@@ -170,6 +190,7 @@ Use **one** of these. They are designed so the implementer (human or agent) does
 
 | Date | Change |
 |------|--------|
+| 2026-04-27 | **MP50-MP69 shipped (MVP):** extended the assistant command center with grouped program layers for governance baseline, value realization, domain expansion, and scale operations. |
 | 2026-04-27 | **MP45-MP49 shipped (MVP):** extended the assistant command center with SLA posture, training queue, prompt-library candidates, decision journal, and signal hygiene panels. |
 | 2026-04-27 | **MP40-MP44 shipped (MVP):** extended the assistant command center with an operating packet, risk register, human handoff queue, evidence ledger, and signal-driven milestone plan. |
 | 2026-04-27 | **MP35-MP39 shipped (MVP):** extended the assistant command center with adoption heatmap, surface mix, scenario coverage, experiment backlog, and daily operating cadence panels. |
