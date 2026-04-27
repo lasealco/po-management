@@ -38,6 +38,14 @@ function dataScore(value: number, target: number) {
   return clampScore(percent(value, target));
 }
 
+function reviewQueuePenalty(needsReviewCount: number, stalePlaybookCount: number) {
+  return needsReviewCount * 5 + stalePlaybookCount * 8;
+}
+
+function domainGapsReady(objectlessCount: number, ungroundedCount: number) {
+  return objectlessCount + ungroundedCount > 0;
+}
+
 function sortedCountRows(map: Map<string, number>, limit = 6) {
   return Array.from(map.entries())
     .map(([label, count]) => ({ label, count }))
@@ -809,6 +817,164 @@ export async function GET() {
       ],
     },
   ];
+  const maturityLayers = [
+    {
+      id: "mp70-mp74",
+      range: "MP70-MP74",
+      title: "Process intelligence",
+      score: clampScore((surfaceCounts.size * 12) + (answerKindCounts.size * 8) - reviewQueuePenalty(needsReviewCount, stalePlaybookCount)),
+      summary: "Turns assistant telemetry into process paths, bottlenecks, exception categories, root-cause hints, and improvement queues.",
+      items: [
+        {
+          mp: "MP70",
+          label: "Process mining signal",
+          status: recentAuditEvents.length + recentActions.length + playbookRuns.length > 0 ? "ready" : "watch",
+          detail: `${recentAuditEvents.length} answer(s), ${recentActions.length} action(s), ${playbookRuns.length} playbook run(s) in the current sample.`,
+        },
+        {
+          mp: "MP71",
+          label: "Bottleneck detector",
+          status: needsReviewCount + stalePlaybookCount + pendingActionAgeBuckets.older === 0 ? "ready" : "watch",
+          detail: `${needsReviewCount} needs-review answer(s), ${stalePlaybookCount} stale playbook(s), ${pendingActionAgeBuckets.older} older action(s).`,
+        },
+        {
+          mp: "MP72",
+          label: "Exception taxonomy",
+          status: riskRegister.length + ungroundedEvents.length + pendingActionCount > 0 ? "ready" : "watch",
+          detail: `${riskRegister.length} risk group(s), ${ungroundedEvents.length} evidence gap(s), ${pendingActionCount} pending action(s).`,
+        },
+        {
+          mp: "MP73",
+          label: "Root-cause hints",
+          status: domainGapsReady(objectlessEvents.length, ungroundedEvents.length) ? "ready" : "watch",
+          detail: `${objectlessEvents.length} object-context gap(s), ${ungroundedEvents.length} grounding gap(s).`,
+        },
+        {
+          mp: "MP74",
+          label: "Process recommendation queue",
+          status: recommendations.length + experimentBacklog.length > 0 ? "ready" : "watch",
+          detail: `${recommendations.length} recommendation(s), ${experimentBacklog.length} experiment(s).`,
+        },
+      ],
+    },
+    {
+      id: "mp75-mp79",
+      range: "MP75-MP79",
+      title: "Knowledge system",
+      score: clampScore((trainingPositive.length + promptLibraryCandidates.length + templateRecommendations.length) * 10 + groundingCoveragePct * 0.4),
+      summary: "Packages helpful answers, SOP gaps, evidence needs, and freshness signals into a lightweight knowledge program.",
+      items: [
+        {
+          mp: "MP75",
+          label: "Knowledge base candidates",
+          status: trainingPositive.length + promptLibraryCandidates.length > 0 ? "ready" : "watch",
+          detail: `${trainingPositive.length} positive example(s), ${promptLibraryCandidates.length} prompt candidate(s).`,
+        },
+        {
+          mp: "MP76",
+          label: "SOP gap list",
+          status: templateRecommendations.length > 0 ? "ready" : "watch",
+          detail: `${templateRecommendations.length} missing or reusable SOP candidate(s).`,
+        },
+        {
+          mp: "MP77",
+          label: "Answer-to-playbook mapping",
+          status: answerKindCounts.size > 0 ? "ready" : "watch",
+          detail: `${answerKindCounts.size} answer pattern(s) available for playbook mapping.`,
+        },
+        {
+          mp: "MP78",
+          label: "Evidence starter packs",
+          status: evidenceNeeded.length > 0 || groundingCoveragePct >= 80 ? "ready" : "watch",
+          detail: `${evidenceNeeded.length} evidence-needed prompt(s), ${groundingCoveragePct}% grounding coverage.`,
+        },
+        {
+          mp: "MP79",
+          label: "Knowledge freshness",
+          status: recentAuditEvents.length > 0 ? "ready" : "watch",
+          detail: `${recentAuditEvents.length} recent audit sample(s); generated ${new Date().toISOString()}.`,
+        },
+      ],
+    },
+    {
+      id: "mp80-mp84",
+      range: "MP80-MP84",
+      title: "Automation rehearsal",
+      score: clampScore((rolloutScore + actionCompletionPct + groundingCoveragePct - pendingActionAgeBuckets.older * 10) / 3),
+      summary: "Keeps automation in shadow mode with controlled candidates, rollback checks, and guardrails.",
+      items: [
+        {
+          mp: "MP80",
+          label: "Simulation readiness",
+          status: rolloutScore >= 60 && groundingCoveragePct >= 70 ? "ready" : "watch",
+          detail: `Rollout ${rolloutScore}/100, grounding ${groundingCoveragePct}%.`,
+        },
+        {
+          mp: "MP81",
+          label: "Shadow-mode score",
+          status: pendingActionCount + doneActionCount > 0 ? "ready" : "watch",
+          detail: `${doneActionCount} completed human-approved action(s), ${pendingActionCount} pending.`,
+        },
+        {
+          mp: "MP82",
+          label: "Controlled automation candidates",
+          status: automationCandidates.length > 0 ? "ready" : "watch",
+          detail: `${automationCandidates.length} action kind(s) ready for review.`,
+        },
+        {
+          mp: "MP83",
+          label: "Rollback checklist",
+          status: riskRegister.length > 0 || handoffQueue.length > 0 ? "ready" : "watch",
+          detail: `${riskRegister.length} risk(s), ${handoffQueue.length} handoff item(s) to verify before expansion.`,
+        },
+        {
+          mp: "MP84",
+          label: "Automation guardrails",
+          status: pendingActionCount <= doneActionCount && groundingCoveragePct >= 80 && feedbackCoveragePct >= 50 ? "ready" : "watch",
+          detail: `Approval balance ${pendingActionCount}/${doneActionCount}, feedback ${feedbackCoveragePct}%, grounding ${groundingCoveragePct}%.`,
+        },
+      ],
+    },
+    {
+      id: "mp85-mp89",
+      range: "MP85-MP89",
+      title: "Stakeholder experience",
+      score: clampScore((actorRows.size * 12) + (promptLibraryCandidates.length * 8) + groundingCoveragePct * 0.4),
+      summary: "Turns command-center signals into stakeholder maps, communication packs, coaching queues, and board-ready reporting.",
+      items: [
+        {
+          mp: "MP85",
+          label: "Stakeholder experience map",
+          status: actorRows.size > 0 || objectCoverageMap.size > 0 ? "ready" : "watch",
+          detail: `${actorRows.size} actor(s), ${objectCoverageMap.size} object domain(s) represented.`,
+        },
+        {
+          mp: "MP86",
+          label: "Communication pack",
+          status: executiveBriefLines.length > 0 && promptLibraryCandidates.length > 0 ? "ready" : "watch",
+          detail: `${executiveBriefLines.length} executive brief line(s), ${promptLibraryCandidates.length} prompt starter(s).`,
+        },
+        {
+          mp: "MP87",
+          label: "Brief variants",
+          status: "ready",
+          detail: "Executive brief, operating packet, and enablement prompts are available from the same signal set.",
+        },
+        {
+          mp: "MP88",
+          label: "Adoption coaching queue",
+          status: actorRows.size > 0 && promptLibraryCandidates.length > 0 ? "ready" : "watch",
+          detail: `${actorRows.size} adoption row(s), ${promptLibraryCandidates.length} coaching prompt(s).`,
+        },
+        {
+          mp: "MP89",
+          label: "Board-ready narrative",
+          status: rolloutScore >= 50 || auditTotal > 0 ? "ready" : "watch",
+          detail: `Readiness ${rolloutScore}/100 with ${auditTotal} total audit event(s) and ${riskRegister.length} risk(s).`,
+        },
+      ],
+    },
+  ];
 
   return NextResponse.json({
     ok: true,
@@ -1097,5 +1263,6 @@ export async function GET() {
       items: signalHygieneItems,
     },
     programLayers,
+    maturityLayers,
   });
 }

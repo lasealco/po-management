@@ -124,6 +124,26 @@ Use **one** of these. They are designed so the implementer (human or agent) does
 | **MP67** | **Incident runbook** — assistant risks have response steps | Risk register items map to concrete response actions |
 | **MP68** | **KPI board** — assistant operating KPIs are grouped | Rollout, SLA, quality, action, and evidence KPIs appear in one board |
 | **MP69** | **30-day operating roadmap** — next month is visible | Command center summarizes governance, value, expansion, and scale next steps |
+| **MP70** | **Process mining signal** — assistant activity reveals workflow paths | Recent answers, actions, and playbooks show which process paths are active |
+| **MP71** | **Bottleneck detector** — blocked assistant work is visible | Review backlog, stale work, and aged actions identify bottlenecks |
+| **MP72** | **Exception taxonomy** — recurring issues are categorized | Risks, low confidence, missing evidence, and pending work become exception groups |
+| **MP73** | **Root-cause hints** — weak signals point to likely causes | Domain gaps, ungrounded answers, and objectless memory produce likely root-cause prompts |
+| **MP74** | **Process recommendation queue** — improvements become actionable | Recommendations and experiments are grouped into process improvement candidates |
+| **MP75** | **Knowledge base candidates** — reusable assistant knowledge is visible | Helpful answers, prompt starters, and evidence debt become KB candidates |
+| **MP76** | **SOP gap list** — missing procedures are explicit | Workflow template recommendations identify missing SOPs |
+| **MP77** | **Answer-to-playbook mapping** — repeated answer types map to workflows | Frequent answer kinds suggest playbook candidates |
+| **MP78** | **Evidence starter packs** — grounding requirements are packaged | Ungrounded prompts and evidence-needed items show what evidence to collect |
+| **MP79** | **Knowledge freshness** — the evidence base has age and sample context | Recent audit sample and latest generated timestamp show freshness posture |
+| **MP80** | **Simulation readiness** — automation can be rehearsed before execution | Rollout, confidence, and action completion determine whether shadow testing is ready |
+| **MP81** | **Shadow-mode score** — assistant automation stays in rehearsal | Pending and completed human-approved actions produce a shadow-mode score |
+| **MP82** | **Controlled automation candidates** — safe next automations are ranked | High-completion action kinds and repeat candidates are listed |
+| **MP83** | **Rollback checklist** — automation risks have reversibility steps | Risk and handoff data produce rollback checks before automation expansion |
+| **MP84** | **Automation guardrails** — automation constraints are visible | Human approval, evidence, feedback, and stale-work gates are checked |
+| **MP85** | **Stakeholder experience map** — assistant value is grouped by audience | User adoption, inbox work, and object coverage indicate stakeholder impact |
+| **MP86** | **Communication pack** — assistant outputs are ready for status sharing | Brief, operating packet, and prompt library create communication starters |
+| **MP87** | **Brief variants** — different audiences get different summaries | Executive, operator, and enablement brief lines are generated from the same data |
+| **MP88** | **Adoption coaching queue** — users get targeted enablement | Adoption heatmap and prompt starters identify coaching targets |
+| **MP89** | **Board-ready narrative** — AI progress can be reported clearly | KPIs, risks, roadmap, and value signals are summarized for leadership |
 
 *Docs and small fixes can happen anytime; they are not a substitute for **MP1** if your goal is “I can *see* it.”*
 
@@ -190,6 +210,7 @@ Use **one** of these. They are designed so the implementer (human or agent) does
 
 | Date | Change |
 |------|--------|
+| 2026-04-27 | **MP70-MP89 shipped (MVP):** extended the assistant command center with maturity layers for process intelligence, knowledge system, automation rehearsal, and stakeholder experience. |
 | 2026-04-27 | **MP50-MP69 shipped (MVP):** extended the assistant command center with grouped program layers for governance baseline, value realization, domain expansion, and scale operations. |
 | 2026-04-27 | **MP45-MP49 shipped (MVP):** extended the assistant command center with SLA posture, training queue, prompt-library candidates, decision journal, and signal hygiene panels. |
 | 2026-04-27 | **MP40-MP44 shipped (MVP):** extended the assistant command center with an operating packet, risk register, human handoff queue, evidence ledger, and signal-driven milestone plan. |
