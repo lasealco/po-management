@@ -26,6 +26,14 @@ function addCount(map: Map<string, number>, key: string | null | undefined, fall
   map.set(normalized, (map.get(normalized) ?? 0) + 1);
 }
 
+function ageDays(value: Date) {
+  return Math.max(0, Math.floor((Date.now() - value.getTime()) / (1000 * 60 * 60 * 24)));
+}
+
+function clampScore(value: number) {
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
 export async function GET() {
   const access = await getViewerGrantSet();
   if (!access?.user) {
@@ -243,12 +251,88 @@ export async function GET() {
     }))
     .sort((a, b) => b.recentCount - a.recentCount)
     .slice(0, 5);
+  const confidenceItems = recentAuditEvents.map((event) => {
+    const grounded = event.quality != null || event.evidence != null;
+    const hasObjectContext = Boolean(event.objectType && event.objectId);
+    const score =
+      35 +
+      (grounded ? 25 : 0) +
+      (hasObjectContext ? 15 : 0) +
+      (event.feedback === "helpful" ? 20 : 0) -
+      (event.feedback === "not_helpful" ? 35 : 0);
+    const confidence = score >= 75 ? "high" : score >= 50 ? "medium" : "low";
+    return {
+      id: event.id,
+      prompt: event.prompt,
+      answerKind: event.answerKind,
+      confidence,
+      score: clampScore(score),
+      reason: [
+        grounded ? "grounded" : "missing grounding",
+        hasObjectContext ? "object-linked" : "no object context",
+        event.feedback ? `feedback: ${event.feedback}` : "no feedback",
+      ].join(" · "),
+      createdAt: event.createdAt.toISOString(),
+    };
+  });
+  const confidenceBands = {
+    high: confidenceItems.filter((item) => item.confidence === "high").length,
+    medium: confidenceItems.filter((item) => item.confidence === "medium").length,
+    low: confidenceItems.filter((item) => item.confidence === "low").length,
+  };
+  const objectlessEvents = recentAuditEvents.filter((event) => !event.objectType || !event.objectId);
+  const ungroundedEvents = recentAuditEvents.filter((event) => event.quality == null && event.evidence == null);
+  const unknownDomain = objectCoverageMap.get("unknown");
+  const pendingActionAgeBuckets = {
+    today: pendingActions.filter((item) => ageDays(item.createdAt) <= 1).length,
+    threeDays: pendingActions.filter((item) => {
+      const age = ageDays(item.createdAt);
+      return age > 1 && age <= 3;
+    }).length,
+    sevenDays: pendingActions.filter((item) => {
+      const age = ageDays(item.createdAt);
+      return age > 3 && age <= 7;
+    }).length,
+    older: pendingActions.filter((item) => ageDays(item.createdAt) > 7).length,
+  };
+  const templateRecommendations = [
+    ...Array.from(objectCoverageMap.values())
+      .filter((row) => row.auditEvents + row.actions >= 3 && row.playbooks === 0)
+      .slice(0, 3)
+      .map((row) => ({
+        id: `object-${row.objectType}`,
+        title: `${row.objectType} follow-up playbook`,
+        reason: `${row.auditEvents} answer(s) and ${row.actions} action(s), but no active reusable playbook signal.`,
+        priority: row.actions > 0 ? "high" : "medium",
+      })),
+    ...automationCandidates
+      .filter((candidate) => candidate.recentCount >= 2)
+      .slice(0, 3)
+      .map((candidate) => ({
+        id: `action-${candidate.kind}`,
+        title: `${candidate.kind} approval checklist`,
+        reason: `${candidate.recentCount} recent action(s), ${candidate.readinessPct}% completed.`,
+        priority: candidate.readinessPct >= 60 ? "medium" : "high",
+      })),
+  ].slice(0, 6);
+  const feedbackCoveragePct = percent(helpfulCount + needsReviewCount, auditTotal);
+  const reviewBacklogPenalty = Math.min(25, needsReviewCount * 4 + feedbackMissingCount * 0.5);
+  const stalePenalty = Math.min(20, stalePlaybookCount * 8);
+  const rolloutScore = clampScore(
+    groundingCoveragePct * 0.35 +
+      feedbackCoveragePct * 0.2 +
+      percent(doneActionCount, pendingActionCount + doneActionCount) * 0.2 +
+      (100 - reviewBacklogPenalty) * 0.15 +
+      (100 - stalePenalty) * 0.1,
+  );
+  const rolloutLevel = rolloutScore >= 80 ? "Ready to expand" : rolloutScore >= 60 ? "Pilot with watchlist" : "Build foundation";
   const recommendations = [
     inbox.total > 0 ? "Start with the oldest high-impact inbox item and queue one explicit next action." : null,
     pendingActionCount > 0 ? "Review pending assistant actions before asking for more automation." : null,
     needsReviewCount > 0 ? "Open recent Needs review answers and tighten grounding or playbooks." : null,
     stalePlaybookCount > 0 ? "Close or refresh stale active playbooks so command-center status stays trustworthy." : null,
     groundingCoveragePct < 80 ? "Improve answer grounding coverage for recent assistant responses." : null,
+    rolloutScore < 60 ? "Keep the assistant in guided mode until rollout readiness improves." : null,
   ].filter((item): item is string => Boolean(item));
   const executiveBriefLines = [
     `Assistant brief: ${inbox.total} open inbox item(s), ${pendingActionCount} pending action(s), ${activePlaybookCount} active playbook(s).`,
@@ -387,6 +471,71 @@ export async function GET() {
     brief: {
       text: executiveBriefLines.join("\n"),
       lines: executiveBriefLines,
+    },
+    confidence: {
+      bands: confidenceBands,
+      sampleSize: confidenceItems.length,
+      lowConfidence: confidenceItems
+        .filter((item) => item.confidence === "low")
+        .sort((a, b) => a.score - b.score)
+        .slice(0, 6),
+    },
+    domainGaps: {
+      objectlessCount: objectlessEvents.length,
+      ungroundedCount: ungroundedEvents.length,
+      unknownDomainCount: unknownDomain ? unknownDomain.auditEvents + unknownDomain.actions + unknownDomain.playbooks : 0,
+      examples: [
+        ...objectlessEvents.slice(0, 3).map((event) => ({
+          id: event.id,
+          label: event.prompt,
+          reason: "No object context",
+          createdAt: event.createdAt.toISOString(),
+        })),
+        ...ungroundedEvents.slice(0, 3).map((event) => ({
+          id: event.id,
+          label: event.prompt,
+          reason: "No quality/evidence grounding",
+          createdAt: event.createdAt.toISOString(),
+        })),
+      ].slice(0, 6),
+    },
+    escalationWatch: {
+      pendingActionAgeBuckets,
+      oldestPendingActions: pendingActions
+        .slice()
+        .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+        .slice(0, 5)
+        .map((item) => ({
+          id: item.id,
+          label: item.label,
+          ageDays: ageDays(item.createdAt),
+          objectType: item.objectType,
+          objectId: item.objectId,
+          href: payloadHref(item.payload),
+          actorName: item.actor?.name ?? "Assistant user",
+        })),
+      stalePlaybooks: stalePlaybookRuns.map((run) => ({
+        id: run.id,
+        label: run.title,
+        ageDays: ageDays(run.updatedAt),
+        objectType: run.objectType,
+        objectId: run.objectId,
+        actorName: run.actor?.name ?? "Assistant user",
+      })),
+    },
+    playbookRecommendations: {
+      templates: templateRecommendations,
+    },
+    rollout: {
+      score: rolloutScore,
+      level: rolloutLevel,
+      checklist: [
+        { id: "grounding", label: "Recent grounding coverage at or above 80%", passed: groundingCoveragePct >= 80 },
+        { id: "feedback", label: "Feedback captured for at least half of audit events", passed: feedbackCoveragePct >= 50 },
+        { id: "actions", label: "No more pending than completed assistant actions", passed: pendingActionCount <= doneActionCount },
+        { id: "review", label: "Needs-review answers are below 10% of audit volume", passed: percent(needsReviewCount, auditTotal) < 10 },
+        { id: "stale", label: "No stale active playbooks", passed: stalePlaybookCount === 0 },
+      ],
     },
   });
 }

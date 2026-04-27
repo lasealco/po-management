@@ -75,6 +75,23 @@ type ReviewQueueItem = {
   actorName?: string;
 };
 
+type ConfidenceItem = {
+  id: string;
+  prompt: string;
+  answerKind: string;
+  confidence: string;
+  score: number;
+  reason: string;
+  createdAt: string;
+};
+
+type GapItem = {
+  id: string;
+  label: string;
+  reason: string;
+  createdAt: string;
+};
+
 type CommandCenterPayload = {
   generatedAt: string;
   inbox: Pick<AssistantInboxPayload, "total" | "producers"> & { items: AssistantInboxItem[] };
@@ -109,6 +126,45 @@ type CommandCenterPayload = {
     unreviewedMemory: ReviewQueueItem[];
   };
   brief: { text: string; lines: string[] };
+  confidence: {
+    bands: { high: number; medium: number; low: number };
+    sampleSize: number;
+    lowConfidence: ConfidenceItem[];
+  };
+  domainGaps: {
+    objectlessCount: number;
+    ungroundedCount: number;
+    unknownDomainCount: number;
+    examples: GapItem[];
+  };
+  escalationWatch: {
+    pendingActionAgeBuckets: { today: number; threeDays: number; sevenDays: number; older: number };
+    oldestPendingActions: Array<{
+      id: string;
+      label: string;
+      ageDays: number;
+      objectType: string | null;
+      objectId: string | null;
+      href: string | null;
+      actorName: string;
+    }>;
+    stalePlaybooks: Array<{
+      id: string;
+      label: string;
+      ageDays: number;
+      objectType: string | null;
+      objectId: string | null;
+      actorName: string;
+    }>;
+  };
+  playbookRecommendations: {
+    templates: Array<{ id: string; title: string; reason: string; priority: string }>;
+  };
+  rollout: {
+    score: number;
+    level: string;
+    checklist: Array<{ id: string; label: string; passed: boolean }>;
+  };
 };
 
 function formatDate(value: string) {
@@ -191,11 +247,12 @@ export function AssistantCommandCenterClient() {
       <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">MP20-MP29</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">MP20-MP34</p>
             <h2 className="mt-1 text-xl font-semibold text-zinc-950">Assistant command center</h2>
             <p className="mt-2 max-w-3xl text-sm text-zinc-600">
               One operating view for cross-workspace work, feedback quality, queued actions, active playbooks, recent
-              memory, assistant health, priority lanes, review queues, automation readiness, and executive brief.
+              memory, assistant health, priority lanes, review queues, automation readiness, rollout confidence, and
+              executive brief.
             </p>
             <p className="mt-2 text-xs text-zinc-500">Generated {formatDate(data.generatedAt)}</p>
           </div>
@@ -217,6 +274,65 @@ export function AssistantCommandCenterClient() {
         {metricCard("Grounding", `${data.health.groundingCoveragePct}%`, "Recent answers with quality/evidence")}
         {metricCard("Action queue", data.health.pendingActionCount, "Pending user-approved actions", "border-sky-200 bg-sky-50")}
         {metricCard("Active playbooks", data.health.activePlaybookCount, `${data.health.stalePlaybookCount} stale`)}
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <h3 className="text-base font-semibold text-zinc-950">Rollout readiness</h3>
+          <p className="mt-1 text-sm text-zinc-600">MP34 go/no-go score for expanding assistant usage.</p>
+          <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+            <p className="text-4xl font-semibold text-emerald-950">{data.rollout.score}</p>
+            <p className="mt-1 text-sm font-medium text-emerald-900">{data.rollout.level}</p>
+          </div>
+          <div className="mt-4 space-y-2">
+            {data.rollout.checklist.map((item) => (
+              <div
+                key={item.id}
+                className={`rounded-xl border p-3 text-sm ${
+                  item.passed ? "border-emerald-200 bg-emerald-50 text-emerald-950" : "border-amber-200 bg-amber-50 text-amber-950"
+                }`}
+              >
+                <span className="font-semibold">{item.passed ? "Passed" : "Watch"}:</span> {item.label}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <h3 className="text-base font-semibold text-zinc-950">Confidence bands</h3>
+          <p className="mt-1 text-sm text-zinc-600">MP30 trust bands for recent persisted assistant answers.</p>
+          <div className="mt-4 grid grid-cols-3 gap-2 text-center text-sm">
+            <div className="rounded-xl bg-emerald-50 p-3 text-emerald-950">
+              <p className="text-2xl font-semibold">{data.confidence.bands.high}</p>
+              <p className="text-xs">High</p>
+            </div>
+            <div className="rounded-xl bg-sky-50 p-3 text-sky-950">
+              <p className="text-2xl font-semibold">{data.confidence.bands.medium}</p>
+              <p className="text-xs">Medium</p>
+            </div>
+            <div className="rounded-xl bg-rose-50 p-3 text-rose-950">
+              <p className="text-2xl font-semibold">{data.confidence.bands.low}</p>
+              <p className="text-xs">Low</p>
+            </div>
+          </div>
+          <div className="mt-4 space-y-2">
+            {data.confidence.lowConfidence.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-zinc-200 p-4 text-sm text-zinc-500">
+                No low-confidence answers in the recent sample.
+              </p>
+            ) : (
+              data.confidence.lowConfidence.slice(0, 4).map((item) => (
+                <div key={item.id} className="rounded-xl border border-rose-100 bg-rose-50/60 p-3 text-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="font-semibold text-rose-950">{item.prompt}</p>
+                    <span className="rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-rose-800">{item.score}</span>
+                  </div>
+                  <p className="mt-1 text-xs text-rose-800">{item.reason}</p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
@@ -272,6 +388,101 @@ export function AssistantCommandCenterClient() {
                 {line}
               </p>
             ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-3">
+        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <h3 className="text-base font-semibold text-zinc-950">Domain-gap radar</h3>
+          <p className="mt-1 text-sm text-zinc-600">MP31 missing object context and grounding coverage gaps.</p>
+          <div className="mt-4 grid grid-cols-3 gap-2 text-center text-sm">
+            <div className="rounded-xl bg-zinc-100 p-3">
+              <p className="text-xl font-semibold">{data.domainGaps.objectlessCount}</p>
+              <p className="text-xs text-zinc-600">Objectless</p>
+            </div>
+            <div className="rounded-xl bg-zinc-100 p-3">
+              <p className="text-xl font-semibold">{data.domainGaps.ungroundedCount}</p>
+              <p className="text-xs text-zinc-600">Ungrounded</p>
+            </div>
+            <div className="rounded-xl bg-zinc-100 p-3">
+              <p className="text-xl font-semibold">{data.domainGaps.unknownDomainCount}</p>
+              <p className="text-xs text-zinc-600">Unknown</p>
+            </div>
+          </div>
+          <div className="mt-4 space-y-2">
+            {data.domainGaps.examples.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-zinc-200 p-4 text-sm text-zinc-500">No domain gaps detected.</p>
+            ) : (
+              data.domainGaps.examples.slice(0, 4).map((item) => (
+                <div key={`${item.reason}-${item.id}`} className="rounded-xl border border-zinc-200 p-3 text-sm">
+                  <p className="font-semibold text-zinc-900">{item.label}</p>
+                  <p className="mt-1 text-xs text-zinc-600">{item.reason} · {formatDate(item.createdAt)}</p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <h3 className="text-base font-semibold text-zinc-950">Escalation watch</h3>
+          <p className="mt-1 text-sm text-zinc-600">MP32 aged pending actions and stale playbooks.</p>
+          <div className="mt-4 grid grid-cols-4 gap-1 text-center text-xs">
+            <div className="rounded-lg bg-zinc-100 p-2">
+              <p className="font-semibold">{data.escalationWatch.pendingActionAgeBuckets.today}</p>
+              <p>0-1d</p>
+            </div>
+            <div className="rounded-lg bg-zinc-100 p-2">
+              <p className="font-semibold">{data.escalationWatch.pendingActionAgeBuckets.threeDays}</p>
+              <p>2-3d</p>
+            </div>
+            <div className="rounded-lg bg-amber-50 p-2 text-amber-950">
+              <p className="font-semibold">{data.escalationWatch.pendingActionAgeBuckets.sevenDays}</p>
+              <p>4-7d</p>
+            </div>
+            <div className="rounded-lg bg-rose-50 p-2 text-rose-950">
+              <p className="font-semibold">{data.escalationWatch.pendingActionAgeBuckets.older}</p>
+              <p>7d+</p>
+            </div>
+          </div>
+          <div className="mt-4 space-y-2">
+            {[...data.escalationWatch.oldestPendingActions, ...data.escalationWatch.stalePlaybooks].slice(0, 5).length === 0 ? (
+              <p className="rounded-xl border border-dashed border-zinc-200 p-4 text-sm text-zinc-500">No aged assistant work.</p>
+            ) : (
+              [...data.escalationWatch.oldestPendingActions, ...data.escalationWatch.stalePlaybooks].slice(0, 5).map((item) => (
+                <div key={item.id} className="rounded-xl border border-zinc-200 p-3 text-sm">
+                  <p className="font-semibold text-zinc-900">{item.label}</p>
+                  <p className="mt-1 text-xs text-zinc-600">{item.ageDays} day(s) old · {objectLabel(item.objectType, item.objectId)}</p>
+                  {"href" in item && item.href ? (
+                    <Link href={item.href} className="mt-2 inline-flex text-xs font-semibold text-[var(--arscmp-primary)] hover:underline">
+                      Open target
+                    </Link>
+                  ) : null}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <h3 className="text-base font-semibold text-zinc-950">Playbook templates</h3>
+          <p className="mt-1 text-sm text-zinc-600">MP33 candidates for reusable guided workflows.</p>
+          <div className="mt-4 space-y-2">
+            {data.playbookRecommendations.templates.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-zinc-200 p-4 text-sm text-zinc-500">
+                No repeated pattern strong enough yet.
+              </p>
+            ) : (
+              data.playbookRecommendations.templates.map((item) => (
+                <div key={item.id} className="rounded-xl border border-zinc-200 p-3 text-sm">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="font-semibold text-zinc-900">{item.title}</p>
+                    <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-semibold text-zinc-700">{item.priority}</span>
+                  </div>
+                  <p className="mt-1 text-xs text-zinc-600">{item.reason}</p>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </section>
