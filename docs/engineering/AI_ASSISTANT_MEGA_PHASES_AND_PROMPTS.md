@@ -94,6 +94,11 @@ Use **one** of these. They are designed so the implementer (human or agent) does
 | **MP37** | **Scenario coverage** — answer patterns are visible | Answer kinds and object types reveal where the assistant is already useful |
 | **MP38** | **Experiment backlog** — next AI improvements are prioritized | Gaps, automation candidates, and template recommendations become ranked experiments |
 | **MP39** | **Daily operating cadence** — the command center gives an execution rhythm | Today’s assistant work, checks, and next operating steps are visible in one panel |
+| **MP40** | **Operating packet** — assistant ops can be copied into a standup/update | A concise packet summarizes today, rollout, risks, and next step |
+| **MP41** | **Risk register** — AI operating risks are explicit | Low confidence, stale work, grounding gaps, and action backlog show severity and mitigation |
+| **MP42** | **Handoff queue** — humans know what to take next | Pending actions, inbox work, and review work are grouped into handoff cards with links when available |
+| **MP43** | **Evidence ledger** — grounding debt is visible | Grounded vs ungrounded answer counts and examples of evidence-needed prompts are listed |
+| **MP44** | **Milestone plan** — the next assistant build plan is generated from signals | Command center shows Now / Next / Later milestones from readiness, experiments, and risk |
 
 *Docs and small fixes can happen anytime; they are not a substitute for **MP1** if your goal is “I can *see* it.”*
 
@@ -160,6 +165,7 @@ Use **one** of these. They are designed so the implementer (human or agent) does
 
 | Date | Change |
 |------|--------|
+| 2026-04-27 | **MP40-MP44 shipped (MVP):** extended the assistant command center with an operating packet, risk register, human handoff queue, evidence ledger, and signal-driven milestone plan. |
 | 2026-04-27 | **MP35-MP39 shipped (MVP):** extended the assistant command center with adoption heatmap, surface mix, scenario coverage, experiment backlog, and daily operating cadence panels. |
 | 2026-04-27 | **MP30-MP34 shipped (MVP):** extended the assistant command center with confidence bands, domain-gap radar, escalation watch, playbook-template recommendations, and rollout readiness scoring. |
 | 2026-04-27 | **MP25-MP29 shipped (MVP):** extended the assistant command center with priority lanes, object coverage, automation readiness, a combined review queue, and a copy-ready executive brief. |

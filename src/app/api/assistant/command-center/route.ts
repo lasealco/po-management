@@ -418,6 +418,114 @@ export async function GET() {
       : "Attention: no stale playbooks detected.",
     recommendations[0] ? `Recommended next step: ${recommendations[0]}` : "Recommended next step: continue monitoring.",
   ];
+  const riskRegister = [
+    confidenceBands.low > 0
+      ? {
+          id: "low-confidence",
+          severity: "high",
+          title: "Low-confidence answers need review",
+          signal: `${confidenceBands.low} low-confidence answer(s) in the recent sample.`,
+          mitigation: "Review the prompts, add grounding, and convert repeat cases into playbooks.",
+        }
+      : null,
+    groundingCoveragePct < 80
+      ? {
+          id: "grounding-gap",
+          severity: "high",
+          title: "Grounding coverage below target",
+          signal: `${groundingCoveragePct}% recent grounding coverage.`,
+          mitigation: "Require evidence links for operational answers before expanding usage.",
+        }
+      : null,
+    pendingActionCount > doneActionCount
+      ? {
+          id: "action-backlog",
+          severity: "medium",
+          title: "Assistant action backlog is growing",
+          signal: `${pendingActionCount} pending vs ${doneActionCount} done action(s).`,
+          mitigation: "Close or reject stale queued actions before adding more automation.",
+        }
+      : null,
+    stalePlaybookCount > 0
+      ? {
+          id: "stale-playbooks",
+          severity: "medium",
+          title: "Active playbooks are stale",
+          signal: `${stalePlaybookCount} active playbook(s) older than seven days.`,
+          mitigation: "Refresh, complete, or cancel old playbook runs.",
+        }
+      : null,
+    objectlessEvents.length > 0
+      ? {
+          id: "objectless-memory",
+          severity: "low",
+          title: "Assistant memory lacks object context",
+          signal: `${objectlessEvents.length} recent answer(s) lack object context.`,
+          mitigation: "Improve prompt/evidence parsing so memory lands on the correct object.",
+        }
+      : null,
+  ].filter((item): item is { id: string; severity: string; title: string; signal: string; mitigation: string } => Boolean(item));
+  const handoffQueue = [
+    ...pendingActions.slice(0, 5).map((item) => ({
+      id: `action-${item.id}`,
+      type: "Queued action",
+      title: item.label,
+      detail: item.description ?? "Pending assistant action",
+      href: payloadHref(item.payload),
+      ownerHint: item.actor?.name ?? "Assistant user",
+    })),
+    ...inbox.items.slice(0, 5).map((item) => ({
+      id: `inbox-${item.id}`,
+      type: "Inbox work",
+      title: item.title,
+      detail: item.suggestedAction?.label ?? item.subtitle ?? "Open assistant inbox work",
+      href: item.href,
+      ownerHint: "Ops owner",
+    })),
+    ...confidenceItems
+      .filter((item) => item.confidence === "low")
+      .slice(0, 4)
+      .map((item) => ({
+        id: `confidence-${item.id}`,
+        type: "Review",
+        title: item.prompt,
+        detail: item.reason,
+        href: null,
+        ownerHint: "Assistant reviewer",
+      })),
+  ].slice(0, 10);
+  const evidenceNeeded = recentAuditEvents
+    .filter((event) => event.quality == null && event.evidence == null)
+    .slice(0, 6)
+    .map((event) => ({
+      id: event.id,
+      prompt: event.prompt,
+      answerKind: event.answerKind,
+      createdAt: event.createdAt.toISOString(),
+    }));
+  const milestonePlan = [
+    {
+      horizon: "Now",
+      title: riskRegister[0]?.title ?? experimentBacklog[0]?.title ?? "Keep command center operating cadence",
+      detail:
+        riskRegister[0]?.mitigation ??
+        experimentBacklog[0]?.reason ??
+        "Run the daily checklist and review open assistant work.",
+    },
+    {
+      horizon: "Next",
+      title: experimentBacklog[1]?.title ?? "Turn repeated assistant work into playbooks",
+      detail: experimentBacklog[1]?.reason ?? "Use scenario coverage and action history to choose the next guided workflow.",
+    },
+    {
+      horizon: "Later",
+      title: rolloutScore >= 80 ? "Expand pilot audience" : "Raise rollout readiness",
+      detail:
+        rolloutScore >= 80
+          ? "Readiness is strong enough to broaden usage with monitoring."
+          : `Current rollout score is ${rolloutScore}; close review, grounding, and stale-work gaps first.`,
+    },
+  ];
 
   return NextResponse.json({
     ok: true,
@@ -652,6 +760,35 @@ export async function GET() {
         { id: "playbooks", label: "Refresh stale playbooks", count: stalePlaybookCount, href: "/assistant/command-center" },
       ],
       nextStep: recommendations[0] ?? experimentBacklog[0]?.title ?? "Continue monitoring assistant operations.",
+    },
+    operatingPacket: {
+      text: [
+        `Today: ${todayAnswerCount} answer(s), ${todayActionCount} action(s), ${todayPlaybookCount} playbook update(s).`,
+        `Rollout: ${rolloutScore}/100 (${rolloutLevel}).`,
+        `Risk: ${riskRegister[0]?.title ?? "No major assistant risk flagged."}`,
+        `Next: ${recommendations[0] ?? experimentBacklog[0]?.title ?? "Continue monitoring assistant operations."}`,
+      ].join("\n"),
+      lines: [
+        `Today: ${todayAnswerCount} answer(s), ${todayActionCount} action(s), ${todayPlaybookCount} playbook update(s).`,
+        `Rollout: ${rolloutScore}/100 (${rolloutLevel}).`,
+        `Risk: ${riskRegister[0]?.title ?? "No major assistant risk flagged."}`,
+        `Next: ${recommendations[0] ?? experimentBacklog[0]?.title ?? "Continue monitoring assistant operations."}`,
+      ],
+    },
+    riskRegister: {
+      risks: riskRegister,
+    },
+    handoff: {
+      items: handoffQueue,
+    },
+    evidenceLedger: {
+      groundedCount,
+      ungroundedCount: ungroundedEvents.length,
+      coveragePct: groundingCoveragePct,
+      evidenceNeeded,
+    },
+    milestonePlan: {
+      milestones: milestonePlan,
     },
   });
 }

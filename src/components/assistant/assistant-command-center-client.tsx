@@ -190,6 +190,22 @@ type CommandCenterPayload = {
     checklist: Array<{ id: string; label: string; count: number; href: string }>;
     nextStep: string;
   };
+  operatingPacket: { text: string; lines: string[] };
+  riskRegister: {
+    risks: Array<{ id: string; severity: string; title: string; signal: string; mitigation: string }>;
+  };
+  handoff: {
+    items: Array<{ id: string; type: string; title: string; detail: string; href: string | null; ownerHint: string }>;
+  };
+  evidenceLedger: {
+    groundedCount: number;
+    ungroundedCount: number;
+    coveragePct: number;
+    evidenceNeeded: Array<{ id: string; prompt: string; answerKind: string; createdAt: string }>;
+  };
+  milestonePlan: {
+    milestones: Array<{ horizon: string; title: string; detail: string }>;
+  };
 };
 
 function formatDate(value: string) {
@@ -216,6 +232,7 @@ export function AssistantCommandCenterClient() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [copiedBrief, setCopiedBrief] = useState(false);
+  const [copiedPacket, setCopiedPacket] = useState(false);
 
   const load = useCallback(async () => {
     setBusy(true);
@@ -266,18 +283,27 @@ export function AssistantCommandCenterClient() {
       setErr("Could not copy brief to clipboard.");
     }
   };
+  const copyPacket = async () => {
+    try {
+      await navigator.clipboard.writeText(data.operatingPacket.text);
+      setCopiedPacket(true);
+      window.setTimeout(() => setCopiedPacket(false), 1600);
+    } catch {
+      setErr("Could not copy operating packet to clipboard.");
+    }
+  };
 
   return (
     <div className="space-y-6">
       <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">MP20-MP39</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">MP20-MP44</p>
             <h2 className="mt-1 text-xl font-semibold text-zinc-950">Assistant command center</h2>
             <p className="mt-2 max-w-3xl text-sm text-zinc-600">
               One operating view for cross-workspace work, feedback quality, queued actions, active playbooks, recent
               memory, assistant health, priority lanes, review queues, automation readiness, rollout confidence,
-              adoption, experiments, and daily cadence.
+              adoption, experiments, daily cadence, handoff, evidence, and milestone planning.
             </p>
             <p className="mt-2 text-xs text-zinc-500">Generated {formatDate(data.generatedAt)}</p>
           </div>
@@ -299,6 +325,129 @@ export function AssistantCommandCenterClient() {
         {metricCard("Grounding", `${data.health.groundingCoveragePct}%`, "Recent answers with quality/evidence")}
         {metricCard("Action queue", data.health.pendingActionCount, "Pending user-approved actions", "border-sky-200 bg-sky-50")}
         {metricCard("Active playbooks", data.health.activePlaybookCount, `${data.health.stalePlaybookCount} stale`)}
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h3 className="text-base font-semibold text-zinc-950">Operating packet</h3>
+              <p className="mt-1 text-sm text-zinc-600">MP40 copy-ready standup/update packet.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void copyPacket()}
+              className="rounded-xl bg-[var(--arscmp-primary)] px-3 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90"
+            >
+              {copiedPacket ? "Copied" : "Copy"}
+            </button>
+          </div>
+          <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-800">
+            {data.operatingPacket.lines.map((line, index) => (
+              <p key={line} className={index === 0 ? "" : "mt-2"}>
+                {line}
+              </p>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <h3 className="text-base font-semibold text-zinc-950">Risk register</h3>
+          <p className="mt-1 text-sm text-zinc-600">MP41 explicit risks and mitigation steps for assistant operations.</p>
+          <div className="mt-4 grid gap-2 md:grid-cols-2">
+            {data.riskRegister.risks.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-zinc-200 p-4 text-sm text-zinc-500">
+                No assistant operating risks flagged.
+              </p>
+            ) : (
+              data.riskRegister.risks.slice(0, 4).map((risk) => (
+                <div key={risk.id} className="rounded-xl border border-zinc-200 p-3 text-sm">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="font-semibold text-zinc-900">{risk.title}</p>
+                    <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-semibold text-zinc-700">
+                      {risk.severity}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-zinc-600">{risk.signal}</p>
+                  <p className="mt-2 text-xs text-zinc-700">{risk.mitigation}</p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-3">
+        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <h3 className="text-base font-semibold text-zinc-950">Handoff queue</h3>
+          <p className="mt-1 text-sm text-zinc-600">MP42 human take-next work across actions, inbox, and review.</p>
+          <div className="mt-4 space-y-2">
+            {data.handoff.items.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-zinc-200 p-4 text-sm text-zinc-500">No handoff work queued.</p>
+            ) : (
+              data.handoff.items.slice(0, 6).map((item) => (
+                <div key={item.id} className="rounded-xl border border-zinc-200 p-3 text-sm">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{item.type}</p>
+                  <p className="mt-1 font-semibold text-zinc-900">{item.title}</p>
+                  <p className="mt-1 text-xs text-zinc-600">{item.detail}</p>
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <span className="text-xs text-zinc-500">{item.ownerHint}</span>
+                    {item.href ? (
+                      <Link href={item.href} className="text-xs font-semibold text-[var(--arscmp-primary)] hover:underline">
+                        Open
+                      </Link>
+                    ) : null}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <h3 className="text-base font-semibold text-zinc-950">Evidence ledger</h3>
+          <p className="mt-1 text-sm text-zinc-600">MP43 grounding coverage and evidence debt.</p>
+          <div className="mt-4 grid grid-cols-3 gap-2 text-center text-sm">
+            <div className="rounded-xl bg-emerald-50 p-3 text-emerald-950">
+              <p className="text-xl font-semibold">{data.evidenceLedger.groundedCount}</p>
+              <p className="text-xs">Grounded</p>
+            </div>
+            <div className="rounded-xl bg-rose-50 p-3 text-rose-950">
+              <p className="text-xl font-semibold">{data.evidenceLedger.ungroundedCount}</p>
+              <p className="text-xs">Needs evidence</p>
+            </div>
+            <div className="rounded-xl bg-sky-50 p-3 text-sky-950">
+              <p className="text-xl font-semibold">{data.evidenceLedger.coveragePct}%</p>
+              <p className="text-xs">Coverage</p>
+            </div>
+          </div>
+          <div className="mt-4 space-y-2">
+            {data.evidenceLedger.evidenceNeeded.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-zinc-200 p-4 text-sm text-zinc-500">No evidence debt in the recent sample.</p>
+            ) : (
+              data.evidenceLedger.evidenceNeeded.slice(0, 4).map((item) => (
+                <div key={item.id} className="rounded-xl border border-zinc-200 p-3 text-sm">
+                  <p className="font-semibold text-zinc-900">{item.prompt}</p>
+                  <p className="mt-1 text-xs text-zinc-600">{item.answerKind} · {formatDate(item.createdAt)}</p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <h3 className="text-base font-semibold text-zinc-950">Milestone plan</h3>
+          <p className="mt-1 text-sm text-zinc-600">MP44 signal-driven Now / Next / Later plan.</p>
+          <div className="mt-4 space-y-2">
+            {data.milestonePlan.milestones.map((item) => (
+              <div key={item.horizon} className="rounded-xl border border-zinc-200 p-3 text-sm">
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{item.horizon}</p>
+                <p className="mt-1 font-semibold text-zinc-900">{item.title}</p>
+                <p className="mt-1 text-xs text-zinc-600">{item.detail}</p>
+              </div>
+            ))}
+          </div>
+        </div>
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[0.85fr_1.15fr]">
