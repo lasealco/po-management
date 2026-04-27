@@ -79,6 +79,11 @@ Use **one** of these. They are designed so the implementer (human or agent) does
 | **MP22** | **Action queue workbench** — queued assistant actions can be triaged | Pending / completed action rows are visible with source context and open links |
 | **MP23** | **Playbook operations board** — active guided workflows are trackable | Active and completed playbook runs are listed with object context |
 | **MP24** | **Assistant ops health snapshot** — AI layer has a simple operating picture | The command center exposes audit volume, grounding coverage, action backlog, and stale playbooks |
+| **MP25** | **Priority lanes** — assistant work is ranked by urgency | The command center separates urgent, active, and follow-up work with counts and examples |
+| **MP26** | **Object coverage map** — assistant activity is visible by business object | You can see which object types have memory, queued actions, or playbooks attached |
+| **MP27** | **Automation readiness** — safe next automations are measurable | The command center shows pending vs completed actions and candidate action kinds for future automation |
+| **MP28** | **Review queue** — weak answers and stale playbooks are one queue | Needs-review answers, stale playbooks, and unreviewed memory are grouped for cleanup |
+| **MP29** | **Executive assistant brief** — ops status can be copied out | A concise command-center brief summarizes open work, quality, actions, playbooks, and recommendations |
 
 *Docs and small fixes can happen anytime; they are not a substitute for **MP1** if your goal is “I can *see* it.”*
 
@@ -145,6 +150,7 @@ Use **one** of these. They are designed so the implementer (human or agent) does
 
 | Date | Change |
 |------|--------|
+| 2026-04-27 | **MP25-MP29 shipped (MVP):** extended the assistant command center with priority lanes, object coverage, automation readiness, a combined review queue, and a copy-ready executive brief. |
 | 2026-04-27 | **MP20-MP24 shipped (MVP):** added `/assistant/command-center` plus `GET /api/assistant/command-center` for cross-workspace assistant ops: inbox count, feedback analytics, action queue, playbook board, recent memory, and quality/health snapshot. |
 | 2026-04-27 | **MP15-MP19 shipped (MVP):** added persistent assistant audit events, feedback storage, queued proposed actions, object-level assistant memory, and playbook run/step tracking for the docked assistant. |
 | 2026-04-25 | **MP14 shipped (MVP):** context/impact answers now include quality metadata (deterministic mode, grounded-by sources, limitations, timestamp), and the dock displays grounding plus local Helpful / Needs review feedback controls. |

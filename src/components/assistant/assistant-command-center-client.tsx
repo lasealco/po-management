@@ -59,6 +59,22 @@ type MemoryEvent = {
   actorName: string;
 };
 
+type PriorityLane = {
+  id: string;
+  label: string;
+  count: number;
+  items: Array<{ id: string; label: string; reason: string; href: string | null }>;
+};
+
+type ReviewQueueItem = {
+  id: string;
+  label: string;
+  reason: string;
+  createdAt?: string;
+  updatedAt?: string;
+  actorName?: string;
+};
+
 type CommandCenterPayload = {
   generatedAt: string;
   inbox: Pick<AssistantInboxPayload, "total" | "producers"> & { items: AssistantInboxItem[] };
@@ -76,6 +92,23 @@ type CommandCenterPayload = {
     groundingCoveragePct: number;
     recommendations: string[];
   };
+  priority: { lanes: PriorityLane[] };
+  coverage: {
+    objectTypes: Array<{ objectType: string; auditEvents: number; actions: number; playbooks: number }>;
+  };
+  automation: {
+    pendingCount: number;
+    doneCount: number;
+    completionPct: number;
+    candidates: Array<{ kind: string; recentCount: number; completedCount: number; readinessPct: number }>;
+  };
+  reviewQueue: {
+    total: number;
+    needsReviewAnswers: ReviewQueueItem[];
+    stalePlaybooks: ReviewQueueItem[];
+    unreviewedMemory: ReviewQueueItem[];
+  };
+  brief: { text: string; lines: string[] };
 };
 
 function formatDate(value: string) {
@@ -101,6 +134,7 @@ export function AssistantCommandCenterClient() {
   const [data, setData] = useState<CommandCenterPayload | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [copiedBrief, setCopiedBrief] = useState(false);
 
   const load = useCallback(async () => {
     setBusy(true);
@@ -142,17 +176,26 @@ export function AssistantCommandCenterClient() {
   }
 
   const inboxItems = data.inbox.items;
+  const copyBrief = async () => {
+    try {
+      await navigator.clipboard.writeText(data.brief.text);
+      setCopiedBrief(true);
+      window.setTimeout(() => setCopiedBrief(false), 1600);
+    } catch {
+      setErr("Could not copy brief to clipboard.");
+    }
+  };
 
   return (
     <div className="space-y-6">
       <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">MP20-MP24</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">MP20-MP29</p>
             <h2 className="mt-1 text-xl font-semibold text-zinc-950">Assistant command center</h2>
             <p className="mt-2 max-w-3xl text-sm text-zinc-600">
               One operating view for cross-workspace work, feedback quality, queued actions, active playbooks, recent
-              memory, and assistant health.
+              memory, assistant health, priority lanes, review queues, automation readiness, and executive brief.
             </p>
             <p className="mt-2 text-xs text-zinc-500">Generated {formatDate(data.generatedAt)}</p>
           </div>
@@ -174,6 +217,63 @@ export function AssistantCommandCenterClient() {
         {metricCard("Grounding", `${data.health.groundingCoveragePct}%`, "Recent answers with quality/evidence")}
         {metricCard("Action queue", data.health.pendingActionCount, "Pending user-approved actions", "border-sky-200 bg-sky-50")}
         {metricCard("Active playbooks", data.health.activePlaybookCount, `${data.health.stalePlaybookCount} stale`)}
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <h3 className="text-base font-semibold text-zinc-950">Priority lanes</h3>
+          <p className="mt-1 text-sm text-zinc-600">MP25 ranking for urgent, active, and follow-up assistant work.</p>
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            {data.priority.lanes.map((lane) => (
+              <div key={lane.id} className="rounded-xl border border-zinc-200 bg-zinc-50/60 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-zinc-900">{lane.label}</p>
+                  <span className="rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-zinc-700">{lane.count}</span>
+                </div>
+                <div className="mt-3 space-y-2">
+                  {lane.items.length === 0 ? (
+                    <p className="text-xs text-zinc-500">No work in this lane.</p>
+                  ) : (
+                    lane.items.slice(0, 3).map((item) => (
+                      <div key={item.id} className="rounded-lg bg-white p-2 text-xs">
+                        <p className="font-semibold text-zinc-900">{item.label}</p>
+                        <p className="mt-1 text-zinc-600">{item.reason}</p>
+                        {item.href ? (
+                          <Link href={item.href} className="mt-2 inline-flex font-semibold text-[var(--arscmp-primary)] hover:underline">
+                            Open
+                          </Link>
+                        ) : null}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h3 className="text-base font-semibold text-zinc-950">Executive brief</h3>
+              <p className="mt-1 text-sm text-zinc-600">MP29 copy-ready assistant ops summary.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void copyBrief()}
+              className="rounded-xl bg-[var(--arscmp-primary)] px-3 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90"
+            >
+              {copiedBrief ? "Copied" : "Copy"}
+            </button>
+          </div>
+          <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-800">
+            {data.brief.lines.map((line, index) => (
+              <p key={line} className={index === 0 ? "" : "mt-2"}>
+                {line}
+              </p>
+            ))}
+          </div>
+        </div>
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
@@ -235,6 +335,80 @@ export function AssistantCommandCenterClient() {
                   <p className="mt-1 text-xs text-rose-800">{objectLabel(event.objectType, event.objectId)}</p>
                 </div>
               ))
+            )}
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-3">
+        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <h3 className="text-base font-semibold text-zinc-950">Object coverage</h3>
+          <p className="mt-1 text-sm text-zinc-600">MP26 assistant activity grouped by object type.</p>
+          <div className="mt-4 space-y-2">
+            {data.coverage.objectTypes.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-zinc-200 p-4 text-sm text-zinc-500">No object coverage yet.</p>
+            ) : (
+              data.coverage.objectTypes.slice(0, 6).map((row) => (
+                <div key={row.objectType} className="rounded-xl border border-zinc-200 p-3">
+                  <p className="text-sm font-semibold text-zinc-900">{row.objectType}</p>
+                  <p className="mt-1 text-xs text-zinc-600">
+                    {row.auditEvents} answer(s) · {row.actions} action(s) · {row.playbooks} playbook(s)
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <h3 className="text-base font-semibold text-zinc-950">Automation readiness</h3>
+          <p className="mt-1 text-sm text-zinc-600">MP27 safe automation candidates from user-approved action history.</p>
+          <div className="mt-4 rounded-xl bg-sky-50 p-3 text-sm text-sky-950">
+            <p className="text-2xl font-semibold">{data.automation.completionPct}%</p>
+            <p className="text-xs">Done rate across pending + completed actions</p>
+          </div>
+          <div className="mt-3 space-y-2">
+            {data.automation.candidates.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-zinc-200 p-4 text-sm text-zinc-500">No action history yet.</p>
+            ) : (
+              data.automation.candidates.map((candidate) => (
+                <div key={candidate.kind} className="rounded-xl border border-zinc-200 p-3">
+                  <p className="text-sm font-semibold text-zinc-900">{candidate.kind}</p>
+                  <p className="mt-1 text-xs text-zinc-600">
+                    {candidate.completedCount}/{candidate.recentCount} done · {candidate.readinessPct}% readiness
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <h3 className="text-base font-semibold text-zinc-950">Review queue</h3>
+          <p className="mt-1 text-sm text-zinc-600">MP28 weak answers, stale playbooks, and unreviewed memory.</p>
+          <div className="mt-4 space-y-2">
+            {[
+              ...data.reviewQueue.needsReviewAnswers,
+              ...data.reviewQueue.stalePlaybooks,
+              ...data.reviewQueue.unreviewedMemory,
+            ].slice(0, 7).length === 0 ? (
+              <p className="rounded-xl border border-dashed border-zinc-200 p-4 text-sm text-zinc-500">No review work queued.</p>
+            ) : (
+              [
+                ...data.reviewQueue.needsReviewAnswers,
+                ...data.reviewQueue.stalePlaybooks,
+                ...data.reviewQueue.unreviewedMemory,
+              ]
+                .slice(0, 7)
+                .map((item) => (
+                  <div key={`${item.reason}-${item.id}`} className="rounded-xl border border-zinc-200 p-3">
+                    <p className="text-sm font-semibold text-zinc-900">{item.label}</p>
+                    <p className="mt-1 text-xs text-zinc-600">{item.reason}</p>
+                    {item.createdAt || item.updatedAt ? (
+                      <p className="mt-1 text-xs text-zinc-500">{formatDate(item.createdAt ?? item.updatedAt!)}</p>
+                    ) : null}
+                  </div>
+                ))
             )}
           </div>
         </div>
