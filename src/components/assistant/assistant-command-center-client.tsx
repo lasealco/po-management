@@ -165,6 +165,31 @@ type CommandCenterPayload = {
     level: string;
     checklist: Array<{ id: string; label: string; passed: boolean }>;
   };
+  adoption: {
+    actors: Array<{ actorName: string; answers: number; actions: number; playbooks: number; total: number }>;
+  };
+  surfaceMix: {
+    surfaces: Array<{ label: string; count: number }>;
+    primarySurface: string;
+  };
+  scenarioCoverage: {
+    answerKinds: Array<{ label: string; count: number }>;
+    objectTypes: Array<{
+      label: string;
+      count: number;
+      auditEvents: number;
+      actions: number;
+      playbooks: number;
+    }>;
+  };
+  experiments: {
+    backlog: Array<{ id: string; title: string; reason: string; priority: string }>;
+  };
+  operatingCadence: {
+    today: { answers: number; actions: number; playbooks: number };
+    checklist: Array<{ id: string; label: string; count: number; href: string }>;
+    nextStep: string;
+  };
 };
 
 function formatDate(value: string) {
@@ -247,12 +272,12 @@ export function AssistantCommandCenterClient() {
       <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">MP20-MP34</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">MP20-MP39</p>
             <h2 className="mt-1 text-xl font-semibold text-zinc-950">Assistant command center</h2>
             <p className="mt-2 max-w-3xl text-sm text-zinc-600">
               One operating view for cross-workspace work, feedback quality, queued actions, active playbooks, recent
-              memory, assistant health, priority lanes, review queues, automation readiness, rollout confidence, and
-              executive brief.
+              memory, assistant health, priority lanes, review queues, automation readiness, rollout confidence,
+              adoption, experiments, and daily cadence.
             </p>
             <p className="mt-2 text-xs text-zinc-500">Generated {formatDate(data.generatedAt)}</p>
           </div>
@@ -274,6 +299,135 @@ export function AssistantCommandCenterClient() {
         {metricCard("Grounding", `${data.health.groundingCoveragePct}%`, "Recent answers with quality/evidence")}
         {metricCard("Action queue", data.health.pendingActionCount, "Pending user-approved actions", "border-sky-200 bg-sky-50")}
         {metricCard("Active playbooks", data.health.activePlaybookCount, `${data.health.stalePlaybookCount} stale`)}
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-[0.85fr_1.15fr]">
+        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <h3 className="text-base font-semibold text-zinc-950">Daily operating cadence</h3>
+          <p className="mt-1 text-sm text-zinc-600">MP39 today’s rhythm for running the assistant layer.</p>
+          <div className="mt-4 grid grid-cols-3 gap-2 text-center text-sm">
+            <div className="rounded-xl bg-zinc-100 p-3">
+              <p className="text-xl font-semibold">{data.operatingCadence.today.answers}</p>
+              <p className="text-xs text-zinc-600">Answers</p>
+            </div>
+            <div className="rounded-xl bg-zinc-100 p-3">
+              <p className="text-xl font-semibold">{data.operatingCadence.today.actions}</p>
+              <p className="text-xs text-zinc-600">Actions</p>
+            </div>
+            <div className="rounded-xl bg-zinc-100 p-3">
+              <p className="text-xl font-semibold">{data.operatingCadence.today.playbooks}</p>
+              <p className="text-xs text-zinc-600">Playbooks</p>
+            </div>
+          </div>
+          <div className="mt-4 space-y-2">
+            {data.operatingCadence.checklist.map((item) => (
+              <Link
+                key={item.id}
+                href={item.href}
+                className="flex items-center justify-between gap-3 rounded-xl border border-zinc-200 p-3 text-sm hover:bg-zinc-50"
+              >
+                <span className="font-medium text-zinc-900">{item.label}</span>
+                <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-semibold text-zinc-700">{item.count}</span>
+              </Link>
+            ))}
+          </div>
+          <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+            Next step: {data.operatingCadence.nextStep}
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <h3 className="text-base font-semibold text-zinc-950">Experiment backlog</h3>
+          <p className="mt-1 text-sm text-zinc-600">MP38 ranked improvements from gaps, templates, and action history.</p>
+          <div className="mt-4 grid gap-2 md:grid-cols-2">
+            {data.experiments.backlog.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-zinc-200 p-4 text-sm text-zinc-500">
+                No experiment candidates right now.
+              </p>
+            ) : (
+              data.experiments.backlog.slice(0, 6).map((item) => (
+                <div key={item.id} className="rounded-xl border border-zinc-200 p-3 text-sm">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="font-semibold text-zinc-900">{item.title}</p>
+                    <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-semibold text-zinc-700">{item.priority}</span>
+                  </div>
+                  <p className="mt-1 text-xs text-zinc-600">{item.reason}</p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-3">
+        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <h3 className="text-base font-semibold text-zinc-950">Adoption heatmap</h3>
+          <p className="mt-1 text-sm text-zinc-600">MP35 assistant usage by actor.</p>
+          <div className="mt-4 space-y-2">
+            {data.adoption.actors.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-zinc-200 p-4 text-sm text-zinc-500">No actor activity yet.</p>
+            ) : (
+              data.adoption.actors.slice(0, 5).map((actor) => (
+                <div key={actor.actorName} className="rounded-xl border border-zinc-200 p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-zinc-900">{actor.actorName}</p>
+                    <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-semibold text-zinc-700">{actor.total}</span>
+                  </div>
+                  <p className="mt-1 text-xs text-zinc-600">
+                    {actor.answers} answer(s) · {actor.actions} action(s) · {actor.playbooks} playbook(s)
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <h3 className="text-base font-semibold text-zinc-950">Surface mix</h3>
+          <p className="mt-1 text-sm text-zinc-600">MP36 where assistant usage enters the workflow.</p>
+          <p className="mt-4 rounded-xl bg-sky-50 p-3 text-sm text-sky-950">
+            Primary surface: <span className="font-semibold">{data.surfaceMix.primarySurface}</span>
+          </p>
+          <div className="mt-3 space-y-2">
+            {data.surfaceMix.surfaces.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-zinc-200 p-4 text-sm text-zinc-500">No surface data yet.</p>
+            ) : (
+              data.surfaceMix.surfaces.map((surface) => (
+                <div key={surface.label} className="flex items-center justify-between rounded-xl border border-zinc-200 p-3 text-sm">
+                  <span className="font-medium text-zinc-900">{surface.label}</span>
+                  <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-semibold text-zinc-700">{surface.count}</span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <h3 className="text-base font-semibold text-zinc-950">Scenario coverage</h3>
+          <p className="mt-1 text-sm text-zinc-600">MP37 answer patterns and object coverage.</p>
+          <div className="mt-4 space-y-2">
+            {data.scenarioCoverage.answerKinds.slice(0, 3).map((row) => (
+              <div key={row.label} className="flex items-center justify-between rounded-xl border border-zinc-200 p-3 text-sm">
+                <span className="font-medium text-zinc-900">{row.label}</span>
+                <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-semibold text-zinc-700">{row.count}</span>
+              </div>
+            ))}
+            {data.scenarioCoverage.objectTypes.slice(0, 3).map((row) => (
+              <div key={row.label} className="rounded-xl border border-zinc-200 p-3 text-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-medium text-zinc-900">{row.label}</span>
+                  <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-semibold text-zinc-700">{row.count}</span>
+                </div>
+                <p className="mt-1 text-xs text-zinc-600">
+                  {row.auditEvents} answer(s) · {row.actions} action(s) · {row.playbooks} playbook(s)
+                </p>
+              </div>
+            ))}
+            {data.scenarioCoverage.answerKinds.length === 0 && data.scenarioCoverage.objectTypes.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-zinc-200 p-4 text-sm text-zinc-500">No scenarios covered yet.</p>
+            ) : null}
+          </div>
+        </div>
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">

@@ -34,6 +34,13 @@ function clampScore(value: number) {
   return Math.max(0, Math.min(100, Math.round(value)));
 }
 
+function sortedCountRows(map: Map<string, number>, limit = 6) {
+  return Array.from(map.entries())
+    .map(([label, count]) => ({ label, count }))
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
+    .slice(0, limit);
+}
+
 export async function GET() {
   const access = await getViewerGrantSet();
   if (!access?.user) {
@@ -102,6 +109,7 @@ export async function GET() {
       take: 50,
       select: {
         id: true,
+        surface: true,
         prompt: true,
         answerKind: true,
         message: true,
@@ -186,6 +194,8 @@ export async function GET() {
   const groundedCount = recentAuditEvents.filter((event) => event.quality != null || event.evidence != null).length;
   const groundingCoveragePct = percent(groundedCount, recentAuditEvents.length);
   const feedbackMissingCount = Math.max(auditTotal - helpfulCount - needsReviewCount, 0);
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
   const urgentItems = [
     ...inbox.items.slice(0, 5).map((item) => ({
       id: item.id,
@@ -238,9 +248,35 @@ export async function GET() {
   }
   const actionKindCounts = new Map<string, number>();
   const completedKindCounts = new Map<string, number>();
+  const actorRows = new Map<string, { actorName: string; answers: number; actions: number; playbooks: number }>();
+  const surfaceCounts = new Map<string, number>();
+  const answerKindCounts = new Map<string, number>();
+  const todayAnswerCount = recentAuditEvents.filter((event) => event.createdAt >= todayStart).length;
+  const todayActionCount = recentActions.filter((action) => action.createdAt >= todayStart).length;
+  const todayPlaybookCount = playbookRuns.filter((run) => run.updatedAt >= todayStart).length;
+  for (const event of recentAuditEvents) {
+    const actorName = event.actor?.name ?? "Assistant user";
+    const row = actorRows.get(actorName) ?? { actorName, answers: 0, actions: 0, playbooks: 0 };
+    row.answers += 1;
+    actorRows.set(actorName, row);
+    addCount(surfaceCounts, event.surface, "unknown");
+    addCount(answerKindCounts, event.answerKind, "unknown");
+  }
   for (const action of recentActions) {
     addCount(actionKindCounts, action.actionKind, "unknown");
     if (action.status === "DONE") addCount(completedKindCounts, action.actionKind, "unknown");
+  }
+  for (const item of pendingActions) {
+    const actorName = item.actor?.name ?? "Assistant user";
+    const row = actorRows.get(actorName) ?? { actorName, answers: 0, actions: 0, playbooks: 0 };
+    row.actions += 1;
+    actorRows.set(actorName, row);
+  }
+  for (const run of playbookRuns) {
+    const actorName = run.actor?.name ?? "Assistant user";
+    const row = actorRows.get(actorName) ?? { actorName, answers: 0, actions: 0, playbooks: 0 };
+    row.playbooks += 1;
+    actorRows.set(actorName, row);
   }
   const automationCandidates = Array.from(actionKindCounts.entries())
     .map(([kind, count]) => ({
@@ -315,6 +351,46 @@ export async function GET() {
         priority: candidate.readinessPct >= 60 ? "medium" : "high",
       })),
   ].slice(0, 6);
+  const experimentBacklog = [
+    groundingCoveragePct < 80
+      ? {
+          id: "grounding-coverage",
+          title: "Improve answer grounding coverage",
+          reason: `${groundingCoveragePct}% recent grounding coverage; target is 80%+.`,
+          priority: "high",
+        }
+      : null,
+    objectlessEvents.length > 0
+      ? {
+          id: "object-context",
+          title: "Improve object context inference",
+          reason: `${objectlessEvents.length} recent answer(s) lack object context.`,
+          priority: "high",
+        }
+      : null,
+    pendingActionCount > doneActionCount
+      ? {
+          id: "action-close-loop",
+          title: "Close the assistant action loop",
+          reason: `${pendingActionCount} pending action(s) vs ${doneActionCount} done.`,
+          priority: "medium",
+        }
+      : null,
+    ...templateRecommendations.map((item) => ({
+      id: item.id,
+      title: item.title,
+      reason: item.reason,
+      priority: item.priority,
+    })),
+    ...automationCandidates.slice(0, 2).map((candidate) => ({
+      id: `automation-${candidate.kind}`,
+      title: `Pilot assisted ${candidate.kind}`,
+      reason: `${candidate.recentCount} recent action(s), ${candidate.readinessPct}% completion.`,
+      priority: candidate.readinessPct >= 60 ? "medium" : "high",
+    })),
+  ]
+    .filter((item): item is { id: string; title: string; reason: string; priority: string } => Boolean(item))
+    .slice(0, 8);
   const feedbackCoveragePct = percent(helpfulCount + needsReviewCount, auditTotal);
   const reviewBacklogPenalty = Math.min(25, needsReviewCount * 4 + feedbackMissingCount * 0.5);
   const stalePenalty = Math.min(20, stalePlaybookCount * 8);
@@ -536,6 +612,46 @@ export async function GET() {
         { id: "review", label: "Needs-review answers are below 10% of audit volume", passed: percent(needsReviewCount, auditTotal) < 10 },
         { id: "stale", label: "No stale active playbooks", passed: stalePlaybookCount === 0 },
       ],
+    },
+    adoption: {
+      actors: Array.from(actorRows.values())
+        .map((row) => ({ ...row, total: row.answers + row.actions + row.playbooks }))
+        .sort((a, b) => b.total - a.total || a.actorName.localeCompare(b.actorName))
+        .slice(0, 8),
+    },
+    surfaceMix: {
+      surfaces: sortedCountRows(surfaceCounts),
+      primarySurface: sortedCountRows(surfaceCounts, 1)[0]?.label ?? "none",
+    },
+    scenarioCoverage: {
+      answerKinds: sortedCountRows(answerKindCounts),
+      objectTypes: Array.from(objectCoverageMap.values())
+        .map((row) => ({
+          label: row.objectType,
+          count: row.auditEvents + row.actions + row.playbooks,
+          auditEvents: row.auditEvents,
+          actions: row.actions,
+          playbooks: row.playbooks,
+        }))
+        .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
+        .slice(0, 6),
+    },
+    experiments: {
+      backlog: experimentBacklog,
+    },
+    operatingCadence: {
+      today: {
+        answers: todayAnswerCount,
+        actions: todayActionCount,
+        playbooks: todayPlaybookCount,
+      },
+      checklist: [
+        { id: "review", label: "Review Needs review answers", count: needsReviewCount, href: "/assistant/command-center" },
+        { id: "actions", label: "Close pending assistant actions", count: pendingActionCount, href: "/assistant/command-center" },
+        { id: "inbox", label: "Work assistant inbox items", count: inbox.total, href: "/assistant/inbox" },
+        { id: "playbooks", label: "Refresh stale playbooks", count: stalePlaybookCount, href: "/assistant/command-center" },
+      ],
+      nextStep: recommendations[0] ?? experimentBacklog[0]?.title ?? "Continue monitoring assistant operations.",
     },
   });
 }

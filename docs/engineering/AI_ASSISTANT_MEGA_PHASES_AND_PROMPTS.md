@@ -89,6 +89,11 @@ Use **one** of these. They are designed so the implementer (human or agent) does
 | **MP32** | **Escalation watch** — stale AI-assisted work is aged | Old pending actions and stale playbooks show age, owner hint, and cleanup priority |
 | **MP33** | **Playbook-template recommendations** — repeated patterns become candidates | The assistant suggests new reusable playbook templates from repeated objects/actions |
 | **MP34** | **Rollout readiness score** — the AI layer has a go/no-go view | Grounding, feedback coverage, action completion, review backlog, and stale work produce a readiness score |
+| **MP35** | **Adoption heatmap** — assistant usage is visible by user | Recent assistant answers, queued actions, and playbooks are grouped by actor |
+| **MP36** | **Surface mix** — assistant entry points are measurable | Dock, chat, command center, and other surfaces show usage counts |
+| **MP37** | **Scenario coverage** — answer patterns are visible | Answer kinds and object types reveal where the assistant is already useful |
+| **MP38** | **Experiment backlog** — next AI improvements are prioritized | Gaps, automation candidates, and template recommendations become ranked experiments |
+| **MP39** | **Daily operating cadence** — the command center gives an execution rhythm | Today’s assistant work, checks, and next operating steps are visible in one panel |
 
 *Docs and small fixes can happen anytime; they are not a substitute for **MP1** if your goal is “I can *see* it.”*
 
@@ -155,6 +160,7 @@ Use **one** of these. They are designed so the implementer (human or agent) does
 
 | Date | Change |
 |------|--------|
+| 2026-04-27 | **MP35-MP39 shipped (MVP):** extended the assistant command center with adoption heatmap, surface mix, scenario coverage, experiment backlog, and daily operating cadence panels. |
 | 2026-04-27 | **MP30-MP34 shipped (MVP):** extended the assistant command center with confidence bands, domain-gap radar, escalation watch, playbook-template recommendations, and rollout readiness scoring. |
 | 2026-04-27 | **MP25-MP29 shipped (MVP):** extended the assistant command center with priority lanes, object coverage, automation readiness, a combined review queue, and a copy-ready executive brief. |
 | 2026-04-27 | **MP20-MP24 shipped (MVP):** added `/assistant/command-center` plus `GET /api/assistant/command-center` for cross-workspace assistant ops: inbox count, feedback analytics, action queue, playbook board, recent memory, and quality/health snapshot. |
