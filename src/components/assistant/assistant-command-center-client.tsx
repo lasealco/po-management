@@ -206,6 +206,27 @@ type CommandCenterPayload = {
   milestonePlan: {
     milestones: Array<{ horizon: string; title: string; detail: string }>;
   };
+  slaPosture: {
+    status: string;
+    actionCompletionPct: number;
+    playbookCompletionPct: number;
+    openInboxCount: number;
+    stalePlaybookCount: number;
+    oldestPendingActionDays: number;
+  };
+  trainingQueue: {
+    positive: Array<{ id: string; prompt: string; answerKind: string; reason: string; createdAt: string }>;
+    corrections: Array<{ id: string; prompt: string; answerKind: string; reason: string; createdAt: string }>;
+  };
+  promptLibrary: {
+    candidates: Array<{ id: string; title: string; prompt: string; reason: string }>;
+  };
+  decisionJournal: {
+    events: Array<{ id: string; type: string; label: string; detail: string; at: string }>;
+  };
+  signalHygiene: {
+    items: Array<{ id: string; label: string; count: number; recommendation: string }>;
+  };
 };
 
 function formatDate(value: string) {
@@ -298,12 +319,12 @@ export function AssistantCommandCenterClient() {
       <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">MP20-MP44</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">MP20-MP49</p>
             <h2 className="mt-1 text-xl font-semibold text-zinc-950">Assistant command center</h2>
             <p className="mt-2 max-w-3xl text-sm text-zinc-600">
               One operating view for cross-workspace work, feedback quality, queued actions, active playbooks, recent
               memory, assistant health, priority lanes, review queues, automation readiness, rollout confidence,
-              adoption, experiments, daily cadence, handoff, evidence, and milestone planning.
+              adoption, experiments, daily cadence, handoff, evidence, training, and milestone planning.
             </p>
             <p className="mt-2 text-xs text-zinc-500">Generated {formatDate(data.generatedAt)}</p>
           </div>
@@ -325,6 +346,133 @@ export function AssistantCommandCenterClient() {
         {metricCard("Grounding", `${data.health.groundingCoveragePct}%`, "Recent answers with quality/evidence")}
         {metricCard("Action queue", data.health.pendingActionCount, "Pending user-approved actions", "border-sky-200 bg-sky-50")}
         {metricCard("Active playbooks", data.health.activePlaybookCount, `${data.health.stalePlaybookCount} stale`)}
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
+        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <h3 className="text-base font-semibold text-zinc-950">SLA posture</h3>
+          <p className="mt-1 text-sm text-zinc-600">MP45 service posture for assistant-assisted work.</p>
+          <div className="mt-4 rounded-2xl border border-sky-100 bg-sky-50 p-4">
+            <p className="text-3xl font-semibold text-sky-950">{data.slaPosture.status}</p>
+            <p className="mt-1 text-xs text-sky-900">Oldest pending action: {data.slaPosture.oldestPendingActionDays} day(s)</p>
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
+            <div className="rounded-xl bg-zinc-100 p-3">
+              <p className="text-xl font-semibold">{data.slaPosture.actionCompletionPct}%</p>
+              <p className="text-xs text-zinc-600">Action completion</p>
+            </div>
+            <div className="rounded-xl bg-zinc-100 p-3">
+              <p className="text-xl font-semibold">{data.slaPosture.playbookCompletionPct}%</p>
+              <p className="text-xs text-zinc-600">Playbook completion</p>
+            </div>
+            <div className="rounded-xl bg-zinc-100 p-3">
+              <p className="text-xl font-semibold">{data.slaPosture.openInboxCount}</p>
+              <p className="text-xs text-zinc-600">Open inbox</p>
+            </div>
+            <div className="rounded-xl bg-zinc-100 p-3">
+              <p className="text-xl font-semibold">{data.slaPosture.stalePlaybookCount}</p>
+              <p className="text-xs text-zinc-600">Stale playbooks</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <h3 className="text-base font-semibold text-zinc-950">Training queue</h3>
+          <p className="mt-1 text-sm text-zinc-600">MP46 examples to reuse for tuning and corrections.</p>
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Positive examples</p>
+              <div className="mt-2 space-y-2">
+                {data.trainingQueue.positive.length === 0 ? (
+                  <p className="rounded-xl border border-dashed border-zinc-200 p-4 text-sm text-zinc-500">No positive examples yet.</p>
+                ) : (
+                  data.trainingQueue.positive.slice(0, 3).map((item) => (
+                    <div key={item.id} className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-3 text-sm">
+                      <p className="font-semibold text-emerald-950">{item.prompt}</p>
+                      <p className="mt-1 text-xs text-emerald-800">{item.answerKind} · {item.reason}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-rose-700">Correction examples</p>
+              <div className="mt-2 space-y-2">
+                {data.trainingQueue.corrections.length === 0 ? (
+                  <p className="rounded-xl border border-dashed border-zinc-200 p-4 text-sm text-zinc-500">No correction examples yet.</p>
+                ) : (
+                  data.trainingQueue.corrections.slice(0, 3).map((item) => (
+                    <div key={`${item.reason}-${item.id}`} className="rounded-xl border border-rose-100 bg-rose-50/60 p-3 text-sm">
+                      <p className="font-semibold text-rose-950">{item.prompt}</p>
+                      <p className="mt-1 text-xs text-rose-800">{item.answerKind} · {item.reason}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-3">
+        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <h3 className="text-base font-semibold text-zinc-950">Prompt library</h3>
+          <p className="mt-1 text-sm text-zinc-600">MP47 reusable prompt-starter candidates.</p>
+          <div className="mt-4 space-y-2">
+            {data.promptLibrary.candidates.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-zinc-200 p-4 text-sm text-zinc-500">No prompt candidates yet.</p>
+            ) : (
+              data.promptLibrary.candidates.slice(0, 5).map((item) => (
+                <div key={item.id} className="rounded-xl border border-zinc-200 p-3 text-sm">
+                  <p className="font-semibold text-zinc-900">{item.title}</p>
+                  <p className="mt-1 text-xs text-zinc-600">{item.prompt}</p>
+                  <p className="mt-2 text-xs text-zinc-500">{item.reason}</p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <h3 className="text-base font-semibold text-zinc-950">Decision journal</h3>
+          <p className="mt-1 text-sm text-zinc-600">MP48 recent feedback, action, and playbook decisions.</p>
+          <div className="mt-4 space-y-2">
+            {data.decisionJournal.events.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-zinc-200 p-4 text-sm text-zinc-500">No decisions logged yet.</p>
+            ) : (
+              data.decisionJournal.events.slice(0, 6).map((item) => (
+                <div key={item.id} className="rounded-xl border border-zinc-200 p-3 text-sm">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="font-semibold text-zinc-900">{item.label}</p>
+                    <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-semibold text-zinc-700">{item.type}</span>
+                  </div>
+                  <p className="mt-1 text-xs text-zinc-600">{item.detail}</p>
+                  <p className="mt-1 text-xs text-zinc-500">{formatDate(item.at)}</p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <h3 className="text-base font-semibold text-zinc-950">Signal hygiene</h3>
+          <p className="mt-1 text-sm text-zinc-600">MP49 noisy telemetry and cleanup items.</p>
+          <div className="mt-4 space-y-2">
+            {data.signalHygiene.items.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-zinc-200 p-4 text-sm text-zinc-500">No signal hygiene issues detected.</p>
+            ) : (
+              data.signalHygiene.items.map((item) => (
+                <div key={item.id} className="rounded-xl border border-zinc-200 p-3 text-sm">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="font-semibold text-zinc-900">{item.label}</p>
+                    <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-semibold text-zinc-700">{item.count}</span>
+                  </div>
+                  <p className="mt-1 text-xs text-zinc-600">{item.recommendation}</p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">

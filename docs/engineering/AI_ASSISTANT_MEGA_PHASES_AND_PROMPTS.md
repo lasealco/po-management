@@ -99,6 +99,11 @@ Use **one** of these. They are designed so the implementer (human or agent) does
 | **MP42** | **Handoff queue** — humans know what to take next | Pending actions, inbox work, and review work are grouped into handoff cards with links when available |
 | **MP43** | **Evidence ledger** — grounding debt is visible | Grounded vs ungrounded answer counts and examples of evidence-needed prompts are listed |
 | **MP44** | **Milestone plan** — the next assistant build plan is generated from signals | Command center shows Now / Next / Later milestones from readiness, experiments, and risk |
+| **MP45** | **SLA posture** — assistant-assisted work has service posture | Action completion, stale playbooks, and open inbox work produce a simple posture status |
+| **MP46** | **Training queue** — good and weak examples are reusable | Helpful grounded answers and correction-needed answers are listed for future tuning |
+| **MP47** | **Prompt library candidates** — repeat prompts become reusable starts | Frequent answer kinds / object contexts suggest prompt templates |
+| **MP48** | **Decision journal** — assistant decisions are traceable over time | Recent feedback, action, and playbook events are shown as one timeline |
+| **MP49** | **Signal hygiene** — noisy assistant telemetry is visible | Duplicate prompts, missing feedback, missing grounding, and unlinked memory produce cleanup items |
 
 *Docs and small fixes can happen anytime; they are not a substitute for **MP1** if your goal is “I can *see* it.”*
 
@@ -165,6 +170,7 @@ Use **one** of these. They are designed so the implementer (human or agent) does
 
 | Date | Change |
 |------|--------|
+| 2026-04-27 | **MP45-MP49 shipped (MVP):** extended the assistant command center with SLA posture, training queue, prompt-library candidates, decision journal, and signal hygiene panels. |
 | 2026-04-27 | **MP40-MP44 shipped (MVP):** extended the assistant command center with an operating packet, risk register, human handoff queue, evidence ledger, and signal-driven milestone plan. |
 | 2026-04-27 | **MP35-MP39 shipped (MVP):** extended the assistant command center with adoption heatmap, surface mix, scenario coverage, experiment backlog, and daily operating cadence panels. |
 | 2026-04-27 | **MP30-MP34 shipped (MVP):** extended the assistant command center with confidence bands, domain-gap radar, escalation watch, playbook-template recommendations, and rollout readiness scoring. |

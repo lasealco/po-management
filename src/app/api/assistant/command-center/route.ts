@@ -526,6 +526,127 @@ export async function GET() {
           : `Current rollout score is ${rolloutScore}; close review, grounding, and stale-work gaps first.`,
     },
   ];
+  const playbookCompletionPct = percent(completedPlaybookCount, activePlaybookCount + completedPlaybookCount);
+  const actionCompletionPct = percent(doneActionCount, pendingActionCount + doneActionCount);
+  const slaStatus =
+    stalePlaybookCount > 0 || pendingActionAgeBuckets.older > 0
+      ? "At risk"
+      : pendingActionCount > doneActionCount || inbox.total > 10
+        ? "Watch"
+        : "Healthy";
+  const promptCounts = new Map<string, number>();
+  for (const event of recentAuditEvents) {
+    addCount(promptCounts, event.prompt.trim().toLowerCase(), "unknown");
+  }
+  const duplicatePromptCount = Array.from(promptCounts.values()).filter((count) => count > 1).length;
+  const trainingPositive = recentAuditEvents
+    .filter((event) => event.feedback === "helpful" && (event.quality != null || event.evidence != null))
+    .slice(0, 5)
+    .map((event) => ({
+      id: event.id,
+      prompt: event.prompt,
+      answerKind: event.answerKind,
+      reason: "Helpful and grounded",
+      createdAt: event.createdAt.toISOString(),
+    }));
+  const trainingCorrections = [
+    ...recentAuditEvents
+      .filter((event) => event.feedback === "not_helpful")
+      .slice(0, 4)
+      .map((event) => ({
+        id: event.id,
+        prompt: event.prompt,
+        answerKind: event.answerKind,
+        reason: "Marked Needs review",
+        createdAt: event.createdAt.toISOString(),
+      })),
+    ...ungroundedEvents.slice(0, 4).map((event) => ({
+      id: event.id,
+      prompt: event.prompt,
+      answerKind: event.answerKind,
+      reason: "Missing grounding",
+      createdAt: event.createdAt.toISOString(),
+    })),
+  ].slice(0, 6);
+  const promptLibraryCandidates = [
+    ...sortedCountRows(answerKindCounts, 4).map((row) => ({
+      id: `kind-${row.label}`,
+      title: `${row.label} starter`,
+      prompt: `Ask assistant for a ${row.label} answer with evidence and next action.`,
+      reason: `${row.count} recent answer(s) use this pattern.`,
+    })),
+    ...Array.from(objectCoverageMap.values())
+      .filter((row) => row.auditEvents > 0)
+      .slice(0, 4)
+      .map((row) => ({
+        id: `object-${row.objectType}`,
+        title: `${row.objectType} review`,
+        prompt: `Summarize this ${row.objectType}, cite evidence, and propose the next human-approved action.`,
+        reason: `${row.auditEvents} answer(s) linked to this object type.`,
+      })),
+  ].slice(0, 6);
+  const decisionJournal = [
+    ...recentAuditEvents
+      .filter((event) => event.feedback != null)
+      .slice(0, 6)
+      .map((event) => ({
+        id: `feedback-${event.id}`,
+        type: "Feedback",
+        label: event.feedback === "helpful" ? "Answer marked helpful" : "Answer needs review",
+        detail: event.prompt,
+        at: event.createdAt.toISOString(),
+      })),
+    ...recentActions.slice(0, 6).map((action) => ({
+      id: `action-${action.id}`,
+      type: "Action",
+      label: action.status,
+      detail: action.label,
+      at: action.createdAt.toISOString(),
+    })),
+    ...playbookRuns.slice(0, 6).map((run) => ({
+      id: `playbook-${run.id}`,
+      type: "Playbook",
+      label: run.status,
+      detail: run.title,
+      at: run.updatedAt.toISOString(),
+    })),
+  ]
+    .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
+    .slice(0, 10);
+  const signalHygieneItems = [
+    duplicatePromptCount > 0
+      ? {
+          id: "duplicate-prompts",
+          label: "Repeated prompts",
+          count: duplicatePromptCount,
+          recommendation: "Convert repeated prompts into prompt-library starters or playbooks.",
+        }
+      : null,
+    feedbackMissingCount > 0
+      ? {
+          id: "missing-feedback",
+          label: "Missing feedback",
+          count: feedbackMissingCount,
+          recommendation: "Capture Helpful / Needs review on recent assistant answers.",
+        }
+      : null,
+    ungroundedEvents.length > 0
+      ? {
+          id: "missing-grounding",
+          label: "Missing grounding",
+          count: ungroundedEvents.length,
+          recommendation: "Require evidence links or quality metadata before relying on answers.",
+        }
+      : null,
+    objectlessEvents.length > 0
+      ? {
+          id: "unlinked-memory",
+          label: "Unlinked memory",
+          count: objectlessEvents.length,
+          recommendation: "Improve object inference so memory attaches to records.",
+        }
+      : null,
+  ].filter((item): item is { id: string; label: string; count: number; recommendation: string } => Boolean(item));
 
   return NextResponse.json({
     ok: true,
@@ -789,6 +910,29 @@ export async function GET() {
     },
     milestonePlan: {
       milestones: milestonePlan,
+    },
+    slaPosture: {
+      status: slaStatus,
+      actionCompletionPct,
+      playbookCompletionPct,
+      openInboxCount: inbox.total,
+      stalePlaybookCount,
+      oldestPendingActionDays: pendingActions.length
+        ? Math.max(...pendingActions.map((item) => ageDays(item.createdAt)))
+        : 0,
+    },
+    trainingQueue: {
+      positive: trainingPositive,
+      corrections: trainingCorrections,
+    },
+    promptLibrary: {
+      candidates: promptLibraryCandidates,
+    },
+    decisionJournal: {
+      events: decisionJournal,
+    },
+    signalHygiene: {
+      items: signalHygieneItems,
     },
   });
 }
