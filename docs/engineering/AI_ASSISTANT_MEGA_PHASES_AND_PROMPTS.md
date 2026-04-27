@@ -74,6 +74,11 @@ Use **one** of these. They are designed so the implementer (human or agent) does
 | **MP17** | **Action execution queue** — proposed actions become reviewable work | Dock actions can be queued and marked done after the user opens/copies them |
 | **MP18** | **Assistant memory per object** — object pages remember prior assistant work | The dock shows prior assistant answers for the same sales order, shipment, product, or PO |
 | **MP19** | **Playbook completion tracking** — playbook steps persist | Dock playbooks create runs and let users mark steps done or needing review |
+| **MP20** | **Cross-workspace command center** — assistant work is visible in one place | A command center summarizes inbox work, action queue, playbooks, feedback, and recent memory |
+| **MP21** | **Feedback analytics dashboard** — quality signals are operational | Helpful vs needs-review counts and recent review-needed answers are visible |
+| **MP22** | **Action queue workbench** — queued assistant actions can be triaged | Pending / completed action rows are visible with source context and open links |
+| **MP23** | **Playbook operations board** — active guided workflows are trackable | Active and completed playbook runs are listed with object context |
+| **MP24** | **Assistant ops health snapshot** — AI layer has a simple operating picture | The command center exposes audit volume, grounding coverage, action backlog, and stale playbooks |
 
 *Docs and small fixes can happen anytime; they are not a substitute for **MP1** if your goal is “I can *see* it.”*
 
@@ -140,6 +145,7 @@ Use **one** of these. They are designed so the implementer (human or agent) does
 
 | Date | Change |
 |------|--------|
+| 2026-04-27 | **MP20-MP24 shipped (MVP):** added `/assistant/command-center` plus `GET /api/assistant/command-center` for cross-workspace assistant ops: inbox count, feedback analytics, action queue, playbook board, recent memory, and quality/health snapshot. |
 | 2026-04-27 | **MP15-MP19 shipped (MVP):** added persistent assistant audit events, feedback storage, queued proposed actions, object-level assistant memory, and playbook run/step tracking for the docked assistant. |
 | 2026-04-25 | **MP14 shipped (MVP):** context/impact answers now include quality metadata (deterministic mode, grounded-by sources, limitations, timestamp), and the dock displays grounding plus local Helpful / Needs review feedback controls. |
 | 2026-04-25 | **MP13 shipped (MVP):** Assistant Inbox items now include proactive suggested next actions for CT alerts, CT exceptions, open email threads, and draft sales orders, with direct “Start action” links to the relevant workspace/tab. |

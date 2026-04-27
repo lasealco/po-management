@@ -37,6 +37,7 @@ export default async function AssistantLayout({ children }: { children: React.Re
         <p className="mt-2 max-w-3xl text-sm text-zinc-600">
           <strong>Chat</strong> can draft sales orders and answer stock / product-trace questions with links to
           evidence. <strong>Inbox</strong> includes Control Tower, drafts, and (when the pilot is on) open email.{" "}
+          <strong>Command center</strong> shows assistant work, feedback, queued actions, playbooks, and health.{" "}
           <strong>Mail</strong> is the import + draft + confirm workflow for external thread handling.
         </p>
         <AssistantSubnav />

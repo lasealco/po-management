@@ -44,6 +44,7 @@ export function AssistantSubnav() {
 
   const chat = pathname === "/assistant" || pathname === "/assistant/";
   const inbox = pathname.startsWith("/assistant/inbox");
+  const commandCenter = pathname.startsWith("/assistant/command-center");
   const mail = pathname.startsWith("/assistant/mail");
 
   return (
@@ -66,6 +67,13 @@ export function AssistantSubnav() {
             {inboxCount > 99 ? "99+" : inboxCount}
           </span>
         ) : null}
+      </Link>
+      <Link
+        href="/assistant/command-center"
+        className={commandCenter ? appNavActiveClass : appNavInactiveClass}
+        title="Cross-workspace command center"
+      >
+        Command center
       </Link>
       {emailPilot ? (
         <Link
