@@ -53,6 +53,26 @@ type ProposedAction =
       text: string;
     };
 
+type AuditEventState = {
+  id: string;
+  objectType: string | null;
+  objectId: string | null;
+};
+
+type MemoryEvent = {
+  id: string;
+  answerKind: string;
+  message: string | null;
+  feedback: string | null;
+  createdAt: string;
+  actorName: string;
+};
+
+type PlaybookRunState = {
+  id: string;
+  status: string;
+};
+
 async function postAssistantAnswer(url: string, text: string): Promise<AnswerResult> {
   const res = await fetch(url, {
     method: "POST",
@@ -75,6 +95,28 @@ async function postAssistantAnswer(url: string, text: string): Promise<AnswerRes
   throw new Error("Assistant returned an unexpected response.");
 }
 
+async function postJson<T>(url: string, body: Record<string, unknown>): Promise<T> {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const parsed = (await res.json().catch(() => ({}))) as T & { error?: string };
+  if (!res.ok) throw new Error(parsed.error || "Assistant request failed.");
+  return parsed;
+}
+
+async function patchJson<T>(url: string, body: Record<string, unknown>): Promise<T> {
+  const res = await fetch(url, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const parsed = (await res.json().catch(() => ({}))) as T & { error?: string };
+  if (!res.ok) throw new Error(parsed.error || "Assistant request failed.");
+  return parsed;
+}
+
 export function DockedAssistantPanel({
   title,
   prompt,
@@ -90,6 +132,11 @@ export function DockedAssistantPanel({
   const [err, setErr] = useState<string | null>(null);
   const [copiedActionId, setCopiedActionId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<"helpful" | "not_helpful" | null>(null);
+  const [auditEvent, setAuditEvent] = useState<AuditEventState | null>(null);
+  const [memoryEvents, setMemoryEvents] = useState<MemoryEvent[]>([]);
+  const [queuedActionIds, setQueuedActionIds] = useState<Record<string, string>>({});
+  const [playbookRun, setPlaybookRun] = useState<PlaybookRunState | null>(null);
+  const [stepOverrides, setStepOverrides] = useState<Record<string, string>>({});
   const actionById =
     answer?.kind === "answer" && answer.actions
       ? new Map(answer.actions.map((action) => [action.id, action]))
@@ -102,19 +149,27 @@ export function DockedAssistantPanel({
     setAnswer(null);
     setCopiedActionId(null);
     setFeedback(null);
+    setAuditEvent(null);
+    setMemoryEvents([]);
+    setQueuedActionIds({});
+    setPlaybookRun(null);
+    setStepOverrides({});
     try {
       const context = await postAssistantAnswer("/api/assistant/answer-context", prompt);
       if (context.kind !== "defer") {
         setAnswer(context);
+        await persistAnswer(context);
         return;
       }
       const impact = await postAssistantAnswer("/api/assistant/answer-impact", prompt);
       if (impact.kind !== "defer") {
         setAnswer(impact);
+        await persistAnswer(impact);
         return;
       }
       const operations = await postAssistantAnswer("/api/assistant/answer-operations", prompt);
       setAnswer(operations);
+      await persistAnswer(operations);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Assistant failed.");
     } finally {
@@ -128,6 +183,89 @@ export function DockedAssistantPanel({
       setCopiedActionId(action.id);
     } catch {
       setErr("Could not copy text. Select and copy it manually from the draft.");
+    }
+  };
+
+  const persistAnswer = async (result: AnswerResult) => {
+    if (result.kind !== "answer") return;
+    const saved = await postJson<{
+      auditEvent: { id: string; objectType: string | null; objectId: string | null; createdAt: string };
+    }>("/api/assistant/audit-events", {
+      surface: "dock",
+      prompt,
+      answerKind: result.kind,
+      message: result.message,
+      evidence: result.evidence,
+      quality: result.quality,
+      actions: result.actions,
+      playbook: result.playbook,
+    });
+    setAuditEvent(saved.auditEvent);
+    if (saved.auditEvent.objectType && saved.auditEvent.objectId) {
+      const params = new URLSearchParams({
+        objectType: saved.auditEvent.objectType,
+        objectId: saved.auditEvent.objectId,
+      });
+      const res = await fetch(`/api/assistant/audit-events?${params.toString()}`);
+      if (res.ok) {
+        const payload = (await res.json()) as { events?: MemoryEvent[] };
+        setMemoryEvents(Array.isArray(payload.events) ? payload.events : []);
+      }
+    }
+    if (result.playbook) {
+      const playbook = await postJson<{ run: { id: string; status: string } }>("/api/assistant/playbook-runs", {
+        prompt,
+        auditEventId: saved.auditEvent.id,
+        objectType: saved.auditEvent.objectType,
+        objectId: saved.auditEvent.objectId,
+        playbook: result.playbook,
+      });
+      setPlaybookRun(playbook.run);
+    }
+  };
+
+  const submitFeedback = async (next: "helpful" | "not_helpful") => {
+    setFeedback(next);
+    if (!auditEvent) return;
+    try {
+      await patchJson(`/api/assistant/audit-events/${auditEvent.id}/feedback`, { feedback: next });
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Could not save feedback.");
+    }
+  };
+
+  const queueAction = async (action: ProposedAction) => {
+    try {
+      const payload = await postJson<{ item: { id: string } }>("/api/assistant/action-queue", {
+        prompt,
+        auditEventId: auditEvent?.id ?? null,
+        objectType: auditEvent?.objectType ?? null,
+        objectId: auditEvent?.objectId ?? null,
+        action,
+      });
+      setQueuedActionIds((current) => ({ ...current, [action.id]: payload.item.id }));
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Could not queue action.");
+    }
+  };
+
+  const markQueuedActionDone = async (actionId: string) => {
+    const queueId = queuedActionIds[actionId];
+    if (!queueId) return;
+    try {
+      await patchJson(`/api/assistant/action-queue/${queueId}`, { status: "DONE" });
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Could not update queued action.");
+    }
+  };
+
+  const updatePlaybookStep = async (stepId: string, stepStatus: "done" | "needs_review" | "skipped") => {
+    setStepOverrides((current) => ({ ...current, [stepId]: stepStatus }));
+    if (!playbookRun) return;
+    try {
+      await patchJson(`/api/assistant/playbook-runs/${playbookRun.id}`, { stepId, stepStatus });
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Could not update playbook step.");
     }
   };
 
@@ -233,16 +371,34 @@ export function DockedAssistantPanel({
                             </div>
                             <span
                               className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                                step.status === "done"
+                                (stepOverrides[step.id] ?? step.status) === "done"
                                   ? "bg-emerald-100 text-emerald-800"
-                                  : step.status === "needs_review"
+                                  : (stepOverrides[step.id] ?? step.status) === "needs_review"
                                     ? "bg-amber-100 text-amber-900"
                                     : "bg-zinc-100 text-zinc-700"
                               }`}
                             >
-                              {step.status.replace("_", " ")}
+                              {(stepOverrides[step.id] ?? step.status).replace("_", " ")}
                             </span>
                           </div>
+                          {playbookRun ? (
+                            <div className="mt-2 flex flex-wrap gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => void updatePlaybookStep(step.id, "done")}
+                                className="rounded-lg border border-emerald-200 bg-white px-2.5 py-1 text-xs font-medium text-emerald-800 hover:bg-emerald-50"
+                              >
+                                Mark done
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void updatePlaybookStep(step.id, "needs_review")}
+                                className="rounded-lg border border-amber-200 bg-white px-2.5 py-1 text-xs font-medium text-amber-900 hover:bg-amber-50"
+                              >
+                                Needs review
+                              </button>
+                            </div>
+                          ) : null}
                           {step.actionIds && step.actionIds.length > 0 ? (
                             <div className="mt-2 flex flex-wrap gap-1.5">
                               {step.actionIds.map((id) => {
@@ -286,17 +442,37 @@ export function DockedAssistantPanel({
                           <p className="text-sm font-semibold text-zinc-900">{action.label}</p>
                           <p className="mt-1 text-xs text-zinc-600">{action.description}</p>
                           {action.kind === "navigate" ? (
-                            <Link
-                              href={action.href}
-                              className="mt-2 inline-flex rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-800 hover:bg-zinc-50"
-                            >
-                              Open
-                            </Link>
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              <button
+                                type="button"
+                                onClick={() => void queueAction(action)}
+                                className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-800 hover:bg-zinc-50"
+                              >
+                                {queuedActionIds[action.id] ? "Queued" : "Queue for approval"}
+                              </button>
+                              <Link
+                                href={action.href}
+                                onClick={() => void markQueuedActionDone(action.id)}
+                                className="inline-flex rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-800 hover:bg-zinc-50"
+                              >
+                                Open
+                              </Link>
+                            </div>
                           ) : (
                             <div className="mt-2">
                               <button
                                 type="button"
-                                onClick={() => void copyActionText(action)}
+                                onClick={() => void queueAction(action)}
+                                className="mr-2 rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-800 hover:bg-zinc-50"
+                              >
+                                {queuedActionIds[action.id] ? "Queued" : "Queue for approval"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  void copyActionText(action);
+                                  void markQueuedActionDone(action.id);
+                                }}
                                 className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-800 hover:bg-zinc-50"
                               >
                                 {copiedActionId === action.id ? "Copied" : "Copy draft"}
@@ -314,12 +490,12 @@ export function DockedAssistantPanel({
                 <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3">
                   <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Feedback</p>
                   <p className="mt-1 text-xs text-zinc-600">
-                    This MVP records feedback locally in the drawer; backend audit persistence is the next quality step.
+                    Feedback is saved to the assistant audit log for this answer.
                   </p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     <button
                       type="button"
-                      onClick={() => setFeedback("helpful")}
+                      onClick={() => void submitFeedback("helpful")}
                       className={`rounded-lg border px-3 py-1.5 text-xs font-medium ${
                         feedback === "helpful"
                           ? "border-emerald-300 bg-emerald-100 text-emerald-900"
@@ -330,7 +506,7 @@ export function DockedAssistantPanel({
                     </button>
                     <button
                       type="button"
-                      onClick={() => setFeedback("not_helpful")}
+                      onClick={() => void submitFeedback("not_helpful")}
                       className={`rounded-lg border px-3 py-1.5 text-xs font-medium ${
                         feedback === "not_helpful"
                           ? "border-amber-300 bg-amber-100 text-amber-950"
@@ -346,6 +522,21 @@ export function DockedAssistantPanel({
                     </p>
                   ) : null}
                 </div>
+                {memoryEvents.length > 1 ? (
+                  <div className="rounded-2xl border border-zinc-200 bg-white p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Assistant memory</p>
+                    <ul className="mt-2 space-y-2 text-xs text-zinc-600">
+                      {memoryEvents.slice(1, 5).map((event) => (
+                        <li key={event.id} className="rounded-lg border border-zinc-100 bg-zinc-50 p-2">
+                          <p className="font-medium text-zinc-800">
+                            {new Date(event.createdAt).toLocaleString()} · {event.actorName}
+                          </p>
+                          <p className="mt-1 line-clamp-2">{event.message ?? event.answerKind}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
               </div>
             ) : null}
             {answer && answer.kind !== "answer" && answer.kind !== "defer" ? (

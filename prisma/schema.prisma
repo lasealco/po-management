@@ -143,6 +143,92 @@ model Tenant {
   companyLegalEntityAuditLogs       CompanyLegalEntityAuditLog[]
   /// MP4: assistant / sales email pilot (inbound items + staged reply, confirm-before-send).
   assistantEmailThreads             AssistantEmailThread[]
+  assistantAuditEvents              AssistantAuditEvent[]
+  assistantActionQueue              AssistantActionQueueItem[]
+  assistantPlaybookRuns             AssistantPlaybookRun[]
+}
+
+/// MP15/MP18: durable assistant answer/action memory with grounding and feedback.
+model AssistantAuditEvent {
+  id         String   @id @default(cuid())
+  tenantId   String
+  actorUserId String?
+  surface    String   @default("dock") @db.VarChar(64)
+  prompt     String   @db.Text
+  answerKind String   @db.VarChar(32)
+  message    String?  @db.Text
+  evidence   Json?
+  quality    Json?
+  actions    Json?
+  playbook   Json?
+  objectType String?  @db.VarChar(64)
+  objectId   String?
+  feedback   String?  @db.VarChar(32)
+  feedbackAt DateTime?
+  createdAt  DateTime @default(now())
+
+  tenant      Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actor       User?                      @relation("AssistantAuditEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  actionItems AssistantActionQueueItem[]
+  playbookRuns AssistantPlaybookRun[]
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, actorUserId, createdAt])
+  @@index([tenantId, objectType, objectId, createdAt])
+  @@index([tenantId, feedback, createdAt])
+}
+
+/// MP17: human-approved queue row for assistant-proposed actions.
+model AssistantActionQueueItem {
+  id           String   @id @default(cuid())
+  tenantId     String
+  actorUserId  String?
+  auditEventId String?
+  objectType   String?  @db.VarChar(64)
+  objectId     String?
+  actionId     String   @db.VarChar(128)
+  actionKind   String   @db.VarChar(64)
+  label        String
+  description  String?  @db.Text
+  payload      Json?
+  status       String   @default("PENDING") @db.VarChar(32)
+  decidedAt    DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant     Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actor      User?                @relation("AssistantActionQueueActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  auditEvent AssistantAuditEvent? @relation(fields: [auditEventId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, createdAt])
+  @@index([tenantId, actorUserId, createdAt])
+  @@index([tenantId, objectType, objectId, createdAt])
+  @@index([auditEventId])
+}
+
+/// MP19: persistent playbook run state for assistant-guided workflows.
+model AssistantPlaybookRun {
+  id           String   @id @default(cuid())
+  tenantId     String
+  actorUserId  String?
+  auditEventId String?
+  objectType   String?  @db.VarChar(64)
+  objectId     String?
+  playbookId   String   @db.VarChar(128)
+  title        String
+  status       String   @default("IN_PROGRESS") @db.VarChar(32)
+  steps        Json
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant     Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actor      User?                @relation("AssistantPlaybookRunActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  auditEvent AssistantAuditEvent? @relation(fields: [auditEventId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, playbookId, createdAt])
+  @@index([tenantId, actorUserId, createdAt])
+  @@index([tenantId, objectType, objectId, createdAt])
+  @@index([auditEventId])
 }
 
 /// Mega-Phase 4: external mail thread as an attention item (pilot; feature-flagged in app).
@@ -535,6 +621,9 @@ model User {
   companyLegalEntityAudits           CompanyLegalEntityAuditLog[]
   wmsSavedLedgerViews                WmsSavedLedgerView[]
   assistantEmailSendConfirms         AssistantEmailThread[]         @relation("AssistantEmailSendConfirmBy")
+  assistantAuditEvents               AssistantAuditEvent[]          @relation("AssistantAuditEventActor")
+  assistantActionQueueItems          AssistantActionQueueItem[]     @relation("AssistantActionQueueActor")
+  assistantPlaybookRuns              AssistantPlaybookRun[]         @relation("AssistantPlaybookRunActor")
   passwordResetTokens                PasswordResetToken[]
   /// Primary org node (geography / legal hierarchy). Matrix: see `productDivisionScope`.
   primaryOrgUnitId                   String?

@@ -69,6 +69,11 @@ Use **one** of these. They are designed so the implementer (human or agent) does
 | **MP12** | **Cross-object impact answers** — product risk/impact spans modules | Product impact answers link stock, POs, shipments, and sales orders with playbooks/actions |
 | **MP13** | **Proactive assistant inbox** — open work includes suggested next actions | Inbox items explain what to do next and link directly to the right workspace/tab |
 | **MP14** | **AI quality, audit, and feedback** — grounding is visible and feedback is captured | Docked answers show source grounding, limitations, timestamp, and feedback controls |
+| **MP15** | **Persistent AI audit log** — answers survive reloads | Docked answers create durable audit rows with prompt, message, evidence, quality, object context, and actor |
+| **MP16** | **Feedback analytics foundation** — answer feedback is saved | Helpful / Needs review updates persist on the audit event |
+| **MP17** | **Action execution queue** — proposed actions become reviewable work | Dock actions can be queued and marked done after the user opens/copies them |
+| **MP18** | **Assistant memory per object** — object pages remember prior assistant work | The dock shows prior assistant answers for the same sales order, shipment, product, or PO |
+| **MP19** | **Playbook completion tracking** — playbook steps persist | Dock playbooks create runs and let users mark steps done or needing review |
 
 *Docs and small fixes can happen anytime; they are not a substitute for **MP1** if your goal is “I can *see* it.”*
 
@@ -135,6 +140,7 @@ Use **one** of these. They are designed so the implementer (human or agent) does
 
 | Date | Change |
 |------|--------|
+| 2026-04-27 | **MP15-MP19 shipped (MVP):** added persistent assistant audit events, feedback storage, queued proposed actions, object-level assistant memory, and playbook run/step tracking for the docked assistant. |
 | 2026-04-25 | **MP14 shipped (MVP):** context/impact answers now include quality metadata (deterministic mode, grounded-by sources, limitations, timestamp), and the dock displays grounding plus local Helpful / Needs review feedback controls. |
 | 2026-04-25 | **MP13 shipped (MVP):** Assistant Inbox items now include proactive suggested next actions for CT alerts, CT exceptions, open email threads, and draft sales orders, with direct “Start action” links to the relevant workspace/tab. |
 | 2026-04-25 | **MP12 shipped (MVP):** added `POST /api/assistant/answer-impact` for product impact questions; product assistant cards now ask for stock/PO/shipment/SO exposure, and the dock tries impact answers before stock trace fallback. |
