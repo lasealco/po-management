@@ -3,9 +3,24 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { loadSupplierDetailSnapshot } from "./load-supplier-detail-snapshot";
 
-function prismaWithSupplierFindFirst(findFirst: ReturnType<typeof vi.fn>) {
+const baseCapabilityRows = [
+  {
+    id: "cap1",
+    mode: "OCEAN",
+    subMode: null,
+    serviceType: "Freight forwarding",
+    geography: "EU",
+    notes: null,
+  },
+];
+
+function prismaWithSupplierFindFirst(
+  findFirst: ReturnType<typeof vi.fn>,
+  capabilityRows: Array<(typeof baseCapabilityRows)[number]> = baseCapabilityRows,
+) {
   return {
     supplier: { findFirst },
+    supplierServiceCapability: { findMany: vi.fn().mockResolvedValue(capabilityRows) },
     supplierOnboardingTask: { createMany: vi.fn().mockResolvedValue({ count: 0 }) },
   } as unknown as PrismaClient;
 }
@@ -52,16 +67,6 @@ function baseSupplierRow(overrides: Record<string, unknown> = {}) {
     ],
     offices: [
       { id: "of1", name: "HQ", city: "Berlin", countryCode: "DE", isActive: true },
-    ],
-    serviceCapabilities: [
-      {
-        id: "cap1",
-        mode: "OCEAN",
-        subMode: null,
-        serviceType: "Freight forwarding",
-        geography: "EU",
-        notes: null,
-      },
     ],
     _count: { productSuppliers: 3, orders: 12 },
     ...overrides,
