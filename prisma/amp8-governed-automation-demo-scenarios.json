@@ -1,0 +1,44 @@
+[
+  {
+    "id": "amp8-shadow-policy",
+    "title": "Operator creates a shadow automation policy",
+    "steps": [
+      "Open /assistant/governed-automation.",
+      "Pick an actionKind candidate from recent assistant action queue history.",
+      "Create shadow policy and record a shadow run against a human decision."
+    ],
+    "expected": [
+      "AssistantAutomationPolicy persists in SHADOW status with readiness score and guardrails.",
+      "AssistantAutomationShadowRun records predicted status, human status, match/mismatch, and payload preview.",
+      "No real action is executed automatically."
+    ]
+  },
+  {
+    "id": "amp8-controlled-enable-blocked",
+    "title": "Enablement is blocked until guardrails pass",
+    "steps": [
+      "Attempt to enable a candidate with failed release gate, weak evidence, or insufficient shadow matches.",
+      "Review failed guardrail chips in the candidate card.",
+      "Resolve evidence/release-gate/shadow issues and try again."
+    ],
+    "expected": [
+      "API returns conflict when any guardrail blocks enablement.",
+      "Policy remains SHADOW or PAUSED rather than silently enabling.",
+      "Guardrails clearly explain the reason for blocking."
+    ]
+  },
+  {
+    "id": "amp8-pause-rollback",
+    "title": "Operator pauses controlled automation and follows rollback plan",
+    "steps": [
+      "Open a policy candidate with a saved policy.",
+      "Use Pause / rollback.",
+      "Review rollback plan and shadow journal before re-enabling."
+    ],
+    "expected": [
+      "Policy status changes to PAUSED and stores pausedAt.",
+      "Rollback plan instructs returning work to human action queue and reviewing recent runs.",
+      "Audit event records the policy state change."
+    ]
+  }
+]

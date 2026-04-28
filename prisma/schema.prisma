@@ -149,6 +149,8 @@ model Tenant {
   assistantReviewExamples           AssistantReviewExample[]
   assistantPromptLibraryItems       AssistantPromptLibraryItem[]
   assistantReleaseGates             AssistantReleaseGate[]
+  assistantAutomationPolicies       AssistantAutomationPolicy[]
+  assistantAutomationShadowRuns     AssistantAutomationShadowRun[]
   assistantActionQueue              AssistantActionQueueItem[]
   assistantPlaybookTemplates        AssistantPlaybookTemplate[]
   assistantPlaybookRuns             AssistantPlaybookRun[]
@@ -180,6 +182,7 @@ model AssistantAuditEvent {
   evidenceRecords AssistantEvidenceRecord[]
   reviewExamples AssistantReviewExample[]
   actionItems  AssistantActionQueueItem[]
+  automationShadowRuns AssistantAutomationShadowRun[]
   playbookRuns AssistantPlaybookRun[]
 
   @@index([tenantId, createdAt])
@@ -187,6 +190,61 @@ model AssistantAuditEvent {
   @@index([tenantId, objectType, objectId, createdAt])
   @@index([tenantId, feedback, createdAt])
   @@index([tenantId, archivedAt, createdAt])
+}
+
+/// AMP8: governed automation policy, never implicit; controls shadow/enabled/paused state per low-risk action kind.
+model AssistantAutomationPolicy {
+  id              String   @id @default(cuid())
+  tenantId        String
+  policyKey       String   @db.VarChar(128)
+  actionKind      String   @db.VarChar(64)
+  label           String
+  status          String   @default("SHADOW") @db.VarChar(32)
+  readinessScore  Int      @default(0)
+  threshold       Int      @default(80)
+  guardrailsJson  Json
+  rollbackPlan    String?  @db.Text
+  enabledByUserId String?
+  enabledAt       DateTime?
+  pausedAt        DateTime?
+  lastEvaluatedAt DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  enabledBy User?  @relation("AssistantAutomationPolicyEnabledBy", fields: [enabledByUserId], references: [id], onDelete: SetNull)
+  shadowRuns AssistantAutomationShadowRun[]
+
+  @@unique([tenantId, policyKey])
+  @@index([tenantId, status, updatedAt])
+  @@index([tenantId, actionKind, status])
+}
+
+/// AMP8: shadow comparison between proposed automation and actual human decision.
+model AssistantAutomationShadowRun {
+  id              String   @id @default(cuid())
+  tenantId        String
+  policyId        String?
+  auditEventId    String?
+  actionQueueItemId String?
+  actionKind      String   @db.VarChar(64)
+  predictedStatus String   @db.VarChar(32)
+  humanStatus     String?  @db.VarChar(32)
+  matched         Boolean?
+  wouldExecutePayload Json?
+  runMode         String   @default("SHADOW") @db.VarChar(32)
+  notes           String?  @db.Text
+  createdAt       DateTime @default(now())
+
+  tenant     Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  policy     AssistantAutomationPolicy? @relation(fields: [policyId], references: [id], onDelete: SetNull)
+  auditEvent AssistantAuditEvent? @relation(fields: [auditEventId], references: [id], onDelete: SetNull)
+  actionItem AssistantActionQueueItem? @relation(fields: [actionQueueItemId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, actionKind, createdAt])
+  @@index([tenantId, runMode, createdAt])
+  @@index([policyId, createdAt])
+  @@index([actionQueueItemId])
 }
 
 /// AMP7: inspectable grounding ledger extracted from assistant answers and reviewer additions.
@@ -305,6 +363,7 @@ model AssistantActionQueueItem {
   actor      User?                @relation("AssistantActionQueueActor", fields: [actorUserId], references: [id], onDelete: SetNull)
   owner      User?                @relation("AssistantActionQueueOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
   auditEvent AssistantAuditEvent? @relation(fields: [auditEventId], references: [id], onDelete: SetNull)
+  automationShadowRuns AssistantAutomationShadowRun[]
 
   @@index([tenantId, status, priority, dueAt])
   @@index([tenantId, actorUserId, createdAt])
@@ -766,6 +825,7 @@ model User {
   assistantReviewExamplesReviewed    AssistantReviewExample[]        @relation("AssistantReviewExampleReviewer")
   assistantPromptLibraryItemsCreated AssistantPromptLibraryItem[]     @relation("AssistantPromptLibraryItemCreator")
   assistantReleaseGatesEvaluated     AssistantReleaseGate[]          @relation("AssistantReleaseGateEvaluator")
+  assistantAutomationPoliciesEnabled AssistantAutomationPolicy[]      @relation("AssistantAutomationPolicyEnabledBy")
   assistantActionQueueItems          AssistantActionQueueItem[]      @relation("AssistantActionQueueActor")
   assistantActionQueueOwned          AssistantActionQueueItem[]      @relation("AssistantActionQueueOwner")
   assistantPlaybookTemplatesCreated  AssistantPlaybookTemplate[]     @relation("AssistantPlaybookTemplateCreator")

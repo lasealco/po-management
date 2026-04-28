@@ -44,6 +44,7 @@ export function AssistantSubnav() {
   const execution = pathname.startsWith("/assistant/execution");
   const workEngine = pathname.startsWith("/assistant/work-engine");
   const evidenceQuality = pathname.startsWith("/assistant/evidence-quality");
+  const governedAutomation = pathname.startsWith("/assistant/governed-automation");
   const autonomy = pathname.startsWith("/assistant/autonomy");
   const inbox = pathname.startsWith("/assistant/inbox");
   const commandCenter = pathname.startsWith("/assistant/command-center");
@@ -85,6 +86,13 @@ export function AssistantSubnav() {
         title="AMP7 evidence, quality, and training"
       >
         Evidence quality
+      </Link>
+      <Link
+        href="/assistant/governed-automation"
+        className={governedAutomation ? appNavActiveClass : appNavInactiveClass}
+        title="AMP8 governed automation"
+      >
+        Governed automation
       </Link>
       <Link
         href="/assistant/autonomy"
