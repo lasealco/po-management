@@ -131,10 +131,55 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
           `Source email: ${thread.subject}`,
           intent.createPayload.notes,
         ].join("\n\n").slice(0, 12_000),
+        assistantSourceText: intent.createPayload.assistantSourceText,
+        assistantSourceSnapshot: intent.createPayload.assistantSourceSnapshot,
+        assistantDraftReply: intent.createPayload.assistantDraftReply,
         servedOrgUnitId: servedResolved.value,
         createdById: actorId,
       },
       select: { id: true, soNumber: true, status: true },
+    });
+    for (const [index, line] of intent.createPayload.lines.entries()) {
+      const lineTotal = Number((line.quantity * line.unitPrice).toFixed(2));
+      await tx.salesOrderLine.create({
+        data: {
+          tenantId: tenant.id,
+          salesOrderId: row.id,
+          lineNo: index + 1,
+          productId: line.productId,
+          description: line.description,
+          quantity: line.quantity,
+          unitPrice: line.unitPrice,
+          lineTotal,
+          currency: line.currency,
+          source: "assistant_email_intake",
+        },
+      });
+    }
+    await tx.assistantAuditEvent.create({
+      data: {
+        tenantId: tenant.id,
+        actorUserId: actorId,
+        surface: "mail",
+        prompt: intent.createPayload.assistantSourceText,
+        answerKind: "sales_order_draft",
+        message: `Created draft sales order ${row.soNumber} from email thread ${thread.subject}.`,
+        evidence: [
+          { label: `Sales order ${row.soNumber}`, href: `/sales-orders/${row.id}` },
+          { label: `Mail thread ${thread.subject}`, href: `/assistant/mail?thread=${thread.id}` },
+          ...intent.createPayload.lines.map((line) => ({
+            label: line.description,
+            href: `/products/${line.productId}`,
+          })),
+        ],
+        quality: {
+          mode: "deterministic",
+          source: "assistant_email_sales_order_intake",
+          humanApprovalRequired: true,
+        },
+        objectType: "sales_order",
+        objectId: row.id,
+      },
     });
     await tx.assistantEmailThread.update({
       where: { id: thread.id },

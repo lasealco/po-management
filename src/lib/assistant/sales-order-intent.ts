@@ -316,6 +316,31 @@ function buildNotes(
   return lines.join("\n");
 }
 
+function buildCustomerReplyDraft(params: {
+  contactName: string | null;
+  accountName: string;
+  productName: string;
+  quantity: number | null;
+  unitPrice: number | null;
+  currency: string;
+  requestedDate: string | null;
+  warehouseLabel: string | null;
+}) {
+  const greeting = params.contactName ? `Hi ${params.contactName},` : "Hi,";
+  const qty = params.quantity != null ? `${params.quantity}` : "[confirm quantity]";
+  const price = params.unitPrice != null ? `${params.unitPrice.toFixed(2)} ${params.currency}` : "[confirm price]";
+  const date = params.requestedDate ?? "[confirm date]";
+  const warehouse = params.warehouseLabel ?? "[confirm pickup / delivery location]";
+  return [
+    greeting,
+    "",
+    `Thanks for the request. I have prepared a draft sales order for ${qty} x ${params.productName} at ${price} per unit.`,
+    `Requested date: ${date}. Pickup / location: ${warehouse}.`,
+    "",
+    "Please confirm these details and I will proceed with the order workflow.",
+  ].join("\n");
+}
+
 export type SalesOrderIntentResult =
   | {
       kind: "clarify_account";
@@ -351,6 +376,16 @@ export type SalesOrderIntentResult =
         notes: string;
         /** Optional; may be null if org cannot be resolved */
         servedOrgUnitId: string | null;
+        assistantSourceText: string;
+        assistantSourceSnapshot: ExtractedSnapshot;
+        assistantDraftReply: string;
+        lines: Array<{
+          productId: string;
+          description: string;
+          quantity: number;
+          unitPrice: number;
+          currency: string;
+        }>;
       };
       summary: {
         accountName: string;
@@ -469,6 +504,9 @@ export function parseSalesOrderIntent(
   const served = servedId ? ctx.orgUnits.find((o) => o.id === servedId) ?? null : null;
 
   const lineSummary = `${product.productCode || product.name} x${quantity ?? "?" } @ ${unitPrice != null ? `${unitPrice} ${currency}` : "?"}`;
+  const lineQuantity = quantity ?? 1;
+  const lineUnitPrice = unitPrice ?? 0;
+  const warehouseLabel = wh?.name ?? (warehouseMention ? "Demo / pickup (see notes)" : null);
 
   return {
     kind: "ready",
@@ -479,6 +517,27 @@ export function parseSalesOrderIntent(
       externalRef: buildExternalRef(contactName, account, { quantity, unitPrice }, lineSummary).slice(0, 2_000),
       notes: buildNotes(snapshot, product.name, wh?.name ?? null, served?.name ?? null).slice(0, 12_000),
       servedOrgUnitId: servedId,
+      assistantSourceText: raw,
+      assistantSourceSnapshot: snapshot,
+      assistantDraftReply: buildCustomerReplyDraft({
+        contactName,
+        accountName: account.name,
+        productName: product.name,
+        quantity,
+        unitPrice,
+        currency,
+        requestedDate,
+        warehouseLabel,
+      }),
+      lines: [
+        {
+          productId: product.id,
+          description: product.name,
+          quantity: lineQuantity,
+          unitPrice: lineUnitPrice,
+          currency,
+        },
+      ],
     },
     summary: {
       accountName: account.name,
@@ -487,7 +546,7 @@ export function parseSalesOrderIntent(
       quantity,
       unitPrice,
       requestedDate,
-      warehouseLabel: wh?.name ?? (warehouseMention ? "Demo / pickup (see notes)" : null),
+      warehouseLabel,
       servedOrgLabel: served?.name ?? null,
       contactName,
     },

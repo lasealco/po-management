@@ -367,6 +367,10 @@ export function AssistantMp1Client({ canCreateSalesOrder }: { canCreateSalesOrde
         externalRef: createPayload.externalRef,
         notes: createPayload.notes,
         servedOrgUnitId: createPayload.servedOrgUnitId,
+        assistantSourceText: createPayload.assistantSourceText,
+        assistantSourceSnapshot: createPayload.assistantSourceSnapshot,
+        assistantDraftReply: createPayload.assistantDraftReply,
+        lines: createPayload.lines,
       }),
     });
     const parsed: unknown = await res.json();
@@ -384,7 +388,7 @@ export function AssistantMp1Client({ canCreateSalesOrder }: { canCreateSalesOrde
         ...t,
         {
           role: "assistant",
-          content: "Draft created. Opening the sales order so you can add shipments / lines as needed.",
+          content: "Draft created with structured line details and an assistant reply draft. Opening the sales order now.",
         },
       ]);
       router.push(`/sales-orders/${id}`);
@@ -585,7 +589,7 @@ export function AssistantMp1Client({ canCreateSalesOrder }: { canCreateSalesOrde
                 </Link>
                 )
               </li>
-              <li>Qty: {pending.result.summary.quantity ?? "— (set lines on SO)"}</li>
+              <li>Qty: {pending.result.summary.quantity ?? "— (stored as 1 until edited)"}</li>
               <li>Unit price (intent): {pending.result.summary.unitPrice != null ? `${pending.result.summary.unitPrice} USD` : "—"}</li>
               <li>
                 Requested delivery:{" "}
@@ -598,7 +602,7 @@ export function AssistantMp1Client({ canCreateSalesOrder }: { canCreateSalesOrde
               {pending.result.summary.servedOrgLabel ? <li>Order for (org): {pending.result.summary.servedOrgLabel}</li> : null}
             </ul>
             <p className="text-xs text-zinc-600">
-              External ref and notes on the new SO will include the raw request for audit.
+              The draft will persist a structured SO line, raw source request, parser snapshot, and editable customer reply draft.
             </p>
             {canCreateSalesOrder ? (
               <button

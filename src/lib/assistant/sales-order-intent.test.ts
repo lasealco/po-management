@@ -51,6 +51,18 @@ describe("parseSalesOrderIntent", () => {
       expect(r.summary.quantity).toBe(100);
       expect(r.summary.unitPrice).toBe(100);
       expect(r.createPayload.notes).toContain("Sales Assistant");
+      expect(r.createPayload.lines).toEqual([
+        {
+          productId: "p1",
+          description: "Corrugated roll 1200mm",
+          quantity: 100,
+          unitPrice: 100,
+          currency: "USD",
+        },
+      ]);
+      expect(r.createPayload.assistantSourceText).toBe(text);
+      expect(r.createPayload.assistantSourceSnapshot.quantity).toBe(100);
+      expect(r.createPayload.assistantDraftReply).toContain("draft sales order");
     }
   });
 });

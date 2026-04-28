@@ -59,6 +59,7 @@ model Tenant {
   supplierServiceCapabilities       SupplierServiceCapability[]
   orders                            PurchaseOrder[]
   salesOrders                       SalesOrder[]
+  salesOrderLines                   SalesOrderLine[]
   warehouses                        Warehouse[]
   warehouseZones                    WarehouseZone[]
   warehouseBins                     WarehouseBin[]
@@ -150,26 +151,26 @@ model Tenant {
 
 /// MP15/MP18: durable assistant answer/action memory with grounding and feedback.
 model AssistantAuditEvent {
-  id         String   @id @default(cuid())
-  tenantId   String
+  id          String    @id @default(cuid())
+  tenantId    String
   actorUserId String?
-  surface    String   @default("dock") @db.VarChar(64)
-  prompt     String   @db.Text
-  answerKind String   @db.VarChar(32)
-  message    String?  @db.Text
-  evidence   Json?
-  quality    Json?
-  actions    Json?
-  playbook   Json?
-  objectType String?  @db.VarChar(64)
-  objectId   String?
-  feedback   String?  @db.VarChar(32)
-  feedbackAt DateTime?
-  createdAt  DateTime @default(now())
+  surface     String    @default("dock") @db.VarChar(64)
+  prompt      String    @db.Text
+  answerKind  String    @db.VarChar(32)
+  message     String?   @db.Text
+  evidence    Json?
+  quality     Json?
+  actions     Json?
+  playbook    Json?
+  objectType  String?   @db.VarChar(64)
+  objectId    String?
+  feedback    String?   @db.VarChar(32)
+  feedbackAt  DateTime?
+  createdAt   DateTime  @default(now())
 
-  tenant      Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  actor       User?                      @relation("AssistantAuditEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
-  actionItems AssistantActionQueueItem[]
+  tenant       Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actor        User?                      @relation("AssistantAuditEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  actionItems  AssistantActionQueueItem[]
   playbookRuns AssistantPlaybookRun[]
 
   @@index([tenantId, createdAt])
@@ -180,21 +181,21 @@ model AssistantAuditEvent {
 
 /// MP17: human-approved queue row for assistant-proposed actions.
 model AssistantActionQueueItem {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   tenantId     String
   actorUserId  String?
   auditEventId String?
-  objectType   String?  @db.VarChar(64)
+  objectType   String?   @db.VarChar(64)
   objectId     String?
-  actionId     String   @db.VarChar(128)
-  actionKind   String   @db.VarChar(64)
+  actionId     String    @db.VarChar(128)
+  actionKind   String    @db.VarChar(64)
   label        String
-  description  String?  @db.Text
+  description  String?   @db.Text
   payload      Json?
-  status       String   @default("PENDING") @db.VarChar(32)
+  status       String    @default("PENDING") @db.VarChar(32)
   decidedAt    DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   tenant     Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   actor      User?                @relation("AssistantActionQueueActor", fields: [actorUserId], references: [id], onDelete: SetNull)
@@ -240,39 +241,39 @@ enum AssistantEmailThreadStatus {
 
 /// One inbound “thread” row (MVP: one message per row; extensible to multi-message threads).
 model AssistantEmailThread {
-  id             String  @id @default(cuid())
-  tenantId       String
+  id                  String                     @id @default(cuid())
+  tenantId            String
   /// When present, used to deduplicate re-ingest (e.g. Message-Id, provider id).
-  providerMsgId  String? @db.VarChar(500)
-  subject        String
-  fromAddress    String
-  toAddress      String
+  providerMsgId       String?                    @db.VarChar(500)
+  subject             String
+  fromAddress         String
+  toAddress           String
   /// Short preview for lists (first ~300 chars of body, plain text).
-  preview        String  @db.VarChar(500)
-  bodyText       String  @db.Text
-  receivedAt     DateTime
-  status         AssistantEmailThreadStatus @default(OPEN)
+  preview             String                     @db.VarChar(500)
+  bodyText            String                     @db.Text
+  receivedAt          DateTime
+  status              AssistantEmailThreadStatus @default(OPEN)
   /// Staged reply text — never auto-sent.
-  draftReply     String?  @db.Text
-  lastSendConfirmAt  DateTime?
+  draftReply          String?                    @db.Text
+  lastSendConfirmAt   DateTime?
   lastSendConfirmById String?
-  lastSendMode       String? @db.VarChar(32) /// e.g. mailto, audit_only, smtp
+  lastSendMode        String?                    @db.VarChar(32) /// e.g. mailto, audit_only, smtp
   /// Optional link to CRM account when user associates the conversation.
-  linkedCrmAccountId String?
+  linkedCrmAccountId  String?
   /// Optional draft sales order created from this email (MP5/MP7 traceability).
-  salesOrderId String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  salesOrderId        String?
+  createdAt           DateTime                   @default(now())
+  updatedAt           DateTime                   @updatedAt
 
-  tenant              Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  lastSendConfirmBy   User?      @relation("AssistantEmailSendConfirmBy", fields: [lastSendConfirmById], references: [id], onDelete: SetNull)
-  linkedCrmAccount    CrmAccount? @relation(fields: [linkedCrmAccountId], references: [id], onDelete: SetNull)
-  salesOrder          SalesOrder? @relation(fields: [salesOrderId], references: [id], onDelete: SetNull)
+  tenant            Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  lastSendConfirmBy User?       @relation("AssistantEmailSendConfirmBy", fields: [lastSendConfirmById], references: [id], onDelete: SetNull)
+  linkedCrmAccount  CrmAccount? @relation(fields: [linkedCrmAccountId], references: [id], onDelete: SetNull)
+  salesOrder        SalesOrder? @relation(fields: [salesOrderId], references: [id], onDelete: SetNull)
 
+  @@unique([tenantId, providerMsgId])
   @@index([tenantId, receivedAt])
   @@index([tenantId, status])
   @@index([tenantId, salesOrderId])
-  @@unique([tenantId, providerMsgId])
 }
 
 /// Integration / API hub — registry row for an external or internal data source (Phase 1 stub).
@@ -620,10 +621,10 @@ model User {
   srmSupplierDocumentAuditAuthored   SrmSupplierDocumentAuditLog[]   @relation("SrmSupplierDocumentAuditActor")
   companyLegalEntityAudits           CompanyLegalEntityAuditLog[]
   wmsSavedLedgerViews                WmsSavedLedgerView[]
-  assistantEmailSendConfirms         AssistantEmailThread[]         @relation("AssistantEmailSendConfirmBy")
-  assistantAuditEvents               AssistantAuditEvent[]          @relation("AssistantAuditEventActor")
-  assistantActionQueueItems          AssistantActionQueueItem[]     @relation("AssistantActionQueueActor")
-  assistantPlaybookRuns              AssistantPlaybookRun[]         @relation("AssistantPlaybookRunActor")
+  assistantEmailSendConfirms         AssistantEmailThread[]          @relation("AssistantEmailSendConfirmBy")
+  assistantAuditEvents               AssistantAuditEvent[]           @relation("AssistantAuditEventActor")
+  assistantActionQueueItems          AssistantActionQueueItem[]      @relation("AssistantActionQueueActor")
+  assistantPlaybookRuns              AssistantPlaybookRun[]          @relation("AssistantPlaybookRunActor")
   passwordResetTokens                PasswordResetToken[]
   /// Primary org node (geography / legal hierarchy). Matrix: see `productDivisionScope`.
   primaryOrgUnitId                   String?
@@ -1218,6 +1219,7 @@ model Product {
 
   tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   orderItems         PurchaseOrderItem[]
+  salesOrderLines    SalesOrderLine[]
   inventoryBalances  InventoryBalance[]
   inventoryMovements InventoryMovement[]
   wmsBillingEvents   WmsBillingEvent[]
@@ -1430,34 +1432,65 @@ model PurchaseOrderItem {
 }
 
 model SalesOrder {
-  id                    String           @id @default(cuid())
-  tenantId              String
-  soNumber              String
-  status                SalesOrderStatus @default(DRAFT)
-  customerName          String
+  id                      String           @id @default(cuid())
+  tenantId                String
+  soNumber                String
+  status                  SalesOrderStatus @default(DRAFT)
+  customerName            String
   /// Optional org this SO is for (same intent as `PurchaseOrder.servedOrgUnitId`).
-  servedOrgUnitId       String?
-  customerCrmAccountId  String?
-  externalRef           String?
-  requestedShipDate     DateTime?
-  requestedDeliveryDate DateTime?
-  currency              String           @default("USD") @db.VarChar(3)
-  notes                 String?          @db.Text
-  createdById           String
-  createdAt             DateTime         @default(now())
-  updatedAt             DateTime         @updatedAt
+  servedOrgUnitId         String?
+  customerCrmAccountId    String?
+  externalRef             String?
+  requestedShipDate       DateTime?
+  requestedDeliveryDate   DateTime?
+  currency                String           @default("USD") @db.VarChar(3)
+  notes                   String?          @db.Text
+  /// AMP1: original customer request captured by the assistant before creating the draft.
+  assistantSourceText     String?          @db.Text
+  /// AMP1: structured parser snapshot for later review/debugging.
+  assistantSourceSnapshot Json?
+  /// AMP1: editable/copyable customer reply draft generated at intake time; never auto-sent.
+  assistantDraftReply     String?          @db.Text
+  createdById             String
+  createdAt               DateTime         @default(now())
+  updatedAt               DateTime         @updatedAt
 
-  tenant             Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  servedOrgUnit      OrgUnit?    @relation("SalesOrderServedOrg", fields: [servedOrgUnitId], references: [id], onDelete: SetNull)
-  customerCrmAccount CrmAccount? @relation(fields: [customerCrmAccountId], references: [id], onDelete: SetNull)
-  createdBy          User        @relation(fields: [createdById], references: [id], onDelete: Restrict)
-  shipments          Shipment[]
+  tenant                Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  servedOrgUnit         OrgUnit?               @relation("SalesOrderServedOrg", fields: [servedOrgUnitId], references: [id], onDelete: SetNull)
+  customerCrmAccount    CrmAccount?            @relation(fields: [customerCrmAccountId], references: [id], onDelete: SetNull)
+  createdBy             User                   @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  lines                 SalesOrderLine[]
+  shipments             Shipment[]
   assistantEmailThreads AssistantEmailThread[]
 
   @@unique([tenantId, soNumber])
   @@index([tenantId, status, createdAt])
   @@index([customerCrmAccountId])
   @@index([tenantId, servedOrgUnitId])
+}
+
+model SalesOrderLine {
+  id           String   @id @default(cuid())
+  tenantId     String
+  salesOrderId String
+  lineNo       Int
+  productId    String?
+  description  String
+  quantity     Decimal  @db.Decimal(14, 3)
+  unitPrice    Decimal  @db.Decimal(14, 4)
+  lineTotal    Decimal  @db.Decimal(14, 2)
+  currency     String   @default("USD") @db.VarChar(3)
+  source       String?  @db.VarChar(64)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  salesOrder SalesOrder @relation(fields: [salesOrderId], references: [id], onDelete: Cascade)
+  product    Product?   @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@unique([salesOrderId, lineNo])
+  @@index([tenantId, salesOrderId])
+  @@index([tenantId, productId])
 }
 
 enum ShipmentStatus {
@@ -2508,7 +2541,9 @@ model OutboundOrder {
   warehouseId       String
   outboundNo        String
   customerRef       String?
-  /** Outbound ship notice / ASN reference (856-style id), distinct from customer PO ref. */
+  /**
+   * Outbound ship notice / ASN reference (856-style id), distinct from customer PO ref.
+   */
   asnReference      String?
   shipToName        String?
   shipToLine1       String?
@@ -2789,15 +2824,15 @@ model CrmAccount {
 
   contacts                 CrmContact[]
   opportunities            CrmOpportunity[]
-  activities               CrmActivity[]     @relation("CrmActivityAccount")
+  activities               CrmActivity[]          @relation("CrmActivityAccount")
   quotes                   CrmQuote[]
   outboundOrders           OutboundOrder[]
   wmsBillingEvents         WmsBillingEvent[]
-  shipmentsAsCustomer      Shipment[]        @relation("ShipmentCustomerAccount")
-  purchaseOrdersAsCustomer PurchaseOrder[]   @relation("PurchaseOrderCustomerCrm")
+  shipmentsAsCustomer      Shipment[]             @relation("ShipmentCustomerAccount")
+  purchaseOrdersAsCustomer PurchaseOrder[]        @relation("PurchaseOrderCustomerCrm")
   salesOrders              SalesOrder[]
-  customerPortalUsers      User[]            @relation("UserCustomerPortalScope")
-  assistantEmailThreads   AssistantEmailThread[]
+  customerPortalUsers      User[]                 @relation("UserCustomerPortalScope")
+  assistantEmailThreads    AssistantEmailThread[]
 
   @@index([tenantId, lifecycle])
   @@index([tenantId, ownerUserId])

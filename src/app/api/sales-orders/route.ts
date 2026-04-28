@@ -98,6 +98,19 @@ export async function POST(request: Request) {
   const externalRef = typeof o.externalRef === "string" ? o.externalRef.trim() || null : null;
   const notesRaw = typeof o.notes === "string" ? o.notes.trim() : "";
   const notes = notesRaw ? notesRaw.slice(0, 12_000) : null;
+  const assistantSourceText =
+    typeof o.assistantSourceText === "string" && o.assistantSourceText.trim()
+      ? o.assistantSourceText.trim().slice(0, 12_000)
+      : null;
+  const assistantDraftReply =
+    typeof o.assistantDraftReply === "string" && o.assistantDraftReply.trim()
+      ? o.assistantDraftReply.trim().slice(0, 12_000)
+      : null;
+  const assistantSourceSnapshot =
+    o.assistantSourceSnapshot && typeof o.assistantSourceSnapshot === "object" && !Array.isArray(o.assistantSourceSnapshot)
+      ? (o.assistantSourceSnapshot as Prisma.InputJsonObject)
+      : undefined;
+  const rawLines = Array.isArray(o.lines) ? o.lines.slice(0, 50) : [];
   const requestedDeliveryDateRaw = typeof o.requestedDeliveryDate === "string" ? o.requestedDeliveryDate.trim() : "";
   const requestedDeliveryDate = requestedDeliveryDateRaw ? new Date(requestedDeliveryDateRaw) : null;
   if (requestedDeliveryDate && Number.isNaN(requestedDeliveryDate.getTime())) {
@@ -107,6 +120,25 @@ export async function POST(request: Request) {
   const servedResolved = await resolveServedOrgUnitIdForTenant(tenantId, o.servedOrgUnitId);
   if (!servedResolved.ok) {
     return toApiErrorResponse({ error: servedResolved.error, code: "BAD_INPUT", status: 400 });
+  }
+
+  const lines = rawLines.map((line, index) => {
+    const obj = line && typeof line === "object" ? (line as Record<string, unknown>) : {};
+    const productId = typeof obj.productId === "string" && obj.productId.trim() ? obj.productId.trim() : null;
+    const description =
+      typeof obj.description === "string" && obj.description.trim() ? obj.description.trim().slice(0, 1_000) : "Sales order line";
+    const quantity = typeof obj.quantity === "number" ? obj.quantity : Number(obj.quantity);
+    const unitPrice = typeof obj.unitPrice === "number" ? obj.unitPrice : Number(obj.unitPrice);
+    const currency = typeof obj.currency === "string" && obj.currency.trim() ? obj.currency.trim().slice(0, 3).toUpperCase() : "USD";
+    return { lineNo: index + 1, productId, description, quantity, unitPrice, currency };
+  });
+  for (const line of lines) {
+    if (!Number.isFinite(line.quantity) || line.quantity <= 0) {
+      return toApiErrorResponse({ error: "Line quantity must be greater than zero.", code: "BAD_INPUT", status: 400 });
+    }
+    if (!Number.isFinite(line.unitPrice) || line.unitPrice < 0) {
+      return toApiErrorResponse({ error: "Line unitPrice must be zero or greater.", code: "BAD_INPUT", status: 400 });
+    }
   }
 
   async function resolveBillToAccount(
@@ -187,12 +219,65 @@ export async function POST(request: Request) {
           externalRef,
           notes,
           requestedDeliveryDate,
+          assistantSourceText,
+          assistantSourceSnapshot,
+          assistantDraftReply,
           createdById: actorId,
           status: "DRAFT",
           servedOrgUnitId: servedResolved.value,
         },
         select: { id: true, soNumber: true },
       });
+      for (const line of lines) {
+        if (line.productId) {
+          const product = await tx.product.findFirst({
+            where: { id: line.productId, tenantId, isActive: true },
+            select: { id: true },
+          });
+          if (!product) throw new Error("Product not found for sales order line.");
+        }
+        const lineTotal = Number((line.quantity * line.unitPrice).toFixed(2));
+        await tx.salesOrderLine.create({
+          data: {
+            tenantId,
+            salesOrderId: row.id,
+            lineNo: line.lineNo,
+            productId: line.productId,
+            description: line.description,
+            quantity: line.quantity,
+            unitPrice: line.unitPrice,
+            lineTotal,
+            currency: line.currency,
+            source: assistantSourceText ? "assistant_intake" : "manual",
+          },
+        });
+      }
+      if (assistantSourceText) {
+        await tx.assistantAuditEvent.create({
+          data: {
+            tenantId,
+            actorUserId: actorId,
+            surface: "chat",
+            prompt: assistantSourceText,
+            answerKind: "sales_order_draft",
+            message: `Created draft sales order ${row.soNumber} with ${lines.length} structured line${lines.length === 1 ? "" : "s"}.`,
+            evidence: [
+              { label: `Sales order ${row.soNumber}`, href: `/sales-orders/${row.id}` },
+              ...lines.map((line) => ({
+                label: line.description,
+                href: line.productId ? `/products/${line.productId}` : `/sales-orders/${row.id}`,
+              })),
+            ],
+            quality: {
+              mode: "deterministic",
+              source: "assistant_sales_order_intake",
+              humanApprovalRequired: true,
+            },
+            objectType: "sales_order",
+            objectId: row.id,
+          },
+        });
+      }
       if (shipmentId) {
         const ship = await tx.shipment.findFirst({
           where: { id: shipmentId, order: { tenantId } },
@@ -215,6 +300,9 @@ export async function POST(request: Request) {
       return toApiErrorResponse({ error: msg, code: "NOT_FOUND", status: 404 });
     }
     if (msg === "Customer CRM account not found.") {
+      return toApiErrorResponse({ error: msg, code: "NOT_FOUND", status: 404 });
+    }
+    if (msg === "Product not found for sales order line.") {
       return toApiErrorResponse({ error: msg, code: "NOT_FOUND", status: 404 });
     }
     throw e;

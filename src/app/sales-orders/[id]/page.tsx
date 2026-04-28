@@ -43,11 +43,25 @@ export default async function SalesOrderDetailPage({
   const listBackQs = salesOrdersListQueryString(parseSalesOrdersListQueryFromNext(rawList));
   const listHref = listBackQs ? `/sales-orders?${listBackQs}` : "/sales-orders";
 
-  const [row, orgUnitOptions] = await Promise.all([
+  const [row, orgUnitOptions, assistantAuditEvents] = await Promise.all([
     prisma.salesOrder.findFirst({
       where: { id, tenantId: tenant.id },
       include: {
         servedOrgUnit: { select: { id: true, name: true, code: true, kind: true } },
+        lines: {
+          orderBy: { lineNo: "asc" },
+          select: {
+            id: true,
+            lineNo: true,
+            description: true,
+            quantity: true,
+            unitPrice: true,
+            lineTotal: true,
+            currency: true,
+            source: true,
+            product: { select: { id: true, name: true, productCode: true, sku: true } },
+          },
+        },
         shipments: {
           orderBy: { createdAt: "desc" },
           select: {
@@ -78,6 +92,19 @@ export default async function SalesOrderDetailPage({
       where: { tenantId: tenant.id },
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
       select: { id: true, name: true, code: true, kind: true },
+    }),
+    prisma.assistantAuditEvent.findMany({
+      where: { tenantId: tenant.id, objectType: "sales_order", objectId: id },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+      select: {
+        id: true,
+        surface: true,
+        answerKind: true,
+        message: true,
+        prompt: true,
+        createdAt: true,
+      },
     }),
   ]);
   if (!row) {
@@ -125,6 +152,88 @@ export default async function SalesOrderDetailPage({
           <p className="text-xs uppercase tracking-wide text-zinc-500">Active shipments</p>
           <p className="mt-1 text-sm font-semibold text-zinc-900">{activeShipmentCount}</p>
         </div>
+      </section>
+      <section className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4 shadow-sm">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">AMP1 Intake</p>
+            <h2 className="mt-1 text-base font-semibold text-zinc-950">Structured order draft</h2>
+            <p className="mt-1 text-sm text-zinc-700">
+              Assistant-created drafts now keep line items, source request, parser snapshot, and a customer reply draft on
+              the sales order record.
+            </p>
+          </div>
+          <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-emerald-800">
+            {row.lines.length} line{row.lines.length === 1 ? "" : "s"}
+          </span>
+        </div>
+        <div className="mt-4 overflow-hidden rounded-xl border border-emerald-100 bg-white">
+          {row.lines.length === 0 ? (
+            <p className="px-4 py-3 text-sm text-zinc-500">No structured sales-order lines yet.</p>
+          ) : (
+            <table className="w-full text-left text-sm">
+              <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500">
+                <tr>
+                  <th className="px-3 py-2">Line</th>
+                  <th className="px-3 py-2">Product</th>
+                  <th className="px-3 py-2 text-right">Qty</th>
+                  <th className="px-3 py-2 text-right">Unit</th>
+                  <th className="px-3 py-2 text-right">Total</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-100">
+                {row.lines.map((line) => (
+                  <tr key={line.id}>
+                    <td className="px-3 py-2 text-zinc-500">{line.lineNo}</td>
+                    <td className="px-3 py-2">
+                      <div className="font-medium text-zinc-900">{line.description}</div>
+                      <div className="text-xs text-zinc-500">
+                        {line.product ? (
+                          <Link href={`/products/${line.product.id}`} className="text-[var(--arscmp-primary)] hover:underline">
+                            {line.product.productCode || line.product.sku || line.product.name}
+                          </Link>
+                        ) : (
+                          "No product link"
+                        )}
+                        {line.source ? ` · ${line.source}` : ""}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2 text-right">{line.quantity.toString()}</td>
+                    <td className="px-3 py-2 text-right">
+                      {line.currency} {Number(line.unitPrice.toString()).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </td>
+                    <td className="px-3 py-2 text-right font-semibold">
+                      {line.currency} {Number(line.lineTotal.toString()).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+        {row.assistantDraftReply ? (
+          <div className="mt-4 rounded-xl border border-emerald-100 bg-white p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-zinc-950">Customer reply draft</p>
+                <p className="mt-1 text-xs text-zinc-500">Review and copy manually. The assistant never sends this.</p>
+              </div>
+              <Link
+                href={`/assistant?prompt=${encodeURIComponent(`Review reply draft for sales order ${row.soNumber}`)}&run=1`}
+                className="rounded-xl border border-zinc-300 px-3 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-50"
+              >
+                Ask assistant
+              </Link>
+            </div>
+            <pre className="mt-3 whitespace-pre-wrap rounded-lg bg-zinc-50 p-3 text-xs text-zinc-700">{row.assistantDraftReply}</pre>
+          </div>
+        ) : null}
+        {row.assistantSourceText ? (
+          <details className="mt-3 rounded-xl border border-emerald-100 bg-white p-3 text-xs text-zinc-600">
+            <summary className="cursor-pointer font-semibold text-zinc-800">Assistant source request</summary>
+            <p className="mt-2 whitespace-pre-wrap">{row.assistantSourceText}</p>
+          </details>
+        ) : null}
       </section>
       <AssistantContextCard
         title="Ask about this sales order"
@@ -207,7 +316,15 @@ export default async function SalesOrderDetailPage({
         )}
       </ul>
       <AssistantObjectTimeline
-        events={row.assistantEmailThreads.flatMap((thread) => {
+        events={[
+          ...assistantAuditEvents.map((event) => ({
+            id: `audit:${event.id}`,
+            label: `Assistant ${event.answerKind}`,
+            description: event.message || `${event.surface} · ${event.prompt.slice(0, 120)}`,
+            href: "/assistant/command-center",
+            at: event.createdAt,
+          })),
+          ...row.assistantEmailThreads.flatMap((thread) => {
           const base = [
             {
               id: `${thread.id}:created`,
@@ -243,7 +360,8 @@ export default async function SalesOrderDetailPage({
                 ]
               : []),
           ];
-        })}
+          }),
+        ]}
       />
     </main>
   );
