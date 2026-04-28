@@ -173,6 +173,7 @@ model Tenant {
   assistantGovernancePackets        AssistantGovernancePacket[]
   assistantRolloutFactoryPackets    AssistantRolloutFactoryPacket[]
   assistantValueRealizationPackets  AssistantValueRealizationPacket[]
+  assistantAutonomousOperatingLoops AssistantAutonomousOperatingLoop[]
   assistantActionQueue              AssistantActionQueueItem[]
   assistantPlaybookTemplates        AssistantPlaybookTemplate[]
   assistantPlaybookRuns             AssistantPlaybookRun[]
@@ -893,6 +894,45 @@ model AssistantValueRealizationPacket {
   @@index([tenantId, valueScore, updatedAt])
 }
 
+/// AMP32: governed observe/decide/act/learn operating loop with policy, outcome, rollback, and human oversight.
+model AssistantAutonomousOperatingLoop {
+  id                      String    @id @default(cuid())
+  tenantId                String
+  createdByUserId         String?
+  approvedByUserId        String?
+  title                   String
+  status                  String    @default("DRAFT") @db.VarChar(32)
+  loopScore               Int       @default(0)
+  automationMode          String    @default("REVIEW_ONLY") @db.VarChar(32)
+  observedSignalCount     Int       @default(0)
+  decisionCount           Int       @default(0)
+  proposedActionCount     Int       @default(0)
+  approvedAutomationCount Int       @default(0)
+  anomalyCount            Int       @default(0)
+  learningCount           Int       @default(0)
+  observeJson             Json
+  decideJson              Json
+  actJson                 Json
+  learnJson               Json
+  policyJson              Json
+  outcomeJson             Json
+  rollbackJson            Json
+  leadershipSummary       String    @db.Text
+  actionQueueItemId       String?
+  approvedAt              DateTime?
+  approvalNote            String?   @db.Text
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator  User?  @relation("AssistantAutonomousOperatingLoopCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  approver User?  @relation("AssistantAutonomousOperatingLoopApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, updatedAt])
+  @@index([tenantId, automationMode, updatedAt])
+  @@index([tenantId, loopScore, updatedAt])
+}
+
 /// AMP7: inspectable grounding ledger extracted from assistant answers and reviewer additions.
 model AssistantEvidenceRecord {
   id              String    @id @default(cuid())
@@ -1511,6 +1551,8 @@ model User {
   assistantRolloutFactoryPacketsApproved  AssistantRolloutFactoryPacket[]     @relation("AssistantRolloutFactoryPacketApprover")
   assistantValueRealizationPacketsCreated AssistantValueRealizationPacket[]   @relation("AssistantValueRealizationPacketCreator")
   assistantValueRealizationPacketsApproved AssistantValueRealizationPacket[]  @relation("AssistantValueRealizationPacketApprover")
+  assistantAutonomousOperatingLoopsCreated AssistantAutonomousOperatingLoop[] @relation("AssistantAutonomousOperatingLoopCreator")
+  assistantAutonomousOperatingLoopsApproved AssistantAutonomousOperatingLoop[] @relation("AssistantAutonomousOperatingLoopApprover")
   invoiceIntakesAccountingApproved        InvoiceIntake[]                   @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated       TariffShipmentApplication[]       @relation("TariffShipmentApplicationCreator")
   scriEventsOwned                         ScriExternalEvent[]               @relation("ScriEventOwner")

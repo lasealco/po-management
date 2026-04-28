@@ -57,6 +57,7 @@ export function AssistantSubnav() {
   const governance = pathname.startsWith("/assistant/governance");
   const rolloutFactory = pathname.startsWith("/assistant/rollout-factory");
   const valueRealization = pathname.startsWith("/assistant/value-realization");
+  const autonomousLoop = pathname.startsWith("/assistant/autonomous-loop");
   const workbench = pathname.startsWith("/assistant/workbench");
   const execution = pathname.startsWith("/assistant/execution");
   const workEngine = pathname.startsWith("/assistant/work-engine");
@@ -196,6 +197,13 @@ export function AssistantSubnav() {
         title="AMP31 AI product analytics and value realization"
       >
         Value
+      </Link>
+      <Link
+        href="/assistant/autonomous-loop"
+        className={autonomousLoop ? appNavActiveClass : appNavInactiveClass}
+        title="AMP32 autonomous supply-chain operating loop"
+      >
+        Loop
       </Link>
       <Link
         href="/assistant/workbench"

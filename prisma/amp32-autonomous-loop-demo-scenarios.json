@@ -1,0 +1,52 @@
+[
+  {
+    "id": "amp32-create-loop-iteration",
+    "title": "Create a governed observe/decide/act/learn loop iteration",
+    "persona": "AI operations lead with settings edit access",
+    "entrypoint": "/assistant/autonomous-loop",
+    "steps": [
+      "Open the AMP32 Loop workspace.",
+      "Review live observed signals, policy envelope, anomalies, decisions, proposed actions, learning signals, outcome metrics, and rollback plan.",
+      "Click Create loop iteration."
+    ],
+    "expected": [
+      "A persisted AssistantAutonomousOperatingLoop is created with observeJson, decideJson, actJson, learnJson, policyJson, outcomeJson, rollbackJson, and leadershipSummary.",
+      "Automation mode is REVIEW_ONLY unless release gate, policy readiness, shadow match, and kill-switch conditions are safe.",
+      "An AssistantAuditEvent records loop creation.",
+      "No source system, automation policy, release gate, playbook, action execution, or kill-switch setting is mutated automatically."
+    ]
+  },
+  {
+    "id": "amp32-queue-loop-review",
+    "title": "Queue autonomous loop review",
+    "persona": "Operations controller with settings edit access",
+    "entrypoint": "/assistant/autonomous-loop",
+    "steps": [
+      "Create or select a DRAFT autonomous loop iteration.",
+      "Add a review note describing the intended human decision.",
+      "Click Queue loop review."
+    ],
+    "expected": [
+      "The loop status changes to REVIEW_QUEUED with actionQueueItemId, approvedByUserId, approvedAt, and approvalNote.",
+      "An AssistantActionQueueItem is created with actionKind assistant_autonomous_loop_review.",
+      "An AssistantAuditEvent states that source systems, automation policies, release gates, playbooks, action execution, and kill-switch controls were not changed automatically."
+    ]
+  },
+  {
+    "id": "amp32-kill-switch-and-policy-guardrails",
+    "title": "Kill switch and blocked policy keep loop review-only",
+    "persona": "AI governance owner",
+    "entrypoint": "/assistant/autonomous-loop",
+    "steps": [
+      "Ensure the assistant admin control is paused/blocked or release gate is blocked, or enable a policy below its readiness threshold.",
+      "Create an autonomous loop iteration.",
+      "Review the policy, action, and rollback sections."
+    ],
+    "expected": [
+      "policyJson automationMode is REVIEW_ONLY and blockedReasons include the active safety blocker.",
+      "actJson proposed actions use REVIEW_ONLY execution mode.",
+      "rollbackJson includes review-only, policy pause/downgrade, action queue, and audit evidence steps.",
+      "No automation executes until a human approves a loop review and underlying controls are safe."
+    ]
+  }
+]

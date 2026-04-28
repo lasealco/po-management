@@ -76,6 +76,7 @@ export default async function AssistantLayout({ children }: { children: React.Re
           <strong>Governance</strong> is AMP29 for retention dry-runs, privacy-safe exports, deletion review, and legal-hold controls.{" "}
           <strong>Rollout</strong> is AMP30 for tenant templates, role grants, module flags, seed packs, launch review, and rollback plans.{" "}
           <strong>Value</strong> is AMP31 for adoption, savings, service impact, ROI assumptions, and role-safe reports.{" "}
+          <strong>Loop</strong> is AMP32 for governed observe/decide/act/learn cycles with policy, outcome, and rollback oversight.{" "}
           <strong>Workbench</strong> is the LMP1-LMP10 cockpit for sales, products, suppliers, POs, and
           shipments. <strong>Execution</strong> runs LMP11-LMP30 across carrier/customer comms, WMS, finance, quality,
           and simulation readiness. <strong>Work engine</strong> is AMP6 for assigned actions, SLA playbooks, and memory cleanup.{" "}
