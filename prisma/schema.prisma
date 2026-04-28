@@ -155,6 +155,7 @@ model Tenant {
   assistantAutomationShadowRuns     AssistantAutomationShadowRun[]
   assistantAdminControls            AssistantAdminControl[]
   assistantOperatingReports         AssistantOperatingReport[]
+  assistantOrderOrchestrationPlans  AssistantOrderOrchestrationPlan[]
   assistantActionQueue              AssistantActionQueueItem[]
   assistantPlaybookTemplates        AssistantPlaybookTemplate[]
   assistantPlaybookRuns             AssistantPlaybookRun[]
@@ -294,6 +295,36 @@ model AssistantOperatingReport {
 
   @@index([tenantId, reportKey, createdAt])
   @@index([tenantId, status, createdAt])
+}
+
+/// AMP13: governed demand-to-order orchestration plan with ATP and split/reservation proposal evidence.
+model AssistantOrderOrchestrationPlan {
+  id              String   @id @default(cuid())
+  tenantId        String
+  createdByUserId String?
+  sourceKind      String   @default("manual_prompt") @db.VarChar(64)
+  sourceText      String   @db.Text
+  title           String
+  status          String   @default("DRAFT") @db.VarChar(32)
+  customerCrmAccountId String?
+  salesOrderId    String?
+  actionQueueItemId String?
+  requestedDeliveryDate DateTime?
+  demandJson      Json
+  matchJson       Json
+  atpJson         Json
+  proposalJson    Json
+  approvalNote    String?  @db.Text
+  approvedAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant  Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator User?  @relation("AssistantOrderOrchestrationPlanCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, updatedAt])
+  @@index([tenantId, customerCrmAccountId, createdAt])
+  @@index([tenantId, salesOrderId])
 }
 
 /// AMP7: inspectable grounding ledger extracted from assistant answers and reviewer additions.
@@ -882,6 +913,7 @@ model User {
   apiHubAssistantReviewItemsCreated  ApiHubAssistantReviewItem[]     @relation("ApiHubAssistantReviewItemCreator")
   assistantAdminControlsUpdated      AssistantAdminControl[]          @relation("AssistantAdminControlUpdater")
   assistantOperatingReportsCreated   AssistantOperatingReport[]       @relation("AssistantOperatingReportCreator")
+  assistantOrderOrchestrationPlansCreated AssistantOrderOrchestrationPlan[] @relation("AssistantOrderOrchestrationPlanCreator")
   invoiceIntakesAccountingApproved   InvoiceIntake[]                 @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated  TariffShipmentApplication[]     @relation("TariffShipmentApplicationCreator")
   scriEventsOwned                    ScriExternalEvent[]             @relation("ScriEventOwner")

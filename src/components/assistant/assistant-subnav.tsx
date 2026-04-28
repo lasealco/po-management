@@ -40,6 +40,7 @@ export function AssistantSubnav() {
   }, []);
 
   const chat = pathname === "/assistant" || pathname === "/assistant/";
+  const orderOrchestration = pathname.startsWith("/assistant/order-orchestration");
   const workbench = pathname.startsWith("/assistant/workbench");
   const execution = pathname.startsWith("/assistant/execution");
   const workEngine = pathname.startsWith("/assistant/work-engine");
@@ -60,6 +61,13 @@ export function AssistantSubnav() {
         title="Sales assistant"
       >
         Chat
+      </Link>
+      <Link
+        href="/assistant/order-orchestration"
+        className={orderOrchestration ? appNavActiveClass : appNavInactiveClass}
+        title="AMP13 AI-native order orchestration"
+      >
+        Order orchestration
       </Link>
       <Link
         href="/assistant/workbench"

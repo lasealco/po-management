@@ -55,7 +55,8 @@ export default async function AssistantLayout({ children }: { children: React.Re
         <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">Assistant</h1>
         <p className="mt-2 max-w-3xl text-sm text-zinc-600">
           <strong>Chat</strong> can draft sales orders and answer stock / product-trace questions with links to
-          evidence. <strong>Workbench</strong> is the LMP1-LMP10 cockpit for sales, products, suppliers, POs, and
+          evidence. <strong>Order orchestration</strong> is AMP13 for demand-to-promise planning with ATP and approval controls.{" "}
+          <strong>Workbench</strong> is the LMP1-LMP10 cockpit for sales, products, suppliers, POs, and
           shipments. <strong>Execution</strong> runs LMP11-LMP30 across carrier/customer comms, WMS, finance, quality,
           and simulation readiness. <strong>Work engine</strong> is AMP6 for assigned actions, SLA playbooks, and memory cleanup.{" "}
           <strong>Evidence quality</strong> is AMP7 for grounding, review examples, prompt starters, and release gates.{" "}

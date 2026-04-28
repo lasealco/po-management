@@ -1,0 +1,35 @@
+[
+  {
+    "id": "amp13-demand-to-plan",
+    "title": "Create an orchestration plan from customer demand",
+    "given": "A user has org.orders edit and the tenant has at least one active CRM customer and product with inventory balances.",
+    "when": "The user enters free-text demand, selects customer/product, and creates a plan in /assistant/order-orchestration.",
+    "then": [
+      "An AssistantOrderOrchestrationPlan row stores source demand, match data, ATP evidence, and proposal JSON.",
+      "An AssistantAuditEvent records the plan summary and evidence.",
+      "No sales order, inventory allocation, reservation, or shipment is created silently."
+    ]
+  },
+  {
+    "id": "amp13-atp-split-proposal",
+    "title": "Short ATP creates split or recovery proposal",
+    "given": "The selected product has less available unheld inventory than requested demand.",
+    "when": "The plan is generated.",
+    "then": [
+      "The proposal marks splitRequired true and status NEEDS_APPROVAL.",
+      "Immediate and later quantities are shown in proposal lines.",
+      "The proposal states human approval is required before reservation, allocation, stock move, or split order creation."
+    ]
+  },
+  {
+    "id": "amp13-approval-queue",
+    "title": "Queue human approval for orchestration plan",
+    "given": "A draft or promise-ready orchestration plan exists.",
+    "when": "The user clicks Queue approval.",
+    "then": [
+      "An AssistantActionQueueItem is created with actionKind approve_order_orchestration.",
+      "The plan status becomes APPROVAL_QUEUED and stores the action queue link.",
+      "An AssistantAuditEvent records the approval queue action without mutating inventory or shipments."
+    ]
+  }
+]
