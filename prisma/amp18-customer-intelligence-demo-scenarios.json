@@ -1,0 +1,26 @@
+[
+  {
+    "id": "amp18-account-service-brief",
+    "title": "Generate a customer service brief from account evidence",
+    "route": "/assistant/customer-intelligence",
+    "given": "A CRM account has sales orders, shipments, recent activities, and optional incident or invoice-audit signals.",
+    "when": "The user selects the account and creates a customer intelligence brief.",
+    "then": "The assistant persists an AssistantCustomerBrief with service score, promise status, operations summary, risk summary, evidence, redaction metadata, and a customer-ready reply draft."
+  },
+  {
+    "id": "amp18-sensitive-evidence-redaction",
+    "title": "Withhold sensitive finance and partner details",
+    "route": "/assistant/customer-intelligence",
+    "given": "The brief includes invoice, margin, supplier, carrier, or variance language and the user is not authorized for sensitive details.",
+    "when": "The reply draft is generated.",
+    "then": "Customer-facing text redacts sensitive finance/commercial/partner details while preserving safe service status."
+  },
+  {
+    "id": "amp18-human-approved-customer-reply",
+    "title": "Approve an editable customer reply without auto-sending",
+    "route": "/assistant/customer-intelligence",
+    "given": "A generated customer brief has an editable reply draft.",
+    "when": "The user approves the reply.",
+    "then": "The approved reply is persisted, an activity-log payload and assistant audit event are recorded, and an action queue item is created for send review without sending an external message."
+  }
+]

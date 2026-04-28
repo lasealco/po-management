@@ -159,6 +159,7 @@ model Tenant {
   assistantOrderOrchestrationPlans  AssistantOrderOrchestrationPlan[]
   assistantWarehouseCapacityPlans   AssistantWarehouseCapacityPlan[]
   assistantExceptionIncidents       AssistantExceptionIncident[]
+  assistantCustomerBriefs           AssistantCustomerBrief[]
   assistantActionQueue              AssistantActionQueueItem[]
   assistantPlaybookTemplates        AssistantPlaybookTemplate[]
   assistantPlaybookRuns             AssistantPlaybookRun[]
@@ -386,6 +387,38 @@ model AssistantExceptionIncident {
   @@index([tenantId, status, severity, updatedAt])
   @@index([tenantId, incidentKey])
   @@index([tenantId, mergedIntoIncidentId])
+}
+
+/// AMP18: customer/account intelligence brief with redacted evidence and logged customer-ready reply draft.
+model AssistantCustomerBrief {
+  id                    String    @id @default(cuid())
+  tenantId              String
+  crmAccountId          String
+  createdByUserId       String?
+  approvedByUserId      String?
+  title                 String
+  status                String    @default("DRAFT") @db.VarChar(32)
+  serviceScore          Int       @default(0)
+  accountSnapshotJson   Json
+  operationsSummaryJson Json
+  riskSummaryJson       Json
+  evidenceJson          Json
+  redactionJson         Json
+  replyDraft            String    @db.Text
+  approvedReply         String?   @db.Text
+  activityLogJson       Json?
+  actionQueueItemId     String?
+  approvedAt            DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  crmAccount CrmAccount @relation(fields: [crmAccountId], references: [id], onDelete: Cascade)
+  creator    User?      @relation("AssistantCustomerBriefCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  approver   User?      @relation("AssistantCustomerBriefApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, crmAccountId, updatedAt])
+  @@index([tenantId, status, updatedAt])
 }
 
 /// AMP7: inspectable grounding ledger extracted from assistant answers and reviewer additions.
@@ -978,6 +1011,8 @@ model User {
   assistantOrderOrchestrationPlansCreated AssistantOrderOrchestrationPlan[] @relation("AssistantOrderOrchestrationPlanCreator")
   assistantWarehouseCapacityPlansCreated  AssistantWarehouseCapacityPlan[]  @relation("AssistantWarehouseCapacityPlanCreator")
   assistantExceptionIncidentsCreated      AssistantExceptionIncident[]      @relation("AssistantExceptionIncidentCreator")
+  assistantCustomerBriefsCreated          AssistantCustomerBrief[]          @relation("AssistantCustomerBriefCreator")
+  assistantCustomerBriefsApproved         AssistantCustomerBrief[]          @relation("AssistantCustomerBriefApprover")
   invoiceIntakesAccountingApproved        InvoiceIntake[]                   @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated       TariffShipmentApplication[]       @relation("TariffShipmentApplicationCreator")
   scriEventsOwned                         ScriExternalEvent[]               @relation("ScriEventOwner")
@@ -3233,14 +3268,15 @@ model CrmAccount {
 
   contacts                 CrmContact[]
   opportunities            CrmOpportunity[]
-  activities               CrmActivity[]          @relation("CrmActivityAccount")
+  activities               CrmActivity[]            @relation("CrmActivityAccount")
   quotes                   CrmQuote[]
   outboundOrders           OutboundOrder[]
   wmsBillingEvents         WmsBillingEvent[]
-  shipmentsAsCustomer      Shipment[]             @relation("ShipmentCustomerAccount")
-  purchaseOrdersAsCustomer PurchaseOrder[]        @relation("PurchaseOrderCustomerCrm")
+  shipmentsAsCustomer      Shipment[]               @relation("ShipmentCustomerAccount")
+  purchaseOrdersAsCustomer PurchaseOrder[]          @relation("PurchaseOrderCustomerCrm")
   salesOrders              SalesOrder[]
-  customerPortalUsers      User[]                 @relation("UserCustomerPortalScope")
+  assistantCustomerBriefs  AssistantCustomerBrief[]
+  customerPortalUsers      User[]                   @relation("UserCustomerPortalScope")
   assistantEmailThreads    AssistantEmailThread[]
 
   @@index([tenantId, lifecycle])

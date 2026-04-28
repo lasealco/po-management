@@ -43,6 +43,7 @@ export function AssistantSubnav() {
   const orderOrchestration = pathname.startsWith("/assistant/order-orchestration");
   const warehouseCapacity = pathname.startsWith("/assistant/warehouse-capacity");
   const exceptionCenter = pathname.startsWith("/assistant/exception-center");
+  const customerIntelligence = pathname.startsWith("/assistant/customer-intelligence");
   const workbench = pathname.startsWith("/assistant/workbench");
   const execution = pathname.startsWith("/assistant/execution");
   const workEngine = pathname.startsWith("/assistant/work-engine");
@@ -84,6 +85,13 @@ export function AssistantSubnav() {
         title="AMP17 end-to-end exception nerve center"
       >
         Exception center
+      </Link>
+      <Link
+        href="/assistant/customer-intelligence"
+        className={customerIntelligence ? appNavActiveClass : appNavInactiveClass}
+        title="AMP18 customer service and account intelligence"
+      >
+        Customer intelligence
       </Link>
       <Link
         href="/assistant/workbench"
