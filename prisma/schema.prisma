@@ -154,6 +154,7 @@ model Tenant {
   assistantAutomationPolicies       AssistantAutomationPolicy[]
   assistantAutomationShadowRuns     AssistantAutomationShadowRun[]
   assistantAdminControls            AssistantAdminControl[]
+  assistantOperatingReports         AssistantOperatingReport[]
   assistantActionQueue              AssistantActionQueueItem[]
   assistantPlaybookTemplates        AssistantPlaybookTemplate[]
   assistantPlaybookRuns             AssistantPlaybookRun[]
@@ -272,6 +273,27 @@ model AssistantAdminControl {
   @@unique([tenantId, controlKey])
   @@index([tenantId, rolloutMode, updatedAt])
   @@index([tenantId, packetStatus, updatedAt])
+}
+
+/// AMP12: customer-ready assistant operating report, generated from live assistant telemetry and demo readiness.
+model AssistantOperatingReport {
+  id              String   @id @default(cuid())
+  tenantId        String
+  createdByUserId String?
+  reportKey       String   @db.VarChar(128)
+  title           String
+  status          String   @default("DRAFT") @db.VarChar(32)
+  score           Int      @default(0)
+  summary         String   @db.Text
+  reportJson      Json
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant  Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator User?  @relation("AssistantOperatingReportCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, reportKey, createdAt])
+  @@index([tenantId, status, createdAt])
 }
 
 /// AMP7: inspectable grounding ledger extracted from assistant answers and reviewer additions.
@@ -859,6 +881,7 @@ model User {
   apiHubStagingBatchesCreated        ApiHubStagingBatch[]
   apiHubAssistantReviewItemsCreated  ApiHubAssistantReviewItem[]     @relation("ApiHubAssistantReviewItemCreator")
   assistantAdminControlsUpdated      AssistantAdminControl[]          @relation("AssistantAdminControlUpdater")
+  assistantOperatingReportsCreated   AssistantOperatingReport[]       @relation("AssistantOperatingReportCreator")
   invoiceIntakesAccountingApproved   InvoiceIntake[]                 @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated  TariffShipmentApplication[]     @relation("TariffShipmentApplicationCreator")
   scriEventsOwned                    ScriExternalEvent[]             @relation("ScriEventOwner")

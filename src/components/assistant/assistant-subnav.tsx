@@ -46,6 +46,7 @@ export function AssistantSubnav() {
   const evidenceQuality = pathname.startsWith("/assistant/evidence-quality");
   const governedAutomation = pathname.startsWith("/assistant/governed-automation");
   const admin = pathname.startsWith("/assistant/admin");
+  const operatingSystem = pathname.startsWith("/assistant/operating-system");
   const autonomy = pathname.startsWith("/assistant/autonomy");
   const inbox = pathname.startsWith("/assistant/inbox");
   const commandCenter = pathname.startsWith("/assistant/command-center");
@@ -101,6 +102,13 @@ export function AssistantSubnav() {
         title="AMP11 admin, rollout, security, and compliance"
       >
         Admin
+      </Link>
+      <Link
+        href="/assistant/operating-system"
+        className={operatingSystem ? appNavActiveClass : appNavInactiveClass}
+        title="AMP12 customer-ready AI operating system"
+      >
+        Operating system
       </Link>
       <Link
         href="/assistant/autonomy"

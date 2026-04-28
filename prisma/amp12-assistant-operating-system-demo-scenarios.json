@@ -1,0 +1,35 @@
+[
+  {
+    "id": "amp12-customer-demo-runbook",
+    "title": "Product owner can run the customer AI demo from one page",
+    "given": "The tenant has AMP1-AMP11 assistant telemetry, action queue work, evidence records, playbooks, governed automation policies, API Hub review items, Twin insights, and admin controls.",
+    "when": "The product owner opens /assistant/operating-system.",
+    "then": [
+      "The page shows one operating score and status derived from live assistant metrics.",
+      "The customer demo runbook has ordered links into chat, work engine, evidence quality, governed automation, admin, API Hub/Twin story, and operating-system closeout.",
+      "Each step includes a concise talk track based on current tenant metrics."
+    ]
+  },
+  {
+    "id": "amp12-board-report-export",
+    "title": "Admin exports a board-ready assistant operating report",
+    "given": "The user has org.settings edit.",
+    "when": "They click Export board report.",
+    "then": [
+      "An AssistantOperatingReport row is created with status, score, summary, and reportJson.",
+      "An AssistantAuditEvent records the export and embeds the same report as evidence.",
+      "The report includes executive summary, demo script, metrics, and limitations."
+    ]
+  },
+  {
+    "id": "amp12-governed-closeout",
+    "title": "Operating report states limits instead of overclaiming automation",
+    "given": "Some action queue work, API Hub review items, or Twin insights remain open.",
+    "when": "The operating report is generated.",
+    "then": [
+      "The score is reduced by pending work and open review items.",
+      "The report limitations state that high-impact mutations require human approval.",
+      "The UI still provides a customer-safe demo path and does not mutate operational records."
+    ]
+  }
+]
