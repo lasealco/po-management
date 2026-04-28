@@ -1,0 +1,52 @@
+[
+  {
+    "id": "amp29-create-governance-packet",
+    "title": "Create a privacy-safe governance packet",
+    "persona": "IT governance lead with settings edit access",
+    "entrypoint": "/assistant/governance",
+    "steps": [
+      "Open the AMP29 Governance workspace.",
+      "Review the live source summary across assistant audit events, evidence, prompts, review examples, operating reports, and assistant email threads.",
+      "Click Create governance packet."
+    ],
+    "expected": [
+      "A persisted AssistantGovernancePacket is created with retentionPlanJson, exportManifestJson, deletionRequestJson, legalHoldJson, privacyReviewJson, auditPlanJson, and leadershipSummary.",
+      "The packet redacts privacy-risk titles in export and privacy sections.",
+      "An AssistantAuditEvent is written for packet creation.",
+      "No audit event, evidence record, prompt, review example, report, email thread, export, archive, or deletion state is mutated automatically."
+    ]
+  },
+  {
+    "id": "amp29-queue-governance-review",
+    "title": "Queue retention/export/deletion review",
+    "persona": "Compliance owner with settings edit access",
+    "entrypoint": "/assistant/governance",
+    "steps": [
+      "Create or select a DRAFT governance packet.",
+      "Add an approval note that summarizes intended retention and deletion review.",
+      "Click Queue review."
+    ],
+    "expected": [
+      "The packet status changes to REVIEW_QUEUED with actionQueueItemId, approvedByUserId, approvedAt, and approvalNote.",
+      "An AssistantActionQueueItem is created with actionKind assistant_governance_review.",
+      "An AssistantAuditEvent records that archive, export, deletion, and source-system changes were not applied automatically."
+    ]
+  },
+  {
+    "id": "amp29-legal-hold-and-deletion-guardrails",
+    "title": "Legal hold blocks destructive governance actions",
+    "persona": "Legal operations reviewer",
+    "entrypoint": "/assistant/governance",
+    "steps": [
+      "Ensure at least one assistant-governed record includes legal hold, litigation, audit hold, or do not delete language.",
+      "Create a governance packet.",
+      "Review retention, deletion, and legal-hold sections."
+    ],
+    "expected": [
+      "Legal-hold records appear in legalHoldJson and auditPlanJson blockedActions.",
+      "Retention candidates with legal hold are marked HOLD instead of ARCHIVE_REVIEW.",
+      "Deletion requests exclude legal-hold records.",
+      "The UI presents privacy-safe metadata and requires queue review before any archive/export/delete operation."
+    ]
+  }
+]

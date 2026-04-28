@@ -170,6 +170,7 @@ model Tenant {
   assistantFrontlinePackets         AssistantFrontlinePacket[]
   assistantMeetingIntelligencePackets AssistantMeetingIntelligencePacket[]
   assistantObservabilityIncidents   AssistantObservabilityIncident[]
+  assistantGovernancePackets        AssistantGovernancePacket[]
   assistantActionQueue              AssistantActionQueueItem[]
   assistantPlaybookTemplates        AssistantPlaybookTemplate[]
   assistantPlaybookRuns             AssistantPlaybookRun[]
@@ -778,6 +779,42 @@ model AssistantObservabilityIncident {
 
   @@index([tenantId, status, severity, updatedAt])
   @@index([tenantId, healthScore, updatedAt])
+}
+
+/// AMP29: enterprise assistant data governance packet for retention, privacy export, legal hold, and deletion review.
+model AssistantGovernancePacket {
+  id                    String    @id @default(cuid())
+  tenantId              String
+  createdByUserId       String?
+  approvedByUserId      String?
+  title                 String
+  status                String    @default("DRAFT") @db.VarChar(32)
+  governanceScore       Int       @default(0)
+  retentionCandidateCount Int     @default(0)
+  exportRecordCount     Int       @default(0)
+  deletionRequestCount  Int       @default(0)
+  legalHoldBlockCount   Int       @default(0)
+  privacyRiskCount      Int       @default(0)
+  sourceSummaryJson     Json
+  retentionPlanJson     Json
+  exportManifestJson    Json
+  deletionRequestJson   Json
+  legalHoldJson         Json
+  privacyReviewJson     Json
+  auditPlanJson         Json
+  leadershipSummary     String    @db.Text
+  actionQueueItemId     String?
+  approvedAt            DateTime?
+  approvalNote          String?   @db.Text
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator  User?  @relation("AssistantGovernancePacketCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  approver User?  @relation("AssistantGovernancePacketApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, updatedAt])
+  @@index([tenantId, governanceScore, updatedAt])
 }
 
 /// AMP7: inspectable grounding ledger extracted from assistant answers and reviewer additions.
@@ -1392,6 +1429,8 @@ model User {
   assistantMeetingIntelligencePacketsApproved AssistantMeetingIntelligencePacket[] @relation("AssistantMeetingIntelligencePacketApprover")
   assistantObservabilityIncidentsCreated  AssistantObservabilityIncident[]   @relation("AssistantObservabilityIncidentCreator")
   assistantObservabilityIncidentsResolved AssistantObservabilityIncident[]   @relation("AssistantObservabilityIncidentResolver")
+  assistantGovernancePacketsCreated       AssistantGovernancePacket[]         @relation("AssistantGovernancePacketCreator")
+  assistantGovernancePacketsApproved      AssistantGovernancePacket[]         @relation("AssistantGovernancePacketApprover")
   invoiceIntakesAccountingApproved        InvoiceIntake[]                   @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated       TariffShipmentApplication[]       @relation("TariffShipmentApplicationCreator")
   scriEventsOwned                         ScriExternalEvent[]               @relation("ScriEventOwner")

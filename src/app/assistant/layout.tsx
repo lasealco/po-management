@@ -26,6 +26,7 @@ export default async function AssistantLayout({ children }: { children: React.Re
   const canInvoiceAudit = viewerHas(access.grantSet, "org.invoice_audit", "view");
   const canApiHub = viewerHas(access.grantSet, "org.apihub", "view");
   const canRisk = viewerHas(access.grantSet, "org.scri", "view");
+  const canSettings = viewerHas(access.grantSet, "org.settings", "view");
   if (
     !canCt &&
     !canOrders &&
@@ -36,7 +37,8 @@ export default async function AssistantLayout({ children }: { children: React.Re
     !canRfq &&
     !canInvoiceAudit &&
     !canApiHub &&
-    !canRisk
+    !canRisk &&
+    !canSettings
   ) {
     return (
       <div className="min-h-screen bg-zinc-50 px-6 py-16">
@@ -69,6 +71,7 @@ export default async function AssistantLayout({ children }: { children: React.Re
           <strong>Frontline</strong> is AMP26 for mobile WMS, delivery exception, supplier task, evidence, and offline quick-action review.{" "}
           <strong>Meetings</strong> is AMP27 for call notes, transcript-style inputs, redaction, actions, risks, decisions, and minutes review.{" "}
           <strong>Observability</strong> is AMP28 for assistant health, drift, degraded mode, rollback, and incident postmortems.{" "}
+          <strong>Governance</strong> is AMP29 for retention dry-runs, privacy-safe exports, deletion review, and legal-hold controls.{" "}
           <strong>Workbench</strong> is the LMP1-LMP10 cockpit for sales, products, suppliers, POs, and
           shipments. <strong>Execution</strong> runs LMP11-LMP30 across carrier/customer comms, WMS, finance, quality,
           and simulation readiness. <strong>Work engine</strong> is AMP6 for assigned actions, SLA playbooks, and memory cleanup.{" "}
