@@ -3,6 +3,7 @@ import Link from "next/link";
 import { AccessDenied } from "@/components/access-denied";
 import { AssistantContextCard } from "@/components/assistant/assistant-context-card";
 import { AssistantObjectTimeline } from "@/components/assistant/assistant-object-timeline";
+import { SalesOrderAssistantIntakeReview } from "@/components/sales-order-assistant-intake-review";
 import { SalesOrderCompanyLegalSnapshot } from "@/components/sales-order-company-legal-snapshot";
 import { SalesOrderServedOrgField } from "@/components/sales-order-served-org-field";
 import { SalesOrderStatusActions } from "@/components/sales-order-status-actions";
@@ -117,8 +118,12 @@ export default async function SalesOrderDetailPage({
   const activeShipmentCount = row.shipments.filter((s) =>
     ["SHIPPED", "VALIDATED", "BOOKED", "IN_TRANSIT"].includes(s.status),
   ).length;
+  const canEditOrders = viewerHas(access.grantSet, "org.orders", "edit");
   const canEditServedOrg = viewerHas(access.grantSet, "org.orders", "edit");
   const canViewLegalSettings = viewerHas(access.grantSet, "org.settings", "view");
+  const assistantReviewStatus = ["PENDING", "APPROVED", "NEEDS_CHANGES", "REJECTED"].includes(row.assistantReviewStatus)
+    ? (row.assistantReviewStatus as "PENDING" | "APPROVED" | "NEEDS_CHANGES" | "REJECTED")
+    : "PENDING";
   const companyLegalForServed = await loadSerializedCompanyLegalForServedOrg(
     tenant.id,
     row.servedOrgUnitId,
@@ -167,73 +172,25 @@ export default async function SalesOrderDetailPage({
             {row.lines.length} line{row.lines.length === 1 ? "" : "s"}
           </span>
         </div>
-        <div className="mt-4 overflow-hidden rounded-xl border border-emerald-100 bg-white">
-          {row.lines.length === 0 ? (
-            <p className="px-4 py-3 text-sm text-zinc-500">No structured sales-order lines yet.</p>
-          ) : (
-            <table className="w-full text-left text-sm">
-              <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500">
-                <tr>
-                  <th className="px-3 py-2">Line</th>
-                  <th className="px-3 py-2">Product</th>
-                  <th className="px-3 py-2 text-right">Qty</th>
-                  <th className="px-3 py-2 text-right">Unit</th>
-                  <th className="px-3 py-2 text-right">Total</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-100">
-                {row.lines.map((line) => (
-                  <tr key={line.id}>
-                    <td className="px-3 py-2 text-zinc-500">{line.lineNo}</td>
-                    <td className="px-3 py-2">
-                      <div className="font-medium text-zinc-900">{line.description}</div>
-                      <div className="text-xs text-zinc-500">
-                        {line.product ? (
-                          <Link href={`/products/${line.product.id}`} className="text-[var(--arscmp-primary)] hover:underline">
-                            {line.product.productCode || line.product.sku || line.product.name}
-                          </Link>
-                        ) : (
-                          "No product link"
-                        )}
-                        {line.source ? ` · ${line.source}` : ""}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2 text-right">{line.quantity.toString()}</td>
-                    <td className="px-3 py-2 text-right">
-                      {line.currency} {Number(line.unitPrice.toString()).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                    </td>
-                    <td className="px-3 py-2 text-right font-semibold">
-                      {line.currency} {Number(line.lineTotal.toString()).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-        {row.assistantDraftReply ? (
-          <div className="mt-4 rounded-xl border border-emerald-100 bg-white p-4">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold text-zinc-950">Customer reply draft</p>
-                <p className="mt-1 text-xs text-zinc-500">Review and copy manually. The assistant never sends this.</p>
-              </div>
-              <Link
-                href={`/assistant?prompt=${encodeURIComponent(`Review reply draft for sales order ${row.soNumber}`)}&run=1`}
-                className="rounded-xl border border-zinc-300 px-3 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-50"
-              >
-                Ask assistant
-              </Link>
-            </div>
-            <pre className="mt-3 whitespace-pre-wrap rounded-lg bg-zinc-50 p-3 text-xs text-zinc-700">{row.assistantDraftReply}</pre>
-          </div>
-        ) : null}
-        {row.assistantSourceText ? (
-          <details className="mt-3 rounded-xl border border-emerald-100 bg-white p-3 text-xs text-zinc-600">
-            <summary className="cursor-pointer font-semibold text-zinc-800">Assistant source request</summary>
-            <p className="mt-2 whitespace-pre-wrap">{row.assistantSourceText}</p>
-          </details>
-        ) : null}
+        <SalesOrderAssistantIntakeReview
+          salesOrderId={row.id}
+          canEdit={canEditOrders}
+          initialStatus={assistantReviewStatus}
+          initialNote={row.assistantReviewNote}
+          initialDraftReply={row.assistantDraftReply}
+          sourceText={row.assistantSourceText}
+          lines={row.lines.map((line) => ({
+            id: line.id,
+            productId: line.product?.id ?? null,
+            productLabel: line.product ? line.product.productCode || line.product.sku || line.product.name : null,
+            description: line.description,
+            quantity: line.quantity.toString(),
+            unitPrice: line.unitPrice.toString(),
+            lineTotal: line.lineTotal.toString(),
+            currency: line.currency,
+            source: line.source,
+          }))}
+        />
       </section>
       <AssistantContextCard
         title="Ask about this sales order"

@@ -419,6 +419,7 @@ If implementation discovers that an LMP is too large for one run, split it into 
 
 | Date | Change |
 |------|--------|
+| 2026-04-28 | **AMP1 completed:** sales-to-cash assistant drafts now support durable line-item intake, editable/copyable customer replies, SO-detail review/approve/needs-changes/reject workflow, assistant audit events, focused parser/review tests, and three acceptance scenarios in `prisma/amp1-sales-to-cash-demo-scenarios.json`. |
 | 2026-04-28 | **AMP1.A shipped:** sales-to-cash assistant intake now persists structured sales-order lines, source request text, parser snapshot, customer reply draft, and assistant audit events for chat/email-created draft SOs; SO detail shows the structured intake and reply draft. |
 | 2026-04-28 | **Assistant Mega-Program sizing reset:** documented that `LMP1-LMP50` are still workbench/scaffolding slices, introduced **AMP1-AMP12** as true multi-day assistant mega-programs, and added stricter completion gates requiring durable workflows, schema/data changes when needed, UI/API, tests, seed/demo acceptance, docs/changelog, commit, and push. |
 | 2026-04-28 | **LMP31-LMP50 shipped as autonomy workbench:** added `/assistant/autonomy` plus `GET /api/assistant/autonomy-workbench` for controlled automation, override governance, domain expansion, API Hub readiness, rollout/enablement, policy/security controls, incident/resilience posture, digital-twin flow readiness, collaboration, sustainability data gaps, board reporting, AI admin readiness, demo scenario coverage, and AI operating-system scoring. |

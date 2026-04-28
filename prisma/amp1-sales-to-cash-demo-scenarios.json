@@ -1,0 +1,37 @@
+{
+  "program": "AMP1 Sales-to-cash assistant program",
+  "scenarios": [
+    {
+      "id": "amp1-chat-abc-corr-roll",
+      "surface": "/assistant",
+      "prompt": "John from ABC customer called and wants 100 corr-roll for 100 USD a piece. He will send a truck to pick up at our demo warehouse next week Tuesday.",
+      "expected": [
+        "Assistant resolves or asks to disambiguate customer and product.",
+        "Create draft sales order persists one structured SalesOrderLine.",
+        "Sales order detail shows source request, parser snapshot, reply draft, and assistant audit event.",
+        "User can edit the line/reply and approve the assistant intake."
+      ]
+    },
+    {
+      "id": "amp1-chat-missing-customer",
+      "surface": "/assistant",
+      "prompt": "Someone wants 25 corr-roll next Tuesday at 80 USD.",
+      "expected": [
+        "Assistant refuses to create a draft until a customer can be matched.",
+        "No sales order is created silently.",
+        "Clarification or not-found message explains what detail is missing."
+      ]
+    },
+    {
+      "id": "amp1-email-to-draft-so",
+      "surface": "/assistant/mail",
+      "prompt": "Use an imported open email thread with a linked CRM account and a product/quantity/price request.",
+      "expected": [
+        "Create draft SO from email action persists structured SalesOrderLine data.",
+        "Email thread links to the draft SO.",
+        "Sales order detail shows the customer reply draft and assistant timeline evidence.",
+        "User can approve or mark the intake as needs changes."
+      ]
+    }
+  ]
+}

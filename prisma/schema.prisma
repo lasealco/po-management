@@ -552,6 +552,7 @@ model User {
   orderChats                         OrderChatMessage[]
   purchaseOrders                     PurchaseOrder[]
   salesOrdersCreated                 SalesOrder[]
+  salesOrdersAssistantReviewed       SalesOrder[]                    @relation("SalesOrderAssistantReviewedBy")
   orderTransitionLogs                OrderTransitionLog[]
   splitProposals                     SplitProposal[]
   shipmentsCreated                   Shipment[]
@@ -1451,6 +1452,10 @@ model SalesOrder {
   assistantSourceSnapshot Json?
   /// AMP1: editable/copyable customer reply draft generated at intake time; never auto-sent.
   assistantDraftReply     String?          @db.Text
+  assistantReviewStatus   String           @default("PENDING") @db.VarChar(32)
+  assistantReviewNote     String?          @db.Text
+  assistantReviewedAt     DateTime?
+  assistantReviewedById   String?
   createdById             String
   createdAt               DateTime         @default(now())
   updatedAt               DateTime         @updatedAt
@@ -1459,6 +1464,7 @@ model SalesOrder {
   servedOrgUnit         OrgUnit?               @relation("SalesOrderServedOrg", fields: [servedOrgUnitId], references: [id], onDelete: SetNull)
   customerCrmAccount    CrmAccount?            @relation(fields: [customerCrmAccountId], references: [id], onDelete: SetNull)
   createdBy             User                   @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  assistantReviewedBy   User?                  @relation("SalesOrderAssistantReviewedBy", fields: [assistantReviewedById], references: [id], onDelete: SetNull)
   lines                 SalesOrderLine[]
   shipments             Shipment[]
   assistantEmailThreads AssistantEmailThread[]
@@ -1467,6 +1473,7 @@ model SalesOrder {
   @@index([tenantId, status, createdAt])
   @@index([customerCrmAccountId])
   @@index([tenantId, servedOrgUnitId])
+  @@index([tenantId, assistantReviewStatus, updatedAt])
 }
 
 model SalesOrderLine {
