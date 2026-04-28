@@ -1,0 +1,36 @@
+[
+  {
+    "id": "amp10-graph-confidence",
+    "title": "Assistant explains twin graph confidence",
+    "given": "The demo tenant has twin entity snapshots, edges, scenario drafts, and at least one open risk signal.",
+    "when": "An operator opens /supply-chain-twin/assistant.",
+    "then": [
+      "The assistant shows a graph confidence score from real entity, edge, scenario, and risk counts.",
+      "The page lists graph gaps such as missing relationship coverage or open risk acknowledgement blockers.",
+      "The summary is evidence-first and does not claim the graph is complete when edges are sparse."
+    ]
+  },
+  {
+    "id": "amp10-prompt-to-scenario",
+    "title": "Assistant creates a what-if scenario draft from a prompt",
+    "given": "The operator enters a what-if prompt and optionally links an open twin risk signal.",
+    "when": "The operator clicks Create scenario insight.",
+    "then": [
+      "A SupplyChainTwinScenarioDraft is created with AMP10_TWIN_ASSISTANT draft JSON.",
+      "A SupplyChainTwinAssistantInsight links the prompt, graph score, scenario draft, optional risk signal, assistant evidence, and action queue item.",
+      "An AssistantAuditEvent and AssistantEvidenceRecord are written for traceability.",
+      "No twin entity, edge, shipment, order, supplier, inventory, or finance record is mutated silently."
+    ]
+  },
+  {
+    "id": "amp10-risk-playbook-link",
+    "title": "Risk signal becomes reviewable assistant work",
+    "given": "An unacknowledged Supply Chain Twin risk signal exists.",
+    "when": "The assistant creates a scenario insight linked to that risk.",
+    "then": [
+      "The UI shows review playbook copy for the risk signal.",
+      "The action queue contains review_twin_scenario work linked to the created scenario.",
+      "The operator can close the assistant insight after review without acknowledging the risk automatically."
+    ]
+  }
+]

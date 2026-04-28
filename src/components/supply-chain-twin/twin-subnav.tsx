@@ -28,6 +28,7 @@ export function TwinSubNav() {
   const pathname = usePathname() ?? "";
   const { supplyChainTwin } = useContext(TwinSubNavVisibilityContext);
   const isOverview = pathname === BASE;
+  const isAssistant = pathname.startsWith(`${BASE}/assistant`);
   const isExplorer = pathname.startsWith(`${BASE}/explorer`);
   const isCompare = pathname.startsWith(`${BASE}/scenarios/compare`);
   const isScenarios = pathname.startsWith(`${BASE}/scenarios`) && !isCompare;
@@ -44,6 +45,9 @@ export function TwinSubNav() {
     >
       <Link href={BASE} className={tabClass(isOverview)}>
         Overview
+      </Link>
+      <Link href={`${BASE}/assistant`} className={tabClass(isAssistant)}>
+        Assistant
       </Link>
       <Link href={`${BASE}/explorer`} className={tabClass(isExplorer)}>
         Explorer

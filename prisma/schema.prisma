@@ -128,6 +128,7 @@ model Tenant {
   supplyChainTwinRiskSignals        SupplyChainTwinRiskSignal[]
   supplyChainTwinScenarioDrafts     SupplyChainTwinScenarioDraft[]
   supplyChainTwinScenarioRevisions  SupplyChainTwinScenarioRevision[]
+  supplyChainTwinAssistantInsights  SupplyChainTwinAssistantInsight[]
   scriExternalEvents                ScriExternalEvent[]
   scriEventAffectedEntities         ScriEventAffectedEntity[]
   scriEventReviewLogs               ScriEventReviewLog[]
@@ -835,6 +836,7 @@ model User {
   invoiceIntakesAccountingApproved   InvoiceIntake[]                 @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated  TariffShipmentApplication[]     @relation("TariffShipmentApplicationCreator")
   scriEventsOwned                    ScriExternalEvent[]             @relation("ScriEventOwner")
+  supplyChainTwinAssistantInsightsCreated SupplyChainTwinAssistantInsight[] @relation("SupplyChainTwinAssistantInsightCreator")
   scriReviewLogsAuthored             ScriEventReviewLog[]            @relation("ScriReviewLogActor")
   scriTaskLinksCreated               ScriEventTaskLink[]             @relation("ScriTaskLinkCreatedBy")
   scriTuningAutomationActorOf        ScriTenantTuning[]              @relation("ScriTuningAutomationActor")
@@ -4152,6 +4154,31 @@ model SupplyChainTwinRiskSignal {
   @@index([tenantId, severity])
   /// Slice 66: keyset list (`listRiskSignalsForTenantPage` — `createdAt` desc, `id` desc).
   @@index([tenantId, createdAt])
+}
+
+/// AMP10: assistant-authored twin insight linking graph confidence, scenarios, risks, and human work.
+model SupplyChainTwinAssistantInsight {
+  id                        String   @id @default(cuid())
+  tenantId                  String
+  createdByUserId           String?
+  prompt                    String   @db.Text
+  summary                   String   @db.Text
+  graphConfidenceScore      Int      @default(0)
+  scenarioDraftId           String?
+  riskSignalId              String?
+  actionQueueItemId         String?
+  assistantEvidenceRecordId String?
+  status                    String   @default("OPEN") @db.VarChar(32)
+  evidenceJson              Json
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  tenant  Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator User?  @relation("SupplyChainTwinAssistantInsightCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, createdAt])
+  @@index([tenantId, scenarioDraftId])
+  @@index([tenantId, riskSignalId])
 }
 
 /// Tenant-scoped Supply Chain Twin entity node (materialized snapshot + JSON payload).
