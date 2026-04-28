@@ -42,6 +42,7 @@ export function AssistantSubnav() {
   const chat = pathname === "/assistant" || pathname === "/assistant/";
   const workbench = pathname.startsWith("/assistant/workbench");
   const execution = pathname.startsWith("/assistant/execution");
+  const autonomy = pathname.startsWith("/assistant/autonomy");
   const inbox = pathname.startsWith("/assistant/inbox");
   const commandCenter = pathname.startsWith("/assistant/command-center");
   const mail = pathname.startsWith("/assistant/mail");
@@ -68,6 +69,13 @@ export function AssistantSubnav() {
         title="LMP11-LMP30 execution workbench"
       >
         Execution
+      </Link>
+      <Link
+        href="/assistant/autonomy"
+        className={autonomy ? appNavActiveClass : appNavInactiveClass}
+        title="LMP31-LMP50 autonomy workbench"
+      >
+        Autonomy
       </Link>
       <Link
         href="/assistant/inbox"

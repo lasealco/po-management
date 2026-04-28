@@ -29,6 +29,7 @@ function isTopNavHrefActive(pathname: string, href: string): boolean {
       pathname === "/assistant" ||
       pathname.startsWith("/assistant/workbench") ||
       pathname.startsWith("/assistant/execution") ||
+      pathname.startsWith("/assistant/autonomy") ||
       pathname.startsWith("/assistant/command-center") ||
       pathname.startsWith("/assistant/mail")
     );
