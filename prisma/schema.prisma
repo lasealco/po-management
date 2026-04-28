@@ -145,6 +145,10 @@ model Tenant {
   /// MP4: assistant / sales email pilot (inbound items + staged reply, confirm-before-send).
   assistantEmailThreads             AssistantEmailThread[]
   assistantAuditEvents              AssistantAuditEvent[]
+  assistantEvidenceRecords          AssistantEvidenceRecord[]
+  assistantReviewExamples           AssistantReviewExample[]
+  assistantPromptLibraryItems       AssistantPromptLibraryItem[]
+  assistantReleaseGates             AssistantReleaseGate[]
   assistantActionQueue              AssistantActionQueueItem[]
   assistantPlaybookTemplates        AssistantPlaybookTemplate[]
   assistantPlaybookRuns             AssistantPlaybookRun[]
@@ -173,6 +177,8 @@ model AssistantAuditEvent {
 
   tenant       Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   actor        User?                      @relation("AssistantAuditEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  evidenceRecords AssistantEvidenceRecord[]
+  reviewExamples AssistantReviewExample[]
   actionItems  AssistantActionQueueItem[]
   playbookRuns AssistantPlaybookRun[]
 
@@ -181,6 +187,95 @@ model AssistantAuditEvent {
   @@index([tenantId, objectType, objectId, createdAt])
   @@index([tenantId, feedback, createdAt])
   @@index([tenantId, archivedAt, createdAt])
+}
+
+/// AMP7: inspectable grounding ledger extracted from assistant answers and reviewer additions.
+model AssistantEvidenceRecord {
+  id           String   @id @default(cuid())
+  tenantId     String
+  auditEventId String?
+  label        String
+  href         String?  @db.Text
+  excerpt      String?  @db.Text
+  sourceType   String   @default("LINK") @db.VarChar(32)
+  confidence   String   @default("MEDIUM") @db.VarChar(16)
+  createdByUserId String?
+  archivedAt   DateTime?
+  createdAt    DateTime @default(now())
+
+  tenant     Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  auditEvent AssistantAuditEvent? @relation(fields: [auditEventId], references: [id], onDelete: Cascade)
+  creator    User? @relation("AssistantEvidenceRecordCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, auditEventId, createdAt])
+  @@index([tenantId, sourceType, createdAt])
+  @@index([tenantId, archivedAt, createdAt])
+}
+
+/// AMP7: reviewed examples for training/export, including corrections for weak answers.
+model AssistantReviewExample {
+  id             String   @id @default(cuid())
+  tenantId       String
+  auditEventId   String
+  reviewerUserId String?
+  label          String   @db.VarChar(32)
+  correctionNote String?  @db.Text
+  exportJson     Json?
+  status         String   @default("QUEUED") @db.VarChar(32)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenant     Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  auditEvent AssistantAuditEvent @relation(fields: [auditEventId], references: [id], onDelete: Cascade)
+  reviewer   User? @relation("AssistantReviewExampleReviewer", fields: [reviewerUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, createdAt])
+  @@index([tenantId, label, createdAt])
+  @@index([auditEventId])
+}
+
+/// AMP7: approved prompt starters runnable from assistant UI by role/domain.
+model AssistantPromptLibraryItem {
+  id              String   @id @default(cuid())
+  tenantId        String
+  createdByUserId String?
+  title           String
+  prompt          String   @db.Text
+  roleScope       String?  @db.VarChar(64)
+  domain          String?  @db.VarChar(64)
+  objectType      String?  @db.VarChar(64)
+  status          String   @default("DRAFT") @db.VarChar(32)
+  usageCount      Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant  Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator User? @relation("AssistantPromptLibraryItemCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, updatedAt])
+  @@index([tenantId, domain, status])
+  @@index([tenantId, objectType, status])
+}
+
+/// AMP7: quality gate snapshot that blocks unsafe assistant releases unless checks pass.
+model AssistantReleaseGate {
+  id              String   @id @default(cuid())
+  tenantId        String
+  gateKey         String   @db.VarChar(128)
+  status          String   @default("BLOCKED") @db.VarChar(32)
+  score           Int      @default(0)
+  threshold       Int      @default(75)
+  checksJson      Json
+  notes           String?  @db.Text
+  evaluatedByUserId String?
+  evaluatedAt     DateTime @default(now())
+  createdAt       DateTime @default(now())
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  evaluator User? @relation("AssistantReleaseGateEvaluator", fields: [evaluatedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, gateKey, evaluatedAt])
+  @@index([tenantId, status, evaluatedAt])
 }
 
 /// MP17: human-approved queue row for assistant-proposed actions.
@@ -667,6 +762,10 @@ model User {
   wmsSavedLedgerViews                WmsSavedLedgerView[]
   assistantEmailSendConfirms         AssistantEmailThread[]          @relation("AssistantEmailSendConfirmBy")
   assistantAuditEvents               AssistantAuditEvent[]           @relation("AssistantAuditEventActor")
+  assistantEvidenceRecordsCreated    AssistantEvidenceRecord[]       @relation("AssistantEvidenceRecordCreator")
+  assistantReviewExamplesReviewed    AssistantReviewExample[]        @relation("AssistantReviewExampleReviewer")
+  assistantPromptLibraryItemsCreated AssistantPromptLibraryItem[]     @relation("AssistantPromptLibraryItemCreator")
+  assistantReleaseGatesEvaluated     AssistantReleaseGate[]          @relation("AssistantReleaseGateEvaluator")
   assistantActionQueueItems          AssistantActionQueueItem[]      @relation("AssistantActionQueueActor")
   assistantActionQueueOwned          AssistantActionQueueItem[]      @relation("AssistantActionQueueOwner")
   assistantPlaybookTemplatesCreated  AssistantPlaybookTemplate[]     @relation("AssistantPlaybookTemplateCreator")

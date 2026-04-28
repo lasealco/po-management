@@ -43,6 +43,7 @@ export function AssistantSubnav() {
   const workbench = pathname.startsWith("/assistant/workbench");
   const execution = pathname.startsWith("/assistant/execution");
   const workEngine = pathname.startsWith("/assistant/work-engine");
+  const evidenceQuality = pathname.startsWith("/assistant/evidence-quality");
   const autonomy = pathname.startsWith("/assistant/autonomy");
   const inbox = pathname.startsWith("/assistant/inbox");
   const commandCenter = pathname.startsWith("/assistant/command-center");
@@ -77,6 +78,13 @@ export function AssistantSubnav() {
         title="AMP6 assistant work engine"
       >
         Work engine
+      </Link>
+      <Link
+        href="/assistant/evidence-quality"
+        className={evidenceQuality ? appNavActiveClass : appNavInactiveClass}
+        title="AMP7 evidence, quality, and training"
+      >
+        Evidence quality
       </Link>
       <Link
         href="/assistant/autonomy"

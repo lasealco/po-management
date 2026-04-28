@@ -1,0 +1,44 @@
+[
+  {
+    "id": "amp7-weak-answer-review",
+    "title": "Reviewer turns a weak answer into a correction example",
+    "steps": [
+      "Open /assistant/evidence-quality.",
+      "Pick a weak answer missing evidence or object context.",
+      "Queue a correction example and add reviewer evidence."
+    ],
+    "expected": [
+      "AssistantReviewExample stores the correction note and export JSON.",
+      "AssistantEvidenceRecord stores an inspectable evidence row linked to the audit event.",
+      "The weak-answer queue updates after refresh without changing business object data."
+    ]
+  },
+  {
+    "id": "amp7-approved-prompt-starter",
+    "title": "Reviewer approves a prompt starter",
+    "steps": [
+      "Use the Prompt library card on /assistant/evidence-quality.",
+      "Create an approved prompt starter for operations.",
+      "Run it from the library."
+    ],
+    "expected": [
+      "AssistantPromptLibraryItem persists title, prompt, domain, role scope, status, and usage metadata.",
+      "Approved prompts are runnable through /assistant with the prompt prefilled.",
+      "Release gate prompt-library check can pass once enough prompts are approved."
+    ]
+  },
+  {
+    "id": "amp7-release-gate",
+    "title": "Quality release gate blocks unsafe assistant rollout",
+    "steps": [
+      "Review evidence coverage, feedback coverage, weak-answer backlog, and prompt-library checks.",
+      "Evaluate and save the release gate.",
+      "Resolve failed checks by adding evidence/reviews/prompts, then re-evaluate."
+    ],
+    "expected": [
+      "AssistantReleaseGate stores score, threshold, status, checks JSON, evaluator, and timestamp.",
+      "Gate remains BLOCKED when evidence or review quality is below threshold.",
+      "Gate can pass only when checks satisfy AMP7 quality thresholds."
+    ]
+  }
+]
