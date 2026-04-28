@@ -135,6 +135,7 @@ model Tenant {
   scriEventRecommendations          ScriEventRecommendation[]
   scriWatchlistRules                ScriWatchlistRule[]
   scriTenantTuning                  ScriTenantTuning?
+  apiHubAssistantReviewItems        ApiHubAssistantReviewItem[]
   supplierOnboardingTasks           SupplierOnboardingTask[]
   srmSupplierDocuments              SrmSupplierDocument[]
   srmSupplierDocumentAuditLogs      SrmSupplierDocumentAuditLog[]
@@ -716,6 +717,31 @@ model ApiHubStagingRow {
   @@index([tenantId, batchId])
 }
 
+/// AMP9: assistant-readable integration review item, linking API Hub evidence to human work.
+model ApiHubAssistantReviewItem {
+  id              String   @id @default(cuid())
+  tenantId        String
+  createdByUserId String?
+  sourceType      String   @db.VarChar(64)
+  sourceId        String?
+  title           String
+  summary         String   @db.Text
+  severity        String   @default("INFO") @db.VarChar(16)
+  status          String   @default("OPEN") @db.VarChar(32)
+  evidenceJson    Json
+  actionQueueItemId String?
+  assistantEvidenceRecordId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator  User?  @relation("ApiHubAssistantReviewItemCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, severity, createdAt])
+  @@index([tenantId, sourceType, sourceId])
+  @@index([actionQueueItemId])
+}
+
 /// Tenant-scoped milestone template packs (override or extend built-in packs in code).
 model CtMilestoneTemplatePack {
   id          String   @id @default(cuid())
@@ -805,6 +831,7 @@ model User {
   apiHubIngestionRunAuditLogs        ApiHubIngestionRunAuditLog[]
   apiHubMappingAnalysisJobsRequested ApiHubMappingAnalysisJob[]
   apiHubStagingBatchesCreated        ApiHubStagingBatch[]
+  apiHubAssistantReviewItemsCreated  ApiHubAssistantReviewItem[]     @relation("ApiHubAssistantReviewItemCreator")
   invoiceIntakesAccountingApproved   InvoiceIntake[]                 @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated  TariffShipmentApplication[]     @relation("TariffShipmentApplicationCreator")
   scriEventsOwned                    ScriExternalEvent[]             @relation("ScriEventOwner")

@@ -17,6 +17,9 @@ export function ApihubHeader() {
           <Link href="/apihub/workspace" className="font-medium text-zinc-800 hover:text-zinc-900">
             Workspace
           </Link>
+          <Link href="/apihub/assistant" className="font-medium text-zinc-800 hover:text-zinc-900">
+            Assistant evidence
+          </Link>
           <span className="hidden text-zinc-300 sm:inline" aria-hidden>
             |
           </span>

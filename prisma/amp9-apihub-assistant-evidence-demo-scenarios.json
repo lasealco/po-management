@@ -1,0 +1,44 @@
+[
+  {
+    "id": "amp9-connector-evidence",
+    "title": "Connector state becomes assistant-readable evidence",
+    "steps": [
+      "Open /apihub/assistant.",
+      "Review connector evidence cards for status, auth mode/state, and health.",
+      "Create an assistant review item from a connector with WARN status."
+    ],
+    "expected": [
+      "Evidence JSON contains no authConfigRef, tokens, secrets, or passwords.",
+      "AssistantEvidenceRecord and AssistantAuditEvent are created for the connector.",
+      "Assistant action queue receives a human review item with an API Hub source link."
+    ]
+  },
+  {
+    "id": "amp9-staging-batch-review",
+    "title": "Staging batch creates reviewable assistant work",
+    "steps": [
+      "Create or open a staging batch from API Hub mapping analysis.",
+      "Open /apihub/assistant and find the staging evidence card.",
+      "Create assistant review work from the staging evidence."
+    ],
+    "expected": [
+      "Review item summarizes row count, status, applied state, and apply summary.",
+      "Downstream SO/PO/CT records are not applied by the assistant evidence action.",
+      "Operator can open source workspace to manually dry-run or apply using existing API Hub controls."
+    ]
+  },
+  {
+    "id": "amp9-apply-conflict-explanation",
+    "title": "Apply conflict becomes explainable assistant evidence",
+    "steps": [
+      "Trigger or inspect an API Hub apply conflict.",
+      "Open /apihub/assistant.",
+      "Create review work from the apply conflict evidence."
+    ],
+    "expected": [
+      "Conflict explanation includes ingestion run, result code, HTTP status, dry-run state, and no-silent-mutation warning.",
+      "Review item links to Apply conflicts and queues assistant work.",
+      "No credentials or raw secret fields are exposed in the evidence payload."
+    ]
+  }
+]
