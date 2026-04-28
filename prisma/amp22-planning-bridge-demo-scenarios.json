@@ -1,0 +1,35 @@
+[
+  {
+    "id": "amp22-planning-bridge-demand-spike",
+    "title": "Create an S&OP planning packet from constrained demand",
+    "given": "Open sales orders create near-term product demand and available inventory plus inbound POs do not fully cover it.",
+    "when": "A planner opens /assistant/planning-bridge and selects Create planning packet.",
+    "then": [
+      "The assistant persists an AssistantPlanningPacket with demand, supply, gap, constraint, scenario, and recommendation JSON.",
+      "A leadership summary explains demand units, available units, inbound units, shortage units, and execution constraints.",
+      "An advisory Supply Chain Twin scenario draft is created for comparison without changing SO, PO, inventory, WMS, or shipment records."
+    ]
+  },
+  {
+    "id": "amp22-planning-bridge-review-queue",
+    "title": "Queue constrained plan for leadership review",
+    "given": "A planning packet contains shortage gaps or execution constraints.",
+    "when": "The planner adds an approval note and selects Queue review.",
+    "then": [
+      "An AssistantActionQueueItem is created with the planning score and scenario draft id.",
+      "The planning packet moves to REVIEW_QUEUED and records approvedAt plus approvedByUserId.",
+      "No demand, supply, inventory, warehouse task, shipment, or scenario execution is applied automatically."
+    ]
+  },
+  {
+    "id": "amp22-planning-bridge-constraint-evidence",
+    "title": "Expose WMS and data constraints in the plan",
+    "given": "There are open WMS tasks, warehouse capacity plans, or master data quality blockers.",
+    "when": "The assistant builds the planning preview or packet.",
+    "then": [
+      "Constraints are listed with source, severity, detail, object type, and object id.",
+      "Recommendation steps include protecting constrained demand, expediting inbound supply, releasing recoverable inventory, and clearing execution bottlenecks.",
+      "The plan remains advisory until human review approves concrete source-system actions."
+    ]
+  }
+]
