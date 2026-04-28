@@ -164,6 +164,7 @@ model Tenant {
   assistantRiskWarRooms             AssistantRiskWarRoom[]
   assistantMasterDataQualityRuns    AssistantMasterDataQualityRun[]
   assistantPlanningPackets          AssistantPlanningPacket[]
+  assistantContractCompliancePackets AssistantContractCompliancePacket[]
   assistantActionQueue              AssistantActionQueueItem[]
   assistantPlaybookTemplates        AssistantPlaybookTemplate[]
   assistantPlaybookRuns             AssistantPlaybookRun[]
@@ -560,6 +561,40 @@ model AssistantPlanningPacket {
   @@index([tenantId, status, updatedAt])
   @@index([tenantId, planningScore, updatedAt])
   @@index([tenantId, scenarioDraftId])
+}
+
+/// AMP23: contract lifecycle and compliance packet across supplier docs, tariffs, RFQs, and obligations.
+model AssistantContractCompliancePacket {
+  id                    String    @id @default(cuid())
+  tenantId              String
+  createdByUserId       String?
+  approvedByUserId      String?
+  title                 String
+  status                String    @default("DRAFT") @db.VarChar(32)
+  complianceScore       Int       @default(0)
+  obligationCount       Int       @default(0)
+  expiringDocumentCount Int       @default(0)
+  renewalRiskCount      Int       @default(0)
+  complianceGapCount    Int       @default(0)
+  sourceSummaryJson     Json
+  obligationJson        Json
+  renewalRiskJson       Json
+  documentRiskJson      Json
+  complianceGapJson     Json
+  actionPlanJson        Json
+  leadershipSummary     String    @db.Text
+  actionQueueItemId     String?
+  approvedAt            DateTime?
+  approvalNote          String?   @db.Text
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator  User?  @relation("AssistantContractCompliancePacketCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  approver User?  @relation("AssistantContractCompliancePacketApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, updatedAt])
+  @@index([tenantId, complianceScore, updatedAt])
 }
 
 /// AMP7: inspectable grounding ledger extracted from assistant answers and reviewer additions.
@@ -1162,6 +1197,8 @@ model User {
   assistantMasterDataQualityRunsApproved  AssistantMasterDataQualityRun[]   @relation("AssistantMasterDataQualityRunApprover")
   assistantPlanningPacketsCreated         AssistantPlanningPacket[]         @relation("AssistantPlanningPacketCreator")
   assistantPlanningPacketsApproved        AssistantPlanningPacket[]         @relation("AssistantPlanningPacketApprover")
+  assistantContractCompliancePacketsCreated  AssistantContractCompliancePacket[] @relation("AssistantContractCompliancePacketCreator")
+  assistantContractCompliancePacketsApproved AssistantContractCompliancePacket[] @relation("AssistantContractCompliancePacketApprover")
   invoiceIntakesAccountingApproved        InvoiceIntake[]                   @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated       TariffShipmentApplication[]       @relation("TariffShipmentApplicationCreator")
   scriEventsOwned                         ScriExternalEvent[]               @relation("ScriEventOwner")

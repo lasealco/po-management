@@ -63,6 +63,7 @@ export default async function AssistantLayout({ children }: { children: React.Re
           <strong>Risk war room</strong> is AMP20 for external event triage, Twin scenarios, mitigations, and communication drafts.{" "}
           <strong>Master data</strong> is AMP21 for duplicate, gap, stale-record, and integration hygiene review.{" "}
           <strong>Planning</strong> is AMP22 for constrained S&OP scenarios across demand, supply, inventory, WMS, and transport.{" "}
+          <strong>Contracts</strong> is AMP23 for obligations, renewal risk, supplier documents, RFQs, and tariff compliance.{" "}
           <strong>Workbench</strong> is the LMP1-LMP10 cockpit for sales, products, suppliers, POs, and
           shipments. <strong>Execution</strong> runs LMP11-LMP30 across carrier/customer comms, WMS, finance, quality,
           and simulation readiness. <strong>Work engine</strong> is AMP6 for assigned actions, SLA playbooks, and memory cleanup.{" "}

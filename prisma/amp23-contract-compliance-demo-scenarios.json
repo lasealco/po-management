@@ -1,0 +1,35 @@
+[
+  {
+    "id": "amp23-contract-compliance-packet",
+    "title": "Create a contract compliance packet",
+    "given": "The tenant has supplier compliance documents, tariff contracts, RFQs, and transportation procurement recommendations.",
+    "when": "A user opens /assistant/contract-compliance and selects Create compliance packet.",
+    "then": [
+      "The assistant persists an AssistantContractCompliancePacket with obligations, renewal risks, document risks, compliance gaps, and an action plan.",
+      "The leadership summary explains the compliance score and major review items.",
+      "No supplier document, tariff contract, RFQ, booking, or message is modified automatically."
+    ]
+  },
+  {
+    "id": "amp23-contract-compliance-review-queue",
+    "title": "Queue obligations and renewals for review",
+    "given": "A compliance packet contains expiring documents, renewal risks, or missing contract evidence.",
+    "when": "The contract owner adds an approval note and selects Queue review.",
+    "then": [
+      "An AssistantActionQueueItem is created with packet id and compliance score.",
+      "The packet moves to REVIEW_QUEUED and records approvedAt plus approvedByUserId.",
+      "Contract owners can approve concrete source-system updates separately."
+    ]
+  },
+  {
+    "id": "amp23-contract-compliance-permission-scope",
+    "title": "Scope evidence to supplier, tariff, and RFQ grants",
+    "given": "A user has only supplier document access or only tariff/RFQ access.",
+    "when": "The workspace builds a live preview or packet.",
+    "then": [
+      "Only sources visible to the user's grants are included in the packet.",
+      "Restricted contract evidence is excluded from sourceSummaryJson and packet detail.",
+      "The audit log records assistant-generated review work without leaking unauthorized evidence."
+    ]
+  }
+]

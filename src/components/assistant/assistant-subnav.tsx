@@ -48,6 +48,7 @@ export function AssistantSubnav() {
   const riskWarRoom = pathname.startsWith("/assistant/risk-war-room");
   const masterDataQuality = pathname.startsWith("/assistant/master-data-quality");
   const planningBridge = pathname.startsWith("/assistant/planning-bridge");
+  const contractCompliance = pathname.startsWith("/assistant/contract-compliance");
   const workbench = pathname.startsWith("/assistant/workbench");
   const execution = pathname.startsWith("/assistant/execution");
   const workEngine = pathname.startsWith("/assistant/work-engine");
@@ -124,6 +125,13 @@ export function AssistantSubnav() {
         title="AMP22 AI planning and S&OP bridge"
       >
         Planning
+      </Link>
+      <Link
+        href="/assistant/contract-compliance"
+        className={contractCompliance ? appNavActiveClass : appNavInactiveClass}
+        title="AMP23 contract lifecycle and compliance"
+      >
+        Contracts
       </Link>
       <Link
         href="/assistant/workbench"
