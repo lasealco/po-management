@@ -108,6 +108,7 @@ model Tenant {
   tariffImportBatches               TariffImportBatch[]
   tariffShipmentApplications        TariffShipmentApplication[]
   quoteRequests                     QuoteRequest[]
+  transportationProcurementPlans    TransportationProcurementPlan[]
   bookingPricingSnapshots           BookingPricingSnapshot[]
   invoiceIntakes                    InvoiceIntake[]
   invoiceToleranceRules             InvoiceToleranceRule[]
@@ -164,32 +165,32 @@ model Tenant {
 
 /// MP15/MP18: durable assistant answer/action memory with grounding and feedback.
 model AssistantAuditEvent {
-  id          String    @id @default(cuid())
-  tenantId    String
-  actorUserId String?
-  surface     String    @default("dock") @db.VarChar(64)
-  prompt      String    @db.Text
-  answerKind  String    @db.VarChar(32)
-  message     String?   @db.Text
-  evidence    Json?
-  quality     Json?
-  actions     Json?
-  playbook    Json?
-  objectType  String?   @db.VarChar(64)
-  objectId    String?
-  feedback    String?   @db.VarChar(32)
-  feedbackAt  DateTime?
-  archivedAt  DateTime?
-  archiveReason String? @db.Text
-  createdAt   DateTime  @default(now())
+  id            String    @id @default(cuid())
+  tenantId      String
+  actorUserId   String?
+  surface       String    @default("dock") @db.VarChar(64)
+  prompt        String    @db.Text
+  answerKind    String    @db.VarChar(32)
+  message       String?   @db.Text
+  evidence      Json?
+  quality       Json?
+  actions       Json?
+  playbook      Json?
+  objectType    String?   @db.VarChar(64)
+  objectId      String?
+  feedback      String?   @db.VarChar(32)
+  feedbackAt    DateTime?
+  archivedAt    DateTime?
+  archiveReason String?   @db.Text
+  createdAt     DateTime  @default(now())
 
-  tenant       Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  actor        User?                      @relation("AssistantAuditEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
-  evidenceRecords AssistantEvidenceRecord[]
-  reviewExamples AssistantReviewExample[]
-  actionItems  AssistantActionQueueItem[]
+  tenant               Tenant                         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actor                User?                          @relation("AssistantAuditEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  evidenceRecords      AssistantEvidenceRecord[]
+  reviewExamples       AssistantReviewExample[]
+  actionItems          AssistantActionQueueItem[]
   automationShadowRuns AssistantAutomationShadowRun[]
-  playbookRuns AssistantPlaybookRun[]
+  playbookRuns         AssistantPlaybookRun[]
 
   @@index([tenantId, createdAt])
   @@index([tenantId, actorUserId, createdAt])
@@ -200,25 +201,25 @@ model AssistantAuditEvent {
 
 /// AMP8: governed automation policy, never implicit; controls shadow/enabled/paused state per low-risk action kind.
 model AssistantAutomationPolicy {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   tenantId        String
-  policyKey       String   @db.VarChar(128)
-  actionKind      String   @db.VarChar(64)
+  policyKey       String    @db.VarChar(128)
+  actionKind      String    @db.VarChar(64)
   label           String
-  status          String   @default("SHADOW") @db.VarChar(32)
-  readinessScore  Int      @default(0)
-  threshold       Int      @default(80)
+  status          String    @default("SHADOW") @db.VarChar(32)
+  readinessScore  Int       @default(0)
+  threshold       Int       @default(80)
   guardrailsJson  Json
-  rollbackPlan    String?  @db.Text
+  rollbackPlan    String?   @db.Text
   enabledByUserId String?
   enabledAt       DateTime?
   pausedAt        DateTime?
   lastEvaluatedAt DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
-  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  enabledBy User?  @relation("AssistantAutomationPolicyEnabledBy", fields: [enabledByUserId], references: [id], onDelete: SetNull)
+  tenant     Tenant                         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  enabledBy  User?                          @relation("AssistantAutomationPolicyEnabledBy", fields: [enabledByUserId], references: [id], onDelete: SetNull)
   shadowRuns AssistantAutomationShadowRun[]
 
   @@unique([tenantId, policyKey])
@@ -228,24 +229,24 @@ model AssistantAutomationPolicy {
 
 /// AMP8: shadow comparison between proposed automation and actual human decision.
 model AssistantAutomationShadowRun {
-  id              String   @id @default(cuid())
-  tenantId        String
-  policyId        String?
-  auditEventId    String?
-  actionQueueItemId String?
-  actionKind      String   @db.VarChar(64)
-  predictedStatus String   @db.VarChar(32)
-  humanStatus     String?  @db.VarChar(32)
-  matched         Boolean?
+  id                  String   @id @default(cuid())
+  tenantId            String
+  policyId            String?
+  auditEventId        String?
+  actionQueueItemId   String?
+  actionKind          String   @db.VarChar(64)
+  predictedStatus     String   @db.VarChar(32)
+  humanStatus         String?  @db.VarChar(32)
+  matched             Boolean?
   wouldExecutePayload Json?
-  runMode         String   @default("SHADOW") @db.VarChar(32)
-  notes           String?  @db.Text
-  createdAt       DateTime @default(now())
+  runMode             String   @default("SHADOW") @db.VarChar(32)
+  notes               String?  @db.Text
+  createdAt           DateTime @default(now())
 
-  tenant     Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant     Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   policy     AssistantAutomationPolicy? @relation(fields: [policyId], references: [id], onDelete: SetNull)
-  auditEvent AssistantAuditEvent? @relation(fields: [auditEventId], references: [id], onDelete: SetNull)
-  actionItem AssistantActionQueueItem? @relation(fields: [actionQueueItemId], references: [id], onDelete: SetNull)
+  auditEvent AssistantAuditEvent?       @relation(fields: [auditEventId], references: [id], onDelete: SetNull)
+  actionItem AssistantActionQueueItem?  @relation(fields: [actionQueueItemId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, actionKind, createdAt])
   @@index([tenantId, runMode, createdAt])
@@ -300,25 +301,25 @@ model AssistantOperatingReport {
 
 /// AMP13: governed demand-to-order orchestration plan with ATP and split/reservation proposal evidence.
 model AssistantOrderOrchestrationPlan {
-  id              String   @id @default(cuid())
-  tenantId        String
-  createdByUserId String?
-  sourceKind      String   @default("manual_prompt") @db.VarChar(64)
-  sourceText      String   @db.Text
-  title           String
-  status          String   @default("DRAFT") @db.VarChar(32)
-  customerCrmAccountId String?
-  salesOrderId    String?
-  actionQueueItemId String?
+  id                    String    @id @default(cuid())
+  tenantId              String
+  createdByUserId       String?
+  sourceKind            String    @default("manual_prompt") @db.VarChar(64)
+  sourceText            String    @db.Text
+  title                 String
+  status                String    @default("DRAFT") @db.VarChar(32)
+  customerCrmAccountId  String?
+  salesOrderId          String?
+  actionQueueItemId     String?
   requestedDeliveryDate DateTime?
-  demandJson      Json
-  matchJson       Json
-  atpJson         Json
-  proposalJson    Json
-  approvalNote    String?  @db.Text
-  approvedAt      DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  demandJson            Json
+  matchJson             Json
+  atpJson               Json
+  proposalJson          Json
+  approvalNote          String?   @db.Text
+  approvedAt            DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
   tenant  Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   creator User?  @relation("AssistantOrderOrchestrationPlanCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
@@ -330,21 +331,21 @@ model AssistantOrderOrchestrationPlan {
 
 /// AMP15: warehouse labor/capacity command plan with task bottlenecks and human-approved recovery work.
 model AssistantWarehouseCapacityPlan {
-  id              String   @id @default(cuid())
-  tenantId        String
-  createdByUserId String?
-  warehouseId     String?
-  title           String
-  status          String   @default("DRAFT") @db.VarChar(32)
-  capacityScore   Int      @default(0)
-  taskSummaryJson Json
-  bottleneckJson  Json
-  recoveryPlanJson Json
+  id                String    @id @default(cuid())
+  tenantId          String
+  createdByUserId   String?
+  warehouseId       String?
+  title             String
+  status            String    @default("DRAFT") @db.VarChar(32)
+  capacityScore     Int       @default(0)
+  taskSummaryJson   Json
+  bottleneckJson    Json
+  recoveryPlanJson  Json
   actionQueueItemId String?
-  approvedAt      DateTime?
-  approvalNote    String?  @db.Text
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  approvedAt        DateTime?
+  approvalNote      String?   @db.Text
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   tenant  Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   creator User?  @relation("AssistantWarehouseCapacityPlanCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
@@ -355,21 +356,21 @@ model AssistantWarehouseCapacityPlan {
 
 /// AMP7: inspectable grounding ledger extracted from assistant answers and reviewer additions.
 model AssistantEvidenceRecord {
-  id           String   @id @default(cuid())
-  tenantId     String
-  auditEventId String?
-  label        String
-  href         String?  @db.Text
-  excerpt      String?  @db.Text
-  sourceType   String   @default("LINK") @db.VarChar(32)
-  confidence   String   @default("MEDIUM") @db.VarChar(16)
+  id              String    @id @default(cuid())
+  tenantId        String
+  auditEventId    String?
+  label           String
+  href            String?   @db.Text
+  excerpt         String?   @db.Text
+  sourceType      String    @default("LINK") @db.VarChar(32)
+  confidence      String    @default("MEDIUM") @db.VarChar(16)
   createdByUserId String?
-  archivedAt   DateTime?
-  createdAt    DateTime @default(now())
+  archivedAt      DateTime?
+  createdAt       DateTime  @default(now())
 
-  tenant     Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant     Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   auditEvent AssistantAuditEvent? @relation(fields: [auditEventId], references: [id], onDelete: Cascade)
-  creator    User? @relation("AssistantEvidenceRecordCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  creator    User?                @relation("AssistantEvidenceRecordCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, auditEventId, createdAt])
   @@index([tenantId, sourceType, createdAt])
@@ -389,9 +390,9 @@ model AssistantReviewExample {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  tenant     Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant     Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   auditEvent AssistantAuditEvent @relation(fields: [auditEventId], references: [id], onDelete: Cascade)
-  reviewer   User? @relation("AssistantReviewExampleReviewer", fields: [reviewerUserId], references: [id], onDelete: SetNull)
+  reviewer   User?               @relation("AssistantReviewExampleReviewer", fields: [reviewerUserId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, status, createdAt])
   @@index([tenantId, label, createdAt])
@@ -414,7 +415,7 @@ model AssistantPromptLibraryItem {
   updatedAt       DateTime @updatedAt
 
   tenant  Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  creator User? @relation("AssistantPromptLibraryItemCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  creator User?  @relation("AssistantPromptLibraryItemCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, status, updatedAt])
   @@index([tenantId, domain, status])
@@ -423,20 +424,20 @@ model AssistantPromptLibraryItem {
 
 /// AMP7: quality gate snapshot that blocks unsafe assistant releases unless checks pass.
 model AssistantReleaseGate {
-  id              String   @id @default(cuid())
-  tenantId        String
-  gateKey         String   @db.VarChar(128)
-  status          String   @default("BLOCKED") @db.VarChar(32)
-  score           Int      @default(0)
-  threshold       Int      @default(75)
-  checksJson      Json
-  notes           String?  @db.Text
+  id                String   @id @default(cuid())
+  tenantId          String
+  gateKey           String   @db.VarChar(128)
+  status            String   @default("BLOCKED") @db.VarChar(32)
+  score             Int      @default(0)
+  threshold         Int      @default(75)
+  checksJson        Json
+  notes             String?  @db.Text
   evaluatedByUserId String?
-  evaluatedAt     DateTime @default(now())
-  createdAt       DateTime @default(now())
+  evaluatedAt       DateTime @default(now())
+  createdAt         DateTime @default(now())
 
   tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  evaluator User? @relation("AssistantReleaseGateEvaluator", fields: [evaluatedByUserId], references: [id], onDelete: SetNull)
+  evaluator User?  @relation("AssistantReleaseGateEvaluator", fields: [evaluatedByUserId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, gateKey, evaluatedAt])
   @@index([tenantId, status, evaluatedAt])
@@ -465,10 +466,10 @@ model AssistantActionQueueItem {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  tenant     Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  actor      User?                @relation("AssistantActionQueueActor", fields: [actorUserId], references: [id], onDelete: SetNull)
-  owner      User?                @relation("AssistantActionQueueOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
-  auditEvent AssistantAuditEvent? @relation(fields: [auditEventId], references: [id], onDelete: SetNull)
+  tenant               Tenant                         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actor                User?                          @relation("AssistantActionQueueActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  owner                User?                          @relation("AssistantActionQueueOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  auditEvent           AssistantAuditEvent?           @relation(fields: [auditEventId], references: [id], onDelete: SetNull)
   automationShadowRuns AssistantAutomationShadowRun[]
 
   @@index([tenantId, status, priority, dueAt])
@@ -504,23 +505,23 @@ model AssistantPlaybookTemplate {
 
 /// MP19: persistent playbook run state for assistant-guided workflows.
 model AssistantPlaybookRun {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   tenantId     String
   actorUserId  String?
   ownerUserId  String?
   auditEventId String?
-  objectType   String?  @db.VarChar(64)
+  objectType   String?   @db.VarChar(64)
   objectId     String?
-  objectHref   String?  @db.Text
-  playbookId   String   @db.VarChar(128)
+  objectHref   String?   @db.Text
+  playbookId   String    @db.VarChar(128)
   title        String
-  priority     String   @default("MEDIUM") @db.VarChar(16)
-  status       String   @default("IN_PROGRESS") @db.VarChar(32)
+  priority     String    @default("MEDIUM") @db.VarChar(16)
+  status       String    @default("IN_PROGRESS") @db.VarChar(32)
   steps        Json
   dueAt        DateTime?
   completedAt  DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   tenant     Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   actor      User?                @relation("AssistantPlaybookRunActor", fields: [actorUserId], references: [id], onDelete: SetNull)
@@ -824,23 +825,23 @@ model ApiHubStagingRow {
 
 /// AMP9: assistant-readable integration review item, linking API Hub evidence to human work.
 model ApiHubAssistantReviewItem {
-  id              String   @id @default(cuid())
-  tenantId        String
-  createdByUserId String?
-  sourceType      String   @db.VarChar(64)
-  sourceId        String?
-  title           String
-  summary         String   @db.Text
-  severity        String   @default("INFO") @db.VarChar(16)
-  status          String   @default("OPEN") @db.VarChar(32)
-  evidenceJson    Json
-  actionQueueItemId String?
+  id                        String   @id @default(cuid())
+  tenantId                  String
+  createdByUserId           String?
+  sourceType                String   @db.VarChar(64)
+  sourceId                  String?
+  title                     String
+  summary                   String   @db.Text
+  severity                  String   @default("INFO") @db.VarChar(16)
+  status                    String   @default("OPEN") @db.VarChar(32)
+  evidenceJson              Json
+  actionQueueItemId         String?
   assistantEvidenceRecordId String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
 
-  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  creator  User?  @relation("ApiHubAssistantReviewItemCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  tenant  Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator User?  @relation("ApiHubAssistantReviewItemCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, status, severity, createdAt])
   @@index([tenantId, sourceType, sourceId])
@@ -875,104 +876,105 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  tenant                             Tenant                          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  userRoles                          UserRole[]
-  orderChats                         OrderChatMessage[]
-  purchaseOrders                     PurchaseOrder[]
-  salesOrdersCreated                 SalesOrder[]
-  salesOrdersAssistantReviewed       SalesOrder[]                    @relation("SalesOrderAssistantReviewedBy")
-  orderTransitionLogs                OrderTransitionLog[]
-  splitProposals                     SplitProposal[]
-  shipmentsCreated                   Shipment[]
-  shipmentBookingsCreated            ShipmentBooking[]               @relation("ShipmentBookingCreatedBy")
-  shipmentBookingsUpdated            ShipmentBooking[]               @relation("ShipmentBookingUpdatedBy")
-  shipmentMilestonesUpdated          ShipmentMilestone[]
-  inventoryMovementsCreated          InventoryMovement[]
-  wmsTasksCreated                    WmsTask[]                       @relation("WmsTaskCreatedBy")
-  wmsTasksCompleted                  WmsTask[]                       @relation("WmsTaskCompletedBy")
-  wmsWavesCreated                    WmsWave[]
-  outboundOrdersCreated              OutboundOrder[]
-  loadPlansCreated                   LoadPlan[]
-  preferences                        UserPreference[]
-  crmLeadsOwned                      CrmLead[]                       @relation("CrmLeadOwner")
-  crmAccountsOwned                   CrmAccount[]                    @relation("CrmAccountOwner")
-  crmContactsOwned                   CrmContact[]                    @relation("CrmContactOwner")
-  crmOpportunitiesOwned              CrmOpportunity[]                @relation("CrmOpportunityOwner")
-  crmActivitiesOwned                 CrmActivity[]                   @relation("CrmActivityOwner")
-  crmQuotesOwned                     CrmQuote[]                      @relation("CrmQuoteOwner")
-  wmsBillingInvoiceRunsCreated       WmsBillingInvoiceRun[]          @relation("WmsBillingInvoiceRunCreatedBy")
-  ctTrackingMilestonesUpdated        CtTrackingMilestone[]
-  ctShipmentDocumentsUploaded        CtShipmentDocument[]
-  ctShipmentNotesCreated             CtShipmentNote[]
-  ctFinancialSnapshotsCreated        CtShipmentFinancialSnapshot[]
-  ctAlertsOwned                      CtAlert[]                       @relation("CtAlertOwner")
-  ctAlertsAcknowledged               CtAlert[]                       @relation("CtAlertAckBy")
-  ctExceptionsOwned                  CtException[]                   @relation("CtExceptionOwner")
-  ctAuditLogsActor                   CtAuditLog[]
-  ctSavedFilters                     CtSavedFilter[]
-  ctSavedReports                     CtSavedReport[]
-  ctDashboardWidgets                 CtDashboardWidget[]
-  ctReportSchedules                  CtReportSchedule[]
-  ctShipmentCostLinesCreated         CtShipmentCostLine[]
-  shipmentsOpsAssigned               Shipment[]                      @relation("ShipmentOpsAssignee")
+  tenant                                  Tenant                            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userRoles                               UserRole[]
+  orderChats                              OrderChatMessage[]
+  purchaseOrders                          PurchaseOrder[]
+  salesOrdersCreated                      SalesOrder[]
+  salesOrdersAssistantReviewed            SalesOrder[]                      @relation("SalesOrderAssistantReviewedBy")
+  orderTransitionLogs                     OrderTransitionLog[]
+  splitProposals                          SplitProposal[]
+  shipmentsCreated                        Shipment[]
+  shipmentBookingsCreated                 ShipmentBooking[]                 @relation("ShipmentBookingCreatedBy")
+  shipmentBookingsUpdated                 ShipmentBooking[]                 @relation("ShipmentBookingUpdatedBy")
+  shipmentMilestonesUpdated               ShipmentMilestone[]
+  inventoryMovementsCreated               InventoryMovement[]
+  wmsTasksCreated                         WmsTask[]                         @relation("WmsTaskCreatedBy")
+  wmsTasksCompleted                       WmsTask[]                         @relation("WmsTaskCompletedBy")
+  wmsWavesCreated                         WmsWave[]
+  outboundOrdersCreated                   OutboundOrder[]
+  loadPlansCreated                        LoadPlan[]
+  preferences                             UserPreference[]
+  crmLeadsOwned                           CrmLead[]                         @relation("CrmLeadOwner")
+  crmAccountsOwned                        CrmAccount[]                      @relation("CrmAccountOwner")
+  crmContactsOwned                        CrmContact[]                      @relation("CrmContactOwner")
+  crmOpportunitiesOwned                   CrmOpportunity[]                  @relation("CrmOpportunityOwner")
+  crmActivitiesOwned                      CrmActivity[]                     @relation("CrmActivityOwner")
+  crmQuotesOwned                          CrmQuote[]                        @relation("CrmQuoteOwner")
+  wmsBillingInvoiceRunsCreated            WmsBillingInvoiceRun[]            @relation("WmsBillingInvoiceRunCreatedBy")
+  ctTrackingMilestonesUpdated             CtTrackingMilestone[]
+  ctShipmentDocumentsUploaded             CtShipmentDocument[]
+  ctShipmentNotesCreated                  CtShipmentNote[]
+  ctFinancialSnapshotsCreated             CtShipmentFinancialSnapshot[]
+  ctAlertsOwned                           CtAlert[]                         @relation("CtAlertOwner")
+  ctAlertsAcknowledged                    CtAlert[]                         @relation("CtAlertAckBy")
+  ctExceptionsOwned                       CtException[]                     @relation("CtExceptionOwner")
+  ctAuditLogsActor                        CtAuditLog[]
+  ctSavedFilters                          CtSavedFilter[]
+  ctSavedReports                          CtSavedReport[]
+  ctDashboardWidgets                      CtDashboardWidget[]
+  ctReportSchedules                       CtReportSchedule[]
+  ctShipmentCostLinesCreated              CtShipmentCostLine[]
+  shipmentsOpsAssigned                    Shipment[]                        @relation("ShipmentOpsAssignee")
   /// When set, Control Tower (and similar) list/detail is limited to shipments tagged with this CRM account.
-  customerCrmAccountId               String?
-  customerCrmAccount                 CrmAccount?                     @relation("UserCustomerPortalScope", fields: [customerCrmAccountId], references: [id], onDelete: SetNull)
+  customerCrmAccountId                    String?
+  customerCrmAccount                      CrmAccount?                       @relation("UserCustomerPortalScope", fields: [customerCrmAccountId], references: [id], onDelete: SetNull)
   /// Phase H: supplier-portal user linked to the supplier org they represent (same tenant).
-  portalLinkedSupplierId             String?
-  portalLinkedSupplier               Supplier?                       @relation("UserPortalLinkedSupplier", fields: [portalLinkedSupplierId], references: [id], onDelete: SetNull)
-  tariffContractHeadersOwned         TariffContractHeader[]          @relation("TariffContractHeaderOwner")
-  tariffApprovalRecords              TariffApprovalRecord[]          @relation("TariffApprovalApprover")
-  tariffAuditLogs                    TariffAuditLog[]                @relation("TariffAuditLogActor")
-  quoteRequestsOwned                 QuoteRequest[]                  @relation("QuoteRequestOwner")
-  quoteClarificationsAuthored        QuoteClarificationMessage[]     @relation("QuoteClarificationAuthor")
-  bookingPricingSnapshotsCreated     BookingPricingSnapshot[]        @relation("BookingPricingSnapshotCreator")
-  invoiceIntakesCreated              InvoiceIntake[]                 @relation("InvoiceIntakeCreator")
-  invoiceIntakesReviewed             InvoiceIntake[]                 @relation("InvoiceIntakeReviewer")
-  apiHubConnectorAuditLogs           ApiHubConnectorAuditLog[]
-  apiHubIngestionRunsRequested       ApiHubIngestionRun[]
-  apiHubMappingTemplatesCreated      ApiHubMappingTemplate[]         @relation("ApiHubMappingTemplateCreatedBy")
-  apiHubMappingTemplateAuditLogs     ApiHubMappingTemplateAuditLog[]
-  apiHubIngestionRunAuditLogs        ApiHubIngestionRunAuditLog[]
-  apiHubMappingAnalysisJobsRequested ApiHubMappingAnalysisJob[]
-  apiHubStagingBatchesCreated        ApiHubStagingBatch[]
-  apiHubAssistantReviewItemsCreated  ApiHubAssistantReviewItem[]     @relation("ApiHubAssistantReviewItemCreator")
-  assistantAdminControlsUpdated      AssistantAdminControl[]          @relation("AssistantAdminControlUpdater")
-  assistantOperatingReportsCreated   AssistantOperatingReport[]       @relation("AssistantOperatingReportCreator")
+  portalLinkedSupplierId                  String?
+  portalLinkedSupplier                    Supplier?                         @relation("UserPortalLinkedSupplier", fields: [portalLinkedSupplierId], references: [id], onDelete: SetNull)
+  tariffContractHeadersOwned              TariffContractHeader[]            @relation("TariffContractHeaderOwner")
+  tariffApprovalRecords                   TariffApprovalRecord[]            @relation("TariffApprovalApprover")
+  tariffAuditLogs                         TariffAuditLog[]                  @relation("TariffAuditLogActor")
+  quoteRequestsOwned                      QuoteRequest[]                    @relation("QuoteRequestOwner")
+  quoteClarificationsAuthored             QuoteClarificationMessage[]       @relation("QuoteClarificationAuthor")
+  transportationProcurementPlansCreated   TransportationProcurementPlan[]   @relation("TransportationProcurementPlanCreator")
+  bookingPricingSnapshotsCreated          BookingPricingSnapshot[]          @relation("BookingPricingSnapshotCreator")
+  invoiceIntakesCreated                   InvoiceIntake[]                   @relation("InvoiceIntakeCreator")
+  invoiceIntakesReviewed                  InvoiceIntake[]                   @relation("InvoiceIntakeReviewer")
+  apiHubConnectorAuditLogs                ApiHubConnectorAuditLog[]
+  apiHubIngestionRunsRequested            ApiHubIngestionRun[]
+  apiHubMappingTemplatesCreated           ApiHubMappingTemplate[]           @relation("ApiHubMappingTemplateCreatedBy")
+  apiHubMappingTemplateAuditLogs          ApiHubMappingTemplateAuditLog[]
+  apiHubIngestionRunAuditLogs             ApiHubIngestionRunAuditLog[]
+  apiHubMappingAnalysisJobsRequested      ApiHubMappingAnalysisJob[]
+  apiHubStagingBatchesCreated             ApiHubStagingBatch[]
+  apiHubAssistantReviewItemsCreated       ApiHubAssistantReviewItem[]       @relation("ApiHubAssistantReviewItemCreator")
+  assistantAdminControlsUpdated           AssistantAdminControl[]           @relation("AssistantAdminControlUpdater")
+  assistantOperatingReportsCreated        AssistantOperatingReport[]        @relation("AssistantOperatingReportCreator")
   assistantOrderOrchestrationPlansCreated AssistantOrderOrchestrationPlan[] @relation("AssistantOrderOrchestrationPlanCreator")
-  assistantWarehouseCapacityPlansCreated AssistantWarehouseCapacityPlan[] @relation("AssistantWarehouseCapacityPlanCreator")
-  invoiceIntakesAccountingApproved   InvoiceIntake[]                 @relation("InvoiceIntakeAccountingApprover")
-  tariffShipmentApplicationsCreated  TariffShipmentApplication[]     @relation("TariffShipmentApplicationCreator")
-  scriEventsOwned                    ScriExternalEvent[]             @relation("ScriEventOwner")
+  assistantWarehouseCapacityPlansCreated  AssistantWarehouseCapacityPlan[]  @relation("AssistantWarehouseCapacityPlanCreator")
+  invoiceIntakesAccountingApproved        InvoiceIntake[]                   @relation("InvoiceIntakeAccountingApprover")
+  tariffShipmentApplicationsCreated       TariffShipmentApplication[]       @relation("TariffShipmentApplicationCreator")
+  scriEventsOwned                         ScriExternalEvent[]               @relation("ScriEventOwner")
   supplyChainTwinAssistantInsightsCreated SupplyChainTwinAssistantInsight[] @relation("SupplyChainTwinAssistantInsightCreator")
-  scriReviewLogsAuthored             ScriEventReviewLog[]            @relation("ScriReviewLogActor")
-  scriTaskLinksCreated               ScriEventTaskLink[]             @relation("ScriTaskLinkCreatedBy")
-  scriTuningAutomationActorOf        ScriTenantTuning[]              @relation("ScriTuningAutomationActor")
-  supplierOnboardingTasksAssigned    SupplierOnboardingTask[]        @relation("SupplierOnboardingTaskAssignee")
-  srmOperatorNotificationsReceived   SrmOperatorNotification[]       @relation("SrmOperatorNotificationRecipient")
-  srmOperatorNotificationsAsActor    SrmOperatorNotification[]       @relation("SrmOperatorNotificationActor")
-  srmDocumentsUploaded               SrmSupplierDocument[]           @relation("SrmSupplierDocumentUploadedBy")
-  srmDocumentsLastTouched            SrmSupplierDocument[]           @relation("SrmSupplierDocumentLastTouchedBy")
-  srmSupplierDocumentAuditAuthored   SrmSupplierDocumentAuditLog[]   @relation("SrmSupplierDocumentAuditActor")
-  companyLegalEntityAudits           CompanyLegalEntityAuditLog[]
-  wmsSavedLedgerViews                WmsSavedLedgerView[]
-  assistantEmailSendConfirms         AssistantEmailThread[]          @relation("AssistantEmailSendConfirmBy")
-  assistantAuditEvents               AssistantAuditEvent[]           @relation("AssistantAuditEventActor")
-  assistantEvidenceRecordsCreated    AssistantEvidenceRecord[]       @relation("AssistantEvidenceRecordCreator")
-  assistantReviewExamplesReviewed    AssistantReviewExample[]        @relation("AssistantReviewExampleReviewer")
-  assistantPromptLibraryItemsCreated AssistantPromptLibraryItem[]     @relation("AssistantPromptLibraryItemCreator")
-  assistantReleaseGatesEvaluated     AssistantReleaseGate[]          @relation("AssistantReleaseGateEvaluator")
-  assistantAutomationPoliciesEnabled AssistantAutomationPolicy[]      @relation("AssistantAutomationPolicyEnabledBy")
-  assistantActionQueueItems          AssistantActionQueueItem[]      @relation("AssistantActionQueueActor")
-  assistantActionQueueOwned          AssistantActionQueueItem[]      @relation("AssistantActionQueueOwner")
-  assistantPlaybookTemplatesCreated  AssistantPlaybookTemplate[]     @relation("AssistantPlaybookTemplateCreator")
-  assistantPlaybookRuns              AssistantPlaybookRun[]          @relation("AssistantPlaybookRunActor")
-  assistantPlaybookRunsOwned         AssistantPlaybookRun[]          @relation("AssistantPlaybookRunOwner")
-  passwordResetTokens                PasswordResetToken[]
+  scriReviewLogsAuthored                  ScriEventReviewLog[]              @relation("ScriReviewLogActor")
+  scriTaskLinksCreated                    ScriEventTaskLink[]               @relation("ScriTaskLinkCreatedBy")
+  scriTuningAutomationActorOf             ScriTenantTuning[]                @relation("ScriTuningAutomationActor")
+  supplierOnboardingTasksAssigned         SupplierOnboardingTask[]          @relation("SupplierOnboardingTaskAssignee")
+  srmOperatorNotificationsReceived        SrmOperatorNotification[]         @relation("SrmOperatorNotificationRecipient")
+  srmOperatorNotificationsAsActor         SrmOperatorNotification[]         @relation("SrmOperatorNotificationActor")
+  srmDocumentsUploaded                    SrmSupplierDocument[]             @relation("SrmSupplierDocumentUploadedBy")
+  srmDocumentsLastTouched                 SrmSupplierDocument[]             @relation("SrmSupplierDocumentLastTouchedBy")
+  srmSupplierDocumentAuditAuthored        SrmSupplierDocumentAuditLog[]     @relation("SrmSupplierDocumentAuditActor")
+  companyLegalEntityAudits                CompanyLegalEntityAuditLog[]
+  wmsSavedLedgerViews                     WmsSavedLedgerView[]
+  assistantEmailSendConfirms              AssistantEmailThread[]            @relation("AssistantEmailSendConfirmBy")
+  assistantAuditEvents                    AssistantAuditEvent[]             @relation("AssistantAuditEventActor")
+  assistantEvidenceRecordsCreated         AssistantEvidenceRecord[]         @relation("AssistantEvidenceRecordCreator")
+  assistantReviewExamplesReviewed         AssistantReviewExample[]          @relation("AssistantReviewExampleReviewer")
+  assistantPromptLibraryItemsCreated      AssistantPromptLibraryItem[]      @relation("AssistantPromptLibraryItemCreator")
+  assistantReleaseGatesEvaluated          AssistantReleaseGate[]            @relation("AssistantReleaseGateEvaluator")
+  assistantAutomationPoliciesEnabled      AssistantAutomationPolicy[]       @relation("AssistantAutomationPolicyEnabledBy")
+  assistantActionQueueItems               AssistantActionQueueItem[]        @relation("AssistantActionQueueActor")
+  assistantActionQueueOwned               AssistantActionQueueItem[]        @relation("AssistantActionQueueOwner")
+  assistantPlaybookTemplatesCreated       AssistantPlaybookTemplate[]       @relation("AssistantPlaybookTemplateCreator")
+  assistantPlaybookRuns                   AssistantPlaybookRun[]            @relation("AssistantPlaybookRunActor")
+  assistantPlaybookRunsOwned              AssistantPlaybookRun[]            @relation("AssistantPlaybookRunOwner")
+  passwordResetTokens                     PasswordResetToken[]
   /// Primary org node (geography / legal hierarchy). Matrix: see `productDivisionScope`.
-  primaryOrgUnitId                   String?
-  primaryOrgUnit                     OrgUnit?                        @relation("UserPrimaryOrgUnit", fields: [primaryOrgUnitId], references: [id], onDelete: SetNull)
-  productDivisionScope               UserProductDivision[]
+  primaryOrgUnitId                        String?
+  primaryOrgUnit                          OrgUnit?                          @relation("UserPrimaryOrgUnit", fields: [primaryOrgUnitId], references: [id], onDelete: SetNull)
+  productDivisionScope                    UserProductDivision[]
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -3847,11 +3849,12 @@ model QuoteRequest {
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
 
-  tenant         Tenant                      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  owner          User?                       @relation("QuoteRequestOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
-  recipients     QuoteRequestRecipient[]
-  responses      QuoteResponse[]
-  clarifications QuoteClarificationMessage[]
+  tenant                         Tenant                          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  owner                          User?                           @relation("QuoteRequestOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  recipients                     QuoteRequestRecipient[]
+  responses                      QuoteResponse[]
+  clarifications                 QuoteClarificationMessage[]
+  transportationProcurementPlans TransportationProcurementPlan[]
 
   @@index([tenantId])
   @@index([tenantId, status])
@@ -3945,6 +3948,40 @@ model QuoteClarificationMessage {
 
   @@index([quoteRequestId])
   @@map("quote_clarification_messages")
+}
+
+/// AMP16: governed transportation procurement recommendation linking RFQ, snapshots, execution, and invoice feedback.
+model TransportationProcurementPlan {
+  id                    String    @id @default(cuid())
+  tenantId              String
+  createdByUserId       String?
+  quoteRequestId        String?
+  title                 String
+  status                String    @default("DRAFT") @db.VarChar(32)
+  recommendedCarrier    String?   @db.VarChar(256)
+  recommendedSupplierId String?
+  recommendedResponseId String?
+  recommendedSnapshotId String?
+  allocationScore       Int       @default(0)
+  carrierScorecardJson  Json
+  rfqEvidenceJson       Json
+  snapshotEvidenceJson  Json
+  invoiceFeedbackJson   Json
+  allocationPlanJson    Json
+  tenderDraftJson       Json
+  actionQueueItemId     String?
+  approvedAt            DateTime?
+  approvalNote          String?   @db.Text
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator      User?         @relation("TransportationProcurementPlanCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  quoteRequest QuoteRequest? @relation(fields: [quoteRequestId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, updatedAt])
+  @@index([tenantId, quoteRequestId])
+  @@map("transportation_procurement_plans")
 }
 
 /// Immutable capture of estimated booking economics at a point in time (contract or RFQ basis).

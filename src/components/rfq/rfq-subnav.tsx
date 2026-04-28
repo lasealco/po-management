@@ -21,6 +21,11 @@ const items = [
     label: "New request",
     match: (p: string) => p.startsWith("/rfq/requests/new"),
   },
+  {
+    href: "/rfq/procurement",
+    label: "Procurement",
+    match: (p: string) => p.startsWith("/rfq/procurement"),
+  },
 ];
 
 export function RfqSubNav() {

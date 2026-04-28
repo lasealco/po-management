@@ -1,0 +1,26 @@
+[
+  {
+    "id": "amp16-rfq-allocation-scorecard",
+    "title": "Score carrier RFQ responses with procurement evidence",
+    "route": "/rfq/procurement",
+    "given": "A tenant has an RFQ with at least two submitted carrier responses and one frozen booking/pricing snapshot from a quote response.",
+    "when": "The user selects the RFQ and creates an allocation plan.",
+    "then": "The assistant persists a transportation procurement plan with carrier scorecards, RFQ evidence, snapshot evidence, invoice feedback, and a recommended carrier allocation score."
+  },
+  {
+    "id": "amp16-service-risk-beats-cheapest",
+    "title": "Avoid blindly choosing the cheapest risky carrier",
+    "route": "/rfq/procurement",
+    "given": "One carrier has the lowest all-in quote but weak snapshot coverage, late shipment history, or red invoice-audit feedback.",
+    "when": "The assistant computes carrier scorecards.",
+    "then": "Cost, service, invoice, and evidence scores are shown separately, and the recommendation can favor a more reliable carrier."
+  },
+  {
+    "id": "amp16-human-approved-tender",
+    "title": "Queue tender and allocation for approval",
+    "route": "/rfq/procurement",
+    "given": "A transportation procurement plan has a recommended carrier and tender draft.",
+    "when": "The user clicks Queue approval.",
+    "then": "An assistant action queue item is created for carrier allocation approval, with no booking mutation, tender send, or external carrier communication performed silently."
+  }
+]
