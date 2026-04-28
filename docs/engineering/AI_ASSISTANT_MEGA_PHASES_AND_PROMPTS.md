@@ -194,6 +194,56 @@ Use **one** of these. They are designed so the implementer (human or agent) does
 | **MP137** | **Operating model map** — roles and rhythms become explicit | Cadence, handoff, adoption, and release train summarize operating model |
 | **MP138** | **Executive rollout narrative** — leadership gets a concise AI story | Board-ready narrative, KPI board, and roadmap combine into a rollout story |
 | **MP139** | **AI operating system index** — the assistant program has one index | Command center indexes governance, value, maturity, horizon, and execution layers |
+| **MP140** | **Digital twin readiness** — the assistant can mirror live operations | Object coverage, evidence, and action data show whether a lightweight twin is viable |
+| **MP141** | **Order-flow twin** — orders can be represented as assistant signals | Sales/order activity and handoffs summarize order-flow coverage |
+| **MP142** | **Shipment-flow twin** — shipments can be represented as assistant signals | Shipment/control-tower activity summarizes logistics flow coverage |
+| **MP143** | **Inventory-flow twin** — inventory can be represented as assistant signals | Product/inventory activity summarizes stock-flow coverage |
+| **MP144** | **Twin confidence score** — the digital twin has a trust posture | Grounding, object links, and feedback produce a twin confidence score |
+| **MP145** | **Planning cockpit** — assistant insights support planning decisions | Recommendations, experiments, and milestones become planning inputs |
+| **MP146** | **Capacity planning hint** — assistant workload indicates capacity needs | Inbox, pending actions, and stale playbooks show workload pressure |
+| **MP147** | **Demand planning hint** — prompt and surface activity signal demand | Prompt patterns and surface mix show where users ask for help |
+| **MP148** | **Exception planning queue** — likely exceptions become planning work | Risks, low-confidence answers, and evidence gaps drive exception planning |
+| **MP149** | **Scenario planning starter** — next scenarios are packaged | Experiments and playbook templates form scenario starter cards |
+| **MP150** | **Network collaboration hub** — external collaboration is grouped | Customer, supplier, carrier, and handoff signals share one collaboration view |
+| **MP151** | **Customer promise watch** — customer-impact risk is visible | Order/customer signals plus stale work show customer-promise risk |
+| **MP152** | **Supplier promise watch** — supplier-impact risk is visible | Supplier/SRM signals plus handoffs show supplier-promise risk |
+| **MP153** | **Carrier promise watch** — carrier-impact risk is visible | Shipment/carrier signals plus stale work show carrier-promise risk |
+| **MP154** | **Network escalation map** — external escalations have a route | Handoff, risk, and stale-work signals show escalation routes |
+| **MP155** | **Finance control lens** — financial workflows have AI guardrails | Pricing, invoice, action, and evidence signals show finance-control readiness |
+| **MP156** | **Revenue leakage watch** — low-confidence commercial work is flagged | Pricing/invoice gaps and low confidence highlight leakage risk |
+| **MP157** | **Dispute readiness** — evidence supports dispute workflows | Evidence coverage and invoice/customer signals show dispute readiness |
+| **MP158** | **Approval chain map** — financial actions remain human approved | Pending/done actions and approval posture summarize approval-chain health |
+| **MP159** | **Finance packet** — finance status can be copied into updates | Commercial value, risk, and evidence signals create a finance brief |
+| **MP160** | **Sustainability signal board** — sustainability data gaps are visible | Object coverage and evidence debt identify sustainability-readiness gaps |
+| **MP161** | **Emissions data readiness** — emissions workflows need evidence | Shipment/inventory coverage plus grounding show emissions data readiness |
+| **MP162** | **Compliance sustainability watch** — sustainability risks are tracked | Compliance, evidence, and risk signals show sustainability control posture |
+| **MP163** | **Green logistics hint** — logistics data can support greener choices | Shipment/logistics signals become candidates for green routing analysis |
+| **MP164** | **Sustainability reporting starter** — reporting has a starter packet | Evidence and operating packets become sustainability reporting inputs |
+| **MP165** | **Resilience control tower** — operational resilience is summarized | Risk, stale work, review debt, and handoffs show resilience posture |
+| **MP166** | **Disruption watch** — emerging disruptions are visible | Exceptions, stale playbooks, and aged actions indicate disruption pressure |
+| **MP167** | **Recovery playbook candidates** — recovery workflows become reusable | Template recommendations and handoffs suggest recovery playbooks |
+| **MP168** | **Continuity score** — continuity readiness is scored | Grounding, completion, and stale-work signals form a continuity score |
+| **MP169** | **Resilience packet** — resilience updates are copy-ready | Risk, handoff, and milestone signals produce a resilience brief |
+| **MP170** | **Ecosystem integration map** — external system needs are visible | Surfaces, action kinds, and object coverage reveal integration priorities |
+| **MP171** | **ERP integration readiness** — order and finance signals show ERP fit | Orders, pricing, invoices, and actions indicate ERP integration readiness |
+| **MP172** | **WMS integration readiness** — warehouse signals show WMS fit | Warehouse/inventory coverage indicates WMS integration readiness |
+| **MP173** | **TMS integration readiness** — shipment signals show TMS fit | Shipment/carrier coverage indicates TMS integration readiness |
+| **MP174** | **Integration backlog** — integrations become ranked work | Coverage gaps and automation candidates create integration backlog items |
+| **MP175** | **Global rollout governance** — rollout can scale by region/team | Adoption, permissions, and rollout score guide global rollout governance |
+| **MP176** | **Localization readiness** — assistant output can be localized later | Briefs, prompt starters, and object labels show localization candidates |
+| **MP177** | **Regional risk watch** — regional gaps are flagged when data exists | Object coverage and handoff load create regional-risk placeholders |
+| **MP178** | **Policy pack readiness** — policy assets can be assembled | Compliance packet, signal hygiene, and audit coverage show policy readiness |
+| **MP179** | **Global operating cadence** — cadence can scale across teams | Daily cadence, release train, and handoff queues form a global rhythm |
+| **MP180** | **Copilot experience map** — assistant UX surfaces are tracked | Surface mix, dock/chat usage, and command-center usage show experience coverage |
+| **MP181** | **Prompt-to-action funnel** — prompt flow to action is measurable | Audit events, queued actions, and completed actions show funnel health |
+| **MP182** | **Answer experience quality** — answers are judged by trust and usefulness | Helpful feedback, needs-review, grounding, and confidence show answer quality |
+| **MP183** | **Action experience quality** — actions are judged by completion and age | Pending, done, and aged actions show action experience quality |
+| **MP184** | **Copilot UX backlog** — UX improvements are prioritized | Experiments, hygiene, and prompt candidates create UX backlog items |
+| **MP185** | **Autonomous readiness index** — autonomy remains gated and measurable | Guardrails, approval balance, grounding, and feedback produce an autonomy score |
+| **MP186** | **Autonomy stage map** — automation maturity is staged | Shadow mode, controlled candidates, and release gates define autonomy stage |
+| **MP187** | **Autonomy risk register** — automation risk is explicit | Risks, handoffs, evidence gaps, and stale actions form autonomy risk items |
+| **MP188** | **Human override posture** — humans keep control | Pending approvals, handoffs, and review queues show override posture |
+| **MP189** | **Next-generation AI roadmap** — the next era is indexed | Digital twin, planning, network, finance, sustainability, resilience, integration, global, UX, and autonomy layers form the next roadmap |
 
 *Docs and small fixes can happen anytime; they are not a substitute for **MP1** if your goal is “I can *see* it.”*
 
@@ -260,6 +310,7 @@ Use **one** of these. They are designed so the implementer (human or agent) does
 
 | Date | Change |
 |------|--------|
+| 2026-04-28 | **MP140-MP189 shipped (MVP):** extended the assistant command center with advanced layers for digital twin readiness, planning, network collaboration, finance, sustainability, resilience, ecosystem integration, global governance, copilot UX, and autonomous readiness. |
 | 2026-04-28 | **MP90-MP139 shipped (MVP):** extended the assistant command center with horizon layers for predictive operations, data quality, orchestration, collaboration, commercial/ops intelligence, security, admin governance, evaluation, and enterprise readiness. |
 | 2026-04-27 | **MP70-MP89 shipped (MVP):** extended the assistant command center with maturity layers for process intelligence, knowledge system, automation rehearsal, and stakeholder experience. |
 | 2026-04-27 | **MP50-MP69 shipped (MVP):** extended the assistant command center with grouped program layers for governance baseline, value realization, domain expansion, and scale operations. |
