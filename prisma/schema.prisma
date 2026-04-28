@@ -171,6 +171,7 @@ model Tenant {
   assistantMeetingIntelligencePackets AssistantMeetingIntelligencePacket[]
   assistantObservabilityIncidents   AssistantObservabilityIncident[]
   assistantGovernancePackets        AssistantGovernancePacket[]
+  assistantRolloutFactoryPackets    AssistantRolloutFactoryPacket[]
   assistantActionQueue              AssistantActionQueueItem[]
   assistantPlaybookTemplates        AssistantPlaybookTemplate[]
   assistantPlaybookRuns             AssistantPlaybookRun[]
@@ -817,6 +818,43 @@ model AssistantGovernancePacket {
   @@index([tenantId, governanceScore, updatedAt])
 }
 
+/// AMP30: multi-tenant implementation factory packet for template copy, grants, modules, demo data, and rollout approval.
+model AssistantRolloutFactoryPacket {
+  id                    String    @id @default(cuid())
+  tenantId              String
+  createdByUserId       String?
+  approvedByUserId      String?
+  title                 String
+  status                String    @default("DRAFT") @db.VarChar(32)
+  readinessScore        Int       @default(0)
+  templateAssetCount    Int       @default(0)
+  roleGrantGapCount     Int       @default(0)
+  moduleGapCount        Int       @default(0)
+  seedGapCount          Int       @default(0)
+  rollbackStepCount     Int       @default(0)
+  sourceTenantJson      Json
+  templateInventoryJson Json
+  roleGrantPlanJson     Json
+  moduleFlagPlanJson    Json
+  demoDataPlanJson      Json
+  readinessCheckJson    Json
+  rollbackPlanJson      Json
+  onboardingPacketJson  Json
+  leadershipSummary     String    @db.Text
+  actionQueueItemId     String?
+  approvedAt            DateTime?
+  approvalNote          String?   @db.Text
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator  User?  @relation("AssistantRolloutFactoryPacketCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  approver User?  @relation("AssistantRolloutFactoryPacketApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, updatedAt])
+  @@index([tenantId, readinessScore, updatedAt])
+}
+
 /// AMP7: inspectable grounding ledger extracted from assistant answers and reviewer additions.
 model AssistantEvidenceRecord {
   id              String    @id @default(cuid())
@@ -1431,6 +1469,8 @@ model User {
   assistantObservabilityIncidentsResolved AssistantObservabilityIncident[]   @relation("AssistantObservabilityIncidentResolver")
   assistantGovernancePacketsCreated       AssistantGovernancePacket[]         @relation("AssistantGovernancePacketCreator")
   assistantGovernancePacketsApproved      AssistantGovernancePacket[]         @relation("AssistantGovernancePacketApprover")
+  assistantRolloutFactoryPacketsCreated   AssistantRolloutFactoryPacket[]     @relation("AssistantRolloutFactoryPacketCreator")
+  assistantRolloutFactoryPacketsApproved  AssistantRolloutFactoryPacket[]     @relation("AssistantRolloutFactoryPacketApprover")
   invoiceIntakesAccountingApproved        InvoiceIntake[]                   @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated       TariffShipmentApplication[]       @relation("TariffShipmentApplicationCreator")
   scriEventsOwned                         ScriExternalEvent[]               @relation("ScriEventOwner")

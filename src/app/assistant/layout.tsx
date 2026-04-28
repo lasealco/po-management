@@ -72,6 +72,7 @@ export default async function AssistantLayout({ children }: { children: React.Re
           <strong>Meetings</strong> is AMP27 for call notes, transcript-style inputs, redaction, actions, risks, decisions, and minutes review.{" "}
           <strong>Observability</strong> is AMP28 for assistant health, drift, degraded mode, rollback, and incident postmortems.{" "}
           <strong>Governance</strong> is AMP29 for retention dry-runs, privacy-safe exports, deletion review, and legal-hold controls.{" "}
+          <strong>Rollout</strong> is AMP30 for tenant templates, role grants, module flags, seed packs, launch review, and rollback plans.{" "}
           <strong>Workbench</strong> is the LMP1-LMP10 cockpit for sales, products, suppliers, POs, and
           shipments. <strong>Execution</strong> runs LMP11-LMP30 across carrier/customer comms, WMS, finance, quality,
           and simulation readiness. <strong>Work engine</strong> is AMP6 for assigned actions, SLA playbooks, and memory cleanup.{" "}

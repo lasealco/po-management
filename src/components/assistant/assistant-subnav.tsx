@@ -55,6 +55,7 @@ export function AssistantSubnav() {
   const meetingIntelligence = pathname.startsWith("/assistant/meeting-intelligence");
   const observability = pathname.startsWith("/assistant/observability");
   const governance = pathname.startsWith("/assistant/governance");
+  const rolloutFactory = pathname.startsWith("/assistant/rollout-factory");
   const workbench = pathname.startsWith("/assistant/workbench");
   const execution = pathname.startsWith("/assistant/execution");
   const workEngine = pathname.startsWith("/assistant/work-engine");
@@ -180,6 +181,13 @@ export function AssistantSubnav() {
         title="AMP29 enterprise data governance and retention"
       >
         Governance
+      </Link>
+      <Link
+        href="/assistant/rollout-factory"
+        className={rolloutFactory ? appNavActiveClass : appNavInactiveClass}
+        title="AMP30 multi-tenant rollout and implementation factory"
+      >
+        Rollout
       </Link>
       <Link
         href="/assistant/workbench"

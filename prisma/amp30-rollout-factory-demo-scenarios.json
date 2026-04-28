@@ -1,0 +1,52 @@
+[
+  {
+    "id": "amp30-create-rollout-packet",
+    "title": "Create a customer rollout packet from a template tenant",
+    "persona": "Implementation lead with settings edit access",
+    "entrypoint": "/assistant/rollout-factory",
+    "steps": [
+      "Open the AMP30 Rollout workspace.",
+      "Enter target tenant slug new-customer-pilot.",
+      "Review template assets, role grants, module flags, seed packs, connector metadata, and readiness checks.",
+      "Click Create rollout packet."
+    ],
+    "expected": [
+      "A persisted AssistantRolloutFactoryPacket is created with templateInventoryJson, roleGrantPlanJson, moduleFlagPlanJson, demoDataPlanJson, readinessCheckJson, rollbackPlanJson, onboardingPacketJson, and leadershipSummary.",
+      "Connector credentials appear as metadata-only when auth requires secrets.",
+      "An AssistantAuditEvent records packet creation.",
+      "No tenant, template, role grant, module flag, seed command, automation policy, connector, or secret is created or changed automatically."
+    ]
+  },
+  {
+    "id": "amp30-queue-launch-review",
+    "title": "Queue rollout launch review",
+    "persona": "Customer success owner with settings edit access",
+    "entrypoint": "/assistant/rollout-factory",
+    "steps": [
+      "Create or select a DRAFT rollout packet.",
+      "Add a launch approval note describing customer pilot scope.",
+      "Click Queue launch review."
+    ],
+    "expected": [
+      "The packet status changes to REVIEW_QUEUED with actionQueueItemId, approvedByUserId, approvedAt, and approvalNote.",
+      "An AssistantActionQueueItem is created with actionKind assistant_rollout_factory_review.",
+      "An AssistantAuditEvent states tenants, templates, seeds, grants, module flags, automations, connectors, and secrets were not changed automatically."
+    ]
+  },
+  {
+    "id": "amp30-readiness-and-rollback-guardrails",
+    "title": "Readiness gaps block launch until reviewed",
+    "persona": "Implementation manager",
+    "entrypoint": "/assistant/rollout-factory",
+    "steps": [
+      "Use a template tenant with at least one missing required role grant or module view grant.",
+      "Create a rollout factory packet.",
+      "Review the readiness and rollback sections."
+    ],
+    "expected": [
+      "Role grant or module gaps appear in roleGrantPlanJson/moduleFlagPlanJson and readinessCheckJson status is BLOCKED.",
+      "The rollback plan includes pilot-mode, module disable, draft archive, automation shadow pause, and grant revocation steps.",
+      "The UI keeps launch actions review-gated and does not execute copy, seed, grant, or enablement work."
+    ]
+  }
+]
