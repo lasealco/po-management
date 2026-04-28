@@ -21,7 +21,10 @@ export default async function AssistantLayout({ children }: { children: React.Re
   const canProducts = viewerHas(access.grantSet, "org.products", "view");
   const canSuppliers = viewerHas(access.grantSet, "org.suppliers", "view");
   const canWms = viewerHas(access.grantSet, "org.wms", "view");
-  if (!canCt && !canOrders && !canProducts && !canSuppliers && !canWms) {
+  const canTariffs = viewerHas(access.grantSet, "org.tariffs", "view");
+  const canRfq = viewerHas(access.grantSet, "org.rfq", "view");
+  const canInvoiceAudit = viewerHas(access.grantSet, "org.invoice_audit", "view");
+  if (!canCt && !canOrders && !canProducts && !canSuppliers && !canWms && !canTariffs && !canRfq && !canInvoiceAudit) {
     return (
       <div className="min-h-screen bg-zinc-50 px-6 py-16">
         <AccessDenied
@@ -40,7 +43,8 @@ export default async function AssistantLayout({ children }: { children: React.Re
         <p className="mt-2 max-w-3xl text-sm text-zinc-600">
           <strong>Chat</strong> can draft sales orders and answer stock / product-trace questions with links to
           evidence. <strong>Workbench</strong> is the LMP1-LMP10 cockpit for sales, products, suppliers, POs, and
-          shipments. <strong>Inbox</strong> includes Control Tower, drafts, and open email.{" "}
+          shipments. <strong>Execution</strong> runs LMP11-LMP30 across carrier/customer comms, WMS, finance, quality,
+          and simulation readiness. <strong>Inbox</strong> includes Control Tower, drafts, and open email.{" "}
           <strong>Command center</strong> shows audit, feedback, queued actions, playbooks, and health.
         </p>
         <AssistantSubnav />
