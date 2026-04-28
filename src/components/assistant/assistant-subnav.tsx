@@ -42,6 +42,7 @@ export function AssistantSubnav() {
   const chat = pathname === "/assistant" || pathname === "/assistant/";
   const orderOrchestration = pathname.startsWith("/assistant/order-orchestration");
   const warehouseCapacity = pathname.startsWith("/assistant/warehouse-capacity");
+  const exceptionCenter = pathname.startsWith("/assistant/exception-center");
   const workbench = pathname.startsWith("/assistant/workbench");
   const execution = pathname.startsWith("/assistant/execution");
   const workEngine = pathname.startsWith("/assistant/work-engine");
@@ -76,6 +77,13 @@ export function AssistantSubnav() {
         title="AMP15 warehouse labor and capacity command"
       >
         Warehouse capacity
+      </Link>
+      <Link
+        href="/assistant/exception-center"
+        className={exceptionCenter ? appNavActiveClass : appNavInactiveClass}
+        title="AMP17 end-to-end exception nerve center"
+      >
+        Exception center
       </Link>
       <Link
         href="/assistant/workbench"

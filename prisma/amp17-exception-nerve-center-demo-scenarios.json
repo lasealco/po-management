@@ -1,0 +1,26 @@
+[
+  {
+    "id": "amp17-cross-module-incident-room",
+    "title": "Create an incident room from related cross-module signals",
+    "route": "/assistant/exception-center",
+    "given": "A user has view access to Control Tower, WMS, invoice audit, API Hub, or Twin risk signals with open exceptions.",
+    "when": "The user selects related signals and creates an incident room.",
+    "then": "The assistant persists an AssistantExceptionIncident with severity, blast radius, linked objects, timeline, playbook, and customer-safe communication draft."
+  },
+  {
+    "id": "amp17-permission-filtered-evidence",
+    "title": "Only show incident evidence from modules the user can view",
+    "route": "/assistant/exception-center",
+    "given": "A user lacks one or more operational module grants.",
+    "when": "The exception center loads signals.",
+    "then": "Signals from missing grants are excluded before incident creation, and the UI shows the accessible module list."
+  },
+  {
+    "id": "amp17-human-approved-recovery-and-closure",
+    "title": "Queue recovery actions and close only with root-cause notes",
+    "route": "/assistant/exception-center",
+    "given": "An incident room has a playbook and communication drafts.",
+    "when": "The user queues the playbook and later closes the incident.",
+    "then": "An assistant action queue item is created before recovery/communication, and closure requires root-cause notes with audit history."
+  }
+]

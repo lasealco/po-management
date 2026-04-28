@@ -57,6 +57,7 @@ export default async function AssistantLayout({ children }: { children: React.Re
           <strong>Chat</strong> can draft sales orders and answer stock / product-trace questions with links to
           evidence. <strong>Order orchestration</strong> is AMP13 for demand-to-promise planning with ATP and approval controls.{" "}
           <strong>Warehouse capacity</strong> is AMP15 for WMS bottlenecks, labor recovery, and supervisor-approved recovery work.{" "}
+          <strong>Exception center</strong> is AMP17 for cross-module incident rooms, blast radius, playbooks, and root-cause closure.{" "}
           <strong>Workbench</strong> is the LMP1-LMP10 cockpit for sales, products, suppliers, POs, and
           shipments. <strong>Execution</strong> runs LMP11-LMP30 across carrier/customer comms, WMS, finance, quality,
           and simulation readiness. <strong>Work engine</strong> is AMP6 for assigned actions, SLA playbooks, and memory cleanup.{" "}
