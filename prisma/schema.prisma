@@ -166,6 +166,7 @@ model Tenant {
   assistantPlanningPackets          AssistantPlanningPacket[]
   assistantContractCompliancePackets AssistantContractCompliancePacket[]
   assistantSustainabilityPackets    AssistantSustainabilityPacket[]
+  assistantPartnerEcosystemPackets  AssistantPartnerEcosystemPacket[]
   assistantActionQueue              AssistantActionQueueItem[]
   assistantPlaybookTemplates        AssistantPlaybookTemplate[]
   assistantPlaybookRuns             AssistantPlaybookRun[]
@@ -630,6 +631,40 @@ model AssistantSustainabilityPacket {
 
   @@index([tenantId, status, updatedAt])
   @@index([tenantId, sustainabilityScore, updatedAt])
+}
+
+/// AMP25: marketplace / partner ecosystem packet for connector readiness, partner onboarding, and launch review.
+model AssistantPartnerEcosystemPacket {
+  id                     String    @id @default(cuid())
+  tenantId               String
+  createdByUserId        String?
+  approvedByUserId       String?
+  title                  String
+  status                 String    @default("DRAFT") @db.VarChar(32)
+  readinessScore         Int       @default(0)
+  connectorCount         Int       @default(0)
+  partnerCount           Int       @default(0)
+  mappingIssueCount      Int       @default(0)
+  openReviewCount        Int       @default(0)
+  sourceSummaryJson      Json
+  connectorReadinessJson Json
+  partnerScopeJson       Json
+  mappingReviewJson      Json
+  onboardingPlanJson     Json
+  launchChecklistJson    Json
+  leadershipSummary      String    @db.Text
+  actionQueueItemId      String?
+  approvedAt             DateTime?
+  approvalNote           String?   @db.Text
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator  User?  @relation("AssistantPartnerEcosystemPacketCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  approver User?  @relation("AssistantPartnerEcosystemPacketApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, updatedAt])
+  @@index([tenantId, readinessScore, updatedAt])
 }
 
 /// AMP7: inspectable grounding ledger extracted from assistant answers and reviewer additions.
@@ -1236,6 +1271,8 @@ model User {
   assistantContractCompliancePacketsApproved AssistantContractCompliancePacket[] @relation("AssistantContractCompliancePacketApprover")
   assistantSustainabilityPacketsCreated   AssistantSustainabilityPacket[]   @relation("AssistantSustainabilityPacketCreator")
   assistantSustainabilityPacketsApproved  AssistantSustainabilityPacket[]   @relation("AssistantSustainabilityPacketApprover")
+  assistantPartnerEcosystemPacketsCreated AssistantPartnerEcosystemPacket[]  @relation("AssistantPartnerEcosystemPacketCreator")
+  assistantPartnerEcosystemPacketsApproved AssistantPartnerEcosystemPacket[] @relation("AssistantPartnerEcosystemPacketApprover")
   invoiceIntakesAccountingApproved        InvoiceIntake[]                   @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated       TariffShipmentApplication[]       @relation("TariffShipmentApplicationCreator")
   scriEventsOwned                         ScriExternalEvent[]               @relation("ScriEventOwner")

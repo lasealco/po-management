@@ -1,0 +1,54 @@
+[
+  {
+    "id": "amp25-create-partner-packet",
+    "title": "Create partner ecosystem packet from API Hub and portal evidence",
+    "given": [
+      "A demo operator has API Hub view/edit access and supplier or CRM partner view access.",
+      "API Hub connectors, staging batches, mapping jobs, assistant review items, suppliers, and CRM accounts exist.",
+      "Some partners have portal-linked users while others are missing launch scope."
+    ],
+    "when": [
+      "The operator opens /assistant/partner-ecosystem.",
+      "The operator selects Create partner packet."
+    ],
+    "then": [
+      "The assistant persists an AssistantPartnerEcosystemPacket row.",
+      "The packet includes connector readiness, partner-scope gaps, mapping review, onboarding plan, and launch checklist.",
+      "No connector is activated, no staging rows are applied, no portal scope changes, and no partner playbooks are launched automatically."
+    ]
+  },
+  {
+    "id": "amp25-queue-launch-review",
+    "title": "Queue partner launch review with approval note",
+    "given": [
+      "A partner ecosystem packet exists with connector blockers or mapping review items.",
+      "The operator has API Hub edit access."
+    ],
+    "when": [
+      "The operator adds a launch approval note.",
+      "The operator selects Queue review."
+    ],
+    "then": [
+      "An AssistantActionQueueItem is created for partner ecosystem launch review.",
+      "The packet status changes to REVIEW_QUEUED and stores the approval note.",
+      "The audit event states connectors, staging rows, portal scopes, and partner playbooks were not launched automatically."
+    ]
+  },
+  {
+    "id": "amp25-permission-scoped-marketplace",
+    "title": "Permission scoped marketplace readiness",
+    "given": [
+      "A user lacks API Hub access or lacks supplier/CRM partner evidence access.",
+      "Another user has the required grants."
+    ],
+    "when": [
+      "Both users try to open /assistant/partner-ecosystem.",
+      "The permitted user reviews the live launch preview."
+    ],
+    "then": [
+      "The unpermitted user receives access denied.",
+      "The permitted user sees only evidence from allowed API Hub and partner domains.",
+      "Launch checklist explicitly requires human approval before external partner workflows are enabled."
+    ]
+  }
+]

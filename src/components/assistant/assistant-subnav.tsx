@@ -50,6 +50,7 @@ export function AssistantSubnav() {
   const planningBridge = pathname.startsWith("/assistant/planning-bridge");
   const contractCompliance = pathname.startsWith("/assistant/contract-compliance");
   const sustainability = pathname.startsWith("/assistant/sustainability");
+  const partnerEcosystem = pathname.startsWith("/assistant/partner-ecosystem");
   const workbench = pathname.startsWith("/assistant/workbench");
   const execution = pathname.startsWith("/assistant/execution");
   const workEngine = pathname.startsWith("/assistant/work-engine");
@@ -140,6 +141,13 @@ export function AssistantSubnav() {
         title="AMP24 sustainability and ESG operations"
       >
         Sustainability
+      </Link>
+      <Link
+        href="/assistant/partner-ecosystem"
+        className={partnerEcosystem ? appNavActiveClass : appNavInactiveClass}
+        title="AMP25 marketplace and partner ecosystem"
+      >
+        Partners
       </Link>
       <Link
         href="/assistant/workbench"
