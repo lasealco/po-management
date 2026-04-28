@@ -15,6 +15,56 @@ type CommandCenterLayer = {
   items: Array<{ mp: string; label: string; status: string; detail: string }>;
 };
 
+type Mp51To80Execution = {
+  controlRoom: {
+    title: string;
+    summary: string;
+    controls: Array<{ mp: string; label: string; status: string; metric: string; nextAction: string; href: string }>;
+  };
+  valueRealization: {
+    title: string;
+    summary: string;
+    score: number;
+    signals: Array<{ mp: string; label: string; value: number; detail: string }>;
+    backlog: Array<{ id: string; title: string; reason: string; priority: string }>;
+  };
+  expansionPlanner: {
+    title: string;
+    summary: string;
+    rankedDomains: Array<{ mp: string; objectType: string; score: number; detail: string }>;
+    dependencies: Array<{ mp: string; label: string; count: number; action: string }>;
+    expansionCards: Array<{ mp: string; title: string; reason: string; nextStep: string }>;
+  };
+  scaleOps: {
+    title: string;
+    summary: string;
+    enablementTargets: Array<{ actorName: string; total: number }>;
+    releaseTrain: Array<{ mp: string; horizon: string; title: string; detail: string }>;
+    incidentRunbook: Array<{ mp: string; title: string; severity: string; response: string }>;
+    kpis: Array<{ mp: string; label: string; value: number; suffix: string }>;
+    roadmap30Day: Array<{ mp: string; horizon: string; title: string; detail: string }>;
+  };
+  processIntelligence: {
+    title: string;
+    summary: string;
+    paths: Array<{ mp: string; label: string; count: number; detail: string }>;
+    bottlenecks: Array<{ mp: string; label: string; count: number; action: string }>;
+    exceptions: Array<{ mp: string; label: string; count: number; action: string }>;
+    rootCauseHints: Array<{ mp: string; label: string; detail: string }>;
+    recommendationQueue: Array<{ mp: string; id: string; title: string; priority: string }>;
+  };
+  knowledgeSimulation: {
+    title: string;
+    summary: string;
+    knowledgeCandidates: Array<{ mp: string; id: string; title: string; detail: string }>;
+    sopGaps: Array<{ mp: string; title: string; reason: string; priority: string }>;
+    mappings: Array<{ mp: string; answerKind: string; count: number; suggestedPlaybook: string }>;
+    evidencePacks: Array<{ mp: string; title: string; detail: string }>;
+    freshness: { mp: string; generatedAt: string; recentSampleSize: number; auditTotal: number; status: string };
+    simulation: { mp: string; score: number; status: string; checklist: Array<{ label: string; passed: boolean }> };
+  };
+};
+
 type QualitySummary = {
   auditTotal: number;
   feedback: { helpful: number; needsReview: number; missing: number };
@@ -240,6 +290,7 @@ type CommandCenterPayload = {
   maturityLayers: CommandCenterLayer[];
   horizonLayers: CommandCenterLayer[];
   advancedLayers: CommandCenterLayer[];
+  mp51To80Execution: Mp51To80Execution;
 };
 
 function formatDate(value: string) {
@@ -326,6 +377,7 @@ export function AssistantCommandCenterClient() {
       setErr("Could not copy operating packet to clipboard.");
     }
   };
+  const mvp = data.mp51To80Execution;
 
   return (
     <div className="space-y-6">
@@ -405,6 +457,211 @@ export function AssistantCommandCenterClient() {
               </div>
             </div>
           ))}
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-5 shadow-sm">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">MP51-MP80 MVP</p>
+          <h3 className="mt-1 text-base font-semibold text-zinc-950">Execution workbench</h3>
+          <p className="mt-1 max-w-4xl text-sm text-zinc-700">
+            This is the real operating layer for MP51-MP80: controls, value, expansion, scale, process intelligence,
+            knowledge assets, and simulation readiness using live assistant telemetry.
+          </p>
+        </div>
+
+        <div className="mt-5 grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+          <div className="rounded-2xl border border-emerald-100 bg-white p-4">
+            <h4 className="font-semibold text-zinc-950">{mvp.controlRoom.title}</h4>
+            <p className="mt-1 text-xs text-zinc-600">{mvp.controlRoom.summary}</p>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              {mvp.controlRoom.controls.map((control) => (
+                <div key={control.mp} className="rounded-xl border border-zinc-200 p-3 text-sm">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="font-semibold text-zinc-900">{control.mp} · {control.label}</p>
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${control.status === "pass" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
+                      {control.status}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-zinc-600">{control.metric}</p>
+                  <p className="mt-2 text-xs text-zinc-700">{control.nextAction}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-emerald-100 bg-white p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h4 className="font-semibold text-zinc-950">{mvp.valueRealization.title}</h4>
+                <p className="mt-1 text-xs text-zinc-600">{mvp.valueRealization.summary}</p>
+              </div>
+              <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-900">
+                {mvp.valueRealization.score}/100
+              </span>
+            </div>
+            <div className="mt-4 grid gap-2 md:grid-cols-5">
+              {mvp.valueRealization.signals.map((signal) => (
+                <div key={signal.mp} className="rounded-xl border border-zinc-200 p-3 text-sm">
+                  <p className="text-xs font-semibold text-zinc-500">{signal.mp}</p>
+                  <p className="mt-1 text-xl font-semibold text-zinc-950">{signal.value}</p>
+                  <p className="text-xs font-semibold text-zinc-800">{signal.label}</p>
+                  <p className="mt-1 text-xs text-zinc-600">{signal.detail}</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 grid gap-2 md:grid-cols-2">
+              {mvp.valueRealization.backlog.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-zinc-200 p-3 text-sm text-zinc-500">No value backlog yet.</p>
+              ) : (
+                mvp.valueRealization.backlog.slice(0, 4).map((item) => (
+                  <div key={item.id} className="rounded-xl border border-zinc-200 p-3 text-sm">
+                    <p className="font-semibold text-zinc-900">{item.title}</p>
+                    <p className="mt-1 text-xs text-zinc-600">{item.reason}</p>
+                    <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">{item.priority}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-4 xl:grid-cols-3">
+          <div className="rounded-2xl border border-emerald-100 bg-white p-4">
+            <h4 className="font-semibold text-zinc-950">{mvp.expansionPlanner.title}</h4>
+            <p className="mt-1 text-xs text-zinc-600">{mvp.expansionPlanner.summary}</p>
+            <div className="mt-4 space-y-2">
+              {mvp.expansionPlanner.rankedDomains.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-zinc-200 p-3 text-sm text-zinc-500">No domain signals yet.</p>
+              ) : (
+                mvp.expansionPlanner.rankedDomains.slice(0, 4).map((domain) => (
+                  <div key={domain.objectType} className="rounded-xl border border-zinc-200 p-3 text-sm">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="font-semibold text-zinc-900">{domain.objectType}</p>
+                      <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-semibold text-zinc-700">{domain.score}</span>
+                    </div>
+                    <p className="mt-1 text-xs text-zinc-600">{domain.detail}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-emerald-100 bg-white p-4">
+            <h4 className="font-semibold text-zinc-950">{mvp.scaleOps.title}</h4>
+            <p className="mt-1 text-xs text-zinc-600">{mvp.scaleOps.summary}</p>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              {mvp.scaleOps.kpis.map((kpi) => (
+                <div key={kpi.label} className="rounded-xl bg-zinc-50 p-3 text-sm">
+                  <p className="text-xl font-semibold text-zinc-950">{kpi.value}{kpi.suffix}</p>
+                  <p className="text-xs text-zinc-600">{kpi.label}</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 space-y-2">
+              {mvp.scaleOps.roadmap30Day.slice(0, 3).map((item) => (
+                <div key={`${item.horizon}-${item.title}`} className="rounded-xl border border-zinc-200 p-3 text-sm">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{item.horizon}</p>
+                  <p className="mt-1 font-semibold text-zinc-900">{item.title}</p>
+                  <p className="mt-1 text-xs text-zinc-600">{item.detail}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-emerald-100 bg-white p-4">
+            <h4 className="font-semibold text-zinc-950">{mvp.processIntelligence.title}</h4>
+            <p className="mt-1 text-xs text-zinc-600">{mvp.processIntelligence.summary}</p>
+            <div className="mt-4 grid grid-cols-3 gap-2 text-center text-sm">
+              {mvp.processIntelligence.paths.map((path) => (
+                <div key={path.label} className="rounded-xl bg-zinc-50 p-3">
+                  <p className="text-xl font-semibold text-zinc-950">{path.count}</p>
+                  <p className="text-xs text-zinc-600">{path.label}</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 space-y-2">
+              {mvp.processIntelligence.bottlenecks.map((item) => (
+                <div key={item.label} className="rounded-xl border border-zinc-200 p-3 text-sm">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="font-semibold text-zinc-900">{item.label}</p>
+                    <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-semibold text-zinc-700">{item.count}</span>
+                  </div>
+                  <p className="mt-1 text-xs text-zinc-600">{item.action}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+          <div className="rounded-2xl border border-emerald-100 bg-white p-4">
+            <h4 className="font-semibold text-zinc-950">{mvp.knowledgeSimulation.title}</h4>
+            <p className="mt-1 text-xs text-zinc-600">{mvp.knowledgeSimulation.summary}</p>
+            <div className="mt-4 grid gap-2 md:grid-cols-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Knowledge candidates</p>
+                <div className="mt-2 space-y-2">
+                  {mvp.knowledgeSimulation.knowledgeCandidates.slice(0, 3).map((item) => (
+                    <div key={item.id} className="rounded-xl border border-zinc-200 p-3 text-sm">
+                      <p className="font-semibold text-zinc-900">{item.title}</p>
+                      <p className="mt-1 text-xs text-zinc-600">{item.detail}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Playbook mappings</p>
+                <div className="mt-2 space-y-2">
+                  {mvp.knowledgeSimulation.mappings.slice(0, 3).map((item) => (
+                    <div key={item.answerKind} className="rounded-xl border border-zinc-200 p-3 text-sm">
+                      <p className="font-semibold text-zinc-900">{item.suggestedPlaybook}</p>
+                      <p className="mt-1 text-xs text-zinc-600">{item.count} answer(s) of kind {item.answerKind}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Evidence packs</p>
+                <div className="mt-2 space-y-2">
+                  {mvp.knowledgeSimulation.evidencePacks.length === 0 ? (
+                    <p className="rounded-xl border border-dashed border-zinc-200 p-3 text-sm text-zinc-500">No evidence packs needed.</p>
+                  ) : (
+                    mvp.knowledgeSimulation.evidencePacks.slice(0, 3).map((item) => (
+                      <div key={item.title} className="rounded-xl border border-zinc-200 p-3 text-sm">
+                        <p className="font-semibold text-zinc-900">{item.title}</p>
+                        <p className="mt-1 text-xs text-zinc-600">{item.detail}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-emerald-100 bg-white p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h4 className="font-semibold text-zinc-950">MP80 simulation readiness</h4>
+                <p className="mt-1 text-xs text-zinc-600">
+                  Freshness: {mvp.knowledgeSimulation.freshness.status} · {mvp.knowledgeSimulation.freshness.recentSampleSize} recent sample(s)
+                </p>
+              </div>
+              <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-900">
+                {mvp.knowledgeSimulation.simulation.score}/100
+              </span>
+            </div>
+            <div className="mt-4 space-y-2">
+              {mvp.knowledgeSimulation.simulation.checklist.map((item) => (
+                <div key={item.label} className="flex items-start justify-between gap-3 rounded-xl border border-zinc-200 p-3 text-sm">
+                  <p className="text-zinc-800">{item.label}</p>
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${item.passed ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
+                    {item.passed ? "pass" : "watch"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 

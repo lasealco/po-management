@@ -30,6 +30,10 @@ function ageDays(value: Date) {
   return Math.max(0, Math.floor((Date.now() - value.getTime()) / (1000 * 60 * 60 * 24)));
 }
 
+function formatIsoDate(value: string) {
+  return new Date(value).toISOString().slice(0, 10);
+}
+
 function clampScore(value: number) {
   return Math.max(0, Math.min(100, Math.round(value)));
 }
@@ -1763,6 +1767,218 @@ export async function GET() {
       ],
     },
   ];
+  const objectCoverageRows = Array.from(objectCoverageMap.values())
+    .map((row) => ({
+      objectType: row.objectType,
+      total: row.auditEvents + row.actions + row.playbooks,
+      auditEvents: row.auditEvents,
+      actions: row.actions,
+      playbooks: row.playbooks,
+    }))
+    .sort((a, b) => b.total - a.total || a.objectType.localeCompare(b.objectType));
+  const reviewDebtCount = needsReviewCount + stalePlaybookCount + feedbackMissingCount;
+  const valueScore = clampScore(
+    helpfulCount * 8 +
+      doneActionCount * 10 +
+      completedPlaybookCount * 12 +
+      trainingPositive.length * 6 -
+      reviewDebtCount * 4,
+  );
+  const simulationScore = clampScore((rolloutScore + actionCompletionPct + groundingCoveragePct + feedbackCoveragePct) / 4);
+  const mp51To80Execution = {
+    controlRoom: {
+      title: "Governance controls",
+      summary: "MP51-MP54: explicit controls for approval, access, sample retention, and audit posture.",
+      controls: [
+        {
+          mp: "MP51",
+          label: "Human approval control",
+          status: pendingActionCount <= doneActionCount ? "pass" : "watch",
+          metric: `${pendingActionCount} pending / ${doneActionCount} done`,
+          nextAction: pendingActionCount <= doneActionCount ? "Keep current approval gate." : "Review pending assistant actions.",
+          href: "/assistant/command-center",
+        },
+        {
+          mp: "MP52",
+          label: "Access posture",
+          status: canCt && canOrders ? "pass" : "watch",
+          metric: `${canCt ? "Control Tower" : "No Control Tower"} · ${canOrders ? "Orders" : "No Orders"}`,
+          nextAction: "Confirm role grants before expanding assistant usage.",
+          href: "/assistant/command-center",
+        },
+        {
+          mp: "MP53",
+          label: "Retention sample",
+          status: recentAuditEvents.length >= 10 ? "pass" : "watch",
+          metric: `${recentAuditEvents.length} recent / ${auditTotal} total audit events`,
+          nextAction: recentAuditEvents.length >= 10 ? "Use sample for review." : "Collect more real assistant interactions.",
+          href: "/assistant/command-center",
+        },
+        {
+          mp: "MP54",
+          label: "Approval gate posture",
+          status: actionCompletionPct >= 50 || pendingActionCount === 0 ? "pass" : "watch",
+          metric: `${actionCompletionPct}% action completion`,
+          nextAction: "Close, reject, or complete queued actions before adding automation.",
+          href: "/assistant/command-center",
+        },
+      ],
+    },
+    valueRealization: {
+      title: "Value realization",
+      summary: "MP55-MP59: value score, cycle-time drag, workload capacity, deflection, and next value backlog.",
+      score: valueScore,
+      signals: [
+        { mp: "MP55", label: "Value proxy", value: valueScore, detail: `${helpfulCount} helpful answer(s), ${doneActionCount} completed action(s), ${completedPlaybookCount} completed playbook(s).` },
+        { mp: "MP56", label: "Cycle-time drag", value: stalePlaybookCount + pendingActionAgeBuckets.older, detail: `${stalePlaybookCount} stale playbook(s), ${pendingActionAgeBuckets.older} action(s) older than seven days.` },
+        { mp: "MP57", label: "Capacity load", value: inbox.total + pendingActionCount + reviewDebtCount, detail: `${inbox.total} inbox item(s), ${pendingActionCount} pending action(s), ${reviewDebtCount} review/stale debt item(s).` },
+        { mp: "MP58", label: "Deflection candidates", value: trainingPositive.length, detail: `${trainingPositive.length} helpful grounded answer(s) can become self-service examples.` },
+        { mp: "MP59", label: "Value backlog", value: experimentBacklog.length + promptLibraryCandidates.length, detail: `${experimentBacklog.length} experiment(s), ${promptLibraryCandidates.length} prompt candidate(s).` },
+      ],
+      backlog: [
+        ...experimentBacklog.slice(0, 4).map((item) => ({
+          id: `experiment-${item.id}`,
+          title: item.title,
+          reason: item.reason,
+          priority: item.priority,
+        })),
+        ...promptLibraryCandidates.slice(0, 3).map((item) => ({
+          id: `prompt-${item.id}`,
+          title: item.title,
+          reason: item.reason,
+          priority: "medium",
+        })),
+      ].slice(0, 6),
+    },
+    expansionPlanner: {
+      title: "Domain expansion planner",
+      summary: "MP60-MP64: ranked domains, data dependencies, integration readiness, workflow gaps, and expansion cards.",
+      rankedDomains: objectCoverageRows.slice(0, 6).map((row) => ({
+        mp: "MP60",
+        objectType: row.objectType,
+        score: row.total,
+        detail: `${row.auditEvents} answer(s), ${row.actions} action(s), ${row.playbooks} playbook(s).`,
+      })),
+      dependencies: [
+        { mp: "MP61", label: "Object context gaps", count: objectlessEvents.length, action: "Improve object inference and embedded entry prompts." },
+        { mp: "MP61", label: "Evidence gaps", count: ungroundedEvents.length, action: "Require evidence links before expansion." },
+        { mp: "MP62", label: "Surface coverage", count: surfaceCounts.size, action: "Use surface mix to choose the next integration entry point." },
+        { mp: "MP63", label: "Workflow template gaps", count: templateRecommendations.length, action: "Convert repeated handoffs into reusable playbooks." },
+      ],
+      expansionCards: objectCoverageRows.slice(0, 4).map((row) => ({
+        mp: "MP64",
+        title: `${row.objectType} expansion`,
+        reason: `${row.total} recent assistant signal(s) already touch this domain.`,
+        nextStep: `Create a guided ${row.objectType} playbook or prompt starter with evidence requirements.`,
+      })),
+    },
+    scaleOps: {
+      title: "Scale operations",
+      summary: "MP65-MP69: enablement, release train, incident runbook, KPI board, and 30-day roadmap.",
+      enablementTargets: Array.from(actorRows.values())
+        .map((row) => ({ actorName: row.actorName, total: row.answers + row.actions + row.playbooks }))
+        .sort((a, b) => b.total - a.total || a.actorName.localeCompare(b.actorName))
+        .slice(0, 5),
+      releaseTrain: milestonePlan.map((item) => ({ mp: "MP66", ...item })),
+      incidentRunbook: riskRegister.slice(0, 5).map((risk) => ({
+        mp: "MP67",
+        title: risk.title,
+        severity: risk.severity,
+        response: risk.mitigation,
+      })),
+      kpis: [
+        { mp: "MP68", label: "Rollout", value: rolloutScore, suffix: "/100" },
+        { mp: "MP68", label: "Grounding", value: groundingCoveragePct, suffix: "%" },
+        { mp: "MP68", label: "Action completion", value: actionCompletionPct, suffix: "%" },
+        { mp: "MP68", label: "Playbook completion", value: playbookCompletionPct, suffix: "%" },
+      ],
+      roadmap30Day: [
+        ...milestonePlan.map((item) => ({ mp: "MP69", horizon: item.horizon, title: item.title, detail: item.detail })),
+        {
+          mp: "MP69",
+          horizon: "Measure",
+          title: "Review MP51-MP80 workbench weekly",
+          detail: "Use control, value, expansion, scale, process, knowledge, and simulation sections as the operating rhythm.",
+        },
+      ],
+    },
+    processIntelligence: {
+      title: "Process intelligence",
+      summary: "MP70-MP74: process paths, bottlenecks, exception taxonomy, root-cause hints, and recommendation queue.",
+      paths: [
+        { mp: "MP70", label: "Answer path", count: recentAuditEvents.length, detail: "Assistant questions and answers in the recent sample." },
+        { mp: "MP70", label: "Action path", count: recentActions.length, detail: "Queued or completed proposed actions." },
+        { mp: "MP70", label: "Playbook path", count: playbookRuns.length, detail: "Reusable workflow runs." },
+      ],
+      bottlenecks: [
+        { mp: "MP71", label: "Needs-review answers", count: needsReviewCount, action: "Review feedback and add corrected examples." },
+        { mp: "MP71", label: "Stale playbooks", count: stalePlaybookCount, action: "Complete, refresh, or cancel stale playbooks." },
+        { mp: "MP71", label: "Aged actions", count: pendingActionAgeBuckets.older, action: "Close pending actions older than seven days." },
+      ],
+      exceptions: [
+        ...riskRegister.slice(0, 4).map((risk) => ({ mp: "MP72", label: risk.title, count: 1, action: risk.mitigation })),
+        { mp: "MP72", label: "Missing evidence", count: ungroundedEvents.length, action: "Attach evidence links or quality metadata." },
+      ].slice(0, 5),
+      rootCauseHints: [
+        objectlessEvents.length > 0
+          ? { mp: "MP73", label: "Object inference gap", detail: `${objectlessEvents.length} recent answer(s) lack object context.` }
+          : null,
+        ungroundedEvents.length > 0
+          ? { mp: "MP73", label: "Grounding gap", detail: `${ungroundedEvents.length} recent answer(s) lack grounding.` }
+          : null,
+        pendingActionCount > doneActionCount
+          ? { mp: "MP73", label: "Approval throughput gap", detail: `${pendingActionCount} pending action(s) exceed ${doneActionCount} completed.` }
+          : null,
+      ].filter((item): item is { mp: string; label: string; detail: string } => Boolean(item)),
+      recommendationQueue: [
+        ...recommendations.map((item, index) => ({ mp: "MP74", id: `recommendation-${index}`, title: item, priority: "high" })),
+        ...experimentBacklog.slice(0, 4).map((item) => ({ mp: "MP74", id: item.id, title: item.title, priority: item.priority })),
+      ].slice(0, 6),
+    },
+    knowledgeSimulation: {
+      title: "Knowledge and simulation",
+      summary: "MP75-MP80: knowledge candidates, SOP gaps, answer/playbook mappings, evidence packs, freshness, and simulation readiness.",
+      knowledgeCandidates: [
+        ...trainingPositive.slice(0, 4).map((item) => ({ mp: "MP75", id: item.id, title: item.prompt, detail: `${item.answerKind} · ${item.reason}` })),
+        ...promptLibraryCandidates.slice(0, 4).map((item) => ({ mp: "MP75", id: item.id, title: item.title, detail: item.reason })),
+      ].slice(0, 6),
+      sopGaps: templateRecommendations.slice(0, 5).map((item) => ({
+        mp: "MP76",
+        title: item.title,
+        reason: item.reason,
+        priority: item.priority,
+      })),
+      mappings: sortedCountRows(answerKindCounts, 6).map((row) => ({
+        mp: "MP77",
+        answerKind: row.label,
+        count: row.count,
+        suggestedPlaybook: `${row.label} guided review`,
+      })),
+      evidencePacks: evidenceNeeded.slice(0, 5).map((item) => ({
+        mp: "MP78",
+        title: item.prompt,
+        detail: `${item.answerKind} · ${formatIsoDate(item.createdAt)}`,
+      })),
+      freshness: {
+        mp: "MP79",
+        generatedAt: new Date().toISOString(),
+        recentSampleSize: recentAuditEvents.length,
+        auditTotal,
+        status: recentAuditEvents.length > 0 ? "active" : "needs data",
+      },
+      simulation: {
+        mp: "MP80",
+        score: simulationScore,
+        status: simulationScore >= 70 ? "ready" : "watch",
+        checklist: [
+          { label: "Rollout readiness at least 60", passed: rolloutScore >= 60 },
+          { label: "Grounding coverage at least 70%", passed: groundingCoveragePct >= 70 },
+          { label: "Feedback coverage at least 50%", passed: feedbackCoveragePct >= 50 },
+          { label: "Action completion at least 50%", passed: actionCompletionPct >= 50 || pendingActionCount === 0 },
+        ],
+      },
+    },
+  };
 
   return NextResponse.json({
     ok: true,
@@ -2054,5 +2270,6 @@ export async function GET() {
     maturityLayers,
     horizonLayers,
     advancedLayers,
+    mp51To80Execution,
   });
 }
