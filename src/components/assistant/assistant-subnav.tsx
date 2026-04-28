@@ -49,6 +49,7 @@ export function AssistantSubnav() {
   const masterDataQuality = pathname.startsWith("/assistant/master-data-quality");
   const planningBridge = pathname.startsWith("/assistant/planning-bridge");
   const contractCompliance = pathname.startsWith("/assistant/contract-compliance");
+  const sustainability = pathname.startsWith("/assistant/sustainability");
   const workbench = pathname.startsWith("/assistant/workbench");
   const execution = pathname.startsWith("/assistant/execution");
   const workEngine = pathname.startsWith("/assistant/work-engine");
@@ -132,6 +133,13 @@ export function AssistantSubnav() {
         title="AMP23 contract lifecycle and compliance"
       >
         Contracts
+      </Link>
+      <Link
+        href="/assistant/sustainability"
+        className={sustainability ? appNavActiveClass : appNavInactiveClass}
+        title="AMP24 sustainability and ESG operations"
+      >
+        Sustainability
       </Link>
       <Link
         href="/assistant/workbench"

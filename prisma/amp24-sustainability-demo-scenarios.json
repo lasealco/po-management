@@ -1,0 +1,54 @@
+[
+  {
+    "id": "amp24-create-esg-packet",
+    "title": "Create sustainability packet from shipment and warehouse evidence",
+    "given": [
+      "A demo operator has Control Tower, WMS, supplier, and CRM view access.",
+      "The tenant has shipments with transport modes, carriers, weight or volume, and Control Tower legs.",
+      "WMS billing events are present for warehouse activity."
+    ],
+    "when": [
+      "The operator opens /assistant/sustainability.",
+      "The operator selects Create ESG packet."
+    ],
+    "then": [
+      "The assistant persists an AssistantSustainabilityPacket row.",
+      "The packet includes shipment emissions, warehouse activity estimate, assumptions, and leadership summary.",
+      "No shipment route, carrier, warehouse activity, supplier, CRM account, or external ESG claim is changed automatically."
+    ]
+  },
+  {
+    "id": "amp24-review-greener-option",
+    "title": "Queue greener execution and data-gap review",
+    "given": [
+      "A sustainability packet exists with an air shipment recommendation and missing ESG data gaps.",
+      "The operator has edit access for the sustainability workspace evidence."
+    ],
+    "when": [
+      "The operator adds an approval note.",
+      "The operator selects Queue review."
+    ],
+    "then": [
+      "An AssistantActionQueueItem is created for sustainability review.",
+      "The packet status changes to REVIEW_QUEUED and stores the approval note.",
+      "The audit event says routing, carrier, warehouse, supplier, and customer-facing ESG claims were not changed automatically."
+    ]
+  },
+  {
+    "id": "amp24-permission-and-no-overclaim",
+    "title": "Permission scoped ESG reporting with explicit assumptions",
+    "given": [
+      "A user lacks either operational evidence access or partner evidence access.",
+      "Shipment factors are default planning assumptions rather than audited regulatory factors."
+    ],
+    "when": [
+      "The user opens /assistant/sustainability or calls /api/assistant/sustainability.",
+      "A permitted user reviews the preview assumptions."
+    ],
+    "then": [
+      "The unpermitted user receives an access denied response.",
+      "The permitted user sees default factor assumptions and a do-not-publish guardrail.",
+      "Customer or board-ready ESG language remains review-gated until evidence and factors are approved."
+    ]
+  }
+]

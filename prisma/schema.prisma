@@ -165,6 +165,7 @@ model Tenant {
   assistantMasterDataQualityRuns    AssistantMasterDataQualityRun[]
   assistantPlanningPackets          AssistantPlanningPacket[]
   assistantContractCompliancePackets AssistantContractCompliancePacket[]
+  assistantSustainabilityPackets    AssistantSustainabilityPacket[]
   assistantActionQueue              AssistantActionQueueItem[]
   assistantPlaybookTemplates        AssistantPlaybookTemplate[]
   assistantPlaybookRuns             AssistantPlaybookRun[]
@@ -595,6 +596,40 @@ model AssistantContractCompliancePacket {
 
   @@index([tenantId, status, updatedAt])
   @@index([tenantId, complianceScore, updatedAt])
+}
+
+/// AMP24: sustainability / ESG operations packet with emissions estimates, data gaps, and greener recommendations.
+model AssistantSustainabilityPacket {
+  id                    String    @id @default(cuid())
+  tenantId              String
+  createdByUserId       String?
+  approvedByUserId      String?
+  title                 String
+  status                String    @default("DRAFT") @db.VarChar(32)
+  sustainabilityScore   Int       @default(0)
+  estimatedCo2eKg       Decimal   @default(0) @db.Decimal(18, 3)
+  potentialSavingsKg    Decimal   @default(0) @db.Decimal(18, 3)
+  missingDataCount      Int       @default(0)
+  recommendationCount   Int       @default(0)
+  shipmentSummaryJson   Json
+  warehouseSummaryJson  Json
+  emissionsJson         Json
+  missingDataJson       Json
+  recommendationJson    Json
+  assumptionsJson       Json
+  leadershipSummary     String    @db.Text
+  actionQueueItemId     String?
+  approvedAt            DateTime?
+  approvalNote          String?   @db.Text
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator  User?  @relation("AssistantSustainabilityPacketCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  approver User?  @relation("AssistantSustainabilityPacketApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, updatedAt])
+  @@index([tenantId, sustainabilityScore, updatedAt])
 }
 
 /// AMP7: inspectable grounding ledger extracted from assistant answers and reviewer additions.
@@ -1199,6 +1234,8 @@ model User {
   assistantPlanningPacketsApproved        AssistantPlanningPacket[]         @relation("AssistantPlanningPacketApprover")
   assistantContractCompliancePacketsCreated  AssistantContractCompliancePacket[] @relation("AssistantContractCompliancePacketCreator")
   assistantContractCompliancePacketsApproved AssistantContractCompliancePacket[] @relation("AssistantContractCompliancePacketApprover")
+  assistantSustainabilityPacketsCreated   AssistantSustainabilityPacket[]   @relation("AssistantSustainabilityPacketCreator")
+  assistantSustainabilityPacketsApproved  AssistantSustainabilityPacket[]   @relation("AssistantSustainabilityPacketApprover")
   invoiceIntakesAccountingApproved        InvoiceIntake[]                   @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated       TariffShipmentApplication[]       @relation("TariffShipmentApplicationCreator")
   scriEventsOwned                         ScriExternalEvent[]               @relation("ScriEventOwner")
