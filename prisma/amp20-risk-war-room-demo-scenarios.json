@@ -1,0 +1,35 @@
+[
+  {
+    "id": "amp20-risk-war-room-port-disruption",
+    "title": "Create a risk war room from a port disruption",
+    "given": "SCRI has open port-disruption events with affected shipment and supplier matches plus active recommendations.",
+    "when": "A risk user opens /assistant/risk-war-room and chooses Create war room.",
+    "then": [
+      "The assistant clusters the SCRI events and persists an AssistantRiskWarRoom draft.",
+      "The exposure map highlights affected shipments, suppliers, orders, and customers by exposure score.",
+      "A Twin scenario draft and risk signal are linked from the primary SCRI event."
+    ]
+  },
+  {
+    "id": "amp20-risk-war-room-mitigation-approval",
+    "title": "Queue mitigations for human approval",
+    "given": "A draft risk war room contains mitigation steps and customer/supplier/internal communication drafts.",
+    "when": "The risk owner adds an approval note and selects Queue mitigation.",
+    "then": [
+      "An AssistantActionQueueItem is created with risk score, severity, scenario draft, and primary SCRI event context.",
+      "The war room moves to MITIGATION_QUEUED.",
+      "No SCRI event, Twin scenario run, shipment, supplier, order, or customer message is mutated automatically."
+    ]
+  },
+  {
+    "id": "amp20-risk-war-room-acknowledgement",
+    "title": "Acknowledge risk without closing source events",
+    "given": "A risk war room has been reviewed by the risk owner.",
+    "when": "The owner selects Acknowledge.",
+    "then": [
+      "The war room records acknowledgedAt and approvedByUserId.",
+      "An assistant audit event records the acknowledgement.",
+      "SCRI review state and Twin risk signal acknowledgement remain separate source workflows."
+    ]
+  }
+]

@@ -45,6 +45,7 @@ export function AssistantSubnav() {
   const exceptionCenter = pathname.startsWith("/assistant/exception-center");
   const customerIntelligence = pathname.startsWith("/assistant/customer-intelligence");
   const financeControl = pathname.startsWith("/assistant/finance-control");
+  const riskWarRoom = pathname.startsWith("/assistant/risk-war-room");
   const workbench = pathname.startsWith("/assistant/workbench");
   const execution = pathname.startsWith("/assistant/execution");
   const workEngine = pathname.startsWith("/assistant/work-engine");
@@ -100,6 +101,13 @@ export function AssistantSubnav() {
         title="AMP19 financial control tower"
       >
         Finance control
+      </Link>
+      <Link
+        href="/assistant/risk-war-room"
+        className={riskWarRoom ? appNavActiveClass : appNavInactiveClass}
+        title="AMP20 risk intelligence war room"
+      >
+        Risk war room
       </Link>
       <Link
         href="/assistant/workbench"

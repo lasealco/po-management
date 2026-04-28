@@ -161,6 +161,7 @@ model Tenant {
   assistantExceptionIncidents       AssistantExceptionIncident[]
   assistantCustomerBriefs           AssistantCustomerBrief[]
   assistantFinancePackets           AssistantFinancePacket[]
+  assistantRiskWarRooms             AssistantRiskWarRoom[]
   assistantActionQueue              AssistantActionQueueItem[]
   assistantPlaybookTemplates        AssistantPlaybookTemplate[]
   assistantPlaybookRuns             AssistantPlaybookRun[]
@@ -454,6 +455,39 @@ model AssistantFinancePacket {
 
   @@index([tenantId, status, updatedAt])
   @@index([tenantId, selectedIntakeId])
+}
+
+/// AMP20: risk intelligence war room for external events, Twin exposure, mitigations, and communications.
+model AssistantRiskWarRoom {
+  id                     String    @id @default(cuid())
+  tenantId               String
+  createdByUserId        String?
+  approvedByUserId       String?
+  title                  String
+  status                 String    @default("DRAFT") @db.VarChar(32)
+  severity               String    @default("MEDIUM") @db.VarChar(16)
+  riskScore              Int       @default(0)
+  primaryScriEventId     String?
+  scenarioDraftId        String?
+  riskSignalId           String?
+  eventClusterJson       Json
+  exposureMapJson        Json
+  scenarioProposalJson   Json
+  mitigationPlanJson     Json
+  communicationDraftJson Json
+  actionQueueItemId      String?
+  acknowledgedAt         DateTime?
+  approvalNote           String?   @db.Text
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator  User?  @relation("AssistantRiskWarRoomCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  approver User?  @relation("AssistantRiskWarRoomApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, severity, updatedAt])
+  @@index([tenantId, primaryScriEventId])
+  @@index([tenantId, scenarioDraftId])
 }
 
 /// AMP7: inspectable grounding ledger extracted from assistant answers and reviewer additions.
@@ -1050,6 +1084,8 @@ model User {
   assistantCustomerBriefsApproved         AssistantCustomerBrief[]          @relation("AssistantCustomerBriefApprover")
   assistantFinancePacketsCreated          AssistantFinancePacket[]          @relation("AssistantFinancePacketCreator")
   assistantFinancePacketsApproved         AssistantFinancePacket[]          @relation("AssistantFinancePacketApprover")
+  assistantRiskWarRoomsCreated            AssistantRiskWarRoom[]            @relation("AssistantRiskWarRoomCreator")
+  assistantRiskWarRoomsApproved           AssistantRiskWarRoom[]            @relation("AssistantRiskWarRoomApprover")
   invoiceIntakesAccountingApproved        InvoiceIntake[]                   @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated       TariffShipmentApplication[]       @relation("TariffShipmentApplicationCreator")
   scriEventsOwned                         ScriExternalEvent[]               @relation("ScriEventOwner")
