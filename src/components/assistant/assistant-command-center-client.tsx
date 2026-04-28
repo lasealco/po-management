@@ -65,6 +65,58 @@ type Mp51To80Execution = {
   };
 };
 
+type Mp81To110Execution = {
+  automationRehearsal: {
+    title: string;
+    summary: string;
+    shadowMode: { mp: string; score: number; status: string; detail: string };
+    candidates: Array<{ mp: string; kind: string; readinessPct: number; recentCount: number; completedCount: number; nextStep: string }>;
+    rollbackChecks: Array<{ mp: string; label: string; passed: boolean; detail: string }>;
+    guardrails: Array<{ mp: string; label: string; passed: boolean; detail: string }>;
+  };
+  stakeholderExperience: {
+    title: string;
+    summary: string;
+    score: number;
+    audiences: Array<{ mp: string; label: string; count: number; detail: string }>;
+    communicationPack: { mp: string; lines: string[]; promptStarterCount: number; operatingPacketLines: string[] };
+    briefVariants: Array<{ mp: string; audience: string; brief: string }>;
+    coachingQueue: Array<{ mp: string; actorName: string; total: number; nextStep: string }>;
+    boardNarrative: { mp: string; headline: string; points: string[] };
+  };
+  predictiveTrust: {
+    title: string;
+    summary: string;
+    score: number;
+    signals: Array<{ mp: string; label: string; value: number; detail: string }>;
+    qualityChecks: Array<{ mp: string; label: string; status: string; metric: string }>;
+    cleanupQueue: Array<{ mp: string; label: string; count: number; recommendation: string }>;
+  };
+  orchestrationAndCollaboration: {
+    title: string;
+    summary: string;
+    orchestrationMap: Array<{ mp: string; label: string; count: number; detail: string }>;
+    toolReadiness: Array<{ mp: string; kind: string; readinessPct: number; detail: string }>;
+    playbookHealth: {
+      mp: string;
+      active: number;
+      completed: number;
+      stale: number;
+      templates: Array<{ id: string; title: string; reason: string; priority: string }>;
+    };
+    humanRouting: Array<{ mp: string; title: string; type: string; ownerHint: string; href: string | null }>;
+    boundaries: Array<{ mp: string; label: string; count: number; detail: string }>;
+    collaborationLenses: Array<{ mp: string; label: string; ready: boolean; detail: string }>;
+  };
+  commercialImpact: {
+    title: string;
+    summary: string;
+    score: number;
+    signals: Array<{ mp: string; label: string; value: number; detail: string }>;
+    nextActions: string[];
+  };
+};
+
 type QualitySummary = {
   auditTotal: number;
   feedback: { helpful: number; needsReview: number; missing: number };
@@ -291,6 +343,7 @@ type CommandCenterPayload = {
   horizonLayers: CommandCenterLayer[];
   advancedLayers: CommandCenterLayer[];
   mp51To80Execution: Mp51To80Execution;
+  mp81To110Execution: Mp81To110Execution;
 };
 
 function formatDate(value: string) {
@@ -378,6 +431,7 @@ export function AssistantCommandCenterClient() {
     }
   };
   const mvp = data.mp51To80Execution;
+  const mvpNext = data.mp81To110Execution;
 
   return (
     <div className="space-y-6">
@@ -659,6 +713,192 @@ export function AssistantCommandCenterClient() {
                     {item.passed ? "pass" : "watch"}
                   </span>
                 </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-blue-200 bg-blue-50/40 p-5 shadow-sm">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-700">MP81-MP110 MVP</p>
+          <h3 className="mt-1 text-base font-semibold text-zinc-950">Execution workbench 2</h3>
+          <p className="mt-1 max-w-4xl text-sm text-zinc-700">
+            This finishes MP81-MP110 as operational product work: shadow automation, stakeholder reporting,
+            predictive trust, orchestration, collaboration lenses, and commercial impact.
+          </p>
+        </div>
+
+        <div className="mt-5 grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+          <div className="rounded-2xl border border-blue-100 bg-white p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h4 className="font-semibold text-zinc-950">{mvpNext.automationRehearsal.title}</h4>
+                <p className="mt-1 text-xs text-zinc-600">{mvpNext.automationRehearsal.summary}</p>
+              </div>
+              <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-900">
+                {mvpNext.automationRehearsal.shadowMode.score}/100
+              </span>
+            </div>
+            <p className="mt-3 rounded-xl border border-blue-100 bg-blue-50 p-3 text-sm text-blue-950">
+              {mvpNext.automationRehearsal.shadowMode.mp}: {mvpNext.automationRehearsal.shadowMode.detail}
+            </p>
+            <div className="mt-4 grid gap-2 md:grid-cols-2">
+              {mvpNext.automationRehearsal.candidates.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-zinc-200 p-3 text-sm text-zinc-500">No automation candidates yet.</p>
+              ) : (
+                mvpNext.automationRehearsal.candidates.slice(0, 4).map((item) => (
+                  <div key={item.kind} className="rounded-xl border border-zinc-200 p-3 text-sm">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="font-semibold text-zinc-900">{item.kind}</p>
+                      <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-semibold text-zinc-700">{item.readinessPct}%</span>
+                    </div>
+                    <p className="mt-1 text-xs text-zinc-600">{item.completedCount}/{item.recentCount} complete · {item.nextStep}</p>
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="mt-4 grid gap-2 md:grid-cols-2">
+              {[...mvpNext.automationRehearsal.rollbackChecks, ...mvpNext.automationRehearsal.guardrails].slice(0, 6).map((item) => (
+                <div key={`${item.mp}-${item.label}`} className="flex items-start justify-between gap-3 rounded-xl border border-zinc-200 p-3 text-sm">
+                  <div>
+                    <p className="font-semibold text-zinc-900">{item.label}</p>
+                    <p className="mt-1 text-xs text-zinc-600">{item.detail}</p>
+                  </div>
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${item.passed ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
+                    {item.passed ? "pass" : "watch"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-blue-100 bg-white p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h4 className="font-semibold text-zinc-950">{mvpNext.stakeholderExperience.title}</h4>
+                <p className="mt-1 text-xs text-zinc-600">{mvpNext.stakeholderExperience.summary}</p>
+              </div>
+              <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-900">
+                {mvpNext.stakeholderExperience.score}/100
+              </span>
+            </div>
+            <div className="mt-4 grid gap-2 md:grid-cols-3">
+              {mvpNext.stakeholderExperience.audiences.map((audience) => (
+                <div key={audience.label} className="rounded-xl border border-zinc-200 p-3 text-sm">
+                  <p className="text-xl font-semibold text-zinc-950">{audience.count}</p>
+                  <p className="text-xs font-semibold text-zinc-800">{audience.label}</p>
+                  <p className="mt-1 text-xs text-zinc-600">{audience.detail}</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 grid gap-2 md:grid-cols-3">
+              {mvpNext.stakeholderExperience.briefVariants.map((item) => (
+                <div key={item.audience} className="rounded-xl border border-zinc-200 p-3 text-sm">
+                  <p className="font-semibold text-zinc-900">{item.audience}</p>
+                  <p className="mt-1 text-xs text-zinc-600">{item.brief}</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-sm">
+              <p className="font-semibold text-zinc-900">{mvpNext.stakeholderExperience.boardNarrative.headline}</p>
+              {mvpNext.stakeholderExperience.boardNarrative.points.map((point) => (
+                <p key={point} className="mt-1 text-xs text-zinc-600">{point}</p>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-4 xl:grid-cols-3">
+          <div className="rounded-2xl border border-blue-100 bg-white p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h4 className="font-semibold text-zinc-950">{mvpNext.predictiveTrust.title}</h4>
+                <p className="mt-1 text-xs text-zinc-600">{mvpNext.predictiveTrust.summary}</p>
+              </div>
+              <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-900">{mvpNext.predictiveTrust.score}/100</span>
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              {mvpNext.predictiveTrust.signals.slice(0, 4).map((signal) => (
+                <div key={signal.label} className="rounded-xl bg-zinc-50 p-3 text-sm">
+                  <p className="text-xl font-semibold text-zinc-950">{signal.value}</p>
+                  <p className="text-xs font-semibold text-zinc-800">{signal.label}</p>
+                  <p className="mt-1 text-xs text-zinc-600">{signal.detail}</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 space-y-2">
+              {mvpNext.predictiveTrust.qualityChecks.map((item) => (
+                <div key={item.label} className="flex items-start justify-between gap-3 rounded-xl border border-zinc-200 p-3 text-sm">
+                  <div>
+                    <p className="font-semibold text-zinc-900">{item.label}</p>
+                    <p className="mt-1 text-xs text-zinc-600">{item.metric}</p>
+                  </div>
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${item.status === "pass" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
+                    {item.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-blue-100 bg-white p-4">
+            <h4 className="font-semibold text-zinc-950">{mvpNext.orchestrationAndCollaboration.title}</h4>
+            <p className="mt-1 text-xs text-zinc-600">{mvpNext.orchestrationAndCollaboration.summary}</p>
+            <div className="mt-4 grid grid-cols-3 gap-2 text-center text-sm">
+              {mvpNext.orchestrationAndCollaboration.orchestrationMap.map((item) => (
+                <div key={item.label} className="rounded-xl bg-zinc-50 p-3">
+                  <p className="text-xl font-semibold text-zinc-950">{item.count}</p>
+                  <p className="text-xs text-zinc-600">{item.label}</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 space-y-2">
+              {mvpNext.orchestrationAndCollaboration.boundaries.map((item) => (
+                <div key={item.label} className="rounded-xl border border-zinc-200 p-3 text-sm">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="font-semibold text-zinc-900">{item.label}</p>
+                    <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-semibold text-zinc-700">{item.count}</span>
+                  </div>
+                  <p className="mt-1 text-xs text-zinc-600">{item.detail}</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 grid gap-2 md:grid-cols-2">
+              {mvpNext.orchestrationAndCollaboration.collaborationLenses.map((item) => (
+                <div key={item.label} className="rounded-xl border border-zinc-200 p-3 text-sm">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="font-semibold text-zinc-900">{item.label}</p>
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${item.ready ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
+                      {item.ready ? "ready" : "watch"}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-zinc-600">{item.detail}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-blue-100 bg-white p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h4 className="font-semibold text-zinc-950">{mvpNext.commercialImpact.title}</h4>
+                <p className="mt-1 text-xs text-zinc-600">{mvpNext.commercialImpact.summary}</p>
+              </div>
+              <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-900">{mvpNext.commercialImpact.score}/100</span>
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              {mvpNext.commercialImpact.signals.map((signal) => (
+                <div key={signal.label} className="rounded-xl bg-zinc-50 p-3 text-sm">
+                  <p className="text-xl font-semibold text-zinc-950">{signal.value}</p>
+                  <p className="text-xs font-semibold text-zinc-800">{signal.label}</p>
+                  <p className="mt-1 text-xs text-zinc-600">{signal.detail}</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 space-y-2">
+              {mvpNext.commercialImpact.nextActions.map((item) => (
+                <p key={item} className="rounded-xl border border-zinc-200 p-3 text-sm text-zinc-700">{item}</p>
               ))}
             </div>
           </div>

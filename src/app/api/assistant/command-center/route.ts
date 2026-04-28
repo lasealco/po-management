@@ -1979,6 +1979,165 @@ export async function GET() {
       },
     },
   };
+  const shadowScore = clampScore((actionCompletionPct + groundingCoveragePct + feedbackCoveragePct + rolloutScore) / 4);
+  const stakeholderScore = clampScore(dataScore(actorRows.size, 8) * 0.3 + dataScore(objectCoverageRows.length, 8) * 0.25 + groundingCoveragePct * 0.45);
+  const trustScore = clampScore(groundingCoveragePct * 0.4 + feedbackCoveragePct * 0.35 + dataScore(auditTotal, 50) * 0.25);
+  const mp81To110Execution = {
+    automationRehearsal: {
+      title: "Automation rehearsal",
+      summary: "MP81-MP84: keep automation in shadow mode with ranked candidates, rollback checks, and guardrails.",
+      shadowMode: {
+        mp: "MP81",
+        score: shadowScore,
+        status: shadowScore >= 70 ? "ready" : "watch",
+        detail: `${doneActionCount} completed action(s), ${pendingActionCount} pending action(s), ${actionCompletionPct}% completion.`,
+      },
+      candidates: automationCandidates.slice(0, 5).map((item) => ({
+        mp: "MP82",
+        kind: item.kind,
+        readinessPct: item.readinessPct,
+        recentCount: item.recentCount,
+        completedCount: item.completedCount,
+        nextStep: item.readinessPct >= 70 ? "Pilot as controlled automation candidate." : "Keep in human-approved shadow mode.",
+      })),
+      rollbackChecks: [
+        { mp: "MP83", label: "Risk register reviewed", passed: riskRegister.length === 0, detail: `${riskRegister.length} risk(s) currently flagged.` },
+        { mp: "MP83", label: "Handoff route available", passed: handoffQueue.length > 0 || pendingActionCount === 0, detail: `${handoffQueue.length} handoff item(s).` },
+        { mp: "MP83", label: "No aged pending actions", passed: pendingActionAgeBuckets.older === 0, detail: `${pendingActionAgeBuckets.older} action(s) older than seven days.` },
+      ],
+      guardrails: [
+        { mp: "MP84", label: "Human approval remains required", passed: true, detail: "Queued actions are still explicit user-approved work." },
+        { mp: "MP84", label: "Grounding target", passed: groundingCoveragePct >= 80, detail: `${groundingCoveragePct}% grounding coverage.` },
+        { mp: "MP84", label: "Feedback target", passed: feedbackCoveragePct >= 50, detail: `${feedbackCoveragePct}% feedback coverage.` },
+        { mp: "MP84", label: "Stale-work target", passed: stalePlaybookCount === 0, detail: `${stalePlaybookCount} stale playbook(s).` },
+      ],
+    },
+    stakeholderExperience: {
+      title: "Stakeholder experience",
+      summary: "MP85-MP89: map audiences, communication assets, brief variants, adoption coaching, and board narrative.",
+      score: stakeholderScore,
+      audiences: [
+        { mp: "MP85", label: "Operators", count: inbox.total + pendingActionCount, detail: "Open work and queued actions that need operational follow-up." },
+        { mp: "MP85", label: "Leaders", count: executiveBriefLines.length + riskRegister.length, detail: "Brief lines, risks, rollout, and KPI signals." },
+        { mp: "MP85", label: "Enablement", count: actorRows.size + promptLibraryCandidates.length, detail: "Adoption rows and prompt starters for coaching." },
+      ],
+      communicationPack: {
+        mp: "MP86",
+        lines: executiveBriefLines,
+        promptStarterCount: promptLibraryCandidates.length,
+        operatingPacketLines: [
+          `Rollout: ${rolloutScore}/100 (${rolloutLevel}).`,
+          `Quality: ${groundingCoveragePct}% grounding, ${feedbackCoveragePct}% feedback coverage.`,
+          `Open work: ${inbox.total} inbox item(s), ${pendingActionCount} pending action(s).`,
+        ],
+      },
+      briefVariants: [
+        { mp: "MP87", audience: "Executive", brief: executiveBriefLines.slice(0, 3).join(" ") || "No executive brief data yet." },
+        { mp: "MP87", audience: "Operator", brief: `${inbox.total} inbox item(s), ${pendingActionCount} pending action(s), ${stalePlaybookCount} stale playbook(s).` },
+        { mp: "MP87", audience: "Enablement", brief: `${promptLibraryCandidates.length} prompt starter(s), ${actorRows.size} adoption row(s), ${trainingPositive.length} positive example(s).` },
+      ],
+      coachingQueue: Array.from(actorRows.values())
+        .map((row) => ({
+          mp: "MP88",
+          actorName: row.actorName,
+          total: row.answers + row.actions + row.playbooks,
+          nextStep: promptLibraryCandidates[0]?.prompt ?? "Use the assistant command center to choose a guided prompt.",
+        }))
+        .sort((a, b) => b.total - a.total || a.actorName.localeCompare(b.actorName))
+        .slice(0, 5),
+      boardNarrative: {
+        mp: "MP89",
+        headline: `AI assistant readiness is ${rolloutScore}/100 with ${groundingCoveragePct}% grounding.`,
+        points: [
+          `${auditTotal} persisted audit event(s) and ${recentAuditEvents.length} recent sample(s).`,
+          `${doneActionCount} completed action(s), ${pendingActionCount} pending action(s).`,
+          `${riskRegister.length} risk(s) and ${experimentBacklog.length} experiment(s) are visible.`,
+        ],
+      },
+    },
+    predictiveTrust: {
+      title: "Predictive operations and trust",
+      summary: "MP90-MP99: early warnings, delay risk, demand signals, data quality, object links, feedback, grounding, and cleanup.",
+      score: trustScore,
+      signals: [
+        { mp: "MP90", label: "Early-warning signals", value: confidenceBands.low + riskRegister.length + stalePlaybookCount, detail: "Low confidence, risk, and stale work combined." },
+        { mp: "MP91", label: "Delay risk", value: pendingActionAgeBuckets.older + stalePlaybookCount, detail: "Aged pending actions plus stale playbooks." },
+        { mp: "MP92", label: "Demand signals", value: surfaceCounts.size + duplicatePromptCount + answerKindCounts.size, detail: "Surface mix, repeated prompts, and answer patterns." },
+        { mp: "MP93", label: "Exception forecast", value: riskRegister.length + objectlessEvents.length + ungroundedEvents.length, detail: "Risks, object gaps, and evidence gaps." },
+        { mp: "MP94", label: "Next-step queue", value: recommendations.length + experimentBacklog.length, detail: "Recommendations and experiments ready to work." },
+      ],
+      qualityChecks: [
+        { mp: "MP95", label: "Signal hygiene", status: signalHygieneItems.length === 0 ? "pass" : "watch", metric: `${signalHygieneItems.length} hygiene item(s).` },
+        { mp: "MP96", label: "Object link quality", status: objectlessEvents.length === 0 ? "pass" : "watch", metric: `${objectlessEvents.length} objectless event(s).` },
+        { mp: "MP97", label: "Feedback quality", status: feedbackCoveragePct >= 50 ? "pass" : "watch", metric: `${feedbackCoveragePct}% feedback coverage.` },
+        { mp: "MP98", label: "Grounding quality", status: groundingCoveragePct >= 80 ? "pass" : "watch", metric: `${groundingCoveragePct}% grounding coverage.` },
+        { mp: "MP99", label: "Duplicate cleanup", status: duplicatePromptCount === 0 ? "pass" : "watch", metric: `${duplicatePromptCount} repeated prompt pattern(s).` },
+      ],
+      cleanupQueue: signalHygieneItems.map((item) => ({
+        mp: "MP99",
+        label: item.label,
+        count: item.count,
+        recommendation: item.recommendation,
+      })),
+    },
+    orchestrationAndCollaboration: {
+      title: "Orchestration and collaboration",
+      summary: "MP100-MP109: agent paths, tools, playbooks, human routing, boundaries, and customer/supplier/carrier collaboration.",
+      orchestrationMap: [
+        { mp: "MP100", label: "Answer agent", count: recentAuditEvents.length, detail: "Recent persisted assistant answers." },
+        { mp: "MP100", label: "Action agent", count: recentActions.length, detail: "Queued and completed action records." },
+        { mp: "MP100", label: "Playbook agent", count: playbookRuns.length, detail: "Reusable playbook runs." },
+      ],
+      toolReadiness: automationCandidates.slice(0, 5).map((item) => ({
+        mp: "MP101",
+        kind: item.kind,
+        readinessPct: item.readinessPct,
+        detail: `${item.completedCount} completed of ${item.recentCount} recent action(s).`,
+      })),
+      playbookHealth: {
+        mp: "MP102",
+        active: activePlaybookCount,
+        completed: completedPlaybookCount,
+        stale: stalePlaybookCount,
+        templates: templateRecommendations.slice(0, 4),
+      },
+      humanRouting: handoffQueue.slice(0, 6).map((item) => ({
+        mp: "MP103",
+        title: item.title,
+        type: item.type,
+        ownerHint: item.ownerHint,
+        href: item.href,
+      })),
+      boundaries: [
+        { mp: "MP104", label: "Low confidence", count: confidenceBands.low, detail: "Answers that should stay human-reviewed." },
+        { mp: "MP104", label: "Missing grounding", count: ungroundedEvents.length, detail: "Answers that need evidence before reuse." },
+        { mp: "MP104", label: "Pending approval", count: pendingActionCount, detail: "Actions waiting for a human decision." },
+      ],
+      collaborationLenses: [
+        { mp: "MP105", label: "Customer", ready: hasCoverage("customer", "sales", "order", "mail"), detail: "Sales-order, customer, and mail-context coverage." },
+        { mp: "MP106", label: "Supplier", ready: hasCoverage("supplier", "srm"), detail: "Supplier and SRM object coverage." },
+        { mp: "MP107", label: "Carrier", ready: hasCoverage("shipment", "carrier", "control"), detail: "Shipment, carrier, and Control Tower coverage." },
+        { mp: "MP108", label: "Collaboration packet", ready: executiveBriefLines.length > 0, detail: `${executiveBriefLines.length} brief line(s) available.` },
+        { mp: "MP109", label: "Collaboration risk", ready: riskRegister.length + ungroundedEvents.length + stalePlaybookCount > 0, detail: `${riskRegister.length} risk(s), ${ungroundedEvents.length} evidence gap(s), ${stalePlaybookCount} stale playbook(s).` },
+      ],
+    },
+    commercialImpact: {
+      title: "Commercial impact",
+      summary: "MP110: commercial value lens tying helpful answers, completed actions, automation candidates, and risk signals together.",
+      score: clampScore(helpfulCount * 8 + doneActionCount * 10 + automationCandidates.length * 6 - reviewDebtCount * 3),
+      signals: [
+        { mp: "MP110", label: "Helpful answers", value: helpfulCount, detail: "User-marked helpful assistant answers." },
+        { mp: "MP110", label: "Completed actions", value: doneActionCount, detail: "Human-approved actions marked done." },
+        { mp: "MP110", label: "Automation candidates", value: automationCandidates.length, detail: "Action kinds with completion history." },
+        { mp: "MP110", label: "Commercial risk signals", value: confidenceBands.low + ungroundedEvents.length + riskRegister.length, detail: "Low-confidence, ungrounded, or risk-register items." },
+      ],
+      nextActions: [
+        helpfulCount > 0 ? "Convert helpful commercial answers into prompt starters." : "Collect helpful feedback on commercial answers.",
+        doneActionCount > 0 ? "Review completed action kinds for controlled automation." : "Complete or reject pending assistant actions.",
+        confidenceBands.low + ungroundedEvents.length > 0 ? "Add evidence to weak commercial answers before reuse." : "Keep monitoring commercial answer quality.",
+      ],
+    },
+  };
 
   return NextResponse.json({
     ok: true,
@@ -2271,5 +2430,6 @@ export async function GET() {
     horizonLayers,
     advancedLayers,
     mp51To80Execution,
+    mp81To110Execution,
   });
 }
