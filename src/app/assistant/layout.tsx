@@ -60,6 +60,7 @@ export default async function AssistantLayout({ children }: { children: React.Re
           and simulation readiness. <strong>Work engine</strong> is AMP6 for assigned actions, SLA playbooks, and memory cleanup.{" "}
           <strong>Evidence quality</strong> is AMP7 for grounding, review examples, prompt starters, and release gates.{" "}
           <strong>Governed automation</strong> is AMP8 for shadow policies, controlled enablement, pause, and rollback.{" "}
+          <strong>Admin</strong> is AMP11 for rollout controls, permissions visibility, thresholds, and compliance packets.{" "}
           <strong>Autonomy</strong> completes LMP31-LMP50 with governed automation, twin
           readiness, rollout, resilience, and board reporting. <strong>Inbox</strong> includes Control Tower, drafts, and open email.{" "}
           <strong>Command center</strong> shows audit, feedback, queued actions, playbooks, and health.

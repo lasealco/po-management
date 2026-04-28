@@ -1,0 +1,35 @@
+[
+  {
+    "id": "amp11-admin-readiness",
+    "title": "Admin reviews assistant rollout readiness",
+    "given": "The tenant has assistant audit events, release gates, action queue work, prompt library items, playbooks, and governed automation policies.",
+    "when": "An operator with org.settings view opens /assistant/admin.",
+    "then": [
+      "The console shows readiness score and blocking checks derived from evidence coverage, release gate state, automation control, open high-priority work, approved prompts, and active playbooks.",
+      "The permission matrix shows each global permission with the number of roles that grant it.",
+      "Users without org.settings edit can inspect the console but cannot save rollout controls or export packets."
+    ]
+  },
+  {
+    "id": "amp11-save-rollout-control",
+    "title": "Admin saves a controlled pilot rollout",
+    "given": "An operator has org.settings edit.",
+    "when": "They choose PILOT or CONTROLLED rollout mode, select pilot roles/sites, adjust thresholds, and save.",
+    "then": [
+      "An AssistantAdminControl row is upserted for the tenant.",
+      "Pilot roles, pilot sites, thresholds, and flags are stored durably.",
+      "An AssistantAuditEvent records the admin control change for traceability."
+    ]
+  },
+  {
+    "id": "amp11-export-compliance-packet",
+    "title": "Admin exports an assistant compliance packet",
+    "given": "The admin console has live readiness, permissions, rollout, and threshold signals.",
+    "when": "The admin exports the compliance packet.",
+    "then": [
+      "The packet includes tenant, rollout mode, pilot scope, thresholds, readiness checks, signals, permissions coverage, and explicit control notes.",
+      "The packet is stored on AssistantAdminControl as packetJson with READY or BLOCKED status.",
+      "Exporting the packet does not mutate operational order, shipment, supplier, inventory, finance, or automation rows."
+    ]
+  }
+]

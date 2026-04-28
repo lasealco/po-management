@@ -153,6 +153,7 @@ model Tenant {
   assistantReleaseGates             AssistantReleaseGate[]
   assistantAutomationPolicies       AssistantAutomationPolicy[]
   assistantAutomationShadowRuns     AssistantAutomationShadowRun[]
+  assistantAdminControls            AssistantAdminControl[]
   assistantActionQueue              AssistantActionQueueItem[]
   assistantPlaybookTemplates        AssistantPlaybookTemplate[]
   assistantPlaybookRuns             AssistantPlaybookRun[]
@@ -247,6 +248,30 @@ model AssistantAutomationShadowRun {
   @@index([tenantId, runMode, createdAt])
   @@index([policyId, createdAt])
   @@index([actionQueueItemId])
+}
+
+/// AMP11: durable operator control snapshot for assistant rollout, thresholds, and compliance packet exports.
+model AssistantAdminControl {
+  id              String   @id @default(cuid())
+  tenantId        String
+  controlKey      String   @db.VarChar(128)
+  rolloutMode     String   @default("PILOT") @db.VarChar(32)
+  pilotRolesJson  Json     @default("[]")
+  pilotSitesJson  Json     @default("[]")
+  thresholdsJson  Json
+  flagsJson       Json
+  packetJson      Json?
+  packetStatus    String   @default("DRAFT") @db.VarChar(32)
+  updatedByUserId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  updatedBy User?  @relation("AssistantAdminControlUpdater", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, controlKey])
+  @@index([tenantId, rolloutMode, updatedAt])
+  @@index([tenantId, packetStatus, updatedAt])
 }
 
 /// AMP7: inspectable grounding ledger extracted from assistant answers and reviewer additions.
@@ -833,6 +858,7 @@ model User {
   apiHubMappingAnalysisJobsRequested ApiHubMappingAnalysisJob[]
   apiHubStagingBatchesCreated        ApiHubStagingBatch[]
   apiHubAssistantReviewItemsCreated  ApiHubAssistantReviewItem[]     @relation("ApiHubAssistantReviewItemCreator")
+  assistantAdminControlsUpdated      AssistantAdminControl[]          @relation("AssistantAdminControlUpdater")
   invoiceIntakesAccountingApproved   InvoiceIntake[]                 @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated  TariffShipmentApplication[]     @relation("TariffShipmentApplicationCreator")
   scriEventsOwned                    ScriExternalEvent[]             @relation("ScriEventOwner")
