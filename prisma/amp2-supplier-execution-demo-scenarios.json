@@ -1,0 +1,38 @@
+{
+  "program": "AMP2 Supply and supplier execution program",
+  "scenarios": [
+    {
+      "id": "amp2-supplier-brief-review",
+      "surface": "/suppliers/<supplierId>",
+      "prompt": "Open a product supplier with linked purchase orders.",
+      "expected": [
+        "AMP2 panel loads a generated supplier performance brief from order analytics.",
+        "Buyer can edit and mark the supplier execution plan reviewed.",
+        "Supplier record persists the reviewed brief, gap plan, review status, and note.",
+        "Assistant audit records the supplier execution review."
+      ]
+    },
+    {
+      "id": "amp2-po-follow-up-queue",
+      "surface": "/suppliers/<supplierId>",
+      "prompt": "Use a supplier with approved/sent/open POs or overdue requested delivery dates.",
+      "expected": [
+        "Panel surfaces PO follow-up evidence with links to order rows.",
+        "Buyer edits a supplier follow-up message.",
+        "Queue follow-up creates an AssistantActionQueueItem with copyable message payload.",
+        "Supplier execution status changes to FOLLOW_UP_QUEUED."
+      ]
+    },
+    {
+      "id": "amp2-onboarding-gap-close",
+      "surface": "/suppliers/<supplierId>",
+      "prompt": "Use a supplier with one or more incomplete onboarding tasks.",
+      "expected": [
+        "Panel generates an onboarding gap plan from open tasks.",
+        "Buyer creates a new onboarding task from the plan.",
+        "Buyer can close the supplier gap after review.",
+        "Task creation and close/review decisions are logged in assistant audit."
+      ]
+    }
+  ]
+}

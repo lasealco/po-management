@@ -3,6 +3,7 @@ import Link from "next/link";
 import { AccessDenied } from "@/components/access-denied";
 import { WorkflowHeader } from "@/components/workflow-header";
 import { SupplierDetailClient } from "@/components/supplier-detail-client";
+import { SupplierAssistantExecutionPanel } from "@/components/supplier-assistant-execution-panel";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { loadSupplierDetailSnapshot } from "@/lib/srm/load-supplier-detail-snapshot";
 import { redactSupplierDetailSnapshot } from "@/lib/srm/redact-supplier-sensitive";
@@ -71,8 +72,11 @@ export default async function SupplierDetailPage({
           <WorkflowHeader
             eyebrow="Supplier governance workspace"
             title={snapshot.name}
-            steps={["Step 1: Verify profile and contacts", "Step 2: Edit and approve", "Step 3: Review order performance"]}
+            steps={["Step 1: Review assistant brief", "Step 2: Queue follow-up or close gaps", "Step 3: Edit and approve"]}
           />
+        </div>
+        <div className="mb-8">
+          <SupplierAssistantExecutionPanel supplierId={snapshot.id} canEdit={canEdit} canViewOrders={canViewOrders} />
         </div>
         <SupplierDetailClient
           key={snapshot.id}

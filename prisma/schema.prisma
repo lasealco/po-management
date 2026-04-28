@@ -896,6 +896,13 @@ model Supplier {
 
   /// Hours allowed for booking confirmation after send (logistics partners). Null = tenant default (24h).
   bookingConfirmationSlaHours Int?
+  /// AMP2: durable assistant-generated supplier performance brief for buyer review.
+  assistantPerformanceBrief   String?   @db.Text
+  /// AMP2: durable assistant-generated onboarding/compliance gap plan.
+  assistantOnboardingGapPlan  String?   @db.Text
+  assistantExecutionStatus    String    @default("PENDING") @db.VarChar(32)
+  assistantExecutionNote      String?   @db.Text
+  assistantLastReviewedAt     DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -918,6 +925,7 @@ model Supplier {
 
   @@unique([tenantId, code])
   @@index([tenantId])
+  @@index([tenantId, assistantExecutionStatus, updatedAt])
 }
 
 /// SRM Phase B: checklist rows for supplier onboarding (assignee, due date, done).
