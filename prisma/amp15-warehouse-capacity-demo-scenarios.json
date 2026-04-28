@@ -1,0 +1,35 @@
+[
+  {
+    "id": "amp15-create-capacity-plan",
+    "title": "Supervisor creates a warehouse capacity plan",
+    "given": "The tenant has an active warehouse with WMS tasks, inventory balances, and outbound orders.",
+    "when": "A user with org.wms edit opens /assistant/warehouse-capacity and creates a capacity plan.",
+    "then": [
+      "An AssistantWarehouseCapacityPlan row stores task summary, bottlenecks, recovery plan, and capacity score.",
+      "An AssistantAuditEvent records the capacity plan evidence.",
+      "No WMS task is completed and no inventory movement or allocation is created."
+    ]
+  },
+  {
+    "id": "amp15-bottleneck-detection",
+    "title": "Open and aged WMS tasks lower capacity score",
+    "given": "The warehouse has multiple open PICK, PUTAWAY, or REPLENISH tasks, including aged work.",
+    "when": "The capacity plan is generated.",
+    "then": [
+      "The recovery plan groups bottlenecks by task type.",
+      "Aged open work, held inventory, and released outbound pressure lower the capacity score.",
+      "The plan recommends task sequencing and held-stock review."
+    ]
+  },
+  {
+    "id": "amp15-queue-supervisor-recovery",
+    "title": "Supervisor recovery is queued for human approval",
+    "given": "A warehouse capacity plan exists.",
+    "when": "The user clicks Queue recovery.",
+    "then": [
+      "An AssistantActionQueueItem is created with actionKind warehouse_capacity_recovery.",
+      "The plan status becomes RECOVERY_QUEUED.",
+      "The queue item states that task completion, stock movement, and allocation changes require supervisor approval."
+    ]
+  }
+]

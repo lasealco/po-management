@@ -156,6 +156,7 @@ model Tenant {
   assistantAdminControls            AssistantAdminControl[]
   assistantOperatingReports         AssistantOperatingReport[]
   assistantOrderOrchestrationPlans  AssistantOrderOrchestrationPlan[]
+  assistantWarehouseCapacityPlans   AssistantWarehouseCapacityPlan[]
   assistantActionQueue              AssistantActionQueueItem[]
   assistantPlaybookTemplates        AssistantPlaybookTemplate[]
   assistantPlaybookRuns             AssistantPlaybookRun[]
@@ -325,6 +326,31 @@ model AssistantOrderOrchestrationPlan {
   @@index([tenantId, status, updatedAt])
   @@index([tenantId, customerCrmAccountId, createdAt])
   @@index([tenantId, salesOrderId])
+}
+
+/// AMP15: warehouse labor/capacity command plan with task bottlenecks and human-approved recovery work.
+model AssistantWarehouseCapacityPlan {
+  id              String   @id @default(cuid())
+  tenantId        String
+  createdByUserId String?
+  warehouseId     String?
+  title           String
+  status          String   @default("DRAFT") @db.VarChar(32)
+  capacityScore   Int      @default(0)
+  taskSummaryJson Json
+  bottleneckJson  Json
+  recoveryPlanJson Json
+  actionQueueItemId String?
+  approvedAt      DateTime?
+  approvalNote    String?  @db.Text
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant  Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator User?  @relation("AssistantWarehouseCapacityPlanCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, updatedAt])
+  @@index([tenantId, warehouseId, createdAt])
 }
 
 /// AMP7: inspectable grounding ledger extracted from assistant answers and reviewer additions.
@@ -914,6 +940,7 @@ model User {
   assistantAdminControlsUpdated      AssistantAdminControl[]          @relation("AssistantAdminControlUpdater")
   assistantOperatingReportsCreated   AssistantOperatingReport[]       @relation("AssistantOperatingReportCreator")
   assistantOrderOrchestrationPlansCreated AssistantOrderOrchestrationPlan[] @relation("AssistantOrderOrchestrationPlanCreator")
+  assistantWarehouseCapacityPlansCreated AssistantWarehouseCapacityPlan[] @relation("AssistantWarehouseCapacityPlanCreator")
   invoiceIntakesAccountingApproved   InvoiceIntake[]                 @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated  TariffShipmentApplication[]     @relation("TariffShipmentApplicationCreator")
   scriEventsOwned                    ScriExternalEvent[]             @relation("ScriEventOwner")

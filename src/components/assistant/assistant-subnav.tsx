@@ -41,6 +41,7 @@ export function AssistantSubnav() {
 
   const chat = pathname === "/assistant" || pathname === "/assistant/";
   const orderOrchestration = pathname.startsWith("/assistant/order-orchestration");
+  const warehouseCapacity = pathname.startsWith("/assistant/warehouse-capacity");
   const workbench = pathname.startsWith("/assistant/workbench");
   const execution = pathname.startsWith("/assistant/execution");
   const workEngine = pathname.startsWith("/assistant/work-engine");
@@ -68,6 +69,13 @@ export function AssistantSubnav() {
         title="AMP13 AI-native order orchestration"
       >
         Order orchestration
+      </Link>
+      <Link
+        href="/assistant/warehouse-capacity"
+        className={warehouseCapacity ? appNavActiveClass : appNavInactiveClass}
+        title="AMP15 warehouse labor and capacity command"
+      >
+        Warehouse capacity
       </Link>
       <Link
         href="/assistant/workbench"
