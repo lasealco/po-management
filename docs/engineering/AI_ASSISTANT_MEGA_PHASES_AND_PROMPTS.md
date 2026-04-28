@@ -390,6 +390,7 @@ If implementation discovers that an LMP is too large for one run, split it into 
 
 | Date | Change |
 |------|--------|
+| 2026-04-28 | **LMP1-LMP10 shipped as first large-MP product slice:** added `/assistant/workbench` plus `GET /api/assistant/copilot-workbench` as a real copilot operating surface for assistant foundation hardening, sales-order drafts/customer replies, order exceptions, product availability/reallocation review, PO follow-up, supplier performance/onboarding, and shipment triage. |
 | 2026-04-28 | **Large-MP process reset:** documented that previous MP50+ work became telemetry slices, added strict completion criteria for true Large Mega-Phases, and defined **LMP1-LMP50** as 50 much larger implementation programs that require real UI/API/data behavior, verification, changelog, commit, and push. |
 | 2026-04-28 | **MP111-MP140 finished as MVP execution workbench:** command center now includes real operating sections for commercial/finance controls, operational and security controls, admin/evaluation governance, enterprise readiness, and digital-twin readiness using live assistant telemetry. |
 | 2026-04-28 | **MP81-MP110 finished as MVP execution workbench:** command center now includes real operating sections for shadow automation, stakeholder reporting, predictive trust, orchestration/collaboration, and commercial impact using live assistant telemetry. |

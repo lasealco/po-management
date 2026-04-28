@@ -24,7 +24,14 @@ function isTopNavHrefActive(pathname: string, href: string): boolean {
   }
   if (href === "/srm/portal") return pathname === "/srm/portal" || pathname.startsWith("/srm/portal/");
   if (href === "/sales-orders") return pathname === "/sales-orders" || pathname.startsWith("/sales-orders/");
-  if (href === "/assistant") return pathname === "/assistant";
+  if (href === "/assistant") {
+    return (
+      pathname === "/assistant" ||
+      pathname.startsWith("/assistant/workbench") ||
+      pathname.startsWith("/assistant/command-center") ||
+      pathname.startsWith("/assistant/mail")
+    );
+  }
   if (href === "/assistant/inbox")
     return pathname === "/assistant/inbox" || pathname.startsWith("/assistant/inbox/");
   if (href === "/reporting") {

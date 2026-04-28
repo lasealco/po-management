@@ -18,12 +18,15 @@ export default async function AssistantLayout({ children }: { children: React.Re
   }
   const canCt = viewerHas(access.grantSet, "org.controltower", "view");
   const canOrders = viewerHas(access.grantSet, "org.orders", "view");
-  if (!canCt && !canOrders) {
+  const canProducts = viewerHas(access.grantSet, "org.products", "view");
+  const canSuppliers = viewerHas(access.grantSet, "org.suppliers", "view");
+  const canWms = viewerHas(access.grantSet, "org.wms", "view");
+  if (!canCt && !canOrders && !canProducts && !canSuppliers && !canWms) {
     return (
       <div className="min-h-screen bg-zinc-50 px-6 py-16">
         <AccessDenied
           title="Assistant"
-          message="You need org.controltower → view and/or org.orders → view to use the assistant workspace (chat or inbox)."
+          message="You need at least one operational view grant to use the assistant workspace."
         />
       </div>
     );
@@ -36,9 +39,9 @@ export default async function AssistantLayout({ children }: { children: React.Re
         <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">Assistant</h1>
         <p className="mt-2 max-w-3xl text-sm text-zinc-600">
           <strong>Chat</strong> can draft sales orders and answer stock / product-trace questions with links to
-          evidence. <strong>Inbox</strong> includes Control Tower, drafts, and (when the pilot is on) open email.{" "}
-          <strong>Command center</strong> shows assistant work, feedback, queued actions, playbooks, and health.{" "}
-          <strong>Mail</strong> is the import + draft + confirm workflow for external thread handling.
+          evidence. <strong>Workbench</strong> is the LMP1-LMP10 cockpit for sales, products, suppliers, POs, and
+          shipments. <strong>Inbox</strong> includes Control Tower, drafts, and open email.{" "}
+          <strong>Command center</strong> shows audit, feedback, queued actions, playbooks, and health.
         </p>
         <AssistantSubnav />
         {children}

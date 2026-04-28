@@ -6,9 +6,6 @@ import { useEffect, useState } from "react";
 
 import { appNavActiveClass, appNavInactiveClass } from "@/lib/subnav-active-class";
 
-/**
- * Tabs under /assistant: chat vs attention inbox (Mega-Phase 2).
- */
 export function AssistantSubnav() {
   const pathname = usePathname() ?? "";
   const [inboxCount, setInboxCount] = useState<number | null>(null);
@@ -43,6 +40,7 @@ export function AssistantSubnav() {
   }, []);
 
   const chat = pathname === "/assistant" || pathname === "/assistant/";
+  const workbench = pathname.startsWith("/assistant/workbench");
   const inbox = pathname.startsWith("/assistant/inbox");
   const commandCenter = pathname.startsWith("/assistant/command-center");
   const mail = pathname.startsWith("/assistant/mail");
@@ -55,6 +53,13 @@ export function AssistantSubnav() {
         title="Sales assistant"
       >
         Chat
+      </Link>
+      <Link
+        href="/assistant/workbench"
+        className={workbench ? appNavActiveClass : appNavInactiveClass}
+        title="LMP1-LMP10 copilot workbench"
+      >
+        Workbench
       </Link>
       <Link
         href="/assistant/inbox"
