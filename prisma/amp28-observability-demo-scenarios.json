@@ -1,0 +1,54 @@
+[
+  {
+    "id": "amp28-create-observability-incident",
+    "title": "Create assistant observability incident from telemetry",
+    "given": [
+      "A demo operator has settings or operations view/edit access.",
+      "The tenant has assistant audit events, action queue items, release gates, automation policies, and shadow runs.",
+      "Some answers have weak evidence coverage or negative feedback."
+    ],
+    "when": [
+      "The operator opens /assistant/observability.",
+      "The operator selects Create incident."
+    ],
+    "then": [
+      "The assistant persists an AssistantObservabilityIncident row.",
+      "The incident includes health snapshot, failure signals, drift signals, evidence gaps, automation risks, degraded mode, rollback plan, and postmortem.",
+      "No automation policy, release gate, prompt, audit event, or source business record is changed automatically."
+    ]
+  },
+  {
+    "id": "amp28-queue-incident-review",
+    "title": "Queue incident response before rollback or degraded mode changes",
+    "given": [
+      "An observability incident exists with high severity or automation risk.",
+      "The operator has settings or operations edit access."
+    ],
+    "when": [
+      "The operator adds a review note.",
+      "The operator selects Queue review."
+    ],
+    "then": [
+      "An AssistantActionQueueItem is created for assistant observability incident review.",
+      "The incident status changes to REVIEW_QUEUED.",
+      "The audit event states automation policies, release gates, prompts, and source records were not changed automatically."
+    ]
+  },
+  {
+    "id": "amp28-resolve-postmortem",
+    "title": "Resolve incident after human postmortem review",
+    "given": [
+      "An incident has a postmortem summary, root-cause hypotheses, and rollback steps.",
+      "The operator has reviewed evidence coverage and automation risk."
+    ],
+    "when": [
+      "The operator enters a resolution note.",
+      "The operator selects Resolve."
+    ],
+    "then": [
+      "The incident status changes to RESOLVED with resolver and timestamp metadata.",
+      "A resolution audit event is recorded.",
+      "Resolution does not imply automation was re-enabled or release gates were passed without separate approval."
+    ]
+  }
+]

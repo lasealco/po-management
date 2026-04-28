@@ -53,6 +53,7 @@ export function AssistantSubnav() {
   const partnerEcosystem = pathname.startsWith("/assistant/partner-ecosystem");
   const frontline = pathname.startsWith("/assistant/frontline");
   const meetingIntelligence = pathname.startsWith("/assistant/meeting-intelligence");
+  const observability = pathname.startsWith("/assistant/observability");
   const workbench = pathname.startsWith("/assistant/workbench");
   const execution = pathname.startsWith("/assistant/execution");
   const workEngine = pathname.startsWith("/assistant/work-engine");
@@ -164,6 +165,13 @@ export function AssistantSubnav() {
         title="AMP27 voice and meeting intelligence"
       >
         Meetings
+      </Link>
+      <Link
+        href="/assistant/observability"
+        className={observability ? appNavActiveClass : appNavInactiveClass}
+        title="AMP28 AI observability and incident response"
+      >
+        Observability
       </Link>
       <Link
         href="/assistant/workbench"

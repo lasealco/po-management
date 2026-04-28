@@ -169,6 +169,7 @@ model Tenant {
   assistantPartnerEcosystemPackets  AssistantPartnerEcosystemPacket[]
   assistantFrontlinePackets         AssistantFrontlinePacket[]
   assistantMeetingIntelligencePackets AssistantMeetingIntelligencePacket[]
+  assistantObservabilityIncidents   AssistantObservabilityIncident[]
   assistantActionQueue              AssistantActionQueueItem[]
   assistantPlaybookTemplates        AssistantPlaybookTemplate[]
   assistantPlaybookRuns             AssistantPlaybookRun[]
@@ -739,6 +740,44 @@ model AssistantMeetingIntelligencePacket {
 
   @@index([tenantId, status, updatedAt])
   @@index([tenantId, meetingScore, updatedAt])
+}
+
+/// AMP28: AI observability and incident response packet for assistant health, drift, degraded mode, rollback, and postmortems.
+model AssistantObservabilityIncident {
+  id                    String    @id @default(cuid())
+  tenantId              String
+  createdByUserId       String?
+  resolvedByUserId      String?
+  title                 String
+  status                String    @default("OPEN") @db.VarChar(32)
+  severity              String    @default("MEDIUM") @db.VarChar(16)
+  healthScore           Int       @default(0)
+  auditEventCount       Int       @default(0)
+  failureCount          Int       @default(0)
+  driftSignalCount      Int       @default(0)
+  evidenceGapCount      Int       @default(0)
+  automationRiskCount   Int       @default(0)
+  healthSnapshotJson    Json
+  failureSignalJson     Json
+  driftSignalJson       Json
+  evidenceCoverageJson  Json
+  automationRiskJson    Json
+  degradedModeJson      Json
+  rollbackPlanJson      Json
+  postmortemJson        Json
+  leadershipSummary     String    @db.Text
+  actionQueueItemId     String?
+  resolvedAt            DateTime?
+  resolutionNote        String?   @db.Text
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator  User?  @relation("AssistantObservabilityIncidentCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  resolver User?  @relation("AssistantObservabilityIncidentResolver", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, severity, updatedAt])
+  @@index([tenantId, healthScore, updatedAt])
 }
 
 /// AMP7: inspectable grounding ledger extracted from assistant answers and reviewer additions.
@@ -1351,6 +1390,8 @@ model User {
   assistantFrontlinePacketsApproved       AssistantFrontlinePacket[]         @relation("AssistantFrontlinePacketApprover")
   assistantMeetingIntelligencePacketsCreated AssistantMeetingIntelligencePacket[] @relation("AssistantMeetingIntelligencePacketCreator")
   assistantMeetingIntelligencePacketsApproved AssistantMeetingIntelligencePacket[] @relation("AssistantMeetingIntelligencePacketApprover")
+  assistantObservabilityIncidentsCreated  AssistantObservabilityIncident[]   @relation("AssistantObservabilityIncidentCreator")
+  assistantObservabilityIncidentsResolved AssistantObservabilityIncident[]   @relation("AssistantObservabilityIncidentResolver")
   invoiceIntakesAccountingApproved        InvoiceIntake[]                   @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated       TariffShipmentApplication[]       @relation("TariffShipmentApplicationCreator")
   scriEventsOwned                         ScriExternalEvent[]               @relation("ScriEventOwner")
