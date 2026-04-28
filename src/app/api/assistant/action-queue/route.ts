@@ -6,6 +6,7 @@ import { getActorUserId, getViewerGrantSet } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
 import { inferAssistantObjectContext } from "@/lib/assistant/object-context";
+import { parseAssistantWorkPriority, parseOptionalDueAt } from "@/lib/assistant/work-engine";
 
 export async function POST(request: Request) {
   const access = await getViewerGrantSet();
@@ -35,6 +36,7 @@ export async function POST(request: Request) {
     evidence: actionKind === "navigate" && typeof action.href === "string" ? [{ href: action.href }] : [],
   });
   const payload = action as Prisma.InputJsonObject;
+  const dueAt = parseOptionalDueAt(o.dueAt ?? action.dueAt);
   const item = await prisma.assistantActionQueueItem.create({
     data: {
       tenantId: tenant.id,
@@ -42,6 +44,15 @@ export async function POST(request: Request) {
       auditEventId,
       objectType: typeof o.objectType === "string" && o.objectType.trim() ? o.objectType.trim() : inferred.objectType,
       objectId: typeof o.objectId === "string" && o.objectId.trim() ? o.objectId.trim() : inferred.objectId,
+      objectHref:
+        typeof o.objectHref === "string" && o.objectHref.trim()
+          ? o.objectHref.trim().slice(0, 2048)
+          : typeof action.href === "string"
+            ? action.href.trim().slice(0, 2048)
+            : null,
+      ownerUserId: typeof o.ownerUserId === "string" && o.ownerUserId.trim() ? o.ownerUserId.trim() : null,
+      dueAt: dueAt ?? null,
+      priority: parseAssistantWorkPriority(o.priority ?? action.priority),
       actionId: actionId.slice(0, 128),
       actionKind: actionKind.slice(0, 64),
       label,
@@ -73,8 +84,19 @@ export async function GET(request: Request) {
       status: true,
       objectType: true,
       objectId: true,
+      objectHref: true,
+      ownerUserId: true,
+      owner: { select: { id: true, name: true, email: true } },
+      priority: true,
+      dueAt: true,
       createdAt: true,
     },
   });
-  return NextResponse.json({ items: items.map((item) => ({ ...item, createdAt: item.createdAt.toISOString() })) });
+  return NextResponse.json({
+    items: items.map((item) => ({
+      ...item,
+      dueAt: item.dueAt?.toISOString() ?? null,
+      createdAt: item.createdAt.toISOString(),
+    })),
+  });
 }

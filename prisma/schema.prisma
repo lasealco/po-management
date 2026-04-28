@@ -146,6 +146,7 @@ model Tenant {
   assistantEmailThreads             AssistantEmailThread[]
   assistantAuditEvents              AssistantAuditEvent[]
   assistantActionQueue              AssistantActionQueueItem[]
+  assistantPlaybookTemplates        AssistantPlaybookTemplate[]
   assistantPlaybookRuns             AssistantPlaybookRun[]
 }
 
@@ -166,6 +167,8 @@ model AssistantAuditEvent {
   objectId    String?
   feedback    String?   @db.VarChar(32)
   feedbackAt  DateTime?
+  archivedAt  DateTime?
+  archiveReason String? @db.Text
   createdAt   DateTime  @default(now())
 
   tenant       Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -177,6 +180,7 @@ model AssistantAuditEvent {
   @@index([tenantId, actorUserId, createdAt])
   @@index([tenantId, objectType, objectId, createdAt])
   @@index([tenantId, feedback, createdAt])
+  @@index([tenantId, archivedAt, createdAt])
 }
 
 /// MP17: human-approved queue row for assistant-proposed actions.
@@ -187,24 +191,55 @@ model AssistantActionQueueItem {
   auditEventId String?
   objectType   String?   @db.VarChar(64)
   objectId     String?
+  objectHref   String?   @db.Text
+  ownerUserId  String?
+  dueAt        DateTime?
+  priority     String    @default("MEDIUM") @db.VarChar(16)
   actionId     String    @db.VarChar(128)
   actionKind   String    @db.VarChar(64)
   label        String
   description  String?   @db.Text
   payload      Json?
   status       String    @default("PENDING") @db.VarChar(32)
+  decisionNote String?   @db.Text
   decidedAt    DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
   tenant     Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   actor      User?                @relation("AssistantActionQueueActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  owner      User?                @relation("AssistantActionQueueOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
   auditEvent AssistantAuditEvent? @relation(fields: [auditEventId], references: [id], onDelete: SetNull)
 
-  @@index([tenantId, status, createdAt])
+  @@index([tenantId, status, priority, dueAt])
   @@index([tenantId, actorUserId, createdAt])
+  @@index([tenantId, ownerUserId, status, dueAt])
   @@index([tenantId, objectType, objectId, createdAt])
   @@index([auditEventId])
+}
+
+/// AMP6: editable templates for repeatable assistant-guided work.
+model AssistantPlaybookTemplate {
+  id              String   @id @default(cuid())
+  tenantId        String
+  createdByUserId String?
+  playbookId      String   @db.VarChar(128)
+  title           String
+  description     String?  @db.Text
+  objectType      String?  @db.VarChar(64)
+  priority        String   @default("MEDIUM") @db.VarChar(16)
+  slaHours        Int?
+  steps           Json
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant  Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator User?  @relation("AssistantPlaybookTemplateCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, playbookId])
+  @@index([tenantId, isActive, updatedAt])
+  @@index([tenantId, objectType, isActive])
 }
 
 /// MP19: persistent playbook run state for assistant-guided workflows.
@@ -212,22 +247,30 @@ model AssistantPlaybookRun {
   id           String   @id @default(cuid())
   tenantId     String
   actorUserId  String?
+  ownerUserId  String?
   auditEventId String?
   objectType   String?  @db.VarChar(64)
   objectId     String?
+  objectHref   String?  @db.Text
   playbookId   String   @db.VarChar(128)
   title        String
+  priority     String   @default("MEDIUM") @db.VarChar(16)
   status       String   @default("IN_PROGRESS") @db.VarChar(32)
   steps        Json
+  dueAt        DateTime?
+  completedAt  DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   tenant     Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   actor      User?                @relation("AssistantPlaybookRunActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  owner      User?                @relation("AssistantPlaybookRunOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
   auditEvent AssistantAuditEvent? @relation(fields: [auditEventId], references: [id], onDelete: SetNull)
 
+  @@index([tenantId, status, priority, dueAt])
   @@index([tenantId, playbookId, createdAt])
   @@index([tenantId, actorUserId, createdAt])
+  @@index([tenantId, ownerUserId, status, dueAt])
   @@index([tenantId, objectType, objectId, createdAt])
   @@index([auditEventId])
 }
@@ -625,7 +668,10 @@ model User {
   assistantEmailSendConfirms         AssistantEmailThread[]          @relation("AssistantEmailSendConfirmBy")
   assistantAuditEvents               AssistantAuditEvent[]           @relation("AssistantAuditEventActor")
   assistantActionQueueItems          AssistantActionQueueItem[]      @relation("AssistantActionQueueActor")
+  assistantActionQueueOwned          AssistantActionQueueItem[]      @relation("AssistantActionQueueOwner")
+  assistantPlaybookTemplatesCreated  AssistantPlaybookTemplate[]     @relation("AssistantPlaybookTemplateCreator")
   assistantPlaybookRuns              AssistantPlaybookRun[]          @relation("AssistantPlaybookRunActor")
+  assistantPlaybookRunsOwned         AssistantPlaybookRun[]          @relation("AssistantPlaybookRunOwner")
   passwordResetTokens                PasswordResetToken[]
   /// Primary org node (geography / legal hierarchy). Matrix: see `productDivisionScope`.
   primaryOrgUnitId                   String?

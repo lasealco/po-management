@@ -1,0 +1,44 @@
+[
+  {
+    "id": "amp6-action-owner-sla-closeout",
+    "title": "Operator assigns and closes an assistant action",
+    "steps": [
+      "Open /assistant/work-engine.",
+      "Review pending assistant action queue items with owner, due date, priority, and object link.",
+      "Approve an action, then mark it Done with a decision note."
+    ],
+    "expected": [
+      "Action status transitions are durable and keep decision notes.",
+      "Stale actions are highlighted when dueAt is past and status is still open.",
+      "Object links remain available for returning to the source workflow."
+    ]
+  },
+  {
+    "id": "amp6-playbook-template-run",
+    "title": "Supervisor creates a playbook template and runs it",
+    "steps": [
+      "Create a playbook template from the Work engine page.",
+      "Start a run from the saved template.",
+      "Complete each step from Active playbook runs."
+    ],
+    "expected": [
+      "Template persists with steps, priority, and SLA hours.",
+      "Run receives dueAt from the SLA and tracks step state durably.",
+      "Run becomes COMPLETED when all steps are done or skipped."
+    ]
+  },
+  {
+    "id": "amp6-object-memory-cleanup",
+    "title": "Operator archives stale assistant memory",
+    "steps": [
+      "Open Object memory cleanup in /assistant/work-engine.",
+      "Pick an old or low-value assistant audit event.",
+      "Archive the memory row with cleanup reason."
+    ],
+    "expected": [
+      "Archived memory is removed from active work-engine summaries.",
+      "Archive timestamp and reason persist on AssistantAuditEvent.",
+      "Underlying business object data is not deleted."
+    ]
+  }
+]
