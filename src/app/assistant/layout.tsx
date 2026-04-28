@@ -61,6 +61,7 @@ export default async function AssistantLayout({ children }: { children: React.Re
           <strong>Customer intelligence</strong> is AMP18 for account service briefs and customer-ready replies.{" "}
           <strong>Finance control</strong> is AMP19 for leakage, disputes, accruals, and accounting handoff review.{" "}
           <strong>Risk war room</strong> is AMP20 for external event triage, Twin scenarios, mitigations, and communication drafts.{" "}
+          <strong>Master data</strong> is AMP21 for duplicate, gap, stale-record, and integration hygiene review.{" "}
           <strong>Workbench</strong> is the LMP1-LMP10 cockpit for sales, products, suppliers, POs, and
           shipments. <strong>Execution</strong> runs LMP11-LMP30 across carrier/customer comms, WMS, finance, quality,
           and simulation readiness. <strong>Work engine</strong> is AMP6 for assigned actions, SLA playbooks, and memory cleanup.{" "}

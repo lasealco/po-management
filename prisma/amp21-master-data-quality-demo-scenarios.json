@@ -1,0 +1,35 @@
+[
+  {
+    "id": "amp21-master-data-quality-scan",
+    "title": "Create a cross-domain master data quality scan",
+    "given": "The tenant has product, supplier, CRM account, warehouse, and API Hub staging data.",
+    "when": "A user opens /assistant/master-data-quality and selects Create quality scan.",
+    "then": [
+      "The assistant persists an AssistantMasterDataQualityRun with a quality score.",
+      "Duplicate groups, missing-field gaps, stale records, and staging conflicts are visible as evidence.",
+      "The generated enrichment plan explains that canonical master records are not overwritten automatically."
+    ]
+  },
+  {
+    "id": "amp21-master-data-quality-review-queue",
+    "title": "Queue master data cleanup for governance review",
+    "given": "A quality run contains duplicate suppliers, incomplete products, stale warehouses, or API Hub mapping conflicts.",
+    "when": "The data owner adds an approval note and selects Queue review.",
+    "then": [
+      "An AssistantActionQueueItem is created with score and blocker counts.",
+      "The quality run moves to REVIEW_QUEUED with approvedAt and approvedByUserId populated.",
+      "No product, supplier, CRM account, warehouse, or API Hub staging row is mutated automatically."
+    ]
+  },
+  {
+    "id": "amp21-master-data-quality-permission-scope",
+    "title": "Scope scans to the viewer's master-data grants",
+    "given": "A user has only supplier and API Hub view grants.",
+    "when": "The user opens the workspace or creates a scan.",
+    "then": [
+      "The scan uses only supplier and API Hub evidence available to that viewer.",
+      "Restricted product, CRM, or warehouse records are excluded from the snapshot.",
+      "The persisted proposal remains auditable and does not expose unauthorized master data."
+    ]
+  }
+]

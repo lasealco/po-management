@@ -46,6 +46,7 @@ export function AssistantSubnav() {
   const customerIntelligence = pathname.startsWith("/assistant/customer-intelligence");
   const financeControl = pathname.startsWith("/assistant/finance-control");
   const riskWarRoom = pathname.startsWith("/assistant/risk-war-room");
+  const masterDataQuality = pathname.startsWith("/assistant/master-data-quality");
   const workbench = pathname.startsWith("/assistant/workbench");
   const execution = pathname.startsWith("/assistant/execution");
   const workEngine = pathname.startsWith("/assistant/work-engine");
@@ -108,6 +109,13 @@ export function AssistantSubnav() {
         title="AMP20 risk intelligence war room"
       >
         Risk war room
+      </Link>
+      <Link
+        href="/assistant/master-data-quality"
+        className={masterDataQuality ? appNavActiveClass : appNavInactiveClass}
+        title="AMP21 master data quality and enrichment"
+      >
+        Master data
       </Link>
       <Link
         href="/assistant/workbench"

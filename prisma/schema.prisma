@@ -162,6 +162,7 @@ model Tenant {
   assistantCustomerBriefs           AssistantCustomerBrief[]
   assistantFinancePackets           AssistantFinancePacket[]
   assistantRiskWarRooms             AssistantRiskWarRoom[]
+  assistantMasterDataQualityRuns    AssistantMasterDataQualityRun[]
   assistantActionQueue              AssistantActionQueueItem[]
   assistantPlaybookTemplates        AssistantPlaybookTemplate[]
   assistantPlaybookRuns             AssistantPlaybookRun[]
@@ -488,6 +489,39 @@ model AssistantRiskWarRoom {
   @@index([tenantId, status, severity, updatedAt])
   @@index([tenantId, primaryScriEventId])
   @@index([tenantId, scenarioDraftId])
+}
+
+/// AMP21: master data quality scan/proposal for duplicates, gaps, stale records, and integration hygiene.
+model AssistantMasterDataQualityRun {
+  id                  String    @id @default(cuid())
+  tenantId            String
+  createdByUserId     String?
+  approvedByUserId    String?
+  title               String
+  status              String    @default("DRAFT") @db.VarChar(32)
+  qualityScore        Int       @default(0)
+  duplicateCount      Int       @default(0)
+  gapCount            Int       @default(0)
+  staleCount          Int       @default(0)
+  conflictCount       Int       @default(0)
+  summaryJson         Json
+  duplicateGroupsJson Json
+  gapAnalysisJson     Json
+  staleRecordsJson    Json
+  conflictJson        Json
+  enrichmentPlanJson  Json
+  actionQueueItemId   String?
+  approvedAt          DateTime?
+  approvalNote        String?   @db.Text
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator  User?  @relation("AssistantMasterDataQualityRunCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  approver User?  @relation("AssistantMasterDataQualityRunApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, updatedAt])
+  @@index([tenantId, qualityScore, updatedAt])
 }
 
 /// AMP7: inspectable grounding ledger extracted from assistant answers and reviewer additions.
@@ -1086,6 +1120,8 @@ model User {
   assistantFinancePacketsApproved         AssistantFinancePacket[]          @relation("AssistantFinancePacketApprover")
   assistantRiskWarRoomsCreated            AssistantRiskWarRoom[]            @relation("AssistantRiskWarRoomCreator")
   assistantRiskWarRoomsApproved           AssistantRiskWarRoom[]            @relation("AssistantRiskWarRoomApprover")
+  assistantMasterDataQualityRunsCreated   AssistantMasterDataQualityRun[]   @relation("AssistantMasterDataQualityRunCreator")
+  assistantMasterDataQualityRunsApproved  AssistantMasterDataQualityRun[]   @relation("AssistantMasterDataQualityRunApprover")
   invoiceIntakesAccountingApproved        InvoiceIntake[]                   @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated       TariffShipmentApplication[]       @relation("TariffShipmentApplicationCreator")
   scriEventsOwned                         ScriExternalEvent[]               @relation("ScriEventOwner")
