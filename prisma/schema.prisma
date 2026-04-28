@@ -1222,6 +1222,12 @@ model Product {
   supplierOfficeId String?
   supplierOffice   SupplierOffice? @relation(fields: [supplierOfficeId], references: [id], onDelete: SetNull)
 
+  /// AMP4: durable availability-to-promise summary and recovery proposal for warehouse/customer promise review.
+  assistantPromiseStatus     String    @default("PENDING") @db.VarChar(32)
+  assistantPromiseSummary    String?   @db.Text
+  assistantRecoveryProposal  String?   @db.Text
+  assistantPromiseReviewedAt DateTime?
+
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1241,6 +1247,7 @@ model Product {
   @@unique([tenantId, sku])
   @@unique([tenantId, productCode])
   @@index([tenantId])
+  @@index([tenantId, assistantPromiseStatus, updatedAt])
   @@index([categoryId])
   @@index([divisionId])
 }

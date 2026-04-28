@@ -4,6 +4,7 @@ import { AccessDenied } from "@/components/access-denied";
 import { AssistantContextCard } from "@/components/assistant/assistant-context-card";
 import { ProductEditClient } from "@/components/product-edit-client";
 import type { ProductFormInitial } from "@/components/product-catalog-form";
+import { ProductPromisePanel } from "@/components/product-promise-panel";
 import { ProductReadOnly } from "@/components/product-read-only";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { getProductFormOptions } from "@/lib/product-form-options";
@@ -120,6 +121,7 @@ export default async function ProductDetailPage({
             description="Open the assistant with this product prefilled for stock, trace, shipments, POs, and customer exposure."
             prompt={`What is impacted for product ${product.id} (${product.productCode || product.sku || product.name}) across stock, purchase orders, shipments, and sales orders?`}
           />
+          <ProductPromisePanel productId={product.id} canEdit={false} />
           <ProductReadOnly product={readProduct} />
         </main>
       </div>
@@ -176,6 +178,7 @@ export default async function ProductDetailPage({
             description="Open the assistant with this product prefilled for stock, trace, shipments, POs, and customer exposure."
             prompt={`What is impacted for product ${product.id} (${product.productCode || product.sku || product.name}) across stock, purchase orders, shipments, and sales orders?`}
           />
+          <ProductPromisePanel productId={product.id} canEdit={canEdit} />
           <ProductEditClient
             productId={product.id}
             initial={initial}

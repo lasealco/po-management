@@ -1,0 +1,38 @@
+{
+  "program": "AMP4 Warehouse promise and inventory recovery program",
+  "scenarios": [
+    {
+      "id": "amp4-product-atp-ready",
+      "surface": "/products/<productId>",
+      "prompt": "Open a product with enough visible available stock to cover open sales demand.",
+      "expected": [
+        "AMP4 panel shows available-to-promise, on-hand, allocated, demand, inbound, and blocker metrics.",
+        "Promise summary explains why the SKU can be promised.",
+        "User marks the promise PROMISE_READY.",
+        "AssistantAuditEvent records the human-reviewed promise decision."
+      ]
+    },
+    {
+      "id": "amp4-stock-hold-recovery",
+      "surface": "/products/<productId>",
+      "prompt": "Open a product with on-hold inventory and open demand.",
+      "expected": [
+        "Panel identifies held stock as a blocker.",
+        "Recovery proposal instructs release only after QC/compliance approval.",
+        "Queue recovery proposal creates an AssistantActionQueueItem without changing inventory.",
+        "Product promise status becomes RECOVERY_QUEUED."
+      ]
+    },
+    {
+      "id": "amp4-wms-task-blocker",
+      "surface": "/products/<productId>",
+      "prompt": "Open a product with open WMS pick/putaway/replenishment tasks.",
+      "expected": [
+        "Panel lists WMS task blockers with warehouse/bin/task evidence.",
+        "Recovery proposal recommends prioritizing the blocking WMS work.",
+        "No stock move or reservation is posted automatically.",
+        "Audit metadata confirms no silent inventory mutation."
+      ]
+    }
+  ]
+}
