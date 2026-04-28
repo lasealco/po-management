@@ -172,6 +172,7 @@ model Tenant {
   assistantObservabilityIncidents   AssistantObservabilityIncident[]
   assistantGovernancePackets        AssistantGovernancePacket[]
   assistantRolloutFactoryPackets    AssistantRolloutFactoryPacket[]
+  assistantValueRealizationPackets  AssistantValueRealizationPacket[]
   assistantActionQueue              AssistantActionQueueItem[]
   assistantPlaybookTemplates        AssistantPlaybookTemplate[]
   assistantPlaybookRuns             AssistantPlaybookRun[]
@@ -855,6 +856,43 @@ model AssistantRolloutFactoryPacket {
   @@index([tenantId, readinessScore, updatedAt])
 }
 
+/// AMP31: AI product analytics and value realization packet for adoption, savings, service impact, and ROI reporting.
+model AssistantValueRealizationPacket {
+  id                    String    @id @default(cuid())
+  tenantId              String
+  createdByUserId       String?
+  approvedByUserId      String?
+  title                 String
+  status                String    @default("DRAFT") @db.VarChar(32)
+  valueScore            Int       @default(0)
+  adoptionScore         Int       @default(0)
+  totalEstimatedValue   Decimal   @default(0) @db.Decimal(18, 4)
+  automationSavings     Decimal   @default(0) @db.Decimal(18, 4)
+  recoveredValue        Decimal   @default(0) @db.Decimal(18, 4)
+  avoidedCost           Decimal   @default(0) @db.Decimal(18, 4)
+  roiPct                Int       @default(0)
+  adoptionFunnelJson    Json
+  valueAttributionJson  Json
+  savingsJson           Json
+  serviceImpactJson     Json
+  cohortJson            Json
+  roiAssumptionJson     Json
+  exportReportJson      Json
+  leadershipSummary     String    @db.Text
+  actionQueueItemId     String?
+  approvedAt            DateTime?
+  approvalNote          String?   @db.Text
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator  User?  @relation("AssistantValueRealizationPacketCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  approver User?  @relation("AssistantValueRealizationPacketApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, updatedAt])
+  @@index([tenantId, valueScore, updatedAt])
+}
+
 /// AMP7: inspectable grounding ledger extracted from assistant answers and reviewer additions.
 model AssistantEvidenceRecord {
   id              String    @id @default(cuid())
@@ -1471,6 +1509,8 @@ model User {
   assistantGovernancePacketsApproved      AssistantGovernancePacket[]         @relation("AssistantGovernancePacketApprover")
   assistantRolloutFactoryPacketsCreated   AssistantRolloutFactoryPacket[]     @relation("AssistantRolloutFactoryPacketCreator")
   assistantRolloutFactoryPacketsApproved  AssistantRolloutFactoryPacket[]     @relation("AssistantRolloutFactoryPacketApprover")
+  assistantValueRealizationPacketsCreated AssistantValueRealizationPacket[]   @relation("AssistantValueRealizationPacketCreator")
+  assistantValueRealizationPacketsApproved AssistantValueRealizationPacket[]  @relation("AssistantValueRealizationPacketApprover")
   invoiceIntakesAccountingApproved        InvoiceIntake[]                   @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated       TariffShipmentApplication[]       @relation("TariffShipmentApplicationCreator")
   scriEventsOwned                         ScriExternalEvent[]               @relation("ScriEventOwner")

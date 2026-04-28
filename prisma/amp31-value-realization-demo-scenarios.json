@@ -1,0 +1,51 @@
+[
+  {
+    "id": "amp31-create-value-packet",
+    "title": "Create a value realization packet",
+    "persona": "AI program owner with settings edit access",
+    "entrypoint": "/assistant/value-realization",
+    "steps": [
+      "Open the AMP31 Value workspace.",
+      "Review live adoption, completed work, finance recovery, service impact, automation savings, ROI assumptions, and role-safe export preview.",
+      "Click Create value packet."
+    ],
+    "expected": [
+      "A persisted AssistantValueRealizationPacket is created with adoptionFunnelJson, valueAttributionJson, savingsJson, serviceImpactJson, cohortJson, roiAssumptionJson, exportReportJson, and leadershipSummary.",
+      "Estimated value includes avoided work cost, automation savings, and recovered finance value.",
+      "Export report JSON is role-safe and excludes user emails, customer names, invoice IDs, and source excerpts.",
+      "An AssistantAuditEvent is written, and no source telemetry, finance records, service records, or ROI claims are published or mutated automatically."
+    ]
+  },
+  {
+    "id": "amp31-queue-value-review",
+    "title": "Queue value report review",
+    "persona": "Executive sponsor with settings edit access",
+    "entrypoint": "/assistant/value-realization",
+    "steps": [
+      "Create or select a DRAFT value realization packet.",
+      "Add an approval note describing ROI assumptions and audience.",
+      "Click Queue value review."
+    ],
+    "expected": [
+      "The packet status changes to REVIEW_QUEUED with actionQueueItemId, approvedByUserId, approvedAt, and approvalNote.",
+      "An AssistantActionQueueItem is created with actionKind assistant_value_realization_review.",
+      "An AssistantAuditEvent records that ROI claims, board reports, customer reports, finance records, service records, and source telemetry were not published or changed automatically."
+    ]
+  },
+  {
+    "id": "amp31-role-safe-board-export",
+    "title": "Role-safe board/customer value report",
+    "persona": "Customer success director with reports view access",
+    "entrypoint": "/assistant/value-realization",
+    "steps": [
+      "Open the Value workspace with reports access.",
+      "Inspect the live export guardrail and top attribution sections.",
+      "Create a value packet if permitted by edit grants or review an existing packet."
+    ],
+    "expected": [
+      "The export report shows executive metrics, top attribution, audience labels, redaction mode ROLE_SAFE_SUMMARY, and guardrails.",
+      "No sensitive source identifiers are displayed in the report preview.",
+      "ROI and savings remain assumption-backed until a human queues and approves the review."
+    ]
+  }
+]
