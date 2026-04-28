@@ -1,0 +1,38 @@
+{
+  "program": "AMP3 Control Tower recovery and communication program",
+  "scenarios": [
+    {
+      "id": "amp3-late-shipment-recovery",
+      "surface": "/control-tower/shipments/<shipmentId>?tab=recovery",
+      "prompt": "Open a shipment with an OPEN late ETA or milestone exception.",
+      "expected": [
+        "Recovery tab generates a plan from shipment, booking, customer, and exception evidence.",
+        "Operator edits root cause, customer impact, and playbook steps.",
+        "Save recovery persists recoveryState, recoveryPlan, drafts, and playbookSteps on CtException.",
+        "CtAuditLog and AssistantAuditEvent record the recovery update."
+      ]
+    },
+    {
+      "id": "amp3-carrier-escalation",
+      "surface": "/control-tower/shipments/<shipmentId>?tab=recovery",
+      "prompt": "Use an exception where carrier confirmation is missing.",
+      "expected": [
+        "Carrier update draft is generated and editable.",
+        "Queue carrier update creates an AssistantActionQueueItem with copy_text payload.",
+        "Recovery can be marked CARRIER_ESCALATED.",
+        "Audit trail links the action to the shipment recovery workspace."
+      ]
+    },
+    {
+      "id": "amp3-customer-update-close",
+      "surface": "/control-tower/shipments/<shipmentId>?tab=recovery",
+      "prompt": "Use a shipment with customer impact captured on the exception.",
+      "expected": [
+        "Customer update draft includes customer impact and ETA context.",
+        "Log customer update creates a SHARED CtShipmentNote.",
+        "Operator completes playbook steps and marks recovery RECOVERED.",
+        "Customer communication and recovery close decisions are visible in Shipment 360 audit/notes."
+      ]
+    }
+  ]
+}

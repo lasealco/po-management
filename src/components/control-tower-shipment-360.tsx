@@ -15,6 +15,7 @@ import { ctSlaState } from "@/lib/control-tower/sla-thresholds";
 import { CT_SHIPMENT_DOCUMENT_TYPES } from "@/lib/control-tower/shipment-document-types";
 import { controlTowerWorkbenchPath } from "@/lib/control-tower/workbench-url-sync";
 import { ControlTowerRouteMap } from "@/components/control-tower-route-map";
+import { ControlTowerRecoveryPanel } from "@/components/control-tower-recovery-panel";
 import { FormSearchableSelect } from "@/components/form-searchable-select";
 import { LocationCodePicker } from "@/components/location-code-picker";
 
@@ -27,6 +28,7 @@ type Tab =
   | "commercial"
   | "alerts"
   | "exceptions"
+  | "recovery"
   | "audit";
 
 const ALL_TABS: Tab[] = [
@@ -38,6 +40,7 @@ const ALL_TABS: Tab[] = [
   "commercial",
   "alerts",
   "exceptions",
+  "recovery",
   "audit",
 ];
 
@@ -496,6 +499,7 @@ export function ControlTowerShipment360({
     { id: "commercial", label: "Commercial" },
     { id: "alerts", label: "Alerts" },
     { id: "exceptions", label: "Exceptions" },
+    { id: "recovery", label: "Recovery" },
     { id: "audit", label: "Audit" },
   ];
   const tabs = restricted ? allTabs.filter((t) => t.id !== "audit") : allTabs;
@@ -3535,6 +3539,8 @@ export function ControlTowerShipment360({
           ) : null}
         </section>
       ) : null}
+
+      {tab === "recovery" ? <ControlTowerRecoveryPanel shipmentId={shipmentId} canEdit={canEdit} /> : null}
 
       {tab === "audit" ? (
         <section className="rounded-lg border border-zinc-200 bg-white p-4 text-sm">

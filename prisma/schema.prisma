@@ -1883,18 +1883,25 @@ model CtExceptionCode {
 }
 
 model CtException {
-  id          String            @id @default(cuid())
-  tenantId    String
-  shipmentId  String
-  type        String
-  severity    CtAlertSeverity   @default(WARN)
-  ownerUserId String?
-  rootCause   String?           @db.Text
-  status      CtExceptionStatus @default(OPEN)
-  claimAmount Decimal?          @db.Decimal(14, 2)
-  resolvedAt  DateTime?
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+  id                String            @id @default(cuid())
+  tenantId          String
+  shipmentId        String
+  type              String
+  severity          CtAlertSeverity   @default(WARN)
+  ownerUserId       String?
+  rootCause         String?           @db.Text
+  status            CtExceptionStatus @default(OPEN)
+  customerImpact    String?           @db.Text
+  recoveryState     String            @default("TRIAGE") @db.VarChar(32)
+  recoveryPlan      String?           @db.Text
+  carrierDraft      String?           @db.Text
+  customerDraft     String?           @db.Text
+  playbookSteps     Json?
+  recoveryUpdatedAt DateTime?
+  claimAmount       Decimal?          @db.Decimal(14, 2)
+  resolvedAt        DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
 
   tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
@@ -1902,6 +1909,7 @@ model CtException {
 
   @@index([shipmentId])
   @@index([tenantId, status])
+  @@index([tenantId, recoveryState, updatedAt])
 }
 
 model CtAuditLog {

@@ -18,6 +18,7 @@ const SHIPMENT_TABS = new Set([
   "commercial",
   "alerts",
   "exceptions",
+  "recovery",
   "audit",
 ]);
 

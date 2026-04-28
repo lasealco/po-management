@@ -419,6 +419,7 @@ If implementation discovers that an LMP is too large for one run, split it into 
 
 | Date | Change |
 |------|--------|
+| 2026-04-28 | **AMP3 completed:** Shipment 360 now includes a native Recovery tab for Control Tower exceptions with durable recovery state, customer impact, recovery plan, carrier/customer drafts, playbook checklist, carrier follow-up queue action, customer shared-note logging, audit events, focused tests, and three acceptance scenarios in `prisma/amp3-control-tower-recovery-demo-scenarios.json`. |
 | 2026-04-28 | **AMP2 completed:** supplier detail now has an AMP2 execution panel with generated/editable supplier performance brief, onboarding gap plan, PO follow-up evidence, approved supplier follow-up queue actions, onboarding task creation, assistant audit logging, focused tests, and three acceptance scenarios in `prisma/amp2-supplier-execution-demo-scenarios.json`. |
 | 2026-04-28 | **AMP1 completed:** sales-to-cash assistant drafts now support durable line-item intake, editable/copyable customer replies, SO-detail review/approve/needs-changes/reject workflow, assistant audit events, focused parser/review tests, and three acceptance scenarios in `prisma/amp1-sales-to-cash-demo-scenarios.json`. |
 | 2026-04-28 | **AMP1.A shipped:** sales-to-cash assistant intake now persists structured sales-order lines, source request text, parser snapshot, customer reply draft, and assistant audit events for chat/email-created draft SOs; SO detail shows the structured intake and reply draft. |
