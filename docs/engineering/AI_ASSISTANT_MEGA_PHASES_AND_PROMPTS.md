@@ -3,7 +3,7 @@
 **Purpose:** Fix a real problem: *strategy docs and micro-slices are hard to “prompt,”* and **you** mainly validate **the product when you can see and click it**. This document defines (1) **how to prompt** the implementation agent, (2) **big phases** the agent can execute **without** waiting for you on every sub-task, and (3) **Mega-Phase 1** in enough detail to build toward your **“John at ABC, corr-roll, $100, pickup Tuesday”** story.
 
 **Audience:** You (product owner) + anyone implementing in Cursor.  
-**Last updated:** 2026-04-28 (large-MP process reset)
+**Last updated:** 2026-04-28 (assistant mega-program sizing reset)
 
 **Related:** [`AI_ASSISTANT_UX_GTM_AND_DELIVERY_PLAN.md`](./AI_ASSISTANT_UX_GTM_AND_DELIVERY_PLAN.md) (narrative + workstreams), [`PLATFORM_AI_FIRST_OPERATIONS_ROADMAP.md`](./PLATFORM_AI_FIRST_OPERATIONS_ROADMAP.md) (platform strategy).
 
@@ -55,7 +55,7 @@ Use **one** of these. They are designed so the implementer (human or agent) does
 
 ### 3.0 Process reset — what counts as a real Mega-Phase now
 
-The original intent was correct: a Mega-Phase should keep an implementation agent busy for roughly **one focused hour at minimum**, and often longer. The later MP50+ work drifted into **telemetry slices**: useful command-center panels, but too small to count as true product Mega-Phases.
+The original intent was correct: a Mega-Phase should keep an implementation agent busy for roughly **one agent-day at minimum**, and often longer. The later MP50+ work drifted into **telemetry slices**. The first `LMP1`-`LMP50` pass then became useful **assistant workbench slices**, but those are still too small to count as true large product Mega-Phases.
 
 Going forward, use **Large Mega-Phases (`LMP1`-`LMP50`)** for real execution. A Large Mega-Phase is done only when it has:
 
@@ -66,11 +66,40 @@ Going forward, use **Large Mega-Phases (`LMP1`-`LMP50`)** for real execution. A 
 - Focused tests/checks or documented verification.
 - Changelog entry, commit, and push.
 
-The legacy `MP1`-`MP189` list remains useful as a signal inventory and feature vocabulary. Treat `MP50` onward as **inputs** to the new large phases, not as proof that the full product behavior is done.
+The legacy `MP1`-`MP189` list remains useful as a signal inventory and feature vocabulary. Treat `MP50` onward, plus the workbench-style `LMP1`-`LMP50` implementation, as **inputs and scaffolding** for the larger assistant programs below, not as proof that the full product behavior is done.
+
+### 3.00 Assistant Mega-Programs (`AMP1`-`AMP12`)
+
+Use these when the request is “build a real big assistant phase.” Each **AMP** is intentionally much larger than an `LMP`: it should normally require schema/data decisions, end-to-end workflow UI, APIs, tests, seeded/demo acceptance, and deployment. A single AMP may contain many commits internally, but the product-owner review gate stays at the AMP level.
+
+An AMP is **not complete** if the only deliverable is a command-center/workbench/status card. It must ship at least one durable workflow where the user can create, change, approve, reject, or complete real work.
+
+| AMP | Program | Real completion gate |
+|-----|---------|----------------------|
+| **AMP1** | **Sales-to-cash assistant program** — customer request/email/text → structured order workspace → promise/reply → audit | Real SO line/item model or equivalent durable order detail exists; pasted/email requests create reviewable drafts with customer/product/qty/price/date; ambiguity resolution is persisted; customer reply draft is editable/copyable; SO detail shows assistant timeline, evidence, and queued actions; tests cover parse, create, audit, and refusal paths; demo seed includes at least three acceptance scenarios |
+| **AMP2** | **Supply and supplier execution program** — PO follow-up, supplier performance, onboarding, and supplier communications | PO lines needing acknowledgement/shipment/follow-up are surfaced as real work; supplier detail has a durable assistant performance brief and onboarding gap plan; supplier messages/notes are logged; onboarding tasks can be created/updated through approved actions; tests cover supplier permissions, task state, and PO follow-up signals; demo seed supports a buyer reviewing and closing a supplier gap |
+| **AMP3** | **Control Tower recovery and communication program** — shipment exception triage, carrier/customer escalation, recovery playbooks | Shipment 360 has a native assistant recovery tab; exceptions have root-cause, owner, severity, customer-impact, and recovery state; carrier/customer updates are drafted from shipment evidence and logged; recovery playbooks can be assigned/completed; tests cover permission scope, exception updates, action queue, and message logging; demo has late/missing/damaged shipment scenarios |
+| **AMP4** | **Warehouse promise and inventory recovery program** — ATP, allocation/reallocation proposals, WMS task recovery | Product/SO/WMS pages expose a real availability-to-promise panel; stock, allocation, hold, inbound, and task blockers are explained; reallocation/reservation proposals are queued with impact and rollback; WMS blocked tasks have recovery state and owner; tests cover ATP math, held stock, permissions, and no-silent-mutation guardrails; demo includes shortage, hold, and reallocation scenarios |
+| **AMP5** | **Pricing, RFQ, invoice audit, and finance handoff program** — quote/pricing/invoice lifecycle | RFQ response assembly, pricing snapshot explanation, invoice discrepancy analysis, dispute note drafting, and accounting packet approval form one linked workflow; finance handoff is durable and export/copy-ready; variance explanations cite frozen snapshot lines; tests cover RFQ, snapshot serialization, invoice audit rollup, approvals, and accounting readiness; demo includes pass/warn/fail invoice cases |
+| **AMP6** | **Assistant work engine program** — action queue, playbook builder, assignment, SLAs, and object memory | Action queue supports owner, due date, priority, reject/complete notes, and object links; playbook templates can be created/edited/run; playbook runs have durable step state and SLA; object pages summarize assistant memory with cleanup controls; tests cover action transitions, playbook template validation, memory retrieval, and stale work; demo includes an operator finishing a multi-step playbook |
+| **AMP7** | **Evidence, quality, and training program** — grounding ledger, feedback review, prompt library, release gates | Every assistant answer has inspectable evidence and quality metadata; weak/no-evidence answers enter a review queue; reviewers can label/correct/export examples; approved prompt starters are runnable by role/domain; release gate blocks unsafe assistant changes unless checks pass; tests cover audit persistence, feedback, evidence validation, prompt library, and quality thresholds |
+| **AMP8** | **Governed automation program** — shadow automation → controlled automation → rollback/override | Candidate automations run in shadow mode against human decisions; readiness compares proposed vs actual; one low-risk automation can be enabled by flag with explicit guardrails; overrides/pause/rollback are visible and audited; tests cover disabled/enabled behavior, rollback, permission denials, and idempotency; demo proves automation never runs silently outside approved boundaries |
+| **AMP9** | **Integration and external-data assistant program** — API Hub data feeding assistant workflows | API Hub connectors/staging/mapping become assistant-readable evidence; imported records can create reviewable assistant work items; mapping conflicts produce explainable recommendations; no secrets are exposed; tests cover connector state, staging apply dry-run, assistant evidence links, and permission boundaries; demo imports a batch and turns it into order/shipment/supplier work |
+| **AMP10** | **Supply Chain Twin assistant program** — object graph, flow twins, scenarios, and risk simulation | Order/shipment/inventory/supplier/finance objects are connected in a visible twin graph; assistant can explain graph confidence and missing edges; scenarios can be created/duplicated/compared from assistant prompts; risk signals link back to real records and playbooks; tests cover graph APIs, scenario lifecycle, risk acknowledgement, and assistant evidence; demo includes one end-to-end what-if scenario |
+| **AMP11** | **Admin, rollout, security, and compliance program** — operator console for the AI layer | A real admin console manages assistant flags, prompt library, playbooks, automation candidates, quality thresholds, permissions visibility, rollout by role/site, and compliance packet generation; tests cover role grants, blocked actions, config persistence, and packet generation; demo shows an admin enabling a pilot safely and exporting the control packet |
+| **AMP12** | **Customer-ready AI operating system program** — polished demo, board report, docs, and hardening | Assistant feels like one product layer across chat, workbenches, object pages, inbox, command center, and admin; demo scenarios are scripted and seeded; executive/board report is generated from real metrics; docs explain operating model and limitations; broad regression checks pass; Vercel deploy is green; product owner can run a full customer demo without agent assistance |
+
+### 3.01 How to ask for the new larger phases
+
+Use:
+
+> **“Execute AMP[N] from `docs/engineering/AI_ASSISTANT_MEGA_PHASES_AND_PROMPTS.md`. Treat it as a true assistant mega-program: durable workflow, schema/data changes if needed, UI, API, tests, seed/demo acceptance, docs/changelog, commit, and push. Do not satisfy it with only a dashboard, workbench, or status card.”**
+
+If an AMP is too large for one agent turn, continue inside the same AMP using sub-phases like `AMP1.A`, `AMP1.B`, `AMP1.C`. Do **not** rename those sub-phases into separate review gates unless the product owner asks.
 
 ### 3A. Large Mega-Phase Roadmap (`LMP1`-`LMP50`)
 
-Each Large Mega-Phase below is intentionally big. It should be implemented as a real product increment with UI, API/data behavior, validation, and shipping discipline.
+These `LMP` rows are now a **scaffolding layer** below the true `AMP` programs. They can guide implementation, but completing an `LMP` workbench does not finish the corresponding product workflow.
 
 | Large MP | Theme | Real exit criteria |
 |----------|-------|--------------------|
@@ -390,6 +419,7 @@ If implementation discovers that an LMP is too large for one run, split it into 
 
 | Date | Change |
 |------|--------|
+| 2026-04-28 | **Assistant Mega-Program sizing reset:** documented that `LMP1-LMP50` are still workbench/scaffolding slices, introduced **AMP1-AMP12** as true multi-day assistant mega-programs, and added stricter completion gates requiring durable workflows, schema/data changes when needed, UI/API, tests, seed/demo acceptance, docs/changelog, commit, and push. |
 | 2026-04-28 | **LMP31-LMP50 shipped as autonomy workbench:** added `/assistant/autonomy` plus `GET /api/assistant/autonomy-workbench` for controlled automation, override governance, domain expansion, API Hub readiness, rollout/enablement, policy/security controls, incident/resilience posture, digital-twin flow readiness, collaboration, sustainability data gaps, board reporting, AI admin readiness, demo scenario coverage, and AI operating-system scoring. |
 | 2026-04-28 | **LMP11-LMP30 shipped as execution workbench:** added `/assistant/execution` plus `GET /api/assistant/execution-workbench` for carrier/customer communication, delivery promise risk, WMS task recovery, pricing/RFQ/invoice audit handoffs, commercial/executive signals, action queue operations, playbook/memory quality, evidence review, training/prompt candidates, quality gates, and shadow automation readiness. |
 | 2026-04-28 | **LMP1-LMP10 shipped as first large-MP product slice:** added `/assistant/workbench` plus `GET /api/assistant/copilot-workbench` as a real copilot operating surface for assistant foundation hardening, sales-order drafts/customer replies, order exceptions, product availability/reallocation review, PO follow-up, supplier performance/onboarding, and shipment triage. |
