@@ -975,6 +975,402 @@ export async function GET() {
       ],
     },
   ];
+  const coveredObjectTypes = Array.from(objectCoverageMap.keys()).map((value) => value.toLowerCase());
+  const hasCoverage = (...keywords: string[]) =>
+    coveredObjectTypes.some((type) => keywords.some((keyword) => type.includes(keyword)));
+  const reviewDebt = needsReviewCount + feedbackMissingCount + stalePlaybookCount;
+  const horizonLayers = [
+    {
+      id: "mp90-mp94",
+      range: "MP90-MP94",
+      title: "Predictive operations",
+      score: clampScore(rolloutScore * 0.45 + groundingCoveragePct * 0.35 - reviewDebt * 3),
+      summary: "Early-warning signals from stale work, risk, demand patterns, exceptions, and next monitoring steps.",
+      items: [
+        {
+          mp: "MP90",
+          label: "Predictive signal board",
+          status: confidenceItems.length > 0 || riskRegister.length > 0 ? "ready" : "watch",
+          detail: `${confidenceItems.length} confidence sample(s), ${riskRegister.length} risk signal(s).`,
+        },
+        {
+          mp: "MP91",
+          label: "Delay risk proxy",
+          status: stalePlaybookCount === 0 && pendingActionAgeBuckets.older === 0 ? "ready" : "watch",
+          detail: `${stalePlaybookCount} stale playbook(s), ${pendingActionAgeBuckets.older} action(s) older than 7 days.`,
+        },
+        {
+          mp: "MP92",
+          label: "Demand signal proxy",
+          status: surfaceCounts.size > 0 || duplicatePromptCount > 0 ? "ready" : "watch",
+          detail: `${surfaceCounts.size} surface(s), ${duplicatePromptCount} duplicate prompt pattern(s).`,
+        },
+        {
+          mp: "MP93",
+          label: "Exception forecast",
+          status: riskRegister.length + objectlessEvents.length + ungroundedEvents.length > 0 ? "ready" : "watch",
+          detail: `${riskRegister.length} risk(s), ${objectlessEvents.length + ungroundedEvents.length} domain-gap example(s).`,
+        },
+        {
+          mp: "MP94",
+          label: "Predictive next step",
+          status: recommendations.length + experimentBacklog.length > 0 ? "ready" : "watch",
+          detail: `Next: ${recommendations[0] ?? experimentBacklog[0]?.title ?? "Keep collecting assistant telemetry"}.`,
+        },
+      ],
+    },
+    {
+      id: "mp95-mp99",
+      range: "MP95-MP99",
+      title: "Data quality and trust",
+      score: clampScore(groundingCoveragePct * 0.5 + feedbackCoveragePct * 0.3 + dataScore(objectCoverageMap.size, 8) * 0.2),
+      summary: "Trust layer for feedback quality, object links, grounding, audit completeness, and noisy-signal cleanup.",
+      items: [
+        {
+          mp: "MP95",
+          label: "Data quality scorecard",
+          status: signalHygieneItems.length === 0 ? "ready" : "watch",
+          detail: `${signalHygieneItems.length} hygiene item(s), ${feedbackMissingCount} missing feedback item(s).`,
+        },
+        {
+          mp: "MP96",
+          label: "Object link quality",
+          status: objectlessEvents.length === 0 && objectCoverageMap.size > 0 ? "ready" : "watch",
+          detail: `${objectCoverageMap.size} linked object type(s), ${objectlessEvents.length} objectless event(s).`,
+        },
+        {
+          mp: "MP97",
+          label: "Feedback quality",
+          status: feedbackCoveragePct >= 50 && needsReviewCount < helpfulCount + 1 ? "ready" : "watch",
+          detail: `${feedbackCoveragePct}% feedback coverage, ${needsReviewCount} needs-review answer(s).`,
+        },
+        {
+          mp: "MP98",
+          label: "Grounding quality",
+          status: groundingCoveragePct >= 80 ? "ready" : "watch",
+          detail: `${groundedCount} grounded answer(s), ${ungroundedEvents.length} ungrounded answer(s).`,
+        },
+        {
+          mp: "MP99",
+          label: "Duplicate signal cleanup",
+          status: duplicatePromptCount === 0 ? "ready" : "watch",
+          detail: `${duplicatePromptCount} duplicate prompt pattern(s) to consolidate.`,
+        },
+      ],
+    },
+    {
+      id: "mp100-mp104",
+      range: "MP100-MP104",
+      title: "Agent orchestration",
+      score: clampScore((recentAuditEvents.length > 0 ? 20 : 0) + (recentActions.length > 0 ? 20 : 0) + (playbookRuns.length > 0 ? 20 : 0) + actionCompletionPct * 0.4),
+      summary: "Maps answer, action, playbook, handoff, and boundary signals into one orchestration picture.",
+      items: [
+        {
+          mp: "MP100",
+          label: "Agent orchestration map",
+          status: recentAuditEvents.length + recentActions.length + playbookRuns.length > 0 ? "ready" : "watch",
+          detail: `${recentAuditEvents.length} answer(s), ${recentActions.length} action(s), ${playbookRuns.length} playbook(s).`,
+        },
+        {
+          mp: "MP101",
+          label: "Tool-use readiness",
+          status: actionCompletionPct >= 50 || automationCandidates.length > 0 ? "ready" : "watch",
+          detail: `${actionCompletionPct}% action completion, ${automationCandidates.length} candidate action kind(s).`,
+        },
+        {
+          mp: "MP102",
+          label: "Playbook orchestration",
+          status: activePlaybookCount + completedPlaybookCount > 0 ? "ready" : "watch",
+          detail: `${activePlaybookCount} active, ${completedPlaybookCount} completed, ${stalePlaybookCount} stale.`,
+        },
+        {
+          mp: "MP103",
+          label: "Human-in-loop routing",
+          status: handoffQueue.length > 0 || reviewDebt === 0 ? "ready" : "watch",
+          detail: `${handoffQueue.length} handoff item(s), ${reviewDebt} review/stale debt item(s).`,
+        },
+        {
+          mp: "MP104",
+          label: "Agent boundary map",
+          status: confidenceItems.length > 0 || ungroundedEvents.length > 0 ? "ready" : "watch",
+          detail: `${confidenceItems.filter((item) => item.confidence === "low").length} low-confidence answer(s), ${ungroundedEvents.length} ungrounded.`,
+        },
+      ],
+    },
+    {
+      id: "mp105-mp109",
+      range: "MP105-MP109",
+      title: "Collaboration intelligence",
+      score: clampScore(dataScore(objectCoverageMap.size, 6) * 0.35 + dataScore(handoffQueue.length, 8) * 0.25 + groundingCoveragePct * 0.4),
+      summary: "Customer, supplier, carrier, communication, and collaboration-risk signals for external workflows.",
+      items: [
+        {
+          mp: "MP105",
+          label: "Customer collaboration lens",
+          status: hasCoverage("customer", "sales", "order", "mail") ? "ready" : "watch",
+          detail: hasCoverage("customer", "sales", "order", "mail") ? "Customer/order signals are present." : "No customer/order collaboration signal yet.",
+        },
+        {
+          mp: "MP106",
+          label: "Supplier collaboration lens",
+          status: hasCoverage("supplier", "srm") ? "ready" : "watch",
+          detail: hasCoverage("supplier", "srm") ? "Supplier/SRM signals are present." : "No supplier collaboration signal yet.",
+        },
+        {
+          mp: "MP107",
+          label: "Carrier collaboration lens",
+          status: hasCoverage("shipment", "carrier", "control") ? "ready" : "watch",
+          detail: hasCoverage("shipment", "carrier", "control") ? "Shipment/carrier signals are present." : "No carrier collaboration signal yet.",
+        },
+        {
+          mp: "MP108",
+          label: "Collaboration packet",
+          status: executiveBriefLines.length > 0 && promptLibraryCandidates.length > 0 ? "ready" : "watch",
+          detail: `${executiveBriefLines.length} brief line(s), ${promptLibraryCandidates.length} prompt starter(s).`,
+        },
+        {
+          mp: "MP109",
+          label: "Collaboration risk watch",
+          status: riskRegister.length + ungroundedEvents.length + stalePlaybookCount > 0 ? "ready" : "watch",
+          detail: `${riskRegister.length} risk(s), ${ungroundedEvents.length} grounding gap(s), ${stalePlaybookCount} stale playbook(s).`,
+        },
+      ],
+    },
+    {
+      id: "mp110-mp114",
+      range: "MP110-MP114",
+      title: "Commercial intelligence",
+      score: clampScore((helpfulCount + doneActionCount + automationCandidates.length) * 8 + groundingCoveragePct * 0.35 - reviewDebt * 2),
+      summary: "Commercial impact, pricing, invoice, service-cost, and margin-risk signals from assistant activity.",
+      items: [
+        {
+          mp: "MP110",
+          label: "Commercial impact lens",
+          status: helpfulCount + doneActionCount > 0 ? "ready" : "watch",
+          detail: `${helpfulCount} helpful answer(s), ${doneActionCount} completed action(s).`,
+        },
+        {
+          mp: "MP111",
+          label: "Pricing assistance watch",
+          status: hasCoverage("price", "pricing", "tariff", "rfq") ? "ready" : "watch",
+          detail: hasCoverage("price", "pricing", "tariff", "rfq") ? "Pricing/tariff signals are present." : "No pricing assistance signal yet.",
+        },
+        {
+          mp: "MP112",
+          label: "Invoice assistance watch",
+          status: hasCoverage("invoice", "audit") ? "ready" : "watch",
+          detail: hasCoverage("invoice", "audit") ? "Invoice audit signals are present." : "No invoice assistance signal yet.",
+        },
+        {
+          mp: "MP113",
+          label: "Cost-to-serve proxy",
+          status: inbox.total + pendingActionCount + reviewDebt < 20 ? "ready" : "watch",
+          detail: `${inbox.total} inbox item(s), ${pendingActionCount} pending action(s), ${reviewDebt} review/stale debt item(s).`,
+        },
+        {
+          mp: "MP114",
+          label: "Margin-risk hints",
+          status: riskRegister.length + confidenceBands.low + ungroundedEvents.length > 0 ? "ready" : "watch",
+          detail: `${confidenceBands.low} low-confidence answer(s), ${ungroundedEvents.length} evidence gap(s), ${riskRegister.length} risk(s).`,
+        },
+      ],
+    },
+    {
+      id: "mp115-mp119",
+      range: "MP115-MP119",
+      title: "Operational intelligence",
+      score: clampScore(dataScore(objectCoverageMap.size, 8) * 0.35 + dataScore(inbox.total + pendingActionCount, 20) * 0.25 + groundingCoveragePct * 0.4),
+      summary: "Warehouse, logistics, inventory, load, and resilience signals for operational work.",
+      items: [
+        {
+          mp: "MP115",
+          label: "Warehouse intelligence lens",
+          status: hasCoverage("warehouse", "wms") ? "ready" : "watch",
+          detail: hasCoverage("warehouse", "wms") ? "Warehouse/WMS signals are present." : "No warehouse signal yet.",
+        },
+        {
+          mp: "MP116",
+          label: "Logistics intelligence lens",
+          status: hasCoverage("shipment", "control", "logistics") ? "ready" : "watch",
+          detail: hasCoverage("shipment", "control", "logistics") ? "Shipment/logistics signals are present." : "No logistics signal yet.",
+        },
+        {
+          mp: "MP117",
+          label: "Inventory intelligence lens",
+          status: hasCoverage("inventory", "product", "stock") ? "ready" : "watch",
+          detail: hasCoverage("inventory", "product", "stock") ? "Inventory/product signals are present." : "No inventory signal yet.",
+        },
+        {
+          mp: "MP118",
+          label: "Operational load board",
+          status: inbox.total + pendingActionCount + stalePlaybookCount > 0 ? "ready" : "watch",
+          detail: `${inbox.total} inbox item(s), ${pendingActionCount} pending action(s), ${stalePlaybookCount} stale playbook(s).`,
+        },
+        {
+          mp: "MP119",
+          label: "Ops resilience hints",
+          status: riskRegister.length > 0 || stalePlaybookCount > 0 ? "ready" : "watch",
+          detail: `${riskRegister.length} risk(s), ${stalePlaybookCount} stale playbook(s).`,
+        },
+      ],
+    },
+    {
+      id: "mp120-mp124",
+      range: "MP120-MP124",
+      title: "Security and compliance",
+      score: clampScore(groundingCoveragePct * 0.35 + feedbackCoveragePct * 0.25 + dataScore(auditTotal, 50) * 0.25 + (pendingActionCount <= doneActionCount ? 15 : 0)),
+      summary: "Security posture, permission coverage, audit completeness, policy exceptions, and compliance packet signals.",
+      items: [
+        {
+          mp: "MP120",
+          label: "Security posture board",
+          status: pendingActionCount <= doneActionCount && auditTotal > 0 ? "ready" : "watch",
+          detail: `${auditTotal} audit event(s), ${pendingActionCount}/${doneActionCount} pending/done action balance.`,
+        },
+        {
+          mp: "MP121",
+          label: "Permission coverage",
+          status: canCt || canOrders ? "ready" : "watch",
+          detail: `Scope includes ${canCt ? "Control Tower" : "no Control Tower"} and ${canOrders ? "Orders" : "no Orders"}.`,
+        },
+        {
+          mp: "MP122",
+          label: "Audit completeness",
+          status: auditTotal > 0 && recentAuditEvents.length > 0 ? "ready" : "watch",
+          detail: `${recentAuditEvents.length} recent sample(s), ${auditTotal} total audit event(s).`,
+        },
+        {
+          mp: "MP123",
+          label: "Policy exception watch",
+          status: riskRegister.length + signalHygieneItems.length > 0 ? "ready" : "watch",
+          detail: `${riskRegister.length} risk(s), ${signalHygieneItems.length} hygiene issue(s).`,
+        },
+        {
+          mp: "MP124",
+          label: "Compliance packet",
+          status: auditTotal > 0 && groundingCoveragePct > 0 ? "ready" : "watch",
+          detail: `${groundingCoveragePct}% grounding, ${feedbackCoveragePct}% feedback coverage, ${actionCompletionPct}% action completion.`,
+        },
+      ],
+    },
+    {
+      id: "mp125-mp129",
+      range: "MP125-MP129",
+      title: "Admin governance",
+      score: clampScore((promptLibraryCandidates.length + templateRecommendations.length + 5) * 8 + rolloutScore * 0.35),
+      summary: "Admin-control candidates for configuration, prompt governance, playbook governance, flags, and tenant rollout.",
+      items: [
+        {
+          mp: "MP125",
+          label: "Admin configuration map",
+          status: surfaceCounts.size + promptLibraryCandidates.length + templateRecommendations.length > 0 ? "ready" : "watch",
+          detail: `${surfaceCounts.size} surface(s), ${promptLibraryCandidates.length} prompt candidate(s), ${templateRecommendations.length} playbook template(s).`,
+        },
+        {
+          mp: "MP126",
+          label: "Prompt governance map",
+          status: promptLibraryCandidates.length > 0 || duplicatePromptCount > 0 ? "ready" : "watch",
+          detail: `${promptLibraryCandidates.length} prompt candidate(s), ${duplicatePromptCount} duplicate pattern(s).`,
+        },
+        {
+          mp: "MP127",
+          label: "Playbook governance map",
+          status: playbookRuns.length > 0 || templateRecommendations.length > 0 ? "ready" : "watch",
+          detail: `${playbookRuns.length} run(s), ${templateRecommendations.length} template recommendation(s).`,
+        },
+        {
+          mp: "MP128",
+          label: "Feature flag readiness",
+          status: rolloutScore >= 60 ? "ready" : "watch",
+          detail: `Rollout readiness is ${rolloutScore}/100 (${rolloutLevel}).`,
+        },
+        {
+          mp: "MP129",
+          label: "Tenant rollout map",
+          status: actorRows.size > 0 && rolloutScore >= 50 ? "ready" : "watch",
+          detail: `${actorRows.size} actor row(s), rollout ${rolloutScore}/100.`,
+        },
+      ],
+    },
+    {
+      id: "mp130-mp134",
+      range: "MP130-MP134",
+      title: "Evaluation and learning",
+      score: clampScore((trainingPositive.length + trainingCorrections.length + promptLibraryCandidates.length) * 8 + feedbackCoveragePct * 0.35),
+      summary: "Evaluation candidates, regression watch, benchmark starters, tuning backlog, and quality release gates.",
+      items: [
+        {
+          mp: "MP130",
+          label: "Evaluation suite candidates",
+          status: trainingPositive.length + trainingCorrections.length > 0 ? "ready" : "watch",
+          detail: `${trainingPositive.length} positive example(s), ${trainingCorrections.length} correction example(s).`,
+        },
+        {
+          mp: "MP131",
+          label: "Regression watch",
+          status: needsReviewCount + confidenceBands.low > 0 ? "ready" : "watch",
+          detail: `${needsReviewCount} needs-review answer(s), ${confidenceBands.low} low-confidence answer(s).`,
+        },
+        {
+          mp: "MP132",
+          label: "Benchmark starter set",
+          status: promptLibraryCandidates.length + answerKindCounts.size > 0 ? "ready" : "watch",
+          detail: `${promptLibraryCandidates.length} prompt candidate(s), ${answerKindCounts.size} answer kind(s).`,
+        },
+        {
+          mp: "MP133",
+          label: "Tuning backlog",
+          status: trainingCorrections.length + signalHygieneItems.length + experimentBacklog.length > 0 ? "ready" : "watch",
+          detail: `${trainingCorrections.length} correction(s), ${signalHygieneItems.length} hygiene item(s), ${experimentBacklog.length} experiment(s).`,
+        },
+        {
+          mp: "MP134",
+          label: "Quality release gate",
+          status: groundingCoveragePct >= 80 && feedbackCoveragePct >= 50 && stalePlaybookCount === 0 ? "ready" : "watch",
+          detail: `${groundingCoveragePct}% grounding, ${feedbackCoveragePct}% feedback, ${stalePlaybookCount} stale playbook(s).`,
+        },
+      ],
+    },
+    {
+      id: "mp135-mp139",
+      range: "MP135-MP139",
+      title: "Enterprise readiness",
+      score: clampScore((rolloutScore + groundingCoveragePct + feedbackCoveragePct + actionCompletionPct + playbookCompletionPct) / 5),
+      summary: "Enterprise readiness, scale risk, operating model, executive rollout narrative, and one AI operating-system index.",
+      items: [
+        {
+          mp: "MP135",
+          label: "Enterprise readiness board",
+          status: rolloutScore >= 70 && groundingCoveragePct >= 80 ? "ready" : "watch",
+          detail: `Rollout ${rolloutScore}/100, grounding ${groundingCoveragePct}%, feedback ${feedbackCoveragePct}%.`,
+        },
+        {
+          mp: "MP136",
+          label: "Scale risk forecast",
+          status: riskRegister.length + handoffQueue.length + ungroundedEvents.length > 0 ? "ready" : "watch",
+          detail: `${riskRegister.length} risk(s), ${handoffQueue.length} handoff item(s), ${ungroundedEvents.length} evidence gap(s).`,
+        },
+        {
+          mp: "MP137",
+          label: "Operating model map",
+          status: "ready",
+          detail: `4 cadence item(s), ${handoffQueue.length} handoff item(s).`,
+        },
+        {
+          mp: "MP138",
+          label: "Executive rollout narrative",
+          status: executiveBriefLines.length > 0 && milestonePlan.length > 0 ? "ready" : "watch",
+          detail: `${executiveBriefLines.length} brief line(s), ${milestonePlan.length} milestone(s).`,
+        },
+        {
+          mp: "MP139",
+          label: "AI operating system index",
+          status: programLayers.length > 0 && maturityLayers.length > 0 ? "ready" : "watch",
+          detail: `${programLayers.length} program layer(s), ${maturityLayers.length} maturity layer(s), 10 horizon layer(s).`,
+        },
+      ],
+    },
+  ];
 
   return NextResponse.json({
     ok: true,
@@ -1264,5 +1660,6 @@ export async function GET() {
     },
     programLayers,
     maturityLayers,
+    horizonLayers,
   });
 }

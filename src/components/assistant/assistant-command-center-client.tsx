@@ -238,6 +238,7 @@ type CommandCenterPayload = {
   };
   programLayers: CommandCenterLayer[];
   maturityLayers: CommandCenterLayer[];
+  horizonLayers: CommandCenterLayer[];
 };
 
 function formatDate(value: string) {
@@ -330,13 +331,14 @@ export function AssistantCommandCenterClient() {
       <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">MP20-MP89</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">MP20-MP139</p>
             <h2 className="mt-1 text-xl font-semibold text-zinc-950">Assistant command center</h2>
             <p className="mt-2 max-w-3xl text-sm text-zinc-600">
               One operating view for cross-workspace work, feedback quality, queued actions, active playbooks, recent
               memory, assistant health, priority lanes, review queues, automation readiness, rollout confidence,
               adoption, experiments, daily cadence, handoff, evidence, training, governance, value, expansion, scale
-              planning, process intelligence, knowledge, automation rehearsal, and stakeholder reporting.
+              planning, process intelligence, knowledge, automation rehearsal, stakeholder reporting, predictive
+              operations, data quality, orchestration, collaboration, security, evaluation, and enterprise readiness.
             </p>
             <p className="mt-2 text-xs text-zinc-500">Generated {formatDate(data.generatedAt)}</p>
           </div>
@@ -438,6 +440,51 @@ export function AssistantCommandCenterClient() {
                         {item.status}
                       </span>
                     </div>
+                    <p className="mt-1 text-xs text-zinc-600">{item.detail}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">MP90-MP139</p>
+            <h3 className="mt-1 text-base font-semibold text-zinc-950">Assistant horizon layers</h3>
+            <p className="mt-1 max-w-3xl text-sm text-zinc-600">
+              The next 50 mega phases expand the assistant program into predictive operations, trust, orchestration,
+              collaboration, commercial and operational intelligence, compliance, admin governance, evaluation, and enterprise readiness.
+            </p>
+          </div>
+        </div>
+        <div className="mt-4 grid gap-4 xl:grid-cols-2">
+          {data.horizonLayers.map((layer) => (
+            <div key={layer.id} className="rounded-2xl border border-cyan-100 bg-cyan-50/40 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-cyan-700">{layer.range}</p>
+                  <h4 className="mt-1 font-semibold text-zinc-950">{layer.title}</h4>
+                </div>
+                <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-cyan-900 shadow-sm">{layer.score}/100</span>
+              </div>
+              <p className="mt-2 text-xs text-zinc-600">{layer.summary}</p>
+              <div className="mt-4 grid gap-2 md:grid-cols-5">
+                {layer.items.map((item) => (
+                  <div key={item.mp} className="rounded-xl border border-white bg-white p-3 text-sm shadow-sm">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="font-semibold text-zinc-900">{item.mp}</p>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                          item.status === "ready" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
+                        }`}
+                      >
+                        {item.status}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs font-semibold text-zinc-800">{item.label}</p>
                     <p className="mt-1 text-xs text-zinc-600">{item.detail}</p>
                   </div>
                 ))}

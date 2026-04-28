@@ -144,6 +144,56 @@ Use **one** of these. They are designed so the implementer (human or agent) does
 | **MP87** | **Brief variants** — different audiences get different summaries | Executive, operator, and enablement brief lines are generated from the same data |
 | **MP88** | **Adoption coaching queue** — users get targeted enablement | Adoption heatmap and prompt starters identify coaching targets |
 | **MP89** | **Board-ready narrative** — AI progress can be reported clearly | KPIs, risks, roadmap, and value signals are summarized for leadership |
+| **MP90** | **Predictive signal board** — weak signals become forecast inputs | Confidence, stale work, review debt, and action age produce early-warning signals |
+| **MP91** | **Delay risk proxy** — old assistant work flags operational delay risk | Aged actions and stale playbooks show where work may miss expectations |
+| **MP92** | **Demand signal proxy** — assistant usage hints at demand for help | Repeated prompts, surface usage, and answer kinds reveal demand patterns |
+| **MP93** | **Exception forecast** — recurring risks become near-term exception warnings | Risk register and domain gaps summarize likely future exceptions |
+| **MP94** | **Predictive next step** — the command center suggests what to watch next | Recommendations and experiments provide the next monitoring action |
+| **MP95** | **Data quality scorecard** — assistant data quality is explicit | Missing feedback, grounding gaps, and objectless memory are scored together |
+| **MP96** | **Object link quality** — assistant memory should attach to records | Object coverage and objectless events show link quality |
+| **MP97** | **Feedback quality** — user review coverage is measurable | Feedback coverage and needs-review rate show review health |
+| **MP98** | **Grounding quality** — evidence coverage is measurable | Grounded vs ungrounded answers show evidence quality |
+| **MP99** | **Duplicate signal cleanup** — noisy repeated inputs are visible | Duplicate prompt and hygiene counts drive cleanup work |
+| **MP100** | **Agent orchestration map** — assistant sub-capabilities are grouped | Answer, action, playbook, inbox, and governance signals show orchestration coverage |
+| **MP101** | **Tool-use readiness** — proposed actions show tool readiness | Action queue completion and candidates identify tool-readiness state |
+| **MP102** | **Playbook orchestration** — active/completed playbooks show workflow coverage | Playbook run status and template gaps summarize orchestration health |
+| **MP103** | **Human-in-loop routing** — unresolved work has a human path | Handoff queue and review queue show routing coverage |
+| **MP104** | **Agent boundary map** — assistant capability limits are visible | Low confidence, ungrounded answers, and pending approvals define boundaries |
+| **MP105** | **Customer collaboration lens** — customer-facing assistance is measurable | Sales-order, mail, and customer-update signals show external collaboration readiness |
+| **MP106** | **Supplier collaboration lens** — supplier-facing assistance is measurable | Supplier object coverage and handoff items show supplier collaboration readiness |
+| **MP107** | **Carrier collaboration lens** — shipment-facing assistance is measurable | Shipment/Control Tower object coverage show carrier collaboration readiness |
+| **MP108** | **Collaboration packet** — external updates are easier to prepare | Briefs, copyable packets, and prompt starters support stakeholder communication |
+| **MP109** | **Collaboration risk watch** — external-facing gaps are flagged | Low confidence, missing evidence, and stale work highlight communication risk |
+| **MP110** | **Commercial impact lens** — AI work ties to value themes | Helpful answers, completed actions, and automation candidates summarize commercial impact |
+| **MP111** | **Pricing assistance watch** — pricing-related assistant activity is visible | Pricing/tariff object coverage can be tracked when present |
+| **MP112** | **Invoice assistance watch** — invoice audit assistance is visible | Invoice-audit object coverage can be tracked when present |
+| **MP113** | **Cost-to-serve proxy** — open work and stale actions indicate service cost | Pending actions, review debt, and inbox load estimate support burden |
+| **MP114** | **Margin-risk hints** — commercial uncertainty is highlighted | Low confidence, ungrounded answers, and exceptions become margin-risk prompts |
+| **MP115** | **Warehouse intelligence lens** — WMS-related assistance is visible | Warehouse/inventory object coverage and trace answers summarize WMS usefulness |
+| **MP116** | **Logistics intelligence lens** — shipment assistance is visible | Shipment and Control Tower activity show logistics coverage |
+| **MP117** | **Inventory intelligence lens** — product/stock assistance is visible | Product trace and inventory prompts show stock intelligence coverage |
+| **MP118** | **Operational load board** — open work is grouped by operations burden | Inbox, pending actions, stale playbooks, and review items show load |
+| **MP119** | **Ops resilience hints** — risk and stale work become resilience prompts | Risk register and escalation watch identify operational resilience needs |
+| **MP120** | **Security posture board** — AI guardrails are visible | Human approval, feedback, grounding, and audit volume show security posture |
+| **MP121** | **Permission coverage** — assistant scope follows grants | Control Tower and order access are reflected in assistant command-center scope |
+| **MP122** | **Audit completeness** — durable AI events are monitored | Audit event volume and recent samples show logging completeness |
+| **MP123** | **Policy exception watch** — policy gaps become watch items | Risk register and signal hygiene show policy-exception candidates |
+| **MP124** | **Compliance packet** — compliance-ready summary is generated | Evidence, audit, feedback, and approval signals form a compliance summary |
+| **MP125** | **Admin configuration map** — future admin controls are visible | Feature surfaces, prompts, playbooks, and guardrails become admin candidates |
+| **MP126** | **Prompt governance map** — prompt starters get ownership signals | Prompt candidates and duplicate prompts show governance needs |
+| **MP127** | **Playbook governance map** — playbooks get lifecycle signals | Active, stale, and completed playbooks show governance status |
+| **MP128** | **Feature flag readiness** — rollout controls are tracked | Rollout score and readiness checklist indicate flag readiness |
+| **MP129** | **Tenant rollout map** — rollout planning is grouped for tenants | Adoption, readiness, and value signals support tenant rollout planning |
+| **MP130** | **Evaluation suite candidates** — real examples become tests | Training positives/corrections and low-confidence answers become evaluation candidates |
+| **MP131** | **Regression watch** — weak answer patterns are tracked | Needs-review and low-confidence samples show regression risk |
+| **MP132** | **Benchmark starter set** — representative prompts are selected | Prompt library and scenario coverage provide benchmark starters |
+| **MP133** | **Tuning backlog** — improvement data becomes tuning work | Training queue, hygiene items, and experiments become tuning candidates |
+| **MP134** | **Quality release gate** — quality signals gate future releases | Grounding, feedback, review, and stale-work checks form a release gate |
+| **MP135** | **Enterprise readiness board** — enterprise adoption signals are grouped | Governance, security, compliance, value, and rollout signals are summarized |
+| **MP136** | **Scale risk forecast** — expansion risks are visible before rollout | Risk register, handoff load, and grounding gaps forecast scale risk |
+| **MP137** | **Operating model map** — roles and rhythms become explicit | Cadence, handoff, adoption, and release train summarize operating model |
+| **MP138** | **Executive rollout narrative** — leadership gets a concise AI story | Board-ready narrative, KPI board, and roadmap combine into a rollout story |
+| **MP139** | **AI operating system index** — the assistant program has one index | Command center indexes governance, value, maturity, horizon, and execution layers |
 
 *Docs and small fixes can happen anytime; they are not a substitute for **MP1** if your goal is “I can *see* it.”*
 
@@ -210,6 +260,7 @@ Use **one** of these. They are designed so the implementer (human or agent) does
 
 | Date | Change |
 |------|--------|
+| 2026-04-28 | **MP90-MP139 shipped (MVP):** extended the assistant command center with horizon layers for predictive operations, data quality, orchestration, collaboration, commercial/ops intelligence, security, admin governance, evaluation, and enterprise readiness. |
 | 2026-04-27 | **MP70-MP89 shipped (MVP):** extended the assistant command center with maturity layers for process intelligence, knowledge system, automation rehearsal, and stakeholder experience. |
 | 2026-04-27 | **MP50-MP69 shipped (MVP):** extended the assistant command center with grouped program layers for governance baseline, value realization, domain expansion, and scale operations. |
 | 2026-04-27 | **MP45-MP49 shipped (MVP):** extended the assistant command center with SLA posture, training queue, prompt-library candidates, decision journal, and signal hygiene panels. |
