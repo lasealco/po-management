@@ -117,6 +117,39 @@ type Mp81To110Execution = {
   };
 };
 
+type Mp111To140Execution = {
+  commercialControls: {
+    title: string;
+    summary: string;
+    score: number;
+    watches: Array<{ mp: string; label: string; ready: boolean; signal: string }>;
+    actionPlan: string[];
+  };
+  operationalSecurity: {
+    title: string;
+    summary: string;
+    score: number;
+    operationalLenses: Array<{ mp: string; label: string; ready: boolean; detail: string }>;
+    securityChecks: Array<{ mp: string; label: string; passed: boolean; detail: string }>;
+  };
+  adminEvaluation: {
+    title: string;
+    summary: string;
+    score: number;
+    governanceItems: Array<{ mp: string; label: string; count: number; detail: string }>;
+    evaluationItems: Array<{ mp: string; label: string; count: number; detail: string }>;
+    releaseGate: { mp: string; passed: boolean; checks: Array<{ label: string; passed: boolean }> };
+  };
+  enterpriseTwin: {
+    title: string;
+    summary: string;
+    score: number;
+    readinessSignals: Array<{ mp: string; label: string; value: number; detail: string }>;
+    twinFlows: Array<{ label: string; ready: boolean; detail: string }>;
+    operatingModel: Array<{ mp: string; label: string; detail: string }>;
+  };
+};
+
 type QualitySummary = {
   auditTotal: number;
   feedback: { helpful: number; needsReview: number; missing: number };
@@ -344,6 +377,7 @@ type CommandCenterPayload = {
   advancedLayers: CommandCenterLayer[];
   mp51To80Execution: Mp51To80Execution;
   mp81To110Execution: Mp81To110Execution;
+  mp111To140Execution: Mp111To140Execution;
 };
 
 function formatDate(value: string) {
@@ -432,6 +466,7 @@ export function AssistantCommandCenterClient() {
   };
   const mvp = data.mp51To80Execution;
   const mvpNext = data.mp81To110Execution;
+  const mvpThird = data.mp111To140Execution;
 
   return (
     <div className="space-y-6">
@@ -899,6 +934,173 @@ export function AssistantCommandCenterClient() {
             <div className="mt-4 space-y-2">
               {mvpNext.commercialImpact.nextActions.map((item) => (
                 <p key={item} className="rounded-xl border border-zinc-200 p-3 text-sm text-zinc-700">{item}</p>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-purple-200 bg-purple-50/40 p-5 shadow-sm">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-purple-700">MP111-MP140 MVP</p>
+          <h3 className="mt-1 text-base font-semibold text-zinc-950">Execution workbench 3</h3>
+          <p className="mt-1 max-w-4xl text-sm text-zinc-700">
+            This finishes MP111-MP140 as concrete operating product: commercial controls, operational intelligence,
+            security/compliance posture, admin/evaluation governance, enterprise readiness, and digital-twin readiness.
+          </p>
+        </div>
+
+        <div className="mt-5 grid gap-4 xl:grid-cols-2">
+          <div className="rounded-2xl border border-purple-100 bg-white p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h4 className="font-semibold text-zinc-950">{mvpThird.commercialControls.title}</h4>
+                <p className="mt-1 text-xs text-zinc-600">{mvpThird.commercialControls.summary}</p>
+              </div>
+              <span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-semibold text-purple-900">
+                {mvpThird.commercialControls.score}/100
+              </span>
+            </div>
+            <div className="mt-4 grid gap-2 md:grid-cols-2">
+              {mvpThird.commercialControls.watches.map((watch) => (
+                <div key={watch.mp} className="rounded-xl border border-zinc-200 p-3 text-sm">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="font-semibold text-zinc-900">{watch.mp} · {watch.label}</p>
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${watch.ready ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
+                      {watch.ready ? "ready" : "watch"}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-zinc-600">{watch.signal}</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 space-y-2">
+              {mvpThird.commercialControls.actionPlan.map((item) => (
+                <p key={item} className="rounded-xl border border-zinc-200 p-3 text-sm text-zinc-700">{item}</p>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-purple-100 bg-white p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h4 className="font-semibold text-zinc-950">{mvpThird.operationalSecurity.title}</h4>
+                <p className="mt-1 text-xs text-zinc-600">{mvpThird.operationalSecurity.summary}</p>
+              </div>
+              <span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-semibold text-purple-900">
+                {mvpThird.operationalSecurity.score}/100
+              </span>
+            </div>
+            <div className="mt-4 grid gap-2 md:grid-cols-5">
+              {mvpThird.operationalSecurity.operationalLenses.map((lens) => (
+                <div key={lens.mp} className="rounded-xl border border-zinc-200 p-3 text-sm">
+                  <p className="text-xs font-semibold text-zinc-500">{lens.mp}</p>
+                  <p className="mt-1 font-semibold text-zinc-900">{lens.label}</p>
+                  <span className={`mt-2 inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${lens.ready ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
+                    {lens.ready ? "ready" : "watch"}
+                  </span>
+                  <p className="mt-2 text-xs text-zinc-600">{lens.detail}</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 grid gap-2 md:grid-cols-2">
+              {mvpThird.operationalSecurity.securityChecks.map((check) => (
+                <div key={check.mp} className="flex items-start justify-between gap-3 rounded-xl border border-zinc-200 p-3 text-sm">
+                  <div>
+                    <p className="font-semibold text-zinc-900">{check.mp} · {check.label}</p>
+                    <p className="mt-1 text-xs text-zinc-600">{check.detail}</p>
+                  </div>
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${check.passed ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
+                    {check.passed ? "pass" : "watch"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+          <div className="rounded-2xl border border-purple-100 bg-white p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h4 className="font-semibold text-zinc-950">{mvpThird.adminEvaluation.title}</h4>
+                <p className="mt-1 text-xs text-zinc-600">{mvpThird.adminEvaluation.summary}</p>
+              </div>
+              <span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-semibold text-purple-900">
+                {mvpThird.adminEvaluation.score}/100
+              </span>
+            </div>
+            <div className="mt-4 grid gap-2 md:grid-cols-5">
+              {mvpThird.adminEvaluation.governanceItems.map((item) => (
+                <div key={item.mp} className="rounded-xl bg-zinc-50 p-3 text-sm">
+                  <p className="text-xs font-semibold text-zinc-500">{item.mp}</p>
+                  <p className="mt-1 text-xl font-semibold text-zinc-950">{item.count}</p>
+                  <p className="text-xs font-semibold text-zinc-800">{item.label}</p>
+                  <p className="mt-1 text-xs text-zinc-600">{item.detail}</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 grid gap-2 md:grid-cols-5">
+              {mvpThird.adminEvaluation.evaluationItems.map((item) => (
+                <div key={item.mp} className="rounded-xl border border-zinc-200 p-3 text-sm">
+                  <p className="text-xs font-semibold text-zinc-500">{item.mp}</p>
+                  <p className="mt-1 text-xl font-semibold text-zinc-950">{item.count}</p>
+                  <p className="text-xs font-semibold text-zinc-800">{item.label}</p>
+                  <p className="mt-1 text-xs text-zinc-600">{item.detail}</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 grid gap-2 md:grid-cols-4">
+              {mvpThird.adminEvaluation.releaseGate.checks.map((check) => (
+                <div key={check.label} className="flex items-center justify-between gap-2 rounded-xl border border-zinc-200 p-3 text-sm">
+                  <p className="text-zinc-800">{check.label}</p>
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${check.passed ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
+                    {check.passed ? "pass" : "watch"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-purple-100 bg-white p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h4 className="font-semibold text-zinc-950">{mvpThird.enterpriseTwin.title}</h4>
+                <p className="mt-1 text-xs text-zinc-600">{mvpThird.enterpriseTwin.summary}</p>
+              </div>
+              <span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-semibold text-purple-900">
+                {mvpThird.enterpriseTwin.score}/100
+              </span>
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              {mvpThird.enterpriseTwin.readinessSignals.map((signal) => (
+                <div key={signal.mp} className="rounded-xl bg-zinc-50 p-3 text-sm">
+                  <p className="text-xs font-semibold text-zinc-500">{signal.mp}</p>
+                  <p className="mt-1 text-xl font-semibold text-zinc-950">{signal.value}</p>
+                  <p className="text-xs font-semibold text-zinc-800">{signal.label}</p>
+                  <p className="mt-1 text-xs text-zinc-600">{signal.detail}</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 space-y-2">
+              {mvpThird.enterpriseTwin.twinFlows.map((flow) => (
+                <div key={flow.label} className="flex items-start justify-between gap-3 rounded-xl border border-zinc-200 p-3 text-sm">
+                  <div>
+                    <p className="font-semibold text-zinc-900">{flow.label}</p>
+                    <p className="mt-1 text-xs text-zinc-600">{flow.detail}</p>
+                  </div>
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${flow.ready ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
+                    {flow.ready ? "ready" : "watch"}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 space-y-2">
+              {mvpThird.enterpriseTwin.operatingModel.slice(0, 4).map((item) => (
+                <div key={`${item.mp}-${item.label}`} className="rounded-xl border border-zinc-200 p-3 text-sm">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{item.mp} · {item.label}</p>
+                  <p className="mt-1 text-xs text-zinc-600">{item.detail}</p>
+                </div>
               ))}
             </div>
           </div>

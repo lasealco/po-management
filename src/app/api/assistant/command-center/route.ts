@@ -2138,6 +2138,145 @@ export async function GET() {
       ],
     },
   };
+  const commercialControlScore = clampScore(
+    (hasCoverage("price", "pricing", "tariff", "rfq", "invoice", "audit") ? 30 : 0) +
+      helpfulCount * 5 +
+      doneActionCount * 6 +
+      groundingCoveragePct * 0.35 -
+      reviewDebtCount * 2,
+  );
+  const opsControlScore = clampScore(
+    dataScore(objectCoverageRows.length, 8) * 0.25 +
+      groundingCoveragePct * 0.35 +
+      actionCompletionPct * 0.2 +
+      (100 - clampScore(reviewDebtCount * 8)) * 0.2,
+  );
+  const adminEvalScore = clampScore(
+    rolloutScore * 0.25 +
+      feedbackCoveragePct * 0.25 +
+      groundingCoveragePct * 0.25 +
+      dataScore(trainingPositive.length + trainingCorrections.length + promptLibraryCandidates.length, 12) * 0.25,
+  );
+  const enterpriseTwinScore = clampScore(
+    rolloutScore * 0.25 +
+      groundingCoveragePct * 0.3 +
+      feedbackCoveragePct * 0.2 +
+      dataScore(objectCoverageRows.length, 8) * 0.25,
+  );
+  const mp111To140Execution = {
+    commercialControls: {
+      title: "Commercial and finance controls",
+      summary: "MP111-MP114: pricing, invoice, cost-to-serve, and margin-risk signals tied to evidence and action history.",
+      score: commercialControlScore,
+      watches: [
+        {
+          mp: "MP111",
+          label: "Pricing assistance",
+          ready: hasCoverage("price", "pricing", "tariff", "rfq"),
+          signal: hasCoverage("price", "pricing", "tariff", "rfq") ? "Pricing/tariff assistant activity detected." : "No pricing/tariff activity detected yet.",
+        },
+        {
+          mp: "MP112",
+          label: "Invoice assistance",
+          ready: hasCoverage("invoice", "audit"),
+          signal: hasCoverage("invoice", "audit") ? "Invoice/audit assistant activity detected." : "No invoice/audit activity detected yet.",
+        },
+        {
+          mp: "MP113",
+          label: "Cost-to-serve proxy",
+          ready: inbox.total + pendingActionCount + reviewDebtCount < 20,
+          signal: `${inbox.total} inbox item(s), ${pendingActionCount} pending action(s), ${reviewDebtCount} review/stale debt item(s).`,
+        },
+        {
+          mp: "MP114",
+          label: "Margin-risk hints",
+          ready: confidenceBands.low + ungroundedEvents.length + riskRegister.length > 0,
+          signal: `${confidenceBands.low} low-confidence answer(s), ${ungroundedEvents.length} evidence gap(s), ${riskRegister.length} risk(s).`,
+        },
+      ],
+      actionPlan: [
+        hasCoverage("price", "pricing", "tariff", "rfq")
+          ? "Review pricing/tariff assistant examples for reusable prompt starters."
+          : "Collect pricing or tariff assistant examples before automating pricing support.",
+        hasCoverage("invoice", "audit")
+          ? "Use invoice/audit examples to build dispute and approval packs."
+          : "Collect invoice-audit examples before creating finance automations.",
+        confidenceBands.low + ungroundedEvents.length > 0
+          ? "Add evidence to weak commercial answers before using them in customer-facing workflows."
+          : "Keep commercial answers evidence-backed as volume grows.",
+      ],
+    },
+    operationalSecurity: {
+      title: "Operational and security controls",
+      summary: "MP115-MP124: warehouse, logistics, inventory, resilience, security, permissions, audit completeness, policy, and compliance packet readiness.",
+      score: opsControlScore,
+      operationalLenses: [
+        { mp: "MP115", label: "Warehouse", ready: hasCoverage("warehouse", "wms"), detail: hasCoverage("warehouse", "wms") ? "Warehouse/WMS coverage exists." : "No WMS coverage yet." },
+        { mp: "MP116", label: "Logistics", ready: hasCoverage("shipment", "control", "logistics"), detail: hasCoverage("shipment", "control", "logistics") ? "Shipment/logistics coverage exists." : "No logistics coverage yet." },
+        { mp: "MP117", label: "Inventory", ready: hasCoverage("inventory", "product", "stock"), detail: hasCoverage("inventory", "product", "stock") ? "Inventory/product coverage exists." : "No inventory coverage yet." },
+        { mp: "MP118", label: "Operational load", ready: inbox.total + pendingActionCount + stalePlaybookCount > 0, detail: `${inbox.total} inbox, ${pendingActionCount} pending action(s), ${stalePlaybookCount} stale playbook(s).` },
+        { mp: "MP119", label: "Ops resilience", ready: riskRegister.length > 0 || stalePlaybookCount > 0, detail: `${riskRegister.length} risk(s), ${stalePlaybookCount} stale playbook(s).` },
+      ],
+      securityChecks: [
+        { mp: "MP120", label: "Security posture", passed: pendingActionCount <= doneActionCount && auditTotal > 0, detail: `${auditTotal} audit event(s), ${pendingActionCount}/${doneActionCount} pending/done actions.` },
+        { mp: "MP121", label: "Permission coverage", passed: canCt || canOrders, detail: `${canCt ? "Control Tower" : "No Control Tower"} · ${canOrders ? "Orders" : "No Orders"}.` },
+        { mp: "MP122", label: "Audit completeness", passed: auditTotal > 0 && recentAuditEvents.length > 0, detail: `${recentAuditEvents.length} recent sample(s), ${auditTotal} total audit event(s).` },
+        { mp: "MP123", label: "Policy exception watch", passed: riskRegister.length + signalHygieneItems.length === 0, detail: `${riskRegister.length} risk(s), ${signalHygieneItems.length} hygiene issue(s).` },
+        { mp: "MP124", label: "Compliance packet", passed: auditTotal > 0 && groundingCoveragePct > 0, detail: `${groundingCoveragePct}% grounding, ${feedbackCoveragePct}% feedback, ${actionCompletionPct}% action completion.` },
+      ],
+    },
+    adminEvaluation: {
+      title: "Admin governance and evaluation",
+      summary: "MP125-MP134: admin config candidates, prompt/playbook governance, rollout flags, tenant rollout, evals, regression watch, benchmarks, tuning backlog, and release gates.",
+      score: adminEvalScore,
+      governanceItems: [
+        { mp: "MP125", label: "Admin configuration", count: surfaceCounts.size + promptLibraryCandidates.length + templateRecommendations.length, detail: `${surfaceCounts.size} surface(s), ${promptLibraryCandidates.length} prompt candidate(s), ${templateRecommendations.length} playbook template(s).` },
+        { mp: "MP126", label: "Prompt governance", count: promptLibraryCandidates.length + duplicatePromptCount, detail: `${promptLibraryCandidates.length} prompt candidate(s), ${duplicatePromptCount} duplicate pattern(s).` },
+        { mp: "MP127", label: "Playbook governance", count: playbookRuns.length + templateRecommendations.length, detail: `${playbookRuns.length} run(s), ${templateRecommendations.length} template recommendation(s).` },
+        { mp: "MP128", label: "Feature flag readiness", count: rolloutScore, detail: `Rollout readiness is ${rolloutScore}/100 (${rolloutLevel}).` },
+        { mp: "MP129", label: "Tenant rollout map", count: actorRows.size, detail: `${actorRows.size} actor row(s), rollout ${rolloutScore}/100.` },
+      ],
+      evaluationItems: [
+        { mp: "MP130", label: "Evaluation suite candidates", count: trainingPositive.length + trainingCorrections.length, detail: `${trainingPositive.length} positive example(s), ${trainingCorrections.length} correction example(s).` },
+        { mp: "MP131", label: "Regression watch", count: needsReviewCount + confidenceBands.low, detail: `${needsReviewCount} needs-review answer(s), ${confidenceBands.low} low-confidence answer(s).` },
+        { mp: "MP132", label: "Benchmark starter set", count: promptLibraryCandidates.length + answerKindCounts.size, detail: `${promptLibraryCandidates.length} prompt candidate(s), ${answerKindCounts.size} answer kind(s).` },
+        { mp: "MP133", label: "Tuning backlog", count: trainingCorrections.length + signalHygieneItems.length + experimentBacklog.length, detail: `${trainingCorrections.length} correction(s), ${signalHygieneItems.length} hygiene item(s), ${experimentBacklog.length} experiment(s).` },
+        { mp: "MP134", label: "Quality release gate", count: groundingCoveragePct, detail: `${groundingCoveragePct}% grounding, ${feedbackCoveragePct}% feedback, ${stalePlaybookCount} stale playbook(s).` },
+      ],
+      releaseGate: {
+        mp: "MP134",
+        passed: groundingCoveragePct >= 80 && feedbackCoveragePct >= 50 && stalePlaybookCount === 0,
+        checks: [
+          { label: "Grounding at least 80%", passed: groundingCoveragePct >= 80 },
+          { label: "Feedback at least 50%", passed: feedbackCoveragePct >= 50 },
+          { label: "No stale playbooks", passed: stalePlaybookCount === 0 },
+          { label: "Review debt below 10", passed: reviewDebtCount < 10 },
+        ],
+      },
+    },
+    enterpriseTwin: {
+      title: "Enterprise and digital-twin readiness",
+      summary: "MP135-MP140: enterprise readiness, scale risk, operating model, executive narrative, operating-system index, and digital-twin readiness.",
+      score: enterpriseTwinScore,
+      readinessSignals: [
+        { mp: "MP135", label: "Enterprise readiness", value: enterpriseTwinScore, detail: `Rollout ${rolloutScore}/100, grounding ${groundingCoveragePct}%, feedback ${feedbackCoveragePct}%.` },
+        { mp: "MP136", label: "Scale risk forecast", value: riskRegister.length + handoffQueue.length + ungroundedEvents.length, detail: `${riskRegister.length} risk(s), ${handoffQueue.length} handoff item(s), ${ungroundedEvents.length} evidence gap(s).` },
+        { mp: "MP137", label: "Operating model", value: 4 + handoffQueue.length, detail: `4 cadence item(s), ${handoffQueue.length} handoff item(s).` },
+        { mp: "MP138", label: "Executive narrative", value: executiveBriefLines.length + milestonePlan.length, detail: `${executiveBriefLines.length} brief line(s), ${milestonePlan.length} milestone(s).` },
+        { mp: "MP139", label: "AI operating index", value: programLayers.length + maturityLayers.length + horizonLayers.length + advancedLayers.length, detail: "Roadmap layer groups indexed in command center." },
+        { mp: "MP140", label: "Digital twin readiness", value: objectCoverageRows.length, detail: `${objectCoverageRows.length} object domain(s), ${groundingCoveragePct}% grounding coverage.` },
+      ],
+      twinFlows: [
+        { label: "Order flow", ready: hasCoverage("order", "sales"), detail: hasCoverage("order", "sales") ? "Order signals available for twin modelling." : "Order-flow signal not detected yet." },
+        { label: "Shipment flow", ready: hasCoverage("shipment", "control", "carrier"), detail: hasCoverage("shipment", "control", "carrier") ? "Shipment signals available for twin modelling." : "Shipment-flow signal not detected yet." },
+        { label: "Inventory flow", ready: hasCoverage("inventory", "product", "stock", "warehouse"), detail: hasCoverage("inventory", "product", "stock", "warehouse") ? "Inventory signals available for twin modelling." : "Inventory-flow signal not detected yet." },
+      ],
+      operatingModel: [
+        ...milestonePlan.map((item) => ({ mp: "MP137", label: item.horizon, detail: `${item.title}: ${item.detail}` })),
+        { mp: "MP138", label: "Executive rollout", detail: executiveBriefLines[0] ?? "Collect more executive-ready assistant telemetry." },
+      ],
+    },
+  };
 
   return NextResponse.json({
     ok: true,
@@ -2431,5 +2570,6 @@ export async function GET() {
     advancedLayers,
     mp51To80Execution,
     mp81To110Execution,
+    mp111To140Execution,
   });
 }
