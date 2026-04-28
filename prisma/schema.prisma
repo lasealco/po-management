@@ -168,6 +168,7 @@ model Tenant {
   assistantSustainabilityPackets    AssistantSustainabilityPacket[]
   assistantPartnerEcosystemPackets  AssistantPartnerEcosystemPacket[]
   assistantFrontlinePackets         AssistantFrontlinePacket[]
+  assistantMeetingIntelligencePackets AssistantMeetingIntelligencePacket[]
   assistantActionQueue              AssistantActionQueueItem[]
   assistantPlaybookTemplates        AssistantPlaybookTemplate[]
   assistantPlaybookRuns             AssistantPlaybookRun[]
@@ -701,6 +702,43 @@ model AssistantFrontlinePacket {
 
   @@index([tenantId, status, updatedAt])
   @@index([tenantId, readinessScore, updatedAt])
+}
+
+/// AMP27: voice / meeting intelligence packet for transcript notes, extracted actions, risks, and minutes review.
+model AssistantMeetingIntelligencePacket {
+  id                    String    @id @default(cuid())
+  tenantId              String
+  createdByUserId       String?
+  approvedByUserId      String?
+  title                 String
+  status                String    @default("DRAFT") @db.VarChar(32)
+  meetingScore          Int       @default(0)
+  transcriptCount       Int       @default(0)
+  extractedActionCount  Int       @default(0)
+  riskCount             Int       @default(0)
+  decisionCount         Int       @default(0)
+  redactionCount        Int       @default(0)
+  sourceSummaryJson     Json
+  transcriptDigestJson  Json
+  extractedActionJson   Json
+  riskJson              Json
+  decisionJson          Json
+  objectLinkJson        Json
+  redactionJson         Json
+  minutesJson           Json
+  leadershipSummary     String    @db.Text
+  actionQueueItemId     String?
+  approvedAt            DateTime?
+  approvalNote          String?   @db.Text
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator  User?  @relation("AssistantMeetingIntelligencePacketCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  approver User?  @relation("AssistantMeetingIntelligencePacketApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, updatedAt])
+  @@index([tenantId, meetingScore, updatedAt])
 }
 
 /// AMP7: inspectable grounding ledger extracted from assistant answers and reviewer additions.
@@ -1311,6 +1349,8 @@ model User {
   assistantPartnerEcosystemPacketsApproved AssistantPartnerEcosystemPacket[] @relation("AssistantPartnerEcosystemPacketApprover")
   assistantFrontlinePacketsCreated        AssistantFrontlinePacket[]         @relation("AssistantFrontlinePacketCreator")
   assistantFrontlinePacketsApproved       AssistantFrontlinePacket[]         @relation("AssistantFrontlinePacketApprover")
+  assistantMeetingIntelligencePacketsCreated AssistantMeetingIntelligencePacket[] @relation("AssistantMeetingIntelligencePacketCreator")
+  assistantMeetingIntelligencePacketsApproved AssistantMeetingIntelligencePacket[] @relation("AssistantMeetingIntelligencePacketApprover")
   invoiceIntakesAccountingApproved        InvoiceIntake[]                   @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated       TariffShipmentApplication[]       @relation("TariffShipmentApplicationCreator")
   scriEventsOwned                         ScriExternalEvent[]               @relation("ScriEventOwner")

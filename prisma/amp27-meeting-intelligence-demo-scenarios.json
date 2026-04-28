@@ -1,0 +1,54 @@
+[
+  {
+    "id": "amp27-create-meeting-packet",
+    "title": "Create meeting intelligence packet from operational notes",
+    "given": [
+      "A demo operator has CRM, Control Tower, or supplier view access.",
+      "The tenant has assistant email threads, CRM activities, shipment notes/exceptions, and supplier onboarding notes.",
+      "Some notes include actions, risks, decisions, and sensitive contact details."
+    ],
+    "when": [
+      "The operator opens /assistant/meeting-intelligence.",
+      "The operator selects Create meeting packet."
+    ],
+    "then": [
+      "The assistant persists an AssistantMeetingIntelligencePacket row.",
+      "The packet includes transcript digests, redactions, extracted actions, risks, decisions, object links, and draft minutes.",
+      "No CRM activity, shipment note, supplier task, email reply, or action queue item is created or changed automatically."
+    ]
+  },
+  {
+    "id": "amp27-queue-meeting-review",
+    "title": "Queue extracted meeting work for human review",
+    "given": [
+      "A meeting intelligence packet exists with extracted follow-up actions and risks.",
+      "The operator has edit access to at least one meeting intelligence source domain."
+    ],
+    "when": [
+      "The operator adds a review note.",
+      "The operator selects Queue review."
+    ],
+    "then": [
+      "An AssistantActionQueueItem is created for meeting intelligence review.",
+      "The packet status changes to REVIEW_QUEUED and stores the approval note.",
+      "The audit event states that source records and follow-up tasks were not created or mutated automatically."
+    ]
+  },
+  {
+    "id": "amp27-redaction-and-object-linking",
+    "title": "Redacted minutes with linked operational objects",
+    "given": [
+      "A transcript-style source contains an email address or phone number.",
+      "The source is linked to a CRM account, shipment, or supplier."
+    ],
+    "when": [
+      "The assistant builds the live meeting preview.",
+      "The operator reviews the extracted minutes."
+    ],
+    "then": [
+      "Sensitive values are replaced with redaction markers in digests and minutes evidence.",
+      "Object links point back to the CRM, Control Tower, or supplier records allowed by permissions.",
+      "Draft minutes clearly remain review-only until approved."
+    ]
+  }
+]
