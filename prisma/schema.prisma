@@ -160,6 +160,7 @@ model Tenant {
   assistantWarehouseCapacityPlans   AssistantWarehouseCapacityPlan[]
   assistantExceptionIncidents       AssistantExceptionIncident[]
   assistantCustomerBriefs           AssistantCustomerBrief[]
+  assistantFinancePackets           AssistantFinancePacket[]
   assistantActionQueue              AssistantActionQueueItem[]
   assistantPlaybookTemplates        AssistantPlaybookTemplate[]
   assistantPlaybookRuns             AssistantPlaybookRun[]
@@ -419,6 +420,40 @@ model AssistantCustomerBrief {
 
   @@index([tenantId, crmAccountId, updatedAt])
   @@index([tenantId, status, updatedAt])
+}
+
+/// AMP19: finance control packet for margin leakage, disputes, accrual risk, and accounting handoff review.
+model AssistantFinancePacket {
+  id                  String    @id @default(cuid())
+  tenantId            String
+  createdByUserId     String?
+  approvedByUserId    String?
+  title               String
+  status              String    @default("DRAFT") @db.VarChar(32)
+  riskScore           Int       @default(0)
+  currency            String    @default("USD") @db.VarChar(3)
+  totalVariance       Decimal   @default(0) @db.Decimal(18, 4)
+  disputeAmount       Decimal   @default(0) @db.Decimal(18, 4)
+  accrualAmount       Decimal   @default(0) @db.Decimal(18, 4)
+  selectedIntakeId    String?
+  varianceSummaryJson Json
+  leakageJson         Json
+  disputeQueueJson    Json
+  accrualRiskJson     Json
+  evidenceJson        Json
+  boardSummary        String    @db.Text
+  actionQueueItemId   String?
+  approvedAt          DateTime?
+  approvalNote        String?   @db.Text
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator  User?  @relation("AssistantFinancePacketCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  approver User?  @relation("AssistantFinancePacketApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, updatedAt])
+  @@index([tenantId, selectedIntakeId])
 }
 
 /// AMP7: inspectable grounding ledger extracted from assistant answers and reviewer additions.
@@ -1013,6 +1048,8 @@ model User {
   assistantExceptionIncidentsCreated      AssistantExceptionIncident[]      @relation("AssistantExceptionIncidentCreator")
   assistantCustomerBriefsCreated          AssistantCustomerBrief[]          @relation("AssistantCustomerBriefCreator")
   assistantCustomerBriefsApproved         AssistantCustomerBrief[]          @relation("AssistantCustomerBriefApprover")
+  assistantFinancePacketsCreated          AssistantFinancePacket[]          @relation("AssistantFinancePacketCreator")
+  assistantFinancePacketsApproved         AssistantFinancePacket[]          @relation("AssistantFinancePacketApprover")
   invoiceIntakesAccountingApproved        InvoiceIntake[]                   @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated       TariffShipmentApplication[]       @relation("TariffShipmentApplicationCreator")
   scriEventsOwned                         ScriExternalEvent[]               @relation("ScriEventOwner")

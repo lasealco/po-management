@@ -1,0 +1,26 @@
+[
+  {
+    "id": "amp19-finance-packet-rollup",
+    "title": "Generate finance control packet from invoice and cost evidence",
+    "route": "/assistant/finance-control",
+    "given": "Invoice audit intakes, pricing snapshots, shipment financial snapshots, cost lines, RFQ procurement plans, and customer service briefs exist.",
+    "when": "The user creates a finance control packet.",
+    "then": "The assistant persists an AssistantFinancePacket with variance summary, margin leakage, dispute queue, accrual risk, evidence IDs, and a board-ready summary."
+  },
+  {
+    "id": "amp19-dispute-and-accrual-prioritization",
+    "title": "Prioritize disputes and accrual exposure",
+    "route": "/assistant/finance-control",
+    "given": "Invoice audit results include red variance lines and invoices not approved for accounting.",
+    "when": "The packet is generated.",
+    "then": "Dispute amount, accrual amount, red-line count, and unapproved accounting count are surfaced as finance risk signals."
+  },
+  {
+    "id": "amp19-human-approved-finance-actions",
+    "title": "Queue finance review without accounting mutation",
+    "route": "/assistant/finance-control",
+    "given": "A finance packet has dispute, leakage, or accrual risk.",
+    "when": "The user queues finance review.",
+    "then": "An assistant action queue item and audit event are created, but no accounting export, dispute submission, or shipment cost mutation happens automatically."
+  }
+]
