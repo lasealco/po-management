@@ -1,0 +1,44 @@
+[
+  {
+    "id": "amp5-pass-accounting-ready",
+    "title": "PASS invoice creates clean accounting packet",
+    "steps": [
+      "Open an audited PASS invoice intake linked to a frozen pricing snapshot.",
+      "Review AMP5 Finance Handoff summary and accounting packet JSON.",
+      "Mark ready for finance, then queue accounting packet."
+    ],
+    "expected": [
+      "Finance handoff status moves from DRAFT to READY_FOR_FINANCE, then ACCOUNTING_READY.",
+      "Accounting packet cites intake id, pricing snapshot id, rollup, finance decision, and line evidence.",
+      "No ERP posting or invoice mutation occurs automatically."
+    ]
+  },
+  {
+    "id": "amp5-warn-dispute-note",
+    "title": "WARN invoice drafts carrier dispute note",
+    "steps": [
+      "Open an audited WARN invoice with AMBER lines.",
+      "Edit the generated vendor dispute draft with settlement context.",
+      "Queue dispute note."
+    ],
+    "expected": [
+      "Dispute draft lists attention lines with invoice amount, expected amount, variance, and explanation.",
+      "Assistant action queue receives a copy_text action for the invoice intake.",
+      "Finance handoff status becomes DISPUTE_QUEUED."
+    ]
+  },
+  {
+    "id": "amp5-fail-override-packet",
+    "title": "FAIL invoice is overridden with durable finance evidence",
+    "steps": [
+      "Open an audited FAIL invoice with RED lines.",
+      "Record finance override on the existing review step.",
+      "Use AMP5 Finance Handoff to save the packet and queue accounting review only after human review."
+    ],
+    "expected": [
+      "Finance handoff packet includes frozen pricing snapshot total and non-GREEN attention lines.",
+      "Audit events record the packet update and queued action.",
+      "Accounting packet remains copy/export-ready and does not silently approve payment."
+    ]
+  }
+]

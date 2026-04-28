@@ -8,6 +8,7 @@ import { InvoiceLinesMatchTable } from "@/components/invoice-audit/invoice-lines
 import { InvoiceMatchResultPanel } from "@/components/invoice-audit/invoice-match-result-panel";
 import { InvoiceOutcomeBanner } from "@/components/invoice-audit/invoice-outcome-banner";
 import { InvoiceAccountingHandoffScaffold } from "@/components/invoice-audit/invoice-accounting-handoff-scaffold";
+import { InvoiceFinanceHandoffPanel } from "@/components/invoice-audit/invoice-finance-handoff-panel";
 import { InvoiceIntakeOpsNotesScaffold } from "@/components/invoice-audit/invoice-intake-ops-notes-scaffold";
 import { InvoiceReviewScaffold } from "@/components/invoice-audit/invoice-review-scaffold";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
@@ -168,6 +169,8 @@ export default async function InvoiceIntakeDetailPage(props: { params: Promise<{
         reviewDecision={intake.reviewDecision}
         approvedForAccounting={intake.approvedForAccounting}
       />
+
+      <InvoiceFinanceHandoffPanel intakeId={intake.id} canEdit={canEdit} />
 
       <InvoiceMatchResultPanel
         snapshotId={intake.bookingPricingSnapshot.id}

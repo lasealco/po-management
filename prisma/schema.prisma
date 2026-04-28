@@ -3732,6 +3732,12 @@ model InvoiceIntake {
   accountingApprovedAt       DateTime?
   accountingApprovedByUserId String?
   accountingApprovalNote     String?                   @db.Text
+  /// AMP5: durable finance packet linking invoice audit, frozen pricing snapshot, dispute note, and accounting handoff.
+  financeHandoffStatus       String                    @default("DRAFT") @db.VarChar(32)
+  financeHandoffSummary      String?                   @db.Text
+  disputeDraft               String?                   @db.Text
+  accountingPacketJson       Json?
+  financeHandoffUpdatedAt    DateTime?
   createdByUserId            String?
   receivedAt                 DateTime                  @default(now())
   updatedAt                  DateTime                  @updatedAt
@@ -3746,6 +3752,7 @@ model InvoiceIntake {
 
   @@index([tenantId])
   @@index([tenantId, receivedAt])
+  @@index([tenantId, financeHandoffStatus, updatedAt])
   @@index([bookingPricingSnapshotId])
   @@map("invoice_intakes")
 }
