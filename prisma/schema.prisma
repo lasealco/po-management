@@ -167,6 +167,7 @@ model Tenant {
   assistantContractCompliancePackets AssistantContractCompliancePacket[]
   assistantSustainabilityPackets    AssistantSustainabilityPacket[]
   assistantPartnerEcosystemPackets  AssistantPartnerEcosystemPacket[]
+  assistantFrontlinePackets         AssistantFrontlinePacket[]
   assistantActionQueue              AssistantActionQueueItem[]
   assistantPlaybookTemplates        AssistantPlaybookTemplate[]
   assistantPlaybookRuns             AssistantPlaybookRun[]
@@ -662,6 +663,41 @@ model AssistantPartnerEcosystemPacket {
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   creator  User?  @relation("AssistantPartnerEcosystemPacketCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
   approver User?  @relation("AssistantPartnerEcosystemPacketApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, updatedAt])
+  @@index([tenantId, readinessScore, updatedAt])
+}
+
+/// AMP26: mobile/frontline assistant packet for role-scoped quick actions, evidence, and offline-risk review.
+model AssistantFrontlinePacket {
+  id                    String    @id @default(cuid())
+  tenantId              String
+  createdByUserId       String?
+  approvedByUserId      String?
+  title                 String
+  status                String    @default("DRAFT") @db.VarChar(32)
+  readinessScore        Int       @default(0)
+  frontlineTaskCount    Int       @default(0)
+  exceptionCount        Int       @default(0)
+  quickActionCount      Int       @default(0)
+  evidenceGapCount      Int       @default(0)
+  offlineRiskCount      Int       @default(0)
+  sourceSummaryJson     Json
+  frontlineQueueJson    Json
+  quickActionJson       Json
+  evidenceChecklistJson Json
+  offlineRiskJson       Json
+  permissionScopeJson   Json
+  leadershipSummary     String    @db.Text
+  actionQueueItemId     String?
+  approvedAt            DateTime?
+  approvalNote          String?   @db.Text
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator  User?  @relation("AssistantFrontlinePacketCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  approver User?  @relation("AssistantFrontlinePacketApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, status, updatedAt])
   @@index([tenantId, readinessScore, updatedAt])
@@ -1273,6 +1309,8 @@ model User {
   assistantSustainabilityPacketsApproved  AssistantSustainabilityPacket[]   @relation("AssistantSustainabilityPacketApprover")
   assistantPartnerEcosystemPacketsCreated AssistantPartnerEcosystemPacket[]  @relation("AssistantPartnerEcosystemPacketCreator")
   assistantPartnerEcosystemPacketsApproved AssistantPartnerEcosystemPacket[] @relation("AssistantPartnerEcosystemPacketApprover")
+  assistantFrontlinePacketsCreated        AssistantFrontlinePacket[]         @relation("AssistantFrontlinePacketCreator")
+  assistantFrontlinePacketsApproved       AssistantFrontlinePacket[]         @relation("AssistantFrontlinePacketApprover")
   invoiceIntakesAccountingApproved        InvoiceIntake[]                   @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated       TariffShipmentApplication[]       @relation("TariffShipmentApplicationCreator")
   scriEventsOwned                         ScriExternalEvent[]               @relation("ScriEventOwner")

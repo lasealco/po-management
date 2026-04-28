@@ -1,0 +1,54 @@
+[
+  {
+    "id": "amp26-create-frontline-packet",
+    "title": "Create mobile frontline packet from WMS, shipment, and supplier work",
+    "given": [
+      "A demo operator has WMS, Control Tower, or supplier frontline access.",
+      "The tenant has open WMS tasks, Control Tower exceptions, supplier onboarding tasks, and linked document/note evidence.",
+      "Some work items require live confirmation while others can be captured offline."
+    ],
+    "when": [
+      "The operator opens /assistant/frontline.",
+      "The operator selects Create frontline packet."
+    ],
+    "then": [
+      "The assistant persists an AssistantFrontlinePacket row.",
+      "The packet includes a mobile queue, quick actions, evidence checklist, offline risks, and permission scope.",
+      "No WMS task is completed, no shipment exception is closed, no supplier task is updated, and no evidence record is changed automatically."
+    ]
+  },
+  {
+    "id": "amp26-queue-frontline-review",
+    "title": "Queue reviewed quick actions before source-system updates",
+    "given": [
+      "A frontline packet exists with quick actions and evidence gaps.",
+      "The operator has edit access to at least one frontline domain."
+    ],
+    "when": [
+      "The operator adds an approval note.",
+      "The operator selects Queue review."
+    ],
+    "then": [
+      "An AssistantActionQueueItem is created for frontline quick-action review.",
+      "The packet status changes to REVIEW_QUEUED and stores the approval note.",
+      "The audit event states WMS tasks, shipment exceptions, supplier tasks, and evidence records were not mutated automatically."
+    ]
+  },
+  {
+    "id": "amp26-role-safe-offline-frontline",
+    "title": "Role-safe mobile workflow with offline reconciliation",
+    "given": [
+      "A warehouse user has WMS access but no Control Tower edit access.",
+      "A shipment exception requires live delivery confirmation in a poor-network environment."
+    ],
+    "when": [
+      "The user opens /assistant/frontline.",
+      "The user reviews the live mobile preview."
+    ],
+    "then": [
+      "Quick actions are enabled only for roles with action grants.",
+      "The preview marks delivery confirmation as an offline risk with supervisor review mitigation.",
+      "The assistant does not claim the action is complete until approved and reconciled."
+    ]
+  }
+]

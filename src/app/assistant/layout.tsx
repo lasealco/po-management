@@ -66,6 +66,7 @@ export default async function AssistantLayout({ children }: { children: React.Re
           <strong>Contracts</strong> is AMP23 for obligations, renewal risk, supplier documents, RFQs, and tariff compliance.{" "}
           <strong>Sustainability</strong> is AMP24 for emissions estimates, ESG data gaps, greener options, and approved reporting packets.{" "}
           <strong>Partners</strong> is AMP25 for connector readiness, portal scope, mapping review, and ecosystem launch approvals.{" "}
+          <strong>Frontline</strong> is AMP26 for mobile WMS, delivery exception, supplier task, evidence, and offline quick-action review.{" "}
           <strong>Workbench</strong> is the LMP1-LMP10 cockpit for sales, products, suppliers, POs, and
           shipments. <strong>Execution</strong> runs LMP11-LMP30 across carrier/customer comms, WMS, finance, quality,
           and simulation readiness. <strong>Work engine</strong> is AMP6 for assigned actions, SLA playbooks, and memory cleanup.{" "}
