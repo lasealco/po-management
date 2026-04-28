@@ -3,7 +3,7 @@
 **Purpose:** Fix a real problem: *strategy docs and micro-slices are hard to “prompt,”* and **you** mainly validate **the product when you can see and click it**. This document defines (1) **how to prompt** the implementation agent, (2) **big phases** the agent can execute **without** waiting for you on every sub-task, and (3) **Mega-Phase 1** in enough detail to build toward your **“John at ABC, corr-roll, $100, pickup Tuesday”** story.
 
 **Audience:** You (product owner) + anyone implementing in Cursor.  
-**Last updated:** 2026-04-25 (MP5-MP8)
+**Last updated:** 2026-04-28 (large-MP process reset)
 
 **Related:** [`AI_ASSISTANT_UX_GTM_AND_DELIVERY_PLAN.md`](./AI_ASSISTANT_UX_GTM_AND_DELIVERY_PLAN.md) (narrative + workstreams), [`PLATFORM_AI_FIRST_OPERATIONS_ROADMAP.md`](./PLATFORM_AI_FIRST_OPERATIONS_ROADMAP.md) (platform strategy).
 
@@ -52,6 +52,86 @@ Use **one** of these. They are designed so the implementer (human or agent) does
 ## 3. Mega-phases (large enough to work in peace)
 
 **Mega-phase** = one **review gate** (you: “yes / no / adjust UI”). Inside a mega-phase, implementation can be **days** of work without daily input.
+
+### 3.0 Process reset — what counts as a real Mega-Phase now
+
+The original intent was correct: a Mega-Phase should keep an implementation agent busy for roughly **one focused hour at minimum**, and often longer. The later MP50+ work drifted into **telemetry slices**: useful command-center panels, but too small to count as true product Mega-Phases.
+
+Going forward, use **Large Mega-Phases (`LMP1`-`LMP50`)** for real execution. A Large Mega-Phase is done only when it has:
+
+- A visible user workflow or operating surface, not only a roadmap row.
+- API/data behavior behind the UI, using real tenant data where possible.
+- Human-approved actions where mutation, sending, or automation is involved.
+- Evidence, auditability, and clear limits shown in the UI.
+- Focused tests/checks or documented verification.
+- Changelog entry, commit, and push.
+
+The legacy `MP1`-`MP189` list remains useful as a signal inventory and feature vocabulary. Treat `MP50` onward as **inputs** to the new large phases, not as proof that the full product behavior is done.
+
+### 3A. Large Mega-Phase Roadmap (`LMP1`-`LMP50`)
+
+Each Large Mega-Phase below is intentionally big. It should be implemented as a real product increment with UI, API/data behavior, validation, and shipping discipline.
+
+| Large MP | Theme | Real exit criteria |
+|----------|-------|--------------------|
+| **LMP1** | **Assistant foundation hardening** — make chat, dock, inbox, audit, and command center feel like one assistant product | User can move between `/assistant`, docked assistant, inbox, object cards, audit history, and command center without dead ends; shared copy, loading, errors, and evidence display are consistent |
+| **LMP2** | **Sales-order copilot v1** — end-to-end order intake from pasted text/email | User can paste a sales-order request, resolve customer/product/warehouse ambiguity, create or update a draft SO, see evidence, and audit the assistant decision |
+| **LMP3** | **Customer communication copilot** — safe customer replies and follow-ups | User can generate customer-ready updates from SO/shipment context, edit/copy/send via approved handoff, and see the communication logged against the object |
+| **LMP4** | **Order exception triage** — assistant detects and guides order issues | Draft/blocked/late/ambiguous orders appear in an exception queue with suggested root cause, evidence, owner, and human-approved next actions |
+| **LMP5** | **Product availability copilot** — stock, inbound, committed, and risk answers | Product pages answer “can we promise this?” with on-hand/inbound/allocated context, links to evidence, and clear limitations |
+| **LMP6** | **Inventory reallocation workflow** — propose but do not auto-move stock | Assistant proposes stock reallocation or reservation options with impact analysis, approval gate, audit log, and rollback note |
+| **LMP7** | **Purchase-order follow-up copilot** — inbound supply risk management | User sees PO lines needing follow-up, generates supplier update text, tracks responses, and links assistant actions to the PO/supplier |
+| **LMP8** | **Supplier performance assistant** — SRM insight and coaching | Supplier detail shows assistant-generated performance brief, risk drivers, recent orders, pending tasks, and recommended follow-up playbooks |
+| **LMP9** | **Supplier onboarding copilot** — guided onboarding and missing-data chase | Assistant surfaces onboarding gaps, drafts supplier requests, tracks completion, and keeps all changes human-approved |
+| **LMP10** | **Shipment triage copilot** — Control Tower exception handling | Shipment and CT exception pages show AI triage, likely cause, evidence, severity, owner, and guided actions |
+| **LMP11** | **Carrier communication copilot** — carrier-facing updates and escalation | User can generate carrier escalation messages from shipment evidence, copy/send via approved handoff, and log the result |
+| **LMP12** | **Delivery promise monitor** — customer promise risk across orders and shipments | Command center shows orders at delivery-promise risk, evidence, impacted customer, likely reason, and recommended next action |
+| **LMP13** | **Warehouse operations copilot** — WMS work visibility | Warehouse screens surface assistant suggestions for inventory, tasks, bottlenecks, and exceptions with direct links to WMS records |
+| **LMP14** | **Warehouse task recovery workflow** — blocked pick/pack/ship tasks | Assistant groups blocked warehouse tasks, proposes recovery steps, and lets a human mark actions done or escalated |
+| **LMP15** | **Pricing snapshot copilot** — explain pricing and tariff snapshots | Pricing snapshot pages explain rate components, assumptions, gaps, and next actions with evidence links |
+| **LMP16** | **RFQ response copilot** — guided quotation response | User can assemble an RFQ response from tariffs, constraints, and customer requirements, with human approval before sending/export |
+| **LMP17** | **Invoice audit copilot** — discrepancy explanation and dispute prep | Invoice audit pages explain variance, cite snapshot/rate evidence, draft dispute notes, and track approval for accounting |
+| **LMP18** | **Finance handoff workflow** — approved audit to accounting packet | Assistant produces an accounting-ready packet from approved invoice audit/intake data with controls, notes, and audit trail |
+| **LMP19** | **Commercial risk dashboard** — margin, pricing, invoice, and service burden | Command center groups commercial risk signals and links to pricing/invoice/order evidence with next actions |
+| **LMP20** | **Executive daily brief v1** — one copy-ready business brief | User gets a concise daily brief covering orders, shipments, inventory, suppliers, finance, assistant risks, and recommended priorities |
+| **LMP21** | **Role-based assistant landing pages** — tailored views for ops, sales, finance, warehouse, leadership | Each role sees relevant assistant work, KPIs, risks, playbooks, and entry points without needing to understand all modules |
+| **LMP22** | **Assistant action queue v2** — triage, ownership, status, and aging | Action queue supports owner, due/status filters, stale handling, completion/rejection notes, and source object links |
+| **LMP23** | **Playbook builder v1** — turn repeated work into guided workflows | Users can create/edit simple playbook templates from repeated assistant patterns and run them on objects |
+| **LMP24** | **Playbook operations v2** — assigned, aged, measurable runs | Playbook runs support owner, due dates, step notes, escalation status, completion analytics, and command-center visibility |
+| **LMP25** | **Assistant memory v2** — useful object memory, not noise | Object pages show summarized prior assistant decisions, actions, feedback, and current open questions with cleanup controls |
+| **LMP26** | **Evidence ledger v2** — inspectable grounding across modules | Command center shows evidence coverage by object/domain, weak answers, missing links, and links to add/correct evidence |
+| **LMP27** | **Feedback-to-training workflow** — turn feedback into improvement work | Helpful/needs-review feedback becomes a review queue with labels, corrections, prompt candidates, and exportable training examples |
+| **LMP28** | **Prompt library productization** — reusable prompts users can run | Users can browse, run, and maintain approved prompt starters by role/domain with evidence expectations and examples |
+| **LMP29** | **Quality release gate** — assistant changes have measurable guardrails | Build/release process includes assistant quality checks, test prompts, grounding thresholds, and documented exceptions |
+| **LMP30** | **Simulation/shadow automation lab** — rehearse automation safely | Candidate automations run in shadow mode, compare proposed vs actual human actions, and report readiness before any live automation |
+| **LMP31** | **Controlled automation v1** — one low-risk automation with rollback | A selected action can run automatically only under strict guardrails, with audit, rollback path, and clear opt-in flag |
+| **LMP32** | **Human override center** — humans can stop, correct, and explain automation | Users can pause automation candidates, override suggestions, add correction notes, and see why an action was proposed |
+| **LMP33** | **Domain expansion planner** — choose next AI domain based on data | Command center recommends the next domain based on coverage, value, risk, data dependencies, and user adoption |
+| **LMP34** | **Integration readiness workbench** — ERP/WMS/TMS/finance integration planning | Assistant maps current signals to integration candidates, missing data, expected value, and readiness checklist |
+| **LMP35** | **Tenant rollout cockpit** — rollout by team/role/site | Admin/operator can see rollout readiness, adoption, risks, feedback, and enablement tasks by audience or site where data exists |
+| **LMP36** | **Enablement coach** — targeted user coaching | Assistant suggests coaching prompts, examples, and next-use cases by user/role based on adoption and feedback patterns |
+| **LMP37** | **Policy and compliance packet** — audit-ready controls | Command center produces a compliance packet for audit events, evidence, approvals, feedback, permissions, and automation guardrails |
+| **LMP38** | **Security posture hardening** — least privilege and sensitive action controls | Assistant-sensitive actions respect grants, show permission reasons, avoid secrets, and expose blocked actions cleanly |
+| **LMP39** | **Incident and escalation runbook** — operational risk response | Risks and stale work can be converted into escalation runs with owner, steps, evidence, and resolution status |
+| **LMP40** | **Resilience control tower** — disruption and recovery workflows | Assistant groups disruption signals, proposes recovery playbooks, tracks continuity score, and prepares stakeholder updates |
+| **LMP41** | **Digital twin readiness v1** — object graph and confidence model | Assistant builds a visible object-coverage graph across order/shipment/inventory/supplier/finance signals with confidence and gaps |
+| **LMP42** | **Order-flow twin** — order lifecycle health model | Order lifecycle has assistant-visible stages, bottlenecks, delays, evidence, and forecasted risk signals |
+| **LMP43** | **Shipment-flow twin** — shipment lifecycle health model | Shipment lifecycle has assistant-visible stages, delays, carrier risk, evidence, and recovery actions |
+| **LMP44** | **Inventory-flow twin** — stock movement and promise model | Inventory/product flow has assistant-visible stock, inbound, allocation, risk, and promise impacts |
+| **LMP45** | **Network collaboration hub** — customer/supplier/carrier collaboration in one place | User sees external collaboration work by party, open updates, promised responses, risks, and generated communication packs |
+| **LMP46** | **Sustainability readiness v1** — emissions/data-gap foundation | Assistant identifies logistics/inventory data needed for emissions/sustainability reporting and creates a gap plan |
+| **LMP47** | **Board-ready AI operating report** — leadership reporting | Command center produces a board-ready report with value, risks, controls, adoption, roadmap, and remaining gaps |
+| **LMP48** | **AI admin console v1** — configure assistant behavior | Admin can manage flags, prompt library, playbook templates, automation candidates, and quality thresholds in a focused console |
+| **LMP49** | **End-to-end demo scenario pack** — repeatable demos across modules | Repo includes demo scenarios, seed expectations, and click-path scripts for sales/order/shipment/inventory/invoice assistant flows |
+| **LMP50** | **AI operating system v1** — cohesive assistant layer across the platform | The assistant feels like one product layer with connected work queues, object memory, evidence, playbooks, approvals, quality gates, and executive reporting |
+
+### 3B. How to execute Large Mega-Phases
+
+When you ask for one of these, use:
+
+> **“Execute LMP[N] from `docs/engineering/AI_ASSISTANT_MEGA_PHASES_AND_PROMPTS.md`. Treat it as a real large MP: UI, API/data, tests/checks, changelog, commit, and push. Do not satisfy it with only a roadmap row or status card.”**
+
+If implementation discovers that an LMP is too large for one run, split it into **subtasks inside the same LMP** and keep the review gate at the LMP level.
 
 | Mega-phase | Theme | You validate when… |
 |------------|--------|---------------------|
@@ -310,6 +390,7 @@ Use **one** of these. They are designed so the implementer (human or agent) does
 
 | Date | Change |
 |------|--------|
+| 2026-04-28 | **Large-MP process reset:** documented that previous MP50+ work became telemetry slices, added strict completion criteria for true Large Mega-Phases, and defined **LMP1-LMP50** as 50 much larger implementation programs that require real UI/API/data behavior, verification, changelog, commit, and push. |
 | 2026-04-28 | **MP111-MP140 finished as MVP execution workbench:** command center now includes real operating sections for commercial/finance controls, operational and security controls, admin/evaluation governance, enterprise readiness, and digital-twin readiness using live assistant telemetry. |
 | 2026-04-28 | **MP81-MP110 finished as MVP execution workbench:** command center now includes real operating sections for shadow automation, stakeholder reporting, predictive trust, orchestration/collaboration, and commercial impact using live assistant telemetry. |
 | 2026-04-28 | **MP51-MP80 finished as MVP execution workbench:** command center now includes real operating sections for governance controls, value realization, domain expansion, scale operations, process intelligence, knowledge assets, and simulation readiness using live assistant telemetry. |
