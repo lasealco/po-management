@@ -8,7 +8,9 @@ import { startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useR
 
 import { ActionButton } from "@/components/action-button";
 import { WorkflowHeader } from "@/components/workflow-header";
+import { buildSscc18DemoFromOutbound } from "@/lib/wms/gs1-sscc";
 import { printOutboundPackSlip } from "@/lib/wms/pack-slip-print";
+import { buildShipStationZpl, downloadZplTextFile } from "@/lib/wms/ship-station-zpl";
 import { WMS_DEMO_WAREHOUSE_CODE } from "@/lib/wms/demo-warehouse-code";
 import {
   isoToDatetimeLocalValue,
@@ -374,7 +376,15 @@ function dockYardDisplayLine(a: {
   return bits.length ? bits.join(" · ") : "—";
 }
 
+function readSsccDemoCompanyPrefixDigits(): string | null {
+  const raw = process.env.NEXT_PUBLIC_WMS_SSCC_COMPANY_PREFIX;
+  if (typeof raw !== "string") return null;
+  const d = raw.replace(/\D/g, "");
+  return d.length >= 7 && d.length <= 10 ? d : null;
+}
+
 export function WmsClient({ canEdit, section }: { canEdit: boolean; section: WmsSection }) {
+  const ssccDemoCompanyPrefixDigits = readSsccDemoCompanyPrefixDigits();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -2634,8 +2644,9 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
         <p className="mt-1 text-xs text-zinc-600">
           Ship notice (ASN) + CRM mirror inbound patterns; packing gate requires full picks before{" "}
           <span className="font-medium text-zinc-800">Mark packed</span>, then{" "}
-          <span className="font-medium text-zinc-800">Mark shipped</span>. Evidence print + audit:{" "}
-          <span className="font-medium text-zinc-800">docs/wms/WMS_PACKING_LABELS.md</span>.
+          <span className="font-medium text-zinc-800">Mark shipped</span>.           Evidence print + ship-station ZPL stub + audit:{" "}
+          <span className="font-medium text-zinc-800">docs/wms/WMS_PACKING_LABELS.md</span>,{" "}
+          <span className="font-medium text-zinc-800">docs/wms/WMS_PACKING_LABELS_BF08.md</span>.
         </p>
         <div className="mt-4 grid gap-2 sm:grid-cols-3">
           <div className="rounded-xl border border-zinc-100 bg-zinc-50/90 p-3 text-xs text-zinc-700">
@@ -2800,35 +2811,66 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                   </select>
                 ) : null}
                 {canPrintPackSlip ? (
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() =>
-                      printOutboundPackSlip({
-                        outboundNo: o.outboundNo,
-                        warehouseLabel: o.warehouse.code || o.warehouse.name,
-                        customerRef: o.customerRef,
-                        asnReference: o.asnReference,
-                        requestedShipDate: o.requestedShipDate,
-                        shipToName: o.shipToName,
-                        shipToCity: o.shipToCity,
-                        shipToCountryCode: o.shipToCountryCode,
-                        status: o.status,
-                        lines: o.lines.map((l) => ({
-                          lineNo: l.lineNo,
-                          productCode: l.product.productCode,
-                          sku: l.product.sku,
-                          name: l.product.name,
-                          quantity: l.quantity,
-                          pickedQty: l.pickedQty,
-                          packedQty: l.packedQty,
-                        })),
-                      })
-                    }
-                    className="rounded border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-800 disabled:opacity-40"
-                  >
-                    Print pack slip
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => {
+                        const ssccHr =
+                          ssccDemoCompanyPrefixDigits !== null
+                            ? buildSscc18DemoFromOutbound(o.id, ssccDemoCompanyPrefixDigits)
+                            : null;
+                        printOutboundPackSlip({
+                          outboundNo: o.outboundNo,
+                          warehouseLabel: o.warehouse.code || o.warehouse.name,
+                          customerRef: o.customerRef,
+                          asnReference: o.asnReference,
+                          requestedShipDate: o.requestedShipDate,
+                          shipToName: o.shipToName,
+                          shipToCity: o.shipToCity,
+                          shipToCountryCode: o.shipToCountryCode,
+                          status: o.status,
+                          sscc18HumanReadable: ssccHr,
+                          lines: o.lines.map((l) => ({
+                            lineNo: l.lineNo,
+                            productCode: l.product.productCode,
+                            sku: l.product.sku,
+                            name: l.product.name,
+                            quantity: l.quantity,
+                            pickedQty: l.pickedQty,
+                            packedQty: l.packedQty,
+                          })),
+                        });
+                      }}
+                      className="rounded border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-800 disabled:opacity-40"
+                    >
+                      Print pack slip
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => {
+                        const ssccHr =
+                          ssccDemoCompanyPrefixDigits !== null
+                            ? buildSscc18DemoFromOutbound(o.id, ssccDemoCompanyPrefixDigits)
+                            : null;
+                        const shipBits = [o.shipToName, o.shipToCity, o.shipToCountryCode].filter(Boolean);
+                        const zpl = buildShipStationZpl({
+                          outboundNo: o.outboundNo,
+                          warehouseLabel: o.warehouse.code || o.warehouse.name,
+                          barcodePayload: ssccHr ?? o.outboundNo,
+                          shipToSummary: shipBits.length ? shipBits.join(" · ") : "—",
+                          asnReference: o.asnReference,
+                          sscc18: ssccHr,
+                        });
+                        const safeName = o.outboundNo.replace(/[^\w.-]+/g, "_") || "outbound";
+                        downloadZplTextFile(zpl, `${safeName}-ship-station.zpl`);
+                      }}
+                      className="rounded border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-800 disabled:opacity-40"
+                    >
+                      Download ZPL stub
+                    </button>
+                  </>
                 ) : null}
                 {canEdit && o.status !== "SHIPPED" && o.status !== "CANCELLED" ? (
                   <button

@@ -1,6 +1,6 @@
 # Blueprint finish (`BF-xx`) — roadmap after BF-01
 
-**Purpose:** After **`BF-01`** (receiving line variance — [`WMS_RECEIVING_LINE_VARIANCE_BF01.md`](./WMS_RECEIVING_LINE_VARIANCE_BF01.md)) landed, this file lists **remaining capsules** **`BF-02` … `BF-11`**, a **dependency-aware default order**, and **what “create” means** here (documentation + prompts — not automatic code).
+**Purpose:** Track **blueprint-finish capsules** after **`BF-01`**: **Done** table (**`BF-02` … `BF-08`**), **recommended order** for **`BF-09` … `BF-11`**, capsule cards, and how to execute prompts — see [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md).
 
 **Authority:** Capsule IDs and themes match [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md). **`GAP_MAP.md`** stays the repo ↔ blueprint truth.
 
@@ -19,6 +19,7 @@
 | **BF-05** | Dock yard ops slice | **`WmsDockAppointment`** carrier/trailer + **`record_dock_appointment_yard_milestone`** — [`WMS_DOCK_YARD_BF05.md`](./WMS_DOCK_YARD_BF05.md); full **TMS** still backlog — [`WMS_DOCK_APPOINTMENTS.md`](./WMS_DOCK_APPOINTMENTS.md) |
 | **BF-06** | WMS scoped RBAC tiers | **`org.wms.setup` / `operations` / `inventory`** + `gateWmsPostMutation` — [`WMS_RBAC_BF06.md`](./WMS_RBAC_BF06.md); **per-field** ACL still backlog — [`WMS_RBAC_AND_AUDIT.md`](./WMS_RBAC_AND_AUDIT.md) |
 | **BF-07** | Executive / blueprint KPIs | WE-09 + proxies/narratives + optional **`wh`** scope — [`WMS_EXECUTIVE_KPIS.md`](./WMS_EXECUTIVE_KPIS.md), [`WMS_EXECUTIVE_KPIS_BF07.md`](./WMS_EXECUTIVE_KPIS_BF07.md); OTIF **rates** / productivity / slotting solver backlog |
+| **BF-08** | Packing GS1/ZPL integration stub | Demo SSCC + ship-station **ZPL** download — [`WMS_PACKING_LABELS.md`](./WMS_PACKING_LABELS.md), [`WMS_PACKING_LABELS_BF08.md`](./WMS_PACKING_LABELS_BF08.md); scanner / carrier APIs backlog |
 
 ---
 
@@ -33,12 +34,11 @@ Order follows [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md) **P
 | 3 | **BF-04** | C | Zone parent DAG + bin addressing ([`WMS_ZONE_TOPOLOGY_ADR.md`](./WMS_ZONE_TOPOLOGY_ADR.md), [`WMS_ZONE_PARENT_BF04.md`](./WMS_ZONE_PARENT_BF04.md)); **first-class aisle entities** still backlog — isolate migrations from unrelated features. |
 | 4 | **BF-05** | C | Carrier + yard milestones on **`WmsDockAppointment`** ([`WMS_DOCK_YARD_BF05.md`](./WMS_DOCK_YARD_BF05.md)); full TMS / EDI still backlog — builds on WE-02. |
 | 5 | **BF-06** | D | Scoped WMS mutation tiers (**[`WMS_RBAC_BF06.md`](./WMS_RBAC_BF06.md)**); **per-field** ACL matrix still backlog — [`WMS_RBAC_AND_AUDIT.md`](./WMS_RBAC_AND_AUDIT.md). |
-| 6 | **BF-08** | R2-ish ops | GS1 / ZPL / scanner hardware ([`WMS_PACKING_LABELS.md`](./WMS_PACKING_LABELS.md)) — vendor choices; can parallelize if resourced. |
-| 7 | **BF-09** | R3 | VAS portal & BOM costing ([`WMS_VAS_WORK_ORDERS.md`](./WMS_VAS_WORK_ORDERS.md)) — **WMS + portal**; commercial assumptions. |
-| 8 | **BF-10** | E | CPQ → outbound automation ([`WMS_COMMERCIAL_HANDOFF.md`](./WMS_COMMERCIAL_HANDOFF.md)) — **CRM (+ WMS API)** joint milestone. |
-| 9 | **BF-11** | E | CT map merged layers ([`WMS_CT_MAP_PHASE34_WE11.md`](./WMS_CT_MAP_PHASE34_WE11.md)) — **CT + WMS** (+ CRM pins if in scope); [`GAP_MAP`](./GAP_MAP.md) Enterprise row currently **❌** for in-map floor/pins. |
+| 6 | **BF-09** | R3 | VAS portal & BOM costing ([`WMS_VAS_WORK_ORDERS.md`](./WMS_VAS_WORK_ORDERS.md)) — **WMS + portal**; commercial assumptions. |
+| 7 | **BF-10** | E | CPQ → outbound automation ([`WMS_COMMERCIAL_HANDOFF.md`](./WMS_COMMERCIAL_HANDOFF.md)) — **CRM (+ WMS API)** joint milestone. |
+| 8 | **BF-11** | E | CT map merged layers ([`WMS_CT_MAP_PHASE34_WE11.md`](./WMS_CT_MAP_PHASE34_WE11.md)) — **CT + WMS** (+ CRM pins if in scope); [`GAP_MAP`](./GAP_MAP.md) Enterprise row currently **❌** for in-map floor/pins. |
 
-**Parallelization:** **BF-08** can often run in parallel with **BF-04** / **BF-05** if teams differ — dependencies above are **logical**, not strict calendar locks.
+**Parallelization:** **BF-09** / **BF-10** can often run in parallel with **BF-04** / **BF-05** if teams differ — dependencies above are **logical**, not strict calendar locks.
 
 ---
 
@@ -54,7 +54,7 @@ Use one row as the **scope box** before filing GitHub issues or agent prompts.
 | **BF-05** | Appointments / TMS | [`WMS_DOCK_APPOINTMENTS.md`](./WMS_DOCK_APPOINTMENTS.md), [`WMS_DOCK_YARD_BF05.md`](./WMS_DOCK_YARD_BF05.md) | Integrations | **Partial** — WE-02 + BF-05 yard slice; **full TMS** backlog |
 | **BF-06** | Permissions | [`WMS_RBAC_AND_AUDIT.md`](./WMS_RBAC_AND_AUDIT.md), [`WMS_RBAC_BF06.md`](./WMS_RBAC_BF06.md) | **Platform + auth** | **Partial** — BF-06 tier grants + action map; **per-field** ACL backlog |
 | **BF-07** | Dashboards | [`WMS_EXECUTIVE_KPIS.md`](./WMS_EXECUTIVE_KPIS.md), [`WMS_EXECUTIVE_KPIS_BF07.md`](./WMS_EXECUTIVE_KPIS_BF07.md) | Product + WMS | **Partial** — WE-09 + BF-07 proxies & scope; analytics solver backlog |
-| **BF-08** | Packing | [`WMS_PACKING_LABELS.md`](./WMS_PACKING_LABELS.md) | Vendors / hardware | Partial — WE-06 pack/ship |
+| **BF-08** | Packing | [`WMS_PACKING_LABELS.md`](./WMS_PACKING_LABELS.md), [`WMS_PACKING_LABELS_BF08.md`](./WMS_PACKING_LABELS_BF08.md) | Vendors / hardware | **Partial** — WE-06 pack/ship + BF-08 ZPL + demo SSCC; scanner/carrier backlog |
 | **BF-09** | VAS | [`WMS_VAS_WORK_ORDERS.md`](./WMS_VAS_WORK_ORDERS.md) | Portal + commercial assumptions | Partial — WE-04 MVP |
 | **BF-10** | Commercial | [`WMS_COMMERCIAL_HANDOFF.md`](./WMS_COMMERCIAL_HANDOFF.md) | **CRM + commercial** | Partial — bill-to handoff |
 | **BF-11** | Enterprise CT map | [`WMS_CT_MAP_PHASE34_WE11.md`](./WMS_CT_MAP_PHASE34_WE11.md) | **CT + WMS** (+ CRM if pins) | Partial — WE-11 links; layers ❌ |
@@ -73,4 +73,4 @@ We **did not** add duplicate per-capsule specs beside existing theme docs — av
 
 ---
 
-_Last updated: 2026-04-29 — **BF-07** executive KPI proxies + warehouse scope (`WMS_EXECUTIVE_KPIS_BF07.md`, `fetchWmsHomeKpis`); **BF-06** scoped WMS RBAC tiers (`WMS_RBAC_BF06.md`, `org.wms.setup` / `operations` / `inventory`); **BF-05** dock yard milestones (`WMS_DOCK_YARD_BF05.md`); **BF-03** FEFO allocation (`FEFO_BY_LOT_EXPIRY`); **BF-02** `WmsLotBatch` landed (`WMS_LOT_BATCH_BF02.md`, **`BF_CAPSULE_ROADMAP` Done**); roadmap scaffold after **BF-01**._
+_Last updated: 2026-04-29 — **BF-08** packing ZPL stub + demo SSCC (`WMS_PACKING_LABELS_BF08.md`, `gs1-sscc`, `ship-station-zpl`); **BF-07** executive KPI proxies + warehouse scope (`WMS_EXECUTIVE_KPIS_BF07.md`, `fetchWmsHomeKpis`); **BF-06** scoped WMS RBAC tiers (`WMS_RBAC_BF06.md`, `org.wms.setup` / `operations` / `inventory`); **BF-05** dock yard milestones (`WMS_DOCK_YARD_BF05.md`); **BF-03** FEFO allocation (`FEFO_BY_LOT_EXPIRY`); **BF-02** `WmsLotBatch` landed (`WMS_LOT_BATCH_BF02.md`, **`BF_CAPSULE_ROADMAP` Done**); roadmap scaffold after **BF-01**._

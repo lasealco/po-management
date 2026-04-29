@@ -28,6 +28,8 @@ export type PackSlipOrderInput = {
   shipToCountryCode: string | null;
   status: string;
   lines: PackSlipLineInput[];
+  /** When set (BF-08), printed as human-readable GS1 SSCC-18 for integrations / scanner trials. */
+  sscc18HumanReadable?: string | null;
 };
 
 /** Opens a printable pack-slip window (browser only). */
@@ -64,6 +66,11 @@ export function printOutboundPackSlip(order: PackSlipOrderInput): void {
 <p><strong>Ship to:</strong> ${escapeHtmlForPackSlip(order.shipToName ?? "—")}${order.shipToCity ? ` · ${escapeHtmlForPackSlip(order.shipToCity)}` : ""}${order.shipToCountryCode ? ` · ${escapeHtmlForPackSlip(order.shipToCountryCode)}` : ""}</p>
 <p><strong>Customer ref:</strong> ${escapeHtmlForPackSlip(order.customerRef ?? "—")} · <strong>ASN:</strong> ${escapeHtmlForPackSlip(order.asnReference ?? "—")}</p>
 <p><strong>Requested ship:</strong> ${order.requestedShipDate ? escapeHtmlForPackSlip(new Date(order.requestedShipDate).toLocaleString()) : "—"}</p>
+${
+    order.sscc18HumanReadable
+      ? `<p><strong>SSCC (demo):</strong> ${escapeHtmlForPackSlip(order.sscc18HumanReadable)}</p>`
+      : ""
+  }
 <table>
 <thead><tr><th>#</th><th>SKU / code</th><th>Description</th><th class="num">Order qty</th><th class="num">Picked</th><th class="num">Packed</th></tr></thead>
 <tbody>${rows}</tbody>
