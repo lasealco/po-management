@@ -59,6 +59,7 @@ export default async function AssistantLayout({ children }: { children: React.Re
         <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">Assistant</h1>
         <p className="mt-2 max-w-3xl text-sm text-zinc-600">
           <strong>Sprint 1</strong> is the Agent Governance Control Plane for real agent registry, tool permissions, prompt supply chain, memory governance, observability, certification, audit, and review-queue handoff.{" "}
+          <strong>Sprint 2</strong> is Enterprise Risk & Controls for obligations, contract performance, control testing, audit evidence, regulatory horizon, geopolitical/macro/commodity risk, and review-gated remediation.{" "}
           <strong>Chat</strong> can draft sales orders and answer stock / product-trace questions with links to
           evidence. <strong>Order orchestration</strong> is AMP13 for demand-to-promise planning with ATP and approval controls.{" "}
           <strong>Warehouse capacity</strong> is AMP15 for WMS bottlenecks, labor recovery, and supervisor-approved recovery work.{" "}

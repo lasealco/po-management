@@ -1,0 +1,30 @@
+{
+  "sprint": 2,
+  "title": "Enterprise Risk & Controls",
+  "entrypoint": "/assistant/enterprise-risk-controls",
+  "acceptanceScenarios": [
+    {
+      "name": "Create durable control packet",
+      "given": "The tenant has contract compliance packets, governance packets, assistant audit events, action queue items, SCRI events, and risk war rooms.",
+      "when": "A risk or compliance owner opens Sprint 2 and clicks Create Sprint 2 packet.",
+      "then": "The app persists an AssistantEnterpriseRiskControlPacket with obligation graph, control testing, audit evidence, contract performance, regulatory horizon, external risk, response plan, rollback plan, and leadership summary."
+    },
+    {
+      "name": "Queue remediation review",
+      "given": "A Sprint 2 packet has high risk score or open control gaps.",
+      "when": "The user adds a review note and clicks Queue review.",
+      "then": "The packet moves to REVIEW_QUEUED, an AssistantActionQueueItem is created, and an AssistantAuditEvent records that remediation is approval-gated."
+    },
+    {
+      "name": "Approve without silent mutation",
+      "given": "A human reviewer has validated the packet and supporting evidence.",
+      "when": "The reviewer clicks Approve packet.",
+      "then": "The packet is marked APPROVED with approver metadata while obligations, controls, contracts, policies, risk events, audit evidence, action queue decisions, and operational source records remain unchanged."
+    }
+  ],
+  "guardrails": [
+    "Packet creation never changes obligations, controls, contracts, policies, SCRI events, risk rooms, audit evidence, or operational source records.",
+    "Regulatory horizon and external risk summaries draft review work only; filings, policy changes, and external communications require separate approval.",
+    "Action queue handoff is explicit and auditable."
+  ]
+}

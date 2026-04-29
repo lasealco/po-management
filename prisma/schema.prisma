@@ -47,142 +47,143 @@ model Tenant {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  users                             User[]
-  orgUnits                          OrgUnit[]
-  roles                             Role[]
-  suppliers                         Supplier[]
-  products                          Product[]
-  productCategories                 ProductCategory[]
-  productDivisions                  ProductDivision[]
-  supplierOffices                   SupplierOffice[]
-  supplierContacts                  SupplierContact[]
-  supplierServiceCapabilities       SupplierServiceCapability[]
-  orders                            PurchaseOrder[]
-  salesOrders                       SalesOrder[]
-  salesOrderLines                   SalesOrderLine[]
-  warehouses                        Warehouse[]
-  warehouseZones                    WarehouseZone[]
-  warehouseBins                     WarehouseBin[]
-  inventoryBalances                 InventoryBalance[]
-  inventoryMovements                InventoryMovement[]
-  wmsTasks                          WmsTask[]
-  wmsWaves                          WmsWave[]
-  replenishmentRules                ReplenishmentRule[]
-  outboundOrders                    OutboundOrder[]
-  outboundOrderLines                OutboundOrderLine[]
-  wmsBillingRates                   WmsBillingRate[]
-  wmsBillingEvents                  WmsBillingEvent[]
-  wmsBillingInvoiceRuns             WmsBillingInvoiceRun[]
-  wmsBillingInvoiceLines            WmsBillingInvoiceLine[]
-  wmsSavedLedgerViews               WmsSavedLedgerView[]
-  loadPlans                         LoadPlan[]
-  userPreferences                   UserPreference[]
-  workflows                         Workflow[]
-  crmLeads                          CrmLead[]
-  crmAccounts                       CrmAccount[]
-  crmContacts                       CrmContact[]
-  crmOpportunities                  CrmOpportunity[]
-  crmActivities                     CrmActivity[]
-  crmQuotes                         CrmQuote[]
-  ctTrackingMilestones              CtTrackingMilestone[]
-  ctShipmentDocuments               CtShipmentDocument[]
-  ctShipmentNotes                   CtShipmentNote[]
-  ctFinancialSnapshots              CtShipmentFinancialSnapshot[]
-  ctAlerts                          CtAlert[]
-  ctExceptions                      CtException[]
-  ctAuditLogs                       CtAuditLog[]
-  ctSavedFilters                    CtSavedFilter[]
-  ctSavedReports                    CtSavedReport[]
-  ctDashboardWidgets                CtDashboardWidget[]
-  ctShipmentLegs                    CtShipmentLeg[]
-  ctShipmentContainers              CtShipmentContainer[]
-  ctFxRates                         CtFxRate[]
-  ctShipmentCostLines               CtShipmentCostLine[]
-  ctMilestoneTemplatePacks          CtMilestoneTemplatePack[]
-  ctContainerCargoLines             CtContainerCargoLine[]
-  ctExceptionCodes                  CtExceptionCode[]
-  locationCodes                     LocationCode[]
-  ctReportSchedules                 CtReportSchedule[]
-  tariffLegalEntities               TariffLegalEntity[]
-  tariffContractHeaders             TariffContractHeader[]
-  tariffImportBatches               TariffImportBatch[]
-  tariffShipmentApplications        TariffShipmentApplication[]
-  quoteRequests                     QuoteRequest[]
-  transportationProcurementPlans    TransportationProcurementPlan[]
-  bookingPricingSnapshots           BookingPricingSnapshot[]
-  invoiceIntakes                    InvoiceIntake[]
-  invoiceToleranceRules             InvoiceToleranceRule[]
-  invoiceChargeAliases              InvoiceChargeAlias[]
-  apiHubConnectors                  ApiHubConnector[]
-  apiHubConnectorAuditLogs          ApiHubConnectorAuditLog[]
-  apiHubIngestionRuns               ApiHubIngestionRun[]
-  apiHubIngestionApplyIdempotencies ApiHubIngestionApplyIdempotency[]
-  apiHubIngestionRunAuditLogs       ApiHubIngestionRunAuditLog[]
-  apiHubMappingTemplates            ApiHubMappingTemplate[]
-  apiHubMappingTemplateAuditLogs    ApiHubMappingTemplateAuditLog[]
-  apiHubMappingAnalysisJobs         ApiHubMappingAnalysisJob[]
-  apiHubStagingBatches              ApiHubStagingBatch[]
-  apiHubStagingRows                 ApiHubStagingRow[]
-  supplyChainTwinEntitySnapshots    SupplyChainTwinEntitySnapshot[]
-  supplyChainTwinEntityEdges        SupplyChainTwinEntityEdge[]
-  supplyChainTwinIngestEvents       SupplyChainTwinIngestEvent[]
-  supplyChainTwinRiskSignals        SupplyChainTwinRiskSignal[]
-  supplyChainTwinScenarioDrafts     SupplyChainTwinScenarioDraft[]
-  supplyChainTwinScenarioRevisions  SupplyChainTwinScenarioRevision[]
-  supplyChainTwinAssistantInsights  SupplyChainTwinAssistantInsight[]
-  scriExternalEvents                ScriExternalEvent[]
-  scriEventAffectedEntities         ScriEventAffectedEntity[]
-  scriEventReviewLogs               ScriEventReviewLog[]
-  scriEventTaskLinks                ScriEventTaskLink[]
-  scriEventRecommendations          ScriEventRecommendation[]
-  scriWatchlistRules                ScriWatchlistRule[]
-  scriTenantTuning                  ScriTenantTuning?
-  apiHubAssistantReviewItems        ApiHubAssistantReviewItem[]
-  supplierOnboardingTasks           SupplierOnboardingTask[]
-  srmSupplierDocuments              SrmSupplierDocument[]
-  srmSupplierDocumentAuditLogs      SrmSupplierDocumentAuditLog[]
-  srmIntegrationIdempotencies       SrmIntegrationIdempotency[]
-  srmOperatorNotifications          SrmOperatorNotification[]
-  companyLegalEntities              CompanyLegalEntity[]
-  companyLegalEntityAuditLogs       CompanyLegalEntityAuditLog[]
+  users                                 User[]
+  orgUnits                              OrgUnit[]
+  roles                                 Role[]
+  suppliers                             Supplier[]
+  products                              Product[]
+  productCategories                     ProductCategory[]
+  productDivisions                      ProductDivision[]
+  supplierOffices                       SupplierOffice[]
+  supplierContacts                      SupplierContact[]
+  supplierServiceCapabilities           SupplierServiceCapability[]
+  orders                                PurchaseOrder[]
+  salesOrders                           SalesOrder[]
+  salesOrderLines                       SalesOrderLine[]
+  warehouses                            Warehouse[]
+  warehouseZones                        WarehouseZone[]
+  warehouseBins                         WarehouseBin[]
+  inventoryBalances                     InventoryBalance[]
+  inventoryMovements                    InventoryMovement[]
+  wmsTasks                              WmsTask[]
+  wmsWaves                              WmsWave[]
+  replenishmentRules                    ReplenishmentRule[]
+  outboundOrders                        OutboundOrder[]
+  outboundOrderLines                    OutboundOrderLine[]
+  wmsBillingRates                       WmsBillingRate[]
+  wmsBillingEvents                      WmsBillingEvent[]
+  wmsBillingInvoiceRuns                 WmsBillingInvoiceRun[]
+  wmsBillingInvoiceLines                WmsBillingInvoiceLine[]
+  wmsSavedLedgerViews                   WmsSavedLedgerView[]
+  loadPlans                             LoadPlan[]
+  userPreferences                       UserPreference[]
+  workflows                             Workflow[]
+  crmLeads                              CrmLead[]
+  crmAccounts                           CrmAccount[]
+  crmContacts                           CrmContact[]
+  crmOpportunities                      CrmOpportunity[]
+  crmActivities                         CrmActivity[]
+  crmQuotes                             CrmQuote[]
+  ctTrackingMilestones                  CtTrackingMilestone[]
+  ctShipmentDocuments                   CtShipmentDocument[]
+  ctShipmentNotes                       CtShipmentNote[]
+  ctFinancialSnapshots                  CtShipmentFinancialSnapshot[]
+  ctAlerts                              CtAlert[]
+  ctExceptions                          CtException[]
+  ctAuditLogs                           CtAuditLog[]
+  ctSavedFilters                        CtSavedFilter[]
+  ctSavedReports                        CtSavedReport[]
+  ctDashboardWidgets                    CtDashboardWidget[]
+  ctShipmentLegs                        CtShipmentLeg[]
+  ctShipmentContainers                  CtShipmentContainer[]
+  ctFxRates                             CtFxRate[]
+  ctShipmentCostLines                   CtShipmentCostLine[]
+  ctMilestoneTemplatePacks              CtMilestoneTemplatePack[]
+  ctContainerCargoLines                 CtContainerCargoLine[]
+  ctExceptionCodes                      CtExceptionCode[]
+  locationCodes                         LocationCode[]
+  ctReportSchedules                     CtReportSchedule[]
+  tariffLegalEntities                   TariffLegalEntity[]
+  tariffContractHeaders                 TariffContractHeader[]
+  tariffImportBatches                   TariffImportBatch[]
+  tariffShipmentApplications            TariffShipmentApplication[]
+  quoteRequests                         QuoteRequest[]
+  transportationProcurementPlans        TransportationProcurementPlan[]
+  bookingPricingSnapshots               BookingPricingSnapshot[]
+  invoiceIntakes                        InvoiceIntake[]
+  invoiceToleranceRules                 InvoiceToleranceRule[]
+  invoiceChargeAliases                  InvoiceChargeAlias[]
+  apiHubConnectors                      ApiHubConnector[]
+  apiHubConnectorAuditLogs              ApiHubConnectorAuditLog[]
+  apiHubIngestionRuns                   ApiHubIngestionRun[]
+  apiHubIngestionApplyIdempotencies     ApiHubIngestionApplyIdempotency[]
+  apiHubIngestionRunAuditLogs           ApiHubIngestionRunAuditLog[]
+  apiHubMappingTemplates                ApiHubMappingTemplate[]
+  apiHubMappingTemplateAuditLogs        ApiHubMappingTemplateAuditLog[]
+  apiHubMappingAnalysisJobs             ApiHubMappingAnalysisJob[]
+  apiHubStagingBatches                  ApiHubStagingBatch[]
+  apiHubStagingRows                     ApiHubStagingRow[]
+  supplyChainTwinEntitySnapshots        SupplyChainTwinEntitySnapshot[]
+  supplyChainTwinEntityEdges            SupplyChainTwinEntityEdge[]
+  supplyChainTwinIngestEvents           SupplyChainTwinIngestEvent[]
+  supplyChainTwinRiskSignals            SupplyChainTwinRiskSignal[]
+  supplyChainTwinScenarioDrafts         SupplyChainTwinScenarioDraft[]
+  supplyChainTwinScenarioRevisions      SupplyChainTwinScenarioRevision[]
+  supplyChainTwinAssistantInsights      SupplyChainTwinAssistantInsight[]
+  scriExternalEvents                    ScriExternalEvent[]
+  scriEventAffectedEntities             ScriEventAffectedEntity[]
+  scriEventReviewLogs                   ScriEventReviewLog[]
+  scriEventTaskLinks                    ScriEventTaskLink[]
+  scriEventRecommendations              ScriEventRecommendation[]
+  scriWatchlistRules                    ScriWatchlistRule[]
+  scriTenantTuning                      ScriTenantTuning?
+  apiHubAssistantReviewItems            ApiHubAssistantReviewItem[]
+  supplierOnboardingTasks               SupplierOnboardingTask[]
+  srmSupplierDocuments                  SrmSupplierDocument[]
+  srmSupplierDocumentAuditLogs          SrmSupplierDocumentAuditLog[]
+  srmIntegrationIdempotencies           SrmIntegrationIdempotency[]
+  srmOperatorNotifications              SrmOperatorNotification[]
+  companyLegalEntities                  CompanyLegalEntity[]
+  companyLegalEntityAuditLogs           CompanyLegalEntityAuditLog[]
   /// MP4: assistant / sales email pilot (inbound items + staged reply, confirm-before-send).
-  assistantEmailThreads             AssistantEmailThread[]
-  assistantAuditEvents              AssistantAuditEvent[]
-  assistantEvidenceRecords          AssistantEvidenceRecord[]
-  assistantReviewExamples           AssistantReviewExample[]
-  assistantPromptLibraryItems       AssistantPromptLibraryItem[]
-  assistantReleaseGates             AssistantReleaseGate[]
-  assistantAutomationPolicies       AssistantAutomationPolicy[]
-  assistantAutomationShadowRuns     AssistantAutomationShadowRun[]
-  assistantAdminControls            AssistantAdminControl[]
-  assistantOperatingReports         AssistantOperatingReport[]
-  assistantOrderOrchestrationPlans  AssistantOrderOrchestrationPlan[]
-  assistantWarehouseCapacityPlans   AssistantWarehouseCapacityPlan[]
-  assistantExceptionIncidents       AssistantExceptionIncident[]
-  assistantCustomerBriefs           AssistantCustomerBrief[]
-  assistantFinancePackets           AssistantFinancePacket[]
-  assistantRiskWarRooms             AssistantRiskWarRoom[]
-  assistantMasterDataQualityRuns    AssistantMasterDataQualityRun[]
-  assistantPlanningPackets          AssistantPlanningPacket[]
-  assistantContractCompliancePackets AssistantContractCompliancePacket[]
-  assistantSustainabilityPackets    AssistantSustainabilityPacket[]
-  assistantPartnerEcosystemPackets  AssistantPartnerEcosystemPacket[]
-  assistantFrontlinePackets         AssistantFrontlinePacket[]
-  assistantMeetingIntelligencePackets AssistantMeetingIntelligencePacket[]
-  assistantObservabilityIncidents   AssistantObservabilityIncident[]
-  assistantGovernancePackets        AssistantGovernancePacket[]
-  assistantRolloutFactoryPackets    AssistantRolloutFactoryPacket[]
-  assistantValueRealizationPackets  AssistantValueRealizationPacket[]
-  assistantAutonomousOperatingLoops AssistantAutonomousOperatingLoop[]
-  assistantNetworkDesignPackets     AssistantNetworkDesignPacket[]
-  assistantSimulationStudioPackets  AssistantSimulationStudioPacket[]
-  assistantContinuousPlanningPackets AssistantContinuousPlanningPacket[]
-  assistantRevenueOperationsPackets AssistantRevenueOperationsPacket[]
-  assistantAdvancedProgramPackets    AssistantAdvancedProgramPacket[]
-  assistantAgentGovernancePackets    AssistantAgentGovernancePacket[]
-  assistantActionQueue              AssistantActionQueueItem[]
-  assistantPlaybookTemplates        AssistantPlaybookTemplate[]
-  assistantPlaybookRuns             AssistantPlaybookRun[]
+  assistantEmailThreads                 AssistantEmailThread[]
+  assistantAuditEvents                  AssistantAuditEvent[]
+  assistantEvidenceRecords              AssistantEvidenceRecord[]
+  assistantReviewExamples               AssistantReviewExample[]
+  assistantPromptLibraryItems           AssistantPromptLibraryItem[]
+  assistantReleaseGates                 AssistantReleaseGate[]
+  assistantAutomationPolicies           AssistantAutomationPolicy[]
+  assistantAutomationShadowRuns         AssistantAutomationShadowRun[]
+  assistantAdminControls                AssistantAdminControl[]
+  assistantOperatingReports             AssistantOperatingReport[]
+  assistantOrderOrchestrationPlans      AssistantOrderOrchestrationPlan[]
+  assistantWarehouseCapacityPlans       AssistantWarehouseCapacityPlan[]
+  assistantExceptionIncidents           AssistantExceptionIncident[]
+  assistantCustomerBriefs               AssistantCustomerBrief[]
+  assistantFinancePackets               AssistantFinancePacket[]
+  assistantRiskWarRooms                 AssistantRiskWarRoom[]
+  assistantMasterDataQualityRuns        AssistantMasterDataQualityRun[]
+  assistantPlanningPackets              AssistantPlanningPacket[]
+  assistantContractCompliancePackets    AssistantContractCompliancePacket[]
+  assistantSustainabilityPackets        AssistantSustainabilityPacket[]
+  assistantPartnerEcosystemPackets      AssistantPartnerEcosystemPacket[]
+  assistantFrontlinePackets             AssistantFrontlinePacket[]
+  assistantMeetingIntelligencePackets   AssistantMeetingIntelligencePacket[]
+  assistantObservabilityIncidents       AssistantObservabilityIncident[]
+  assistantGovernancePackets            AssistantGovernancePacket[]
+  assistantRolloutFactoryPackets        AssistantRolloutFactoryPacket[]
+  assistantValueRealizationPackets      AssistantValueRealizationPacket[]
+  assistantAutonomousOperatingLoops     AssistantAutonomousOperatingLoop[]
+  assistantNetworkDesignPackets         AssistantNetworkDesignPacket[]
+  assistantSimulationStudioPackets      AssistantSimulationStudioPacket[]
+  assistantContinuousPlanningPackets    AssistantContinuousPlanningPacket[]
+  assistantRevenueOperationsPackets     AssistantRevenueOperationsPacket[]
+  assistantAdvancedProgramPackets       AssistantAdvancedProgramPacket[]
+  assistantAgentGovernancePackets       AssistantAgentGovernancePacket[]
+  assistantEnterpriseRiskControlPackets AssistantEnterpriseRiskControlPacket[]
+  assistantActionQueue                  AssistantActionQueueItem[]
+  assistantPlaybookTemplates            AssistantPlaybookTemplate[]
+  assistantPlaybookRuns                 AssistantPlaybookRun[]
 }
 
 /// MP15/MP18: durable assistant answer/action memory with grounding and feedback.
@@ -543,31 +544,31 @@ model AssistantMasterDataQualityRun {
 
 /// AMP22: S&OP / planning bridge packet for demand, supply, inventory, capacity, and scenario review.
 model AssistantPlanningPacket {
-  id                    String    @id @default(cuid())
-  tenantId              String
-  createdByUserId       String?
-  approvedByUserId      String?
-  title                 String
-  status                String    @default("DRAFT") @db.VarChar(32)
-  planningScore         Int       @default(0)
-  horizonDays           Int       @default(30)
-  demandUnits           Decimal   @default(0) @db.Decimal(18, 3)
-  availableUnits        Decimal   @default(0) @db.Decimal(18, 3)
-  inboundUnits          Decimal   @default(0) @db.Decimal(18, 3)
-  shortageUnits         Decimal   @default(0) @db.Decimal(18, 3)
-  demandSummaryJson     Json
-  supplySummaryJson     Json
-  gapAnalysisJson       Json
-  constraintJson        Json
-  scenarioJson          Json
-  recommendationJson    Json
-  leadershipSummary     String    @db.Text
-  actionQueueItemId     String?
-  scenarioDraftId       String?
-  approvedAt            DateTime?
-  approvalNote          String?   @db.Text
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  id                 String    @id @default(cuid())
+  tenantId           String
+  createdByUserId    String?
+  approvedByUserId   String?
+  title              String
+  status             String    @default("DRAFT") @db.VarChar(32)
+  planningScore      Int       @default(0)
+  horizonDays        Int       @default(30)
+  demandUnits        Decimal   @default(0) @db.Decimal(18, 3)
+  availableUnits     Decimal   @default(0) @db.Decimal(18, 3)
+  inboundUnits       Decimal   @default(0) @db.Decimal(18, 3)
+  shortageUnits      Decimal   @default(0) @db.Decimal(18, 3)
+  demandSummaryJson  Json
+  supplySummaryJson  Json
+  gapAnalysisJson    Json
+  constraintJson     Json
+  scenarioJson       Json
+  recommendationJson Json
+  leadershipSummary  String    @db.Text
+  actionQueueItemId  String?
+  scenarioDraftId    String?
+  approvedAt         DateTime?
+  approvalNote       String?   @db.Text
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   creator  User?  @relation("AssistantPlanningPacketCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
@@ -614,29 +615,29 @@ model AssistantContractCompliancePacket {
 
 /// AMP24: sustainability / ESG operations packet with emissions estimates, data gaps, and greener recommendations.
 model AssistantSustainabilityPacket {
-  id                    String    @id @default(cuid())
-  tenantId              String
-  createdByUserId       String?
-  approvedByUserId      String?
-  title                 String
-  status                String    @default("DRAFT") @db.VarChar(32)
-  sustainabilityScore   Int       @default(0)
-  estimatedCo2eKg       Decimal   @default(0) @db.Decimal(18, 3)
-  potentialSavingsKg    Decimal   @default(0) @db.Decimal(18, 3)
-  missingDataCount      Int       @default(0)
-  recommendationCount   Int       @default(0)
-  shipmentSummaryJson   Json
-  warehouseSummaryJson  Json
-  emissionsJson         Json
-  missingDataJson       Json
-  recommendationJson    Json
-  assumptionsJson       Json
-  leadershipSummary     String    @db.Text
-  actionQueueItemId     String?
-  approvedAt            DateTime?
-  approvalNote          String?   @db.Text
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  id                   String    @id @default(cuid())
+  tenantId             String
+  createdByUserId      String?
+  approvedByUserId     String?
+  title                String
+  status               String    @default("DRAFT") @db.VarChar(32)
+  sustainabilityScore  Int       @default(0)
+  estimatedCo2eKg      Decimal   @default(0) @db.Decimal(18, 3)
+  potentialSavingsKg   Decimal   @default(0) @db.Decimal(18, 3)
+  missingDataCount     Int       @default(0)
+  recommendationCount  Int       @default(0)
+  shipmentSummaryJson  Json
+  warehouseSummaryJson Json
+  emissionsJson        Json
+  missingDataJson      Json
+  recommendationJson   Json
+  assumptionsJson      Json
+  leadershipSummary    String    @db.Text
+  actionQueueItemId    String?
+  approvedAt           DateTime?
+  approvalNote         String?   @db.Text
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   creator  User?  @relation("AssistantSustainabilityPacketCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
@@ -717,32 +718,32 @@ model AssistantFrontlinePacket {
 
 /// AMP27: voice / meeting intelligence packet for transcript notes, extracted actions, risks, and minutes review.
 model AssistantMeetingIntelligencePacket {
-  id                    String    @id @default(cuid())
-  tenantId              String
-  createdByUserId       String?
-  approvedByUserId      String?
-  title                 String
-  status                String    @default("DRAFT") @db.VarChar(32)
-  meetingScore          Int       @default(0)
-  transcriptCount       Int       @default(0)
-  extractedActionCount  Int       @default(0)
-  riskCount             Int       @default(0)
-  decisionCount         Int       @default(0)
-  redactionCount        Int       @default(0)
-  sourceSummaryJson     Json
-  transcriptDigestJson  Json
-  extractedActionJson   Json
-  riskJson              Json
-  decisionJson          Json
-  objectLinkJson        Json
-  redactionJson         Json
-  minutesJson           Json
-  leadershipSummary     String    @db.Text
-  actionQueueItemId     String?
-  approvedAt            DateTime?
-  approvalNote          String?   @db.Text
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  id                   String    @id @default(cuid())
+  tenantId             String
+  createdByUserId      String?
+  approvedByUserId     String?
+  title                String
+  status               String    @default("DRAFT") @db.VarChar(32)
+  meetingScore         Int       @default(0)
+  transcriptCount      Int       @default(0)
+  extractedActionCount Int       @default(0)
+  riskCount            Int       @default(0)
+  decisionCount        Int       @default(0)
+  redactionCount       Int       @default(0)
+  sourceSummaryJson    Json
+  transcriptDigestJson Json
+  extractedActionJson  Json
+  riskJson             Json
+  decisionJson         Json
+  objectLinkJson       Json
+  redactionJson        Json
+  minutesJson          Json
+  leadershipSummary    String    @db.Text
+  actionQueueItemId    String?
+  approvedAt           DateTime?
+  approvalNote         String?   @db.Text
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   creator  User?  @relation("AssistantMeetingIntelligencePacketCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
@@ -754,33 +755,33 @@ model AssistantMeetingIntelligencePacket {
 
 /// AMP28: AI observability and incident response packet for assistant health, drift, degraded mode, rollback, and postmortems.
 model AssistantObservabilityIncident {
-  id                    String    @id @default(cuid())
-  tenantId              String
-  createdByUserId       String?
-  resolvedByUserId      String?
-  title                 String
-  status                String    @default("OPEN") @db.VarChar(32)
-  severity              String    @default("MEDIUM") @db.VarChar(16)
-  healthScore           Int       @default(0)
-  auditEventCount       Int       @default(0)
-  failureCount          Int       @default(0)
-  driftSignalCount      Int       @default(0)
-  evidenceGapCount      Int       @default(0)
-  automationRiskCount   Int       @default(0)
-  healthSnapshotJson    Json
-  failureSignalJson     Json
-  driftSignalJson       Json
-  evidenceCoverageJson  Json
-  automationRiskJson    Json
-  degradedModeJson      Json
-  rollbackPlanJson      Json
-  postmortemJson        Json
-  leadershipSummary     String    @db.Text
-  actionQueueItemId     String?
-  resolvedAt            DateTime?
-  resolutionNote        String?   @db.Text
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  id                   String    @id @default(cuid())
+  tenantId             String
+  createdByUserId      String?
+  resolvedByUserId     String?
+  title                String
+  status               String    @default("OPEN") @db.VarChar(32)
+  severity             String    @default("MEDIUM") @db.VarChar(16)
+  healthScore          Int       @default(0)
+  auditEventCount      Int       @default(0)
+  failureCount         Int       @default(0)
+  driftSignalCount     Int       @default(0)
+  evidenceGapCount     Int       @default(0)
+  automationRiskCount  Int       @default(0)
+  healthSnapshotJson   Json
+  failureSignalJson    Json
+  driftSignalJson      Json
+  evidenceCoverageJson Json
+  automationRiskJson   Json
+  degradedModeJson     Json
+  rollbackPlanJson     Json
+  postmortemJson       Json
+  leadershipSummary    String    @db.Text
+  actionQueueItemId    String?
+  resolvedAt           DateTime?
+  resolutionNote       String?   @db.Text
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   creator  User?  @relation("AssistantObservabilityIncidentCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
@@ -792,31 +793,31 @@ model AssistantObservabilityIncident {
 
 /// AMP29: enterprise assistant data governance packet for retention, privacy export, legal hold, and deletion review.
 model AssistantGovernancePacket {
-  id                    String    @id @default(cuid())
-  tenantId              String
-  createdByUserId       String?
-  approvedByUserId      String?
-  title                 String
-  status                String    @default("DRAFT") @db.VarChar(32)
-  governanceScore       Int       @default(0)
-  retentionCandidateCount Int     @default(0)
-  exportRecordCount     Int       @default(0)
-  deletionRequestCount  Int       @default(0)
-  legalHoldBlockCount   Int       @default(0)
-  privacyRiskCount      Int       @default(0)
-  sourceSummaryJson     Json
-  retentionPlanJson     Json
-  exportManifestJson    Json
-  deletionRequestJson   Json
-  legalHoldJson         Json
-  privacyReviewJson     Json
-  auditPlanJson         Json
-  leadershipSummary     String    @db.Text
-  actionQueueItemId     String?
-  approvedAt            DateTime?
-  approvalNote          String?   @db.Text
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  id                      String    @id @default(cuid())
+  tenantId                String
+  createdByUserId         String?
+  approvedByUserId        String?
+  title                   String
+  status                  String    @default("DRAFT") @db.VarChar(32)
+  governanceScore         Int       @default(0)
+  retentionCandidateCount Int       @default(0)
+  exportRecordCount       Int       @default(0)
+  deletionRequestCount    Int       @default(0)
+  legalHoldBlockCount     Int       @default(0)
+  privacyRiskCount        Int       @default(0)
+  sourceSummaryJson       Json
+  retentionPlanJson       Json
+  exportManifestJson      Json
+  deletionRequestJson     Json
+  legalHoldJson           Json
+  privacyReviewJson       Json
+  auditPlanJson           Json
+  leadershipSummary       String    @db.Text
+  actionQueueItemId       String?
+  approvedAt              DateTime?
+  approvalNote            String?   @db.Text
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
 
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   creator  User?  @relation("AssistantGovernancePacketCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
@@ -865,32 +866,32 @@ model AssistantRolloutFactoryPacket {
 
 /// AMP31: AI product analytics and value realization packet for adoption, savings, service impact, and ROI reporting.
 model AssistantValueRealizationPacket {
-  id                    String    @id @default(cuid())
-  tenantId              String
-  createdByUserId       String?
-  approvedByUserId      String?
-  title                 String
-  status                String    @default("DRAFT") @db.VarChar(32)
-  valueScore            Int       @default(0)
-  adoptionScore         Int       @default(0)
-  totalEstimatedValue   Decimal   @default(0) @db.Decimal(18, 4)
-  automationSavings     Decimal   @default(0) @db.Decimal(18, 4)
-  recoveredValue        Decimal   @default(0) @db.Decimal(18, 4)
-  avoidedCost           Decimal   @default(0) @db.Decimal(18, 4)
-  roiPct                Int       @default(0)
-  adoptionFunnelJson    Json
-  valueAttributionJson  Json
-  savingsJson           Json
-  serviceImpactJson     Json
-  cohortJson            Json
-  roiAssumptionJson     Json
-  exportReportJson      Json
-  leadershipSummary     String    @db.Text
-  actionQueueItemId     String?
-  approvedAt            DateTime?
-  approvalNote          String?   @db.Text
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  id                   String    @id @default(cuid())
+  tenantId             String
+  createdByUserId      String?
+  approvedByUserId     String?
+  title                String
+  status               String    @default("DRAFT") @db.VarChar(32)
+  valueScore           Int       @default(0)
+  adoptionScore        Int       @default(0)
+  totalEstimatedValue  Decimal   @default(0) @db.Decimal(18, 4)
+  automationSavings    Decimal   @default(0) @db.Decimal(18, 4)
+  recoveredValue       Decimal   @default(0) @db.Decimal(18, 4)
+  avoidedCost          Decimal   @default(0) @db.Decimal(18, 4)
+  roiPct               Int       @default(0)
+  adoptionFunnelJson   Json
+  valueAttributionJson Json
+  savingsJson          Json
+  serviceImpactJson    Json
+  cohortJson           Json
+  roiAssumptionJson    Json
+  exportReportJson     Json
+  leadershipSummary    String    @db.Text
+  actionQueueItemId    String?
+  approvedAt           DateTime?
+  approvalNote         String?   @db.Text
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   creator  User?  @relation("AssistantValueRealizationPacketCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
@@ -1019,32 +1020,32 @@ model AssistantSimulationStudioPacket {
 
 /// AMP35: continuous planning control tower packet for plan-vs-actual health, replanning triggers, and approval-gated recovery.
 model AssistantContinuousPlanningPacket {
-  id                    String    @id @default(cuid())
-  tenantId              String
-  createdByUserId       String?
-  approvedByUserId      String?
-  title                 String
-  status                String    @default("DRAFT") @db.VarChar(32)
-  planHealthScore       Int       @default(0)
-  replanningTriggerCount Int      @default(0)
-  demandVariancePct     Int       @default(0)
-  supplyCoveragePct     Int       @default(0)
-  inventoryCoveragePct  Int       @default(0)
-  transportRiskCount    Int       @default(0)
-  recoveryActionCount   Int       @default(0)
-  controlSnapshotJson   Json
-  varianceJson          Json
-  triggerJson           Json
-  recoveryPlanJson      Json
-  ownerWorkJson         Json
-  approvalPlanJson      Json
-  rollbackPlanJson      Json
-  leadershipSummary     String    @db.Text
-  actionQueueItemId     String?
-  approvedAt            DateTime?
-  approvalNote          String?   @db.Text
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  id                     String    @id @default(cuid())
+  tenantId               String
+  createdByUserId        String?
+  approvedByUserId       String?
+  title                  String
+  status                 String    @default("DRAFT") @db.VarChar(32)
+  planHealthScore        Int       @default(0)
+  replanningTriggerCount Int       @default(0)
+  demandVariancePct      Int       @default(0)
+  supplyCoveragePct      Int       @default(0)
+  inventoryCoveragePct   Int       @default(0)
+  transportRiskCount     Int       @default(0)
+  recoveryActionCount    Int       @default(0)
+  controlSnapshotJson    Json
+  varianceJson           Json
+  triggerJson            Json
+  recoveryPlanJson       Json
+  ownerWorkJson          Json
+  approvalPlanJson       Json
+  rollbackPlanJson       Json
+  leadershipSummary      String    @db.Text
+  actionQueueItemId      String?
+  approvedAt             DateTime?
+  approvalNote           String?   @db.Text
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
 
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   creator  User?  @relation("AssistantContinuousPlanningPacketCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
@@ -1057,32 +1058,32 @@ model AssistantContinuousPlanningPacket {
 
 /// AMP36: quote-to-contract revenue operations packet for commercial approval, fulfillment feasibility, and contract handoff.
 model AssistantRevenueOperationsPacket {
-  id                    String    @id @default(cuid())
-  tenantId              String
-  createdByUserId       String?
-  approvedByUserId      String?
-  title                 String
-  status                String    @default("DRAFT") @db.VarChar(32)
-  revenueScore          Int       @default(0)
-  quoteCount            Int       @default(0)
-  opportunityCount      Int       @default(0)
-  feasibilityRiskCount  Int       @default(0)
-  pricingRiskCount      Int       @default(0)
-  approvalStepCount     Int       @default(0)
-  selectedQuoteId       String?
+  id                     String    @id @default(cuid())
+  tenantId               String
+  createdByUserId        String?
+  approvedByUserId       String?
+  title                  String
+  status                 String    @default("DRAFT") @db.VarChar(32)
+  revenueScore           Int       @default(0)
+  quoteCount             Int       @default(0)
+  opportunityCount       Int       @default(0)
+  feasibilityRiskCount   Int       @default(0)
+  pricingRiskCount       Int       @default(0)
+  approvalStepCount      Int       @default(0)
+  selectedQuoteId        String?
   commercialSnapshotJson Json
-  feasibilityJson       Json
-  pricingEvidenceJson   Json
-  approvalRouteJson     Json
-  customerDraftJson     Json
-  contractHandoffJson   Json
-  rollbackPlanJson      Json
-  leadershipSummary     String    @db.Text
-  actionQueueItemId     String?
-  approvedAt            DateTime?
-  approvalNote          String?   @db.Text
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  feasibilityJson        Json
+  pricingEvidenceJson    Json
+  approvalRouteJson      Json
+  customerDraftJson      Json
+  contractHandoffJson    Json
+  rollbackPlanJson       Json
+  leadershipSummary      String    @db.Text
+  actionQueueItemId      String?
+  approvedAt             DateTime?
+  approvalNote           String?   @db.Text
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
 
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   creator  User?  @relation("AssistantRevenueOperationsPacketCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
@@ -1133,32 +1134,32 @@ model AssistantAdvancedProgramPacket {
 
 /// Sprint 1: durable agent governance packet for registry, tool scope, prompt/memory policy, observability, and certification review.
 model AssistantAgentGovernancePacket {
-  id                    String    @id @default(cuid())
-  tenantId              String
-  createdByUserId       String?
-  certifiedByUserId     String?
-  title                 String
-  status                String    @default("DRAFT") @db.VarChar(32)
-  governanceScore       Int       @default(0)
-  agentCount            Int       @default(0)
-  highRiskAgentCount    Int       @default(0)
-  toolScopeCount        Int       @default(0)
-  promptAssetCount      Int       @default(0)
-  memoryPolicyCount     Int       @default(0)
-  observabilitySignalCount Int    @default(0)
-  agentRegistryJson     Json
-  toolScopeJson         Json
-  promptSupplyChainJson Json
-  memoryGovernanceJson  Json
-  observabilityJson     Json
-  certificationPlanJson Json
-  rollbackPlanJson      Json
-  leadershipSummary     String    @db.Text
-  actionQueueItemId     String?
-  certifiedAt           DateTime?
-  certificationNote     String?   @db.Text
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  id                       String    @id @default(cuid())
+  tenantId                 String
+  createdByUserId          String?
+  certifiedByUserId        String?
+  title                    String
+  status                   String    @default("DRAFT") @db.VarChar(32)
+  governanceScore          Int       @default(0)
+  agentCount               Int       @default(0)
+  highRiskAgentCount       Int       @default(0)
+  toolScopeCount           Int       @default(0)
+  promptAssetCount         Int       @default(0)
+  memoryPolicyCount        Int       @default(0)
+  observabilitySignalCount Int       @default(0)
+  agentRegistryJson        Json
+  toolScopeJson            Json
+  promptSupplyChainJson    Json
+  memoryGovernanceJson     Json
+  observabilityJson        Json
+  certificationPlanJson    Json
+  rollbackPlanJson         Json
+  leadershipSummary        String    @db.Text
+  actionQueueItemId        String?
+  certifiedAt              DateTime?
+  certificationNote        String?   @db.Text
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
 
   tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   creator   User?  @relation("AssistantAgentGovernancePacketCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
@@ -1166,6 +1167,44 @@ model AssistantAgentGovernancePacket {
 
   @@index([tenantId, status, updatedAt])
   @@index([tenantId, governanceScore, updatedAt])
+}
+
+/// Sprint 2: durable enterprise risk and controls packet for obligations, control tests, audit evidence, regulatory horizon, and external risk response.
+model AssistantEnterpriseRiskControlPacket {
+  id                      String    @id @default(cuid())
+  tenantId                String
+  createdByUserId         String?
+  approvedByUserId        String?
+  title                   String
+  status                  String    @default("DRAFT") @db.VarChar(32)
+  riskScore               Int       @default(0)
+  obligationCount         Int       @default(0)
+  controlGapCount         Int       @default(0)
+  auditEvidenceCount      Int       @default(0)
+  contractRiskCount       Int       @default(0)
+  externalRiskCount       Int       @default(0)
+  sourceSummaryJson       Json
+  obligationGraphJson     Json
+  controlTestingJson      Json
+  auditEvidenceJson       Json
+  contractPerformanceJson Json
+  regulatoryHorizonJson   Json
+  externalRiskJson        Json
+  responsePlanJson        Json
+  rollbackPlanJson        Json
+  leadershipSummary       String    @db.Text
+  actionQueueItemId       String?
+  approvedAt              DateTime?
+  approvalNote            String?   @db.Text
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator  User?  @relation("AssistantEnterpriseRiskControlPacketCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  approver User?  @relation("AssistantEnterpriseRiskControlPacketApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, updatedAt])
+  @@index([tenantId, riskScore, updatedAt])
 }
 
 /// AMP7: inspectable grounding ledger extracted from assistant answers and reviewer additions.
@@ -1690,148 +1729,150 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  tenant                                  Tenant                            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  userRoles                               UserRole[]
-  orderChats                              OrderChatMessage[]
-  purchaseOrders                          PurchaseOrder[]
-  salesOrdersCreated                      SalesOrder[]
-  salesOrdersAssistantReviewed            SalesOrder[]                      @relation("SalesOrderAssistantReviewedBy")
-  orderTransitionLogs                     OrderTransitionLog[]
-  splitProposals                          SplitProposal[]
-  shipmentsCreated                        Shipment[]
-  shipmentBookingsCreated                 ShipmentBooking[]                 @relation("ShipmentBookingCreatedBy")
-  shipmentBookingsUpdated                 ShipmentBooking[]                 @relation("ShipmentBookingUpdatedBy")
-  shipmentMilestonesUpdated               ShipmentMilestone[]
-  inventoryMovementsCreated               InventoryMovement[]
-  wmsTasksCreated                         WmsTask[]                         @relation("WmsTaskCreatedBy")
-  wmsTasksCompleted                       WmsTask[]                         @relation("WmsTaskCompletedBy")
-  wmsWavesCreated                         WmsWave[]
-  outboundOrdersCreated                   OutboundOrder[]
-  loadPlansCreated                        LoadPlan[]
-  preferences                             UserPreference[]
-  crmLeadsOwned                           CrmLead[]                         @relation("CrmLeadOwner")
-  crmAccountsOwned                        CrmAccount[]                      @relation("CrmAccountOwner")
-  crmContactsOwned                        CrmContact[]                      @relation("CrmContactOwner")
-  crmOpportunitiesOwned                   CrmOpportunity[]                  @relation("CrmOpportunityOwner")
-  crmActivitiesOwned                      CrmActivity[]                     @relation("CrmActivityOwner")
-  crmQuotesOwned                          CrmQuote[]                        @relation("CrmQuoteOwner")
-  wmsBillingInvoiceRunsCreated            WmsBillingInvoiceRun[]            @relation("WmsBillingInvoiceRunCreatedBy")
-  ctTrackingMilestonesUpdated             CtTrackingMilestone[]
-  ctShipmentDocumentsUploaded             CtShipmentDocument[]
-  ctShipmentNotesCreated                  CtShipmentNote[]
-  ctFinancialSnapshotsCreated             CtShipmentFinancialSnapshot[]
-  ctAlertsOwned                           CtAlert[]                         @relation("CtAlertOwner")
-  ctAlertsAcknowledged                    CtAlert[]                         @relation("CtAlertAckBy")
-  ctExceptionsOwned                       CtException[]                     @relation("CtExceptionOwner")
-  ctAuditLogsActor                        CtAuditLog[]
-  ctSavedFilters                          CtSavedFilter[]
-  ctSavedReports                          CtSavedReport[]
-  ctDashboardWidgets                      CtDashboardWidget[]
-  ctReportSchedules                       CtReportSchedule[]
-  ctShipmentCostLinesCreated              CtShipmentCostLine[]
-  shipmentsOpsAssigned                    Shipment[]                        @relation("ShipmentOpsAssignee")
+  tenant                                        Tenant                                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userRoles                                     UserRole[]
+  orderChats                                    OrderChatMessage[]
+  purchaseOrders                                PurchaseOrder[]
+  salesOrdersCreated                            SalesOrder[]
+  salesOrdersAssistantReviewed                  SalesOrder[]                           @relation("SalesOrderAssistantReviewedBy")
+  orderTransitionLogs                           OrderTransitionLog[]
+  splitProposals                                SplitProposal[]
+  shipmentsCreated                              Shipment[]
+  shipmentBookingsCreated                       ShipmentBooking[]                      @relation("ShipmentBookingCreatedBy")
+  shipmentBookingsUpdated                       ShipmentBooking[]                      @relation("ShipmentBookingUpdatedBy")
+  shipmentMilestonesUpdated                     ShipmentMilestone[]
+  inventoryMovementsCreated                     InventoryMovement[]
+  wmsTasksCreated                               WmsTask[]                              @relation("WmsTaskCreatedBy")
+  wmsTasksCompleted                             WmsTask[]                              @relation("WmsTaskCompletedBy")
+  wmsWavesCreated                               WmsWave[]
+  outboundOrdersCreated                         OutboundOrder[]
+  loadPlansCreated                              LoadPlan[]
+  preferences                                   UserPreference[]
+  crmLeadsOwned                                 CrmLead[]                              @relation("CrmLeadOwner")
+  crmAccountsOwned                              CrmAccount[]                           @relation("CrmAccountOwner")
+  crmContactsOwned                              CrmContact[]                           @relation("CrmContactOwner")
+  crmOpportunitiesOwned                         CrmOpportunity[]                       @relation("CrmOpportunityOwner")
+  crmActivitiesOwned                            CrmActivity[]                          @relation("CrmActivityOwner")
+  crmQuotesOwned                                CrmQuote[]                             @relation("CrmQuoteOwner")
+  wmsBillingInvoiceRunsCreated                  WmsBillingInvoiceRun[]                 @relation("WmsBillingInvoiceRunCreatedBy")
+  ctTrackingMilestonesUpdated                   CtTrackingMilestone[]
+  ctShipmentDocumentsUploaded                   CtShipmentDocument[]
+  ctShipmentNotesCreated                        CtShipmentNote[]
+  ctFinancialSnapshotsCreated                   CtShipmentFinancialSnapshot[]
+  ctAlertsOwned                                 CtAlert[]                              @relation("CtAlertOwner")
+  ctAlertsAcknowledged                          CtAlert[]                              @relation("CtAlertAckBy")
+  ctExceptionsOwned                             CtException[]                          @relation("CtExceptionOwner")
+  ctAuditLogsActor                              CtAuditLog[]
+  ctSavedFilters                                CtSavedFilter[]
+  ctSavedReports                                CtSavedReport[]
+  ctDashboardWidgets                            CtDashboardWidget[]
+  ctReportSchedules                             CtReportSchedule[]
+  ctShipmentCostLinesCreated                    CtShipmentCostLine[]
+  shipmentsOpsAssigned                          Shipment[]                             @relation("ShipmentOpsAssignee")
   /// When set, Control Tower (and similar) list/detail is limited to shipments tagged with this CRM account.
-  customerCrmAccountId                    String?
-  customerCrmAccount                      CrmAccount?                       @relation("UserCustomerPortalScope", fields: [customerCrmAccountId], references: [id], onDelete: SetNull)
+  customerCrmAccountId                          String?
+  customerCrmAccount                            CrmAccount?                            @relation("UserCustomerPortalScope", fields: [customerCrmAccountId], references: [id], onDelete: SetNull)
   /// Phase H: supplier-portal user linked to the supplier org they represent (same tenant).
-  portalLinkedSupplierId                  String?
-  portalLinkedSupplier                    Supplier?                         @relation("UserPortalLinkedSupplier", fields: [portalLinkedSupplierId], references: [id], onDelete: SetNull)
-  tariffContractHeadersOwned              TariffContractHeader[]            @relation("TariffContractHeaderOwner")
-  tariffApprovalRecords                   TariffApprovalRecord[]            @relation("TariffApprovalApprover")
-  tariffAuditLogs                         TariffAuditLog[]                  @relation("TariffAuditLogActor")
-  quoteRequestsOwned                      QuoteRequest[]                    @relation("QuoteRequestOwner")
-  quoteClarificationsAuthored             QuoteClarificationMessage[]       @relation("QuoteClarificationAuthor")
-  transportationProcurementPlansCreated   TransportationProcurementPlan[]   @relation("TransportationProcurementPlanCreator")
-  bookingPricingSnapshotsCreated          BookingPricingSnapshot[]          @relation("BookingPricingSnapshotCreator")
-  invoiceIntakesCreated                   InvoiceIntake[]                   @relation("InvoiceIntakeCreator")
-  invoiceIntakesReviewed                  InvoiceIntake[]                   @relation("InvoiceIntakeReviewer")
-  apiHubConnectorAuditLogs                ApiHubConnectorAuditLog[]
-  apiHubIngestionRunsRequested            ApiHubIngestionRun[]
-  apiHubMappingTemplatesCreated           ApiHubMappingTemplate[]           @relation("ApiHubMappingTemplateCreatedBy")
-  apiHubMappingTemplateAuditLogs          ApiHubMappingTemplateAuditLog[]
-  apiHubIngestionRunAuditLogs             ApiHubIngestionRunAuditLog[]
-  apiHubMappingAnalysisJobsRequested      ApiHubMappingAnalysisJob[]
-  apiHubStagingBatchesCreated             ApiHubStagingBatch[]
-  apiHubAssistantReviewItemsCreated       ApiHubAssistantReviewItem[]       @relation("ApiHubAssistantReviewItemCreator")
-  assistantAdminControlsUpdated           AssistantAdminControl[]           @relation("AssistantAdminControlUpdater")
-  assistantOperatingReportsCreated        AssistantOperatingReport[]        @relation("AssistantOperatingReportCreator")
-  assistantOrderOrchestrationPlansCreated AssistantOrderOrchestrationPlan[] @relation("AssistantOrderOrchestrationPlanCreator")
-  assistantWarehouseCapacityPlansCreated  AssistantWarehouseCapacityPlan[]  @relation("AssistantWarehouseCapacityPlanCreator")
-  assistantExceptionIncidentsCreated      AssistantExceptionIncident[]      @relation("AssistantExceptionIncidentCreator")
-  assistantCustomerBriefsCreated          AssistantCustomerBrief[]          @relation("AssistantCustomerBriefCreator")
-  assistantCustomerBriefsApproved         AssistantCustomerBrief[]          @relation("AssistantCustomerBriefApprover")
-  assistantFinancePacketsCreated          AssistantFinancePacket[]          @relation("AssistantFinancePacketCreator")
-  assistantFinancePacketsApproved         AssistantFinancePacket[]          @relation("AssistantFinancePacketApprover")
-  assistantRiskWarRoomsCreated            AssistantRiskWarRoom[]            @relation("AssistantRiskWarRoomCreator")
-  assistantRiskWarRoomsApproved           AssistantRiskWarRoom[]            @relation("AssistantRiskWarRoomApprover")
-  assistantMasterDataQualityRunsCreated   AssistantMasterDataQualityRun[]   @relation("AssistantMasterDataQualityRunCreator")
-  assistantMasterDataQualityRunsApproved  AssistantMasterDataQualityRun[]   @relation("AssistantMasterDataQualityRunApprover")
-  assistantPlanningPacketsCreated         AssistantPlanningPacket[]         @relation("AssistantPlanningPacketCreator")
-  assistantPlanningPacketsApproved        AssistantPlanningPacket[]         @relation("AssistantPlanningPacketApprover")
-  assistantContractCompliancePacketsCreated  AssistantContractCompliancePacket[] @relation("AssistantContractCompliancePacketCreator")
-  assistantContractCompliancePacketsApproved AssistantContractCompliancePacket[] @relation("AssistantContractCompliancePacketApprover")
-  assistantSustainabilityPacketsCreated   AssistantSustainabilityPacket[]   @relation("AssistantSustainabilityPacketCreator")
-  assistantSustainabilityPacketsApproved  AssistantSustainabilityPacket[]   @relation("AssistantSustainabilityPacketApprover")
-  assistantPartnerEcosystemPacketsCreated AssistantPartnerEcosystemPacket[]  @relation("AssistantPartnerEcosystemPacketCreator")
-  assistantPartnerEcosystemPacketsApproved AssistantPartnerEcosystemPacket[] @relation("AssistantPartnerEcosystemPacketApprover")
-  assistantFrontlinePacketsCreated        AssistantFrontlinePacket[]         @relation("AssistantFrontlinePacketCreator")
-  assistantFrontlinePacketsApproved       AssistantFrontlinePacket[]         @relation("AssistantFrontlinePacketApprover")
-  assistantMeetingIntelligencePacketsCreated AssistantMeetingIntelligencePacket[] @relation("AssistantMeetingIntelligencePacketCreator")
-  assistantMeetingIntelligencePacketsApproved AssistantMeetingIntelligencePacket[] @relation("AssistantMeetingIntelligencePacketApprover")
-  assistantObservabilityIncidentsCreated  AssistantObservabilityIncident[]   @relation("AssistantObservabilityIncidentCreator")
-  assistantObservabilityIncidentsResolved AssistantObservabilityIncident[]   @relation("AssistantObservabilityIncidentResolver")
-  assistantGovernancePacketsCreated       AssistantGovernancePacket[]         @relation("AssistantGovernancePacketCreator")
-  assistantGovernancePacketsApproved      AssistantGovernancePacket[]         @relation("AssistantGovernancePacketApprover")
-  assistantRolloutFactoryPacketsCreated   AssistantRolloutFactoryPacket[]     @relation("AssistantRolloutFactoryPacketCreator")
-  assistantRolloutFactoryPacketsApproved  AssistantRolloutFactoryPacket[]     @relation("AssistantRolloutFactoryPacketApprover")
-  assistantValueRealizationPacketsCreated AssistantValueRealizationPacket[]   @relation("AssistantValueRealizationPacketCreator")
-  assistantValueRealizationPacketsApproved AssistantValueRealizationPacket[]  @relation("AssistantValueRealizationPacketApprover")
-  assistantAutonomousOperatingLoopsCreated AssistantAutonomousOperatingLoop[] @relation("AssistantAutonomousOperatingLoopCreator")
-  assistantAutonomousOperatingLoopsApproved AssistantAutonomousOperatingLoop[] @relation("AssistantAutonomousOperatingLoopApprover")
-  assistantNetworkDesignPacketsCreated AssistantNetworkDesignPacket[]        @relation("AssistantNetworkDesignPacketCreator")
-  assistantNetworkDesignPacketsApproved AssistantNetworkDesignPacket[]       @relation("AssistantNetworkDesignPacketApprover")
-  assistantSimulationStudioPacketsCreated AssistantSimulationStudioPacket[]   @relation("AssistantSimulationStudioPacketCreator")
-  assistantSimulationStudioPacketsApproved AssistantSimulationStudioPacket[]  @relation("AssistantSimulationStudioPacketApprover")
-  assistantContinuousPlanningPacketsCreated AssistantContinuousPlanningPacket[] @relation("AssistantContinuousPlanningPacketCreator")
-  assistantContinuousPlanningPacketsApproved AssistantContinuousPlanningPacket[] @relation("AssistantContinuousPlanningPacketApprover")
-  assistantRevenueOperationsPacketsCreated AssistantRevenueOperationsPacket[] @relation("AssistantRevenueOperationsPacketCreator")
-  assistantRevenueOperationsPacketsApproved AssistantRevenueOperationsPacket[] @relation("AssistantRevenueOperationsPacketApprover")
-  assistantAdvancedProgramPacketsCreated AssistantAdvancedProgramPacket[]    @relation("AssistantAdvancedProgramPacketCreator")
-  assistantAdvancedProgramPacketsApproved AssistantAdvancedProgramPacket[]   @relation("AssistantAdvancedProgramPacketApprover")
-  assistantAgentGovernancePacketsCreated AssistantAgentGovernancePacket[]    @relation("AssistantAgentGovernancePacketCreator")
-  assistantAgentGovernancePacketsCertified AssistantAgentGovernancePacket[]  @relation("AssistantAgentGovernancePacketCertifier")
-  invoiceIntakesAccountingApproved        InvoiceIntake[]                   @relation("InvoiceIntakeAccountingApprover")
-  tariffShipmentApplicationsCreated       TariffShipmentApplication[]       @relation("TariffShipmentApplicationCreator")
-  scriEventsOwned                         ScriExternalEvent[]               @relation("ScriEventOwner")
-  supplyChainTwinAssistantInsightsCreated SupplyChainTwinAssistantInsight[] @relation("SupplyChainTwinAssistantInsightCreator")
-  scriReviewLogsAuthored                  ScriEventReviewLog[]              @relation("ScriReviewLogActor")
-  scriTaskLinksCreated                    ScriEventTaskLink[]               @relation("ScriTaskLinkCreatedBy")
-  scriTuningAutomationActorOf             ScriTenantTuning[]                @relation("ScriTuningAutomationActor")
-  supplierOnboardingTasksAssigned         SupplierOnboardingTask[]          @relation("SupplierOnboardingTaskAssignee")
-  srmOperatorNotificationsReceived        SrmOperatorNotification[]         @relation("SrmOperatorNotificationRecipient")
-  srmOperatorNotificationsAsActor         SrmOperatorNotification[]         @relation("SrmOperatorNotificationActor")
-  srmDocumentsUploaded                    SrmSupplierDocument[]             @relation("SrmSupplierDocumentUploadedBy")
-  srmDocumentsLastTouched                 SrmSupplierDocument[]             @relation("SrmSupplierDocumentLastTouchedBy")
-  srmSupplierDocumentAuditAuthored        SrmSupplierDocumentAuditLog[]     @relation("SrmSupplierDocumentAuditActor")
-  companyLegalEntityAudits                CompanyLegalEntityAuditLog[]
-  wmsSavedLedgerViews                     WmsSavedLedgerView[]
-  assistantEmailSendConfirms              AssistantEmailThread[]            @relation("AssistantEmailSendConfirmBy")
-  assistantAuditEvents                    AssistantAuditEvent[]             @relation("AssistantAuditEventActor")
-  assistantEvidenceRecordsCreated         AssistantEvidenceRecord[]         @relation("AssistantEvidenceRecordCreator")
-  assistantReviewExamplesReviewed         AssistantReviewExample[]          @relation("AssistantReviewExampleReviewer")
-  assistantPromptLibraryItemsCreated      AssistantPromptLibraryItem[]      @relation("AssistantPromptLibraryItemCreator")
-  assistantReleaseGatesEvaluated          AssistantReleaseGate[]            @relation("AssistantReleaseGateEvaluator")
-  assistantAutomationPoliciesEnabled      AssistantAutomationPolicy[]       @relation("AssistantAutomationPolicyEnabledBy")
-  assistantActionQueueItems               AssistantActionQueueItem[]        @relation("AssistantActionQueueActor")
-  assistantActionQueueOwned               AssistantActionQueueItem[]        @relation("AssistantActionQueueOwner")
-  assistantPlaybookTemplatesCreated       AssistantPlaybookTemplate[]       @relation("AssistantPlaybookTemplateCreator")
-  assistantPlaybookRuns                   AssistantPlaybookRun[]            @relation("AssistantPlaybookRunActor")
-  assistantPlaybookRunsOwned              AssistantPlaybookRun[]            @relation("AssistantPlaybookRunOwner")
-  passwordResetTokens                     PasswordResetToken[]
+  portalLinkedSupplierId                        String?
+  portalLinkedSupplier                          Supplier?                              @relation("UserPortalLinkedSupplier", fields: [portalLinkedSupplierId], references: [id], onDelete: SetNull)
+  tariffContractHeadersOwned                    TariffContractHeader[]                 @relation("TariffContractHeaderOwner")
+  tariffApprovalRecords                         TariffApprovalRecord[]                 @relation("TariffApprovalApprover")
+  tariffAuditLogs                               TariffAuditLog[]                       @relation("TariffAuditLogActor")
+  quoteRequestsOwned                            QuoteRequest[]                         @relation("QuoteRequestOwner")
+  quoteClarificationsAuthored                   QuoteClarificationMessage[]            @relation("QuoteClarificationAuthor")
+  transportationProcurementPlansCreated         TransportationProcurementPlan[]        @relation("TransportationProcurementPlanCreator")
+  bookingPricingSnapshotsCreated                BookingPricingSnapshot[]               @relation("BookingPricingSnapshotCreator")
+  invoiceIntakesCreated                         InvoiceIntake[]                        @relation("InvoiceIntakeCreator")
+  invoiceIntakesReviewed                        InvoiceIntake[]                        @relation("InvoiceIntakeReviewer")
+  apiHubConnectorAuditLogs                      ApiHubConnectorAuditLog[]
+  apiHubIngestionRunsRequested                  ApiHubIngestionRun[]
+  apiHubMappingTemplatesCreated                 ApiHubMappingTemplate[]                @relation("ApiHubMappingTemplateCreatedBy")
+  apiHubMappingTemplateAuditLogs                ApiHubMappingTemplateAuditLog[]
+  apiHubIngestionRunAuditLogs                   ApiHubIngestionRunAuditLog[]
+  apiHubMappingAnalysisJobsRequested            ApiHubMappingAnalysisJob[]
+  apiHubStagingBatchesCreated                   ApiHubStagingBatch[]
+  apiHubAssistantReviewItemsCreated             ApiHubAssistantReviewItem[]            @relation("ApiHubAssistantReviewItemCreator")
+  assistantAdminControlsUpdated                 AssistantAdminControl[]                @relation("AssistantAdminControlUpdater")
+  assistantOperatingReportsCreated              AssistantOperatingReport[]             @relation("AssistantOperatingReportCreator")
+  assistantOrderOrchestrationPlansCreated       AssistantOrderOrchestrationPlan[]      @relation("AssistantOrderOrchestrationPlanCreator")
+  assistantWarehouseCapacityPlansCreated        AssistantWarehouseCapacityPlan[]       @relation("AssistantWarehouseCapacityPlanCreator")
+  assistantExceptionIncidentsCreated            AssistantExceptionIncident[]           @relation("AssistantExceptionIncidentCreator")
+  assistantCustomerBriefsCreated                AssistantCustomerBrief[]               @relation("AssistantCustomerBriefCreator")
+  assistantCustomerBriefsApproved               AssistantCustomerBrief[]               @relation("AssistantCustomerBriefApprover")
+  assistantFinancePacketsCreated                AssistantFinancePacket[]               @relation("AssistantFinancePacketCreator")
+  assistantFinancePacketsApproved               AssistantFinancePacket[]               @relation("AssistantFinancePacketApprover")
+  assistantRiskWarRoomsCreated                  AssistantRiskWarRoom[]                 @relation("AssistantRiskWarRoomCreator")
+  assistantRiskWarRoomsApproved                 AssistantRiskWarRoom[]                 @relation("AssistantRiskWarRoomApprover")
+  assistantMasterDataQualityRunsCreated         AssistantMasterDataQualityRun[]        @relation("AssistantMasterDataQualityRunCreator")
+  assistantMasterDataQualityRunsApproved        AssistantMasterDataQualityRun[]        @relation("AssistantMasterDataQualityRunApprover")
+  assistantPlanningPacketsCreated               AssistantPlanningPacket[]              @relation("AssistantPlanningPacketCreator")
+  assistantPlanningPacketsApproved              AssistantPlanningPacket[]              @relation("AssistantPlanningPacketApprover")
+  assistantContractCompliancePacketsCreated     AssistantContractCompliancePacket[]    @relation("AssistantContractCompliancePacketCreator")
+  assistantContractCompliancePacketsApproved    AssistantContractCompliancePacket[]    @relation("AssistantContractCompliancePacketApprover")
+  assistantSustainabilityPacketsCreated         AssistantSustainabilityPacket[]        @relation("AssistantSustainabilityPacketCreator")
+  assistantSustainabilityPacketsApproved        AssistantSustainabilityPacket[]        @relation("AssistantSustainabilityPacketApprover")
+  assistantPartnerEcosystemPacketsCreated       AssistantPartnerEcosystemPacket[]      @relation("AssistantPartnerEcosystemPacketCreator")
+  assistantPartnerEcosystemPacketsApproved      AssistantPartnerEcosystemPacket[]      @relation("AssistantPartnerEcosystemPacketApprover")
+  assistantFrontlinePacketsCreated              AssistantFrontlinePacket[]             @relation("AssistantFrontlinePacketCreator")
+  assistantFrontlinePacketsApproved             AssistantFrontlinePacket[]             @relation("AssistantFrontlinePacketApprover")
+  assistantMeetingIntelligencePacketsCreated    AssistantMeetingIntelligencePacket[]   @relation("AssistantMeetingIntelligencePacketCreator")
+  assistantMeetingIntelligencePacketsApproved   AssistantMeetingIntelligencePacket[]   @relation("AssistantMeetingIntelligencePacketApprover")
+  assistantObservabilityIncidentsCreated        AssistantObservabilityIncident[]       @relation("AssistantObservabilityIncidentCreator")
+  assistantObservabilityIncidentsResolved       AssistantObservabilityIncident[]       @relation("AssistantObservabilityIncidentResolver")
+  assistantGovernancePacketsCreated             AssistantGovernancePacket[]            @relation("AssistantGovernancePacketCreator")
+  assistantGovernancePacketsApproved            AssistantGovernancePacket[]            @relation("AssistantGovernancePacketApprover")
+  assistantRolloutFactoryPacketsCreated         AssistantRolloutFactoryPacket[]        @relation("AssistantRolloutFactoryPacketCreator")
+  assistantRolloutFactoryPacketsApproved        AssistantRolloutFactoryPacket[]        @relation("AssistantRolloutFactoryPacketApprover")
+  assistantValueRealizationPacketsCreated       AssistantValueRealizationPacket[]      @relation("AssistantValueRealizationPacketCreator")
+  assistantValueRealizationPacketsApproved      AssistantValueRealizationPacket[]      @relation("AssistantValueRealizationPacketApprover")
+  assistantAutonomousOperatingLoopsCreated      AssistantAutonomousOperatingLoop[]     @relation("AssistantAutonomousOperatingLoopCreator")
+  assistantAutonomousOperatingLoopsApproved     AssistantAutonomousOperatingLoop[]     @relation("AssistantAutonomousOperatingLoopApprover")
+  assistantNetworkDesignPacketsCreated          AssistantNetworkDesignPacket[]         @relation("AssistantNetworkDesignPacketCreator")
+  assistantNetworkDesignPacketsApproved         AssistantNetworkDesignPacket[]         @relation("AssistantNetworkDesignPacketApprover")
+  assistantSimulationStudioPacketsCreated       AssistantSimulationStudioPacket[]      @relation("AssistantSimulationStudioPacketCreator")
+  assistantSimulationStudioPacketsApproved      AssistantSimulationStudioPacket[]      @relation("AssistantSimulationStudioPacketApprover")
+  assistantContinuousPlanningPacketsCreated     AssistantContinuousPlanningPacket[]    @relation("AssistantContinuousPlanningPacketCreator")
+  assistantContinuousPlanningPacketsApproved    AssistantContinuousPlanningPacket[]    @relation("AssistantContinuousPlanningPacketApprover")
+  assistantRevenueOperationsPacketsCreated      AssistantRevenueOperationsPacket[]     @relation("AssistantRevenueOperationsPacketCreator")
+  assistantRevenueOperationsPacketsApproved     AssistantRevenueOperationsPacket[]     @relation("AssistantRevenueOperationsPacketApprover")
+  assistantAdvancedProgramPacketsCreated        AssistantAdvancedProgramPacket[]       @relation("AssistantAdvancedProgramPacketCreator")
+  assistantAdvancedProgramPacketsApproved       AssistantAdvancedProgramPacket[]       @relation("AssistantAdvancedProgramPacketApprover")
+  assistantAgentGovernancePacketsCreated        AssistantAgentGovernancePacket[]       @relation("AssistantAgentGovernancePacketCreator")
+  assistantAgentGovernancePacketsCertified      AssistantAgentGovernancePacket[]       @relation("AssistantAgentGovernancePacketCertifier")
+  assistantEnterpriseRiskControlPacketsCreated  AssistantEnterpriseRiskControlPacket[] @relation("AssistantEnterpriseRiskControlPacketCreator")
+  assistantEnterpriseRiskControlPacketsApproved AssistantEnterpriseRiskControlPacket[] @relation("AssistantEnterpriseRiskControlPacketApprover")
+  invoiceIntakesAccountingApproved              InvoiceIntake[]                        @relation("InvoiceIntakeAccountingApprover")
+  tariffShipmentApplicationsCreated             TariffShipmentApplication[]            @relation("TariffShipmentApplicationCreator")
+  scriEventsOwned                               ScriExternalEvent[]                    @relation("ScriEventOwner")
+  supplyChainTwinAssistantInsightsCreated       SupplyChainTwinAssistantInsight[]      @relation("SupplyChainTwinAssistantInsightCreator")
+  scriReviewLogsAuthored                        ScriEventReviewLog[]                   @relation("ScriReviewLogActor")
+  scriTaskLinksCreated                          ScriEventTaskLink[]                    @relation("ScriTaskLinkCreatedBy")
+  scriTuningAutomationActorOf                   ScriTenantTuning[]                     @relation("ScriTuningAutomationActor")
+  supplierOnboardingTasksAssigned               SupplierOnboardingTask[]               @relation("SupplierOnboardingTaskAssignee")
+  srmOperatorNotificationsReceived              SrmOperatorNotification[]              @relation("SrmOperatorNotificationRecipient")
+  srmOperatorNotificationsAsActor               SrmOperatorNotification[]              @relation("SrmOperatorNotificationActor")
+  srmDocumentsUploaded                          SrmSupplierDocument[]                  @relation("SrmSupplierDocumentUploadedBy")
+  srmDocumentsLastTouched                       SrmSupplierDocument[]                  @relation("SrmSupplierDocumentLastTouchedBy")
+  srmSupplierDocumentAuditAuthored              SrmSupplierDocumentAuditLog[]          @relation("SrmSupplierDocumentAuditActor")
+  companyLegalEntityAudits                      CompanyLegalEntityAuditLog[]
+  wmsSavedLedgerViews                           WmsSavedLedgerView[]
+  assistantEmailSendConfirms                    AssistantEmailThread[]                 @relation("AssistantEmailSendConfirmBy")
+  assistantAuditEvents                          AssistantAuditEvent[]                  @relation("AssistantAuditEventActor")
+  assistantEvidenceRecordsCreated               AssistantEvidenceRecord[]              @relation("AssistantEvidenceRecordCreator")
+  assistantReviewExamplesReviewed               AssistantReviewExample[]               @relation("AssistantReviewExampleReviewer")
+  assistantPromptLibraryItemsCreated            AssistantPromptLibraryItem[]           @relation("AssistantPromptLibraryItemCreator")
+  assistantReleaseGatesEvaluated                AssistantReleaseGate[]                 @relation("AssistantReleaseGateEvaluator")
+  assistantAutomationPoliciesEnabled            AssistantAutomationPolicy[]            @relation("AssistantAutomationPolicyEnabledBy")
+  assistantActionQueueItems                     AssistantActionQueueItem[]             @relation("AssistantActionQueueActor")
+  assistantActionQueueOwned                     AssistantActionQueueItem[]             @relation("AssistantActionQueueOwner")
+  assistantPlaybookTemplatesCreated             AssistantPlaybookTemplate[]            @relation("AssistantPlaybookTemplateCreator")
+  assistantPlaybookRuns                         AssistantPlaybookRun[]                 @relation("AssistantPlaybookRunActor")
+  assistantPlaybookRunsOwned                    AssistantPlaybookRun[]                 @relation("AssistantPlaybookRunOwner")
+  passwordResetTokens                           PasswordResetToken[]
   /// Primary org node (geography / legal hierarchy). Matrix: see `productDivisionScope`.
-  primaryOrgUnitId                        String?
-  primaryOrgUnit                          OrgUnit?                          @relation("UserPrimaryOrgUnit", fields: [primaryOrgUnitId], references: [id], onDelete: SetNull)
-  productDivisionScope                    UserProductDivision[]
+  primaryOrgUnitId                              String?
+  primaryOrgUnit                                OrgUnit?                               @relation("UserPrimaryOrgUnit", fields: [primaryOrgUnitId], references: [id], onDelete: SetNull)
+  productDivisionScope                          UserProductDivision[]
 
   @@unique([tenantId, email])
   @@index([tenantId])
