@@ -1,0 +1,80 @@
+[
+  {
+    "id": "amp101-162-create-packets",
+    "title": "Create durable advanced program packets for AMP101 through AMP162",
+    "persona": "Enterprise operator reviewing agent, customer, ESG, risk, process, mobile, facility, finance, legal, and learning workflows",
+    "entrypoints": [
+      "/assistant/advanced-programs/multi-agent-orchestration",
+      "/assistant/advanced-programs/agent-reliability",
+      "/assistant/advanced-programs/tenant-health",
+      "/assistant/advanced-programs/connector-certification",
+      "/assistant/advanced-programs/sustainability-assurance",
+      "/assistant/advanced-programs/geopolitical-disruption",
+      "/assistant/advanced-programs/strategic-account-growth",
+      "/assistant/advanced-programs/procurement-savings",
+      "/assistant/advanced-programs/inventory-investment",
+      "/assistant/advanced-programs/board-investor-reporting",
+      "/assistant/advanced-programs/kaizen-ops",
+      "/assistant/advanced-programs/enterprise-search-quality",
+      "/assistant/advanced-programs/mobile-offline-resilience",
+      "/assistant/advanced-programs/facility-maintenance",
+      "/assistant/advanced-programs/tax-compliance",
+      "/assistant/advanced-programs/legal-disputes",
+      "/assistant/advanced-programs/enterprise-learning"
+    ],
+    "steps": [
+      "Open representative AMP101-AMP162 workspaces from the Assistant subnav.",
+      "Review source signals, risks, recommendations, artifact, approval route, and rollback controls.",
+      "Click Create AMP packet."
+    ],
+    "expected": [
+      "Each AMP101-AMP162 workspace persists an AssistantAdvancedProgramPacket row with a distinct ampNumber and programKey.",
+      "Each program has distinct title, nav label, artifact label, approval owners, and no-mutation scope.",
+      "The shared route and UI display the packet preview, historical packet list, review note, and queue-review action.",
+      "No agent, incident, tenant, connector, ESG, disruption, customer, procurement, inventory, executive reporting, process, AI, safety, facility, tax, treasury, insurance, legal, or enterprise learning records are mutated automatically."
+    ]
+  },
+  {
+    "id": "amp101-162-queue-review",
+    "title": "Queue human review for AMP101 through AMP162 packets",
+    "persona": "Domain owner",
+    "entrypoints": [
+      "/assistant/advanced-programs/multi-agent-orchestration",
+      "/assistant/advanced-programs/prompt-lifecycle",
+      "/assistant/advanced-programs/edge-ai",
+      "/assistant/advanced-programs/enterprise-learning"
+    ],
+    "steps": [
+      "Create or select a DRAFT packet.",
+      "Add a review note explaining the downstream decision under consideration.",
+      "Click Queue review."
+    ],
+    "expected": [
+      "The packet status changes to REVIEW_QUEUED and records actionQueueItemId, approvedByUserId, approvedAt, and approvalNote.",
+      "AssistantActionQueueItem uses an AMP-specific actionKind such as assistant_amp101_review or assistant_amp162_review.",
+      "AssistantAuditEvent states that downstream records were not changed automatically."
+    ]
+  },
+  {
+    "id": "amp101-162-learning-guardrails",
+    "title": "Enterprise learning and automation guardrails stay explicit",
+    "persona": "AI governance reviewer",
+    "entrypoints": [
+      "/assistant/advanced-programs/agent-reliability",
+      "/assistant/advanced-programs/model-risk",
+      "/assistant/advanced-programs/prompt-lifecycle",
+      "/assistant/advanced-programs/enterprise-learning"
+    ],
+    "steps": [
+      "Open an AMP101-AMP162 packet with active risks.",
+      "Inspect recommendationJson, approvalPlanJson, artifactJson, and rollbackPlanJson.",
+      "Queue review without executing downstream policy, prompt, model, playbook, or automation changes."
+    ],
+    "expected": [
+      "Recommendations require human approval before changing production assistant behavior.",
+      "Approval plans identify named owner groups for review.",
+      "Rollback plans preserve source records and require a fresh packet when evidence materially changes.",
+      "Enterprise learning remains review-only and does not self-modify policies, prompts, playbooks, or autonomy behavior."
+    ]
+  }
+]

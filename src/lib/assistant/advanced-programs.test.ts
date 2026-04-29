@@ -35,14 +35,16 @@ const signals: AdvancedProgramSignals = {
 };
 
 describe("advanced programs", () => {
-  it("defines AMP37 through AMP100 with requested AMP64-100 programs", () => {
+  it("defines AMP37 through AMP162 with requested AMP101-162 programs", () => {
     const configs = listAdvancedProgramConfigs();
 
-    expect(configs).toHaveLength(63);
+    expect(configs).toHaveLength(125);
     expect(configs[0]?.ampNumber).toBe(37);
     expect(configs[25]?.ampNumber).toBe(62);
     expect(configs[26]?.ampNumber).toBe(64);
     expect(configs[62]?.ampNumber).toBe(100);
+    expect(configs[63]?.ampNumber).toBe(101);
+    expect(configs[124]?.ampNumber).toBe(162);
   });
 
   it("builds a distinct packet with guardrails for category strategy", () => {
@@ -79,6 +81,15 @@ describe("advanced programs", () => {
     expect(packet.riskCount).toBeGreaterThan(0);
     expect(packet.approvalPlan.steps.map((step) => step.owner)).toContain("Operations manager");
     expect(packet.rollbackPlan.steps[0]).toContain("review queues");
+  });
+
+  it("builds enterprise learning packets with no self-modifying guardrails", () => {
+    const packet = buildAdvancedProgramPacket({ programKey: "enterprise-learning", signals });
+
+    expect(packet.ampNumber).toBe(162);
+    expect(packet.riskCount).toBeGreaterThan(0);
+    expect(packet.approvalPlan.steps.map((step) => step.owner)).toContain("AI quality");
+    expect(packet.rollbackPlan.steps[0]).toContain("autonomous behavior");
   });
 
   it("returns null for unknown program keys", () => {

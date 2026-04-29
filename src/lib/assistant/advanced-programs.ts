@@ -1,67 +1,4 @@
-export type AdvancedProgramKey =
-  | "aftermarket-service"
-  | "npi-readiness"
-  | "quality-capa"
-  | "trade-compliance"
-  | "landed-cost"
-  | "regulatory-obligations"
-  | "energy-utilities"
-  | "packaging-optimization"
-  | "manufacturing-coordination"
-  | "production-scheduling"
-  | "category-strategy"
-  | "spend-intelligence"
-  | "supplier-resilience"
-  | "workforce-enablement"
-  | "knowledge-sop"
-  | "document-intelligence"
-  | "vision-evidence"
-  | "iot-telemetry"
-  | "semantic-metrics"
-  | "extension-marketplace"
-  | "evaluation-lab"
-  | "security-dlp"
-  | "business-continuity"
-  | "autonomous-finance"
-  | "customer-ecosystem"
-  | "executive-cockpit"
-  | "capex-investment"
-  | "ma-integration"
-  | "divestiture-readiness"
-  | "ai-negotiation"
-  | "dynamic-pricing"
-  | "revenue-leakage"
-  | "warranty-claims"
-  | "reverse-logistics"
-  | "circular-economy"
-  | "supplier-innovation"
-  | "product-profitability"
-  | "customer-profitability"
-  | "carrier-performance"
-  | "port-congestion"
-  | "cold-chain"
-  | "hazmat-dg"
-  | "food-safety"
-  | "pharma-gxp"
-  | "aerospace-defense"
-  | "automotive-ppap"
-  | "retail-replenishment"
-  | "omnichannel-promise"
-  | "field-service"
-  | "project-logistics"
-  | "construction-supply"
-  | "healthcare-resilience"
-  | "public-procurement"
-  | "contingent-workforce"
-  | "risk-register"
-  | "internal-audit"
-  | "policy-waivers"
-  | "privacy-dsar"
-  | "data-residency"
-  | "model-risk"
-  | "prompt-lifecycle"
-  | "automation-policy"
-  | "human-review-ops";
+export type AdvancedProgramKey = string;
 
 export type AdvancedProgramSignals = {
   products: number;
@@ -1190,6 +1127,138 @@ export const ADVANCED_PROGRAMS: Record<AdvancedProgramKey, ProgramConfig> = {
     noMutation: "review queues, assignments, escalation rules, overrides, SLA policies, reviewer decisions, or quality feedback records",
   },
 };
+
+type ExtendedProgramSeed = {
+  ampNumber: number;
+  key: string;
+  navLabel: string;
+  title: string;
+  surfaceTitle: string;
+  artifactLabel: string;
+  approvalOwners: string[];
+  noMutation: string;
+  sourceLabels?: Array<keyof AdvancedProgramSignals>;
+};
+
+function makeExtendedProgram(seed: ExtendedProgramSeed): ProgramConfig {
+  const sourceLabels = seed.sourceLabels ?? ["auditEvents", "openActionItems", "evidenceRecords", "reviewExamples", "financeRiskScore"];
+  return {
+    ampNumber: seed.ampNumber,
+    key: seed.key,
+    slug: seed.key,
+    navLabel: seed.navLabel,
+    title: seed.title,
+    surfaceTitle: seed.surfaceTitle,
+    sourceLabels,
+    riskRules: [
+      {
+        key: `${seed.key}_review_backlog`,
+        label: `${seed.surfaceTitle} has open review work requiring owner approval`,
+        metric: "openActionItems",
+        threshold: 5,
+        direction: "gte",
+        severity: "HIGH",
+      },
+      {
+        key: `${seed.key}_evidence_gate`,
+        label: `${seed.surfaceTitle} needs reviewed evidence before downstream execution`,
+        metric: "reviewExamples",
+        threshold: 1,
+        direction: "lt",
+        severity: "MEDIUM",
+      },
+    ],
+    recommendations: [
+      `Create ${seed.artifactLabel} with source evidence, owners, risks, decisions, and rollback controls.`,
+      `Queue approval before changing ${seed.noMutation}.`,
+    ],
+    artifactLabel: seed.artifactLabel,
+    approvalOwners: seed.approvalOwners,
+    noMutation: seed.noMutation,
+  };
+}
+
+Object.assign(
+  ADVANCED_PROGRAMS,
+  Object.fromEntries(
+    [
+      ["101", "multi-agent-orchestration", "Agents", "Multi-agent orchestration program", "Multi-Agent Orchestration", "multi-agent handoff packet", "specialist agent contracts, task handoffs, supervision states, evidence exchange, or production actions", "AI supervisor", "Domain owner", "Control owner"],
+      ["102", "agent-reliability", "Reliability", "Agent reliability and incident learning program", "Agent Reliability & Incident Learning", "agent reliability incident packet", "incident status, postmortems, eval updates, release gates, corrective actions, or production assistant behavior", "AI reliability", "Incident owner", "AI quality"],
+      ["103", "tenant-health", "Tenant health", "Tenant health and adoption success program", "Tenant Health & Adoption Success", "tenant success health packet", "tenant configuration, role grants, module flags, success plans, adoption reports, or customer communications", "Customer success", "Admin", "Solution owner"],
+      ["104", "migration-planner", "Migration", "Implementation migration planner program", "Implementation Migration Planner", "migration readiness packet", "data imports, mappings, validation results, cutover states, tenant data, or rollback plans", "Implementation", "Data owner", "Customer success"],
+      ["105", "connector-certification", "Connectors", "Connector certification program", "Connector Certification", "connector certification packet", "connector settings, auth scopes, mappings, webhooks, retries, production enablement, or secrets", "Integration owner", "Security", "Operations"],
+      ["106", "partner-portal-governance", "Portal gov", "Partner portal governance program", "Partner Portal Governance", "partner portal launch packet", "partner access, portal tasks, document flows, messages, SLAs, launch status, or role grants", "Partner owner", "Admin", "Compliance"],
+      ["107", "api-monetization", "API billing", "API monetization and ecosystem billing program", "API Monetization & Ecosystem Billing", "API monetization packet", "API plans, limits, usage records, partner invoices, billing rules, or marketplace tiers", "API owner", "Finance", "Partner owner"],
+      ["108", "data-product-marketplace", "Data market", "Data product marketplace program", "Data Product Marketplace", "data product governance packet", "dataset catalog entries, access grants, contracts, quality status, lineage, or consumption policies", "Data owner", "Analytics", "Compliance"],
+      ["109", "synthetic-data-factory", "Test data", "Synthetic data and test tenant factory program", "Synthetic Data & Test Tenant Factory", "synthetic data factory packet", "test tenants, seed packs, anonymization recipes, fixture data, or production data boundaries", "Data owner", "Security", "Implementation"],
+      ["110", "benchmarking-insights", "Benchmarks", "Benchmarking and industry peer insights program", "Benchmarking & Industry Peer Insights", "benchmarking insight packet", "benchmark cohorts, anonymized reports, KPI outputs, action plans, or metric definitions", "Analytics", "Data owner", "Customer success"],
+      ["111", "sustainability-assurance", "ESG audit", "Sustainability audit assurance program", "Sustainability Audit Assurance", "sustainability assurance packet", "ESG claims, emissions reports, supplier evidence, assurance exports, or reporting controls", "Sustainability", "Compliance", "Finance"],
+      ["112", "carbon-offset-strategy", "Carbon", "Carbon insetting and offset strategy program", "Carbon Insetting & Offset Strategy", "carbon strategy packet", "offset claims, reduction projects, credit records, supplier actions, finance assumptions, or ESG reports", "Sustainability", "Finance", "Compliance"],
+      ["113", "water-waste-stewardship", "Water/waste", "Water and waste stewardship program", "Water & Waste Stewardship", "water and waste stewardship packet", "facility reports, waste claims, supplier actions, improvement tasks, or compliance submissions", "Facilities", "Sustainability", "Compliance"],
+      ["114", "biodiversity-nature-risk", "Nature risk", "Biodiversity and nature-risk program", "Biodiversity & Nature Risk", "nature-risk mitigation packet", "sourcing regions, supplier ratings, mitigation plans, biodiversity claims, or product sourcing decisions", "Sustainability", "Procurement", "Compliance"],
+      ["115", "ethical-sourcing", "Ethical src", "Ethical sourcing and labor compliance program", "Ethical Sourcing & Labor Compliance", "ethical sourcing remediation packet", "supplier labor status, remediation tasks, audit findings, sourcing awards, or supplier communications", "Procurement", "Compliance", "Supplier owner"],
+      ["116", "supplier-financial-health", "Supp finance", "Supplier financial health monitoring program", "Supplier Financial Health Monitoring", "supplier financial health packet", "supplier risk ratings, payment terms, mitigation plans, supplier status, or sourcing allocations", "Procurement", "Finance", "Supplier risk"],
+      ["117", "geopolitical-disruption", "Geo risk", "Geopolitical disruption command program", "Geopolitical Disruption Command", "geopolitical disruption packet", "routes, supplier allocations, sanctions decisions, customer communications, or alternate plans", "Risk", "Trade compliance", "Operations"],
+      ["118", "weather-climate-disruption", "Weather", "Weather and climate disruption program", "Weather & Climate Disruption", "weather disruption packet", "recovery actions, shipment priorities, facility plans, supplier commitments, or customer messages", "Operations", "Logistics", "Customer operations"],
+      ["119", "cyber-supply-disruption", "Cyber supply", "Cyber supply-chain disruption program", "Cyber Supply-Chain Disruption", "cyber supply disruption packet", "connector access, supplier status, security incidents, continuity plans, or data access controls", "Security", "Operations", "Supplier owner"],
+      ["120", "brand-reputation-risk", "Reputation", "Brand and reputation risk command program", "Brand & Reputation Risk Command", "reputation response packet", "public statements, customer communications, supplier actions, executive responses, or risk status", "Communications", "Executive sponsor", "Legal"],
+      ["121", "strategic-account-growth", "Acct growth", "Strategic account growth program", "Strategic Account Growth", "strategic account growth packet", "CRM plans, opportunity records, account actions, customer communications, or commercial commitments", "Sales", "Customer success", "Finance"],
+      ["122", "churn-prevention", "Churn", "Customer churn prevention program", "Customer Churn Prevention", "churn prevention packet", "customer outreach, service commitments, success plans, CRM health, or recovery actions", "Customer success", "Sales", "Operations"],
+      ["123", "customer-onboarding", "Onboarding", "Customer onboarding and go-live program", "Customer Onboarding & Go-Live", "customer go-live packet", "tenant setup, connector settings, role grants, training status, acceptance gates, or launch state", "Customer success", "Implementation", "Admin"],
+      ["124", "contract-renewal-command", "Renewals", "Customer contract renewal command program", "Customer Contract Renewal Command", "renewal command packet", "contract renewals, pricing, service commitments, customer communications, or CRM records", "Sales", "Legal", "Finance"],
+      ["125", "customer-co-innovation", "Co-innovate", "Customer co-innovation program", "Customer Co-Innovation", "customer co-innovation packet", "pilot scope, product feedback, IP notes, commercialization gates, or customer commitments", "Product", "Customer success", "Legal"],
+      ["126", "market-intelligence", "Market intel", "Market intelligence and demand sensing program", "Market Intelligence & Demand Sensing", "market demand sensing packet", "forecasts, demand plans, market signals, inventory policies, or commercial actions", "Planning", "Sales", "Analytics"],
+      ["127", "competitive-response", "Competitive", "Competitive response planning program", "Competitive Response Planning", "competitive response packet", "pricing, customer actions, service levels, product decisions, or sales commitments", "Sales", "Pricing", "Product"],
+      ["128", "market-entry-readiness", "Market entry", "New market entry readiness program", "New Market Entry Readiness", "market entry readiness packet", "regional launch gates, partner selections, compliance approvals, logistics setup, or market commitments", "Strategy", "Compliance", "Operations"],
+      ["129", "channel-performance", "Channels", "Channel partner performance program", "Channel Partner Performance", "channel performance packet", "partner scorecards, channel plans, distributor actions, pipeline records, or compliance state", "Channel owner", "Sales", "Compliance"],
+      ["130", "territory-coverage", "Territory", "Sales territory and coverage optimization program", "Sales Territory & Coverage Optimization", "territory coverage packet", "territory assignments, account ownership, coverage plans, pipeline records, or quota assumptions", "Sales operations", "Sales", "Finance"],
+      ["131", "procurement-savings", "Savings", "Procurement savings pipeline program", "Procurement Savings Pipeline", "procurement savings packet", "savings baselines, realization claims, sourcing tasks, supplier records, contracts, or finance reports", "Procurement", "Finance", "Category owner"],
+      ["132", "supplier-negotiation-calendar", "Supp cal", "Supplier negotiation calendar program", "Supplier Negotiation Calendar", "supplier negotiation calendar packet", "supplier messages, negotiation events, contract dates, price reviews, or approval limits", "Procurement", "Supplier owner", "Legal"],
+      ["133", "should-cost", "Should-cost", "Should-cost and cost-breakdown program", "Should-Cost & Cost Breakdown", "should-cost review packet", "cost assumptions, supplier quotes, negotiation positions, product costs, or pricing actions", "Procurement", "Finance", "Product"],
+      ["134", "commodity-exposure", "Commodities", "Commodity exposure and hedging support program", "Commodity Exposure & Hedging Support", "commodity exposure packet", "hedge actions, commodity assumptions, FX assumptions, supplier terms, or finance records", "Finance", "Procurement", "Risk"],
+      ["135", "inventory-investment", "Inv invest", "Inventory investment governance program", "Inventory Investment Governance", "inventory investment packet", "inventory buffers, working-capital targets, service policies, purchase plans, or executive approvals", "Planning", "Finance", "Operations"],
+      ["136", "obsolescence-inventory", "Obsolete", "Obsolescence and slow-moving inventory program", "Obsolescence & Slow-Moving Inventory", "obsolescence disposition packet", "writeoffs, disposition records, inventory status, product lifecycle, or finance impacts", "Inventory", "Finance", "Product"],
+      ["137", "safety-stock-policy", "Safety stock", "Safety stock policy management program", "Safety Stock Policy Management", "safety stock policy packet", "safety stock policies, buffers, service targets, inventory plans, or supplier commitments", "Planning", "Finance", "Operations"],
+      ["138", "snoe-cadence", "S&OE", "S&OE execution cadence program", "S&OE Execution Cadence", "S&OE execution packet", "daily execution decisions, owner tasks, exception status, customer promises, or recovery actions", "Operations", "Planning", "Customer operations"],
+      ["139", "executive-meeting-rhythm", "Exec rhythm", "Executive meeting operating rhythm program", "Executive Meeting Operating Rhythm", "executive meeting packet", "agendas, decisions, action owners, metric outputs, executive notes, or follow-through state", "Executive sponsor", "Operations", "Analytics"],
+      ["140", "board-investor-reporting", "Board report", "Board and investor reporting program", "Board & Investor Reporting", "board reporting packet", "board reports, investor exports, KPI narratives, risk disclosures, or approved metrics", "Executive sponsor", "Finance", "Legal"],
+      ["141", "okr-alignment", "OKRs", "Enterprise OKR and goal alignment program", "Enterprise OKR & Goal Alignment", "OKR alignment packet", "goals, initiatives, metric links, owner assignments, progress status, or executive reviews", "Executive sponsor", "Analytics", "Operations"],
+      ["142", "value-engineering", "Value eng", "Value engineering and cost-to-serve program", "Value Engineering & Cost-to-Serve", "value engineering packet", "design changes, sourcing options, logistics policies, service models, or cost-to-serve claims", "Product", "Finance", "Operations"],
+      ["143", "service-blueprint", "Blueprint", "Service design blueprint program", "Service Design Blueprint", "service blueprint packet", "customer journey maps, SLA policies, service changes, improvement tasks, or customer commitments", "Customer experience", "Operations", "Product"],
+      ["144", "kaizen-ops", "Kaizen", "Operational excellence kaizen program", "Operational Excellence Kaizen", "kaizen improvement packet", "standard work, process changes, savings claims, owner tasks, or operational procedures", "Operations excellence", "Warehouse", "Finance"],
+      ["145", "value-stream-mapping", "Value stream", "Lean value-stream mapping program", "Lean Value-Stream Mapping", "value-stream redesign packet", "process maps, flow redesigns, inventory policies, handoffs, or standard work", "Operations excellence", "Planning", "Warehouse"],
+      ["146", "six-sigma-defects", "Six sigma", "Six Sigma analytics and defect reduction program", "Six Sigma Analytics & Defect Reduction", "defect reduction packet", "quality records, control plans, corrective actions, sample status, or process controls", "Quality", "Operations excellence", "Supplier owner"],
+      ["147", "rpa-opportunities", "RPA", "Robotic process automation opportunity program", "Robotic Process Automation Opportunity", "RPA opportunity packet", "automation candidates, bot enablement, control changes, task routing, or production actions", "Automation owner", "Control owner", "Finance"],
+      ["148", "workflow-mining", "Process mine", "Workflow mining and process discovery program", "Workflow Mining & Process Discovery", "process discovery packet", "process variants, conformance status, event logs, improvement tasks, or workflow definitions", "Operations excellence", "Analytics", "Compliance"],
+      ["149", "enterprise-search-quality", "Search QA", "Enterprise search and answer quality program", "Enterprise Search & Answer Quality", "search quality packet", "retrieval tuning, approved sources, answer behavior, citation policy, or fallback rules", "Knowledge owner", "AI quality", "Compliance"],
+      ["150", "multilingual-ops", "Locales", "Multilingual operations assistant program", "Multilingual Operations Assistant", "multilingual review packet", "translations, glossary terms, customer/supplier messages, locale policies, or communication sends", "Customer operations", "Localization", "Compliance"],
+      ["151", "accessibility-ux", "A11y", "Accessibility and inclusive UX assistant program", "Accessibility & Inclusive UX Assistant", "accessibility remediation packet", "release gates, UI behavior, remediation tasks, audit status, or accessibility claims", "Product", "Design", "Compliance"],
+      ["152", "mobile-offline-resilience", "Offline", "Mobile offline resilience program", "Mobile Offline Resilience", "offline sync resilience packet", "offline actions, sync conflicts, device state, retry queues, or frontline records", "Frontline operations", "Engineering", "Warehouse"],
+      ["153", "edge-ai", "Edge AI", "Edge AI and on-device assistant program", "Edge AI & On-Device Assistant", "edge AI rollout packet", "edge model packages, device settings, local inference policies, sync behavior, or fallback controls", "Engineering", "Security", "Operations"],
+      ["154", "voice-employee", "VoE", "Voice-of-employee operations program", "Voice-of-Employee Operations", "employee feedback improvement packet", "employee feedback, sentiment themes, safety flags, leadership responses, or HR-sensitive records", "Operations", "People team", "Safety"],
+      ["155", "safety-incident-prevention", "Safety", "Safety incident prevention program", "Safety Incident Prevention", "safety prevention packet", "safety incidents, hazard status, corrective actions, training assignments, or audit records", "Safety", "Operations", "Training"],
+      ["156", "facility-maintenance", "Maint", "Facility maintenance planning program", "Facility Maintenance Planning", "facility maintenance packet", "asset work orders, spare reservations, downtime plans, maintenance schedules, or reliability actions", "Facilities", "Maintenance", "Operations"],
+      ["157", "real-estate-footprint", "Real estate", "Real-estate footprint optimization program", "Real-Estate Footprint Optimization", "real-estate footprint packet", "site plans, lease assumptions, capacity policies, labor plans, or service commitments", "Real estate", "Finance", "Operations"],
+      ["158", "tax-compliance", "Tax", "Tax compliance and indirect tax program", "Tax Compliance & Indirect Tax", "tax compliance packet", "tax filings, VAT/GST assumptions, duty classifications, legal entity records, or invoice tax treatment", "Tax", "Finance", "Compliance"],
+      ["159", "treasury-working-capital", "Treasury", "Treasury cash and working-capital program", "Treasury Cash & Working Capital", "treasury working-capital packet", "payment timing, cash forecasts, supplier terms, receivables actions, or treasury reports", "Treasury", "Finance", "Procurement"],
+      ["160", "insurance-risk-transfer", "Insurance", "Insurance and risk transfer program", "Insurance & Risk Transfer", "insurance risk-transfer packet", "insurance claims, coverage status, policy renewals, exposure values, or broker communications", "Risk", "Finance", "Legal"],
+      ["161", "legal-disputes", "Legal", "Legal matter and dispute operations program", "Legal Matter & Dispute Operations", "legal matter packet", "legal holds, dispute matters, privileged evidence, settlement options, deadlines, or legal communications", "Legal", "Compliance", "Operations"],
+      ["162", "enterprise-learning", "Learning", "Autonomous enterprise learning system program", "Autonomous Enterprise Learning System", "enterprise learning packet", "policy updates, prompt changes, playbook updates, training examples, release gates, or autonomous behavior", "AI quality", "Control owner", "Executive sponsor"],
+    ].map(([ampNumber, key, navLabel, title, surfaceTitle, artifactLabel, noMutation, owner1, owner2, owner3]) => [
+      key,
+      makeExtendedProgram({
+        ampNumber: Number(ampNumber),
+        key,
+        navLabel,
+        title,
+        surfaceTitle,
+        artifactLabel,
+        noMutation,
+        approvalOwners: [owner1, owner2, owner3],
+      }),
+    ]),
+  ),
+);
 
 export type AdvancedProgramPacketInputs = {
   signals: AdvancedProgramSignals;

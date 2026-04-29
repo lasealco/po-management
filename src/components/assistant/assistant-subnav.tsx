@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { listAdvancedProgramConfigs } from "@/lib/assistant/advanced-programs";
 import { appNavActiveClass, appNavInactiveClass } from "@/lib/subnav-active-class";
 
 export function AssistantSubnav() {
@@ -63,6 +64,7 @@ export function AssistantSubnav() {
   const continuousPlanning = pathname.startsWith("/assistant/continuous-planning");
   const revenueOperations = pathname.startsWith("/assistant/revenue-operations");
   const advancedProgram = (slug: string) => pathname.startsWith(`/assistant/advanced-programs/${slug}`);
+  const advancedProgramLinks = listAdvancedProgramConfigs();
   const workbench = pathname.startsWith("/assistant/workbench");
   const execution = pathname.startsWith("/assistant/execution");
   const workEngine = pathname.startsWith("/assistant/work-engine");
@@ -238,78 +240,14 @@ export function AssistantSubnav() {
       >
         Revenue ops
       </Link>
-      {[
-        ["aftermarket-service", "Service", "AMP37 aftermarket service and spare-parts"],
-        ["npi-readiness", "NPI", "AMP38 product lifecycle and NPI readiness"],
-        ["quality-capa", "CAPA", "AMP39 quality management and CAPA"],
-        ["trade-compliance", "Trade", "AMP40 trade compliance and customs operations"],
-        ["landed-cost", "Landed", "AMP41 landed cost and duty optimization"],
-        ["regulatory-obligations", "Reg", "AMP42 regulatory obligation operations"],
-        ["energy-utilities", "Energy", "AMP43 energy and utilities operations"],
-        ["packaging-optimization", "Packaging", "AMP44 packaging and material-flow optimization"],
-        ["manufacturing-coordination", "Mfg", "AMP45 manufacturing execution coordination"],
-        ["production-scheduling", "Schedule", "AMP46 advanced production scheduling"],
-        ["category-strategy", "Sourcing", "AMP47 category strategy and sourcing"],
-        ["spend-intelligence", "Spend", "AMP48 spend intelligence and savings realization"],
-        ["supplier-resilience", "Resilience", "AMP49 supplier risk and resilience due diligence"],
-        ["workforce-enablement", "Training", "AMP50 workforce enablement and role training"],
-        ["knowledge-sop", "SOPs", "AMP51 enterprise knowledge and SOP management"],
-        ["document-intelligence", "Docs AI", "AMP52 document intelligence operations"],
-        ["vision-evidence", "Vision", "AMP53 computer-vision evidence"],
-        ["iot-telemetry", "IoT", "AMP54 IoT and asset telemetry operations"],
-        ["semantic-metrics", "Metrics", "AMP55 semantic data layer and metric governance"],
-        ["extension-marketplace", "SDK", "AMP56 assistant extension marketplace and SDK"],
-        ["evaluation-lab", "Eval lab", "AMP57 evaluation, simulation, and red-team lab"],
-        ["security-dlp", "DLP", "AMP58 security operations and data-loss prevention"],
-        ["business-continuity", "Crisis", "AMP59 business continuity and crisis command"],
-        ["autonomous-finance", "Fin ops", "AMP60 autonomous finance operations"],
-        ["customer-ecosystem", "Customer cmd", "AMP61 customer ecosystem command"],
-        ["executive-cockpit", "Exec cockpit", "AMP62 executive autonomous enterprise cockpit"],
-        ["capex-investment", "Capex", "AMP64 capital expenditure and asset investment"],
-        ["ma-integration", "M&A", "AMP65 M&A operational integration"],
-        ["divestiture-readiness", "Carve-out", "AMP66 divestiture and carve-out readiness"],
-        ["ai-negotiation", "Negotiate", "AMP67 AI negotiation co-pilot"],
-        ["dynamic-pricing", "Pricing", "AMP68 dynamic pricing and margin optimization"],
-        ["revenue-leakage", "Leakage", "AMP69 revenue leakage recovery"],
-        ["warranty-claims", "Claims", "AMP70 warranty and claims operations"],
-        ["reverse-logistics", "Returns", "AMP71 reverse logistics and returns optimization"],
-        ["circular-economy", "Circular", "AMP72 circular economy and reuse"],
-        ["supplier-innovation", "Innovation", "AMP73 supplier innovation and co-development"],
-        ["product-profitability", "SKU profit", "AMP74 product profitability command"],
-        ["customer-profitability", "Cust profit", "AMP75 customer profitability and service-cost"],
-        ["carrier-performance", "Carrier", "AMP76 carrier performance and allocation"],
-        ["port-congestion", "Port", "AMP77 port and terminal congestion command"],
-        ["cold-chain", "Cold chain", "AMP78 cold-chain compliance and excursion"],
-        ["hazmat-dg", "Hazmat", "AMP79 hazmat and dangerous goods operations"],
-        ["food-safety", "Food safety", "AMP80 food safety and traceability"],
-        ["pharma-gxp", "GxP", "AMP81 pharma GDP/GxP operations"],
-        ["aerospace-defense", "Aero/def", "AMP82 aerospace and defense compliance"],
-        ["automotive-ppap", "PPAP", "AMP83 automotive launch and PPAP"],
-        ["retail-replenishment", "Retail repl", "AMP84 retail replenishment and shelf availability"],
-        ["omnichannel-promise", "Omni promise", "AMP85 omnichannel order promise"],
-        ["field-service", "Field svc", "AMP86 field service operations"],
-        ["project-logistics", "Project cargo", "AMP87 project logistics and heavy-lift"],
-        ["construction-supply", "Construction", "AMP88 construction supply coordination"],
-        ["healthcare-resilience", "Healthcare", "AMP89 healthcare supply resilience"],
-        ["public-procurement", "Public buy", "AMP90 public-sector procurement compliance"],
-        ["contingent-workforce", "Contractors", "AMP91 contractor and contingent workforce"],
-        ["risk-register", "Risk reg", "AMP92 enterprise risk register"],
-        ["internal-audit", "Audit", "AMP93 internal audit and control testing"],
-        ["policy-waivers", "Waivers", "AMP94 policy exception and waiver"],
-        ["privacy-dsar", "DSAR", "AMP95 privacy operations and DSAR"],
-        ["data-residency", "Residency", "AMP96 data residency and cross-border transfer"],
-        ["model-risk", "Model risk", "AMP97 model risk management"],
-        ["prompt-lifecycle", "Prompts", "AMP98 prompt lifecycle management"],
-        ["automation-policy", "Auto policy", "AMP99 automation policy lifecycle"],
-        ["human-review-ops", "Review ops", "AMP100 human-in-the-loop operations"],
-      ].map(([slug, label, title]) => (
+      {advancedProgramLinks.map((program) => (
         <Link
-          key={slug}
-          href={`/assistant/advanced-programs/${slug}`}
-          className={advancedProgram(slug) ? appNavActiveClass : appNavInactiveClass}
-          title={title}
+          key={program.slug}
+          href={`/assistant/advanced-programs/${program.slug}`}
+          className={advancedProgram(program.slug) ? appNavActiveClass : appNavInactiveClass}
+          title={`AMP${program.ampNumber} ${program.title}`}
         >
-          {label}
+          {program.navLabel}
         </Link>
       ))}
       <Link
