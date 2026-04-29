@@ -1,0 +1,55 @@
+{
+  "sprint": 6,
+  "name": "Commercial & Revenue Control Plane",
+  "entrypoint": "/assistant/commercial-revenue-control",
+  "api": "/api/assistant/commercial-revenue-control",
+  "scenarios": [
+    {
+      "id": "create-commercial-revenue-control-packet",
+      "title": "Create a durable commercial and revenue control packet",
+      "steps": [
+        "Open the Sprint 6 Commercial & Revenue Control workspace.",
+        "Review revenue operations, finance, contract, customer, quote, sales-order, pricing snapshot, invoice audit, and action queue signals.",
+        "Click Create Sprint 6 packet."
+      ],
+      "expected": [
+        "A durable AssistantCommercialRevenueControlPacket row is created with source summary, quote-to-cash, pricing discipline, margin leakage, invoice audit, customer-commercial, contract handoff, response plan, rollback plan, and leadership summary JSON.",
+        "An AssistantAuditEvent records that packet creation is evidence-only.",
+        "No CRM quote, quote line, pricing snapshot, tariff, RFQ, invoice intake, accounting approval, contract, sales order, opportunity stage, customer promise, or external communication is changed automatically."
+      ]
+    },
+    {
+      "id": "queue-commercial-review",
+      "title": "Queue commercial control review",
+      "steps": [
+        "Add an optional commercial review note to a draft Sprint 6 packet.",
+        "Click Queue review."
+      ],
+      "expected": [
+        "The packet moves to REVIEW_QUEUED and stores actionQueueItemId.",
+        "An AssistantActionQueueItem is created for commercial_revenue_control_review with the packet URL and source evidence.",
+        "Review work remains separate from execution; the assistant does not mutate prices, quotes, invoices, contracts, orders, accounting decisions, or customer messages."
+      ]
+    },
+    {
+      "id": "approve-commercial-revenue-control-packet",
+      "title": "Approve a reviewed Sprint 6 packet",
+      "steps": [
+        "Review the packet leadership summary, risk counts, rollback plan, and note.",
+        "Click Approve packet."
+      ],
+      "expected": [
+        "The packet status becomes APPROVED with approvedAt, approvedByUserId, and approvalNote.",
+        "An AssistantAuditEvent records approval and reiterates the no-silent-mutation guardrail.",
+        "Approval marks the commercial evidence packet as reviewed only; execution still requires separate downstream approved actions."
+      ]
+    }
+  ],
+  "guardrails": [
+    "No quote amount, quote line, opportunity stage, or sales order is changed automatically.",
+    "No tariff, RFQ, pricing snapshot, margin assumption, or commercial term is changed automatically.",
+    "No invoice audit decision, dispute submission, accounting approval, or accounting export is changed automatically.",
+    "No contract is created, amended, sent, approved, or signed automatically.",
+    "No customer promise, discount, credit, or external commercial message is sent automatically."
+  ]
+}

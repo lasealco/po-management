@@ -63,6 +63,7 @@ export default async function AssistantLayout({ children }: { children: React.Re
           <strong>Sprint 3</strong> is Privacy, Security & Trust for consent posture, DSR, data transfers, zero-trust access, identity risk, security exceptions, threat exposure, and trust assurance.{" "}
           <strong>Sprint 4</strong> is the Executive Operating System for board materials, investor narrative, corp-dev radar, executive twin scenarios, strategy execution, decisions, and learning loops.{" "}
           <strong>Sprint 5</strong> is Collaboration & Resilience for supplier/customer collaboration, promise reconciliation, climate/resource resilience, product passport evidence, workforce readiness, and safety operations.{" "}
+          <strong>Sprint 6</strong> is the Commercial & Revenue Control Plane for quote-to-cash, pricing discipline, margin leakage, invoice audit, customer-safe updates, and contract handoff.{" "}
           <strong>Chat</strong> can draft sales orders and answer stock / product-trace questions with links to
           evidence. <strong>Order orchestration</strong> is AMP13 for demand-to-promise planning with ATP and approval controls.{" "}
           <strong>Warehouse capacity</strong> is AMP15 for WMS bottlenecks, labor recovery, and supervisor-approved recovery work.{" "}
