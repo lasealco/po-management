@@ -112,8 +112,8 @@ Parallel agents: **non-overlapping paths only** (see [`agent-todos/README.md`](.
 
 **Exit criteria**
 
-- [ ] Documented pack/label flow + API/UI alignment.
-- [ ] `GAP_MAP.md` R2 packing row tightened.
+- [x] Documented pack/label flow + API/UI alignment.
+- [x] `GAP_MAP.md` R2 packing row tightened.
 
 ---
 

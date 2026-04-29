@@ -30,7 +30,7 @@
 
 ## UX / ops polish (🟡 areas)
 
-- [ ] **Packing / labels** — extend workflow beyond current “limited” note in GAP (issue must list acceptance).
+- [x] **Packing / labels** — WE-06: [`WMS_PACKING_LABELS.md`](../wms/WMS_PACKING_LABELS.md), Operations ship-station workflow + print pack slip + `CtAuditLog` on pack/ship.
 - [x] **Wave / replenishment** — **REPLENISH** open tasks: **source bin → target bin** in Operations (`sourceBin` in `GET /api/wms`); wave release/complete unchanged; **landed** 2026-04-25.
 - [ ] **Dashboards** — deepen `/wms` “At a glance” vs blueprint KPIs.
 

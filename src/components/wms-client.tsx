@@ -7,6 +7,7 @@ import { startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useR
 
 import { ActionButton } from "@/components/action-button";
 import { WorkflowHeader } from "@/components/workflow-header";
+import { printOutboundPackSlip } from "@/lib/wms/pack-slip-print";
 import { WMS_DEMO_WAREHOUSE_CODE } from "@/lib/wms/demo-warehouse-code";
 import {
   isoToDatetimeLocalValue,
@@ -2170,12 +2171,37 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
         </div>
       </section>
 
-      <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
-        <h2 className="text-sm font-semibold text-zinc-900">Outbound flow</h2>
+      <section className="mb-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Workflow</p>
+        <h2 className="mt-2 text-sm font-semibold text-zinc-900">Outbound & ship station</h2>
         <p className="mt-1 text-xs text-zinc-600">
-          Outbound ship notice (ASN) reference and requested ship time mirror the inbound ASN row;
-          optional CRM account links this outbound to a 3PL owner (requires org.crm → view to pick
-          accounts).
+          Ship notice (ASN) + CRM mirror inbound patterns; packing gate requires full picks before{" "}
+          <span className="font-medium text-zinc-800">Mark packed</span>, then{" "}
+          <span className="font-medium text-zinc-800">Mark shipped</span>. Evidence print + audit:{" "}
+          <span className="font-medium text-zinc-800">docs/wms/WMS_PACKING_LABELS.md</span>.
+        </p>
+        <div className="mt-4 grid gap-2 sm:grid-cols-3">
+          <div className="rounded-xl border border-zinc-100 bg-zinc-50/90 p-3 text-xs text-zinc-700">
+            <p className="font-semibold text-zinc-900">Step 1 · Pick</p>
+            <p className="mt-1 leading-snug text-zinc-600">
+              Waves / explicit pick tasks until each line shows picked qty ≥ order qty.
+            </p>
+          </div>
+          <div className="rounded-xl border border-zinc-100 bg-zinc-50/90 p-3 text-xs text-zinc-700">
+            <p className="font-semibold text-zinc-900">Step 2 · Pack</p>
+            <p className="mt-1 leading-snug text-zinc-600">
+              Mark packed copies picked → packed and locks CRM link. Use Print pack slip before carrier handoff.
+            </p>
+          </div>
+          <div className="rounded-xl border border-zinc-100 bg-zinc-50/90 p-3 text-xs text-zinc-700">
+            <p className="font-semibold text-zinc-900">Step 3 · Ship</p>
+            <p className="mt-1 leading-snug text-zinc-600">
+              Mark shipped posts shipment movements and closes the order for billing hooks.
+            </p>
+          </div>
+        </div>
+        <p className="mt-4 text-xs font-semibold uppercase tracking-[0.15em] text-zinc-500">
+          Create / edit outbound
         </p>
         <div className="mt-2 grid gap-2 sm:grid-cols-6">
           <input value={outboundRef} onChange={(e) => setOutboundRef(e.target.value)} placeholder="Customer ref" className="rounded border border-zinc-300 px-3 py-2 text-sm" />
@@ -2243,7 +2269,8 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
             Create outbound order
           </button>
         </div>
-        <div className="mt-3 space-y-2">
+        <p className="mt-6 text-xs font-semibold uppercase tracking-[0.15em] text-zinc-500">Open orders</p>
+        <div className="mt-2 space-y-2">
           {data.outboundOrders.map((o) => {
             const showCrmPicker =
               canEdit &&
@@ -2259,6 +2286,11 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
             const asnDraft = outboundAsnEdits[o.id] ?? { asn: "", requestedShip: "" };
             const allPicked = o.lines.every((l) => Number(l.pickedQty) >= Number(l.quantity));
             const allPacked = o.lines.every((l) => Number(l.packedQty) >= Number(l.quantity));
+            const canPrintPackSlip =
+              allPicked &&
+              o.lines.length > 0 &&
+              o.status !== "DRAFT" &&
+              o.status !== "CANCELLED";
             return (
             <div key={o.id} className="rounded border border-zinc-200 p-2 text-sm">
               <div className="flex flex-wrap items-center gap-2">
@@ -2291,6 +2323,37 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                       </option>
                     ))}
                   </select>
+                ) : null}
+                {canPrintPackSlip ? (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() =>
+                      printOutboundPackSlip({
+                        outboundNo: o.outboundNo,
+                        warehouseLabel: o.warehouse.code || o.warehouse.name,
+                        customerRef: o.customerRef,
+                        asnReference: o.asnReference,
+                        requestedShipDate: o.requestedShipDate,
+                        shipToName: o.shipToName,
+                        shipToCity: o.shipToCity,
+                        shipToCountryCode: o.shipToCountryCode,
+                        status: o.status,
+                        lines: o.lines.map((l) => ({
+                          lineNo: l.lineNo,
+                          productCode: l.product.productCode,
+                          sku: l.product.sku,
+                          name: l.product.name,
+                          quantity: l.quantity,
+                          pickedQty: l.pickedQty,
+                          packedQty: l.packedQty,
+                        })),
+                      })
+                    }
+                    className="rounded border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-800 disabled:opacity-40"
+                  >
+                    Print pack slip
+                  </button>
                 ) : null}
                 {canEdit && o.status !== "SHIPPED" && o.status !== "CANCELLED" ? (
                   <button
@@ -2336,7 +2399,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                     onClick={() =>
                       void runAction({ action: "mark_outbound_shipped", outboundOrderId: o.id })
                     }
-                    className="rounded border border-emerald-700 bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-900 disabled:opacity-40"
+                    className="rounded-xl bg-[var(--arscmp-primary)] px-3 py-2 text-xs font-semibold text-white disabled:opacity-40"
                   >
                     Mark shipped
                   </button>

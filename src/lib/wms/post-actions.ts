@@ -852,6 +852,19 @@ export async function handleWmsPost(
         where: { id: order.id },
         data: { status: "PACKED" },
       });
+      await tx.ctAuditLog.create({
+        data: {
+          tenantId,
+          entityType: "OUTBOUND_ORDER",
+          entityId: order.id,
+          action: "outbound_mark_packed",
+          payload: {
+            outboundNo: order.outboundNo,
+            warehouseId: order.warehouseId,
+          },
+          actorUserId: actorId,
+        },
+      });
     });
     return NextResponse.json({ ok: true });
   }
@@ -901,6 +914,19 @@ export async function handleWmsPost(
       await tx.outboundOrder.update({
         where: { id: order.id },
         data: { status: "SHIPPED" },
+      });
+      await tx.ctAuditLog.create({
+        data: {
+          tenantId,
+          entityType: "OUTBOUND_ORDER",
+          entityId: order.id,
+          action: "outbound_mark_shipped",
+          payload: {
+            outboundNo: order.outboundNo,
+            warehouseId: order.warehouseId,
+          },
+          actorUserId: actorId,
+        },
       });
     });
     return NextResponse.json({ ok: true });
