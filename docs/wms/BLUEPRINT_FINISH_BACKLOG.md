@@ -51,6 +51,8 @@ Each capsule should end with: **`GAP_MAP.md` updated**, migrations listed if any
 
 **Note:** IDs are **not** commitments — merge/split capsules when estimates land (e.g. **BF-02 + BF-01** often sequenced tightly).
 
+**Do not bundle **`BF-02`–`BF-11`** into one prompt:** each row is a **separate** thematic capsule (lot master, allocation depth, topology, dock TMS depth, RBAC matrix, KPIs, packing hardware, VAS portal, CPQ automation, CT map layers). **`BF-01`** (line variance) is intentionally minimal migration vs Option B — see [`WMS_RECEIVING_LINE_VARIANCE_BF01.md`](./WMS_RECEIVING_LINE_VARIANCE_BF01.md).
+
 ---
 
 ## Exit definition (“blueprint finish”)
@@ -71,7 +73,7 @@ Each capsule should end with: **`GAP_MAP.md` updated**, migrations listed if any
 
 ## Example prompt — **BF-01** (copy/paste)
 
-**What it is:** First-class **line-level receiving variance** (expected vs received per line, short/over and disposition), vs today’s shipment-level **Option A** status only — see [`WMS_RECEIVING_STATE_MACHINE_SPEC.md`](./WMS_RECEIVING_STATE_MACHINE_SPEC.md) **§ Options A/B/C** and [`GAP_MAP.md`](./GAP_MAP.md) inbound ASN “no line-level receipt variance table yet”.
+**What it is:** **Line-level receiving variance** (expected vs received per line, short/over and disposition) — thin **Option A** extension on **`ShipmentItem`** ([`WMS_RECEIVING_LINE_VARIANCE_BF01.md`](./WMS_RECEIVING_LINE_VARIANCE_BF01.md)); shipment-level **`WmsReceiveStatus`** stays [`WMS_RECEIVING_OPTION_A.md`](./WMS_RECEIVING_OPTION_A.md). See **`§ Options A/B/C`** in [`WMS_RECEIVING_STATE_MACHINE_SPEC.md`](./WMS_RECEIVING_STATE_MACHINE_SPEC.md); separate **`WmsReceipt`** header / Option **B** lines remain backlog unless product funds migration.
 
 ```
 Execute blueprint capsule BF-01 per docs/wms/BLUEPRINT_FINISH_BACKLOG.md.
