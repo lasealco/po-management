@@ -200,6 +200,7 @@ model Tenant {
   assistantStrategicSourcingPackets           AssistantStrategicSourcingPacket[]
   assistantExternalRiskEventPackets           AssistantExternalRiskEventPacket[]
   assistantMasterDataGovernancePackets        AssistantMasterDataGovernancePacket[]
+  assistantEnterpriseKnowledgePackets         AssistantEnterpriseKnowledgePacket[]
   assistantActionQueue                        AssistantActionQueueItem[]
   assistantPlaybookTemplates                  AssistantPlaybookTemplate[]
   assistantPlaybookRuns                       AssistantPlaybookRun[]
@@ -1986,6 +1987,41 @@ model AssistantMasterDataGovernancePacket {
   @@index([tenantId, governanceScore, updatedAt])
 }
 
+/// Sprint 25: enterprise knowledge & document intelligence — citation ledger, prompt governance, training pipeline, release gates — review-only; no SOP publish, prompt promotion, KB overwrite, or trusted extraction without steward approval.
+model AssistantEnterpriseKnowledgePacket {
+  id                        String    @id @default(cuid())
+  tenantId                  String
+  createdByUserId           String?
+  approvedByUserId          String?
+  title                     String
+  status                    String    @default("DRAFT") @db.VarChar(32)
+  knowledgeScore            Int       @default(0)
+  evidenceCitationRiskCount Int       @default(0)
+  promptGovernanceRiskCount Int       @default(0)
+  reviewPipelineGapCount    Int       @default(0)
+  releaseGateRiskCount      Int       @default(0)
+  sourceSummaryJson         Json
+  citationEvidenceJson      Json
+  promptGovernanceJson      Json
+  reviewPipelineJson        Json
+  releaseGateJson           Json
+  responsePlanJson          Json
+  rollbackPlanJson          Json
+  leadershipSummary         String    @db.Text
+  actionQueueItemId         String?
+  approvedAt                DateTime?
+  approvalNote              String?   @db.Text
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator  User?  @relation("AssistantEnterpriseKnowledgePacketCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  approver User?  @relation("AssistantEnterpriseKnowledgePacketApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, updatedAt])
+  @@index([tenantId, knowledgeScore, updatedAt])
+}
+
 /// AMP7: inspectable grounding ledger extracted from assistant answers and reviewer additions.
 model AssistantEvidenceRecord {
   id              String    @id @default(cuid())
@@ -2658,6 +2694,8 @@ model User {
   assistantExternalRiskEventPacketsApproved           AssistantExternalRiskEventPacket[]           @relation("AssistantExternalRiskEventPacketApprover")
   assistantMasterDataGovernancePacketsCreated         AssistantMasterDataGovernancePacket[]        @relation("AssistantMasterDataGovernancePacketCreator")
   assistantMasterDataGovernancePacketsApproved        AssistantMasterDataGovernancePacket[]        @relation("AssistantMasterDataGovernancePacketApprover")
+  assistantEnterpriseKnowledgePacketsCreated          AssistantEnterpriseKnowledgePacket[]         @relation("AssistantEnterpriseKnowledgePacketCreator")
+  assistantEnterpriseKnowledgePacketsApproved         AssistantEnterpriseKnowledgePacket[]         @relation("AssistantEnterpriseKnowledgePacketApprover")
   invoiceIntakesAccountingApproved                    InvoiceIntake[]                              @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated                   TariffShipmentApplication[]                  @relation("TariffShipmentApplicationCreator")
   scriEventsOwned                                     ScriExternalEvent[]                          @relation("ScriEventOwner")

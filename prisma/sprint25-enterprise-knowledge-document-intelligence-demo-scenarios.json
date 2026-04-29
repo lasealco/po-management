@@ -1,0 +1,30 @@
+{
+  "sprint": 25,
+  "title": "Enterprise Knowledge & Document Intelligence",
+  "workspacePath": "/assistant/enterprise-knowledge-document-intelligence",
+  "guardrails": [
+    "Packets are advisory: SOP/policy publication, prompt promotion, KB edits, training exports, and extraction reliance stay in steward-controlled workflows.",
+    "Queue review and approve actions write audit events and may enqueue AssistantActionQueueItem rows — they never publish prompts, evidence, or articles silently."
+  ],
+  "scenarios": [
+    {
+      "id": "S25-01-create-packet",
+      "steps": [
+        "Sign in with settings or reporting edit access.",
+        "Open /assistant/enterprise-knowledge-document-intelligence and click Create Sprint 25 packet.",
+        "Confirm AssistantEnterpriseKnowledgePacket persists with knowledgeScore and dimensional JSON."
+      ],
+      "passWhen": "POST create_packet returns 201 and GET lists the packet without mutating evidence, prompts, review examples, or release gates."
+    },
+    {
+      "id": "S25-02-queue-review",
+      "steps": ["Queue knowledge governance review with optional steward note.", "Verify audit answerKind sprint25_ek_rev."],
+      "passWhen": "Status REVIEW_QUEUED and action queue links assistant_enterprise_knowledge_packet."
+    },
+    {
+      "id": "S25-03-approve",
+      "steps": ["Approve packet after steward sign-off.", "Verify sprint25_ek_ok denies automatic publications."],
+      "passWhen": "Status APPROVED; AMP7 source rows unchanged."
+    }
+  ]
+}

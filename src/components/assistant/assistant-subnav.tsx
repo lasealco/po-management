@@ -84,6 +84,7 @@ export function AssistantSubnav() {
   const strategicSourcingCategoryIntelligence = pathname.startsWith("/assistant/strategic-sourcing-category-intelligence");
   const externalRiskEventIntelligence = pathname.startsWith("/assistant/external-risk-event-intelligence");
   const masterDataGovernanceEnrichment = pathname.startsWith("/assistant/master-data-governance-enrichment");
+  const enterpriseKnowledgeDocumentIntelligence = pathname.startsWith("/assistant/enterprise-knowledge-document-intelligence");
   const advancedProgram = (slug: string) => pathname.startsWith(`/assistant/advanced-programs/${slug}`);
   const advancedProgramLinks = listAdvancedProgramConfigs();
   const workbench = pathname.startsWith("/assistant/workbench");
@@ -428,6 +429,13 @@ export function AssistantSubnav() {
         title="Sprint 24 Frontline & Mobile Execution Intelligence (AMP26)"
       >
         Sprint 24
+      </Link>
+      <Link
+        href="/assistant/enterprise-knowledge-document-intelligence"
+        className={enterpriseKnowledgeDocumentIntelligence ? appNavActiveClass : appNavInactiveClass}
+        title="Sprint 25 Enterprise Knowledge & Document Intelligence"
+      >
+        Sprint 25
       </Link>
       {advancedProgramLinks.map((program) => (
         <Link
