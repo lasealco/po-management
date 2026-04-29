@@ -1,0 +1,75 @@
+[
+  {
+    "id": "amp301-362-create-packets",
+    "title": "Create durable packets for AMP301 through AMP362",
+    "persona": "Architecture, product, support, marketing, legal, finance, control, AI platform, and executive reviewers",
+    "entrypoints": [
+      "/assistant/advanced-programs/architecture-control-room",
+      "/assistant/advanced-programs/data-contract-governance",
+      "/assistant/advanced-programs/integration-repair",
+      "/assistant/advanced-programs/ai-safety-case",
+      "/assistant/advanced-programs/support-escalation-command",
+      "/assistant/advanced-programs/deal-risk-review",
+      "/assistant/advanced-programs/integrated-business-planning",
+      "/assistant/advanced-programs/agent-registry",
+      "/assistant/advanced-programs/self-healing-operations",
+      "/assistant/advanced-programs/enterprise-operating-system-v2"
+    ],
+    "steps": [
+      "Open representative AMP301-AMP362 workspaces from the generated Assistant subnav.",
+      "Review source signals, risk assessment, recommendations, artifact, approval route, and rollback plan.",
+      "Click Create AMP packet."
+    ],
+    "expected": [
+      "Each AMP301-AMP362 workspace persists an AssistantAdvancedProgramPacket row with a distinct ampNumber and programKey.",
+      "Each packet has a domain-specific nav label, title, artifact, approval owners, and no-mutation scope.",
+      "The shared advanced-program UI displays preview metrics, packet history, review notes, and queue-review controls.",
+      "Architecture records, app portfolios, debt roadmaps, data/API/event contracts, integration repairs, AI safety cases, support/product/marketing/sales/legal/finance controls, agent registries, autonomous domain actions, self-healing repairs, audit findings, and EOS v2 policies are not mutated automatically."
+    ]
+  },
+  {
+    "id": "amp301-362-queue-review",
+    "title": "Queue human review for AMP301 through AMP362 packets",
+    "persona": "Program approval owner",
+    "entrypoints": [
+      "/assistant/advanced-programs/architecture-control-room",
+      "/assistant/advanced-programs/model-evaluation-marketplace",
+      "/assistant/advanced-programs/order-to-cash-controls",
+      "/assistant/advanced-programs/autonomous-security-governance",
+      "/assistant/advanced-programs/enterprise-operating-system-v2"
+    ],
+    "steps": [
+      "Create or select a DRAFT packet.",
+      "Add a review note describing the downstream decision.",
+      "Click Queue review."
+    ],
+    "expected": [
+      "The packet status changes to REVIEW_QUEUED and records actionQueueItemId, approvedByUserId, approvedAt, and approvalNote.",
+      "AssistantActionQueueItem uses an AMP-specific actionKind such as assistant_amp301_review or assistant_amp362_review.",
+      "AssistantAuditEvent states that downstream records were not changed automatically."
+    ]
+  },
+  {
+    "id": "amp301-362-guardrails",
+    "title": "AI governance, agent governance, autonomous domain governance, and EOS v2 remain review-only",
+    "persona": "Executive and control reviewer",
+    "entrypoints": [
+      "/assistant/advanced-programs/ai-regulatory-compliance",
+      "/assistant/advanced-programs/policy-as-code",
+      "/assistant/advanced-programs/agent-contracts",
+      "/assistant/advanced-programs/autonomous-finance-governance",
+      "/assistant/advanced-programs/autonomous-audit"
+    ],
+    "steps": [
+      "Open a packet with active risk signals.",
+      "Inspect recommendationJson, approvalPlanJson, artifactJson, and rollbackPlanJson.",
+      "Queue review without executing downstream changes."
+    ],
+    "expected": [
+      "recommendationJson requires review before architecture, product, support, marketing, legal, finance, policy, agent, security, compliance, self-healing, audit, or EOS v2 execution.",
+      "approvalPlanJson names the responsible owner groups.",
+      "rollbackPlanJson preserves source records and requires a fresh packet when evidence changes materially.",
+      "Autonomous agent and enterprise operating system recommendations cannot self-expand autonomy or silently execute downstream mutations."
+    ]
+  }
+]
