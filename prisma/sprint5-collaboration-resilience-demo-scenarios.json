@@ -1,0 +1,55 @@
+{
+  "sprint": 5,
+  "name": "Collaboration & Resilience",
+  "entrypoint": "/assistant/collaboration-resilience",
+  "api": "/api/assistant/collaboration-resilience",
+  "scenarios": [
+    {
+      "id": "create-collaboration-resilience-packet",
+      "title": "Create a durable collaboration and resilience packet",
+      "steps": [
+        "Open the Sprint 5 Collaboration & Resilience workspace.",
+        "Review partner, customer, incident, sustainability, frontline, product/passport, external-risk, and action-queue signals.",
+        "Click Create Sprint 5 packet."
+      ],
+      "expected": [
+        "A durable AssistantCollaborationResiliencePacket row is created with source summary, collaboration hub, promise reconciliation, resilience plan, passport readiness, workforce/safety, response plan, rollback plan, and leadership summary JSON.",
+        "An AssistantAuditEvent records that packet creation is evidence-only.",
+        "No supplier task, customer promise, shipment, route, ESG claim, product passport, WMS task, workforce plan, safety incident, or operational source record is changed automatically."
+      ]
+    },
+    {
+      "id": "queue-resilience-review",
+      "title": "Queue collaboration and resilience review",
+      "steps": [
+        "Add an optional resilience review note to a draft Sprint 5 packet.",
+        "Click Queue review."
+      ],
+      "expected": [
+        "The packet moves to REVIEW_QUEUED and stores actionQueueItemId.",
+        "An AssistantActionQueueItem is created for collaboration_resilience_review with the packet URL and source evidence.",
+        "Review work remains separate from execution; the assistant does not mutate partner, customer, shipment, route, product, WMS, ESG, workforce, or safety source systems."
+      ]
+    },
+    {
+      "id": "approve-collaboration-resilience-packet",
+      "title": "Approve a reviewed Sprint 5 packet",
+      "steps": [
+        "Review the packet leadership summary, risk counts, rollback plan, and note.",
+        "Click Approve packet."
+      ],
+      "expected": [
+        "The packet status becomes APPROVED with approvedAt, approvedByUserId, and approvalNote.",
+        "An AssistantAuditEvent records approval and reiterates the no-silent-mutation guardrail.",
+        "Approval marks the evidence packet as reviewed only; execution still requires separate downstream approved actions."
+      ]
+    }
+  ],
+  "guardrails": [
+    "No supplier or SRM task is completed automatically.",
+    "No customer promise, sales order, shipment, or communication is changed automatically.",
+    "No carrier, route, inventory, warehouse, or WMS task is changed automatically.",
+    "No ESG, climate, energy, water, or product-passport claim is published automatically.",
+    "No workforce, staffing, safety incident, or frontline action is executed automatically."
+  ]
+}

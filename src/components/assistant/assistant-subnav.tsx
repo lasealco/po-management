@@ -67,6 +67,7 @@ export function AssistantSubnav() {
   const enterpriseRiskControls = pathname.startsWith("/assistant/enterprise-risk-controls");
   const privacySecurityTrust = pathname.startsWith("/assistant/privacy-security-trust");
   const executiveOperatingSystem = pathname.startsWith("/assistant/executive-operating-system");
+  const collaborationResilience = pathname.startsWith("/assistant/collaboration-resilience");
   const advancedProgram = (slug: string) => pathname.startsWith(`/assistant/advanced-programs/${slug}`);
   const advancedProgramLinks = listAdvancedProgramConfigs();
   const workbench = pathname.startsWith("/assistant/workbench");
@@ -271,6 +272,13 @@ export function AssistantSubnav() {
         title="Sprint 4 Executive Operating System"
       >
         Sprint 4
+      </Link>
+      <Link
+        href="/assistant/collaboration-resilience"
+        className={collaborationResilience ? appNavActiveClass : appNavInactiveClass}
+        title="Sprint 5 Collaboration & Resilience"
+      >
+        Sprint 5
       </Link>
       {advancedProgramLinks.map((program) => (
         <Link
