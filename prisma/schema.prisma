@@ -176,6 +176,7 @@ model Tenant {
   assistantAutonomousOperatingLoops AssistantAutonomousOperatingLoop[]
   assistantNetworkDesignPackets     AssistantNetworkDesignPacket[]
   assistantSimulationStudioPackets  AssistantSimulationStudioPacket[]
+  assistantContinuousPlanningPackets AssistantContinuousPlanningPacket[]
   assistantActionQueue              AssistantActionQueueItem[]
   assistantPlaybookTemplates        AssistantPlaybookTemplate[]
   assistantPlaybookRuns             AssistantPlaybookRun[]
@@ -1013,6 +1014,44 @@ model AssistantSimulationStudioPacket {
   @@index([tenantId, recommendedScenarioKey, updatedAt])
 }
 
+/// AMP35: continuous planning control tower packet for plan-vs-actual health, replanning triggers, and approval-gated recovery.
+model AssistantContinuousPlanningPacket {
+  id                    String    @id @default(cuid())
+  tenantId              String
+  createdByUserId       String?
+  approvedByUserId      String?
+  title                 String
+  status                String    @default("DRAFT") @db.VarChar(32)
+  planHealthScore       Int       @default(0)
+  replanningTriggerCount Int      @default(0)
+  demandVariancePct     Int       @default(0)
+  supplyCoveragePct     Int       @default(0)
+  inventoryCoveragePct  Int       @default(0)
+  transportRiskCount    Int       @default(0)
+  recoveryActionCount   Int       @default(0)
+  controlSnapshotJson   Json
+  varianceJson          Json
+  triggerJson           Json
+  recoveryPlanJson      Json
+  ownerWorkJson         Json
+  approvalPlanJson      Json
+  rollbackPlanJson      Json
+  leadershipSummary     String    @db.Text
+  actionQueueItemId     String?
+  approvedAt            DateTime?
+  approvalNote          String?   @db.Text
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator  User?  @relation("AssistantContinuousPlanningPacketCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  approver User?  @relation("AssistantContinuousPlanningPacketApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, updatedAt])
+  @@index([tenantId, planHealthScore, updatedAt])
+  @@index([tenantId, replanningTriggerCount, updatedAt])
+}
+
 /// AMP7: inspectable grounding ledger extracted from assistant answers and reviewer additions.
 model AssistantEvidenceRecord {
   id              String    @id @default(cuid())
@@ -1637,6 +1676,8 @@ model User {
   assistantNetworkDesignPacketsApproved AssistantNetworkDesignPacket[]       @relation("AssistantNetworkDesignPacketApprover")
   assistantSimulationStudioPacketsCreated AssistantSimulationStudioPacket[]   @relation("AssistantSimulationStudioPacketCreator")
   assistantSimulationStudioPacketsApproved AssistantSimulationStudioPacket[]  @relation("AssistantSimulationStudioPacketApprover")
+  assistantContinuousPlanningPacketsCreated AssistantContinuousPlanningPacket[] @relation("AssistantContinuousPlanningPacketCreator")
+  assistantContinuousPlanningPacketsApproved AssistantContinuousPlanningPacket[] @relation("AssistantContinuousPlanningPacketApprover")
   invoiceIntakesAccountingApproved        InvoiceIntake[]                   @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated       TariffShipmentApplication[]       @relation("TariffShipmentApplicationCreator")
   scriEventsOwned                         ScriExternalEvent[]               @relation("ScriEventOwner")

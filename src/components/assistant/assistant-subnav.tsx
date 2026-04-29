@@ -60,6 +60,7 @@ export function AssistantSubnav() {
   const autonomousLoop = pathname.startsWith("/assistant/autonomous-loop");
   const networkDesign = pathname.startsWith("/assistant/network-design");
   const simulationStudio = pathname.startsWith("/assistant/simulation-studio");
+  const continuousPlanning = pathname.startsWith("/assistant/continuous-planning");
   const workbench = pathname.startsWith("/assistant/workbench");
   const execution = pathname.startsWith("/assistant/execution");
   const workEngine = pathname.startsWith("/assistant/work-engine");
@@ -220,6 +221,13 @@ export function AssistantSubnav() {
         title="AMP34 multi-scenario simulation studio"
       >
         Simulation
+      </Link>
+      <Link
+        href="/assistant/continuous-planning"
+        className={continuousPlanning ? appNavActiveClass : appNavInactiveClass}
+        title="AMP35 continuous planning control tower"
+      >
+        Plan control
       </Link>
       <Link
         href="/assistant/workbench"

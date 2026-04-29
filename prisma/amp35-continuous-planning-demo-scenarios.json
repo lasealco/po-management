@@ -1,0 +1,51 @@
+[
+  {
+    "id": "amp35-create-continuous-planning-packet",
+    "title": "Create a continuous planning control packet",
+    "persona": "S&OP planner with orders or operations edit access",
+    "entrypoint": "/assistant/continuous-planning",
+    "steps": [
+      "Open the AMP35 Plan control workspace.",
+      "Review demand variance, supply coverage, inventory coverage, transport risk, replanning triggers, recovery actions, owner work, approval plan, and rollback plan.",
+      "Click Create planning packet."
+    ],
+    "expected": [
+      "A persisted AssistantContinuousPlanningPacket is created with controlSnapshotJson, varianceJson, triggerJson, recoveryPlanJson, ownerWorkJson, approvalPlanJson, rollbackPlanJson, and leadershipSummary.",
+      "The packet shows plan health, breached triggers, recovery owner work, and an approval-safe recommendation.",
+      "An AssistantAuditEvent records packet creation.",
+      "No forecast, sales order, PO, inventory, WMS task, shipment, supplier commitment, or customer promise is mutated automatically."
+    ]
+  },
+  {
+    "id": "amp35-queue-replanning-review",
+    "title": "Queue replanning review",
+    "persona": "Operations controller with planning review authority",
+    "entrypoint": "/assistant/continuous-planning",
+    "steps": [
+      "Create or select a DRAFT continuous planning packet.",
+      "Add a review note describing the intended recovery or monitor decision.",
+      "Click Queue planning review."
+    ],
+    "expected": [
+      "The packet status changes to REVIEW_QUEUED with actionQueueItemId, approvedByUserId, approvedAt, and approvalNote.",
+      "An AssistantActionQueueItem is created with actionKind assistant_continuous_planning_review and objectHref /assistant/continuous-planning.",
+      "An AssistantAuditEvent states that forecasts, orders, POs, inventory, WMS tasks, shipments, suppliers, and customer promises were not changed automatically."
+    ]
+  },
+  {
+    "id": "amp35-monitor-no-trigger-state",
+    "title": "Monitor mode when plan variances are within thresholds",
+    "persona": "Planning manager",
+    "entrypoint": "/assistant/continuous-planning",
+    "steps": [
+      "Open AMP35 when demand, supply, inventory, transport, and supplier signals are within thresholds.",
+      "Create a planning packet.",
+      "Inspect the recovery and rollback sections."
+    ],
+    "expected": [
+      "triggerJson contains zero breached replanning triggers.",
+      "recoveryPlanJson recommends monitor mode rather than downstream execution.",
+      "rollbackPlanJson still preserves current operational records and instructs users to create a fresh packet when actuals materially change."
+    ]
+  }
+]
