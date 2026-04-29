@@ -73,6 +73,7 @@ export function AssistantSubnav() {
   const warehouseFulfillmentAutonomy = pathname.startsWith("/assistant/warehouse-fulfillment-autonomy");
   const dataIntegrationControl = pathname.startsWith("/assistant/data-integration-control");
   const aiQualityRelease = pathname.startsWith("/assistant/ai-quality-release");
+  const tenantRolloutChange = pathname.startsWith("/assistant/tenant-rollout-change");
   const advancedProgram = (slug: string) => pathname.startsWith(`/assistant/advanced-programs/${slug}`);
   const advancedProgramLinks = listAdvancedProgramConfigs();
   const workbench = pathname.startsWith("/assistant/workbench");
@@ -319,6 +320,13 @@ export function AssistantSubnav() {
         title="Sprint 10 AI Quality, Evaluation & Release Governance"
       >
         Sprint 10
+      </Link>
+      <Link
+        href="/assistant/tenant-rollout-change"
+        className={tenantRolloutChange ? appNavActiveClass : appNavInactiveClass}
+        title="Sprint 11 Tenant Rollout & Change Enablement"
+      >
+        Sprint 11
       </Link>
       {advancedProgramLinks.map((program) => (
         <Link

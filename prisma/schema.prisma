@@ -189,6 +189,7 @@ model Tenant {
   assistantWarehouseFulfillmentPackets     AssistantWarehouseFulfillmentPacket[]
   assistantDataIntegrationPackets          AssistantDataIntegrationPacket[]
   assistantAiQualityReleasePackets         AssistantAiQualityReleasePacket[]
+  assistantTenantRolloutPackets            AssistantTenantRolloutPacket[]
   assistantActionQueue                     AssistantActionQueueItem[]
   assistantPlaybookTemplates               AssistantPlaybookTemplate[]
   assistantPlaybookRuns                    AssistantPlaybookRun[]
@@ -1535,6 +1536,48 @@ model AssistantAiQualityReleasePacket {
   @@index([tenantId, qualityScore, updatedAt])
 }
 
+/// Sprint 11: durable tenant rollout and change enablement packet for rollout waves, stakeholder readiness, training, communications, adoption telemetry, support model, cutover, and rollback governance.
+model AssistantTenantRolloutPacket {
+  id                    String    @id @default(cuid())
+  tenantId              String
+  createdByUserId       String?
+  approvedByUserId      String?
+  title                 String
+  status                String    @default("DRAFT") @db.VarChar(32)
+  rolloutScore          Int       @default(0)
+  activeUserCount       Int       @default(0)
+  stakeholderGapCount   Int       @default(0)
+  trainingGapCount      Int       @default(0)
+  communicationGapCount Int       @default(0)
+  supportRiskCount      Int       @default(0)
+  adoptionRiskCount     Int       @default(0)
+  cutoverBlockerCount   Int       @default(0)
+  sourceSummaryJson     Json
+  tenantProfileJson     Json
+  stakeholderMapJson    Json
+  rolloutWaveJson       Json
+  enablementPlanJson    Json
+  communicationPlanJson Json
+  adoptionTelemetryJson Json
+  supportModelJson      Json
+  cutoverChecklistJson  Json
+  rollbackPlanJson      Json
+  responsePlanJson      Json
+  leadershipSummary     String    @db.Text
+  actionQueueItemId     String?
+  approvedAt            DateTime?
+  approvalNote          String?   @db.Text
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator  User?  @relation("AssistantTenantRolloutPacketCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  approver User?  @relation("AssistantTenantRolloutPacketApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, updatedAt])
+  @@index([tenantId, rolloutScore, updatedAt])
+}
+
 /// AMP7: inspectable grounding ledger extracted from assistant answers and reviewer additions.
 model AssistantEvidenceRecord {
   id              String    @id @default(cuid())
@@ -2185,6 +2228,8 @@ model User {
   assistantDataIntegrationPacketsApproved          AssistantDataIntegrationPacket[]          @relation("AssistantDataIntegrationPacketApprover")
   assistantAiQualityReleasePacketsCreated          AssistantAiQualityReleasePacket[]         @relation("AssistantAiQualityReleasePacketCreator")
   assistantAiQualityReleasePacketsApproved         AssistantAiQualityReleasePacket[]         @relation("AssistantAiQualityReleasePacketApprover")
+  assistantTenantRolloutPacketsCreated             AssistantTenantRolloutPacket[]            @relation("AssistantTenantRolloutPacketCreator")
+  assistantTenantRolloutPacketsApproved            AssistantTenantRolloutPacket[]            @relation("AssistantTenantRolloutPacketApprover")
   invoiceIntakesAccountingApproved                 InvoiceIntake[]                           @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated                TariffShipmentApplication[]               @relation("TariffShipmentApplicationCreator")
   scriEventsOwned                                  ScriExternalEvent[]                       @relation("ScriEventOwner")

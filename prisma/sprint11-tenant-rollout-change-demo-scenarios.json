@@ -1,0 +1,56 @@
+{
+  "sprint": 11,
+  "name": "Tenant Rollout & Change Enablement",
+  "entrypoint": "/assistant/tenant-rollout-change",
+  "api": "/api/assistant/tenant-rollout-change",
+  "scenarios": [
+    {
+      "id": "create-tenant-rollout-packet",
+      "title": "Create a durable tenant rollout packet",
+      "steps": [
+        "Open the Sprint 11 Tenant Rollout & Change Enablement workspace.",
+        "Review tenant users, org units, roles, admin controls, rollout factory packets, AI quality release packets, audit events, and action queue signals.",
+        "Click Create Sprint 11 packet."
+      ],
+      "expected": [
+        "A durable AssistantTenantRolloutPacket row is created with tenant profile, stakeholder map, rollout waves, enablement plan, communication plan, adoption telemetry, support model, cutover checklist, rollback plan, response plan, and leadership summary JSON.",
+        "An AssistantAuditEvent records that packet creation is evidence-only.",
+        "No tenant, user, role, org unit, module flag, training assignment, communication, seed command, launch state, or tenant setting is changed automatically."
+      ]
+    },
+    {
+      "id": "queue-tenant-change-review",
+      "title": "Queue change board review",
+      "steps": [
+        "Add an optional tenant rollout review note to a draft Sprint 11 packet.",
+        "Click Queue review."
+      ],
+      "expected": [
+        "The packet moves to CHANGE_REVIEW_QUEUED and stores actionQueueItemId.",
+        "An AssistantActionQueueItem is created for tenant_rollout_change_review with the packet URL and rollout evidence.",
+        "The queued review is separate from launch execution; the assistant does not invite users, grant roles, enable modules, send communications, run seeds, or change rollout mode automatically."
+      ]
+    },
+    {
+      "id": "approve-tenant-rollout-packet",
+      "title": "Approve reviewed rollout evidence",
+      "steps": [
+        "Review stakeholder gaps, rollout waves, enablement modules, communications, adoption telemetry, support model, cutover blockers, and rollback plan.",
+        "Click Approve packet."
+      ],
+      "expected": [
+        "The packet status becomes APPROVED with approvedAt, approvedByUserId, and approvalNote.",
+        "An AssistantAuditEvent records approval and reiterates the no-silent-change guardrail.",
+        "Approval records rollout governance evidence only; actual invitations, role grants, module changes, communications, seed runs, and tenant setting updates require separate downstream approved workflows."
+      ]
+    }
+  ],
+  "guardrails": [
+    "No tenant is created, cloned, renamed, launched, archived, or deleted automatically.",
+    "No user is invited, activated, deactivated, moved between waves, or assigned training automatically.",
+    "No role, permission, org unit, support owner, or stakeholder assignment is created or changed automatically.",
+    "No module flag, rollout mode, runtime setting, seed command, connector credential, or tenant setting is changed automatically.",
+    "No email, notification, announcement, customer communication, training invite, or support ticket is sent automatically.",
+    "No rollout factory packet, AI quality release packet, admin control, audit event, or action queue item is silently approved or closed."
+  ]
+}
