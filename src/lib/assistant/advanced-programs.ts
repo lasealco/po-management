@@ -9,7 +9,15 @@ export type AdvancedProgramKey =
   | "packaging-optimization"
   | "manufacturing-coordination"
   | "production-scheduling"
-  | "category-strategy";
+  | "category-strategy"
+  | "spend-intelligence"
+  | "supplier-resilience"
+  | "workforce-enablement"
+  | "knowledge-sop"
+  | "document-intelligence"
+  | "vision-evidence"
+  | "iot-telemetry"
+  | "semantic-metrics";
 
 export type AdvancedProgramSignals = {
   products: number;
@@ -33,6 +41,14 @@ export type AdvancedProgramSignals = {
   planningHealthScore: number;
   simulationRiskCount: number;
   networkRiskCount: number;
+  invoiceIntakes: number;
+  openActionItems: number;
+  evidenceRecords: number;
+  staleEvidenceRecords: number;
+  reviewExamples: number;
+  activePlaybooks: number;
+  activePlaybookRuns: number;
+  auditEvents: number;
 };
 
 type ProgramConfig = {
@@ -244,6 +260,142 @@ export const ADVANCED_PROGRAMS: Record<AdvancedProgramKey, ProgramConfig> = {
     artifactLabel: "category strategy packet",
     approvalOwners: ["Procurement", "Finance", "Supplier owner"],
     noMutation: "supplier panels, RFQs, sourcing awards, contracts, POs, or savings claims",
+  },
+  "spend-intelligence": {
+    ampNumber: 48,
+    key: "spend-intelligence",
+    slug: "spend-intelligence",
+    navLabel: "Spend",
+    title: "Spend intelligence and savings realization program",
+    surfaceTitle: "Spend Intelligence & Savings Realization",
+    sourceLabels: ["openPurchaseOrders", "invoiceIntakes", "tariffContracts", "contractRiskCount", "financeRiskScore"],
+    riskRules: [
+      { key: "leakage_signal", label: "Finance or contract risk suggests leakage or off-contract buying", metric: "financeRiskScore", threshold: 50, direction: "gte", severity: "HIGH" },
+      { key: "benefit_tracking_gap", label: "Savings evidence needs benefits tracking", metric: "invoiceIntakes", threshold: 1, direction: "lt", severity: "MEDIUM" },
+    ],
+    recommendations: ["Aggregate PO, invoice, contract, supplier, tariff, and category evidence into leakage findings.", "Queue savings owner review before benefits are claimed."],
+    artifactLabel: "spend leakage and savings packet",
+    approvalOwners: ["Procurement", "Finance", "Category owner"],
+    noMutation: "POs, invoices, contracts, supplier records, category plans, savings ledgers, or accounting records",
+  },
+  "supplier-resilience": {
+    ampNumber: 49,
+    key: "supplier-resilience",
+    slug: "supplier-resilience",
+    navLabel: "Resilience",
+    title: "Supplier risk and resilience due-diligence program",
+    surfaceTitle: "Supplier Risk & Resilience Due Diligence",
+    sourceLabels: ["activeSuppliers", "supplierDocs", "expiringSupplierDocs", "shipments", "openPurchaseOrders", "contractRiskCount"],
+    riskRules: [
+      { key: "due_diligence_expiry", label: "Supplier due-diligence evidence is expiring", metric: "expiringSupplierDocs", threshold: 1, direction: "gte", severity: "HIGH" },
+      { key: "dependency_concentration", label: "Supplier dependency needs resilience review", metric: "activeSuppliers", threshold: 2, direction: "lt", severity: "HIGH" },
+    ],
+    recommendations: ["Build supplier resilience packet with dependency, document, shipment, spend, and mitigation evidence.", "Queue mitigation plan approval before supplier status or award changes."],
+    artifactLabel: "supplier resilience due-diligence packet",
+    approvalOwners: ["Supplier risk", "Procurement", "Operations"],
+    noMutation: "supplier statuses, risk ratings, awards, onboarding tasks, mitigation plans, POs, or shipment allocations",
+  },
+  "workforce-enablement": {
+    ampNumber: 50,
+    key: "workforce-enablement",
+    slug: "workforce-enablement",
+    navLabel: "Training",
+    title: "Workforce enablement and role training program",
+    surfaceTitle: "Workforce Enablement & Role Training",
+    sourceLabels: ["activePlaybooks", "activePlaybookRuns", "reviewExamples", "openActionItems", "auditEvents"],
+    riskRules: [
+      { key: "training_backlog", label: "Open work and playbook runs need coaching/certification review", metric: "activePlaybookRuns", threshold: 1, direction: "gte", severity: "MEDIUM" },
+      { key: "practice_gap", label: "Reviewed examples are thin for role training", metric: "reviewExamples", threshold: 1, direction: "lt", severity: "MEDIUM" },
+    ],
+    recommendations: ["Turn live workflows, SOPs, and audit feedback into role training paths.", "Queue manager certification review before changing role access or live workflow permissions."],
+    artifactLabel: "role training and certification packet",
+    approvalOwners: ["Operations manager", "Training lead", "Security/admin"],
+    noMutation: "user roles, certifications, live workflow records, SOPs, access grants, or production tasks",
+  },
+  "knowledge-sop": {
+    ampNumber: 51,
+    key: "knowledge-sop",
+    slug: "knowledge-sop",
+    navLabel: "SOPs",
+    title: "Enterprise knowledge and SOP management program",
+    surfaceTitle: "Enterprise Knowledge & SOP Management",
+    sourceLabels: ["activePlaybooks", "evidenceRecords", "staleEvidenceRecords", "reviewExamples", "auditEvents"],
+    riskRules: [
+      { key: "stale_knowledge", label: "Archived/stale evidence needs knowledge owner review", metric: "staleEvidenceRecords", threshold: 1, direction: "gte", severity: "HIGH" },
+      { key: "sop_coverage_gap", label: "Active SOP/playbook coverage is limited", metric: "activePlaybooks", threshold: 1, direction: "lt", severity: "MEDIUM" },
+    ],
+    recommendations: ["Create governed SOP change packet with owner, freshness, citations, deprecation, and answer-quality checks.", "Queue knowledge approval before assistant answers use revised procedures."],
+    artifactLabel: "governed SOP update packet",
+    approvalOwners: ["Knowledge owner", "Operations", "Compliance"],
+    noMutation: "SOPs, prompt library items, playbooks, approved answers, citations, or deprecated knowledge",
+  },
+  "document-intelligence": {
+    ampNumber: 52,
+    key: "document-intelligence",
+    slug: "document-intelligence",
+    navLabel: "Docs AI",
+    title: "Document intelligence operations program",
+    surfaceTitle: "Document Intelligence Operations",
+    sourceLabels: ["supplierDocs", "productDocs", "invoiceIntakes", "evidenceRecords", "openActionItems"],
+    riskRules: [
+      { key: "document_review_backlog", label: "Open action items indicate document review backlog", metric: "openActionItems", threshold: 1, direction: "gte", severity: "MEDIUM" },
+      { key: "extraction_coverage_gap", label: "Operational document evidence is thin", metric: "evidenceRecords", threshold: 1, direction: "lt", severity: "MEDIUM" },
+    ],
+    recommendations: ["Classify, redact, extract, link, and review unstructured operational documents.", "Queue extraction approval before data is linked to operational records."],
+    artifactLabel: "document extraction review packet",
+    approvalOwners: ["Document operations", "Compliance", "Object owner"],
+    noMutation: "source files, extracted fields, linked orders/suppliers/shipments/contracts, redactions, or document approval states",
+  },
+  "vision-evidence": {
+    ampNumber: 53,
+    key: "vision-evidence",
+    slug: "vision-evidence",
+    navLabel: "Vision",
+    title: "Computer-vision evidence program",
+    surfaceTitle: "Computer-Vision Evidence",
+    sourceLabels: ["evidenceRecords", "productDocs", "shipmentExceptions", "heldInventoryRows", "reviewExamples"],
+    riskRules: [
+      { key: "verification_needed", label: "Visual evidence requires human verification before claims", metric: "shipmentExceptions", threshold: 1, direction: "gte", severity: "HIGH" },
+      { key: "confidence_training_gap", label: "Reviewed examples are thin for visual evidence calibration", metric: "reviewExamples", threshold: 1, direction: "lt", severity: "MEDIUM" },
+    ],
+    recommendations: ["Create photo/scan review packet for damage, labels, POD, inventory condition, and completeness.", "Queue verification before claims, CAPA links, or shipment exceptions are changed."],
+    artifactLabel: "computer-vision evidence packet",
+    approvalOwners: ["Warehouse", "Quality", "Claims owner"],
+    noMutation: "claims, CAPA records, shipment exceptions, inventory condition, labels, POD status, or customer communications",
+  },
+  "iot-telemetry": {
+    ampNumber: 54,
+    key: "iot-telemetry",
+    slug: "iot-telemetry",
+    navLabel: "IoT",
+    title: "IoT and asset telemetry operations program",
+    surfaceTitle: "IoT & Asset Telemetry Operations",
+    sourceLabels: ["openWmsTasks", "shipmentExceptions", "heldInventoryRows", "networkRiskCount", "openActionItems"],
+    riskRules: [
+      { key: "telemetry_exception_proxy", label: "Operational exceptions suggest telemetry or asset follow-up", metric: "shipmentExceptions", threshold: 1, direction: "gte", severity: "MEDIUM" },
+      { key: "maintenance_backlog", label: "Open work items may require maintenance triage", metric: "openActionItems", threshold: 5, direction: "gte", severity: "MEDIUM" },
+    ],
+    recommendations: ["Triage threshold breaches, maintenance recommendations, cold-chain evidence, and escalation routing.", "Queue maintenance/cold-chain review before asset or customer-impact changes."],
+    artifactLabel: "telemetry triage packet",
+    approvalOwners: ["Maintenance", "Facilities", "Operations"],
+    noMutation: "sensor readings, asset settings, maintenance work orders, cold-chain status, facility controls, or shipment/customer records",
+  },
+  "semantic-metrics": {
+    ampNumber: 55,
+    key: "semantic-metrics",
+    slug: "semantic-metrics",
+    navLabel: "Metrics",
+    title: "Semantic data layer and metric governance program",
+    surfaceTitle: "Semantic Data Layer & Metric Governance",
+    sourceLabels: ["evidenceRecords", "staleEvidenceRecords", "reviewExamples", "auditEvents", "activePlaybooks"],
+    riskRules: [
+      { key: "metric_lineage_gap", label: "Evidence coverage is thin for governed metric lineage", metric: "evidenceRecords", threshold: 2, direction: "lt", severity: "HIGH" },
+      { key: "stale_metric_source", label: "Stale evidence may block trusted metric reporting", metric: "staleEvidenceRecords", threshold: 1, direction: "gte", severity: "HIGH" },
+    ],
+    recommendations: ["Define metric owner, entity lineage, freshness, joins, and citation requirements.", "Queue metric governance approval before assistant reports KPIs or recommendations."],
+    artifactLabel: "semantic metric governance packet",
+    approvalOwners: ["Data owner", "Analytics", "Compliance"],
+    noMutation: "metric definitions, lineage, joins, dashboard KPIs, report outputs, assistant answers, or access policies",
   },
 };
 

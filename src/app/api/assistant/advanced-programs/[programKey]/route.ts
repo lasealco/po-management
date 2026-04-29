@@ -53,6 +53,14 @@ async function loadSignals(tenantId: string): Promise<AdvancedProgramSignals> {
     planningPacket,
     simulationPackets,
     networkPackets,
+    invoiceIntakes,
+    openActionItems,
+    evidenceRecords,
+    staleEvidenceRecords,
+    reviewExamples,
+    activePlaybooks,
+    activePlaybookRuns,
+    auditEvents,
   ] = await Promise.all([
     prisma.product.count({ where: { tenantId } }),
     prisma.productDocument.count({ where: { product: { tenantId } } }),
@@ -71,6 +79,14 @@ async function loadSignals(tenantId: string): Promise<AdvancedProgramSignals> {
     prisma.assistantContinuousPlanningPacket.findFirst({ where: { tenantId }, orderBy: { updatedAt: "desc" }, select: { planHealthScore: true } }),
     prisma.assistantSimulationStudioPacket.findMany({ where: { tenantId }, orderBy: { updatedAt: "desc" }, take: 5, select: { dataFreshnessRiskCount: true } }),
     prisma.assistantNetworkDesignPacket.findMany({ where: { tenantId }, orderBy: { updatedAt: "desc" }, take: 5, select: { serviceRiskCount: true, costRiskCount: true } }),
+    prisma.invoiceIntake.count({ where: { tenantId } }),
+    prisma.assistantActionQueueItem.count({ where: { tenantId, status: "PENDING" } }),
+    prisma.assistantEvidenceRecord.count({ where: { tenantId, archivedAt: null } }),
+    prisma.assistantEvidenceRecord.count({ where: { tenantId, archivedAt: { not: null } } }),
+    prisma.assistantReviewExample.count({ where: { tenantId } }),
+    prisma.assistantPlaybookTemplate.count({ where: { tenantId, isActive: true } }),
+    prisma.assistantPlaybookRun.count({ where: { tenantId, completedAt: null } }),
+    prisma.assistantAuditEvent.count({ where: { tenantId } }),
   ]);
   const now = Date.now();
   return {
@@ -95,6 +111,14 @@ async function loadSignals(tenantId: string): Promise<AdvancedProgramSignals> {
     planningHealthScore: planningPacket?.planHealthScore ?? 70,
     simulationRiskCount: simulationPackets.reduce((sum, packet) => sum + packet.dataFreshnessRiskCount, 0),
     networkRiskCount: networkPackets.reduce((sum, packet) => sum + packet.serviceRiskCount + packet.costRiskCount, 0),
+    invoiceIntakes,
+    openActionItems,
+    evidenceRecords,
+    staleEvidenceRecords,
+    reviewExamples,
+    activePlaybooks,
+    activePlaybookRuns,
+    auditEvents,
   };
 }
 

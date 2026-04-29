@@ -250,6 +250,14 @@ export function AssistantSubnav() {
         ["manufacturing-coordination", "Mfg", "AMP45 manufacturing execution coordination"],
         ["production-scheduling", "Schedule", "AMP46 advanced production scheduling"],
         ["category-strategy", "Sourcing", "AMP47 category strategy and sourcing"],
+        ["spend-intelligence", "Spend", "AMP48 spend intelligence and savings realization"],
+        ["supplier-resilience", "Resilience", "AMP49 supplier risk and resilience due diligence"],
+        ["workforce-enablement", "Training", "AMP50 workforce enablement and role training"],
+        ["knowledge-sop", "SOPs", "AMP51 enterprise knowledge and SOP management"],
+        ["document-intelligence", "Docs AI", "AMP52 document intelligence operations"],
+        ["vision-evidence", "Vision", "AMP53 computer-vision evidence"],
+        ["iot-telemetry", "IoT", "AMP54 IoT and asset telemetry operations"],
+        ["semantic-metrics", "Metrics", "AMP55 semantic data layer and metric governance"],
       ].map(([slug, label, title]) => (
         <Link
           key={slug}

@@ -1,0 +1,70 @@
+[
+  {
+    "id": "amp48-55-create-packets",
+    "title": "Create durable advanced program packets for AMP48 through AMP55",
+    "persona": "Transformation lead with finance, supplier, training, knowledge, document, telemetry, and analytics review responsibilities",
+    "entrypoints": [
+      "/assistant/advanced-programs/spend-intelligence",
+      "/assistant/advanced-programs/supplier-resilience",
+      "/assistant/advanced-programs/workforce-enablement",
+      "/assistant/advanced-programs/knowledge-sop",
+      "/assistant/advanced-programs/document-intelligence",
+      "/assistant/advanced-programs/vision-evidence",
+      "/assistant/advanced-programs/iot-telemetry",
+      "/assistant/advanced-programs/semantic-metrics"
+    ],
+    "steps": [
+      "Open each AMP48-AMP55 workspace from the Assistant subnav.",
+      "Review the live score, source signals, risk assessment, recommendations, artifact, approval route, and rollback plan.",
+      "Click Create AMP packet."
+    ],
+    "expected": [
+      "Each workspace persists an AssistantAdvancedProgramPacket row with ampNumber 48 through 55 and a distinct programKey.",
+      "sourceSummaryJson includes program-specific evidence such as POs, invoice intakes, supplier documents, assistant evidence records, playbooks, review examples, action queue items, audit events, and operational exceptions.",
+      "recommendationJson and rollbackPlanJson include human approval requirements and no-silent-mutation guardrails.",
+      "No POs, invoices, suppliers, training state, SOPs, files, extracted fields, claims, CAPA records, asset controls, metric definitions, dashboards, or assistant answers are changed automatically."
+    ]
+  },
+  {
+    "id": "amp48-55-queue-review",
+    "title": "Queue human review for spend, supplier resilience, SOP, document, vision, telemetry, and metrics packets",
+    "persona": "Executive reviewer",
+    "entrypoints": [
+      "/assistant/advanced-programs/spend-intelligence",
+      "/assistant/advanced-programs/semantic-metrics"
+    ],
+    "steps": [
+      "Create or select a DRAFT AMP48-AMP55 packet.",
+      "Add a review note explaining the intended downstream decision.",
+      "Click Queue review."
+    ],
+    "expected": [
+      "The packet status changes to REVIEW_QUEUED and records actionQueueItemId, approvedByUserId, approvedAt, and approvalNote.",
+      "An AssistantActionQueueItem is created with an AMP-specific actionKind such as assistant_amp48_review or assistant_amp55_review.",
+      "An AssistantAuditEvent states that downstream operational, knowledge, document, telemetry, or metric records were not mutated automatically."
+    ]
+  },
+  {
+    "id": "amp48-55-guardrails",
+    "title": "Review artifacts preserve approval, provenance, privacy, and rollback controls",
+    "persona": "Compliance and data governance owner",
+    "entrypoints": [
+      "/assistant/advanced-programs/workforce-enablement",
+      "/assistant/advanced-programs/document-intelligence",
+      "/assistant/advanced-programs/vision-evidence",
+      "/assistant/advanced-programs/iot-telemetry",
+      "/assistant/advanced-programs/semantic-metrics"
+    ],
+    "steps": [
+      "Open an AMP48-AMP55 packet with active risks.",
+      "Inspect artifactJson, approvalPlanJson, recommendationJson, and rollbackPlanJson.",
+      "Confirm the packet can be queued without executing downstream changes."
+    ],
+    "expected": [
+      "artifactJson identifies the program-specific review packet and export-ready evidence sections.",
+      "approvalPlanJson identifies the required owner groups before execution.",
+      "rollbackPlanJson preserves source records and requires a new packet when source evidence materially changes.",
+      "Privacy-sensitive areas such as workforce training, documents, vision evidence, and governed metrics remain review-only until a human approves downstream work."
+    ]
+  }
+]
