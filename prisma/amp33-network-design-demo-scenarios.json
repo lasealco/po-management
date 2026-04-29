@@ -1,0 +1,51 @@
+[
+  {
+    "id": "amp33-create-network-design-packet",
+    "title": "Create a governed network design packet",
+    "persona": "Supply chain strategy lead with operations edit access",
+    "entrypoint": "/assistant/network-design",
+    "steps": [
+      "Open the AMP33 Network workspace.",
+      "Review the live baseline, recommended scenario, service risks, cost risks, missing-data gaps, scenario tradeoffs, approval plan, and rollback plan.",
+      "Click Create network design packet."
+    ],
+    "expected": [
+      "A persisted AssistantNetworkDesignPacket is created with baselineJson, scenarioJson, tradeoffJson, serviceImpactJson, riskExposureJson, approvalPlanJson, rollbackPlanJson, and leadershipSummary.",
+      "The packet recommends one scenario from baseline_no_change, rebalance_constrained_facilities, consolidate_fragmented_lanes, or dual_source_supplier_regions.",
+      "An AssistantAuditEvent records packet creation.",
+      "No facility, lane, supplier, customer, order, shipment, inventory, RFQ, tariff, booking, or carrier allocation is mutated automatically."
+    ]
+  },
+  {
+    "id": "amp33-queue-network-review",
+    "title": "Queue network design review for approval",
+    "persona": "Operations controller with WMS or Control Tower edit access",
+    "entrypoint": "/assistant/network-design",
+    "steps": [
+      "Create or select a DRAFT network design packet.",
+      "Add a review note describing the intended footprint decision.",
+      "Click Queue network review."
+    ],
+    "expected": [
+      "The packet status changes to REVIEW_QUEUED with actionQueueItemId, approvedByUserId, approvedAt, and approvalNote.",
+      "An AssistantActionQueueItem is created with actionKind assistant_network_design_review and objectHref /assistant/network-design.",
+      "An AssistantAuditEvent states that network master data and downstream operational records were not changed automatically."
+    ]
+  },
+  {
+    "id": "amp33-guardrails-and-missing-data",
+    "title": "Missing network data and guardrails remain visible",
+    "persona": "Network planning owner",
+    "entrypoint": "/assistant/network-design",
+    "steps": [
+      "Open AMP33 with incomplete facility country, lane origin/destination, or supplier country data in the tenant.",
+      "Review the live preview and create a packet.",
+      "Inspect the approval and rollback sections."
+    ],
+    "expected": [
+      "The packet baselineJson includes missingDataCount and the score reflects data-quality gaps.",
+      "approvalPlanJson requires validation with facility, lane, customer, and supplier owners before downstream work.",
+      "rollbackPlanJson keeps current facility, lane, supplier, customer, order, inventory, shipment, RFQ, tariff, and carrier allocation records unchanged until separate approval."
+    ]
+  }
+]

@@ -174,6 +174,7 @@ model Tenant {
   assistantRolloutFactoryPackets    AssistantRolloutFactoryPacket[]
   assistantValueRealizationPackets  AssistantValueRealizationPacket[]
   assistantAutonomousOperatingLoops AssistantAutonomousOperatingLoop[]
+  assistantNetworkDesignPackets     AssistantNetworkDesignPacket[]
   assistantActionQueue              AssistantActionQueueItem[]
   assistantPlaybookTemplates        AssistantPlaybookTemplate[]
   assistantPlaybookRuns             AssistantPlaybookRun[]
@@ -933,6 +934,46 @@ model AssistantAutonomousOperatingLoop {
   @@index([tenantId, loopScore, updatedAt])
 }
 
+/// AMP33: governed network design and footprint strategy packet with scenarios, tradeoffs, and no-silent-master-data guardrails.
+model AssistantNetworkDesignPacket {
+  id                     String    @id @default(cuid())
+  tenantId               String
+  createdByUserId        String?
+  approvedByUserId       String?
+  title                  String
+  status                 String    @default("DRAFT") @db.VarChar(32)
+  networkScore           Int       @default(0)
+  facilityCount          Int       @default(0)
+  laneCount              Int       @default(0)
+  customerNodeCount      Int       @default(0)
+  supplierNodeCount      Int       @default(0)
+  scenarioCount          Int       @default(0)
+  serviceRiskCount       Int       @default(0)
+  costRiskCount          Int       @default(0)
+  recommendedScenarioKey String?   @db.VarChar(128)
+  baselineJson           Json
+  scenarioJson           Json
+  tradeoffJson           Json
+  serviceImpactJson      Json
+  riskExposureJson       Json
+  approvalPlanJson       Json
+  rollbackPlanJson       Json
+  leadershipSummary      String    @db.Text
+  actionQueueItemId      String?
+  approvedAt             DateTime?
+  approvalNote           String?   @db.Text
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator  User?  @relation("AssistantNetworkDesignPacketCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  approver User?  @relation("AssistantNetworkDesignPacketApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, updatedAt])
+  @@index([tenantId, networkScore, updatedAt])
+  @@index([tenantId, recommendedScenarioKey, updatedAt])
+}
+
 /// AMP7: inspectable grounding ledger extracted from assistant answers and reviewer additions.
 model AssistantEvidenceRecord {
   id              String    @id @default(cuid())
@@ -1553,6 +1594,8 @@ model User {
   assistantValueRealizationPacketsApproved AssistantValueRealizationPacket[]  @relation("AssistantValueRealizationPacketApprover")
   assistantAutonomousOperatingLoopsCreated AssistantAutonomousOperatingLoop[] @relation("AssistantAutonomousOperatingLoopCreator")
   assistantAutonomousOperatingLoopsApproved AssistantAutonomousOperatingLoop[] @relation("AssistantAutonomousOperatingLoopApprover")
+  assistantNetworkDesignPacketsCreated AssistantNetworkDesignPacket[]        @relation("AssistantNetworkDesignPacketCreator")
+  assistantNetworkDesignPacketsApproved AssistantNetworkDesignPacket[]       @relation("AssistantNetworkDesignPacketApprover")
   invoiceIntakesAccountingApproved        InvoiceIntake[]                   @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated       TariffShipmentApplication[]       @relation("TariffShipmentApplicationCreator")
   scriEventsOwned                         ScriExternalEvent[]               @relation("ScriEventOwner")
