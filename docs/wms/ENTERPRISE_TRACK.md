@@ -48,12 +48,12 @@ Parallel agents: **non-overlapping paths only** (see [`agent-todos/README.md`](.
 
 **Exit criteria**
 
-- [ ] Choose **Option A / B / C** from [`WMS_RECEIVING_STATE_MACHINE_SPEC.md`](./WMS_RECEIVING_STATE_MACHINE_SPEC.md) in an implementation note or ADR.
-- [ ] `GET /api/wms` (or shipment slice) exposes status + **next allowed actions** for editors.
-- [ ] Explicit `POST` transition(s) with tenant + warehouse scope + audit line per transition.
-- [ ] `GAP_MAP.md` updated: Phase **2.3** row reflects **✅** or **🟡** with honest limits.
+- [x] Choose **Option A / B / C** from [`WMS_RECEIVING_STATE_MACHINE_SPEC.md`](./WMS_RECEIVING_STATE_MACHINE_SPEC.md) in an implementation note or ADR.
+- [x] `GET /api/wms` (or shipment slice) exposes status + **next allowed actions** for editors.
+- [x] Explicit `POST` transition(s) with tenant + warehouse scope + audit line per transition.
+- [x] `GAP_MAP.md` updated: Phase **2.3** row reflects **✅** or **🟡** with honest limits.
 
-**References:** Roadmap Phase 2.3, [`CONTROL_TOWER_WMS_BACKLOG_5_PHASES.md`](../engineering/CONTROL_TOWER_WMS_BACKLOG_5_PHASES.md) Phase 4.
+**References:** Roadmap Phase 2.3, [`CONTROL_TOWER_WMS_BACKLOG_5_PHASES.md`](../engineering/CONTROL_TOWER_WMS_BACKLOG_5_PHASES.md) Phase 4 · [`WMS_RECEIVING_OPTION_A.md`](./WMS_RECEIVING_OPTION_A.md).
 
 ---
 

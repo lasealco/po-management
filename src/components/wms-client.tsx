@@ -1,7 +1,7 @@
 "use client";
 
 import { apiClientErrorMessage } from "@/lib/api-client-error";
-import type { InventoryMovementType } from "@prisma/client";
+import type { InventoryMovementType, WmsReceiveStatus } from "@prisma/client";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
@@ -14,6 +14,7 @@ import {
   normalizeMovementLedgerQueryString,
   readStockLedgerUrlState,
 } from "@/lib/wms/stock-ledger-url";
+import { WMS_RECEIVE_STATUS_LABEL } from "@/lib/wms/wms-receive-status";
 
 type WmsData = {
   warehouses: Array<{ id: string; code: string | null; name: string; type: "CFS" | "WAREHOUSE" }>;
@@ -121,6 +122,11 @@ type WmsData = {
     receivedAt: string | null;
     orderNumber: string;
     itemCount: number;
+    wmsReceiveStatus: WmsReceiveStatus;
+    wmsReceiveNote: string | null;
+    wmsReceiveUpdatedAt: string | null;
+    wmsReceiveUpdatedBy: { id: string; name: string } | null;
+    allowedReceiveActions: WmsReceiveStatus[];
     latestMilestone: {
       code: string;
       source: string;
@@ -1556,8 +1562,8 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
       <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
         <h2 className="text-sm font-semibold text-zinc-900">Inbound / ASN</h2>
         <p className="mt-1 text-xs text-zinc-600">
-          Lightweight receiving header on purchase-order shipments: ASN reference and expected receive
-          time for dock planning. Putaway still runs per shipment line below.
+          Lightweight receiving header on purchase-order shipments: ASN reference, expected receive time,
+          and WMS receiving workflow states before putaway. Putaway still runs per shipment line below.
         </p>
         <div className="mt-3 overflow-x-auto">
           <table className="min-w-full text-sm">
@@ -1566,6 +1572,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                 <th className="px-2 py-1">Order</th>
                 <th className="px-2 py-1">Shipment</th>
                 <th className="px-2 py-1">Status</th>
+                <th className="px-2 py-1">WMS receiving</th>
                 <th className="px-2 py-1">Last milestone</th>
                 <th className="px-2 py-1">ASN ref</th>
                 <th className="px-2 py-1">Expected</th>
@@ -1577,7 +1584,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
             <tbody className="divide-y divide-zinc-200">
               {data.inboundShipments.length === 0 ? (
                 <tr>
-                  <td colSpan={canEdit ? 9 : 7} className="px-2 py-3 text-zinc-500">
+                  <td colSpan={canEdit ? 10 : 8} className="px-2 py-3 text-zinc-500">
                     No shipments for this tenant yet.
                   </td>
                 </tr>
@@ -1589,6 +1596,50 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                       <td className="px-2 py-1 font-medium text-zinc-900">{s.orderNumber}</td>
                       <td className="px-2 py-1 text-zinc-700">{s.shipmentNo || s.id.slice(0, 8)}</td>
                       <td className="px-2 py-1 text-zinc-600">{s.status}</td>
+                      <td className="px-2 py-1 align-top">
+                        <div className="flex min-w-[9rem] flex-col gap-1">
+                          <span className="text-xs font-medium text-zinc-800">
+                            {WMS_RECEIVE_STATUS_LABEL[s.wmsReceiveStatus]}
+                          </span>
+                          {s.wmsReceiveUpdatedAt ? (
+                            <span className="text-[10px] leading-snug text-zinc-500">
+                              {s.wmsReceiveUpdatedBy?.name ?? "—"} ·{" "}
+                              {new Date(s.wmsReceiveUpdatedAt).toLocaleString()}
+                            </span>
+                          ) : null}
+                          {s.wmsReceiveNote ? (
+                            <span className="text-[10px] leading-snug text-zinc-600" title={s.wmsReceiveNote}>
+                              {s.wmsReceiveNote.length > 80
+                                ? `${s.wmsReceiveNote.slice(0, 80)}…`
+                                : s.wmsReceiveNote}
+                            </span>
+                          ) : null}
+                          {canEdit && s.allowedReceiveActions.length > 0 ? (
+                            <select
+                              defaultValue=""
+                              disabled={busy}
+                              onChange={(e) => {
+                                const toStatus = e.target.value as WmsReceiveStatus;
+                                e.target.value = "";
+                                if (!toStatus) return;
+                                void runAction({
+                                  action: "set_wms_receiving_status",
+                                  shipmentId: s.id,
+                                  toStatus,
+                                });
+                              }}
+                              className="rounded border border-zinc-300 px-1 py-1 text-[11px]"
+                            >
+                              <option value="">Advance receiving…</option>
+                              {s.allowedReceiveActions.map((code) => (
+                                <option key={code} value={code}>
+                                  → {WMS_RECEIVE_STATUS_LABEL[code]}
+                                </option>
+                              ))}
+                            </select>
+                          ) : null}
+                        </div>
+                      </td>
                       <td className="max-w-[10rem] truncate px-2 py-1 text-xs text-zinc-600" title={s.latestMilestone?.code ?? ""}>
                         {s.latestMilestone
                           ? `${s.latestMilestone.code}${s.latestMilestone.actualAt ? " ✓" : ""}`

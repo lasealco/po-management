@@ -52,6 +52,8 @@ export type WmsBody = {
   quantity?: number;
   note?: string | null;
   balanceId?: string;
+  /** Target `WmsReceiveStatus` for `set_wms_receiving_status`. */
+  toStatus?: string;
   holdReason?: string | null;
   /** Physical count when completing a cycle-count task. */
   countedQty?: number;

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { toApiErrorResponseFromStatus } from "@/app/api/_lib/api-error-contract";
-import { Prisma, ShipmentMilestoneCode } from "@prisma/client";
+import { Prisma, ShipmentMilestoneCode, type WmsReceiveStatus } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 
@@ -10,6 +10,7 @@ import { syncOutboundOrderStatusAfterPick } from "./outbound-workflow";
 import { nextWaveNo } from "./wave";
 
 import type { WmsBody } from "./wms-body";
+import { allowedNextWmsReceiveStatuses, canTransitionWmsReceive, isWmsReceiveStatus } from "./wms-receive-status";
 
 export async function handleWmsPost(
   tenantId: string,
@@ -874,9 +875,108 @@ export async function handleWmsPost(
     if (Object.keys(data).length === 0) {
       return toApiErrorResponseFromStatus("Provide asnReference and/or expectedReceiveAt to update.", 400);
     }
-    await prisma.shipment.update({
-      where: { id: shipment.id },
-      data,
+    await prisma.$transaction(async (tx) => {
+      const updated = await tx.shipment.update({
+        where: { id: shipment.id },
+        data,
+        select: {
+          id: true,
+          wmsReceiveStatus: true,
+          asnReference: true,
+          expectedReceiveAt: true,
+        },
+      });
+      if (
+        updated.wmsReceiveStatus === "NOT_TRACKED" &&
+        (updated.asnReference || updated.expectedReceiveAt)
+      ) {
+        await tx.shipment.update({
+          where: { id: updated.id },
+          data: {
+            wmsReceiveStatus: "EXPECTED",
+            wmsReceiveUpdatedAt: new Date(),
+            wmsReceiveUpdatedById: actorId,
+          },
+        });
+        await tx.ctAuditLog.create({
+          data: {
+            tenantId,
+            shipmentId: updated.id,
+            entityType: "SHIPMENT",
+            entityId: updated.id,
+            action: "wms_receive_transition",
+            payload: {
+              from: "NOT_TRACKED",
+              to: "EXPECTED",
+              source: "inbound_fields",
+            },
+            actorUserId: actorId,
+          },
+        });
+      }
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "set_wms_receiving_status") {
+    const shipmentId = input.shipmentId?.trim();
+    const rawTo = input.toStatus?.trim();
+    if (!shipmentId || !rawTo) {
+      return toApiErrorResponseFromStatus("shipmentId and toStatus required.", 400);
+    }
+    if (!isWmsReceiveStatus(rawTo)) {
+      return toApiErrorResponseFromStatus("Invalid toStatus.", 400);
+    }
+    const toStatus = rawTo as WmsReceiveStatus;
+
+    const shipmentRow = await prisma.shipment.findFirst({
+      where: { id: shipmentId, order: { tenantId } },
+      select: { id: true, wmsReceiveStatus: true },
+    });
+    if (!shipmentRow) {
+      return toApiErrorResponseFromStatus("Shipment not found.", 404);
+    }
+    const fromStatus = shipmentRow.wmsReceiveStatus;
+    if (!canTransitionWmsReceive(fromStatus, toStatus)) {
+      const allowed = allowedNextWmsReceiveStatuses(fromStatus);
+      return toApiErrorResponseFromStatus(
+        `Invalid receiving transition ${fromStatus} → ${toStatus}. Allowed: ${allowed.join(", ") || "(none)"}.`,
+        400,
+      );
+    }
+    const notePayload =
+      input.note !== undefined
+        ? input.note === null || String(input.note).trim() === ""
+          ? null
+          : String(input.note).trim().slice(0, 4000)
+        : undefined;
+
+    await prisma.$transaction(async (tx) => {
+      await tx.shipment.update({
+        where: { id: shipmentRow.id },
+        data: {
+          wmsReceiveStatus: toStatus,
+          wmsReceiveUpdatedAt: new Date(),
+          wmsReceiveUpdatedById: actorId,
+          ...(notePayload !== undefined ? { wmsReceiveNote: notePayload } : {}),
+        },
+      });
+      await tx.ctAuditLog.create({
+        data: {
+          tenantId,
+          shipmentId: shipmentRow.id,
+          entityType: "SHIPMENT",
+          entityId: shipmentRow.id,
+          action: "wms_receive_transition",
+          payload: {
+            from: fromStatus,
+            to: toStatus,
+            source: "set_wms_receiving_status",
+            ...(notePayload !== undefined ? { note: notePayload } : {}),
+          },
+          actorUserId: actorId,
+        },
+      });
     });
     return NextResponse.json({ ok: true });
   }

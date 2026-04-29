@@ -4,6 +4,7 @@ import { userHasGlobalGrant } from "@/lib/authz";
 import { crmAccountInScope } from "@/lib/crm-scope";
 import { movementLedgerWhere, type ParsedMovementLedgerQuery } from "@/lib/wms/movement-ledger-query";
 import { loadWmsViewReadScope } from "@/lib/wms/wms-read-scope";
+import { allowedNextWmsReceiveStatuses } from "@/lib/wms/wms-receive-status";
 import { prisma } from "@/lib/prisma";
 
 function andWhereClauses<T>(base: T, extra: object): T {
@@ -184,6 +185,10 @@ export async function getWmsDashboardPayload(
         expectedReceiveAt: true,
         shippedAt: true,
         receivedAt: true,
+        wmsReceiveStatus: true,
+        wmsReceiveNote: true,
+        wmsReceiveUpdatedAt: true,
+        wmsReceiveUpdatedBy: { select: { id: true, name: true } },
         order: { select: { orderNumber: true } },
         _count: { select: { items: true } },
         milestones: {
@@ -366,6 +371,13 @@ export async function getWmsDashboardPayload(
         receivedAt: s.receivedAt?.toISOString() ?? null,
         orderNumber: s.order.orderNumber,
         itemCount: s._count.items,
+        wmsReceiveStatus: s.wmsReceiveStatus,
+        wmsReceiveNote: s.wmsReceiveNote,
+        wmsReceiveUpdatedAt: s.wmsReceiveUpdatedAt?.toISOString() ?? null,
+        wmsReceiveUpdatedBy: s.wmsReceiveUpdatedBy
+          ? { id: s.wmsReceiveUpdatedBy.id, name: s.wmsReceiveUpdatedBy.name }
+          : null,
+        allowedReceiveActions: allowedNextWmsReceiveStatuses(s.wmsReceiveStatus),
         latestMilestone: m0
           ? {
               code: m0.code,

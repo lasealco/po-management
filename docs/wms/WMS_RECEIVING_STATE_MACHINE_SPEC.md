@@ -90,8 +90,8 @@ A future issue should **choose A, B, or C** and reference this doc.
 ## 8. Exit criteria (Phase 2.3 in the phased roadmap)
 
 - [x] **This spec** published under `docs/wms/` and linked from [GAP_MAP.md](./GAP_MAP.md).
-- [ ] **Implementation** issue filed with: chosen option (A/B/C), first transition slice, and allowed paths.
-- [ ] **Engineering** merge: at least read-only status in API/UI **or** explicit defer with product sign-off.
+- [x] **Implementation** issue filed with: chosen option (A/B/C), first transition slice, and allowed paths. _(ADR: [WMS_RECEIVING_OPTION_A.md](./WMS_RECEIVING_OPTION_A.md).)_
+- [x] **Engineering** merge: at least read-only status in API/UI **or** explicit defer with product sign-off.
 
 ---
 
@@ -99,4 +99,5 @@ A future issue should **choose A, B, or C** and reference this doc.
 
 | Date | Change |
 |------|--------|
+| 2026-04-29 | Option A implemented (`wmsReceiveStatus`, `set_wms_receiving_status`, audit); ADR `WMS_RECEIVING_OPTION_A.md`. |
 | 2026-04-23 | Initial spec for Phase 2.3; baseline inventory from current WMS/Prisma. |

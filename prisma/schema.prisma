@@ -2584,6 +2584,7 @@ model User {
   ctReportSchedules                                   CtReportSchedule[]
   ctShipmentCostLinesCreated                          CtShipmentCostLine[]
   shipmentsOpsAssigned                                Shipment[]                                   @relation("ShipmentOpsAssignee")
+  shipmentsWmsReceiveUpdated                          Shipment[]                                   @relation("ShipmentWmsReceiveUpdatedBy")
   /// When set, Control Tower (and similar) list/detail is limited to shipments tagged with this CRM account.
   customerCrmAccountId                                String?
   customerCrmAccount                                  CrmAccount?                                  @relation("UserCustomerPortalScope", fields: [customerCrmAccountId], references: [id], onDelete: SetNull)
@@ -3663,6 +3664,17 @@ enum SalesOrderStatus {
   CLOSED
 }
 
+/// WMS receiving workflow on inbound PO shipments (orthogonal to `Shipment.status` / milestones).
+enum WmsReceiveStatus {
+  NOT_TRACKED
+  EXPECTED
+  AT_DOCK
+  RECEIVING
+  RECEIPT_COMPLETE
+  DISCREPANCY
+  CLOSED
+}
+
 model Shipment {
   id                      String         @id @default(cuid())
   orderId                 String
@@ -3675,6 +3687,11 @@ model Shipment {
   asnReference            String?
   /// Expected arrival at CFS / warehouse for receiving planning.
   expectedReceiveAt       DateTime?
+  /// First-class receiving pipeline for WMS (see `docs/wms/WMS_RECEIVING_STATE_MACHINE_SPEC.md`).
+  wmsReceiveStatus        WmsReceiveStatus @default(NOT_TRACKED)
+  wmsReceiveNote          String?          @db.Text
+  wmsReceiveUpdatedAt     DateTime?
+  wmsReceiveUpdatedById   String?
   carrierSupplierId       String?
   carrier                 String?
   trackingNo              String?
@@ -3703,6 +3720,7 @@ model Shipment {
   carrierSupplier            Supplier?                     @relation("ShipmentCarrierSupplier", fields: [carrierSupplierId], references: [id], onDelete: SetNull)
   customerCrmAccount         CrmAccount?                   @relation("ShipmentCustomerAccount", fields: [customerCrmAccountId], references: [id], onDelete: SetNull)
   opsAssignee                User?                         @relation("ShipmentOpsAssignee", fields: [opsAssigneeUserId], references: [id], onDelete: SetNull)
+  wmsReceiveUpdatedBy        User?                         @relation("ShipmentWmsReceiveUpdatedBy", fields: [wmsReceiveUpdatedById], references: [id], onDelete: SetNull)
   createdBy                  User                          @relation(fields: [createdById], references: [id], onDelete: Restrict)
   items                      ShipmentItem[]
   loadPlanShipment           LoadPlanShipment?
@@ -3728,6 +3746,7 @@ model Shipment {
   @@index([carrierSupplierId])
   @@index([salesOrderId])
   @@index([opsAssigneeUserId])
+  @@index([wmsReceiveUpdatedById])
 }
 
 model ShipmentItem {
