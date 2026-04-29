@@ -10,6 +10,7 @@ import { normalizeDockCode } from "./dock-appointment";
 import { orderPickSlotsForWave, type WavePickSlot } from "./allocation-strategy";
 import { syncOutboundOrderStatusAfterPick } from "./outbound-workflow";
 import { nextWaveNo } from "./wave";
+import { nextWorkOrderNo } from "./work-order-no";
 
 import type { WmsBody } from "./wms-body";
 import { allowedNextWmsReceiveStatuses, canTransitionWmsReceive, isWmsReceiveStatus } from "./wms-receive-status";
@@ -1403,6 +1404,239 @@ export async function handleWmsPost(
       }
     });
     return NextResponse.json({ ok: true, bookQty: book, countedQty: counted, variance });
+  }
+
+  if (action === "create_work_order") {
+    const warehouseId = input.warehouseId?.trim();
+    const title = input.workOrderTitle?.trim();
+    if (!warehouseId || !title) {
+      return toApiErrorResponseFromStatus("warehouseId and workOrderTitle required.", 400);
+    }
+    const wh = await prisma.warehouse.findFirst({
+      where: { id: warehouseId, tenantId },
+      select: { id: true },
+    });
+    if (!wh) {
+      return toApiErrorResponseFromStatus("Warehouse not found.", 404);
+    }
+    const workOrderNo = await nextWorkOrderNo(tenantId);
+    const desc = input.workOrderDescription?.trim();
+    const row = await prisma.wmsWorkOrder.create({
+      data: {
+        tenantId,
+        warehouseId,
+        workOrderNo,
+        title: title.slice(0, 200),
+        description: desc ? desc.slice(0, 8000) : null,
+        createdById: actorId,
+      },
+      select: { id: true, workOrderNo: true },
+    });
+    await prisma.ctAuditLog.create({
+      data: {
+        tenantId,
+        entityType: "WMS_WORK_ORDER",
+        entityId: row.id,
+        action: "work_order_created",
+        payload: { workOrderNo: row.workOrderNo, warehouseId },
+        actorUserId: actorId,
+      },
+    });
+    return NextResponse.json({ ok: true, workOrderId: row.id, workOrderNo: row.workOrderNo });
+  }
+
+  if (action === "create_value_add_task") {
+    const workOrderId = input.workOrderId?.trim();
+    if (!workOrderId) {
+      return toApiErrorResponseFromStatus("workOrderId required.", 400);
+    }
+    const wo = await prisma.wmsWorkOrder.findFirst({
+      where: {
+        id: workOrderId,
+        tenantId,
+        status: { in: ["OPEN", "IN_PROGRESS"] },
+      },
+      select: { id: true, warehouseId: true },
+    });
+    if (!wo) {
+      return toApiErrorResponseFromStatus("Work order not found or not open.", 404);
+    }
+
+    const productId = input.productId?.trim();
+    const binId = input.binId?.trim();
+    const hasMaterial = Boolean(productId && binId);
+    const qtyRaw = input.quantity;
+    const qtyNum =
+      qtyRaw === undefined || qtyRaw === null ? 0 : typeof qtyRaw === "number" ? qtyRaw : Number(qtyRaw);
+
+    if (hasMaterial) {
+      if (!Number.isFinite(qtyNum) || qtyNum <= 0) {
+        return toApiErrorResponseFromStatus("quantity must be > 0 when productId and binId are set.", 400);
+      }
+      const bal = await prisma.inventoryBalance.findFirst({
+        where: {
+          tenantId,
+          warehouseId: wo.warehouseId,
+          binId,
+          productId,
+        },
+        select: { id: true, onHandQty: true },
+      });
+      if (!bal) {
+        return toApiErrorResponseFromStatus("No inventory balance for product/bin in this warehouse.", 400);
+      }
+      if (Number(bal.onHandQty) < qtyNum) {
+        return toApiErrorResponseFromStatus("Insufficient on-hand qty for requested VAS consumption.", 400);
+      }
+    } else {
+      if (productId || binId) {
+        return toApiErrorResponseFromStatus("Provide both productId and binId for material consumption, or neither for labor-only.", 400);
+      }
+      if (qtyRaw !== undefined && qtyRaw !== null && qtyNum !== 0) {
+        return toApiErrorResponseFromStatus("Labor-only VALUE_ADD tasks must omit quantity or use 0.", 400);
+      }
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.wmsTask.create({
+        data: {
+          tenantId,
+          warehouseId: wo.warehouseId,
+          taskType: "VALUE_ADD",
+          referenceType: "WMS_WORK_ORDER",
+          referenceId: wo.id,
+          productId: productId || null,
+          binId: binId || null,
+          quantity: hasMaterial ? qtyNum.toString() : "0",
+          note: input.note?.trim() ? input.note.trim().slice(0, 500) : null,
+          createdById: actorId,
+        },
+      });
+      await tx.wmsWorkOrder.update({
+        where: { id: wo.id },
+        data: { status: "IN_PROGRESS" },
+      });
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "complete_value_add_task") {
+    const taskId = input.taskId?.trim();
+    if (!taskId) {
+      return toApiErrorResponseFromStatus("taskId required.", 400);
+    }
+    const task = await prisma.wmsTask.findFirst({
+      where: { id: taskId, tenantId, status: "OPEN", taskType: "VALUE_ADD" },
+      select: {
+        id: true,
+        warehouseId: true,
+        productId: true,
+        binId: true,
+        quantity: true,
+        referenceType: true,
+        referenceId: true,
+        note: true,
+      },
+    });
+    if (!task || task.referenceType !== "WMS_WORK_ORDER" || !task.referenceId) {
+      return toApiErrorResponseFromStatus("VALUE_ADD task not found.", 404);
+    }
+    const woId = task.referenceId;
+    const wo = await prisma.wmsWorkOrder.findFirst({
+      where: { id: woId, tenantId, status: { in: ["OPEN", "IN_PROGRESS"] } },
+      select: { id: true },
+    });
+    if (!wo) {
+      return toApiErrorResponseFromStatus("Work order not found or closed.", 404);
+    }
+
+    const qty = Number(task.quantity);
+    const hasMaterials = Boolean(task.productId && task.binId && qty > 0);
+
+    if (hasMaterials) {
+      const balPre = await prisma.inventoryBalance.findFirst({
+        where: {
+          tenantId,
+          warehouseId: task.warehouseId,
+          binId: task.binId!,
+          productId: task.productId!,
+        },
+        select: { id: true, onHandQty: true, onHold: true },
+      });
+      if (!balPre || balPre.onHold) {
+        return toApiErrorResponseFromStatus("Cannot complete VALUE_ADD: bin/product missing or on hold.", 400);
+      }
+      if (Number(balPre.onHandQty) < qty) {
+        return toApiErrorResponseFromStatus("Insufficient stock for VAS consumption.", 400);
+      }
+    }
+
+    await prisma.$transaction(async (tx) => {
+      if (hasMaterials) {
+        await tx.inventoryBalance.updateMany({
+          where: {
+            tenantId,
+            warehouseId: task.warehouseId,
+            binId: task.binId!,
+            productId: task.productId!,
+          },
+          data: { onHandQty: { decrement: qty.toString() } },
+        });
+        await tx.inventoryMovement.create({
+          data: {
+            tenantId,
+            warehouseId: task.warehouseId,
+            binId: task.binId!,
+            productId: task.productId!,
+            movementType: "ADJUSTMENT",
+            quantity: qty.toString(),
+            referenceType: "VALUE_ADD_TASK",
+            referenceId: task.id,
+            note: task.note?.trim() || "VAS material consumption",
+            createdById: actorId,
+          },
+        });
+      }
+
+      await tx.wmsTask.update({
+        where: { id: task.id },
+        data: { status: "DONE", completedAt: new Date(), completedById: actorId },
+      });
+
+      const remainingOpen = await tx.wmsTask.count({
+        where: {
+          tenantId,
+          referenceType: "WMS_WORK_ORDER",
+          referenceId: woId,
+          taskType: "VALUE_ADD",
+          status: "OPEN",
+        },
+      });
+
+      if (remainingOpen === 0) {
+        await tx.wmsWorkOrder.update({
+          where: { id: woId },
+          data: { status: "DONE", completedAt: new Date() },
+        });
+      }
+
+      await tx.ctAuditLog.create({
+        data: {
+          tenantId,
+          entityType: "WMS_WORK_ORDER",
+          entityId: woId,
+          action: "value_add_task_completed",
+          payload: {
+            taskId: task.id,
+            consumedQty: hasMaterials ? qty : 0,
+            movementType: hasMaterials ? "ADJUSTMENT" : null,
+          },
+          actorUserId: actorId,
+        },
+      });
+    });
+
+    return NextResponse.json({ ok: true });
   }
 
   return toApiErrorResponseFromStatus("Unsupported WMS action.", 400);

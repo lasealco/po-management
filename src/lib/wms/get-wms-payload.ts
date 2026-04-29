@@ -245,6 +245,23 @@ export async function getWmsDashboardPayload(
     },
   });
 
+  const workOrdersRaw = await prisma.wmsWorkOrder.findMany({
+    where: { tenantId },
+    orderBy: { createdAt: "desc" },
+    take: 50,
+    select: {
+      id: true,
+      workOrderNo: true,
+      title: true,
+      description: true,
+      status: true,
+      completedAt: true,
+      createdAt: true,
+      warehouse: { select: { id: true, code: true, name: true } },
+      createdBy: { select: { id: true, name: true } },
+    },
+  });
+
   const replenSourceBinIds = new Set<string>();
   for (const t of openTasks) {
     if (t.taskType === "REPLENISH" && t.referenceId) replenSourceBinIds.add(t.referenceId);
@@ -486,6 +503,17 @@ export async function getWmsDashboardPayload(
           : null,
       outboundNo: a.outboundOrder?.outboundNo ?? null,
       createdBy: { id: a.createdBy.id, name: a.createdBy.name },
+    })),
+    workOrders: workOrdersRaw.map((w) => ({
+      id: w.id,
+      workOrderNo: w.workOrderNo,
+      title: w.title,
+      description: w.description,
+      status: w.status,
+      completedAt: w.completedAt?.toISOString() ?? null,
+      createdAt: w.createdAt.toISOString(),
+      warehouse: w.warehouse,
+      createdBy: w.createdBy,
     })),
   };
 }

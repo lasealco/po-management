@@ -93,7 +93,7 @@ type WmsData = {
   }>;
   openTasks: Array<{
     id: string;
-    taskType: "PUTAWAY" | "PICK" | "REPLENISH" | "CYCLE_COUNT";
+    taskType: "PUTAWAY" | "PICK" | "REPLENISH" | "CYCLE_COUNT" | "VALUE_ADD";
     quantity: string;
     warehouse: { id: string; code: string | null; name: string };
     bin: { id: string; code: string; name: string } | null;
@@ -191,6 +191,17 @@ type WmsData = {
     outboundOrderId: string | null;
     shipment: { id: string; shipmentNo: string | null; orderNumber: string } | null;
     outboundNo: string | null;
+    createdBy: { id: string; name: string };
+  }>;
+  workOrders: Array<{
+    id: string;
+    workOrderNo: string;
+    title: string;
+    description: string | null;
+    status: "OPEN" | "IN_PROGRESS" | "DONE" | "CANCELLED";
+    completedAt: string | null;
+    createdAt: string;
+    warehouse: { id: string; code: string | null; name: string };
     createdBy: { id: string; name: string };
   }>;
 };
@@ -346,6 +357,11 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
   const [dockCodeInput, setDockCodeInput] = useState("DOCK-A");
   const [dockWinStart, setDockWinStart] = useState("");
   const [dockWinEnd, setDockWinEnd] = useState("");
+  const [vasWoTitle, setVasWoTitle] = useState("");
+  const [vasWoDesc, setVasWoDesc] = useState("");
+  const [vasTaskWoId, setVasTaskWoId] = useState("");
+  const [vasBalanceLineId, setVasBalanceLineId] = useState("");
+  const [vasTaskQty, setVasTaskQty] = useState("");
   const [cycleBalanceId, setCycleBalanceId] = useState("");
   const [cycleCountQtyByTask, setCycleCountQtyByTask] = useState<Record<string, string>>({});
   const [ledgerSince, setLedgerSince] = useState("");
@@ -355,7 +371,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
   const [ledgerDraftUntil, setLedgerDraftUntil] = useState("");
   const [ledgerDraftLimit, setLedgerDraftLimit] = useState("");
   const [openTaskTypeFilter, setOpenTaskTypeFilter] = useState<
-    "" | "PUTAWAY" | "PICK" | "REPLENISH" | "CYCLE_COUNT"
+    "" | "PUTAWAY" | "PICK" | "REPLENISH" | "CYCLE_COUNT" | "VALUE_ADD"
   >("");
   const [balanceTextFilter, setBalanceTextFilter] = useState("");
   const [movementSort, setMovementSort] = useState<
@@ -373,7 +389,13 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
 
   useEffect(() => {
     const taskType = (searchParams.get("taskType") || "").toUpperCase();
-    if (taskType === "PUTAWAY" || taskType === "PICK" || taskType === "REPLENISH" || taskType === "CYCLE_COUNT") {
+    if (
+      taskType === "PUTAWAY" ||
+      taskType === "PICK" ||
+      taskType === "REPLENISH" ||
+      taskType === "CYCLE_COUNT" ||
+      taskType === "VALUE_ADD"
+    ) {
       startTransition(() => {
         setOpenTaskTypeFilter(taskType);
       });
@@ -586,6 +608,14 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
         (b) => !selectedWarehouseId || b.warehouse.id === selectedWarehouseId,
       ),
     [data?.balances, selectedWarehouseId],
+  );
+
+  const workOrdersForWarehouse = useMemo(
+    () =>
+      (data?.workOrders ?? []).filter(
+        (wo) => !selectedWarehouseId || wo.warehouse.id === selectedWarehouseId,
+      ),
+    [data?.workOrders, selectedWarehouseId],
   );
 
   const balanceLinesByBinId = useMemo(() => {
@@ -2361,6 +2391,157 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
         </div>
       </section>
 
+      <section className="mb-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Workflow</p>
+        <h2 className="mt-2 text-sm font-semibold text-zinc-900">Value-add / work orders</h2>
+        <p className="mt-1 text-xs text-zinc-600">
+          Warehouse-scoped tickets with <span className="font-medium text-zinc-800">VALUE_ADD</span> tasks.
+          Completing a task with material consumption posts an{" "}
+          <span className="font-medium text-zinc-800">ADJUSTMENT</span> movement (billing linkage notes in{" "}
+          <span className="font-medium text-zinc-800">docs/wms/WMS_VAS_WORK_ORDERS.md</span>).
+        </p>
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <div className="rounded-xl border border-zinc-100 bg-zinc-50/90 p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-zinc-500">
+              Step 1 · Create work order
+            </p>
+            <label className="mt-2 block">
+              <span className="text-[10px] font-medium uppercase text-zinc-500">Title</span>
+              <input
+                value={vasWoTitle}
+                onChange={(e) => setVasWoTitle(e.target.value)}
+                placeholder="e.g. Relabel pallet · SKU swap"
+                className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+              />
+            </label>
+            <label className="mt-2 block">
+              <span className="text-[10px] font-medium uppercase text-zinc-500">Description (optional)</span>
+              <input
+                value={vasWoDesc}
+                onChange={(e) => setVasWoDesc(e.target.value)}
+                placeholder="Instructions for the floor"
+                className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+              />
+            </label>
+            <button
+              type="button"
+              disabled={!canEdit || busy || !selectedWarehouseId || !vasWoTitle.trim()}
+              onClick={() =>
+                void runAction({
+                  action: "create_work_order",
+                  warehouseId: selectedWarehouseId,
+                  workOrderTitle: vasWoTitle.trim(),
+                  workOrderDescription: vasWoDesc.trim() ? vasWoDesc.trim() : null,
+                })
+              }
+              className="mt-3 rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
+            >
+              Create work order
+            </button>
+          </div>
+          <div className="rounded-xl border border-zinc-100 bg-zinc-50/90 p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-zinc-500">
+              Step 2 · Add VALUE_ADD step
+            </p>
+            <label className="mt-2 block">
+              <span className="text-[10px] font-medium uppercase text-zinc-500">Work order</span>
+              <select
+                value={vasTaskWoId}
+                onChange={(e) => setVasTaskWoId(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+              >
+                <option value="">Select OPEN / IN_PROGRESS work order</option>
+                {workOrdersForWarehouse
+                  .filter((wo) => wo.status === "OPEN" || wo.status === "IN_PROGRESS")
+                  .map((wo) => (
+                    <option key={wo.id} value={wo.id}>
+                      {wo.workOrderNo} · {wo.title} ({wo.status})
+                    </option>
+                  ))}
+              </select>
+            </label>
+            <label className="mt-2 block">
+              <span className="text-[10px] font-medium uppercase text-zinc-500">
+                Consume from balance (optional — omit for labor-only)
+              </span>
+              <select
+                value={vasBalanceLineId}
+                onChange={(e) => {
+                  setVasBalanceLineId(e.target.value);
+                  if (!e.target.value) setVasTaskQty("");
+                }}
+                className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+              >
+                <option value="">Labor-only (no stock consumption)</option>
+                {balancesForWarehouseOps.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.bin.code} · {(b.product.productCode || b.product.sku || "SKU").slice(0, 14)} · on-hand{" "}
+                    {b.onHandQty}
+                    {b.onHold ? " · HOLD" : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {vasBalanceLineId ? (
+              <label className="mt-2 block">
+                <span className="text-[10px] font-medium uppercase text-zinc-500">Quantity to consume</span>
+                <input
+                  type="number"
+                  step="any"
+                  min={0}
+                  value={vasTaskQty}
+                  onChange={(e) => setVasTaskQty(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+                />
+              </label>
+            ) : null}
+            <button
+              type="button"
+              disabled={
+                !canEdit ||
+                busy ||
+                !selectedWarehouseId ||
+                !vasTaskWoId ||
+                Boolean(vasBalanceLineId && (!vasTaskQty.trim() || Number(vasTaskQty) <= 0))
+              }
+              onClick={() => {
+                const base: Record<string, unknown> = {
+                  action: "create_value_add_task",
+                  workOrderId: vasTaskWoId,
+                };
+                if (vasBalanceLineId) {
+                  const bal = balancesForWarehouseOps.find((b) => b.id === vasBalanceLineId);
+                  if (!bal) return;
+                  base.productId = bal.product.id;
+                  base.binId = bal.bin.id;
+                  base.quantity = Number(vasTaskQty);
+                }
+                void runAction(base);
+              }}
+              className="mt-3 rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
+            >
+              Create VALUE_ADD task
+            </button>
+          </div>
+        </div>
+        {workOrdersForWarehouse.length > 0 ? (
+          <div className="mt-4 border-t border-zinc-100 pt-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-zinc-500">
+              Work orders (this warehouse)
+            </p>
+            <ul className="mt-2 space-y-1 text-xs text-zinc-700">
+              {workOrdersForWarehouse.map((wo) => (
+                <li key={wo.id} className="flex flex-wrap gap-x-2 gap-y-0.5">
+                  <span className="font-medium text-zinc-900">{wo.workOrderNo}</span>
+                  <span>{wo.title}</span>
+                  <span className="text-zinc-500">{wo.status}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </section>
+
       <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
         <h2 className="text-sm font-semibold text-zinc-900">Wave picking</h2>
         <p className="mt-1 text-xs text-zinc-600">
@@ -2476,7 +2657,13 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
               value={openTaskTypeFilter}
               onChange={(e) =>
                 setOpenTaskTypeFilter(
-                  e.target.value as "" | "PUTAWAY" | "PICK" | "REPLENISH" | "CYCLE_COUNT",
+                  e.target.value as
+                    | ""
+                    | "PUTAWAY"
+                    | "PICK"
+                    | "REPLENISH"
+                    | "CYCLE_COUNT"
+                    | "VALUE_ADD",
                 )
               }
               className="rounded border border-zinc-300 px-2 py-1 text-sm"
@@ -2491,6 +2678,9 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
               </option>
               <option value="CYCLE_COUNT">
                 Cycle count ({data.openTasks.filter((t) => t.taskType === "CYCLE_COUNT").length})
+              </option>
+              <option value="VALUE_ADD">
+                Value-add ({data.openTasks.filter((t) => t.taskType === "VALUE_ADD").length})
               </option>
             </select>
           </label>
@@ -2507,7 +2697,9 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                   {t.taskType}
                 </span>
                 <span className="text-zinc-700">{t.quantity}</span>
-                <span className="text-zinc-700">{t.product?.name ?? "—"}</span>
+                <span className="text-zinc-700">
+                  {t.product?.name ?? (t.taskType === "VALUE_ADD" ? "Labor-only" : "—")}
+                </span>
                 <span className="text-zinc-500">{t.warehouse.code || t.warehouse.name}</span>
                 {t.taskType === "REPLENISH" ? (
                   <span className="text-zinc-500">
@@ -2521,6 +2713,13 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                   </span>
                 ) : t.bin ? (
                   <span className="text-zinc-500">Bin {t.bin.code}</span>
+                ) : null}
+                {t.taskType === "VALUE_ADD" && t.referenceId ? (
+                  <span className="text-zinc-500">
+                    WO{" "}
+                    {data.workOrders.find((w) => w.id === t.referenceId)?.workOrderNo ??
+                      t.referenceId.slice(0, 8)}
+                  </span>
                 ) : null}
                 {t.shipment ? <span className="text-zinc-500">Shipment {t.shipment.shipmentNo || t.shipment.id.slice(0, 6)}</span> : null}
                 {t.order ? <span className="text-zinc-500">Order {t.order.orderNumber}</span> : null}
@@ -2543,7 +2742,8 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                 (t.taskType === "PUTAWAY" ||
                   t.taskType === "PICK" ||
                   t.taskType === "REPLENISH" ||
-                  t.taskType === "CYCLE_COUNT") ? (
+                  t.taskType === "CYCLE_COUNT" ||
+                  t.taskType === "VALUE_ADD") ? (
                   <button
                     type="button"
                     disabled={busy}
@@ -2562,6 +2762,10 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                       }
                       if (t.taskType === "REPLENISH") {
                         void runAction({ action: "complete_replenish_task", taskId: t.id });
+                        return;
+                      }
+                      if (t.taskType === "VALUE_ADD") {
+                        void runAction({ action: "complete_value_add_task", taskId: t.id });
                         return;
                       }
                       const raw = cycleCountQtyByTask[t.id] ?? t.quantity;

@@ -89,9 +89,9 @@ Parallel agents: **non-overlapping paths only** (see [`agent-todos/README.md`](.
 
 **Exit criteria**
 
-- [ ] Work order / VAS entities or task extensions **scoped in ADR**.
-- [ ] Create/complete path + audit; billing linkage if Phase B events apply.
-- [ ] `GAP_MAP.md` R3 **VAS / work orders** no longer ❌ for chosen MVP depth.
+- [x] Work order / VAS entities or task extensions **scoped in ADR**.
+- [x] Create/complete path + audit; billing linkage if Phase B events apply.
+- [x] `GAP_MAP.md` R3 **VAS / work orders** no longer ❌ for chosen MVP depth.
 
 ---
 

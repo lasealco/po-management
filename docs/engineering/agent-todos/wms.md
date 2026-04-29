@@ -23,7 +23,7 @@
 ## Gaps marked ❌ / deferred (epic-sized — split before coding)
 
 - [ ] **Appointment scheduling** (R2) — spec + schema slice first.
-- [ ] **VAS / work orders** (R3 Phase C) — separate epic after blueprint.
+- [x] **VAS / work orders** (R3) — **WE-04 MVP** shipped (`WmsWorkOrder`, `VALUE_ADD`, Operations UI — [`WMS_VAS_WORK_ORDERS.md`](../../wms/WMS_VAS_WORK_ORDERS.md)); portal/BOM depth backlog.
 - [ ] **Commercial quotes** (R3 Phase C) — likely CRM overlap; own issue.
 
 ---

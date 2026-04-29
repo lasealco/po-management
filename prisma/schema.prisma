@@ -76,6 +76,7 @@ model Tenant {
   wmsBillingInvoiceLines                      WmsBillingInvoiceLine[]
   wmsSavedLedgerViews                         WmsSavedLedgerView[]
   wmsDockAppointments                         WmsDockAppointment[]
+  wmsWorkOrders                               WmsWorkOrder[]
   loadPlans                                   LoadPlan[]
   userPreferences                             UserPreference[]
   workflows                                   Workflow[]
@@ -2563,6 +2564,7 @@ model User {
   wmsWavesCreated                                     WmsWave[]
   outboundOrdersCreated                               OutboundOrder[]
   wmsDockAppointmentsCreated                          WmsDockAppointment[]
+  wmsWorkOrdersCreated                                WmsWorkOrder[]
   loadPlansCreated                                    LoadPlan[]
   preferences                                         UserPreference[]
   crmLeadsOwned                                       CrmLead[]                                    @relation("CrmLeadOwner")
@@ -4333,6 +4335,7 @@ model Warehouse {
   replenishmentRules ReplenishmentRule[]
   outboundOrders     OutboundOrder[]
   dockAppointments   WmsDockAppointment[]
+  wmsWorkOrders      WmsWorkOrder[]
   wmsBillingEvents   WmsBillingEvent[]
 
   @@unique([tenantId, code])
@@ -4597,6 +4600,7 @@ enum WmsTaskType {
   PICK
   REPLENISH
   CYCLE_COUNT
+  VALUE_ADD
 }
 
 enum WmsTaskStatus {
@@ -4668,6 +4672,35 @@ model WmsTask {
   @@index([tenantId, warehouseId, status, taskType])
   @@index([referenceType, referenceId])
   @@index([waveId])
+}
+
+enum WmsWorkOrderStatus {
+  OPEN
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+/// Blueprint value-add service / labor header — execution steps are `WmsTask` rows (`VALUE_ADD`).
+model WmsWorkOrder {
+  id          String             @id @default(cuid())
+  tenantId    String
+  warehouseId String
+  workOrderNo String
+  title       String             @db.VarChar(200)
+  description String?            @db.Text
+  status      WmsWorkOrderStatus @default(OPEN)
+  createdById String
+  completedAt DateTime?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  createdBy User      @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@unique([tenantId, workOrderNo])
+  @@index([tenantId, warehouseId, status])
 }
 
 /// Per-user saved movement-ledger filter presets on WMS Stock (parity with `CtSavedFilter` for workbench).

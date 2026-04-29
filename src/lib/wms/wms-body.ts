@@ -64,6 +64,11 @@ export type WmsBody = {
   dockWindowStart?: string;
   dockWindowEnd?: string;
   dockDirection?: "INBOUND" | "OUTBOUND";
-  /** `set_warehouse_pick_allocation_strategy` — `WmsPickAllocationStrategy`. */
+  /** Target allocation strategy for `set_warehouse_pick_allocation_strategy`. */
   pickAllocationStrategy?: "MAX_AVAILABLE_FIRST" | "FIFO_BY_BIN_CODE" | "MANUAL_ONLY";
+  /** `create_value_add_task` — `WmsWorkOrder.id`. */
+  workOrderId?: string;
+  /** `create_work_order` — title for value-add / labor ticket header. */
+  workOrderTitle?: string;
+  workOrderDescription?: string | null;
 };
