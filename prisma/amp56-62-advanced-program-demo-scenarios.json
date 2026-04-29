@@ -1,0 +1,69 @@
+[
+  {
+    "id": "amp56-62-create-packets",
+    "title": "Create durable advanced program packets for AMP56 through AMP62",
+    "persona": "Executive, admin, security, finance, and customer operations reviewers",
+    "entrypoints": [
+      "/assistant/advanced-programs/extension-marketplace",
+      "/assistant/advanced-programs/evaluation-lab",
+      "/assistant/advanced-programs/security-dlp",
+      "/assistant/advanced-programs/business-continuity",
+      "/assistant/advanced-programs/autonomous-finance",
+      "/assistant/advanced-programs/customer-ecosystem",
+      "/assistant/advanced-programs/executive-cockpit"
+    ],
+    "steps": [
+      "Open each AMP56-AMP62 workspace from the Assistant subnav.",
+      "Review live source signals, risk assessment, recommendations, artifact, approval route, and rollback controls.",
+      "Click Create AMP packet."
+    ],
+    "expected": [
+      "Each workspace persists an AssistantAdvancedProgramPacket row with ampNumber 56 through 62 and a distinct programKey.",
+      "sourceSummaryJson includes relevant evidence such as audit events, review examples, playbooks, evidence records, open action queue items, finance risk, invoice intakes, customer/order/shipment signals, and planning health.",
+      "recommendationJson, approvalPlanJson, artifactJson, and rollbackPlanJson are specific to the AMP domain.",
+      "No extensions, prompts, models, release gates, role grants, crisis rooms, finance postings, customer communications, autonomy policies, goals, or board reports are mutated automatically."
+    ]
+  },
+  {
+    "id": "amp56-62-queue-review",
+    "title": "Queue human review for extension, evaluation, security, crisis, finance, customer, and executive packets",
+    "persona": "Governed approval owner",
+    "entrypoints": [
+      "/assistant/advanced-programs/extension-marketplace",
+      "/assistant/advanced-programs/security-dlp",
+      "/assistant/advanced-programs/executive-cockpit"
+    ],
+    "steps": [
+      "Create or select a DRAFT AMP56-AMP62 packet.",
+      "Add a review note describing the downstream decision under consideration.",
+      "Click Queue review."
+    ],
+    "expected": [
+      "The packet status changes to REVIEW_QUEUED and records actionQueueItemId, approvedByUserId, approvedAt, and approvalNote.",
+      "An AssistantActionQueueItem is created with an AMP-specific actionKind such as assistant_amp56_review or assistant_amp62_review.",
+      "An AssistantAuditEvent states that downstream extensions, releases, security controls, crisis actions, finance postings, customer commitments, and autonomy policies were not changed automatically."
+    ]
+  },
+  {
+    "id": "amp56-62-guardrails",
+    "title": "Final AMP governance packets preserve release, security, finance, customer, and autonomy controls",
+    "persona": "Board and compliance reviewer",
+    "entrypoints": [
+      "/assistant/advanced-programs/evaluation-lab",
+      "/assistant/advanced-programs/autonomous-finance",
+      "/assistant/advanced-programs/customer-ecosystem",
+      "/assistant/advanced-programs/executive-cockpit"
+    ],
+    "steps": [
+      "Open an AMP56-AMP62 packet with active risks.",
+      "Inspect approvalPlanJson, recommendationJson, artifactJson, and rollbackPlanJson.",
+      "Confirm the packet is review-only until a human approves downstream execution."
+    ],
+    "expected": [
+      "Evaluation packets block prompt/model/workflow releases until release-gate review.",
+      "Finance packets preserve ERP-safe exports and no-silent-posting controls.",
+      "Customer packets keep portal summaries, commitments, and communications behind review.",
+      "Executive cockpit packets require explicit delegation and autonomy approvals before cross-domain work changes."
+    ]
+  }
+]

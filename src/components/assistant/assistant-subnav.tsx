@@ -258,6 +258,13 @@ export function AssistantSubnav() {
         ["vision-evidence", "Vision", "AMP53 computer-vision evidence"],
         ["iot-telemetry", "IoT", "AMP54 IoT and asset telemetry operations"],
         ["semantic-metrics", "Metrics", "AMP55 semantic data layer and metric governance"],
+        ["extension-marketplace", "SDK", "AMP56 assistant extension marketplace and SDK"],
+        ["evaluation-lab", "Eval lab", "AMP57 evaluation, simulation, and red-team lab"],
+        ["security-dlp", "DLP", "AMP58 security operations and data-loss prevention"],
+        ["business-continuity", "Crisis", "AMP59 business continuity and crisis command"],
+        ["autonomous-finance", "Fin ops", "AMP60 autonomous finance operations"],
+        ["customer-ecosystem", "Customer cmd", "AMP61 customer ecosystem command"],
+        ["executive-cockpit", "Exec cockpit", "AMP62 executive autonomous enterprise cockpit"],
       ].map(([slug, label, title]) => (
         <Link
           key={slug}

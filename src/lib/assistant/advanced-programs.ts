@@ -17,7 +17,14 @@ export type AdvancedProgramKey =
   | "document-intelligence"
   | "vision-evidence"
   | "iot-telemetry"
-  | "semantic-metrics";
+  | "semantic-metrics"
+  | "extension-marketplace"
+  | "evaluation-lab"
+  | "security-dlp"
+  | "business-continuity"
+  | "autonomous-finance"
+  | "customer-ecosystem"
+  | "executive-cockpit";
 
 export type AdvancedProgramSignals = {
   products: number;
@@ -396,6 +403,125 @@ export const ADVANCED_PROGRAMS: Record<AdvancedProgramKey, ProgramConfig> = {
     artifactLabel: "semantic metric governance packet",
     approvalOwners: ["Data owner", "Analytics", "Compliance"],
     noMutation: "metric definitions, lineage, joins, dashboard KPIs, report outputs, assistant answers, or access policies",
+  },
+  "extension-marketplace": {
+    ampNumber: 56,
+    key: "extension-marketplace",
+    slug: "extension-marketplace",
+    navLabel: "SDK",
+    title: "Assistant extension marketplace and SDK program",
+    surfaceTitle: "Assistant Extension Marketplace & SDK",
+    sourceLabels: ["activePlaybooks", "evidenceRecords", "openActionItems", "auditEvents", "reviewExamples"],
+    riskRules: [
+      { key: "extension_review_backlog", label: "Open review work may block extension enablement", metric: "openActionItems", threshold: 1, direction: "gte", severity: "MEDIUM" },
+      { key: "validation_evidence_gap", label: "Extension validation evidence is thin", metric: "reviewExamples", threshold: 1, direction: "lt", severity: "HIGH" },
+    ],
+    recommendations: ["Create extension manifest review with permissions, data scopes, workflows, prompts, and rollback metadata.", "Queue admin approval before installing or enabling customer-specific extensions."],
+    artifactLabel: "extension marketplace review packet",
+    approvalOwners: ["Admin", "Security", "Solution owner"],
+    noMutation: "installed extensions, connector settings, secrets, prompts, workflows, data access scopes, or marketplace visibility",
+  },
+  "evaluation-lab": {
+    ampNumber: 57,
+    key: "evaluation-lab",
+    slug: "evaluation-lab",
+    navLabel: "Eval lab",
+    title: "Evaluation, simulation, and red-team lab program",
+    surfaceTitle: "Evaluation, Simulation & Red-Team Lab",
+    sourceLabels: ["reviewExamples", "auditEvents", "simulationRiskCount", "evidenceRecords", "activePlaybooks"],
+    riskRules: [
+      { key: "regression_evidence_gap", label: "Golden/review examples are insufficient for release gates", metric: "reviewExamples", threshold: 1, direction: "lt", severity: "HIGH" },
+      { key: "simulation_regression", label: "Simulation risk needs evaluation review", metric: "simulationRiskCount", threshold: 1, direction: "gte", severity: "MEDIUM" },
+    ],
+    recommendations: ["Run scenario suites, golden datasets, red-team prompts, safety checks, and acceptance flows.", "Queue release-gate approval before prompt, model, or workflow changes ship."],
+    artifactLabel: "evaluation release-gate packet",
+    approvalOwners: ["AI quality", "Security", "Domain owner"],
+    noMutation: "prompts, models, workflows, release gates, benchmark results, safety policies, or production assistant behavior",
+  },
+  "security-dlp": {
+    ampNumber: 58,
+    key: "security-dlp",
+    slug: "security-dlp",
+    navLabel: "DLP",
+    title: "Security operations and data-loss prevention program",
+    surfaceTitle: "Security Operations & Data-Loss Prevention",
+    sourceLabels: ["auditEvents", "evidenceRecords", "staleEvidenceRecords", "openActionItems", "activePlaybooks"],
+    riskRules: [
+      { key: "security_response_backlog", label: "Open action items may include security or DLP response work", metric: "openActionItems", threshold: 5, direction: "gte", severity: "HIGH" },
+      { key: "sensitive_evidence_review", label: "Evidence records need leakage and access review", metric: "evidenceRecords", threshold: 1, direction: "gte", severity: "MEDIUM" },
+    ],
+    recommendations: ["Triage sensitive-data, abuse, access anomaly, connector, export, and role-grant signals.", "Queue security response approval before redaction, access, or connector changes."],
+    artifactLabel: "security and DLP incident packet",
+    approvalOwners: ["Security", "Compliance", "Admin"],
+    noMutation: "role grants, connector access, exports, evidence records, redactions, incident status, or user sessions",
+  },
+  "business-continuity": {
+    ampNumber: 59,
+    key: "business-continuity",
+    slug: "business-continuity",
+    navLabel: "Crisis",
+    title: "Business continuity and crisis command program",
+    surfaceTitle: "Business Continuity & Crisis Command",
+    sourceLabels: ["shipmentExceptions", "networkRiskCount", "openActionItems", "activePlaybookRuns", "planningHealthScore"],
+    riskRules: [
+      { key: "crisis_signal", label: "Operational exceptions may require continuity activation", metric: "shipmentExceptions", threshold: 1, direction: "gte", severity: "HIGH" },
+      { key: "continuity_plan_pressure", label: "Active playbook runs indicate recovery workload", metric: "activePlaybookRuns", threshold: 1, direction: "gte", severity: "MEDIUM" },
+    ],
+    recommendations: ["Create crisis room with impacted objects, owners, continuity plan, communications, recovery work, and postmortem.", "Queue executive continuity approval before activating recovery actions."],
+    artifactLabel: "crisis command packet",
+    approvalOwners: ["Executive sponsor", "Operations", "Communications"],
+    noMutation: "continuity plans, crisis status, customer communications, recovery actions, playbooks, shipments, or operational priorities",
+  },
+  "autonomous-finance": {
+    ampNumber: 60,
+    key: "autonomous-finance",
+    slug: "autonomous-finance",
+    navLabel: "Fin ops",
+    title: "Autonomous finance operations program",
+    surfaceTitle: "Autonomous Finance Operations",
+    sourceLabels: ["invoiceIntakes", "financeRiskScore", "contractRiskCount", "tariffContracts", "openActionItems"],
+    riskRules: [
+      { key: "close_readiness_risk", label: "Finance risk affects close readiness", metric: "financeRiskScore", threshold: 50, direction: "gte", severity: "HIGH" },
+      { key: "reconciliation_workload", label: "Invoice/audit evidence needs reconciliation review", metric: "invoiceIntakes", threshold: 1, direction: "gte", severity: "MEDIUM" },
+    ],
+    recommendations: ["Build close-readiness packet with invoice audit, accounting handoff, accrual, dispute, shipment cost, landed-cost, and value evidence.", "Queue finance approval before posting or ERP-safe exports."],
+    artifactLabel: "finance close-readiness packet",
+    approvalOwners: ["Finance controller", "Accounting", "Operations finance"],
+    noMutation: "journal entries, ERP postings, invoice approvals, accruals, disputes, accounting handoffs, or finance exports",
+  },
+  "customer-ecosystem": {
+    ampNumber: 61,
+    key: "customer-ecosystem",
+    slug: "customer-ecosystem",
+    navLabel: "Customer cmd",
+    title: "Customer ecosystem command program",
+    surfaceTitle: "Customer Ecosystem Command",
+    sourceLabels: ["crmQuotes", "openSalesOrders", "shipments", "shipmentExceptions", "evidenceRecords", "financeRiskScore"],
+    riskRules: [
+      { key: "customer_service_risk", label: "Open customer commitments have service or shipment risk", metric: "shipmentExceptions", threshold: 1, direction: "gte", severity: "HIGH" },
+      { key: "success_evidence_gap", label: "Customer health needs governed evidence", metric: "evidenceRecords", threshold: 1, direction: "lt", severity: "MEDIUM" },
+    ],
+    recommendations: ["Create customer command packet with CRM, order, shipment, service, document, portal, value, and health evidence.", "Queue collaboration review before customer-facing summaries or success actions are shared."],
+    artifactLabel: "customer ecosystem command packet",
+    approvalOwners: ["Customer success", "Operations", "Commercial owner"],
+    noMutation: "customer portal content, service commitments, CRM records, order promises, shipment updates, success plans, or customer communications",
+  },
+  "executive-cockpit": {
+    ampNumber: 62,
+    key: "executive-cockpit",
+    slug: "executive-cockpit",
+    navLabel: "Exec cockpit",
+    title: "Executive autonomous enterprise cockpit program",
+    surfaceTitle: "Executive Autonomous Enterprise Cockpit",
+    sourceLabels: ["auditEvents", "openActionItems", "financeRiskScore", "contractRiskCount", "planningHealthScore", "networkRiskCount"],
+    riskRules: [
+      { key: "delegation_control_risk", label: "Open risk/action load needs governed executive delegation", metric: "openActionItems", threshold: 5, direction: "gte", severity: "HIGH" },
+      { key: "operating_rhythm_risk", label: "Plan health below board-ready threshold", metric: "planningHealthScore", threshold: 65, direction: "lt", severity: "HIGH" },
+    ],
+    recommendations: ["Build board-ready operating packet with goals, risks, value, controls, autonomous recommendations, and delegation options.", "Queue executive approval before delegating governed work or enabling autonomy."],
+    artifactLabel: "executive autonomous enterprise packet",
+    approvalOwners: ["Executive sponsor", "Control owner", "Finance"],
+    noMutation: "enterprise goals, delegation assignments, autonomy policies, board reports, controls, queued actions, or cross-domain operating rhythms",
   },
 };
 

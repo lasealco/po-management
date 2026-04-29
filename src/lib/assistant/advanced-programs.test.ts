@@ -35,12 +35,12 @@ const signals: AdvancedProgramSignals = {
 };
 
 describe("advanced programs", () => {
-  it("defines AMP37 through AMP55", () => {
+  it("defines AMP37 through AMP62", () => {
     const configs = listAdvancedProgramConfigs();
 
-    expect(configs).toHaveLength(19);
+    expect(configs).toHaveLength(26);
     expect(configs[0]?.ampNumber).toBe(37);
-    expect(configs[18]?.ampNumber).toBe(55);
+    expect(configs[25]?.ampNumber).toBe(62);
   });
 
   it("builds a distinct packet with guardrails for category strategy", () => {
@@ -59,6 +59,15 @@ describe("advanced programs", () => {
     expect(packet.riskCount).toBeGreaterThan(0);
     expect(packet.recommendation.primaryRecommendation).toContain("metric owner");
     expect(packet.leadershipSummary).toContain("does not mutate metric definitions");
+  });
+
+  it("builds executive cockpit packets with autonomy guardrails", () => {
+    const packet = buildAdvancedProgramPacket({ programKey: "executive-cockpit", signals });
+
+    expect(packet.ampNumber).toBe(62);
+    expect(packet.riskCount).toBeGreaterThan(0);
+    expect(packet.approvalPlan.steps.map((step) => step.owner)).toContain("Executive sponsor");
+    expect(packet.rollbackPlan.steps[0]).toContain("autonomy policies");
   });
 
   it("returns null for unknown program keys", () => {
