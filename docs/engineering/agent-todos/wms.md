@@ -33,7 +33,7 @@
 - [x] **Packing / labels** — WE-06: [`WMS_PACKING_LABELS.md`](../wms/WMS_PACKING_LABELS.md), Operations ship-station workflow + print pack slip + `CtAuditLog` on pack/ship.
 - [x] **RBAC / audit (WE-08)** — [`WMS_RBAC_AND_AUDIT.md`](../wms/WMS_RBAC_AND_AUDIT.md); coarse `org.wms` grants + `wms-api-grants` Vitest harness (`src/lib/wms/wms-api-grants.*`).
 - [x] **Wave / replenishment** — **REPLENISH** open tasks: **source bin → target bin** in Operations (`sourceBin` in `GET /api/wms`); wave release/complete unchanged; **landed** 2026-04-25.
-- [ ] **Dashboards** — deepen `/wms` “At a glance” vs blueprint KPIs.
+- [x] **Dashboards (WE-09)** — executive KPI row + `GET /api/wms?homeKpis=1` + [`WMS_EXECUTIVE_KPIS.md`](../wms/WMS_EXECUTIVE_KPIS.md); blueprint OTIF/labor depth still backlog.
 
 ---
 

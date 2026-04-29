@@ -33,7 +33,7 @@ Parallel agents: **non-overlapping paths only** (see [`agent-todos/README.md`](.
 | **WE-06** | Packing / labels / ship-station | 2 | Outbound flow maturity |
 | **WE-07** | Commercial handoff (quotes → billing) | 3–5 | CRM/commercial Phase C readiness |
 | **WE-08** | Field-level WMS RBAC + audit | 2 | Grants model in `icp-and-tenancy` |
-| **WE-09** | Executive / KPI dashboard depth | 2 | Metrics agreement with product |
+| **WE-09** | Executive / KPI dashboard depth | 2 | [`WMS_EXECUTIVE_KPIS.md`](./WMS_EXECUTIVE_KPIS.md) |
 | **WE-10** | Zone/site topology (beyond flat zone+bin) | 2–3 | Warehouse model migrations |
 | **WE-11** | Map 3.4 — floor / globe / deep links | 2–3 | CT map MVP; [`CONTROL_TOWER_OPERATIONS_MAP_PHASE3.md`](../engineering/CONTROL_TOWER_OPERATIONS_MAP_PHASE3.md) |
 | **WE-12** | Hardening + enterprise exit sign-off | 2 | Prior capsules merged |
@@ -146,8 +146,8 @@ Parallel agents: **non-overlapping paths only** (see [`agent-todos/README.md`](.
 
 **Exit criteria**
 
-- [ ] KPI set agreed + implemented or exported.
-- [ ] `GAP_MAP.md` **Dashboards** row updated.
+- [x] KPI set agreed + implemented or exported.
+- [x] `GAP_MAP.md` **Dashboards** row updated.
 
 ---
 

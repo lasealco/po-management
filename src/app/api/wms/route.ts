@@ -5,6 +5,7 @@ import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { getWmsDashboardPayload } from "@/lib/wms/get-wms-payload";
+import { fetchWmsHomeKpis } from "@/lib/wms/wms-home-kpis";
 import { parseMovementLedgerQuery } from "@/lib/wms/movement-ledger-query";
 import { handleWmsPost } from "@/lib/wms/post-actions";
 import type { WmsBody } from "@/lib/wms/wms-body";
@@ -24,7 +25,12 @@ export async function GET(request: Request) {
   if (!tenant) return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   const actorId = await getActorUserId();
   if (!actorId) return toApiErrorResponse({ error: "No active actor.", code: "FORBIDDEN", status: 403 });
-  const movementLedger = parseMovementLedgerQuery(new URL(request.url).searchParams);
+  const url = new URL(request.url);
+  if (url.searchParams.get("homeKpis") === "1") {
+    const kpis = await fetchWmsHomeKpis(tenant.id);
+    return NextResponse.json(kpis);
+  }
+  const movementLedger = parseMovementLedgerQuery(url.searchParams);
   const payload = await getWmsDashboardPayload(tenant.id, actorId, movementLedger ?? null);
   return NextResponse.json(payload);
 }
