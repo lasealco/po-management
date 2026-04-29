@@ -37,7 +37,7 @@ Each capsule should end with: **`GAP_MAP.md` updated**, migrations listed if any
 
 | ID | Theme | Primary `GAP_MAP` signal | Depends on | Owner emphasis |
 |----|--------|---------------------------|------------|----------------|
-| **BF-01** | **Receiving line variance** — receipt vs ASN lines, disposition | Inbound ASN row; tranche note line variance | Schema choice from [`WMS_RECEIVING_STATE_MACHINE_SPEC.md`](./WMS_RECEIVING_STATE_MACHINE_SPEC.md) | WMS |
+| **BF-01** | **Receiving line variance** — receipt vs ASN lines, disposition | Inbound ASN row; tranche note line variance | [`WMS_RECEIVING_LINE_VARIANCE_BF01.md`](./WMS_RECEIVING_LINE_VARIANCE_BF01.md) — minimal **ShipmentItem** fields + API (`set_shipment_item_receive_line`); separate **`WmsReceipt`** header still backlog | WMS |
 | **BF-02** | **Lot master / serial genealogy** beyond `lotCode` buckets | SKU/UOM/lot row | BF-01 if variance feeds lot splits | WMS + catalog |
 | **BF-03** | **Allocation engine** — FEFO, solver, wave policies beyond staged profiles | Allocation row | Stable inventory + strategy inputs | WMS |
 | **BF-04** | **Topology** — parent zones / aisle entities / optional geometry hooks | Zone row | migrations | WMS |
@@ -90,4 +90,4 @@ Deliverables:
 Exit when BF-01 row in BLUEPRINT_FINISH_BACKLOG.md is satisfied: GAP_MAP reflects line variance depth or explicit documented deferral for remaining gaps.
 ```
 
-_Last updated: 2026-04-29 — initial backlog skeleton from [`GAP_MAP.md`](./GAP_MAP.md); BF-01 prompt template._
+_Last updated: 2026-04-29 — **BF-01** minimal receiving line variance landed (`WMS_RECEIVING_LINE_VARIANCE_BF01.md`); initial backlog skeleton from [`GAP_MAP.md`](./GAP_MAP.md); BF-01 prompt template._

@@ -202,6 +202,16 @@ export async function getWmsDashboardPayload(
             note: true,
           },
         },
+        items: {
+          select: {
+            id: true,
+            quantityShipped: true,
+            quantityReceived: true,
+            wmsVarianceDisposition: true,
+            wmsVarianceNote: true,
+            orderItem: { select: { lineNo: true, description: true } },
+          },
+        },
       },
     }),
     prisma.inventoryMovement.findMany({
@@ -424,6 +434,17 @@ export async function getWmsDashboardPayload(
               note: m0.note,
             }
           : null,
+        receiveLines: [...s.items]
+          .sort((a, b) => a.orderItem.lineNo - b.orderItem.lineNo)
+          .map((li) => ({
+            shipmentItemId: li.id,
+            lineNo: li.orderItem.lineNo,
+            description: li.orderItem.description,
+            quantityShipped: li.quantityShipped.toString(),
+            quantityReceived: li.quantityReceived.toString(),
+            wmsVarianceDisposition: li.wmsVarianceDisposition,
+            wmsVarianceNote: li.wmsVarianceNote,
+          })),
       };
     }),
     putawayCandidates: shipmentItems

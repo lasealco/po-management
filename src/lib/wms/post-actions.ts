@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { assertOutboundCrmAccountLinkable } from "./crm-account-link";
 import { normalizeDockCode } from "./dock-appointment";
 import { orderPickSlotsForWave, type WavePickSlot } from "./allocation-strategy";
+import { resolveVarianceDisposition } from "./receive-line-variance";
 import { FUNGIBLE_LOT_CODE, normalizeLotCode } from "./lot-code";
 import { syncOutboundOrderStatusAfterPick } from "./outbound-workflow";
 import { nextWaveNo } from "./wave";
@@ -1066,6 +1067,72 @@ export async function handleWmsPost(
         },
       });
     });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "set_shipment_item_receive_line") {
+    const shipmentItemId = input.shipmentItemId?.trim();
+    const rawRecv = input.receivedQty;
+    if (!shipmentItemId || rawRecv === undefined || rawRecv === null) {
+      return toApiErrorResponseFromStatus("shipmentItemId and receivedQty required.", 400);
+    }
+    const receivedQty = Number(rawRecv);
+    if (!Number.isFinite(receivedQty) || receivedQty < 0) {
+      return toApiErrorResponseFromStatus("receivedQty must be a non-negative number.", 400);
+    }
+
+    const item = await prisma.shipmentItem.findFirst({
+      where: { id: shipmentItemId, shipment: { order: { tenantId } } },
+      select: {
+        id: true,
+        shipmentId: true,
+        quantityShipped: true,
+      },
+    });
+    if (!item) {
+      return toApiErrorResponseFromStatus("Shipment item not found.", 404);
+    }
+
+    const shipped = Number(item.quantityShipped);
+    const disposition = resolveVarianceDisposition(shipped, receivedQty, input.varianceDisposition ?? null);
+
+    const rawNote = input.varianceNote;
+    const varianceNotePayload =
+      rawNote === undefined
+        ? undefined
+        : rawNote === null || String(rawNote).trim() === ""
+          ? null
+          : String(rawNote).trim().slice(0, 1000);
+
+    const qtyStr = receivedQty.toFixed(3);
+
+    await prisma.$transaction(async (tx) => {
+      await tx.shipmentItem.update({
+        where: { id: item.id },
+        data: {
+          quantityReceived: qtyStr,
+          wmsVarianceDisposition: disposition,
+          ...(varianceNotePayload !== undefined ? { wmsVarianceNote: varianceNotePayload } : {}),
+        },
+      });
+      await tx.ctAuditLog.create({
+        data: {
+          tenantId,
+          shipmentId: item.shipmentId,
+          entityType: "SHIPMENT_ITEM",
+          entityId: item.id,
+          action: "inbound_receive_line_updated",
+          payload: {
+            quantityShipped: shipped,
+            quantityReceived: receivedQty,
+            disposition,
+            ...(varianceNotePayload !== undefined && varianceNotePayload !== null ? { note: varianceNotePayload } : {}),
+          },
+          actorUserId: actorId,
+        },
+      });
+    });
+
     return NextResponse.json({ ok: true });
   }
 

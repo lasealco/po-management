@@ -4,7 +4,7 @@ import { apiClientErrorMessage } from "@/lib/api-client-error";
 import type { InventoryMovementType, WmsReceiveStatus } from "@prisma/client";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, Fragment } from "react";
 
 import { ActionButton } from "@/components/action-button";
 import { WorkflowHeader } from "@/components/workflow-header";
@@ -145,6 +145,21 @@ type WmsData = {
       createdAt: string;
       note: string | null;
     } | null;
+    receiveLines: Array<{
+      shipmentItemId: string;
+      lineNo: number;
+      description: string | null;
+      quantityShipped: string;
+      quantityReceived: string;
+      wmsVarianceDisposition:
+        | "UNSET"
+        | "MATCH"
+        | "SHORT"
+        | "OVER"
+        | "DAMAGED"
+        | "OTHER";
+      wmsVarianceNote: string | null;
+    }>;
   }>;
   putawayCandidates: Array<{
     shipmentItemId: string;
@@ -247,6 +262,18 @@ const INBOUND_MILESTONE_LOG_OPTIONS: Array<{ value: string; label: string }> = [
   { value: "DELIVERED", label: "Delivered" },
   { value: "RECEIVED", label: "Received" },
 ];
+
+const RECEIPT_LINE_VARIANCE_LABEL: Record<
+  "UNSET" | "MATCH" | "SHORT" | "OVER" | "DAMAGED" | "OTHER",
+  string
+> = {
+  UNSET: "Not reviewed",
+  MATCH: "Match",
+  SHORT: "Short",
+  OVER: "Over",
+  DAMAGED: "Damaged",
+  OTHER: "Other",
+};
 
 function downloadMovementLedgerCsv(
   rows: WmsData["recentMovements"],
@@ -1676,7 +1703,9 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
         <h2 className="text-sm font-semibold text-zinc-900">Inbound / ASN</h2>
         <p className="mt-1 text-xs text-zinc-600">
           Lightweight receiving header on purchase-order shipments: ASN reference, expected receive time,
-          and WMS receiving workflow states before putaway. Putaway still runs per shipment line below.
+          WMS receiving workflow states before putaway, and{" "}
+          <span className="font-medium">line-level received qty vs shipped (variance disposition)</span> per ASN line.
+          Putaway still runs per shipment line below.
         </p>
         <div className="mt-3 overflow-x-auto">
           <table className="min-w-full text-sm">
@@ -1705,8 +1734,10 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
               ) : (
                 data.inboundShipments.map((s) => {
                   const draft = inboundEdits[s.id] ?? { asn: "", expectedReceiveAt: "" };
+                  const lineColSpan = canEdit ? 11 : 8;
                   return (
-                    <tr key={s.id}>
+                    <Fragment key={s.id}>
+                      <tr>
                       <td className="px-2 py-1 font-medium text-zinc-900">{s.orderNumber}</td>
                       <td className="px-2 py-1 text-zinc-700">{s.shipmentNo || s.id.slice(0, 8)}</td>
                       <td className="px-2 py-1 text-zinc-600">{s.status}</td>
@@ -1867,6 +1898,147 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                         </td>
                       ) : null}
                     </tr>
+                    {s.receiveLines.length > 0 ? (
+                      <tr className="bg-zinc-50/90">
+                        <td colSpan={lineColSpan} className="px-2 py-3 align-top">
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                            Line receiving / variance (BF-01)
+                          </p>
+                          <p className="mt-0.5 max-w-3xl text-[11px] text-zinc-600">
+                            <span className="font-medium">Expected</span> = shipped qty on the shipment line;
+                            record physical <span className="font-medium">received</span>. Leave disposition on{" "}
+                            <span className="font-medium">Auto</span> to derive Match / Short / Over vs expected.
+                          </p>
+                          <div className="mt-2 overflow-x-auto">
+                            <table className="min-w-[720px] w-full border-collapse text-xs">
+                              <thead>
+                                <tr className="border-b border-zinc-200 bg-zinc-100 text-left text-[10px] uppercase text-zinc-600">
+                                  <th className="px-2 py-1">Ln</th>
+                                  <th className="px-2 py-1">Description</th>
+                                  <th className="px-2 py-1">Expected</th>
+                                  <th className="px-2 py-1">Received</th>
+                                  <th className="px-2 py-1">Recorded</th>
+                                  <th className="px-2 py-1">Disposition</th>
+                                  <th className="px-2 py-1">Note</th>
+                                  {canEdit ? <th className="px-2 py-1"> </th> : null}
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-zinc-100">
+                                {s.receiveLines.map((line) => (
+                                  <tr key={line.shipmentItemId}>
+                                    <td className="whitespace-nowrap px-2 py-1.5 tabular-nums text-zinc-800">
+                                      {line.lineNo}
+                                    </td>
+                                    <td className="max-w-[10rem] truncate px-2 py-1.5 text-zinc-700" title={line.description ?? ""}>
+                                      {line.description ?? "—"}
+                                    </td>
+                                    <td className="whitespace-nowrap px-2 py-1.5 tabular-nums text-zinc-800">
+                                      {line.quantityShipped}
+                                    </td>
+                                    <td className="px-2 py-1.5">
+                                      {canEdit ? (
+                                        <input
+                                          key={`recv-${line.shipmentItemId}-${line.quantityReceived}`}
+                                          id={`inbound-recv-${line.shipmentItemId}`}
+                                          type="number"
+                                          min={0}
+                                          step="0.001"
+                                          defaultValue={line.quantityReceived}
+                                          disabled={busy}
+                                          className="w-24 rounded border border-zinc-300 px-1.5 py-1 tabular-nums"
+                                        />
+                                      ) : (
+                                        <span className="tabular-nums text-zinc-800">{line.quantityReceived}</span>
+                                      )}
+                                    </td>
+                                    <td className="whitespace-nowrap px-2 py-1.5 text-zinc-700">
+                                      {RECEIPT_LINE_VARIANCE_LABEL[line.wmsVarianceDisposition]}
+                                    </td>
+                                    <td className="px-2 py-1.5">
+                                      {canEdit ? (
+                                        <select
+                                          key={`disp-${line.shipmentItemId}-${line.wmsVarianceDisposition}`}
+                                          id={`inbound-disp-${line.shipmentItemId}`}
+                                          defaultValue={
+                                            line.wmsVarianceDisposition === "UNSET" ? "" : line.wmsVarianceDisposition
+                                          }
+                                          disabled={busy}
+                                          className="max-w-[9rem] rounded border border-zinc-300 px-1 py-1 text-[11px]"
+                                        >
+                                          <option value="">Auto</option>
+                                          <option value="MATCH">Match</option>
+                                          <option value="SHORT">Short</option>
+                                          <option value="OVER">Over</option>
+                                          <option value="DAMAGED">Damaged</option>
+                                          <option value="OTHER">Other</option>
+                                        </select>
+                                      ) : (
+                                        <span className="text-zinc-600">
+                                          {line.wmsVarianceDisposition === "UNSET"
+                                            ? "—"
+                                            : RECEIPT_LINE_VARIANCE_LABEL[line.wmsVarianceDisposition]}
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className="px-2 py-1.5">
+                                      {canEdit ? (
+                                        <input
+                                          key={`note-${line.shipmentItemId}-${line.wmsVarianceNote ?? ""}`}
+                                          id={`inbound-note-${line.shipmentItemId}`}
+                                          type="text"
+                                          defaultValue={line.wmsVarianceNote ?? ""}
+                                          disabled={busy}
+                                          placeholder="Variance note"
+                                          className="w-full min-w-[8rem] max-w-[14rem] rounded border border-zinc-300 px-1.5 py-1 text-[11px]"
+                                        />
+                                      ) : (
+                                        <span className="text-zinc-600">{line.wmsVarianceNote || "—"}</span>
+                                      )}
+                                    </td>
+                                    {canEdit ? (
+                                      <td className="whitespace-nowrap px-2 py-1.5">
+                                        <button
+                                          type="button"
+                                          disabled={busy}
+                                          onClick={() => {
+                                            const recvEl = document.getElementById(
+                                              `inbound-recv-${line.shipmentItemId}`,
+                                            ) as HTMLInputElement | null;
+                                            const dispEl = document.getElementById(
+                                              `inbound-disp-${line.shipmentItemId}`,
+                                            ) as HTMLSelectElement | null;
+                                            const noteEl = document.getElementById(
+                                              `inbound-note-${line.shipmentItemId}`,
+                                            ) as HTMLInputElement | null;
+                                            const rawRecv = recvEl?.value?.trim() ?? "";
+                                            const receivedQty = Number.parseFloat(rawRecv);
+                                            if (!Number.isFinite(receivedQty) || receivedQty < 0) {
+                                              return;
+                                            }
+                                            const vd = dispEl?.value?.trim() ?? "";
+                                            void runAction({
+                                              action: "set_shipment_item_receive_line",
+                                              shipmentItemId: line.shipmentItemId,
+                                              receivedQty,
+                                              varianceDisposition: vd === "" ? undefined : vd,
+                                              varianceNote: noteEl?.value ?? "",
+                                            });
+                                          }}
+                                          className="rounded-xl bg-[var(--arscmp-primary)] px-3 py-1.5 text-[11px] font-semibold text-white disabled:opacity-40"
+                                        >
+                                          Save line
+                                        </button>
+                                      </td>
+                                    ) : null}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : null}
+                  </Fragment>
                   );
                 })
               )}

@@ -3679,6 +3679,16 @@ enum WmsReceiveStatus {
   CLOSED
 }
 
+/// BF-01 — physical receipt vs shipped qty disposition per inbound shipment line (`ShipmentItem`).
+enum WmsShipmentItemVarianceDisposition {
+  UNSET
+  MATCH
+  SHORT
+  OVER
+  DAMAGED
+  OTHER
+}
+
 model Shipment {
   id                      String         @id @default(cuid())
   orderId                 String
@@ -3766,6 +3776,9 @@ model ShipmentItem {
   cargoGrossWeightKg  Decimal?  @db.Decimal(14, 3)
   cargoVolumeCbm      Decimal?  @db.Decimal(12, 6)
   cargoDimensionsText String?   @db.VarChar(512)
+  /// BF-01 — variance disposition vs `quantityShipped` after receiving count (see `set_shipment_item_receive_line`).
+  wmsVarianceDisposition WmsShipmentItemVarianceDisposition @default(UNSET)
+  wmsVarianceNote        String?                            @db.VarChar(1000)
 
   shipment            Shipment               @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
   orderItem           PurchaseOrderItem      @relation(fields: [orderItemId], references: [id], onDelete: Restrict)

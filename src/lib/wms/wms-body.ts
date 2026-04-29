@@ -73,4 +73,10 @@ export type WmsBody = {
   /** `create_work_order` — title for value-add / labor ticket header. */
   workOrderTitle?: string;
   workOrderDescription?: string | null;
+  /** `set_shipment_item_receive_line` — counted qty vs ASN line (`quantityShipped`). */
+  receivedQty?: number;
+  /** Optional override; omitted → derive MATCH/SHORT/OVER vs shipped qty. */
+  varianceDisposition?: string | null;
+  /** Optional operator note (max 1000); omit to leave unchanged; null clears. */
+  varianceNote?: string | null;
 };
