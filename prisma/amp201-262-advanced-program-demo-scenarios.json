@@ -1,0 +1,83 @@
+[
+  {
+    "id": "amp201-262-create-packets",
+    "title": "Create durable advanced program packets for AMP201 through AMP262",
+    "persona": "Security, operations, logistics, public-sector, industry, and executive reviewers",
+    "entrypoints": [
+      "/assistant/advanced-programs/cloud-security-posture",
+      "/assistant/advanced-programs/secrets-rotation",
+      "/assistant/advanced-programs/network-segmentation",
+      "/assistant/advanced-programs/shared-services-ops",
+      "/assistant/advanced-programs/yard-dock-optimization",
+      "/assistant/advanced-programs/warehouse-slotting",
+      "/assistant/advanced-programs/freight-claims",
+      "/assistant/advanced-programs/export-license",
+      "/assistant/advanced-programs/supplier-onboarding-acceleration",
+      "/assistant/advanced-programs/purchase-requisition-intelligence",
+      "/assistant/advanced-programs/grant-restricted-funds",
+      "/assistant/advanced-programs/hospitality-operations",
+      "/assistant/advanced-programs/agriculture-harvest",
+      "/assistant/advanced-programs/utilities-outage",
+      "/assistant/advanced-programs/lab-sample-chain",
+      "/assistant/advanced-programs/humanitarian-relief-logistics",
+      "/assistant/advanced-programs/public-safety-deployment",
+      "/assistant/advanced-programs/defense-readiness-logistics",
+      "/assistant/advanced-programs/air-cargo-ops",
+      "/assistant/advanced-programs/industry-operating-network"
+    ],
+    "steps": [
+      "Open representative AMP201-AMP262 workspaces from the generated Assistant subnav.",
+      "Review source signals, risk assessment, recommendations, artifact, approval route, and rollback plan.",
+      "Click Create AMP packet."
+    ],
+    "expected": [
+      "Each AMP201-AMP262 workspace persists an AssistantAdvancedProgramPacket row with a distinct ampNumber and programKey.",
+      "Each packet has a domain-specific nav label, title, artifact, approval owners, and no-mutation scope.",
+      "The shared advanced-program UI displays preview metrics, packet history, review notes, and queue-review controls.",
+      "No security, shared service, travel, fleet, yard, robotics, warehouse, freight, customs, supplier, procurement, grant, industry, public-sector, emergency, defense, space, maritime, rail, air cargo, or cross-industry autonomy records are mutated automatically."
+    ]
+  },
+  {
+    "id": "amp201-262-queue-review",
+    "title": "Queue human review for AMP201 through AMP262 packets",
+    "persona": "Program approval owner",
+    "entrypoints": [
+      "/assistant/advanced-programs/cloud-security-posture",
+      "/assistant/advanced-programs/sanctions-screening",
+      "/assistant/advanced-programs/disaster-response-supply",
+      "/assistant/advanced-programs/industry-operating-network"
+    ],
+    "steps": [
+      "Create or select a DRAFT packet.",
+      "Add a review note describing the downstream decision.",
+      "Click Queue review."
+    ],
+    "expected": [
+      "The packet status changes to REVIEW_QUEUED and records actionQueueItemId, approvedByUserId, approvedAt, and approvalNote.",
+      "AssistantActionQueueItem uses an AMP-specific actionKind such as assistant_amp201_review or assistant_amp262_review.",
+      "AssistantAuditEvent states that downstream records were not changed automatically."
+    ]
+  },
+  {
+    "id": "amp201-262-guardrails",
+    "title": "Cross-domain and industry packets preserve no-silent-mutation guardrails",
+    "persona": "Executive and compliance reviewer",
+    "entrypoints": [
+      "/assistant/advanced-programs/secrets-rotation",
+      "/assistant/advanced-programs/clinical-trial-supply",
+      "/assistant/advanced-programs/defense-readiness-logistics",
+      "/assistant/advanced-programs/industry-operating-network"
+    ],
+    "steps": [
+      "Open a packet with active risk signals.",
+      "Inspect recommendationJson, approvalPlanJson, artifactJson, and rollbackPlanJson.",
+      "Queue review without executing downstream changes."
+    ],
+    "expected": [
+      "recommendationJson requires review before operational, security, regulated, or industry-network execution.",
+      "approvalPlanJson names the responsible owner groups.",
+      "rollbackPlanJson preserves source records and requires a fresh packet when evidence changes materially.",
+      "Autonomous industry network recommendations remain review-only and cannot self-expand autonomy."
+    ]
+  }
+]

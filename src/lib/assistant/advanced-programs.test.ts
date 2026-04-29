@@ -35,10 +35,10 @@ const signals: AdvancedProgramSignals = {
 };
 
 describe("advanced programs", () => {
-  it("defines AMP37 through AMP200 with requested AMP166-200 programs", () => {
+  it("defines AMP37 through AMP262 with requested AMP201-262 programs", () => {
     const configs = listAdvancedProgramConfigs();
 
-    expect(configs).toHaveLength(163);
+    expect(configs).toHaveLength(225);
     expect(configs[0]?.ampNumber).toBe(37);
     expect(configs[25]?.ampNumber).toBe(62);
     expect(configs[26]?.ampNumber).toBe(64);
@@ -49,6 +49,8 @@ describe("advanced programs", () => {
     expect(configs[127]?.ampNumber).toBe(165);
     expect(configs[128]?.ampNumber).toBe(166);
     expect(configs[162]?.ampNumber).toBe(200);
+    expect(configs[163]?.ampNumber).toBe(201);
+    expect(configs[224]?.ampNumber).toBe(262);
   });
 
   it("builds a distinct packet with guardrails for category strategy", () => {
@@ -112,6 +114,15 @@ describe("advanced programs", () => {
     expect(packet.riskCount).toBeGreaterThan(0);
     expect(packet.approvalPlan.steps.map((step) => step.owner)).toContain("Security operations");
     expect(packet.rollbackPlan.steps[0]).toContain("device containment");
+  });
+
+  it("builds industry network packets with cross-industry autonomy guardrails", () => {
+    const packet = buildAdvancedProgramPacket({ programKey: "industry-operating-network", signals });
+
+    expect(packet.ampNumber).toBe(262);
+    expect(packet.riskCount).toBeGreaterThan(0);
+    expect(packet.approvalPlan.steps.map((step) => step.owner)).toContain("Executive sponsor");
+    expect(packet.rollbackPlan.steps[0]).toContain("autonomous learning behavior");
   });
 
   it("returns null for unknown program keys", () => {
