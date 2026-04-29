@@ -1260,6 +1260,60 @@ Object.assign(
   ),
 );
 
+Object.assign(ADVANCED_PROGRAMS, {
+  "enterprise-architecture": {
+    ampNumber: 163,
+    key: "enterprise-architecture",
+    slug: "enterprise-architecture",
+    navLabel: "Architecture",
+    title: "Enterprise architecture decision program",
+    surfaceTitle: "Enterprise Architecture Decision",
+    sourceLabels: ["activePlaybooks", "evidenceRecords", "staleEvidenceRecords", "openActionItems", "auditEvents", "contractRiskCount"],
+    riskRules: [
+      { key: "architecture_exception_backlog", label: "Open actions indicate architecture exception or transition work", metric: "openActionItems", threshold: 5, direction: "gte", severity: "HIGH" },
+      { key: "standard_evidence_gap", label: "Architecture standards need reviewed evidence before decision record approval", metric: "reviewExamples", threshold: 1, direction: "lt", severity: "MEDIUM" },
+    ],
+    recommendations: ["Create architecture decision packet with system context, standards, dependencies, exceptions, tradeoffs, and transition work.", "Queue architecture board review before decision records, standards, or exception states change."],
+    artifactLabel: "architecture decision packet",
+    approvalOwners: ["Architecture board", "Engineering", "Security"],
+    noMutation: "architecture decision records, standards, exceptions, system dependencies, transition plans, or platform policies",
+  },
+  "platform-modernization": {
+    ampNumber: 164,
+    key: "platform-modernization",
+    slug: "platform-modernization",
+    navLabel: "Modernize",
+    title: "Platform modernization roadmap program",
+    surfaceTitle: "Platform Modernization Roadmap",
+    sourceLabels: ["activePlaybooks", "activePlaybookRuns", "openActionItems", "auditEvents", "financeRiskScore", "simulationRiskCount"],
+    riskRules: [
+      { key: "migration_wave_risk", label: "Active work and open actions may block modernization waves", metric: "openActionItems", threshold: 5, direction: "gte", severity: "HIGH" },
+      { key: "value_assumption_risk", label: "Finance risk requires modernization value and sequencing review", metric: "financeRiskScore", threshold: 50, direction: "gte", severity: "MEDIUM" },
+    ],
+    recommendations: ["Create modernization packet with legacy systems, dependencies, migration waves, value assumptions, risk, and rollback gates.", "Queue platform steering approval before roadmap, cutover, or modernization funding changes."],
+    artifactLabel: "platform modernization roadmap packet",
+    approvalOwners: ["Platform owner", "Finance", "Architecture board"],
+    noMutation: "modernization roadmaps, migration waves, legacy system status, funding assumptions, cutover tasks, or rollback plans",
+  },
+  "cloud-finops": {
+    ampNumber: 165,
+    key: "cloud-finops",
+    slug: "cloud-finops",
+    navLabel: "FinOps",
+    title: "Cloud cost and FinOps command program",
+    surfaceTitle: "Cloud Cost & FinOps Command",
+    sourceLabels: ["financeRiskScore", "openActionItems", "auditEvents", "evidenceRecords", "activePlaybooks"],
+    riskRules: [
+      { key: "cloud_cost_anomaly", label: "Finance risk suggests cloud spend anomaly or commitment exposure", metric: "financeRiskScore", threshold: 50, direction: "gte", severity: "HIGH" },
+      { key: "optimization_backlog", label: "Open actions may include unowned FinOps optimization work", metric: "openActionItems", threshold: 5, direction: "gte", severity: "MEDIUM" },
+    ],
+    recommendations: ["Create FinOps packet with spend evidence, allocation assumptions, usage anomalies, commitment options, budget impact, and owner actions.", "Queue FinOps review before budgets, commitments, tags, allocation rules, or optimization actions change."],
+    artifactLabel: "cloud FinOps command packet",
+    approvalOwners: ["FinOps", "Finance", "Engineering"],
+    noMutation: "cloud budgets, commitments, allocation tags, cost-center mappings, optimization actions, alerts, or finance reports",
+  },
+} satisfies Record<string, ProgramConfig>);
+
 export type AdvancedProgramPacketInputs = {
   signals: AdvancedProgramSignals;
   programKey: AdvancedProgramKey;

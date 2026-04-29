@@ -35,16 +35,18 @@ const signals: AdvancedProgramSignals = {
 };
 
 describe("advanced programs", () => {
-  it("defines AMP37 through AMP162 with requested AMP101-162 programs", () => {
+  it("defines AMP37 through AMP165 with requested AMP163-165 programs", () => {
     const configs = listAdvancedProgramConfigs();
 
-    expect(configs).toHaveLength(125);
+    expect(configs).toHaveLength(128);
     expect(configs[0]?.ampNumber).toBe(37);
     expect(configs[25]?.ampNumber).toBe(62);
     expect(configs[26]?.ampNumber).toBe(64);
     expect(configs[62]?.ampNumber).toBe(100);
     expect(configs[63]?.ampNumber).toBe(101);
     expect(configs[124]?.ampNumber).toBe(162);
+    expect(configs[125]?.ampNumber).toBe(163);
+    expect(configs[127]?.ampNumber).toBe(165);
   });
 
   it("builds a distinct packet with guardrails for category strategy", () => {
@@ -90,6 +92,15 @@ describe("advanced programs", () => {
     expect(packet.riskCount).toBeGreaterThan(0);
     expect(packet.approvalPlan.steps.map((step) => step.owner)).toContain("AI quality");
     expect(packet.rollbackPlan.steps[0]).toContain("autonomous behavior");
+  });
+
+  it("builds FinOps packets with budget guardrails", () => {
+    const packet = buildAdvancedProgramPacket({ programKey: "cloud-finops", signals });
+
+    expect(packet.ampNumber).toBe(165);
+    expect(packet.riskCount).toBeGreaterThan(0);
+    expect(packet.approvalPlan.steps.map((step) => step.owner)).toContain("FinOps");
+    expect(packet.rollbackPlan.steps[0]).toContain("cloud budgets");
   });
 
   it("returns null for unknown program keys", () => {

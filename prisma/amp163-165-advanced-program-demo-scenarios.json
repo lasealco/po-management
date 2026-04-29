@@ -1,0 +1,62 @@
+[
+  {
+    "id": "amp163-165-create-packets",
+    "title": "Create durable packets for AMP163 through AMP165",
+    "persona": "Platform leader reviewing architecture, modernization, and FinOps decisions",
+    "entrypoints": [
+      "/assistant/advanced-programs/enterprise-architecture",
+      "/assistant/advanced-programs/platform-modernization",
+      "/assistant/advanced-programs/cloud-finops"
+    ],
+    "steps": [
+      "Open each AMP163-AMP165 workspace from the Assistant subnav.",
+      "Review live source signals, risks, recommendations, artifact, approval route, and rollback controls.",
+      "Click Create AMP packet."
+    ],
+    "expected": [
+      "Each workspace persists an AssistantAdvancedProgramPacket row with ampNumber 163, 164, or 165 and the correct programKey.",
+      "The packets have domain-specific source labels, risk rules, recommendations, approval owners, artifacts, and no-mutation scopes.",
+      "AssistantAuditEvent records packet creation.",
+      "Architecture decision records, modernization roadmaps, migration waves, cloud budgets, commitments, tags, and finance reports are not mutated automatically."
+    ]
+  },
+  {
+    "id": "amp163-165-queue-review",
+    "title": "Queue review for architecture, modernization, and FinOps packets",
+    "persona": "Approval owner",
+    "entrypoints": [
+      "/assistant/advanced-programs/enterprise-architecture",
+      "/assistant/advanced-programs/platform-modernization",
+      "/assistant/advanced-programs/cloud-finops"
+    ],
+    "steps": [
+      "Create or select a DRAFT packet.",
+      "Add a review note describing the downstream decision.",
+      "Click Queue review."
+    ],
+    "expected": [
+      "The packet status changes to REVIEW_QUEUED and records actionQueueItemId, approvedByUserId, approvedAt, and approvalNote.",
+      "AssistantActionQueueItem uses an AMP-specific actionKind such as assistant_amp163_review, assistant_amp164_review, or assistant_amp165_review.",
+      "AssistantAuditEvent states that downstream records were not changed automatically."
+    ]
+  },
+  {
+    "id": "amp163-165-guardrails",
+    "title": "Architecture, modernization, and FinOps guardrails remain explicit",
+    "persona": "Architecture board reviewer",
+    "entrypoints": [
+      "/assistant/advanced-programs/enterprise-architecture",
+      "/assistant/advanced-programs/cloud-finops"
+    ],
+    "steps": [
+      "Open a packet with active risks.",
+      "Inspect recommendationJson, approvalPlanJson, artifactJson, and rollbackPlanJson.",
+      "Queue review without executing downstream changes."
+    ],
+    "expected": [
+      "recommendationJson requires human approval before architecture, roadmap, budget, commitment, or tag changes.",
+      "approvalPlanJson identifies the relevant architecture, platform, finance, engineering, or FinOps owners.",
+      "rollbackPlanJson preserves source records and asks for a fresh packet when source evidence changes materially."
+    ]
+  }
+]
