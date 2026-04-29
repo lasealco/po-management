@@ -185,6 +185,7 @@ model Tenant {
   assistantExecutiveOperatingPackets       AssistantExecutiveOperatingPacket[]
   assistantCollaborationResiliencePackets  AssistantCollaborationResiliencePacket[]
   assistantCommercialRevenueControlPackets AssistantCommercialRevenueControlPacket[]
+  assistantSupplyNetworkTwinPackets        AssistantSupplyNetworkTwinPacket[]
   assistantActionQueue                     AssistantActionQueueItem[]
   assistantPlaybookTemplates               AssistantPlaybookTemplate[]
   assistantPlaybookRuns                    AssistantPlaybookRun[]
@@ -1369,6 +1370,46 @@ model AssistantCommercialRevenueControlPacket {
   @@index([tenantId, commercialScore, updatedAt])
 }
 
+/// Sprint 7: durable supply network twin and scenario command packet for graph coverage, scenario simulation, bottlenecks, disruption recovery, and approval-safe network decisions.
+model AssistantSupplyNetworkTwinPacket {
+  id                   String    @id @default(cuid())
+  tenantId             String
+  createdByUserId      String?
+  approvedByUserId     String?
+  title                String
+  status               String    @default("DRAFT") @db.VarChar(32)
+  twinScore            Int       @default(0)
+  graphNodeCount       Int       @default(0)
+  graphEdgeCount       Int       @default(0)
+  scenarioCount        Int       @default(0)
+  bottleneckCount      Int       @default(0)
+  disruptionRiskCount  Int       @default(0)
+  recoveryActionCount  Int       @default(0)
+  sourceSummaryJson    Json
+  graphCoverageJson    Json
+  networkBaselineJson  Json
+  scenarioCommandJson  Json
+  bottleneckJson       Json
+  disruptionJson       Json
+  recoveryPlaybookJson Json
+  confidenceJson       Json
+  responsePlanJson     Json
+  rollbackPlanJson     Json
+  leadershipSummary    String    @db.Text
+  actionQueueItemId    String?
+  approvedAt           DateTime?
+  approvalNote         String?   @db.Text
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator  User?  @relation("AssistantSupplyNetworkTwinPacketCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  approver User?  @relation("AssistantSupplyNetworkTwinPacketApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, updatedAt])
+  @@index([tenantId, twinScore, updatedAt])
+}
+
 /// AMP7: inspectable grounding ledger extracted from assistant answers and reviewer additions.
 model AssistantEvidenceRecord {
   id              String    @id @default(cuid())
@@ -2011,6 +2052,8 @@ model User {
   assistantCollaborationResiliencePacketsApproved  AssistantCollaborationResiliencePacket[]  @relation("AssistantCollaborationResiliencePacketApprover")
   assistantCommercialRevenueControlPacketsCreated  AssistantCommercialRevenueControlPacket[] @relation("AssistantCommercialRevenueControlPacketCreator")
   assistantCommercialRevenueControlPacketsApproved AssistantCommercialRevenueControlPacket[] @relation("AssistantCommercialRevenueControlPacketApprover")
+  assistantSupplyNetworkTwinPacketsCreated         AssistantSupplyNetworkTwinPacket[]        @relation("AssistantSupplyNetworkTwinPacketCreator")
+  assistantSupplyNetworkTwinPacketsApproved        AssistantSupplyNetworkTwinPacket[]        @relation("AssistantSupplyNetworkTwinPacketApprover")
   invoiceIntakesAccountingApproved                 InvoiceIntake[]                           @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated                TariffShipmentApplication[]               @relation("TariffShipmentApplicationCreator")
   scriEventsOwned                                  ScriExternalEvent[]                       @relation("ScriEventOwner")

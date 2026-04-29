@@ -1,0 +1,55 @@
+{
+  "sprint": 7,
+  "name": "Supply Network Twin & Scenario Command",
+  "entrypoint": "/assistant/supply-network-twin",
+  "api": "/api/assistant/supply-network-twin",
+  "scenarios": [
+    {
+      "id": "create-supply-network-twin-packet",
+      "title": "Create a durable supply network twin packet",
+      "steps": [
+        "Open the Sprint 7 Supply Network Twin workspace.",
+        "Review twin graph nodes/edges, risks, scenario drafts, network design, simulation, planning, resilience, order, shipment, inventory, supplier, customer, and action queue signals.",
+        "Click Create Sprint 7 packet."
+      ],
+      "expected": [
+        "A durable AssistantSupplyNetworkTwinPacket row is created with source summary, graph coverage, network baseline, scenario command, bottlenecks, disruptions, recovery playbooks, confidence, response plan, rollback plan, and leadership summary JSON.",
+        "An AssistantAuditEvent records that packet creation is evidence-only.",
+        "No order, inventory, WMS task, shipment, supplier, customer, warehouse, route, RFQ, tariff, twin graph row, scenario draft, network plan, or customer promise is changed automatically."
+      ]
+    },
+    {
+      "id": "queue-network-scenario-review",
+      "title": "Queue supply network scenario review",
+      "steps": [
+        "Add an optional network scenario review note to a draft Sprint 7 packet.",
+        "Click Queue review."
+      ],
+      "expected": [
+        "The packet moves to REVIEW_QUEUED and stores actionQueueItemId.",
+        "An AssistantActionQueueItem is created for supply_network_twin_review with the packet URL and source evidence.",
+        "Review work remains separate from execution; the assistant does not promote scenarios or mutate orders, inventory, shipments, suppliers, warehouses, routes, network plans, twin graph records, or customer promises."
+      ]
+    },
+    {
+      "id": "approve-supply-network-twin-packet",
+      "title": "Approve a reviewed Sprint 7 packet",
+      "steps": [
+        "Review the packet leadership summary, graph confidence, bottlenecks, disruptions, recovery playbooks, and rollback plan.",
+        "Click Approve packet."
+      ],
+      "expected": [
+        "The packet status becomes APPROVED with approvedAt, approvedByUserId, and approvalNote.",
+        "An AssistantAuditEvent records approval and reiterates the no-silent-mutation guardrail.",
+        "Approval marks the network scenario evidence packet as reviewed only; execution still requires separate downstream approved actions."
+      ]
+    }
+  ],
+  "guardrails": [
+    "No twin graph node, edge, risk signal, or scenario draft is created or changed automatically.",
+    "No order, sales order, purchase order, shipment, WMS task, inventory, warehouse, route, RFQ, tariff, supplier, or customer record is changed automatically.",
+    "No scenario is promoted into planning, procurement, transport, warehouse, finance, or customer-facing execution automatically.",
+    "No customer promise or external stakeholder communication is changed or sent automatically.",
+    "Recovery playbooks create review work only and require separate downstream approval before execution."
+  ]
+}

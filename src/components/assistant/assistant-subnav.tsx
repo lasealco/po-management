@@ -69,6 +69,7 @@ export function AssistantSubnav() {
   const executiveOperatingSystem = pathname.startsWith("/assistant/executive-operating-system");
   const collaborationResilience = pathname.startsWith("/assistant/collaboration-resilience");
   const commercialRevenueControl = pathname.startsWith("/assistant/commercial-revenue-control");
+  const supplyNetworkTwin = pathname.startsWith("/assistant/supply-network-twin");
   const advancedProgram = (slug: string) => pathname.startsWith(`/assistant/advanced-programs/${slug}`);
   const advancedProgramLinks = listAdvancedProgramConfigs();
   const workbench = pathname.startsWith("/assistant/workbench");
@@ -287,6 +288,13 @@ export function AssistantSubnav() {
         title="Sprint 6 Commercial & Revenue Control Plane"
       >
         Sprint 6
+      </Link>
+      <Link
+        href="/assistant/supply-network-twin"
+        className={supplyNetworkTwin ? appNavActiveClass : appNavInactiveClass}
+        title="Sprint 7 Supply Network Twin & Scenario Command"
+      >
+        Sprint 7
       </Link>
       {advancedProgramLinks.map((program) => (
         <Link
