@@ -1314,6 +1314,61 @@ Object.assign(ADVANCED_PROGRAMS, {
   },
 } satisfies Record<string, ProgramConfig>);
 
+Object.assign(
+  ADVANCED_PROGRAMS,
+  Object.fromEntries(
+    [
+      ["166", "software-license-governance", "Licenses", "Software asset and license governance program", "Software Asset & License Governance", "software license governance packet", "software entitlements, license usage, renewal states, vendor obligations, audit evidence, or compliance records", "IT asset owner", "Finance", "Compliance"],
+      ["167", "device-fleet-lifecycle", "Devices", "Hardware lifecycle and device fleet program", "Hardware Lifecycle & Device Fleet", "device lifecycle packet", "device records, refresh plans, repair status, disposal approvals, warranty data, or user assignments", "IT asset owner", "Security", "Operations"],
+      ["168", "identity-lifecycle", "Identity", "Identity lifecycle operations program", "Identity Lifecycle Operations", "identity lifecycle packet", "user access, role grants, deprovisioning state, SoD exceptions, joiner/mover/leaver tasks, or access reviews", "Identity owner", "Security", "Manager"],
+      ["169", "privileged-access", "Priv access", "Privileged access governance program", "Privileged Access Governance", "privileged access packet", "elevated access, break-glass grants, approval expiry, monitoring state, access scopes, or revoke plans", "Security", "Identity owner", "Control owner"],
+      ["170", "saas-risk", "SaaS risk", "Third-party SaaS risk program", "Third-Party SaaS Risk", "SaaS risk packet", "SaaS app inventory, data scopes, renewals, vendor risk ratings, security posture, or business owner assignments", "Security", "Vendor owner", "Legal"],
+      ["171", "data-catalog-stewardship", "Catalog", "Data catalog stewardship program", "Data Catalog Stewardship", "data catalog stewardship packet", "catalog entries, dataset owners, certification states, quality status, lineage, or consumer access", "Data owner", "Analytics", "Compliance"],
+      ["172", "data-quality-factory", "DQ factory", "Data quality remediation factory program", "Data Quality Remediation Factory", "data quality remediation packet", "data quality rules, failed records, remediation tasks, owner assignments, monitoring state, or source data", "Data owner", "Operations", "Analytics"],
+      ["173", "master-data-council", "MD council", "Master data stewardship council program", "Master Data Stewardship Council", "master data council packet", "master data standards, exceptions, council decisions, domain owner assignments, or rollout actions", "Data governance", "Domain owner", "Operations"],
+      ["174", "knowledge-graph-expansion", "Graph", "Knowledge graph expansion program", "Knowledge Graph Expansion", "knowledge graph curation packet", "graph entities, relationships, confidence scores, curation tasks, source evidence, or graph publication state", "Data owner", "AI quality", "Domain owner"],
+      ["175", "ontology-taxonomy", "Taxonomy", "Ontology and taxonomy governance program", "Ontology & Taxonomy Governance", "taxonomy governance packet", "taxonomy nodes, ontology mappings, category lifecycle states, deprecations, or downstream mappings", "Data governance", "Product", "Analytics"],
+      ["176", "retention-archive", "Archive", "Data retention and archive optimization program", "Data Retention & Archive Optimization", "retention archive packet", "retention rules, archive batches, legal holds, deletion approvals, retrieval policies, or storage settings", "Legal", "Data owner", "Compliance"],
+      ["177", "records-management", "Records", "Enterprise records management program", "Enterprise Records Management", "records management packet", "official record classifications, record owners, hold status, disposition decisions, or records exports", "Records owner", "Legal", "Compliance"],
+      ["178", "content-compliance", "Content", "Content compliance publishing program", "Content Compliance Publishing", "content compliance packet", "content assets, claims, localization, brand approvals, publishing status, or release gates", "Marketing", "Legal", "Compliance"],
+      ["179", "campaign-operations", "Campaigns", "Marketing campaign operations program", "Marketing Campaign Operations", "campaign launch packet", "campaign audiences, budgets, content approvals, launch state, performance hypotheses, or marketing sends", "Marketing", "Finance", "Legal"],
+      ["180", "demand-attribution", "Attribution", "Demand generation attribution program", "Demand Generation Attribution", "demand attribution packet", "attribution models, campaign ROI, pipeline influence, cost assumptions, or marketing reports", "Marketing ops", "Analytics", "Finance"],
+      ["181", "lead-routing", "Leads", "Lead routing and qualification program", "Lead Routing & Qualification", "lead routing packet", "lead scores, routing rules, territories, owner assignments, SLA states, or handoff records", "Sales operations", "Sales", "Marketing"],
+      ["182", "partner-cosell", "Co-sell", "Partner co-selling operations program", "Partner Co-Selling Operations", "partner co-sell packet", "partner pipeline, shared account plans, rules of engagement, co-sell actions, or conflict decisions", "Partner owner", "Sales", "Legal"],
+      ["183", "sales-comp-governance", "Comp", "Sales compensation governance program", "Sales Compensation Governance", "sales compensation packet", "commission credits, payout readiness, compensation disputes, accelerators, or plan exceptions", "Sales operations", "Finance", "Legal"],
+      ["184", "revenue-recognition", "Rev rec", "Revenue recognition support program", "Revenue Recognition Support", "revenue recognition support packet", "revenue schedules, obligations, ERP exports, invoice treatment, delivery evidence, or finance exceptions", "Finance", "Accounting", "Legal"],
+      ["185", "deal-desk", "Deal desk", "Quote governance and deal desk program", "Quote Governance & Deal Desk", "deal desk packet", "quote discounts, approval thresholds, margin evidence, contract terms, or commercial exceptions", "Deal desk", "Finance", "Sales"],
+      ["186", "support-knowledge-loop", "Support KB", "Customer support knowledge loop program", "Customer Support Knowledge Loop", "support knowledge loop packet", "support resolutions, knowledge articles, SOP updates, customer evidence, or answer behavior", "Support", "Knowledge owner", "AI quality"],
+      ["187", "contact-center-planning", "Contact plan", "Contact center workforce planning program", "Contact Center Workforce Planning", "contact center staffing packet", "staffing schedules, skill plans, SLA assumptions, coaching actions, or workforce forecasts", "Support operations", "Workforce planning", "Finance"],
+      ["188", "service-quality-analytics", "Svc quality", "Service quality analytics program", "Service Quality Analytics", "service quality improvement packet", "SLA metrics, sentiment themes, service findings, improvement tasks, or customer service records", "Support operations", "Customer success", "Analytics"],
+      ["189", "community-intelligence", "Community", "Customer community intelligence program", "Customer Community Intelligence", "community intelligence packet", "community themes, moderation flags, product ideas, forum content, or customer feedback records", "Community", "Product", "Trust and safety"],
+      ["190", "roadmap-intake", "Roadmap", "Product roadmap intake program", "Product Roadmap Intake", "roadmap intake packet", "roadmap requests, scoring decisions, dependencies, stakeholder votes, or product roadmap status", "Product", "Customer success", "Engineering"],
+      ["191", "feature-flag-governance", "Flags", "Experimentation and feature flag governance program", "Experimentation & Feature Flag Governance", "experiment governance packet", "feature flags, experiment cohorts, rollout decisions, metric guardrails, or rollback states", "Product", "Engineering", "Analytics"],
+      ["192", "product-telemetry-quality", "Telemetry QA", "Product telemetry quality program", "Product Telemetry Quality", "telemetry quality packet", "event schemas, instrumentation gaps, telemetry drift, analytics readiness, or tracking plans", "Product analytics", "Engineering", "Data owner"],
+      ["193", "developer-productivity", "Dev prod", "Developer productivity command program", "Developer Productivity Command", "developer productivity packet", "engineering metrics, build health, PR flow, incident actions, or developer productivity reports", "Engineering", "Platform", "Analytics"],
+      ["194", "release-train", "Release", "Release train governance program", "Release Train Governance", "release train packet", "release scope, readiness gates, rollout windows, dependency status, or rollback plans", "Release owner", "Engineering", "Product"],
+      ["195", "incident-communications", "Incident comms", "Incident communications program", "Incident Communications", "incident communications packet", "incident updates, stakeholder lists, public/internal messages, timelines, or postmortem handoffs", "Incident commander", "Communications", "Legal"],
+      ["196", "sre-error-budget", "Error budget", "SRE error-budget governance program", "SRE Error-Budget Governance", "error budget governance packet", "SLO targets, error-budget decisions, release gates, remediation tasks, or reliability reports", "SRE", "Engineering", "Product"],
+      ["197", "observability-cost", "Obs cost", "Observability cost optimization program", "Observability Cost Optimization", "observability cost packet", "log retention, metrics/traces sampling, alert rules, signal value, or observability spend reports", "SRE", "Finance", "Engineering"],
+      ["198", "vulnerability-remediation", "Vulns", "Security vulnerability remediation program", "Security Vulnerability Remediation", "vulnerability remediation packet", "vulnerability findings, asset owners, SLA dates, risk acceptances, or remediation status", "Security", "Engineering", "Control owner"],
+      ["199", "patch-management", "Patches", "Patch management command program", "Patch Management Command", "patch management packet", "patch waves, maintenance windows, asset status, validation evidence, or rollback plans", "IT operations", "Security", "Engineering"],
+      ["200", "edr-workflow", "EDR", "Endpoint detection response workflow program", "Endpoint Detection Response Workflow", "EDR response packet", "endpoint alerts, device containment, evidence, owner actions, closure status, or response workflows", "Security operations", "IT operations", "Incident commander"],
+    ].map(([ampNumber, key, navLabel, title, surfaceTitle, artifactLabel, noMutation, owner1, owner2, owner3]) => [
+      key,
+      makeExtendedProgram({
+        ampNumber: Number(ampNumber),
+        key,
+        navLabel,
+        title,
+        surfaceTitle,
+        artifactLabel,
+        noMutation,
+        approvalOwners: [owner1, owner2, owner3],
+      }),
+    ]),
+  ),
+);
+
 export type AdvancedProgramPacketInputs = {
   signals: AdvancedProgramSignals;
   programKey: AdvancedProgramKey;

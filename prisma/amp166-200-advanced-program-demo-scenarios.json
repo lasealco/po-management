@@ -1,0 +1,72 @@
+[
+  {
+    "id": "amp166-200-create-packets",
+    "title": "Create durable advanced program packets for AMP166 through AMP200",
+    "persona": "IT, data, marketing, sales, product, engineering, SRE, and security operations leaders",
+    "entrypoints": [
+      "/assistant/advanced-programs/software-license-governance",
+      "/assistant/advanced-programs/identity-lifecycle",
+      "/assistant/advanced-programs/data-catalog-stewardship",
+      "/assistant/advanced-programs/content-compliance",
+      "/assistant/advanced-programs/lead-routing",
+      "/assistant/advanced-programs/deal-desk",
+      "/assistant/advanced-programs/roadmap-intake",
+      "/assistant/advanced-programs/release-train",
+      "/assistant/advanced-programs/sre-error-budget",
+      "/assistant/advanced-programs/vulnerability-remediation",
+      "/assistant/advanced-programs/edr-workflow"
+    ],
+    "steps": [
+      "Open representative AMP166-AMP200 workspaces from the generated Assistant subnav.",
+      "Review live source signals, risks, recommendations, artifacts, approval routes, and rollback controls.",
+      "Click Create AMP packet."
+    ],
+    "expected": [
+      "Each AMP166-AMP200 workspace persists an AssistantAdvancedProgramPacket row with a distinct ampNumber and programKey.",
+      "Each packet has a domain-specific nav label, title, artifact, approval owners, and no-mutation scope.",
+      "The shared advanced-program UI shows preview metrics, historical packets, and queue-review controls.",
+      "No license, device, identity, SaaS, data catalog, content, campaign, lead, compensation, rev-rec, quote, support, roadmap, experiment, telemetry, release, SRE, vulnerability, patch, or EDR records are mutated automatically."
+    ]
+  },
+  {
+    "id": "amp166-200-queue-review",
+    "title": "Queue human review for AMP166 through AMP200 packets",
+    "persona": "Program approval owner",
+    "entrypoints": [
+      "/assistant/advanced-programs/software-license-governance",
+      "/assistant/advanced-programs/feature-flag-governance",
+      "/assistant/advanced-programs/edr-workflow"
+    ],
+    "steps": [
+      "Create or select a DRAFT packet.",
+      "Add a review note explaining the downstream action under consideration.",
+      "Click Queue review."
+    ],
+    "expected": [
+      "The packet status changes to REVIEW_QUEUED and records actionQueueItemId, approvedByUserId, approvedAt, and approvalNote.",
+      "AssistantActionQueueItem uses an AMP-specific actionKind such as assistant_amp166_review or assistant_amp200_review.",
+      "AssistantAuditEvent states that downstream records were not changed automatically."
+    ]
+  },
+  {
+    "id": "amp166-200-guardrails",
+    "title": "Governance guardrails stay explicit across IT, GTM, product, engineering, and security packets",
+    "persona": "Compliance reviewer",
+    "entrypoints": [
+      "/assistant/advanced-programs/privileged-access",
+      "/assistant/advanced-programs/revenue-recognition",
+      "/assistant/advanced-programs/release-train",
+      "/assistant/advanced-programs/vulnerability-remediation"
+    ],
+    "steps": [
+      "Open a packet with active risk signals.",
+      "Inspect recommendationJson, approvalPlanJson, artifactJson, and rollbackPlanJson.",
+      "Queue review without executing downstream changes."
+    ],
+    "expected": [
+      "recommendationJson requires review before operational, commercial, engineering, or security execution.",
+      "approvalPlanJson names the responsible owner groups.",
+      "rollbackPlanJson preserves source records and requires a fresh packet when evidence changes materially."
+    ]
+  }
+]

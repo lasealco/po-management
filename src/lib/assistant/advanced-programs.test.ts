@@ -35,10 +35,10 @@ const signals: AdvancedProgramSignals = {
 };
 
 describe("advanced programs", () => {
-  it("defines AMP37 through AMP165 with requested AMP163-165 programs", () => {
+  it("defines AMP37 through AMP200 with requested AMP166-200 programs", () => {
     const configs = listAdvancedProgramConfigs();
 
-    expect(configs).toHaveLength(128);
+    expect(configs).toHaveLength(163);
     expect(configs[0]?.ampNumber).toBe(37);
     expect(configs[25]?.ampNumber).toBe(62);
     expect(configs[26]?.ampNumber).toBe(64);
@@ -47,6 +47,8 @@ describe("advanced programs", () => {
     expect(configs[124]?.ampNumber).toBe(162);
     expect(configs[125]?.ampNumber).toBe(163);
     expect(configs[127]?.ampNumber).toBe(165);
+    expect(configs[128]?.ampNumber).toBe(166);
+    expect(configs[162]?.ampNumber).toBe(200);
   });
 
   it("builds a distinct packet with guardrails for category strategy", () => {
@@ -101,6 +103,15 @@ describe("advanced programs", () => {
     expect(packet.riskCount).toBeGreaterThan(0);
     expect(packet.approvalPlan.steps.map((step) => step.owner)).toContain("FinOps");
     expect(packet.rollbackPlan.steps[0]).toContain("cloud budgets");
+  });
+
+  it("builds EDR packets with endpoint containment guardrails", () => {
+    const packet = buildAdvancedProgramPacket({ programKey: "edr-workflow", signals });
+
+    expect(packet.ampNumber).toBe(200);
+    expect(packet.riskCount).toBeGreaterThan(0);
+    expect(packet.approvalPlan.steps.map((step) => step.owner)).toContain("Security operations");
+    expect(packet.rollbackPlan.steps[0]).toContain("device containment");
   });
 
   it("returns null for unknown program keys", () => {

@@ -87,6 +87,7 @@ export default async function AssistantLayout({ children }: { children: React.Re
           <strong>Capex through Review ops</strong> covers AMP64-AMP100 for investment, integration, pricing, claims, regulated operations, risk, privacy, model/prompt governance, automation policy, and human review packets.{" "}
           <strong>Agents through Learning</strong> covers AMP101-AMP162 for multi-agent orchestration, reliability, tenant success, integrations, ESG, disruption, customer growth, procurement, inventory, executive reporting, process excellence, edge/mobile AI, safety, facilities, tax, treasury, insurance, legal, and enterprise learning packets.{" "}
           <strong>Architecture through FinOps</strong> covers AMP163-AMP165 for enterprise architecture decisions, modernization sequencing, and cloud cost governance packets.{" "}
+          <strong>Licenses through EDR</strong> covers AMP166-AMP200 for software/device/identity governance, data/content/marketing/sales/product operations, engineering release/SRE, and security response packets.{" "}
           <strong>Workbench</strong> is the LMP1-LMP10 cockpit for sales, products, suppliers, POs, and
           shipments. <strong>Execution</strong> runs LMP11-LMP30 across carrier/customer comms, WMS, finance, quality,
           and simulation readiness. <strong>Work engine</strong> is AMP6 for assigned actions, SLA playbooks, and memory cleanup.{" "}
