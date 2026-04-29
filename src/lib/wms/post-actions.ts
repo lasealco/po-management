@@ -5,7 +5,10 @@ import { Prisma, ShipmentMilestoneCode, type WmsPickAllocationStrategy, type Wms
 
 import { prisma } from "@/lib/prisma";
 
-import { assertOutboundCrmAccountLinkable } from "./crm-account-link";
+import {
+  assertOutboundCrmAccountLinkable,
+  assertOutboundSourceQuoteAttachable,
+} from "./crm-account-link";
 import { normalizeDockCode, parseDockYardMilestone, truncateDockTransportField, DOCK_TRANSPORT_LIMITS } from "./dock-appointment";
 import { orderPickSlotsForWave, type WavePickSlot } from "./allocation-strategy";
 import { resolveVarianceDisposition } from "./receive-line-variance";
@@ -344,6 +347,20 @@ export async function handleWmsPost(
     if (!crmAccount) {
       return toApiErrorResponseFromStatus("CRM account not found.", 404);
     }
+    let sourceCrmQuoteId: string | null = null;
+    const sqRaw = input.sourceCrmQuoteId;
+    if (sqRaw !== undefined && sqRaw !== null && String(sqRaw).trim()) {
+      const qGate = await assertOutboundSourceQuoteAttachable(
+        tenantId,
+        actorId,
+        String(sqRaw).trim(),
+        crmAccountId,
+      );
+      if (!qGate.ok) {
+        return toApiErrorResponseFromStatus(qGate.error, qGate.status);
+      }
+      sourceCrmQuoteId = String(sqRaw).trim();
+    }
     const outboundNo = `OUT-${Date.now().toString().slice(-8)}`;
     let requestedShipDate: Date | null | undefined;
     if (input.requestedShipDate !== undefined) {
@@ -364,6 +381,7 @@ export async function handleWmsPost(
         warehouseId,
         outboundNo,
         crmAccountId,
+        ...(sourceCrmQuoteId ? { sourceCrmQuoteId } : {}),
         customerRef: input.customerRef?.trim() || null,
         asnReference:
           input.asnReference !== undefined
@@ -458,7 +476,7 @@ export async function handleWmsPost(
     }
     const order = await prisma.outboundOrder.findFirst({
       where: { id: outboundOrderId, tenantId },
-      select: { id: true, status: true },
+      select: { id: true, status: true, sourceCrmQuoteId: true },
     });
     if (!order) {
       return toApiErrorResponseFromStatus("Outbound order not found.", 404);
@@ -470,9 +488,24 @@ export async function handleWmsPost(
     ) {
       return toApiErrorResponseFromStatus("Cannot change CRM link after pack, on shipped, or on cancelled orders.", 400);
     }
+    let clearSourceQuote = false;
+    if (!crmAccountId) {
+      clearSourceQuote = true;
+    } else if (order.sourceCrmQuoteId) {
+      const qRow = await prisma.crmQuote.findFirst({
+        where: { id: order.sourceCrmQuoteId, tenantId },
+        select: { accountId: true },
+      });
+      if (!qRow || qRow.accountId !== crmAccountId) {
+        clearSourceQuote = true;
+      }
+    }
     await prisma.outboundOrder.update({
       where: { id: order.id },
-      data: { crmAccountId },
+      data: {
+        crmAccountId,
+        ...(clearSourceQuote ? { sourceCrmQuoteId: null } : {}),
+      },
     });
     return NextResponse.json({ ok: true });
   }

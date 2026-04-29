@@ -202,6 +202,20 @@ export function CrmQuoteDetail({
         ) : null}
       </p>
 
+      <section className="mb-6 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Warehouse fulfillment</p>
+        <p className="mt-2 text-sm text-zinc-700">
+          Jump to WMS Operations with this quote and bill-to account prefilled for outbound creation (BF-10 quote
+          lineage).
+        </p>
+        <Link
+          href={`/wms/operations?quoteId=${encodeURIComponent(quote.id)}&crmAccountId=${encodeURIComponent(quote.account.id)}`}
+          className="mt-4 inline-flex items-center justify-center rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white"
+        >
+          Open WMS outbound handoff
+        </Link>
+      </section>
+
       {error ? (
         <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 shadow-sm">
           {error}

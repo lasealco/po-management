@@ -29,3 +29,28 @@ export async function assertOutboundCrmAccountLinkable(
   }
   return { ok: true };
 }
+
+/** Validates tenant CRM quote exists, matches outbound bill-to account, and passes CRM scope. */
+export async function assertOutboundSourceQuoteAttachable(
+  tenantId: string,
+  actorUserId: string,
+  quoteId: string,
+  crmAccountId: string,
+): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
+  const quote = await prisma.crmQuote.findFirst({
+    where: { id: quoteId, tenantId },
+    select: { id: true, accountId: true },
+  });
+  if (!quote) {
+    return { ok: false, status: 404, error: "CRM quote not found." };
+  }
+  if (quote.accountId !== crmAccountId) {
+    return {
+      ok: false,
+      status: 400,
+      error: "Quote customer account must match outbound CRM account (bill-to).",
+    };
+  }
+  return assertOutboundCrmAccountLinkable(tenantId, actorUserId, crmAccountId);
+}
+

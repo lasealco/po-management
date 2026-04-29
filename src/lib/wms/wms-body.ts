@@ -103,4 +103,6 @@ export type WmsBody = {
   estimatedMaterialsCents?: number | null;
   /** BF-09 — planned minutes; send `null` to clear. */
   estimatedLaborMinutes?: number | null;
+  /** BF-10 — optional `CrmQuote.id`; must belong to same `crmAccountId`. */
+  sourceCrmQuoteId?: string | null;
 };

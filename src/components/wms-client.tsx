@@ -68,6 +68,13 @@ type WmsData = {
     isActive: boolean;
   }>;
   crmAccountOptions: Array<{ id: string; name: string; legalName: string | null }>;
+  crmQuoteOptions: Array<{
+    id: string;
+    title: string;
+    quoteNumber: string | null;
+    status: string;
+    accountId: string;
+  }>;
   outboundOrders: Array<{
     id: string;
     outboundNo: string;
@@ -80,6 +87,12 @@ type WmsData = {
     status: "DRAFT" | "RELEASED" | "PICKING" | "PACKED" | "SHIPPED" | "CANCELLED";
     warehouse: { id: string; code: string | null; name: string };
     crmAccount: { id: string; name: string; legalName: string | null } | null;
+    sourceQuote: {
+      id: string;
+      title: string;
+      quoteNumber: string | null;
+      status: string;
+    } | null;
     lines: Array<{
       id: string;
       lineNo: number;
@@ -394,6 +407,8 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
   const searchParams = useSearchParams();
   /** Stock: once user picks "All warehouses", do not auto-select demo DC again on refetch. */
   const stockWarehouseDefaultApplied = useRef(false);
+  /** BF-10 — consume `?quoteId=&crmAccountId=` once from CRM commercial handoff link. */
+  const commercialHandoffPrefilled = useRef(false);
   const pushingLedgerUrl = useRef(false);
   const lastLedgerUrlNormalized = useRef("");
   const [data, setData] = useState<WmsData | null>(null);
@@ -443,6 +458,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
   const [outboundProductId, setOutboundProductId] = useState("");
   const [outboundLineQty, setOutboundLineQty] = useState("");
   const [outboundCrmAccountId, setOutboundCrmAccountId] = useState("");
+  const [outboundSourceQuoteId, setOutboundSourceQuoteId] = useState("");
   const [inboundEdits, setInboundEdits] = useState<
     Record<string, { asn: string; expectedReceiveAt: string }>
   >({});
@@ -512,6 +528,13 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
   const [newSavedViewName, setNewSavedViewName] = useState("");
   const onHoldOnly = searchParams.get("onHold") === "1";
 
+  const quotesFilteredForCreate = useMemo(() => {
+    const opts = data?.crmQuoteOptions ?? [];
+    const crm = outboundCrmAccountId.trim();
+    if (!crm) return opts;
+    return opts.filter((q) => q.accountId === crm);
+  }, [data?.crmQuoteOptions, outboundCrmAccountId]);
+
   useEffect(() => {
     const taskType = (searchParams.get("taskType") || "").toUpperCase();
     if (
@@ -526,6 +549,27 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
       });
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    if (section !== "operations" || commercialHandoffPrefilled.current) return;
+    const qid = searchParams.get("quoteId");
+    const cid = searchParams.get("crmAccountId");
+    if (!qid && !cid) return;
+    commercialHandoffPrefilled.current = true;
+    startTransition(() => {
+      if (cid) setOutboundCrmAccountId(cid);
+      if (qid) setOutboundSourceQuoteId(qid);
+    });
+    router.replace(pathname, { scroll: false });
+  }, [section, searchParams, pathname, router]);
+
+  useEffect(() => {
+    if (!outboundSourceQuoteId.trim() || !data?.crmQuoteOptions?.length) return;
+    const q = data.crmQuoteOptions.find((x) => x.id === outboundSourceQuoteId);
+    if (!q) return;
+    const crm = outboundCrmAccountId.trim();
+    if (crm && q.accountId !== crm) setOutboundSourceQuoteId("");
+  }, [outboundCrmAccountId, outboundSourceQuoteId, data?.crmQuoteOptions]);
 
   useEffect(() => {
     if (!data) return;
@@ -2700,7 +2744,10 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
             <Link href="/crm/quotes" className="font-medium text-[var(--arscmp-primary)] underline">
               quotes
             </Link>
-            ). Full quote→outbound automation is deferred —{" "}
+            ). Full quote lineage on outbound (
+            <span className="font-medium text-zinc-900">BF-10</span>,{" "}
+            <code className="rounded bg-zinc-100 px-1 py-0.5 text-[11px]">sourceCrmQuoteId</code>
+            ); SKU lines stay warehouse-entered — automated CPQ→SKU mapping remains backlog —{" "}
             <span className="font-medium text-zinc-900">docs/wms/WMS_COMMERCIAL_HANDOFF.md</span>.
           </p>
         </div>
@@ -2748,6 +2795,34 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
             </select>
           </div>
         ) : null}
+        {(data.crmQuoteOptions ?? []).length > 0 ? (
+          <div className="mt-2">
+            <label className="block text-xs font-medium text-zinc-600">CRM quote link (optional)</label>
+            <select
+              value={outboundSourceQuoteId}
+              onChange={(e) => {
+                const id = e.target.value;
+                setOutboundSourceQuoteId(id);
+                const qq = (data.crmQuoteOptions ?? []).find((x) => x.id === id);
+                if (qq) setOutboundCrmAccountId(qq.accountId);
+              }}
+              className="mt-1 w-full max-w-xl rounded border border-zinc-300 px-3 py-2 text-sm sm:w-auto"
+            >
+              <option value="">No quote link</option>
+              {quotesFilteredForCreate.map((q) => {
+                const accName =
+                  data.crmAccountOptions.find((a) => a.id === q.accountId)?.name ?? "Account";
+                const head = q.quoteNumber ? `${q.quoteNumber} · ` : "";
+                return (
+                  <option key={q.id} value={q.id}>
+                    {head}
+                    {q.title.length > 48 ? `${q.title.slice(0, 48)}…` : q.title} · {accName}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+        ) : null}
         <div className="mt-2">
           <button
             type="button"
@@ -2765,6 +2840,9 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
               if (outboundCreateAsn.trim()) body.asnReference = outboundCreateAsn.trim();
               if (outboundCreateRequestedShip.trim()) {
                 body.requestedShipDate = new Date(outboundCreateRequestedShip).toISOString();
+              }
+              if (outboundSourceQuoteId.trim()) {
+                body.sourceCrmQuoteId = outboundSourceQuoteId.trim();
               }
               void runAction(body);
             }}
@@ -2805,6 +2883,14 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                   <span className="rounded bg-zinc-100 px-2 py-0.5 text-xs text-zinc-700">
                     CRM: {o.crmAccount.name}
                   </span>
+                ) : null}
+                {o.sourceQuote ? (
+                  <Link
+                    href={`/crm/quotes/${o.sourceQuote.id}`}
+                    className="rounded bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-900 underline-offset-2 hover:underline"
+                  >
+                    Quote: {o.sourceQuote.quoteNumber ?? o.sourceQuote.title.slice(0, 28)}
+                  </Link>
                 ) : null}
                 {showCrmPicker ? (
                   <select

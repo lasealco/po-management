@@ -4859,6 +4859,10 @@ model OutboundOrder {
    * Optional 3PL owner / bill-to CRM account (same tenant).
    */
   crmAccountId      String?
+  /**
+   * BF-10 — optional CRM quote lineage (`accountId` on quote must match `crmAccountId`).
+   */
+  sourceCrmQuoteId  String?
   createdById       String
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
@@ -4866,6 +4870,7 @@ model OutboundOrder {
   tenant     Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   warehouse  Warehouse           @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
   crmAccount CrmAccount?         @relation(fields: [crmAccountId], references: [id], onDelete: SetNull)
+  sourceCrmQuote CrmQuote?       @relation(fields: [sourceCrmQuoteId], references: [id], onDelete: SetNull)
   createdBy  User                @relation(fields: [createdById], references: [id], onDelete: Restrict)
   lines             OutboundOrderLine[]
   dockAppointments  WmsDockAppointment[]
@@ -4873,6 +4878,7 @@ model OutboundOrder {
   @@unique([tenantId, outboundNo])
   @@index([tenantId, warehouseId, status])
   @@index([tenantId, crmAccountId])
+  @@index([tenantId, sourceCrmQuoteId])
 }
 
 model OutboundOrderLine {
@@ -5264,6 +5270,7 @@ model CrmQuote {
   account     CrmAccount      @relation(fields: [accountId], references: [id], onDelete: Cascade)
   opportunity CrmOpportunity? @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
   lines       CrmQuoteLine[]
+  outboundOrders OutboundOrder[]
 
   @@index([tenantId, accountId])
   @@index([tenantId, ownerUserId])

@@ -63,6 +63,7 @@ export async function getWmsDashboardPayload(
     rules,
     outboundOrders,
     crmAccountOptions,
+    crmQuoteOptions,
     balances,
     openTasks,
     waves,
@@ -109,6 +110,9 @@ export async function getWmsDashboardPayload(
       include: {
         warehouse: { select: { id: true, code: true, name: true } },
         crmAccount: { select: { id: true, name: true, legalName: true } },
+        sourceCrmQuote: {
+          select: { id: true, title: true, quoteNumber: true, status: true },
+        },
         lines: {
           orderBy: { lineNo: "asc" },
           include: {
@@ -123,6 +127,24 @@ export async function getWmsDashboardPayload(
           orderBy: { name: "asc" },
           take: 200,
           select: { id: true, name: true, legalName: true },
+        })
+      : Promise.resolve([]),
+    canPickCrmAccounts
+      ? prisma.crmQuote.findMany({
+          where: {
+            tenantId,
+            status: { in: ["SENT", "ACCEPTED"] },
+            account: crmAccountListWhere,
+          },
+          orderBy: { updatedAt: "desc" },
+          take: 200,
+          select: {
+            id: true,
+            title: true,
+            quoteNumber: true,
+            status: true,
+            accountId: true,
+          },
         })
       : Promise.resolve([]),
     prisma.inventoryBalance.findMany({
@@ -370,6 +392,7 @@ export async function getWmsDashboardPayload(
       isActive: r.isActive,
     })),
     crmAccountOptions,
+    crmQuoteOptions,
     outboundOrders: outboundOrders.map((o) => ({
       id: o.id,
       outboundNo: o.outboundNo,
@@ -382,6 +405,14 @@ export async function getWmsDashboardPayload(
       status: o.status,
       warehouse: o.warehouse,
       crmAccount: o.crmAccount,
+      sourceQuote: o.sourceCrmQuote
+        ? {
+            id: o.sourceCrmQuote.id,
+            title: o.sourceCrmQuote.title,
+            quoteNumber: o.sourceCrmQuote.quoteNumber,
+            status: o.sourceCrmQuote.status,
+          }
+        : null,
       lines: o.lines.map((l) => ({
         id: l.id,
         lineNo: l.lineNo,
