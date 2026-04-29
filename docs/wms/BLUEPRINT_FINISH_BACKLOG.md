@@ -67,4 +67,27 @@ Each capsule should end with: **`GAP_MAP.md` updated**, migrations listed if any
 1. Product prioritizes **`BF-xx`** order (or swaps Phase A/B/C above).
 2. Open **one capsule** → **`GAP_MAP`** delta → ship → repeat.
 
-_Last updated: 2026-04-29 — initial backlog skeleton from [`GAP_MAP.md`](./GAP_MAP.md)._
+---
+
+## Example prompt — **BF-01** (copy/paste)
+
+**What it is:** First-class **line-level receiving variance** (expected vs received per line, short/over and disposition), vs today’s shipment-level **Option A** status only — see [`WMS_RECEIVING_STATE_MACHINE_SPEC.md`](./WMS_RECEIVING_STATE_MACHINE_SPEC.md) **§ Options A/B/C** and [`GAP_MAP.md`](./GAP_MAP.md) inbound ASN “no line-level receipt variance table yet”.
+
+```
+Execute blueprint capsule BF-01 per docs/wms/BLUEPRINT_FINISH_BACKLOG.md.
+
+Goal: Ship a minimal receiving line variance slice (expected vs received per inbound line + disposition/notes), choosing schema approach per docs/wms/WMS_RECEIVING_STATE_MACHINE_SPEC.md — prefer documenting Option B (header + lines) or a thin extension of Option A if product wants smallest migration.
+
+Constraints:
+- Respect typical allowed paths in docs/engineering/agent-todos/wms.md for WMS; flag any unavoidable CRM/shared touches.
+- Migrations + prisma validate; seeds/demo notes if new rows — docs/database-neon.md pattern.
+
+Deliverables:
+- Schema/API/UI aligned to the chosen option; audit lines where transitions matter.
+- Update docs/wms/GAP_MAP.md (Inbound ASN row + _Last updated_) and add/adjust docs/wms/* spec or ADR for residual limits.
+- Vitest for new pure logic in src/lib/wms/** where applicable.
+
+Exit when BF-01 row in BLUEPRINT_FINISH_BACKLOG.md is satisfied: GAP_MAP reflects line variance depth or explicit documented deferral for remaining gaps.
+```
+
+_Last updated: 2026-04-29 — initial backlog skeleton from [`GAP_MAP.md`](./GAP_MAP.md); BF-01 prompt template._
