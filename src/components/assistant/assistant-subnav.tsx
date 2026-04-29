@@ -61,6 +61,7 @@ export function AssistantSubnav() {
   const networkDesign = pathname.startsWith("/assistant/network-design");
   const simulationStudio = pathname.startsWith("/assistant/simulation-studio");
   const continuousPlanning = pathname.startsWith("/assistant/continuous-planning");
+  const revenueOperations = pathname.startsWith("/assistant/revenue-operations");
   const workbench = pathname.startsWith("/assistant/workbench");
   const execution = pathname.startsWith("/assistant/execution");
   const workEngine = pathname.startsWith("/assistant/work-engine");
@@ -228,6 +229,13 @@ export function AssistantSubnav() {
         title="AMP35 continuous planning control tower"
       >
         Plan control
+      </Link>
+      <Link
+        href="/assistant/revenue-operations"
+        className={revenueOperations ? appNavActiveClass : appNavInactiveClass}
+        title="AMP36 quote-to-contract revenue operations"
+      >
+        Revenue ops
       </Link>
       <Link
         href="/assistant/workbench"

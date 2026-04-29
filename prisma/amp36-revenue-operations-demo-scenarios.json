@@ -1,0 +1,51 @@
+[
+  {
+    "id": "amp36-create-revenue-operations-packet",
+    "title": "Create a quote-to-contract revenue packet",
+    "persona": "Revenue operations lead with CRM edit access",
+    "entrypoint": "/assistant/revenue-operations",
+    "steps": [
+      "Open the AMP36 Revenue ops workspace.",
+      "Review selected quote, opportunity context, pricing evidence, fulfillment feasibility, approval route, customer draft, contract handoff, and rollback plan.",
+      "Click Create revenue packet."
+    ],
+    "expected": [
+      "A persisted AssistantRevenueOperationsPacket is created with commercialSnapshotJson, feasibilityJson, pricingEvidenceJson, approvalRouteJson, customerDraftJson, contractHandoffJson, rollbackPlanJson, and leadershipSummary.",
+      "The packet selects a quote, records feasibility/pricing risks, and prepares approval-safe customer language.",
+      "An AssistantAuditEvent records packet creation.",
+      "No CRM quote, quote line, opportunity, customer communication, sales order, inventory, shipment, or contract record is mutated automatically."
+    ]
+  },
+  {
+    "id": "amp36-queue-revenue-review",
+    "title": "Queue quote approval and contract handoff review",
+    "persona": "Commercial approver",
+    "entrypoint": "/assistant/revenue-operations",
+    "steps": [
+      "Create or select a DRAFT revenue operations packet.",
+      "Add a review note describing the commercial decision.",
+      "Click Queue revenue review."
+    ],
+    "expected": [
+      "The packet status changes to REVIEW_QUEUED with actionQueueItemId, approvedByUserId, approvedAt, and approvalNote.",
+      "An AssistantActionQueueItem is created with actionKind assistant_revenue_operations_review and objectHref /assistant/revenue-operations.",
+      "An AssistantAuditEvent states that CRM, customer communication, fulfillment, and contract records were not changed automatically."
+    ]
+  },
+  {
+    "id": "amp36-feasibility-and-send-guardrails",
+    "title": "Feasibility risk and customer-send guardrails remain visible",
+    "persona": "Sales manager",
+    "entrypoint": "/assistant/revenue-operations",
+    "steps": [
+      "Open AMP36 when the selected quote has fulfillment, pricing, or contract risks.",
+      "Create a revenue operations packet.",
+      "Inspect the customer draft and contract handoff sections."
+    ],
+    "expected": [
+      "feasibilityJson and pricingEvidenceJson list the risk drivers before approval.",
+      "customerDraftJson is editable/copy-ready and explicitly not sent automatically.",
+      "contractHandoffJson does not create, amend, send, or sign contracts automatically, and rollbackPlanJson preserves CRM and operational records until separate approval."
+    ]
+  }
+]

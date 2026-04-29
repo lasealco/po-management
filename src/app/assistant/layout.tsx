@@ -80,6 +80,7 @@ export default async function AssistantLayout({ children }: { children: React.Re
           <strong>Network</strong> is AMP33 for facility, lane, supplier, and customer footprint scenarios with approval-gated strategy packets.{" "}
           <strong>Simulation</strong> is AMP34 for replayable what-if runs, comparison, archive, and review-safe scenario promotion.{" "}
           <strong>Plan control</strong> is AMP35 for plan-vs-actual health, replanning triggers, owner recovery work, and approval gates.{" "}
+          <strong>Revenue ops</strong> is AMP36 for quote feasibility, pricing evidence, approvals, customer drafts, and contract handoff.{" "}
           <strong>Workbench</strong> is the LMP1-LMP10 cockpit for sales, products, suppliers, POs, and
           shipments. <strong>Execution</strong> runs LMP11-LMP30 across carrier/customer comms, WMS, finance, quality,
           and simulation readiness. <strong>Work engine</strong> is AMP6 for assigned actions, SLA playbooks, and memory cleanup.{" "}

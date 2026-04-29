@@ -177,6 +177,7 @@ model Tenant {
   assistantNetworkDesignPackets     AssistantNetworkDesignPacket[]
   assistantSimulationStudioPackets  AssistantSimulationStudioPacket[]
   assistantContinuousPlanningPackets AssistantContinuousPlanningPacket[]
+  assistantRevenueOperationsPackets AssistantRevenueOperationsPacket[]
   assistantActionQueue              AssistantActionQueueItem[]
   assistantPlaybookTemplates        AssistantPlaybookTemplate[]
   assistantPlaybookRuns             AssistantPlaybookRun[]
@@ -1052,6 +1053,44 @@ model AssistantContinuousPlanningPacket {
   @@index([tenantId, replanningTriggerCount, updatedAt])
 }
 
+/// AMP36: quote-to-contract revenue operations packet for commercial approval, fulfillment feasibility, and contract handoff.
+model AssistantRevenueOperationsPacket {
+  id                    String    @id @default(cuid())
+  tenantId              String
+  createdByUserId       String?
+  approvedByUserId      String?
+  title                 String
+  status                String    @default("DRAFT") @db.VarChar(32)
+  revenueScore          Int       @default(0)
+  quoteCount            Int       @default(0)
+  opportunityCount      Int       @default(0)
+  feasibilityRiskCount  Int       @default(0)
+  pricingRiskCount      Int       @default(0)
+  approvalStepCount     Int       @default(0)
+  selectedQuoteId       String?
+  commercialSnapshotJson Json
+  feasibilityJson       Json
+  pricingEvidenceJson   Json
+  approvalRouteJson     Json
+  customerDraftJson     Json
+  contractHandoffJson   Json
+  rollbackPlanJson      Json
+  leadershipSummary     String    @db.Text
+  actionQueueItemId     String?
+  approvedAt            DateTime?
+  approvalNote          String?   @db.Text
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator  User?  @relation("AssistantRevenueOperationsPacketCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  approver User?  @relation("AssistantRevenueOperationsPacketApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, updatedAt])
+  @@index([tenantId, revenueScore, updatedAt])
+  @@index([tenantId, selectedQuoteId])
+}
+
 /// AMP7: inspectable grounding ledger extracted from assistant answers and reviewer additions.
 model AssistantEvidenceRecord {
   id              String    @id @default(cuid())
@@ -1678,6 +1717,8 @@ model User {
   assistantSimulationStudioPacketsApproved AssistantSimulationStudioPacket[]  @relation("AssistantSimulationStudioPacketApprover")
   assistantContinuousPlanningPacketsCreated AssistantContinuousPlanningPacket[] @relation("AssistantContinuousPlanningPacketCreator")
   assistantContinuousPlanningPacketsApproved AssistantContinuousPlanningPacket[] @relation("AssistantContinuousPlanningPacketApprover")
+  assistantRevenueOperationsPacketsCreated AssistantRevenueOperationsPacket[] @relation("AssistantRevenueOperationsPacketCreator")
+  assistantRevenueOperationsPacketsApproved AssistantRevenueOperationsPacket[] @relation("AssistantRevenueOperationsPacketApprover")
   invoiceIntakesAccountingApproved        InvoiceIntake[]                   @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated       TariffShipmentApplication[]       @relation("TariffShipmentApplicationCreator")
   scriEventsOwned                         ScriExternalEvent[]               @relation("ScriEventOwner")
