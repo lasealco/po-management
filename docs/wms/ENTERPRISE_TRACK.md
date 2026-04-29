@@ -1,0 +1,189 @@
+# WMS Enterprise Track — capsule index
+
+**Purpose:** Single place to **prompt work by capsule** (`WE-01` … `WE-12`) toward an **enterprise finish line** vs [`GAP_MAP.md`](./GAP_MAP.md) and blueprint deferrals. This track is **independent** of Assistant global **Sprint 1–25** numbering; you may surface progress as **Enterprise WMS · E1–E12** in UI later.
+
+**Sources of truth**
+
+| Doc | Role |
+|-----|------|
+| [`GAP_MAP.md`](./GAP_MAP.md) | Blueprint ↔ repo rows (✅ 🟡 ❌) |
+| [`IMPLEMENTATION_STRATEGY.md`](./IMPLEMENTATION_STRATEGY.md) | Phases A/B/C (ops → billing → commercial) |
+| [`CONTROL_TOWER_WMS_PHASED_ROADMAP.md`](../engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md) | CT+WMS phased program + Phase 2 handoff |
+| [`WMS_RECEIVING_STATE_MACHINE_SPEC.md`](./WMS_RECEIVING_STATE_MACHINE_SPEC.md) | Receiving state machine (WE-01) |
+
+**How to prompt**
+
+> **“Execute capsule WE-0N from `docs/wms/ENTERPRISE_TRACK.md`. Update `GAP_MAP.md` when behavior changes; keep migrations + tests with the capsule scope.”**
+
+Parallel agents: **non-overlapping paths only** (see [`agent-todos/README.md`](../engineering/agent-todos/README.md)).
+
+**Rough scale:** Estimates are **two-week sprints**, **one primary capsule thread** unless you explicitly parallelize. Total serial span **~18–24 sprints** if all capsules run at full depth; **±4 sprints** if scope is cut (see notes per capsule).
+
+---
+
+## Capsule summary
+
+| ID | Name | Est. sprints | Depends on |
+|----|------|--------------|--------------|
+| **WE-01** | Receiving state machine | 2–3 | Spec published; choose model option |
+| **WE-02** | Dock & appointments | 2–3 | WE-01 recommended first |
+| **WE-03** | Allocation v2 (multi-strategy) | 3–4 | Inventory/task model stability |
+| **WE-04** | VAS / work orders | 4–6 | WE-03 partial if shared task engine |
+| **WE-05** | Lot / serialization / constraints | 2–4 | Product scope: WMS-native vs catalog |
+| **WE-06** | Packing / labels / ship-station | 2 | Outbound flow maturity |
+| **WE-07** | Commercial handoff (quotes → billing) | 3–5 | CRM/commercial Phase C readiness |
+| **WE-08** | Field-level WMS RBAC + audit | 2 | Grants model in `icp-and-tenancy` |
+| **WE-09** | Executive / KPI dashboard depth | 2 | Metrics agreement with product |
+| **WE-10** | Zone/site topology (beyond flat zone+bin) | 2–3 | Warehouse model migrations |
+| **WE-11** | Map 3.4 — floor / globe / deep links | 2–3 | CT map MVP; [`CONTROL_TOWER_OPERATIONS_MAP_PHASE3.md`](../engineering/CONTROL_TOWER_OPERATIONS_MAP_PHASE3.md) |
+| **WE-12** | Hardening + enterprise exit sign-off | 2 | Prior capsules merged |
+
+**UI label alias:** **E1** = WE-01 … **E12** = WE-12 (optional Assistant sub-program copy).
+
+---
+
+## WE-01 — Receiving state machine
+
+**Goal:** First-class receiving visibility and gates before/at putaway (orthogonal to inventory posting).
+
+**Exit criteria**
+
+- [ ] Choose **Option A / B / C** from [`WMS_RECEIVING_STATE_MACHINE_SPEC.md`](./WMS_RECEIVING_STATE_MACHINE_SPEC.md) in an implementation note or ADR.
+- [ ] `GET /api/wms` (or shipment slice) exposes status + **next allowed actions** for editors.
+- [ ] Explicit `POST` transition(s) with tenant + warehouse scope + audit line per transition.
+- [ ] `GAP_MAP.md` updated: Phase **2.3** row reflects **✅** or **🟡** with honest limits.
+
+**References:** Roadmap Phase 2.3, [`CONTROL_TOWER_WMS_BACKLOG_5_PHASES.md`](../engineering/CONTROL_TOWER_WMS_BACKLOG_5_PHASES.md) Phase 4.
+
+---
+
+## WE-02 — Dock & appointments
+
+**Goal:** Blueprint row **appointment scheduling** moves off ❌ to shipped minimal scheduling (dock/window conflicts, tenant-scoped).
+
+**Exit criteria**
+
+- [ ] Schema/API for appointments aligned to blueprint slice you approve (not full TMS).
+- [ ] UI entry points from WMS inbound/outbound as scoped.
+- [ ] `GAP_MAP.md` R2 **Appointment scheduling** updated.
+
+---
+
+## WE-03 — Allocation v2
+
+**Goal:** Beyond current **line `allocatedQty` + pick tasks** — documented allocation strategies/rules (`GAP_MAP` 🟡 enterprise depth).
+
+**Exit criteria**
+
+- [ ] Allocation rules engine or staged profiles **documented + tested**.
+- [ ] No silent stock moves — human-approved or policy-gated where required.
+- [ ] `GAP_MAP.md` **Allocation** row upgraded from 🟡 with stated limits.
+
+---
+
+## WE-04 — VAS / work orders
+
+**Goal:** Blueprint **VAS / work orders** ❌ → MVP service/work-order path tied to warehouse tasks and costing hooks.
+
+**Exit criteria**
+
+- [ ] Work order / VAS entities or task extensions **scoped in ADR**.
+- [ ] Create/complete path + audit; billing linkage if Phase B events apply.
+- [ ] `GAP_MAP.md` R3 **VAS / work orders** no longer ❌ for chosen MVP depth.
+
+---
+
+## WE-05 — Lot / serialization / constraints
+
+**Goal:** Address **lot master** / serialization gaps vs blueprint — **either** WMS-native tables **or** explicit **reuse Product + constraints** with signed product decision.
+
+**Exit criteria**
+
+- [ ] Decision recorded (native vs reuse).
+- [ ] Implemented slice + tests + GAP row update.
+
+---
+
+## WE-06 — Packing / labels / ship-station
+
+**Goal:** Deepen **packing / labels** 🟡 — workflow, scan gates, label artifacts as product requires.
+
+**Exit criteria**
+
+- [ ] Documented pack/label flow + API/UI alignment.
+- [ ] `GAP_MAP.md` R2 packing row tightened.
+
+---
+
+## WE-07 — Commercial handoff (quotes → outbound billing)
+
+**Goal:** **Commercial / quotes** ❌ Phase C — align with [`IMPLEMENTATION_STRATEGY.md`](./IMPLEMENTATION_STRATEGY.md) Phase C and CRM; outbound-linked billing profiles.
+
+**Exit criteria**
+
+- [ ] Contract with CRM/commercial module for quote→order→billing handoff (minimal path).
+- [ ] `GAP_MAP.md` R3 **Commercial / quotes** reflects shipped slice or explicit deferral with owner.
+
+---
+
+## WE-08 — Field-level WMS RBAC + audit
+
+**Goal:** Move from **🟡 org.wms + user on movements** toward **field-level matrix** where blueprint requires — or document enterprise alternative.
+
+**Exit criteria**
+
+- [ ] RBAC model + enforcement points listed; critical paths tested.
+- [ ] Audit parity for sensitive actions.
+- [ ] `GAP_MAP.md` **Permissions / audit** row updated.
+
+---
+
+## WE-09 — Executive / KPI dashboard depth
+
+**Goal:** `/wms` **At a glance** and leadership KPIs vs blueprint — not just triage tiles.
+
+**Exit criteria**
+
+- [ ] KPI set agreed + implemented or exported.
+- [ ] `GAP_MAP.md` **Dashboards** row updated.
+
+---
+
+## WE-10 — Zone/site topology
+
+**Goal:** Beyond **flat zone+bin** — hierarchy or network semantics per blueprint slice (rack addressing exists partially on bins; extend as scoped).
+
+**Exit criteria**
+
+- [ ] ADR for topology scope; migrations if needed.
+- [ ] `GAP_MAP.md` R1 zone row reflects outcome.
+
+---
+
+## WE-11 — Map 3.4 (floor / globe / layers)
+
+**Goal:** [`CONTROL_TOWER_OPERATIONS_MAP_PHASE3.md`](../engineering/CONTROL_TOWER_OPERATIONS_MAP_PHASE3.md) **3.4** — WMS floor / globe / CRM layers **as funded**.
+
+**Exit criteria**
+
+- [ ] Shipped slice OR explicit **won’t do** with doc link.
+- [ ] Cross-links from CT map where dual-grant users apply.
+
+---
+
+## WE-12 — Hardening + enterprise exit
+
+**Goal:** Performance, demo parity, integration/regression gates, **GAP_MAP enterprise review** — sign-off that deferrals are intentional.
+
+**Exit criteria**
+
+- [ ] Checklist: build, critical paths, seed/demo notes.
+- [ ] `GAP_MAP.md` changelog line + **Enterprise track closed** or **next wave** pointer.
+
+---
+
+## Changelog
+
+| Date | Change |
+|------|--------|
+| 2026-04-29 | Initial capsule index for enterprise WMS finish-line prompting (`WE-01`–`WE-12`). |

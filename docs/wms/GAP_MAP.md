@@ -2,6 +2,8 @@
 
 **Purpose:** Phase A exit — map `wms_blueprint_and_technical_prd` **Release 1–3** scope to **Prisma + `/api/wms`** and list intentional gaps before new tables.
 
+**Enterprise finish line (prompt-by-capsule):** [`ENTERPRISE_TRACK.md`](./ENTERPRISE_TRACK.md) — **WE-01** … **WE-12**.
+
 **Legend:** ✅ covered · 🟡 partial / simplified · ❌ not in schema or not wired
 
 **Phase A / R1–R2 demo exit (this repo):** setup + receiving/putaway + stock inquiry (ledger + balance filter + CSV) + outbound pick/pack/ship + holds + replenishment tasks + waves + cycle count + inbound ASN fields + **shipment milestones** (log + last milestone in UI) + billing event materialization to CRM account where linked. **Explicitly deferred:** zone hierarchy beyond flat zone/bin, lot master, field-level WMS permission matrix, multi-strategy allocation, dock appointments, VAS/work orders, commercial quotes (see R3).
