@@ -66,6 +66,7 @@ export default async function AssistantLayout({ children }: { children: React.Re
           <strong>Sprint 6</strong> is the Commercial & Revenue Control Plane for quote-to-cash, pricing discipline, margin leakage, invoice audit, customer-safe updates, and contract handoff.{" "}
           <strong>Sprint 7</strong> is Supply Network Twin & Scenario Command for graph coverage, scenario simulation, bottlenecks, disruptions, recovery playbooks, and network decisions.{" "}
           <strong>Sprint 8</strong> is Warehouse & Fulfillment Autonomy for capacity, task recovery, wave health, outbound execution, mobile work drafts, and supervisor-controlled automation.{" "}
+          <strong>Sprint 9</strong> is Data & Integration Control for API Hub readiness, contracts, mapping review, staging governance, MDM quality, twin ingest, and launch controls.{" "}
           <strong>Chat</strong> can draft sales orders and answer stock / product-trace questions with links to
           evidence. <strong>Order orchestration</strong> is AMP13 for demand-to-promise planning with ATP and approval controls.{" "}
           <strong>Warehouse capacity</strong> is AMP15 for WMS bottlenecks, labor recovery, and supervisor-approved recovery work.{" "}

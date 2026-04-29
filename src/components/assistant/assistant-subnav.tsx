@@ -71,6 +71,7 @@ export function AssistantSubnav() {
   const commercialRevenueControl = pathname.startsWith("/assistant/commercial-revenue-control");
   const supplyNetworkTwin = pathname.startsWith("/assistant/supply-network-twin");
   const warehouseFulfillmentAutonomy = pathname.startsWith("/assistant/warehouse-fulfillment-autonomy");
+  const dataIntegrationControl = pathname.startsWith("/assistant/data-integration-control");
   const advancedProgram = (slug: string) => pathname.startsWith(`/assistant/advanced-programs/${slug}`);
   const advancedProgramLinks = listAdvancedProgramConfigs();
   const workbench = pathname.startsWith("/assistant/workbench");
@@ -303,6 +304,13 @@ export function AssistantSubnav() {
         title="Sprint 8 Warehouse & Fulfillment Autonomy"
       >
         Sprint 8
+      </Link>
+      <Link
+        href="/assistant/data-integration-control"
+        className={dataIntegrationControl ? appNavActiveClass : appNavInactiveClass}
+        title="Sprint 9 Data & Integration Control Plane"
+      >
+        Sprint 9
       </Link>
       {advancedProgramLinks.map((program) => (
         <Link

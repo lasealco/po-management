@@ -1,0 +1,57 @@
+{
+  "sprint": 9,
+  "name": "Data & Integration Control Plane",
+  "entrypoint": "/assistant/data-integration-control",
+  "api": "/api/assistant/data-integration-control",
+  "scenarios": [
+    {
+      "id": "create-data-integration-packet",
+      "title": "Create a durable data integration control packet",
+      "steps": [
+        "Open the Sprint 9 Data & Integration Control workspace.",
+        "Review API Hub connector readiness, ingestion run health, data contract gaps, mapping jobs/templates, staging batches/rows, assistant review items, master-data quality, twin ingest events, and action queue evidence.",
+        "Click Create Sprint 9 packet."
+      ],
+      "expected": [
+        "A durable AssistantDataIntegrationPacket row is created with source summary, connector readiness, data contract, mapping review, staging review, master-data quality, twin ingest, launch checklist, response plan, rollback plan, and leadership summary JSON.",
+        "An AssistantAuditEvent records that packet creation is evidence-only.",
+        "No connector, credential, mapping template, staging row, master-data record, twin ingest event, partner access, sync job, or downstream source record is changed automatically."
+      ]
+    },
+    {
+      "id": "queue-integration-review",
+      "title": "Queue integration launch review",
+      "steps": [
+        "Add an optional integration launch review note to a draft Sprint 9 packet.",
+        "Click Queue review."
+      ],
+      "expected": [
+        "The packet moves to INTEGRATION_REVIEW_QUEUED and stores actionQueueItemId.",
+        "An AssistantActionQueueItem is created for data_integration_launch_review with the packet URL and readiness evidence.",
+        "Review remains separate from rollout; the assistant does not activate connectors, change credentials, apply staging rows, mutate master data, append twin ingest events, expose partner access, or trigger sync execution automatically."
+      ]
+    },
+    {
+      "id": "approve-data-integration-packet",
+      "title": "Approve a reviewed Sprint 9 packet",
+      "steps": [
+        "Review the packet leadership summary, connector readiness, contracts, mapping gaps, staging risks, MDM posture, twin ingest evidence, launch checklist, and rollback controls.",
+        "Click Approve packet."
+      ],
+      "expected": [
+        "The packet status becomes APPROVED with approvedAt, approvedByUserId, and approvalNote.",
+        "An AssistantAuditEvent records approval and reiterates the no-silent-mutation guardrail.",
+        "Approval marks the integration readiness packet as reviewed only; execution still requires separate downstream approved API Hub, MDM, twin, security, partner-access, or sync workflows."
+      ]
+    }
+  ],
+  "guardrails": [
+    "No API Hub connector is activated, paused, edited, deleted, or synced automatically.",
+    "No credential or auth configuration is changed or exposed automatically.",
+    "No mapping template, mapping analysis job, staging batch, or staging row is edited, promoted, discarded, applied, or deleted automatically.",
+    "No product, supplier, customer, location, or integration master data is merged, overwritten, enriched, deleted, or published automatically.",
+    "No twin ingest event is appended and no twin graph record is upserted automatically.",
+    "No partner access is created or exposed automatically.",
+    "No downstream ERP, WMS, TMS, finance, API Hub, or source-system record is mutated automatically."
+  ]
+}

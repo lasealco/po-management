@@ -187,6 +187,7 @@ model Tenant {
   assistantCommercialRevenueControlPackets AssistantCommercialRevenueControlPacket[]
   assistantSupplyNetworkTwinPackets        AssistantSupplyNetworkTwinPacket[]
   assistantWarehouseFulfillmentPackets     AssistantWarehouseFulfillmentPacket[]
+  assistantDataIntegrationPackets          AssistantDataIntegrationPacket[]
   assistantActionQueue                     AssistantActionQueueItem[]
   assistantPlaybookTemplates               AssistantPlaybookTemplate[]
   assistantPlaybookRuns                    AssistantPlaybookRun[]
@@ -1452,6 +1453,47 @@ model AssistantWarehouseFulfillmentPacket {
   @@index([tenantId, autonomyScore, updatedAt])
 }
 
+/// Sprint 9: durable data and integration control packet for API Hub readiness, mappings, staging review, MDM quality, twin ingest, launch checklist, and approval-safe integration rollout.
+model AssistantDataIntegrationPacket {
+  id                     String    @id @default(cuid())
+  tenantId               String
+  createdByUserId        String?
+  approvedByUserId       String?
+  title                  String
+  status                 String    @default("DRAFT") @db.VarChar(32)
+  integrationScore       Int       @default(0)
+  connectorCount         Int       @default(0)
+  blockedConnectorCount  Int       @default(0)
+  mappingGapCount        Int       @default(0)
+  stagingRiskCount       Int       @default(0)
+  masterDataRiskCount    Int       @default(0)
+  twinIngestRiskCount    Int       @default(0)
+  launchActionCount      Int       @default(0)
+  sourceSummaryJson      Json
+  connectorReadinessJson Json
+  dataContractJson       Json
+  mappingReviewJson      Json
+  stagingReviewJson      Json
+  masterDataQualityJson  Json
+  twinIngestJson         Json
+  launchChecklistJson    Json
+  responsePlanJson       Json
+  rollbackPlanJson       Json
+  leadershipSummary      String    @db.Text
+  actionQueueItemId      String?
+  approvedAt             DateTime?
+  approvalNote           String?   @db.Text
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator  User?  @relation("AssistantDataIntegrationPacketCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  approver User?  @relation("AssistantDataIntegrationPacketApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, updatedAt])
+  @@index([tenantId, integrationScore, updatedAt])
+}
+
 /// AMP7: inspectable grounding ledger extracted from assistant answers and reviewer additions.
 model AssistantEvidenceRecord {
   id              String    @id @default(cuid())
@@ -2098,6 +2140,8 @@ model User {
   assistantSupplyNetworkTwinPacketsApproved        AssistantSupplyNetworkTwinPacket[]        @relation("AssistantSupplyNetworkTwinPacketApprover")
   assistantWarehouseFulfillmentPacketsCreated      AssistantWarehouseFulfillmentPacket[]     @relation("AssistantWarehouseFulfillmentPacketCreator")
   assistantWarehouseFulfillmentPacketsApproved     AssistantWarehouseFulfillmentPacket[]     @relation("AssistantWarehouseFulfillmentPacketApprover")
+  assistantDataIntegrationPacketsCreated           AssistantDataIntegrationPacket[]          @relation("AssistantDataIntegrationPacketCreator")
+  assistantDataIntegrationPacketsApproved          AssistantDataIntegrationPacket[]          @relation("AssistantDataIntegrationPacketApprover")
   invoiceIntakesAccountingApproved                 InvoiceIntake[]                           @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated                TariffShipmentApplication[]               @relation("TariffShipmentApplicationCreator")
   scriEventsOwned                                  ScriExternalEvent[]                       @relation("ScriEventOwner")
