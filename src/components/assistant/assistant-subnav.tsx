@@ -72,6 +72,7 @@ export function AssistantSubnav() {
   const supplyNetworkTwin = pathname.startsWith("/assistant/supply-network-twin");
   const warehouseFulfillmentAutonomy = pathname.startsWith("/assistant/warehouse-fulfillment-autonomy");
   const dataIntegrationControl = pathname.startsWith("/assistant/data-integration-control");
+  const aiQualityRelease = pathname.startsWith("/assistant/ai-quality-release");
   const advancedProgram = (slug: string) => pathname.startsWith(`/assistant/advanced-programs/${slug}`);
   const advancedProgramLinks = listAdvancedProgramConfigs();
   const workbench = pathname.startsWith("/assistant/workbench");
@@ -311,6 +312,13 @@ export function AssistantSubnav() {
         title="Sprint 9 Data & Integration Control Plane"
       >
         Sprint 9
+      </Link>
+      <Link
+        href="/assistant/ai-quality-release"
+        className={aiQualityRelease ? appNavActiveClass : appNavInactiveClass}
+        title="Sprint 10 AI Quality, Evaluation & Release Governance"
+      >
+        Sprint 10
       </Link>
       {advancedProgramLinks.map((program) => (
         <Link

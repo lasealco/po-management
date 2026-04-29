@@ -188,6 +188,7 @@ model Tenant {
   assistantSupplyNetworkTwinPackets        AssistantSupplyNetworkTwinPacket[]
   assistantWarehouseFulfillmentPackets     AssistantWarehouseFulfillmentPacket[]
   assistantDataIntegrationPackets          AssistantDataIntegrationPacket[]
+  assistantAiQualityReleasePackets         AssistantAiQualityReleasePacket[]
   assistantActionQueue                     AssistantActionQueueItem[]
   assistantPlaybookTemplates               AssistantPlaybookTemplate[]
   assistantPlaybookRuns                    AssistantPlaybookRun[]
@@ -1494,6 +1495,46 @@ model AssistantDataIntegrationPacket {
   @@index([tenantId, integrationScore, updatedAt])
 }
 
+/// Sprint 10: durable AI quality, evaluation, and release governance packet for eval gates, prompt/model/tool changes, regression watch, grounding quality, release approval, and rollback drills.
+model AssistantAiQualityReleasePacket {
+  id                       String    @id @default(cuid())
+  tenantId                 String
+  createdByUserId          String?
+  approvedByUserId         String?
+  title                    String
+  status                   String    @default("DRAFT") @db.VarChar(32)
+  qualityScore             Int       @default(0)
+  auditEventCount          Int       @default(0)
+  evalCaseCount            Int       @default(0)
+  failedEvalCount          Int       @default(0)
+  promptRiskCount          Int       @default(0)
+  automationRiskCount      Int       @default(0)
+  observabilityRiskCount   Int       @default(0)
+  releaseBlockerCount      Int       @default(0)
+  sourceSummaryJson        Json
+  evaluationSuiteJson      Json
+  groundingQualityJson     Json
+  promptModelChangeJson    Json
+  automationRegressionJson Json
+  observabilityWatchJson   Json
+  releaseGateJson          Json
+  rollbackDrillJson        Json
+  responsePlanJson         Json
+  leadershipSummary        String    @db.Text
+  actionQueueItemId        String?
+  approvedAt               DateTime?
+  approvalNote             String?   @db.Text
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator  User?  @relation("AssistantAiQualityReleasePacketCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  approver User?  @relation("AssistantAiQualityReleasePacketApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, updatedAt])
+  @@index([tenantId, qualityScore, updatedAt])
+}
+
 /// AMP7: inspectable grounding ledger extracted from assistant answers and reviewer additions.
 model AssistantEvidenceRecord {
   id              String    @id @default(cuid())
@@ -2142,6 +2183,8 @@ model User {
   assistantWarehouseFulfillmentPacketsApproved     AssistantWarehouseFulfillmentPacket[]     @relation("AssistantWarehouseFulfillmentPacketApprover")
   assistantDataIntegrationPacketsCreated           AssistantDataIntegrationPacket[]          @relation("AssistantDataIntegrationPacketCreator")
   assistantDataIntegrationPacketsApproved          AssistantDataIntegrationPacket[]          @relation("AssistantDataIntegrationPacketApprover")
+  assistantAiQualityReleasePacketsCreated          AssistantAiQualityReleasePacket[]         @relation("AssistantAiQualityReleasePacketCreator")
+  assistantAiQualityReleasePacketsApproved         AssistantAiQualityReleasePacket[]         @relation("AssistantAiQualityReleasePacketApprover")
   invoiceIntakesAccountingApproved                 InvoiceIntake[]                           @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated                TariffShipmentApplication[]               @relation("TariffShipmentApplicationCreator")
   scriEventsOwned                                  ScriExternalEvent[]                       @relation("ScriEventOwner")

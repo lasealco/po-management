@@ -1,0 +1,58 @@
+{
+  "sprint": 10,
+  "name": "AI Quality, Evaluation & Release Governance",
+  "entrypoint": "/assistant/ai-quality-release",
+  "api": "/api/assistant/ai-quality-release",
+  "scenarios": [
+    {
+      "id": "create-ai-quality-release-packet",
+      "title": "Create a durable AI quality release packet",
+      "steps": [
+        "Open the Sprint 10 AI Quality, Evaluation & Release Governance workspace.",
+        "Review assistant audit events, evidence quality, feedback, review examples, prompt library items, release gates, automation policies, shadow runs, observability incidents, agent governance packets, advanced program packets, and action queue evidence.",
+        "Click Create Sprint 10 packet."
+      ],
+      "expected": [
+        "A durable AssistantAiQualityReleasePacket row is created with source summary, evaluation suite, grounding quality, prompt/model/tool change risk, automation regression, observability watch, release gate, rollback drill, response plan, and leadership summary JSON.",
+        "An AssistantAuditEvent records that packet creation is evidence-only.",
+        "No prompt, model, tool permission, automation policy, release gate, observability incident, runtime flag, deployment, or production behavior is changed automatically."
+      ]
+    },
+    {
+      "id": "queue-ai-release-review",
+      "title": "Queue AI release governance review",
+      "steps": [
+        "Add an optional AI quality release review note to a draft Sprint 10 packet.",
+        "Click Queue review."
+      ],
+      "expected": [
+        "The packet moves to RELEASE_REVIEW_QUEUED and stores actionQueueItemId.",
+        "An AssistantActionQueueItem is created for ai_quality_release_review with the packet URL and release evidence.",
+        "Review remains separate from rollout; the assistant does not publish prompts, switch models, grant tools, enable automation, close incidents, deploy releases, or change runtime flags automatically."
+      ]
+    },
+    {
+      "id": "approve-ai-quality-release-packet",
+      "title": "Approve a reviewed Sprint 10 packet",
+      "steps": [
+        "Review the packet leadership summary, eval cases, grounding quality, release blockers, automation regression, observability watch, and rollback drill.",
+        "Click Approve packet."
+      ],
+      "expected": [
+        "The packet status becomes APPROVED with approvedAt, approvedByUserId, and approvalNote.",
+        "An AssistantAuditEvent records approval and reiterates the no-silent-release guardrail.",
+        "Approval marks the release governance evidence packet as reviewed only; actual prompt/model/tool/policy/runtime changes require separate downstream approved release workflows."
+      ]
+    }
+  ],
+  "guardrails": [
+    "No prompt is published, edited, approved, archived, or promoted automatically.",
+    "No model is switched, upgraded, downgraded, or deployed automatically.",
+    "No tool permission or agent authority is granted, expanded, certified, or revoked automatically.",
+    "No automation policy is enabled, paused, disabled, or executed automatically.",
+    "No release gate is bypassed or flipped automatically.",
+    "No observability incident is closed, downgraded, or resolved automatically.",
+    "No runtime flag, deployment, production behavior, customer-facing assistant answer, or external communication is changed automatically.",
+    "No training data export or model training job is started automatically."
+  ]
+}
