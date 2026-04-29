@@ -1,0 +1,29 @@
+{
+  "sprint": 18,
+  "title": "Customer Success & Account Intelligence",
+  "guardrails": [
+    "Packets are advisory: CRM updates, quote and opportunity edits, shipment reschedules, invoice settlements, and customer replies remain human-approved outside this sprint.",
+    "Queue review and approve actions write audit events and may enqueue AssistantActionQueueItem rows — they never post to CRM, send email, or mutate commercial records silently."
+  ],
+  "scenarios": [
+    {
+      "id": "S18-01-create-packet",
+      "steps": [
+        "Sign in with CRM, orders, reports, Control Tower, or invoice audit edit access.",
+        "Open /assistant/customer-success-account-intelligence and click Create Sprint 18 packet.",
+        "Confirm AssistantCustomerSuccessPacket persists with accountScore and dimensional JSON."
+      ],
+      "passWhen": "POST create_packet returns 201 and GET lists the packet without CRM or shipment mutations."
+    },
+    {
+      "id": "S18-02-queue-review",
+      "steps": ["Queue customer success command review with optional note.", "Verify action queue links assistant_customer_success_packet."],
+      "passWhen": "Status REVIEW_QUEUED and audit answerKind sprint18_cs_rev recorded."
+    },
+    {
+      "id": "S18-03-approve",
+      "steps": ["Approve packet after CS leadership sign-off.", "Verify sprint18_cs_ok audit narrative denies automatic CRM posts or messaging."],
+      "passWhen": "Status APPROVED; source CRM/brief/shipment records unchanged."
+    }
+  ]
+}

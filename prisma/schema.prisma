@@ -196,6 +196,7 @@ model Tenant {
   assistantEnterpriseOsPackets                AssistantEnterpriseOsPacket[]
   assistantTransportCarrierProcurementPackets AssistantTransportCarrierProcurementPacket[]
   assistantIncidentNerveCenterPackets         AssistantIncidentNerveCenterPacket[]
+  assistantCustomerSuccessPackets             AssistantCustomerSuccessPacket[]
   assistantActionQueue                        AssistantActionQueueItem[]
   assistantPlaybookTemplates                  AssistantPlaybookTemplate[]
   assistantPlaybookRuns                       AssistantPlaybookRun[]
@@ -1826,6 +1827,45 @@ model AssistantIncidentNerveCenterPacket {
   @@index([tenantId, nerveScore, updatedAt])
 }
 
+/// Sprint 18: customer success / account intelligence packet — CRM brief signals, promise execution, pipeline risk, customer-facing exceptions, dispute/finance pressure, reply governance — review-only; no CRM posts or outbound messages.
+model AssistantCustomerSuccessPacket {
+  id                      String    @id @default(cuid())
+  tenantId                String
+  createdByUserId         String?
+  approvedByUserId        String?
+  title                   String
+  status                  String    @default("DRAFT") @db.VarChar(32)
+  accountScore            Int       @default(0)
+  briefRiskCount          Int       @default(0)
+  promiseRiskCount        Int       @default(0)
+  pipelineRiskCount       Int       @default(0)
+  exceptionExposureCount  Int       @default(0)
+  disputeFinanceRiskCount Int       @default(0)
+  governanceGapCount      Int       @default(0)
+  sourceSummaryJson       Json
+  briefSignalsJson        Json
+  promiseExecutionJson    Json
+  crmPipelineJson         Json
+  exceptionExposureJson   Json
+  disputeFinanceJson      Json
+  replyGovernanceJson     Json
+  responsePlanJson        Json
+  rollbackPlanJson        Json
+  leadershipSummary       String    @db.Text
+  actionQueueItemId       String?
+  approvedAt              DateTime?
+  approvalNote            String?   @db.Text
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator  User?  @relation("AssistantCustomerSuccessPacketCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  approver User?  @relation("AssistantCustomerSuccessPacketApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, updatedAt])
+  @@index([tenantId, accountScore, updatedAt])
+}
+
 /// AMP7: inspectable grounding ledger extracted from assistant answers and reviewer additions.
 model AssistantEvidenceRecord {
   id              String    @id @default(cuid())
@@ -2490,6 +2530,8 @@ model User {
   assistantTransportCarrierProcurementPacketsApproved AssistantTransportCarrierProcurementPacket[] @relation("AssistantTransportCarrierProcurementPacketApprover")
   assistantIncidentNerveCenterPacketsCreated          AssistantIncidentNerveCenterPacket[]         @relation("AssistantIncidentNerveCenterPacketCreator")
   assistantIncidentNerveCenterPacketsApproved         AssistantIncidentNerveCenterPacket[]         @relation("AssistantIncidentNerveCenterPacketApprover")
+  assistantCustomerSuccessPacketsCreated              AssistantCustomerSuccessPacket[]             @relation("AssistantCustomerSuccessPacketCreator")
+  assistantCustomerSuccessPacketsApproved             AssistantCustomerSuccessPacket[]             @relation("AssistantCustomerSuccessPacketApprover")
   invoiceIntakesAccountingApproved                    InvoiceIntake[]                              @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated                   TariffShipmentApplication[]                  @relation("TariffShipmentApplicationCreator")
   scriEventsOwned                                     ScriExternalEvent[]                          @relation("ScriEventOwner")

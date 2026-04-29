@@ -80,6 +80,7 @@ export function AssistantSubnav() {
   const enterpriseOsV2 = pathname.startsWith("/assistant/enterprise-os-v2");
   const transportCarrierProcurement = pathname.startsWith("/assistant/transport-carrier-procurement");
   const incidentNerveCenter = pathname.startsWith("/assistant/incident-nerve-center");
+  const customerSuccessAccountIntelligence = pathname.startsWith("/assistant/customer-success-account-intelligence");
   const advancedProgram = (slug: string) => pathname.startsWith(`/assistant/advanced-programs/${slug}`);
   const advancedProgramLinks = listAdvancedProgramConfigs();
   const workbench = pathname.startsWith("/assistant/workbench");
@@ -375,6 +376,13 @@ export function AssistantSubnav() {
         title="Sprint 17 Cross-Domain Exception & Incident Nerve Center"
       >
         Sprint 17
+      </Link>
+      <Link
+        href="/assistant/customer-success-account-intelligence"
+        className={customerSuccessAccountIntelligence ? appNavActiveClass : appNavInactiveClass}
+        title="Sprint 18 Customer Success & Account Intelligence"
+      >
+        Sprint 18
       </Link>
       {advancedProgramLinks.map((program) => (
         <Link
