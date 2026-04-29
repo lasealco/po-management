@@ -68,8 +68,9 @@ Each capsule should end with: **`GAP_MAP.md` updated**, migrations listed if any
 
 ## Next step
 
-1. Product prioritizes **`BF-xx`** order (or swaps Phase A/B/C above).
-2. Open **one capsule** → **`GAP_MAP`** delta → ship → repeat.
+1. See **`BF-02` … `BF-11`** recommended order and capsule cards — [`BF_CAPSULE_ROADMAP.md`](./BF_CAPSULE_ROADMAP.md).
+2. Product prioritizes **`BF-xx`** order (or swaps Phase A/B/C above).
+3. Open **one capsule** → **`GAP_MAP`** delta → ship → repeat.
 
 ---
 
@@ -94,4 +95,4 @@ Deliverables:
 Exit when BF-01 row in BLUEPRINT_FINISH_BACKLOG.md is satisfied: GAP_MAP reflects line variance depth or explicit documented deferral for remaining gaps.
 ```
 
-_Last updated: 2026-04-29 — **BF-01** minimal receiving line variance landed (`WMS_RECEIVING_LINE_VARIANCE_BF01.md`); BF-01 vs **BF-03–BF-06** ID reminder; initial backlog skeleton from [`GAP_MAP.md`](./GAP_MAP.md); BF-01 prompt template._
+_Last updated: 2026-04-29 — [`BF_CAPSULE_ROADMAP.md`](./BF_CAPSULE_ROADMAP.md) (**BF-02**–**BF-11** order + cards); **BF-01** minimal receiving line variance landed (`WMS_RECEIVING_LINE_VARIANCE_BF01.md`); BF-01 vs **BF-03–BF-06** ID reminder; initial backlog skeleton from [`GAP_MAP.md`](./GAP_MAP.md); BF-01 prompt template._
