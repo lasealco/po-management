@@ -1,0 +1,55 @@
+{
+  "sprint": 12,
+  "name": "Finance, Cash & Accounting Controls",
+  "entrypoint": "/assistant/finance-cash-controls",
+  "api": "/api/assistant/finance-cash-controls",
+  "scenarios": [
+    {
+      "id": "create-finance-cash-control-packet",
+      "title": "Create a durable finance cash control packet",
+      "steps": [
+        "Open the Sprint 12 Finance, Cash & Accounting Controls workspace.",
+        "Review finance packets, revenue operations packets, commercial controls, invoice intakes, shipment financial snapshots, shipment cost lines, WMS billing invoice runs, quotes, sales orders, and action queue evidence.",
+        "Click Create Sprint 12 packet."
+      ],
+      "expected": [
+        "A durable AssistantFinanceCashControlPacket row is created with source summary, cash posture, receivables, payables, accounting handoff, margin leakage, warehouse billing, close controls, response plan, rollback plan, and leadership summary JSON.",
+        "An AssistantAuditEvent records that packet creation is evidence-only.",
+        "No invoice approval, journal posting, accounting export, vendor payment, customer billing, WMS billing post, order/quote change, period close, or finance record mutation happens automatically."
+      ]
+    },
+    {
+      "id": "queue-controller-review",
+      "title": "Queue controller review",
+      "steps": [
+        "Add an optional controller review note to a draft Sprint 12 packet.",
+        "Click Queue review."
+      ],
+      "expected": [
+        "The packet moves to CONTROLLER_REVIEW_QUEUED and stores actionQueueItemId.",
+        "An AssistantActionQueueItem is created for finance_cash_controller_review with the packet URL and finance control evidence.",
+        "The queued review is separate from financial execution; the assistant does not post journals, export accounting files, pay vendors, bill customers, approve invoices, close periods, or change billing runs automatically."
+      ]
+    },
+    {
+      "id": "approve-finance-cash-control-packet",
+      "title": "Approve reviewed finance controls",
+      "steps": [
+        "Review cash posture, receivables, payables, accounting handoff, margin leakage, WMS billing, close-control gaps, and rollback plan.",
+        "Click Approve packet."
+      ],
+      "expected": [
+        "The packet status becomes APPROVED with approvedAt, approvedByUserId, and approvalNote.",
+        "An AssistantAuditEvent records approval and reiterates the no-silent-finance-mutation guardrail.",
+        "Approval records controller evidence only; actual finance, accounting, billing, payment, export, or period-close execution requires separate downstream approved workflows."
+      ]
+    }
+  ],
+  "guardrails": [
+    "No invoice is approved, rejected, paid, disputed, exported, or marked for accounting automatically.",
+    "No journal entry, accrual, ledger export, ERP export, accounting packet, or period close is created or posted automatically.",
+    "No WMS billing invoice run is posted, voided, edited, exported, or sent automatically.",
+    "No customer invoice, credit, collection action, customer communication, or receivable status is created or changed automatically.",
+    "No vendor payment, payable status, shipment cost line, margin value, quote, sales order, pricing snapshot, tariff, or finance record is mutated automatically."
+  ]
+}

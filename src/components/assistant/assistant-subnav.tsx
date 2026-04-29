@@ -74,6 +74,7 @@ export function AssistantSubnav() {
   const dataIntegrationControl = pathname.startsWith("/assistant/data-integration-control");
   const aiQualityRelease = pathname.startsWith("/assistant/ai-quality-release");
   const tenantRolloutChange = pathname.startsWith("/assistant/tenant-rollout-change");
+  const financeCashControls = pathname.startsWith("/assistant/finance-cash-controls");
   const advancedProgram = (slug: string) => pathname.startsWith(`/assistant/advanced-programs/${slug}`);
   const advancedProgramLinks = listAdvancedProgramConfigs();
   const workbench = pathname.startsWith("/assistant/workbench");
@@ -327,6 +328,13 @@ export function AssistantSubnav() {
         title="Sprint 11 Tenant Rollout & Change Enablement"
       >
         Sprint 11
+      </Link>
+      <Link
+        href="/assistant/finance-cash-controls"
+        className={financeCashControls ? appNavActiveClass : appNavInactiveClass}
+        title="Sprint 12 Finance, Cash & Accounting Controls"
+      >
+        Sprint 12
       </Link>
       {advancedProgramLinks.map((program) => (
         <Link

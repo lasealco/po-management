@@ -69,6 +69,7 @@ export default async function AssistantLayout({ children }: { children: React.Re
           <strong>Sprint 9</strong> is Data & Integration Control for API Hub readiness, contracts, mapping review, staging governance, MDM quality, twin ingest, and launch controls.{" "}
           <strong>Sprint 10</strong> is AI Quality, Evaluation & Release Governance for eval suites, grounding quality, prompt/model/tool change review, regression watch, release gates, and rollback drills.{" "}
           <strong>Sprint 11</strong> is Tenant Rollout & Change Enablement for rollout waves, stakeholder readiness, training, communications, adoption telemetry, support, cutover, and rollback governance.{" "}
+          <strong>Sprint 12</strong> is Finance, Cash & Accounting Controls for cash posture, receivables, payables, accounting handoff, margin leakage, WMS billing, close controls, and controller review.{" "}
           <strong>Chat</strong> can draft sales orders and answer stock / product-trace questions with links to
           evidence. <strong>Order orchestration</strong> is AMP13 for demand-to-promise planning with ATP and approval controls.{" "}
           <strong>Warehouse capacity</strong> is AMP15 for WMS bottlenecks, labor recovery, and supervisor-approved recovery work.{" "}

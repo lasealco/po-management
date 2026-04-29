@@ -190,6 +190,7 @@ model Tenant {
   assistantDataIntegrationPackets          AssistantDataIntegrationPacket[]
   assistantAiQualityReleasePackets         AssistantAiQualityReleasePacket[]
   assistantTenantRolloutPackets            AssistantTenantRolloutPacket[]
+  assistantFinanceCashControlPackets       AssistantFinanceCashControlPacket[]
   assistantActionQueue                     AssistantActionQueueItem[]
   assistantPlaybookTemplates               AssistantPlaybookTemplate[]
   assistantPlaybookRuns                    AssistantPlaybookRun[]
@@ -1578,6 +1579,48 @@ model AssistantTenantRolloutPacket {
   @@index([tenantId, rolloutScore, updatedAt])
 }
 
+/// Sprint 12: durable finance, cash, and accounting controls packet for cash posture, receivables/payables, invoice handoff, margin leakage, billing, close controls, and approval-safe financial operations.
+model AssistantFinanceCashControlPacket {
+  id                     String    @id @default(cuid())
+  tenantId               String
+  createdByUserId        String?
+  approvedByUserId       String?
+  title                  String
+  status                 String    @default("DRAFT") @db.VarChar(32)
+  financeScore           Int       @default(0)
+  currency               String    @default("USD") @db.VarChar(3)
+  cashExposureAmount     Decimal   @default(0) @db.Decimal(18, 4)
+  receivableRiskAmount   Decimal   @default(0) @db.Decimal(18, 4)
+  payableRiskAmount      Decimal   @default(0) @db.Decimal(18, 4)
+  marginLeakageAmount    Decimal   @default(0) @db.Decimal(18, 4)
+  accountingBlockerCount Int       @default(0)
+  billingExceptionCount  Int       @default(0)
+  closeControlGapCount   Int       @default(0)
+  sourceSummaryJson      Json
+  cashPostureJson        Json
+  receivablesJson        Json
+  payablesJson           Json
+  accountingHandoffJson  Json
+  marginLeakageJson      Json
+  warehouseBillingJson   Json
+  closeControlJson       Json
+  responsePlanJson       Json
+  rollbackPlanJson       Json
+  leadershipSummary      String    @db.Text
+  actionQueueItemId      String?
+  approvedAt             DateTime?
+  approvalNote           String?   @db.Text
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator  User?  @relation("AssistantFinanceCashControlPacketCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  approver User?  @relation("AssistantFinanceCashControlPacketApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, updatedAt])
+  @@index([tenantId, financeScore, updatedAt])
+}
+
 /// AMP7: inspectable grounding ledger extracted from assistant answers and reviewer additions.
 model AssistantEvidenceRecord {
   id              String    @id @default(cuid())
@@ -2230,6 +2273,8 @@ model User {
   assistantAiQualityReleasePacketsApproved         AssistantAiQualityReleasePacket[]         @relation("AssistantAiQualityReleasePacketApprover")
   assistantTenantRolloutPacketsCreated             AssistantTenantRolloutPacket[]            @relation("AssistantTenantRolloutPacketCreator")
   assistantTenantRolloutPacketsApproved            AssistantTenantRolloutPacket[]            @relation("AssistantTenantRolloutPacketApprover")
+  assistantFinanceCashControlPacketsCreated        AssistantFinanceCashControlPacket[]       @relation("AssistantFinanceCashControlPacketCreator")
+  assistantFinanceCashControlPacketsApproved       AssistantFinanceCashControlPacket[]       @relation("AssistantFinanceCashControlPacketApprover")
   invoiceIntakesAccountingApproved                 InvoiceIntake[]                           @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated                TariffShipmentApplication[]               @relation("TariffShipmentApplicationCreator")
   scriEventsOwned                                  ScriExternalEvent[]                       @relation("ScriEventOwner")
