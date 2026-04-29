@@ -53,6 +53,8 @@ Each capsule should end with: **`GAP_MAP.md` updated**, migrations listed if any
 
 **Do not bundle **`BF-02`–`BF-11`** into one prompt:** each row is a **separate** thematic capsule (lot master, allocation depth, topology, dock TMS depth, RBAC matrix, KPIs, packing hardware, VAS portal, CPQ automation, CT map layers). **`BF-01`** (line variance) is intentionally minimal migration vs Option B — see [`WMS_RECEIVING_LINE_VARIANCE_BF01.md`](./WMS_RECEIVING_LINE_VARIANCE_BF01.md).
 
+**If your goal is receiving line variance:** use capsule **`BF-01`** — not **`BF-03`**, **`BF-04`**, **`BF-05`**, or **`BF-06`**. Those IDs mean **allocation depth** ([`WMS_ALLOCATION_STRATEGIES.md`](./WMS_ALLOCATION_STRATEGIES.md)), **zone topology** ([`WMS_ZONE_TOPOLOGY_ADR.md`](./WMS_ZONE_TOPOLOGY_ADR.md)), **dock / TMS depth** ([`WMS_DOCK_APPOINTMENTS.md`](./WMS_DOCK_APPOINTMENTS.md)), and **field-level WMS permissions** ([`WMS_RBAC_AND_AUDIT.md`](./WMS_RBAC_AND_AUDIT.md)).
+
 ---
 
 ## Exit definition (“blueprint finish”)
@@ -92,4 +94,4 @@ Deliverables:
 Exit when BF-01 row in BLUEPRINT_FINISH_BACKLOG.md is satisfied: GAP_MAP reflects line variance depth or explicit documented deferral for remaining gaps.
 ```
 
-_Last updated: 2026-04-29 — **BF-01** minimal receiving line variance landed (`WMS_RECEIVING_LINE_VARIANCE_BF01.md`); initial backlog skeleton from [`GAP_MAP.md`](./GAP_MAP.md); BF-01 prompt template._
+_Last updated: 2026-04-29 — **BF-01** minimal receiving line variance landed (`WMS_RECEIVING_LINE_VARIANCE_BF01.md`); BF-01 vs **BF-03–BF-06** ID reminder; initial backlog skeleton from [`GAP_MAP.md`](./GAP_MAP.md); BF-01 prompt template._
