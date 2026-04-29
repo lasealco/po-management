@@ -1,0 +1,64 @@
+[
+  {
+    "id": "amp263-265-create-packets",
+    "title": "Create durable packets for AMP263 through AMP265",
+    "persona": "Planning, operations, strategy, risk, and executive reviewers",
+    "entrypoints": [
+      "/assistant/advanced-programs/market-supply-sensing",
+      "/assistant/advanced-programs/enterprise-constraint-solver",
+      "/assistant/advanced-programs/strategic-scenario-portfolio"
+    ],
+    "steps": [
+      "Open each AMP263-AMP265 workspace from the generated Assistant subnav.",
+      "Review live source signals, risks, recommendations, artifact, approval route, and rollback controls.",
+      "Click Create AMP packet."
+    ],
+    "expected": [
+      "Each workspace persists an AssistantAdvancedProgramPacket row with ampNumber 263, 264, or 265 and the correct programKey.",
+      "The packets have domain-specific source labels for demand, supply, constraints, scenario risk, finance, evidence, and action pressure.",
+      "AssistantAuditEvent records packet creation.",
+      "Demand plans, supply plans, pricing signals, capacity allocations, optimization decisions, scenario assumptions, and planning records are not mutated automatically."
+    ]
+  },
+  {
+    "id": "amp263-265-queue-review",
+    "title": "Queue review for sensing, constraint, and scenario packets",
+    "persona": "Program approval owner",
+    "entrypoints": [
+      "/assistant/advanced-programs/market-supply-sensing",
+      "/assistant/advanced-programs/enterprise-constraint-solver",
+      "/assistant/advanced-programs/strategic-scenario-portfolio"
+    ],
+    "steps": [
+      "Create or select a DRAFT packet.",
+      "Add a review note describing the downstream decision.",
+      "Click Queue review."
+    ],
+    "expected": [
+      "The packet status changes to REVIEW_QUEUED and records actionQueueItemId, approvedByUserId, approvedAt, and approvalNote.",
+      "AssistantActionQueueItem uses an AMP-specific actionKind such as assistant_amp263_review, assistant_amp264_review, or assistant_amp265_review.",
+      "AssistantAuditEvent states that downstream records were not changed automatically."
+    ]
+  },
+  {
+    "id": "amp263-265-guardrails",
+    "title": "Autonomous sensing, constraint solving, and scenario promotion remain review-only",
+    "persona": "Executive and control reviewer",
+    "entrypoints": [
+      "/assistant/advanced-programs/market-supply-sensing",
+      "/assistant/advanced-programs/enterprise-constraint-solver",
+      "/assistant/advanced-programs/strategic-scenario-portfolio"
+    ],
+    "steps": [
+      "Open a packet with active risks.",
+      "Inspect recommendationJson, approvalPlanJson, artifactJson, and rollbackPlanJson.",
+      "Queue review without executing downstream changes."
+    ],
+    "expected": [
+      "recommendationJson requires human approval before demand, supply, pricing, constraint, allocation, or scenario-promotion changes.",
+      "approvalPlanJson identifies planning, risk, commercial, operations, strategy, or executive owners.",
+      "rollbackPlanJson preserves source records and asks for a fresh packet when source evidence changes materially.",
+      "Autonomous sensing and optimization recommendations do not self-execute or silently expand automation."
+    ]
+  }
+]

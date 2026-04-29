@@ -35,10 +35,10 @@ const signals: AdvancedProgramSignals = {
 };
 
 describe("advanced programs", () => {
-  it("defines AMP37 through AMP262 with requested AMP201-262 programs", () => {
+  it("defines AMP37 through AMP265 with requested AMP263-265 programs", () => {
     const configs = listAdvancedProgramConfigs();
 
-    expect(configs).toHaveLength(225);
+    expect(configs).toHaveLength(228);
     expect(configs[0]?.ampNumber).toBe(37);
     expect(configs[25]?.ampNumber).toBe(62);
     expect(configs[26]?.ampNumber).toBe(64);
@@ -51,6 +51,8 @@ describe("advanced programs", () => {
     expect(configs[162]?.ampNumber).toBe(200);
     expect(configs[163]?.ampNumber).toBe(201);
     expect(configs[224]?.ampNumber).toBe(262);
+    expect(configs[225]?.ampNumber).toBe(263);
+    expect(configs[227]?.ampNumber).toBe(265);
   });
 
   it("builds a distinct packet with guardrails for category strategy", () => {
@@ -123,6 +125,16 @@ describe("advanced programs", () => {
     expect(packet.riskCount).toBeGreaterThan(0);
     expect(packet.approvalPlan.steps.map((step) => step.owner)).toContain("Executive sponsor");
     expect(packet.rollbackPlan.steps[0]).toContain("autonomous learning behavior");
+  });
+
+  it("builds strategic scenario portfolio packets with scenario promotion guardrails", () => {
+    const packet = buildAdvancedProgramPacket({ programKey: "strategic-scenario-portfolio", signals });
+
+    expect(packet.ampNumber).toBe(265);
+    expect(packet.riskCount).toBeGreaterThan(0);
+    expect(packet.approvalPlan.steps.map((step) => step.owner)).toContain("Strategy");
+    expect(packet.rollbackPlan.steps[0]).toContain("scenario libraries");
+    expect(packet.leadershipSummary).toContain("does not mutate scenario libraries");
   });
 
   it("returns null for unknown program keys", () => {

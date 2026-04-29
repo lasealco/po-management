@@ -1451,6 +1451,60 @@ Object.assign(
   ),
 );
 
+Object.assign(ADVANCED_PROGRAMS, {
+  "market-supply-sensing": {
+    ampNumber: 263,
+    key: "market-supply-sensing",
+    slug: "market-supply-sensing",
+    navLabel: "Market sense",
+    title: "Autonomous market-to-supply sensing program",
+    surfaceTitle: "Autonomous Market-to-Supply Sensing",
+    sourceLabels: ["crmQuotes", "openSalesOrders", "openPurchaseOrders", "shipments", "shipmentExceptions", "financeRiskScore", "planningHealthScore", "networkRiskCount"],
+    riskRules: [
+      { key: "market_supply_plan_health", label: "Planning health is below sensing confidence threshold", metric: "planningHealthScore", threshold: 65, direction: "lt", severity: "HIGH" },
+      { key: "market_supply_disruption_signal", label: "Shipment or network risk requires watchlist review", metric: "shipmentExceptions", threshold: 1, direction: "gte", severity: "MEDIUM" },
+    ],
+    recommendations: ["Create market-to-supply sensing packet with demand, supply, risk, pricing, capacity, confidence, and affected-object watchlists.", "Queue planning and risk approval before demand, supply, pricing, capacity, or operational plans change."],
+    artifactLabel: "market-to-supply sensing packet",
+    approvalOwners: ["Planning", "Risk", "Commercial"],
+    noMutation: "demand plans, supply plans, pricing signals, capacity watchlists, risk routes, or operational plans",
+  },
+  "enterprise-constraint-solver": {
+    ampNumber: 264,
+    key: "enterprise-constraint-solver",
+    slug: "enterprise-constraint-solver",
+    navLabel: "Constraints",
+    title: "Enterprise constraint solver program",
+    surfaceTitle: "Enterprise Constraint Solver",
+    sourceLabels: ["openWmsTasks", "openPurchaseOrders", "openSalesOrders", "inventoryRows", "heldInventoryRows", "planningHealthScore", "simulationRiskCount", "openActionItems"],
+    riskRules: [
+      { key: "constraint_solver_plan_health", label: "Planning health indicates unresolved enterprise constraints", metric: "planningHealthScore", threshold: 65, direction: "lt", severity: "HIGH" },
+      { key: "constraint_solver_execution_pressure", label: "Open execution work requires owner review before optimization", metric: "openActionItems", threshold: 5, direction: "gte", severity: "MEDIUM" },
+    ],
+    recommendations: ["Create enterprise constraint packet with bottlenecks, scarce resources, ranked tradeoffs, priority rules, owner actions, and rollback controls.", "Queue operations approval before constraint models, priorities, allocations, optimization decisions, or execution plans change."],
+    artifactLabel: "enterprise constraint solver packet",
+    approvalOwners: ["Operations", "Planning", "Executive sponsor"],
+    noMutation: "constraint models, priorities, capacity allocations, recovery tasks, optimization decisions, or execution plans",
+  },
+  "strategic-scenario-portfolio": {
+    ampNumber: 265,
+    key: "strategic-scenario-portfolio",
+    slug: "strategic-scenario-portfolio",
+    navLabel: "Scenarios",
+    title: "Strategic scenario portfolio program",
+    surfaceTitle: "Strategic Scenario Portfolio",
+    sourceLabels: ["simulationRiskCount", "networkRiskCount", "planningHealthScore", "financeRiskScore", "openActionItems", "evidenceRecords", "auditEvents"],
+    riskRules: [
+      { key: "scenario_portfolio_risk", label: "Scenario or network risk requires portfolio governance", metric: "simulationRiskCount", threshold: 1, direction: "gte", severity: "HIGH" },
+      { key: "scenario_portfolio_evidence_gap", label: "Reviewed evidence is thin for scenario promotion", metric: "reviewExamples", threshold: 1, direction: "lt", severity: "MEDIUM" },
+    ],
+    recommendations: ["Create strategic scenario portfolio packet with reusable scenarios, locked assumptions, outcome comparisons, approvals, and executive summaries.", "Queue strategy approval before scenario libraries, assumptions, archived outcomes, promoted recommendations, or planning records change."],
+    artifactLabel: "strategic scenario portfolio packet",
+    approvalOwners: ["Strategy", "Planning", "Executive sponsor"],
+    noMutation: "scenario libraries, assumptions, archived outcomes, promoted recommendations, executive summaries, or planning records",
+  },
+} satisfies Record<string, ProgramConfig>);
+
 export type AdvancedProgramPacketInputs = {
   signals: AdvancedProgramSignals;
   programKey: AdvancedProgramKey;
