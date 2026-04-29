@@ -71,6 +71,12 @@ Authoritative guard semantics: [permissions-matrix.md](./permissions-matrix.md).
 |--------|------|---------|
 | `POST` | `/api/apihub/import-assistant/chat` | Bounded JSON body: chat turn for import guidance (`messages`, optional hints). **`org.apihub` → view**; same demo session gates as other routes. |
 
+### Assistant evidence (AMP9)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET`, `POST` | `/api/apihub/assistant-evidence` | Build redacted ApiHub assistant evidence, persist human review items, and close review items. POST uses bounded JSON and **`org.apihub` → edit**. |
+
 ### ApiHub cron worker (mapping analysis)
 
 | Method | Path | Purpose |

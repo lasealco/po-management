@@ -3,6 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { buildApplyConflictExplanation, buildConnectorEvidence, buildStagingEvidence } from "@/lib/apihub/assistant-evidence";
 import { apiHubError, apiHubJson, apiHubValidationError } from "@/lib/apihub/api-error";
 import { listApiHubApplyConflicts } from "@/lib/apihub/ingestion-apply-conflicts-repo";
+import { parseApiHubPostJsonForRouteWithBudget } from "@/lib/apihub/request-budget";
 import { resolveApiHubRequestId } from "@/lib/apihub/request-id";
 import { apiHubEnsureTenantActorGrants } from "@/lib/apihub/route-guards";
 import { prisma } from "@/lib/prisma";
@@ -106,12 +107,9 @@ export async function POST(request: Request) {
   if (!gate.ok) return gate.response;
   const { tenant, actorId } = gate.ctx;
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return apiHubError(400, "BAD_JSON", "Invalid JSON.", requestId);
-  }
+  const parsedBody = await parseApiHubPostJsonForRouteWithBudget(request, requestId, "standard");
+  if (!parsedBody.ok) return parsedBody.response;
+  const body = parsedBody.value;
   const o = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
   const action = typeof o.action === "string" ? o.action : "";
   const sourceType = typeof o.sourceType === "string" && o.sourceType.trim() ? o.sourceType.trim().slice(0, 64) : "";
