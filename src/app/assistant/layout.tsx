@@ -70,6 +70,7 @@ export default async function AssistantLayout({ children }: { children: React.Re
           <strong>Sprint 10</strong> is AI Quality, Evaluation & Release Governance for eval suites, grounding quality, prompt/model/tool change review, regression watch, release gates, and rollback drills.{" "}
           <strong>Sprint 11</strong> is Tenant Rollout & Change Enablement for rollout waves, stakeholder readiness, training, communications, adoption telemetry, support, cutover, and rollback governance.{" "}
           <strong>Sprint 12</strong> is Finance, Cash & Accounting Controls for cash posture, receivables, payables, accounting handoff, margin leakage, WMS billing, close controls, and controller review.{" "}
+          <strong>Sprint 13</strong> is Product Lifecycle & Compliance Passport for catalog readiness, passport evidence, supplier documents, ESG/compliance posture, lifecycle risks, and release gates.{" "}
           <strong>Chat</strong> can draft sales orders and answer stock / product-trace questions with links to
           evidence. <strong>Order orchestration</strong> is AMP13 for demand-to-promise planning with ATP and approval controls.{" "}
           <strong>Warehouse capacity</strong> is AMP15 for WMS bottlenecks, labor recovery, and supervisor-approved recovery work.{" "}

@@ -75,6 +75,7 @@ export function AssistantSubnav() {
   const aiQualityRelease = pathname.startsWith("/assistant/ai-quality-release");
   const tenantRolloutChange = pathname.startsWith("/assistant/tenant-rollout-change");
   const financeCashControls = pathname.startsWith("/assistant/finance-cash-controls");
+  const productLifecyclePassport = pathname.startsWith("/assistant/product-lifecycle-passport");
   const advancedProgram = (slug: string) => pathname.startsWith(`/assistant/advanced-programs/${slug}`);
   const advancedProgramLinks = listAdvancedProgramConfigs();
   const workbench = pathname.startsWith("/assistant/workbench");
@@ -335,6 +336,13 @@ export function AssistantSubnav() {
         title="Sprint 12 Finance, Cash & Accounting Controls"
       >
         Sprint 12
+      </Link>
+      <Link
+        href="/assistant/product-lifecycle-passport"
+        className={productLifecyclePassport ? appNavActiveClass : appNavInactiveClass}
+        title="Sprint 13 Product Lifecycle & Compliance Passport"
+      >
+        Sprint 13
       </Link>
       {advancedProgramLinks.map((program) => (
         <Link

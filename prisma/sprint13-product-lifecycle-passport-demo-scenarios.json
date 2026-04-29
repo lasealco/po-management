@@ -1,0 +1,42 @@
+{
+  "sprint": 13,
+  "title": "Product Lifecycle & Compliance Passport",
+  "description": "Acceptance scenarios for durable product lifecycle passport packets spanning catalog readiness, product documents, supplier compliance, sustainability assumptions, lifecycle risk, and release governance.",
+  "guardrails": [
+    "The assistant never silently changes product master data, SKU identifiers, categories, divisions, HS codes, EANs, DG fields, temperature handling, supplier links, or product documents.",
+    "The assistant never silently publishes product passports, ESG claims, customer declarations, labels, certificates, recalls, supplier communications, or customer communications.",
+    "All release, sunset, supplier-change, recall, and customer-facing passport actions remain approval-gated through the action queue and audit trail."
+  ],
+  "scenarios": [
+    {
+      "name": "Create lifecycle passport packet",
+      "api": "POST /api/assistant/product-lifecycle-passport",
+      "body": { "action": "create_packet" },
+      "expected": [
+        "Creates an AssistantProductLifecyclePacket with catalog readiness, passport evidence, supplier compliance, sustainability passport, lifecycle risk, release checklist, response plan, rollback plan, and leadership summary JSON.",
+        "Writes an assistant audit event with objectType assistant_product_lifecycle_packet.",
+        "Does not mutate Product, ProductDocument, ProductSupplier, SrmSupplierDocument, SupplierOnboardingTask, AssistantSustainabilityPacket, AssistantContractCompliancePacket, ScriExternalEvent, or customer-facing records."
+      ]
+    },
+    {
+      "name": "Queue product passport review",
+      "api": "POST /api/assistant/product-lifecycle-passport",
+      "body": { "action": "queue_passport_review", "packetId": "<packet-id>", "note": "Review cold-chain passport evidence before launch." },
+      "expected": [
+        "Creates an AssistantActionQueueItem with actionKind product_lifecycle_passport_review and a link to /assistant/product-lifecycle-passport.",
+        "Updates only the packet status/actionQueueItemId to PASSPORT_REVIEW_QUEUED.",
+        "Does not activate products, publish passports, change supplier compliance documents, send certificates, make ESG claims, launch recalls, or update customer communications."
+      ]
+    },
+    {
+      "name": "Approve reviewed lifecycle packet",
+      "api": "POST /api/assistant/product-lifecycle-passport",
+      "body": { "action": "approve_packet", "packetId": "<packet-id>", "note": "Approved for product owner follow-up; no source records changed." },
+      "expected": [
+        "Marks only the AssistantProductLifecyclePacket as APPROVED with approver, timestamp, and note.",
+        "Writes an audit event proving the approval was human-reviewed.",
+        "Does not mutate catalog, supplier, product document, compliance, sustainability, risk, passport publication, recall, or external communication records."
+      ]
+    }
+  ]
+}

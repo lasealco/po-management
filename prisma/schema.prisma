@@ -191,6 +191,7 @@ model Tenant {
   assistantAiQualityReleasePackets         AssistantAiQualityReleasePacket[]
   assistantTenantRolloutPackets            AssistantTenantRolloutPacket[]
   assistantFinanceCashControlPackets       AssistantFinanceCashControlPacket[]
+  assistantProductLifecyclePackets         AssistantProductLifecyclePacket[]
   assistantActionQueue                     AssistantActionQueueItem[]
   assistantPlaybookTemplates               AssistantPlaybookTemplate[]
   assistantPlaybookRuns                    AssistantPlaybookRun[]
@@ -1621,6 +1622,45 @@ model AssistantFinanceCashControlPacket {
   @@index([tenantId, financeScore, updatedAt])
 }
 
+/// Sprint 13: durable product lifecycle and compliance passport packet for catalog readiness, trace evidence, supplier documents, ESG/compliance posture, risk watch, and approval-safe product release governance.
+model AssistantProductLifecyclePacket {
+  id                         String    @id @default(cuid())
+  tenantId                   String
+  createdByUserId            String?
+  approvedByUserId           String?
+  title                      String
+  status                     String    @default("DRAFT") @db.VarChar(32)
+  lifecycleScore             Int       @default(0)
+  productCount               Int       @default(0)
+  passportGapCount           Int       @default(0)
+  documentRiskCount          Int       @default(0)
+  supplierComplianceGapCount Int       @default(0)
+  sustainabilityGapCount     Int       @default(0)
+  lifecycleActionCount       Int       @default(0)
+  sourceSummaryJson          Json
+  catalogReadinessJson       Json
+  passportEvidenceJson       Json
+  supplierComplianceJson     Json
+  sustainabilityPassportJson Json
+  lifecycleRiskJson          Json
+  releaseChecklistJson       Json
+  responsePlanJson           Json
+  rollbackPlanJson           Json
+  leadershipSummary          String    @db.Text
+  actionQueueItemId          String?
+  approvedAt                 DateTime?
+  approvalNote               String?   @db.Text
+  createdAt                  DateTime  @default(now())
+  updatedAt                  DateTime  @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator  User?  @relation("AssistantProductLifecyclePacketCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  approver User?  @relation("AssistantProductLifecyclePacketApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, updatedAt])
+  @@index([tenantId, lifecycleScore, updatedAt])
+}
+
 /// AMP7: inspectable grounding ledger extracted from assistant answers and reviewer additions.
 model AssistantEvidenceRecord {
   id              String    @id @default(cuid())
@@ -2275,6 +2315,8 @@ model User {
   assistantTenantRolloutPacketsApproved            AssistantTenantRolloutPacket[]            @relation("AssistantTenantRolloutPacketApprover")
   assistantFinanceCashControlPacketsCreated        AssistantFinanceCashControlPacket[]       @relation("AssistantFinanceCashControlPacketCreator")
   assistantFinanceCashControlPacketsApproved       AssistantFinanceCashControlPacket[]       @relation("AssistantFinanceCashControlPacketApprover")
+  assistantProductLifecyclePacketsCreated          AssistantProductLifecyclePacket[]         @relation("AssistantProductLifecyclePacketCreator")
+  assistantProductLifecyclePacketsApproved         AssistantProductLifecyclePacket[]         @relation("AssistantProductLifecyclePacketApprover")
   invoiceIntakesAccountingApproved                 InvoiceIntake[]                           @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated                TariffShipmentApplication[]               @relation("TariffShipmentApplicationCreator")
   scriEventsOwned                                  ScriExternalEvent[]                       @relation("ScriEventOwner")
