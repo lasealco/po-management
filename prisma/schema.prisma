@@ -198,6 +198,7 @@ model Tenant {
   assistantIncidentNerveCenterPackets         AssistantIncidentNerveCenterPacket[]
   assistantCustomerSuccessPackets             AssistantCustomerSuccessPacket[]
   assistantStrategicSourcingPackets           AssistantStrategicSourcingPacket[]
+  assistantExternalRiskEventPackets           AssistantExternalRiskEventPacket[]
   assistantActionQueue                        AssistantActionQueueItem[]
   assistantPlaybookTemplates                  AssistantPlaybookTemplate[]
   assistantPlaybookRuns                       AssistantPlaybookRun[]
@@ -1906,6 +1907,45 @@ model AssistantStrategicSourcingPacket {
   @@index([tenantId, sourcingScore, updatedAt])
 }
 
+/// Sprint 20: external risk / event intelligence (SCRI) — triage backlog, exposure linkage, twin/scenario cues, mitigation recommendations, escalation coordination — review-only; no SCRI state changes, Twin acks, partner notices, or mitigations executed automatically.
+model AssistantExternalRiskEventPacket {
+  id                                String    @id @default(cuid())
+  tenantId                          String
+  createdByUserId                   String?
+  approvedByUserId                  String?
+  title                             String
+  status                            String    @default("DRAFT") @db.VarChar(32)
+  eventIntelligenceScore            Int       @default(0)
+  eventReviewRiskCount              Int       @default(0)
+  exposureLinkageRiskCount          Int       @default(0)
+  twinScenarioRiskCount             Int       @default(0)
+  mitigationRecommendationRiskCount Int       @default(0)
+  coordinationEscalationRiskCount   Int       @default(0)
+  credibilityRiskCount              Int       @default(0)
+  sourceSummaryJson                 Json
+  externalEventJson                 Json
+  exposureMappingJson               Json
+  twinScenarioJson                  Json
+  mitigationPortfolioJson           Json
+  escalationCadenceJson             Json
+  credibilityJson                   Json
+  responsePlanJson                  Json
+  rollbackPlanJson                  Json
+  leadershipSummary                 String    @db.Text
+  actionQueueItemId                 String?
+  approvedAt                        DateTime?
+  approvalNote                      String?   @db.Text
+  createdAt                         DateTime  @default(now())
+  updatedAt                         DateTime  @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator  User?  @relation("AssistantExternalRiskEventPacketCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  approver User?  @relation("AssistantExternalRiskEventPacketApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, updatedAt])
+  @@index([tenantId, eventIntelligenceScore, updatedAt])
+}
+
 /// AMP7: inspectable grounding ledger extracted from assistant answers and reviewer additions.
 model AssistantEvidenceRecord {
   id              String    @id @default(cuid())
@@ -2574,6 +2614,8 @@ model User {
   assistantCustomerSuccessPacketsApproved             AssistantCustomerSuccessPacket[]             @relation("AssistantCustomerSuccessPacketApprover")
   assistantStrategicSourcingPacketsCreated            AssistantStrategicSourcingPacket[]           @relation("AssistantStrategicSourcingPacketCreator")
   assistantStrategicSourcingPacketsApproved           AssistantStrategicSourcingPacket[]           @relation("AssistantStrategicSourcingPacketApprover")
+  assistantExternalRiskEventPacketsCreated            AssistantExternalRiskEventPacket[]           @relation("AssistantExternalRiskEventPacketCreator")
+  assistantExternalRiskEventPacketsApproved           AssistantExternalRiskEventPacket[]           @relation("AssistantExternalRiskEventPacketApprover")
   invoiceIntakesAccountingApproved                    InvoiceIntake[]                              @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated                   TariffShipmentApplication[]                  @relation("TariffShipmentApplicationCreator")
   scriEventsOwned                                     ScriExternalEvent[]                          @relation("ScriEventOwner")

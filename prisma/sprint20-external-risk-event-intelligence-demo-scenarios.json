@@ -1,0 +1,29 @@
+{
+  "sprint": 20,
+  "title": "External Risk & Event Intelligence (SCRI)",
+  "guardrails": [
+    "Packets are advisory: SCRI review transitions, exposure matcher runs, Twin acknowledgements, mitigation acceptance, war-room approvals, and partner communications stay in governed SCRI/Twin workflows.",
+    "Queue review and approve actions write audit events and may enqueue AssistantActionQueueItem rows — they never mutate SCRI events, Twin rows, or mitigation statuses silently."
+  ],
+  "scenarios": [
+    {
+      "id": "S20-01-create-packet",
+      "steps": [
+        "Sign in with SCRI, reports, orders, Control Tower, or settings edit access.",
+        "Open /assistant/external-risk-event-intelligence and click Create Sprint 20 packet.",
+        "Confirm AssistantExternalRiskEventPacket persists with eventIntelligenceScore and dimensional JSON."
+      ],
+      "passWhen": "POST create_packet returns 201 and GET lists the packet without SCRI or Twin mutations."
+    },
+    {
+      "id": "S20-02-queue-review",
+      "steps": ["Queue external risk intelligence review with optional note.", "Verify action queue links assistant_external_risk_event_packet."],
+      "passWhen": "Status REVIEW_QUEUED and audit answerKind sprint20_er_rev recorded."
+    },
+    {
+      "id": "S20-03-approve",
+      "steps": ["Approve packet after risk council sign-off.", "Verify sprint20_er_ok audit narrative denies automatic SCRI/Twin changes."],
+      "passWhen": "Status APPROVED; SCRI events and Twin signals unchanged."
+    }
+  ]
+}

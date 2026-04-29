@@ -82,6 +82,7 @@ export function AssistantSubnav() {
   const incidentNerveCenter = pathname.startsWith("/assistant/incident-nerve-center");
   const customerSuccessAccountIntelligence = pathname.startsWith("/assistant/customer-success-account-intelligence");
   const strategicSourcingCategoryIntelligence = pathname.startsWith("/assistant/strategic-sourcing-category-intelligence");
+  const externalRiskEventIntelligence = pathname.startsWith("/assistant/external-risk-event-intelligence");
   const advancedProgram = (slug: string) => pathname.startsWith(`/assistant/advanced-programs/${slug}`);
   const advancedProgramLinks = listAdvancedProgramConfigs();
   const workbench = pathname.startsWith("/assistant/workbench");
@@ -391,6 +392,13 @@ export function AssistantSubnav() {
         title="Sprint 19 Strategic Sourcing & Category Intelligence"
       >
         Sprint 19
+      </Link>
+      <Link
+        href="/assistant/external-risk-event-intelligence"
+        className={externalRiskEventIntelligence ? appNavActiveClass : appNavInactiveClass}
+        title="Sprint 20 External Risk & Event Intelligence (SCRI)"
+      >
+        Sprint 20
       </Link>
       {advancedProgramLinks.map((program) => (
         <Link
