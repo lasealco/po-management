@@ -13,6 +13,7 @@
 | ID | Theme | Notes |
 |----|--------|--------|
 | **BF-01** | Receiving line variance | Thin Option **A** on **`ShipmentItem`** + `set_shipment_item_receive_line`; **`WmsReceipt`** / Option **B** still backlog — [`WMS_RECEIVING_LINE_VARIANCE_BF01.md`](./WMS_RECEIVING_LINE_VARIANCE_BF01.md) |
+| **BF-02** | Lot / batch master (metadata) | **`WmsLotBatch`** + `set_wms_lot_batch`; per-unit serial table still backlog — [`WMS_LOT_BATCH_BF02.md`](./WMS_LOT_BATCH_BF02.md) |
 
 ---
 
@@ -43,7 +44,7 @@ Use one row as the **scope box** before filing GitHub issues or agent prompts.
 
 | ID | `GAP_MAP` signal | Primary docs | Shared / CRM / CT? | Status |
 |----|------------------|--------------|---------------------|--------|
-| **BF-02** | SKU / UOM / lot | [`WMS_LOT_SERIAL_DECISION.md`](./WMS_LOT_SERIAL_DECISION.md) | Catalog overlap (`Product`); else WMS | Backlog |
+| **BF-02** | SKU / UOM / lot | [`WMS_LOT_SERIAL_DECISION.md`](./WMS_LOT_SERIAL_DECISION.md), [`WMS_LOT_BATCH_BF02.md`](./WMS_LOT_BATCH_BF02.md) | Catalog overlap (`Product`); else WMS | **Partial** — `WmsLotBatch` + UI |
 | **BF-03** | Allocation | [`WMS_ALLOCATION_STRATEGIES.md`](./WMS_ALLOCATION_STRATEGIES.md) | WMS-only core | Partial — WE-03 profiles |
 | **BF-04** | Zone / aisle | [`WMS_ZONE_TOPOLOGY_ADR.md`](./WMS_ZONE_TOPOLOGY_ADR.md) | WMS | Partial — WE-10 bin addressing |
 | **BF-05** | Appointments / TMS | [`WMS_DOCK_APPOINTMENTS.md`](./WMS_DOCK_APPOINTMENTS.md) | Integrations | Partial — WE-02 appointments |
@@ -68,4 +69,4 @@ We **did not** add duplicate per-capsule specs beside existing theme docs — av
 
 ---
 
-_Last updated: 2026-04-29 — roadmap scaffold after **BF-01**._
+_Last updated: 2026-04-29 — **BF-02** `WmsLotBatch` landed (`WMS_LOT_BATCH_BF02.md`, **`BF_CAPSULE_ROADMAP` Done**); roadmap scaffold after **BF-01**._

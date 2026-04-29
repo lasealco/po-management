@@ -89,6 +89,12 @@ type WmsData = {
     product: { id: string; productCode: string | null; sku: string | null; name: string };
     /** Batch bucket; empty string = fungible / legacy stock. */
     lotCode: string;
+    /** BF-02 — attributes when a `WmsLotBatch` exists for product + lotCode. */
+    lotBatchProfile?: {
+      expiryDate: string | null;
+      countryOfOrigin: string | null;
+      notes: string | null;
+    } | null;
     onHandQty: string;
     allocatedQty: string;
     availableQty: string;
@@ -223,6 +229,17 @@ type WmsData = {
     createdAt: string;
     warehouse: { id: string; code: string | null; name: string };
     createdBy: { id: string; name: string };
+  }>;
+  /** BF-02 — tenant lot/batch master registry (expiry / origin / notes per product + lotCode). */
+  lotBatches?: Array<{
+    id: string;
+    productId: string;
+    lotCode: string;
+    product: { id: string; productCode: string | null; sku: string | null; name: string };
+    expiryDate: string | null;
+    countryOfOrigin: string | null;
+    notes: string | null;
+    updatedAt: string;
   }>;
 };
 
@@ -414,6 +431,11 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
   const [balanceSort, setBalanceSort] = useState<
     "bin" | "product" | "availableDesc" | "availableAsc"
   >("bin");
+  const [lotBatchProductId, setLotBatchProductId] = useState("");
+  const [lotBatchCode, setLotBatchCode] = useState("");
+  const [lotBatchExpiry, setLotBatchExpiry] = useState("");
+  const [lotBatchCountry, setLotBatchCountry] = useState("");
+  const [lotBatchNotes, setLotBatchNotes] = useState("");
   const [savedViews, setSavedViews] = useState<SavedLedgerView[]>([]);
   const [savedViewsLoading, setSavedViewsLoading] = useState(false);
   const [savedViewsError, setSavedViewsError] = useState<string | null>(null);
@@ -689,6 +711,11 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
       section !== "stock" || !selectedWarehouseId ? rows : rows.filter((b) => b.warehouse.id === selectedWarehouseId);
     return onHoldOnly ? byWarehouse.filter((b) => b.onHold) : byWarehouse;
   }, [data?.balances, onHoldOnly, section, selectedWarehouseId]);
+
+  const lotBatchProductOptions = useMemo(() => {
+    const rows = data?.balances ?? [];
+    return Array.from(new Map(rows.map((b) => [b.product.id, b.product] as const)).values());
+  }, [data?.balances]);
 
   const tasksShown = useMemo(() => {
     const rows = data?.openTasks ?? [];
@@ -3314,6 +3341,151 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
         </div>
       </section>
 
+      <section className="mb-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+        <div className="mb-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.15em] text-zinc-500">Workflow</p>
+          <h2 className="mt-1 text-sm font-semibold text-zinc-900">Lot / batch master (BF-02)</h2>
+          <p className="mt-1 text-xs text-zinc-600">
+            Register expiry, country of origin, and notes per SKU + batch code. Uses the same{" "}
+            <span className="font-medium">lotCode</span> string as putaway / picks. Per-unit serial genealogy remains
+            backlog.
+          </p>
+        </div>
+        <div className="grid gap-3 rounded-xl border border-zinc-100 bg-zinc-50/80 p-4 sm:grid-cols-2 lg:grid-cols-3">
+          <label className="flex flex-col gap-1 text-xs text-zinc-600">
+            Product
+            <select
+              value={lotBatchProductId}
+              onChange={(e) => setLotBatchProductId(e.target.value)}
+              className="rounded-lg border border-zinc-300 bg-white px-2 py-2 text-sm"
+            >
+              <option value="">Select SKU…</option>
+              {lotBatchProductOptions.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.productCode || p.sku || "SKU"} · {p.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-xs text-zinc-600">
+            Lot / batch code
+            <input
+              value={lotBatchCode}
+              onChange={(e) => setLotBatchCode(e.target.value)}
+              placeholder="Non-empty batch id"
+              className="rounded-lg border border-zinc-300 bg-white px-2 py-2 text-sm"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-xs text-zinc-600">
+            Expiry date
+            <input
+              type="date"
+              value={lotBatchExpiry}
+              onChange={(e) => setLotBatchExpiry(e.target.value)}
+              className="rounded-lg border border-zinc-300 bg-white px-2 py-2 text-sm"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-xs text-zinc-600">
+            Country / region
+            <input
+              value={lotBatchCountry}
+              onChange={(e) => setLotBatchCountry(e.target.value)}
+              placeholder="e.g. US, CN"
+              className="rounded-lg border border-zinc-300 bg-white px-2 py-2 text-sm"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-xs text-zinc-600 sm:col-span-2 lg:col-span-3">
+            Notes
+            <input
+              value={lotBatchNotes}
+              onChange={(e) => setLotBatchNotes(e.target.value)}
+              className="rounded-lg border border-zinc-300 bg-white px-2 py-2 text-sm"
+            />
+          </label>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {canEdit ? (
+            <button
+              type="button"
+              disabled={busy || !lotBatchProductId || !lotBatchCode.trim()}
+              onClick={() =>
+                void runAction({
+                  action: "set_wms_lot_batch",
+                  productId: lotBatchProductId,
+                  lotCode: lotBatchCode.trim(),
+                  batchExpiryDate: lotBatchExpiry.trim() || null,
+                  batchCountryOfOrigin: lotBatchCountry.trim() || null,
+                  batchNotes: lotBatchNotes.trim() || null,
+                })
+              }
+              className="rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
+            >
+              Save lot batch
+            </button>
+          ) : (
+            <p className="text-xs text-zinc-500">WMS edit access required to save lot batches.</p>
+          )}
+        </div>
+        <div className="mt-4 overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead className="bg-zinc-100 text-left text-xs uppercase text-zinc-700">
+              <tr>
+                <th className="px-2 py-1">Product</th>
+                <th className="px-2 py-1">Lot</th>
+                <th className="px-2 py-1">Expiry</th>
+                <th className="px-2 py-1">Origin</th>
+                <th className="px-2 py-1">Notes</th>
+                <th className="px-2 py-1">Updated</th>
+                <th className="px-2 py-1"> </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-200 text-zinc-800">
+              {(data?.lotBatches ?? []).length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-2 py-3 text-xs text-zinc-500">
+                    No lot batches registered yet. Saving above creates or updates a row for that SKU + lot code.
+                  </td>
+                </tr>
+              ) : (
+                (data?.lotBatches ?? []).map((lb) => (
+                  <tr key={lb.id}>
+                    <td className="px-2 py-1">
+                      {lb.product.productCode || lb.product.sku || "—"} · {lb.product.name}
+                    </td>
+                    <td className="px-2 py-1 font-mono text-xs">{lb.lotCode}</td>
+                    <td className="px-2 py-1 text-xs">{lb.expiryDate ?? "—"}</td>
+                    <td className="px-2 py-1 text-xs">{lb.countryOfOrigin ?? "—"}</td>
+                    <td className="max-w-[12rem] truncate px-2 py-1 text-xs text-zinc-600" title={lb.notes ?? ""}>
+                      {lb.notes ?? "—"}
+                    </td>
+                    <td className="whitespace-nowrap px-2 py-1 text-xs text-zinc-500">
+                      {new Date(lb.updatedAt).toLocaleString()}
+                    </td>
+                    <td className="px-2 py-1">
+                      {canEdit ? (
+                        <button
+                          type="button"
+                          className="rounded border border-zinc-300 px-2 py-0.5 text-xs font-medium text-zinc-800"
+                          onClick={() => {
+                            setLotBatchProductId(lb.productId);
+                            setLotBatchCode(lb.lotCode);
+                            setLotBatchExpiry(lb.expiryDate ?? "");
+                            setLotBatchCountry(lb.countryOfOrigin ?? "");
+                            setLotBatchNotes(lb.notes ?? "");
+                          }}
+                        >
+                          Edit
+                        </button>
+                      ) : null}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       <section className="rounded-lg border border-zinc-200 bg-white p-4">
         <div className="mb-2 flex flex-wrap items-end justify-between gap-2">
           <h2 className="text-sm font-semibold text-zinc-900">Stock balances</h2>
@@ -3362,6 +3534,8 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                 <th className="px-2 py-1">Warehouse</th>
                 <th className="px-2 py-1">Bin</th>
                 <th className="px-2 py-1">Lot</th>
+                <th className="px-2 py-1">Expiry</th>
+                <th className="px-2 py-1">COO</th>
                 <th className="px-2 py-1">Product</th>
                 <th className="px-2 py-1">On hand</th>
                 <th className="px-2 py-1">Allocated</th>
@@ -3373,7 +3547,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
             <tbody className="divide-y divide-zinc-200 text-zinc-800">
               {balancesTableRows.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-2 py-3 text-zinc-500">
+                  <td colSpan={11} className="px-2 py-3 text-zinc-500">
                     {balancesShown.length === 0
                       ? "No balances in this view."
                       : `No balances match this filter${balanceTextFilter.trim() ? `: "${balanceTextFilter.trim()}"` : "."}`}
@@ -3387,6 +3561,12 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                       {b.bin.code} · {b.bin.name}
                     </td>
                     <td className="px-2 py-1 text-xs text-zinc-600">{b.lotCode || "—"}</td>
+                    <td className="px-2 py-1 text-xs text-zinc-600">
+                      {b.lotBatchProfile?.expiryDate ?? "—"}
+                    </td>
+                    <td className="px-2 py-1 text-xs text-zinc-600">
+                      {b.lotBatchProfile?.countryOfOrigin ?? "—"}
+                    </td>
                     <td className="px-2 py-1">
                       {b.product.productCode || b.product.sku || "SKU"} · {b.product.name}
                     </td>

@@ -76,6 +76,7 @@ model Tenant {
   wmsBillingInvoiceLines                      WmsBillingInvoiceLine[]
   wmsSavedLedgerViews                         WmsSavedLedgerView[]
   wmsDockAppointments                         WmsDockAppointment[]
+  wmsLotBatches                               WmsLotBatch[]
   wmsWorkOrders                               WmsWorkOrder[]
   loadPlans                                   LoadPlan[]
   userPreferences                             UserPreference[]
@@ -3342,6 +3343,7 @@ model Product {
   wmsBillingEvents   WmsBillingEvent[]
   wmsTasks           WmsTask[]
   replenishmentRules ReplenishmentRule[]
+  wmsLotBatches      WmsLotBatch[]
   outboundOrderLines OutboundOrderLine[]
   documents          ProductDocument[]
   productSuppliers   ProductSupplier[]
@@ -4775,6 +4777,26 @@ model WmsDockAppointment {
   @@index([tenantId, warehouseId, dockCode])
   @@index([shipmentId])
   @@index([outboundOrderId])
+}
+
+/// BF-02 — tenant lot/batch master (expiry, origin). `InventoryBalance.lotCode` stays the bin bucket key.
+model WmsLotBatch {
+  id              String    @id @default(cuid())
+  tenantId        String
+  productId       String
+  lotCode         String    @db.VarChar(120)
+  expiryDate      DateTime? @db.Date
+  countryOfOrigin String?   @db.VarChar(80)
+  notes           String?   @db.VarChar(2000)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, productId, lotCode])
+  @@index([tenantId])
+  @@index([productId])
 }
 
 enum OutboundOrderStatus {

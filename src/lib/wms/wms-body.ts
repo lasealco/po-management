@@ -79,4 +79,10 @@ export type WmsBody = {
   varianceDisposition?: string | null;
   /** Optional operator note (max 1000); omit to leave unchanged; null clears. */
   varianceNote?: string | null;
+  /** `set_wms_lot_batch` — optional expiry (ISO date); omit field to leave unchanged; null or "" clears. */
+  batchExpiryDate?: string | null;
+  /** `set_wms_lot_batch` — ISO country / region text; omit unchanged; null clears. */
+  batchCountryOfOrigin?: string | null;
+  /** `set_wms_lot_batch` — operator notes; omit unchanged; null clears. */
+  batchNotes?: string | null;
 };

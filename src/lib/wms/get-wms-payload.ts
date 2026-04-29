@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { userHasGlobalGrant } from "@/lib/authz";
 import { crmAccountInScope } from "@/lib/crm-scope";
 import { movementLedgerWhere, type ParsedMovementLedgerQuery } from "@/lib/wms/movement-ledger-query";
+import { FUNGIBLE_LOT_CODE, normalizeLotCode } from "@/lib/wms/lot-code";
 import { loadWmsViewReadScope } from "@/lib/wms/wms-read-scope";
 import { allowedNextWmsReceiveStatuses } from "@/lib/wms/wms-receive-status";
 import { prisma } from "@/lib/prisma";
@@ -237,6 +238,25 @@ export async function getWmsDashboardPayload(
     prisma.inventoryMovement.count({ where: recentMovementScoped }),
   ]);
 
+  const lotBatchWhere: Prisma.WmsLotBatchWhereInput =
+    viewScope.inventoryProduct != null
+      ? { tenantId, product: viewScope.inventoryProduct }
+      : { tenantId };
+
+  const lotBatchesRaw = await prisma.wmsLotBatch.findMany({
+    where: lotBatchWhere,
+    orderBy: [{ updatedAt: "desc" }],
+    take: 500,
+    include: {
+      product: { select: { id: true, productCode: true, sku: true, name: true } },
+    },
+  });
+
+  const lotProfileMap = new Map<string, (typeof lotBatchesRaw)[number]>();
+  for (const lb of lotBatchesRaw) {
+    lotProfileMap.set(`${lb.productId}\t${normalizeLotCode(lb.lotCode)}`, lb);
+  }
+
   const dockAppointmentsRaw = await prisma.wmsDockAppointment.findMany({
     where: { tenantId },
     orderBy: [{ windowStart: "asc" }],
@@ -361,18 +381,30 @@ export async function getWmsDashboardPayload(
         shippedQty: l.shippedQty.toString(),
       })),
     })),
-    balances: balances.map((b) => ({
-      id: b.id,
-      warehouse: b.warehouse,
-      bin: b.bin,
-      product: b.product,
-      lotCode: b.lotCode,
-      onHandQty: b.onHandQty.toString(),
-      allocatedQty: b.allocatedQty.toString(),
-      availableQty: new Prisma.Decimal(b.onHandQty).minus(b.allocatedQty).toString(),
-      onHold: Boolean(b.onHold),
-      holdReason: b.holdReason ?? null,
-    })),
+    balances: balances.map((b) => {
+      const lc = normalizeLotCode(b.lotCode);
+      const profileRow =
+        lc !== FUNGIBLE_LOT_CODE ? lotProfileMap.get(`${b.product.id}\t${lc}`) ?? null : null;
+      return {
+        id: b.id,
+        warehouse: b.warehouse,
+        bin: b.bin,
+        product: b.product,
+        lotCode: b.lotCode,
+        onHandQty: b.onHandQty.toString(),
+        allocatedQty: b.allocatedQty.toString(),
+        availableQty: new Prisma.Decimal(b.onHandQty).minus(b.allocatedQty).toString(),
+        onHold: Boolean(b.onHold),
+        holdReason: b.holdReason ?? null,
+        lotBatchProfile: profileRow
+          ? {
+              expiryDate: profileRow.expiryDate?.toISOString().slice(0, 10) ?? null,
+              countryOfOrigin: profileRow.countryOfOrigin ?? null,
+              notes: profileRow.notes ?? null,
+            }
+          : null,
+      };
+    }),
     openTasks: openTasks.map((t) => {
       const sourceBin: { id: string; code: string; name: string } | null =
         t.taskType === "REPLENISH" && t.referenceId
@@ -537,6 +569,16 @@ export async function getWmsDashboardPayload(
       createdAt: w.createdAt.toISOString(),
       warehouse: w.warehouse,
       createdBy: w.createdBy,
+    })),
+    lotBatches: lotBatchesRaw.map((lb) => ({
+      id: lb.id,
+      productId: lb.productId,
+      lotCode: lb.lotCode,
+      product: lb.product,
+      expiryDate: lb.expiryDate?.toISOString().slice(0, 10) ?? null,
+      countryOfOrigin: lb.countryOfOrigin ?? null,
+      notes: lb.notes ?? null,
+      updatedAt: lb.updatedAt.toISOString(),
     })),
   };
 }

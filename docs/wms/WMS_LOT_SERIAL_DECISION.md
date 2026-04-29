@@ -12,6 +12,10 @@ Reuse **`Product`** for SKU identity (shared PO/catalog master — **no separate
 
 Full serialization (unique IDs per unit across lifecycle, cradle-to-grave genealogy) is **not** implemented here — blueprint serialization gaps remain backlog unless modeled via inventory granularity elsewhere.
 
+## BF-02 — lot/batch master (minimal)
+
+**[`WmsLotBatch`](./WMS_LOT_BATCH_BF02.md)** adds optional **expiry / country of origin / notes** keyed by **`tenantId` + `productId` + `lotCode`**, aligned with `InventoryBalance.lotCode`. This does **not** replace balance buckets; it annotates them for QA / regulatory visibility.
+
 ## MVP behavior
 
 - **Putaway complete:** optional `lotCode` on `complete_putaway_task` creates/increments the matching bucket (`normalizeLotCode`).
@@ -24,5 +28,5 @@ See **`normalizeLotCode`** / **`FUNGIBLE_LOT_CODE`** in `src/lib/wms/lot-code.ts
 
 ## Limitations (honest)
 
-- No expiry/country-of-origin attributes on lot header — extend schema when regulatory depth is required.
+- **Expiry / origin / notes:** **`WmsLotBatch`** (BF-02) — optional master attributes; balances still keyed by `lotCode` string only.
 - No SN-per-unit table — document-only deferral for blueprint serialization depth.

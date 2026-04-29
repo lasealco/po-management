@@ -9,6 +9,12 @@ import { assertOutboundCrmAccountLinkable } from "./crm-account-link";
 import { normalizeDockCode } from "./dock-appointment";
 import { orderPickSlotsForWave, type WavePickSlot } from "./allocation-strategy";
 import { resolveVarianceDisposition } from "./receive-line-variance";
+import {
+  parseLotBatchExpiryInput,
+  requireNonFungibleLotBatchCode,
+  truncateLotBatchCountry,
+  truncateLotBatchNotes,
+} from "./lot-batch-master";
 import { FUNGIBLE_LOT_CODE, normalizeLotCode } from "./lot-code";
 import { syncOutboundOrderStatusAfterPick } from "./outbound-workflow";
 import { nextWaveNo } from "./wave";
@@ -1134,6 +1140,88 @@ export async function handleWmsPost(
     });
 
     return NextResponse.json({ ok: true });
+  }
+
+  if (action === "set_wms_lot_batch") {
+    const productId = input.productId?.trim();
+    if (!productId) {
+      return toApiErrorResponseFromStatus("productId required.", 400);
+    }
+
+    let lotCode: string;
+    try {
+      lotCode = requireNonFungibleLotBatchCode(input.lotCode);
+    } catch (e) {
+      return toApiErrorResponseFromStatus(e instanceof Error ? e.message : "Invalid lotCode.", 400);
+    }
+
+    const product = await prisma.product.findFirst({
+      where: { id: productId, tenantId },
+      select: { id: true },
+    });
+    if (!product) {
+      return toApiErrorResponseFromStatus("Product not found.", 404);
+    }
+
+    let expiryParsed;
+    try {
+      expiryParsed = parseLotBatchExpiryInput(input.batchExpiryDate as string | null | undefined);
+    } catch (e) {
+      return toApiErrorResponseFromStatus(
+        e instanceof Error ? e.message : "Invalid batchExpiryDate.",
+        400,
+      );
+    }
+
+    const countryParsed = truncateLotBatchCountry(
+      input.batchCountryOfOrigin as string | null | undefined,
+    );
+    const notesParsed = truncateLotBatchNotes(input.batchNotes as string | null | undefined);
+
+    const row = await prisma.$transaction(async (tx) => {
+      const upserted = await tx.wmsLotBatch.upsert({
+        where: {
+          tenantId_productId_lotCode: { tenantId, productId, lotCode },
+        },
+        create: {
+          tenantId,
+          productId,
+          lotCode,
+          expiryDate: expiryParsed.mode === "set" ? expiryParsed.date : null,
+          countryOfOrigin: countryParsed !== undefined ? countryParsed : null,
+          notes: notesParsed !== undefined ? notesParsed : null,
+        },
+        update: {
+          ...(expiryParsed.mode !== "omit"
+            ? {
+                expiryDate:
+                  expiryParsed.mode === "clear" ? null : expiryParsed.mode === "set" ? expiryParsed.date : null,
+              }
+            : {}),
+          ...(countryParsed !== undefined ? { countryOfOrigin: countryParsed } : {}),
+          ...(notesParsed !== undefined ? { notes: notesParsed } : {}),
+        },
+      });
+
+      await tx.ctAuditLog.create({
+        data: {
+          tenantId,
+          entityType: "WMS_LOT_BATCH",
+          entityId: upserted.id,
+          action: "lot_batch_upserted",
+          payload: {
+            productId,
+            lotCode,
+            expiryDate: upserted.expiryDate?.toISOString().slice(0, 10) ?? null,
+            countryOfOrigin: upserted.countryOfOrigin,
+          },
+          actorUserId: actorId,
+        },
+      });
+      return upserted;
+    });
+
+    return NextResponse.json({ ok: true, id: row.id });
   }
 
   if (action === "create_dock_appointment") {
