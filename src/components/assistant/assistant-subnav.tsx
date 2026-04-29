@@ -70,6 +70,7 @@ export function AssistantSubnav() {
   const collaborationResilience = pathname.startsWith("/assistant/collaboration-resilience");
   const commercialRevenueControl = pathname.startsWith("/assistant/commercial-revenue-control");
   const supplyNetworkTwin = pathname.startsWith("/assistant/supply-network-twin");
+  const warehouseFulfillmentAutonomy = pathname.startsWith("/assistant/warehouse-fulfillment-autonomy");
   const advancedProgram = (slug: string) => pathname.startsWith(`/assistant/advanced-programs/${slug}`);
   const advancedProgramLinks = listAdvancedProgramConfigs();
   const workbench = pathname.startsWith("/assistant/workbench");
@@ -295,6 +296,13 @@ export function AssistantSubnav() {
         title="Sprint 7 Supply Network Twin & Scenario Command"
       >
         Sprint 7
+      </Link>
+      <Link
+        href="/assistant/warehouse-fulfillment-autonomy"
+        className={warehouseFulfillmentAutonomy ? appNavActiveClass : appNavInactiveClass}
+        title="Sprint 8 Warehouse & Fulfillment Autonomy"
+      >
+        Sprint 8
       </Link>
       {advancedProgramLinks.map((program) => (
         <Link

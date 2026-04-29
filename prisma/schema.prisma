@@ -186,6 +186,7 @@ model Tenant {
   assistantCollaborationResiliencePackets  AssistantCollaborationResiliencePacket[]
   assistantCommercialRevenueControlPackets AssistantCommercialRevenueControlPacket[]
   assistantSupplyNetworkTwinPackets        AssistantSupplyNetworkTwinPacket[]
+  assistantWarehouseFulfillmentPackets     AssistantWarehouseFulfillmentPacket[]
   assistantActionQueue                     AssistantActionQueueItem[]
   assistantPlaybookTemplates               AssistantPlaybookTemplate[]
   assistantPlaybookRuns                    AssistantPlaybookRun[]
@@ -1410,6 +1411,47 @@ model AssistantSupplyNetworkTwinPacket {
   @@index([tenantId, twinScore, updatedAt])
 }
 
+/// Sprint 8: durable warehouse and fulfillment autonomy packet for capacity, task recovery, wave health, exception evidence, supervisor actions, mobile-safe work, and rollback controls.
+model AssistantWarehouseFulfillmentPacket {
+  id                      String    @id @default(cuid())
+  tenantId                String
+  createdByUserId         String?
+  approvedByUserId        String?
+  title                   String
+  status                  String    @default("DRAFT") @db.VarChar(32)
+  autonomyScore           Int       @default(0)
+  warehouseCount          Int       @default(0)
+  openTaskCount           Int       @default(0)
+  agedTaskCount           Int       @default(0)
+  waveRiskCount           Int       @default(0)
+  outboundRiskCount       Int       @default(0)
+  exceptionCount          Int       @default(0)
+  recoveryActionCount     Int       @default(0)
+  sourceSummaryJson       Json
+  capacityPostureJson     Json
+  taskRecoveryJson        Json
+  waveHealthJson          Json
+  outboundFulfillmentJson Json
+  exceptionEvidenceJson   Json
+  supervisorActionJson    Json
+  mobileWorkJson          Json
+  responsePlanJson        Json
+  rollbackPlanJson        Json
+  leadershipSummary       String    @db.Text
+  actionQueueItemId       String?
+  approvedAt              DateTime?
+  approvalNote            String?   @db.Text
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator  User?  @relation("AssistantWarehouseFulfillmentPacketCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  approver User?  @relation("AssistantWarehouseFulfillmentPacketApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, updatedAt])
+  @@index([tenantId, autonomyScore, updatedAt])
+}
+
 /// AMP7: inspectable grounding ledger extracted from assistant answers and reviewer additions.
 model AssistantEvidenceRecord {
   id              String    @id @default(cuid())
@@ -2054,6 +2096,8 @@ model User {
   assistantCommercialRevenueControlPacketsApproved AssistantCommercialRevenueControlPacket[] @relation("AssistantCommercialRevenueControlPacketApprover")
   assistantSupplyNetworkTwinPacketsCreated         AssistantSupplyNetworkTwinPacket[]        @relation("AssistantSupplyNetworkTwinPacketCreator")
   assistantSupplyNetworkTwinPacketsApproved        AssistantSupplyNetworkTwinPacket[]        @relation("AssistantSupplyNetworkTwinPacketApprover")
+  assistantWarehouseFulfillmentPacketsCreated      AssistantWarehouseFulfillmentPacket[]     @relation("AssistantWarehouseFulfillmentPacketCreator")
+  assistantWarehouseFulfillmentPacketsApproved     AssistantWarehouseFulfillmentPacket[]     @relation("AssistantWarehouseFulfillmentPacketApprover")
   invoiceIntakesAccountingApproved                 InvoiceIntake[]                           @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated                TariffShipmentApplication[]               @relation("TariffShipmentApplicationCreator")
   scriEventsOwned                                  ScriExternalEvent[]                       @relation("ScriEventOwner")

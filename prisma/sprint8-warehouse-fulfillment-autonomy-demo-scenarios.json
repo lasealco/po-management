@@ -1,0 +1,57 @@
+{
+  "sprint": 8,
+  "name": "Warehouse & Fulfillment Autonomy",
+  "entrypoint": "/assistant/warehouse-fulfillment-autonomy",
+  "api": "/api/assistant/warehouse-fulfillment-autonomy",
+  "scenarios": [
+    {
+      "id": "create-warehouse-fulfillment-packet",
+      "title": "Create a durable warehouse fulfillment autonomy packet",
+      "steps": [
+        "Open the Sprint 8 Warehouse & Fulfillment Autonomy workspace.",
+        "Review WMS capacity, open tasks, aged tasks, waves, outbound orders, inventory holds, shipment exceptions, capacity plans, network packets, and action queue evidence.",
+        "Click Create Sprint 8 packet."
+      ],
+      "expected": [
+        "A durable AssistantWarehouseFulfillmentPacket row is created with source summary, capacity posture, task recovery, wave health, outbound fulfillment, exception evidence, supervisor actions, mobile work drafts, response plan, rollback plan, and leadership summary JSON.",
+        "An AssistantAuditEvent records that packet creation is evidence-only.",
+        "No WMS task, wave, inventory balance, inventory movement, outbound order, shipment, warehouse staffing, mobile work assignment, load plan, or customer promise is changed automatically."
+      ]
+    },
+    {
+      "id": "queue-supervisor-review",
+      "title": "Queue supervisor review for safe fulfillment recovery",
+      "steps": [
+        "Add an optional supervisor review note to a draft Sprint 8 packet.",
+        "Click Queue review."
+      ],
+      "expected": [
+        "The packet moves to SUPERVISOR_REVIEW_QUEUED and stores actionQueueItemId.",
+        "An AssistantActionQueueItem is created for warehouse_fulfillment_supervisor_review with the packet URL and recovery evidence.",
+        "Supervisor review remains separate from execution; the assistant does not complete tasks, release waves, move stock, pick, pack, ship, receive cargo, or change customer promises automatically."
+      ]
+    },
+    {
+      "id": "approve-warehouse-fulfillment-packet",
+      "title": "Approve a reviewed Sprint 8 packet",
+      "steps": [
+        "Review the packet leadership summary, capacity posture, task recovery, wave risks, outbound risks, exception evidence, mobile work drafts, and rollback controls.",
+        "Click Approve packet."
+      ],
+      "expected": [
+        "The packet status becomes APPROVED with approvedAt, approvedByUserId, and approvalNote.",
+        "An AssistantAuditEvent records approval and reiterates the no-silent-mutation guardrail.",
+        "Approval marks the autonomy evidence packet as reviewed only; execution still requires separate downstream approved WMS, shipment, inventory, outbound, staffing, or customer-promise actions."
+      ]
+    }
+  ],
+  "guardrails": [
+    "No WMS task is completed, cancelled, assigned, reprioritized, or created automatically.",
+    "No wave is released, closed, cancelled, resequenced, or edited automatically.",
+    "No inventory balance, inventory movement, allocation, reservation, hold, bin, product, or warehouse record is changed automatically.",
+    "No outbound order is picked, packed, shipped, closed, cancelled, allocated, or communicated automatically.",
+    "No shipment is received, resolved, closed, rerouted, or customer-notified automatically.",
+    "No mobile work card is dispatched or completed automatically.",
+    "No staffing or customer promise is changed automatically."
+  ]
+}
