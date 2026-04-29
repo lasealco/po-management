@@ -1,0 +1,75 @@
+[
+  {
+    "id": "amp401-462-create-packets",
+    "title": "Create durable packets for AMP401 through AMP462",
+    "persona": "Executive, people, finance, legal, compliance, privacy, security, engineering, data, product, and AI platform reviewers",
+    "entrypoints": [
+      "/assistant/advanced-programs/executive-travel-risk",
+      "/assistant/advanced-programs/board-materials-factory",
+      "/assistant/advanced-programs/legal-hold-intelligence",
+      "/assistant/advanced-programs/third-party-risk-command",
+      "/assistant/advanced-programs/crisis-communications-command",
+      "/assistant/advanced-programs/responsible-ai-procurement",
+      "/assistant/advanced-programs/privacy-consent-intelligence",
+      "/assistant/advanced-programs/zero-trust-orchestration",
+      "/assistant/advanced-programs/build-provenance-attestation",
+      "/assistant/advanced-programs/enterprise-operating-system-v3"
+    ],
+    "steps": [
+      "Open representative AMP401-AMP462 workspaces from the generated Assistant subnav.",
+      "Review source signals, risk assessment, recommendations, artifact, approval route, and rollback plan.",
+      "Click Create AMP packet."
+    ],
+    "expected": [
+      "Each AMP401-AMP462 workspace persists an AssistantAdvancedProgramPacket row with a distinct ampNumber and programKey.",
+      "Each packet has a domain-specific nav label, title, artifact, approval owners, and no-mutation scope.",
+      "The shared advanced-program UI displays preview metrics, packet history, review notes, and queue-review controls.",
+      "Travel plans, mobility records, payroll/equity/compensation records, board/investor/corp-dev materials, legal holds, e-discovery productions, vendor and fourth-party maps, crisis/reputation/social communications, ethics and human-rights cases, AI procurement/model inventories, synthetic data and clean-room outputs, consent and transfer records, zero trust/security controls, reliability/platform/open-source/SBOM/build/release/flag/developer/data/metrics/analytics records, executive digital twin assumptions, strategy actions, learning loops, and EOS v3 authority are not mutated automatically."
+    ]
+  },
+  {
+    "id": "amp401-462-queue-review",
+    "title": "Queue human review for AMP401 through AMP462 packets",
+    "persona": "Program approval owner",
+    "entrypoints": [
+      "/assistant/advanced-programs/payroll-exception-command",
+      "/assistant/advanced-programs/whistleblower-protection",
+      "/assistant/advanced-programs/cloud-entitlement-cleanup",
+      "/assistant/advanced-programs/release-rollback-intelligence",
+      "/assistant/advanced-programs/analytics-governance"
+    ],
+    "steps": [
+      "Create or select a DRAFT packet.",
+      "Add a review note describing the downstream decision.",
+      "Click Queue review."
+    ],
+    "expected": [
+      "The packet status changes to REVIEW_QUEUED and records actionQueueItemId, approvedByUserId, approvedAt, and approvalNote.",
+      "AssistantActionQueueItem uses an AMP-specific actionKind such as assistant_amp401_review or assistant_amp462_review.",
+      "AssistantAuditEvent states that downstream records were not changed automatically."
+    ]
+  },
+  {
+    "id": "amp401-462-guardrails",
+    "title": "Executive, legal, privacy, security, engineering, data, and EOS v3 packets remain review-only",
+    "persona": "Executive and control reviewer",
+    "entrypoints": [
+      "/assistant/advanced-programs/global-mobility-compliance",
+      "/assistant/advanced-programs/data-transfer-governance",
+      "/assistant/advanced-programs/security-control-validation",
+      "/assistant/advanced-programs/metrics-contract",
+      "/assistant/advanced-programs/autonomous-strategy-execution"
+    ],
+    "steps": [
+      "Open a packet with active risk signals.",
+      "Inspect recommendationJson, approvalPlanJson, artifactJson, and rollbackPlanJson.",
+      "Queue review without executing downstream changes."
+    ],
+    "expected": [
+      "recommendationJson requires review before executive, people, finance, legal, compliance, privacy, security, reliability, release, developer, data, metrics, analytics, strategy, learning-loop, or EOS v3 execution.",
+      "approvalPlanJson names the responsible owner groups.",
+      "rollbackPlanJson preserves source records and requires a fresh packet when evidence changes materially.",
+      "Autonomous recommendations cannot silently send communications, change people records, alter access, publish filings/exports, deploy releases, change metrics, modify strategy actions, self-update learning loops, or expand EOS v3 authority."
+    ]
+  }
+]

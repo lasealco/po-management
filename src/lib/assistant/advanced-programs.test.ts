@@ -35,10 +35,10 @@ const signals: AdvancedProgramSignals = {
 };
 
 describe("advanced programs", () => {
-  it("defines AMP37 through AMP400 with requested AMP363-400 programs", () => {
+  it("defines AMP37 through AMP462 with requested AMP401-462 programs", () => {
     const configs = listAdvancedProgramConfigs();
 
-    expect(configs).toHaveLength(363);
+    expect(configs).toHaveLength(425);
     expect(configs[0]?.ampNumber).toBe(37);
     expect(configs[25]?.ampNumber).toBe(62);
     expect(configs[26]?.ampNumber).toBe(64);
@@ -59,6 +59,8 @@ describe("advanced programs", () => {
     expect(configs[324]?.ampNumber).toBe(362);
     expect(configs[325]?.ampNumber).toBe(363);
     expect(configs[362]?.ampNumber).toBe(400);
+    expect(configs[363]?.ampNumber).toBe(401);
+    expect(configs[424]?.ampNumber).toBe(462);
   });
 
   it("builds a distinct packet with guardrails for category strategy", () => {
@@ -171,6 +173,16 @@ describe("advanced programs", () => {
     expect(packet.approvalPlan.steps.map((step) => step.owner)).toContain("Security");
     expect(packet.rollbackPlan.steps[0]).toContain("site incidents");
     expect(packet.leadershipSummary).toContain("does not mutate site incidents");
+  });
+
+  it("builds autonomous enterprise operating system v3 packets with adaptive governance guardrails", () => {
+    const packet = buildAdvancedProgramPacket({ programKey: "enterprise-operating-system-v3", signals });
+
+    expect(packet.ampNumber).toBe(462);
+    expect(packet.riskCount).toBeGreaterThan(0);
+    expect(packet.approvalPlan.steps.map((step) => step.owner)).toContain("Executive sponsor");
+    expect(packet.rollbackPlan.steps[0]).toContain("enterprise goals");
+    expect(packet.leadershipSummary).toContain("does not mutate enterprise goals");
   });
 
   it("returns null for unknown program keys", () => {
