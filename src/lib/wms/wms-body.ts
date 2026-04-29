@@ -64,4 +64,6 @@ export type WmsBody = {
   dockWindowStart?: string;
   dockWindowEnd?: string;
   dockDirection?: "INBOUND" | "OUTBOUND";
+  /** `set_warehouse_pick_allocation_strategy` — `WmsPickAllocationStrategy`. */
+  pickAllocationStrategy?: "MAX_AVAILABLE_FIRST" | "FIFO_BY_BIN_CODE" | "MANUAL_ONLY";
 };

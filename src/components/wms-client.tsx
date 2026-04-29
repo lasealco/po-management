@@ -17,7 +17,13 @@ import {
 import { WMS_RECEIVE_STATUS_LABEL } from "@/lib/wms/wms-receive-status";
 
 type WmsData = {
-  warehouses: Array<{ id: string; code: string | null; name: string; type: "CFS" | "WAREHOUSE" }>;
+  warehouses: Array<{
+    id: string;
+    code: string | null;
+    name: string;
+    type: "CFS" | "WAREHOUSE";
+    pickAllocationStrategy: "MAX_AVAILABLE_FIRST" | "FIFO_BY_BIN_CODE" | "MANUAL_ONLY";
+  }>;
   zones: Array<{
     id: string;
     code: string;
@@ -1058,6 +1064,53 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
 
       {section === "setup" ? (
         <>
+      <section className="mb-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+        <h2 className="text-sm font-semibold text-zinc-900">Pick allocation policy</h2>
+        <p className="mt-1 text-xs text-zinc-600">
+          Controls how <span className="font-medium text-zinc-800">Create pick wave</span> orders bins and
+          increments <span className="font-medium">allocatedQty</span>. Individual{" "}
+          <span className="font-medium">Create pick task</span> actions always require an explicit bin choice.
+          See <span className="font-medium">docs/wms/WMS_ALLOCATION_STRATEGIES.md</span>.
+        </p>
+        {!selectedWarehouseId ? (
+          <p className="mt-3 text-sm text-zinc-500">Select a warehouse above to review or change strategy.</p>
+        ) : (
+          <div className="mt-3 max-w-xl">
+            <label className="block text-xs font-medium text-zinc-600">
+              Strategy for{" "}
+              <span className="font-semibold text-zinc-800">
+                {data.warehouses.find((w) => w.id === selectedWarehouseId)?.code ??
+                  data.warehouses.find((w) => w.id === selectedWarehouseId)?.name ??
+                  "warehouse"}
+              </span>
+              <select
+                disabled={!canEdit || busy}
+                value={
+                  data.warehouses.find((w) => w.id === selectedWarehouseId)?.pickAllocationStrategy ??
+                  "MAX_AVAILABLE_FIRST"
+                }
+                onChange={(e) => {
+                  const pickAllocationStrategy = e.target.value as
+                    | "MAX_AVAILABLE_FIRST"
+                    | "FIFO_BY_BIN_CODE"
+                    | "MANUAL_ONLY";
+                  void runAction({
+                    action: "set_warehouse_pick_allocation_strategy",
+                    warehouseId: selectedWarehouseId,
+                    pickAllocationStrategy,
+                  });
+                }}
+                className="mt-1 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm"
+              >
+                <option value="MAX_AVAILABLE_FIRST">Max available first — prefer bins with most free stock</option>
+                <option value="FIFO_BY_BIN_CODE">FIFO by bin code — consume in bin code order</option>
+                <option value="MANUAL_ONLY">Manual only — automated waves disabled</option>
+              </select>
+            </label>
+          </div>
+        )}
+      </section>
+
       <section className="mb-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
         <h2 className="text-sm font-semibold text-zinc-900">Current layout</h2>
         <p className="mt-1 text-xs text-zinc-600">
@@ -2311,13 +2364,27 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
       <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
         <h2 className="text-sm font-semibold text-zinc-900">Wave picking</h2>
         <p className="mt-1 text-xs text-zinc-600">
-          Auto-build pick waves from open order demand and current available stock in selected
-          warehouse bins.
+          Auto-build pick waves from open order demand and current available stock in the selected warehouse,
+          using the warehouse&apos;s{" "}
+          <span className="font-medium text-zinc-800">pick allocation strategy</span> (Warehouse setup → Pick
+          allocation policy).
         </p>
+        {selectedWarehouseId &&
+        data.warehouses.find((w) => w.id === selectedWarehouseId)?.pickAllocationStrategy === "MANUAL_ONLY" ? (
+          <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
+            This warehouse is set to <span className="font-semibold">MANUAL_ONLY</span>: automated waves are
+            disabled. Use <span className="font-medium">Create pick task</span> with explicit bins instead.
+          </p>
+        ) : null}
         <div className="mt-2 flex flex-wrap gap-2">
           <button
             type="button"
-            disabled={!canEdit || busy || !selectedWarehouseId}
+            disabled={
+              !canEdit ||
+              busy ||
+              !selectedWarehouseId ||
+              data.warehouses.find((w) => w.id === selectedWarehouseId)?.pickAllocationStrategy === "MANUAL_ONLY"
+            }
             onClick={() =>
               void runAction({
                 action: "create_pick_wave",

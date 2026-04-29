@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 
 import { toApiErrorResponseFromStatus } from "@/app/api/_lib/api-error-contract";
-import { Prisma, ShipmentMilestoneCode, type WmsReceiveStatus } from "@prisma/client";
+import { Prisma, ShipmentMilestoneCode, type WmsPickAllocationStrategy, type WmsReceiveStatus } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 
 import { assertOutboundCrmAccountLinkable } from "./crm-account-link";
 import { normalizeDockCode } from "./dock-appointment";
+import { orderPickSlotsForWave, type WavePickSlot } from "./allocation-strategy";
 import { syncOutboundOrderStatusAfterPick } from "./outbound-workflow";
 import { nextWaveNo } from "./wave";
 
@@ -19,6 +20,27 @@ export async function handleWmsPost(
   input: WmsBody,
 ): Promise<NextResponse> {
   const action = input.action;
+  if (action === "set_warehouse_pick_allocation_strategy") {
+    const warehouseId = input.warehouseId?.trim();
+    const raw = input.pickAllocationStrategy;
+    if (!warehouseId || !raw) {
+      return toApiErrorResponseFromStatus("warehouseId and pickAllocationStrategy required.", 400);
+    }
+    const allowed: WmsPickAllocationStrategy[] = ["MAX_AVAILABLE_FIRST", "FIFO_BY_BIN_CODE", "MANUAL_ONLY"];
+    if (!allowed.includes(raw as WmsPickAllocationStrategy)) {
+      return toApiErrorResponseFromStatus("Invalid pickAllocationStrategy.", 400);
+    }
+    const strategy = raw as WmsPickAllocationStrategy;
+    const n = await prisma.warehouse.updateMany({
+      where: { id: warehouseId, tenantId },
+      data: { pickAllocationStrategy: strategy },
+    });
+    if (n.count === 0) {
+      return toApiErrorResponseFromStatus("Warehouse not found.", 404);
+    }
+    return NextResponse.json({ ok: true });
+  }
+
   if (action === "create_zone") {
     const warehouseId = input.warehouseId?.trim();
     const code = input.code?.trim().toUpperCase();
@@ -520,6 +542,21 @@ export async function handleWmsPost(
     if (!warehouseId) {
       return toApiErrorResponseFromStatus("warehouseId required.", 400);
     }
+    const warehouse = await prisma.warehouse.findFirst({
+      where: { id: warehouseId, tenantId },
+      select: { pickAllocationStrategy: true },
+    });
+    if (!warehouse) {
+      return toApiErrorResponseFromStatus("Warehouse not found.", 404);
+    }
+    if (warehouse.pickAllocationStrategy === "MANUAL_ONLY") {
+      return toApiErrorResponseFromStatus(
+        "Automated pick waves are disabled for this warehouse (MANUAL_ONLY strategy). Create pick tasks explicitly instead.",
+        400,
+      );
+    }
+    const allocationStrategy = warehouse.pickAllocationStrategy;
+
     const openLines = await prisma.outboundOrderLine.findMany({
       where: {
         tenantId,
@@ -550,20 +587,25 @@ export async function handleWmsPost(
       where: { tenantId, warehouseId },
       include: { bin: { select: { id: true, code: true } } },
     });
-    const byProduct = new Map<string, Array<{ binId: string; available: number }>>();
+    const byProduct = new Map<string, WavePickSlot[]>();
     for (const row of balances) {
       if (row.onHold) continue;
       const available = Number(row.onHandQty) - Number(row.allocatedQty);
       if (available <= 0) continue;
       const list = byProduct.get(row.productId) ?? [];
-      list.push({ binId: row.binId, available });
+      list.push({
+        binId: row.binId,
+        binCode: row.bin.code,
+        available,
+      });
       byProduct.set(row.productId, list);
     }
-    for (const [, list] of byProduct) {
-      list.sort((a, b) => b.available - a.available);
+    for (const [productId, list] of byProduct) {
+      byProduct.set(productId, orderPickSlotsForWave(allocationStrategy, list));
     }
 
     const waveNo = await nextWaveNo(tenantId);
+    const waveNote = `Wave allocation (${allocationStrategy})`;
     const result = await prisma.$transaction(async (tx) => {
       const wave = await tx.wmsWave.create({
         data: {
@@ -595,7 +637,7 @@ export async function handleWmsPost(
               referenceType: "OUTBOUND_LINE_PICK",
               referenceId: item.id,
               quantity: take.toString(),
-              note: "Auto-allocated by wave",
+              note: waveNote,
               createdById: actorId,
             },
           });

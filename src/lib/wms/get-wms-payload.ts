@@ -74,7 +74,7 @@ export async function getWmsDashboardPayload(
     prisma.warehouse.findMany({
       where: { tenantId, isActive: true },
       orderBy: [{ type: "asc" }, { name: "asc" }],
-      select: { id: true, code: true, name: true, type: true },
+      select: { id: true, code: true, name: true, type: true, pickAllocationStrategy: true },
     }),
     prisma.warehouseZone.findMany({
       where: { tenantId, isActive: true },

@@ -75,9 +75,11 @@ Parallel agents: **non-overlapping paths only** (see [`agent-todos/README.md`](.
 
 **Exit criteria**
 
-- [ ] Allocation rules engine or staged profiles **documented + tested**.
-- [ ] No silent stock moves — human-approved or policy-gated where required.
-- [ ] `GAP_MAP.md` **Allocation** row upgraded from 🟡 with stated limits.
+- [x] Allocation rules engine or staged profiles **documented + tested**.
+- [x] No silent stock moves — human-approved or policy-gated where required.
+- [x] `GAP_MAP.md` **Allocation** row upgraded from 🟡 with stated limits.
+
+**References:** [`WMS_ALLOCATION_STRATEGIES.md`](./WMS_ALLOCATION_STRATEGIES.md).
 
 ---
 
