@@ -1,0 +1,31 @@
+{
+  "sprint": 22,
+  "title": "Integrated Planning & S&OP Bridge",
+  "ampProgram": "AMP22",
+  "workspacePath": "/assistant/planning-bridge",
+  "guardrails": [
+    "Planning packets and Twin scenario drafts are advisory — changing SO lines, POs, inventory reservations, WMS tasks, shipments, or executing Twin scenarios stays outside this sprint workflow.",
+    "Queue review writes audit events and AssistantActionQueueItem rows — it does not apply plans or mutate operational records automatically."
+  ],
+  "scenarios": [
+    {
+      "id": "S22-01-create-packet",
+      "steps": [
+        "Sign in with orders or CRM demand view, suppliers or products supply view, and WMS or Control Tower execution view.",
+        "Open /assistant/planning-bridge (also linked as Sprint 22 in the assistant subnav).",
+        "Click Create Sprint 22 packet and confirm AssistantPlanningPacket plus Twin scenario draft persistence."
+      ],
+      "passWhen": "POST create_packet returns 201; GET snapshot lists the packet; SO/PO/inventory/WMS/Twin operational rows unchanged."
+    },
+    {
+      "id": "S22-02-queue-review",
+      "steps": ["Optionally add an approval note on a packet.", "Queue planning review."],
+      "passWhen": "Packet status REVIEW_QUEUED; audit answerKind planning_bridge_review; action queue references assistant_planning_packet."
+    },
+    {
+      "id": "S22-03-constraints-evidence",
+      "steps": ["Ensure demo tenant has open WMS tasks or capacity plans or MD quality runs in horizon.", "Reload preview or create a packet."],
+      "passWhen": "constraintJson lists sources with severity; recommendations remain human-approved."
+    }
+  ]
+}

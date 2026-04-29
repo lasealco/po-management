@@ -408,6 +408,13 @@ export function AssistantSubnav() {
       >
         Sprint 21
       </Link>
+      <Link
+        href="/assistant/planning-bridge"
+        className={planningBridge ? appNavActiveClass : appNavInactiveClass}
+        title="Sprint 22 Integrated Planning & S&OP Bridge (AMP22)"
+      >
+        Sprint 22
+      </Link>
       {advancedProgramLinks.map((program) => (
         <Link
           key={program.slug}

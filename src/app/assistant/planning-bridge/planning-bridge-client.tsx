@@ -97,8 +97,8 @@ export function PlanningBridgeClient({ initialSnapshot }: { initialSnapshot: Sna
       {message ? <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{message}</div> : null}
 
       <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">AMP22</p>
-        <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">AI Planning &amp; S&amp;OP Bridge</h2>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Sprint 22 · AMP22</p>
+        <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">Integrated Planning &amp; S&amp;OP Bridge</h2>
         <p className="mt-2 max-w-3xl text-sm text-zinc-600">
           Combine open demand, inbound supply, available inventory, warehouse pressure, and execution constraints into
           a planning packet and Twin scenario draft. The assistant creates a plan for approval, not source-record changes.
@@ -119,10 +119,10 @@ export function PlanningBridgeClient({ initialSnapshot }: { initialSnapshot: Sna
         <button
           type="button"
           disabled={busy === "create_packet"}
-          onClick={() => void post("create_packet", {}, "Planning bridge packet created.")}
+          onClick={() => void post("create_packet", {}, "Sprint 22 planning packet created.")}
           className="mt-5 rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
         >
-          Create planning packet
+          Create Sprint 22 packet
         </button>
       </section>
 
@@ -173,7 +173,7 @@ export function PlanningBridgeClient({ initialSnapshot }: { initialSnapshot: Sna
       </section>
 
       <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-        <h3 className="text-lg font-semibold text-zinc-950">Planning Packets</h3>
+        <h3 className="text-lg font-semibold text-zinc-950">Durable Sprint packets</h3>
         <div className="mt-4 space-y-4">
           {data.packets.map((packet) => {
             const gaps = readArray<{ productLabel: string; shortageUnits: number; coveragePct: number }>(packet.gapAnalysisJson, "gaps");
@@ -227,7 +227,11 @@ export function PlanningBridgeClient({ initialSnapshot }: { initialSnapshot: Sna
               </article>
             );
           })}
-          {data.packets.length === 0 ? <p className="rounded-xl border border-dashed border-zinc-300 p-6 text-sm text-zinc-600">No planning bridge packets yet.</p> : null}
+          {data.packets.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-zinc-300 p-6 text-sm text-zinc-600">
+              No Sprint 22 packets yet. Create the first Integrated Planning &amp; S&amp;OP packet from the live preview.
+            </p>
+          ) : null}
         </div>
       </section>
     </div>

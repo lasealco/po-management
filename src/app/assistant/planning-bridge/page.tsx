@@ -14,7 +14,7 @@ export default async function AssistantPlanningBridgePage() {
     (viewerHas(access.grantSet, "org.suppliers", "view") || viewerHas(access.grantSet, "org.products", "view")) &&
     (viewerHas(access.grantSet, "org.wms", "view") || viewerHas(access.grantSet, "org.controltower", "view"));
   if (!canOpen) {
-    return <AccessDenied title="Planning bridge" message="You need demand, supply, and execution view access to open AMP22." />;
+    return <AccessDenied title="Integrated Planning & S&OP Bridge" message="You need demand, supply, and execution view access to open Sprint 22 (AMP22)." />;
   }
   const response = await GET();
   const snapshot = await response.json();
