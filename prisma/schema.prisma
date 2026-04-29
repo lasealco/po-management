@@ -47,156 +47,157 @@ model Tenant {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  users                                    User[]
-  orgUnits                                 OrgUnit[]
-  roles                                    Role[]
-  suppliers                                Supplier[]
-  products                                 Product[]
-  productCategories                        ProductCategory[]
-  productDivisions                         ProductDivision[]
-  supplierOffices                          SupplierOffice[]
-  supplierContacts                         SupplierContact[]
-  supplierServiceCapabilities              SupplierServiceCapability[]
-  orders                                   PurchaseOrder[]
-  salesOrders                              SalesOrder[]
-  salesOrderLines                          SalesOrderLine[]
-  warehouses                               Warehouse[]
-  warehouseZones                           WarehouseZone[]
-  warehouseBins                            WarehouseBin[]
-  inventoryBalances                        InventoryBalance[]
-  inventoryMovements                       InventoryMovement[]
-  wmsTasks                                 WmsTask[]
-  wmsWaves                                 WmsWave[]
-  replenishmentRules                       ReplenishmentRule[]
-  outboundOrders                           OutboundOrder[]
-  outboundOrderLines                       OutboundOrderLine[]
-  wmsBillingRates                          WmsBillingRate[]
-  wmsBillingEvents                         WmsBillingEvent[]
-  wmsBillingInvoiceRuns                    WmsBillingInvoiceRun[]
-  wmsBillingInvoiceLines                   WmsBillingInvoiceLine[]
-  wmsSavedLedgerViews                      WmsSavedLedgerView[]
-  loadPlans                                LoadPlan[]
-  userPreferences                          UserPreference[]
-  workflows                                Workflow[]
-  crmLeads                                 CrmLead[]
-  crmAccounts                              CrmAccount[]
-  crmContacts                              CrmContact[]
-  crmOpportunities                         CrmOpportunity[]
-  crmActivities                            CrmActivity[]
-  crmQuotes                                CrmQuote[]
-  ctTrackingMilestones                     CtTrackingMilestone[]
-  ctShipmentDocuments                      CtShipmentDocument[]
-  ctShipmentNotes                          CtShipmentNote[]
-  ctFinancialSnapshots                     CtShipmentFinancialSnapshot[]
-  ctAlerts                                 CtAlert[]
-  ctExceptions                             CtException[]
-  ctAuditLogs                              CtAuditLog[]
-  ctSavedFilters                           CtSavedFilter[]
-  ctSavedReports                           CtSavedReport[]
-  ctDashboardWidgets                       CtDashboardWidget[]
-  ctShipmentLegs                           CtShipmentLeg[]
-  ctShipmentContainers                     CtShipmentContainer[]
-  ctFxRates                                CtFxRate[]
-  ctShipmentCostLines                      CtShipmentCostLine[]
-  ctMilestoneTemplatePacks                 CtMilestoneTemplatePack[]
-  ctContainerCargoLines                    CtContainerCargoLine[]
-  ctExceptionCodes                         CtExceptionCode[]
-  locationCodes                            LocationCode[]
-  ctReportSchedules                        CtReportSchedule[]
-  tariffLegalEntities                      TariffLegalEntity[]
-  tariffContractHeaders                    TariffContractHeader[]
-  tariffImportBatches                      TariffImportBatch[]
-  tariffShipmentApplications               TariffShipmentApplication[]
-  quoteRequests                            QuoteRequest[]
-  transportationProcurementPlans           TransportationProcurementPlan[]
-  bookingPricingSnapshots                  BookingPricingSnapshot[]
-  invoiceIntakes                           InvoiceIntake[]
-  invoiceToleranceRules                    InvoiceToleranceRule[]
-  invoiceChargeAliases                     InvoiceChargeAlias[]
-  apiHubConnectors                         ApiHubConnector[]
-  apiHubConnectorAuditLogs                 ApiHubConnectorAuditLog[]
-  apiHubIngestionRuns                      ApiHubIngestionRun[]
-  apiHubIngestionApplyIdempotencies        ApiHubIngestionApplyIdempotency[]
-  apiHubIngestionRunAuditLogs              ApiHubIngestionRunAuditLog[]
-  apiHubMappingTemplates                   ApiHubMappingTemplate[]
-  apiHubMappingTemplateAuditLogs           ApiHubMappingTemplateAuditLog[]
-  apiHubMappingAnalysisJobs                ApiHubMappingAnalysisJob[]
-  apiHubStagingBatches                     ApiHubStagingBatch[]
-  apiHubStagingRows                        ApiHubStagingRow[]
-  supplyChainTwinEntitySnapshots           SupplyChainTwinEntitySnapshot[]
-  supplyChainTwinEntityEdges               SupplyChainTwinEntityEdge[]
-  supplyChainTwinIngestEvents              SupplyChainTwinIngestEvent[]
-  supplyChainTwinRiskSignals               SupplyChainTwinRiskSignal[]
-  supplyChainTwinScenarioDrafts            SupplyChainTwinScenarioDraft[]
-  supplyChainTwinScenarioRevisions         SupplyChainTwinScenarioRevision[]
-  supplyChainTwinAssistantInsights         SupplyChainTwinAssistantInsight[]
-  scriExternalEvents                       ScriExternalEvent[]
-  scriEventAffectedEntities                ScriEventAffectedEntity[]
-  scriEventReviewLogs                      ScriEventReviewLog[]
-  scriEventTaskLinks                       ScriEventTaskLink[]
-  scriEventRecommendations                 ScriEventRecommendation[]
-  scriWatchlistRules                       ScriWatchlistRule[]
-  scriTenantTuning                         ScriTenantTuning?
-  apiHubAssistantReviewItems               ApiHubAssistantReviewItem[]
-  supplierOnboardingTasks                  SupplierOnboardingTask[]
-  srmSupplierDocuments                     SrmSupplierDocument[]
-  srmSupplierDocumentAuditLogs             SrmSupplierDocumentAuditLog[]
-  srmIntegrationIdempotencies              SrmIntegrationIdempotency[]
-  srmOperatorNotifications                 SrmOperatorNotification[]
-  companyLegalEntities                     CompanyLegalEntity[]
-  companyLegalEntityAuditLogs              CompanyLegalEntityAuditLog[]
+  users                                       User[]
+  orgUnits                                    OrgUnit[]
+  roles                                       Role[]
+  suppliers                                   Supplier[]
+  products                                    Product[]
+  productCategories                           ProductCategory[]
+  productDivisions                            ProductDivision[]
+  supplierOffices                             SupplierOffice[]
+  supplierContacts                            SupplierContact[]
+  supplierServiceCapabilities                 SupplierServiceCapability[]
+  orders                                      PurchaseOrder[]
+  salesOrders                                 SalesOrder[]
+  salesOrderLines                             SalesOrderLine[]
+  warehouses                                  Warehouse[]
+  warehouseZones                              WarehouseZone[]
+  warehouseBins                               WarehouseBin[]
+  inventoryBalances                           InventoryBalance[]
+  inventoryMovements                          InventoryMovement[]
+  wmsTasks                                    WmsTask[]
+  wmsWaves                                    WmsWave[]
+  replenishmentRules                          ReplenishmentRule[]
+  outboundOrders                              OutboundOrder[]
+  outboundOrderLines                          OutboundOrderLine[]
+  wmsBillingRates                             WmsBillingRate[]
+  wmsBillingEvents                            WmsBillingEvent[]
+  wmsBillingInvoiceRuns                       WmsBillingInvoiceRun[]
+  wmsBillingInvoiceLines                      WmsBillingInvoiceLine[]
+  wmsSavedLedgerViews                         WmsSavedLedgerView[]
+  loadPlans                                   LoadPlan[]
+  userPreferences                             UserPreference[]
+  workflows                                   Workflow[]
+  crmLeads                                    CrmLead[]
+  crmAccounts                                 CrmAccount[]
+  crmContacts                                 CrmContact[]
+  crmOpportunities                            CrmOpportunity[]
+  crmActivities                               CrmActivity[]
+  crmQuotes                                   CrmQuote[]
+  ctTrackingMilestones                        CtTrackingMilestone[]
+  ctShipmentDocuments                         CtShipmentDocument[]
+  ctShipmentNotes                             CtShipmentNote[]
+  ctFinancialSnapshots                        CtShipmentFinancialSnapshot[]
+  ctAlerts                                    CtAlert[]
+  ctExceptions                                CtException[]
+  ctAuditLogs                                 CtAuditLog[]
+  ctSavedFilters                              CtSavedFilter[]
+  ctSavedReports                              CtSavedReport[]
+  ctDashboardWidgets                          CtDashboardWidget[]
+  ctShipmentLegs                              CtShipmentLeg[]
+  ctShipmentContainers                        CtShipmentContainer[]
+  ctFxRates                                   CtFxRate[]
+  ctShipmentCostLines                         CtShipmentCostLine[]
+  ctMilestoneTemplatePacks                    CtMilestoneTemplatePack[]
+  ctContainerCargoLines                       CtContainerCargoLine[]
+  ctExceptionCodes                            CtExceptionCode[]
+  locationCodes                               LocationCode[]
+  ctReportSchedules                           CtReportSchedule[]
+  tariffLegalEntities                         TariffLegalEntity[]
+  tariffContractHeaders                       TariffContractHeader[]
+  tariffImportBatches                         TariffImportBatch[]
+  tariffShipmentApplications                  TariffShipmentApplication[]
+  quoteRequests                               QuoteRequest[]
+  transportationProcurementPlans              TransportationProcurementPlan[]
+  bookingPricingSnapshots                     BookingPricingSnapshot[]
+  invoiceIntakes                              InvoiceIntake[]
+  invoiceToleranceRules                       InvoiceToleranceRule[]
+  invoiceChargeAliases                        InvoiceChargeAlias[]
+  apiHubConnectors                            ApiHubConnector[]
+  apiHubConnectorAuditLogs                    ApiHubConnectorAuditLog[]
+  apiHubIngestionRuns                         ApiHubIngestionRun[]
+  apiHubIngestionApplyIdempotencies           ApiHubIngestionApplyIdempotency[]
+  apiHubIngestionRunAuditLogs                 ApiHubIngestionRunAuditLog[]
+  apiHubMappingTemplates                      ApiHubMappingTemplate[]
+  apiHubMappingTemplateAuditLogs              ApiHubMappingTemplateAuditLog[]
+  apiHubMappingAnalysisJobs                   ApiHubMappingAnalysisJob[]
+  apiHubStagingBatches                        ApiHubStagingBatch[]
+  apiHubStagingRows                           ApiHubStagingRow[]
+  supplyChainTwinEntitySnapshots              SupplyChainTwinEntitySnapshot[]
+  supplyChainTwinEntityEdges                  SupplyChainTwinEntityEdge[]
+  supplyChainTwinIngestEvents                 SupplyChainTwinIngestEvent[]
+  supplyChainTwinRiskSignals                  SupplyChainTwinRiskSignal[]
+  supplyChainTwinScenarioDrafts               SupplyChainTwinScenarioDraft[]
+  supplyChainTwinScenarioRevisions            SupplyChainTwinScenarioRevision[]
+  supplyChainTwinAssistantInsights            SupplyChainTwinAssistantInsight[]
+  scriExternalEvents                          ScriExternalEvent[]
+  scriEventAffectedEntities                   ScriEventAffectedEntity[]
+  scriEventReviewLogs                         ScriEventReviewLog[]
+  scriEventTaskLinks                          ScriEventTaskLink[]
+  scriEventRecommendations                    ScriEventRecommendation[]
+  scriWatchlistRules                          ScriWatchlistRule[]
+  scriTenantTuning                            ScriTenantTuning?
+  apiHubAssistantReviewItems                  ApiHubAssistantReviewItem[]
+  supplierOnboardingTasks                     SupplierOnboardingTask[]
+  srmSupplierDocuments                        SrmSupplierDocument[]
+  srmSupplierDocumentAuditLogs                SrmSupplierDocumentAuditLog[]
+  srmIntegrationIdempotencies                 SrmIntegrationIdempotency[]
+  srmOperatorNotifications                    SrmOperatorNotification[]
+  companyLegalEntities                        CompanyLegalEntity[]
+  companyLegalEntityAuditLogs                 CompanyLegalEntityAuditLog[]
   /// MP4: assistant / sales email pilot (inbound items + staged reply, confirm-before-send).
-  assistantEmailThreads                    AssistantEmailThread[]
-  assistantAuditEvents                     AssistantAuditEvent[]
-  assistantEvidenceRecords                 AssistantEvidenceRecord[]
-  assistantReviewExamples                  AssistantReviewExample[]
-  assistantPromptLibraryItems              AssistantPromptLibraryItem[]
-  assistantReleaseGates                    AssistantReleaseGate[]
-  assistantAutomationPolicies              AssistantAutomationPolicy[]
-  assistantAutomationShadowRuns            AssistantAutomationShadowRun[]
-  assistantAdminControls                   AssistantAdminControl[]
-  assistantOperatingReports                AssistantOperatingReport[]
-  assistantOrderOrchestrationPlans         AssistantOrderOrchestrationPlan[]
-  assistantWarehouseCapacityPlans          AssistantWarehouseCapacityPlan[]
-  assistantExceptionIncidents              AssistantExceptionIncident[]
-  assistantCustomerBriefs                  AssistantCustomerBrief[]
-  assistantFinancePackets                  AssistantFinancePacket[]
-  assistantRiskWarRooms                    AssistantRiskWarRoom[]
-  assistantMasterDataQualityRuns           AssistantMasterDataQualityRun[]
-  assistantPlanningPackets                 AssistantPlanningPacket[]
-  assistantContractCompliancePackets       AssistantContractCompliancePacket[]
-  assistantSustainabilityPackets           AssistantSustainabilityPacket[]
-  assistantPartnerEcosystemPackets         AssistantPartnerEcosystemPacket[]
-  assistantFrontlinePackets                AssistantFrontlinePacket[]
-  assistantMeetingIntelligencePackets      AssistantMeetingIntelligencePacket[]
-  assistantObservabilityIncidents          AssistantObservabilityIncident[]
-  assistantGovernancePackets               AssistantGovernancePacket[]
-  assistantRolloutFactoryPackets           AssistantRolloutFactoryPacket[]
-  assistantValueRealizationPackets         AssistantValueRealizationPacket[]
-  assistantAutonomousOperatingLoops        AssistantAutonomousOperatingLoop[]
-  assistantNetworkDesignPackets            AssistantNetworkDesignPacket[]
-  assistantSimulationStudioPackets         AssistantSimulationStudioPacket[]
-  assistantContinuousPlanningPackets       AssistantContinuousPlanningPacket[]
-  assistantRevenueOperationsPackets        AssistantRevenueOperationsPacket[]
-  assistantAdvancedProgramPackets          AssistantAdvancedProgramPacket[]
-  assistantAgentGovernancePackets          AssistantAgentGovernancePacket[]
-  assistantEnterpriseRiskControlPackets    AssistantEnterpriseRiskControlPacket[]
-  assistantPrivacySecurityTrustPackets     AssistantPrivacySecurityTrustPacket[]
-  assistantExecutiveOperatingPackets       AssistantExecutiveOperatingPacket[]
-  assistantCollaborationResiliencePackets  AssistantCollaborationResiliencePacket[]
-  assistantCommercialRevenueControlPackets AssistantCommercialRevenueControlPacket[]
-  assistantSupplyNetworkTwinPackets        AssistantSupplyNetworkTwinPacket[]
-  assistantWarehouseFulfillmentPackets     AssistantWarehouseFulfillmentPacket[]
-  assistantDataIntegrationPackets          AssistantDataIntegrationPacket[]
-  assistantAiQualityReleasePackets         AssistantAiQualityReleasePacket[]
-  assistantTenantRolloutPackets            AssistantTenantRolloutPacket[]
-  assistantFinanceCashControlPackets       AssistantFinanceCashControlPacket[]
-  assistantProductLifecyclePackets         AssistantProductLifecyclePacket[]
-  assistantPlatformReliabilityPackets      AssistantPlatformReliabilityPacket[]
-  assistantEnterpriseOsPackets             AssistantEnterpriseOsPacket[]
-  assistantActionQueue                     AssistantActionQueueItem[]
-  assistantPlaybookTemplates               AssistantPlaybookTemplate[]
-  assistantPlaybookRuns                    AssistantPlaybookRun[]
+  assistantEmailThreads                       AssistantEmailThread[]
+  assistantAuditEvents                        AssistantAuditEvent[]
+  assistantEvidenceRecords                    AssistantEvidenceRecord[]
+  assistantReviewExamples                     AssistantReviewExample[]
+  assistantPromptLibraryItems                 AssistantPromptLibraryItem[]
+  assistantReleaseGates                       AssistantReleaseGate[]
+  assistantAutomationPolicies                 AssistantAutomationPolicy[]
+  assistantAutomationShadowRuns               AssistantAutomationShadowRun[]
+  assistantAdminControls                      AssistantAdminControl[]
+  assistantOperatingReports                   AssistantOperatingReport[]
+  assistantOrderOrchestrationPlans            AssistantOrderOrchestrationPlan[]
+  assistantWarehouseCapacityPlans             AssistantWarehouseCapacityPlan[]
+  assistantExceptionIncidents                 AssistantExceptionIncident[]
+  assistantCustomerBriefs                     AssistantCustomerBrief[]
+  assistantFinancePackets                     AssistantFinancePacket[]
+  assistantRiskWarRooms                       AssistantRiskWarRoom[]
+  assistantMasterDataQualityRuns              AssistantMasterDataQualityRun[]
+  assistantPlanningPackets                    AssistantPlanningPacket[]
+  assistantContractCompliancePackets          AssistantContractCompliancePacket[]
+  assistantSustainabilityPackets              AssistantSustainabilityPacket[]
+  assistantPartnerEcosystemPackets            AssistantPartnerEcosystemPacket[]
+  assistantFrontlinePackets                   AssistantFrontlinePacket[]
+  assistantMeetingIntelligencePackets         AssistantMeetingIntelligencePacket[]
+  assistantObservabilityIncidents             AssistantObservabilityIncident[]
+  assistantGovernancePackets                  AssistantGovernancePacket[]
+  assistantRolloutFactoryPackets              AssistantRolloutFactoryPacket[]
+  assistantValueRealizationPackets            AssistantValueRealizationPacket[]
+  assistantAutonomousOperatingLoops           AssistantAutonomousOperatingLoop[]
+  assistantNetworkDesignPackets               AssistantNetworkDesignPacket[]
+  assistantSimulationStudioPackets            AssistantSimulationStudioPacket[]
+  assistantContinuousPlanningPackets          AssistantContinuousPlanningPacket[]
+  assistantRevenueOperationsPackets           AssistantRevenueOperationsPacket[]
+  assistantAdvancedProgramPackets             AssistantAdvancedProgramPacket[]
+  assistantAgentGovernancePackets             AssistantAgentGovernancePacket[]
+  assistantEnterpriseRiskControlPackets       AssistantEnterpriseRiskControlPacket[]
+  assistantPrivacySecurityTrustPackets        AssistantPrivacySecurityTrustPacket[]
+  assistantExecutiveOperatingPackets          AssistantExecutiveOperatingPacket[]
+  assistantCollaborationResiliencePackets     AssistantCollaborationResiliencePacket[]
+  assistantCommercialRevenueControlPackets    AssistantCommercialRevenueControlPacket[]
+  assistantSupplyNetworkTwinPackets           AssistantSupplyNetworkTwinPacket[]
+  assistantWarehouseFulfillmentPackets        AssistantWarehouseFulfillmentPacket[]
+  assistantDataIntegrationPackets             AssistantDataIntegrationPacket[]
+  assistantAiQualityReleasePackets            AssistantAiQualityReleasePacket[]
+  assistantTenantRolloutPackets               AssistantTenantRolloutPacket[]
+  assistantFinanceCashControlPackets          AssistantFinanceCashControlPacket[]
+  assistantProductLifecyclePackets            AssistantProductLifecyclePacket[]
+  assistantPlatformReliabilityPackets         AssistantPlatformReliabilityPacket[]
+  assistantEnterpriseOsPackets                AssistantEnterpriseOsPacket[]
+  assistantTransportCarrierProcurementPackets AssistantTransportCarrierProcurementPacket[]
+  assistantActionQueue                        AssistantActionQueueItem[]
+  assistantPlaybookTemplates                  AssistantPlaybookTemplate[]
+  assistantPlaybookRuns                       AssistantPlaybookRun[]
 }
 
 /// MP15/MP18: durable assistant answer/action memory with grounding and feedback.
@@ -1743,6 +1744,45 @@ model AssistantEnterpriseOsPacket {
   @@index([tenantId, autonomyMode, updatedAt])
 }
 
+/// Sprint 16: durable transportation and carrier procurement packet for RFQs, tariff/booking snapshots, lane execution, tender allocation, carrier scorecards, and invoice-to-booking feedback — review-only; no silent carrier or settlement changes.
+model AssistantTransportCarrierProcurementPacket {
+  id                     String    @id @default(cuid())
+  tenantId               String
+  createdByUserId        String?
+  approvedByUserId       String?
+  title                  String
+  status                 String    @default("DRAFT") @db.VarChar(32)
+  procurementScore       Int       @default(0)
+  rfqRiskCount           Int       @default(0)
+  tariffBookingRiskCount Int       @default(0)
+  laneRiskCount          Int       @default(0)
+  tenderRiskCount        Int       @default(0)
+  invoiceVarianceCount   Int       @default(0)
+  executionRiskCount     Int       @default(0)
+  sourceSummaryJson      Json
+  rfqTariffJson          Json
+  bookingPricingJson     Json
+  laneExecutionJson      Json
+  carrierPerformanceJson Json
+  tenderAllocationJson   Json
+  invoiceFeedbackJson    Json
+  responsePlanJson       Json
+  rollbackPlanJson       Json
+  leadershipSummary      String    @db.Text
+  actionQueueItemId      String?
+  approvedAt             DateTime?
+  approvalNote           String?   @db.Text
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator  User?  @relation("AssistantTransportCarrierProcurementPacketCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  approver User?  @relation("AssistantTransportCarrierProcurementPacketApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, updatedAt])
+  @@index([tenantId, procurementScore, updatedAt])
+}
+
 /// AMP7: inspectable grounding ledger extracted from assistant answers and reviewer additions.
 model AssistantEvidenceRecord {
   id              String    @id @default(cuid())
@@ -2265,176 +2305,178 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  tenant                                           Tenant                                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  userRoles                                        UserRole[]
-  orderChats                                       OrderChatMessage[]
-  purchaseOrders                                   PurchaseOrder[]
-  salesOrdersCreated                               SalesOrder[]
-  salesOrdersAssistantReviewed                     SalesOrder[]                              @relation("SalesOrderAssistantReviewedBy")
-  orderTransitionLogs                              OrderTransitionLog[]
-  splitProposals                                   SplitProposal[]
-  shipmentsCreated                                 Shipment[]
-  shipmentBookingsCreated                          ShipmentBooking[]                         @relation("ShipmentBookingCreatedBy")
-  shipmentBookingsUpdated                          ShipmentBooking[]                         @relation("ShipmentBookingUpdatedBy")
-  shipmentMilestonesUpdated                        ShipmentMilestone[]
-  inventoryMovementsCreated                        InventoryMovement[]
-  wmsTasksCreated                                  WmsTask[]                                 @relation("WmsTaskCreatedBy")
-  wmsTasksCompleted                                WmsTask[]                                 @relation("WmsTaskCompletedBy")
-  wmsWavesCreated                                  WmsWave[]
-  outboundOrdersCreated                            OutboundOrder[]
-  loadPlansCreated                                 LoadPlan[]
-  preferences                                      UserPreference[]
-  crmLeadsOwned                                    CrmLead[]                                 @relation("CrmLeadOwner")
-  crmAccountsOwned                                 CrmAccount[]                              @relation("CrmAccountOwner")
-  crmContactsOwned                                 CrmContact[]                              @relation("CrmContactOwner")
-  crmOpportunitiesOwned                            CrmOpportunity[]                          @relation("CrmOpportunityOwner")
-  crmActivitiesOwned                               CrmActivity[]                             @relation("CrmActivityOwner")
-  crmQuotesOwned                                   CrmQuote[]                                @relation("CrmQuoteOwner")
-  wmsBillingInvoiceRunsCreated                     WmsBillingInvoiceRun[]                    @relation("WmsBillingInvoiceRunCreatedBy")
-  ctTrackingMilestonesUpdated                      CtTrackingMilestone[]
-  ctShipmentDocumentsUploaded                      CtShipmentDocument[]
-  ctShipmentNotesCreated                           CtShipmentNote[]
-  ctFinancialSnapshotsCreated                      CtShipmentFinancialSnapshot[]
-  ctAlertsOwned                                    CtAlert[]                                 @relation("CtAlertOwner")
-  ctAlertsAcknowledged                             CtAlert[]                                 @relation("CtAlertAckBy")
-  ctExceptionsOwned                                CtException[]                             @relation("CtExceptionOwner")
-  ctAuditLogsActor                                 CtAuditLog[]
-  ctSavedFilters                                   CtSavedFilter[]
-  ctSavedReports                                   CtSavedReport[]
-  ctDashboardWidgets                               CtDashboardWidget[]
-  ctReportSchedules                                CtReportSchedule[]
-  ctShipmentCostLinesCreated                       CtShipmentCostLine[]
-  shipmentsOpsAssigned                             Shipment[]                                @relation("ShipmentOpsAssignee")
+  tenant                                              Tenant                                       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userRoles                                           UserRole[]
+  orderChats                                          OrderChatMessage[]
+  purchaseOrders                                      PurchaseOrder[]
+  salesOrdersCreated                                  SalesOrder[]
+  salesOrdersAssistantReviewed                        SalesOrder[]                                 @relation("SalesOrderAssistantReviewedBy")
+  orderTransitionLogs                                 OrderTransitionLog[]
+  splitProposals                                      SplitProposal[]
+  shipmentsCreated                                    Shipment[]
+  shipmentBookingsCreated                             ShipmentBooking[]                            @relation("ShipmentBookingCreatedBy")
+  shipmentBookingsUpdated                             ShipmentBooking[]                            @relation("ShipmentBookingUpdatedBy")
+  shipmentMilestonesUpdated                           ShipmentMilestone[]
+  inventoryMovementsCreated                           InventoryMovement[]
+  wmsTasksCreated                                     WmsTask[]                                    @relation("WmsTaskCreatedBy")
+  wmsTasksCompleted                                   WmsTask[]                                    @relation("WmsTaskCompletedBy")
+  wmsWavesCreated                                     WmsWave[]
+  outboundOrdersCreated                               OutboundOrder[]
+  loadPlansCreated                                    LoadPlan[]
+  preferences                                         UserPreference[]
+  crmLeadsOwned                                       CrmLead[]                                    @relation("CrmLeadOwner")
+  crmAccountsOwned                                    CrmAccount[]                                 @relation("CrmAccountOwner")
+  crmContactsOwned                                    CrmContact[]                                 @relation("CrmContactOwner")
+  crmOpportunitiesOwned                               CrmOpportunity[]                             @relation("CrmOpportunityOwner")
+  crmActivitiesOwned                                  CrmActivity[]                                @relation("CrmActivityOwner")
+  crmQuotesOwned                                      CrmQuote[]                                   @relation("CrmQuoteOwner")
+  wmsBillingInvoiceRunsCreated                        WmsBillingInvoiceRun[]                       @relation("WmsBillingInvoiceRunCreatedBy")
+  ctTrackingMilestonesUpdated                         CtTrackingMilestone[]
+  ctShipmentDocumentsUploaded                         CtShipmentDocument[]
+  ctShipmentNotesCreated                              CtShipmentNote[]
+  ctFinancialSnapshotsCreated                         CtShipmentFinancialSnapshot[]
+  ctAlertsOwned                                       CtAlert[]                                    @relation("CtAlertOwner")
+  ctAlertsAcknowledged                                CtAlert[]                                    @relation("CtAlertAckBy")
+  ctExceptionsOwned                                   CtException[]                                @relation("CtExceptionOwner")
+  ctAuditLogsActor                                    CtAuditLog[]
+  ctSavedFilters                                      CtSavedFilter[]
+  ctSavedReports                                      CtSavedReport[]
+  ctDashboardWidgets                                  CtDashboardWidget[]
+  ctReportSchedules                                   CtReportSchedule[]
+  ctShipmentCostLinesCreated                          CtShipmentCostLine[]
+  shipmentsOpsAssigned                                Shipment[]                                   @relation("ShipmentOpsAssignee")
   /// When set, Control Tower (and similar) list/detail is limited to shipments tagged with this CRM account.
-  customerCrmAccountId                             String?
-  customerCrmAccount                               CrmAccount?                               @relation("UserCustomerPortalScope", fields: [customerCrmAccountId], references: [id], onDelete: SetNull)
+  customerCrmAccountId                                String?
+  customerCrmAccount                                  CrmAccount?                                  @relation("UserCustomerPortalScope", fields: [customerCrmAccountId], references: [id], onDelete: SetNull)
   /// Phase H: supplier-portal user linked to the supplier org they represent (same tenant).
-  portalLinkedSupplierId                           String?
-  portalLinkedSupplier                             Supplier?                                 @relation("UserPortalLinkedSupplier", fields: [portalLinkedSupplierId], references: [id], onDelete: SetNull)
-  tariffContractHeadersOwned                       TariffContractHeader[]                    @relation("TariffContractHeaderOwner")
-  tariffApprovalRecords                            TariffApprovalRecord[]                    @relation("TariffApprovalApprover")
-  tariffAuditLogs                                  TariffAuditLog[]                          @relation("TariffAuditLogActor")
-  quoteRequestsOwned                               QuoteRequest[]                            @relation("QuoteRequestOwner")
-  quoteClarificationsAuthored                      QuoteClarificationMessage[]               @relation("QuoteClarificationAuthor")
-  transportationProcurementPlansCreated            TransportationProcurementPlan[]           @relation("TransportationProcurementPlanCreator")
-  bookingPricingSnapshotsCreated                   BookingPricingSnapshot[]                  @relation("BookingPricingSnapshotCreator")
-  invoiceIntakesCreated                            InvoiceIntake[]                           @relation("InvoiceIntakeCreator")
-  invoiceIntakesReviewed                           InvoiceIntake[]                           @relation("InvoiceIntakeReviewer")
-  apiHubConnectorAuditLogs                         ApiHubConnectorAuditLog[]
-  apiHubIngestionRunsRequested                     ApiHubIngestionRun[]
-  apiHubMappingTemplatesCreated                    ApiHubMappingTemplate[]                   @relation("ApiHubMappingTemplateCreatedBy")
-  apiHubMappingTemplateAuditLogs                   ApiHubMappingTemplateAuditLog[]
-  apiHubIngestionRunAuditLogs                      ApiHubIngestionRunAuditLog[]
-  apiHubMappingAnalysisJobsRequested               ApiHubMappingAnalysisJob[]
-  apiHubStagingBatchesCreated                      ApiHubStagingBatch[]
-  apiHubAssistantReviewItemsCreated                ApiHubAssistantReviewItem[]               @relation("ApiHubAssistantReviewItemCreator")
-  assistantAdminControlsUpdated                    AssistantAdminControl[]                   @relation("AssistantAdminControlUpdater")
-  assistantOperatingReportsCreated                 AssistantOperatingReport[]                @relation("AssistantOperatingReportCreator")
-  assistantOrderOrchestrationPlansCreated          AssistantOrderOrchestrationPlan[]         @relation("AssistantOrderOrchestrationPlanCreator")
-  assistantWarehouseCapacityPlansCreated           AssistantWarehouseCapacityPlan[]          @relation("AssistantWarehouseCapacityPlanCreator")
-  assistantExceptionIncidentsCreated               AssistantExceptionIncident[]              @relation("AssistantExceptionIncidentCreator")
-  assistantCustomerBriefsCreated                   AssistantCustomerBrief[]                  @relation("AssistantCustomerBriefCreator")
-  assistantCustomerBriefsApproved                  AssistantCustomerBrief[]                  @relation("AssistantCustomerBriefApprover")
-  assistantFinancePacketsCreated                   AssistantFinancePacket[]                  @relation("AssistantFinancePacketCreator")
-  assistantFinancePacketsApproved                  AssistantFinancePacket[]                  @relation("AssistantFinancePacketApprover")
-  assistantRiskWarRoomsCreated                     AssistantRiskWarRoom[]                    @relation("AssistantRiskWarRoomCreator")
-  assistantRiskWarRoomsApproved                    AssistantRiskWarRoom[]                    @relation("AssistantRiskWarRoomApprover")
-  assistantMasterDataQualityRunsCreated            AssistantMasterDataQualityRun[]           @relation("AssistantMasterDataQualityRunCreator")
-  assistantMasterDataQualityRunsApproved           AssistantMasterDataQualityRun[]           @relation("AssistantMasterDataQualityRunApprover")
-  assistantPlanningPacketsCreated                  AssistantPlanningPacket[]                 @relation("AssistantPlanningPacketCreator")
-  assistantPlanningPacketsApproved                 AssistantPlanningPacket[]                 @relation("AssistantPlanningPacketApprover")
-  assistantContractCompliancePacketsCreated        AssistantContractCompliancePacket[]       @relation("AssistantContractCompliancePacketCreator")
-  assistantContractCompliancePacketsApproved       AssistantContractCompliancePacket[]       @relation("AssistantContractCompliancePacketApprover")
-  assistantSustainabilityPacketsCreated            AssistantSustainabilityPacket[]           @relation("AssistantSustainabilityPacketCreator")
-  assistantSustainabilityPacketsApproved           AssistantSustainabilityPacket[]           @relation("AssistantSustainabilityPacketApprover")
-  assistantPartnerEcosystemPacketsCreated          AssistantPartnerEcosystemPacket[]         @relation("AssistantPartnerEcosystemPacketCreator")
-  assistantPartnerEcosystemPacketsApproved         AssistantPartnerEcosystemPacket[]         @relation("AssistantPartnerEcosystemPacketApprover")
-  assistantFrontlinePacketsCreated                 AssistantFrontlinePacket[]                @relation("AssistantFrontlinePacketCreator")
-  assistantFrontlinePacketsApproved                AssistantFrontlinePacket[]                @relation("AssistantFrontlinePacketApprover")
-  assistantMeetingIntelligencePacketsCreated       AssistantMeetingIntelligencePacket[]      @relation("AssistantMeetingIntelligencePacketCreator")
-  assistantMeetingIntelligencePacketsApproved      AssistantMeetingIntelligencePacket[]      @relation("AssistantMeetingIntelligencePacketApprover")
-  assistantObservabilityIncidentsCreated           AssistantObservabilityIncident[]          @relation("AssistantObservabilityIncidentCreator")
-  assistantObservabilityIncidentsResolved          AssistantObservabilityIncident[]          @relation("AssistantObservabilityIncidentResolver")
-  assistantGovernancePacketsCreated                AssistantGovernancePacket[]               @relation("AssistantGovernancePacketCreator")
-  assistantGovernancePacketsApproved               AssistantGovernancePacket[]               @relation("AssistantGovernancePacketApprover")
-  assistantRolloutFactoryPacketsCreated            AssistantRolloutFactoryPacket[]           @relation("AssistantRolloutFactoryPacketCreator")
-  assistantRolloutFactoryPacketsApproved           AssistantRolloutFactoryPacket[]           @relation("AssistantRolloutFactoryPacketApprover")
-  assistantValueRealizationPacketsCreated          AssistantValueRealizationPacket[]         @relation("AssistantValueRealizationPacketCreator")
-  assistantValueRealizationPacketsApproved         AssistantValueRealizationPacket[]         @relation("AssistantValueRealizationPacketApprover")
-  assistantAutonomousOperatingLoopsCreated         AssistantAutonomousOperatingLoop[]        @relation("AssistantAutonomousOperatingLoopCreator")
-  assistantAutonomousOperatingLoopsApproved        AssistantAutonomousOperatingLoop[]        @relation("AssistantAutonomousOperatingLoopApprover")
-  assistantNetworkDesignPacketsCreated             AssistantNetworkDesignPacket[]            @relation("AssistantNetworkDesignPacketCreator")
-  assistantNetworkDesignPacketsApproved            AssistantNetworkDesignPacket[]            @relation("AssistantNetworkDesignPacketApprover")
-  assistantSimulationStudioPacketsCreated          AssistantSimulationStudioPacket[]         @relation("AssistantSimulationStudioPacketCreator")
-  assistantSimulationStudioPacketsApproved         AssistantSimulationStudioPacket[]         @relation("AssistantSimulationStudioPacketApprover")
-  assistantContinuousPlanningPacketsCreated        AssistantContinuousPlanningPacket[]       @relation("AssistantContinuousPlanningPacketCreator")
-  assistantContinuousPlanningPacketsApproved       AssistantContinuousPlanningPacket[]       @relation("AssistantContinuousPlanningPacketApprover")
-  assistantRevenueOperationsPacketsCreated         AssistantRevenueOperationsPacket[]        @relation("AssistantRevenueOperationsPacketCreator")
-  assistantRevenueOperationsPacketsApproved        AssistantRevenueOperationsPacket[]        @relation("AssistantRevenueOperationsPacketApprover")
-  assistantAdvancedProgramPacketsCreated           AssistantAdvancedProgramPacket[]          @relation("AssistantAdvancedProgramPacketCreator")
-  assistantAdvancedProgramPacketsApproved          AssistantAdvancedProgramPacket[]          @relation("AssistantAdvancedProgramPacketApprover")
-  assistantAgentGovernancePacketsCreated           AssistantAgentGovernancePacket[]          @relation("AssistantAgentGovernancePacketCreator")
-  assistantAgentGovernancePacketsCertified         AssistantAgentGovernancePacket[]          @relation("AssistantAgentGovernancePacketCertifier")
-  assistantEnterpriseRiskControlPacketsCreated     AssistantEnterpriseRiskControlPacket[]    @relation("AssistantEnterpriseRiskControlPacketCreator")
-  assistantEnterpriseRiskControlPacketsApproved    AssistantEnterpriseRiskControlPacket[]    @relation("AssistantEnterpriseRiskControlPacketApprover")
-  assistantPrivacySecurityTrustPacketsCreated      AssistantPrivacySecurityTrustPacket[]     @relation("AssistantPrivacySecurityTrustPacketCreator")
-  assistantPrivacySecurityTrustPacketsApproved     AssistantPrivacySecurityTrustPacket[]     @relation("AssistantPrivacySecurityTrustPacketApprover")
-  assistantExecutiveOperatingPacketsCreated        AssistantExecutiveOperatingPacket[]       @relation("AssistantExecutiveOperatingPacketCreator")
-  assistantExecutiveOperatingPacketsApproved       AssistantExecutiveOperatingPacket[]       @relation("AssistantExecutiveOperatingPacketApprover")
-  assistantCollaborationResiliencePacketsCreated   AssistantCollaborationResiliencePacket[]  @relation("AssistantCollaborationResiliencePacketCreator")
-  assistantCollaborationResiliencePacketsApproved  AssistantCollaborationResiliencePacket[]  @relation("AssistantCollaborationResiliencePacketApprover")
-  assistantCommercialRevenueControlPacketsCreated  AssistantCommercialRevenueControlPacket[] @relation("AssistantCommercialRevenueControlPacketCreator")
-  assistantCommercialRevenueControlPacketsApproved AssistantCommercialRevenueControlPacket[] @relation("AssistantCommercialRevenueControlPacketApprover")
-  assistantSupplyNetworkTwinPacketsCreated         AssistantSupplyNetworkTwinPacket[]        @relation("AssistantSupplyNetworkTwinPacketCreator")
-  assistantSupplyNetworkTwinPacketsApproved        AssistantSupplyNetworkTwinPacket[]        @relation("AssistantSupplyNetworkTwinPacketApprover")
-  assistantWarehouseFulfillmentPacketsCreated      AssistantWarehouseFulfillmentPacket[]     @relation("AssistantWarehouseFulfillmentPacketCreator")
-  assistantWarehouseFulfillmentPacketsApproved     AssistantWarehouseFulfillmentPacket[]     @relation("AssistantWarehouseFulfillmentPacketApprover")
-  assistantDataIntegrationPacketsCreated           AssistantDataIntegrationPacket[]          @relation("AssistantDataIntegrationPacketCreator")
-  assistantDataIntegrationPacketsApproved          AssistantDataIntegrationPacket[]          @relation("AssistantDataIntegrationPacketApprover")
-  assistantAiQualityReleasePacketsCreated          AssistantAiQualityReleasePacket[]         @relation("AssistantAiQualityReleasePacketCreator")
-  assistantAiQualityReleasePacketsApproved         AssistantAiQualityReleasePacket[]         @relation("AssistantAiQualityReleasePacketApprover")
-  assistantTenantRolloutPacketsCreated             AssistantTenantRolloutPacket[]            @relation("AssistantTenantRolloutPacketCreator")
-  assistantTenantRolloutPacketsApproved            AssistantTenantRolloutPacket[]            @relation("AssistantTenantRolloutPacketApprover")
-  assistantFinanceCashControlPacketsCreated        AssistantFinanceCashControlPacket[]       @relation("AssistantFinanceCashControlPacketCreator")
-  assistantFinanceCashControlPacketsApproved       AssistantFinanceCashControlPacket[]       @relation("AssistantFinanceCashControlPacketApprover")
-  assistantProductLifecyclePacketsCreated          AssistantProductLifecyclePacket[]         @relation("AssistantProductLifecyclePacketCreator")
-  assistantProductLifecyclePacketsApproved         AssistantProductLifecyclePacket[]         @relation("AssistantProductLifecyclePacketApprover")
-  assistantPlatformReliabilityPacketsCreated       AssistantPlatformReliabilityPacket[]      @relation("AssistantPlatformReliabilityPacketCreator")
-  assistantPlatformReliabilityPacketsApproved      AssistantPlatformReliabilityPacket[]      @relation("AssistantPlatformReliabilityPacketApprover")
-  assistantEnterpriseOsPacketsCreated              AssistantEnterpriseOsPacket[]             @relation("AssistantEnterpriseOsPacketCreator")
-  assistantEnterpriseOsPacketsApproved             AssistantEnterpriseOsPacket[]             @relation("AssistantEnterpriseOsPacketApprover")
-  invoiceIntakesAccountingApproved                 InvoiceIntake[]                           @relation("InvoiceIntakeAccountingApprover")
-  tariffShipmentApplicationsCreated                TariffShipmentApplication[]               @relation("TariffShipmentApplicationCreator")
-  scriEventsOwned                                  ScriExternalEvent[]                       @relation("ScriEventOwner")
-  supplyChainTwinAssistantInsightsCreated          SupplyChainTwinAssistantInsight[]         @relation("SupplyChainTwinAssistantInsightCreator")
-  scriReviewLogsAuthored                           ScriEventReviewLog[]                      @relation("ScriReviewLogActor")
-  scriTaskLinksCreated                             ScriEventTaskLink[]                       @relation("ScriTaskLinkCreatedBy")
-  scriTuningAutomationActorOf                      ScriTenantTuning[]                        @relation("ScriTuningAutomationActor")
-  supplierOnboardingTasksAssigned                  SupplierOnboardingTask[]                  @relation("SupplierOnboardingTaskAssignee")
-  srmOperatorNotificationsReceived                 SrmOperatorNotification[]                 @relation("SrmOperatorNotificationRecipient")
-  srmOperatorNotificationsAsActor                  SrmOperatorNotification[]                 @relation("SrmOperatorNotificationActor")
-  srmDocumentsUploaded                             SrmSupplierDocument[]                     @relation("SrmSupplierDocumentUploadedBy")
-  srmDocumentsLastTouched                          SrmSupplierDocument[]                     @relation("SrmSupplierDocumentLastTouchedBy")
-  srmSupplierDocumentAuditAuthored                 SrmSupplierDocumentAuditLog[]             @relation("SrmSupplierDocumentAuditActor")
-  companyLegalEntityAudits                         CompanyLegalEntityAuditLog[]
-  wmsSavedLedgerViews                              WmsSavedLedgerView[]
-  assistantEmailSendConfirms                       AssistantEmailThread[]                    @relation("AssistantEmailSendConfirmBy")
-  assistantAuditEvents                             AssistantAuditEvent[]                     @relation("AssistantAuditEventActor")
-  assistantEvidenceRecordsCreated                  AssistantEvidenceRecord[]                 @relation("AssistantEvidenceRecordCreator")
-  assistantReviewExamplesReviewed                  AssistantReviewExample[]                  @relation("AssistantReviewExampleReviewer")
-  assistantPromptLibraryItemsCreated               AssistantPromptLibraryItem[]              @relation("AssistantPromptLibraryItemCreator")
-  assistantReleaseGatesEvaluated                   AssistantReleaseGate[]                    @relation("AssistantReleaseGateEvaluator")
-  assistantAutomationPoliciesEnabled               AssistantAutomationPolicy[]               @relation("AssistantAutomationPolicyEnabledBy")
-  assistantActionQueueItems                        AssistantActionQueueItem[]                @relation("AssistantActionQueueActor")
-  assistantActionQueueOwned                        AssistantActionQueueItem[]                @relation("AssistantActionQueueOwner")
-  assistantPlaybookTemplatesCreated                AssistantPlaybookTemplate[]               @relation("AssistantPlaybookTemplateCreator")
-  assistantPlaybookRuns                            AssistantPlaybookRun[]                    @relation("AssistantPlaybookRunActor")
-  assistantPlaybookRunsOwned                       AssistantPlaybookRun[]                    @relation("AssistantPlaybookRunOwner")
-  passwordResetTokens                              PasswordResetToken[]
+  portalLinkedSupplierId                              String?
+  portalLinkedSupplier                                Supplier?                                    @relation("UserPortalLinkedSupplier", fields: [portalLinkedSupplierId], references: [id], onDelete: SetNull)
+  tariffContractHeadersOwned                          TariffContractHeader[]                       @relation("TariffContractHeaderOwner")
+  tariffApprovalRecords                               TariffApprovalRecord[]                       @relation("TariffApprovalApprover")
+  tariffAuditLogs                                     TariffAuditLog[]                             @relation("TariffAuditLogActor")
+  quoteRequestsOwned                                  QuoteRequest[]                               @relation("QuoteRequestOwner")
+  quoteClarificationsAuthored                         QuoteClarificationMessage[]                  @relation("QuoteClarificationAuthor")
+  transportationProcurementPlansCreated               TransportationProcurementPlan[]              @relation("TransportationProcurementPlanCreator")
+  bookingPricingSnapshotsCreated                      BookingPricingSnapshot[]                     @relation("BookingPricingSnapshotCreator")
+  invoiceIntakesCreated                               InvoiceIntake[]                              @relation("InvoiceIntakeCreator")
+  invoiceIntakesReviewed                              InvoiceIntake[]                              @relation("InvoiceIntakeReviewer")
+  apiHubConnectorAuditLogs                            ApiHubConnectorAuditLog[]
+  apiHubIngestionRunsRequested                        ApiHubIngestionRun[]
+  apiHubMappingTemplatesCreated                       ApiHubMappingTemplate[]                      @relation("ApiHubMappingTemplateCreatedBy")
+  apiHubMappingTemplateAuditLogs                      ApiHubMappingTemplateAuditLog[]
+  apiHubIngestionRunAuditLogs                         ApiHubIngestionRunAuditLog[]
+  apiHubMappingAnalysisJobsRequested                  ApiHubMappingAnalysisJob[]
+  apiHubStagingBatchesCreated                         ApiHubStagingBatch[]
+  apiHubAssistantReviewItemsCreated                   ApiHubAssistantReviewItem[]                  @relation("ApiHubAssistantReviewItemCreator")
+  assistantAdminControlsUpdated                       AssistantAdminControl[]                      @relation("AssistantAdminControlUpdater")
+  assistantOperatingReportsCreated                    AssistantOperatingReport[]                   @relation("AssistantOperatingReportCreator")
+  assistantOrderOrchestrationPlansCreated             AssistantOrderOrchestrationPlan[]            @relation("AssistantOrderOrchestrationPlanCreator")
+  assistantWarehouseCapacityPlansCreated              AssistantWarehouseCapacityPlan[]             @relation("AssistantWarehouseCapacityPlanCreator")
+  assistantExceptionIncidentsCreated                  AssistantExceptionIncident[]                 @relation("AssistantExceptionIncidentCreator")
+  assistantCustomerBriefsCreated                      AssistantCustomerBrief[]                     @relation("AssistantCustomerBriefCreator")
+  assistantCustomerBriefsApproved                     AssistantCustomerBrief[]                     @relation("AssistantCustomerBriefApprover")
+  assistantFinancePacketsCreated                      AssistantFinancePacket[]                     @relation("AssistantFinancePacketCreator")
+  assistantFinancePacketsApproved                     AssistantFinancePacket[]                     @relation("AssistantFinancePacketApprover")
+  assistantRiskWarRoomsCreated                        AssistantRiskWarRoom[]                       @relation("AssistantRiskWarRoomCreator")
+  assistantRiskWarRoomsApproved                       AssistantRiskWarRoom[]                       @relation("AssistantRiskWarRoomApprover")
+  assistantMasterDataQualityRunsCreated               AssistantMasterDataQualityRun[]              @relation("AssistantMasterDataQualityRunCreator")
+  assistantMasterDataQualityRunsApproved              AssistantMasterDataQualityRun[]              @relation("AssistantMasterDataQualityRunApprover")
+  assistantPlanningPacketsCreated                     AssistantPlanningPacket[]                    @relation("AssistantPlanningPacketCreator")
+  assistantPlanningPacketsApproved                    AssistantPlanningPacket[]                    @relation("AssistantPlanningPacketApprover")
+  assistantContractCompliancePacketsCreated           AssistantContractCompliancePacket[]          @relation("AssistantContractCompliancePacketCreator")
+  assistantContractCompliancePacketsApproved          AssistantContractCompliancePacket[]          @relation("AssistantContractCompliancePacketApprover")
+  assistantSustainabilityPacketsCreated               AssistantSustainabilityPacket[]              @relation("AssistantSustainabilityPacketCreator")
+  assistantSustainabilityPacketsApproved              AssistantSustainabilityPacket[]              @relation("AssistantSustainabilityPacketApprover")
+  assistantPartnerEcosystemPacketsCreated             AssistantPartnerEcosystemPacket[]            @relation("AssistantPartnerEcosystemPacketCreator")
+  assistantPartnerEcosystemPacketsApproved            AssistantPartnerEcosystemPacket[]            @relation("AssistantPartnerEcosystemPacketApprover")
+  assistantFrontlinePacketsCreated                    AssistantFrontlinePacket[]                   @relation("AssistantFrontlinePacketCreator")
+  assistantFrontlinePacketsApproved                   AssistantFrontlinePacket[]                   @relation("AssistantFrontlinePacketApprover")
+  assistantMeetingIntelligencePacketsCreated          AssistantMeetingIntelligencePacket[]         @relation("AssistantMeetingIntelligencePacketCreator")
+  assistantMeetingIntelligencePacketsApproved         AssistantMeetingIntelligencePacket[]         @relation("AssistantMeetingIntelligencePacketApprover")
+  assistantObservabilityIncidentsCreated              AssistantObservabilityIncident[]             @relation("AssistantObservabilityIncidentCreator")
+  assistantObservabilityIncidentsResolved             AssistantObservabilityIncident[]             @relation("AssistantObservabilityIncidentResolver")
+  assistantGovernancePacketsCreated                   AssistantGovernancePacket[]                  @relation("AssistantGovernancePacketCreator")
+  assistantGovernancePacketsApproved                  AssistantGovernancePacket[]                  @relation("AssistantGovernancePacketApprover")
+  assistantRolloutFactoryPacketsCreated               AssistantRolloutFactoryPacket[]              @relation("AssistantRolloutFactoryPacketCreator")
+  assistantRolloutFactoryPacketsApproved              AssistantRolloutFactoryPacket[]              @relation("AssistantRolloutFactoryPacketApprover")
+  assistantValueRealizationPacketsCreated             AssistantValueRealizationPacket[]            @relation("AssistantValueRealizationPacketCreator")
+  assistantValueRealizationPacketsApproved            AssistantValueRealizationPacket[]            @relation("AssistantValueRealizationPacketApprover")
+  assistantAutonomousOperatingLoopsCreated            AssistantAutonomousOperatingLoop[]           @relation("AssistantAutonomousOperatingLoopCreator")
+  assistantAutonomousOperatingLoopsApproved           AssistantAutonomousOperatingLoop[]           @relation("AssistantAutonomousOperatingLoopApprover")
+  assistantNetworkDesignPacketsCreated                AssistantNetworkDesignPacket[]               @relation("AssistantNetworkDesignPacketCreator")
+  assistantNetworkDesignPacketsApproved               AssistantNetworkDesignPacket[]               @relation("AssistantNetworkDesignPacketApprover")
+  assistantSimulationStudioPacketsCreated             AssistantSimulationStudioPacket[]            @relation("AssistantSimulationStudioPacketCreator")
+  assistantSimulationStudioPacketsApproved            AssistantSimulationStudioPacket[]            @relation("AssistantSimulationStudioPacketApprover")
+  assistantContinuousPlanningPacketsCreated           AssistantContinuousPlanningPacket[]          @relation("AssistantContinuousPlanningPacketCreator")
+  assistantContinuousPlanningPacketsApproved          AssistantContinuousPlanningPacket[]          @relation("AssistantContinuousPlanningPacketApprover")
+  assistantRevenueOperationsPacketsCreated            AssistantRevenueOperationsPacket[]           @relation("AssistantRevenueOperationsPacketCreator")
+  assistantRevenueOperationsPacketsApproved           AssistantRevenueOperationsPacket[]           @relation("AssistantRevenueOperationsPacketApprover")
+  assistantAdvancedProgramPacketsCreated              AssistantAdvancedProgramPacket[]             @relation("AssistantAdvancedProgramPacketCreator")
+  assistantAdvancedProgramPacketsApproved             AssistantAdvancedProgramPacket[]             @relation("AssistantAdvancedProgramPacketApprover")
+  assistantAgentGovernancePacketsCreated              AssistantAgentGovernancePacket[]             @relation("AssistantAgentGovernancePacketCreator")
+  assistantAgentGovernancePacketsCertified            AssistantAgentGovernancePacket[]             @relation("AssistantAgentGovernancePacketCertifier")
+  assistantEnterpriseRiskControlPacketsCreated        AssistantEnterpriseRiskControlPacket[]       @relation("AssistantEnterpriseRiskControlPacketCreator")
+  assistantEnterpriseRiskControlPacketsApproved       AssistantEnterpriseRiskControlPacket[]       @relation("AssistantEnterpriseRiskControlPacketApprover")
+  assistantPrivacySecurityTrustPacketsCreated         AssistantPrivacySecurityTrustPacket[]        @relation("AssistantPrivacySecurityTrustPacketCreator")
+  assistantPrivacySecurityTrustPacketsApproved        AssistantPrivacySecurityTrustPacket[]        @relation("AssistantPrivacySecurityTrustPacketApprover")
+  assistantExecutiveOperatingPacketsCreated           AssistantExecutiveOperatingPacket[]          @relation("AssistantExecutiveOperatingPacketCreator")
+  assistantExecutiveOperatingPacketsApproved          AssistantExecutiveOperatingPacket[]          @relation("AssistantExecutiveOperatingPacketApprover")
+  assistantCollaborationResiliencePacketsCreated      AssistantCollaborationResiliencePacket[]     @relation("AssistantCollaborationResiliencePacketCreator")
+  assistantCollaborationResiliencePacketsApproved     AssistantCollaborationResiliencePacket[]     @relation("AssistantCollaborationResiliencePacketApprover")
+  assistantCommercialRevenueControlPacketsCreated     AssistantCommercialRevenueControlPacket[]    @relation("AssistantCommercialRevenueControlPacketCreator")
+  assistantCommercialRevenueControlPacketsApproved    AssistantCommercialRevenueControlPacket[]    @relation("AssistantCommercialRevenueControlPacketApprover")
+  assistantSupplyNetworkTwinPacketsCreated            AssistantSupplyNetworkTwinPacket[]           @relation("AssistantSupplyNetworkTwinPacketCreator")
+  assistantSupplyNetworkTwinPacketsApproved           AssistantSupplyNetworkTwinPacket[]           @relation("AssistantSupplyNetworkTwinPacketApprover")
+  assistantWarehouseFulfillmentPacketsCreated         AssistantWarehouseFulfillmentPacket[]        @relation("AssistantWarehouseFulfillmentPacketCreator")
+  assistantWarehouseFulfillmentPacketsApproved        AssistantWarehouseFulfillmentPacket[]        @relation("AssistantWarehouseFulfillmentPacketApprover")
+  assistantDataIntegrationPacketsCreated              AssistantDataIntegrationPacket[]             @relation("AssistantDataIntegrationPacketCreator")
+  assistantDataIntegrationPacketsApproved             AssistantDataIntegrationPacket[]             @relation("AssistantDataIntegrationPacketApprover")
+  assistantAiQualityReleasePacketsCreated             AssistantAiQualityReleasePacket[]            @relation("AssistantAiQualityReleasePacketCreator")
+  assistantAiQualityReleasePacketsApproved            AssistantAiQualityReleasePacket[]            @relation("AssistantAiQualityReleasePacketApprover")
+  assistantTenantRolloutPacketsCreated                AssistantTenantRolloutPacket[]               @relation("AssistantTenantRolloutPacketCreator")
+  assistantTenantRolloutPacketsApproved               AssistantTenantRolloutPacket[]               @relation("AssistantTenantRolloutPacketApprover")
+  assistantFinanceCashControlPacketsCreated           AssistantFinanceCashControlPacket[]          @relation("AssistantFinanceCashControlPacketCreator")
+  assistantFinanceCashControlPacketsApproved          AssistantFinanceCashControlPacket[]          @relation("AssistantFinanceCashControlPacketApprover")
+  assistantProductLifecyclePacketsCreated             AssistantProductLifecyclePacket[]            @relation("AssistantProductLifecyclePacketCreator")
+  assistantProductLifecyclePacketsApproved            AssistantProductLifecyclePacket[]            @relation("AssistantProductLifecyclePacketApprover")
+  assistantPlatformReliabilityPacketsCreated          AssistantPlatformReliabilityPacket[]         @relation("AssistantPlatformReliabilityPacketCreator")
+  assistantPlatformReliabilityPacketsApproved         AssistantPlatformReliabilityPacket[]         @relation("AssistantPlatformReliabilityPacketApprover")
+  assistantEnterpriseOsPacketsCreated                 AssistantEnterpriseOsPacket[]                @relation("AssistantEnterpriseOsPacketCreator")
+  assistantEnterpriseOsPacketsApproved                AssistantEnterpriseOsPacket[]                @relation("AssistantEnterpriseOsPacketApprover")
+  assistantTransportCarrierProcurementPacketsCreated  AssistantTransportCarrierProcurementPacket[] @relation("AssistantTransportCarrierProcurementPacketCreator")
+  assistantTransportCarrierProcurementPacketsApproved AssistantTransportCarrierProcurementPacket[] @relation("AssistantTransportCarrierProcurementPacketApprover")
+  invoiceIntakesAccountingApproved                    InvoiceIntake[]                              @relation("InvoiceIntakeAccountingApprover")
+  tariffShipmentApplicationsCreated                   TariffShipmentApplication[]                  @relation("TariffShipmentApplicationCreator")
+  scriEventsOwned                                     ScriExternalEvent[]                          @relation("ScriEventOwner")
+  supplyChainTwinAssistantInsightsCreated             SupplyChainTwinAssistantInsight[]            @relation("SupplyChainTwinAssistantInsightCreator")
+  scriReviewLogsAuthored                              ScriEventReviewLog[]                         @relation("ScriReviewLogActor")
+  scriTaskLinksCreated                                ScriEventTaskLink[]                          @relation("ScriTaskLinkCreatedBy")
+  scriTuningAutomationActorOf                         ScriTenantTuning[]                           @relation("ScriTuningAutomationActor")
+  supplierOnboardingTasksAssigned                     SupplierOnboardingTask[]                     @relation("SupplierOnboardingTaskAssignee")
+  srmOperatorNotificationsReceived                    SrmOperatorNotification[]                    @relation("SrmOperatorNotificationRecipient")
+  srmOperatorNotificationsAsActor                     SrmOperatorNotification[]                    @relation("SrmOperatorNotificationActor")
+  srmDocumentsUploaded                                SrmSupplierDocument[]                        @relation("SrmSupplierDocumentUploadedBy")
+  srmDocumentsLastTouched                             SrmSupplierDocument[]                        @relation("SrmSupplierDocumentLastTouchedBy")
+  srmSupplierDocumentAuditAuthored                    SrmSupplierDocumentAuditLog[]                @relation("SrmSupplierDocumentAuditActor")
+  companyLegalEntityAudits                            CompanyLegalEntityAuditLog[]
+  wmsSavedLedgerViews                                 WmsSavedLedgerView[]
+  assistantEmailSendConfirms                          AssistantEmailThread[]                       @relation("AssistantEmailSendConfirmBy")
+  assistantAuditEvents                                AssistantAuditEvent[]                        @relation("AssistantAuditEventActor")
+  assistantEvidenceRecordsCreated                     AssistantEvidenceRecord[]                    @relation("AssistantEvidenceRecordCreator")
+  assistantReviewExamplesReviewed                     AssistantReviewExample[]                     @relation("AssistantReviewExampleReviewer")
+  assistantPromptLibraryItemsCreated                  AssistantPromptLibraryItem[]                 @relation("AssistantPromptLibraryItemCreator")
+  assistantReleaseGatesEvaluated                      AssistantReleaseGate[]                       @relation("AssistantReleaseGateEvaluator")
+  assistantAutomationPoliciesEnabled                  AssistantAutomationPolicy[]                  @relation("AssistantAutomationPolicyEnabledBy")
+  assistantActionQueueItems                           AssistantActionQueueItem[]                   @relation("AssistantActionQueueActor")
+  assistantActionQueueOwned                           AssistantActionQueueItem[]                   @relation("AssistantActionQueueOwner")
+  assistantPlaybookTemplatesCreated                   AssistantPlaybookTemplate[]                  @relation("AssistantPlaybookTemplateCreator")
+  assistantPlaybookRuns                               AssistantPlaybookRun[]                       @relation("AssistantPlaybookRunActor")
+  assistantPlaybookRunsOwned                          AssistantPlaybookRun[]                       @relation("AssistantPlaybookRunOwner")
+  passwordResetTokens                                 PasswordResetToken[]
   /// Primary org node (geography / legal hierarchy). Matrix: see `productDivisionScope`.
-  primaryOrgUnitId                                 String?
-  primaryOrgUnit                                   OrgUnit?                                  @relation("UserPrimaryOrgUnit", fields: [primaryOrgUnitId], references: [id], onDelete: SetNull)
-  productDivisionScope                             UserProductDivision[]
+  primaryOrgUnitId                                    String?
+  primaryOrgUnit                                      OrgUnit?                                     @relation("UserPrimaryOrgUnit", fields: [primaryOrgUnitId], references: [id], onDelete: SetNull)
+  productDivisionScope                                UserProductDivision[]
 
   @@unique([tenantId, email])
   @@index([tenantId])

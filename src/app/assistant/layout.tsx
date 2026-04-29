@@ -73,6 +73,7 @@ export default async function AssistantLayout({ children }: { children: React.Re
           <strong>Sprint 13</strong> is Product Lifecycle & Compliance Passport for catalog readiness, passport evidence, supplier documents, ESG/compliance posture, lifecycle risks, and release gates.{" "}
           <strong>Sprint 14</strong> is Platform Reliability & Security Operations for uptime posture, security ops, connector health, automation safety, incident readiness, release controls, and rollback.{" "}
           <strong>Sprint 15</strong> is Autonomous Enterprise OS v2 for observe/decide/act/learn orchestration across value, governance, reliability, rollout, finance, product, and domain controls.{" "}
+          <strong>Sprint 16</strong> is Transportation &amp; Carrier Procurement Command for RFQs, tariff/booking snapshots, lane execution, procurement plans, invoice-to-booking variance, tender drafts, and carrier score overlays — all review-gated with no silent carrier or settlement changes.{" "}
           <strong>Chat</strong> can draft sales orders and answer stock / product-trace questions with links to
           evidence. <strong>Order orchestration</strong> is AMP13 for demand-to-promise planning with ATP and approval controls.{" "}
           <strong>Warehouse capacity</strong> is AMP15 for WMS bottlenecks, labor recovery, and supervisor-approved recovery work.{" "}

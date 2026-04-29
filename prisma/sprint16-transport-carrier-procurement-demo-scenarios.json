@@ -1,0 +1,35 @@
+{
+  "sprint": 16,
+  "title": "Transportation & Carrier Procurement Command",
+  "guardrails": [
+    "Packets are review-only: RFQs, tariff versions, booking snapshots, procurement plans, shipments, invoices, and carriers are never mutated silently.",
+    "Queue review and approve actions log audit events and may enqueue AssistantActionQueueItem rows — they do not award carriers, confirm bookings, settle invoices, or send communications."
+  ],
+  "scenarios": [
+    {
+      "id": "S16-01-create-packet",
+      "steps": [
+        "Sign in as a user with org.rfq or org.tariffs edit access.",
+        "Open /assistant/transport-carrier-procurement.",
+        "Click Create Sprint 16 packet and confirm a new AssistantTransportCarrierProcurementPacket row appears with procurementScore and dimensional JSON blobs populated."
+      ],
+      "passWhen": "POST create_packet returns 201 and GET lists the packet without altering RFQs, tariffs, snapshots, shipments, or invoices."
+    },
+    {
+      "id": "S16-02-queue-review",
+      "steps": [
+        "Create a packet, then click Queue review with an optional note.",
+        "Verify AssistantActionQueueItem references assistant_transport_carrier_procurement_packet and links back to /assistant/transport-carrier-procurement."
+      ],
+      "passWhen": "Packet status becomes REVIEW_QUEUED and audit event answerKind sprint16_transport_rev is recorded."
+    },
+    {
+      "id": "S16-03-approve-packet",
+      "steps": [
+        "Open an existing packet and click Approve packet after transport finance sign-off.",
+        "Confirm audit trail references sprint16_transport_ok and narrative explicitly denies automatic carrier or settlement changes."
+      ],
+      "passWhen": "Packet status becomes APPROVED; carriers, bookings, tariffs, invoices, and procurement plans remain unchanged in source tables."
+    }
+  ]
+}

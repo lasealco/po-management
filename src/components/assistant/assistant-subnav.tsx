@@ -78,6 +78,7 @@ export function AssistantSubnav() {
   const productLifecyclePassport = pathname.startsWith("/assistant/product-lifecycle-passport");
   const platformReliabilitySecurity = pathname.startsWith("/assistant/platform-reliability-security");
   const enterpriseOsV2 = pathname.startsWith("/assistant/enterprise-os-v2");
+  const transportCarrierProcurement = pathname.startsWith("/assistant/transport-carrier-procurement");
   const advancedProgram = (slug: string) => pathname.startsWith(`/assistant/advanced-programs/${slug}`);
   const advancedProgramLinks = listAdvancedProgramConfigs();
   const workbench = pathname.startsWith("/assistant/workbench");
@@ -359,6 +360,13 @@ export function AssistantSubnav() {
         title="Sprint 15 Autonomous Enterprise OS v2"
       >
         Sprint 15
+      </Link>
+      <Link
+        href="/assistant/transport-carrier-procurement"
+        className={transportCarrierProcurement ? appNavActiveClass : appNavInactiveClass}
+        title="Sprint 16 Transportation & Carrier Procurement Command"
+      >
+        Sprint 16
       </Link>
       {advancedProgramLinks.map((program) => (
         <Link
