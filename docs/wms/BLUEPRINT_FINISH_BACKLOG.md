@@ -1,0 +1,70 @@
+# Blueprint finish backlog (post enterprise track)
+
+**Purpose:** After **`WE-01` … `WE-12`** closed ([`WMS_ENTERPRISE_EXIT_WE12.md`](./WMS_ENTERPRISE_EXIT_WE12.md)), this file is the **structured backlog** to drive **`GAP_MAP.md`** rows from **🟡 / deferred** toward **✅ or tightened 🟡** for **`wms_blueprint_and_technical_prd` Release 1–3** (same scope band as [`GAP_MAP.md`](./GAP_MAP.md)).
+
+**Sources:** Rows and “Explicitly deferred” bullets in [`GAP_MAP.md`](./GAP_MAP.md); theme docs linked per row.
+
+---
+
+## Capsules vs sprints (how to run it)
+
+| Unit | Role |
+|------|------|
+| **Capsule (`BF-01` …)** | Thematic slice with **clear exit**: schema/API/UI + **`GAP_MAP`** row updates + tests/seeds as appropriate. Same idea as **`WE-xx`**, but **`ENTERPRISE_TRACK`** stays **closed** unless product reopens it — track **`BF-xx`** here or in GitHub epics/milestones. |
+| **Sprint (calendar)** | **Timebox**, not scope. A sprint usually carries **one primary capsule** (sometimes two **small** ones). **Finishing the whole blueprint is never “one sprint”** unless scope is aggressively cut. |
+
+**Recommended rhythm:** Pick the next **`BF-xx`** → scope freeze for **that capsule only** → ship → refresh **`GAP_MAP`** → repeat.
+
+---
+
+## Phasing (dependency-aware)
+
+Rough order — adjust when CRM/CT ownership blocks work:
+
+| Phase | Focus | Why first |
+|-------|--------|-----------|
+| **A — Inventory truth** | Lot master / genealogy / receiving variance | Unlocks finance, QA, and downstream allocation accuracy ([`WMS_LOT_SERIAL_DECISION.md`](./WMS_LOT_SERIAL_DECISION.md), [`WMS_RECEIVING_STATE_MACHINE_SPEC.md`](./WMS_RECEIVING_STATE_MACHINE_SPEC.md)). |
+| **B — Execution engines** | Allocation solver / FEFO / multi-strategy depth ([`WMS_ALLOCATION_STRATEGIES.md`](./WMS_ALLOCATION_STRATEGIES.md)) | Builds on stable inventory semantics. |
+| **C — Topology & yard** | Zone hierarchy / aisles / TMS-grade dock ([`WMS_ZONE_TOPOLOGY_ADR.md`](./WMS_ZONE_TOPOLOGY_ADR.md), [`WMS_DOCK_APPOINTMENTS.md`](./WMS_DOCK_APPOINTMENTS.md)) | Often migration-heavy; separate from daily ops MVP. |
+| **D — Governance & analytics** | Field-level WMS matrix ([`WMS_RBAC_AND_AUDIT.md`](./WMS_RBAC_AND_AUDIT.md)); OTIF / labor / slotting KPIs ([`WMS_EXECUTIVE_KPIS.md`](./WMS_EXECUTIVE_KPIS.md)) | Policy + reporting layers once flows are stable. |
+| **E — Cross-product** | CPQ→outbound automation ([`WMS_COMMERCIAL_HANDOFF.md`](./WMS_COMMERCIAL_HANDOFF.md)); CT map merged layers ([`WMS_CT_MAP_PHASE34_WE11.md`](./WMS_CT_MAP_PHASE34_WE11.md)); VAS portal/BOM ([`WMS_VAS_WORK_ORDERS.md`](./WMS_VAS_WORK_ORDERS.md)) | Requires CRM/CT alignment — **joint milestones**. |
+
+---
+
+## Capsule catalog (`BF-xx`) — draft IDs
+
+Each capsule should end with: **`GAP_MAP.md` updated**, migrations listed if any, **`docs/wms/*`** note or ADR for limits.
+
+| ID | Theme | Primary `GAP_MAP` signal | Depends on | Owner emphasis |
+|----|--------|---------------------------|------------|----------------|
+| **BF-01** | **Receiving line variance** — receipt vs ASN lines, disposition | Inbound ASN row; tranche note line variance | Schema choice from [`WMS_RECEIVING_STATE_MACHINE_SPEC.md`](./WMS_RECEIVING_STATE_MACHINE_SPEC.md) | WMS |
+| **BF-02** | **Lot master / serial genealogy** beyond `lotCode` buckets | SKU/UOM/lot row | BF-01 if variance feeds lot splits | WMS + catalog |
+| **BF-03** | **Allocation engine** — FEFO, solver, wave policies beyond staged profiles | Allocation row | Stable inventory + strategy inputs | WMS |
+| **BF-04** | **Topology** — parent zones / aisle entities / optional geometry hooks | Zone row | migrations | WMS |
+| **BF-05** | **Dock yard / TMS depth** — carrier, yard moves beyond dock windows | Appointment row; deferred TMS bullet | Product scope vs [`WMS_DOCK_APPOINTMENTS.md`](./WMS_DOCK_APPOINTMENTS.md) | WMS (+ integrations) |
+| **BF-06** | **Field-level WMS permission matrix** | Permissions row | Auth model product-wide | Platform + WMS |
+| **BF-07** | **Executive / blueprint KPIs** — OTIF, labor, slotting | Dashboards row | Metric definitions | Product + WMS |
+| **BF-08** | **Packing integration** — GS1 / ZPL / scanner hardware | Packing row | Vendor choices | WMS |
+| **BF-09** | **VAS portal & BOM costing** | VAS row | Commercial assumptions | WMS + portal |
+| **BF-10** | **Commercial CPQ → outbound** automation | Commercial row | **CRM/commercial module** | CRM (+ WMS API) |
+| **BF-11** | **CT map layers** — WMS floor / CRM pins inside globe | Enterprise CT map row | CT adoption + design | CT + WMS |
+
+**Note:** IDs are **not** commitments — merge/split capsules when estimates land (e.g. **BF-02 + BF-01** often sequenced tightly).
+
+---
+
+## Exit definition (“blueprint finish”)
+
+“Done” for **this backlog** means:
+
+1. Each **R1–R3 + Enterprise** row in [`GAP_MAP.md`](./GAP_MAP.md) is either **✅** or **🟡** with an explicit **documented limit** (ADR or row note), **or** consciously **❌** with product **won’t-do** recorded.
+2. **Explicitly deferred** paragraph at top of **`GAP_MAP`** is emptied or rewritten to match **only** post-R3 / future program items ([`CONTROL_TOWER_WMS_PHASED_ROADMAP.md`](../engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md)).
+
+---
+
+## Next step
+
+1. Product prioritizes **`BF-xx`** order (or swaps Phase A/B/C above).
+2. Open **one capsule** → **`GAP_MAP`** delta → ship → repeat.
+
+_Last updated: 2026-04-29 — initial backlog skeleton from [`GAP_MAP.md`](./GAP_MAP.md)._
