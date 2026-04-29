@@ -171,6 +171,22 @@ type WmsData = {
     createdBy: { id: string; name: string; email: string };
   }>;
   recentMovementsMeta: { limit: number; matchedCount: number; truncated: boolean };
+  dockAppointments: Array<{
+    id: string;
+    warehouseId: string;
+    warehouse: { id: string; code: string | null; name: string };
+    dockCode: string;
+    windowStart: string;
+    windowEnd: string;
+    direction: "INBOUND" | "OUTBOUND";
+    status: "SCHEDULED" | "CANCELLED" | "COMPLETED";
+    note: string | null;
+    shipmentId: string | null;
+    outboundOrderId: string | null;
+    shipment: { id: string; shipmentNo: string | null; orderNumber: string } | null;
+    outboundNo: string | null;
+    createdBy: { id: string; name: string };
+  }>;
 };
 
 type SavedLedgerView = {
@@ -318,6 +334,12 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
   >({});
   const [outboundCreateAsn, setOutboundCreateAsn] = useState("");
   const [outboundCreateRequestedShip, setOutboundCreateRequestedShip] = useState("");
+  const [dockShipmentLink, setDockShipmentLink] = useState("");
+  const [dockOutboundLink, setDockOutboundLink] = useState("");
+  const [dockDir, setDockDir] = useState<"INBOUND" | "OUTBOUND">("INBOUND");
+  const [dockCodeInput, setDockCodeInput] = useState("DOCK-A");
+  const [dockWinStart, setDockWinStart] = useState("");
+  const [dockWinEnd, setDockWinEnd] = useState("");
   const [cycleBalanceId, setCycleBalanceId] = useState("");
   const [cycleCountQtyByTask, setCycleCountQtyByTask] = useState<Record<string, string>>({});
   const [ledgerSince, setLedgerSince] = useState("");
@@ -1577,6 +1599,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                 <th className="px-2 py-1">ASN ref</th>
                 <th className="px-2 py-1">Expected</th>
                 <th className="px-2 py-1">Lines</th>
+                {canEdit ? <th className="px-2 py-1">Dock</th> : null}
                 {canEdit ? <th className="px-2 py-1">Log</th> : null}
                 {canEdit ? <th className="px-2 py-1">Save</th> : null}
               </tr>
@@ -1584,7 +1607,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
             <tbody className="divide-y divide-zinc-200">
               {data.inboundShipments.length === 0 ? (
                 <tr>
-                  <td colSpan={canEdit ? 10 : 8} className="px-2 py-3 text-zinc-500">
+                  <td colSpan={canEdit ? 11 : 8} className="px-2 py-3 text-zinc-500">
                     No shipments for this tenant yet.
                   </td>
                 </tr>
@@ -1686,6 +1709,27 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                       <td className="px-2 py-1 text-zinc-600">{s.itemCount}</td>
                       {canEdit ? (
                         <td className="px-2 py-1">
+                          <button
+                            type="button"
+                            disabled={busy || !selectedWarehouseId}
+                            title={
+                              !selectedWarehouseId
+                                ? "Choose an operations warehouse in the toolbar first."
+                                : "Prefill dock form for this inbound shipment"
+                            }
+                            onClick={() => {
+                              setDockShipmentLink(s.id);
+                              setDockOutboundLink("");
+                              setDockDir("INBOUND");
+                            }}
+                            className="whitespace-nowrap rounded border border-zinc-300 px-2 py-1 text-[11px] font-medium text-zinc-800 disabled:opacity-40"
+                          >
+                            Schedule dock
+                          </button>
+                        </td>
+                      ) : null}
+                      {canEdit ? (
+                        <td className="px-2 py-1">
                           <select
                             defaultValue=""
                             disabled={busy}
@@ -1734,6 +1778,170 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                     </tr>
                   );
                 })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
+        <h2 className="text-sm font-semibold text-zinc-900">Dock appointments</h2>
+        <p className="mt-1 text-xs text-zinc-600">
+          Book a dock window per warehouse and dock code. Conflicts are blocked when another{" "}
+          <span className="font-medium">SCHEDULED</span> appointment overlaps the same dock. This is an
+          ops calendar slice — not full TMS or carrier routing.
+        </p>
+        <div className="mt-3 grid gap-3 rounded-2xl border border-zinc-200 bg-zinc-50/90 p-4 sm:grid-cols-2 lg:grid-cols-3">
+          <label className="block text-xs font-medium text-zinc-600">
+            Dock code
+            <input
+              value={dockCodeInput}
+              onChange={(e) => setDockCodeInput(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+              placeholder="e.g. DOCK-A"
+              disabled={!canEdit}
+            />
+          </label>
+          <label className="block text-xs font-medium text-zinc-600">
+            Direction
+            <select
+              value={dockDir}
+              onChange={(e) => setDockDir(e.target.value as "INBOUND" | "OUTBOUND")}
+              className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+              disabled={!canEdit}
+            >
+              <option value="INBOUND">Inbound (PO shipment)</option>
+              <option value="OUTBOUND">Outbound order</option>
+            </select>
+          </label>
+          <p className="text-xs text-zinc-600 sm:col-span-2 lg:col-span-1">
+            <span className="font-medium text-zinc-700">Linked:</span>{" "}
+            {dockDir === "INBOUND"
+              ? dockShipmentLink
+                ? `Shipment row prefilled (${dockShipmentLink.slice(0, 8)}…)`
+                : "Use “Schedule dock” on an inbound row or paste flow manually."
+              : dockOutboundLink
+                ? `Outbound prefilled (${dockOutboundLink.slice(0, 8)}…)`
+                : "Use “Dock window” on an outbound order."}
+          </p>
+          <label className="block text-xs font-medium text-zinc-600">
+            Window start
+            <input
+              type="datetime-local"
+              value={dockWinStart}
+              onChange={(e) => setDockWinStart(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+              disabled={!canEdit}
+            />
+          </label>
+          <label className="block text-xs font-medium text-zinc-600">
+            Window end
+            <input
+              type="datetime-local"
+              value={dockWinEnd}
+              onChange={(e) => setDockWinEnd(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+              disabled={!canEdit}
+            />
+          </label>
+          <div className="flex flex-col justify-end gap-2 sm:col-span-2 lg:col-span-1">
+            <button
+              type="button"
+              disabled={
+                !canEdit ||
+                busy ||
+                !selectedWarehouseId ||
+                !dockWinStart.trim() ||
+                !dockWinEnd.trim() ||
+                (dockDir === "INBOUND" && !dockShipmentLink) ||
+                (dockDir === "OUTBOUND" && !dockOutboundLink)
+              }
+              onClick={() => {
+                if (!selectedWarehouseId || !dockWinStart.trim() || !dockWinEnd.trim()) return;
+                const body: Record<string, unknown> = {
+                  action: "create_dock_appointment",
+                  warehouseId: selectedWarehouseId,
+                  dockCode: dockCodeInput || "DOCK-A",
+                  dockDirection: dockDir,
+                  dockWindowStart: new Date(dockWinStart).toISOString(),
+                  dockWindowEnd: new Date(dockWinEnd).toISOString(),
+                };
+                if (dockDir === "INBOUND") body.shipmentId = dockShipmentLink;
+                if (dockDir === "OUTBOUND") body.outboundOrderId = dockOutboundLink;
+                void runAction(body);
+              }}
+              className="rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
+            >
+              Schedule dock window
+            </button>
+          </div>
+        </div>
+        <div className="mt-4 overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead className="bg-zinc-100 text-left text-xs uppercase text-zinc-700">
+              <tr>
+                <th className="px-2 py-1">Warehouse</th>
+                <th className="px-2 py-1">Dock</th>
+                <th className="px-2 py-1">Window</th>
+                <th className="px-2 py-1">Dir</th>
+                <th className="px-2 py-1">Ref</th>
+                <th className="px-2 py-1">Status</th>
+                {canEdit ? <th className="px-2 py-1"> </th> : null}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-200">
+              {(data.dockAppointments ?? []).filter(
+                (a) => !selectedWarehouseId || a.warehouse.id === selectedWarehouseId,
+              ).length === 0 ? (
+                <tr>
+                  <td colSpan={canEdit ? 7 : 6} className="px-2 py-3 text-zinc-500">
+                    No dock appointments
+                    {selectedWarehouseId ? " for this warehouse" : ""} yet.
+                  </td>
+                </tr>
+              ) : (
+                (data.dockAppointments ?? [])
+                  .filter((a) => !selectedWarehouseId || a.warehouse.id === selectedWarehouseId)
+                  .map((a) => (
+                    <tr key={a.id}>
+                      <td className="px-2 py-1 text-zinc-800">
+                        {a.warehouse.code || a.warehouse.name}
+                      </td>
+                      <td className="px-2 py-1 font-mono text-xs text-zinc-700">{a.dockCode}</td>
+                      <td className="px-2 py-1 text-xs text-zinc-700">
+                        {new Date(a.windowStart).toLocaleString()} →{" "}
+                        {new Date(a.windowEnd).toLocaleString()}
+                      </td>
+                      <td className="px-2 py-1 text-zinc-600">{a.direction}</td>
+                      <td className="px-2 py-1 text-xs text-zinc-700">
+                        {a.shipment
+                          ? `${a.shipment.orderNumber} · ${a.shipment.shipmentNo ?? a.shipment.id.slice(0, 8)}`
+                          : a.outboundNo
+                            ? `Outbound ${a.outboundNo}`
+                            : "—"}
+                      </td>
+                      <td className="px-2 py-1 text-zinc-600">{a.status}</td>
+                      {canEdit && a.status === "SCHEDULED" ? (
+                        <td className="px-2 py-1">
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() =>
+                              void runAction({
+                                action: "cancel_dock_appointment",
+                                dockAppointmentId: a.id,
+                              })
+                            }
+                            className="rounded border border-zinc-300 px-2 py-1 text-xs font-medium text-zinc-800 disabled:opacity-40"
+                          >
+                            Cancel
+                          </button>
+                        </td>
+                      ) : canEdit ? (
+                        <td className="px-2 py-1 text-zinc-400">—</td>
+                      ) : null}
+                    </tr>
+                  ))
               )}
             </tbody>
           </table>
@@ -1979,6 +2187,21 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                       </option>
                     ))}
                   </select>
+                ) : null}
+                {canEdit && o.status !== "SHIPPED" && o.status !== "CANCELLED" ? (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => {
+                      setDockOutboundLink(o.id);
+                      setDockShipmentLink("");
+                      setDockDir("OUTBOUND");
+                      setSelectedWarehouseId(o.warehouse.id);
+                    }}
+                    className="rounded border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-800 disabled:opacity-40"
+                  >
+                    Dock window
+                  </button>
                 ) : null}
                 {canEdit && o.status === "DRAFT" ? (
                   <button

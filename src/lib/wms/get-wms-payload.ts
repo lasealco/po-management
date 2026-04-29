@@ -227,6 +227,24 @@ export async function getWmsDashboardPayload(
     prisma.inventoryMovement.count({ where: recentMovementScoped }),
   ]);
 
+  const dockAppointmentsRaw = await prisma.wmsDockAppointment.findMany({
+    where: { tenantId },
+    orderBy: [{ windowStart: "asc" }],
+    take: 80,
+    include: {
+      warehouse: { select: { id: true, code: true, name: true } },
+      shipment: {
+        select: {
+          id: true,
+          shipmentNo: true,
+          order: { select: { orderNumber: true } },
+        },
+      },
+      outboundOrder: { select: { id: true, outboundNo: true } },
+      createdBy: { select: { id: true, name: true } },
+    },
+  });
+
   const replenSourceBinIds = new Set<string>();
   for (const t of openTasks) {
     if (t.taskType === "REPLENISH" && t.referenceId) replenSourceBinIds.add(t.referenceId);
@@ -446,5 +464,28 @@ export async function getWmsDashboardPayload(
       matchedCount: recentMovementMatchedCount,
       truncated: recentMovementMatchedCount > recentMovementTake,
     },
+    dockAppointments: dockAppointmentsRaw.map((a) => ({
+      id: a.id,
+      warehouseId: a.warehouseId,
+      warehouse: a.warehouse,
+      dockCode: a.dockCode,
+      windowStart: a.windowStart.toISOString(),
+      windowEnd: a.windowEnd.toISOString(),
+      direction: a.direction,
+      status: a.status,
+      note: a.note,
+      shipmentId: a.shipmentId,
+      outboundOrderId: a.outboundOrderId,
+      shipment:
+        a.shipment != null
+          ? {
+              id: a.shipment.id,
+              shipmentNo: a.shipment.shipmentNo,
+              orderNumber: a.shipment.order.orderNumber,
+            }
+          : null,
+      outboundNo: a.outboundOrder?.outboundNo ?? null,
+      createdBy: { id: a.createdBy.id, name: a.createdBy.name },
+    })),
   };
 }

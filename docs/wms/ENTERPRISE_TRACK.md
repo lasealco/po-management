@@ -63,11 +63,11 @@ Parallel agents: **non-overlapping paths only** (see [`agent-todos/README.md`](.
 
 **Exit criteria**
 
-- [ ] Schema/API for appointments aligned to blueprint slice you approve (not full TMS).
-- [ ] UI entry points from WMS inbound/outbound as scoped.
-- [ ] `GAP_MAP.md` R2 **Appointment scheduling** updated.
+- [x] Schema/API for appointments aligned to blueprint slice you approve (not full TMS).
+- [x] UI entry points from WMS inbound/outbound as scoped.
+- [x] `GAP_MAP.md` R2 **Appointment scheduling** updated.
 
----
+**References:** [`WMS_DOCK_APPOINTMENTS.md`](./WMS_DOCK_APPOINTMENTS.md).
 
 ## WE-03 — Allocation v2
 

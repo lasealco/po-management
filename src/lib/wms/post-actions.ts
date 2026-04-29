@@ -6,6 +6,7 @@ import { Prisma, ShipmentMilestoneCode, type WmsReceiveStatus } from "@prisma/cl
 import { prisma } from "@/lib/prisma";
 
 import { assertOutboundCrmAccountLinkable } from "./crm-account-link";
+import { normalizeDockCode } from "./dock-appointment";
 import { syncOutboundOrderStatusAfterPick } from "./outbound-workflow";
 import { nextWaveNo } from "./wave";
 
@@ -977,6 +978,141 @@ export async function handleWmsPost(
           actorUserId: actorId,
         },
       });
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "create_dock_appointment") {
+    const warehouseId = input.warehouseId?.trim();
+    const dockCodeRaw = input.dockCode?.trim();
+    const dockDirection = input.dockDirection;
+    const shipmentId = input.shipmentId?.trim();
+    const outboundOrderId = input.outboundOrderId?.trim();
+    const dockWindowStart = input.dockWindowStart?.trim();
+    const dockWindowEnd = input.dockWindowEnd?.trim();
+    const apptNote = input.note?.trim();
+
+    if (!warehouseId || !dockCodeRaw || !dockDirection || !dockWindowStart || !dockWindowEnd) {
+      return toApiErrorResponseFromStatus(
+        "warehouseId, dockCode, dockDirection, dockWindowStart and dockWindowEnd required.",
+        400,
+      );
+    }
+    if (dockDirection !== "INBOUND" && dockDirection !== "OUTBOUND") {
+      return toApiErrorResponseFromStatus("dockDirection must be INBOUND or OUTBOUND.", 400);
+    }
+
+    const hasShip = Boolean(shipmentId);
+    const hasOut = Boolean(outboundOrderId);
+    if (hasShip === hasOut) {
+      return toApiErrorResponseFromStatus("Provide exactly one of shipmentId or outboundOrderId.", 400);
+    }
+
+    const windowStart = new Date(dockWindowStart);
+    const windowEnd = new Date(dockWindowEnd);
+    if (Number.isNaN(windowStart.getTime()) || Number.isNaN(windowEnd.getTime())) {
+      return toApiErrorResponseFromStatus("Invalid dock window datetimes.", 400);
+    }
+    if (windowEnd <= windowStart) {
+      return toApiErrorResponseFromStatus("dockWindowEnd must be after dockWindowStart.", 400);
+    }
+
+    const dockCode = normalizeDockCode(dockCodeRaw);
+    if (!dockCode) {
+      return toApiErrorResponseFromStatus("dockCode required.", 400);
+    }
+
+    const warehouse = await prisma.warehouse.findFirst({
+      where: { id: warehouseId, tenantId },
+      select: { id: true },
+    });
+    if (!warehouse) {
+      return toApiErrorResponseFromStatus("Warehouse not found.", 404);
+    }
+
+    if (shipmentId) {
+      const ship = await prisma.shipment.findFirst({
+        where: { id: shipmentId, order: { tenantId } },
+        select: { id: true },
+      });
+      if (!ship) {
+        return toApiErrorResponseFromStatus("Shipment not found.", 404);
+      }
+      if (dockDirection !== "INBOUND") {
+        return toApiErrorResponseFromStatus("Inbound appointments must use dockDirection INBOUND.", 400);
+      }
+    }
+
+    if (outboundOrderId) {
+      const orderRow = await prisma.outboundOrder.findFirst({
+        where: { id: outboundOrderId, tenantId },
+        select: { id: true, warehouseId: true },
+      });
+      if (!orderRow) {
+        return toApiErrorResponseFromStatus("Outbound order not found.", 404);
+      }
+      if (dockDirection !== "OUTBOUND") {
+        return toApiErrorResponseFromStatus("Outbound appointments must use dockDirection OUTBOUND.", 400);
+      }
+      if (orderRow.warehouseId !== warehouseId) {
+        return toApiErrorResponseFromStatus(
+          "warehouseId must match the outbound order warehouse.",
+          400,
+        );
+      }
+    }
+
+    const overlap = await prisma.wmsDockAppointment.findFirst({
+      where: {
+        tenantId,
+        warehouseId,
+        dockCode,
+        status: "SCHEDULED",
+        AND: [{ windowStart: { lt: windowEnd } }, { windowEnd: { gt: windowStart } }],
+      },
+    });
+    if (overlap) {
+      return toApiErrorResponseFromStatus(
+        "Dock window overlaps an existing scheduled appointment for this dock.",
+        409,
+      );
+    }
+
+    await prisma.wmsDockAppointment.create({
+      data: {
+        tenantId,
+        warehouseId,
+        dockCode,
+        windowStart,
+        windowEnd,
+        direction: dockDirection,
+        shipmentId: shipmentId ?? null,
+        outboundOrderId: outboundOrderId ?? null,
+        note: apptNote ? apptNote.slice(0, 500) : null,
+        createdById: actorId,
+      },
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "cancel_dock_appointment") {
+    const dockAppointmentId = input.dockAppointmentId?.trim();
+    if (!dockAppointmentId) {
+      return toApiErrorResponseFromStatus("dockAppointmentId required.", 400);
+    }
+    const existing = await prisma.wmsDockAppointment.findFirst({
+      where: { id: dockAppointmentId, tenantId },
+      select: { id: true, status: true },
+    });
+    if (!existing) {
+      return toApiErrorResponseFromStatus("Appointment not found.", 404);
+    }
+    if (existing.status !== "SCHEDULED") {
+      return toApiErrorResponseFromStatus("Only SCHEDULED appointments can be cancelled.", 400);
+    }
+    await prisma.wmsDockAppointment.update({
+      where: { id: existing.id },
+      data: { status: "CANCELLED" },
     });
     return NextResponse.json({ ok: true });
   }

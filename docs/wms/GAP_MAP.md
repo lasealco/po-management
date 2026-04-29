@@ -6,9 +6,9 @@
 
 **Legend:** ✅ covered · 🟡 partial / simplified · ❌ not in schema or not wired
 
-**Phase A / R1–R2 demo exit (this repo):** setup + receiving/putaway + stock inquiry (ledger + balance filter + CSV) + outbound pick/pack/ship + holds + replenishment tasks + waves + cycle count + inbound ASN fields + **shipment milestones** (log + last milestone in UI) + billing event materialization to CRM account where linked. **Explicitly deferred:** zone hierarchy beyond flat zone/bin, lot master, field-level WMS permission matrix, multi-strategy allocation, dock appointments, VAS/work orders, commercial quotes (see R3).
+**Phase A / R1–R2 demo exit (this repo):** setup + receiving/putaway + stock inquiry (ledger + balance filter + CSV) + outbound pick/pack/ship + holds + replenishment tasks + waves + cycle count + inbound ASN fields + **shipment milestones** (log + last milestone in UI) + billing event materialization to CRM account where linked. **Explicitly deferred:** zone hierarchy beyond flat zone/bin, lot master, field-level WMS permission matrix, multi-strategy allocation, **full TMS / yard automation** (minimal dock windows shipped — see [`WMS_DOCK_APPOINTMENTS.md`](./WMS_DOCK_APPOINTMENTS.md)), VAS/work orders, commercial quotes (see R3).
 
-> **Tranche handoff (2026-04-26):** Optional increments **2.1** (saved ledger), **2.2** (outbound ASN), and **2.4** (REPLENISH source→target) are **closed** on `main`. **2.3** receiving states: **Option A** implemented (`WmsReceiveStatus` on `Shipment`, `GET /api/wms` `allowedReceiveActions`, `set_wms_receiving_status`, `CtAuditLog`) — see [`WMS_RECEIVING_OPTION_A.md`](./WMS_RECEIVING_OPTION_A.md); line-level variance / appointments remain deferred. Other **🟡 / ❌** rows remain MVP or deferred — see [`CONTROL_TOWER_WMS_PHASED_ROADMAP` § Program tranche handoff](../engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md#program-tranche-handoff-2026-04-26).
+> **Tranche handoff (2026-04-26):** Optional increments **2.1** (saved ledger), **2.2** (outbound ASN), and **2.4** (REPLENISH source→target) are **closed** on `main`. **2.3** receiving states: **Option A** implemented (`WmsReceiveStatus` on `Shipment`, `GET /api/wms` `allowedReceiveActions`, `set_wms_receiving_status`, `CtAuditLog`) — see [`WMS_RECEIVING_OPTION_A.md`](./WMS_RECEIVING_OPTION_A.md); line-level variance remains backlog. **Dock appointments (WE-02):** `WmsDockAppointment` + overlap checks — [`WMS_DOCK_APPOINTMENTS.md`](./WMS_DOCK_APPOINTMENTS.md). Other **🟡 / ❌** rows remain MVP or deferred — see [`CONTROL_TOWER_WMS_PHASED_ROADMAP` § Program tranche handoff](../engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md#program-tranche-handoff-2026-04-26).
 
 ## R1 — Foundation (setup, receiving path basics, inquiry, outbound basic, permissions)
 
@@ -31,7 +31,7 @@
 | Blueprint area | Repo reality |
 |----------------|--------------|
 | QC / quarantine holds | 🟡 `InventoryBalance.onHold` + `holdReason`; picks / wave allocation skip held bins; UI on Stock page |
-| Appointment scheduling | ❌ |
+| Appointment scheduling | 🟡 `WmsDockAppointment` + `GET/POST /api/wms` | Tenant-scoped dock code + window + inbound shipment or outbound order link; **overlap blocked** for `SCHEDULED`; cancel action; WMS Operations UI — not TMS/carrier automation ([`WMS_DOCK_APPOINTMENTS.md`](./WMS_DOCK_APPOINTMENTS.md)) |
 | Replenishment execution | 🟡 `ReplenishmentRule` + `create_replenishment_tasks` + REPLENISH tasks | **Open tasks** (Operations) show **source → target** bin per task (`sourceBin` + `bin` in `GET /api/wms`); setup has short copy pointing to the list |
 | Wave planning | 🟡 `WmsWave` + release/complete | |
 | Packing / labels | 🟡 Line `packedQty` exists; limited workflow | |
@@ -48,7 +48,7 @@
 
 ## Existing API actions (`POST /api/wms`)
 
-`create_zone`, `create_bin`, `update_bin_profile`, `set_replenishment_rule`, `create_replenishment_tasks`, `create_outbound_order` (optional `crmAccountId`, optional `asnReference` + `requestedShipDate`), `set_outbound_crm_account`, `set_outbound_order_asn_fields`, `release_outbound_order`, `create_putaway_task`, `complete_putaway_task`, `create_pick_task`, `create_pick_wave`, `release_wave`, `complete_wave`, `complete_pick_task`, `mark_outbound_packed`, `mark_outbound_shipped`, `set_shipment_inbound_fields`, `set_wms_receiving_status`, `record_shipment_milestone`, `set_balance_hold`, `clear_balance_hold`, `complete_replenish_task`, `create_cycle_count_task`, `complete_cycle_count_task`.
+`create_zone`, `create_bin`, `update_bin_profile`, `set_replenishment_rule`, `create_replenishment_tasks`, `create_outbound_order` (optional `crmAccountId`, optional `asnReference` + `requestedShipDate`), `set_outbound_crm_account`, `set_outbound_order_asn_fields`, `release_outbound_order`, `create_putaway_task`, `complete_putaway_task`, `create_pick_task`, `create_pick_wave`, `release_wave`, `complete_wave`, `complete_pick_task`, `mark_outbound_packed`, `mark_outbound_shipped`, `set_shipment_inbound_fields`, `set_wms_receiving_status`, `create_dock_appointment`, `cancel_dock_appointment`, `record_shipment_milestone`, `set_balance_hold`, `clear_balance_hold`, `complete_replenish_task`, `create_cycle_count_task`, `complete_cycle_count_task`.
 
 Handlers live in `src/lib/wms/post-actions.ts` (route stays a thin shell).
 
@@ -59,6 +59,6 @@ Handlers live in `src/lib/wms/post-actions.ts` (route stays a thin shell).
 3. **`WmsCustomer`** or reuse **CRM `CrmAccount`** — **done** for outbound (optional link + `set_outbound_crm_account`).  
 4. Split `src/app/api/wms/route.ts` into `src/lib/wms/*.ts` — **done:** `post-actions.ts` (POST), `get-wms-payload.ts` (GET), `wms-body.ts`, `wave.ts`, billing modules.
 
-_Next optional increments:_ ~~saved ledger views~~ (**landed** 2026-04-23: `WmsSavedLedgerView` + `/api/wms/saved-ledger-views`); ~~**outbound ASN** parity~~ (**landed** 2026-04-25: `OutboundOrder.asnReference` + `requestedShipDate` in payload + `set_outbound_order_asn_fields`); **2.3 deeper receiving states** — **Option A landed** 2026-04-29 (`WmsReceiveStatus`, `set_wms_receiving_status`, audit); line variance / dock appointments still backlog — see [WMS_RECEIVING_STATE_MACHINE_SPEC.md](./WMS_RECEIVING_STATE_MACHINE_SPEC.md).
+_Next optional increments:_ ~~saved ledger views~~ (**landed** 2026-04-23: `WmsSavedLedgerView` + `/api/wms/saved-ledger-views`); ~~**outbound ASN** parity~~ (**landed** 2026-04-25: `OutboundOrder.asnReference` + `requestedShipDate` in payload + `set_outbound_order_asn_fields`); **2.3 deeper receiving states** — **Option A landed** 2026-04-29 (`WmsReceiveStatus`, `set_wms_receiving_status`, audit); line variance still backlog — see [WMS_RECEIVING_STATE_MACHINE_SPEC.md](./WMS_RECEIVING_STATE_MACHINE_SPEC.md). **Dock appointments** — **WE-02 landed** 2026-04-29 ([`WMS_DOCK_APPOINTMENTS.md`](./WMS_DOCK_APPOINTMENTS.md)); TMS/yard automation still out of scope.
 
-_Last updated: 2026-04-29 — Phase 2.3 receiving state machine (Option A); 2026-04-26 tranche handoff; 2026-04-25 cross-link to CT map, REPLENISH, outbound ASN._
+_Last updated: 2026-04-29 — WE-02 dock appointments; Phase 2.3 receiving state machine (Option A); 2026-04-26 tranche handoff; 2026-04-25 cross-link to CT map, REPLENISH, outbound ASN._

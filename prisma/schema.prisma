@@ -75,6 +75,7 @@ model Tenant {
   wmsBillingInvoiceRuns                       WmsBillingInvoiceRun[]
   wmsBillingInvoiceLines                      WmsBillingInvoiceLine[]
   wmsSavedLedgerViews                         WmsSavedLedgerView[]
+  wmsDockAppointments                         WmsDockAppointment[]
   loadPlans                                   LoadPlan[]
   userPreferences                             UserPreference[]
   workflows                                   Workflow[]
@@ -2561,6 +2562,7 @@ model User {
   wmsTasksCompleted                                   WmsTask[]                                    @relation("WmsTaskCompletedBy")
   wmsWavesCreated                                     WmsWave[]
   outboundOrdersCreated                               OutboundOrder[]
+  wmsDockAppointmentsCreated                          WmsDockAppointment[]
   loadPlansCreated                                    LoadPlan[]
   preferences                                         UserPreference[]
   crmLeadsOwned                                       CrmLead[]                                    @relation("CrmLeadOwner")
@@ -3739,6 +3741,7 @@ model Shipment {
   ctContainers               CtShipmentContainer[]
   ctCostLines                CtShipmentCostLine[]
   tariffShipmentApplications TariffShipmentApplication[]
+  dockAppointments           WmsDockAppointment[]
 
   @@index([orderId, createdAt])
   @@index([status])
@@ -4318,6 +4321,7 @@ model Warehouse {
   wmsWaves           WmsWave[]
   replenishmentRules ReplenishmentRule[]
   outboundOrders     OutboundOrder[]
+  dockAppointments   WmsDockAppointment[]
   wmsBillingEvents   WmsBillingEvent[]
 
   @@unique([tenantId, code])
@@ -4672,6 +4676,46 @@ model WmsSavedLedgerView {
   @@index([userId])
 }
 
+enum WmsDockAppointmentDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum WmsDockAppointmentStatus {
+  SCHEDULED
+  CANCELLED
+  COMPLETED
+}
+
+/// Tenant-scoped dock/window booking (not TMS). Conflict detection: same warehouse + normalized dock + overlapping window + SCHEDULED.
+model WmsDockAppointment {
+  id              String                      @id @default(cuid())
+  tenantId        String
+  warehouseId     String
+  dockCode        String                      @db.VarChar(64)
+  windowStart     DateTime
+  windowEnd       DateTime
+  direction       WmsDockAppointmentDirection
+  shipmentId      String?
+  outboundOrderId String?
+  status          WmsDockAppointmentStatus    @default(SCHEDULED)
+  note            String?                     @db.VarChar(500)
+  createdById     String
+  createdAt       DateTime                    @default(now())
+  updatedAt       DateTime                    @updatedAt
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  warehouse     Warehouse      @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  shipment      Shipment?      @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  outboundOrder OutboundOrder? @relation(fields: [outboundOrderId], references: [id], onDelete: Cascade)
+  createdBy     User           @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, warehouseId, windowStart])
+  @@index([tenantId, warehouseId, dockCode])
+  @@index([shipmentId])
+  @@index([outboundOrderId])
+}
+
 enum OutboundOrderStatus {
   DRAFT
   RELEASED
@@ -4710,7 +4754,8 @@ model OutboundOrder {
   warehouse  Warehouse           @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
   crmAccount CrmAccount?         @relation(fields: [crmAccountId], references: [id], onDelete: SetNull)
   createdBy  User                @relation(fields: [createdById], references: [id], onDelete: Restrict)
-  lines      OutboundOrderLine[]
+  lines             OutboundOrderLine[]
+  dockAppointments  WmsDockAppointment[]
 
   @@unique([tenantId, outboundNo])
   @@index([tenantId, warehouseId, status])

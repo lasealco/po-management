@@ -57,4 +57,11 @@ export type WmsBody = {
   holdReason?: string | null;
   /** Physical count when completing a cycle-count task. */
   countedQty?: number;
+  /** `create_dock_appointment` / `cancel_dock_appointment`. */
+  dockAppointmentId?: string;
+  dockCode?: string;
+  /** ISO datetime strings for dock window. */
+  dockWindowStart?: string;
+  dockWindowEnd?: string;
+  dockDirection?: "INBOUND" | "OUTBOUND";
 };
