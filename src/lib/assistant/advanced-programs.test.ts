@@ -35,10 +35,10 @@ const signals: AdvancedProgramSignals = {
 };
 
 describe("advanced programs", () => {
-  it("defines AMP37 through AMP362 with requested AMP301-362 programs", () => {
+  it("defines AMP37 through AMP400 with requested AMP363-400 programs", () => {
     const configs = listAdvancedProgramConfigs();
 
-    expect(configs).toHaveLength(325);
+    expect(configs).toHaveLength(363);
     expect(configs[0]?.ampNumber).toBe(37);
     expect(configs[25]?.ampNumber).toBe(62);
     expect(configs[26]?.ampNumber).toBe(64);
@@ -57,6 +57,8 @@ describe("advanced programs", () => {
     expect(configs[262]?.ampNumber).toBe(300);
     expect(configs[263]?.ampNumber).toBe(301);
     expect(configs[324]?.ampNumber).toBe(362);
+    expect(configs[325]?.ampNumber).toBe(363);
+    expect(configs[362]?.ampNumber).toBe(400);
   });
 
   it("builds a distinct packet with guardrails for category strategy", () => {
@@ -159,6 +161,16 @@ describe("advanced programs", () => {
     expect(packet.approvalPlan.steps.map((step) => step.owner)).toContain("Executive sponsor");
     expect(packet.rollbackPlan.steps[0]).toContain("enterprise goals");
     expect(packet.leadershipSummary).toContain("does not mutate enterprise goals");
+  });
+
+  it("builds physical security operations packets with site response guardrails", () => {
+    const packet = buildAdvancedProgramPacket({ programKey: "physical-security-operations", signals });
+
+    expect(packet.ampNumber).toBe(400);
+    expect(packet.riskCount).toBeGreaterThan(0);
+    expect(packet.approvalPlan.steps.map((step) => step.owner)).toContain("Security");
+    expect(packet.rollbackPlan.steps[0]).toContain("site incidents");
+    expect(packet.leadershipSummary).toContain("does not mutate site incidents");
   });
 
   it("returns null for unknown program keys", () => {

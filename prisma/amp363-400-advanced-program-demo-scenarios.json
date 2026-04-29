@@ -1,0 +1,75 @@
+[
+  {
+    "id": "amp363-400-create-packets",
+    "title": "Create durable packets for AMP363 through AMP400",
+    "persona": "AI platform, security, compliance, operations, sustainability, product, finance, people, safety, and executive reviewers",
+    "entrypoints": [
+      "/assistant/advanced-programs/ai-observability-mesh",
+      "/assistant/advanced-programs/prompt-supply-chain-security",
+      "/assistant/advanced-programs/memory-governance",
+      "/assistant/advanced-programs/decision-provenance-ledger",
+      "/assistant/advanced-programs/obligation-graph",
+      "/assistant/advanced-programs/regulatory-horizon",
+      "/assistant/advanced-programs/climate-adaptation-planning",
+      "/assistant/advanced-programs/product-compliance-passport",
+      "/assistant/advanced-programs/portfolio-investment-governance",
+      "/assistant/advanced-programs/physical-security-operations"
+    ],
+    "steps": [
+      "Open representative AMP363-AMP400 workspaces from the generated Assistant subnav.",
+      "Review source signals, risk assessment, recommendations, artifact, approval route, and rollback plan.",
+      "Click Create AMP packet."
+    ],
+    "expected": [
+      "Each AMP363-AMP400 workspace persists an AssistantAdvancedProgramPacket row with a distinct ampNumber and programKey.",
+      "Each packet has a domain-specific nav label, title, artifact, approval owners, and no-mutation scope.",
+      "The shared advanced-program UI displays preview metrics, packet history, review notes, and queue-review controls.",
+      "AI runtime traces, prompts, tool grants, memories, knowledge assets, decision ledgers, exceptions, obligations, contracts, supplier/customer commitments, controls, audit evidence, regulatory response plans, geopolitical exposure, demand scenarios, commodity actions, sustainability records, product passports, investment gates, workforce plans, safety interventions, and physical-security actions are not mutated automatically."
+    ]
+  },
+  {
+    "id": "amp363-400-queue-review",
+    "title": "Queue human review for AMP363 through AMP400 packets",
+    "persona": "Program approval owner",
+    "entrypoints": [
+      "/assistant/advanced-programs/tool-permission-drift",
+      "/assistant/advanced-programs/dynamic-control-testing",
+      "/assistant/advanced-programs/geopolitical-risk-command",
+      "/assistant/advanced-programs/skills-graph",
+      "/assistant/advanced-programs/safety-leading-indicators"
+    ],
+    "steps": [
+      "Create or select a DRAFT packet.",
+      "Add a review note describing the downstream decision.",
+      "Click Queue review."
+    ],
+    "expected": [
+      "The packet status changes to REVIEW_QUEUED and records actionQueueItemId, approvedByUserId, approvedAt, and approvalNote.",
+      "AssistantActionQueueItem uses an AMP-specific actionKind such as assistant_amp363_review or assistant_amp400_review.",
+      "AssistantAuditEvent states that downstream records were not changed automatically."
+    ]
+  },
+  {
+    "id": "amp363-400-guardrails",
+    "title": "AI governance, controls, resilience, sustainability, and workforce packets preserve no-silent-mutation guardrails",
+    "persona": "Executive and control reviewer",
+    "entrypoints": [
+      "/assistant/advanced-programs/prompt-supply-chain-security",
+      "/assistant/advanced-programs/contract-performance-command",
+      "/assistant/advanced-programs/commodity-shock-response",
+      "/assistant/advanced-programs/circular-materials-marketplace",
+      "/assistant/advanced-programs/workforce-wellbeing"
+    ],
+    "steps": [
+      "Open a packet with active risk signals.",
+      "Inspect recommendationJson, approvalPlanJson, artifactJson, and rollbackPlanJson.",
+      "Queue review without executing downstream changes."
+    ],
+    "expected": [
+      "recommendationJson requires review before AI runtime, prompt, memory, knowledge, decision, obligation, contract, control, regulatory, geopolitical, sustainability, product, investment, workforce, safety, or security execution.",
+      "approvalPlanJson names the responsible owner groups.",
+      "rollbackPlanJson preserves source records and requires a fresh packet when evidence changes materially.",
+      "Assistant recommendations remain review-only and cannot silently alter source systems, permissions, communications, filings, investment gates, people records, or physical-security response actions."
+    ]
+  }
+]
