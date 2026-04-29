@@ -55,6 +55,10 @@ export type WmsBody = {
   /** Target `WmsReceiveStatus` for `set_wms_receiving_status`. */
   toStatus?: string;
   holdReason?: string | null;
+  /** `set_zone_parent` — target zone id (BF-04). */
+  zoneId?: string;
+  /** `set_zone_parent` — parent zone id or `null` to clear (same warehouse). */
+  parentZoneId?: string | null;
   /** Physical count when completing a cycle-count task. */
   countedQty?: number;
   /** `create_dock_appointment` / `cancel_dock_appointment`. */

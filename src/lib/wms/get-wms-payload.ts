@@ -80,7 +80,10 @@ export async function getWmsDashboardPayload(
     prisma.warehouseZone.findMany({
       where: { tenantId, isActive: true },
       orderBy: [{ warehouse: { name: "asc" } }, { zoneType: "asc" }, { code: "asc" }],
-      include: { warehouse: { select: { id: true, code: true, name: true } } },
+      include: {
+        warehouse: { select: { id: true, code: true, name: true } },
+        parentZone: { select: { id: true, code: true, name: true } },
+      },
     }),
     prisma.warehouseBin.findMany({
       where: { tenantId, isActive: true },
@@ -330,6 +333,10 @@ export async function getWmsDashboardPayload(
       code: z.code,
       name: z.name,
       zoneType: z.zoneType,
+      parentZoneId: z.parentZoneId,
+      parentZone: z.parentZone
+        ? { id: z.parentZone.id, code: z.parentZone.code, name: z.parentZone.name }
+        : null,
       warehouse: z.warehouse,
     })),
     bins: bins.map((b) => ({

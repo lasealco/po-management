@@ -35,6 +35,8 @@ type WmsData = {
     code: string;
     name: string;
     zoneType: "RECEIVING" | "PICKING" | "RESERVE" | "QUARANTINE" | "STAGING" | "SHIPPING";
+    parentZoneId: string | null;
+    parentZone: { id: string; code: string; name: string } | null;
     warehouse: { id: string; code: string | null; name: string };
   }>;
   bins: Array<{
@@ -1224,6 +1226,9 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
           <div className="mt-4 space-y-6">
             <div>
               <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Zones</h3>
+              <p className="mt-1 text-xs text-zinc-600">
+                BF-04: optional <span className="font-medium">parent zone</span> for hierarchy (same warehouse). Backend rejects cycles.
+              </p>
               <div className="mt-2 max-h-48 overflow-auto rounded border border-zinc-200">
                 <table className="min-w-full text-sm">
                   <thead className="sticky top-0 bg-zinc-100 text-left text-xs uppercase text-zinc-700">
@@ -1231,12 +1236,13 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                       <th className="px-2 py-1">Code</th>
                       <th className="px-2 py-1">Name</th>
                       <th className="px-2 py-1">Type</th>
+                      <th className="px-2 py-1">Parent</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-200">
                     {zonesForWarehouse.length === 0 ? (
                       <tr>
-                        <td colSpan={3} className="px-2 py-2 text-zinc-500">
+                        <td colSpan={4} className="px-2 py-2 text-zinc-500">
                           No zones for this warehouse.
                         </td>
                       </tr>
@@ -1248,6 +1254,37 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                             <td className="whitespace-nowrap px-2 py-1 font-mono text-xs">{z.code}</td>
                             <td className="px-2 py-1 text-zinc-800">{z.name}</td>
                             <td className="px-2 py-1 text-zinc-600">{z.zoneType}</td>
+                            <td className="px-2 py-1">
+                              {canEdit ? (
+                                <select
+                                  disabled={busy}
+                                  value={z.parentZone?.id ?? ""}
+                                  onChange={(e) => {
+                                    const v = e.target.value;
+                                    void runAction({
+                                      action: "set_zone_parent",
+                                      zoneId: z.id,
+                                      parentZoneId: v === "" ? null : v,
+                                    });
+                                  }}
+                                  className="max-w-[11rem] rounded border border-zinc-300 px-1 py-0.5 text-xs"
+                                >
+                                  <option value="">No parent</option>
+                                  {zonesForWarehouse
+                                    .filter((c) => c.id !== z.id)
+                                    .sort((a, b) => a.code.localeCompare(b.code))
+                                    .map((c) => (
+                                      <option key={c.id} value={c.id}>
+                                        {c.code}
+                                      </option>
+                                    ))}
+                                </select>
+                              ) : (
+                                <span className="text-xs text-zinc-600">
+                                  {z.parentZone ? `${z.parentZone.code}` : "—"}
+                                </span>
+                              )}
+                            </td>
                           </tr>
                         ))
                     )}

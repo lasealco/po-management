@@ -17,6 +17,7 @@ import {
 } from "./lot-batch-master";
 import { FUNGIBLE_LOT_CODE, normalizeLotCode } from "./lot-code";
 import { syncOutboundOrderStatusAfterPick } from "./outbound-workflow";
+import { warehouseZoneParentWouldCycle } from "./zone-hierarchy";
 import { nextWaveNo } from "./wave";
 import { nextWorkOrderNo } from "./work-order-no";
 
@@ -72,6 +73,67 @@ export async function handleWmsPost(
         zoneType,
       },
     });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "set_zone_parent") {
+    const zoneId = input.zoneId?.trim();
+    if (!zoneId) {
+      return toApiErrorResponseFromStatus("zoneId required.", 400);
+    }
+    if (input.parentZoneId === undefined) {
+      return toApiErrorResponseFromStatus("parentZoneId required — pass null to clear.", 400);
+    }
+    const rawParent = input.parentZoneId;
+    const parentZoneId =
+      rawParent === null || String(rawParent).trim() === ""
+        ? null
+        : String(rawParent).trim();
+
+    const zone = await prisma.warehouseZone.findFirst({
+      where: { id: zoneId, tenantId },
+      select: { id: true, warehouseId: true },
+    });
+    if (!zone) {
+      return toApiErrorResponseFromStatus("Zone not found.", 404);
+    }
+
+    if (parentZoneId !== null) {
+      const parent = await prisma.warehouseZone.findFirst({
+        where: { id: parentZoneId, tenantId, warehouseId: zone.warehouseId },
+        select: { id: true },
+      });
+      if (!parent) {
+        return toApiErrorResponseFromStatus("Parent zone not found or wrong warehouse.", 404);
+      }
+    }
+
+    const siblingRows = await prisma.warehouseZone.findMany({
+      where: { tenantId, warehouseId: zone.warehouseId },
+      select: { id: true, parentZoneId: true },
+    });
+
+    if (warehouseZoneParentWouldCycle(zoneId, parentZoneId, siblingRows)) {
+      return toApiErrorResponseFromStatus("That parent assignment would create a zone hierarchy cycle.", 400);
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.warehouseZone.update({
+        where: { id: zoneId },
+        data: { parentZoneId },
+      });
+      await tx.ctAuditLog.create({
+        data: {
+          tenantId,
+          entityType: "WAREHOUSE_ZONE",
+          entityId: zoneId,
+          action: "zone_parent_updated",
+          payload: { warehouseId: zone.warehouseId, parentZoneId },
+          actorUserId: actorId,
+        },
+      });
+    });
+
     return NextResponse.json({ ok: true });
   }
 
