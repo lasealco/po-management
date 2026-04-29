@@ -1,0 +1,30 @@
+{
+  "sprint": 4,
+  "title": "Executive Operating System",
+  "entrypoint": "/assistant/executive-operating-system",
+  "acceptanceScenarios": [
+    {
+      "name": "Create durable executive packet",
+      "given": "The tenant has operating reports, value packets, revenue packets, autonomous loops, risk packets, trust packets, assistant audit events, and action queue items.",
+      "when": "An executive or strategy owner opens Sprint 4 and clicks Create Sprint 4 packet.",
+      "then": "The app persists an AssistantExecutiveOperatingPacket with board brief, investor narrative, corp-dev radar, executive twin, strategy execution, decision ledger, learning loop, operating cadence, rollback plan, and leadership summary."
+    },
+    {
+      "name": "Queue executive review",
+      "given": "A Sprint 4 packet has open strategy risks, narrative risks, decision candidates, or learning signals.",
+      "when": "The user adds a note and clicks Queue review.",
+      "then": "The packet moves to REVIEW_QUEUED, an AssistantActionQueueItem is created, and an AssistantAuditEvent records that executive use is approval-gated."
+    },
+    {
+      "name": "Approve without silent mutation",
+      "given": "A human reviewer has validated board, investor, strategy, decision, and learning evidence.",
+      "when": "The reviewer clicks Approve packet.",
+      "then": "The packet is marked APPROVED with approver metadata while board materials, investor/customer communications, corp-dev commitments, strategy decisions, budgets, automation, and source records remain unchanged."
+    }
+  ],
+  "guardrails": [
+    "Packet creation never publishes board materials, sends investor/customer communications, creates corp-dev commitments, changes strategy, mutates budgets, executes automation, or updates source records.",
+    "Executive outputs are decision support and draft language only until a human queues and approves downstream work.",
+    "Action queue handoff and audit events are explicit for every review or approval."
+  ]
+}

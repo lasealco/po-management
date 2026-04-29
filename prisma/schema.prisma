@@ -182,6 +182,7 @@ model Tenant {
   assistantAgentGovernancePackets       AssistantAgentGovernancePacket[]
   assistantEnterpriseRiskControlPackets AssistantEnterpriseRiskControlPacket[]
   assistantPrivacySecurityTrustPackets  AssistantPrivacySecurityTrustPacket[]
+  assistantExecutiveOperatingPackets    AssistantExecutiveOperatingPacket[]
   assistantActionQueue                  AssistantActionQueueItem[]
   assistantPlaybookTemplates            AssistantPlaybookTemplate[]
   assistantPlaybookRuns                 AssistantPlaybookRun[]
@@ -1248,6 +1249,46 @@ model AssistantPrivacySecurityTrustPacket {
   @@index([tenantId, trustScore, updatedAt])
 }
 
+/// Sprint 4: durable executive operating system packet for board materials, investor narrative, corp-dev, strategy execution, executive twin, and learning loop review.
+model AssistantExecutiveOperatingPacket {
+  id                         String    @id @default(cuid())
+  tenantId                   String
+  createdByUserId            String?
+  approvedByUserId           String?
+  title                      String
+  status                     String    @default("DRAFT") @db.VarChar(32)
+  executiveScore             Int       @default(0)
+  boardMetricCount           Int       @default(0)
+  investorNarrativeRiskCount Int       @default(0)
+  corpDevSignalCount         Int       @default(0)
+  strategyRiskCount          Int       @default(0)
+  decisionCount              Int       @default(0)
+  learningSignalCount        Int       @default(0)
+  sourceSummaryJson          Json
+  boardBriefJson             Json
+  investorNarrativeJson      Json
+  corpDevRadarJson           Json
+  executiveTwinJson          Json
+  strategyExecutionJson      Json
+  decisionLedgerJson         Json
+  learningLoopJson           Json
+  operatingCadenceJson       Json
+  rollbackPlanJson           Json
+  leadershipSummary          String    @db.Text
+  actionQueueItemId          String?
+  approvedAt                 DateTime?
+  approvalNote               String?   @db.Text
+  createdAt                  DateTime  @default(now())
+  updatedAt                  DateTime  @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator  User?  @relation("AssistantExecutiveOperatingPacketCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  approver User?  @relation("AssistantExecutiveOperatingPacketApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, updatedAt])
+  @@index([tenantId, executiveScore, updatedAt])
+}
+
 /// AMP7: inspectable grounding ledger extracted from assistant answers and reviewer additions.
 model AssistantEvidenceRecord {
   id              String    @id @default(cuid())
@@ -1884,6 +1925,8 @@ model User {
   assistantEnterpriseRiskControlPacketsApproved AssistantEnterpriseRiskControlPacket[] @relation("AssistantEnterpriseRiskControlPacketApprover")
   assistantPrivacySecurityTrustPacketsCreated   AssistantPrivacySecurityTrustPacket[]  @relation("AssistantPrivacySecurityTrustPacketCreator")
   assistantPrivacySecurityTrustPacketsApproved  AssistantPrivacySecurityTrustPacket[]  @relation("AssistantPrivacySecurityTrustPacketApprover")
+  assistantExecutiveOperatingPacketsCreated     AssistantExecutiveOperatingPacket[]    @relation("AssistantExecutiveOperatingPacketCreator")
+  assistantExecutiveOperatingPacketsApproved    AssistantExecutiveOperatingPacket[]    @relation("AssistantExecutiveOperatingPacketApprover")
   invoiceIntakesAccountingApproved              InvoiceIntake[]                        @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated             TariffShipmentApplication[]            @relation("TariffShipmentApplicationCreator")
   scriEventsOwned                               ScriExternalEvent[]                    @relation("ScriEventOwner")
