@@ -195,6 +195,7 @@ model Tenant {
   assistantPlatformReliabilityPackets         AssistantPlatformReliabilityPacket[]
   assistantEnterpriseOsPackets                AssistantEnterpriseOsPacket[]
   assistantTransportCarrierProcurementPackets AssistantTransportCarrierProcurementPacket[]
+  assistantIncidentNerveCenterPackets         AssistantIncidentNerveCenterPacket[]
   assistantActionQueue                        AssistantActionQueueItem[]
   assistantPlaybookTemplates                  AssistantPlaybookTemplate[]
   assistantPlaybookRuns                       AssistantPlaybookRun[]
@@ -1783,6 +1784,48 @@ model AssistantTransportCarrierProcurementPacket {
   @@index([tenantId, procurementScore, updatedAt])
 }
 
+/// Sprint 17: durable cross-domain exception and incident nerve-center packet for Control Tower, assistant incident rooms, blast radius, playbook/recovery gaps, observability/twin/finance/integration signals — review-only; no silent merges, owner assignment, comms, or closures.
+model AssistantIncidentNerveCenterPacket {
+  id                          String    @id @default(cuid())
+  tenantId                    String
+  createdByUserId             String?
+  approvedByUserId            String?
+  title                       String
+  status                      String    @default("DRAFT") @db.VarChar(32)
+  nerveScore                  Int       @default(0)
+  controlTowerRiskCount       Int       @default(0)
+  crossModuleIncidentCount    Int       @default(0)
+  blastRadiusSignalCount      Int       @default(0)
+  recoveryGapCount            Int       @default(0)
+  observabilityRiskCount      Int       @default(0)
+  twinRiskCount               Int       @default(0)
+  financeIntegrationRiskCount Int       @default(0)
+  sourceSummaryJson           Json
+  controlTowerJson            Json
+  crossModuleJson             Json
+  blastRadiusJson             Json
+  playbookRecoveryJson        Json
+  observabilityTwinJson       Json
+  financeIntegrationJson      Json
+  dedupeMergeJson             Json
+  customerCommsJson           Json
+  responsePlanJson            Json
+  rollbackPlanJson            Json
+  leadershipSummary           String    @db.Text
+  actionQueueItemId           String?
+  approvedAt                  DateTime?
+  approvalNote                String?   @db.Text
+  createdAt                   DateTime  @default(now())
+  updatedAt                   DateTime  @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator  User?  @relation("AssistantIncidentNerveCenterPacketCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  approver User?  @relation("AssistantIncidentNerveCenterPacketApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, updatedAt])
+  @@index([tenantId, nerveScore, updatedAt])
+}
+
 /// AMP7: inspectable grounding ledger extracted from assistant answers and reviewer additions.
 model AssistantEvidenceRecord {
   id              String    @id @default(cuid())
@@ -2445,6 +2488,8 @@ model User {
   assistantEnterpriseOsPacketsApproved                AssistantEnterpriseOsPacket[]                @relation("AssistantEnterpriseOsPacketApprover")
   assistantTransportCarrierProcurementPacketsCreated  AssistantTransportCarrierProcurementPacket[] @relation("AssistantTransportCarrierProcurementPacketCreator")
   assistantTransportCarrierProcurementPacketsApproved AssistantTransportCarrierProcurementPacket[] @relation("AssistantTransportCarrierProcurementPacketApprover")
+  assistantIncidentNerveCenterPacketsCreated          AssistantIncidentNerveCenterPacket[]         @relation("AssistantIncidentNerveCenterPacketCreator")
+  assistantIncidentNerveCenterPacketsApproved         AssistantIncidentNerveCenterPacket[]         @relation("AssistantIncidentNerveCenterPacketApprover")
   invoiceIntakesAccountingApproved                    InvoiceIntake[]                              @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated                   TariffShipmentApplication[]                  @relation("TariffShipmentApplicationCreator")
   scriEventsOwned                                     ScriExternalEvent[]                          @relation("ScriEventOwner")

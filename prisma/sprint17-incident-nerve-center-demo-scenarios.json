@@ -1,0 +1,29 @@
+{
+  "sprint": 17,
+  "title": "Cross-Domain Exception & Incident Nerve Center",
+  "guardrails": [
+    "Packets are advisory: Control Tower exceptions, assistant incidents, merges, owners, customer/carrier drafts, Twin acknowledgements, invoices, and integration runs stay human-approved.",
+    "Queue review and approve actions write audit events and may enqueue AssistantActionQueueItem rows — they never close recovery work, send communications, or mutate operational records silently."
+  ],
+  "scenarios": [
+    {
+      "id": "S17-01-create-packet",
+      "steps": [
+        "Sign in with Control Tower or reports edit access.",
+        "Open /assistant/incident-nerve-center and click Create Sprint 17 packet.",
+        "Confirm AssistantIncidentNerveCenterPacket persists with nerveScore and dimensional JSON."
+      ],
+      "passWhen": "POST create_packet returns 201 and GET lists the packet without merging incidents or updating CtException rows."
+    },
+    {
+      "id": "S17-02-queue-review",
+      "steps": ["Queue incident command review with optional note.", "Verify action queue links assistant_incident_nerve_center_packet."],
+      "passWhen": "Status REVIEW_QUEUED and audit answerKind sprint17_incident_rev recorded."
+    },
+    {
+      "id": "S17-03-approve",
+      "steps": ["Approve packet after command staff sign-off.", "Verify sprint17_incident_ok audit narrative denies automatic merges or communications."],
+      "passWhen": "Status APPROVED; source exceptions/incidents unchanged."
+    }
+  ]
+}

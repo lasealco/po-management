@@ -79,6 +79,7 @@ export function AssistantSubnav() {
   const platformReliabilitySecurity = pathname.startsWith("/assistant/platform-reliability-security");
   const enterpriseOsV2 = pathname.startsWith("/assistant/enterprise-os-v2");
   const transportCarrierProcurement = pathname.startsWith("/assistant/transport-carrier-procurement");
+  const incidentNerveCenter = pathname.startsWith("/assistant/incident-nerve-center");
   const advancedProgram = (slug: string) => pathname.startsWith(`/assistant/advanced-programs/${slug}`);
   const advancedProgramLinks = listAdvancedProgramConfigs();
   const workbench = pathname.startsWith("/assistant/workbench");
@@ -367,6 +368,13 @@ export function AssistantSubnav() {
         title="Sprint 16 Transportation & Carrier Procurement Command"
       >
         Sprint 16
+      </Link>
+      <Link
+        href="/assistant/incident-nerve-center"
+        className={incidentNerveCenter ? appNavActiveClass : appNavInactiveClass}
+        title="Sprint 17 Cross-Domain Exception & Incident Nerve Center"
+      >
+        Sprint 17
       </Link>
       {advancedProgramLinks.map((program) => (
         <Link
