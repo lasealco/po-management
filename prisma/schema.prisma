@@ -178,6 +178,7 @@ model Tenant {
   assistantSimulationStudioPackets  AssistantSimulationStudioPacket[]
   assistantContinuousPlanningPackets AssistantContinuousPlanningPacket[]
   assistantRevenueOperationsPackets AssistantRevenueOperationsPacket[]
+  assistantAdvancedProgramPackets    AssistantAdvancedProgramPacket[]
   assistantActionQueue              AssistantActionQueueItem[]
   assistantPlaybookTemplates        AssistantPlaybookTemplate[]
   assistantPlaybookRuns             AssistantPlaybookRun[]
@@ -1091,6 +1092,44 @@ model AssistantRevenueOperationsPacket {
   @@index([tenantId, selectedQuoteId])
 }
 
+/// AMP37-47: shared durable packets for advanced assistant programs with distinct configured workflows and approval gates.
+model AssistantAdvancedProgramPacket {
+  id                  String    @id @default(cuid())
+  tenantId            String
+  createdByUserId     String?
+  approvedByUserId    String?
+  ampNumber           Int
+  programKey          String    @db.VarChar(96)
+  programTitle        String
+  title               String
+  status              String    @default("DRAFT") @db.VarChar(32)
+  programScore        Int       @default(0)
+  signalCount         Int       @default(0)
+  riskCount           Int       @default(0)
+  recommendationCount Int       @default(0)
+  approvalStepCount   Int       @default(0)
+  sourceSummaryJson   Json
+  assessmentJson      Json
+  recommendationJson  Json
+  approvalPlanJson    Json
+  artifactJson        Json
+  rollbackPlanJson    Json
+  leadershipSummary   String    @db.Text
+  actionQueueItemId   String?
+  approvedAt          DateTime?
+  approvalNote        String?   @db.Text
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator  User?  @relation("AssistantAdvancedProgramPacketCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  approver User?  @relation("AssistantAdvancedProgramPacketApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, programKey, status, updatedAt])
+  @@index([tenantId, ampNumber, updatedAt])
+  @@index([tenantId, programScore, updatedAt])
+}
+
 /// AMP7: inspectable grounding ledger extracted from assistant answers and reviewer additions.
 model AssistantEvidenceRecord {
   id              String    @id @default(cuid())
@@ -1719,6 +1758,8 @@ model User {
   assistantContinuousPlanningPacketsApproved AssistantContinuousPlanningPacket[] @relation("AssistantContinuousPlanningPacketApprover")
   assistantRevenueOperationsPacketsCreated AssistantRevenueOperationsPacket[] @relation("AssistantRevenueOperationsPacketCreator")
   assistantRevenueOperationsPacketsApproved AssistantRevenueOperationsPacket[] @relation("AssistantRevenueOperationsPacketApprover")
+  assistantAdvancedProgramPacketsCreated AssistantAdvancedProgramPacket[]    @relation("AssistantAdvancedProgramPacketCreator")
+  assistantAdvancedProgramPacketsApproved AssistantAdvancedProgramPacket[]   @relation("AssistantAdvancedProgramPacketApprover")
   invoiceIntakesAccountingApproved        InvoiceIntake[]                   @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated       TariffShipmentApplication[]       @relation("TariffShipmentApplicationCreator")
   scriEventsOwned                         ScriExternalEvent[]               @relation("ScriEventOwner")

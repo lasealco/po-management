@@ -1,0 +1,70 @@
+[
+  {
+    "id": "amp37-47-create-packets",
+    "title": "Create durable advanced program packets for AMP37 through AMP47",
+    "persona": "Operations leader with cross-functional review access",
+    "entrypoints": [
+      "/assistant/advanced-programs/aftermarket-service",
+      "/assistant/advanced-programs/npi-readiness",
+      "/assistant/advanced-programs/quality-capa",
+      "/assistant/advanced-programs/trade-compliance",
+      "/assistant/advanced-programs/landed-cost",
+      "/assistant/advanced-programs/regulatory-obligations",
+      "/assistant/advanced-programs/energy-utilities",
+      "/assistant/advanced-programs/packaging-optimization",
+      "/assistant/advanced-programs/manufacturing-coordination",
+      "/assistant/advanced-programs/production-scheduling",
+      "/assistant/advanced-programs/category-strategy"
+    ],
+    "steps": [
+      "Open each AMP37-AMP47 workspace from the Assistant subnav.",
+      "Review source signals, risk assessment, recommendations, artifact, approval route, and rollback plan.",
+      "Click Create AMP packet on each workspace."
+    ],
+    "expected": [
+      "Each workspace persists an AssistantAdvancedProgramPacket row with ampNumber, programKey, sourceSummaryJson, assessmentJson, recommendationJson, approvalPlanJson, artifactJson, rollbackPlanJson, and leadershipSummary.",
+      "Each AMP uses distinct program copy, source metrics, risk rules, recommendations, approval owners, artifact label, and no-mutation guardrails.",
+      "An AssistantAuditEvent records packet creation for each AMP.",
+      "No downstream product, supplier, inventory, shipment, compliance, finance, facility, packaging, manufacturing, schedule, sourcing, RFQ, PO, or customer-promise records are mutated automatically."
+    ]
+  },
+  {
+    "id": "amp37-47-queue-reviews",
+    "title": "Queue human review for AMP37 through AMP47 packets",
+    "persona": "Program owner approving downstream execution",
+    "entrypoints": [
+      "/assistant/advanced-programs/aftermarket-service",
+      "/assistant/advanced-programs/category-strategy"
+    ],
+    "steps": [
+      "Create or select a DRAFT advanced program packet.",
+      "Add a review note describing the intended downstream decision.",
+      "Click Queue review."
+    ],
+    "expected": [
+      "The packet status changes to REVIEW_QUEUED with actionQueueItemId, approvedByUserId, approvedAt, and approvalNote.",
+      "An AssistantActionQueueItem is created with an AMP-specific actionKind such as assistant_amp37_review or assistant_amp47_review.",
+      "An AssistantAuditEvent states that the AMP-specific downstream records were not changed automatically."
+    ]
+  },
+  {
+    "id": "amp37-47-guardrails-and-artifacts",
+    "title": "Advanced program artifact and rollback guardrails remain visible",
+    "persona": "Executive reviewer",
+    "entrypoints": [
+      "/assistant/advanced-programs/quality-capa",
+      "/assistant/advanced-programs/trade-compliance",
+      "/assistant/advanced-programs/manufacturing-coordination"
+    ],
+    "steps": [
+      "Open an AMP37-AMP47 packet with active risk signals.",
+      "Inspect the artifact, recommendations, approval plan, and rollback plan.",
+      "Queue review without executing downstream changes."
+    ],
+    "expected": [
+      "artifactJson identifies the program-specific packet, export-ready sections, and no-mutation scope.",
+      "recommendationJson includes human-review guardrails before any operational execution.",
+      "rollbackPlanJson preserves underlying operational records and instructs users to create a fresh packet when source evidence materially changes."
+    ]
+  }
+]

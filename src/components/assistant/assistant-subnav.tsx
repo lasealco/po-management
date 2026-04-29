@@ -62,6 +62,7 @@ export function AssistantSubnav() {
   const simulationStudio = pathname.startsWith("/assistant/simulation-studio");
   const continuousPlanning = pathname.startsWith("/assistant/continuous-planning");
   const revenueOperations = pathname.startsWith("/assistant/revenue-operations");
+  const advancedProgram = (slug: string) => pathname.startsWith(`/assistant/advanced-programs/${slug}`);
   const workbench = pathname.startsWith("/assistant/workbench");
   const execution = pathname.startsWith("/assistant/execution");
   const workEngine = pathname.startsWith("/assistant/work-engine");
@@ -237,6 +238,28 @@ export function AssistantSubnav() {
       >
         Revenue ops
       </Link>
+      {[
+        ["aftermarket-service", "Service", "AMP37 aftermarket service and spare-parts"],
+        ["npi-readiness", "NPI", "AMP38 product lifecycle and NPI readiness"],
+        ["quality-capa", "CAPA", "AMP39 quality management and CAPA"],
+        ["trade-compliance", "Trade", "AMP40 trade compliance and customs operations"],
+        ["landed-cost", "Landed", "AMP41 landed cost and duty optimization"],
+        ["regulatory-obligations", "Reg", "AMP42 regulatory obligation operations"],
+        ["energy-utilities", "Energy", "AMP43 energy and utilities operations"],
+        ["packaging-optimization", "Packaging", "AMP44 packaging and material-flow optimization"],
+        ["manufacturing-coordination", "Mfg", "AMP45 manufacturing execution coordination"],
+        ["production-scheduling", "Schedule", "AMP46 advanced production scheduling"],
+        ["category-strategy", "Sourcing", "AMP47 category strategy and sourcing"],
+      ].map(([slug, label, title]) => (
+        <Link
+          key={slug}
+          href={`/assistant/advanced-programs/${slug}`}
+          className={advancedProgram(slug) ? appNavActiveClass : appNavInactiveClass}
+          title={title}
+        >
+          {label}
+        </Link>
+      ))}
       <Link
         href="/assistant/workbench"
         className={workbench ? appNavActiveClass : appNavInactiveClass}
