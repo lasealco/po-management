@@ -1,0 +1,52 @@
+[
+  {
+    "id": "amp34-create-simulation-packet",
+    "title": "Create a replayable multi-scenario simulation packet",
+    "persona": "Planning lead with operations or reports access",
+    "entrypoint": "/assistant/simulation-studio",
+    "steps": [
+      "Open the AMP34 Simulation workspace.",
+      "Review live demand, supply, inventory, transport, finance, risk, work-queue, and AMP33 network signals.",
+      "Inspect the baseline, demand spike, supply delay, transport disruption, and cost pressure scenario preview.",
+      "Click Create simulation packet."
+    ],
+    "expected": [
+      "A persisted AssistantSimulationStudioPacket is created with assumptionLedgerJson, scenarioRunJson, comparisonJson, recommendationJson, replayPlanJson, archivePlanJson, approvalPlanJson, rollbackPlanJson, and leadershipSummary.",
+      "The packet recommends one scenario from the replayable scenario suite and records stale signal count.",
+      "An AssistantAuditEvent records simulation packet creation.",
+      "No forecast, order, PO, inventory, shipment, finance, network, or action-execution record is mutated automatically."
+    ]
+  },
+  {
+    "id": "amp34-queue-simulation-review",
+    "title": "Queue simulation promotion review",
+    "persona": "Operations controller with edit access",
+    "entrypoint": "/assistant/simulation-studio",
+    "steps": [
+      "Create or select a DRAFT simulation packet.",
+      "Add a review note describing which scenario should be promoted or rejected.",
+      "Click Queue simulation review."
+    ],
+    "expected": [
+      "The packet status changes to REVIEW_QUEUED with actionQueueItemId, approvedByUserId, approvedAt, and approvalNote.",
+      "An AssistantActionQueueItem is created with actionKind assistant_simulation_studio_review and objectHref /assistant/simulation-studio.",
+      "An AssistantAuditEvent states that planning, network, finance, inventory, shipment, and action execution records were not changed automatically."
+    ]
+  },
+  {
+    "id": "amp34-replay-and-archive-guardrails",
+    "title": "Replay and archive guardrails remain visible",
+    "persona": "Executive planning reviewer",
+    "entrypoint": "/assistant/simulation-studio",
+    "steps": [
+      "Open a simulation packet with at least one stale input signal.",
+      "Review the assumption ledger, replay plan, archive plan, and rollback plan.",
+      "Queue the packet for review without promoting downstream changes."
+    ],
+    "expected": [
+      "assumptionLedgerJson shows stale signals and confidence for each source domain.",
+      "replayPlanJson preserves input values and scenario definitions for reruns against refreshed evidence.",
+      "archivePlanJson keeps the packet as decision evidence and rollbackPlanJson preserves underlying operational records until separate downstream approval."
+    ]
+  }
+]

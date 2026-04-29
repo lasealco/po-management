@@ -175,6 +175,7 @@ model Tenant {
   assistantValueRealizationPackets  AssistantValueRealizationPacket[]
   assistantAutonomousOperatingLoops AssistantAutonomousOperatingLoop[]
   assistantNetworkDesignPackets     AssistantNetworkDesignPacket[]
+  assistantSimulationStudioPackets  AssistantSimulationStudioPacket[]
   assistantActionQueue              AssistantActionQueueItem[]
   assistantPlaybookTemplates        AssistantPlaybookTemplate[]
   assistantPlaybookRuns             AssistantPlaybookRun[]
@@ -974,6 +975,44 @@ model AssistantNetworkDesignPacket {
   @@index([tenantId, recommendedScenarioKey, updatedAt])
 }
 
+/// AMP34: multi-scenario simulation studio packet for replayable what-if runs, comparison, and approval-safe recommendations.
+model AssistantSimulationStudioPacket {
+  id                     String    @id @default(cuid())
+  tenantId               String
+  createdByUserId        String?
+  approvedByUserId       String?
+  title                  String
+  status                 String    @default("DRAFT") @db.VarChar(32)
+  simulationScore        Int       @default(0)
+  scenarioCount          Int       @default(0)
+  assumptionCount        Int       @default(0)
+  signalCount            Int       @default(0)
+  dataFreshnessRiskCount Int       @default(0)
+  recommendedScenarioKey String?   @db.VarChar(128)
+  assumptionLedgerJson   Json
+  scenarioRunJson        Json
+  comparisonJson         Json
+  recommendationJson     Json
+  replayPlanJson         Json
+  archivePlanJson        Json
+  approvalPlanJson       Json
+  rollbackPlanJson       Json
+  leadershipSummary      String    @db.Text
+  actionQueueItemId      String?
+  approvedAt             DateTime?
+  approvalNote           String?   @db.Text
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator  User?  @relation("AssistantSimulationStudioPacketCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  approver User?  @relation("AssistantSimulationStudioPacketApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, updatedAt])
+  @@index([tenantId, simulationScore, updatedAt])
+  @@index([tenantId, recommendedScenarioKey, updatedAt])
+}
+
 /// AMP7: inspectable grounding ledger extracted from assistant answers and reviewer additions.
 model AssistantEvidenceRecord {
   id              String    @id @default(cuid())
@@ -1596,6 +1635,8 @@ model User {
   assistantAutonomousOperatingLoopsApproved AssistantAutonomousOperatingLoop[] @relation("AssistantAutonomousOperatingLoopApprover")
   assistantNetworkDesignPacketsCreated AssistantNetworkDesignPacket[]        @relation("AssistantNetworkDesignPacketCreator")
   assistantNetworkDesignPacketsApproved AssistantNetworkDesignPacket[]       @relation("AssistantNetworkDesignPacketApprover")
+  assistantSimulationStudioPacketsCreated AssistantSimulationStudioPacket[]   @relation("AssistantSimulationStudioPacketCreator")
+  assistantSimulationStudioPacketsApproved AssistantSimulationStudioPacket[]  @relation("AssistantSimulationStudioPacketApprover")
   invoiceIntakesAccountingApproved        InvoiceIntake[]                   @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated       TariffShipmentApplication[]       @relation("TariffShipmentApplicationCreator")
   scriEventsOwned                         ScriExternalEvent[]               @relation("ScriEventOwner")

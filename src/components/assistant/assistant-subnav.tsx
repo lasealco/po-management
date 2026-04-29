@@ -59,6 +59,7 @@ export function AssistantSubnav() {
   const valueRealization = pathname.startsWith("/assistant/value-realization");
   const autonomousLoop = pathname.startsWith("/assistant/autonomous-loop");
   const networkDesign = pathname.startsWith("/assistant/network-design");
+  const simulationStudio = pathname.startsWith("/assistant/simulation-studio");
   const workbench = pathname.startsWith("/assistant/workbench");
   const execution = pathname.startsWith("/assistant/execution");
   const workEngine = pathname.startsWith("/assistant/work-engine");
@@ -212,6 +213,13 @@ export function AssistantSubnav() {
         title="AMP33 network design and footprint strategy"
       >
         Network
+      </Link>
+      <Link
+        href="/assistant/simulation-studio"
+        className={simulationStudio ? appNavActiveClass : appNavInactiveClass}
+        title="AMP34 multi-scenario simulation studio"
+      >
+        Simulation
       </Link>
       <Link
         href="/assistant/workbench"
