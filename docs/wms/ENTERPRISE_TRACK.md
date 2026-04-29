@@ -134,9 +134,9 @@ Parallel agents: **non-overlapping paths only** (see [`agent-todos/README.md`](.
 
 **Exit criteria**
 
-- [ ] RBAC model + enforcement points listed; critical paths tested.
-- [ ] Audit parity for sensitive actions.
-- [ ] `GAP_MAP.md` **Permissions / audit** row updated.
+- [x] RBAC model + enforcement points listed; critical paths tested.
+- [x] Audit parity for sensitive actions.
+- [x] `GAP_MAP.md` **Permissions / audit** row updated.
 
 ---
 
