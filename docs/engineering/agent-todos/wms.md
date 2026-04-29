@@ -34,6 +34,7 @@
 - [x] **RBAC / audit (WE-08)** — [`WMS_RBAC_AND_AUDIT.md`](../wms/WMS_RBAC_AND_AUDIT.md); coarse `org.wms` grants + `wms-api-grants` Vitest harness (`src/lib/wms/wms-api-grants.*`).
 - [x] **Wave / replenishment** — **REPLENISH** open tasks: **source bin → target bin** in Operations (`sourceBin` in `GET /api/wms`); wave release/complete unchanged; **landed** 2026-04-25.
 - [x] **Dashboards (WE-09)** — executive KPI row + `GET /api/wms?homeKpis=1` + [`WMS_EXECUTIVE_KPIS.md`](../wms/WMS_EXECUTIVE_KPIS.md); blueprint OTIF/labor depth still backlog.
+- [x] **Zone / topology (WE-10)** — [`WMS_ZONE_TOPOLOGY_ADR.md`](../wms/WMS_ZONE_TOPOLOGY_ADR.md); no migration — bin rack addressing + functional zones documented; parent-zone / aisle entities backlog.
 
 ---
 

@@ -34,7 +34,7 @@ Parallel agents: **non-overlapping paths only** (see [`agent-todos/README.md`](.
 | **WE-07** | Commercial handoff (quotes → billing) | 3–5 | CRM/commercial Phase C readiness |
 | **WE-08** | Field-level WMS RBAC + audit | 2 | Grants model in `icp-and-tenancy` |
 | **WE-09** | Executive / KPI dashboard depth | 2 | [`WMS_EXECUTIVE_KPIS.md`](./WMS_EXECUTIVE_KPIS.md) |
-| **WE-10** | Zone/site topology (beyond flat zone+bin) | 2–3 | Warehouse model migrations |
+| **WE-10** | Zone/site topology (beyond flat zone+bin) | 2–3 | [`WMS_ZONE_TOPOLOGY_ADR.md`](./WMS_ZONE_TOPOLOGY_ADR.md) |
 | **WE-11** | Map 3.4 — floor / globe / deep links | 2–3 | CT map MVP; [`CONTROL_TOWER_OPERATIONS_MAP_PHASE3.md`](../engineering/CONTROL_TOWER_OPERATIONS_MAP_PHASE3.md) |
 | **WE-12** | Hardening + enterprise exit sign-off | 2 | Prior capsules merged |
 
@@ -157,8 +157,8 @@ Parallel agents: **non-overlapping paths only** (see [`agent-todos/README.md`](.
 
 **Exit criteria**
 
-- [ ] ADR for topology scope; migrations if needed.
-- [ ] `GAP_MAP.md` R1 zone row reflects outcome.
+- [x] ADR for topology scope; migrations if needed.
+- [x] `GAP_MAP.md` R1 zone row reflects outcome.
 
 ---
 
