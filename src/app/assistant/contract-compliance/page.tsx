@@ -14,7 +14,7 @@ export default async function AssistantContractCompliancePage() {
       viewerHas(access.grantSet, "org.rfq", "view") ||
       viewerHas(access.grantSet, "org.tariffs", "view"));
   if (!canOpen) {
-    return <AccessDenied title="Contract compliance" message="You need supplier, RFQ, or tariff view access to open AMP23." />;
+    return <AccessDenied title="Contract Lifecycle & Commercial Obligations" message="You need supplier, RFQ, or tariff view access to open Sprint 23 (AMP23)." />;
   }
   const response = await GET();
   const snapshot = await response.json();

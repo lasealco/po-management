@@ -1,0 +1,31 @@
+{
+  "sprint": 23,
+  "title": "Contract Lifecycle & Commercial Obligations",
+  "ampProgram": "AMP23",
+  "workspacePath": "/assistant/contract-compliance",
+  "guardrails": [
+    "Packets summarize obligations, renewals, documents, tariffs, and RFQ commitments — contract renewal, legal notice, tariff publication, and supplier-document workflows stay outside silent automation.",
+    "Queue review writes audit events and AssistantActionQueueItem rows — it does not alter contracts, documents, tariffs, RFQs, or obligation records automatically."
+  ],
+  "scenarios": [
+    {
+      "id": "S23-01-create-packet",
+      "steps": [
+        "Sign in with supplier, RFQ, or tariff view access.",
+        "Open /assistant/contract-compliance (also linked as Sprint 23 in the assistant subnav).",
+        "Click Create Sprint 23 packet and confirm AssistantContractCompliancePacket persistence."
+      ],
+      "passWhen": "POST create_packet returns 201; GET snapshot lists the packet; underlying supplier docs, tariffs, and RFQ rows unchanged."
+    },
+    {
+      "id": "S23-02-queue-review",
+      "steps": ["Optionally add a compliance approval note.", "Queue compliance review."],
+      "passWhen": "Packet status REVIEW_QUEUED; audit answerKind contract_compliance_review; action queue references assistant_contract_compliance_packet."
+    },
+    {
+      "id": "S23-03-portfolio-evidence",
+      "steps": ["Seed or use tenant data with expiring documents or tariff validity windows.", "Reload preview or create a packet."],
+      "passWhen": "Dimensional JSON reflects obligations, renewal risk, document risk, and gaps; recommendations remain human-approved."
+    }
+  ]
+}

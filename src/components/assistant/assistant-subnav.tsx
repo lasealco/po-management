@@ -415,6 +415,13 @@ export function AssistantSubnav() {
       >
         Sprint 22
       </Link>
+      <Link
+        href="/assistant/contract-compliance"
+        className={contractCompliance ? appNavActiveClass : appNavInactiveClass}
+        title="Sprint 23 Contract Lifecycle & Commercial Obligations (AMP23)"
+      >
+        Sprint 23
+      </Link>
       {advancedProgramLinks.map((program) => (
         <Link
           key={program.slug}
