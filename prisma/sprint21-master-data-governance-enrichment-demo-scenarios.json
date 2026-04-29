@@ -1,0 +1,29 @@
+{
+  "sprint": 21,
+  "title": "Master Data Governance & Enrichment",
+  "guardrails": [
+    "Packets are advisory: MDM merges, API Hub staging promotion, enrichment publishes, connector edits, mapping retries, and ingestion replays stay in governed steward/API Hub workflows.",
+    "Queue review and approve actions write audit events and may enqueue AssistantActionQueueItem rows — they never mutate master data, staging rows, enrichment drafts, connectors, or ingestion runs silently."
+  ],
+  "scenarios": [
+    {
+      "id": "S21-01-create-packet",
+      "steps": [
+        "Sign in with API Hub, settings, products, suppliers, or reports edit access.",
+        "Open /assistant/master-data-governance-enrichment and click Create Sprint 21 packet.",
+        "Confirm AssistantMasterDataGovernancePacket persists with governanceScore and dimensional JSON."
+      ],
+      "passWhen": "POST create_packet returns 201 and GET lists the packet without MDM or API Hub mutations."
+    },
+    {
+      "id": "S21-02-queue-review",
+      "steps": ["Queue MDM governance review with optional steward note.", "Verify action queue links assistant_master_data_governance_packet."],
+      "passWhen": "Status REVIEW_QUEUED and audit answerKind sprint21_mdg_rev recorded."
+    },
+    {
+      "id": "S21-03-approve",
+      "steps": ["Approve packet after data steward sign-off.", "Verify sprint21_mdg_ok audit narrative denies automatic merges, staging, enrichment, and connector changes."],
+      "passWhen": "Status APPROVED; AMP21 runs, staging batches, hub reviews, jobs, and ingestion state unchanged."
+    }
+  ]
+}

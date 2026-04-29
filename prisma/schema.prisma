@@ -199,6 +199,7 @@ model Tenant {
   assistantCustomerSuccessPackets             AssistantCustomerSuccessPacket[]
   assistantStrategicSourcingPackets           AssistantStrategicSourcingPacket[]
   assistantExternalRiskEventPackets           AssistantExternalRiskEventPacket[]
+  assistantMasterDataGovernancePackets        AssistantMasterDataGovernancePacket[]
   assistantActionQueue                        AssistantActionQueueItem[]
   assistantPlaybookTemplates                  AssistantPlaybookTemplate[]
   assistantPlaybookRuns                       AssistantPlaybookRun[]
@@ -1946,6 +1947,45 @@ model AssistantExternalRiskEventPacket {
   @@index([tenantId, eventIntelligenceScore, updatedAt])
 }
 
+/// Sprint 21: master data governance / enrichment — duplicate & stale posture, API Hub staging conflicts, integration review queue, canonical conflicts, enrichment gaps — review-only; no merges, staging apply, or canonical overwrites from this workflow.
+model AssistantMasterDataGovernancePacket {
+  id                         String    @id @default(cuid())
+  tenantId                   String
+  createdByUserId            String?
+  approvedByUserId           String?
+  title                      String
+  status                     String    @default("DRAFT") @db.VarChar(32)
+  governanceScore            Int       @default(0)
+  duplicateClusterRiskCount  Int       @default(0)
+  staleRecordRiskCount       Int       @default(0)
+  stagingConflictRiskCount   Int       @default(0)
+  hubReviewRiskCount         Int       @default(0)
+  canonicalConflictRiskCount Int       @default(0)
+  enrichmentQueueRiskCount   Int       @default(0)
+  sourceSummaryJson          Json
+  duplicateClustersJson      Json
+  staleRecordsJson           Json
+  stagingConflictsJson       Json
+  hubReviewQueueJson         Json
+  canonicalConflictJson      Json
+  enrichmentQueueJson        Json
+  responsePlanJson           Json
+  rollbackPlanJson           Json
+  leadershipSummary          String    @db.Text
+  actionQueueItemId          String?
+  approvedAt                 DateTime?
+  approvalNote               String?   @db.Text
+  createdAt                  DateTime  @default(now())
+  updatedAt                  DateTime  @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator  User?  @relation("AssistantMasterDataGovernancePacketCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  approver User?  @relation("AssistantMasterDataGovernancePacketApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, updatedAt])
+  @@index([tenantId, governanceScore, updatedAt])
+}
+
 /// AMP7: inspectable grounding ledger extracted from assistant answers and reviewer additions.
 model AssistantEvidenceRecord {
   id              String    @id @default(cuid())
@@ -2616,6 +2656,8 @@ model User {
   assistantStrategicSourcingPacketsApproved           AssistantStrategicSourcingPacket[]           @relation("AssistantStrategicSourcingPacketApprover")
   assistantExternalRiskEventPacketsCreated            AssistantExternalRiskEventPacket[]           @relation("AssistantExternalRiskEventPacketCreator")
   assistantExternalRiskEventPacketsApproved           AssistantExternalRiskEventPacket[]           @relation("AssistantExternalRiskEventPacketApprover")
+  assistantMasterDataGovernancePacketsCreated         AssistantMasterDataGovernancePacket[]        @relation("AssistantMasterDataGovernancePacketCreator")
+  assistantMasterDataGovernancePacketsApproved        AssistantMasterDataGovernancePacket[]        @relation("AssistantMasterDataGovernancePacketApprover")
   invoiceIntakesAccountingApproved                    InvoiceIntake[]                              @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated                   TariffShipmentApplication[]                  @relation("TariffShipmentApplicationCreator")
   scriEventsOwned                                     ScriExternalEvent[]                          @relation("ScriEventOwner")
