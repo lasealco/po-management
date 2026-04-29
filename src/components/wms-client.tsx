@@ -2,6 +2,7 @@
 
 import { apiClientErrorMessage } from "@/lib/api-client-error";
 import type { InventoryMovementType, WmsReceiveStatus } from "@prisma/client";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
@@ -2199,6 +2200,24 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
               Mark shipped posts shipment movements and closes the order for billing hooks.
             </p>
           </div>
+        </div>
+        <div className="mt-4 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-zinc-500">
+            Commercial handoff
+          </p>
+          <p className="mt-2 text-xs leading-relaxed text-zinc-700">
+            Phase B billing resolves movements using the outbound&apos;s{" "}
+            <span className="font-medium text-zinc-900">crmAccountId</span> (bill-to). Align quotes and accounts in CRM (
+            <Link href="/crm/accounts" className="font-medium text-[var(--arscmp-primary)] underline">
+              accounts
+            </Link>
+            ,{" "}
+            <Link href="/crm/quotes" className="font-medium text-[var(--arscmp-primary)] underline">
+              quotes
+            </Link>
+            ). Full quote→outbound automation is deferred —{" "}
+            <span className="font-medium text-zinc-900">docs/wms/WMS_COMMERCIAL_HANDOFF.md</span>.
+          </p>
         </div>
         <p className="mt-4 text-xs font-semibold uppercase tracking-[0.15em] text-zinc-500">
           Create / edit outbound

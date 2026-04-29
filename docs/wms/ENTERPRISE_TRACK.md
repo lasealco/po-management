@@ -119,12 +119,12 @@ Parallel agents: **non-overlapping paths only** (see [`agent-todos/README.md`](.
 
 ## WE-07 — Commercial handoff (quotes → outbound billing)
 
-**Goal:** **Commercial / quotes** ❌ Phase C — align with [`IMPLEMENTATION_STRATEGY.md`](./IMPLEMENTATION_STRATEGY.md) Phase C and CRM; outbound-linked billing profiles.
+**Goal:** **Commercial / quotes** Phase C alignment — document **`crmAccountId`** bill-to bridge + Phase B billing vs deferred automated quote→outbound ([`WMS_COMMERCIAL_HANDOFF.md`](./WMS_COMMERCIAL_HANDOFF.md)).
 
 **Exit criteria**
 
-- [ ] Contract with CRM/commercial module for quote→order→billing handoff (minimal path).
-- [ ] `GAP_MAP.md` R3 **Commercial / quotes** reflects shipped slice or explicit deferral with owner.
+- [x] Contract with CRM/commercial module for quote→order→billing handoff (minimal path).
+- [x] `GAP_MAP.md` R3 **Commercial / quotes** reflects shipped slice or explicit deferral with owner.
 
 ---
 

@@ -24,7 +24,7 @@
 
 - [ ] **Appointment scheduling** (R2) — spec + schema slice first.
 - [x] **VAS / work orders** (R3) — **WE-04 MVP** shipped (`WmsWorkOrder`, `VALUE_ADD`, Operations UI — [`WMS_VAS_WORK_ORDERS.md`](../../wms/WMS_VAS_WORK_ORDERS.md)); portal/BOM depth backlog.
-- [ ] **Commercial quotes** (R3 Phase C) — likely CRM overlap; own issue.
+- [x] **Commercial quotes** (R3 Phase C) — **WE-07 contract doc**: [`WMS_COMMERCIAL_HANDOFF.md`](../../wms/WMS_COMMERCIAL_HANDOFF.md) (bill-to via `crmAccountId`; automated quote→outbound deferred — CRM owner).
 
 ---
 
