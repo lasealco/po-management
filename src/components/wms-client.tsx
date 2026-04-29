@@ -239,10 +239,14 @@ type WmsData = {
     title: string;
     description: string | null;
     status: "OPEN" | "IN_PROGRESS" | "DONE" | "CANCELLED";
+    intakeChannel: "OPS" | "CUSTOMER_PORTAL";
+    estimatedMaterialsCents: number | null;
+    estimatedLaborMinutes: number | null;
     completedAt: string | null;
     createdAt: string;
     warehouse: { id: string; code: string | null; name: string };
     createdBy: { id: string; name: string };
+    crmAccount: { id: string; name: string } | null;
   }>;
   /** BF-02 — tenant lot/batch master registry (expiry / origin / notes per product + lotCode). */
   lotBatches?: Array<{
@@ -461,11 +465,25 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
   >({});
   const [vasWoTitle, setVasWoTitle] = useState("");
   const [vasWoDesc, setVasWoDesc] = useState("");
+  const [vasWoCrmAccountId, setVasWoCrmAccountId] = useState("");
   const [vasTaskWoId, setVasTaskWoId] = useState("");
   const [vasBalanceLineId, setVasBalanceLineId] = useState("");
   const [vasTaskQty, setVasTaskQty] = useState("");
   const [cycleBalanceId, setCycleBalanceId] = useState("");
   const [cycleCountQtyByTask, setCycleCountQtyByTask] = useState<Record<string, string>>({});
+  const [woEstDraft, setWoEstDraft] = useState<Record<string, { m: string; l: string }>>({});
+
+  useEffect(() => {
+    if (!data) return;
+    const next: Record<string, { m: string; l: string }> = {};
+    for (const wo of data.workOrders) {
+      next[wo.id] = {
+        m: wo.estimatedMaterialsCents != null ? String(wo.estimatedMaterialsCents / 100) : "",
+        l: wo.estimatedLaborMinutes != null ? String(wo.estimatedLaborMinutes) : "",
+      };
+    }
+    setWoEstDraft(next);
+  }, [data]);
   const [ledgerSince, setLedgerSince] = useState("");
   const [ledgerUntil, setLedgerUntil] = useState("");
   const [ledgerLimit, setLedgerLimit] = useState("");
@@ -2999,7 +3017,12 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
           Warehouse-scoped tickets with <span className="font-medium text-zinc-800">VALUE_ADD</span> tasks.
           Completing a task with material consumption posts an{" "}
           <span className="font-medium text-zinc-800">ADJUSTMENT</span> movement (billing linkage notes in{" "}
-          <span className="font-medium text-zinc-800">docs/wms/WMS_VAS_WORK_ORDERS.md</span>).
+          <span className="font-medium text-zinc-800">docs/wms/WMS_VAS_WORK_ORDERS.md</span>, BF-09{" "}
+          <span className="font-medium text-zinc-800">docs/wms/WMS_VAS_BF09.md</span>). Customer intake:{" "}
+          <Link href="/wms/vas-intake" className="font-semibold text-[var(--arscmp-primary)] underline-offset-2 hover:underline">
+            VAS intake
+          </Link>
+          .
         </p>
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           <div className="rounded-xl border border-zinc-100 bg-zinc-50/90 p-4">
@@ -3024,6 +3047,21 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                 className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
               />
             </label>
+            <label className="mt-2 block">
+              <span className="text-[10px] font-medium uppercase text-zinc-500">CRM account (optional)</span>
+              <select
+                value={vasWoCrmAccountId}
+                onChange={(e) => setVasWoCrmAccountId(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+              >
+                <option value="">None</option>
+                {data.crmAccountOptions.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                  </option>
+                ))}
+              </select>
+            </label>
             <button
               type="button"
               disabled={!canEdit || busy || !selectedWarehouseId || !vasWoTitle.trim()}
@@ -3033,6 +3071,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                   warehouseId: selectedWarehouseId,
                   workOrderTitle: vasWoTitle.trim(),
                   workOrderDescription: vasWoDesc.trim() ? vasWoDesc.trim() : null,
+                  workOrderCrmAccountId: vasWoCrmAccountId.trim() ? vasWoCrmAccountId.trim() : null,
                 })
               }
               className="mt-3 rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
@@ -3132,14 +3171,98 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
             <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-zinc-500">
               Work orders (this warehouse)
             </p>
-            <ul className="mt-2 space-y-1 text-xs text-zinc-700">
-              {workOrdersForWarehouse.map((wo) => (
-                <li key={wo.id} className="flex flex-wrap gap-x-2 gap-y-0.5">
-                  <span className="font-medium text-zinc-900">{wo.workOrderNo}</span>
-                  <span>{wo.title}</span>
-                  <span className="text-zinc-500">{wo.status}</span>
-                </li>
-              ))}
+            <ul className="mt-2 space-y-2 text-xs text-zinc-700">
+              {workOrdersForWarehouse.map((wo) => {
+                const draft = woEstDraft[wo.id] ?? { m: "", l: "" };
+                return (
+                  <li key={wo.id} className="rounded-lg border border-zinc-100 bg-white px-3 py-2 shadow-sm">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                      <span className="font-medium text-zinc-900">{wo.workOrderNo}</span>
+                      <span>{wo.title}</span>
+                      <span className="text-zinc-500">{wo.status}</span>
+                      <span
+                        className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                          wo.intakeChannel === "CUSTOMER_PORTAL"
+                            ? "bg-violet-100 text-violet-900"
+                            : "bg-zinc-100 text-zinc-700"
+                        }`}
+                      >
+                        {wo.intakeChannel === "CUSTOMER_PORTAL" ? "Portal" : "Ops"}
+                      </span>
+                      {wo.crmAccount ? (
+                        <span className="text-zinc-600">CRM: {wo.crmAccount.name}</span>
+                      ) : null}
+                    </div>
+                    {canEdit && wo.status !== "DONE" && wo.status !== "CANCELLED" ? (
+                      <div className="mt-2 flex flex-wrap items-end gap-2 border-t border-zinc-50 pt-2">
+                        <label className="text-[10px] font-medium text-zinc-600">
+                          Est. materials ($)
+                          <input
+                            type="number"
+                            step="0.01"
+                            min={0}
+                            value={draft.m}
+                            onChange={(e) =>
+                              setWoEstDraft((prev) => ({
+                                ...prev,
+                                [wo.id]: { ...(prev[wo.id] ?? { m: "", l: "" }), m: e.target.value },
+                              }))
+                            }
+                            className="mt-0.5 block w-28 rounded border border-zinc-300 px-2 py-1 tabular-nums"
+                          />
+                        </label>
+                        <label className="text-[10px] font-medium text-zinc-600">
+                          Labor (min)
+                          <input
+                            type="number"
+                            step={1}
+                            min={0}
+                            value={draft.l}
+                            onChange={(e) =>
+                              setWoEstDraft((prev) => ({
+                                ...prev,
+                                [wo.id]: { ...(prev[wo.id] ?? { m: "", l: "" }), l: e.target.value },
+                              }))
+                            }
+                            className="mt-0.5 block w-24 rounded border border-zinc-300 px-2 py-1 tabular-nums"
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => {
+                            const mStr = draft.m.trim();
+                            const lStr = draft.l.trim();
+                            let estimatedMaterialsCents: number | null | undefined;
+                            let estimatedLaborMinutes: number | null | undefined;
+                            if (mStr === "") estimatedMaterialsCents = null;
+                            else {
+                              const v = Number(mStr);
+                              if (!Number.isFinite(v) || v < 0) return;
+                              estimatedMaterialsCents = Math.round(v * 100);
+                            }
+                            if (lStr === "") estimatedLaborMinutes = null;
+                            else {
+                              const v = Math.round(Number(lStr));
+                              if (!Number.isFinite(v) || v < 0) return;
+                              estimatedLaborMinutes = v;
+                            }
+                            void runAction({
+                              action: "set_work_order_commercial_estimate",
+                              workOrderId: wo.id,
+                              estimatedMaterialsCents,
+                              estimatedLaborMinutes,
+                            });
+                          }}
+                          className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-[11px] font-semibold text-zinc-800 disabled:opacity-40"
+                        >
+                          Save estimate
+                        </button>
+                      </div>
+                    ) : null}
+                  </li>
+                );
+              })}
             </ul>
           </div>
         ) : null}

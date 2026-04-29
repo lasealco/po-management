@@ -26,5 +26,5 @@ Material **`VALUE_ADD`** completion emits **`ADJUSTMENT`** only (`VALUE_ADD_TASK
 
 ## MVP limits
 
-- No BOM/multi-component assemblies beyond single balance consumption row per task.
-- No portal/customer WO intake — ops-created via WMS Operations UI + **`POST /api/wms`** only.
+- No BOM/multi-component assemblies beyond single balance consumption row per task (commercial **`estimatedMaterialsCents`** on WO header is a manual snapshot — BF-09 [`WMS_VAS_BF09.md`](./WMS_VAS_BF09.md)).
+- **Authentication-required** customer intake shell at **`/wms/vas-intake`** (`request_customer_vas_work_order`) — SSO-branded supplier/customer portal backlog.

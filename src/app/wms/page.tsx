@@ -29,6 +29,11 @@ const areas: { href: string; title: string; description: string }[] = [
     title: "Billing",
     description: "Rates, billing events from movements, draft invoices, and CSV export (Phase B).",
   },
+  {
+    href: "/wms/vas-intake",
+    title: "VAS intake",
+    description: "Customer value-add requests with CRM attribution (BF-09 portal shell).",
+  },
 ];
 
 export default async function WmsPage({
@@ -115,7 +120,7 @@ export default async function WmsPage({
         <WmsHomeOverview tenantId={tenant.id} warehouseId={warehouseId} warehouses={warehouses} />
       ) : null}
 
-      <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {areas.map((a) => (
           <li key={a.href}>
             <Link

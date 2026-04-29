@@ -1854,6 +1854,18 @@ export async function handleWmsPost(
     if (!wh) {
       return toApiErrorResponseFromStatus("Warehouse not found.", 404);
     }
+    let crmAccountId: string | null = input.workOrderCrmAccountId?.trim() || null;
+    if (crmAccountId) {
+      const acct = await prisma.crmAccount.findFirst({
+        where: { id: crmAccountId, tenantId },
+        select: { id: true },
+      });
+      if (!acct) {
+        return toApiErrorResponseFromStatus("CRM account not found.", 404);
+      }
+    } else {
+      crmAccountId = null;
+    }
     const workOrderNo = await nextWorkOrderNo(tenantId);
     const desc = input.workOrderDescription?.trim();
     const row = await prisma.wmsWorkOrder.create({
@@ -1863,6 +1875,8 @@ export async function handleWmsPost(
         workOrderNo,
         title: title.slice(0, 200),
         description: desc ? desc.slice(0, 8000) : null,
+        intakeChannel: "OPS",
+        crmAccountId,
         createdById: actorId,
       },
       select: { id: true, workOrderNo: true },
@@ -1873,11 +1887,129 @@ export async function handleWmsPost(
         entityType: "WMS_WORK_ORDER",
         entityId: row.id,
         action: "work_order_created",
-        payload: { workOrderNo: row.workOrderNo, warehouseId },
+        payload: {
+          workOrderNo: row.workOrderNo,
+          warehouseId,
+          intakeChannel: "OPS",
+          crmAccountId,
+        },
         actorUserId: actorId,
       },
     });
     return NextResponse.json({ ok: true, workOrderId: row.id, workOrderNo: row.workOrderNo });
+  }
+
+  if (action === "request_customer_vas_work_order") {
+    const warehouseId = input.warehouseId?.trim();
+    const title = input.workOrderTitle?.trim();
+    const crmAccountId = input.crmAccountId?.trim();
+    if (!warehouseId || !title || !crmAccountId) {
+      return toApiErrorResponseFromStatus("warehouseId, workOrderTitle, and crmAccountId required.", 400);
+    }
+    const wh = await prisma.warehouse.findFirst({
+      where: { id: warehouseId, tenantId },
+      select: { id: true },
+    });
+    if (!wh) {
+      return toApiErrorResponseFromStatus("Warehouse not found.", 404);
+    }
+    const acct = await prisma.crmAccount.findFirst({
+      where: { id: crmAccountId, tenantId },
+      select: { id: true },
+    });
+    if (!acct) {
+      return toApiErrorResponseFromStatus("CRM account not found.", 404);
+    }
+    const workOrderNo = await nextWorkOrderNo(tenantId);
+    const desc = input.workOrderDescription?.trim();
+    const row = await prisma.wmsWorkOrder.create({
+      data: {
+        tenantId,
+        warehouseId,
+        workOrderNo,
+        title: title.slice(0, 200),
+        description: desc ? desc.slice(0, 8000) : null,
+        intakeChannel: "CUSTOMER_PORTAL",
+        crmAccountId,
+        createdById: actorId,
+      },
+      select: { id: true, workOrderNo: true },
+    });
+    await prisma.ctAuditLog.create({
+      data: {
+        tenantId,
+        entityType: "WMS_WORK_ORDER",
+        entityId: row.id,
+        action: "work_order_created",
+        payload: {
+          workOrderNo: row.workOrderNo,
+          warehouseId,
+          intakeChannel: "CUSTOMER_PORTAL",
+          crmAccountId,
+        },
+        actorUserId: actorId,
+      },
+    });
+    return NextResponse.json({ ok: true, workOrderId: row.id, workOrderNo: row.workOrderNo });
+  }
+
+  if (action === "set_work_order_commercial_estimate") {
+    const workOrderId = input.workOrderId?.trim();
+    if (!workOrderId) {
+      return toApiErrorResponseFromStatus("workOrderId required.", 400);
+    }
+    const wo = await prisma.wmsWorkOrder.findFirst({
+      where: { id: workOrderId, tenantId },
+      select: { id: true },
+    });
+    if (!wo) {
+      return toApiErrorResponseFromStatus("Work order not found.", 404);
+    }
+
+    const matsRaw = input.estimatedMaterialsCents;
+    const laborRaw = input.estimatedLaborMinutes;
+    let touched = false;
+    const data: {
+      estimatedMaterialsCents?: number | null;
+      estimatedLaborMinutes?: number | null;
+    } = {};
+
+    if (matsRaw !== undefined) {
+      touched = true;
+      if (matsRaw === null) {
+        data.estimatedMaterialsCents = null;
+      } else {
+        const n = typeof matsRaw === "number" ? matsRaw : Number(matsRaw);
+        if (!Number.isFinite(n) || n < 0 || !Number.isInteger(n)) {
+          return toApiErrorResponseFromStatus("estimatedMaterialsCents must be a non-negative integer (cents).", 400);
+        }
+        data.estimatedMaterialsCents = n;
+      }
+    }
+    if (laborRaw !== undefined) {
+      touched = true;
+      if (laborRaw === null) {
+        data.estimatedLaborMinutes = null;
+      } else {
+        const n = typeof laborRaw === "number" ? laborRaw : Number(laborRaw);
+        if (!Number.isFinite(n) || n < 0 || !Number.isInteger(n)) {
+          return toApiErrorResponseFromStatus("estimatedLaborMinutes must be a non-negative integer.", 400);
+        }
+        data.estimatedLaborMinutes = n;
+      }
+    }
+    if (!touched) {
+      return toApiErrorResponseFromStatus(
+        "Provide estimatedMaterialsCents and/or estimatedLaborMinutes (use null to clear a field).",
+        400,
+      );
+    }
+
+    await prisma.wmsWorkOrder.update({
+      where: { id: workOrderId },
+      data,
+    });
+    return NextResponse.json({ ok: true });
   }
 
   if (action === "create_value_add_task") {

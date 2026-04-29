@@ -80,7 +80,7 @@ export type WmsBody = {
   pickAllocationStrategy?: "MAX_AVAILABLE_FIRST" | "FIFO_BY_BIN_CODE" | "FEFO_BY_LOT_EXPIRY" | "MANUAL_ONLY";
   /** Optional batch/lot for putaway completion and manual picks (`InventoryBalance.lotCode`). */
   lotCode?: string | null;
-  /** `create_value_add_task` — `WmsWorkOrder.id`. */
+  /** `create_value_add_task` — `WmsWorkOrder.id`; BF-09 `set_work_order_commercial_estimate` — target WO. */
   workOrderId?: string;
   /** `create_work_order` — title for value-add / labor ticket header. */
   workOrderTitle?: string;
@@ -97,4 +97,10 @@ export type WmsBody = {
   batchCountryOfOrigin?: string | null;
   /** `set_wms_lot_batch` — operator notes; omit unchanged; null clears. */
   batchNotes?: string | null;
+  /** BF-09 — optional CRM counterparty on ops-created work orders. */
+  workOrderCrmAccountId?: string | null;
+  /** BF-09 — whole cents; send `null` to clear when patching estimates. */
+  estimatedMaterialsCents?: number | null;
+  /** BF-09 — planned minutes; send `null` to clear. */
+  estimatedLaborMinutes?: number | null;
 };

@@ -4707,6 +4707,12 @@ enum WmsWorkOrderStatus {
   CANCELLED
 }
 
+/** BF-09 — ops-created vs customer-portal intake for commercial/traceability ties (`crmAccountId`). */
+enum WmsWorkOrderIntakeChannel {
+  OPS
+  CUSTOMER_PORTAL
+}
+
 /// Blueprint value-add service / labor header — execution steps are `WmsTask` rows (`VALUE_ADD`).
 model WmsWorkOrder {
   id          String             @id @default(cuid())
@@ -4716,17 +4722,27 @@ model WmsWorkOrder {
   title       String             @db.VarChar(200)
   description String?            @db.Text
   status      WmsWorkOrderStatus @default(OPEN)
+  /** BF-09 — portal intake vs floor-created ticket. */
+  intakeChannel WmsWorkOrderIntakeChannel @default(OPS)
+  /** BF-09 — optional commercial counterparty (mirrors outbound CRM usage patterns). */
+  crmAccountId String?
+  /** BF-09 — manual BOM / assembly snapshot for quoting (whole cents). */
+  estimatedMaterialsCents Int?
+  /** BF-09 — planning labor minutes before engineered standards exist. */
+  estimatedLaborMinutes   Int?
   createdById String
   completedAt DateTime?
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
 
-  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
-  createdBy User      @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  warehouse   Warehouse   @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  createdBy   User        @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  crmAccount  CrmAccount? @relation(fields: [crmAccountId], references: [id], onDelete: SetNull)
 
   @@unique([tenantId, workOrderNo])
   @@index([tenantId, warehouseId, status])
+  @@index([tenantId, crmAccountId])
 }
 
 /// Per-user saved movement-ledger filter presets on WMS Stock (parity with `CtSavedFilter` for workbench).
@@ -5122,6 +5138,7 @@ model CrmAccount {
   assistantCustomerBriefs  AssistantCustomerBrief[]
   customerPortalUsers      User[]                   @relation("UserCustomerPortalScope")
   assistantEmailThreads    AssistantEmailThread[]
+  wmsWorkOrders            WmsWorkOrder[]
 
   @@index([tenantId, lifecycle])
   @@index([tenantId, ownerUserId])

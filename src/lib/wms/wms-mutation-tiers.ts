@@ -53,6 +53,10 @@ const WMS_POST_ACTION_TIER: Record<string, WmsMutationTier> = {
   complete_cycle_count_task: "inventory",
 
   create_work_order: "operations",
+  /** BF-09 — customer-facing intake shell → same warehouse WO row as ops-created tickets. */
+  request_customer_vas_work_order: "operations",
+  /** BF-09 — manual BOM / labor planning snapshot (cents + minutes). */
+  set_work_order_commercial_estimate: "operations",
   create_value_add_task: "operations",
   complete_value_add_task: "operations",
 };
