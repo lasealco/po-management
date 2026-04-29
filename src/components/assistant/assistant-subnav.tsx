@@ -63,6 +63,7 @@ export function AssistantSubnav() {
   const simulationStudio = pathname.startsWith("/assistant/simulation-studio");
   const continuousPlanning = pathname.startsWith("/assistant/continuous-planning");
   const revenueOperations = pathname.startsWith("/assistant/revenue-operations");
+  const agentGovernance = pathname.startsWith("/assistant/agent-governance");
   const advancedProgram = (slug: string) => pathname.startsWith(`/assistant/advanced-programs/${slug}`);
   const advancedProgramLinks = listAdvancedProgramConfigs();
   const workbench = pathname.startsWith("/assistant/workbench");
@@ -239,6 +240,13 @@ export function AssistantSubnav() {
         title="AMP36 quote-to-contract revenue operations"
       >
         Revenue ops
+      </Link>
+      <Link
+        href="/assistant/agent-governance"
+        className={agentGovernance ? appNavActiveClass : appNavInactiveClass}
+        title="Sprint 1 Agent Governance Control Plane"
+      >
+        Sprint 1
       </Link>
       {advancedProgramLinks.map((program) => (
         <Link

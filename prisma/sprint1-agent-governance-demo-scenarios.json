@@ -1,0 +1,57 @@
+[
+  {
+    "id": "sprint1-create-agent-governance-packet",
+    "title": "Create a durable Agent Governance Control Plane packet",
+    "persona": "AI platform, security, AI quality, and control owners",
+    "entrypoints": [
+      "/assistant/agent-governance",
+      "/api/assistant/agent-governance"
+    ],
+    "steps": [
+      "Open Sprint 1 from the Assistant subnav.",
+      "Review the live registry preview, tool scope review, prompt supply-chain summary, memory governance controls, observability signals, certification blockers, and rollback controls.",
+      "Click Create Sprint 1 packet."
+    ],
+    "expected": [
+      "An AssistantAgentGovernancePacket row is persisted with registry, toolScope, promptSupplyChain, memoryGovernance, observability, certificationPlan, rollbackPlan, and leadershipSummary evidence.",
+      "AssistantAuditEvent records packet creation.",
+      "Agent scopes, tool permissions, prompt library records, memory policy, automation policies, and source telemetry are not mutated automatically."
+    ]
+  },
+  {
+    "id": "sprint1-queue-certification-review",
+    "title": "Queue certification review for a Sprint 1 packet",
+    "persona": "Control owner",
+    "entrypoints": [
+      "/assistant/agent-governance"
+    ],
+    "steps": [
+      "Create or select a DRAFT Sprint 1 packet.",
+      "Add a certification note describing the downstream approval decision.",
+      "Click Queue review."
+    ],
+    "expected": [
+      "The packet status changes to REVIEW_QUEUED and stores actionQueueItemId.",
+      "AssistantActionQueueItem uses actionKind assistant_agent_governance_certification.",
+      "AssistantAuditEvent states that tools, prompts, memories, automation policies, and source telemetry were not changed automatically."
+    ]
+  },
+  {
+    "id": "sprint1-certify-after-human-review",
+    "title": "Certify an agent governance packet after human review",
+    "persona": "AI quality owner",
+    "entrypoints": [
+      "/assistant/agent-governance"
+    ],
+    "steps": [
+      "Open a reviewed Sprint 1 packet.",
+      "Confirm certification blockers and rollback controls are acceptable.",
+      "Click Mark certified."
+    ],
+    "expected": [
+      "The packet status changes to CERTIFIED and records certifiedByUserId, certifiedAt, and certificationNote.",
+      "The action is audit logged as a certification decision.",
+      "Certification records the review decision only; it does not automatically expand agent authority, enable tools, approve prompts, write memories, or change automation policy."
+    ]
+  }
+]

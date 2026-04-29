@@ -179,6 +179,7 @@ model Tenant {
   assistantContinuousPlanningPackets AssistantContinuousPlanningPacket[]
   assistantRevenueOperationsPackets AssistantRevenueOperationsPacket[]
   assistantAdvancedProgramPackets    AssistantAdvancedProgramPacket[]
+  assistantAgentGovernancePackets    AssistantAgentGovernancePacket[]
   assistantActionQueue              AssistantActionQueueItem[]
   assistantPlaybookTemplates        AssistantPlaybookTemplate[]
   assistantPlaybookRuns             AssistantPlaybookRun[]
@@ -1130,6 +1131,43 @@ model AssistantAdvancedProgramPacket {
   @@index([tenantId, programScore, updatedAt])
 }
 
+/// Sprint 1: durable agent governance packet for registry, tool scope, prompt/memory policy, observability, and certification review.
+model AssistantAgentGovernancePacket {
+  id                    String    @id @default(cuid())
+  tenantId              String
+  createdByUserId       String?
+  certifiedByUserId     String?
+  title                 String
+  status                String    @default("DRAFT") @db.VarChar(32)
+  governanceScore       Int       @default(0)
+  agentCount            Int       @default(0)
+  highRiskAgentCount    Int       @default(0)
+  toolScopeCount        Int       @default(0)
+  promptAssetCount      Int       @default(0)
+  memoryPolicyCount     Int       @default(0)
+  observabilitySignalCount Int    @default(0)
+  agentRegistryJson     Json
+  toolScopeJson         Json
+  promptSupplyChainJson Json
+  memoryGovernanceJson  Json
+  observabilityJson     Json
+  certificationPlanJson Json
+  rollbackPlanJson      Json
+  leadershipSummary     String    @db.Text
+  actionQueueItemId     String?
+  certifiedAt           DateTime?
+  certificationNote     String?   @db.Text
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator   User?  @relation("AssistantAgentGovernancePacketCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  certifier User?  @relation("AssistantAgentGovernancePacketCertifier", fields: [certifiedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, updatedAt])
+  @@index([tenantId, governanceScore, updatedAt])
+}
+
 /// AMP7: inspectable grounding ledger extracted from assistant answers and reviewer additions.
 model AssistantEvidenceRecord {
   id              String    @id @default(cuid())
@@ -1760,6 +1798,8 @@ model User {
   assistantRevenueOperationsPacketsApproved AssistantRevenueOperationsPacket[] @relation("AssistantRevenueOperationsPacketApprover")
   assistantAdvancedProgramPacketsCreated AssistantAdvancedProgramPacket[]    @relation("AssistantAdvancedProgramPacketCreator")
   assistantAdvancedProgramPacketsApproved AssistantAdvancedProgramPacket[]   @relation("AssistantAdvancedProgramPacketApprover")
+  assistantAgentGovernancePacketsCreated AssistantAgentGovernancePacket[]    @relation("AssistantAgentGovernancePacketCreator")
+  assistantAgentGovernancePacketsCertified AssistantAgentGovernancePacket[]  @relation("AssistantAgentGovernancePacketCertifier")
   invoiceIntakesAccountingApproved        InvoiceIntake[]                   @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated       TariffShipmentApplication[]       @relation("TariffShipmentApplicationCreator")
   scriEventsOwned                         ScriExternalEvent[]               @relation("ScriEventOwner")
