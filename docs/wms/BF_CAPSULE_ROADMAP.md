@@ -16,6 +16,7 @@
 | **BF-02** | Lot / batch master (metadata) | **`WmsLotBatch`** + `set_wms_lot_batch`; per-unit serial table still backlog — [`WMS_LOT_BATCH_BF02.md`](./WMS_LOT_BATCH_BF02.md) |
 | **BF-03** | Allocation depth (FEFO) | **`FEFO_BY_LOT_EXPIRY`** on waves + tests — [`WMS_ALLOCATION_STRATEGIES.md`](./WMS_ALLOCATION_STRATEGIES.md); carton/solver engine backlog |
 | **BF-04** | Zone parent hierarchy (DAG) | **`WarehouseZone.parentZoneId`** + `set_zone_parent` + Setup UI — [`WMS_ZONE_PARENT_BF04.md`](./WMS_ZONE_PARENT_BF04.md); **Aisles** / mm geometry still backlog — [`WMS_ZONE_TOPOLOGY_ADR.md`](./WMS_ZONE_TOPOLOGY_ADR.md) |
+| **BF-05** | Dock yard ops slice | **`WmsDockAppointment`** carrier/trailer + **`record_dock_appointment_yard_milestone`** — [`WMS_DOCK_YARD_BF05.md`](./WMS_DOCK_YARD_BF05.md); full **TMS** still backlog — [`WMS_DOCK_APPOINTMENTS.md`](./WMS_DOCK_APPOINTMENTS.md) |
 
 ---
 
@@ -28,7 +29,7 @@ Order follows [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md) **P
 | 1 | **BF-02** | A | Lot / serial depth feeds allocation and QA narratives ([`WMS_LOT_SERIAL_DECISION.md`](./WMS_LOT_SERIAL_DECISION.md)); pairs naturally after BF-01 variance. |
 | 2 | **BF-03** | B | Allocation solver / FEFO / wave policy depth ([`WMS_ALLOCATION_STRATEGIES.md`](./WMS_ALLOCATION_STRATEGIES.md)) — needs stable lot semantics if FEFO-by-lot matters. |
 | 3 | **BF-04** | C | Zone parent DAG + bin addressing ([`WMS_ZONE_TOPOLOGY_ADR.md`](./WMS_ZONE_TOPOLOGY_ADR.md), [`WMS_ZONE_PARENT_BF04.md`](./WMS_ZONE_PARENT_BF04.md)); **first-class aisle entities** still backlog — isolate migrations from unrelated features. |
-| 4 | **BF-05** | C | Dock yard / TMS depth ([`WMS_DOCK_APPOINTMENTS.md`](./WMS_DOCK_APPOINTMENTS.md)) — builds on WE-02 windows; integrations-heavy. |
+| 4 | **BF-05** | C | Carrier + yard milestones on **`WmsDockAppointment`** ([`WMS_DOCK_YARD_BF05.md`](./WMS_DOCK_YARD_BF05.md)); full TMS / EDI still backlog — builds on WE-02. |
 | 5 | **BF-06** | D | Field-level WMS matrix ([`WMS_RBAC_AND_AUDIT.md`](./WMS_RBAC_AND_AUDIT.md)) — **platform + WMS**; often gated on auth roadmap. |
 | 6 | **BF-07** | D | Executive / blueprint KPIs ([`WMS_EXECUTIVE_KPIS.md`](./WMS_EXECUTIVE_KPIS.md)) — needs metric definitions; WE-09 **`homeKpis`** is baseline only. |
 | 7 | **BF-08** | R2-ish ops | GS1 / ZPL / scanner hardware ([`WMS_PACKING_LABELS.md`](./WMS_PACKING_LABELS.md)) — vendor choices; can parallelize if resourced. |
@@ -49,7 +50,7 @@ Use one row as the **scope box** before filing GitHub issues or agent prompts.
 | **BF-02** | SKU / UOM / lot | [`WMS_LOT_SERIAL_DECISION.md`](./WMS_LOT_SERIAL_DECISION.md), [`WMS_LOT_BATCH_BF02.md`](./WMS_LOT_BATCH_BF02.md) | Catalog overlap (`Product`); else WMS | **Partial** — `WmsLotBatch` + UI |
 | **BF-03** | Allocation | [`WMS_ALLOCATION_STRATEGIES.md`](./WMS_ALLOCATION_STRATEGIES.md) | WMS-only core | **Partial** — **`FEFO_BY_LOT_EXPIRY`** + fungible/FIFO/MAX; solver backlog |
 | **BF-04** | Zone / aisle | [`WMS_ZONE_TOPOLOGY_ADR.md`](./WMS_ZONE_TOPOLOGY_ADR.md), [`WMS_ZONE_PARENT_BF04.md`](./WMS_ZONE_PARENT_BF04.md) | WMS | **Partial** — **`parentZoneId`** + `set_zone_parent` + UI; **Aisles** / geometry backlog |
-| **BF-05** | Appointments / TMS | [`WMS_DOCK_APPOINTMENTS.md`](./WMS_DOCK_APPOINTMENTS.md) | Integrations | Partial — WE-02 appointments |
+| **BF-05** | Appointments / TMS | [`WMS_DOCK_APPOINTMENTS.md`](./WMS_DOCK_APPOINTMENTS.md), [`WMS_DOCK_YARD_BF05.md`](./WMS_DOCK_YARD_BF05.md) | Integrations | **Partial** — WE-02 + BF-05 yard slice; **full TMS** backlog |
 | **BF-06** | Permissions | [`WMS_RBAC_AND_AUDIT.md`](./WMS_RBAC_AND_AUDIT.md) | **Platform + auth** | Partial — WE-08 coarse grants |
 | **BF-07** | Dashboards | [`WMS_EXECUTIVE_KPIS.md`](./WMS_EXECUTIVE_KPIS.md) | Product + WMS | Partial — WE-09 `homeKpis` |
 | **BF-08** | Packing | [`WMS_PACKING_LABELS.md`](./WMS_PACKING_LABELS.md) | Vendors / hardware | Partial — WE-06 pack/ship |
@@ -71,4 +72,4 @@ We **did not** add duplicate per-capsule specs beside existing theme docs — av
 
 ---
 
-_Last updated: 2026-04-29 — **BF-03** FEFO allocation (`FEFO_BY_LOT_EXPIRY`); **BF-02** `WmsLotBatch` landed (`WMS_LOT_BATCH_BF02.md`, **`BF_CAPSULE_ROADMAP` Done**); roadmap scaffold after **BF-01**._
+_Last updated: 2026-04-29 — **BF-05** dock yard milestones (`WMS_DOCK_YARD_BF05.md`); **BF-03** FEFO allocation (`FEFO_BY_LOT_EXPIRY`); **BF-02** `WmsLotBatch` landed (`WMS_LOT_BATCH_BF02.md`, **`BF_CAPSULE_ROADMAP` Done**); roadmap scaffold after **BF-01**._

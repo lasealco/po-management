@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { normalizeDockCode, rangesOverlap } from "./dock-appointment";
+import {
+  DOCK_TRANSPORT_LIMITS,
+  normalizeDockCode,
+  parseDockYardMilestone,
+  rangesOverlap,
+  truncateDockTransportField,
+} from "./dock-appointment";
 
 describe("dock-appointment helpers", () => {
   it("normalizes dock code", () => {
@@ -17,5 +23,22 @@ describe("dock-appointment helpers", () => {
     const laterStart = new Date("2026-05-01T12:00:00Z");
     const laterEnd = new Date("2026-05-01T13:00:00Z");
     expect(rangesOverlap(a, b, laterStart, laterEnd)).toBe(false);
+  });
+
+  it("truncates transport fields", () => {
+    expect(truncateDockTransportField(undefined, DOCK_TRANSPORT_LIMITS.carrierName)).toBe(null);
+    expect(truncateDockTransportField("  ", DOCK_TRANSPORT_LIMITS.carrierName)).toBe(null);
+    expect(truncateDockTransportField("ACME", DOCK_TRANSPORT_LIMITS.carrierName)).toBe("ACME");
+    const long = "x".repeat(DOCK_TRANSPORT_LIMITS.carrierReference + 5);
+    expect(truncateDockTransportField(long, DOCK_TRANSPORT_LIMITS.carrierReference)?.length).toBe(
+      DOCK_TRANSPORT_LIMITS.carrierReference,
+    );
+  });
+
+  it("parses yard milestones", () => {
+    expect(parseDockYardMilestone("GATE_IN")).toBe("GATE_IN");
+    expect(parseDockYardMilestone("AT_DOCK")).toBe("AT_DOCK");
+    expect(parseDockYardMilestone("DEPARTED")).toBe("DEPARTED");
+    expect(parseDockYardMilestone("OTHER")).toBe(null);
   });
 });

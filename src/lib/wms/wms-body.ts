@@ -68,6 +68,14 @@ export type WmsBody = {
   dockWindowStart?: string;
   dockWindowEnd?: string;
   dockDirection?: "INBOUND" | "OUTBOUND";
+  /** BF-05 — optional carrier / trailer metadata (`create_dock_appointment`, `set_dock_appointment_transport`). */
+  carrierName?: string | null;
+  carrierReference?: string | null;
+  trailerId?: string | null;
+  /** BF-05 — `record_dock_appointment_yard_milestone`. */
+  yardMilestone?: "GATE_IN" | "AT_DOCK" | "DEPARTED";
+  /** ISO datetime for yard milestone (defaults to now). */
+  yardOccurredAt?: string;
   /** Target allocation strategy for `set_warehouse_pick_allocation_strategy`. */
   pickAllocationStrategy?: "MAX_AVAILABLE_FIRST" | "FIFO_BY_BIN_CODE" | "FEFO_BY_LOT_EXPIRY" | "MANUAL_ONLY";
   /** Optional batch/lot for putaway completion and manual picks (`InventoryBalance.lotCode`). */

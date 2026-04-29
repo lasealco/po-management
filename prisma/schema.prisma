@@ -4770,6 +4770,13 @@ model WmsDockAppointment {
   outboundOrderId String?
   status          WmsDockAppointmentStatus    @default(SCHEDULED)
   note            String?                     @db.VarChar(500)
+  /// BF-05 — carrier / asset identifiers for gate & dock ops (not TMS routing).
+  carrierName       String? @db.VarChar(120)
+  carrierReference  String? @db.VarChar(160)
+  trailerId         String? @db.VarChar(80)
+  gateCheckedInAt   DateTime?
+  atDockAt          DateTime?
+  departedAt        DateTime?
   createdById     String
   createdAt       DateTime                    @default(now())
   updatedAt       DateTime                    @updatedAt

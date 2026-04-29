@@ -6,7 +6,7 @@ import { Prisma, ShipmentMilestoneCode, type WmsPickAllocationStrategy, type Wms
 import { prisma } from "@/lib/prisma";
 
 import { assertOutboundCrmAccountLinkable } from "./crm-account-link";
-import { normalizeDockCode } from "./dock-appointment";
+import { normalizeDockCode, parseDockYardMilestone, truncateDockTransportField, DOCK_TRANSPORT_LIMITS } from "./dock-appointment";
 import { orderPickSlotsForWave, type WavePickSlot } from "./allocation-strategy";
 import { resolveVarianceDisposition } from "./receive-line-variance";
 import {
@@ -1443,6 +1443,9 @@ export async function handleWmsPost(
         shipmentId: shipmentId ?? null,
         outboundOrderId: outboundOrderId ?? null,
         note: apptNote ? apptNote.slice(0, 500) : null,
+        carrierName: truncateDockTransportField(input.carrierName, DOCK_TRANSPORT_LIMITS.carrierName),
+        carrierReference: truncateDockTransportField(input.carrierReference, DOCK_TRANSPORT_LIMITS.carrierReference),
+        trailerId: truncateDockTransportField(input.trailerId, DOCK_TRANSPORT_LIMITS.trailerId),
         createdById: actorId,
       },
     });
@@ -1467,6 +1470,124 @@ export async function handleWmsPost(
     await prisma.wmsDockAppointment.update({
       where: { id: existing.id },
       data: { status: "CANCELLED" },
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "set_dock_appointment_transport") {
+    const dockAppointmentId = input.dockAppointmentId?.trim();
+    if (!dockAppointmentId) {
+      return toApiErrorResponseFromStatus("dockAppointmentId required.", 400);
+    }
+    const existingAppt = await prisma.wmsDockAppointment.findFirst({
+      where: { id: dockAppointmentId, tenantId },
+      select: { id: true, status: true, shipmentId: true },
+    });
+    if (!existingAppt) {
+      return toApiErrorResponseFromStatus("Appointment not found.", 404);
+    }
+    if (existingAppt.status === "CANCELLED") {
+      return toApiErrorResponseFromStatus("Cancelled appointments cannot be edited.", 400);
+    }
+
+    const updatePayload: {
+      carrierName?: string | null;
+      carrierReference?: string | null;
+      trailerId?: string | null;
+    } = {};
+    if ("carrierName" in input) {
+      updatePayload.carrierName = truncateDockTransportField(input.carrierName, DOCK_TRANSPORT_LIMITS.carrierName);
+    }
+    if ("carrierReference" in input) {
+      updatePayload.carrierReference = truncateDockTransportField(
+        input.carrierReference,
+        DOCK_TRANSPORT_LIMITS.carrierReference,
+      );
+    }
+    if ("trailerId" in input) {
+      updatePayload.trailerId = truncateDockTransportField(input.trailerId, DOCK_TRANSPORT_LIMITS.trailerId);
+    }
+    if (
+      updatePayload.carrierName === undefined &&
+      updatePayload.carrierReference === undefined &&
+      updatePayload.trailerId === undefined
+    ) {
+      return toApiErrorResponseFromStatus(
+        "Provide at least one of carrierName, carrierReference, trailerId (null clears).",
+        400,
+      );
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.wmsDockAppointment.update({
+        where: { id: existingAppt.id },
+        data: updatePayload,
+      });
+      await tx.ctAuditLog.create({
+        data: {
+          tenantId,
+          shipmentId: existingAppt.shipmentId,
+          entityType: "WMS_DOCK_APPOINTMENT",
+          entityId: existingAppt.id,
+          action: "dock_transport_updated",
+          payload: updatePayload,
+          actorUserId: actorId,
+        },
+      });
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "record_dock_appointment_yard_milestone") {
+    const dockAppointmentId = input.dockAppointmentId?.trim();
+    const milestone = parseDockYardMilestone(input.yardMilestone);
+    if (!dockAppointmentId) {
+      return toApiErrorResponseFromStatus("dockAppointmentId required.", 400);
+    }
+    if (!milestone) {
+      return toApiErrorResponseFromStatus("yardMilestone must be GATE_IN, AT_DOCK, or DEPARTED.", 400);
+    }
+
+    const rawOccurred = input.yardOccurredAt?.trim();
+    const occurredAt = rawOccurred ? new Date(rawOccurred) : new Date();
+    if (Number.isNaN(occurredAt.getTime())) {
+      return toApiErrorResponseFromStatus("Invalid yardOccurredAt.", 400);
+    }
+
+    const existingRow = await prisma.wmsDockAppointment.findFirst({
+      where: { id: dockAppointmentId, tenantId },
+      select: { id: true, status: true, shipmentId: true },
+    });
+    if (!existingRow) {
+      return toApiErrorResponseFromStatus("Appointment not found.", 404);
+    }
+    if (existingRow.status !== "SCHEDULED") {
+      return toApiErrorResponseFromStatus("Only SCHEDULED appointments can record yard milestones.", 400);
+    }
+
+    const milestoneData: Prisma.WmsDockAppointmentUpdateInput =
+      milestone === "GATE_IN"
+        ? { gateCheckedInAt: occurredAt }
+        : milestone === "AT_DOCK"
+          ? { atDockAt: occurredAt }
+          : { departedAt: occurredAt, status: "COMPLETED" };
+
+    await prisma.$transaction(async (tx) => {
+      await tx.wmsDockAppointment.update({
+        where: { id: existingRow.id },
+        data: milestoneData,
+      });
+      await tx.ctAuditLog.create({
+        data: {
+          tenantId,
+          shipmentId: existingRow.shipmentId,
+          entityType: "WMS_DOCK_APPOINTMENT",
+          entityId: existingRow.id,
+          action: "dock_yard_milestone",
+          payload: { milestone, occurredAt: occurredAt.toISOString() },
+          actorUserId: actorId,
+        },
+      });
     });
     return NextResponse.json({ ok: true });
   }

@@ -553,6 +553,12 @@ export async function getWmsDashboardPayload(
       direction: a.direction,
       status: a.status,
       note: a.note,
+      carrierName: a.carrierName,
+      carrierReference: a.carrierReference,
+      trailerId: a.trailerId,
+      gateCheckedInAt: a.gateCheckedInAt?.toISOString() ?? null,
+      atDockAt: a.atDockAt?.toISOString() ?? null,
+      departedAt: a.departedAt?.toISOString() ?? null,
       shipmentId: a.shipmentId,
       outboundOrderId: a.outboundOrderId,
       shipment:

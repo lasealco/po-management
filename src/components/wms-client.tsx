@@ -219,6 +219,12 @@ type WmsData = {
     direction: "INBOUND" | "OUTBOUND";
     status: "SCHEDULED" | "CANCELLED" | "COMPLETED";
     note: string | null;
+    carrierName: string | null;
+    carrierReference: string | null;
+    trailerId: string | null;
+    gateCheckedInAt: string | null;
+    atDockAt: string | null;
+    departedAt: string | null;
     shipmentId: string | null;
     outboundOrderId: string | null;
     shipment: { id: string; shipmentNo: string | null; orderNumber: string } | null;
@@ -345,6 +351,29 @@ function downloadMovementLedgerCsv(
   URL.revokeObjectURL(url);
 }
 
+function dockCarrierDisplayLine(a: {
+  carrierName: string | null;
+  carrierReference: string | null;
+  trailerId: string | null;
+}): string {
+  const bits = [a.carrierName, a.carrierReference, a.trailerId].filter(Boolean) as string[];
+  return bits.length ? bits.join(" · ") : "—";
+}
+
+function dockYardDisplayLine(a: {
+  gateCheckedInAt: string | null;
+  atDockAt: string | null;
+  departedAt: string | null;
+}): string {
+  const fmt = (iso: string) =>
+    new Date(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  const bits: string[] = [];
+  if (a.gateCheckedInAt) bits.push(`Gate ${fmt(a.gateCheckedInAt)}`);
+  if (a.atDockAt) bits.push(`Dock ${fmt(a.atDockAt)}`);
+  if (a.departedAt) bits.push(`Out ${fmt(a.departedAt)}`);
+  return bits.length ? bits.join(" · ") : "—";
+}
+
 export function WmsClient({ canEdit, section }: { canEdit: boolean; section: WmsSection }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -414,6 +443,12 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
   const [dockCodeInput, setDockCodeInput] = useState("DOCK-A");
   const [dockWinStart, setDockWinStart] = useState("");
   const [dockWinEnd, setDockWinEnd] = useState("");
+  const [dockScheduleCarrierName, setDockScheduleCarrierName] = useState("");
+  const [dockScheduleCarrierRef, setDockScheduleCarrierRef] = useState("");
+  const [dockScheduleTrailerId, setDockScheduleTrailerId] = useState("");
+  const [dockTransportDraft, setDockTransportDraft] = useState<
+    Record<string, { carrierName: string; carrierReference: string; trailerId: string }>
+  >({});
   const [vasWoTitle, setVasWoTitle] = useState("");
   const [vasWoDesc, setVasWoDesc] = useState("");
   const [vasTaskWoId, setVasTaskWoId] = useState("");
@@ -463,6 +498,20 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
       });
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    if (!data) return;
+    const rows = data.dockAppointments ?? [];
+    const next: Record<string, { carrierName: string; carrierReference: string; trailerId: string }> = {};
+    for (const a of rows) {
+      next[a.id] = {
+        carrierName: a.carrierName ?? "",
+        carrierReference: a.carrierReference ?? "",
+        trailerId: a.trailerId ?? "",
+      };
+    }
+    setDockTransportDraft(next);
+  }, [data]);
 
   useLayoutEffect(() => {
     if (section !== "stock") return;
@@ -2123,8 +2172,10 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
         <h2 className="text-sm font-semibold text-zinc-900">Dock appointments</h2>
         <p className="mt-1 text-xs text-zinc-600">
           Book a dock window per warehouse and dock code. Conflicts are blocked when another{" "}
-          <span className="font-medium">SCHEDULED</span> appointment overlaps the same dock. This is an
-          ops calendar slice — not full TMS or carrier routing.
+          <span className="font-medium">SCHEDULED</span> appointment overlaps the same dock.
+          Optional <span className="font-medium">carrier / trailer</span> metadata and{" "}
+          <span className="font-medium">yard milestones</span> (gate → dock → departed) cover BF-05 ops depth —
+          not TMS routing or carrier APIs.
         </p>
         <div className="mt-3 grid gap-3 rounded-2xl border border-zinc-200 bg-zinc-50/90 p-4 sm:grid-cols-2 lg:grid-cols-3">
           <label className="block text-xs font-medium text-zinc-600">
@@ -2179,6 +2230,36 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
               disabled={!canEdit}
             />
           </label>
+          <label className="block text-xs font-medium text-zinc-600">
+            Carrier name (optional)
+            <input
+              value={dockScheduleCarrierName}
+              onChange={(e) => setDockScheduleCarrierName(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+              placeholder="e.g. carrier legal name"
+              disabled={!canEdit}
+            />
+          </label>
+          <label className="block text-xs font-medium text-zinc-600">
+            Carrier ref / SCAC / PRO (optional)
+            <input
+              value={dockScheduleCarrierRef}
+              onChange={(e) => setDockScheduleCarrierRef(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+              placeholder="Booking or PRO number"
+              disabled={!canEdit}
+            />
+          </label>
+          <label className="block text-xs font-medium text-zinc-600">
+            Trailer ID (optional)
+            <input
+              value={dockScheduleTrailerId}
+              onChange={(e) => setDockScheduleTrailerId(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+              placeholder="Trailer / plate"
+              disabled={!canEdit}
+            />
+          </label>
           <div className="flex flex-col justify-end gap-2 sm:col-span-2 lg:col-span-1">
             <button
               type="button"
@@ -2203,6 +2284,12 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                 };
                 if (dockDir === "INBOUND") body.shipmentId = dockShipmentLink;
                 if (dockDir === "OUTBOUND") body.outboundOrderId = dockOutboundLink;
+                const cn = dockScheduleCarrierName.trim();
+                const cr = dockScheduleCarrierRef.trim();
+                const tr = dockScheduleTrailerId.trim();
+                if (cn) body.carrierName = cn;
+                if (cr) body.carrierReference = cr;
+                if (tr) body.trailerId = tr;
                 void runAction(body);
               }}
               className="rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
@@ -2220,6 +2307,8 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                 <th className="px-2 py-1">Window</th>
                 <th className="px-2 py-1">Dir</th>
                 <th className="px-2 py-1">Ref</th>
+                <th className="px-2 py-1">Carrier</th>
+                <th className="px-2 py-1">Yard</th>
                 <th className="px-2 py-1">Status</th>
                 {canEdit ? <th className="px-2 py-1"> </th> : null}
               </tr>
@@ -2229,7 +2318,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                 (a) => !selectedWarehouseId || a.warehouse.id === selectedWarehouseId,
               ).length === 0 ? (
                 <tr>
-                  <td colSpan={canEdit ? 7 : 6} className="px-2 py-3 text-zinc-500">
+                  <td colSpan={canEdit ? 9 : 8} className="px-2 py-3 text-zinc-500">
                     No dock appointments
                     {selectedWarehouseId ? " for this warehouse" : ""} yet.
                   </td>
@@ -2237,46 +2326,169 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
               ) : (
                 (data.dockAppointments ?? [])
                   .filter((a) => !selectedWarehouseId || a.warehouse.id === selectedWarehouseId)
-                  .map((a) => (
-                    <tr key={a.id}>
-                      <td className="px-2 py-1 text-zinc-800">
-                        {a.warehouse.code || a.warehouse.name}
-                      </td>
-                      <td className="px-2 py-1 font-mono text-xs text-zinc-700">{a.dockCode}</td>
-                      <td className="px-2 py-1 text-xs text-zinc-700">
-                        {new Date(a.windowStart).toLocaleString()} →{" "}
-                        {new Date(a.windowEnd).toLocaleString()}
-                      </td>
-                      <td className="px-2 py-1 text-zinc-600">{a.direction}</td>
-                      <td className="px-2 py-1 text-xs text-zinc-700">
-                        {a.shipment
-                          ? `${a.shipment.orderNumber} · ${a.shipment.shipmentNo ?? a.shipment.id.slice(0, 8)}`
-                          : a.outboundNo
-                            ? `Outbound ${a.outboundNo}`
-                            : "—"}
-                      </td>
-                      <td className="px-2 py-1 text-zinc-600">{a.status}</td>
-                      {canEdit && a.status === "SCHEDULED" ? (
-                        <td className="px-2 py-1">
-                          <button
-                            type="button"
-                            disabled={busy}
-                            onClick={() =>
-                              void runAction({
-                                action: "cancel_dock_appointment",
-                                dockAppointmentId: a.id,
-                              })
-                            }
-                            className="rounded border border-zinc-300 px-2 py-1 text-xs font-medium text-zinc-800 disabled:opacity-40"
-                          >
-                            Cancel
-                          </button>
+                  .flatMap((a) => {
+                    const tdraft = dockTransportDraft[a.id] ?? {
+                      carrierName: "",
+                      carrierReference: "",
+                      trailerId: "",
+                    };
+                    const main = (
+                      <tr key={a.id}>
+                        <td className="px-2 py-1 text-zinc-800">
+                          {a.warehouse.code || a.warehouse.name}
                         </td>
-                      ) : canEdit ? (
-                        <td className="px-2 py-1 text-zinc-400">—</td>
-                      ) : null}
-                    </tr>
-                  ))
+                        <td className="px-2 py-1 font-mono text-xs text-zinc-700">{a.dockCode}</td>
+                        <td className="px-2 py-1 text-xs text-zinc-700">
+                          {new Date(a.windowStart).toLocaleString()} →{" "}
+                          {new Date(a.windowEnd).toLocaleString()}
+                        </td>
+                        <td className="px-2 py-1 text-zinc-600">{a.direction}</td>
+                        <td className="px-2 py-1 text-xs text-zinc-700">
+                          {a.shipment
+                            ? `${a.shipment.orderNumber} · ${a.shipment.shipmentNo ?? a.shipment.id.slice(0, 8)}`
+                            : a.outboundNo
+                              ? `Outbound ${a.outboundNo}`
+                              : "—"}
+                        </td>
+                        <td className="max-w-[10rem] truncate px-2 py-1 text-xs text-zinc-700">
+                          {dockCarrierDisplayLine(a)}
+                        </td>
+                        <td className="max-w-[11rem] truncate px-2 py-1 text-xs text-zinc-600">
+                          {dockYardDisplayLine(a)}
+                        </td>
+                        <td className="px-2 py-1 text-zinc-600">{a.status}</td>
+                        {canEdit && a.status === "SCHEDULED" ? (
+                          <td className="px-2 py-1">
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() =>
+                                void runAction({
+                                  action: "cancel_dock_appointment",
+                                  dockAppointmentId: a.id,
+                                })
+                              }
+                              className="rounded border border-zinc-300 px-2 py-1 text-xs font-medium text-zinc-800 disabled:opacity-40"
+                            >
+                              Cancel
+                            </button>
+                          </td>
+                        ) : canEdit ? (
+                          <td className="px-2 py-1 text-zinc-400">—</td>
+                        ) : null}
+                      </tr>
+                    );
+                    const yardControls =
+                      canEdit && a.status === "SCHEDULED" ? (
+                        <tr key={`${a.id}-yard`} className="bg-zinc-50/90">
+                          <td colSpan={9} className="px-3 py-2">
+                            <div className="flex flex-wrap items-end gap-3">
+                              <label className="block min-w-[140px] text-[11px] font-medium text-zinc-600">
+                                Carrier name
+                                <input
+                                  value={tdraft.carrierName}
+                                  onChange={(e) =>
+                                    setDockTransportDraft((prev) => ({
+                                      ...prev,
+                                      [a.id]: { ...tdraft, carrierName: e.target.value },
+                                    }))
+                                  }
+                                  className="mt-1 w-full rounded-lg border border-zinc-300 px-2 py-1.5 text-xs"
+                                  disabled={busy}
+                                />
+                              </label>
+                              <label className="block min-w-[140px] text-[11px] font-medium text-zinc-600">
+                                Carrier ref
+                                <input
+                                  value={tdraft.carrierReference}
+                                  onChange={(e) =>
+                                    setDockTransportDraft((prev) => ({
+                                      ...prev,
+                                      [a.id]: { ...tdraft, carrierReference: e.target.value },
+                                    }))
+                                  }
+                                  className="mt-1 w-full rounded-lg border border-zinc-300 px-2 py-1.5 text-xs"
+                                  disabled={busy}
+                                />
+                              </label>
+                              <label className="block min-w-[120px] text-[11px] font-medium text-zinc-600">
+                                Trailer
+                                <input
+                                  value={tdraft.trailerId}
+                                  onChange={(e) =>
+                                    setDockTransportDraft((prev) => ({
+                                      ...prev,
+                                      [a.id]: { ...tdraft, trailerId: e.target.value },
+                                    }))
+                                  }
+                                  className="mt-1 w-full rounded-lg border border-zinc-300 px-2 py-1.5 text-xs"
+                                  disabled={busy}
+                                />
+                              </label>
+                              <button
+                                type="button"
+                                disabled={busy}
+                                onClick={() =>
+                                  void runAction({
+                                    action: "set_dock_appointment_transport",
+                                    dockAppointmentId: a.id,
+                                    carrierName: tdraft.carrierName.trim() || null,
+                                    carrierReference: tdraft.carrierReference.trim() || null,
+                                    trailerId: tdraft.trailerId.trim() || null,
+                                  })
+                                }
+                                className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs font-semibold text-zinc-800 disabled:opacity-40"
+                              >
+                                Save carrier
+                              </button>
+                              <button
+                                type="button"
+                                disabled={busy}
+                                onClick={() =>
+                                  void runAction({
+                                    action: "record_dock_appointment_yard_milestone",
+                                    dockAppointmentId: a.id,
+                                    yardMilestone: "GATE_IN",
+                                  })
+                                }
+                                className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs font-semibold text-zinc-800 disabled:opacity-40"
+                              >
+                                Gate in
+                              </button>
+                              <button
+                                type="button"
+                                disabled={busy}
+                                onClick={() =>
+                                  void runAction({
+                                    action: "record_dock_appointment_yard_milestone",
+                                    dockAppointmentId: a.id,
+                                    yardMilestone: "AT_DOCK",
+                                  })
+                                }
+                                className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs font-semibold text-zinc-800 disabled:opacity-40"
+                              >
+                                At dock
+                              </button>
+                              <button
+                                type="button"
+                                disabled={busy}
+                                onClick={() =>
+                                  void runAction({
+                                    action: "record_dock_appointment_yard_milestone",
+                                    dockAppointmentId: a.id,
+                                    yardMilestone: "DEPARTED",
+                                  })
+                                }
+                                className="rounded-xl bg-[var(--arscmp-primary)] px-4 py-2 text-xs font-semibold text-white disabled:opacity-40"
+                              >
+                                Departed (complete)
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : null;
+                    return yardControls ? [main, yardControls] : [main];
+                  })
               )}
             </tbody>
           </table>
