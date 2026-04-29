@@ -6,7 +6,7 @@
 
 **Source of truth:** `docs/wms/GAP_MAP.md` + PDFs in `docs/wms/`.
 
-**Enterprise finish line:** [`docs/wms/ENTERPRISE_TRACK.md`](../wms/ENTERPRISE_TRACK.md) — prompt by capsule **WE-01**–**WE-12** (independent of Assistant Sprint numbering).
+**Enterprise finish line:** [`docs/wms/ENTERPRISE_TRACK.md`](../wms/ENTERPRISE_TRACK.md) — **WE-01**–**WE-12** (**closed** — [`WMS_ENTERPRISE_EXIT_WE12.md`](../wms/WMS_ENTERPRISE_EXIT_WE12.md)); next scope → [`CONTROL_TOWER_WMS_PHASED_ROADMAP.md`](../CONTROL_TOWER_WMS_PHASED_ROADMAP.md).
 
 **Phased program (WMS + Control Tower):** [`docs/engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md`](../CONTROL_TOWER_WMS_PHASED_ROADMAP.md) — WMS is **Phase 2** in that file. **Tranche handoff (2026-04-26):** **2.1 / 2.2 / 2.4** (replenish) **closed**; optional backlog = **2.3**, dashboard/packing, deferred ❌ — see [roadmap § handoff](../CONTROL_TOWER_WMS_PHASED_ROADMAP.md#program-tranche-handoff-2026-04-26).
 
@@ -22,7 +22,7 @@
 
 ## Gaps marked ❌ / deferred (epic-sized — split before coding)
 
-- [ ] **Appointment scheduling** (R2) — spec + schema slice first.
+- [x] **Appointment scheduling** (R2) — **WE-02** minimal dock windows (`WmsDockAppointment`) — [`WMS_DOCK_APPOINTMENTS.md`](../../wms/WMS_DOCK_APPOINTMENTS.md); full TMS backlog.
 - [x] **VAS / work orders** (R3) — **WE-04 MVP** shipped (`WmsWorkOrder`, `VALUE_ADD`, Operations UI — [`WMS_VAS_WORK_ORDERS.md`](../../wms/WMS_VAS_WORK_ORDERS.md)); portal/BOM depth backlog.
 - [x] **Commercial quotes** (R3 Phase C) — **WE-07 contract doc**: [`WMS_COMMERCIAL_HANDOFF.md`](../../wms/WMS_COMMERCIAL_HANDOFF.md) (bill-to via `crmAccountId`; automated quote→outbound deferred — CRM owner).
 
@@ -41,4 +41,5 @@
 
 ## Hygiene
 
+- [x] **WE-12 enterprise exit** — [`WMS_ENTERPRISE_EXIT_WE12.md`](../wms/WMS_ENTERPRISE_EXIT_WE12.md): `tsc` + `vitest run src/lib/wms`; deferrals signed vs [`GAP_MAP.md`](../wms/GAP_MAP.md).
 - [x] **2026-04-26** — `docs/wms/GAP_MAP.md` _Last updated_ + handoff blockquote; ongoing PRs should still refresh the GAP.

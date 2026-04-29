@@ -2,6 +2,8 @@
 
 **Purpose:** Single place to **prompt work by capsule** (`WE-01` … `WE-12`) toward an **enterprise finish line** vs [`GAP_MAP.md`](./GAP_MAP.md) and blueprint deferrals. This track is **independent** of Assistant global **Sprint 1–25** numbering; you may surface progress as **Enterprise WMS · E1–E12** in UI later.
 
+**Track closure:** **`WE-01`–`WE-12`** complete — [`WMS_ENTERPRISE_EXIT_WE12.md`](./WMS_ENTERPRISE_EXIT_WE12.md). Further WMS spine scope → [`CONTROL_TOWER_WMS_PHASED_ROADMAP.md`](../engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md) / backlog slices (not additional capsules on this index unless product reopens the track).
+
 **Sources of truth**
 
 | Doc | Role |
@@ -10,6 +12,7 @@
 | [`IMPLEMENTATION_STRATEGY.md`](./IMPLEMENTATION_STRATEGY.md) | Phases A/B/C (ops → billing → commercial) |
 | [`CONTROL_TOWER_WMS_PHASED_ROADMAP.md`](../engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md) | CT+WMS phased program + Phase 2 handoff |
 | [`WMS_RECEIVING_STATE_MACHINE_SPEC.md`](./WMS_RECEIVING_STATE_MACHINE_SPEC.md) | Receiving state machine (WE-01) |
+| [`WMS_ENTERPRISE_EXIT_WE12.md`](./WMS_ENTERPRISE_EXIT_WE12.md) | WE-12 gates / deferrals sign-off |
 
 **How to prompt**
 
@@ -36,7 +39,7 @@ Parallel agents: **non-overlapping paths only** (see [`agent-todos/README.md`](.
 | **WE-09** | Executive / KPI dashboard depth | 2 | [`WMS_EXECUTIVE_KPIS.md`](./WMS_EXECUTIVE_KPIS.md) |
 | **WE-10** | Zone/site topology (beyond flat zone+bin) | 2–3 | [`WMS_ZONE_TOPOLOGY_ADR.md`](./WMS_ZONE_TOPOLOGY_ADR.md) |
 | **WE-11** | Map 3.4 — floor / globe / deep links | 2–3 | [`WMS_CT_MAP_PHASE34_WE11.md`](./WMS_CT_MAP_PHASE34_WE11.md); CT Phase 3 — [`CONTROL_TOWER_OPERATIONS_MAP_PHASE3.md`](../engineering/CONTROL_TOWER_OPERATIONS_MAP_PHASE3.md) |
-| **WE-12** | Hardening + enterprise exit sign-off | 2 | Prior capsules merged |
+| **WE-12** | Hardening + enterprise exit sign-off | 2 | [`WMS_ENTERPRISE_EXIT_WE12.md`](./WMS_ENTERPRISE_EXIT_WE12.md) |
 
 **UI label alias:** **E1** = WE-01 … **E12** = WE-12 (optional Assistant sub-program copy).
 
@@ -179,8 +182,8 @@ Parallel agents: **non-overlapping paths only** (see [`agent-todos/README.md`](.
 
 **Exit criteria**
 
-- [ ] Checklist: build, critical paths, seed/demo notes.
-- [ ] `GAP_MAP.md` changelog line + **Enterprise track closed** or **next wave** pointer.
+- [x] Checklist: build, critical paths, seed/demo notes.
+- [x] `GAP_MAP.md` changelog line + **Enterprise track closed** or **next wave** pointer.
 
 ---
 
@@ -188,5 +191,6 @@ Parallel agents: **non-overlapping paths only** (see [`agent-todos/README.md`](.
 
 | Date | Change |
 |------|--------|
+| 2026-04-29 | **WE-12:** Enterprise track **`WE-01`–`WE-12`** closed — gates + deferrals in [`WMS_ENTERPRISE_EXIT_WE12.md`](./WMS_ENTERPRISE_EXIT_WE12.md); next wave → [`CONTROL_TOWER_WMS_PHASED_ROADMAP.md`](../engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md). |
 | 2026-04-29 | **WE-11:** CT map Phase 3.4 scope captured in [`WMS_CT_MAP_PHASE34_WE11.md`](./WMS_CT_MAP_PHASE34_WE11.md); dual-grant cross-links verified; in-map WMS/CRM layers deferred. |
 | 2026-04-29 | Initial capsule index for enterprise WMS finish-line prompting (`WE-01`–`WE-12`). |
