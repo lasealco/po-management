@@ -46,6 +46,13 @@
 | Billing events | 🟡 **Phase B in repo** — events carry **`crmAccountId`** + `profileSource` from outbound-linked PICK/SHIP movements; invoice run `CRM_ACCOUNT` when all events share one account; UI shows CRM column |
 | Commercial / quotes | 🟡 **Bill-to handoff** via **`OutboundOrder.crmAccountId`** → **`CrmAccount`** + ops paths (`create_outbound_order`, `set_outbound_crm_account`); **Phase B** billing resolves CRM on movements ([`WMS_COMMERCIAL_HANDOFF.md`](./WMS_COMMERCIAL_HANDOFF.md)). **Automated quote→outbound FK / CPQ** deferred — owner **CRM/commercial module** (see doc) |
 
+## Enterprise — Control Tower shipment map ↔ WMS (Phase 3.4)
+
+| Blueprint area | Repo reality |
+|----------------|--------------|
+| CT ↔ WMS navigation | ✅ | **`WE-11`** [`WMS_CT_MAP_PHASE34_WE11.md`](./WMS_CT_MAP_PHASE34_WE11.md): `/wms` → **Open shipment map** when `org.controltower` → **view**; `/control-tower/map` → **WMS workspace** when `org.wms` → **view** |
+| WMS floor / CRM pins **inside** CT Leaflet map | ❌ | Not funded — warehouse rack remains on **WMS Setup** map; CT stays shipment lanes |
+
 ## Existing API actions (`POST /api/wms`)
 
 `create_zone`, `create_bin`, `update_bin_profile`, `set_replenishment_rule`, `create_replenishment_tasks`, `create_outbound_order` (optional `crmAccountId`, optional `asnReference` + `requestedShipDate`), `set_outbound_crm_account`, `set_outbound_order_asn_fields`, `release_outbound_order`, `create_putaway_task`, `complete_putaway_task`, `create_pick_task`, `create_pick_wave`, `set_warehouse_pick_allocation_strategy`, `release_wave`, `complete_wave`, `complete_pick_task`, `mark_outbound_packed`, `mark_outbound_shipped`, `set_shipment_inbound_fields`, `set_wms_receiving_status`, `create_dock_appointment`, `cancel_dock_appointment`, `record_shipment_milestone`, `set_balance_hold`, `clear_balance_hold`, `complete_replenish_task`, `create_cycle_count_task`, `complete_cycle_count_task`, `create_work_order`, `create_value_add_task`, `complete_value_add_task`.
@@ -61,4 +68,4 @@ Handlers live in `src/lib/wms/post-actions.ts` (route stays a thin shell).
 
 _Next optional increments:_ ~~saved ledger views~~ (**landed** 2026-04-23: `WmsSavedLedgerView` + `/api/wms/saved-ledger-views`); ~~**outbound ASN** parity~~ (**landed** 2026-04-25: `OutboundOrder.asnReference` + `requestedShipDate` in payload + `set_outbound_order_asn_fields`); **2.3 deeper receiving states** — **Option A landed** 2026-04-29 (`WmsReceiveStatus`, `set_wms_receiving_status`, audit); line variance still backlog — see [WMS_RECEIVING_STATE_MACHINE_SPEC.md](./WMS_RECEIVING_STATE_MACHINE_SPEC.md). **Dock appointments** — **WE-02 landed** 2026-04-29 ([`WMS_DOCK_APPOINTMENTS.md`](./WMS_DOCK_APPOINTMENTS.md)); TMS/yard automation still out of scope. **Allocation profiles** — **WE-03 landed** 2026-04-29 ([`WMS_ALLOCATION_STRATEGIES.md`](./WMS_ALLOCATION_STRATEGIES.md)); FEFO/solver engines still out of scope.
 
-_Last updated: 2026-04-29 — WE-10 zone topology ADR (`WMS_ZONE_TOPOLOGY_ADR.md`); WE-09 executive KPI row + `homeKpis` export; WE-08 RBAC/audit doc + API grant tests; WE-07 commercial handoff; WE-06 packing; WE-05 lots; WE-04 VAS; WE-03 allocation; WE-02 dock; Phase 2.3 receiving (Option A); 2026-04-26 tranche handoff._
+_Last updated: 2026-04-29 — WE-11 CT map Phase 3.4 (`WMS_CT_MAP_PHASE34_WE11.md`); WE-10 zone topology ADR (`WMS_ZONE_TOPOLOGY_ADR.md`); WE-09 executive KPI row + `homeKpis` export; WE-08 RBAC/audit doc + API grant tests; WE-07 commercial handoff; WE-06 packing; WE-05 lots; WE-04 VAS; WE-03 allocation; WE-02 dock; Phase 2.3 receiving (Option A); 2026-04-26 tranche handoff._

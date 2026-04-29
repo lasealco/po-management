@@ -35,7 +35,7 @@ Parallel agents: **non-overlapping paths only** (see [`agent-todos/README.md`](.
 | **WE-08** | Field-level WMS RBAC + audit | 2 | Grants model in `icp-and-tenancy` |
 | **WE-09** | Executive / KPI dashboard depth | 2 | [`WMS_EXECUTIVE_KPIS.md`](./WMS_EXECUTIVE_KPIS.md) |
 | **WE-10** | Zone/site topology (beyond flat zone+bin) | 2–3 | [`WMS_ZONE_TOPOLOGY_ADR.md`](./WMS_ZONE_TOPOLOGY_ADR.md) |
-| **WE-11** | Map 3.4 — floor / globe / deep links | 2–3 | CT map MVP; [`CONTROL_TOWER_OPERATIONS_MAP_PHASE3.md`](../engineering/CONTROL_TOWER_OPERATIONS_MAP_PHASE3.md) |
+| **WE-11** | Map 3.4 — floor / globe / deep links | 2–3 | [`WMS_CT_MAP_PHASE34_WE11.md`](./WMS_CT_MAP_PHASE34_WE11.md); CT Phase 3 — [`CONTROL_TOWER_OPERATIONS_MAP_PHASE3.md`](../engineering/CONTROL_TOWER_OPERATIONS_MAP_PHASE3.md) |
 | **WE-12** | Hardening + enterprise exit sign-off | 2 | Prior capsules merged |
 
 **UI label alias:** **E1** = WE-01 … **E12** = WE-12 (optional Assistant sub-program copy).
@@ -168,8 +168,8 @@ Parallel agents: **non-overlapping paths only** (see [`agent-todos/README.md`](.
 
 **Exit criteria**
 
-- [ ] Shipped slice OR explicit **won’t do** with doc link.
-- [ ] Cross-links from CT map where dual-grant users apply.
+- [x] Shipped slice OR explicit **won’t do** with doc link.
+- [x] Cross-links from CT map where dual-grant users apply.
 
 ---
 
@@ -188,4 +188,5 @@ Parallel agents: **non-overlapping paths only** (see [`agent-todos/README.md`](.
 
 | Date | Change |
 |------|--------|
+| 2026-04-29 | **WE-11:** CT map Phase 3.4 scope captured in [`WMS_CT_MAP_PHASE34_WE11.md`](./WMS_CT_MAP_PHASE34_WE11.md); dual-grant cross-links verified; in-map WMS/CRM layers deferred. |
 | 2026-04-29 | Initial capsule index for enterprise WMS finish-line prompting (`WE-01`–`WE-12`). |

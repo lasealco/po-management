@@ -80,7 +80,9 @@ export default async function WmsPage() {
             <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Control Tower</p>
             <p className="mt-1 text-sm text-zinc-700">
               Open a read-only lane map of workbench-scoped shipments (pins from booking origin/destination; use
-              the same query parameters as the workbench when you add them to the URL).
+              the same query parameters as the workbench when you add them to the URL). When you also have{" "}
+              <span className="font-medium">org.wms</span> access, use <span className="font-medium">WMS workspace</span>{" "}
+              on the shipment map header to jump back here.
             </p>
             <Link
               href="/control-tower/map"
