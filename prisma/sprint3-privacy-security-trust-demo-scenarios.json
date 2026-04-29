@@ -1,0 +1,30 @@
+{
+  "sprint": 3,
+  "title": "Privacy, Security & Trust",
+  "entrypoint": "/assistant/privacy-security-trust",
+  "acceptanceScenarios": [
+    {
+      "name": "Create durable trust packet",
+      "given": "The tenant has assistant governance packets, agent governance packets, observability incidents, audit events, automation policies, action queue items, and external SCRI/security/privacy events.",
+      "when": "A privacy, security, or trust owner opens Sprint 3 and clicks Create Sprint 3 packet.",
+      "then": "The app persists an AssistantPrivacySecurityTrustPacket with consent posture, DSR, data transfer, identity access, security exception, threat exposure, trust assurance, response plan, rollback plan, and leadership summary."
+    },
+    {
+      "name": "Queue trust review",
+      "given": "A Sprint 3 packet has consent gaps, DSR blockers, transfer risk, identity risk, security exceptions, or threat exposure.",
+      "when": "The user adds a note and clicks Queue review.",
+      "then": "The packet moves to REVIEW_QUEUED, an AssistantActionQueueItem is created, and an AssistantAuditEvent records that trust remediation is approval-gated."
+    },
+    {
+      "name": "Approve without silent mutation",
+      "given": "A human reviewer has validated privacy, security, identity, and trust evidence.",
+      "when": "The reviewer clicks Approve packet.",
+      "then": "The packet is marked APPROVED with approver metadata while consent, DSR, transfer posture, identity, entitlements, security exceptions, threat responses, automation policies, and operational source records remain unchanged."
+    }
+  ],
+  "guardrails": [
+    "Packet creation never changes consent records, user/customer preferences, DSR exports, deletion/anonymization state, data-transfer posture, role grants, entitlements, tool scopes, security exceptions, threat responses, or operational records.",
+    "Security and privacy outputs are triage and assurance evidence only until a human queues and approves downstream work.",
+    "Action queue handoff and audit events are explicit for every review or approval."
+  ]
+}

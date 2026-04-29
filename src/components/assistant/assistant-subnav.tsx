@@ -65,6 +65,7 @@ export function AssistantSubnav() {
   const revenueOperations = pathname.startsWith("/assistant/revenue-operations");
   const agentGovernance = pathname.startsWith("/assistant/agent-governance");
   const enterpriseRiskControls = pathname.startsWith("/assistant/enterprise-risk-controls");
+  const privacySecurityTrust = pathname.startsWith("/assistant/privacy-security-trust");
   const advancedProgram = (slug: string) => pathname.startsWith(`/assistant/advanced-programs/${slug}`);
   const advancedProgramLinks = listAdvancedProgramConfigs();
   const workbench = pathname.startsWith("/assistant/workbench");
@@ -255,6 +256,13 @@ export function AssistantSubnav() {
         title="Sprint 2 Enterprise Risk & Controls"
       >
         Sprint 2
+      </Link>
+      <Link
+        href="/assistant/privacy-security-trust"
+        className={privacySecurityTrust ? appNavActiveClass : appNavInactiveClass}
+        title="Sprint 3 Privacy, Security & Trust"
+      >
+        Sprint 3
       </Link>
       {advancedProgramLinks.map((program) => (
         <Link

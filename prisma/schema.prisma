@@ -181,6 +181,7 @@ model Tenant {
   assistantAdvancedProgramPackets       AssistantAdvancedProgramPacket[]
   assistantAgentGovernancePackets       AssistantAgentGovernancePacket[]
   assistantEnterpriseRiskControlPackets AssistantEnterpriseRiskControlPacket[]
+  assistantPrivacySecurityTrustPackets  AssistantPrivacySecurityTrustPacket[]
   assistantActionQueue                  AssistantActionQueueItem[]
   assistantPlaybookTemplates            AssistantPlaybookTemplate[]
   assistantPlaybookRuns                 AssistantPlaybookRun[]
@@ -1207,6 +1208,46 @@ model AssistantEnterpriseRiskControlPacket {
   @@index([tenantId, riskScore, updatedAt])
 }
 
+/// Sprint 3: durable privacy, security, and trust packet for consent posture, DSR, transfers, identity, security exceptions, and threat exposure.
+model AssistantPrivacySecurityTrustPacket {
+  id                     String    @id @default(cuid())
+  tenantId               String
+  createdByUserId        String?
+  approvedByUserId       String?
+  title                  String
+  status                 String    @default("DRAFT") @db.VarChar(32)
+  trustScore             Int       @default(0)
+  privacyRiskCount       Int       @default(0)
+  dsrRequestCount        Int       @default(0)
+  transferRiskCount      Int       @default(0)
+  identityRiskCount      Int       @default(0)
+  securityExceptionCount Int       @default(0)
+  threatSignalCount      Int       @default(0)
+  sourceSummaryJson      Json
+  consentPostureJson     Json
+  dataSubjectRightsJson  Json
+  dataTransferJson       Json
+  identityAccessJson     Json
+  securityExceptionJson  Json
+  threatExposureJson     Json
+  trustAssuranceJson     Json
+  responsePlanJson       Json
+  rollbackPlanJson       Json
+  leadershipSummary      String    @db.Text
+  actionQueueItemId      String?
+  approvedAt             DateTime?
+  approvalNote           String?   @db.Text
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator  User?  @relation("AssistantPrivacySecurityTrustPacketCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  approver User?  @relation("AssistantPrivacySecurityTrustPacketApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, updatedAt])
+  @@index([tenantId, trustScore, updatedAt])
+}
+
 /// AMP7: inspectable grounding ledger extracted from assistant answers and reviewer additions.
 model AssistantEvidenceRecord {
   id              String    @id @default(cuid())
@@ -1841,6 +1882,8 @@ model User {
   assistantAgentGovernancePacketsCertified      AssistantAgentGovernancePacket[]       @relation("AssistantAgentGovernancePacketCertifier")
   assistantEnterpriseRiskControlPacketsCreated  AssistantEnterpriseRiskControlPacket[] @relation("AssistantEnterpriseRiskControlPacketCreator")
   assistantEnterpriseRiskControlPacketsApproved AssistantEnterpriseRiskControlPacket[] @relation("AssistantEnterpriseRiskControlPacketApprover")
+  assistantPrivacySecurityTrustPacketsCreated   AssistantPrivacySecurityTrustPacket[]  @relation("AssistantPrivacySecurityTrustPacketCreator")
+  assistantPrivacySecurityTrustPacketsApproved  AssistantPrivacySecurityTrustPacket[]  @relation("AssistantPrivacySecurityTrustPacketApprover")
   invoiceIntakesAccountingApproved              InvoiceIntake[]                        @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated             TariffShipmentApplication[]            @relation("TariffShipmentApplicationCreator")
   scriEventsOwned                               ScriExternalEvent[]                    @relation("ScriEventOwner")
