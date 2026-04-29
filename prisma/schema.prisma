@@ -192,6 +192,7 @@ model Tenant {
   assistantTenantRolloutPackets            AssistantTenantRolloutPacket[]
   assistantFinanceCashControlPackets       AssistantFinanceCashControlPacket[]
   assistantProductLifecyclePackets         AssistantProductLifecyclePacket[]
+  assistantPlatformReliabilityPackets      AssistantPlatformReliabilityPacket[]
   assistantActionQueue                     AssistantActionQueueItem[]
   assistantPlaybookTemplates               AssistantPlaybookTemplate[]
   assistantPlaybookRuns                    AssistantPlaybookRun[]
@@ -1661,6 +1662,45 @@ model AssistantProductLifecyclePacket {
   @@index([tenantId, lifecycleScore, updatedAt])
 }
 
+/// Sprint 14: durable platform reliability and security operations packet for uptime posture, security operations, connector health, automation safety, incident readiness, release/change controls, and approval-safe operational response.
+model AssistantPlatformReliabilityPacket {
+  id                       String    @id @default(cuid())
+  tenantId                 String
+  createdByUserId          String?
+  approvedByUserId         String?
+  title                    String
+  status                   String    @default("DRAFT") @db.VarChar(32)
+  reliabilityScore         Int       @default(0)
+  openIncidentCount        Int       @default(0)
+  securityRiskCount        Int       @default(0)
+  connectorRiskCount       Int       @default(0)
+  automationRiskCount      Int       @default(0)
+  changeBlockerCount       Int       @default(0)
+  operationalActionCount   Int       @default(0)
+  sourceSummaryJson        Json
+  reliabilityPostureJson   Json
+  securityOperationsJson   Json
+  connectorHealthJson      Json
+  automationSafetyJson     Json
+  incidentReadinessJson    Json
+  releaseChangeControlJson Json
+  responsePlanJson         Json
+  rollbackPlanJson         Json
+  leadershipSummary        String    @db.Text
+  actionQueueItemId        String?
+  approvedAt               DateTime?
+  approvalNote             String?   @db.Text
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator  User?  @relation("AssistantPlatformReliabilityPacketCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  approver User?  @relation("AssistantPlatformReliabilityPacketApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, updatedAt])
+  @@index([tenantId, reliabilityScore, updatedAt])
+}
+
 /// AMP7: inspectable grounding ledger extracted from assistant answers and reviewer additions.
 model AssistantEvidenceRecord {
   id              String    @id @default(cuid())
@@ -2317,6 +2357,8 @@ model User {
   assistantFinanceCashControlPacketsApproved       AssistantFinanceCashControlPacket[]       @relation("AssistantFinanceCashControlPacketApprover")
   assistantProductLifecyclePacketsCreated          AssistantProductLifecyclePacket[]         @relation("AssistantProductLifecyclePacketCreator")
   assistantProductLifecyclePacketsApproved         AssistantProductLifecyclePacket[]         @relation("AssistantProductLifecyclePacketApprover")
+  assistantPlatformReliabilityPacketsCreated       AssistantPlatformReliabilityPacket[]      @relation("AssistantPlatformReliabilityPacketCreator")
+  assistantPlatformReliabilityPacketsApproved      AssistantPlatformReliabilityPacket[]      @relation("AssistantPlatformReliabilityPacketApprover")
   invoiceIntakesAccountingApproved                 InvoiceIntake[]                           @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated                TariffShipmentApplication[]               @relation("TariffShipmentApplicationCreator")
   scriEventsOwned                                  ScriExternalEvent[]                       @relation("ScriEventOwner")

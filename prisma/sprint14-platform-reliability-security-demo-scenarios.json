@@ -1,0 +1,42 @@
+{
+  "sprint": 14,
+  "title": "Platform Reliability & Security Operations",
+  "description": "Acceptance scenarios for durable platform reliability and security operations packets spanning uptime posture, security operations, connector health, automation safety, incident readiness, release/change controls, and rollback evidence.",
+  "guardrails": [
+    "The assistant never silently pages teams, closes incidents, changes degraded mode, alters runtime flags, changes traffic, rolls back deployments, or mutates production behavior.",
+    "The assistant never silently changes access, roles, tools, secrets, credentials, security exceptions, policies, automation state, connector configuration, ingestion runs, staging rows, prompts, models, or tenant rollout mode.",
+    "All platform operations, security response, connector retry, credential rotation, automation pause/enablement, and release/change actions remain approval-gated through the action queue and audit trail."
+  ],
+  "scenarios": [
+    {
+      "name": "Create platform reliability packet",
+      "api": "POST /api/assistant/platform-reliability-security",
+      "body": { "action": "create_packet" },
+      "expected": [
+        "Creates an AssistantPlatformReliabilityPacket with reliability posture, security operations, connector health, automation safety, incident readiness, release/change controls, response plan, rollback plan, and leadership summary JSON.",
+        "Writes an assistant audit event with objectType assistant_platform_reliability_packet.",
+        "Does not mutate AssistantObservabilityIncident, AssistantPrivacySecurityTrustPacket, AssistantAiQualityReleasePacket, AssistantAdminControl, ApiHubConnector, ApiHubIngestionRun, AssistantAutomationPolicy, runtime flags, deployments, traffic, or security response records."
+      ]
+    },
+    {
+      "name": "Queue SRE/security review",
+      "api": "POST /api/assistant/platform-reliability-security",
+      "body": { "action": "queue_ops_review", "packetId": "<packet-id>", "note": "Review API Hub auth failures before connector retry." },
+      "expected": [
+        "Creates an AssistantActionQueueItem with actionKind platform_reliability_security_review and a link to /assistant/platform-reliability-security.",
+        "Updates only the packet status/actionQueueItemId to OPS_REVIEW_QUEUED.",
+        "Does not page teams, close incidents, rotate secrets, retry connectors, pause automation, change runtime flags, deploy releases, change traffic, or send security/customer communications."
+      ]
+    },
+    {
+      "name": "Approve reviewed platform packet",
+      "api": "POST /api/assistant/platform-reliability-security",
+      "body": { "action": "approve_packet", "packetId": "<packet-id>", "note": "Approved for SRE follow-up; no source records changed." },
+      "expected": [
+        "Marks only the AssistantPlatformReliabilityPacket as APPROVED with approver, timestamp, and note.",
+        "Writes an audit event proving the approval was human-reviewed.",
+        "Does not mutate incidents, access, secrets, connectors, ingestion, automations, rollout controls, runtime flags, deployments, traffic, or security/customer communications."
+      ]
+    }
+  ]
+}
