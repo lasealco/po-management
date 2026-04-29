@@ -84,6 +84,42 @@ export const GLOBAL_PERMISSION_CATALOG = [
     description: "Create and complete warehouse tasks, bins, and stock movements.",
   },
   {
+    resource: "org.wms.setup",
+    action: "view",
+    label: "View WMS layout & strategy",
+    description: "Read zones, bins, replenishment rules, and allocation strategy (BF-06 scope).",
+  },
+  {
+    resource: "org.wms.setup",
+    action: "edit",
+    label: "Edit WMS layout & strategy",
+    description: "Change zones, bins, replenishment rules, and warehouse allocation strategy.",
+  },
+  {
+    resource: "org.wms.operations",
+    action: "view",
+    label: "View WMS execution",
+    description: "Read dock, tasks, waves, inbound/outbound execution surfaces (BF-06 scope).",
+  },
+  {
+    resource: "org.wms.operations",
+    action: "edit",
+    label: "Run WMS execution",
+    description: "Create and complete operational workflows: tasks, waves, dock, outbound ship, receiving.",
+  },
+  {
+    resource: "org.wms.inventory",
+    action: "view",
+    label: "View WMS inventory controls",
+    description: "Read stock holds, cycle counts, and lot-batch registry actions (BF-06 scope).",
+  },
+  {
+    resource: "org.wms.inventory",
+    action: "edit",
+    label: "Manage WMS inventory controls",
+    description: "Change balance holds, cycle counts, and tenant lot/batch profiles tied to stock.",
+  },
+  {
     resource: "org.crm",
     action: "view",
     label: "View CRM",

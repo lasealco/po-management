@@ -12,6 +12,7 @@ import {
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { loadWmsViewReadScope } from "@/lib/wms/wms-read-scope";
+import { gateWmsTierMutation } from "@/lib/wms/wms-mutation-grants";
 import { prisma } from "@/lib/prisma";
 
 function wmsBillingInvoiceRunReadWhere(
@@ -150,12 +151,15 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const gate = await requireApiGrant("org.wms", "edit");
-  if (gate) return gate;
+  const gateView = await requireApiGrant("org.wms", "view");
+  if (gateView) return gateView;
   const tenant = await getDemoTenant();
   if (!tenant) return toApiErrorResponse({ error: "Tenant not found.", code: "NOT_FOUND", status: 404 });
   const actorId = await getActorUserId();
   if (!actorId) return toApiErrorResponse({ error: "No active actor.", code: "FORBIDDEN", status: 403 });
+
+  const gateTier = await gateWmsTierMutation(actorId, "operations");
+  if (gateTier) return gateTier;
 
   let body: unknown = {};
   try {

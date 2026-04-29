@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { PageTitleWithHint } from "@/components/page-title-with-hint";
-import { getViewerGrantSet, viewerHas } from "@/lib/authz";
+import { getViewerGrantSet, viewerHas, viewerHasAnyWmsMutationEdit } from "@/lib/authz";
 import { WmsHomeOverview } from "@/components/wms-home-overview";
 import { getDemoTenant } from "@/lib/demo-tenant";
 
@@ -33,9 +33,7 @@ const areas: { href: string; title: string; description: string }[] = [
 export default async function WmsPage() {
   const access = await getViewerGrantSet();
   const tenant = await getDemoTenant();
-  const canEdit = Boolean(
-    access?.user && viewerHas(access.grantSet, "org.wms", "edit"),
-  );
+  const canMutateAny = Boolean(access?.user && viewerHasAnyWmsMutationEdit(access.grantSet));
   const canViewControlTowerMap = Boolean(
     access?.user && viewerHas(access.grantSet, "org.controltower", "view"),
   );
@@ -69,10 +67,11 @@ export default async function WmsPage() {
         <p className="mt-4 text-xs text-zinc-500">
           Confidence note: counts below are live from this tenant and intended for operational triage, not month-end finance close.
         </p>
-        {!canEdit ? (
+        {!canMutateAny ? (
           <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
             You have view-only WMS access; create and complete actions stay disabled until{" "}
-            <span className="font-medium">org.wms → edit</span> is granted.
+            <span className="font-medium">org.wms → edit</span> or a scoped capability (
+            <span className="font-medium">org.wms.setup / operations / inventory → edit</span>) is granted.
           </p>
         ) : null}
         {canViewControlTowerMap ? (

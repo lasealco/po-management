@@ -1,12 +1,12 @@
 import { WmsClient } from "@/components/wms-client";
-import { getViewerGrantSet, viewerHas } from "@/lib/authz";
+import { getViewerGrantSet, viewerHasWmsSectionMutationEdit } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
 
 export default async function WmsOperationsPage() {
   const access = await getViewerGrantSet();
   const canEdit = Boolean(
-    access?.user && viewerHas(access.grantSet, "org.wms", "edit"),
+    access?.user && viewerHasWmsSectionMutationEdit(access.grantSet, "operations"),
   );
 
   return <WmsClient canEdit={canEdit} section="operations" />;

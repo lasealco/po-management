@@ -71,6 +71,11 @@ function mergeDemoLegacyGrants(
     ensure("org.scri", "edit");
   }
 
+  for (const res of ["org.wms.setup", "org.wms.operations", "org.wms.inventory"] as const) {
+    ensure(res, "view");
+    ensure(res, "edit");
+  }
+
   return next ?? grantSet;
 }
 
@@ -240,4 +245,24 @@ export function viewerHas(
   action: string,
 ) {
   return grantSet.has(grantKey(resource, action));
+}
+
+/** True when the viewer can perform any WMS mutation (legacy `org.wms` edit or a BF-06 scoped edit). */
+export function viewerHasAnyWmsMutationEdit(grantSet: Set<string>): boolean {
+  return (
+    viewerHas(grantSet, "org.wms", "edit") ||
+    viewerHas(grantSet, "org.wms.setup", "edit") ||
+    viewerHas(grantSet, "org.wms.operations", "edit") ||
+    viewerHas(grantSet, "org.wms.inventory", "edit")
+  );
+}
+
+/**
+ * BF-06 — Section workspace edit: legacy `org.wms` edit or `org.wms.{setup|operations|inventory}` edit.
+ */
+export function viewerHasWmsSectionMutationEdit(
+  grantSet: Set<string>,
+  section: "setup" | "operations" | "inventory",
+): boolean {
+  return viewerHas(grantSet, "org.wms", "edit") || viewerHas(grantSet, `org.wms.${section}`, "edit");
 }

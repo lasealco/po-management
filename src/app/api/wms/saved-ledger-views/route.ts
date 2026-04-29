@@ -4,6 +4,7 @@ import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 import { getActorUserId, requireApiGrant } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
+import { gateWmsTierMutation } from "@/lib/wms/wms-mutation-grants";
 import {
   normalizeWmsSavedLedgerFilters,
   parseWmsSavedLedgerName,
@@ -35,8 +36,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const gate = await requireApiGrant("org.wms", "edit");
-  if (gate) return gate;
+  const gateView = await requireApiGrant("org.wms", "view");
+  if (gateView) return gateView;
 
   const tenant = await getDemoTenant();
   if (!tenant) {
@@ -46,6 +47,9 @@ export async function POST(request: Request) {
   if (!actorId) {
     return toApiErrorResponse({ error: "No active user.", code: "FORBIDDEN", status: 403 });
   }
+
+  const gateTier = await gateWmsTierMutation(actorId, "inventory");
+  if (gateTier) return gateTier;
 
   let body: unknown;
   try {
