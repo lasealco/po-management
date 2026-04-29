@@ -4319,6 +4319,8 @@ enum WmsPickAllocationStrategy {
   MAX_AVAILABLE_FIRST
   /// Consume inventory in bin code order (deterministic FIFO at bin granularity).
   FIFO_BY_BIN_CODE
+  /// BF-03 — automated waves allocate **lot-controlled** balances by earliest **`WmsLotBatch.expiryDate`** (then bin code); fungible rows sort last.
+  FEFO_BY_LOT_EXPIRY
   /// Disable automated wave allocation; use explicit `create_pick_task` per bin/line.
   MANUAL_ONLY
 }

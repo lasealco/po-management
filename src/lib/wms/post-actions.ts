@@ -35,7 +35,12 @@ export async function handleWmsPost(
     if (!warehouseId || !raw) {
       return toApiErrorResponseFromStatus("warehouseId and pickAllocationStrategy required.", 400);
     }
-    const allowed: WmsPickAllocationStrategy[] = ["MAX_AVAILABLE_FIRST", "FIFO_BY_BIN_CODE", "MANUAL_ONLY"];
+    const allowed: WmsPickAllocationStrategy[] = [
+      "MAX_AVAILABLE_FIRST",
+      "FIFO_BY_BIN_CODE",
+      "FEFO_BY_LOT_EXPIRY",
+      "MANUAL_ONLY",
+    ];
     if (!allowed.includes(raw as WmsPickAllocationStrategy)) {
       return toApiErrorResponseFromStatus("Invalid pickAllocationStrategy.", 400);
     }
@@ -599,23 +604,68 @@ export async function handleWmsPost(
         (pickedMap.get(mv.referenceId) ?? 0) + Number(mv.quantity),
       );
     }
-    const balances = await prisma.inventoryBalance.findMany({
-      where: { tenantId, warehouseId, lotCode: FUNGIBLE_LOT_CODE },
-      include: { bin: { select: { id: true, code: true } } },
-    });
     const byProduct = new Map<string, WavePickSlot[]>();
-    for (const row of balances) {
-      if (row.onHold) continue;
-      const available = Number(row.onHandQty) - Number(row.allocatedQty);
-      if (available <= 0) continue;
-      const list = byProduct.get(row.productId) ?? [];
-      list.push({
-        binId: row.binId,
-        binCode: row.bin.code,
-        available,
+
+    if (allocationStrategy === "FEFO_BY_LOT_EXPIRY") {
+      const balancesAll = await prisma.inventoryBalance.findMany({
+        where: { tenantId, warehouseId },
+        include: { bin: { select: { id: true, code: true } } },
       });
-      byProduct.set(row.productId, list);
+      const productIds = [...new Set(balancesAll.map((b) => b.productId))];
+      const batchRows =
+        productIds.length === 0
+          ? []
+          : await prisma.wmsLotBatch.findMany({
+              where: { tenantId, productId: { in: productIds } },
+              select: { productId: true, lotCode: true, expiryDate: true },
+            });
+      const expiryMsByProductLot = new Map<string, number>();
+      for (const br of batchRows) {
+        const lc = normalizeLotCode(br.lotCode);
+        const key = `${br.productId}\t${lc}`;
+        const ms = br.expiryDate ? br.expiryDate.getTime() : Number.MAX_SAFE_INTEGER - 1;
+        expiryMsByProductLot.set(key, ms);
+      }
+      for (const row of balancesAll) {
+        if (row.onHold) continue;
+        const available = Number(row.onHandQty) - Number(row.allocatedQty);
+        if (available <= 0) continue;
+        const lc = normalizeLotCode(row.lotCode);
+        const expirySortMs =
+          lc === FUNGIBLE_LOT_CODE
+            ? Number.MAX_SAFE_INTEGER
+            : (expiryMsByProductLot.get(`${row.productId}\t${lc}`) ?? Number.MAX_SAFE_INTEGER - 1);
+        const list = byProduct.get(row.productId) ?? [];
+        list.push({
+          binId: row.binId,
+          binCode: row.bin.code,
+          available,
+          lotCode: lc,
+          expirySortMs,
+        });
+        byProduct.set(row.productId, list);
+      }
+    } else {
+      const balances = await prisma.inventoryBalance.findMany({
+        where: { tenantId, warehouseId, lotCode: FUNGIBLE_LOT_CODE },
+        include: { bin: { select: { id: true, code: true } } },
+      });
+      for (const row of balances) {
+        if (row.onHold) continue;
+        const available = Number(row.onHandQty) - Number(row.allocatedQty);
+        if (available <= 0) continue;
+        const list = byProduct.get(row.productId) ?? [];
+        list.push({
+          binId: row.binId,
+          binCode: row.bin.code,
+          available,
+          lotCode: FUNGIBLE_LOT_CODE,
+          expirySortMs: 0,
+        });
+        byProduct.set(row.productId, list);
+      }
     }
+
     for (const [productId, list] of byProduct) {
       byProduct.set(productId, orderPickSlotsForWave(allocationStrategy, list));
     }
@@ -650,7 +700,7 @@ export async function handleWmsPost(
               waveId: wave.id,
               productId: item.productId,
               binId: slot.binId,
-              lotCode: FUNGIBLE_LOT_CODE,
+              lotCode: slot.lotCode,
               referenceType: "OUTBOUND_LINE_PICK",
               referenceId: item.id,
               quantity: take.toString(),
@@ -664,7 +714,7 @@ export async function handleWmsPost(
               warehouseId,
               binId: slot.binId,
               productId: item.productId,
-              lotCode: FUNGIBLE_LOT_CODE,
+              lotCode: slot.lotCode,
             },
             data: { allocatedQty: { increment: take.toString() } },
           });

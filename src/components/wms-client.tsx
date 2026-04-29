@@ -24,7 +24,11 @@ type WmsData = {
     code: string | null;
     name: string;
     type: "CFS" | "WAREHOUSE";
-    pickAllocationStrategy: "MAX_AVAILABLE_FIRST" | "FIFO_BY_BIN_CODE" | "MANUAL_ONLY";
+    pickAllocationStrategy:
+      | "MAX_AVAILABLE_FIRST"
+      | "FIFO_BY_BIN_CODE"
+      | "FEFO_BY_LOT_EXPIRY"
+      | "MANUAL_ONLY";
   }>;
   zones: Array<{
     id: string;
@@ -1185,6 +1189,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                   const pickAllocationStrategy = e.target.value as
                     | "MAX_AVAILABLE_FIRST"
                     | "FIFO_BY_BIN_CODE"
+                    | "FEFO_BY_LOT_EXPIRY"
                     | "MANUAL_ONLY";
                   void runAction({
                     action: "set_warehouse_pick_allocation_strategy",
@@ -1196,6 +1201,9 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
               >
                 <option value="MAX_AVAILABLE_FIRST">Max available first — prefer bins with most free stock</option>
                 <option value="FIFO_BY_BIN_CODE">FIFO by bin code — consume in bin code order</option>
+                <option value="FEFO_BY_LOT_EXPIRY">
+                  FEFO by lot expiry — automated waves use dated lots first (needs WmsLotBatch + non-fungible balances)
+                </option>
                 <option value="MANUAL_ONLY">Manual only — automated waves disabled</option>
               </select>
             </label>

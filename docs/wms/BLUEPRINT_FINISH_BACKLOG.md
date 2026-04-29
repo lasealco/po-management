@@ -39,7 +39,7 @@ Each capsule should end with: **`GAP_MAP.md` updated**, migrations listed if any
 |----|--------|---------------------------|------------|----------------|
 | **BF-01** | **Receiving line variance** — receipt vs ASN lines, disposition | Inbound ASN row; tranche note line variance | [`WMS_RECEIVING_LINE_VARIANCE_BF01.md`](./WMS_RECEIVING_LINE_VARIANCE_BF01.md) — minimal **ShipmentItem** fields + API (`set_shipment_item_receive_line`); separate **`WmsReceipt`** header still backlog | WMS |
 | **BF-02** | **Lot master / serial genealogy** beyond `lotCode` buckets | SKU/UOM/lot row | BF-01 if variance feeds lot splits | [`WMS_LOT_BATCH_BF02.md`](./WMS_LOT_BATCH_BF02.md) — minimal **`WmsLotBatch`** + `set_wms_lot_batch`; per-unit **serial genealogy** still backlog | WMS + catalog |
-| **BF-03** | **Allocation engine** — FEFO, solver, wave policies beyond staged profiles | Allocation row | Stable inventory + strategy inputs | WMS |
+| **BF-03** | **Allocation engine** — FEFO, solver, wave policies beyond staged profiles | Allocation row | Stable inventory + strategy inputs | [`WMS_ALLOCATION_STRATEGIES.md`](./WMS_ALLOCATION_STRATEGIES.md) — **`FEFO_BY_LOT_EXPIRY`** for automated waves + `WmsLotBatch`; carton/solver/multi-wave engine still backlog | WMS |
 | **BF-04** | **Topology** — parent zones / aisle entities / optional geometry hooks | Zone row | migrations | WMS |
 | **BF-05** | **Dock yard / TMS depth** — carrier, yard moves beyond dock windows | Appointment row; deferred TMS bullet | Product scope vs [`WMS_DOCK_APPOINTMENTS.md`](./WMS_DOCK_APPOINTMENTS.md) | WMS (+ integrations) |
 | **BF-06** | **Field-level WMS permission matrix** | Permissions row | Auth model product-wide | Platform + WMS |
@@ -95,4 +95,4 @@ Deliverables:
 Exit when BF-01 row in BLUEPRINT_FINISH_BACKLOG.md is satisfied: GAP_MAP reflects line variance depth or explicit documented deferral for remaining gaps.
 ```
 
-_Last updated: 2026-04-29 — [`BF_CAPSULE_ROADMAP.md`](./BF_CAPSULE_ROADMAP.md) (**BF-02**–**BF-11** order + cards); **BF-02** lot batch master (`WMS_LOT_BATCH_BF02.md`); **BF-01** minimal receiving line variance landed (`WMS_RECEIVING_LINE_VARIANCE_BF01.md`); BF-01 vs **BF-03–BF-06** ID reminder; initial backlog skeleton from [`GAP_MAP.md`](./GAP_MAP.md); BF-01 prompt template._
+_Last updated: 2026-04-29 — [`BF_CAPSULE_ROADMAP.md`](./BF_CAPSULE_ROADMAP.md) (**BF-02**–**BF-11** order + cards); **BF-03** FEFO pick waves (`WMS_ALLOCATION_STRATEGIES.md`); **BF-02** lot batch master (`WMS_LOT_BATCH_BF02.md`); **BF-01** minimal receiving line variance landed (`WMS_RECEIVING_LINE_VARIANCE_BF01.md`); BF-01 vs **BF-03–BF-06** ID reminder; initial backlog skeleton from [`GAP_MAP.md`](./GAP_MAP.md); BF-01 prompt template._
