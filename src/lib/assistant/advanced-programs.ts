@@ -1505,6 +1505,61 @@ Object.assign(ADVANCED_PROGRAMS, {
   },
 } satisfies Record<string, ProgramConfig>);
 
+Object.assign(
+  ADVANCED_PROGRAMS,
+  Object.fromEntries(
+    [
+      ["266", "control-plane-policy", "Control plane", "Autonomous control-plane policy program", "Autonomous Control-Plane Policy", "control-plane policy packet", "assistant policies, control scopes, enforcement evidence, exceptions, kill-switch state, or policy deployment gates", "Control owner", "AI quality", "Security"],
+      ["267", "decision-intelligence-memory", "Decision mem", "Decision intelligence memory program", "Decision Intelligence Memory", "decision intelligence memory packet", "decision records, outcome notes, reusable lessons, privacy-filtered evidence, or learning promotion state", "Operations", "AI quality", "Data owner"],
+      ["268", "operating-model-transformation", "Op model", "Operating model transformation program", "Operating Model Transformation", "operating model transformation packet", "role designs, process maps, system impacts, training waves, adoption metrics, or rollout controls", "Transformation office", "People team", "Operations"],
+      ["269", "operating-cadence-automation", "Cadence", "Enterprise operating cadence automation program", "Enterprise Operating Cadence Automation", "operating cadence packet", "recurring review schedules, agendas, decisions, action carryover, follow-up state, or meeting automation", "Operations", "Executive sponsor", "Analytics"],
+      ["270", "outcome-sla-governance", "SLA gov", "Outcome-based SLA governance program", "Outcome-Based SLA Governance", "SLA governance packet", "SLA commitments, breach decisions, penalties, credits, recovery actions, or customer/supplier communications", "Customer operations", "Legal", "Finance"],
+      ["271", "revenue-ops-command", "Rev command", "Revenue operations command program", "Revenue Operations Command", "revenue operations command packet", "pipeline records, order execution plans, service-risk actions, margin-sensitive notes, or commercial commitments", "Revenue operations", "Sales", "Finance"],
+      ["272", "enterprise-service-blueprint", "Svc blueprint", "Enterprise service blueprint program", "Enterprise Service Blueprint", "enterprise service blueprint packet", "service blueprints, journey maps, backstage dependencies, failure modes, improvement actions, or service standards", "Customer experience", "Operations", "Product"],
+      ["273", "customer-promise-governance", "Promise gov", "Customer promise governance program", "Customer Promise Governance", "customer promise governance packet", "customer promises, exception decisions, source evidence, customer communications, or commitment status", "Customer operations", "Sales", "Operations"],
+      ["274", "omni-work-intake", "Work intake", "Omni-enterprise work intake program", "Omni-Enterprise Work Intake", "omni-enterprise work intake packet", "incoming requests, triage decisions, duplicate links, owner routing, or approved execution state", "Operations", "Admin", "Domain owner"],
+      ["275", "enterprise-command-inbox", "Command inbox", "Enterprise command inbox program", "Enterprise Command Inbox", "enterprise command inbox packet", "approval queues, escalation records, delegation state, due dates, action ownership, or decision status", "Executive sponsor", "Operations", "Admin"],
+      ["276", "exception-taxonomy-governance", "Exception tax", "Exception taxonomy governance program", "Exception Taxonomy Governance", "exception taxonomy packet", "exception types, severity rules, routing logic, root-cause categories, or taxonomy publication state", "Operations excellence", "Control owner", "Analytics"],
+      ["277", "root-cause-intelligence", "Root cause", "Cross-domain root-cause intelligence program", "Cross-Domain Root-Cause Intelligence", "root-cause intelligence packet", "incident links, evidence graphs, recurring patterns, prevention actions, or root-cause status", "Operations excellence", "Quality", "Analytics"],
+      ["278", "backlog-prioritization", "Backlog", "Enterprise backlog prioritization program", "Enterprise Backlog Prioritization", "enterprise backlog prioritization packet", "backlog priorities, value scores, risk scores, dependency order, capacity allocations, or sequencing decisions", "Operations", "Product", "Executive sponsor"],
+      ["279", "operating-standards", "Standards", "AI-managed operating standards program", "AI-Managed Operating Standards", "operating standards packet", "operating standards, compliance checks, deviations, owner tasks, approved updates, or standard publication state", "Operations excellence", "Compliance", "Training"],
+      ["280", "capacity-marketplace", "Capacity", "Enterprise capacity marketplace program", "Enterprise Capacity Marketplace", "enterprise capacity marketplace packet", "capacity offers, demand requests, transfer approvals, internal allocations, or capacity marketplace rules", "Operations", "Planning", "Finance"],
+      ["281", "shared-risk-pool", "Risk pool", "Shared-risk pool management program", "Shared-Risk Pool Management", "shared-risk pool packet", "risk pools, reserve assumptions, mitigation funding, claims, or shared-risk governance decisions", "Risk", "Finance", "Legal"],
+      ["282", "assurance-packet-factory", "Assurance", "Enterprise assurance packet factory program", "Enterprise Assurance Packet Factory", "enterprise assurance packet", "assurance evidence, attestations, control packs, customer/auditor exports, or audit-ready packet status", "Compliance", "Audit", "Control owner"],
+      ["283", "critical-supplier-command", "Crit supplier", "Critical supplier command program", "Critical Supplier Command", "critical supplier command packet", "critical supplier status, dependency maps, obligations, resilience actions, or supplier executive escalations", "Supplier owner", "Procurement", "Risk"],
+      ["284", "critical-customer-command", "Crit customer", "Critical customer command program", "Critical Customer Command", "critical customer command packet", "critical customer commitments, service health, value evidence, escalation actions, or account communications", "Customer success", "Sales", "Executive sponsor"],
+      ["285", "critical-product-command", "Crit product", "Critical product command program", "Critical Product Command", "critical product command packet", "critical product demand, supply, quality, profitability, lifecycle decisions, or product risk actions", "Product", "Planning", "Finance"],
+      ["286", "critical-lane-command", "Crit lane", "Critical lane command program", "Critical Lane Command", "critical lane command packet", "lane capacity, cost evidence, service reliability, disruption risk, alternate routing, or carrier allocation plans", "Logistics", "Planning", "Finance"],
+      ["287", "trade-lane-design", "Trade lanes", "Global trade lane design program", "Global Trade Lane Design", "global trade lane design packet", "origin-destination lane designs, duty assumptions, transit plans, compliance evidence, or routing decisions", "Trade compliance", "Logistics", "Finance"],
+      ["288", "inventory-pooling", "Inv pooling", "Enterprise inventory pooling program", "Enterprise Inventory Pooling", "enterprise inventory pooling packet", "inventory pools, ownership rules, allocation policies, service rules, financial controls, or stock transfer plans", "Inventory", "Planning", "Finance"],
+      ["289", "distributed-manufacturing-network", "Mfg network", "Distributed manufacturing network program", "Distributed Manufacturing Network", "distributed manufacturing network packet", "plant options, supplier options, tooling plans, quality gates, transfer decisions, or production allocations", "Manufacturing", "Quality", "Planning"],
+      ["290", "resilient-sourcing-architecture", "Source arch", "Resilient sourcing architecture program", "Resilient Sourcing Architecture", "resilient sourcing architecture packet", "source maps, alternate suppliers, qualification gates, switch plans, sourcing allocations, or supplier activation", "Procurement", "Supplier owner", "Risk"],
+      ["291", "digital-thread-operations", "Digital thread", "Digital thread operations program", "Digital Thread Operations", "digital thread operations packet", "product-supplier-quality-logistics-service lineage, graph links, publication state, or traceability records", "Product", "Data owner", "Quality"],
+      ["292", "digital-twin-governance", "Twin gov", "Digital twin operations governance program", "Digital Twin Operations Governance", "digital twin governance packet", "twin model versions, assumptions, validation results, release gates, or twin rollback plans", "Data owner", "Planning", "Control owner"],
+      ["293", "simulation-calibration", "Calibration", "AI simulation calibration program", "AI Simulation Calibration", "simulation calibration packet", "simulation assumptions, actual-outcome comparisons, drift thresholds, recalibration settings, or planning model releases", "Planning", "Analytics", "AI quality"],
+      ["294", "sensor-fusion", "Sensor fusion", "Enterprise sensor fusion program", "Enterprise Sensor Fusion", "enterprise sensor fusion packet", "telemetry records, business-record conflicts, confidence scores, asset scopes, or fused evidence publication", "Operations", "Data owner", "Engineering"],
+      ["295", "process-mining-ops", "Process mine", "Process mining operations program", "Process Mining Operations", "process mining operations packet", "event logs, process variants, bottleneck findings, conformance gaps, or improvement actions", "Operations excellence", "Analytics", "Compliance"],
+      ["296", "task-mining-workforce", "Task mining", "Task mining and workforce flow program", "Task Mining & Workforce Flow", "task mining workforce packet", "task signals, friction findings, automation candidates, coaching actions, or workforce-flow reports", "Operations excellence", "People team", "Automation owner"],
+      ["297", "continuous-improvement-portfolio", "CI portfolio", "Continuous improvement portfolio program", "Continuous Improvement Portfolio", "continuous improvement portfolio packet", "kaizen ideas, experiments, benefit measurements, standardization decisions, or improvement portfolio priorities", "Operations excellence", "Finance", "Domain owner"],
+      ["298", "operational-excellence-maturity", "Maturity", "Operational excellence maturity program", "Operational Excellence Maturity", "operational excellence maturity packet", "maturity assessments, capability gaps, roadmap actions, owner assignments, or assessment scorecards", "Operations excellence", "Executive sponsor", "Training"],
+      ["299", "business-capability-map", "Capabilities", "Business capability map program", "Business Capability Map", "business capability map packet", "capability maps, system links, process ownership, value-stream links, or capability roadmap decisions", "Architecture board", "Operations", "Product"],
+      ["300", "value-stream-command", "Value stream", "Value stream command program", "Value Stream Command", "value stream command packet", "value-stream maps, delay findings, handoff changes, quality actions, metric reports, or improvement execution plans", "Operations excellence", "Analytics", "Executive sponsor"],
+    ].map(([ampNumber, key, navLabel, title, surfaceTitle, artifactLabel, noMutation, owner1, owner2, owner3]) => [
+      key,
+      makeExtendedProgram({
+        ampNumber: Number(ampNumber),
+        key,
+        navLabel,
+        title,
+        surfaceTitle,
+        artifactLabel,
+        noMutation,
+        approvalOwners: [owner1, owner2, owner3],
+      }),
+    ]),
+  ),
+);
+
 export type AdvancedProgramPacketInputs = {
   signals: AdvancedProgramSignals;
   programKey: AdvancedProgramKey;

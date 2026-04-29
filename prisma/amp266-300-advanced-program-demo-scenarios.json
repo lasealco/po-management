@@ -1,0 +1,70 @@
+[
+  {
+    "id": "amp266-300-create-packets",
+    "title": "Create durable packets for AMP266 through AMP300",
+    "persona": "Operations, strategy, control, planning, data, and executive reviewers",
+    "entrypoints": [
+      "/assistant/advanced-programs/control-plane-policy",
+      "/assistant/advanced-programs/decision-intelligence-memory",
+      "/assistant/advanced-programs/outcome-sla-governance",
+      "/assistant/advanced-programs/critical-supplier-command",
+      "/assistant/advanced-programs/digital-thread-operations",
+      "/assistant/advanced-programs/process-mining-ops",
+      "/assistant/advanced-programs/value-stream-command"
+    ],
+    "steps": [
+      "Open representative AMP266-AMP300 workspaces from the generated Assistant subnav.",
+      "Review source signals, risk assessment, recommendations, artifact, approval route, and rollback plan.",
+      "Click Create AMP packet."
+    ],
+    "expected": [
+      "Each AMP266-AMP300 workspace persists an AssistantAdvancedProgramPacket row with a distinct ampNumber and programKey.",
+      "Each packet has a domain-specific nav label, title, artifact, approval owners, and no-mutation scope.",
+      "The shared advanced-program UI displays preview metrics, packet history, review notes, and queue-review controls.",
+      "Policies, decisions, operating cadences, SLA credits, critical command records, lane designs, inventory pools, sourcing architectures, digital threads, twin models, calibration settings, process maps, maturity scorecards, capability maps, and value-stream execution plans are not mutated automatically."
+    ]
+  },
+  {
+    "id": "amp266-300-queue-review",
+    "title": "Queue human review for AMP266 through AMP300 packets",
+    "persona": "Program approval owner",
+    "entrypoints": [
+      "/assistant/advanced-programs/control-plane-policy",
+      "/assistant/advanced-programs/critical-customer-command",
+      "/assistant/advanced-programs/simulation-calibration",
+      "/assistant/advanced-programs/value-stream-command"
+    ],
+    "steps": [
+      "Create or select a DRAFT packet.",
+      "Add a review note describing the downstream decision.",
+      "Click Queue review."
+    ],
+    "expected": [
+      "The packet status changes to REVIEW_QUEUED and records actionQueueItemId, approvedByUserId, approvedAt, and approvalNote.",
+      "AssistantActionQueueItem uses an AMP-specific actionKind such as assistant_amp266_review or assistant_amp300_review.",
+      "AssistantAuditEvent states that downstream records were not changed automatically."
+    ]
+  },
+  {
+    "id": "amp266-300-guardrails",
+    "title": "Governance, command, digital-thread, and value-stream packets preserve no-silent-mutation guardrails",
+    "persona": "Executive and compliance reviewer",
+    "entrypoints": [
+      "/assistant/advanced-programs/operating-standards",
+      "/assistant/advanced-programs/inventory-pooling",
+      "/assistant/advanced-programs/digital-twin-governance",
+      "/assistant/advanced-programs/process-mining-ops"
+    ],
+    "steps": [
+      "Open a packet with active risk signals.",
+      "Inspect recommendationJson, approvalPlanJson, artifactJson, and rollbackPlanJson.",
+      "Queue review without executing downstream changes."
+    ],
+    "expected": [
+      "recommendationJson requires review before policy, operating model, critical-command, digital-thread, twin, process, or value-stream execution.",
+      "approvalPlanJson names the responsible owner groups.",
+      "rollbackPlanJson preserves source records and requires a fresh packet when evidence changes materially.",
+      "Autonomous control-plane, decision-memory, and process-improvement recommendations remain review-only and cannot silently expand automation."
+    ]
+  }
+]

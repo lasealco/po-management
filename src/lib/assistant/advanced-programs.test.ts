@@ -35,10 +35,10 @@ const signals: AdvancedProgramSignals = {
 };
 
 describe("advanced programs", () => {
-  it("defines AMP37 through AMP265 with requested AMP263-265 programs", () => {
+  it("defines AMP37 through AMP300 with requested AMP266-300 programs", () => {
     const configs = listAdvancedProgramConfigs();
 
-    expect(configs).toHaveLength(228);
+    expect(configs).toHaveLength(263);
     expect(configs[0]?.ampNumber).toBe(37);
     expect(configs[25]?.ampNumber).toBe(62);
     expect(configs[26]?.ampNumber).toBe(64);
@@ -53,6 +53,8 @@ describe("advanced programs", () => {
     expect(configs[224]?.ampNumber).toBe(262);
     expect(configs[225]?.ampNumber).toBe(263);
     expect(configs[227]?.ampNumber).toBe(265);
+    expect(configs[228]?.ampNumber).toBe(266);
+    expect(configs[262]?.ampNumber).toBe(300);
   });
 
   it("builds a distinct packet with guardrails for category strategy", () => {
@@ -135,6 +137,16 @@ describe("advanced programs", () => {
     expect(packet.approvalPlan.steps.map((step) => step.owner)).toContain("Strategy");
     expect(packet.rollbackPlan.steps[0]).toContain("scenario libraries");
     expect(packet.leadershipSummary).toContain("does not mutate scenario libraries");
+  });
+
+  it("builds value stream command packets with improvement guardrails", () => {
+    const packet = buildAdvancedProgramPacket({ programKey: "value-stream-command", signals });
+
+    expect(packet.ampNumber).toBe(300);
+    expect(packet.riskCount).toBeGreaterThan(0);
+    expect(packet.approvalPlan.steps.map((step) => step.owner)).toContain("Operations excellence");
+    expect(packet.rollbackPlan.steps[0]).toContain("value-stream maps");
+    expect(packet.leadershipSummary).toContain("does not mutate value-stream maps");
   });
 
   it("returns null for unknown program keys", () => {
