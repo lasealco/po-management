@@ -84,6 +84,7 @@ export default async function AssistantLayout({ children }: { children: React.Re
           <strong>Service through Sourcing</strong> covers AMP37-AMP47 for advanced service, product, quality, trade, cost, compliance, facility, packaging, manufacturing, scheduling, and sourcing packets.{" "}
           <strong>Spend through Metrics</strong> covers AMP48-AMP55 for savings realization, supplier resilience, role training, SOP governance, document extraction, vision evidence, telemetry triage, and metric governance packets.{" "}
           <strong>SDK through Exec cockpit</strong> covers AMP56-AMP62 for extensions, evaluations, security/DLP, crisis command, finance operations, customer ecosystem command, and executive autonomous enterprise packets.{" "}
+          <strong>Capex through Review ops</strong> covers AMP64-AMP100 for investment, integration, pricing, claims, regulated operations, risk, privacy, model/prompt governance, automation policy, and human review packets.{" "}
           <strong>Workbench</strong> is the LMP1-LMP10 cockpit for sales, products, suppliers, POs, and
           shipments. <strong>Execution</strong> runs LMP11-LMP30 across carrier/customer comms, WMS, finance, quality,
           and simulation readiness. <strong>Work engine</strong> is AMP6 for assigned actions, SLA playbooks, and memory cleanup.{" "}

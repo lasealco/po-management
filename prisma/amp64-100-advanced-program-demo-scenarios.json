@@ -1,0 +1,100 @@
+[
+  {
+    "id": "amp64-100-create-packets",
+    "title": "Create durable advanced program packets for AMP64 through AMP100",
+    "persona": "Cross-functional operating leader reviewing investment, commercial, regulated, risk, and automation workflows",
+    "entrypoints": [
+      "/assistant/advanced-programs/capex-investment",
+      "/assistant/advanced-programs/ma-integration",
+      "/assistant/advanced-programs/divestiture-readiness",
+      "/assistant/advanced-programs/ai-negotiation",
+      "/assistant/advanced-programs/dynamic-pricing",
+      "/assistant/advanced-programs/revenue-leakage",
+      "/assistant/advanced-programs/warranty-claims",
+      "/assistant/advanced-programs/reverse-logistics",
+      "/assistant/advanced-programs/circular-economy",
+      "/assistant/advanced-programs/supplier-innovation",
+      "/assistant/advanced-programs/product-profitability",
+      "/assistant/advanced-programs/customer-profitability",
+      "/assistant/advanced-programs/carrier-performance",
+      "/assistant/advanced-programs/port-congestion",
+      "/assistant/advanced-programs/cold-chain",
+      "/assistant/advanced-programs/hazmat-dg",
+      "/assistant/advanced-programs/food-safety",
+      "/assistant/advanced-programs/pharma-gxp",
+      "/assistant/advanced-programs/aerospace-defense",
+      "/assistant/advanced-programs/automotive-ppap",
+      "/assistant/advanced-programs/retail-replenishment",
+      "/assistant/advanced-programs/omnichannel-promise",
+      "/assistant/advanced-programs/field-service",
+      "/assistant/advanced-programs/project-logistics",
+      "/assistant/advanced-programs/construction-supply",
+      "/assistant/advanced-programs/healthcare-resilience",
+      "/assistant/advanced-programs/public-procurement",
+      "/assistant/advanced-programs/contingent-workforce",
+      "/assistant/advanced-programs/risk-register",
+      "/assistant/advanced-programs/internal-audit",
+      "/assistant/advanced-programs/policy-waivers",
+      "/assistant/advanced-programs/privacy-dsar",
+      "/assistant/advanced-programs/data-residency",
+      "/assistant/advanced-programs/model-risk",
+      "/assistant/advanced-programs/prompt-lifecycle",
+      "/assistant/advanced-programs/automation-policy",
+      "/assistant/advanced-programs/human-review-ops"
+    ],
+    "steps": [
+      "Open each AMP64-AMP100 workspace from the Assistant subnav.",
+      "Review the configured source signals, risk assessment, recommendations, artifact, approval route, and rollback controls.",
+      "Click Create AMP packet."
+    ],
+    "expected": [
+      "Each workspace persists an AssistantAdvancedProgramPacket row with ampNumber 64 through 100 and a distinct programKey.",
+      "Each packet uses program-specific source labels, risk rules, recommendations, approval owners, artifact label, and no-mutation scope.",
+      "AssistantAuditEvent records packet creation for every created packet.",
+      "No capex, integration, carve-out, negotiation, pricing, billing, claim, return, inventory, supplier, product, customer, carrier, shipment, regulated, risk, audit, privacy, model, prompt, automation, or review-queue records are mutated automatically."
+    ]
+  },
+  {
+    "id": "amp64-100-queue-review",
+    "title": "Queue human review for AMP64 through AMP100 packets",
+    "persona": "Approval owner",
+    "entrypoints": [
+      "/assistant/advanced-programs/capex-investment",
+      "/assistant/advanced-programs/cold-chain",
+      "/assistant/advanced-programs/privacy-dsar",
+      "/assistant/advanced-programs/human-review-ops"
+    ],
+    "steps": [
+      "Create or select a DRAFT packet.",
+      "Add a review note describing the downstream action being considered.",
+      "Click Queue review."
+    ],
+    "expected": [
+      "The packet changes to REVIEW_QUEUED and records actionQueueItemId, approvedByUserId, approvedAt, and approvalNote.",
+      "AssistantActionQueueItem uses an AMP-specific actionKind such as assistant_amp64_review or assistant_amp100_review.",
+      "AssistantAuditEvent states that downstream records were not changed automatically."
+    ]
+  },
+  {
+    "id": "amp64-100-guardrails",
+    "title": "Guardrails remain visible across investment, commercial, regulated, and automation packets",
+    "persona": "Compliance and executive reviewer",
+    "entrypoints": [
+      "/assistant/advanced-programs/dynamic-pricing",
+      "/assistant/advanced-programs/food-safety",
+      "/assistant/advanced-programs/model-risk",
+      "/assistant/advanced-programs/automation-policy"
+    ],
+    "steps": [
+      "Open an AMP64-AMP100 packet with active risk signals.",
+      "Inspect recommendationJson, approvalPlanJson, artifactJson, and rollbackPlanJson.",
+      "Queue review without making downstream changes."
+    ],
+    "expected": [
+      "recommendationJson includes human-review guardrails before any downstream execution.",
+      "approvalPlanJson identifies the right owner groups for the program domain.",
+      "artifactJson includes the program-specific review artifact and no-mutation scope.",
+      "rollbackPlanJson preserves source records and instructs reviewers to create a fresh packet when source evidence changes materially."
+    ]
+  }
+]

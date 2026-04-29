@@ -35,12 +35,14 @@ const signals: AdvancedProgramSignals = {
 };
 
 describe("advanced programs", () => {
-  it("defines AMP37 through AMP62", () => {
+  it("defines AMP37 through AMP100 with requested AMP64-100 programs", () => {
     const configs = listAdvancedProgramConfigs();
 
-    expect(configs).toHaveLength(26);
+    expect(configs).toHaveLength(63);
     expect(configs[0]?.ampNumber).toBe(37);
     expect(configs[25]?.ampNumber).toBe(62);
+    expect(configs[26]?.ampNumber).toBe(64);
+    expect(configs[62]?.ampNumber).toBe(100);
   });
 
   it("builds a distinct packet with guardrails for category strategy", () => {
@@ -68,6 +70,15 @@ describe("advanced programs", () => {
     expect(packet.riskCount).toBeGreaterThan(0);
     expect(packet.approvalPlan.steps.map((step) => step.owner)).toContain("Executive sponsor");
     expect(packet.rollbackPlan.steps[0]).toContain("autonomy policies");
+  });
+
+  it("builds human review operations packets with queue guardrails", () => {
+    const packet = buildAdvancedProgramPacket({ programKey: "human-review-ops", signals });
+
+    expect(packet.ampNumber).toBe(100);
+    expect(packet.riskCount).toBeGreaterThan(0);
+    expect(packet.approvalPlan.steps.map((step) => step.owner)).toContain("Operations manager");
+    expect(packet.rollbackPlan.steps[0]).toContain("review queues");
   });
 
   it("returns null for unknown program keys", () => {
