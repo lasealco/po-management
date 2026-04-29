@@ -43,7 +43,7 @@ Each capsule should end with: **`GAP_MAP.md` updated**, migrations listed if any
 | **BF-04** | **Topology** — parent zones (**BF-04 slice**); aisle entities / geometry hooks backlog | Zone row | migrations | [`WMS_ZONE_PARENT_BF04.md`](./WMS_ZONE_PARENT_BF04.md) — **`WarehouseZone.parentZoneId`** + `set_zone_parent`; **first-class `Aisle` / twin** still backlog per [`WMS_ZONE_TOPOLOGY_ADR.md`](./WMS_ZONE_TOPOLOGY_ADR.md) | WMS |
 | **BF-05** | **Dock yard / TMS depth** — carrier + gate milestones beyond WE-02; full TMS backlog | Appointment row | WE-02 dock scheduling | [`WMS_DOCK_YARD_BF05.md`](./WMS_DOCK_YARD_BF05.md) — transport + yard milestones + API; **carrier EDI / TMS solver** still backlog — [`WMS_DOCK_APPOINTMENTS.md`](./WMS_DOCK_APPOINTMENTS.md) | WMS (+ integrations) |
 | **BF-06** | **RBAC / scoped mutation tiers** — per-field ACL backlog | Permissions row | roles catalog + BF-06 tier mapping | [`WMS_RBAC_BF06.md`](./WMS_RBAC_BF06.md); tier-aware gates — [`WMS_RBAC_AND_AUDIT.md`](./WMS_RBAC_AND_AUDIT.md) | Platform + WMS |
-| **BF-07** | **Executive / blueprint KPIs** — OTIF, labor, slotting | Dashboards row | Metric definitions | Product + WMS |
+| **BF-07** | **Executive / blueprint KPIs** — OTIF, labor, slotting | Dashboards row | Metric definitions | [`WMS_EXECUTIVE_KPIS_BF07.md`](./WMS_EXECUTIVE_KPIS_BF07.md) — proxies + scope + narratives (**rates**/solver backlog) | Product + WMS |
 | **BF-08** | **Packing integration** — GS1 / ZPL / scanner hardware | Packing row | Vendor choices | WMS |
 | **BF-09** | **VAS portal & BOM costing** | VAS row | Commercial assumptions | WMS + portal |
 | **BF-10** | **Commercial CPQ → outbound** automation | Commercial row | **CRM/commercial module** | CRM (+ WMS API) |

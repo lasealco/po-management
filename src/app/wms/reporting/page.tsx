@@ -4,6 +4,7 @@ import { AccessDenied } from "@/components/access-denied";
 import { WmsHomeOverview } from "@/components/wms-home-overview";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 import { getDemoTenant } from "@/lib/demo-tenant";
+import { prisma } from "@/lib/prisma";
 import { REPORTING_HUB_FOCUS_WMS_HREF } from "@/lib/reporting-hub-paths";
 
 export const dynamic = "force-dynamic";
@@ -34,6 +35,12 @@ export default async function WmsReportingPage() {
       </div>
     );
   }
+
+  const warehouses = await prisma.warehouse.findMany({
+    where: { tenantId: tenant.id },
+    select: { id: true, code: true, name: true },
+    orderBy: { code: "asc" },
+  });
 
   return (
     <main className="mx-auto max-w-7xl px-6 py-10">
@@ -85,7 +92,7 @@ export default async function WmsReportingPage() {
       </section>
 
       <section className="mt-6 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-        <WmsHomeOverview tenantId={tenant.id} />
+        <WmsHomeOverview tenantId={tenant.id} warehouses={warehouses} />
       </section>
 
       <div className="mt-6 flex flex-wrap gap-3 text-sm">

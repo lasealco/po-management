@@ -1,10 +1,24 @@
 import Link from "next/link";
+import { Suspense } from "react";
 
 import { fetchWmsHomeKpis } from "@/lib/wms/wms-home-kpis";
 import { WMS_DEMO_WAREHOUSE_CODE } from "@/lib/wms/demo-warehouse-code";
 
-export async function WmsHomeOverview({ tenantId }: { tenantId: string }) {
-  const data = await fetchWmsHomeKpis(tenantId);
+import {
+  WmsHomeWarehouseScope,
+  type WmsHomeWarehouseOption,
+} from "@/components/wms-home-warehouse-scope";
+
+export async function WmsHomeOverview({
+  tenantId,
+  warehouseId,
+  warehouses,
+}: {
+  tenantId: string;
+  warehouseId?: string | null;
+  warehouses: WmsHomeWarehouseOption[];
+}) {
+  const data = await fetchWmsHomeKpis(tenantId, { warehouseId: warehouseId ?? undefined });
 
   return (
     <section className="mb-10">
@@ -15,8 +29,22 @@ export async function WmsHomeOverview({ tenantId }: { tenantId: string }) {
         <Link href="/docs" className="font-medium text-[var(--arscmp-primary)] underline-offset-2 hover:underline">
           docs
         </Link>{" "}
-        → <code className="rounded bg-zinc-100 px-1 py-0.5 text-[11px]">docs/wms/WMS_EXECUTIVE_KPIS.md</code> in-repo.
+        → <code className="rounded bg-zinc-100 px-1 py-0.5 text-[11px]">docs/wms/WMS_EXECUTIVE_KPIS.md</code>{" "}
+        and <code className="rounded bg-zinc-100 px-1 py-0.5 text-[11px]">docs/wms/WMS_EXECUTIVE_KPIS_BF07.md</code> in-repo.
       </p>
+
+      <Suspense fallback={<div className="mt-4 h-10 rounded-lg bg-zinc-100/80" aria-hidden />}>
+        <WmsHomeWarehouseScope warehouses={warehouses} scopedWarehouseId={data.scopedWarehouseId} />
+      </Suspense>
+
+      {data.scopeNotes.length > 0 ? (
+        <ul className="mt-3 list-disc space-y-1 rounded-lg border border-zinc-200 bg-zinc-50/90 px-4 py-3 text-xs text-zinc-700" role="status">
+          {data.scopeNotes.map((note) => (
+            <li key={note}>{note}</li>
+          ))}
+        </ul>
+      ) : null}
+
       <div className="mt-4 grid gap-2 sm:grid-cols-3">
         {data.confidenceSignals.map((signal) => (
           <div key={signal.label} className="rounded-lg border border-zinc-200 bg-white px-3 py-2 shadow-sm">
@@ -31,8 +59,8 @@ export async function WmsHomeOverview({ tenantId }: { tenantId: string }) {
       <div className="mt-8">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Executive highlights</h3>
         <p className="mt-1 text-xs text-zinc-600">
-          Leadership-oriented snapshots beyond raw task tiles — receiving backlog, dock schedule density, VAS workload, and hold exposure (see{" "}
-          <span className="font-medium text-zinc-800">WMS_EXECUTIVE_KPIS.md</span>).
+          Leadership-oriented snapshots beyond raw task tiles — receiving backlog, dock schedule density, VAS workload, hold exposure, and BF-07
+          OTIF/labor/slotting proxies (see <span className="font-medium text-zinc-800">WMS_EXECUTIVE_KPIS.md</span>).
         </p>
         <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <li className="rounded-xl border border-zinc-200 bg-white px-4 py-3 shadow-sm">
@@ -72,6 +100,44 @@ export async function WmsHomeOverview({ tenantId }: { tenantId: string }) {
             </Link>
           </li>
         </ul>
+
+        <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <li className="rounded-xl border border-zinc-200 bg-white px-4 py-3 shadow-sm">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Outbound past due (UTC)</p>
+            <p className="mt-1 text-2xl font-semibold tabular-nums text-zinc-900">
+              {data.executive.outboundPastDueCount}
+            </p>
+            <p className="mt-1 text-xs text-zinc-600">
+              Active outbound orders whose requested ship date is before today (UTC), not yet shipped.
+            </p>
+            <Link href="/wms/operations" className="mt-2 inline-block text-xs font-semibold text-[var(--arscmp-primary)]">
+              Outbound →
+            </Link>
+          </li>
+          <li className="rounded-xl border border-zinc-200 bg-white px-4 py-3 shadow-sm">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Open pick tasks</p>
+            <p className="mt-1 text-2xl font-semibold tabular-nums text-zinc-900">{data.executive.openPickTasks}</p>
+            <p className="mt-1 text-xs text-zinc-600">Labor backlog proxy (task counts, not productivity rates).</p>
+            <Link href="/wms/operations" className="mt-2 inline-block text-xs font-semibold text-[var(--arscmp-primary)]">
+              Task queue →
+            </Link>
+          </li>
+          <li className="rounded-xl border border-zinc-200 bg-white px-4 py-3 shadow-sm">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Open replenishments</p>
+            <p className="mt-1 text-2xl font-semibold tabular-nums text-zinc-900">{data.executive.openReplenishmentTasks}</p>
+            <p className="mt-1 text-xs text-zinc-600">Pick-face / slotting pressure proxy (open REPLENISH tasks).</p>
+            <Link href="/wms/operations" className="mt-2 inline-block text-xs font-semibold text-[var(--arscmp-primary)]">
+              Operations →
+            </Link>
+          </li>
+        </ul>
+
+        <div className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50/80 p-4 shadow-sm">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Blueprint narratives (BF-07)</p>
+          <p className="mt-2 text-sm text-zinc-800">{data.narratives.otif}</p>
+          <p className="mt-2 text-sm text-zinc-800">{data.narratives.labor}</p>
+          <p className="mt-2 text-sm text-zinc-800">{data.narratives.slotting}</p>
+        </div>
       </div>
 
       {!data.hasDemoWarehouse ? (
@@ -91,10 +157,7 @@ export async function WmsHomeOverview({ tenantId }: { tenantId: string }) {
       ) : null}
       <ul className="mt-4 grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         {data.tiles.map((t) => (
-          <li
-            key={t.label}
-            className="rounded-xl border border-zinc-200 bg-zinc-50/80 px-4 py-3 shadow-sm"
-          >
+          <li key={t.label} className="rounded-xl border border-zinc-200 bg-zinc-50/80 px-4 py-3 shadow-sm">
             <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">{t.label}</p>
             <p className="mt-1 text-2xl font-semibold tabular-nums text-zinc-900">{t.value}</p>
             <p className="mt-1 text-xs text-zinc-600">{t.hint}</p>

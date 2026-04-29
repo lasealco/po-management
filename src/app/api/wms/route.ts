@@ -28,7 +28,8 @@ export async function GET(request: Request) {
   if (!actorId) return toApiErrorResponse({ error: "No active actor.", code: "FORBIDDEN", status: 403 });
   const url = new URL(request.url);
   if (url.searchParams.get("homeKpis") === "1") {
-    const kpis = await fetchWmsHomeKpis(tenant.id);
+    const wh = url.searchParams.get("warehouseId") ?? url.searchParams.get("wh");
+    const kpis = await fetchWmsHomeKpis(tenant.id, { warehouseId: wh || undefined });
     return NextResponse.json(kpis);
   }
   const movementLedger = parseMovementLedgerQuery(url.searchParams);

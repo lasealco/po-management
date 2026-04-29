@@ -4,6 +4,7 @@ import { PageTitleWithHint } from "@/components/page-title-with-hint";
 import { getViewerGrantSet, viewerHas, viewerHasAnyWmsMutationEdit } from "@/lib/authz";
 import { WmsHomeOverview } from "@/components/wms-home-overview";
 import { getDemoTenant } from "@/lib/demo-tenant";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
@@ -30,9 +31,26 @@ const areas: { href: string; title: string; description: string }[] = [
   },
 ];
 
-export default async function WmsPage() {
+export default async function WmsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const access = await getViewerGrantSet();
   const tenant = await getDemoTenant();
+  const sp = await searchParams;
+  const whRaw = sp.wh ?? sp.warehouseId;
+  const warehouseId =
+    typeof whRaw === "string" ? whRaw : Array.isArray(whRaw) ? whRaw[0] : undefined;
+
+  const warehouses = tenant
+    ? await prisma.warehouse.findMany({
+        where: { tenantId: tenant.id },
+        select: { id: true, code: true, name: true },
+        orderBy: { code: "asc" },
+      })
+    : [];
+
   const canMutateAny = Boolean(access?.user && viewerHasAnyWmsMutationEdit(access.grantSet));
   const canViewControlTowerMap = Boolean(
     access?.user && viewerHas(access.grantSet, "org.controltower", "view"),
@@ -93,7 +111,9 @@ export default async function WmsPage() {
         ) : null}
       </header>
 
-      {tenant ? <WmsHomeOverview tenantId={tenant.id} /> : null}
+      {tenant ? (
+        <WmsHomeOverview tenantId={tenant.id} warehouseId={warehouseId} warehouses={warehouses} />
+      ) : null}
 
       <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {areas.map((a) => (
