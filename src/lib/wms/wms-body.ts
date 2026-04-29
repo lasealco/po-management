@@ -66,6 +66,8 @@ export type WmsBody = {
   dockDirection?: "INBOUND" | "OUTBOUND";
   /** Target allocation strategy for `set_warehouse_pick_allocation_strategy`. */
   pickAllocationStrategy?: "MAX_AVAILABLE_FIRST" | "FIFO_BY_BIN_CODE" | "MANUAL_ONLY";
+  /** Optional batch/lot for putaway completion and manual picks (`InventoryBalance.lotCode`). */
+  lotCode?: string | null;
   /** `create_value_add_task` — `WmsWorkOrder.id`. */
   workOrderId?: string;
   /** `create_work_order` — title for value-add / labor ticket header. */

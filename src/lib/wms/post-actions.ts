@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { assertOutboundCrmAccountLinkable } from "./crm-account-link";
 import { normalizeDockCode } from "./dock-appointment";
 import { orderPickSlotsForWave, type WavePickSlot } from "./allocation-strategy";
+import { FUNGIBLE_LOT_CODE, normalizeLotCode } from "./lot-code";
 import { syncOutboundOrderStatusAfterPick } from "./outbound-workflow";
 import { nextWaveNo } from "./wave";
 import { nextWorkOrderNo } from "./work-order-no";
@@ -199,6 +200,7 @@ export async function handleWmsPost(
       for (const rule of rules) {
         const pickBins = balances.filter(
           (b) =>
+            normalizeLotCode(b.lotCode) === FUNGIBLE_LOT_CODE &&
             !b.onHold &&
             b.productId === rule.productId &&
             (rule.targetZoneId ? b.bin.zoneId === rule.targetZoneId : b.bin.isPickFace),
@@ -208,6 +210,7 @@ export async function handleWmsPost(
         const source = balances
           .filter(
             (b) =>
+              normalizeLotCode(b.lotCode) === FUNGIBLE_LOT_CODE &&
               !b.onHold &&
               b.productId === rule.productId &&
               (rule.sourceZoneId ? b.bin.zoneId === rule.sourceZoneId : !b.bin.isPickFace) &&
@@ -462,6 +465,7 @@ export async function handleWmsPost(
     const referenceId = task.referenceId;
     const targetBinId = input.binId?.trim() || task.binId;
     if (!targetBinId) return toApiErrorResponseFromStatus("binId required.", 400);
+    const targetLot = normalizeLotCode(input.lotCode);
     await prisma.$transaction(async (tx) => {
       await tx.wmsTask.update({
         where: { id: task.id },
@@ -469,10 +473,11 @@ export async function handleWmsPost(
       });
       await tx.inventoryBalance.upsert({
         where: {
-          warehouseId_binId_productId: {
+          warehouseId_binId_productId_lotCode: {
             warehouseId: task.warehouseId,
             binId: targetBinId,
             productId,
+            lotCode: targetLot,
           },
         },
         create: {
@@ -480,6 +485,7 @@ export async function handleWmsPost(
           warehouseId: task.warehouseId,
           binId: targetBinId,
           productId,
+          lotCode: targetLot,
           onHandQty: task.quantity,
         },
         update: { onHandQty: { increment: task.quantity } },
@@ -515,6 +521,7 @@ export async function handleWmsPost(
       select: { id: true, outboundOrderId: true },
     });
     if (!item) return toApiErrorResponseFromStatus("Outbound line not found.", 404);
+    const taskLot = normalizeLotCode(input.lotCode);
     await prisma.$transaction(async (tx) => {
       await tx.wmsTask.create({
         data: {
@@ -525,13 +532,14 @@ export async function handleWmsPost(
           referenceId: item.id,
           productId,
           binId,
+          lotCode: taskLot,
           quantity: qty.toString(),
           note: input.note?.trim() || null,
           createdById: actorId,
         },
       });
       await tx.inventoryBalance.updateMany({
-        where: { tenantId, warehouseId, binId, productId },
+        where: { tenantId, warehouseId, binId, productId, lotCode: taskLot },
         data: { allocatedQty: { increment: qty.toString() } },
       });
     });
@@ -585,7 +593,7 @@ export async function handleWmsPost(
       );
     }
     const balances = await prisma.inventoryBalance.findMany({
-      where: { tenantId, warehouseId },
+      where: { tenantId, warehouseId, lotCode: FUNGIBLE_LOT_CODE },
       include: { bin: { select: { id: true, code: true } } },
     });
     const byProduct = new Map<string, WavePickSlot[]>();
@@ -635,6 +643,7 @@ export async function handleWmsPost(
               waveId: wave.id,
               productId: item.productId,
               binId: slot.binId,
+              lotCode: FUNGIBLE_LOT_CODE,
               referenceType: "OUTBOUND_LINE_PICK",
               referenceId: item.id,
               quantity: take.toString(),
@@ -648,6 +657,7 @@ export async function handleWmsPost(
               warehouseId,
               binId: slot.binId,
               productId: item.productId,
+              lotCode: FUNGIBLE_LOT_CODE,
             },
             data: { allocatedQty: { increment: take.toString() } },
           });
@@ -689,6 +699,7 @@ export async function handleWmsPost(
           binId: true,
           quantity: true,
           referenceId: true,
+          lotCode: true,
         },
       });
       for (const task of tasks) {
@@ -699,6 +710,7 @@ export async function handleWmsPost(
             warehouseId: task.warehouseId,
             productId: task.productId,
             binId: task.binId,
+            lotCode: task.lotCode,
           },
           select: { id: true, onHandQty: true, allocatedQty: true, onHold: true },
         });
@@ -748,7 +760,7 @@ export async function handleWmsPost(
     if (!taskId) return toApiErrorResponseFromStatus("taskId required.", 400);
     const task = await prisma.wmsTask.findFirst({
       where: { id: taskId, tenantId, status: "OPEN", taskType: "PICK" },
-      select: { id: true, warehouseId: true, productId: true, binId: true, quantity: true, referenceId: true },
+      select: { id: true, warehouseId: true, productId: true, binId: true, quantity: true, referenceId: true, lotCode: true },
     });
     if (!task || !task.productId || !task.binId) {
       return toApiErrorResponseFromStatus("Pick task not found.", 404);
@@ -756,7 +768,13 @@ export async function handleWmsPost(
     const productId = task.productId;
     const binId = task.binId;
     const balPre = await prisma.inventoryBalance.findFirst({
-      where: { tenantId, warehouseId: task.warehouseId, binId, productId },
+      where: {
+        tenantId,
+        warehouseId: task.warehouseId,
+        binId,
+        productId,
+        lotCode: task.lotCode,
+      },
       select: { id: true, onHandQty: true, allocatedQty: true, onHold: true },
     });
     if (!balPre) {
@@ -1245,6 +1263,7 @@ export async function handleWmsPost(
         warehouseId: task.warehouseId,
         binId: sourceBinId,
         productId,
+        lotCode: FUNGIBLE_LOT_CODE,
       },
       select: { id: true, onHandQty: true, allocatedQty: true },
     });
@@ -1272,10 +1291,11 @@ export async function handleWmsPost(
       });
       await tx.inventoryBalance.upsert({
         where: {
-          warehouseId_binId_productId: {
+          warehouseId_binId_productId_lotCode: {
             warehouseId: task.warehouseId,
             binId: targetBinId,
             productId,
+            lotCode: FUNGIBLE_LOT_CODE,
           },
         },
         create: {
@@ -1283,6 +1303,7 @@ export async function handleWmsPost(
           warehouseId: task.warehouseId,
           binId: targetBinId,
           productId,
+          lotCode: FUNGIBLE_LOT_CODE,
           onHandQty: moveQty.toString(),
         },
         update: { onHandQty: { increment: moveQty.toString() } },
@@ -1473,12 +1494,14 @@ export async function handleWmsPost(
       if (!Number.isFinite(qtyNum) || qtyNum <= 0) {
         return toApiErrorResponseFromStatus("quantity must be > 0 when productId and binId are set.", 400);
       }
+      const materialLot = normalizeLotCode(input.lotCode);
       const bal = await prisma.inventoryBalance.findFirst({
         where: {
           tenantId,
           warehouseId: wo.warehouseId,
           binId,
           productId,
+          lotCode: materialLot,
         },
         select: { id: true, onHandQty: true },
       });
@@ -1497,6 +1520,8 @@ export async function handleWmsPost(
       }
     }
 
+    const taskLotCode = hasMaterial ? normalizeLotCode(input.lotCode) : FUNGIBLE_LOT_CODE;
+
     await prisma.$transaction(async (tx) => {
       await tx.wmsTask.create({
         data: {
@@ -1507,6 +1532,7 @@ export async function handleWmsPost(
           referenceId: wo.id,
           productId: productId || null,
           binId: binId || null,
+          lotCode: taskLotCode,
           quantity: hasMaterial ? qtyNum.toString() : "0",
           note: input.note?.trim() ? input.note.trim().slice(0, 500) : null,
           createdById: actorId,
@@ -1536,6 +1562,7 @@ export async function handleWmsPost(
         referenceType: true,
         referenceId: true,
         note: true,
+        lotCode: true,
       },
     });
     if (!task || task.referenceType !== "WMS_WORK_ORDER" || !task.referenceId) {
@@ -1560,6 +1587,7 @@ export async function handleWmsPost(
           warehouseId: task.warehouseId,
           binId: task.binId!,
           productId: task.productId!,
+          lotCode: task.lotCode,
         },
         select: { id: true, onHandQty: true, onHold: true },
       });
@@ -1579,6 +1607,7 @@ export async function handleWmsPost(
             warehouseId: task.warehouseId,
             binId: task.binId!,
             productId: task.productId!,
+            lotCode: task.lotCode,
           },
           data: { onHandQty: { decrement: qty.toString() } },
         });

@@ -938,10 +938,11 @@ async function seed() {
   });
   await prisma.inventoryBalance.upsert({
     where: {
-      warehouseId_binId_productId: {
+      warehouseId_binId_productId_lotCode: {
         warehouseId: whLosAngeles.id,
         binId: whLaxTraceBin.id,
         productId: prodCorrugated.id,
+        lotCode: "",
       },
     },
     update: { onHandQty: "125.000", allocatedQty: "5.000" },
@@ -950,6 +951,7 @@ async function seed() {
       warehouseId: whLosAngeles.id,
       binId: whLaxTraceBin.id,
       productId: prodCorrugated.id,
+      lotCode: "",
       onHandQty: "125.000",
       allocatedQty: "5.000",
     },

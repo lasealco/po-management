@@ -4453,6 +4453,8 @@ model InventoryBalance {
   warehouseId  String
   binId        String
   productId    String
+  /// Batch/lot bucket within bin + SKU (empty string = fungible / legacy stock). Multiple rows per bin + product when lot-controlled.
+  lotCode      String   @default("") @db.VarChar(120)
   onHandQty    Decimal  @default(0) @db.Decimal(14, 3)
   allocatedQty Decimal  @default(0) @db.Decimal(14, 3)
   /// QC / quarantine: when true, picks and wave allocation skip this bin-product row.
@@ -4465,7 +4467,7 @@ model InventoryBalance {
   bin       WarehouseBin @relation(fields: [binId], references: [id], onDelete: Cascade)
   product   Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  @@unique([warehouseId, binId, productId])
+  @@unique([warehouseId, binId, productId, lotCode])
   @@index([tenantId, warehouseId])
 }
 
@@ -4651,6 +4653,8 @@ model WmsTask {
   binId         String?
   referenceType String?
   referenceId   String?
+  /// For picks/replen moves tied to a batch bucket — aligns with `InventoryBalance.lotCode`; waves use empty string only (fungible stock).
+  lotCode       String        @default("") @db.VarChar(120)
   quantity      Decimal       @default(0) @db.Decimal(14, 3)
   note          String?
   createdById   String

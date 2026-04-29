@@ -356,6 +356,7 @@ export async function getWmsDashboardPayload(
       warehouse: b.warehouse,
       bin: b.bin,
       product: b.product,
+      lotCode: b.lotCode,
       onHandQty: b.onHandQty.toString(),
       allocatedQty: b.allocatedQty.toString(),
       availableQty: new Prisma.Decimal(b.onHandQty).minus(b.allocatedQty).toString(),
@@ -381,6 +382,7 @@ export async function getWmsDashboardPayload(
         note: t.note,
         referenceType: t.referenceType,
         referenceId: t.referenceId,
+        lotCode: t.lotCode,
         createdAt: t.createdAt.toISOString(),
       };
     }),

@@ -86,12 +86,13 @@ async function receipt(db, row) {
   const { tenantId, warehouseId, binId, productId, qty, userId, note, referenceType, referenceId } =
     row;
   await db.inventoryBalance.upsert({
-    where: { warehouseId_binId_productId: { warehouseId, binId, productId } },
+    where: { warehouseId_binId_productId_lotCode: { warehouseId, binId, productId, lotCode: "" } },
     create: {
       tenantId,
       warehouseId,
       binId,
       productId,
+      lotCode: "",
       onHandQty: q(qty),
     },
     update: { onHandQty: { increment: q(qty) } },
@@ -115,12 +116,13 @@ async function receipt(db, row) {
 async function putawayDemo(db, row) {
   const { tenantId, warehouseId, binId, productId, qty, userId, note } = row;
   await db.inventoryBalance.upsert({
-    where: { warehouseId_binId_productId: { warehouseId, binId, productId } },
+    where: { warehouseId_binId_productId_lotCode: { warehouseId, binId, productId, lotCode: "" } },
     create: {
       tenantId,
       warehouseId,
       binId,
       productId,
+      lotCode: "",
       onHandQty: q(qty),
     },
     update: { onHandQty: { increment: q(qty) } },
@@ -310,10 +312,11 @@ async function completePutawayTask(tenantId, actorId, taskId, targetBinIdOverrid
     });
     await tx.inventoryBalance.upsert({
       where: {
-        warehouseId_binId_productId: {
+        warehouseId_binId_productId_lotCode: {
           warehouseId: task.warehouseId,
           binId: targetBinId,
           productId: task.productId,
+          lotCode: "",
         },
       },
       create: {
@@ -321,6 +324,7 @@ async function completePutawayTask(tenantId, actorId, taskId, targetBinIdOverrid
         warehouseId: task.warehouseId,
         binId: targetBinId,
         productId: task.productId,
+        lotCode: "",
         onHandQty: task.quantity,
       },
       update: { onHandQty: { increment: task.quantity } },
@@ -367,6 +371,7 @@ async function completeReplenishTask(tenantId, actorId, taskId) {
       warehouseId: task.warehouseId,
       binId: sourceBinId,
       productId,
+      lotCode: "",
     },
     select: { id: true, onHandQty: true, allocatedQty: true },
   });
@@ -390,10 +395,11 @@ async function completeReplenishTask(tenantId, actorId, taskId) {
     });
     await tx.inventoryBalance.upsert({
       where: {
-        warehouseId_binId_productId: {
+        warehouseId_binId_productId_lotCode: {
           warehouseId: task.warehouseId,
           binId: targetBinId,
           productId,
+          lotCode: "",
         },
       },
       create: {
@@ -401,6 +407,7 @@ async function completeReplenishTask(tenantId, actorId, taskId) {
         warehouseId: task.warehouseId,
         binId: targetBinId,
         productId,
+        lotCode: "",
         onHandQty: q(moveQty),
       },
       update: { onHandQty: { increment: q(moveQty) } },

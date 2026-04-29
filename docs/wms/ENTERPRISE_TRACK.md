@@ -101,8 +101,8 @@ Parallel agents: **non-overlapping paths only** (see [`agent-todos/README.md`](.
 
 **Exit criteria**
 
-- [ ] Decision recorded (native vs reuse).
-- [ ] Implemented slice + tests + GAP row update.
+- [x] Decision recorded (native vs reuse).
+- [x] Implemented slice + tests + GAP row update.
 
 ---
 

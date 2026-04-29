@@ -102,10 +102,11 @@ async function main() {
 
   await prisma.inventoryBalance.upsert({
     where: {
-      warehouseId_binId_productId: {
+      warehouseId_binId_productId_lotCode: {
         warehouseId: wh.id,
         binId: bin.id,
         productId: product.id,
+        lotCode: "",
       },
     },
     update: { onHandQty: "125.000", allocatedQty: "5.000" },
@@ -114,6 +115,7 @@ async function main() {
       warehouseId: wh.id,
       binId: bin.id,
       productId: product.id,
+      lotCode: "",
       onHandQty: "125.000",
       allocatedQty: "5.000",
     },

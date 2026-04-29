@@ -85,6 +85,8 @@ type WmsData = {
     warehouse: { id: string; code: string | null; name: string };
     bin: { id: string; code: string; name: string };
     product: { id: string; productCode: string | null; sku: string | null; name: string };
+    /** Batch bucket; empty string = fungible / legacy stock. */
+    lotCode: string;
     onHandQty: string;
     allocatedQty: string;
     availableQty: string;
@@ -106,6 +108,7 @@ type WmsData = {
     note: string | null;
     referenceType: string | null;
     referenceId: string | null;
+    lotCode: string;
     createdAt: string;
   }>;
   waves: Array<{
@@ -333,6 +336,8 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
   const [pickOutboundLineId, setPickOutboundLineId] = useState("");
   const [pickQty, setPickQty] = useState("");
   const [pickBinId, setPickBinId] = useState("");
+  const [pickLotCode, setPickLotCode] = useState("");
+  const [putawayLotByTaskId, setPutawayLotByTaskId] = useState<Record<string, string>>({});
   const [replProductId, setReplProductId] = useState("");
   const [replSourceZoneId, setReplSourceZoneId] = useState("");
   const [replTargetZoneId, setReplTargetZoneId] = useState("");
@@ -670,7 +675,8 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
       const sku = (b.product.sku || "").toLowerCase();
       const name = b.product.name.toLowerCase();
       const bin = b.bin.code.toLowerCase();
-      return pcode.includes(q) || sku.includes(q) || name.includes(q) || bin.includes(q);
+      const lot = (b.lotCode || "").toLowerCase();
+      return pcode.includes(q) || sku.includes(q) || name.includes(q) || bin.includes(q) || lot.includes(q);
     });
   }, [balancesShown, balanceTextFilter]);
 
@@ -2033,6 +2039,10 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
 
       <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
         <h2 className="text-sm font-semibold text-zinc-900">Create putaway task</h2>
+        <p className="mt-1 text-xs text-zinc-600">
+          When completing putaway, optionally set a <span className="font-medium">lot/batch</span> code to segment stock
+          beyond the default fungible bucket (waves still consume fungible stock only).
+        </p>
         <div className="mt-2 grid gap-2 sm:grid-cols-4">
           <select
             value={putawayShipmentItemId}
@@ -2090,7 +2100,11 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
 
       <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
         <h2 className="text-sm font-semibold text-zinc-900">Create pick task</h2>
-        <div className="mt-2 grid gap-2 sm:grid-cols-4">
+        <p className="mt-1 text-xs text-zinc-600">
+          Optional <span className="font-medium">lot/batch</span> matches a specific balance row (waves still allocate
+          fungible stock only).
+        </p>
+        <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
           <select
             value={pickOutboundLineId}
             onChange={(e) => {
@@ -2127,6 +2141,12 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
               </option>
             ))}
           </select>
+          <input
+            value={pickLotCode}
+            onChange={(e) => setPickLotCode(e.target.value)}
+            placeholder="Lot/batch (optional)"
+            className="rounded border border-zinc-300 px-3 py-2 text-sm"
+          />
           <button
             type="button"
             disabled={!canEdit || busy}
@@ -2140,6 +2160,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                 productId: c.product.id,
                 binId: pickBinId,
                 quantity: Number(pickQty),
+                lotCode: pickLotCode.trim() ? pickLotCode.trim() : null,
               });
             }}
             className="rounded border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-800 disabled:opacity-40"
@@ -2477,6 +2498,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                   <option key={b.id} value={b.id}>
                     {b.bin.code} · {(b.product.productCode || b.product.sku || "SKU").slice(0, 14)} · on-hand{" "}
                     {b.onHandQty}
+                    {b.lotCode ? ` · lot ${b.lotCode}` : ""}
                     {b.onHold ? " · HOLD" : ""}
                   </option>
                 ))}
@@ -2515,6 +2537,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                   base.productId = bal.product.id;
                   base.binId = bal.bin.id;
                   base.quantity = Number(vasTaskQty);
+                  base.lotCode = bal.lotCode;
                 }
                 void runAction(base);
               }}
@@ -2633,6 +2656,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
             {balancesForWarehouseOps.map((b) => (
               <option key={b.id} value={b.id}>
                 {b.bin.code} · {(b.product.productCode || b.product.sku || "SKU").slice(0, 12)} · book {b.onHandQty}
+                {b.lotCode ? ` · ${b.lotCode}` : ""}
                 {Boolean(b.onHold) ? " · HOLD" : ""}
               </option>
             ))}
@@ -2714,6 +2738,22 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                 ) : t.bin ? (
                   <span className="text-zinc-500">Bin {t.bin.code}</span>
                 ) : null}
+                {t.taskType === "PICK" && t.lotCode ? (
+                  <span className="text-zinc-500">Lot {t.lotCode}</span>
+                ) : null}
+                {t.taskType === "PUTAWAY" ? (
+                  <label className="flex items-center gap-1 text-xs text-zinc-600">
+                    Lot (optional)
+                    <input
+                      value={putawayLotByTaskId[t.id] ?? ""}
+                      onChange={(e) =>
+                        setPutawayLotByTaskId((m) => ({ ...m, [t.id]: e.target.value }))
+                      }
+                      placeholder="Batch code"
+                      className="w-28 rounded border border-zinc-300 px-1 py-0.5 text-sm"
+                    />
+                  </label>
+                ) : null}
                 {t.taskType === "VALUE_ADD" && t.referenceId ? (
                   <span className="text-zinc-500">
                     WO{" "}
@@ -2753,6 +2793,8 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                           action: "complete_putaway_task",
                           taskId: t.id,
                           binId: t.bin?.id ?? null,
+                          lotCode:
+                            putawayLotByTaskId[t.id]?.trim() ? putawayLotByTaskId[t.id].trim() : null,
                         });
                         return;
                       }
@@ -3065,6 +3107,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
               <tr>
                 <th className="px-2 py-1">Warehouse</th>
                 <th className="px-2 py-1">Bin</th>
+                <th className="px-2 py-1">Lot</th>
                 <th className="px-2 py-1">Product</th>
                 <th className="px-2 py-1">On hand</th>
                 <th className="px-2 py-1">Allocated</th>
@@ -3076,7 +3119,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
             <tbody className="divide-y divide-zinc-200 text-zinc-800">
               {balancesTableRows.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-2 py-3 text-zinc-500">
+                  <td colSpan={9} className="px-2 py-3 text-zinc-500">
                     {balancesShown.length === 0
                       ? "No balances in this view."
                       : `No balances match this filter${balanceTextFilter.trim() ? `: "${balanceTextFilter.trim()}"` : "."}`}
@@ -3089,6 +3132,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                     <td className="px-2 py-1">
                       {b.bin.code} · {b.bin.name}
                     </td>
+                    <td className="px-2 py-1 text-xs text-zinc-600">{b.lotCode || "—"}</td>
                     <td className="px-2 py-1">
                       {b.product.productCode || b.product.sku || "SKU"} · {b.product.name}
                     </td>
