@@ -100,8 +100,8 @@ export function FrontlineClient({ initialSnapshot }: { initialSnapshot: Snapshot
       {message ? <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{message}</div> : null}
 
       <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">AMP26</p>
-        <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">Mobile & Frontline Assistant</h2>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Sprint 24 · AMP26</p>
+        <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">Frontline &amp; Mobile Execution Intelligence</h2>
         <p className="mt-2 max-w-3xl text-sm text-zinc-600">
           Convert WMS tasks, shipment exceptions, supplier onboarding work, and field evidence into short mobile workflows.
           Quick actions stay reviewed before task completion, exception closure, supplier updates, or evidence changes.
@@ -122,10 +122,10 @@ export function FrontlineClient({ initialSnapshot }: { initialSnapshot: Snapshot
         <button
           type="button"
           disabled={busy === "create_packet"}
-          onClick={() => void post("create_packet", {}, "Frontline packet created.")}
+          onClick={() => void post("create_packet", {}, "Sprint 24 frontline packet created.")}
           className="mt-5 rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
         >
-          Create frontline packet
+          Create Sprint 24 packet
         </button>
       </section>
 
@@ -167,7 +167,7 @@ export function FrontlineClient({ initialSnapshot }: { initialSnapshot: Snapshot
       </section>
 
       <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-        <h3 className="text-lg font-semibold text-zinc-950">Frontline Packets</h3>
+        <h3 className="text-lg font-semibold text-zinc-950">Durable Sprint packets</h3>
         <div className="mt-4 space-y-4">
           {data.packets.map((packet) => {
             const queue = readArray<{ mobileLabel: string; priority: string; urgencyScore: number }>(packet.frontlineQueueJson);
@@ -224,7 +224,11 @@ export function FrontlineClient({ initialSnapshot }: { initialSnapshot: Snapshot
               </article>
             );
           })}
-          {data.packets.length === 0 ? <p className="rounded-xl border border-dashed border-zinc-300 p-6 text-sm text-zinc-600">No frontline packets yet.</p> : null}
+          {data.packets.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-zinc-300 p-6 text-sm text-zinc-600">
+              No Sprint 24 packets yet. Create the first Frontline &amp; Mobile Execution Intelligence packet from the live preview.
+            </p>
+          ) : null}
         </div>
       </section>
     </div>

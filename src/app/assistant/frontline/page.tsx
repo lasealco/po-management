@@ -14,7 +14,7 @@ export default async function AssistantFrontlinePage() {
       viewerHas(access.grantSet, "org.controltower", "view") ||
       viewerHas(access.grantSet, "org.suppliers", "view"));
   if (!canOpen) {
-    return <AccessDenied title="Frontline assistant" message="You need WMS, Control Tower, or supplier view access to open AMP26." />;
+    return <AccessDenied title="Frontline & Mobile Execution Intelligence" message="You need WMS, Control Tower, or supplier view access to open Sprint 24 (AMP26)." />;
   }
   const response = await GET();
   const snapshot = await response.json();

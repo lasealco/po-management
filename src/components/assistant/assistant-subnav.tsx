@@ -422,6 +422,13 @@ export function AssistantSubnav() {
       >
         Sprint 23
       </Link>
+      <Link
+        href="/assistant/frontline"
+        className={frontline ? appNavActiveClass : appNavInactiveClass}
+        title="Sprint 24 Frontline & Mobile Execution Intelligence (AMP26)"
+      >
+        Sprint 24
+      </Link>
       {advancedProgramLinks.map((program) => (
         <Link
           key={program.slug}

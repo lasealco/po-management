@@ -1,0 +1,32 @@
+{
+  "sprint": 24,
+  "title": "Frontline & Mobile Execution Intelligence",
+  "megaProgram": "AMP26",
+  "workspacePath": "/assistant/frontline",
+  "note": "Sprint numbering follows product roadmap sprints 16–25; AMP24 is Sustainability & ESG at /assistant/sustainability.",
+  "guardrails": [
+    "Packets summarize tasks, evidence gaps, quick actions, and offline risks — completing WMS work, moving inventory, releasing shipments, or messaging partners stays in governed operational workflows.",
+    "Queue review writes audit events and AssistantActionQueueItem rows — it does not mutate tasks, exceptions, or supplier records automatically."
+  ],
+  "scenarios": [
+    {
+      "id": "S24-01-create-packet",
+      "steps": [
+        "Sign in with WMS, Control Tower, or supplier view access.",
+        "Open /assistant/frontline (also linked as Sprint 24 in the assistant subnav).",
+        "Click Create Sprint 24 packet and confirm AssistantFrontlinePacket persistence."
+      ],
+      "passWhen": "POST create_packet returns 201; GET snapshot lists the packet; WMS/shipment/supplier source rows unchanged."
+    },
+    {
+      "id": "S24-02-queue-review",
+      "steps": ["Optionally add a frontline approval note.", "Queue frontline review."],
+      "passWhen": "Packet status REVIEW_QUEUED; audit answerKind frontline_review; action queue references assistant_frontline_packet."
+    },
+    {
+      "id": "S24-03-evidence-offline",
+      "steps": ["Use tenant data with OPEN WMS tasks or shipment exceptions.", "Reload preview or create a packet."],
+      "passWhen": "Dimensional JSON reflects queue, evidence checklist, quick actions, and offline risks; no silent execution."
+    }
+  ]
+}
