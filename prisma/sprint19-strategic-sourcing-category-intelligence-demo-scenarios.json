@@ -1,0 +1,29 @@
+{
+  "sprint": 19,
+  "title": "Strategic Sourcing & Category Intelligence",
+  "guardrails": [
+    "Packets are advisory: sourcing events, RFQ awards, tariff publications, supplier approvals, contract changes, and spend commits remain human-approved in source workflows.",
+    "Queue review and approve actions write audit events and may enqueue AssistantActionQueueItem rows — they never launch sourcing automation or mutate procurement records silently."
+  ],
+  "scenarios": [
+    {
+      "id": "S19-01-create-packet",
+      "steps": [
+        "Sign in with suppliers, RFQ, tariffs, orders, or reports edit access.",
+        "Open /assistant/strategic-sourcing-category-intelligence and click Create Sprint 19 packet.",
+        "Confirm AssistantStrategicSourcingPacket persists with sourcingScore and dimensional JSON."
+      ],
+      "passWhen": "POST create_packet returns 201 and GET lists the packet without RFQ or tariff mutations."
+    },
+    {
+      "id": "S19-02-queue-review",
+      "steps": ["Queue strategic sourcing review with optional note.", "Verify action queue links assistant_strategic_sourcing_packet."],
+      "passWhen": "Status REVIEW_QUEUED and audit answerKind sprint19_ss_rev recorded."
+    },
+    {
+      "id": "S19-03-approve",
+      "steps": ["Approve packet after category council sign-off.", "Verify sprint19_ss_ok audit narrative denies automatic awards or spend commits."],
+      "passWhen": "Status APPROVED; RFQs, tariff versions, suppliers unchanged."
+    }
+  ]
+}

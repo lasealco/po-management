@@ -197,6 +197,7 @@ model Tenant {
   assistantTransportCarrierProcurementPackets AssistantTransportCarrierProcurementPacket[]
   assistantIncidentNerveCenterPackets         AssistantIncidentNerveCenterPacket[]
   assistantCustomerSuccessPackets             AssistantCustomerSuccessPacket[]
+  assistantStrategicSourcingPackets           AssistantStrategicSourcingPacket[]
   assistantActionQueue                        AssistantActionQueueItem[]
   assistantPlaybookTemplates                  AssistantPlaybookTemplate[]
   assistantPlaybookRuns                       AssistantPlaybookRun[]
@@ -1866,6 +1867,45 @@ model AssistantCustomerSuccessPacket {
   @@index([tenantId, accountScore, updatedAt])
 }
 
+/// Sprint 19: strategic sourcing / category intelligence — spend concentration, RFQ/tariff readiness, supplier panel hygiene, contract compliance portfolio, savings pipeline cues — review-only; no sourcing events, awards, contracts, or spend commits.
+model AssistantStrategicSourcingPacket {
+  id                           String    @id @default(cuid())
+  tenantId                     String
+  createdByUserId              String?
+  approvedByUserId             String?
+  title                        String
+  status                       String    @default("DRAFT") @db.VarChar(32)
+  sourcingScore                Int       @default(0)
+  concentrationRiskCount       Int       @default(0)
+  rfqPipelineRiskCount         Int       @default(0)
+  tariffCoverageRiskCount      Int       @default(0)
+  supplierPanelRiskCount       Int       @default(0)
+  compliancePortfolioRiskCount Int       @default(0)
+  savingsPipelineRiskCount     Int       @default(0)
+  sourceSummaryJson            Json
+  spendCategoryJson            Json
+  rfqPipelineJson              Json
+  tariffCoverageJson           Json
+  supplierPanelJson            Json
+  compliancePortfolioJson      Json
+  savingsPipelineJson          Json
+  responsePlanJson             Json
+  rollbackPlanJson             Json
+  leadershipSummary            String    @db.Text
+  actionQueueItemId            String?
+  approvedAt                   DateTime?
+  approvalNote                 String?   @db.Text
+  createdAt                    DateTime  @default(now())
+  updatedAt                    DateTime  @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator  User?  @relation("AssistantStrategicSourcingPacketCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  approver User?  @relation("AssistantStrategicSourcingPacketApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, updatedAt])
+  @@index([tenantId, sourcingScore, updatedAt])
+}
+
 /// AMP7: inspectable grounding ledger extracted from assistant answers and reviewer additions.
 model AssistantEvidenceRecord {
   id              String    @id @default(cuid())
@@ -2532,6 +2572,8 @@ model User {
   assistantIncidentNerveCenterPacketsApproved         AssistantIncidentNerveCenterPacket[]         @relation("AssistantIncidentNerveCenterPacketApprover")
   assistantCustomerSuccessPacketsCreated              AssistantCustomerSuccessPacket[]             @relation("AssistantCustomerSuccessPacketCreator")
   assistantCustomerSuccessPacketsApproved             AssistantCustomerSuccessPacket[]             @relation("AssistantCustomerSuccessPacketApprover")
+  assistantStrategicSourcingPacketsCreated            AssistantStrategicSourcingPacket[]           @relation("AssistantStrategicSourcingPacketCreator")
+  assistantStrategicSourcingPacketsApproved           AssistantStrategicSourcingPacket[]           @relation("AssistantStrategicSourcingPacketApprover")
   invoiceIntakesAccountingApproved                    InvoiceIntake[]                              @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated                   TariffShipmentApplication[]                  @relation("TariffShipmentApplicationCreator")
   scriEventsOwned                                     ScriExternalEvent[]                          @relation("ScriEventOwner")

@@ -81,6 +81,7 @@ export function AssistantSubnav() {
   const transportCarrierProcurement = pathname.startsWith("/assistant/transport-carrier-procurement");
   const incidentNerveCenter = pathname.startsWith("/assistant/incident-nerve-center");
   const customerSuccessAccountIntelligence = pathname.startsWith("/assistant/customer-success-account-intelligence");
+  const strategicSourcingCategoryIntelligence = pathname.startsWith("/assistant/strategic-sourcing-category-intelligence");
   const advancedProgram = (slug: string) => pathname.startsWith(`/assistant/advanced-programs/${slug}`);
   const advancedProgramLinks = listAdvancedProgramConfigs();
   const workbench = pathname.startsWith("/assistant/workbench");
@@ -383,6 +384,13 @@ export function AssistantSubnav() {
         title="Sprint 18 Customer Success & Account Intelligence"
       >
         Sprint 18
+      </Link>
+      <Link
+        href="/assistant/strategic-sourcing-category-intelligence"
+        className={strategicSourcingCategoryIntelligence ? appNavActiveClass : appNavInactiveClass}
+        title="Sprint 19 Strategic Sourcing & Category Intelligence"
+      >
+        Sprint 19
       </Link>
       {advancedProgramLinks.map((program) => (
         <Link
