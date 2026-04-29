@@ -193,6 +193,7 @@ model Tenant {
   assistantFinanceCashControlPackets       AssistantFinanceCashControlPacket[]
   assistantProductLifecyclePackets         AssistantProductLifecyclePacket[]
   assistantPlatformReliabilityPackets      AssistantPlatformReliabilityPacket[]
+  assistantEnterpriseOsPackets             AssistantEnterpriseOsPacket[]
   assistantActionQueue                     AssistantActionQueueItem[]
   assistantPlaybookTemplates               AssistantPlaybookTemplate[]
   assistantPlaybookRuns                    AssistantPlaybookRun[]
@@ -1701,6 +1702,47 @@ model AssistantPlatformReliabilityPacket {
   @@index([tenantId, reliabilityScore, updatedAt])
 }
 
+/// Sprint 15: durable Autonomous Enterprise OS v2 packet for enterprise-wide observe/decide/act/learn orchestration, value realization, governance, reliability, rollout, finance, product, and domain control.
+model AssistantEnterpriseOsPacket {
+  id                        String    @id @default(cuid())
+  tenantId                  String
+  createdByUserId           String?
+  approvedByUserId          String?
+  title                     String
+  status                    String    @default("DRAFT") @db.VarChar(32)
+  enterpriseScore           Int       @default(0)
+  autonomyMode              String    @default("REVIEW_ONLY") @db.VarChar(32)
+  operatingSignalCount      Int       @default(0)
+  domainControlCount        Int       @default(0)
+  governanceRiskCount       Int       @default(0)
+  valueRiskCount            Int       @default(0)
+  rolloutRiskCount          Int       @default(0)
+  executionActionCount      Int       @default(0)
+  sourceSummaryJson         Json
+  enterpriseTelemetryJson   Json
+  autonomyReadinessJson     Json
+  governanceReliabilityJson Json
+  valueExecutionJson        Json
+  domainOrchestrationJson   Json
+  commandCouncilJson        Json
+  responsePlanJson          Json
+  rollbackPlanJson          Json
+  leadershipSummary         String    @db.Text
+  actionQueueItemId         String?
+  approvedAt                DateTime?
+  approvalNote              String?   @db.Text
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator  User?  @relation("AssistantEnterpriseOsPacketCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  approver User?  @relation("AssistantEnterpriseOsPacketApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, updatedAt])
+  @@index([tenantId, enterpriseScore, updatedAt])
+  @@index([tenantId, autonomyMode, updatedAt])
+}
+
 /// AMP7: inspectable grounding ledger extracted from assistant answers and reviewer additions.
 model AssistantEvidenceRecord {
   id              String    @id @default(cuid())
@@ -2359,6 +2401,8 @@ model User {
   assistantProductLifecyclePacketsApproved         AssistantProductLifecyclePacket[]         @relation("AssistantProductLifecyclePacketApprover")
   assistantPlatformReliabilityPacketsCreated       AssistantPlatformReliabilityPacket[]      @relation("AssistantPlatformReliabilityPacketCreator")
   assistantPlatformReliabilityPacketsApproved      AssistantPlatformReliabilityPacket[]      @relation("AssistantPlatformReliabilityPacketApprover")
+  assistantEnterpriseOsPacketsCreated              AssistantEnterpriseOsPacket[]             @relation("AssistantEnterpriseOsPacketCreator")
+  assistantEnterpriseOsPacketsApproved             AssistantEnterpriseOsPacket[]             @relation("AssistantEnterpriseOsPacketApprover")
   invoiceIntakesAccountingApproved                 InvoiceIntake[]                           @relation("InvoiceIntakeAccountingApprover")
   tariffShipmentApplicationsCreated                TariffShipmentApplication[]               @relation("TariffShipmentApplicationCreator")
   scriEventsOwned                                  ScriExternalEvent[]                       @relation("ScriEventOwner")

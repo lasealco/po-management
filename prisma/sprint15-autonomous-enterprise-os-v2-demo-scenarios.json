@@ -1,0 +1,42 @@
+{
+  "sprint": 15,
+  "title": "Autonomous Enterprise OS v2",
+  "description": "Acceptance scenarios for durable enterprise operating system packets spanning autonomous loops, value realization, executive strategy, governance, AI quality, platform reliability, rollout, finance, product lifecycle, domain programs, audit evidence, and action queue controls.",
+  "guardrails": [
+    "The assistant never silently expands automation, approves budgets, changes finance state, changes tenant rollout, mutates product or supplier records, changes security operations, alters runtime flags, deploys releases, changes traffic, publishes reports, or sends customer/security communications.",
+    "The assistant never silently certifies agents, approves AI releases, closes incidents, changes connector state, posts accounting entries, launches product passports, enables tenants, or executes domain program recommendations.",
+    "All enterprise OS, command council, automation expansion, value realization, rollout, finance, product, platform, security, and domain operating actions remain approval-gated through the action queue and audit trail."
+  ],
+  "scenarios": [
+    {
+      "name": "Create enterprise OS v2 packet",
+      "api": "POST /api/assistant/enterprise-os-v2",
+      "body": { "action": "create_packet" },
+      "expected": [
+        "Creates an AssistantEnterpriseOsPacket with enterprise telemetry, autonomy readiness, governance/reliability, value execution, domain orchestration, command council, response plan, rollback plan, and leadership summary JSON.",
+        "Writes an assistant audit event with objectType assistant_enterprise_os_packet.",
+        "Does not mutate autonomous loops, value packets, executive packets, governance packets, AI quality packets, platform reliability packets, rollout packets, finance packets, product lifecycle packets, advanced program packets, action queue decisions, runtime flags, deployments, or source systems."
+      ]
+    },
+    {
+      "name": "Queue enterprise council review",
+      "api": "POST /api/assistant/enterprise-os-v2",
+      "body": { "action": "queue_council_review", "packetId": "<packet-id>", "note": "Review blockers before controlled automation expansion." },
+      "expected": [
+        "Creates an AssistantActionQueueItem with actionKind enterprise_os_council_review and a link to /assistant/enterprise-os-v2.",
+        "Updates only the packet status/actionQueueItemId to COUNCIL_REVIEW_QUEUED.",
+        "Does not execute automations, approve spend, change finance/product/tenant/security records, publish reports, deploy releases, send communications, or mutate source systems."
+      ]
+    },
+    {
+      "name": "Approve reviewed enterprise OS packet",
+      "api": "POST /api/assistant/enterprise-os-v2",
+      "body": { "action": "approve_packet", "packetId": "<packet-id>", "note": "Approved for executive council follow-up; no source records changed." },
+      "expected": [
+        "Marks only the AssistantEnterpriseOsPacket as APPROVED with approver, timestamp, and note.",
+        "Writes an audit event proving the approval was human-reviewed.",
+        "Does not mutate enterprise automation, budgets, finance state, tenant rollout, product records, security operations, runtime flags, deployments, communications, or source systems."
+      ]
+    }
+  ]
+}

@@ -77,6 +77,7 @@ export function AssistantSubnav() {
   const financeCashControls = pathname.startsWith("/assistant/finance-cash-controls");
   const productLifecyclePassport = pathname.startsWith("/assistant/product-lifecycle-passport");
   const platformReliabilitySecurity = pathname.startsWith("/assistant/platform-reliability-security");
+  const enterpriseOsV2 = pathname.startsWith("/assistant/enterprise-os-v2");
   const advancedProgram = (slug: string) => pathname.startsWith(`/assistant/advanced-programs/${slug}`);
   const advancedProgramLinks = listAdvancedProgramConfigs();
   const workbench = pathname.startsWith("/assistant/workbench");
@@ -351,6 +352,13 @@ export function AssistantSubnav() {
         title="Sprint 14 Platform Reliability & Security Operations"
       >
         Sprint 14
+      </Link>
+      <Link
+        href="/assistant/enterprise-os-v2"
+        className={enterpriseOsV2 ? appNavActiveClass : appNavInactiveClass}
+        title="Sprint 15 Autonomous Enterprise OS v2"
+      >
+        Sprint 15
       </Link>
       {advancedProgramLinks.map((program) => (
         <Link
