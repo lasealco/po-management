@@ -1,6 +1,6 @@
 # Blueprint finish (`BF-xx`) — roadmap after BF-01
 
-**Purpose:** Track **blueprint-finish capsules** after **`BF-01`**: **Done** table (**`BF-02` … `BF-10`**), **recommended order** for **`BF-11`**, capsule cards, and how to execute prompts — see [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md).
+**Purpose:** Track **blueprint-finish capsules** after **`BF-01`**: **Done** table (**`BF-02` … `BF-11`**), capsule cards, and how to execute prompts — see [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md).
 
 **Authority:** Capsule IDs and themes match [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md). **`GAP_MAP.md`** stays the repo ↔ blueprint truth.
 
@@ -22,6 +22,7 @@
 | **BF-08** | Packing GS1/ZPL integration stub | Demo SSCC + ship-station **ZPL** download — [`WMS_PACKING_LABELS.md`](./WMS_PACKING_LABELS.md), [`WMS_PACKING_LABELS_BF08.md`](./WMS_PACKING_LABELS_BF08.md); scanner / carrier APIs backlog |
 | **BF-09** | VAS portal intake & estimates | **`/wms/vas-intake`**, CRM link + **`CUSTOMER_PORTAL`** WO + commercial cents/min ([`WMS_VAS_BF09.md`](./WMS_VAS_BF09.md)); multi-line BOM / SSO portal backlog |
 | **BF-10** | CRM quote → outbound lineage | **`OutboundOrder.sourceCrmQuoteId`**, CRM handoff link + WMS picker ([`WMS_COMMERCIAL_HANDOFF.md`](./WMS_COMMERCIAL_HANDOFF.md)); CPQ→SKU lines backlog |
+| **BF-11** | CT map WMS warehouse sites | Optional **■ warehouse pins** on **`/control-tower/map`** when **`org.wms` → view ([`WMS_CT_MAP_PHASE34_WE11.md`](./WMS_CT_MAP_PHASE34_WE11.md)); rack floor / CRM pins on globe still backlog |
 
 ---
 
@@ -29,11 +30,13 @@
 
 Order follows [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md) **Phase A → E**: inventory truth before execution engines; topology/yard before throwing integrations at cross-product epics.
 
-| Order | ID | Phase | Why this sequence |
-|-------|-----|-------|-------------------|
-| 1 | **BF-11** | E | CT map merged layers ([`WMS_CT_MAP_PHASE34_WE11.md`](./WMS_CT_MAP_PHASE34_WE11.md)) — **CT + WMS** (+ CRM pins if in scope); [`GAP_MAP`](./GAP_MAP.md) Enterprise row currently **❌** for in-map floor/pins. |
+**Blueprint finish capsules `BF-02` … `BF-11` are complete in this roadmap snapshot.** Further enterprise depth → [`CONTROL_TOWER_WMS_PHASED_ROADMAP.md`](../engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md) / product bets.
 
-**Parallelization:** **BF-04** / **BF-05** / commercial (**BF-10**) can often run in parallel when teams differ — dependencies above are **logical**, not strict calendar locks.
+| Order | ID | Phase | Notes |
+|-------|-----|-------|------|
+| — | — | — | Use **`GAP_MAP.md`** + phased roadmap for the next program slice after **`BF-11`**. |
+
+**Parallelization:** historical note — **BF-04** / **BF-05** / commercial (**BF-10**) often ran in parallel when teams differed.
 
 ---
 
@@ -52,7 +55,7 @@ Use one row as the **scope box** before filing GitHub issues or agent prompts.
 | **BF-08** | Packing | [`WMS_PACKING_LABELS.md`](./WMS_PACKING_LABELS.md), [`WMS_PACKING_LABELS_BF08.md`](./WMS_PACKING_LABELS_BF08.md) | Vendors / hardware | **Partial** — WE-06 pack/ship + BF-08 ZPL + demo SSCC; scanner/carrier backlog |
 | **BF-09** | VAS | [`WMS_VAS_WORK_ORDERS.md`](./WMS_VAS_WORK_ORDERS.md), [`WMS_VAS_BF09.md`](./WMS_VAS_BF09.md) | Portal + commercial assumptions | **Partial** — WE-04 + BF-09 intake; SSO/multi-BOM backlog |
 | **BF-10** | Commercial | [`WMS_COMMERCIAL_HANDOFF.md`](./WMS_COMMERCIAL_HANDOFF.md) | **CRM + commercial** | Partial — bill-to + **`sourceCrmQuoteId`** lineage |
-| **BF-11** | Enterprise CT map | [`WMS_CT_MAP_PHASE34_WE11.md`](./WMS_CT_MAP_PHASE34_WE11.md) | **CT + WMS** (+ CRM if pins) | Partial — WE-11 links; layers ❌ |
+| **BF-11** | Enterprise CT map | [`WMS_CT_MAP_PHASE34_WE11.md`](./WMS_CT_MAP_PHASE34_WE11.md) | **CT + WMS** | Partial — WE-11 cross-links + **BF-11** warehouse **site** pins; rack floor / CRM on-map ❌ |
 
 ---
 
@@ -68,4 +71,4 @@ We **did not** add duplicate per-capsule specs beside existing theme docs — av
 
 ---
 
-_Last updated: 2026-04-29 — **BF-10** CRM quote → outbound lineage (`sourceCrmQuoteId`, [`WMS_COMMERCIAL_HANDOFF.md`](./WMS_COMMERCIAL_HANDOFF.md)); **BF-09** VAS portal intake + commercial estimates (`WMS_VAS_BF09.md`, `/wms/vas-intake`); **BF-08** packing ZPL stub + demo SSCC (`WMS_PACKING_LABELS_BF08.md`, `gs1-sscc`, `ship-station-zpl`); **BF-07** executive KPI proxies + warehouse scope (`WMS_EXECUTIVE_KPIS_BF07.md`, `fetchWmsHomeKpis`); **BF-06** scoped WMS RBAC tiers (`WMS_RBAC_BF06.md`, `org.wms.setup` / `operations` / `inventory`); **BF-05** dock yard milestones (`WMS_DOCK_YARD_BF05.md`); **BF-03** FEFO allocation (`FEFO_BY_LOT_EXPIRY`); **BF-02** `WmsLotBatch` landed (`WMS_LOT_BATCH_BF02.md`, **`BF_CAPSULE_ROADMAP` Done**); roadmap scaffold after **BF-01**._
+_Last updated: 2026-04-29 — **BF-11** optional WMS warehouse pins on **`/control-tower/map`** (`buildWarehouseMapPins`, dual grants); **BF-10** CRM quote lineage (`WMS_COMMERCIAL_HANDOFF.md`); **BF-09** VAS intake (`WMS_VAS_BF09.md`); **BF-08** packing ZPL; roadmap **`BF-02`–`BF-11`** Done snapshot._

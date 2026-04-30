@@ -47,7 +47,7 @@ Each capsule should end with: **`GAP_MAP.md` updated**, migrations listed if any
 | **BF-08** | **Packing integration** — GS1 / ZPL / scanner hardware | Packing row | Vendor choices | [`WMS_PACKING_LABELS_BF08.md`](./WMS_PACKING_LABELS_BF08.md) — demo SSCC + ZPL stub (**scanner**/carrier backlog) | WMS |
 | **BF-09** | **VAS portal & BOM costing** | VAS row | Commercial assumptions | [`WMS_VAS_BF09.md`](./WMS_VAS_BF09.md) — intake + CRM + estimate snapshots (**multi-line BOM**/SSO backlog) | WMS + CRM |
 | **BF-10** | **Commercial CPQ → outbound lineage** — optional **`sourceCrmQuoteId`**; CPQ→SKU lines backlog | Commercial row | CRM (+ WMS API) | [`WMS_COMMERCIAL_HANDOFF.md`](./WMS_COMMERCIAL_HANDOFF.md) — BF-10 quote attribution + CRM handoff link (**automated quote lines → outbound lines** still backlog) | CRM + WMS |
-| **BF-11** | **CT map layers** — WMS floor / CRM pins inside globe | Enterprise CT map row | CT adoption + design | CT + WMS |
+| **BF-11** | **CT map merged layers** — optional **`Warehouse`** site pins on **`/control-tower/map`**; rack floor + CRM geo backlog | Enterprise CT map row | WE-11 navigation landed | [`WMS_CT_MAP_PHASE34_WE11.md`](./WMS_CT_MAP_PHASE34_WE11.md) — **`buildWarehouseMapPins`** + **`GET /api/control-tower/map-pins`** (**BF-11**) | CT + WMS |
 
 **Note:** IDs are **not** commitments — merge/split capsules when estimates land (e.g. **BF-02 + BF-01** often sequenced tightly).
 

@@ -9,8 +9,9 @@
 | Layer | Grant | Read-only? | Data |
 |--------|--------|------------|------|
 | **Shipments (workbench scope)** | `org.controltower` → `view` | Yes — pins link to 360, no in-map edit | `listControlTowerShipments` with **same URL query** as workbench; pins from booking/leg `originCode` / `destinationCode` via `src/lib/product-trace-geo.ts` (LOCODE / IATA dictionary; same family as product trace). |
-| WMS site / floor | `org.wms` | Not in this MVP | Defer to Phase 3.4 / WMS GAP. |
-| CRM / SO pins | `org.crm` (if any) | Not in this MVP | Defer. |
+| **WMS warehouse site (approx.)** | `org.wms` → `view` (+ CT map route still requires `org.controltower` → `view`) | Yes — links to **WMS setup** | **BF-11:** **`Warehouse`** pins appended by **`GET /api/control-tower/map-pins`** (`buildWarehouseMapPins` — city/country/name demo geo); **not** indoor rack tiles |
+| WMS rack/floor tiles on CT map | — | Not shipped | Use **WMS Setup** rack front map |
+| CRM / SO pins | `org.crm` (if any) | Not shipped | Defer until CRM carries geo |
 
 **Non-goals (MVP):** live editing, vehicle GPS, WMS bin geometry, full geocoding service.
 
@@ -22,5 +23,6 @@
 
 ## Next (3.4) — if product wants depth
 
-- **2026-04-25 (cross-surface, no floor geometry):** `/wms` home shows **Open shipment map** when the actor has `org.controltower` → `view` (in addition to WMS). `/control-tower/map` shows **WMS workspace** when the actor has `org.wms` → `view`.
-- WMS rack/floor where GAP is 🟡; richer world map (globe) only if `/control-tower/map` shows adoption.
+- **2026-04-25 (cross-surface, no floor geometry):** `/wms` home shows **Open shipment map** when the actor has `org.controltower` → **view** (in addition to WMS). `/control-tower/map` shows **WMS workspace** when the actor has `org.wms` → **view**.
+- **BF-11 (2026-04-29):** **`Warehouse`** **site** pins (approximate WGS84 via **`product-trace-geo`** city/country/name hints) on **`/control-tower/map`** when the actor has **`org.wms` → view** — `src/lib/control-tower/map-layers.ts`, toggles in **`control-tower-map-client.tsx`**. Indoor rack layers remain **WMS Setup**.
+- CRM geo pins + richer globe adoption metrics remain backlog ([`GAP_MAP.md`](../wms/GAP_MAP.md) Enterprise row — ❌ rack floor / CRM structured geo).
