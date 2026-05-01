@@ -1,7 +1,7 @@
-import Link from "next/link";
+import { Suspense } from "react";
 
 import { AccessDenied } from "@/components/access-denied";
-import { AssistantMp1Client } from "@/components/assistant/assistant-mp1-client";
+import { AssistantSalesOperationsCockpit } from "@/components/assistant/assistant-sales-operations-cockpit";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +11,7 @@ export default async function AssistantPage() {
   if (!access?.user) {
     return (
       <AccessDenied
-        title="Sales assistant"
+        title="Sales & Operations Assistant"
         message="Choose an active demo user: open Settings → Demo session (/settings/demo)."
       />
     );
@@ -20,18 +20,11 @@ export default async function AssistantPage() {
   if (!canOrders) {
     return (
       <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-zinc-900">Sales chat needs orders access</h2>
+        <h2 className="text-lg font-semibold text-zinc-900">Orders access required</h2>
         <p className="mt-2 text-sm text-zinc-600">
-          Natural-language sales order drafts require <code className="rounded bg-zinc-100 px-1">org.orders → view</code>.
-          You can still use the <strong>Inbox</strong> tab for Control Tower alerts and exceptions (if you have the
-          Tower).
+          This cockpit needs <code className="rounded bg-zinc-100 px-1">org.orders → view</code> for sales drafts and
+          inventory answers. Use the sidebar to open Inbox, Command center, or other workspaces if your grants allow.
         </p>
-        <Link
-          href="/assistant/inbox"
-          className="mt-4 inline-flex rounded-xl bg-[var(--arscmp-primary)] px-4 py-2.5 text-sm font-semibold text-white"
-        >
-          Open Inbox
-        </Link>
       </div>
     );
   }
@@ -39,15 +32,8 @@ export default async function AssistantPage() {
   const canCreate = viewerHas(access.grantSet, "org.orders", "edit");
 
   return (
-    <div>
-      <h2 className="text-lg font-semibold text-zinc-900">Sales chat</h2>
-      <p className="mt-1 text-sm text-zinc-600">
-        Natural language to draft sales orders. The assistant does not send email. Use the <strong>Inbox</strong> tab for
-        open Tower work and other drafts.
-      </p>
-      <div className="mt-6">
-        <AssistantMp1Client canCreateSalesOrder={canCreate} />
-      </div>
-    </div>
+    <Suspense fallback={<div className="min-h-[28rem] animate-pulse rounded-2xl bg-zinc-100" aria-hidden />}>
+      <AssistantSalesOperationsCockpit canCreateSalesOrder={canCreate} />
+    </Suspense>
   );
 }

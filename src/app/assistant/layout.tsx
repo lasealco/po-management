@@ -1,5 +1,7 @@
+import { Suspense } from "react";
+
 import { AccessDenied } from "@/components/access-denied";
-import { AssistantSubnav } from "@/components/assistant/assistant-subnav";
+import { AssistantSidebar } from "@/components/assistant/assistant-sidebar";
 import { getViewerGrantSet, viewerHas } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
@@ -54,38 +56,15 @@ export default async function AssistantLayout({ children }: { children: React.Re
 
   return (
     <div className="min-h-screen bg-zinc-50">
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Workspace</p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">Assistant</h1>
-        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-zinc-600">
-          Governed assistant workspaces are grouped below: core tools, everyday operations chips, a searchable{" "}
-          <strong className="text-zinc-800">program track</strong> (numbered demo rollout — not your Jira sprints), and an{" "}
-          <strong className="text-zinc-800">advanced programs</strong> catalog for AMP review packets. Chat needs orders
-          view; other tabs depend on grants — hover any chip for its full title.
-        </p>
-        <section className="mt-4 max-w-3xl rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">How this navigator is organized</p>
-          <ul className="mt-2 space-y-2 text-sm text-zinc-600">
-            <li>
-              <span className="font-semibold text-zinc-800">Core &amp; cockpit</span> — Chat, inbox, mail pilot,
-              workbenches, evidence, automation, admin.
-            </li>
-            <li>
-              <span className="font-semibold text-zinc-800">Operations modules</span> — Short labels for frequent
-              domains. Planning / Contracts / Frontline match Sprint 22–24 on the program track.
-            </li>
-            <li>
-              <span className="font-semibold text-zinc-800">Program track</span> — One catalog link opens Sprint 1–25 with
-              plain-language names and search (fills gaps like missing Sprint numbers in the old chip strip).
-            </li>
-            <li>
-              <span className="font-semibold text-zinc-800">Advanced programs</span> — Large AMP packet list for deep,
-              evidence-first reviews (different numbering from the sprint track).
-            </li>
-          </ul>
-        </section>
-        <AssistantSubnav />
-        {children}
+      <div className="mx-auto max-w-[1600px] px-4 py-5 sm:px-6">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+          <Suspense
+            fallback={<div className="h-72 w-full shrink-0 animate-pulse rounded-2xl bg-zinc-100 lg:w-56" aria-hidden />}
+          >
+            <AssistantSidebar className="w-full lg:w-56 lg:shrink-0" />
+          </Suspense>
+          <main className="min-w-0 flex-1">{children}</main>
+        </div>
       </div>
     </div>
   );
