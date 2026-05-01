@@ -33,7 +33,11 @@ export async function GET(request: Request) {
     return NextResponse.json(kpis);
   }
   const movementLedger = parseMovementLedgerQuery(url.searchParams);
-  const payload = await getWmsDashboardPayload(tenant.id, actorId, movementLedger ?? null);
+  const tracePid = url.searchParams.get("traceProductId")?.trim();
+  const traceSn = url.searchParams.get("traceSerialNo")?.trim();
+  const serialTrace =
+    tracePid && traceSn ? { productId: tracePid, serialNoRaw: traceSn } : null;
+  const payload = await getWmsDashboardPayload(tenant.id, actorId, movementLedger ?? null, serialTrace);
   return NextResponse.json(payload);
 }
 

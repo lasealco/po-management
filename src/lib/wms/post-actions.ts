@@ -20,6 +20,7 @@ import {
   truncateLotBatchNotes,
 } from "./lot-batch-master";
 import { FUNGIBLE_LOT_CODE, normalizeLotCode } from "./lot-code";
+import { InventorySerialNoError, normalizeInventorySerialNo } from "./inventory-serial-no";
 import { syncOutboundOrderStatusAfterPick } from "./outbound-workflow";
 import { warehouseZoneParentWouldCycle } from "./zone-hierarchy";
 import { nextWaveNo } from "./wave";
@@ -1549,6 +1550,245 @@ export async function handleWmsPost(
     });
 
     return NextResponse.json({ ok: true, id: row.id });
+  }
+
+  if (action === "register_inventory_serial") {
+    const productId = input.productId?.trim();
+    const rawSn = input.inventorySerialNo?.trim();
+    if (!productId || !rawSn) {
+      return toApiErrorResponseFromStatus("productId and inventorySerialNo required.", 400);
+    }
+    let serialNo: string;
+    try {
+      serialNo = normalizeInventorySerialNo(rawSn);
+    } catch (e) {
+      return toApiErrorResponseFromStatus(
+        e instanceof InventorySerialNoError ? e.message : "Invalid inventorySerialNo.",
+        400,
+      );
+    }
+
+    const product = await prisma.product.findFirst({
+      where: { id: productId, tenantId },
+      select: { id: true },
+    });
+    if (!product) {
+      return toApiErrorResponseFromStatus("Product not found.", 404);
+    }
+
+    const rawNote = input.inventorySerialNote;
+    const noteParsed =
+      rawNote === undefined
+        ? undefined
+        : rawNote === null || String(rawNote).trim() === ""
+          ? null
+          : String(rawNote).trim().slice(0, 500);
+
+    try {
+      const row = await prisma.$transaction(async (tx) => {
+        const created = await tx.wmsInventorySerial.create({
+          data: {
+            tenantId,
+            productId: product.id,
+            serialNo,
+            ...(noteParsed !== undefined ? { note: noteParsed } : {}),
+          },
+          select: { id: true, serialNo: true },
+        });
+        await tx.ctAuditLog.create({
+          data: {
+            tenantId,
+            entityType: "WMS_INVENTORY_SERIAL",
+            entityId: created.id,
+            action: "inventory_serial_registered",
+            payload: { productId: product.id, serialNo: created.serialNo },
+            actorUserId: actorId,
+          },
+        });
+        return created;
+      });
+      return NextResponse.json({ ok: true, id: row.id });
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+        return toApiErrorResponseFromStatus("Serial already registered for this product.", 409);
+      }
+      throw e;
+    }
+  }
+
+  if (action === "set_inventory_serial_balance") {
+    const sid = input.inventorySerialId?.trim();
+    const pid = input.productId?.trim();
+    const rawSn = input.inventorySerialNo?.trim();
+    if (!sid && (!pid || !rawSn)) {
+      return toApiErrorResponseFromStatus(
+        "inventorySerialId or (productId and inventorySerialNo) required.",
+        400,
+      );
+    }
+    if (!("serialBalanceId" in input)) {
+      return toApiErrorResponseFromStatus(
+        "serialBalanceId required (balance row id, or null to clear pointer).",
+        400,
+      );
+    }
+
+    let serialRow: { id: string; productId: string } | null = null;
+    if (sid) {
+      serialRow = await prisma.wmsInventorySerial.findFirst({
+        where: { id: sid, tenantId },
+        select: { id: true, productId: true },
+      });
+    } else if (pid && rawSn) {
+      let serialNo: string;
+      try {
+        serialNo = normalizeInventorySerialNo(rawSn);
+      } catch (e) {
+        return toApiErrorResponseFromStatus(
+          e instanceof InventorySerialNoError ? e.message : "Invalid inventorySerialNo.",
+          400,
+        );
+      }
+      serialRow = await prisma.wmsInventorySerial.findFirst({
+        where: { tenantId, productId: pid, serialNo },
+        select: { id: true, productId: true },
+      });
+    }
+    if (!serialRow) {
+      return toApiErrorResponseFromStatus("Serial not found.", 404);
+    }
+
+    const balRaw = input.serialBalanceId;
+    if (balRaw === null) {
+      await prisma.$transaction(async (tx) => {
+        await tx.wmsInventorySerial.update({
+          where: { id: serialRow!.id },
+          data: { currentBalanceId: null },
+        });
+        await tx.ctAuditLog.create({
+          data: {
+            tenantId,
+            entityType: "WMS_INVENTORY_SERIAL",
+            entityId: serialRow!.id,
+            action: "inventory_serial_balance_cleared",
+            payload: {},
+            actorUserId: actorId,
+          },
+        });
+      });
+      return NextResponse.json({ ok: true });
+    }
+
+    const balanceId = typeof balRaw === "string" ? balRaw.trim() : "";
+    if (!balanceId) {
+      return toApiErrorResponseFromStatus("serialBalanceId must be a non-empty string or null.", 400);
+    }
+
+    const balance = await prisma.inventoryBalance.findFirst({
+      where: { id: balanceId, tenantId, productId: serialRow.productId },
+      select: { id: true },
+    });
+    if (!balance) {
+      return toApiErrorResponseFromStatus("Balance not found for this product.", 404);
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.wmsInventorySerial.update({
+        where: { id: serialRow!.id },
+        data: { currentBalanceId: balance.id },
+      });
+      await tx.ctAuditLog.create({
+        data: {
+          tenantId,
+          entityType: "WMS_INVENTORY_SERIAL",
+          entityId: serialRow!.id,
+          action: "inventory_serial_balance_set",
+          payload: { balanceId: balance.id },
+          actorUserId: actorId,
+        },
+      });
+    });
+
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "attach_inventory_serial_to_movement") {
+    const movementId = input.inventoryMovementId?.trim();
+    if (!movementId) {
+      return toApiErrorResponseFromStatus("inventoryMovementId required.", 400);
+    }
+
+    const sid = input.inventorySerialId?.trim();
+    const pid = input.productId?.trim();
+    const rawSn = input.inventorySerialNo?.trim();
+    if (!sid && (!pid || !rawSn)) {
+      return toApiErrorResponseFromStatus(
+        "inventorySerialId or (productId and inventorySerialNo) required.",
+        400,
+      );
+    }
+
+    let serialRow: { id: string; productId: string } | null = null;
+    if (sid) {
+      serialRow = await prisma.wmsInventorySerial.findFirst({
+        where: { id: sid, tenantId },
+        select: { id: true, productId: true },
+      });
+    } else if (pid && rawSn) {
+      let serialNo: string;
+      try {
+        serialNo = normalizeInventorySerialNo(rawSn);
+      } catch (e) {
+        return toApiErrorResponseFromStatus(
+          e instanceof InventorySerialNoError ? e.message : "Invalid inventorySerialNo.",
+          400,
+        );
+      }
+      serialRow = await prisma.wmsInventorySerial.findFirst({
+        where: { tenantId, productId: pid, serialNo },
+        select: { id: true, productId: true },
+      });
+    }
+    if (!serialRow) {
+      return toApiErrorResponseFromStatus("Serial not found.", 404);
+    }
+
+    const movement = await prisma.inventoryMovement.findFirst({
+      where: { id: movementId, tenantId },
+      select: { id: true, productId: true },
+    });
+    if (!movement) {
+      return toApiErrorResponseFromStatus("Movement not found.", 404);
+    }
+    if (movement.productId !== serialRow.productId) {
+      return toApiErrorResponseFromStatus("Movement product does not match serial.", 400);
+    }
+
+    const existing = await prisma.wmsInventorySerialMovement.findFirst({
+      where: { serialId: serialRow.id, inventoryMovementId: movement.id },
+      select: { id: true },
+    });
+    if (existing) {
+      return NextResponse.json({ ok: true });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.wmsInventorySerialMovement.create({
+        data: { serialId: serialRow!.id, inventoryMovementId: movement.id },
+      });
+      await tx.ctAuditLog.create({
+        data: {
+          tenantId,
+          entityType: "WMS_INVENTORY_SERIAL",
+          entityId: serialRow!.id,
+          action: "inventory_serial_movement_linked",
+          payload: { inventoryMovementId: movement.id },
+          actorUserId: actorId,
+        },
+      });
+    });
+
+    return NextResponse.json({ ok: true });
   }
 
   if (action === "create_dock_appointment") {

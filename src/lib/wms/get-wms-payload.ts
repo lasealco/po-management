@@ -6,6 +6,7 @@ import { movementLedgerWhere, type ParsedMovementLedgerQuery } from "@/lib/wms/m
 import { FUNGIBLE_LOT_CODE, normalizeLotCode } from "@/lib/wms/lot-code";
 import { loadWmsViewReadScope } from "@/lib/wms/wms-read-scope";
 import { allowedNextWmsReceiveStatuses } from "@/lib/wms/wms-receive-status";
+import { loadInventorySerialTrace, type SerialTraceQueryInput } from "@/lib/wms/inventory-serial-trace";
 import { prisma } from "@/lib/prisma";
 
 function andWhereClauses<T>(base: T, extra: object): T {
@@ -18,6 +19,7 @@ export async function getWmsDashboardPayload(
   tenantId: string,
   actorUserId: string,
   movementLedger?: ParsedMovementLedgerQuery | null,
+  serialTraceQuery?: SerialTraceQueryInput | null,
 ) {
   const [canPickCrmAccounts, viewScope] = await Promise.all([
     userHasGlobalGrant(actorUserId, "org.crm", "view"),
@@ -282,6 +284,14 @@ export async function getWmsDashboardPayload(
     }),
     prisma.inventoryMovement.count({ where: recentMovementScoped }),
   ]);
+
+  const serialTrace =
+    serialTraceQuery?.productId?.trim() && serialTraceQuery?.serialNoRaw?.trim()
+      ? await loadInventorySerialTrace(tenantId, viewScope, {
+          productId: serialTraceQuery.productId.trim(),
+          serialNoRaw: serialTraceQuery.serialNoRaw.trim(),
+        })
+      : null;
 
   const lotBatchWhere: Prisma.WmsLotBatchWhereInput =
     viewScope.inventoryProduct != null
@@ -669,5 +679,6 @@ export async function getWmsDashboardPayload(
       notes: lb.notes ?? null,
       updatedAt: lb.updatedAt.toISOString(),
     })),
+    serialTrace,
   };
 }

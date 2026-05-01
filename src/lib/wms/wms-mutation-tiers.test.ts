@@ -22,4 +22,9 @@ describe("wmsMutationTierForPostAction", () => {
     expect(wmsMutationTierForPostAction("create_wms_receipt")).toBe("operations");
     expect(wmsMutationTierForPostAction("set_wms_receipt_line")).toBe("operations");
   });
+
+  it("maps BF-13 serial mutations to inventory tier", () => {
+    expect(wmsMutationTierForPostAction("register_inventory_serial")).toBe("inventory");
+    expect(wmsMutationTierForPostAction("attach_inventory_serial_to_movement")).toBe("inventory");
+  });
 });

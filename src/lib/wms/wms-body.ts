@@ -112,4 +112,15 @@ export type WmsBody = {
   receiptDockNote?: string | null;
   /** BF-12 — optional dock/unload timestamp on `create_wms_receipt` (ISO string). */
   receiptDockReceivedAt?: string | null;
+
+  /** BF-13 — `WmsInventorySerial.id` (alternative to `productId` + `inventorySerialNo`). */
+  inventorySerialId?: string;
+  /** BF-13 — raw serial token with `productId` when `inventorySerialId` omitted. */
+  inventorySerialNo?: string;
+  /** BF-13 — `InventoryMovement.id` for `attach_inventory_serial_to_movement`. */
+  inventoryMovementId?: string;
+  /** BF-13 — `InventoryBalance.id` for `set_inventory_serial_balance`; `null` clears pointer. */
+  serialBalanceId?: string | null;
+  /** BF-13 — optional operator note on `register_inventory_serial` (max 500); null clears. */
+  inventorySerialNote?: string | null;
 };

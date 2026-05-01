@@ -40,6 +40,10 @@ const WMS_POST_ACTION_TIER: Record<string, WmsMutationTier> = {
 
   set_wms_lot_batch: "inventory",
 
+  register_inventory_serial: "inventory",
+  set_inventory_serial_balance: "inventory",
+  attach_inventory_serial_to_movement: "inventory",
+
   create_dock_appointment: "operations",
   cancel_dock_appointment: "operations",
   set_dock_appointment_transport: "operations",

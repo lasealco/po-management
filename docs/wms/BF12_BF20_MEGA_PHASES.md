@@ -46,6 +46,8 @@
 
 **Exit sketch:** Minimal table(s) + `set_inventory_serial` / query hooks; Stock or trace UI slice; docs in **`WMS_LOT_SERIAL_DECISION.md`** extended; no requirement to solve full GS1 aggregation in v1.
 
+**Minimal slice shipped (repo):** `WmsInventorySerial` / `WmsInventorySerialMovement`; actions **`register_inventory_serial`**, **`set_inventory_serial_balance`**, **`attach_inventory_serial_to_movement`**; **`GET /api/wms?traceProductId=&traceSerialNo=`** ( **`serialTrace`** payload ); Stock UI panel (`/wms/stock`). Naming differs from sketch (`register_inventory_serial` vs generic `set_inventory_serial`) — same intent.
+
 **Out of scope:** Serialization at manufacturing source, carrier ASN serialization.
 
 ---

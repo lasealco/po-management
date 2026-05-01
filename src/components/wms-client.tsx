@@ -292,6 +292,46 @@ type WmsData = {
     notes: string | null;
     updatedAt: string;
   }>;
+  /** BF-13 — present when `traceProductId` + `traceSerialNo` query params sent on stock fetch. */
+  serialTrace?:
+    | null
+    | { status: "bad_serial"; message: string }
+    | { status: "product_denied" }
+    | { status: "not_found"; productId: string; serialNo: string }
+    | {
+        status: "ok";
+        serial: {
+          id: string;
+          serialNo: string;
+          note: string | null;
+          createdAt: string;
+          updatedAt: string;
+        };
+        product: { id: string; productCode: string | null; sku: string | null; name: string };
+        currentBalance: null | {
+          id: string;
+          lotCode: string;
+          onHandQty: string;
+          allocatedQty: string;
+          warehouse: { id: string; code: string | null; name: string };
+          bin: { id: string; code: string; name: string };
+        };
+        movements: Array<{
+          linkedAt: string;
+          movement: {
+            id: string;
+            movementType: string;
+            quantity: string;
+            referenceType: string | null;
+            referenceId: string | null;
+            note: string | null;
+            createdAt: string;
+            warehouse: { id: string; code: string | null; name: string };
+            bin: { id: string; code: string; name: string } | null;
+            createdBy: { id: string; name: string; email: string };
+          };
+        }>;
+      };
 };
 
 type SavedLedgerView = {
@@ -541,12 +581,37 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
   const [lotBatchExpiry, setLotBatchExpiry] = useState("");
   const [lotBatchCountry, setLotBatchCountry] = useState("");
   const [lotBatchNotes, setLotBatchNotes] = useState("");
+  const [serialTraceLookup, setSerialTraceLookup] = useState<{ productId: string; serialNo: string } | null>(null);
+  const [serialTraceDraftProductId, setSerialTraceDraftProductId] = useState("");
+  const [serialTraceDraftNo, setSerialTraceDraftNo] = useState("");
+  const [regSerialProductId, setRegSerialProductId] = useState("");
+  const [regSerialNo, setRegSerialNo] = useState("");
+  const [regSerialNote, setRegSerialNote] = useState("");
+  const [attachSerialMovementId, setAttachSerialMovementId] = useState("");
+  const [attachSerialProductId, setAttachSerialProductId] = useState("");
+  const [attachSerialNo, setAttachSerialNo] = useState("");
+  const [serialBalProductId, setSerialBalProductId] = useState("");
+  const [serialBalNo, setSerialBalNo] = useState("");
+  const [serialBalBalanceId, setSerialBalBalanceId] = useState("");
   const [savedViews, setSavedViews] = useState<SavedLedgerView[]>([]);
   const [savedViewsLoading, setSavedViewsLoading] = useState(false);
   const [savedViewsError, setSavedViewsError] = useState<string | null>(null);
   const [selectedSavedViewId, setSelectedSavedViewId] = useState("");
   const [newSavedViewName, setNewSavedViewName] = useState("");
   const onHoldOnly = searchParams.get("onHold") === "1";
+
+  const balanceProductOptions = useMemo(() => {
+    if (!data?.balances?.length) return [];
+    const m = new Map<string, { id: string; label: string }>();
+    for (const b of data.balances) {
+      const p = b.product;
+      if (!m.has(p.id)) {
+        const code = p.productCode ?? p.sku ?? "";
+        m.set(p.id, { id: p.id, label: `${code ? `${code} · ` : ""}${p.name}`.trim() });
+      }
+    }
+    return [...m.values()].sort((a, b) => a.label.localeCompare(b.label));
+  }, [data?.balances]);
 
   const quotesFilteredForCreate = useMemo(() => {
     const opts = data?.crmQuoteOptions ?? [];
@@ -706,6 +771,10 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
           params.set("mvSort", "createdAt");
           params.set("mvDir", "desc");
         }
+        if (serialTraceLookup) {
+          params.set("traceProductId", serialTraceLookup.productId);
+          params.set("traceSerialNo", serialTraceLookup.serialNo);
+        }
       }
       const url = params.toString() ? `/api/wms?${params.toString()}` : "/api/wms";
       const res = await fetch(url, { cache: "no-store" });
@@ -744,6 +813,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
     ledgerSince,
     ledgerUntil,
     ledgerLimit,
+    serialTraceLookup,
   ]);
 
   useEffect(() => {
@@ -3858,6 +3928,287 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
         ) : null}
       </section>
 
+      <section className="mb-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Inventory serialization</p>
+        <h2 className="mt-2 text-sm font-semibold text-zinc-900">Unit serial trace (BF-13)</h2>
+        <p className="mt-1 max-w-3xl text-xs text-zinc-600">
+          Register a unique serial per SKU (normalized uppercase token). Optionally point a serial at an inventory balance row,
+          attach ledger movements for recall-style genealogy, and trace linked movements here. This does not replace ASN/carrier
+          serialization or manufacturing-line issuance.
+        </p>
+
+        <div className="mt-4 flex flex-wrap items-end gap-3 rounded-xl border border-zinc-100 bg-zinc-50/80 p-3">
+          <label className="block min-w-[12rem] text-[11px] font-medium text-zinc-600">
+            Product
+            <select
+              value={serialTraceDraftProductId}
+              onChange={(e) => setSerialTraceDraftProductId(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-zinc-300 px-2 py-2 text-sm"
+            >
+              <option value="">Select SKU…</option>
+              {balanceProductOptions.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block min-w-[10rem] flex-1 text-[11px] font-medium text-zinc-600">
+            Serial
+            <input
+              value={serialTraceDraftNo}
+              onChange={(e) => setSerialTraceDraftNo(e.target.value)}
+              placeholder="e.g. SN-ABC123"
+              className="mt-1 w-full rounded-lg border border-zinc-300 px-2 py-2 text-sm"
+            />
+          </label>
+          <button
+            type="button"
+            disabled={busy || !serialTraceDraftProductId.trim() || !serialTraceDraftNo.trim()}
+            onClick={() => {
+              setSerialTraceLookup({
+                productId: serialTraceDraftProductId.trim(),
+                serialNo: serialTraceDraftNo.trim(),
+              });
+            }}
+            className="rounded-xl bg-[var(--arscmp-primary)] px-4 py-2 text-xs font-semibold text-white disabled:opacity-40"
+          >
+            Lookup trace
+          </button>
+          <button
+            type="button"
+            disabled={busy || !serialTraceLookup}
+            onClick={() => setSerialTraceLookup(null)}
+            className="rounded-lg border border-zinc-300 px-3 py-2 text-xs font-medium text-zinc-800 disabled:opacity-40"
+          >
+            Clear trace query
+          </button>
+        </div>
+
+        {serialTraceLookup && data.serialTrace ? (
+          <div className="mt-4 rounded-xl border border-zinc-200 bg-white p-3">
+            {data.serialTrace.status === "bad_serial" ? (
+              <p className="text-xs text-rose-700">{data.serialTrace.message}</p>
+            ) : data.serialTrace.status === "product_denied" ? (
+              <p className="text-xs text-zinc-600">Product not visible in your scope.</p>
+            ) : data.serialTrace.status === "not_found" ? (
+              <p className="text-xs text-zinc-600">
+                No serial <span className="font-mono">{data.serialTrace.serialNo}</span> for this product.
+              </p>
+            ) : data.serialTrace.status === "ok" ? (
+              <div className="space-y-3 text-xs">
+                <div className="flex flex-wrap gap-2 text-zinc-800">
+                  <span className="font-semibold">Serial:</span>
+                  <span className="font-mono">{data.serialTrace.serial.serialNo}</span>
+                  <span className="text-zinc-500">· {data.serialTrace.product.name}</span>
+                </div>
+                {data.serialTrace.serial.note ? (
+                  <p className="text-zinc-600">Note: {data.serialTrace.serial.note}</p>
+                ) : null}
+                <div className="text-zinc-600">
+                  Current balance pointer:{" "}
+                  {data.serialTrace.currentBalance ? (
+                    <span>
+                      {data.serialTrace.currentBalance.warehouse.code ?? data.serialTrace.currentBalance.warehouse.name} /{" "}
+                      {data.serialTrace.currentBalance.bin.code} · lot{" "}
+                      <span className="font-mono">{data.serialTrace.currentBalance.lotCode || "—"}</span> · on hand{" "}
+                      {data.serialTrace.currentBalance.onHandQty}
+                    </span>
+                  ) : (
+                    <span className="text-zinc-500">none</span>
+                  )}
+                </div>
+                <div>
+                  <p className="font-semibold text-zinc-800">Linked movements ({data.serialTrace.movements.length})</p>
+                  {data.serialTrace.movements.length === 0 ? (
+                    <p className="mt-1 text-zinc-500">None yet — use attach below.</p>
+                  ) : (
+                    <div className="mt-2 overflow-x-auto">
+                      <table className="min-w-[720px] w-full border-collapse text-[11px]">
+                        <thead className="border-b border-zinc-200 bg-zinc-50 text-left text-[10px] uppercase text-zinc-600">
+                          <tr>
+                            <th className="px-2 py-1">Linked</th>
+                            <th className="px-2 py-1">When</th>
+                            <th className="px-2 py-1">Type</th>
+                            <th className="px-2 py-1">Qty</th>
+                            <th className="px-2 py-1">Ref</th>
+                            <th className="px-2 py-1">Warehouse</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-100">
+                          {data.serialTrace.movements.map((row) => (
+                            <tr key={`${row.movement.id}-${row.linkedAt}`}>
+                              <td className="px-2 py-1 text-zinc-500">{new Date(row.linkedAt).toLocaleString()}</td>
+                              <td className="px-2 py-1 text-zinc-600">{new Date(row.movement.createdAt).toLocaleString()}</td>
+                              <td className="px-2 py-1">{row.movement.movementType}</td>
+                              <td className="px-2 py-1 tabular-nums">{row.movement.quantity}</td>
+                              <td className="max-w-[10rem] truncate px-2 py-1 text-zinc-600" title={row.movement.referenceId ?? ""}>
+                                {row.movement.referenceType ?? "—"} {row.movement.referenceId ? row.movement.referenceId.slice(0, 8) : ""}
+                              </td>
+                              <td className="px-2 py-1">{row.movement.warehouse.code ?? row.movement.warehouse.name}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
+        {canEdit ? (
+          <div className="mt-5 grid gap-4 lg:grid-cols-3">
+            <div className="rounded-xl border border-zinc-200 p-3">
+              <p className="text-[11px] font-semibold text-zinc-800">Register serial</p>
+              <select
+                value={regSerialProductId}
+                onChange={(e) => setRegSerialProductId(e.target.value)}
+                className="mt-2 w-full rounded-lg border border-zinc-300 px-2 py-1.5 text-xs"
+              >
+                <option value="">Product…</option>
+                {balanceProductOptions.map((p) => (
+                  <option key={`reg-${p.id}`} value={p.id}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+              <input
+                value={regSerialNo}
+                onChange={(e) => setRegSerialNo(e.target.value)}
+                placeholder="Serial token"
+                className="mt-2 w-full rounded-lg border border-zinc-300 px-2 py-1.5 text-xs"
+              />
+              <input
+                value={regSerialNote}
+                onChange={(e) => setRegSerialNote(e.target.value)}
+                placeholder="Optional note"
+                className="mt-2 w-full rounded-lg border border-zinc-300 px-2 py-1.5 text-xs"
+              />
+              <button
+                type="button"
+                disabled={busy || !regSerialProductId.trim() || !regSerialNo.trim()}
+                onClick={() =>
+                  void runAction({
+                    action: "register_inventory_serial",
+                    productId: regSerialProductId.trim(),
+                    inventorySerialNo: regSerialNo.trim(),
+                    inventorySerialNote: regSerialNote.trim() || undefined,
+                  })
+                }
+                className="mt-3 rounded-xl bg-[var(--arscmp-primary)] px-3 py-2 text-[11px] font-semibold text-white disabled:opacity-40"
+              >
+                Register
+              </button>
+            </div>
+            <div className="rounded-xl border border-zinc-200 p-3">
+              <p className="text-[11px] font-semibold text-zinc-800">Attach to movement</p>
+              <input
+                value={attachSerialMovementId}
+                onChange={(e) => setAttachSerialMovementId(e.target.value)}
+                placeholder="InventoryMovement.id"
+                className="mt-2 w-full rounded-lg border border-zinc-300 px-2 py-1.5 font-mono text-[11px]"
+              />
+              <select
+                value={attachSerialProductId}
+                onChange={(e) => setAttachSerialProductId(e.target.value)}
+                className="mt-2 w-full rounded-lg border border-zinc-300 px-2 py-1.5 text-xs"
+              >
+                <option value="">Product…</option>
+                {balanceProductOptions.map((p) => (
+                  <option key={`att-${p.id}`} value={p.id}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+              <input
+                value={attachSerialNo}
+                onChange={(e) => setAttachSerialNo(e.target.value)}
+                placeholder="Serial token"
+                className="mt-2 w-full rounded-lg border border-zinc-300 px-2 py-1.5 text-xs"
+              />
+              <button
+                type="button"
+                disabled={busy || !attachSerialMovementId.trim() || !attachSerialProductId.trim() || !attachSerialNo.trim()}
+                onClick={() =>
+                  void runAction({
+                    action: "attach_inventory_serial_to_movement",
+                    inventoryMovementId: attachSerialMovementId.trim(),
+                    productId: attachSerialProductId.trim(),
+                    inventorySerialNo: attachSerialNo.trim(),
+                  })
+                }
+                className="mt-3 rounded-lg border border-zinc-300 px-3 py-2 text-[11px] font-medium text-zinc-800 disabled:opacity-40"
+              >
+                Attach
+              </button>
+            </div>
+            <div className="rounded-xl border border-zinc-200 p-3">
+              <p className="text-[11px] font-semibold text-zinc-800">Balance pointer</p>
+              <select
+                value={serialBalProductId}
+                onChange={(e) => setSerialBalProductId(e.target.value)}
+                className="mt-2 w-full rounded-lg border border-zinc-300 px-2 py-1.5 text-xs"
+              >
+                <option value="">Product…</option>
+                {balanceProductOptions.map((p) => (
+                  <option key={`bal-${p.id}`} value={p.id}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+              <input
+                value={serialBalNo}
+                onChange={(e) => setSerialBalNo(e.target.value)}
+                placeholder="Serial token"
+                className="mt-2 w-full rounded-lg border border-zinc-300 px-2 py-1.5 text-xs"
+              />
+              <input
+                value={serialBalBalanceId}
+                onChange={(e) => setSerialBalBalanceId(e.target.value)}
+                placeholder="InventoryBalance.id (paste)"
+                className="mt-2 w-full rounded-lg border border-zinc-300 px-2 py-1.5 font-mono text-[11px]"
+              />
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={busy || !serialBalProductId.trim() || !serialBalNo.trim() || !serialBalBalanceId.trim()}
+                  onClick={() =>
+                    void runAction({
+                      action: "set_inventory_serial_balance",
+                      productId: serialBalProductId.trim(),
+                      inventorySerialNo: serialBalNo.trim(),
+                      serialBalanceId: serialBalBalanceId.trim(),
+                    })
+                  }
+                  className="rounded-xl bg-[var(--arscmp-primary)] px-3 py-2 text-[11px] font-semibold text-white disabled:opacity-40"
+                >
+                  Set pointer
+                </button>
+                <button
+                  type="button"
+                  disabled={busy || !serialBalProductId.trim() || !serialBalNo.trim()}
+                  onClick={() =>
+                    void runAction({
+                      action: "set_inventory_serial_balance",
+                      productId: serialBalProductId.trim(),
+                      inventorySerialNo: serialBalNo.trim(),
+                      serialBalanceId: null,
+                    })
+                  }
+                  className="rounded-lg border border-zinc-300 px-3 py-2 text-[11px] font-medium text-zinc-800 disabled:opacity-40"
+                >
+                  Clear pointer
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <p className="mt-4 text-xs text-zinc-500">Register / attach / balance mutations require WMS edit on the inventory tier.</p>
+        )}
+      </section>
+
       <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
         <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
           <div>
@@ -3947,6 +4298,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
             <thead className="bg-zinc-100 text-left text-xs uppercase text-zinc-700">
               <tr>
                 <th className="px-2 py-1">When</th>
+                <th className="px-2 py-1">Movement id</th>
                 <th className="px-2 py-1">Type</th>
                 <th className="px-2 py-1">Qty</th>
                 <th className="px-2 py-1">Product</th>
@@ -3958,7 +4310,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
             <tbody className="divide-y divide-zinc-200 text-zinc-800">
               {movementsShown.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-2 py-3 text-zinc-500">
+                  <td colSpan={8} className="px-2 py-3 text-zinc-500">
                     {ledgerEmptyNoMatch
                       ? "No movements match these filters. Reset filters or broaden date range."
                       : "No movements yet in this view."}
@@ -3969,6 +4321,9 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                   <tr key={m.id}>
                     <td className="whitespace-nowrap px-2 py-1 text-xs text-zinc-600">
                       {new Date(m.createdAt).toLocaleString()}
+                    </td>
+                    <td className="px-2 py-1 font-mono text-[10px] text-zinc-500" title={m.id}>
+                      {m.id.slice(0, 10)}…
                     </td>
                     <td className="px-2 py-1 font-medium">{m.movementType}</td>
                     <td className="px-2 py-1">{m.quantity}</td>
@@ -4192,12 +4547,13 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                 <th className="px-2 py-1">Available</th>
                 <th className="px-2 py-1">Hold</th>
                 <th className="px-2 py-1">QC</th>
+                <th className="px-2 py-1">Balance id</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 text-zinc-800">
               {balancesTableRows.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="px-2 py-3 text-zinc-500">
+                  <td colSpan={12} className="px-2 py-3 text-zinc-500">
                     {balancesShown.length === 0
                       ? "No balances in this view."
                       : `No balances match this filter${balanceTextFilter.trim() ? `: "${balanceTextFilter.trim()}"` : "."}`}
@@ -4262,6 +4618,9 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                           Clear
                         </button>
                       ) : null}
+                    </td>
+                    <td className="px-2 py-1 font-mono text-[10px] text-zinc-500" title={b.id}>
+                      {b.id.slice(0, 10)}…
                     </td>
                   </tr>
                 ))
