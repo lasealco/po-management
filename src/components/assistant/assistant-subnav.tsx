@@ -5,23 +5,38 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { listAdvancedProgramConfigs } from "@/lib/assistant/advanced-programs";
+import {
+  pathnameMatchesProgramTrackWorkspace,
+  SPRINT_WORKSPACE_ENTRIES,
+} from "@/lib/assistant/sprint-workspaces-catalog";
 import { appNavActiveClass, appNavInactiveClass } from "@/lib/subnav-active-class";
 
 function NavSection({
   sectionId,
   label,
+  description,
   children,
 }: {
   sectionId: string;
   label: string;
+  /** Short hint shown under the heading so dense chips stay understandable */
+  description?: string;
   children: ReactNode;
 }) {
+  const hintId = `${sectionId}-hint`;
   return (
     <section className="min-w-0" aria-labelledby={sectionId}>
-      <h2 id={sectionId} className="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+      <h2 id={sectionId} className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
         {label}
       </h2>
-      <div className="flex flex-wrap gap-2 text-sm">{children}</div>
+      {description ? (
+        <p id={hintId} className="mb-2 max-w-4xl text-xs leading-relaxed text-zinc-500">
+          {description}
+        </p>
+      ) : null}
+      <div className="flex flex-wrap gap-2 text-sm" aria-describedby={description ? hintId : undefined}>
+        {children}
+      </div>
     </section>
   );
 }
@@ -82,32 +97,8 @@ export function AssistantSubnav() {
   const simulationStudio = pathname.startsWith("/assistant/simulation-studio");
   const continuousPlanning = pathname.startsWith("/assistant/continuous-planning");
   const revenueOperations = pathname.startsWith("/assistant/revenue-operations");
-  const agentGovernance = pathname.startsWith("/assistant/agent-governance");
-  const enterpriseRiskControls = pathname.startsWith("/assistant/enterprise-risk-controls");
-  const privacySecurityTrust = pathname.startsWith("/assistant/privacy-security-trust");
-  const executiveOperatingSystem = pathname.startsWith("/assistant/executive-operating-system");
-  const collaborationResilience = pathname.startsWith("/assistant/collaboration-resilience");
-  const commercialRevenueControl = pathname.startsWith("/assistant/commercial-revenue-control");
-  const supplyNetworkTwin = pathname.startsWith("/assistant/supply-network-twin");
-  const warehouseFulfillmentAutonomy = pathname.startsWith("/assistant/warehouse-fulfillment-autonomy");
-  const dataIntegrationControl = pathname.startsWith("/assistant/data-integration-control");
-  const aiQualityRelease = pathname.startsWith("/assistant/ai-quality-release");
-  const tenantRolloutChange = pathname.startsWith("/assistant/tenant-rollout-change");
-  const financeCashControls = pathname.startsWith("/assistant/finance-cash-controls");
-  const productLifecyclePassport = pathname.startsWith("/assistant/product-lifecycle-passport");
-  const platformReliabilitySecurity = pathname.startsWith("/assistant/platform-reliability-security");
-  const enterpriseOsV2 = pathname.startsWith("/assistant/enterprise-os-v2");
-  const transportCarrierProcurement = pathname.startsWith("/assistant/transport-carrier-procurement");
-  const incidentNerveCenter = pathname.startsWith("/assistant/incident-nerve-center");
-  const customerSuccessAccountIntelligence = pathname.startsWith("/assistant/customer-success-account-intelligence");
-  const strategicSourcingCategoryIntelligence = pathname.startsWith(
-    "/assistant/strategic-sourcing-category-intelligence",
-  );
-  const externalRiskEventIntelligence = pathname.startsWith("/assistant/external-risk-event-intelligence");
-  const masterDataGovernanceEnrichment = pathname.startsWith("/assistant/master-data-governance-enrichment");
-  const enterpriseKnowledgeDocumentIntelligence = pathname.startsWith(
-    "/assistant/enterprise-knowledge-document-intelligence",
-  );
+  const programTrackActive =
+    pathname.startsWith("/assistant/sprint-workspaces") || pathnameMatchesProgramTrackWorkspace(pathname);
   const advancedProgramCatalogCount = listAdvancedProgramConfigs().length;
   const onAdvancedProgramsRoute =
     pathname === "/assistant/advanced-programs" ||
@@ -126,7 +117,11 @@ export function AssistantSubnav() {
 
   return (
     <nav className="mb-6 space-y-5 border-b border-zinc-200 pb-4" aria-label="Assistant workspaces">
-      <NavSection sectionId="assistant-nav-core" label="Core & cockpit">
+      <NavSection
+        sectionId="assistant-nav-core"
+        label="Core & cockpit"
+        description="Cross-cutting assistant entry points and workbenches."
+      >
         <Link href="/assistant" className={chat ? appNavActiveClass : appNavInactiveClass} title="Sales assistant chat">
           Chat
         </Link>
@@ -212,7 +207,11 @@ export function AssistantSubnav() {
         </Link>
       </NavSection>
 
-      <NavSection sectionId="assistant-nav-ops" label="Operations modules">
+      <NavSection
+        sectionId="assistant-nav-ops"
+        label="Operations modules"
+        description="Named domains you jump to often. Hover a chip for AMP / sprint IDs. Planning, Contracts, and Frontline map to Sprint 22–24."
+      >
         <Link
           href="/assistant/order-orchestration"
           className={orderOrchestration ? appNavActiveClass : appNavInactiveClass}
@@ -369,164 +368,25 @@ export function AssistantSubnav() {
         </Link>
       </NavSection>
 
-      <NavSection sectionId="assistant-nav-sprints" label="Governance sprints">
+      <NavSection
+        sectionId="assistant-nav-sprints"
+        label="Program track"
+        description="Numbered rollout list for demos (not Jira). Open the catalog for full names, search, and Sprints 22–24 explained alongside Operations."
+      >
         <Link
-          href="/assistant/agent-governance"
-          className={agentGovernance ? appNavActiveClass : appNavInactiveClass}
-          title="Sprint 1 Agent Governance Control Plane"
+          href="/assistant/sprint-workspaces"
+          className={programTrackActive ? appNavActiveClass : appNavInactiveClass}
+          title="Searchable list: Sprint 1–25 workspaces with plain-language titles"
         >
-          Sprint 1
-        </Link>
-        <Link
-          href="/assistant/enterprise-risk-controls"
-          className={enterpriseRiskControls ? appNavActiveClass : appNavInactiveClass}
-          title="Sprint 2 Enterprise Risk & Controls"
-        >
-          Sprint 2
-        </Link>
-        <Link
-          href="/assistant/privacy-security-trust"
-          className={privacySecurityTrust ? appNavActiveClass : appNavInactiveClass}
-          title="Sprint 3 Privacy, Security & Trust"
-        >
-          Sprint 3
-        </Link>
-        <Link
-          href="/assistant/executive-operating-system"
-          className={executiveOperatingSystem ? appNavActiveClass : appNavInactiveClass}
-          title="Sprint 4 Executive Operating System"
-        >
-          Sprint 4
-        </Link>
-        <Link
-          href="/assistant/collaboration-resilience"
-          className={collaborationResilience ? appNavActiveClass : appNavInactiveClass}
-          title="Sprint 5 Collaboration & Resilience"
-        >
-          Sprint 5
-        </Link>
-        <Link
-          href="/assistant/commercial-revenue-control"
-          className={commercialRevenueControl ? appNavActiveClass : appNavInactiveClass}
-          title="Sprint 6 Commercial & Revenue Control Plane"
-        >
-          Sprint 6
-        </Link>
-        <Link
-          href="/assistant/supply-network-twin"
-          className={supplyNetworkTwin ? appNavActiveClass : appNavInactiveClass}
-          title="Sprint 7 Supply Network Twin & Scenario Command"
-        >
-          Sprint 7
-        </Link>
-        <Link
-          href="/assistant/warehouse-fulfillment-autonomy"
-          className={warehouseFulfillmentAutonomy ? appNavActiveClass : appNavInactiveClass}
-          title="Sprint 8 Warehouse & Fulfillment Autonomy"
-        >
-          Sprint 8
-        </Link>
-        <Link
-          href="/assistant/data-integration-control"
-          className={dataIntegrationControl ? appNavActiveClass : appNavInactiveClass}
-          title="Sprint 9 Data & Integration Control Plane"
-        >
-          Sprint 9
-        </Link>
-        <Link
-          href="/assistant/ai-quality-release"
-          className={aiQualityRelease ? appNavActiveClass : appNavInactiveClass}
-          title="Sprint 10 AI Quality, Evaluation & Release Governance"
-        >
-          Sprint 10
-        </Link>
-        <Link
-          href="/assistant/tenant-rollout-change"
-          className={tenantRolloutChange ? appNavActiveClass : appNavInactiveClass}
-          title="Sprint 11 Tenant Rollout & Change Enablement"
-        >
-          Sprint 11
-        </Link>
-        <Link
-          href="/assistant/finance-cash-controls"
-          className={financeCashControls ? appNavActiveClass : appNavInactiveClass}
-          title="Sprint 12 Finance, Cash & Accounting Controls"
-        >
-          Sprint 12
-        </Link>
-        <Link
-          href="/assistant/product-lifecycle-passport"
-          className={productLifecyclePassport ? appNavActiveClass : appNavInactiveClass}
-          title="Sprint 13 Product Lifecycle & Compliance Passport"
-        >
-          Sprint 13
-        </Link>
-        <Link
-          href="/assistant/platform-reliability-security"
-          className={platformReliabilitySecurity ? appNavActiveClass : appNavInactiveClass}
-          title="Sprint 14 Platform Reliability & Security Operations"
-        >
-          Sprint 14
-        </Link>
-        <Link
-          href="/assistant/enterprise-os-v2"
-          className={enterpriseOsV2 ? appNavActiveClass : appNavInactiveClass}
-          title="Sprint 15 Autonomous Enterprise OS v2"
-        >
-          Sprint 15
-        </Link>
-        <Link
-          href="/assistant/transport-carrier-procurement"
-          className={transportCarrierProcurement ? appNavActiveClass : appNavInactiveClass}
-          title="Sprint 16 Transportation & Carrier Procurement Command"
-        >
-          Sprint 16
-        </Link>
-        <Link
-          href="/assistant/incident-nerve-center"
-          className={incidentNerveCenter ? appNavActiveClass : appNavInactiveClass}
-          title="Sprint 17 Cross-Domain Exception & Incident Nerve Center"
-        >
-          Sprint 17
-        </Link>
-        <Link
-          href="/assistant/customer-success-account-intelligence"
-          className={customerSuccessAccountIntelligence ? appNavActiveClass : appNavInactiveClass}
-          title="Sprint 18 Customer Success & Account Intelligence"
-        >
-          Sprint 18
-        </Link>
-        <Link
-          href="/assistant/strategic-sourcing-category-intelligence"
-          className={strategicSourcingCategoryIntelligence ? appNavActiveClass : appNavInactiveClass}
-          title="Sprint 19 Strategic Sourcing & Category Intelligence"
-        >
-          Sprint 19
-        </Link>
-        <Link
-          href="/assistant/external-risk-event-intelligence"
-          className={externalRiskEventIntelligence ? appNavActiveClass : appNavInactiveClass}
-          title="Sprint 20 External Risk & Event Intelligence (SCRI)"
-        >
-          Sprint 20
-        </Link>
-        <Link
-          href="/assistant/master-data-governance-enrichment"
-          className={masterDataGovernanceEnrichment ? appNavActiveClass : appNavInactiveClass}
-          title="Sprint 21 Master Data Governance & Enrichment"
-        >
-          Sprint 21
-        </Link>
-        <Link
-          href="/assistant/enterprise-knowledge-document-intelligence"
-          className={enterpriseKnowledgeDocumentIntelligence ? appNavActiveClass : appNavInactiveClass}
-          title="Sprint 25 Enterprise Knowledge & Document Intelligence"
-        >
-          Sprint 25
+          Browse ({SPRINT_WORKSPACE_ENTRIES.length})
         </Link>
       </NavSection>
 
-      <NavSection sectionId="assistant-nav-advanced" label="Advanced programs">
+      <NavSection
+        sectionId="assistant-nav-advanced"
+        label="Advanced programs"
+        description="AMP37+ review packets — evidence-first deep dives, separate from the sprint track."
+      >
         <Link
           href="/assistant/advanced-programs"
           className={onAdvancedProgramsRoute ? appNavActiveClass : appNavInactiveClass}

@@ -58,14 +58,32 @@ export default async function AssistantLayout({ children }: { children: React.Re
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Workspace</p>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">Assistant</h1>
         <p className="mt-2 max-w-3xl text-sm leading-relaxed text-zinc-600">
-          Governed assistant workspaces: use <strong className="text-zinc-800">Chat</strong> for sales-order drafts and
-          inventory answers (needs <code className="rounded bg-zinc-100 px-1 py-0.5 text-[13px]">org.orders → view</code>
-          ), open <strong className="text-zinc-800">Inbox</strong> for Control Tower items, and jump into the numbered{" "}
-          <strong className="text-zinc-800">Sprint</strong> / domain tabs below. Each surface is review-first — hover a tab for its AMP/Sprint title.
+          Governed assistant workspaces are grouped below: core tools, everyday operations chips, a searchable{" "}
+          <strong className="text-zinc-800">program track</strong> (numbered demo rollout — not your Jira sprints), and an{" "}
+          <strong className="text-zinc-800">advanced programs</strong> catalog for AMP review packets. Chat needs orders
+          view; other tabs depend on grants — hover any chip for its full title.
         </p>
-        <p className="mt-2 max-w-3xl text-xs text-zinc-500">
-          Planning, Contracts, and Frontline already cover Sprint 22–24 (AMP22/23/26); those sprints are not duplicated in the strip.
-        </p>
+        <section className="mt-4 max-w-3xl rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">How this navigator is organized</p>
+          <ul className="mt-2 space-y-2 text-sm text-zinc-600">
+            <li>
+              <span className="font-semibold text-zinc-800">Core &amp; cockpit</span> — Chat, inbox, mail pilot,
+              workbenches, evidence, automation, admin.
+            </li>
+            <li>
+              <span className="font-semibold text-zinc-800">Operations modules</span> — Short labels for frequent
+              domains. Planning / Contracts / Frontline match Sprint 22–24 on the program track.
+            </li>
+            <li>
+              <span className="font-semibold text-zinc-800">Program track</span> — One catalog link opens Sprint 1–25 with
+              plain-language names and search (fills gaps like missing Sprint numbers in the old chip strip).
+            </li>
+            <li>
+              <span className="font-semibold text-zinc-800">Advanced programs</span> — Large AMP packet list for deep,
+              evidence-first reviews (different numbering from the sprint track).
+            </li>
+          </ul>
+        </section>
         <AssistantSubnav />
         {children}
       </div>
