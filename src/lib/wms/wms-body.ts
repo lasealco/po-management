@@ -85,6 +85,7 @@ export type WmsBody = {
     | "FIFO_BY_BIN_CODE"
     | "FEFO_BY_LOT_EXPIRY"
     | "GREEDY_MIN_BIN_TOUCHES"
+    | "GREEDY_RESERVE_PICK_FACE"
     | "MANUAL_ONLY";
   /** BF-15 — max units per automated wave pick line (`set_warehouse_pick_wave_carton_units`); positive number or null clears. */
   pickWaveCartonUnits?: number | string | null;

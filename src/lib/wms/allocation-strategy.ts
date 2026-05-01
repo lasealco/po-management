@@ -10,6 +10,8 @@ export type WavePickSlot = {
   lotCode: string;
   /** Ascending sort key for `FEFO_BY_LOT_EXPIRY` (`Date#getTime`); ignored by other strategies. */
   expirySortMs: number;
+  /** `WarehouseBin.isPickFace` — used by **GREEDY_RESERVE_PICK_FACE** (BF-23). */
+  isPickFace: boolean;
 };
 
 /** Order bins (and lot buckets) for automated wave splitting (`create_pick_wave`). */
@@ -43,6 +45,7 @@ export function orderPickSlotsForWave(
       );
       break;
     case "GREEDY_MIN_BIN_TOUCHES":
+    case "GREEDY_RESERVE_PICK_FACE":
       copy.sort((a, b) => a.binCode.localeCompare(b.binCode) || a.binId.localeCompare(b.binId));
       break;
     case "MANUAL_ONLY":
@@ -80,10 +83,48 @@ export function orderPickSlotsMinBinTouches(slots: WavePickSlot[], lineRemaining
   return copy;
 }
 
-/** Slots for legacy tests — fungible bucket only. */
-export function fungibleWaveSlot(partial: Omit<WavePickSlot, "lotCode" | "expirySortMs">): WavePickSlot {
+function pickFaceRank(isPickFace: boolean): number {
+  return isPickFace ? 1 : 0;
+}
+
+/**
+ * BF-23 — BF-15 min-bin-touch ordering with tie-break: prefer **non–pick-face** bins when scores tie
+ * (consume bulk/reserve storage before forward pick faces).
+ */
+export function orderPickSlotsMinBinTouchesReservePickFace(
+  slots: WavePickSlot[],
+  lineRemainingQty: number,
+): WavePickSlot[] {
+  const copy = slots.map((s) => ({ ...s }));
+  const R = Math.max(0, lineRemainingQty);
+  if (R <= 0) return copy;
+  copy.sort((a, b) => {
+    const aFull = a.available >= R ? 1 : 0;
+    const bFull = b.available >= R ? 1 : 0;
+    if (aFull !== bFull) return bFull - aFull;
+    if (aFull === 1) {
+      const byAvail = a.available - b.available;
+      if (byAvail !== 0) return byAvail;
+      const face = pickFaceRank(a.isPickFace) - pickFaceRank(b.isPickFace);
+      if (face !== 0) return face;
+      return a.binCode.localeCompare(b.binCode) || a.binId.localeCompare(b.binId);
+    }
+    const byAvailDesc = b.available - a.available;
+    if (byAvailDesc !== 0) return byAvailDesc;
+    const face = pickFaceRank(a.isPickFace) - pickFaceRank(b.isPickFace);
+    if (face !== 0) return face;
+    return a.binCode.localeCompare(b.binCode) || a.binId.localeCompare(b.binId);
+  });
+  return copy;
+}
+
+/** Slots for tests — fungible bucket only. */
+export function fungibleWaveSlot(
+  partial: Omit<WavePickSlot, "lotCode" | "expirySortMs" | "isPickFace"> & { isPickFace?: boolean },
+): WavePickSlot {
   return {
     ...partial,
+    isPickFace: partial.isPickFace ?? false,
     lotCode: FUNGIBLE_LOT_CODE,
     expirySortMs: 0,
   };

@@ -18,7 +18,7 @@
 |----|-------------------|--------------------------------------------------------|---------------------|
 | **BF-21** | Receipt accounting & ASN policies | **Minimal landed** — closed receipt history + idempotent close + optional **`RECEIPT_COMPLETE`** ([`WMS_RECEIVING_BF21.md`](./WMS_RECEIVING_BF21.md)); carrier ASN auto-close / GRN backlog | BF-12 **`WmsReceipt`** session |
 | **BF-22** | CPQ contracted pricing on outbound | **Minimal landed** — **`listUnitPrice`** / **`priceTierLabel`** on **`CrmQuoteLine`**, **`resolveQuoteLineCommercialPricing`**, explosion preview deltas + **`OutboundOrderLine.commercial*`** snapshots — [`WMS_CPQ_CONTRACT_PRICING_BF22.md`](./WMS_CPQ_CONTRACT_PRICING_BF22.md) | BF-10 / BF-14 commercial path |
-| **BF-23** | Allocation MILP / cube / labor | Solver beyond greedy + carton unit cap (**BF-15**) | BF-03 / BF-15 strategies stable |
+| **BF-23** | Allocation MILP / cube / labor | **Minimal landed** — **`GREEDY_RESERVE_PICK_FACE`** (pick-face reserve tie-break on BF-15 greedy); optional **`WMS_DISABLE_BF23_STRATEGY`** — [`WMS_ALLOCATION_BF23.md`](./WMS_ALLOCATION_BF23.md) | BF-03 / BF-15 strategies stable |
 | **BF-24** | First-class **Aisle** / geometry hooks | mm/3D & aisle entities per [`WMS_ZONE_TOPOLOGY_ADR.md`](./WMS_ZONE_TOPOLOGY_ADR.md) | BF-04 **`parentZoneId`** stable |
 | **BF-25** | Production TMS / carrier EDI | Signed webhooks, certify, idempotent carrier IDs (**BF-17** stub → prod) | BF-05 / BF-17 dock transport |
 | **BF-26** | VAS MRP / engineering change | Automated BOM sync + variance vs **`estimatedMaterialsCents`** | BF-18 **`WmsWorkOrderBomLine`** |
@@ -59,7 +59,9 @@
 
 **Objective:** Move beyond **BF-15** deterministic heuristics toward **carton cube**, **capacity**, or **small MILP** formulations where product funds complexity.
 
-**Exit sketch:** Strategy enum + lib module + tests; **`WMS_ALLOCATION_STRATEGIES.md`** methodology; feature flag.
+**Minimal slice shipped (repo):** New enum **`GREEDY_RESERVE_PICK_FACE`** — BF-15 **`orderPickSlotsMinBinTouches`** semantics plus **`WarehouseBin.isPickFace`** tie-break via **`orderPickSlotsMinBinTouchesReservePickFace`**; **`create_pick_wave`** loads **`isPickFace`** on balance slots; Setup UI option; optional kill-switch **`WMS_DISABLE_BF23_STRATEGY=1`** on **`set_warehouse_pick_allocation_strategy`** + **`create_pick_wave`**; [`WMS_ALLOCATION_BF23.md`](./WMS_ALLOCATION_BF23.md); Vitest in **`allocation-strategy.test.ts`**.
+
+**Exit sketch (remaining):** MILP / cube dimensions / labor capacity routing.
 
 **Out of scope:** Real-time labor heatmaps, slotting optimizer unified with replenishment.
 
@@ -141,4 +143,4 @@
 
 ---
 
-_Last updated: 2026-05-03 — Program draft for BF-21 … BF-30 (not shipped)._
+_Last updated: 2026-05-03 — **BF-23** minimal reserve pick-face strategy ([`WMS_ALLOCATION_BF23.md`](./WMS_ALLOCATION_BF23.md)); program capsules **BF-21**–**BF-23** have minimal slices shipped in-repo; **`BF-02`–`BF-23`** Done table in [`BF_CAPSULE_ROADMAP.md`](./BF_CAPSULE_ROADMAP.md); **BF-24**–**BF-30** draft._

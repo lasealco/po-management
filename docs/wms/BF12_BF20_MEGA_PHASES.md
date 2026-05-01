@@ -19,7 +19,7 @@
 | **BF-12** | Receiving Option B — receipt header | Separate **`WmsReceipt`** / multi-event dock receipts vs Option A only | BF-01 variance semantics stable |
 | **BF-13** | Serial / unit genealogy | Per-unit serial beyond **`lotCode`** + **`WmsLotBatch`** | BF-02 lot metadata |
 | **BF-14** | CPQ → outbound automation | Quote lines → **`OutboundOrderLine`** without manual re-entry | BF-10 lineage (**minimal landed**) |
-| **BF-15** | Allocation / wave solver v2 | Greedy min-bin heuristic + **optional wave unit cap** ( **`GREEDY_MIN_BIN_TOUCHES`**, **`pickWaveCartonUnits`** ) (**minimal landed**); MILP / cube carton / labor backlog | BF-03 strategies |
+| **BF-15** | Allocation / wave solver v2 | Greedy min-bin heuristic + **optional wave unit cap** ( **`GREEDY_MIN_BIN_TOUCHES`**, **`pickWaveCartonUnits`** ) (**minimal landed**); **BF-23** adds **`GREEDY_RESERVE_PICK_FACE`** — [`WMS_ALLOCATION_BF23.md`](./WMS_ALLOCATION_BF23.md); MILP / cube carton / labor backlog | BF-03 strategies |
 | **BF-16** | Per-field WMS ACL | Fine-grained mutations vs **BF-06** coarse tiers | BF-06 tier map stable |
 | **BF-17** | TMS / carrier stub | Carrier milestones → EDI/API hooks (not full TMS) | BF-05 dock transport |
 | **BF-18** | VAS multi-line BOM | Consumption engine beyond single-row **`VALUE_ADD`** | BF-09 intake |
@@ -70,7 +70,7 @@
 
 **Exit sketch:** Lib module + tests + wave UI toggle or strategy enum; **`WMS_ALLOCATION_STRATEGIES.md`** updated; **`GAP_MAP`** allocation row tightened.
 
-**Minimal slice shipped (repo):** Enum **`GREEDY_MIN_BIN_TOUCHES`** (fungible automated waves): **`orderPickSlotsMinBinTouches`** prefers bins that cover an outbound line’s **remaining** qty in one task — among full-cover bins, **smallest sufficient** first — before splitting across bins; **`Warehouse.pickWaveCartonUnits`** clamps automated wave pick tasks (`create_pick_wave`); **`set_warehouse_pick_wave_carton_units`** **`POST /api/wms`** + Setup UI; wave notes append **`cartonCap=`** when set — **[`WMS_ALLOCATION_STRATEGIES.md`](./WMS_ALLOCATION_STRATEGIES.md)**.
+**Minimal slice shipped (repo):** Enum **`GREEDY_MIN_BIN_TOUCHES`** (fungible automated waves): **`orderPickSlotsMinBinTouches`** prefers bins that cover an outbound line’s **remaining** qty in one task — among full-cover bins, **smallest sufficient** first — before splitting across bins; **`Warehouse.pickWaveCartonUnits`** clamps automated wave pick tasks (`create_pick_wave`); **`set_warehouse_pick_wave_carton_units`** **`POST /api/wms`** + Setup UI; wave notes append **`cartonCap=`** when set — **[`WMS_ALLOCATION_STRATEGIES.md`](./WMS_ALLOCATION_STRATEGIES.md)**. **BF-23** extends allocation depth with **`GREEDY_RESERVE_PICK_FACE`** (same min-touch logic; **`WarehouseBin.isPickFace`** tie-break defers pick-face bins when qty ties) — **[`WMS_ALLOCATION_BF23.md`](./WMS_ALLOCATION_BF23.md)**.
 
 **Out of scope:** Real-time labor headcount optimization; MILP; carton cube geometry.
 
@@ -142,7 +142,7 @@
 
 ---
 
-_Last updated: 2026-05-03 — **BF-22** CPQ list/tier + outbound **`commercial*`** snapshots ([`WMS_CPQ_CONTRACT_PRICING_BF22.md`](./WMS_CPQ_CONTRACT_PRICING_BF22.md)); **2026-05-02** — **BF-20** minimal executive KPI proxy rates (`buildExecutiveRates`, `rates` + `rateMethodology` on **`fetchWmsHomeKpis`**, `/wms` copy); **`BF-21`–`BF-30`** program draft [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md); **BF-19** minimal CRM HQ pins on CT map (`CrmAccount` map coords, `crmAccountPins`, scoped API + UI); **BF-18** minimal VAS multi-line BOM (`WmsWorkOrderBomLine`, `replace_work_order_bom_lines`, `consume_work_order_bom_line`, WMS UI, seed **`db:seed:wms-vas-bom-demo`**); **BF-15** minimal wave allocation v2 (`GREEDY_MIN_BIN_TOUCHES`, `pickWaveCartonUnits`, Setup UI); **BF-14** minimal (`inventorySku`, `explode_crm_quote_to_outbound`, WMS preview UI); program draft for BF-12 … BF-20 mega phases._
+_Last updated: 2026-05-03 — **BF-23** reserve pick-face allocation minimal ([`WMS_ALLOCATION_BF23.md`](./WMS_ALLOCATION_BF23.md)); **BF-22** CPQ list/tier + outbound **`commercial*`** snapshots ([`WMS_CPQ_CONTRACT_PRICING_BF22.md`](./WMS_CPQ_CONTRACT_PRICING_BF22.md)); **2026-05-02** — **BF-20** minimal executive KPI proxy rates (`buildExecutiveRates`, `rates` + `rateMethodology` on **`fetchWmsHomeKpis`**, `/wms` copy); **`BF-21`–`BF-30`** program draft [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md); **BF-19** minimal CRM HQ pins on CT map (`CrmAccount` map coords, `crmAccountPins`, scoped API + UI); **BF-18** minimal VAS multi-line BOM (`WmsWorkOrderBomLine`, `replace_work_order_bom_lines`, `consume_work_order_bom_line`, WMS UI, seed **`db:seed:wms-vas-bom-demo`**); **BF-15** minimal wave allocation v2 (`GREEDY_MIN_BIN_TOUCHES`, `pickWaveCartonUnits`, Setup UI); **BF-14** minimal (`inventorySku`, `explode_crm_quote_to_outbound`, WMS preview UI); program draft for BF-12 … BF-20 mega phases._
 
 ---
 

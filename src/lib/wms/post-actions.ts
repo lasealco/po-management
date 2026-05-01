@@ -19,6 +19,7 @@ import {
 import {
   orderPickSlotsForWave,
   orderPickSlotsMinBinTouches,
+  orderPickSlotsMinBinTouchesReservePickFace,
   type WavePickSlot,
 } from "./allocation-strategy";
 import { writeShipmentItemReceiveLineInTx } from "./inbound-receive-line-write";
@@ -55,6 +56,7 @@ export async function handleWmsPost(
     if (!warehouseId || !raw) {
       return toApiErrorResponseFromStatus("warehouseId and pickAllocationStrategy required.", 400);
     }
+    const bf23ReservePickFaceDisabled = process.env.WMS_DISABLE_BF23_STRATEGY === "1";
     const allowed: WmsPickAllocationStrategy[] = [
       "MAX_AVAILABLE_FIRST",
       "FIFO_BY_BIN_CODE",
@@ -62,6 +64,9 @@ export async function handleWmsPost(
       "GREEDY_MIN_BIN_TOUCHES",
       "MANUAL_ONLY",
     ];
+    if (!bf23ReservePickFaceDisabled) {
+      allowed.splice(4, 0, "GREEDY_RESERVE_PICK_FACE");
+    }
     if (!allowed.includes(raw as WmsPickAllocationStrategy)) {
       return toApiErrorResponseFromStatus("Invalid pickAllocationStrategy.", 400);
     }
@@ -762,6 +767,16 @@ export async function handleWmsPost(
     const cartonCap =
       cartonCapRaw != null && Number(cartonCapRaw) > 0 ? Number(cartonCapRaw) : null;
 
+    if (
+      allocationStrategy === "GREEDY_RESERVE_PICK_FACE" &&
+      process.env.WMS_DISABLE_BF23_STRATEGY === "1"
+    ) {
+      return toApiErrorResponseFromStatus(
+        "GREEDY_RESERVE_PICK_FACE is disabled for this deployment (WMS_DISABLE_BF23_STRATEGY=1). Pick another strategy or unset the env flag.",
+        400,
+      );
+    }
+
     const openLines = await prisma.outboundOrderLine.findMany({
       where: {
         tenantId,
@@ -793,7 +808,7 @@ export async function handleWmsPost(
     if (allocationStrategy === "FEFO_BY_LOT_EXPIRY") {
       const balancesAll = await prisma.inventoryBalance.findMany({
         where: { tenantId, warehouseId },
-        include: { bin: { select: { id: true, code: true } } },
+        include: { bin: { select: { id: true, code: true, isPickFace: true } } },
       });
       const productIds = [...new Set(balancesAll.map((b) => b.productId))];
       const batchRows =
@@ -826,13 +841,14 @@ export async function handleWmsPost(
           available,
           lotCode: lc,
           expirySortMs,
+          isPickFace: row.bin.isPickFace,
         });
         byProduct.set(row.productId, list);
       }
     } else {
       const balances = await prisma.inventoryBalance.findMany({
         where: { tenantId, warehouseId, lotCode: FUNGIBLE_LOT_CODE },
-        include: { bin: { select: { id: true, code: true } } },
+        include: { bin: { select: { id: true, code: true, isPickFace: true } } },
       });
       for (const row of balances) {
         if (row.onHold) continue;
@@ -845,13 +861,17 @@ export async function handleWmsPost(
           available,
           lotCode: FUNGIBLE_LOT_CODE,
           expirySortMs: 0,
+          isPickFace: row.bin.isPickFace,
         });
         byProduct.set(row.productId, list);
       }
     }
 
     for (const [productId, list] of byProduct) {
-      if (allocationStrategy === "GREEDY_MIN_BIN_TOUCHES") {
+      if (
+        allocationStrategy === "GREEDY_MIN_BIN_TOUCHES" ||
+        allocationStrategy === "GREEDY_RESERVE_PICK_FACE"
+      ) {
         list.sort((a, b) => a.binCode.localeCompare(b.binCode) || a.binId.localeCompare(b.binId));
         byProduct.set(productId, list);
       } else {
@@ -883,9 +903,11 @@ export async function handleWmsPost(
         if (remaining <= 0) continue;
         const binsRaw = byProduct.get(item.productId) ?? [];
         const binsForProduct =
-          allocationStrategy === "GREEDY_MIN_BIN_TOUCHES"
-            ? orderPickSlotsMinBinTouches(binsRaw, remaining)
-            : binsRaw;
+          allocationStrategy === "GREEDY_RESERVE_PICK_FACE"
+            ? orderPickSlotsMinBinTouchesReservePickFace(binsRaw, remaining)
+            : allocationStrategy === "GREEDY_MIN_BIN_TOUCHES"
+              ? orderPickSlotsMinBinTouches(binsRaw, remaining)
+              : binsRaw;
         for (const slot of binsForProduct) {
           if (remaining <= 0) break;
           let take = Math.min(remaining, slot.available);

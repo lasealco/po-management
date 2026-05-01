@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { fungibleWaveSlot, orderPickSlotsForWave, orderPickSlotsMinBinTouches } from "./allocation-strategy";
+import {
+  fungibleWaveSlot,
+  orderPickSlotsForWave,
+  orderPickSlotsMinBinTouches,
+  orderPickSlotsMinBinTouchesReservePickFace,
+} from "./allocation-strategy";
 
 const slots = [
   fungibleWaveSlot({ binId: "b2", binCode: "B-02", available: 10 }),
@@ -29,6 +34,7 @@ describe("orderPickSlotsForWave", () => {
         available: 10,
         lotCode: "LOT-B",
         expirySortMs: d2,
+        isPickFace: false,
       },
       {
         binId: "b1",
@@ -36,6 +42,7 @@ describe("orderPickSlotsForWave", () => {
         available: 5,
         lotCode: "LOT-A",
         expirySortMs: d1,
+        isPickFace: false,
       },
     ];
     const ordered = orderPickSlotsForWave("FEFO_BY_LOT_EXPIRY", fefoSlots);
@@ -48,6 +55,11 @@ describe("orderPickSlotsForWave", () => {
 
   it("GREEDY_MIN_BIN_TOUCHES stable sort uses bin code", () => {
     const ordered = orderPickSlotsForWave("GREEDY_MIN_BIN_TOUCHES", slots);
+    expect(ordered.map((s) => s.binCode)).toEqual(["B-01", "B-02", "B-03"]);
+  });
+
+  it("GREEDY_RESERVE_PICK_FACE stable sort uses bin code", () => {
+    const ordered = orderPickSlotsForWave("GREEDY_RESERVE_PICK_FACE", slots);
     expect(ordered.map((s) => s.binCode)).toEqual(["B-01", "B-02", "B-03"]);
   });
 });
@@ -64,5 +76,26 @@ describe("orderPickSlotsMinBinTouches", () => {
     expect(ordered[0]?.binId).toBe("cover");
     expect(ordered[1]?.binId).toBe("big");
     expect(ordered[2]?.binId).toBe("partial");
+  });
+});
+
+describe("orderPickSlotsMinBinTouchesReservePickFace", () => {
+  it("prefers non-pick-face when smallest-sufficient ties", () => {
+    const bins = [
+      fungibleWaveSlot({ binId: "face", binCode: "FACE", available: 12, isPickFace: true }),
+      fungibleWaveSlot({ binId: "bulk", binCode: "BULK", available: 12, isPickFace: false }),
+    ];
+    const ordered = orderPickSlotsMinBinTouchesReservePickFace(bins, 10);
+    expect(ordered[0]?.binId).toBe("bulk");
+    expect(ordered[1]?.binId).toBe("face");
+  });
+
+  it("still prefers smallest sufficient cover over pick-face tie-break", () => {
+    const bins = [
+      fungibleWaveSlot({ binId: "faceTight", binCode: "F1", available: 11, isPickFace: true }),
+      fungibleWaveSlot({ binId: "bulkLoose", binCode: "B1", available: 20, isPickFace: false }),
+    ];
+    const ordered = orderPickSlotsMinBinTouchesReservePickFace(bins, 10);
+    expect(ordered[0]?.binId).toBe("faceTight");
   });
 });

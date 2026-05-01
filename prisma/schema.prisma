@@ -4379,6 +4379,8 @@ enum WmsPickAllocationStrategy {
   FEFO_BY_LOT_EXPIRY
   /// BF-15 — fungible automated waves only; per outbound line, prefer bins that can cover the **remaining** qty in one touch, then larger balances (fewer bin visits heuristic).
   GREEDY_MIN_BIN_TOUCHES
+  /// BF-23 — fungible waves; BF-15 min-touch ordering with tie-break: prefer **non–pick-face** bins first (reserve forward pick faces until bulk bins are exhausted).
+  GREEDY_RESERVE_PICK_FACE
   /// Disable automated wave allocation; use explicit `create_pick_task` per bin/line.
   MANUAL_ONLY
 }

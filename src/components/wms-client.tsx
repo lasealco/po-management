@@ -31,6 +31,7 @@ type WmsData = {
       | "FIFO_BY_BIN_CODE"
       | "FEFO_BY_LOT_EXPIRY"
       | "GREEDY_MIN_BIN_TOUCHES"
+      | "GREEDY_RESERVE_PICK_FACE"
       | "MANUAL_ONLY";
     pickWaveCartonUnits: string | null;
   }>;
@@ -1559,6 +1560,7 @@ export function WmsClient({
                     | "FIFO_BY_BIN_CODE"
                     | "FEFO_BY_LOT_EXPIRY"
                     | "GREEDY_MIN_BIN_TOUCHES"
+                    | "GREEDY_RESERVE_PICK_FACE"
                     | "MANUAL_ONLY";
                   void runAction({
                     action: "set_warehouse_pick_allocation_strategy",
@@ -1575,6 +1577,9 @@ export function WmsClient({
                 </option>
                 <option value="GREEDY_MIN_BIN_TOUCHES">
                   BF-15 — Greedy min bin touches (fungible waves): fewer bin visits heuristic per outbound line
+                </option>
+                <option value="GREEDY_RESERVE_PICK_FACE">
+                  BF-23 — Min bin touches + reserve pick face (prefer bulk/reserve bins before isPickFace bins when ties)
                 </option>
                 <option value="MANUAL_ONLY">Manual only — automated waves disabled</option>
               </select>
