@@ -55,6 +55,12 @@ export type WmsBody = {
   minPickQty?: number;
   maxPickQty?: number;
   replenishQty?: number;
+  /** BF-35 — `set_replenishment_rule`; higher runs first within tier. */
+  priority?: number;
+  /** BF-35 — max automated REPLENISH tasks per `create_replenishment_tasks` call; `null` clears cap (unlimited). */
+  maxTasksPerRun?: number | null;
+  /** BF-35 — exception tier (processed after normal rules). */
+  exceptionQueue?: boolean;
   lines?: Array<{ productId: string; quantity: number }>;
   quantity?: number;
   note?: string | null;

@@ -28,6 +28,7 @@ import {
   orderPickSlotsMinBinTouchesCubeAware,
   orderPickSlotsMinBinTouchesReservePickFaceCubeAware,
 } from "./carton-cube-allocation";
+import { sortReplenishmentRulesForBatch } from "./replenishment-batch";
 import { orderPickSlotsSolverPrototype } from "./pick-wave-solver-prototype";
 import { writeShipmentItemReceiveLineInTx } from "./inbound-receive-line-write";
 import {
@@ -685,6 +686,44 @@ export async function handleWmsPost(
     if (minPickQty < 0 || maxPickQty <= 0 || replenishQty <= 0 || minPickQty > maxPickQty) {
       return toApiErrorResponseFromStatus("Invalid replenishment parameters.", 400);
     }
+
+    let priorityForCreate = 0;
+    let priorityForUpdate: number | undefined;
+    if (input.priority !== undefined) {
+      const p = Number(input.priority);
+      if (!Number.isFinite(p) || Math.trunc(p) !== p) {
+        return toApiErrorResponseFromStatus("priority must be an integer.", 400);
+      }
+      priorityForCreate = p;
+      priorityForUpdate = p;
+    }
+
+    let maxTasksPerRunCreate: number | null = null;
+    let maxTasksPerRunUpdate: number | null | undefined;
+    if (input.maxTasksPerRun !== undefined) {
+      if (input.maxTasksPerRun === null) {
+        maxTasksPerRunCreate = null;
+        maxTasksPerRunUpdate = null;
+      } else {
+        const cap = Number(input.maxTasksPerRun);
+        if (!Number.isFinite(cap) || Math.trunc(cap) !== cap || cap < 0) {
+          return toApiErrorResponseFromStatus("maxTasksPerRun must be null or a non-negative integer.", 400);
+        }
+        maxTasksPerRunCreate = cap;
+        maxTasksPerRunUpdate = cap;
+      }
+    }
+
+    let exceptionQueueCreate = false;
+    let exceptionQueueUpdate: boolean | undefined;
+    if (input.exceptionQueue !== undefined) {
+      if (typeof input.exceptionQueue !== "boolean") {
+        return toApiErrorResponseFromStatus("exceptionQueue must be a boolean.", 400);
+      }
+      exceptionQueueCreate = input.exceptionQueue;
+      exceptionQueueUpdate = input.exceptionQueue;
+    }
+
     await prisma.replenishmentRule.upsert({
       where: { warehouseId_productId: { warehouseId, productId } },
       create: {
@@ -696,6 +735,9 @@ export async function handleWmsPost(
         minPickQty: minPickQty.toString(),
         maxPickQty: maxPickQty.toString(),
         replenishQty: replenishQty.toString(),
+        priority: priorityForCreate,
+        maxTasksPerRun: maxTasksPerRunCreate,
+        exceptionQueue: exceptionQueueCreate,
       },
       update: {
         sourceZoneId: input.sourceZoneId?.trim() || null,
@@ -704,6 +746,9 @@ export async function handleWmsPost(
         maxPickQty: maxPickQty.toString(),
         replenishQty: replenishQty.toString(),
         isActive: true,
+        ...(priorityForUpdate !== undefined ? { priority: priorityForUpdate } : {}),
+        ...(maxTasksPerRunUpdate !== undefined ? { maxTasksPerRun: maxTasksPerRunUpdate } : {}),
+        ...(exceptionQueueUpdate !== undefined ? { exceptionQueue: exceptionQueueUpdate } : {}),
       },
     });
     return NextResponse.json({ ok: true });
@@ -721,9 +766,14 @@ export async function handleWmsPost(
         include: { bin: { select: { id: true, zoneId: true, isPickFace: true } } },
       }),
     ]);
+    const sortedRules = sortReplenishmentRulesForBatch(rules);
+    const createdPerRule = new Map<string, number>();
     let created = 0;
     await prisma.$transaction(async (tx) => {
-      for (const rule of rules) {
+      for (const rule of sortedRules) {
+        if (rule.maxTasksPerRun != null && rule.maxTasksPerRun <= 0) continue;
+        const already = createdPerRule.get(rule.id) ?? 0;
+        if (rule.maxTasksPerRun != null && already >= rule.maxTasksPerRun) continue;
         const pickBins = balances.filter(
           (b) =>
             normalizeLotCode(b.lotCode) === FUNGIBLE_LOT_CODE &&
@@ -764,9 +814,13 @@ export async function handleWmsPost(
             referenceId: source.binId,
             quantity: qty.toString(),
             note: "System replenishment",
+            replenishmentRuleId: rule.id,
+            replenishmentPriority: rule.priority,
+            replenishmentException: rule.exceptionQueue,
             createdById: actorId,
           },
         });
+        createdPerRule.set(rule.id, already + 1);
         created += 1;
       }
     });

@@ -4,7 +4,7 @@
 
 **Authority:** Parent catalog rows live in [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md). Prior shipped waves: [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md), [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md).
 
-**Status:** **BF-31** minimal slice shipped ([`WMS_RECEIVING_BF31.md`](./WMS_RECEIVING_BF31.md)); **BF-32** minimal slice shipped ([`WMS_RECEIVING_BF32.md`](./WMS_RECEIVING_BF32.md)); **BF-33** minimal slice shipped ([`WMS_ALLOCATION_BF33.md`](./WMS_ALLOCATION_BF33.md)); **BF-34** minimal slice shipped ([`WMS_ALLOCATION_BF34.md`](./WMS_ALLOCATION_BF34.md)). Capsules **BF-35** … **BF-50** remain **draft** until executed.
+**Status:** **BF-31** minimal slice shipped ([`WMS_RECEIVING_BF31.md`](./WMS_RECEIVING_BF31.md)); **BF-32** minimal slice shipped ([`WMS_RECEIVING_BF32.md`](./WMS_RECEIVING_BF32.md)); **BF-33** minimal slice shipped ([`WMS_ALLOCATION_BF33.md`](./WMS_ALLOCATION_BF33.md)); **BF-34** minimal slice shipped ([`WMS_ALLOCATION_BF34.md`](./WMS_ALLOCATION_BF34.md)); **BF-35** minimal slice shipped ([`WMS_REPLENISHMENT_BF35.md`](./WMS_REPLENISHMENT_BF35.md)). Capsules **BF-36** … **BF-50** remain **draft** until executed.
 
 **Rules:**
 
@@ -21,7 +21,7 @@
 | **BF-31** | GRN references & ASN tolerance policies | **Minimal landed** — **`asnQtyTolerancePct`**, **`WmsReceipt.grnReference`**, **`evaluate_wms_receipt_asn_tolerance`**, guarded **`close_wms_receipt`** ([`WMS_RECEIVING_BF31.md`](./WMS_RECEIVING_BF31.md)); carrier ASN hub backlog | BF-21 receipt accounting |
 | **BF-32** | Receiving accrual & finance staging hooks | **Minimal landed** — **`WmsReceivingAccrualStaging`** + **`GET /api/wms/receiving-accrual-staging`** ([`WMS_RECEIVING_BF32.md`](./WMS_RECEIVING_BF32.md)); GL posting / tax backlog | BF-21 / Phase B billing |
 | **BF-33** | Carton DIM / cube-aware greedy allocation | Cube / weight inputs on allocation hints beyond **`pickWaveCartonUnits`** | BF-15 / BF-23 strategies |
-| **BF-34** | MILP / CP-SAT allocation prototype | Solver-backed slot assignment vs pure greedy | BF-23 reserve pick-face proven |
+| **BF-34** | MILP / CP-SAT allocation prototype | Minimal **`SOLVER_PROTOTYPE_*`** strategies ([`WMS_ALLOCATION_BF34.md`](./WMS_ALLOCATION_BF34.md)); env **`WMS_ENABLE_BF34_SOLVER=1`** | BF-33 cube hints |
 | **BF-35** | Replenishment automation & priority queues | **`ReplenishmentRule`** depth + exception queues | BF-03 / stock inquiry stable |
 | **BF-36** | ATP / soft reservations on outbound | Available-to-promise preview + reservation TTL | Outbound + balance ledger |
 | **BF-37** | Cross-dock / flow-through shipment tagging | **`Shipment`** or dock flags → skip putaway path | Inbound + outbound linkage |
@@ -91,7 +91,7 @@
 
 **Objective:** Deepen **`ReplenishmentRule`** execution: priorities, exception queues, batch **`create_replenishment_tasks`** improvements.
 
-**Exit sketch (minimal slice):** Priority column + filter on open tasks; optional **`maxTasksPerRun`** per rule; Operations UI surface.
+**Shipped (minimal slice):** See [`WMS_REPLENISHMENT_BF35.md`](./WMS_REPLENISHMENT_BF35.md) — rule **`priority`**, **`maxTasksPerRun`**, **`exceptionQueue`**; sorted batch create; task snapshots; Operations REPLENISH filters (tier + min priority).
 
 **Out of scope:** Full automated slotting across network DCs.
 
@@ -253,4 +253,4 @@
 
 ---
 
-_Last updated: 2026-04-29 — **BF-34** solver prototype minimal landed ([`WMS_ALLOCATION_BF34.md`](./WMS_ALLOCATION_BF34.md)); **BF-33** cube-aware greedy minimal landed ([`WMS_ALLOCATION_BF33.md`](./WMS_ALLOCATION_BF33.md)); **BF-32** receiving accrual staging minimal landed ([`WMS_RECEIVING_BF32.md`](./WMS_RECEIVING_BF32.md)); **BF-31** GRN + ASN qty tolerance ([`WMS_RECEIVING_BF31.md`](./WMS_RECEIVING_BF31.md)); **BF-35**–**BF-50** draft objectives._
+_Last updated: 2026-04-29 — **BF-35** replenishment priority / exception tier minimal landed ([`WMS_REPLENISHMENT_BF35.md`](./WMS_REPLENISHMENT_BF35.md)); **BF-34** solver prototype minimal landed ([`WMS_ALLOCATION_BF34.md`](./WMS_ALLOCATION_BF34.md)); **BF-33** cube-aware greedy minimal landed ([`WMS_ALLOCATION_BF33.md`](./WMS_ALLOCATION_BF33.md)); **BF-32** receiving accrual staging minimal landed ([`WMS_RECEIVING_BF32.md`](./WMS_RECEIVING_BF32.md)); **BF-31** GRN + ASN qty tolerance ([`WMS_RECEIVING_BF31.md`](./WMS_RECEIVING_BF31.md)); **BF-36**–**BF-50** draft objectives._

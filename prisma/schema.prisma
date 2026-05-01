@@ -4600,6 +4600,12 @@ model ReplenishmentRule {
   maxPickQty   Decimal  @db.Decimal(14, 3)
   replenishQty Decimal  @db.Decimal(14, 3)
   isActive     Boolean  @default(true)
+  /// BF-35 — higher runs first within tier (`create_replenishment_tasks`).
+  priority            Int     @default(0)
+  /// BF-35 — max automated REPLENISH rows this rule may emit per `create_replenishment_tasks` call; `null` = no cap; `0` = skip automation for this rule.
+  maxTasksPerRun      Int?
+  /// BF-35 — exception tier; processed after normal-tier rules in batch.
+  exceptionQueue      Boolean @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -4608,6 +4614,7 @@ model ReplenishmentRule {
   product    Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
   sourceZone WarehouseZone? @relation("ReplenishmentSourceZone", fields: [sourceZoneId], references: [id], onDelete: SetNull)
   targetZone WarehouseZone? @relation("ReplenishmentTargetZone", fields: [targetZoneId], references: [id], onDelete: SetNull)
+  wmsTasks   WmsTask[]      @relation("WmsTaskReplenishmentRule")
 
   @@unique([warehouseId, productId])
   @@index([tenantId, warehouseId])
@@ -4870,6 +4877,12 @@ model WmsTask {
   lotCode       String        @default("") @db.VarChar(120)
   quantity      Decimal       @default(0) @db.Decimal(14, 3)
   note          String?
+  /// BF-35 — rule that produced this task when created by replenishment automation (`SetNull` if rule deleted).
+  replenishmentRuleId     String?
+  /// BF-35 — snapshot of `ReplenishmentRule.priority` at creation (listing / filters).
+  replenishmentPriority   Int?
+  /// BF-35 — snapshot of `ReplenishmentRule.exceptionQueue` at creation.
+  replenishmentException  Boolean?
   createdById   String
   completedById String?
   completedAt   DateTime?
@@ -4883,12 +4896,14 @@ model WmsTask {
   wave        WmsWave?       @relation(fields: [waveId], references: [id], onDelete: SetNull)
   product     Product?       @relation(fields: [productId], references: [id], onDelete: SetNull)
   bin         WarehouseBin?  @relation(fields: [binId], references: [id], onDelete: SetNull)
+  replenishmentRule ReplenishmentRule? @relation("WmsTaskReplenishmentRule", fields: [replenishmentRuleId], references: [id], onDelete: SetNull)
   createdBy   User           @relation("WmsTaskCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
   completedBy User?          @relation("WmsTaskCompletedBy", fields: [completedById], references: [id], onDelete: SetNull)
 
   @@index([tenantId, warehouseId, status, taskType])
   @@index([referenceType, referenceId])
   @@index([waveId])
+  @@index([replenishmentRuleId])
 }
 
 enum WmsWorkOrderStatus {

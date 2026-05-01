@@ -102,6 +102,9 @@ type WmsData = {
     maxPickQty: string;
     replenishQty: string;
     isActive: boolean;
+    priority: number;
+    maxTasksPerRun: number | null;
+    exceptionQueue: boolean;
   }>;
   crmAccountOptions: Array<{ id: string; name: string; legalName: string | null }>;
   crmQuoteOptions: Array<{
@@ -184,6 +187,9 @@ type WmsData = {
     referenceType: string | null;
     referenceId: string | null;
     lotCode: string;
+    replenishmentRuleId?: string | null;
+    replenishmentPriority?: number | null;
+    replenishmentException?: boolean | null;
     createdAt: string;
   }>;
   waves: Array<{
@@ -642,6 +648,9 @@ export function WmsClient({
   const [replMin, setReplMin] = useState("");
   const [replMax, setReplMax] = useState("");
   const [replQty, setReplQty] = useState("");
+  const [replPriority, setReplPriority] = useState("");
+  const [replMaxTasksPerRun, setReplMaxTasksPerRun] = useState("");
+  const [replExceptionQueue, setReplExceptionQueue] = useState(false);
   const [outboundRef, setOutboundRef] = useState("");
   const [outboundProductId, setOutboundProductId] = useState("");
   const [outboundLineQty, setOutboundLineQty] = useState("");
@@ -765,6 +774,8 @@ export function WmsClient({
   const [openTaskTypeFilter, setOpenTaskTypeFilter] = useState<
     "" | "PUTAWAY" | "PICK" | "REPLENISH" | "CYCLE_COUNT" | "VALUE_ADD"
   >("");
+  const [replenishTierFilter, setReplenishTierFilter] = useState<"" | "standard" | "exception">("");
+  const [replenishMinPriority, setReplenishMinPriority] = useState("");
   const [balanceTextFilter, setBalanceTextFilter] = useState("");
   const [movementSort, setMovementSort] = useState<
     "newest" | "oldest" | "type" | "qtyDesc" | "qtyAsc"
@@ -1208,9 +1219,26 @@ export function WmsClient({
 
   const tasksShown = useMemo(() => {
     const rows = data?.openTasks ?? [];
-    if (!openTaskTypeFilter) return rows;
-    return rows.filter((t) => t.taskType === openTaskTypeFilter);
-  }, [data?.openTasks, openTaskTypeFilter]);
+    let filtered = !openTaskTypeFilter ? rows : rows.filter((t) => t.taskType === openTaskTypeFilter);
+    if (openTaskTypeFilter === "REPLENISH") {
+      if (replenishTierFilter === "standard") {
+        filtered = filtered.filter((t) => t.replenishmentException !== true);
+      } else if (replenishTierFilter === "exception") {
+        filtered = filtered.filter((t) => t.replenishmentException === true);
+      }
+      const minP = replenishMinPriority.trim();
+      if (minP !== "") {
+        const n = Number(minP);
+        if (Number.isFinite(n)) {
+          filtered = filtered.filter((t) => (t.replenishmentPriority ?? 0) >= n);
+        }
+      }
+      filtered = [...filtered].sort(
+        (a, b) => (b.replenishmentPriority ?? -999999) - (a.replenishmentPriority ?? -999999),
+      );
+    }
+    return filtered;
+  }, [data?.openTasks, openTaskTypeFilter, replenishTierFilter, replenishMinPriority]);
 
   const balancesTableRows = useMemo(() => {
     const q = balanceTextFilter.trim().toLowerCase();
@@ -2317,13 +2345,16 @@ export function WmsClient({
                       <th className="px-2 py-1">Target</th>
                       <th className="px-2 py-1">Min / max pick</th>
                       <th className="px-2 py-1">Replenish qty</th>
+                      <th className="px-2 py-1">Pri</th>
+                      <th className="px-2 py-1">Max/run</th>
+                      <th className="px-2 py-1">Exc</th>
                       <th className="px-2 py-1">Active</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-200">
                     {replenishmentRulesForWarehouse.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-2 py-2 text-zinc-500">
+                        <td colSpan={9} className="px-2 py-2 text-zinc-500">
                           No replenishment rules for this warehouse.
                         </td>
                       </tr>
@@ -2343,6 +2374,11 @@ export function WmsClient({
                             {r.minPickQty} / {r.maxPickQty}
                           </td>
                           <td className="px-2 py-1 text-zinc-600">{r.replenishQty}</td>
+                          <td className="whitespace-nowrap px-2 py-1 text-zinc-600">{r.priority}</td>
+                          <td className="whitespace-nowrap px-2 py-1 text-zinc-600">
+                            {r.maxTasksPerRun == null ? "∞" : String(r.maxTasksPerRun)}
+                          </td>
+                          <td className="px-2 py-1 text-zinc-600">{r.exceptionQueue ? "Yes" : "No"}</td>
                           <td className="px-2 py-1 text-zinc-600">{r.isActive ? "Yes" : "No"}</td>
                         </tr>
                       ))
@@ -2626,6 +2662,10 @@ export function WmsClient({
 
       <section className="mb-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
         <h2 className="text-sm font-semibold text-zinc-900">Replenishment setup</h2>
+        <p className="mt-1 text-xs text-zinc-600">
+          <span className="font-medium">BF-35:</span> higher priority runs first within the same tier; exception-queue rules run after normal rules. Leave{" "}
+          <span className="font-medium">Max/run</span> blank for no cap, or set <span className="font-medium">0</span> to disable automated creates for that rule.
+        </p>
         <div className="mt-2 grid gap-2 sm:grid-cols-7">
           <select
             value={replProductId}
@@ -2672,8 +2712,24 @@ export function WmsClient({
           <input value={replQty} onChange={(e) => setReplQty(e.target.value)} placeholder="Replenish qty" className="rounded border border-zinc-300 px-3 py-2 text-sm" />
           <ActionButton
             variant="secondary"
-            disabled={!canEdit || busy}
-            onClick={() =>
+            disabled={
+              !canEdit ||
+              busy ||
+              !(
+                replPriority.trim() === "" ||
+                (Number.isFinite(Number(replPriority)) &&
+                  Math.trunc(Number(replPriority)) === Number(replPriority))
+              ) ||
+              !(
+                replMaxTasksPerRun.trim() === "" ||
+                (Number.isFinite(Number(replMaxTasksPerRun)) &&
+                  Math.trunc(Number(replMaxTasksPerRun)) === Number(replMaxTasksPerRun) &&
+                  Number(replMaxTasksPerRun) >= 0)
+              )
+            }
+            onClick={() => {
+              const pri = replPriority.trim() === "" ? 0 : Number(replPriority);
+              const capTrim = replMaxTasksPerRun.trim();
               void runAction({
                 action: "set_replenishment_rule",
                 warehouseId: selectedWarehouseId,
@@ -2683,11 +2739,39 @@ export function WmsClient({
                 minPickQty: Number(replMin),
                 maxPickQty: Number(replMax),
                 replenishQty: Number(replQty),
-              })
-            }
+                priority: pri,
+                ...(capTrim !== "" ? { maxTasksPerRun: Number(capTrim) } : {}),
+                exceptionQueue: replExceptionQueue,
+              });
+            }}
           >
             Save rule
           </ActionButton>
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-3">
+          <input
+            value={replPriority}
+            onChange={(e) => setReplPriority(e.target.value)}
+            placeholder="Priority (int)"
+            inputMode="numeric"
+            className="w-36 rounded border border-zinc-300 px-3 py-2 text-sm"
+          />
+          <input
+            value={replMaxTasksPerRun}
+            onChange={(e) => setReplMaxTasksPerRun(e.target.value)}
+            placeholder="Max tasks / run (blank = ∞)"
+            inputMode="numeric"
+            className="min-w-[11rem] rounded border border-zinc-300 px-3 py-2 text-sm"
+          />
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-zinc-700">
+            <input
+              type="checkbox"
+              checked={replExceptionQueue}
+              onChange={(e) => setReplExceptionQueue(e.target.checked)}
+              className="rounded border-zinc-300"
+            />
+            Exception queue tier
+          </label>
         </div>
         <div className="mt-2">
           <ActionButton
@@ -5357,39 +5441,69 @@ export function WmsClient({
       <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-sm font-semibold text-zinc-900">Open tasks</h2>
-          <label className="flex items-center gap-2 text-xs text-zinc-600">
-            Type
-            <select
-              value={openTaskTypeFilter}
-              onChange={(e) =>
-                setOpenTaskTypeFilter(
-                  e.target.value as
-                    | ""
-                    | "PUTAWAY"
-                    | "PICK"
-                    | "REPLENISH"
-                    | "CYCLE_COUNT"
-                    | "VALUE_ADD",
-                )
-              }
-              className="rounded border border-zinc-300 px-2 py-1 text-sm"
-            >
-              <option value="">All ({data.openTasks.length})</option>
-              <option value="PUTAWAY">
-                Putaway ({data.openTasks.filter((t) => t.taskType === "PUTAWAY").length})
-              </option>
-              <option value="PICK">Pick ({data.openTasks.filter((t) => t.taskType === "PICK").length})</option>
-              <option value="REPLENISH">
-                Replenish ({data.openTasks.filter((t) => t.taskType === "REPLENISH").length})
-              </option>
-              <option value="CYCLE_COUNT">
-                Cycle count ({data.openTasks.filter((t) => t.taskType === "CYCLE_COUNT").length})
-              </option>
-              <option value="VALUE_ADD">
-                Value-add ({data.openTasks.filter((t) => t.taskType === "VALUE_ADD").length})
-              </option>
-            </select>
-          </label>
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-2 text-xs text-zinc-600">
+              Type
+              <select
+                value={openTaskTypeFilter}
+                onChange={(e) =>
+                  setOpenTaskTypeFilter(
+                    e.target.value as
+                      | ""
+                      | "PUTAWAY"
+                      | "PICK"
+                      | "REPLENISH"
+                      | "CYCLE_COUNT"
+                      | "VALUE_ADD",
+                  )
+                }
+                className="rounded border border-zinc-300 px-2 py-1 text-sm"
+              >
+                <option value="">All ({data.openTasks.length})</option>
+                <option value="PUTAWAY">
+                  Putaway ({data.openTasks.filter((t) => t.taskType === "PUTAWAY").length})
+                </option>
+                <option value="PICK">Pick ({data.openTasks.filter((t) => t.taskType === "PICK").length})</option>
+                <option value="REPLENISH">
+                  Replenish ({data.openTasks.filter((t) => t.taskType === "REPLENISH").length})
+                </option>
+                <option value="CYCLE_COUNT">
+                  Cycle count ({data.openTasks.filter((t) => t.taskType === "CYCLE_COUNT").length})
+                </option>
+                <option value="VALUE_ADD">
+                  Value-add ({data.openTasks.filter((t) => t.taskType === "VALUE_ADD").length})
+                </option>
+              </select>
+            </label>
+            {openTaskTypeFilter === "REPLENISH" ? (
+              <>
+                <label className="flex items-center gap-2 text-xs text-zinc-600">
+                  Tier
+                  <select
+                    value={replenishTierFilter}
+                    onChange={(e) =>
+                      setReplenishTierFilter(e.target.value as "" | "standard" | "exception")
+                    }
+                    className="rounded border border-zinc-300 px-2 py-1 text-sm"
+                  >
+                    <option value="">All replenishments</option>
+                    <option value="standard">Standard (non-exception)</option>
+                    <option value="exception">Exception queue only</option>
+                  </select>
+                </label>
+                <label className="flex items-center gap-2 text-xs text-zinc-600">
+                  Min priority
+                  <input
+                    value={replenishMinPriority}
+                    onChange={(e) => setReplenishMinPriority(e.target.value)}
+                    placeholder="e.g. 10"
+                    inputMode="numeric"
+                    className="w-24 rounded border border-zinc-300 px-2 py-1 text-sm"
+                  />
+                </label>
+              </>
+            ) : null}
+          </div>
         </div>
         <div className="space-y-2 text-sm">
           {data.openTasks.length === 0 ? (
@@ -5402,6 +5516,12 @@ export function WmsClient({
                 <span className="rounded bg-zinc-100 px-2 py-0.5 text-xs font-semibold text-zinc-800">
                   {t.taskType}
                 </span>
+                {t.taskType === "REPLENISH" ? (
+                  <span className="rounded bg-zinc-50 px-2 py-0.5 text-[11px] text-zinc-600">
+                    pri {t.replenishmentPriority ?? "—"}
+                    {t.replenishmentException ? " · exception" : ""}
+                  </span>
+                ) : null}
                 <span className="text-zinc-700">{t.quantity}</span>
                 <span className="text-zinc-700">
                   {t.product?.name ?? (t.taskType === "VALUE_ADD" ? "Labor-only" : "—")}
