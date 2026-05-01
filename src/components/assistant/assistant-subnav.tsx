@@ -108,8 +108,10 @@ export function AssistantSubnav() {
   const enterpriseKnowledgeDocumentIntelligence = pathname.startsWith(
     "/assistant/enterprise-knowledge-document-intelligence",
   );
-  const advancedProgram = (slug: string) => pathname.startsWith(`/assistant/advanced-programs/${slug}`);
-  const advancedProgramLinks = listAdvancedProgramConfigs();
+  const advancedProgramCatalogCount = listAdvancedProgramConfigs().length;
+  const onAdvancedProgramsRoute =
+    pathname === "/assistant/advanced-programs" ||
+    pathname.startsWith("/assistant/advanced-programs/");
   const workbench = pathname.startsWith("/assistant/workbench");
   const execution = pathname.startsWith("/assistant/execution");
   const workEngine = pathname.startsWith("/assistant/work-engine");
@@ -525,16 +527,13 @@ export function AssistantSubnav() {
       </NavSection>
 
       <NavSection sectionId="assistant-nav-advanced" label="Advanced programs">
-        {advancedProgramLinks.map((program) => (
-          <Link
-            key={program.slug}
-            href={`/assistant/advanced-programs/${program.slug}`}
-            className={advancedProgram(program.slug) ? appNavActiveClass : appNavInactiveClass}
-            title={`AMP${program.ampNumber} ${program.title}`}
-          >
-            {program.navLabel}
-          </Link>
-        ))}
+        <Link
+          href="/assistant/advanced-programs"
+          className={onAdvancedProgramsRoute ? appNavActiveClass : appNavInactiveClass}
+          title={`Browse ${advancedProgramCatalogCount} AMP review workspaces`}
+        >
+          Catalog ({advancedProgramCatalogCount})
+        </Link>
       </NavSection>
     </nav>
   );
