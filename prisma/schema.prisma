@@ -4701,6 +4701,9 @@ model WmsBillingEvent {
   currency            String                  @default("USD") @db.VarChar(3)
   occurredAt          DateTime
   invoiceRunId        String?
+  /// When true, the charge is held out of new invoice runs until cleared (BF-28).
+  billingDisputed     Boolean                 @default(false)
+  billingDisputeNote  String?                 @db.VarChar(800)
   createdAt           DateTime                @default(now())
 
   tenant            Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -4712,6 +4715,7 @@ model WmsBillingEvent {
 
   @@index([tenantId, occurredAt])
   @@index([tenantId, invoiceRunId])
+  @@index([tenantId, invoiceRunId, billingDisputed])
   @@index([tenantId, crmAccountId])
 }
 

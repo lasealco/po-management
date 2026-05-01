@@ -234,7 +234,9 @@ export async function fetchWmsHomeKpis(
     }),
     prisma.inventoryBalance.count({ where: balanceWhere }),
     prisma.inventoryBalance.count({ where: { ...balanceWhere, onHold: true } }),
-    prisma.wmsBillingEvent.count({ where: { ...billingWhere, invoiceRunId: null } }),
+    prisma.wmsBillingEvent.count({
+      where: { ...billingWhere, invoiceRunId: null, billingDisputed: false },
+    }),
     prisma.inventoryMovement.count({
       where: { ...movementWhere, createdAt: { gte: weekAgo } },
     }),
@@ -268,7 +270,7 @@ export async function fetchWmsHomeKpis(
     { label: "Active waves", value: wavesActive, hint: `${scopeHint}; wave batches open or released` },
     { label: "Balance rows", value: balanceRows, hint: `${scopeHint}; tracked bin × product rows` },
     { label: "On-hold balances", value: balancesOnHold, hint: `${scopeHint}; QC or quarantine constrained stock` },
-    { label: "Unbilled charges", value: unbilledEvents, hint: `${scopeHint}; billing events not yet invoiced` },
+    { label: "Unbilled charges", value: unbilledEvents, hint: `${scopeHint}; billable events not invoiced (disputed held)` },
     { label: "Movements (7d)", value: movementsWeek, hint: `${scopeHint}; recorded stock ledger activity` },
   ];
 

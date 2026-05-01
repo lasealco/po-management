@@ -30,6 +30,9 @@ type BillingBody = {
   periodFrom?: string;
   periodTo?: string;
   invoiceRunId?: string;
+  billingEventId?: string;
+  billingDisputed?: boolean;
+  billingDisputeNote?: string | null;
   code?: string;
   description?: string;
   amountPerUnit?: string | number;
@@ -72,7 +75,14 @@ export async function GET(request: Request) {
     });
   }
 
-  const [rates, events, runs, unbilledCount] = await Promise.all([
+  const eligibleUnbilledWhere: Prisma.WmsBillingEventWhereInput = {
+    AND: [billingEventWhere, { invoiceRunId: null, billingDisputed: false }],
+  };
+  const disputedUnbilledWhere: Prisma.WmsBillingEventWhereInput = {
+    AND: [billingEventWhere, { invoiceRunId: null, billingDisputed: true }],
+  };
+
+  const [rates, events, runs, unbilledCount, disputedUnbilledCount] = await Promise.all([
     prisma.wmsBillingRate.findMany({
       where: { tenantId: tenant.id },
       orderBy: { code: "asc" },
@@ -105,15 +115,15 @@ export async function GET(request: Request) {
         _count: { select: { lines: true, events: true } },
       },
     }),
-    prisma.wmsBillingEvent.count({
-      where: { AND: [billingEventWhere, { invoiceRunId: null }] },
-    }),
+    prisma.wmsBillingEvent.count({ where: eligibleUnbilledWhere }),
+    prisma.wmsBillingEvent.count({ where: disputedUnbilledWhere }),
   ]);
 
   return NextResponse.json({
     profileSourceNote:
       "Rates and invoice runs use profileSource MANUAL until Phase C (CRM / commercial).",
     unbilledEventCount: unbilledCount,
+    disputedUnbilledEventCount: disputedUnbilledCount,
     rates: rates.map((r) => ({
       ...r,
       amountPerUnit: r.amountPerUnit.toString(),
@@ -132,6 +142,8 @@ export async function GET(request: Request) {
       warehouse: e.warehouse,
       product: e.product,
       invoiceRun: e.invoiceRun,
+      billingDisputed: e.billingDisputed,
+      billingDisputeNote: e.billingDisputeNote,
     })),
     invoiceRuns: runs.map((r) => ({
       id: r.id,
@@ -172,6 +184,45 @@ export async function POST(request: Request) {
 
   if (action === "ensure_default_rates") {
     await ensureDefaultBillingRates(tenant.id, DEFAULT_WMS_BILLING_RATES);
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "set_billing_event_dispute") {
+    const billingEventId = input.billingEventId?.trim();
+    if (!billingEventId) {
+      return toApiErrorResponse({ error: "billingEventId required.", code: "BAD_INPUT", status: 400 });
+    }
+    if (typeof input.billingDisputed !== "boolean") {
+      return toApiErrorResponse({ error: "billingDisputed boolean required.", code: "BAD_INPUT", status: 400 });
+    }
+    const disputed = input.billingDisputed;
+    let note: string | null = null;
+    if (disputed) {
+      const raw = input.billingDisputeNote;
+      if (typeof raw === "string") {
+        note = raw.trim().slice(0, 800) || null;
+      }
+    }
+    const viewScope = await loadWmsViewReadScope(tenant.id, actorId);
+    const billingEventWhere: Prisma.WmsBillingEventWhereInput =
+      viewScope.wmsBillingEvent && Object.keys(viewScope.wmsBillingEvent).length > 0
+        ? { AND: [{ tenantId: tenant.id }, viewScope.wmsBillingEvent] }
+        : { tenantId: tenant.id };
+
+    const updated = await prisma.wmsBillingEvent.updateMany({
+      where: { AND: [billingEventWhere, { id: billingEventId, invoiceRunId: null }] },
+      data: {
+        billingDisputed: disputed,
+        billingDisputeNote: disputed ? note : null,
+      },
+    });
+    if (updated.count === 0) {
+      return toApiErrorResponse({
+        error: "Billing event not found, out of scope, or already invoiced.",
+        code: "NOT_FOUND",
+        status: 404,
+      });
+    }
     return NextResponse.json({ ok: true });
   }
 

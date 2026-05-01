@@ -7,6 +7,7 @@ import { startTransition, useCallback, useEffect, useState } from "react";
 type BillingPayload = {
   profileSourceNote?: string;
   unbilledEventCount?: number;
+  disputedUnbilledEventCount?: number;
   rates: Array<{
     id: string;
     code: string;
@@ -30,6 +31,8 @@ type BillingPayload = {
     warehouse: { id: string; code: string | null; name: string };
     product: { id: string; productCode: string | null; sku: string | null; name: string };
     invoiceRun: { id: string; runNo: string; status: string } | null;
+    billingDisputed: boolean;
+    billingDisputeNote: string | null;
   }>;
   invoiceRuns: Array<{
     id: string;
@@ -156,8 +159,12 @@ export function WmsBillingClient({ canEdit }: { canEdit: boolean }) {
       <section className="mb-6 rounded-lg border border-zinc-200 bg-white p-4">
         <h2 className="text-sm font-semibold text-zinc-900">Unbilled events</h2>
         <p className="mt-1 text-2xl font-semibold text-zinc-800">{data.unbilledEventCount ?? 0}</p>
+        <p className="mt-1 text-xs text-zinc-600">
+          Eligible for invoicing (not disputed). Held disputes:{" "}
+          <span className="font-semibold text-zinc-800">{data.disputedUnbilledEventCount ?? 0}</span>
+        </p>
         <p className="mt-1 text-xs text-zinc-500">
-          Events with no invoice run. Sync from movements first, then create an invoice for a period.
+          Sync from movements first, then create an invoice for a period. Disputed rows stay out of draft runs until cleared.
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           <button
@@ -172,7 +179,7 @@ export function WmsBillingClient({ canEdit }: { canEdit: boolean }) {
             type="button"
             disabled={!canEdit || busy}
             onClick={() => void postAction({ action: "sync_events_from_movements" })}
-            className="rounded border border-arscmp-primary bg-arscmp-primary px-3 py-2 text-sm font-medium text-white disabled:opacity-40"
+            className="rounded border border-[var(--arscmp-primary)] bg-[var(--arscmp-primary)] px-3 py-2 text-sm font-medium text-white disabled:opacity-40"
           >
             Sync events from movements
           </button>
@@ -182,7 +189,8 @@ export function WmsBillingClient({ canEdit }: { canEdit: boolean }) {
       <section className="mb-6 rounded-lg border border-zinc-200 bg-white p-4">
         <h2 className="text-sm font-semibold text-zinc-900">Create invoice run</h2>
         <p className="mt-1 text-xs text-zinc-500">
-          Includes all <strong>unbilled</strong> events whose <code className="rounded bg-zinc-100 px-1">occurredAt</code> falls in the range (inclusive).
+          Includes all <strong>unbilled, non-disputed</strong> events whose{" "}
+          <code className="rounded bg-zinc-100 px-1">occurredAt</code> falls in the range (inclusive).
         </p>
         <div className="mt-3 flex flex-wrap items-end gap-2">
           <label className="flex flex-col text-xs text-zinc-600">
@@ -340,18 +348,23 @@ export function WmsBillingClient({ canEdit }: { canEdit: boolean }) {
                 <th className="px-2 py-1">Amount</th>
                 <th className="px-2 py-1">Rate</th>
                 <th className="px-2 py-1">Invoice</th>
+                <th className="px-2 py-1">Dispute</th>
+                <th className="px-2 py-1">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200">
               {data.events.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-2 py-3 text-zinc-500">
+                  <td colSpan={10} className="px-2 py-3 text-zinc-500">
                     No events yet. Sync from movements after rates exist.
                   </td>
                 </tr>
               ) : (
                 data.events.map((e) => (
-                  <tr key={e.id}>
+                  <tr
+                    key={e.id}
+                    className={e.billingDisputed ? "bg-amber-50/80" : undefined}
+                  >
                     <td className="whitespace-nowrap px-2 py-1 text-xs text-zinc-600">
                       {new Date(e.occurredAt).toLocaleString()}
                     </td>
@@ -367,6 +380,63 @@ export function WmsBillingClient({ canEdit }: { canEdit: boolean }) {
                     <td className="px-2 py-1 text-xs text-zinc-600">{e.rateCode}</td>
                     <td className="px-2 py-1 text-xs text-zinc-600">
                       {e.invoiceRun ? e.invoiceRun.runNo : "—"}
+                    </td>
+                    <td className="max-w-[10rem] px-2 py-1 text-xs text-zinc-700">
+                      {e.billingDisputed ? (
+                        <span title={e.billingDisputeNote ?? undefined}>
+                          <span className="font-semibold text-amber-900">Held</span>
+                          {e.billingDisputeNote ? (
+                            <span className="mt-0.5 line-clamp-2 block text-zinc-600">{e.billingDisputeNote}</span>
+                          ) : null}
+                        </span>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td className="whitespace-nowrap px-2 py-1 text-xs">
+                      {!e.invoiceRun && canEdit ? (
+                        e.billingDisputed ? (
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => {
+                              if (!window.confirm("Clear dispute for this charge? It becomes eligible for invoicing again.")) {
+                                return;
+                              }
+                              void postAction({
+                                action: "set_billing_event_dispute",
+                                billingEventId: e.id,
+                                billingDisputed: false,
+                              });
+                            }}
+                            className="rounded border border-zinc-300 px-2 py-1 font-medium text-zinc-800 disabled:opacity-40"
+                          >
+                            Clear dispute
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => {
+                              const note = window.prompt(
+                                "Dispute note (optional, max 800 characters). This charge will be excluded from new invoice runs:",
+                              );
+                              if (note === null) return;
+                              void postAction({
+                                action: "set_billing_event_dispute",
+                                billingEventId: e.id,
+                                billingDisputed: true,
+                                billingDisputeNote: note.trim() || null,
+                              });
+                            }}
+                            className="rounded border border-zinc-300 px-2 py-1 font-medium text-zinc-800 disabled:opacity-40"
+                          >
+                            Dispute
+                          </button>
+                        )
+                      ) : (
+                        "—"
+                      )}
                     </td>
                   </tr>
                 ))

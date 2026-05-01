@@ -2,6 +2,7 @@ import { Prisma, type InventoryMovementType, type WmsBillingRate } from "@prisma
 
 import { resolveCrmAccountIdsByMovementIds } from "@/lib/wms/billing-crm-resolve";
 import type { DefaultRateSeed } from "@/lib/wms/billing-default-rates";
+import { invoiceEligibleBillingEventsWhere } from "@/lib/wms/billing-invoice-eligibility";
 import { prisma } from "@/lib/prisma";
 
 function pickRate(
@@ -140,16 +141,14 @@ export async function createInvoiceRunFromUnbilledEvents(
   periodTo: Date,
 ): Promise<InvoiceRunResult> {
   const events = await prisma.wmsBillingEvent.findMany({
-    where: {
-      tenantId,
-      invoiceRunId: null,
-      occurredAt: { gte: periodFrom, lte: periodTo },
-    },
+    where: invoiceEligibleBillingEventsWhere(tenantId, periodFrom, periodTo),
     orderBy: { occurredAt: "asc" },
   });
 
   if (events.length === 0) {
-    throw new Error("No unbilled events in the selected period.");
+    throw new Error(
+      "No billable unbilled events in the selected period (disputed charges are excluded until cleared).",
+    );
   }
 
   type Agg = { quantity: Prisma.Decimal; amount: Prisma.Decimal; description: string; unitRate: Prisma.Decimal };
@@ -246,6 +245,7 @@ export async function createInvoiceRunFromUnbilledEvents(
       where: {
         tenantId,
         invoiceRunId: null,
+        billingDisputed: false,
         id: { in: events.map((e) => e.id) },
       },
       data: { invoiceRunId: inv.id },

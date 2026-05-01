@@ -117,8 +117,13 @@ export async function buildReportingCockpitSnapshot(params: {
       : { order: { tenantId: params.tenantId }, createdAt };
 
   const wmsUninvoicedWhere: Prisma.WmsBillingEventWhereInput = wms
-    ? { AND: [{ tenantId: params.tenantId, invoiceRunId: null }, wms.wmsBillingEvent] }
-    : { tenantId: params.tenantId, invoiceRunId: null };
+    ? {
+        AND: [
+          { tenantId: params.tenantId, invoiceRunId: null, billingDisputed: false },
+          wms.wmsBillingEvent,
+        ],
+      }
+    : { tenantId: params.tenantId, invoiceRunId: null, billingDisputed: false };
 
   const [
     openPoCount,
