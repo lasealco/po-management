@@ -2925,8 +2925,11 @@ export function WmsClient({
           Optional <span className="font-medium">carrier / trailer</span> metadata and{" "}
           <span className="font-medium">yard milestones</span> (gate → dock → departed) cover BF-05 ops depth —
           not TMS routing or carrier APIs. <span className="font-medium">BF-17</span> adds optional TMS identifiers and a
-          Bearer-authenticated <span className="font-medium">POST /api/wms/tms-webhook</span> stub — see{" "}
-          <span className="font-medium">docs/wms/WMS_DOCK_APPOINTMENTS.md</span>.
+          Bearer-authenticated <span className="font-medium">POST /api/wms/tms-webhook</span>;{" "}
+          <span className="font-medium">BF-25</span> adds optional HMAC signing (<span className="font-medium">X-TMS-Signature</span>) and{" "}
+          <span className="font-medium">externalEventId</span> idempotency — see{" "}
+          <span className="font-medium">docs/wms/WMS_DOCK_APPOINTMENTS.md</span> and{" "}
+          <span className="font-medium">docs/wms/WMS_TMS_WEBHOOK_BF25.md</span>.
         </p>
         <div className="mt-3 grid gap-3 rounded-2xl border border-zinc-200 bg-zinc-50/90 p-4 sm:grid-cols-2 lg:grid-cols-3">
           <label className="block text-xs font-medium text-zinc-600">

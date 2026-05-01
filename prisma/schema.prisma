@@ -77,6 +77,7 @@ model Tenant {
   wmsBillingInvoiceLines                      WmsBillingInvoiceLine[]
   wmsSavedLedgerViews                         WmsSavedLedgerView[]
   wmsDockAppointments                         WmsDockAppointment[]
+  wmsTmsWebhookReceipts                       WmsTmsWebhookReceipt[]
   wmsReceipts                                 WmsReceipt[]
   wmsInventorySerials                         WmsInventorySerial[]
   wmsLotBatches                               WmsLotBatch[]
@@ -4971,6 +4972,20 @@ model WmsDockAppointment {
   @@index([tenantId, warehouseId, dockCode])
   @@index([shipmentId])
   @@index([outboundOrderId])
+}
+
+/// BF-25 — TMS webhook idempotency: one successful processing row per tenant + carrier `externalEventId`.
+model WmsTmsWebhookReceipt {
+  id                  String   @id @default(cuid())
+  tenantId            String
+  externalEventId     String   @db.VarChar(128)
+  dockAppointmentId   String
+  createdAt           DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, externalEventId])
+  @@index([tenantId, dockAppointmentId])
 }
 
 /// BF-02 — tenant lot/batch master (expiry, origin). `InventoryBalance.lotCode` stays the bin bucket key.

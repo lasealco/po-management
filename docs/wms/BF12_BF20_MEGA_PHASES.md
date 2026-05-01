@@ -92,11 +92,11 @@
 
 **Objective:** Externalize carrier/booking identifiers and webhook placeholders so dock milestones (BF-05) can sync to a future TMS without rewriting APIs.
 
-**Minimal slice shipped (repo):** `WmsDockAppointment` columns **`tmsLoadId`**, **`tmsCarrierBookingRef`**, **`tmsLastWebhookAt`**; **`set_dock_appointment_tms_refs`** (`POST /api/wms`, operations tier); **`POST /api/wms/tms-webhook`** Bearer stub (`TMS_WEBHOOK_SECRET`) updating refs / optional **`yardMilestone`** for `SCHEDULED` rows + **`CtAuditLog`** `tms_webhook_stub`; Operations UI columns + save controls; placeholder env file **`docs/wms/tms-webhook.env.example`**.
+**Minimal slice shipped (repo):** `WmsDockAppointment` columns **`tmsLoadId`**, **`tmsCarrierBookingRef`**, **`tmsLastWebhookAt`**; **`set_dock_appointment_tms_refs`** (`POST /api/wms`, operations tier); **`POST /api/wms/tms-webhook`** Bearer stub (`TMS_WEBHOOK_SECRET`) updating refs / optional **`yardMilestone`** for `SCHEDULED` rows + **`CtAuditLog`** `tms_webhook_stub`; Operations UI columns + save controls; placeholder env file **`docs/wms/tms-webhook.env.example`**. **BF-25** extends the webhook with optional **`TMS_WEBHOOK_HMAC_SECRET`** / **`X-TMS-Signature`** and **`externalEventId`** idempotency — [`WMS_TMS_WEBHOOK_BF25.md`](./WMS_TMS_WEBHOOK_BF25.md).
 
-**Exit sketch (remaining):** Signed payloads, idempotent carrier message IDs, outbound retry queue, multi-tenant webhook routing beyond `tenantSlug` body field.
+**Exit sketch (remaining):** JWT/mTLS, outbound retry queue, richer multi-tenant routing beyond **`tenantSlug`**.
 
-**Out of scope:** Production carrier certifications, rate shopping.
+**Out of scope:** Production carrier certifications (beyond BF-25 checklist doc), rate shopping.
 
 ---
 
@@ -142,7 +142,7 @@
 
 ---
 
-_Last updated: 2026-05-03 — **BF-23** reserve pick-face allocation minimal ([`WMS_ALLOCATION_BF23.md`](./WMS_ALLOCATION_BF23.md)); **BF-22** CPQ list/tier + outbound **`commercial*`** snapshots ([`WMS_CPQ_CONTRACT_PRICING_BF22.md`](./WMS_CPQ_CONTRACT_PRICING_BF22.md)); **2026-05-02** — **BF-20** minimal executive KPI proxy rates (`buildExecutiveRates`, `rates` + `rateMethodology` on **`fetchWmsHomeKpis`**, `/wms` copy); **`BF-21`–`BF-30`** program draft [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md); **BF-19** minimal CRM HQ pins on CT map (`CrmAccount` map coords, `crmAccountPins`, scoped API + UI); **BF-18** minimal VAS multi-line BOM (`WmsWorkOrderBomLine`, `replace_work_order_bom_lines`, `consume_work_order_bom_line`, WMS UI, seed **`db:seed:wms-vas-bom-demo`**); **BF-15** minimal wave allocation v2 (`GREEDY_MIN_BIN_TOUCHES`, `pickWaveCartonUnits`, Setup UI); **BF-14** minimal (`inventorySku`, `explode_crm_quote_to_outbound`, WMS preview UI); program draft for BF-12 … BF-20 mega phases._
+_Last updated: 2026-05-05 — **BF-17** webhook extended by **BF-25** (optional HMAC + **`externalEventId`** idempotency, [`WMS_TMS_WEBHOOK_BF25.md`](./WMS_TMS_WEBHOOK_BF25.md)); **2026-05-03** — **BF-23** reserve pick-face allocation minimal ([`WMS_ALLOCATION_BF23.md`](./WMS_ALLOCATION_BF23.md)); **BF-22** CPQ list/tier + outbound **`commercial*`** snapshots ([`WMS_CPQ_CONTRACT_PRICING_BF22.md`](./WMS_CPQ_CONTRACT_PRICING_BF22.md)); **2026-05-02** — **BF-20** minimal executive KPI proxy rates (`buildExecutiveRates`, `rates` + `rateMethodology` on **`fetchWmsHomeKpis`**, `/wms` copy); **`BF-21`–`BF-30`** program draft [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md); **BF-19** minimal CRM HQ pins on CT map (`CrmAccount` map coords, `crmAccountPins`, scoped API + UI); **BF-18** minimal VAS multi-line BOM (`WmsWorkOrderBomLine`, `replace_work_order_bom_lines`, `consume_work_order_bom_line`, WMS UI, seed **`db:seed:wms-vas-bom-demo`**); **BF-15** minimal wave allocation v2 (`GREEDY_MIN_BIN_TOUCHES`, `pickWaveCartonUnits`, Setup UI); **BF-14** minimal (`inventorySku`, `explode_crm_quote_to_outbound`, WMS preview UI); program draft for BF-12 … BF-20 mega phases._
 
 ---
 
