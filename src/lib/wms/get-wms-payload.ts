@@ -607,6 +607,20 @@ export async function getWmsDashboardPayload(
     },
   });
 
+  const partnerApiKeys = await prisma.wmsPartnerApiKey.findMany({
+    where: { tenantId },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      label: true,
+      keyPrefix: true,
+      scopes: true,
+      isActive: true,
+      createdAt: true,
+      lastUsedAt: true,
+    },
+  });
+
   return {
     packShipScanPolicy,
     atpByWarehouseProduct,
@@ -705,6 +719,15 @@ export async function getWmsDashboardPayload(
       isActive: s.isActive,
       signingSecretSuffix: s.signingSecretSuffix,
       createdAt: s.createdAt.toISOString(),
+    })),
+    partnerApiKeys: partnerApiKeys.map((k) => ({
+      id: k.id,
+      label: k.label,
+      keyPrefix: k.keyPrefix,
+      scopes: [...k.scopes],
+      isActive: k.isActive,
+      createdAt: k.createdAt.toISOString(),
+      lastUsedAt: k.lastUsedAt?.toISOString() ?? null,
     })),
     crmAccountOptions,
     crmQuoteOptions,

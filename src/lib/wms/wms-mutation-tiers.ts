@@ -18,6 +18,8 @@ const WMS_POST_ACTION_TIER: Record<string, WmsMutationTier> = {
   create_wms_outbound_webhook_subscription_bf44: "setup",
   update_wms_outbound_webhook_subscription_bf44: "setup",
   delete_wms_outbound_webhook_subscription_bf44: "setup",
+  create_wms_partner_api_key_bf45: "setup",
+  revoke_wms_partner_api_key_bf45: "setup",
 
   create_replenishment_tasks: "operations",
 

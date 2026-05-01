@@ -85,6 +85,7 @@ model Tenant {
   wmsOutboundLogisticsUnits                  WmsOutboundLogisticsUnit[]
   wmsOutboundWebhookSubscriptions             WmsOutboundWebhookSubscription[]
   wmsOutboundWebhookDeliveries                WmsOutboundWebhookDelivery[]
+  wmsPartnerApiKeys                           WmsPartnerApiKey[]
   wmsInventorySerials                         WmsInventorySerial[]
   wmsLotBatches                               WmsLotBatch[]
   wmsWorkOrders                               WmsWorkOrder[]
@@ -5349,6 +5350,31 @@ model WmsOutboundWebhookDelivery {
 
   @@unique([subscriptionId, idempotencyKey])
   @@index([tenantId, status, nextAttemptAt])
+}
+
+/// BF-45 — partner / 3PL read-only API scopes (`GET /api/wms/partner/v1/*`).
+enum WmsPartnerApiKeyScope {
+  INVENTORY_READ
+  OUTBOUND_READ
+}
+
+model WmsPartnerApiKey {
+  id        String                   @id @default(cuid())
+  tenantId  String
+  label     String                   @db.VarChar(120)
+  /// First chars of the secret (safe to display); full secret is never stored.
+  keyPrefix String                   @db.VarChar(24)
+  /// SHA-256 hex digest of the full plaintext key (UTF-8).
+  keyHash   String                   @unique @db.VarChar(64)
+  scopes    WmsPartnerApiKeyScope[] @default([])
+  isActive  Boolean                  @default(true)
+  createdAt DateTime                 @default(now())
+  updatedAt DateTime                 @updatedAt
+  lastUsedAt DateTime?
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, isActive])
 }
 
 enum LoadPlanStatus {

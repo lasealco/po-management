@@ -160,6 +160,16 @@ type WmsData = {
     signingSecretSuffix: string;
     createdAt: string;
   }>;
+  /** BF-45 — partner read API keys (`GET /api/wms/partner/v1/*`). */
+  partnerApiKeys?: Array<{
+    id: string;
+    label: string;
+    keyPrefix: string;
+    scopes: string[];
+    isActive: boolean;
+    createdAt: string;
+    lastUsedAt: string | null;
+  }>;
   crmAccountOptions: Array<{ id: string; name: string; legalName: string | null }>;
   crmQuoteOptions: Array<{
     id: string;
@@ -779,6 +789,10 @@ export function WmsClient({
   const [bf44EvtBillingDisputed, setBf44EvtBillingDisputed] = useState(false);
   const [bf44WebhookActive, setBf44WebhookActive] = useState(true);
   const [bf44EditingSubscriptionId, setBf44EditingSubscriptionId] = useState<string | null>(null);
+  const [bf45PartnerKeyLabel, setBf45PartnerKeyLabel] = useState("");
+  const [bf45ScopeInventory, setBf45ScopeInventory] = useState(true);
+  const [bf45ScopeOutbound, setBf45ScopeOutbound] = useState(true);
+  const [bf45IssuedKeyPlaintext, setBf45IssuedKeyPlaintext] = useState<string | null>(null);
   const [outboundRef, setOutboundRef] = useState("");
   const [outboundProductId, setOutboundProductId] = useState("");
   const [outboundLineQty, setOutboundLineQty] = useState("");
@@ -3191,8 +3205,9 @@ export function WmsClient({
           Signed <span className="font-mono text-[11px]">POST</span> JSON to your HTTPS endpoint when milestones occur.
           Header <span className="font-mono text-[11px]">X-WMS-Webhook-Signature</span> uses HMAC-SHA256 over the raw body
           (same <span className="font-mono text-[11px]">sha256=&lt;hex&gt;</span> shape as BF-25 TMS inbound verification).
-          Failed deliveries record <span className="font-medium">nextAttemptAt</span> using an exponential backoff stub for a
-          future retry worker (not shipped here).
+          Failed deliveries set <span className="font-medium">nextAttemptAt</span>; Vercel cron{" "}
+          <span className="font-mono text-[11px]">/api/cron/wms-outbound-webhook-retries</span> (Bearer{" "}
+          <span className="font-mono text-[11px]">CRON_SECRET</span>) drains retries with exponential backoff (BF-45).
         </p>
         <div className="mt-3 overflow-x-auto rounded-xl border border-zinc-100">
           <table className="min-w-full text-xs">
@@ -3404,6 +3419,161 @@ export function WmsClient({
                 </button>
               ) : null}
             </div>
+          </div>
+        ) : null}
+      </section>
+
+      <section className="mb-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+        <h2 className="text-sm font-semibold text-zinc-900">Partner API keys (BF-45)</h2>
+        <p className="mt-1 text-xs text-zinc-600">
+          Scoped <span className="font-mono text-[11px]">GET</span> access for integrations — inventory balances by warehouse and
+          outbound order detail. Send{" "}
+          <span className="font-mono text-[11px]">Authorization: Bearer &lt;key&gt;</span> or header{" "}
+          <span className="font-mono text-[11px]">X-WMS-Partner-Key</span>. Plaintext key is shown once when created; store it as a
+          secret. Rate-limit headers are advisory stubs until enforcement lands.
+        </p>
+        <ul className="mt-2 list-inside list-disc text-[11px] text-zinc-600">
+          <li className="font-mono">
+            GET /api/wms/partner/v1/inventory-balances?warehouseId=&lt;id&gt;&amp;limit=500
+          </li>
+          <li className="font-mono">GET /api/wms/partner/v1/outbound-orders/&lt;outboundOrderId&gt;</li>
+        </ul>
+        {bf45IssuedKeyPlaintext ? (
+          <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950">
+            <p className="font-semibold">Copy this key now — it will not be shown again.</p>
+            <p className="mt-2 break-all font-mono text-[11px]">{bf45IssuedKeyPlaintext}</p>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                void navigator.clipboard.writeText(bf45IssuedKeyPlaintext).catch(() => {});
+              }}
+              className="mt-2 rounded-lg bg-[var(--arscmp-primary)] px-4 py-2 text-xs font-semibold text-white disabled:opacity-40"
+            >
+              Copy to clipboard
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => setBf45IssuedKeyPlaintext(null)}
+              className="mt-2 ml-2 rounded-lg border border-zinc-300 bg-white px-4 py-2 text-xs font-medium text-zinc-800 disabled:opacity-40"
+            >
+              Dismiss
+            </button>
+          </div>
+        ) : null}
+        <div className="mt-3 overflow-x-auto rounded-xl border border-zinc-100">
+          <table className="min-w-full text-xs">
+            <thead className="bg-zinc-100 text-left uppercase text-zinc-600">
+              <tr>
+                <th className="px-2 py-1.5">Label</th>
+                <th className="px-2 py-1.5">Prefix</th>
+                <th className="px-2 py-1.5">Scopes</th>
+                <th className="px-2 py-1.5">Active</th>
+                <th className="px-2 py-1.5">Last used</th>
+                {canEdit ? <th className="px-2 py-1.5"> </th> : null}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-100">
+              {(!data.partnerApiKeys || data.partnerApiKeys.length === 0) ? (
+                <tr>
+                  <td colSpan={canEdit ? 6 : 5} className="px-2 py-3 text-zinc-500">
+                    No partner keys — issue one below (Setup tier).
+                  </td>
+                </tr>
+              ) : (
+                (data.partnerApiKeys ?? []).map((k) => (
+                  <tr key={k.id}>
+                    <td className="px-2 py-1.5">{k.label}</td>
+                    <td className="font-mono text-[11px] text-zinc-600 px-2 py-1.5">{k.keyPrefix}…</td>
+                    <td className="px-2 py-1.5 text-zinc-700">{k.scopes.join(", ") || "—"}</td>
+                    <td className="px-2 py-1.5">{k.isActive ? "yes" : "no"}</td>
+                    <td className="px-2 py-1.5 text-zinc-600">
+                      {k.lastUsedAt ? new Date(k.lastUsedAt).toLocaleString() : "—"}
+                    </td>
+                    {canEdit ? (
+                      <td className="px-2 py-1.5">
+                        <button
+                          type="button"
+                          disabled={busy || !k.isActive}
+                          onClick={() =>
+                            void runAction({
+                              action: "revoke_wms_partner_api_key_bf45",
+                              partnerApiKeyId: k.id,
+                            }).then((res) => {
+                              if (res) setBf45IssuedKeyPlaintext(null);
+                            })
+                          }
+                          className="rounded border border-rose-200 px-2 py-1 text-[11px] font-medium text-rose-800 disabled:opacity-40"
+                        >
+                          Revoke
+                        </button>
+                      </td>
+                    ) : null}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+        {canEdit ? (
+          <div className="mt-4 grid gap-2 rounded-xl border border-zinc-100 bg-zinc-50/80 p-3 sm:grid-cols-2">
+            <label className="block text-[11px] font-medium text-zinc-600 sm:col-span-2">
+              Label (optional)
+              <input
+                value={bf45PartnerKeyLabel}
+                disabled={busy}
+                onChange={(e) => setBf45PartnerKeyLabel(e.target.value)}
+                placeholder="3PL prod feed"
+                className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+              />
+            </label>
+            <div className="flex flex-wrap gap-3 text-xs text-zinc-700 sm:col-span-2">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={bf45ScopeInventory}
+                  disabled={busy}
+                  onChange={(e) => setBf45ScopeInventory(e.target.checked)}
+                  className="rounded border-zinc-300"
+                />
+                INVENTORY_READ
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={bf45ScopeOutbound}
+                  disabled={busy}
+                  onChange={(e) => setBf45ScopeOutbound(e.target.checked)}
+                  className="rounded border-zinc-300"
+                />
+                OUTBOUND_READ
+              </label>
+            </div>
+            <button
+              type="button"
+              disabled={busy || (!bf45ScopeInventory && !bf45ScopeOutbound)}
+              onClick={() => {
+                const scopes: string[] = [];
+                if (bf45ScopeInventory) scopes.push("INVENTORY_READ");
+                if (bf45ScopeOutbound) scopes.push("OUTBOUND_READ");
+                void runAction({
+                  action: "create_wms_partner_api_key_bf45",
+                  partnerApiKeyLabel: bf45PartnerKeyLabel.trim() || undefined,
+                  partnerApiKeyScopes: scopes,
+                }).then((res) => {
+                  if (!res) return;
+                  const plain = res.apiKeyPlaintext;
+                  if (typeof plain === "string" && plain.length > 0) {
+                    setBf45IssuedKeyPlaintext(plain);
+                  }
+                  setBf45PartnerKeyLabel("");
+                });
+              }}
+              className="rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-40 sm:col-span-2"
+            >
+              Issue partner API key
+            </button>
           </div>
         ) : null}
       </section>

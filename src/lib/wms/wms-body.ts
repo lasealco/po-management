@@ -253,6 +253,11 @@ export type WmsBody = {
   webhookEventTypes?: string[];
   webhookIsActive?: boolean;
 
+  /** BF-45 — partner API key lifecycle (`create_wms_partner_api_key_bf45`, `revoke_wms_partner_api_key_bf45`). */
+  partnerApiKeyId?: string;
+  partnerApiKeyLabel?: string;
+  partnerApiKeyScopes?: string[];
+
   /** BF-36 — `release_soft_reservation`. */
   softReservationId?: string;
   /** BF-36 — TTL seconds when `softReservationExpiresAt` omitted (server default 3600). */

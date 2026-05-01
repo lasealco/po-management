@@ -70,6 +70,12 @@ import {
   scheduleEmitWmsOutboundWebhooks,
   signingSecretSuffixFromSecret,
 } from "./outbound-webhook-dispatch";
+import {
+  generatePartnerApiKeyPlaintext,
+  hashPartnerApiKey,
+  parsePartnerApiKeyScopes,
+  partnerApiKeyPublicPrefix,
+} from "./partner-api-key";
 import { syncOutboundOrderStatusAfterPick } from "./outbound-workflow";
 import { warehouseZoneParentWouldCycle } from "./zone-hierarchy";
 import { parseMmForWrite, resolveBinAisleFieldsForWrite } from "./warehouse-aisle";
@@ -2918,6 +2924,77 @@ export async function handleWmsPost(
         entityType: "WMS_OUTBOUND_WEBHOOK_SUBSCRIPTION",
         entityId: sid,
         action: "bf44_webhook_subscription_deleted",
+        payload: {},
+        actorUserId: actorId,
+      },
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "create_wms_partner_api_key_bf45") {
+    const labelRaw = input.partnerApiKeyLabel?.trim();
+    const label =
+      labelRaw && labelRaw.length > 0 ? labelRaw.slice(0, 120) : "Partner integration";
+    const scopes = parsePartnerApiKeyScopes(input.partnerApiKeyScopes);
+    if (scopes.length === 0) {
+      return toApiErrorResponseFromStatus(
+        "partnerApiKeyScopes must include at least one scope.",
+        400,
+      );
+    }
+    const plaintext = generatePartnerApiKeyPlaintext();
+    const keyHash = hashPartnerApiKey(plaintext);
+    const keyPrefix = partnerApiKeyPublicPrefix(plaintext);
+    const row = await prisma.wmsPartnerApiKey.create({
+      data: {
+        tenantId,
+        label,
+        keyPrefix,
+        keyHash,
+        scopes,
+      },
+      select: { id: true },
+    });
+    await prisma.ctAuditLog.create({
+      data: {
+        tenantId,
+        entityType: "WMS_PARTNER_API_KEY",
+        entityId: row.id,
+        action: "bf45_partner_api_key_created",
+        payload: { scopes },
+        actorUserId: actorId,
+      },
+    });
+    return NextResponse.json({
+      ok: true,
+      partnerApiKeyId: row.id,
+      apiKeyPlaintext: plaintext,
+      keyPrefix,
+    });
+  }
+
+  if (action === "revoke_wms_partner_api_key_bf45") {
+    const kid = input.partnerApiKeyId?.trim();
+    if (!kid) {
+      return toApiErrorResponseFromStatus("partnerApiKeyId required.", 400);
+    }
+    const existing = await prisma.wmsPartnerApiKey.findFirst({
+      where: { id: kid, tenantId },
+      select: { id: true },
+    });
+    if (!existing) {
+      return toApiErrorResponseFromStatus("Partner API key not found.", 404);
+    }
+    await prisma.wmsPartnerApiKey.update({
+      where: { id: kid },
+      data: { isActive: false },
+    });
+    await prisma.ctAuditLog.create({
+      data: {
+        tenantId,
+        entityType: "WMS_PARTNER_API_KEY",
+        entityId: kid,
+        action: "bf45_partner_api_key_revoked",
         payload: {},
         actorUserId: actorId,
       },

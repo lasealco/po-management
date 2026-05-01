@@ -57,6 +57,125 @@ export function parseOutboundWebhookEventTypes(raw: unknown): WmsOutboundWebhook
   return [...new Set(out)];
 }
 
+/** Single HTTP POST attempt for one delivery (BF-44 emit + BF-45 cron retries). */
+export async function postOutboundWebhookDeliveryOnce(
+  url: string,
+  signingSecret: string,
+  eventType: WmsOutboundWebhookEventType,
+  deliveryId: string,
+  envelope: Record<string, unknown>,
+): Promise<{ ok: boolean; httpStatus: number | null; errorText: string | null }> {
+  const rawBody = JSON.stringify(envelope);
+  const sig = signOutboundWebhookBody(signingSecret, rawBody);
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-WMS-Webhook-Event": eventType,
+        "X-WMS-Webhook-Delivery-Id": deliveryId,
+        "X-WMS-Webhook-Signature": sig,
+      },
+      body: rawBody,
+      signal: AbortSignal.timeout(12_000),
+    });
+    const httpStatus = res.status;
+    if (res.ok) return { ok: true, httpStatus, errorText: null };
+    const snippet = (await res.text()).slice(0, 500);
+    return { ok: false, httpStatus, errorText: snippet || `HTTP ${httpStatus}` };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message.slice(0, 2000) : String(err).slice(0, 2000);
+    return { ok: false, httpStatus: null, errorText: msg };
+  }
+}
+
+/** BF-45 — drain FAILED deliveries whose `nextAttemptAt` has passed (cron). */
+export async function retryFailedOutboundWebhookDeliveries(limit = 25): Promise<{
+  examined: number;
+  retried: number;
+  delivered: number;
+}> {
+  const now = new Date();
+  const rows = await prisma.wmsOutboundWebhookDelivery.findMany({
+    where: {
+      status: "FAILED",
+      nextAttemptAt: { lte: now },
+      attemptCount: { lt: 8 },
+    },
+    orderBy: [{ nextAttemptAt: "asc" }],
+    take: limit,
+    include: {
+      subscription: { select: { url: true, signingSecret: true, isActive: true } },
+    },
+  });
+
+  let retried = 0;
+  let delivered = 0;
+
+  for (const d of rows) {
+    if (!d.subscription.isActive) {
+      await prisma.wmsOutboundWebhookDelivery.update({
+        where: { id: d.id },
+        data: {
+          nextAttemptAt: null,
+          lastError: "subscription_inactive",
+        },
+      });
+      continue;
+    }
+
+    const pj = d.payloadJson as Record<string, unknown>;
+    const envelope = {
+      schemaVersion: 1,
+      event: d.eventType,
+      occurredAt: pj.occurredAt,
+      tenantId: pj.tenantId,
+      deliveryId: d.id,
+      idempotencyKey: pj.idempotencyKey,
+      correlationId: pj.correlationId,
+      payload: pj.payload,
+    };
+
+    retried++;
+    const attemptAfter = d.attemptCount + 1;
+    const result = await postOutboundWebhookDeliveryOnce(
+      d.subscription.url,
+      d.subscription.signingSecret,
+      d.eventType,
+      d.id,
+      envelope,
+    );
+
+    if (result.ok) {
+      delivered++;
+      await prisma.wmsOutboundWebhookDelivery.update({
+        where: { id: d.id },
+        data: {
+          status: "DELIVERED",
+          attemptCount: attemptAfter,
+          lastHttpStatus: result.httpStatus,
+          lastError: null,
+          nextAttemptAt: null,
+        },
+      });
+    } else {
+      const backoffMs = computeOutboundWebhookBackoffMs(Math.max(0, attemptAfter - 1));
+      await prisma.wmsOutboundWebhookDelivery.update({
+        where: { id: d.id },
+        data: {
+          status: "FAILED",
+          attemptCount: attemptAfter,
+          lastHttpStatus: result.httpStatus,
+          lastError: result.errorText ?? "unknown",
+          nextAttemptAt: new Date(Date.now() + backoffMs),
+        },
+      });
+    }
+  }
+
+  return { examined: rows.length, retried, delivered };
+}
+
 export async function emitWmsOutboundWebhooks(
   tenantId: string,
   eventType: WmsOutboundWebhookEventType,
@@ -122,57 +241,37 @@ export async function emitWmsOutboundWebhooks(
       correlationId,
       payload,
     };
-    const rawBody = JSON.stringify(envelope);
-    const sig = signOutboundWebhookBody(sub.signingSecret, rawBody);
 
-    try {
-      const res = await fetch(sub.url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-WMS-Webhook-Event": eventType,
-          "X-WMS-Webhook-Delivery-Id": deliveryId,
-          "X-WMS-Webhook-Signature": sig,
+    const result = await postOutboundWebhookDeliveryOnce(
+      sub.url,
+      sub.signingSecret,
+      eventType,
+      deliveryId,
+      envelope,
+    );
+
+    const nextAttemptCount = 1;
+    const backoffMs = computeOutboundWebhookBackoffMs(Math.max(0, nextAttemptCount - 1));
+
+    if (result.ok) {
+      await prisma.wmsOutboundWebhookDelivery.update({
+        where: { id: deliveryId },
+        data: {
+          status: "DELIVERED",
+          attemptCount: nextAttemptCount,
+          lastHttpStatus: result.httpStatus,
+          lastError: null,
+          nextAttemptAt: null,
         },
-        body: rawBody,
-        signal: AbortSignal.timeout(12_000),
       });
-      const httpStatus = res.status;
-      const backoffMs = computeOutboundWebhookBackoffMs(0);
-      if (res.ok) {
-        await prisma.wmsOutboundWebhookDelivery.update({
-          where: { id: deliveryId },
-          data: {
-            status: "DELIVERED",
-            attemptCount: 1,
-            lastHttpStatus: httpStatus,
-            lastError: null,
-            nextAttemptAt: null,
-          },
-        });
-      } else {
-        const snippet = (await res.text()).slice(0, 500);
-        await prisma.wmsOutboundWebhookDelivery.update({
-          where: { id: deliveryId },
-          data: {
-            status: "FAILED",
-            attemptCount: 1,
-            lastHttpStatus: httpStatus,
-            lastError: snippet || `HTTP ${httpStatus}`,
-            nextAttemptAt: new Date(Date.now() + backoffMs),
-          },
-        });
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message.slice(0, 2000) : String(err).slice(0, 2000);
-      const backoffMs = computeOutboundWebhookBackoffMs(0);
+    } else {
       await prisma.wmsOutboundWebhookDelivery.update({
         where: { id: deliveryId },
         data: {
           status: "FAILED",
-          attemptCount: 1,
-          lastHttpStatus: null,
-          lastError: msg,
+          attemptCount: nextAttemptCount,
+          lastHttpStatus: result.httpStatus,
+          lastError: result.errorText ?? "unknown",
           nextAttemptAt: new Date(Date.now() + backoffMs),
         },
       });

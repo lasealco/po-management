@@ -36,9 +36,9 @@ Creating or updating a subscription replaces list state via POST `api/wms` (`cre
 
 Verify with the same helper pattern as BF-25 (`verifyTmsWebhookBodySignature`-equivalent: hex digest).
 
-## Delivery rows & retries (stub)
+## Delivery rows & retries
 
-Each attempt creates/updates `WmsOutboundWebhookDelivery`: status `QUEUED` → `DELIVERED` or `FAILED`, `attemptCount`, `lastHttpStatus`, `lastError`, `nextAttemptAt`. Failed deliveries use exponential backoff (cap 15 minutes); **automatic retry worker is BF-45** — BF-44 records state and performs the first immediate attempt only.
+Each attempt updates `WmsOutboundWebhookDelivery`: `PENDING` → `DELIVERED` or `FAILED`, plus `attemptCount`, `lastHttpStatus`, `lastError`, `nextAttemptAt`. Failed first attempts use exponential backoff (capped at five minutes in `computeOutboundWebhookBackoffMs`). **Cron retries:** `GET`/`POST` **`/api/cron/wms-outbound-webhook-retries`** with Bearer **`CRON_SECRET`** (see [`WMS_PARTNER_API_BF45.md`](./WMS_PARTNER_API_BF45.md)); scheduled every five minutes in **`vercel.json`** when deployed.
 
 ## Idempotency
 
@@ -47,4 +47,4 @@ Each attempt creates/updates `WmsOutboundWebhookDelivery`: status `QUEUED` → `
 ## Related
 
 - BF-25 TMS webhook ingest — signing convention alignment  
-- BF-45 — retry worker / DLQ (planned)
+- BF-45 — partner API surface + webhook retry cron ([`WMS_PARTNER_API_BF45.md`](./WMS_PARTNER_API_BF45.md))

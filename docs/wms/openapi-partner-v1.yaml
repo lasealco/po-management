@@ -1,0 +1,71 @@
+openapi: 3.0.3
+info:
+  title: WMS Partner API (BF-45)
+  version: "1.0.0"
+  description: >
+    Scoped read-only GET endpoints under /api/wms/partner/v1.
+    Authenticate with Bearer token or X-WMS-Partner-Key (plaintext key from Setup UI).
+servers:
+  - url: https://{host}
+    variables:
+      host:
+        default: example.com
+paths:
+  /api/wms/partner/v1/inventory-balances:
+    get:
+      summary: List inventory balances for one warehouse
+      security:
+        - PartnerApiKey: []
+      parameters:
+        - name: warehouseId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 2000
+            default: 500
+      responses:
+        "200":
+          description: Balances payload (schemaVersion 1)
+        "401":
+          description: Missing or invalid API key
+        "403":
+          description: Missing INVENTORY_READ scope
+        "404":
+          description: Warehouse not found for tenant
+  /api/wms/partner/v1/outbound-orders/{outboundOrderId}:
+    get:
+      summary: Get outbound order with lines
+      security:
+        - PartnerApiKey: []
+      parameters:
+        - name: outboundOrderId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Order payload (schemaVersion 1)
+        "401":
+          description: Missing or invalid API key
+        "403":
+          description: Missing OUTBOUND_READ scope
+        "404":
+          description: Order not found
+components:
+  securitySchemes:
+    PartnerApiKey:
+      type: http
+      scheme: bearer
+      bearerFormat: wmsp_live_...
+    PartnerApiKeyHeader:
+      type: apiKey
+      in: header
+      name: X-WMS-Partner-Key

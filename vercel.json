@@ -18,6 +18,10 @@
     {
       "path": "/api/cron/apihub-mapping-analysis-jobs",
       "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/cron/wms-outbound-webhook-retries",
+      "schedule": "*/5 * * * *"
     }
   ]
 }
