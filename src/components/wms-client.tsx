@@ -103,6 +103,10 @@ type WmsData = {
       pickedQty: string;
       packedQty: string;
       shippedQty: string;
+      commercialUnitPrice: string | null;
+      commercialListUnitPrice: string | null;
+      commercialPriceTierLabel: string | null;
+      commercialExtendedAmount: string | null;
     }>;
   }>;
   balances: Array<{
@@ -380,7 +384,7 @@ type SavedLedgerView = {
 
 export type WmsSection = "setup" | "operations" | "stock";
 
-/** BF-14 — server preview payload from `explode_crm_quote_to_outbound`. */
+/** BF-14 / BF-22 — server preview payload from `explode_crm_quote_to_outbound`. */
 type QuoteExplosionPreviewPayload = {
   outboundOrderId: string;
   outboundNo: string;
@@ -395,6 +399,12 @@ type QuoteExplosionPreviewPayload = {
     status: string;
     productId: string | null;
     productLabel: string | null;
+    contractUnitPrice: string;
+    listUnitPrice: string | null;
+    unitPriceDelta: string | null;
+    extendedContract: string;
+    extendedList: string | null;
+    priceTierLabel: string | null;
   }>;
 };
 
@@ -3614,15 +3624,25 @@ export function WmsClient({
                   <span key={l.id}>
                     L{l.lineNo}: pick {l.pickedQty}/{l.quantity} · pack {l.packedQty}/{l.quantity} · ship{" "}
                     {l.shippedQty}/{l.quantity}
+                    {l.commercialUnitPrice != null ? (
+                      <span className="text-zinc-500">
+                        {" "}
+                        · ctr {l.commercialUnitPrice}
+                        {l.commercialListUnitPrice != null ? ` vs list ${l.commercialListUnitPrice}` : ""}
+                        {l.commercialExtendedAmount != null ? ` (ext ${l.commercialExtendedAmount})` : ""}
+                        {l.commercialPriceTierLabel ? ` · ${l.commercialPriceTierLabel}` : ""}
+                      </span>
+                    ) : null}
                   </span>
                 ))}
               </div>
               {canQuoteExplode ? (
                 <div className="mt-3 rounded-xl border border-violet-200 bg-violet-50/60 p-3 text-xs">
-                  <p className="font-semibold text-violet-950">BF-14 · Quote lines → outbound lines</p>
+                  <p className="font-semibold text-violet-950">BF-14 / BF-22 · Quote lines → outbound lines</p>
                   <p className="mt-1 text-violet-900/90">
-                    Preview maps CRM quote SKUs to tenant products (respects product-division scope). Confirm applies only
-                    while this outbound has no lines.
+                    Preview maps CRM quote SKUs to tenant products (respects product-division scope). When quote lines
+                    carry list unit / tier (BF-22), preview shows contracted-vs-list deltas. Confirm applies only while this
+                    outbound has no lines.
                   </p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     <button
@@ -3701,6 +3721,7 @@ export function WmsClient({
                             <th className="px-2 py-1.5 text-right">Qty</th>
                             <th className="px-2 py-1.5">Status</th>
                             <th className="px-2 py-1.5">Product</th>
+                            <th className="px-2 py-1.5">Commercial (BF-22)</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -3711,6 +3732,21 @@ export function WmsClient({
                               <td className="px-2 py-1.5 text-right tabular-nums">{row.quantity}</td>
                               <td className="px-2 py-1.5">{row.status}</td>
                               <td className="px-2 py-1.5 text-zinc-700">{row.productLabel ?? "—"}</td>
+                              <td className="max-w-[14rem] px-2 py-1.5 align-top text-[10px] leading-snug text-zinc-700">
+                                <div>
+                                  ctr {row.contractUnitPrice ?? "—"} · ext {row.extendedContract ?? "—"}
+                                </div>
+                                {row.listUnitPrice != null ? (
+                                  <div className="mt-0.5">
+                                    list {row.listUnitPrice}
+                                    {row.unitPriceDelta != null ? ` · Δ/unit ${row.unitPriceDelta}` : ""}
+                                    {row.extendedList != null ? ` · ext list ${row.extendedList}` : ""}
+                                  </div>
+                                ) : null}
+                                {row.priceTierLabel ? (
+                                  <div className="mt-0.5 text-zinc-500">{row.priceTierLabel}</div>
+                                ) : null}
+                              </td>
                             </tr>
                           ))}
                         </tbody>

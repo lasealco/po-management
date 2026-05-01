@@ -17,7 +17,7 @@
 | ID | Mega phase (short) | Primary deferred signal ([`GAP_MAP.md`](./GAP_MAP.md)) | Typical depends on |
 |----|-------------------|--------------------------------------------------------|---------------------|
 | **BF-21** | Receipt accounting & ASN policies | **Minimal landed** — closed receipt history + idempotent close + optional **`RECEIPT_COMPLETE`** ([`WMS_RECEIVING_BF21.md`](./WMS_RECEIVING_BF21.md)); carrier ASN auto-close / GRN backlog | BF-12 **`WmsReceipt`** session |
-| **BF-22** | CPQ contracted pricing on outbound | Tier/contract pricing beyond SKU map (**BF-14**) | BF-10 / BF-14 commercial path |
+| **BF-22** | CPQ contracted pricing on outbound | **Minimal landed** — **`listUnitPrice`** / **`priceTierLabel`** on **`CrmQuoteLine`**, **`resolveQuoteLineCommercialPricing`**, explosion preview deltas + **`OutboundOrderLine.commercial*`** snapshots — [`WMS_CPQ_CONTRACT_PRICING_BF22.md`](./WMS_CPQ_CONTRACT_PRICING_BF22.md) | BF-10 / BF-14 commercial path |
 | **BF-23** | Allocation MILP / cube / labor | Solver beyond greedy + carton unit cap (**BF-15**) | BF-03 / BF-15 strategies stable |
 | **BF-24** | First-class **Aisle** / geometry hooks | mm/3D & aisle entities per [`WMS_ZONE_TOPOLOGY_ADR.md`](./WMS_ZONE_TOPOLOGY_ADR.md) | BF-04 **`parentZoneId`** stable |
 | **BF-25** | Production TMS / carrier EDI | Signed webhooks, certify, idempotent carrier IDs (**BF-17** stub → prod) | BF-05 / BF-17 dock transport |
@@ -47,7 +47,9 @@
 
 **Objective:** Apply **contract / tier / price-list** logic when exploding quotes or editing **`OutboundOrderLine`**, not only **`Product.sku`** mapping (**BF-14**).
 
-**Exit sketch:** CRM or WMS pricing resolver module; preview shows price deltas; **`WMS_COMMERCIAL_HANDOFF.md`** updated.
+**Minimal slice shipped (repo):** **`CrmQuoteLine.listUnitPrice`** + **`priceTierLabel`**; CRM **`POST/PATCH …/lines`** + quote detail UI; **`resolveQuoteLineCommercialPricing`**; **`explode_crm_quote_to_outbound`** preview rows carry contracted/list/delta/tier; confirm writes **`commercialUnitPrice`**, **`commercialListUnitPrice`**, **`commercialPriceTierLabel`**, **`commercialExtendedAmount`** on **`OutboundOrderLine`**; **`GET /api/wms`** exposes commercial snapshots; Operations UI preview + line chips; **`CtAuditLog`** **`commercialSnapshots: true`**; [`WMS_CPQ_CONTRACT_PRICING_BF22.md`](./WMS_CPQ_CONTRACT_PRICING_BF22.md); Vitest **`cpq-contract-pricing.test.ts`**.
+
+**Exit sketch (remaining):** External price books; volume ladders / tier matrices; automated CPQ solver.
 
 **Out of scope:** Full Salesforce CPQ parity, subscription billing.
 

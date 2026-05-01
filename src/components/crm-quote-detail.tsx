@@ -4,6 +4,53 @@ import { apiClientErrorMessage } from "@/lib/api-client-error";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
+function QuoteLineListTierEditor({
+  lineId,
+  initialList,
+  initialTier,
+  currency,
+  busy,
+  onSave,
+}: {
+  lineId: string;
+  initialList: string | null;
+  initialTier: string | null;
+  currency: string;
+  busy: boolean;
+  onSave: (lineId: string, listRaw: string, tierRaw: string) => void;
+}) {
+  const [list, setList] = useState(initialList ?? "");
+  const [tier, setTier] = useState(initialTier ?? "");
+
+  return (
+    <div className="flex max-w-[15rem] flex-col gap-1">
+      <input
+        value={list}
+        onChange={(e) => setList(e.target.value)}
+        placeholder={`List unit (${currency})`}
+        disabled={busy}
+        className="w-full rounded-lg border border-zinc-200 px-2 py-1 text-xs text-zinc-900"
+      />
+      <input
+        value={tier}
+        onChange={(e) => setTier(e.target.value)}
+        placeholder="Tier / contract label"
+        disabled={busy}
+        maxLength={64}
+        className="w-full rounded-lg border border-zinc-200 px-2 py-1 text-xs text-zinc-900"
+      />
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() => onSave(lineId, list, tier)}
+        className="shrink-0 rounded-lg border border-violet-200 bg-violet-50 px-2 py-1 text-[11px] font-medium text-violet-900 disabled:opacity-50"
+      >
+        Save terms
+      </button>
+    </div>
+  );
+}
+
 function QuoteLineSkuEditor({
   lineId,
   initialSku,
@@ -16,9 +63,6 @@ function QuoteLineSkuEditor({
   onSave: (lineId: string, sku: string) => void;
 }) {
   const [val, setVal] = useState(initialSku ?? "");
-  useEffect(() => {
-    setVal(initialSku ?? "");
-  }, [lineId, initialSku]);
 
   return (
     <div className="flex max-w-[11rem] flex-col gap-1 sm:flex-row sm:items-center">
@@ -48,6 +92,9 @@ type Line = {
   inventorySku: string | null;
   quantity: string;
   unitPrice: string;
+  /** BF-22 — optional catalog/list unit for contracted-vs-list deltas on explosion. */
+  listUnitPrice: string | null;
+  priceTierLabel: string | null;
   extendedAmount: string | null;
 };
 
@@ -89,6 +136,8 @@ export function CrmQuoteDetail({
   const [qty, setQty] = useState("1");
   const [price, setPrice] = useState("");
   const [lineSku, setLineSku] = useState("");
+  const [lineList, setLineList] = useState("");
+  const [lineTier, setLineTier] = useState("");
 
   const load = useCallback(async () => {
     setError(null);
@@ -137,15 +186,29 @@ export function CrmQuoteDetail({
     setBusy(true);
     setError(null);
     try {
+      const payload: Record<string, unknown> = {
+        description: desc.trim(),
+        quantity: qty,
+        unitPrice: price,
+        inventorySku: lineSku.trim() ? lineSku.trim() : null,
+      };
+      const listTrim = lineList.trim();
+      if (listTrim) {
+        const n = Number(listTrim);
+        if (Number.isNaN(n) || n <= 0) {
+          setError("List unit price must be a positive number.");
+          setBusy(false);
+          return;
+        }
+        payload.listUnitPrice = n;
+      }
+      const tierTrim = lineTier.trim().slice(0, 64);
+      if (tierTrim) payload.priceTierLabel = tierTrim;
+
       const res = await fetch(`/api/crm/quotes/${quoteId}/lines`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          description: desc.trim(),
-          quantity: qty,
-          unitPrice: price,
-          inventorySku: lineSku.trim() ? lineSku.trim() : null,
-        }),
+        body: JSON.stringify(payload),
       });
       const data: unknown = await res.json();
       if (!res.ok) throw new Error(apiClientErrorMessage(data, "Save failed"));
@@ -153,6 +216,43 @@ export function CrmQuoteDetail({
       setQty("1");
       setPrice("");
       setLineSku("");
+      setLineList("");
+      setLineTier("");
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Save failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveLineListTier(lineId: string, listRaw: string, tierRaw: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      const listTrim = listRaw.trim();
+      const tierTrim = tierRaw.trim().slice(0, 64);
+      const body: Record<string, unknown> = {
+        priceTierLabel: tierTrim ? tierTrim : null,
+      };
+      if (!listTrim) {
+        body.listUnitPrice = null;
+      } else {
+        const n = Number(listTrim);
+        if (Number.isNaN(n) || n <= 0) {
+          setError("List unit price must be a positive number.");
+          setBusy(false);
+          return;
+        }
+        body.listUnitPrice = n;
+      }
+      const res = await fetch(`/api/crm/quotes/${quoteId}/lines/${lineId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data: unknown = await res.json();
+      if (!res.ok) throw new Error(apiClientErrorMessage(data, "Save failed"));
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Save failed");
@@ -270,6 +370,9 @@ export function CrmQuoteDetail({
           Jump to WMS Operations with this quote and bill-to account prefilled for outbound creation (BF-10 quote
           lineage). Set each line&apos;s <span className="font-medium text-zinc-900">WMS SKU</span> to match{" "}
           <span className="font-medium text-zinc-900">Product.sku</span> before exploding lines on the outbound (BF-14).
+          Optional <span className="font-medium text-zinc-900">list unit</span> and{" "}
+          <span className="font-medium text-zinc-900">tier label</span> drive contracted-vs-list deltas in Operations preview
+          (BF-22).
         </p>
         <Link
           href={`/wms/operations?quoteId=${encodeURIComponent(quote.id)}&crmAccountId=${encodeURIComponent(quote.account.id)}`}
@@ -360,6 +463,7 @@ export function CrmQuoteDetail({
                 <th className="px-3 py-2 text-right">Qty</th>
                 <th className="px-3 py-2 text-right">Unit price</th>
                 <th className="px-3 py-2 text-right">Line total</th>
+                <th className="px-3 py-2">List · tier (BF-22)</th>
                 {canPatch ? <th className="px-3 py-2 text-right">Actions</th> : null}
               </tr>
             </thead>
@@ -367,7 +471,7 @@ export function CrmQuoteDetail({
               {quote.lines.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={canPatch ? 6 : 5}
+                    colSpan={canPatch ? 7 : 6}
                     className="px-3 py-10 text-center text-sm text-zinc-500"
                   >
                     No line items on this quote yet.
@@ -382,6 +486,7 @@ export function CrmQuoteDetail({
                       <td className="px-3 py-2 align-top">
                         {canPatch ? (
                           <QuoteLineSkuEditor
+                            key={`${l.id}-sku-${l.inventorySku ?? ""}`}
                             lineId={l.id}
                             initialSku={l.inventorySku}
                             busy={busy}
@@ -399,6 +504,26 @@ export function CrmQuoteDetail({
                       </td>
                       <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums text-zinc-900">
                         {l.extendedAmount != null ? `${l.extendedAmount} ${quote.currency}` : "—"}
+                      </td>
+                      <td className="min-w-[9rem] px-3 py-2 align-top text-xs text-zinc-700">
+                        {canPatch ? (
+                          <QuoteLineListTierEditor
+                            key={`${l.id}-lt-${l.listUnitPrice ?? ""}-${l.priceTierLabel ?? ""}`}
+                            lineId={l.id}
+                            initialList={l.listUnitPrice}
+                            initialTier={l.priceTierLabel}
+                            currency={quote.currency}
+                            busy={busy}
+                            onSave={saveLineListTier}
+                          />
+                        ) : (
+                          <span>
+                            {l.listUnitPrice != null ? `${l.listUnitPrice} ${quote.currency}` : "—"}
+                            {l.priceTierLabel ? (
+                              <span className="block text-zinc-500">{l.priceTierLabel}</span>
+                            ) : null}
+                          </span>
+                        )}
                       </td>
                       {canPatch ? (
                         <td className="px-3 py-2 text-right">
@@ -458,11 +583,26 @@ export function CrmQuoteDetail({
                 disabled={busy}
               />
               <input
-                placeholder="Unit price"
+                placeholder="Contract unit price"
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
                 className="rounded-lg border border-zinc-200 px-3 py-2 text-sm"
                 disabled={busy}
+              />
+              <input
+                placeholder="List unit (optional · BF-22)"
+                value={lineList}
+                onChange={(e) => setLineList(e.target.value)}
+                className="rounded-lg border border-zinc-200 px-3 py-2 text-sm sm:col-span-3"
+                disabled={busy}
+              />
+              <input
+                placeholder="Tier label (optional)"
+                value={lineTier}
+                onChange={(e) => setLineTier(e.target.value)}
+                className="rounded-lg border border-zinc-200 px-3 py-2 text-sm sm:col-span-3"
+                disabled={busy}
+                maxLength={64}
               />
               <button
                 type="submit"

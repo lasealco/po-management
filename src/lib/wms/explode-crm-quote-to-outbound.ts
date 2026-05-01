@@ -1,8 +1,9 @@
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 
 import { assertOutboundSourceQuoteAttachable } from "./crm-account-link";
+import { resolveQuoteLineCommercialPricing } from "./cpq-contract-pricing";
 
 export type QuoteExplosionRowStatus = "ok" | "missing_sku" | "unknown_sku" | "sku_not_in_scope";
 
@@ -14,6 +15,13 @@ export type QuoteExplosionPreviewRow = {
   status: QuoteExplosionRowStatus;
   productId: string | null;
   productLabel: string | null;
+  /** BF-22 — contracted unit (`CrmQuoteLine.unitPrice`). */
+  contractUnitPrice: string;
+  listUnitPrice: string | null;
+  unitPriceDelta: string | null;
+  extendedContract: string;
+  extendedList: string | null;
+  priceTierLabel: string | null;
 };
 
 export type QuoteExplosionPreview = {
@@ -110,15 +118,37 @@ export async function explodeCrmQuoteToOutbound(params: {
       description: true,
       quantity: true,
       inventorySku: true,
+      unitPrice: true,
+      listUnitPrice: true,
+      priceTierLabel: true,
     },
   });
 
   const rows: QuoteExplosionPreviewRow[] = [];
-  const resolved: Array<{ quoteLineId: string; productId: string; quantity: Prisma.Decimal }> = [];
+  const resolved: Array<{
+    quoteLineId: string;
+    productId: string;
+    quantity: Prisma.Decimal;
+    commercial: ReturnType<typeof resolveQuoteLineCommercialPricing>;
+  }> = [];
 
   for (const ql of quoteLines) {
+    const pricing = resolveQuoteLineCommercialPricing({
+      quantity: ql.quantity,
+      unitPrice: ql.unitPrice,
+      listUnitPrice: ql.listUnitPrice,
+      priceTierLabel: ql.priceTierLabel,
+    });
     const sku = normalizeQuoteInventorySku(ql.inventorySku);
     const qtyStr = ql.quantity.toString();
+    const priceSlice = {
+      contractUnitPrice: pricing.contractUnitPrice,
+      listUnitPrice: pricing.listUnitPrice,
+      unitPriceDelta: pricing.unitDelta,
+      extendedContract: pricing.extendedContract,
+      extendedList: pricing.extendedList,
+      priceTierLabel: pricing.tierLabel,
+    };
     if (!sku) {
       rows.push({
         quoteLineId: ql.id,
@@ -128,6 +158,7 @@ export async function explodeCrmQuoteToOutbound(params: {
         status: "missing_sku",
         productId: null,
         productLabel: null,
+        ...priceSlice,
       });
       continue;
     }
@@ -156,6 +187,7 @@ export async function explodeCrmQuoteToOutbound(params: {
         status: rowStatus,
         productId: null,
         productLabel: null,
+        ...priceSlice,
       });
       continue;
     }
@@ -168,11 +200,13 @@ export async function explodeCrmQuoteToOutbound(params: {
       status: "ok",
       productId: product.id,
       productLabel: productLabel(product),
+      ...priceSlice,
     });
     resolved.push({
       quoteLineId: ql.id,
       productId: product.id,
       quantity: ql.quantity,
+      commercial: pricing,
     });
   }
 
@@ -214,6 +248,12 @@ export async function explodeCrmQuoteToOutbound(params: {
           lineNo,
           productId: r.productId,
           quantity: r.quantity,
+          commercialUnitPrice: new Prisma.Decimal(r.commercial.contractUnitPrice),
+          commercialListUnitPrice: r.commercial.listUnitPrice
+            ? new Prisma.Decimal(r.commercial.listUnitPrice)
+            : null,
+          commercialPriceTierLabel: r.commercial.tierLabel,
+          commercialExtendedAmount: new Prisma.Decimal(r.commercial.extendedContract),
         },
       });
     }
@@ -227,6 +267,7 @@ export async function explodeCrmQuoteToOutbound(params: {
           outboundNo: order.outboundNo,
           sourceQuoteId: order.sourceCrmQuoteId,
           createdLineCount: resolved.length,
+          commercialSnapshots: true,
         },
         actorUserId: actorId,
       },

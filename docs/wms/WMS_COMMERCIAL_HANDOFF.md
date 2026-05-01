@@ -15,7 +15,7 @@ Define the **cross-module contract** for capsule **WE-07**: how commercial CRM o
 
 ## Minimal path (today)
 
-1. **Commercial** agrees SKU/qty/pricing in CRM (quote/opportunity) — outside WMS.
+1. **Commercial** agrees SKU/qty/pricing in CRM (quote/opportunity) — contracted **`unitPrice`** on lines; optional **`listUnitPrice`** / **`priceTierLabel`** for catalog-vs-contract deltas (**BF-22**, [`WMS_CPQ_CONTRACT_PRICING_BF22.md`](./WMS_CPQ_CONTRACT_PRICING_BF22.md)).
 2. **Operations** creates an outbound in WMS (**`create_outbound_order`**) with a **`crmAccountId`** selected from accounts the actor may access (**`org.crm` → view** + CRM scope — see `assertOutboundCrmAccountLinkable`).
 3. **Pick → pack → ship** proceeds as in [`WMS_PACKING_LABELS.md`](./WMS_PACKING_LABELS.md); CRM link is **locked after pack** (existing product rule).
 4. **Billing**: **`syncBillingEventsFromMovements`** resolves **`crmAccountId`** onto movements via outbound/shipment lineage (**`src/lib/wms/billing-crm-resolve.ts`**); invoice runs can aggregate under **`CRM_ACCOUNT`** profile source when events align.
@@ -28,6 +28,10 @@ Optional **`OutboundOrder.sourceCrmQuoteId → CrmQuote`** stores commercial quo
 
 CRM **`CrmQuoteLine.inventorySku`** holds the warehouse SKU (**maps to tenant **`Product.sku`**)** maintained from **`/crm/quotes/[id]`**. **`explode_crm_quote_to_outbound`** (**`POST /api/wms`**) previews SKU/qty mapping under the viewer’s **product-division read scope**; with **`quoteExplosionConfirm: true`** it inserts **`OutboundOrderLine`** rows on **quote-linked outbounds that have no lines yet** (DRAFT or RELEASED, not packed/shipped/cancelled). **`create_outbound_order`** accepts **zero lines** when **`sourceCrmQuoteId`** is present so operators can materialize lines after CRM SKU hygiene — **`CtAuditLog`** **`outbound_quote_lines_exploded`**.
 
+## BF-22 — List vs contracted pricing (minimal)
+
+Optional **`CrmQuoteLine.listUnitPrice`** and **`priceTierLabel`** document catalog/list vs **contracted **`unitPrice`**. Resolver **`resolveQuoteLineCommercialPricing`** drives explosion **preview deltas**; confirmed explosions snapshot **`commercial*`** fields on **`OutboundOrderLine`**. See [`WMS_CPQ_CONTRACT_PRICING_BF22.md`](./WMS_CPQ_CONTRACT_PRICING_BF22.md).
+
 ## API surfaces (WMS)
 
 | Mechanism | Role |
@@ -35,7 +39,7 @@ CRM **`CrmQuoteLine.inventorySku`** holds the warehouse SKU (**maps to tenant **
 | **`create_outbound_order`** (`crmAccountId` required today for create flow in product) | Anchors bill-to for downstream billing resolution |
 | **`create_outbound_order`** **`sourceCrmQuoteId`** (optional, BF-10) | Stores CRM quote lineage when **`CrmQuote.accountId`** matches **`crmAccountId`** |
 | **`create_outbound_order`** empty **`lines`** + **`sourceCrmQuoteId`** (BF-14) | Quote-shell outbound → explode fills SKU rows |
-| **`explode_crm_quote_to_outbound`** | BF-14 preview / confirm quote **`OutboundOrderLine`** explosion (`quoteExplosionConfirm`) |
+| **`explode_crm_quote_to_outbound`** | BF-14 preview / confirm quote **`OutboundOrderLine`** explosion (`quoteExplosionConfirm`); **BF-22** commercial columns on preview + line snapshots on apply |
 | **`set_outbound_crm_account`** | Adjust CRM link before pack where allowed; clears incompatible **`sourceCrmQuoteId`** |
 | **`mark_outbound_shipped`** | Emits **`SHIPMENT`** movements that feed billing materialization |
 
@@ -44,7 +48,7 @@ CRM **`CrmQuoteLine.inventorySku`** holds the warehouse SKU (**maps to tenant **
 | Item | Owner / note |
 |------|----------------|
 | Quote → outbound **line auto-create from CRM quote lines** | **BF-14 minimal landed** — `inventorySku` on **`CrmQuoteLine`** + **`explode_crm_quote_to_outbound`**; **full CPQ configurator / solver still backlog** |
-| Price list / contracted rates on outbound lines | Commercial pricing module — billing rates today are movement-type based |
+| Price list / contracted rates on outbound lines | **BF-22 minimal landed** — list unit + tier on quote line, resolver + explosion preview + **`OutboundOrderLine.commercial*`** snapshots ([`WMS_CPQ_CONTRACT_PRICING_BF22.md`](./WMS_CPQ_CONTRACT_PRICING_BF22.md)); external price books / ladder engines backlog |
 | Multi-currency quote alignment | Backlog |
 
 ## References

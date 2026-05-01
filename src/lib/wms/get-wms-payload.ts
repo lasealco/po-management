@@ -117,7 +117,17 @@ export async function getWmsDashboardPayload(
         },
         lines: {
           orderBy: { lineNo: "asc" },
-          include: {
+          select: {
+            id: true,
+            lineNo: true,
+            quantity: true,
+            pickedQty: true,
+            packedQty: true,
+            shippedQty: true,
+            commercialUnitPrice: true,
+            commercialListUnitPrice: true,
+            commercialPriceTierLabel: true,
+            commercialExtendedAmount: true,
             product: { select: { id: true, productCode: true, sku: true, name: true } },
           },
         },
@@ -472,6 +482,10 @@ export async function getWmsDashboardPayload(
         pickedQty: l.pickedQty.toString(),
         packedQty: l.packedQty.toString(),
         shippedQty: l.shippedQty.toString(),
+        commercialUnitPrice: l.commercialUnitPrice?.toString() ?? null,
+        commercialListUnitPrice: l.commercialListUnitPrice?.toString() ?? null,
+        commercialPriceTierLabel: l.commercialPriceTierLabel ?? null,
+        commercialExtendedAmount: l.commercialExtendedAmount?.toString() ?? null,
       })),
     })),
     balances: balances.map((b) => {

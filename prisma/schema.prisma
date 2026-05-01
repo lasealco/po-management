@@ -5015,6 +5015,13 @@ model OutboundOrderLine {
   pickedQty       Decimal  @default(0) @db.Decimal(14, 3)
   packedQty       Decimal  @default(0) @db.Decimal(14, 3)
   shippedQty      Decimal  @default(0) @db.Decimal(14, 3)
+  /// BF-22 — contracted unit price copied from `CrmQuoteLine.unitPrice` at explosion (nullable for legacy lines).
+  commercialUnitPrice Decimal? @db.Decimal(14, 4)
+  /// Optional list/catalog unit price snapshot when quote line carried `listUnitPrice`.
+  commercialListUnitPrice Decimal? @db.Decimal(14, 4)
+  commercialPriceTierLabel String? @db.VarChar(64)
+  /// qty × commercialUnitPrice at explosion time.
+  commercialExtendedAmount Decimal? @db.Decimal(14, 2)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -5414,7 +5421,12 @@ model CrmQuoteLine {
   /// BF-14 — maps to `Product.sku` (tenant) when exploding quote lines to outbound lines.
   inventorySku   String?  @db.VarChar(128)
   quantity       Decimal  @db.Decimal(14, 4)
+  /// Contracted / quoted unit price (commercial truth for subtotal).
   unitPrice      Decimal  @db.Decimal(14, 4)
+  /// BF-22 — optional list/catalog unit price for contracted-vs-list deltas in explosion preview.
+  listUnitPrice  Decimal? @db.Decimal(14, 4)
+  /// BF-22 — optional tier or contract label (audit / UX).
+  priceTierLabel String?  @db.VarChar(64)
   extendedAmount Decimal? @db.Decimal(14, 2)
 
   createdAt DateTime @default(now())

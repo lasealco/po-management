@@ -38,6 +38,10 @@ type PatchBody = {
   sortOrder?: number;
   /** BF-14 — WMS `Product.sku` mapping; null clears. */
   inventorySku?: string | null;
+  /** BF-22 — optional list/catalog unit; null clears. */
+  listUnitPrice?: string | number | null;
+  /** BF-22 — tier label; null clears. */
+  priceTierLabel?: string | null;
 };
 
 export async function PATCH(
@@ -86,6 +90,25 @@ export async function PATCH(
       return toApiErrorResponse({ error: "Invalid unitPrice.", code: "BAD_INPUT", status: 400 });
     }
     data.unitPrice = new Prisma.Decimal(String(price));
+  }
+  if (body.listUnitPrice !== undefined) {
+    if (body.listUnitPrice === null || body.listUnitPrice === "") {
+      data.listUnitPrice = null;
+    } else {
+      const lp = Number(body.listUnitPrice);
+      if (Number.isNaN(lp) || lp <= 0) {
+        return toApiErrorResponse({
+          error: "listUnitPrice must be positive when provided.",
+          code: "BAD_INPUT",
+          status: 400,
+        });
+      }
+      data.listUnitPrice = new Prisma.Decimal(String(lp));
+    }
+  }
+  if (body.priceTierLabel !== undefined) {
+    const t = body.priceTierLabel === null ? "" : String(body.priceTierLabel).trim();
+    data.priceTierLabel = t ? t.slice(0, 64) : null;
   }
   if (body.sortOrder !== undefined) data.sortOrder = Math.round(body.sortOrder);
 

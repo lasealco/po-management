@@ -58,9 +58,9 @@
 
 **Exit sketch:** Server action + validation + audit; WMS or CRM UI preview/diff; **`WMS_COMMERCIAL_HANDOFF.md`** updated; feature flagged or grant-gated.
 
-**Minimal slice shipped (repo):** **`CrmQuoteLine.inventorySku`** (maps to tenant **`Product.sku`**); CRM **`POST/PATCH …/lines`** + quote detail UI; **`explode_crm_quote_to_outbound`** on **`POST /api/wms`** (`quoteExplosionConfirm` false = preview JSON, true = insert lines when outbound has **no lines** and quote-linked); **`create_outbound_order`** allows **zero lines** when **`sourceCrmQuoteId`** is set (quote shell); Operations outbound card preview table + confirm; **`CtAuditLog`** **`outbound_quote_lines_exploded`**. Respects **BF-06** **`operations`** tier + **`loadWmsViewReadScope`** product-division filter on SKU resolution.
+**Minimal slice shipped (repo):** **`CrmQuoteLine.inventorySku`** (maps to tenant **`Product.sku`**); CRM **`POST/PATCH …/lines`** + quote detail UI; **`explode_crm_quote_to_outbound`** on **`POST /api/wms`** (`quoteExplosionConfirm` false = preview JSON, true = insert lines when outbound has **no lines** and quote-linked); **`create_outbound_order`** allows **zero lines** when **`sourceCrmQuoteId`** is set (quote shell); Operations outbound card preview table + confirm; **`CtAuditLog`** **`outbound_quote_lines_exploded`**. Respects **BF-06** **`operations`** tier + **`loadWmsViewReadScope`** product-division filter on SKU resolution. **BF-22:** optional **`listUnitPrice`** / **`priceTierLabel`**, resolver preview deltas + **`OutboundOrderLine.commercial*`** snapshots ([`WMS_CPQ_CONTRACT_PRICING_BF22.md`](./WMS_CPQ_CONTRACT_PRICING_BF22.md)).
 
-**Out of scope:** Full CPQ configurator, tier pricing solver.
+**Out of scope:** Full CPQ configurator; automated tier / ladder solver; external price-book sync.
 
 ---
 
@@ -142,7 +142,7 @@
 
 ---
 
-_Last updated: 2026-05-02 — **BF-20** minimal executive KPI proxy rates (`buildExecutiveRates`, `rates` + `rateMethodology` on **`fetchWmsHomeKpis`**, `/wms` copy); **2026-05-03** — **`BF-21`–`BF-30`** program draft [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md); **BF-19** minimal CRM HQ pins on CT map (`CrmAccount` map coords, `crmAccountPins`, scoped API + UI); **BF-18** minimal VAS multi-line BOM (`WmsWorkOrderBomLine`, `replace_work_order_bom_lines`, `consume_work_order_bom_line`, WMS UI, seed **`db:seed:wms-vas-bom-demo`**); **BF-15** minimal wave allocation v2 (`GREEDY_MIN_BIN_TOUCHES`, `pickWaveCartonUnits`, Setup UI); **BF-14** minimal (`inventorySku`, `explode_crm_quote_to_outbound`, WMS preview UI); program draft for BF-12 … BF-20 mega phases._
+_Last updated: 2026-05-03 — **BF-22** CPQ list/tier + outbound **`commercial*`** snapshots ([`WMS_CPQ_CONTRACT_PRICING_BF22.md`](./WMS_CPQ_CONTRACT_PRICING_BF22.md)); **2026-05-02** — **BF-20** minimal executive KPI proxy rates (`buildExecutiveRates`, `rates` + `rateMethodology` on **`fetchWmsHomeKpis`**, `/wms` copy); **`BF-21`–`BF-30`** program draft [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md); **BF-19** minimal CRM HQ pins on CT map (`CrmAccount` map coords, `crmAccountPins`, scoped API + UI); **BF-18** minimal VAS multi-line BOM (`WmsWorkOrderBomLine`, `replace_work_order_bom_lines`, `consume_work_order_bom_line`, WMS UI, seed **`db:seed:wms-vas-bom-demo`**); **BF-15** minimal wave allocation v2 (`GREEDY_MIN_BIN_TOUCHES`, `pickWaveCartonUnits`, Setup UI); **BF-14** minimal (`inventorySku`, `explode_crm_quote_to_outbound`, WMS preview UI); program draft for BF-12 … BF-20 mega phases._
 
 ---
 

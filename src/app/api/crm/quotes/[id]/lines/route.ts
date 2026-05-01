@@ -34,6 +34,10 @@ type PostBody = {
   sortOrder?: number;
   /** BF-14 — maps to `Product.sku` when exploding quote lines to outbound. */
   inventorySku?: string | null;
+  /** BF-22 — optional catalog/list unit (positive when set). */
+  listUnitPrice?: string | number | null;
+  /** BF-22 — optional tier / contract label. */
+  priceTierLabel?: string | null;
 };
 
 export async function POST(
@@ -87,6 +91,29 @@ export async function POST(
         ? null
         : String(skuRaw).trim().slice(0, 128);
 
+  let listUnitPrice: Prisma.Decimal | null | undefined = undefined;
+  if (body.listUnitPrice !== undefined) {
+    if (body.listUnitPrice === null || body.listUnitPrice === "") {
+      listUnitPrice = null;
+    } else {
+      const lp = Number(body.listUnitPrice);
+      if (Number.isNaN(lp) || lp <= 0) {
+        return toApiErrorResponse({
+          error: "listUnitPrice must be positive when provided.",
+          code: "BAD_INPUT",
+          status: 400,
+        });
+      }
+      listUnitPrice = new Prisma.Decimal(String(lp));
+    }
+  }
+
+  let priceTierLabel: string | null | undefined = undefined;
+  if (body.priceTierLabel !== undefined) {
+    const t = body.priceTierLabel === null ? "" : String(body.priceTierLabel).trim();
+    priceTierLabel = t ? t.slice(0, 64) : null;
+  }
+
   const line = await prisma.$transaction(async (tx) => {
     const created = await tx.crmQuoteLine.create({
       data: {
@@ -94,6 +121,8 @@ export async function POST(
         sortOrder,
         description,
         ...(inventorySku !== undefined ? { inventorySku } : {}),
+        ...(listUnitPrice !== undefined ? { listUnitPrice } : {}),
+        ...(priceTierLabel !== undefined ? { priceTierLabel } : {}),
         quantity: new Prisma.Decimal(String(qty)),
         unitPrice: new Prisma.Decimal(String(price)),
         extendedAmount: extended,
