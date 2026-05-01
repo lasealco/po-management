@@ -2,22 +2,24 @@
 
 ## Enterprise stance vs blueprint field matrix
 
-Blueprint references a granular **`wms_role_permission_matrix`**. This repo does **not** implement per-field ACLs on WMS entities.
+Blueprint references a granular **`wms_role_permission_matrix`**. This repo does **not** implement a full per-row permission table.
 
 **BF-06 (2026-04-29):** Three **scoped mutation tiers** — **`org.wms.setup`**, **`org.wms.operations`**, **`org.wms.inventory`** — each with **view / edit**, layered on legacy **`org.wms` → `edit`**. See [`WMS_RBAC_BF06.md`](./WMS_RBAC_BF06.md).
+
+**BF-16 (2026-04-29):** **`org.wms.inventory.lot`** (view / edit) narrows **lot/batch master** writes: **`set_wms_lot_batch`** is allowed with **`inventory.lot` → edit** alone. All **other** inventory-tier **`POST /api/wms`** actions still require **`org.wms.inventory` → edit** or legacy **`org.wms` → edit**. Manifest + evaluator: **`src/lib/wms/wms-inventory-field-acl.ts`**; **`/api/wms/saved-ledger-views`** POST/DELETE remain **`org.wms.inventory` → edit** only (qty-operator persona).
 
 **Chosen alternative (Phase A–B):**
 
 | Layer | Mechanism |
 |-------|-----------|
-| **Coarse HTTP auth** | Global grants **`org.wms` → `view`** / **`edit`** on **`/api/wms`** GET; **`POST`** actions gated by tier map **or** legacy **`org.wms` → `edit`** ([`WMS_RBAC_BF06.md`](./WMS_RBAC_BF06.md)). Nested routes: **`/api/wms/billing`** POST → **operations** tier; **`/api/wms/saved-ledger-views`** POST/DELETE → **inventory** tier. |
+| **Coarse HTTP auth** | Global grants **`org.wms` → `view`** / **`edit`** on **`/api/wms`** GET; **`POST`** actions gated by tier map **or** legacy **`org.wms` → `edit`** ([`WMS_RBAC_BF06.md`](./WMS_RBAC_BF06.md)), with **BF-16** inventory-tier split for **`set_wms_lot_batch`** vs qty-path actions. Nested routes: **`/api/wms/billing`** POST → **operations** tier; **`/api/wms/saved-ledger-views`** POST/DELETE → **`org.wms.inventory` → edit** (not **`inventory.lot`** alone). |
 | **Server UI gate** | **`WmsGate`** (`src/app/wms/wms-gate.tsx`) requires **`org.wms` → `view`** before rendering any `/wms/**` shell |
 | **Read scoping** | **`loadWmsViewReadScope`** narrows inbound shipments, outbound orders, CRM-linked payloads, product division filters — consistent with PO/CRM/Control Tower |
-| **Mutations** | Section-aware **`canEdit`** from **`viewerHasWmsSectionMutationEdit`** (Setup / Operations / Stock / Billing billing shell uses **operations** tier); interactive surfaces match tier gates |
+| **Mutations** | Section-aware **`canEdit`** from **`viewerHasWmsSectionMutationEdit`** (Setup / Operations / Stock / Billing billing shell uses **operations** tier); **Stock** also passes **`inventoryQtyEdit`** / **`inventoryLotEdit`** when qty vs lot separation applies (**BF-16**) |
 | **CRM outbound link** | **`assertOutboundCrmAccountLinkable`** enforces **`org.crm` → view** + CRM list scope |
 | **Evidence** | **`InventoryMovement.createdById`** on posted quantities; **`CtAuditLog`** on selected transitions (below) |
 
-Future **field-level** enforcement belongs in a dedicated RBAC epic with schema + middleware — optional tightening beyond BF-06 tier split.
+Further **field-level** rows extend **`WMS_POST_ACTIONS_LOT_METADATA_SCOPED`** (or sibling manifests) + **`gateWmsPostMutation`** — optional tightening beyond BF-06 tier split.
 
 ## HTTP enforcement inventory
 
@@ -57,4 +59,4 @@ Other **`POST`** actions (tasks, holds, waves, dock appointments, etc.) rely on 
 
 ## Critical-path verification
 
-Automated inventory: **`src/lib/wms/wms-api-grants.test.ts`** ensures the documented endpoint grant table stays in sync with WE-08 route shells; **`src/lib/wms/wms-mutation-tiers.test.ts`** guards BF-06 action→tier mapping.
+Automated inventory: **`src/lib/wms/wms-api-grants.test.ts`** ensures the documented endpoint grant table stays in sync with WE-08 route shells; **`src/lib/wms/wms-mutation-tiers.test.ts`** guards BF-06 action→tier mapping; **`src/lib/wms/wms-inventory-field-acl.test.ts`** guards BF-16 lot-only vs qty-path decisions.

@@ -8,7 +8,8 @@
 |----------|---------|--------|
 | **`org.wms.setup`** | view / edit | Zones, bins, replenishment **rules**, warehouse **allocation strategy** |
 | **`org.wms.operations`** | view / edit | Task execution, waves, dock appointments + yard milestones, inbound/outbound mutations, VAS / work orders, **WMS billing** POST (`/api/wms/billing`) |
-| **`org.wms.inventory`** | view / edit | Balance holds, cycle counts, **`WmsLotBatch`** / `set_wms_lot_batch`, **saved ledger views** (`/api/wms/saved-ledger-views`) |
+| **`org.wms.inventory`** | view / edit | Balance holds, cycle counts, serialization POST actions, **saved ledger views** (`/api/wms/saved-ledger-views`) — **not** standalone lot-master (**BF-16** uses **`org.wms.inventory.lot`**) |
+| **`org.wms.inventory.lot`** | view / edit | **`WmsLotBatch`** via **`set_wms_lot_batch`** without **`org.wms.inventory` → edit** (**BF-16**) |
 
 Legacy **`org.wms` → `edit`** still implies **full** mutation access (backward compatible).
 
@@ -16,14 +17,17 @@ Legacy **`org.wms` → `edit`** still implies **full** mutation access (backward
 
 For each **`POST /api/wms`** `action`, allow mutation iff:
 
-`org.wms` → **edit** **OR** `org.wms.{setup|operations|inventory}` → **edit** for the mapped tier.
+`org.wms` → **edit** **OR** `org.wms.{setup|operations|inventory}` → **edit** for the mapped tier, **except** inventory-tier actions handled under **BF-16**:
 
-Implementation: `wmsMutationTierForPostAction` in `src/lib/wms/wms-mutation-tiers.ts` + `gateWmsPostMutation` in `src/lib/wms/wms-mutation-grants.ts`.
+- **`set_wms_lot_batch`** — **`org.wms` → edit** OR **`org.wms.inventory` → edit** OR **`org.wms.inventory.lot` → edit**
+- **Other inventory-tier actions** — **`org.wms` → edit** OR **`org.wms.inventory` → edit** (`inventory.lot` alone is insufficient)
+
+Implementation: `wmsMutationTierForPostAction` in `src/lib/wms/wms-mutation-tiers.ts` + `gateWmsPostMutation` in `src/lib/wms/wms-mutation-grants.ts` + **`evaluateWmsInventoryPostMutationAccess`** in `src/lib/wms/wms-inventory-field-acl.ts`.
 
 ## UI
 
-Workspace pages pass section-aware **`canEdit`** (`viewerHasWmsSectionMutationEdit`): Setup → **setup**, Operations (+ Billing shell) → **operations**, Stock → **inventory**.
+Workspace pages pass section-aware **`canEdit`** (`viewerHasWmsSectionMutationEdit`): Setup → **setup**, Operations (+ Billing shell) → **operations**, Stock → **inventory** (opens with **`inventory.lot`** alone for partial edit). Stock also receives **`inventoryQtyEdit`** / **`inventoryLotEdit`** from **`viewerHasWmsInventoryQtyMutationEdit`** / **`viewerHasWmsInventoryLotMutationEdit`**.
 
 ## Residual backlog
 
-Per-field deny rules on JSON payloads, ABAC by warehouse, or a dedicated RBAC schema row per blueprint matrix row — still **out of scope**.
+Row-per-blueprint-matrix grants in SQL, per-field deny rules inside JSON payloads, ABAC by warehouse, or a dedicated RBAC schema row per blueprint matrix row — still **out of scope** beyond **BF-16** manifest slice.

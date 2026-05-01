@@ -80,7 +80,9 @@
 
 **Objective:** Extend **`WMS_RBAC_AND_AUDIT.md`** with **field/action** rules beyond **`gateWmsPostMutation`** tiers (e.g., who may adjust lot expiry vs qty).
 
-**Exit sketch:** Policy table or rule JSON + enforcement on selected mutations; admin UI or seed manifest; docs + API tests.
+**Minimal slice shipped (repo):** Global **`org.wms.inventory.lot`** (view / edit) in **`GLOBAL_PERMISSION_CATALOG`**; manifest **`WMS_POST_ACTIONS_LOT_METADATA_SCOPED`** (`set_wms_lot_batch` today) in **`src/lib/wms/wms-inventory-field-acl.ts`**; **`gateWmsPostMutation`** splits inventory-tier POST actions so **lot-only** editors cannot post holds, cycle counts, serial registry actions, etc.; Stock workspace (**`/wms/stock`**) disables qty-path controls unless **`org.wms.inventory` → edit** (or legacy **`org.wms` → edit**). Buyer/Superuser demo seeds include **`inventory.lot`** alongside **`inventory`**. Vitest: **`wms-inventory-field-acl.test.ts`**.
+
+**Exit sketch (remaining):** Broader matrix rows / admin assignment UX / **`CtAuditLog`** on additional transitions.
 
 **Out of scope:** Full ABAC, cross-tenant federation.
 

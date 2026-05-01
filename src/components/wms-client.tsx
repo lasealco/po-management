@@ -480,7 +480,21 @@ function readSsccDemoCompanyPrefixDigits(): string | null {
   return d.length >= 7 && d.length <= 10 ? d : null;
 }
 
-export function WmsClient({ canEdit, section }: { canEdit: boolean; section: WmsSection }) {
+export function WmsClient({
+  canEdit,
+  section,
+  inventoryQtyEdit,
+  inventoryLotEdit,
+}: {
+  canEdit: boolean;
+  section: WmsSection;
+  /** BF-16 Stock — qty-path mutations (holds, saved ledger views, serial registry). Defaults to `canEdit`. */
+  inventoryQtyEdit?: boolean;
+  /** BF-16 Stock — lot/batch master (`set_wms_lot_batch`). Defaults to `canEdit`. */
+  inventoryLotEdit?: boolean;
+}) {
+  const stockQtyEdit = inventoryQtyEdit ?? canEdit;
+  const stockLotEdit = inventoryLotEdit ?? canEdit;
   const ssccDemoCompanyPrefixDigits = readSsccDemoCompanyPrefixDigits();
   const router = useRouter();
   const pathname = usePathname();
@@ -4052,13 +4066,23 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
 
       {section === "stock" ? (
         <>
+        {stockLotEdit && !stockQtyEdit ? (
+          <section className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3">
+            <p className="text-xs font-semibold text-amber-950">Limited Stock workspace edit</p>
+            <p className="mt-1 text-xs text-amber-900">
+              You can update lot/batch master data only. Balance holds, saved ledger views, and serialization registry
+              actions require <span className="font-medium">org.wms.inventory → edit</span> (or legacy{" "}
+              <span className="font-medium">org.wms → edit</span>).
+            </p>
+          </section>
+        ) : null}
       <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
         <div className="flex flex-wrap items-end gap-2">
           <div className="min-w-[16rem] flex-1">
             <h2 className="text-sm font-semibold text-zinc-900">Saved views</h2>
             <p className="mt-1 text-xs text-zinc-600">
               Save ledger filter combinations for faster operational review and repeatable stakeholder walkthroughs.
-              {!canEdit ? " Saving and deleting views requires WMS edit access." : ""}
+              {!stockQtyEdit ? " Saving and deleting views requires org.wms.inventory → edit." : ""}
             </p>
           </div>
           <button
@@ -4106,7 +4130,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
           </button>
           <button
             type="button"
-            disabled={!canEdit || !selectedSavedViewId}
+            disabled={!stockQtyEdit || !selectedSavedViewId}
             onClick={() => {
               if (!selectedSavedViewId) return;
               void deleteSavedView(selectedSavedViewId);
@@ -4125,7 +4149,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
           />
           <button
             type="button"
-            disabled={!canEdit || !newSavedViewName.trim()}
+            disabled={!stockQtyEdit || !newSavedViewName.trim()}
             onClick={() => void createSavedView()}
             className="rounded border border-[var(--arscmp-primary)] bg-[var(--arscmp-primary)] px-3 py-2 text-xs font-semibold text-white disabled:opacity-40"
           >
@@ -4275,7 +4299,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
           </div>
         ) : null}
 
-        {canEdit ? (
+        {stockQtyEdit ? (
           <div className="mt-5 grid gap-4 lg:grid-cols-3">
             <div className="rounded-xl border border-zinc-200 p-3">
               <p className="text-[11px] font-semibold text-zinc-800">Register serial</p>
@@ -4422,7 +4446,10 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
             </div>
           </div>
         ) : (
-          <p className="mt-4 text-xs text-zinc-500">Register / attach / balance mutations require WMS edit on the inventory tier.</p>
+          <p className="mt-4 text-xs text-zinc-500">
+            Register / attach / balance mutations require <span className="font-medium">org.wms.inventory → edit</span>{" "}
+            (or legacy full WMS edit).
+          </p>
         )}
       </section>
 
@@ -4626,7 +4653,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
           </label>
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
-          {canEdit ? (
+          {stockLotEdit ? (
             <button
               type="button"
               disabled={busy || !lotBatchProductId || !lotBatchCode.trim()}
@@ -4645,7 +4672,9 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
               Save lot batch
             </button>
           ) : (
-            <p className="text-xs text-zinc-500">WMS edit access required to save lot batches.</p>
+            <p className="text-xs text-zinc-500">
+              org.wms.inventory.lot → edit (or broader inventory / legacy WMS edit) required to save lot batches.
+            </p>
           )}
         </div>
         <div className="mt-4 overflow-x-auto">
@@ -4684,7 +4713,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                       {new Date(lb.updatedAt).toLocaleString()}
                     </td>
                     <td className="px-2 py-1">
-                      {canEdit ? (
+                      {stockLotEdit ? (
                         <button
                           type="button"
                           className="rounded border border-zinc-300 px-2 py-0.5 text-xs font-medium text-zinc-800"
@@ -4804,7 +4833,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                       )}
                     </td>
                     <td className="whitespace-nowrap px-2 py-1">
-                      {canEdit && !Boolean(b.onHold) ? (
+                      {stockQtyEdit && !Boolean(b.onHold) ? (
                         <button
                           type="button"
                           disabled={busy}
@@ -4825,7 +4854,7 @@ export function WmsClient({ canEdit, section }: { canEdit: boolean; section: Wms
                           Set hold
                         </button>
                       ) : null}
-                      {canEdit && b.onHold ? (
+                      {stockQtyEdit && b.onHold ? (
                         <button
                           type="button"
                           disabled={busy}

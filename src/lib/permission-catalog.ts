@@ -117,7 +117,20 @@ export const GLOBAL_PERMISSION_CATALOG = [
     resource: "org.wms.inventory",
     action: "edit",
     label: "Manage WMS inventory controls",
-    description: "Change balance holds, cycle counts, and tenant lot/batch profiles tied to stock.",
+    description:
+      "Balance holds, cycle counts, serialization (`register_inventory_serial`, …), saved ledger views — not lot-master alone (BF-16: see org.wms.inventory.lot).",
+  },
+  {
+    resource: "org.wms.inventory.lot",
+    action: "view",
+    label: "View lot/batch master registry",
+    description: "Read WMS lot/batch metadata profiles (BF-16 scope).",
+  },
+  {
+    resource: "org.wms.inventory.lot",
+    action: "edit",
+    label: "Edit lot/batch master registry",
+    description: "Create/update `WmsLotBatch` via `set_wms_lot_batch` without broader inventory qty controls (BF-16).",
   },
   {
     resource: "org.crm",

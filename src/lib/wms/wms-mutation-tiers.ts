@@ -1,7 +1,4 @@
-/**
- * BF-06 — Map each `POST /api/wms` action to a coarse mutation tier (setup / operations / inventory).
- * Users need `org.wms` → **edit** **or** `org.wms.{tier}` → **edit** for the mapped tier.
- */
+/** BF-06 — coarse tier per `POST /api/wms` action; BF-16 refines the `inventory` tier for some actions — see `wms-inventory-field-acl.ts`. */
 export type WmsMutationTier = "setup" | "operations" | "inventory";
 
 const WMS_POST_ACTION_TIER: Record<string, WmsMutationTier> = {

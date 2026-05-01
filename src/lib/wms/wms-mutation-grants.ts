@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { userHasGlobalGrant } from "@/lib/authz";
 
+import { evaluateWmsInventoryPostMutationAccess } from "./wms-inventory-field-acl";
 import { wmsMutationTierForPostAction, type WmsMutationTier } from "./wms-mutation-tiers";
 
 async function hasLegacyWmsEdit(actorId: string): Promise<boolean> {
@@ -38,7 +39,23 @@ export async function gateWmsPostMutation(actorId: string, action: string | unde
     }
     return null;
   }
+
   if (await hasLegacyWmsEdit(actorId)) return null;
+
+  /** BF-16 — split lot-metadata (`org.wms.inventory.lot`) vs qty-path inventory mutations. */
+  if (tier === "inventory") {
+    const inventoryEdit = await userHasGlobalGrant(actorId, "org.wms.inventory", "edit");
+    const inventoryLotEdit = await userHasGlobalGrant(actorId, "org.wms.inventory.lot", "edit");
+    const decision = evaluateWmsInventoryPostMutationAccess({
+      action: raw,
+      legacyWmsEdit: false,
+      inventoryEdit,
+      inventoryLotEdit,
+    });
+    if (decision.allowed) return null;
+    return NextResponse.json({ error: decision.error }, { status: 403 });
+  }
+
   if (await hasTierEdit(actorId, tier)) return null;
   return NextResponse.json(
     { error: `Forbidden: requires org.wms → edit or org.wms.${tier} → edit for action "${raw}".` },

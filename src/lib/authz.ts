@@ -71,7 +71,7 @@ function mergeDemoLegacyGrants(
     ensure("org.scri", "edit");
   }
 
-  for (const res of ["org.wms.setup", "org.wms.operations", "org.wms.inventory"] as const) {
+  for (const res of ["org.wms.setup", "org.wms.operations", "org.wms.inventory", "org.wms.inventory.lot"] as const) {
     ensure(res, "view");
     ensure(res, "edit");
   }
@@ -253,16 +253,41 @@ export function viewerHasAnyWmsMutationEdit(grantSet: Set<string>): boolean {
     viewerHas(grantSet, "org.wms", "edit") ||
     viewerHas(grantSet, "org.wms.setup", "edit") ||
     viewerHas(grantSet, "org.wms.operations", "edit") ||
-    viewerHas(grantSet, "org.wms.inventory", "edit")
+    viewerHas(grantSet, "org.wms.inventory", "edit") ||
+    viewerHas(grantSet, "org.wms.inventory.lot", "edit")
   );
 }
 
 /**
- * BF-06 — Section workspace edit: legacy `org.wms` edit or `org.wms.{setup|operations|inventory}` edit.
+ * BF-06 + BF-16 — Stock workspace: qty-path inventory mutations (holds, cycle count on ops page, serial registry,
+ * saved ledger views API tier uses `org.wms.inventory` via `gateWmsTierMutation`).
+ */
+export function viewerHasWmsInventoryQtyMutationEdit(grantSet: Set<string>): boolean {
+  return viewerHas(grantSet, "org.wms", "edit") || viewerHas(grantSet, "org.wms.inventory", "edit");
+}
+
+/** BF-16 — `set_wms_lot_batch` and Stock UI lot-master panel. */
+export function viewerHasWmsInventoryLotMutationEdit(grantSet: Set<string>): boolean {
+  return (
+    viewerHas(grantSet, "org.wms", "edit") ||
+    viewerHas(grantSet, "org.wms.inventory", "edit") ||
+    viewerHas(grantSet, "org.wms.inventory.lot", "edit")
+  );
+}
+
+/**
+ * BF-06 — Section workspace edit: legacy `org.wms` edit or scoped tier edit.
+ * BF-16 — Stock (`inventory`) also accepts `org.wms.inventory.lot → edit` for partial mutation shells.
  */
 export function viewerHasWmsSectionMutationEdit(
   grantSet: Set<string>,
   section: "setup" | "operations" | "inventory",
 ): boolean {
-  return viewerHas(grantSet, "org.wms", "edit") || viewerHas(grantSet, `org.wms.${section}`, "edit");
+  if (viewerHas(grantSet, "org.wms", "edit")) return true;
+  if (section === "inventory") {
+    return (
+      viewerHas(grantSet, "org.wms.inventory", "edit") || viewerHas(grantSet, "org.wms.inventory.lot", "edit")
+    );
+  }
+  return viewerHas(grantSet, `org.wms.${section}`, "edit");
 }
