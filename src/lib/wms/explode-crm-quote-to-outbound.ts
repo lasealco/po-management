@@ -137,7 +137,7 @@ export async function explodeCrmQuoteToOutbound(params: {
       ? { AND: [baseWhere, productScope] }
       : baseWhere;
 
-    let product = await prisma.product.findFirst({
+    const product = await prisma.product.findFirst({
       where: scopedWhere,
       select: { id: true, name: true, sku: true, productCode: true },
     });

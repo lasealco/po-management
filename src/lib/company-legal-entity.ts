@@ -1,8 +1,6 @@
 import type { CompanyLegalEntity, OrgUnitKind, Prisma } from "@prisma/client";
 
-import { userIsSuperuser } from "@/lib/authz";
 import { canActorAccessOrgUnitSubtree } from "@/lib/org-unit-admin-scope";
-import { orgUnitSubtreeIds } from "@/lib/org-scope";
 import { prisma } from "@/lib/prisma";
 
 /**

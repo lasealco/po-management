@@ -202,7 +202,7 @@ export function buildDedupeMerge(inputs: IncidentNerveCenterInputs) {
   };
 }
 
-export function buildCustomerComms(inputs: IncidentNerveCenterInputs) {
+export function buildCustomerComms() {
   return {
     safeCommsChecklist: [
       "Remove internal-only supplier economics before sharing externally.",
@@ -236,7 +236,7 @@ export function buildIncidentNerveCenterPacket(inputs: IncidentNerveCenterInputs
   const playbookRecovery = buildPlaybookRecovery(inputs);
   const financeIntegration = buildFinanceIntegration(inputs);
   const dedupeMerge = buildDedupeMerge(inputs);
-  const customerComms = buildCustomerComms(inputs);
+  const customerComms = buildCustomerComms();
 
   const nerveScore = clamp(
     Math.round(
