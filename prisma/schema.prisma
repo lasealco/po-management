@@ -3719,6 +3719,19 @@ enum WmsReceiptStatus {
   CLOSED
 }
 
+/// BF-41 — distinguishes Po-linked inbound vs customer / marketplace returns on `Shipment`.
+enum WmsInboundSubtype {
+  STANDARD
+  CUSTOMER_RETURN
+}
+
+/// BF-41 — how physical receipt should be handled for customer-return lines (putaway / holds).
+enum WmsReturnLineDisposition {
+  RESTOCK
+  SCRAP
+  QUARANTINE
+}
+
 model Shipment {
   id                      String         @id @default(cuid())
   orderId                 String
@@ -3754,6 +3767,12 @@ model Shipment {
   wmsCrossDock            Boolean        @default(false)
   /// BF-37 — flow-through style moves (lighter putaway path when aligned with demand).
   wmsFlowThrough          Boolean        @default(false)
+  /// BF-41 — customer-return receiving (RMA) vs standard PO inbound.
+  wmsInboundSubtype              WmsInboundSubtype @default(STANDARD)
+  /// BF-41 — operator / retailer RMA identifier (free text).
+  wmsRmaReference                String?           @db.VarChar(128)
+  /// BF-41 — optional lineage to an outbound this return references (same tenant).
+  returnSourceOutboundOrderId    String?
   /// Main commodity description for customs / booking screens.
   cargoCommoditySummary   String?        @db.Text
   notes                   String?
@@ -3772,6 +3791,7 @@ model Shipment {
   opsAssignee                User?                         @relation("ShipmentOpsAssignee", fields: [opsAssigneeUserId], references: [id], onDelete: SetNull)
   wmsReceiveUpdatedBy        User?                         @relation("ShipmentWmsReceiveUpdatedBy", fields: [wmsReceiveUpdatedById], references: [id], onDelete: SetNull)
   createdBy                  User                          @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  returnSourceOutboundOrder OutboundOrder?                 @relation("ShipmentReturnSourceOutbound", fields: [returnSourceOutboundOrderId], references: [id], onDelete: SetNull)
   items                      ShipmentItem[]
   loadPlanShipment           LoadPlanShipment?
   booking                    ShipmentBooking?
@@ -3800,6 +3820,7 @@ model Shipment {
   @@index([salesOrderId])
   @@index([opsAssigneeUserId])
   @@index([wmsReceiveUpdatedById])
+  @@index([returnSourceOutboundOrderId])
 }
 
 model ShipmentItem {
@@ -3817,6 +3838,8 @@ model ShipmentItem {
   /// BF-01 — variance disposition vs `quantityShipped` after receiving count (see `set_shipment_item_receive_line`).
   wmsVarianceDisposition WmsShipmentItemVarianceDisposition @default(UNSET)
   wmsVarianceNote        String?                            @db.VarChar(1000)
+  /// BF-41 — restock vs scrap vs quarantine path for customer-return lines (`Shipment.wmsInboundSubtype`).
+  wmsReturnDisposition   WmsReturnLineDisposition?
 
   shipment            Shipment               @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
   orderItem           PurchaseOrderItem      @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
@@ -5174,6 +5197,7 @@ model OutboundOrder {
   createdBy  User                @relation(fields: [createdById], references: [id], onDelete: Restrict)
   lines             OutboundOrderLine[]
   dockAppointments  WmsDockAppointment[]
+  linkedReturnShipments Shipment[]        @relation("ShipmentReturnSourceOutbound")
 
   @@unique([tenantId, outboundNo])
   @@index([tenantId, warehouseId, status])

@@ -24,6 +24,14 @@ export type WmsBody = {
   wmsCrossDock?: boolean;
   /** BF-37 — flow-through tag (`set_shipment_inbound_fields`). */
   wmsFlowThrough?: boolean;
+  /** BF-41 — inbound subtype (`set_shipment_inbound_fields`). */
+  wmsInboundSubtype?: "STANDARD" | "CUSTOMER_RETURN";
+  /** BF-41 — RMA reference (`set_shipment_inbound_fields`). */
+  wmsRmaReference?: string | null;
+  /** BF-41 — optional outbound lineage (`set_shipment_inbound_fields`). */
+  returnSourceOutboundOrderId?: string | null;
+  /** BF-41 — line disposition for customer returns (`set_shipment_item_return_disposition`). */
+  wmsReturnDisposition?: "RESTOCK" | "SCRAP" | "QUARANTINE";
   /** `ShipmentMilestoneCode` value for `record_shipment_milestone`. */
   milestoneCode?: string;
   outboundOrderId?: string;

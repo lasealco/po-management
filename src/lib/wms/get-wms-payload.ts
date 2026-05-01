@@ -271,6 +271,9 @@ export async function getWmsDashboardPayload(
         asnQtyTolerancePct: true,
         wmsCrossDock: true,
         wmsFlowThrough: true,
+        wmsInboundSubtype: true,
+        wmsRmaReference: true,
+        returnSourceOutboundOrderId: true,
         shippedAt: true,
         receivedAt: true,
         wmsReceiveStatus: true,
@@ -278,6 +281,7 @@ export async function getWmsDashboardPayload(
         wmsReceiveUpdatedAt: true,
         wmsReceiveUpdatedBy: { select: { id: true, name: true } },
         order: { select: { orderNumber: true } },
+        returnSourceOutboundOrder: { select: { id: true, outboundNo: true } },
         _count: { select: { items: true } },
         milestones: {
           orderBy: { createdAt: "desc" },
@@ -297,6 +301,7 @@ export async function getWmsDashboardPayload(
             quantityReceived: true,
             wmsVarianceDisposition: true,
             wmsVarianceNote: true,
+            wmsReturnDisposition: true,
             orderItem: { select: { lineNo: true, description: true } },
           },
         },
@@ -768,6 +773,12 @@ export async function getWmsDashboardPayload(
         asnQtyTolerancePct: s.asnQtyTolerancePct != null ? s.asnQtyTolerancePct.toString() : null,
         wmsCrossDock: s.wmsCrossDock,
         wmsFlowThrough: s.wmsFlowThrough,
+        wmsInboundSubtype: s.wmsInboundSubtype,
+        wmsRmaReference: s.wmsRmaReference,
+        returnSourceOutboundOrderId: s.returnSourceOutboundOrderId,
+        returnSourceOutbound: s.returnSourceOutboundOrder
+          ? { id: s.returnSourceOutboundOrder.id, outboundNo: s.returnSourceOutboundOrder.outboundNo }
+          : null,
         shippedAt: s.shippedAt.toISOString(),
         receivedAt: s.receivedAt?.toISOString() ?? null,
         orderNumber: s.order.orderNumber,
@@ -798,6 +809,7 @@ export async function getWmsDashboardPayload(
             quantityReceived: li.quantityReceived.toString(),
             wmsVarianceDisposition: li.wmsVarianceDisposition,
             wmsVarianceNote: li.wmsVarianceNote,
+            wmsReturnDisposition: li.wmsReturnDisposition,
           })),
         openWmsReceipt: (() => {
           const open = s.wmsReceipts.find((r) => r.status === "OPEN");

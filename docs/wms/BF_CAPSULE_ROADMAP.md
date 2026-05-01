@@ -45,6 +45,7 @@
 | **BF-32** | Receiving accrual staging (minimal) | **`WmsReceivingAccrualStaging`** + **`GET /api/wms/receiving-accrual-staging`** ([`WMS_RECEIVING_BF32.md`](./WMS_RECEIVING_BF32.md)); ERP GL posting backlog |
 | **BF-39** | Carrier label purchase (minimal) | **`purchase_carrier_label`** + env router + HTTP JSON bridge + **`OutboundOrder.carrier*`** ([`WMS_CARRIER_LABEL_BF39.md`](./WMS_CARRIER_LABEL_BF39.md)); vendor SDK certify backlog |
 | **BF-40** | Outbound ASN / DESADV export (minimal) | **`GET /api/wms/outbound-asn-export`** + DESADV-inspired JSON ([`WMS_OUTBOUND_ASN_BF40.md`](./WMS_OUTBOUND_ASN_BF40.md)); EDI certify / **BF-44** webhook backlog |
+| **BF-41** | Customer returns / RMA receiving (minimal) | **`Shipment.wmsInboundSubtype`** + RMA + optional **`returnSourceOutboundOrderId`**, **`ShipmentItem.wmsReturnDisposition`**, putaway/hold policy ([`WMS_RETURNS_BF41.md`](./WMS_RETURNS_BF41.md)); refund automation backlog |
 
 ---
 
@@ -52,7 +53,7 @@
 
 Order follows [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md) **Phase A → E**: inventory truth before execution engines; topology/yard before throwing integrations at cross-product epics.
 
-**Blueprint finish capsules `BF-02` … `BF-11` are complete in this roadmap snapshot.** **`BF-12`** … **`BF-40`** have **minimal slices shipped** in-repo where noted ([`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md), [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md), [`BF31_BF50_MEGA_PHASES.md`](./BF31_BF50_MEGA_PHASES.md); catalog rows in [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md)). **`BF-41`** … **`BF-50`** remain **draft** program objectives only ([`BF31_BF50_MEGA_PHASES.md`](./BF31_BF50_MEGA_PHASES.md)). Further enterprise depth → [`CONTROL_TOWER_WMS_PHASED_ROADMAP.md`](../engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md).
+**Blueprint finish capsules `BF-02` … `BF-11` are complete in this roadmap snapshot.** **`BF-12`** … **`BF-41`** have **minimal slices shipped** in-repo where noted ([`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md), [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md), [`BF31_BF50_MEGA_PHASES.md`](./BF31_BF50_MEGA_PHASES.md); catalog rows in [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md)). **`BF-42`** … **`BF-50`** remain **draft** program objectives only ([`BF31_BF50_MEGA_PHASES.md`](./BF31_BF50_MEGA_PHASES.md)). Further enterprise depth → [`CONTROL_TOWER_WMS_PHASED_ROADMAP.md`](../engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md).
 
 | Order | ID | Phase | Notes |
 |-------|-----|-------|------|
@@ -79,12 +80,13 @@ Order follows [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md) **P
 | 21 | **BF-32** | A — Receiving / finance handoff | ✅ **Minimal landed** — accrual staging + CSV export ([`WMS_RECEIVING_BF32.md`](./WMS_RECEIVING_BF32.md)) |
 | 22 | **BF-39** | R2 — Packing / carrier | ✅ **Minimal landed** — `purchase_carrier_label` + HTTP JSON bridge + persisted tracking ([`WMS_CARRIER_LABEL_BF39.md`](./WMS_CARRIER_LABEL_BF39.md)) |
 | 23 | **BF-40** | R2 — Ship notice export | ✅ **Minimal landed** — `GET /api/wms/outbound-asn-export` + DESADV-inspired JSON ([`WMS_OUTBOUND_ASN_BF40.md`](./WMS_OUTBOUND_ASN_BF40.md)) |
+| 24 | **BF-41** | A — Returns receiving | ✅ **Minimal landed** — customer-return subtype + RMA + line disposition + putaway/hold hooks ([`WMS_RETURNS_BF41.md`](./WMS_RETURNS_BF41.md)) |
 
 **Parallelization:** historical note — **BF-04** / **BF-05** / commercial (**BF-10**) often ran in parallel when teams differed.
 
 ---
 
-## Capsule cards (`BF-02` … `BF-40` + draft `BF-41` … `BF-50`)
+## Capsule cards (`BF-02` … `BF-41` + draft `BF-42` … `BF-50`)
 
 Use one row as the **scope box** before filing GitHub issues or agent prompts.
 
@@ -125,6 +127,7 @@ Use one row as the **scope box** before filing GitHub issues or agent prompts.
 | **BF-38** | Dock door & trailer checklist | [`BF31_BF50_MEGA_PHASES.md`](./BF31_BF50_MEGA_PHASES.md), [`WMS_DOCK_BF38.md`](./WMS_DOCK_BF38.md), [`WMS_DOCK_APPOINTMENTS.md`](./WMS_DOCK_APPOINTMENTS.md) | WMS | **Partial** — **`WmsDockAppointment.doorCode`** / **`trailerChecklistJson`**, milestone guards, **`nextDockAppointmentWindowStart`** hint + Operations UI |
 | **BF-39** | Carrier label purchase | [`BF31_BF50_MEGA_PHASES.md`](./BF31_BF50_MEGA_PHASES.md), [`WMS_CARRIER_LABEL_BF39.md`](./WMS_CARRIER_LABEL_BF39.md), [`WMS_PACKING_BF29.md`](./WMS_PACKING_BF29.md) | Integrations | **Partial** — **`purchase_carrier_label`** + env router + **`OutboundOrder.carrier*`** + audit; vendor SDK certify backlog |
 | **BF-40** | Outbound ASN / DESADV JSON | [`BF31_BF50_MEGA_PHASES.md`](./BF31_BF50_MEGA_PHASES.md), [`WMS_OUTBOUND_ASN_BF40.md`](./WMS_OUTBOUND_ASN_BF40.md), [`WMS_COMMERCIAL_HANDOFF.md`](./WMS_COMMERCIAL_HANDOFF.md) | ERP / EDI partners | **Partial** — **`GET /api/wms/outbound-asn-export`** + snapshot builder + Ops UI; certified EDIFACT/X12 + **BF-44** webhooks backlog |
+| **BF-41** | Customer returns / RMA receiving | [`BF31_BF50_MEGA_PHASES.md`](./BF31_BF50_MEGA_PHASES.md), [`WMS_RETURNS_BF41.md`](./WMS_RETURNS_BF41.md), [`WMS_RECEIVING_LINE_VARIANCE_BF01.md`](./WMS_RECEIVING_LINE_VARIANCE_BF01.md) | WMS | **Partial** — inbound subtype + RMA + outbound lineage + line disposition + putaway blocks / quarantine hold; refund orchestration backlog |
 
 ---
 
@@ -140,4 +143,4 @@ We **did not** add duplicate per-capsule specs beside existing theme docs — av
 
 ---
 
-_Last updated: 2026-04-29 — **BF-40** outbound ASN export minimal ([`WMS_OUTBOUND_ASN_BF40.md`](./WMS_OUTBOUND_ASN_BF40.md)); **BF-39** carrier label purchase minimal ([`WMS_CARRIER_LABEL_BF39.md`](./WMS_CARRIER_LABEL_BF39.md)); **BF-32** receiving accrual staging minimal ([`WMS_RECEIVING_BF32.md`](./WMS_RECEIVING_BF32.md)); **BF-31** GRN + ASN qty tolerance minimal ([`WMS_RECEIVING_BF31.md`](./WMS_RECEIVING_BF31.md)); **BF-30** customer portal SSO minimal ([`WMS_CUSTOMER_PORTAL_BF30.md`](./WMS_CUSTOMER_PORTAL_BF30.md)); **BF-29** packing scan + demo carrier minimal ([`WMS_PACKING_BF29.md`](./WMS_PACKING_BF29.md)); **BF-28** billing dispute hold ([`WMS_BILLING_BF28.md`](./WMS_BILLING_BF28.md)); **BF-27** CT map approximate bin scatter ([`WMS_CT_MAP_BF27.md`](./WMS_CT_MAP_BF27.md)); **BF-26** CRM engineering BOM sync minimal ([`WMS_ENGINEERING_BOM_BF26.md`](./WMS_ENGINEERING_BOM_BF26.md)); **BF-25** TMS webhook HMAC + idempotency ([`WMS_TMS_WEBHOOK_BF25.md`](./WMS_TMS_WEBHOOK_BF25.md)); **BF-24** aisle masters minimal ([`WMS_ZONE_TOPOLOGY_BF24.md`](./WMS_ZONE_TOPOLOGY_BF24.md)); **BF-23** reserve pick-face allocation minimal ([`WMS_ALLOCATION_BF23.md`](./WMS_ALLOCATION_BF23.md)); **BF-22** CPQ contracted pricing minimal ([`WMS_CPQ_CONTRACT_PRICING_BF22.md`](./WMS_CPQ_CONTRACT_PRICING_BF22.md)); **BF-21** receipt accounting minimal ([`WMS_RECEIVING_BF21.md`](./WMS_RECEIVING_BF21.md)); **BF-20** KPI proxy rates; **`BF-02`–`BF-32`** Done table; **BF-11** + **BF-19** + **BF-27** CT map pins._
+_Last updated: 2026-04-29 — **BF-41** customer returns / RMA receiving minimal ([`WMS_RETURNS_BF41.md`](./WMS_RETURNS_BF41.md)); **BF-40** outbound ASN export minimal ([`WMS_OUTBOUND_ASN_BF40.md`](./WMS_OUTBOUND_ASN_BF40.md)); **BF-39** carrier label purchase minimal ([`WMS_CARRIER_LABEL_BF39.md`](./WMS_CARRIER_LABEL_BF39.md)); **BF-32** receiving accrual staging minimal ([`WMS_RECEIVING_BF32.md`](./WMS_RECEIVING_BF32.md)); **BF-31** GRN + ASN qty tolerance minimal ([`WMS_RECEIVING_BF31.md`](./WMS_RECEIVING_BF31.md)); **BF-30** customer portal SSO minimal ([`WMS_CUSTOMER_PORTAL_BF30.md`](./WMS_CUSTOMER_PORTAL_BF30.md)); **BF-29** packing scan + demo carrier minimal ([`WMS_PACKING_BF29.md`](./WMS_PACKING_BF29.md)); **BF-28** billing dispute hold ([`WMS_BILLING_BF28.md`](./WMS_BILLING_BF28.md)); **BF-27** CT map approximate bin scatter ([`WMS_CT_MAP_BF27.md`](./WMS_CT_MAP_BF27.md)); **BF-26** CRM engineering BOM sync minimal ([`WMS_ENGINEERING_BOM_BF26.md`](./WMS_ENGINEERING_BOM_BF26.md)); **BF-25** TMS webhook HMAC + idempotency ([`WMS_TMS_WEBHOOK_BF25.md`](./WMS_TMS_WEBHOOK_BF25.md)); **BF-24** aisle masters minimal ([`WMS_ZONE_TOPOLOGY_BF24.md`](./WMS_ZONE_TOPOLOGY_BF24.md)); **BF-23** reserve pick-face allocation minimal ([`WMS_ALLOCATION_BF23.md`](./WMS_ALLOCATION_BF23.md)); **BF-22** CPQ contracted pricing minimal ([`WMS_CPQ_CONTRACT_PRICING_BF22.md`](./WMS_CPQ_CONTRACT_PRICING_BF22.md)); **BF-21** receipt accounting minimal ([`WMS_RECEIVING_BF21.md`](./WMS_RECEIVING_BF21.md)); **BF-20** KPI proxy rates; **`BF-02`–`BF-32`** Done table; **BF-11** + **BF-19** + **BF-27** CT map pins._

@@ -245,6 +245,10 @@ type WmsData = {
     asnQtyTolerancePct: string | null;
     wmsCrossDock: boolean;
     wmsFlowThrough: boolean;
+    wmsInboundSubtype: "STANDARD" | "CUSTOMER_RETURN";
+    wmsRmaReference: string | null;
+    returnSourceOutboundOrderId: string | null;
+    returnSourceOutbound: { id: string; outboundNo: string } | null;
     shippedAt: string;
     receivedAt: string | null;
     orderNumber: string;
@@ -275,6 +279,7 @@ type WmsData = {
         | "DAMAGED"
         | "OTHER";
       wmsVarianceNote: string | null;
+      wmsReturnDisposition: "RESTOCK" | "SCRAP" | "QUARANTINE" | null;
     }>;
     /** BF-12 — at most one OPEN `WmsReceipt` per shipment (enforced server-side). */
     openWmsReceipt: {
@@ -724,11 +729,14 @@ export function WmsClient({
         blockTolOutsideClose: boolean;
         crossDock: boolean;
         flowThrough: boolean;
+        inboundSubtype: "STANDARD" | "CUSTOMER_RETURN";
+        rmaRef: string;
+        returnOutboundId: string;
       }
     >
   >({});
   const [inboundTagFilter, setInboundTagFilter] = useState<
-    "all" | "crossDock" | "flowThrough" | "either"
+    "all" | "crossDock" | "flowThrough" | "either" | "customerReturn"
   >("all");
   const [outboundAsnEdits, setOutboundAsnEdits] = useState<
     Record<string, { asn: string; requestedShip: string }>
@@ -1131,6 +1139,9 @@ export function WmsClient({
           blockTolOutsideClose: boolean;
           crossDock: boolean;
           flowThrough: boolean;
+          inboundSubtype: "STANDARD" | "CUSTOMER_RETURN";
+          rmaRef: string;
+          returnOutboundId: string;
         }
       > = {};
       for (const s of data.inboundShipments) {
@@ -1149,6 +1160,9 @@ export function WmsClient({
           blockTolOutsideClose: false,
           crossDock: s.wmsCrossDock,
           flowThrough: s.wmsFlowThrough,
+          inboundSubtype: s.wmsInboundSubtype,
+          rmaRef: s.wmsRmaReference ?? "",
+          returnOutboundId: s.returnSourceOutboundOrderId ?? "",
         };
       }
       setInboundEdits(next);
@@ -1190,6 +1204,7 @@ export function WmsClient({
     if (inboundTagFilter === "all") return rows;
     if (inboundTagFilter === "crossDock") return rows.filter((s) => s.wmsCrossDock);
     if (inboundTagFilter === "flowThrough") return rows.filter((s) => s.wmsFlowThrough);
+    if (inboundTagFilter === "customerReturn") return rows.filter((s) => s.wmsInboundSubtype === "CUSTOMER_RETURN");
     return rows.filter((s) => s.wmsCrossDock || s.wmsFlowThrough);
   }, [data?.inboundShipments, inboundTagFilter]);
 
@@ -2921,7 +2936,10 @@ export function WmsClient({
           shipment line below. BF-37 adds{" "}
           <span className="font-medium">cross-dock</span> /{" "}
           <span className="font-medium">flow-through</span> tags plus outbound preference for bins marked{" "}
-          <span className="font-medium">cross-dock staging</span>.
+          <span className="font-medium">cross-dock staging</span>.{" "}
+          <span className="font-medium">BF-41</span> adds{" "}
+          <span className="font-medium">customer-return</span> subtype, RMA ref, optional source outbound link, and{" "}
+          <span className="font-medium">line disposition</span> (restock / scrap / quarantine) aligned with putaway and holds.
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <label className="flex flex-wrap items-center gap-2 text-xs text-zinc-700">
@@ -2929,7 +2947,9 @@ export function WmsClient({
             <select
               value={inboundTagFilter}
               onChange={(e) =>
-                setInboundTagFilter(e.target.value as "all" | "crossDock" | "flowThrough" | "either")
+                setInboundTagFilter(
+                  e.target.value as "all" | "crossDock" | "flowThrough" | "either" | "customerReturn",
+                )
               }
               className="rounded border border-zinc-300 px-2 py-1.5 text-sm"
             >
@@ -2937,6 +2957,7 @@ export function WmsClient({
               <option value="crossDock">Cross-dock only</option>
               <option value="flowThrough">Flow-through only</option>
               <option value="either">Cross-dock or flow-through</option>
+              <option value="customerReturn">Customer returns only</option>
             </select>
           </label>
         </div>
@@ -2953,6 +2974,9 @@ export function WmsClient({
                 <th className="px-2 py-1">Expected</th>
                 <th className="px-2 py-1">ASN tol %</th>
                 <th className="px-2 py-1">Lines</th>
+                <th className="px-2 py-1">Inbound type</th>
+                <th className="px-2 py-1">RMA</th>
+                <th className="px-2 py-1">Src outbound</th>
                 <th className="px-2 py-1">XD</th>
                 <th className="px-2 py-1">FT</th>
                 {canEdit ? <th className="px-2 py-1">Dock</th> : null}
@@ -2963,7 +2987,7 @@ export function WmsClient({
             <tbody className="divide-y divide-zinc-200">
               {inboundShipmentsForOps.length === 0 ? (
                 <tr>
-                  <td colSpan={canEdit ? 14 : 11} className="px-2 py-3 text-zinc-500">
+                  <td colSpan={canEdit ? 17 : 14} className="px-2 py-3 text-zinc-500">
                     {data.inboundShipments.length === 0
                       ? "No shipments for this tenant yet."
                       : "No inbound rows match this tag filter."}
@@ -2986,8 +3010,19 @@ export function WmsClient({
                       blockTolOutsideClose: false,
                       crossDock: false,
                       flowThrough: false,
+                      inboundSubtype: s.wmsInboundSubtype,
+                      rmaRef: s.wmsRmaReference ?? "",
+                      returnOutboundId: s.returnSourceOutboundOrderId ?? "",
                     };
-                  const lineColSpan = canEdit ? 14 : 11;
+                  const outboundNotInWh =
+                    s.returnSourceOutboundOrderId &&
+                    !outboundOrdersForWarehouse.some((o) => o.id === s.returnSourceOutboundOrderId)
+                      ? data.outboundOrders.find((o) => o.id === s.returnSourceOutboundOrderId)
+                      : undefined;
+                  const outboundSelectRows = outboundNotInWh
+                    ? [...outboundOrdersForWarehouse, outboundNotInWh]
+                    : outboundOrdersForWarehouse;
+                  const lineColSpan = canEdit ? 17 : 14;
                   return (
                     <Fragment key={s.id}>
                       <tr>
@@ -3100,6 +3135,82 @@ export function WmsClient({
                         )}
                       </td>
                       <td className="px-2 py-1 text-zinc-600">{s.itemCount}</td>
+                      <td className="px-2 py-1">
+                        {canEdit ? (
+                          <select
+                            value={draft.inboundSubtype}
+                            disabled={busy}
+                            onChange={(e) => {
+                              const v = e.target.value as "STANDARD" | "CUSTOMER_RETURN";
+                              setInboundEdits((prev) => ({
+                                ...prev,
+                                [s.id]: {
+                                  ...draft,
+                                  inboundSubtype: v,
+                                  ...(v === "STANDARD"
+                                    ? { rmaRef: "", returnOutboundId: "" }
+                                    : {}),
+                                },
+                              }));
+                            }}
+                            className="max-w-[9rem] rounded border border-zinc-300 px-1 py-1 text-[11px]"
+                            title="BF-41 — customer-return inbound vs standard PO receipt"
+                          >
+                            <option value="STANDARD">Standard</option>
+                            <option value="CUSTOMER_RETURN">Customer return</option>
+                          </select>
+                        ) : (
+                          <span className="text-zinc-700">
+                            {s.wmsInboundSubtype === "CUSTOMER_RETURN" ? "Customer return" : "Standard"}
+                          </span>
+                        )}
+                      </td>
+                      <td className="min-w-[5rem] px-2 py-1">
+                        {canEdit ? (
+                          <input
+                            value={draft.rmaRef}
+                            disabled={busy || draft.inboundSubtype !== "CUSTOMER_RETURN"}
+                            onChange={(e) =>
+                              setInboundEdits((prev) => ({
+                                ...prev,
+                                [s.id]: { ...draft, rmaRef: e.target.value },
+                              }))
+                            }
+                            className="w-full max-w-[9rem] rounded border border-zinc-300 px-1.5 py-1 text-[11px]"
+                            placeholder="RMA #"
+                            title="BF-41 — RMA / authorization reference"
+                          />
+                        ) : (
+                          <span className="text-zinc-600">{s.wmsRmaReference || "—"}</span>
+                        )}
+                      </td>
+                      <td className="min-w-[7rem] px-2 py-1">
+                        {canEdit ? (
+                          <select
+                            value={draft.returnOutboundId}
+                            disabled={busy || draft.inboundSubtype !== "CUSTOMER_RETURN"}
+                            onChange={(e) =>
+                              setInboundEdits((prev) => ({
+                                ...prev,
+                                [s.id]: { ...draft, returnOutboundId: e.target.value },
+                              }))
+                            }
+                            className="max-w-[11rem] rounded border border-zinc-300 px-1 py-1 text-[11px]"
+                            title="BF-41 — optional link to original outbound shipment"
+                          >
+                            <option value="">None</option>
+                            {outboundSelectRows.map((o) => (
+                              <option key={o.id} value={o.id}>
+                                {o.outboundNo} · {o.status}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span className="text-zinc-600">
+                            {s.returnSourceOutbound?.outboundNo ?? "—"}
+                          </span>
+                        )}
+                      </td>
                       {canEdit ? (
                         <>
                           <td className="px-2 py-1">
@@ -3215,6 +3326,15 @@ export function WmsClient({
                                     : Number(draft.asnTolerancePct),
                                 wmsCrossDock: draft.crossDock,
                                 wmsFlowThrough: draft.flowThrough,
+                                wmsInboundSubtype: draft.inboundSubtype,
+                                wmsRmaReference:
+                                  draft.inboundSubtype === "CUSTOMER_RETURN"
+                                    ? draft.rmaRef.trim() || null
+                                    : null,
+                                returnSourceOutboundOrderId:
+                                  draft.inboundSubtype === "CUSTOMER_RETURN"
+                                    ? draft.returnOutboundId.trim() || null
+                                    : null,
                               })
                             }
                             className="rounded border border-zinc-300 px-2 py-1 text-xs font-medium text-zinc-800 disabled:opacity-40"
@@ -3456,6 +3576,7 @@ export function WmsClient({
                                   <th className="px-2 py-1">Received</th>
                                   <th className="px-2 py-1">Recorded</th>
                                   <th className="px-2 py-1">Disposition</th>
+                                  <th className="px-2 py-1">Return disp.</th>
                                   <th className="px-2 py-1">Note</th>
                                   {canEdit ? <th className="px-2 py-1"> </th> : null}
                                 </tr>
@@ -3518,6 +3639,30 @@ export function WmsClient({
                                       )}
                                     </td>
                                     <td className="px-2 py-1.5">
+                                      {s.wmsInboundSubtype === "CUSTOMER_RETURN" ? (
+                                        canEdit ? (
+                                          <select
+                                            key={`ret-disp-${line.shipmentItemId}-${line.wmsReturnDisposition ?? "none"}`}
+                                            id={`inbound-ret-${line.shipmentItemId}`}
+                                            defaultValue={line.wmsReturnDisposition ?? "RESTOCK"}
+                                            disabled={busy}
+                                            className="max-w-[9rem] rounded border border-zinc-300 px-1 py-1 text-[11px]"
+                                            title="BF-41 — restock vs scrap vs quarantine (putaway / holds)"
+                                          >
+                                            <option value="RESTOCK">Restock</option>
+                                            <option value="SCRAP">Scrap</option>
+                                            <option value="QUARANTINE">Quarantine</option>
+                                          </select>
+                                        ) : (
+                                          <span className="text-zinc-700">
+                                            {line.wmsReturnDisposition ?? "—"}
+                                          </span>
+                                        )
+                                      ) : (
+                                        <span className="text-zinc-400">—</span>
+                                      )}
+                                    </td>
+                                    <td className="px-2 py-1.5">
                                       {canEdit ? (
                                         <input
                                           key={`note-${line.shipmentItemId}-${line.wmsVarianceNote ?? ""}`}
@@ -3547,6 +3692,9 @@ export function WmsClient({
                                             const noteEl = document.getElementById(
                                               `inbound-note-${line.shipmentItemId}`,
                                             ) as HTMLInputElement | null;
+                                            const retDispEl = document.getElementById(
+                                              `inbound-ret-${line.shipmentItemId}`,
+                                            ) as HTMLSelectElement | null;
                                             const rawRecv = recvEl?.value?.trim() ?? "";
                                             const receivedQty = Number.parseFloat(rawRecv);
                                             if (!Number.isFinite(receivedQty) || receivedQty < 0) {
@@ -3560,18 +3708,39 @@ export function WmsClient({
                                               varianceDisposition: vd === "" ? undefined : vd,
                                               varianceNote: noteVal,
                                             };
-                                            void runAction(
-                                              openRec
-                                                ? {
-                                                    action: "set_wms_receipt_line",
-                                                    receiptId: openRec.id,
-                                                    ...base,
-                                                  }
-                                                : {
-                                                    action: "set_shipment_item_receive_line",
-                                                    ...base,
+                                            void (async () => {
+                                              if (s.wmsInboundSubtype === "CUSTOMER_RETURN") {
+                                                const rd = retDispEl?.value?.trim() ?? "";
+                                                if (
+                                                  rd !== "RESTOCK" &&
+                                                  rd !== "SCRAP" &&
+                                                  rd !== "QUARANTINE"
+                                                ) {
+                                                  return;
+                                                }
+                                                const okDisp = await runAction(
+                                                  {
+                                                    action: "set_shipment_item_return_disposition",
+                                                    shipmentItemId: line.shipmentItemId,
+                                                    wmsReturnDisposition: rd,
                                                   },
-                                            );
+                                                  { reload: false },
+                                                );
+                                                if (!okDisp) return;
+                                              }
+                                              await runAction(
+                                                openRec
+                                                  ? {
+                                                      action: "set_wms_receipt_line",
+                                                      receiptId: openRec.id,
+                                                      ...base,
+                                                    }
+                                                  : {
+                                                      action: "set_shipment_item_receive_line",
+                                                      ...base,
+                                                    },
+                                              );
+                                            })();
                                           }}
                                           className="rounded-xl bg-[var(--arscmp-primary)] px-3 py-1.5 text-[11px] font-semibold text-white disabled:opacity-40"
                                         >

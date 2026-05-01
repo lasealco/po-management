@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { toApiErrorResponseFromStatus } from "@/app/api/_lib/api-error-contract";
-import { Prisma, ShipmentMilestoneCode, type WmsPickAllocationStrategy, type WmsReceiveStatus } from "@prisma/client";
+import { Prisma, ShipmentMilestoneCode, type WmsPickAllocationStrategy, type WmsReceiveStatus, type WmsInboundSubtype, type WmsReturnLineDisposition } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 
@@ -71,6 +71,10 @@ import {
 import { parseConsumeWorkOrderBomQuantity, parseReplaceWorkOrderBomLinesPayload } from "./work-order-bom";
 import { nextWorkOrderNo } from "./work-order-no";
 
+import {
+  customerReturnApplyQuarantineHold,
+  customerReturnPutawayBlockedReason,
+} from "./customer-return-policy";
 import type { WmsBody } from "./wms-body";
 import { loadWmsViewReadScope } from "./wms-read-scope";
 import { allowedNextWmsReceiveStatuses, canTransitionWmsReceive, isWmsReceiveStatus } from "./wms-receive-status";
@@ -1115,12 +1119,19 @@ export async function handleWmsPost(
     const item = await prisma.shipmentItem.findFirst({
       where: { id: shipmentItemId, shipment: { order: { tenantId } } },
       include: {
-        shipment: { select: { id: true, orderId: true } },
+        shipment: { select: { id: true, orderId: true, wmsInboundSubtype: true } },
         orderItem: { select: { productId: true } },
       },
     });
     if (!item?.orderItem.productId) {
       return toApiErrorResponseFromStatus("Invalid shipment line.", 400);
+    }
+    const putawayBlock = customerReturnPutawayBlockedReason(
+      item.shipment.wmsInboundSubtype,
+      item.wmsReturnDisposition,
+    );
+    if (putawayBlock) {
+      return toApiErrorResponseFromStatus(putawayBlock, 400);
     }
     await prisma.wmsTask.create({
       data: {
@@ -1146,7 +1157,15 @@ export async function handleWmsPost(
     if (!taskId) return toApiErrorResponseFromStatus("taskId required.", 400);
     const task = await prisma.wmsTask.findFirst({
       where: { id: taskId, tenantId, status: "OPEN", taskType: "PUTAWAY" },
-      select: { id: true, warehouseId: true, productId: true, quantity: true, referenceId: true, binId: true },
+      select: {
+        id: true,
+        warehouseId: true,
+        productId: true,
+        quantity: true,
+        referenceId: true,
+        binId: true,
+        referenceType: true,
+      },
     });
     if (!task || !task.productId || !task.referenceId) {
       return toApiErrorResponseFromStatus("Putaway task not found.", 404);
@@ -1156,6 +1175,28 @@ export async function handleWmsPost(
     const targetBinId = input.binId?.trim() || task.binId;
     if (!targetBinId) return toApiErrorResponseFromStatus("binId required.", 400);
     const targetLot = normalizeLotCode(input.lotCode);
+
+    let putawayReturnSubtype: WmsInboundSubtype = "STANDARD";
+    let putawayReturnDisposition: WmsReturnLineDisposition | null = null;
+    if (task.referenceType === "SHIPMENT_ITEM") {
+      const si = await prisma.shipmentItem.findFirst({
+        where: { id: referenceId, shipment: { order: { tenantId } } },
+        select: {
+          wmsReturnDisposition: true,
+          shipment: { select: { wmsInboundSubtype: true } },
+        },
+      });
+      if (si) {
+        putawayReturnSubtype = si.shipment.wmsInboundSubtype;
+        putawayReturnDisposition = si.wmsReturnDisposition;
+      }
+    }
+    const putawayBlock = customerReturnPutawayBlockedReason(putawayReturnSubtype, putawayReturnDisposition);
+    if (putawayBlock) {
+      return toApiErrorResponseFromStatus(putawayBlock, 400);
+    }
+    const applyQcHold = customerReturnApplyQuarantineHold(putawayReturnSubtype, putawayReturnDisposition);
+
     await prisma.$transaction(async (tx) => {
       await tx.wmsTask.update({
         where: { id: task.id },
@@ -1177,8 +1218,12 @@ export async function handleWmsPost(
           productId,
           lotCode: targetLot,
           onHandQty: task.quantity,
+          ...(applyQcHold ? { onHold: true, holdReason: "Customer return — quarantine (BF-41)" } : {}),
         },
-        update: { onHandQty: { increment: task.quantity } },
+        update: {
+          onHandQty: { increment: task.quantity },
+          ...(applyQcHold ? { onHold: true, holdReason: "Customer return — quarantine (BF-41)" } : {}),
+        },
       });
       await tx.inventoryMovement.create({
         data: {
@@ -2019,9 +2064,41 @@ export async function handleWmsPost(
     if (input.wmsFlowThrough !== undefined) {
       data.wmsFlowThrough = Boolean(input.wmsFlowThrough);
     }
+    if (input.wmsInboundSubtype !== undefined) {
+      const raw = String(input.wmsInboundSubtype).trim().toUpperCase();
+      if (raw !== "STANDARD" && raw !== "CUSTOMER_RETURN") {
+        return toApiErrorResponseFromStatus("wmsInboundSubtype must be STANDARD or CUSTOMER_RETURN.", 400);
+      }
+      data.wmsInboundSubtype = raw as WmsInboundSubtype;
+      if (raw === "STANDARD") {
+        data.wmsRmaReference = null;
+        data.returnSourceOutboundOrder = { disconnect: true };
+      }
+    }
+    if (input.wmsRmaReference !== undefined) {
+      data.wmsRmaReference =
+        input.wmsRmaReference === null || String(input.wmsRmaReference).trim() === ""
+          ? null
+          : String(input.wmsRmaReference).trim().slice(0, 128);
+    }
+    if (input.returnSourceOutboundOrderId !== undefined) {
+      const oid = String(input.returnSourceOutboundOrderId ?? "").trim();
+      if (!oid) {
+        data.returnSourceOutboundOrder = { disconnect: true };
+      } else {
+        const ob = await prisma.outboundOrder.findFirst({
+          where: { id: oid, tenantId },
+          select: { id: true },
+        });
+        if (!ob) {
+          return toApiErrorResponseFromStatus("returnSourceOutboundOrderId not found for tenant.", 404);
+        }
+        data.returnSourceOutboundOrder = { connect: { id: oid } };
+      }
+    }
     if (Object.keys(data).length === 0) {
       return toApiErrorResponseFromStatus(
-        "Provide asnReference, expectedReceiveAt, asnQtyTolerancePct, wmsCrossDock, and/or wmsFlowThrough to update.",
+        "Provide inbound fields to update (ASN, receive timing, BF-37 tags, BF-41 return subtype / RMA / outbound link).",
         400,
       );
     }
@@ -2180,6 +2257,58 @@ export async function handleWmsPost(
         },
         { source: "set_shipment_item_receive_line" },
       );
+    });
+
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "set_shipment_item_return_disposition") {
+    const shipmentItemId = input.shipmentItemId?.trim();
+    const dispRaw = input.wmsReturnDisposition?.trim().toUpperCase();
+    if (
+      !shipmentItemId ||
+      (dispRaw !== "RESTOCK" && dispRaw !== "SCRAP" && dispRaw !== "QUARANTINE")
+    ) {
+      return toApiErrorResponseFromStatus(
+        "shipmentItemId and wmsReturnDisposition (RESTOCK, SCRAP, or QUARANTINE) required.",
+        400,
+      );
+    }
+
+    const row = await prisma.shipmentItem.findFirst({
+      where: { id: shipmentItemId, shipment: { order: { tenantId } } },
+      select: {
+        id: true,
+        shipmentId: true,
+        shipment: { select: { wmsInboundSubtype: true } },
+      },
+    });
+    if (!row) {
+      return toApiErrorResponseFromStatus("Shipment item not found.", 404);
+    }
+    if (row.shipment.wmsInboundSubtype !== "CUSTOMER_RETURN") {
+      return toApiErrorResponseFromStatus(
+        "Return disposition applies only when shipment inbound subtype is CUSTOMER_RETURN (BF-41).",
+        400,
+      );
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.shipmentItem.update({
+        where: { id: row.id },
+        data: { wmsReturnDisposition: dispRaw as WmsReturnLineDisposition },
+      });
+      await tx.ctAuditLog.create({
+        data: {
+          tenantId,
+          shipmentId: row.shipmentId,
+          entityType: "SHIPMENT_ITEM",
+          entityId: row.id,
+          action: "customer_return_line_disposition_set",
+          payload: { wmsReturnDisposition: dispRaw },
+          actorUserId: actorId,
+        },
+      });
     });
 
     return NextResponse.json({ ok: true });
