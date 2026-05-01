@@ -186,7 +186,19 @@ async function buildSnapshot(tenantId: string, grantSet: Set<string>) {
 export async function GET() {
   const gate = await requireMeetingIntelligenceAccess(false);
   if (!gate.ok) return gate.response;
-  return NextResponse.json(await buildSnapshot(gate.access.tenant.id, gate.access.grantSet));
+  try {
+    return NextResponse.json(await buildSnapshot(gate.access.tenant.id, gate.access.grantSet));
+  } catch (error) {
+    console.error("[assistant/meeting-intelligence] snapshot failed", error);
+    return NextResponse.json(
+      {
+        error:
+          "Meeting intelligence could not load. The database may be missing AMP27 tables — deploy with latest Prisma migrations (AssistantMeetingIntelligencePacket) or retry after migrate.",
+        code: "SNAPSHOT_FAILED",
+      },
+      { status: 503 },
+    );
+  }
 }
 
 export async function POST(request: Request) {

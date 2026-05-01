@@ -260,7 +260,19 @@ async function buildSnapshot(tenantId: string, grantSet: Set<string>) {
 export async function GET() {
   const gate = await requireFrontlineAccess(false);
   if (!gate.ok) return gate.response;
-  return NextResponse.json(await buildSnapshot(gate.access.tenant.id, gate.access.grantSet));
+  try {
+    return NextResponse.json(await buildSnapshot(gate.access.tenant.id, gate.access.grantSet));
+  } catch (error) {
+    console.error("[assistant/frontline] snapshot failed", error);
+    return NextResponse.json(
+      {
+        error:
+          "Frontline workspace could not load. The database may be missing AMP26 tables — deploy with latest Prisma migrations (AssistantFrontlinePacket) or retry after migrate.",
+        code: "SNAPSHOT_FAILED",
+      },
+      { status: 503 },
+    );
+  }
 }
 
 export async function POST(request: Request) {
