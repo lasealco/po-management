@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { toApiErrorResponseFromStatus } from "@/app/api/_lib/api-error-contract";
-import { Prisma, ShipmentMilestoneCode, type WmsPickAllocationStrategy, type WmsReceiveStatus, type WmsInboundSubtype, type WmsReturnLineDisposition, type WmsShipmentItemVarianceDisposition } from "@prisma/client";
+import { Prisma, ShipmentMilestoneCode, type WmsOutboundLogisticsUnitKind, type WmsPickAllocationStrategy, type WmsReceiveStatus, type WmsInboundSubtype, type WmsReturnLineDisposition, type WmsShipmentItemVarianceDisposition } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 
@@ -58,8 +58,12 @@ import {
   buildOutboundPackScanPlan,
   flattenPackScanExpectations,
   parsePackScanTokenArray,
-  verifyOutboundPackScan,
 } from "./pack-scan-verify";
+import {
+  mapOutboundLogisticsUnitsForPackScan,
+  normalizeOutboundLogisticsUnitScanCode,
+  verifyOutboundPackScanWithLogisticsUnits,
+} from "./outbound-logistics-unit-scan";
 import { syncOutboundOrderStatusAfterPick } from "./outbound-workflow";
 import { warehouseZoneParentWouldCycle } from "./zone-hierarchy";
 import { parseMmForWrite, resolveBinAisleFieldsForWrite } from "./warehouse-aisle";
@@ -79,6 +83,50 @@ import { substituteReceivingDispositionNoteTemplate } from "./receiving-disposit
 import type { WmsBody } from "./wms-body";
 import { loadWmsViewReadScope } from "./wms-read-scope";
 import { allowedNextWmsReceiveStatuses, canTransitionWmsReceive, isWmsReceiveStatus } from "./wms-receive-status";
+
+const BF43_LOGISTICS_UNIT_KINDS = new Set<string>([
+  "PALLET",
+  "CASE",
+  "INNER_PACK",
+  "EACH",
+  "UNKNOWN",
+]);
+
+async function assertOutboundLuParentNoCycle(
+  tx: Prisma.TransactionClient,
+  childUnitId: string | undefined,
+  proposedParentId: string | null,
+): Promise<void> {
+  if (!proposedParentId) return;
+  let cur: string | null = proposedParentId;
+  const seen = new Set<string>();
+  while (cur) {
+    if (childUnitId && cur === childUnitId) {
+      throw new Error("parent_cycle");
+    }
+    if (seen.has(cur)) break;
+    seen.add(cur);
+    const parentRow: { parentUnitId: string | null } | null = await tx.wmsOutboundLogisticsUnit.findUnique({
+      where: { id: cur },
+      select: { parentUnitId: true },
+    });
+    cur = parentRow?.parentUnitId ?? null;
+  }
+}
+
+async function verifyOutboundPackScanResolved(
+  tenantId: string,
+  outboundOrderId: string,
+  flat: string[],
+  tokens: string[],
+) {
+  const luRows = await prisma.wmsOutboundLogisticsUnit.findMany({
+    where: { tenantId, outboundOrderId },
+    include: { outboundOrderLine: { include: { product: true } } },
+  });
+  const mapped = mapOutboundLogisticsUnitsForPackScan(luRows);
+  return verifyOutboundPackScanWithLogisticsUnits(flat, tokens, mapped);
+}
 
 export async function handleWmsPost(
   tenantId: string,
@@ -1728,6 +1776,239 @@ export async function handleWmsPost(
     return NextResponse.json({ ok: true });
   }
 
+  if (action === "upsert_outbound_logistics_unit_bf43") {
+    const outboundOrderId = input.outboundOrderId?.trim();
+    if (!outboundOrderId) {
+      return toApiErrorResponseFromStatus("outboundOrderId required.", 400);
+    }
+    const order = await prisma.outboundOrder.findFirst({
+      where: { id: outboundOrderId, tenantId },
+      select: { id: true, status: true },
+    });
+    if (!order) {
+      return toApiErrorResponseFromStatus("Outbound order not found.", 404);
+    }
+    if (order.status === "SHIPPED" || order.status === "CANCELLED") {
+      return toApiErrorResponseFromStatus(
+        "Cannot edit logistics units on SHIPPED or CANCELLED outbound orders.",
+        400,
+      );
+    }
+    const scanRaw = input.logisticsUnitScanCode?.trim();
+    if (!scanRaw) {
+      return toApiErrorResponseFromStatus("logisticsUnitScanCode required.", 400);
+    }
+    const normalizedScan = normalizeOutboundLogisticsUnitScanCode(scanRaw);
+    if (!normalizedScan) {
+      return toApiErrorResponseFromStatus("logisticsUnitScanCode invalid after normalization.", 400);
+    }
+
+    const kindRaw = String(input.logisticsUnitKind ?? "UNKNOWN").trim().toUpperCase();
+    if (!BF43_LOGISTICS_UNIT_KINDS.has(kindRaw)) {
+      return toApiErrorResponseFromStatus("logisticsUnitKind invalid.", 400);
+    }
+    const kind = kindRaw as WmsOutboundLogisticsUnitKind;
+
+    const parentUnitIdRaw = input.logisticsUnitParentId?.trim();
+    const parentUnitId = parentUnitIdRaw ? parentUnitIdRaw : null;
+
+    const lineIdRaw = input.logisticsOutboundOrderLineId?.trim();
+    const outboundOrderLineId = lineIdRaw ? lineIdRaw : null;
+
+    let containedQty: Prisma.Decimal | null = null;
+    if (outboundOrderLineId) {
+      const cqRaw = input.logisticsContainedQty;
+      const n =
+        cqRaw === undefined || cqRaw === null || cqRaw === "" ? NaN : Number(cqRaw);
+      if (!Number.isFinite(n) || n <= 0) {
+        return toApiErrorResponseFromStatus(
+          "logisticsContainedQty must be a positive number when logisticsOutboundOrderLineId is set.",
+          400,
+        );
+      }
+      containedQty = new Prisma.Decimal(String(n));
+    } else if (
+      input.logisticsContainedQty !== undefined &&
+      input.logisticsContainedQty !== null &&
+      String(input.logisticsContainedQty).trim() !== ""
+    ) {
+      return toApiErrorResponseFromStatus(
+        "logisticsContainedQty must be omitted when no logisticsOutboundOrderLineId.",
+        400,
+      );
+    }
+
+    const unitId = input.logisticsUnitId?.trim();
+
+    try {
+      await prisma.$transaction(async (tx) => {
+        if (parentUnitId) {
+          const parent = await tx.wmsOutboundLogisticsUnit.findFirst({
+            where: { id: parentUnitId, tenantId, outboundOrderId },
+            select: { id: true },
+          });
+          if (!parent) {
+            throw Object.assign(new Error("bad_parent"), { status: 400 });
+          }
+        }
+
+        if (outboundOrderLineId) {
+          const line = await tx.outboundOrderLine.findFirst({
+            where: { id: outboundOrderLineId, tenantId, outboundOrderId },
+            select: { id: true },
+          });
+          if (!line) {
+            throw Object.assign(new Error("bad_line"), { status: 400 });
+          }
+        }
+
+        if (unitId) {
+          const existing = await tx.wmsOutboundLogisticsUnit.findFirst({
+            where: { id: unitId, tenantId, outboundOrderId },
+          });
+          if (!existing) {
+            throw Object.assign(new Error("not_found"), { status: 404 });
+          }
+          if (parentUnitId === unitId) {
+            throw Object.assign(new Error("self_parent"), { status: 400 });
+          }
+          await assertOutboundLuParentNoCycle(tx, unitId, parentUnitId);
+
+          if (normalizedScan !== existing.scanCode) {
+            const clash = await tx.wmsOutboundLogisticsUnit.findFirst({
+              where: {
+                tenantId,
+                outboundOrderId,
+                scanCode: normalizedScan,
+                NOT: { id: unitId },
+              },
+              select: { id: true },
+            });
+            if (clash) {
+              throw Object.assign(new Error("dup_scan"), { status: 400 });
+            }
+          }
+
+          await tx.wmsOutboundLogisticsUnit.update({
+            where: { id: unitId },
+            data: {
+              scanCode: normalizedScan,
+              kind,
+              parentUnitId,
+              outboundOrderLineId,
+              containedQty,
+            },
+          });
+        } else {
+          await assertOutboundLuParentNoCycle(tx, undefined, parentUnitId);
+          await tx.wmsOutboundLogisticsUnit.upsert({
+            where: {
+              tenantId_outboundOrderId_scanCode: {
+                tenantId,
+                outboundOrderId,
+                scanCode: normalizedScan,
+              },
+            },
+            create: {
+              tenantId,
+              outboundOrderId,
+              scanCode: normalizedScan,
+              kind,
+              parentUnitId,
+              outboundOrderLineId,
+              containedQty,
+            },
+            update: {
+              kind,
+              parentUnitId,
+              outboundOrderLineId,
+              containedQty,
+            },
+          });
+        }
+
+        await tx.ctAuditLog.create({
+          data: {
+            tenantId,
+            entityType: "OUTBOUND_ORDER",
+            entityId: outboundOrderId,
+            action: "bf43_outbound_logistics_unit_upserted",
+            payload: {
+              logisticsUnitId: unitId ?? null,
+              scanCode: normalizedScan,
+              kind: kindRaw,
+            },
+            actorUserId: actorId,
+          },
+        });
+      });
+    } catch (e: unknown) {
+      const err = e as { status?: number; message?: string };
+      if (err?.status === 400 && err.message === "bad_parent") {
+        return toApiErrorResponseFromStatus("logisticsUnitParentId not found on this outbound.", 400);
+      }
+      if (err?.status === 400 && err.message === "bad_line") {
+        return toApiErrorResponseFromStatus(
+          "logisticsOutboundOrderLineId not found on this outbound.",
+          400,
+        );
+      }
+      if (err?.status === 404 && err.message === "not_found") {
+        return toApiErrorResponseFromStatus("logisticsUnitId not found.", 404);
+      }
+      if (err?.status === 400 && err.message === "self_parent") {
+        return toApiErrorResponseFromStatus("logisticsUnitParentId cannot equal logisticsUnitId.", 400);
+      }
+      if (err?.status === 400 && err.message === "dup_scan") {
+        return toApiErrorResponseFromStatus("Another logistics unit already uses this scan code.", 400);
+      }
+      if ((e as Error)?.message === "parent_cycle") {
+        return toApiErrorResponseFromStatus("Parent assignment would create a cycle.", 400);
+      }
+      throw e;
+    }
+
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "delete_outbound_logistics_unit_bf43") {
+    const outboundOrderId = input.outboundOrderId?.trim();
+    const logisticsUnitId = input.logisticsUnitId?.trim();
+    if (!outboundOrderId || !logisticsUnitId) {
+      return toApiErrorResponseFromStatus("outboundOrderId and logisticsUnitId required.", 400);
+    }
+    const row = await prisma.wmsOutboundLogisticsUnit.findFirst({
+      where: { id: logisticsUnitId, tenantId, outboundOrderId },
+      select: {
+        id: true,
+        outboundOrder: { select: { status: true } },
+      },
+    });
+    if (!row) {
+      return toApiErrorResponseFromStatus("Logistics unit not found.", 404);
+    }
+    if (row.outboundOrder.status === "SHIPPED" || row.outboundOrder.status === "CANCELLED") {
+      return toApiErrorResponseFromStatus(
+        "Cannot delete logistics units on SHIPPED or CANCELLED outbound orders.",
+        400,
+      );
+    }
+    await prisma.$transaction(async (tx) => {
+      await tx.wmsOutboundLogisticsUnit.delete({ where: { id: logisticsUnitId } });
+      await tx.ctAuditLog.create({
+        data: {
+          tenantId,
+          entityType: "OUTBOUND_ORDER",
+          entityId: outboundOrderId,
+          action: "bf43_outbound_logistics_unit_deleted",
+          payload: { logisticsUnitId },
+          actorUserId: actorId,
+        },
+      });
+    });
+    return NextResponse.json({ ok: true });
+  }
+
   if (action === "validate_outbound_pack_scan") {
     const outboundOrderId = input.outboundOrderId?.trim();
     if (!outboundOrderId) {
@@ -1760,7 +2041,7 @@ export async function handleWmsPost(
             order.lines.map((l) => ({ pickedQty: Number(l.pickedQty), product: l.product })),
           );
     const flat = flattenPackScanExpectations(plan);
-    const result = verifyOutboundPackScan(flat, tokens);
+    const result = await verifyOutboundPackScanResolved(tenantId, outboundOrderId, flat, tokens);
     return NextResponse.json({
       ok: result.ok,
       missing: result.missing,
@@ -1894,7 +2175,7 @@ export async function handleWmsPost(
     );
     const flat = flattenPackScanExpectations(plan);
     if (tokens.length > 0) {
-      const scanResult = verifyOutboundPackScan(flat, tokens);
+      const scanResult = await verifyOutboundPackScanResolved(tenantId, outboundOrderId, flat, tokens);
       if (!scanResult.ok) {
         return toApiErrorResponseFromStatus(
           `Pack scan mismatch. Missing: ${scanResult.missing.slice(0, 12).join(", ") || "—"}; unexpected: ${scanResult.unexpected.slice(0, 12).join(", ") || "—"}`,
@@ -1965,7 +2246,12 @@ export async function handleWmsPost(
     );
     const shipFlat = flattenPackScanExpectations(shipPlan);
     if (shipTokens.length > 0) {
-      const shipScanResult = verifyOutboundPackScan(shipFlat, shipTokens);
+      const shipScanResult = await verifyOutboundPackScanResolved(
+        tenantId,
+        outboundOrderId,
+        shipFlat,
+        shipTokens,
+      );
       if (!shipScanResult.ok) {
         return toApiErrorResponseFromStatus(
           `Ship scan mismatch. Missing: ${shipScanResult.missing.slice(0, 12).join(", ") || "—"}; unexpected: ${shipScanResult.unexpected.slice(0, 12).join(", ") || "—"}`,

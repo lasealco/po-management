@@ -36,6 +36,30 @@ type WmsProductRef = {
   cartonUnitsPerMasterCarton: string | null;
 };
 
+type WmsOutboundLuKindUi = "PALLET" | "CASE" | "INNER_PACK" | "EACH" | "UNKNOWN";
+
+type WmsLuDraftBf43 = {
+  logisticsUnitId: string;
+  scanCode: string;
+  kind: WmsOutboundLuKindUi;
+  parentUnitId: string;
+  outboundOrderLineId: string;
+  containedQty: string;
+};
+
+const BF43_EMPTY_LU_DRAFT: WmsLuDraftBf43 = {
+  logisticsUnitId: "",
+  scanCode: "",
+  kind: "UNKNOWN",
+  parentUnitId: "",
+  outboundOrderLineId: "",
+  containedQty: "1",
+};
+
+function mergeBf43LuDraft(stored: Partial<WmsLuDraftBf43> | undefined): WmsLuDraftBf43 {
+  return { ...BF43_EMPTY_LU_DRAFT, ...stored };
+}
+
 type WmsData = {
   warehouses: Array<{
     id: string;
@@ -197,6 +221,14 @@ type WmsData = {
       commercialListUnitPrice: string | null;
       commercialPriceTierLabel: string | null;
       commercialExtendedAmount: string | null;
+    }>;
+    logisticsUnits: Array<{
+      id: string;
+      scanCode: string;
+      kind: WmsOutboundLuKindUi;
+      parentUnitId: string | null;
+      outboundOrderLineId: string | null;
+      containedQty: string | null;
     }>;
     packScanPlan: Array<{ code: string; qty: number }>;
   }>;
@@ -781,6 +813,7 @@ export function WmsClient({
   const [shipScanFeedbackByOutboundId, setShipScanFeedbackByOutboundId] = useState<
     Record<string, string | null>
   >({});
+  const [luDraftByOutboundId, setLuDraftByOutboundId] = useState<Record<string, WmsLuDraftBf43>>({});
   const [outboundCreateAsn, setOutboundCreateAsn] = useState("");
   const [outboundCreateRequestedShip, setOutboundCreateRequestedShip] = useState("");
   const [dockShipmentLink, setDockShipmentLink] = useState("");
@@ -5221,6 +5254,244 @@ export function WmsClient({
                   </button>
                 ) : null}
               </div>
+              {canEdit && o.status !== "SHIPPED" && o.status !== "CANCELLED" ? (
+                <div className="mt-2 rounded-lg border border-violet-100 bg-violet-50/45 p-2 text-xs text-violet-950">
+                  <p className="font-semibold text-violet-950">BF-43 · Logistics units (SSCC / LPN)</p>
+                  <p className="mt-0.5 text-violet-900/85">
+                    Leaf rows tied to an outbound line substitute{" "}
+                    <span className="font-medium">floor(containedQty)</span> scans of that line&apos;s BF-29 primary code
+                    during pack or ship verification. Parent-only rows stay structural until you attach a line and qty.
+                  </p>
+                  {(o.logisticsUnits ?? []).length > 0 ? (
+                    <div className="mt-2 overflow-x-auto rounded border border-violet-100 bg-white">
+                      <table className="min-w-full border-collapse text-[11px]">
+                        <thead>
+                          <tr className="border-b border-violet-100 bg-violet-50/80 text-left">
+                            <th className="px-2 py-1 font-semibold">Scan</th>
+                            <th className="px-2 py-1 font-semibold">Kind</th>
+                            <th className="px-2 py-1 font-semibold">Parent</th>
+                            <th className="px-2 py-1 font-semibold">Line</th>
+                            <th className="px-2 py-1 font-semibold">Qty</th>
+                            <th className="px-2 py-1 font-semibold" />
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(o.logisticsUnits ?? []).map((u) => (
+                            <tr key={u.id} className="border-b border-violet-50">
+                              <td className="px-2 py-1 font-mono text-[10px]">{u.scanCode}</td>
+                              <td className="px-2 py-1">{u.kind}</td>
+                              <td className="px-2 py-1 font-mono text-[10px]">
+                                {u.parentUnitId
+                                  ? (o.logisticsUnits ?? []).find((x) => x.id === u.parentUnitId)?.scanCode ??
+                                    `${u.parentUnitId.slice(0, 8)}…`
+                                  : "—"}
+                              </td>
+                              <td className="px-2 py-1">
+                                {u.outboundOrderLineId
+                                  ? `Ln ${o.lines.find((l) => l.id === u.outboundOrderLineId)?.lineNo ?? "?"}`
+                                  : "—"}
+                              </td>
+                              <td className="px-2 py-1">{u.containedQty ?? "—"}</td>
+                              <td className="px-2 py-1 text-right">
+                                <button
+                                  type="button"
+                                  disabled={busy}
+                                  onClick={() =>
+                                    setLuDraftByOutboundId((prev) => ({
+                                      ...prev,
+                                      [o.id]: {
+                                        logisticsUnitId: u.id,
+                                        scanCode: u.scanCode,
+                                        kind: u.kind,
+                                        parentUnitId: u.parentUnitId ?? "",
+                                        outboundOrderLineId: u.outboundOrderLineId ?? "",
+                                        containedQty: u.containedQty ?? "1",
+                                      },
+                                    }))
+                                  }
+                                  className="rounded border border-violet-200 bg-white px-2 py-0.5 font-medium text-violet-900 disabled:opacity-40"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={busy}
+                                  onClick={() =>
+                                    void runAction({
+                                      action: "delete_outbound_logistics_unit_bf43",
+                                      outboundOrderId: o.id,
+                                      logisticsUnitId: u.id,
+                                    })
+                                  }
+                                  className="ml-1 rounded border border-zinc-200 bg-white px-2 py-0.5 font-medium text-zinc-700 disabled:opacity-40"
+                                >
+                                  Delete
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-[11px] text-violet-900/75">No logistics units yet.</p>
+                  )}
+                  <div className="mt-3 grid gap-2 rounded border border-violet-100 bg-white p-2 sm:grid-cols-2 lg:grid-cols-3">
+                    <label className="grid gap-1">
+                      <span className="text-[10px] font-semibold uppercase tracking-wide text-violet-800">
+                        Scan code
+                      </span>
+                      <input
+                        value={mergeBf43LuDraft(luDraftByOutboundId[o.id]).scanCode}
+                        onChange={(e) =>
+                          setLuDraftByOutboundId((prev) => ({
+                            ...prev,
+                            [o.id]: { ...mergeBf43LuDraft(prev[o.id]), scanCode: e.target.value },
+                          }))
+                        }
+                        className="rounded border border-violet-200 px-2 py-1 text-xs text-zinc-900"
+                        placeholder="SSCC / LPN token"
+                      />
+                    </label>
+                    <label className="grid gap-1">
+                      <span className="text-[10px] font-semibold uppercase tracking-wide text-violet-800">Kind</span>
+                      <select
+                        value={mergeBf43LuDraft(luDraftByOutboundId[o.id]).kind}
+                        onChange={(e) =>
+                          setLuDraftByOutboundId((prev) => ({
+                            ...prev,
+                            [o.id]: {
+                              ...mergeBf43LuDraft(prev[o.id]),
+                              kind: e.target.value as WmsOutboundLuKindUi,
+                            },
+                          }))
+                        }
+                        className="rounded border border-violet-200 px-2 py-1 text-xs text-zinc-900"
+                      >
+                        <option value="UNKNOWN">UNKNOWN</option>
+                        <option value="PALLET">PALLET</option>
+                        <option value="CASE">CASE</option>
+                        <option value="INNER_PACK">INNER_PACK</option>
+                        <option value="EACH">EACH</option>
+                      </select>
+                    </label>
+                    <label className="grid gap-1">
+                      <span className="text-[10px] font-semibold uppercase tracking-wide text-violet-800">
+                        Parent unit
+                      </span>
+                      <select
+                        value={mergeBf43LuDraft(luDraftByOutboundId[o.id]).parentUnitId}
+                        onChange={(e) =>
+                          setLuDraftByOutboundId((prev) => ({
+                            ...prev,
+                            [o.id]: { ...mergeBf43LuDraft(prev[o.id]), parentUnitId: e.target.value },
+                          }))
+                        }
+                        className="rounded border border-violet-200 px-2 py-1 text-xs text-zinc-900"
+                      >
+                        <option value="">None</option>
+                        {(o.logisticsUnits ?? [])
+                          .filter(
+                            (x) =>
+                              x.id !== mergeBf43LuDraft(luDraftByOutboundId[o.id]).logisticsUnitId,
+                          )
+                          .map((x) => (
+                            <option key={x.id} value={x.id}>
+                              {x.scanCode} ({x.kind})
+                            </option>
+                          ))}
+                      </select>
+                    </label>
+                    <label className="grid gap-1">
+                      <span className="text-[10px] font-semibold uppercase tracking-wide text-violet-800">
+                        Outbound line
+                      </span>
+                      <select
+                        value={mergeBf43LuDraft(luDraftByOutboundId[o.id]).outboundOrderLineId}
+                        onChange={(e) =>
+                          setLuDraftByOutboundId((prev) => ({
+                            ...prev,
+                            [o.id]: { ...mergeBf43LuDraft(prev[o.id]), outboundOrderLineId: e.target.value },
+                          }))
+                        }
+                        className="rounded border border-violet-200 px-2 py-1 text-xs text-zinc-900"
+                      >
+                        <option value="">Structural only</option>
+                        {o.lines.map((l) => (
+                          <option key={l.id} value={l.id}>
+                            Line {l.lineNo} · {l.product.sku ?? l.product.productCode ?? l.product.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="grid gap-1">
+                      <span className="text-[10px] font-semibold uppercase tracking-wide text-violet-800">
+                        Contained qty (line only)
+                      </span>
+                      <input
+                        type="number"
+                        min={1}
+                        step={1}
+                        value={mergeBf43LuDraft(luDraftByOutboundId[o.id]).containedQty}
+                        onChange={(e) =>
+                          setLuDraftByOutboundId((prev) => ({
+                            ...prev,
+                            [o.id]: { ...mergeBf43LuDraft(prev[o.id]), containedQty: e.target.value },
+                          }))
+                        }
+                        className="rounded border border-violet-200 px-2 py-1 text-xs text-zinc-900"
+                      />
+                    </label>
+                    <div className="flex flex-wrap items-end gap-2">
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => {
+                          const d = mergeBf43LuDraft(luDraftByOutboundId[o.id]);
+                          if (!d.scanCode.trim()) return;
+                          if (d.outboundOrderLineId.trim()) {
+                            const q = Number(d.containedQty);
+                            if (!Number.isFinite(q) || q <= 0) return;
+                          }
+                          void runAction({
+                            action: "upsert_outbound_logistics_unit_bf43",
+                            outboundOrderId: o.id,
+                            logisticsUnitId: d.logisticsUnitId.trim() || undefined,
+                            logisticsUnitScanCode: d.scanCode.trim(),
+                            logisticsUnitKind: d.kind,
+                            logisticsUnitParentId: d.parentUnitId.trim() ? d.parentUnitId.trim() : null,
+                            logisticsOutboundOrderLineId: d.outboundOrderLineId.trim()
+                              ? d.outboundOrderLineId.trim()
+                              : null,
+                            logisticsContainedQty: d.outboundOrderLineId.trim()
+                              ? Number(d.containedQty)
+                              : null,
+                          });
+                        }}
+                        className="rounded-xl bg-[var(--arscmp-primary)] px-4 py-2 text-xs font-semibold text-white disabled:opacity-40"
+                      >
+                        {mergeBf43LuDraft(luDraftByOutboundId[o.id]).logisticsUnitId ? "Save unit" : "Add unit"}
+                      </button>
+                      {mergeBf43LuDraft(luDraftByOutboundId[o.id]).logisticsUnitId ? (
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() =>
+                            setLuDraftByOutboundId((prev) => {
+                              const next = { ...prev };
+                              delete next[o.id];
+                              return next;
+                            })
+                          }
+                          className="rounded border border-zinc-300 bg-white px-3 py-2 text-xs font-medium text-zinc-800 disabled:opacity-40"
+                        >
+                          Cancel edit
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
               {canEdit && (o.status === "RELEASED" || o.status === "PICKING") && allPicked ? (
                 <div className="mt-2 rounded-lg border border-indigo-100 bg-indigo-50/50 p-2 text-xs text-indigo-950">
                   <p className="font-semibold text-indigo-950">BF-29 · Pack scan check</p>
@@ -5230,6 +5501,17 @@ export function WmsClient({
                       .map((p) => `${p.code}×${p.qty}`)
                       .join(", ") || "—"}
                   </p>
+                  {(o.logisticsUnits ?? []).some(
+                    (u) =>
+                      Boolean(u.outboundOrderLineId) &&
+                      u.containedQty != null &&
+                      Number(u.containedQty) > 0,
+                  ) ? (
+                    <p className="mt-1 text-[11px] text-indigo-900/80">
+                      BF-43: scans matching configured leaf logistics units consume multiple primary-code slots (see
+                      logistics units panel).
+                    </p>
+                  ) : null}
                   {packShipScanPolicy.packScanRequired ? (
                     <p className="mt-1 font-medium text-amber-900">
                       Server policy: scans are required before pack (`WMS_REQUIRE_PACK_SCAN=1`).

@@ -178,6 +178,17 @@ export async function getWmsDashboardPayload(
             product: { select: WMS_PRODUCT_REF_SELECT },
           },
         },
+        logisticsUnits: {
+          orderBy: { scanCode: "asc" },
+          select: {
+            id: true,
+            scanCode: true,
+            kind: true,
+            parentUnitId: true,
+            outboundOrderLineId: true,
+            containedQty: true,
+          },
+        },
       },
     }),
     canPickCrmAccounts
@@ -712,6 +723,14 @@ export async function getWmsDashboardPayload(
         commercialListUnitPrice: l.commercialListUnitPrice?.toString() ?? null,
         commercialPriceTierLabel: l.commercialPriceTierLabel ?? null,
         commercialExtendedAmount: l.commercialExtendedAmount?.toString() ?? null,
+      })),
+      logisticsUnits: (o.logisticsUnits ?? []).map((u) => ({
+        id: u.id,
+        scanCode: u.scanCode,
+        kind: u.kind,
+        parentUnitId: u.parentUnitId,
+        outboundOrderLineId: u.outboundOrderLineId,
+        containedQty: u.containedQty?.toString() ?? null,
       })),
       packScanPlan:
         o.status === "RELEASED" || o.status === "PICKING"

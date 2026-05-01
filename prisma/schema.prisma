@@ -82,6 +82,7 @@ model Tenant {
   wmsTmsWebhookReceipts                       WmsTmsWebhookReceipt[]
   wmsReceipts                                 WmsReceipt[]
   wmsReceivingDispositionTemplates           WmsReceivingDispositionTemplate[]
+  wmsOutboundLogisticsUnits                  WmsOutboundLogisticsUnit[]
   wmsInventorySerials                         WmsInventorySerial[]
   wmsLotBatches                               WmsLotBatch[]
   wmsWorkOrders                               WmsWorkOrder[]
@@ -5222,6 +5223,7 @@ model OutboundOrder {
   sourceCrmQuote CrmQuote?       @relation(fields: [sourceCrmQuoteId], references: [id], onDelete: SetNull)
   createdBy  User                @relation(fields: [createdById], references: [id], onDelete: Restrict)
   lines             OutboundOrderLine[]
+  logisticsUnits    WmsOutboundLogisticsUnit[]
   dockAppointments  WmsDockAppointment[]
   linkedReturnShipments Shipment[]        @relation("ShipmentReturnSourceOutbound")
 
@@ -5254,9 +5256,43 @@ model OutboundOrderLine {
   tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   outboundOrder OutboundOrder @relation(fields: [outboundOrderId], references: [id], onDelete: Cascade)
   product       Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
+  logisticsUnits WmsOutboundLogisticsUnit[]
 
   @@unique([outboundOrderId, lineNo])
   @@index([tenantId, outboundOrderId])
+}
+
+/// BF-43 — GS1 license plate / nested logistics units on outbound (parent pallet → cases → leaf binds to order lines).
+enum WmsOutboundLogisticsUnitKind {
+  PALLET
+  CASE
+  INNER_PACK
+  EACH
+  UNKNOWN
+}
+
+model WmsOutboundLogisticsUnit {
+  id                  String                       @id @default(cuid())
+  tenantId            String
+  outboundOrderId     String
+  /// Normalized scan key (18-digit SSCC core or alphanumeric token per `normalizeOutboundLogisticsUnitScanCode`).
+  scanCode            String
+  kind                WmsOutboundLogisticsUnitKind @default(UNKNOWN)
+  parentUnitId        String?
+  outboundOrderLineId String?
+  containedQty        Decimal?                     @db.Decimal(14, 3)
+  createdAt           DateTime                     @default(now())
+  updatedAt           DateTime                     @updatedAt
+
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  outboundOrder      OutboundOrder       @relation(fields: [outboundOrderId], references: [id], onDelete: Cascade)
+  parentUnit         WmsOutboundLogisticsUnit? @relation("WmsOutboundLuHierarchy", fields: [parentUnitId], references: [id], onDelete: SetNull)
+  childUnits         WmsOutboundLogisticsUnit[] @relation("WmsOutboundLuHierarchy")
+  outboundOrderLine  OutboundOrderLine?  @relation(fields: [outboundOrderLineId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, outboundOrderId, scanCode])
+  @@index([tenantId, outboundOrderId])
+  @@index([tenantId, outboundOrderLineId])
 }
 
 enum LoadPlanStatus {

@@ -238,6 +238,14 @@ export type WmsBody = {
   packScanTokens?: string[];
   shipScanTokens?: string[];
 
+  /** BF-43 — `upsert_outbound_logistics_unit_bf43`: update existing row when set. */
+  logisticsUnitId?: string;
+  logisticsUnitScanCode?: string;
+  logisticsUnitKind?: string;
+  logisticsUnitParentId?: string | null;
+  logisticsOutboundOrderLineId?: string | null;
+  logisticsContainedQty?: number | string | null;
+
   /** BF-36 — `release_soft_reservation`. */
   softReservationId?: string;
   /** BF-36 — TTL seconds when `softReservationExpiresAt` omitted (server default 3600). */
