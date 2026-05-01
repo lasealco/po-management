@@ -9,6 +9,8 @@ Tenant-configurable HTTPS endpoints that receive signed POST payloads when selec
 | `RECEIPT_CLOSED` | Receipt closed successfully (`close_wms_receipt`). |
 | `OUTBOUND_SHIPPED` | Outbound marked shipped (`mark_outbound_shipped`). |
 | `BILLING_EVENT_DISPUTED` | Billing event disputed (`set_billing_event_dispute` with `disputed: true`). |
+| `BILLING_INVOICE_POST_DISPUTED` | Posted invoice run flagged disputed (**BF-47** — `set_invoice_run_posted_dispute`). |
+| `BILLING_CREDIT_MEMO_STUB_CREATED` | Credit memo stub row created (**BF-47** — `create_billing_credit_memo_stub`). |
 
 Only subscriptions that include the event type and are active receive the webhook.
 

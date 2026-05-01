@@ -787,6 +787,8 @@ export function WmsClient({
   const [bf44EvtReceiptClosed, setBf44EvtReceiptClosed] = useState(true);
   const [bf44EvtOutboundShipped, setBf44EvtOutboundShipped] = useState(false);
   const [bf44EvtBillingDisputed, setBf44EvtBillingDisputed] = useState(false);
+  const [bf44EvtBillingInvoicePostDisputed, setBf44EvtBillingInvoicePostDisputed] = useState(false);
+  const [bf44EvtBillingCreditMemoStubCreated, setBf44EvtBillingCreditMemoStubCreated] = useState(false);
   const [bf44WebhookActive, setBf44WebhookActive] = useState(true);
   const [bf44EditingSubscriptionId, setBf44EditingSubscriptionId] = useState<string | null>(null);
   const [bf45PartnerKeyLabel, setBf45PartnerKeyLabel] = useState("");
@@ -3248,6 +3250,8 @@ export function WmsClient({
                             setBf44EvtReceiptClosed(s.eventTypes.includes("RECEIPT_CLOSED"));
                             setBf44EvtOutboundShipped(s.eventTypes.includes("OUTBOUND_SHIPPED"));
                             setBf44EvtBillingDisputed(s.eventTypes.includes("BILLING_EVENT_DISPUTED"));
+                            setBf44EvtBillingInvoicePostDisputed(s.eventTypes.includes("BILLING_INVOICE_POST_DISPUTED"));
+                            setBf44EvtBillingCreditMemoStubCreated(s.eventTypes.includes("BILLING_CREDIT_MEMO_STUB_CREATED"));
                             setBf44WebhookActive(s.isActive);
                           }}
                           className="rounded border border-zinc-300 px-2 py-1 text-[11px] font-medium text-zinc-800 disabled:opacity-40"
@@ -3333,6 +3337,26 @@ export function WmsClient({
               <label className="flex items-center gap-2">
                 <input
                   type="checkbox"
+                  checked={bf44EvtBillingInvoicePostDisputed}
+                  disabled={busy}
+                  onChange={(e) => setBf44EvtBillingInvoicePostDisputed(e.target.checked)}
+                  className="rounded border-zinc-300"
+                />
+                BILLING_INVOICE_POST_DISPUTED
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={bf44EvtBillingCreditMemoStubCreated}
+                  disabled={busy}
+                  onChange={(e) => setBf44EvtBillingCreditMemoStubCreated(e.target.checked)}
+                  className="rounded border-zinc-300"
+                />
+                BILLING_CREDIT_MEMO_STUB_CREATED
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
                   checked={bf44WebhookActive}
                   disabled={busy}
                   onChange={(e) => setBf44WebhookActive(e.target.checked)}
@@ -3348,13 +3372,19 @@ export function WmsClient({
                   busy ||
                   !bf44WebhookUrl.trim() ||
                   (!bf44EditingSubscriptionId && bf44WebhookSecret.trim().length < 8) ||
-                  (!bf44EvtReceiptClosed && !bf44EvtOutboundShipped && !bf44EvtBillingDisputed)
+                  (!bf44EvtReceiptClosed &&
+                    !bf44EvtOutboundShipped &&
+                    !bf44EvtBillingDisputed &&
+                    !bf44EvtBillingInvoicePostDisputed &&
+                    !bf44EvtBillingCreditMemoStubCreated)
                 }
                 onClick={() => {
                   const types: string[] = [];
                   if (bf44EvtReceiptClosed) types.push("RECEIPT_CLOSED");
                   if (bf44EvtOutboundShipped) types.push("OUTBOUND_SHIPPED");
                   if (bf44EvtBillingDisputed) types.push("BILLING_EVENT_DISPUTED");
+                  if (bf44EvtBillingInvoicePostDisputed) types.push("BILLING_INVOICE_POST_DISPUTED");
+                  if (bf44EvtBillingCreditMemoStubCreated) types.push("BILLING_CREDIT_MEMO_STUB_CREATED");
                   if (bf44EditingSubscriptionId) {
                     const body: Record<string, unknown> = {
                       action: "update_wms_outbound_webhook_subscription_bf44",
@@ -3374,6 +3404,8 @@ export function WmsClient({
                         setBf44EvtReceiptClosed(true);
                         setBf44EvtOutboundShipped(false);
                         setBf44EvtBillingDisputed(false);
+                        setBf44EvtBillingInvoicePostDisputed(false);
+                        setBf44EvtBillingCreditMemoStubCreated(false);
                         setBf44WebhookActive(true);
                       }
                     });
@@ -3391,6 +3423,8 @@ export function WmsClient({
                         setBf44EvtReceiptClosed(true);
                         setBf44EvtOutboundShipped(false);
                         setBf44EvtBillingDisputed(false);
+                        setBf44EvtBillingInvoicePostDisputed(false);
+                        setBf44EvtBillingCreditMemoStubCreated(false);
                         setBf44WebhookActive(true);
                       }
                     });
@@ -3411,6 +3445,8 @@ export function WmsClient({
                     setBf44EvtReceiptClosed(true);
                     setBf44EvtOutboundShipped(false);
                     setBf44EvtBillingDisputed(false);
+                    setBf44EvtBillingInvoicePostDisputed(false);
+                    setBf44EvtBillingCreditMemoStubCreated(false);
                     setBf44WebhookActive(true);
                   }}
                   className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-800 disabled:opacity-40"

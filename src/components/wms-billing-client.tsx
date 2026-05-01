@@ -1,8 +1,9 @@
 "use client";
 
 import { apiClientErrorMessage } from "@/lib/api-client-error";
+import { POSTED_BILLING_DISPUTE_REASON_CODES } from "@/lib/wms/billing-bf47";
 import Link from "next/link";
-import { startTransition, useCallback, useEffect, useState } from "react";
+import { startTransition, useCallback, useEffect, useState, type ReactElement } from "react";
 
 type AccrualStagingApiRow = {
   id: string;
@@ -22,6 +23,7 @@ type BillingPayload = {
   profileSourceNote?: string;
   unbilledEventCount?: number;
   disputedUnbilledEventCount?: number;
+  postedDisputedInvoiceRunCount?: number;
   rates: Array<{
     id: string;
     code: string;
@@ -60,7 +62,20 @@ type BillingPayload = {
     createdAt: string;
     lineCount: number;
     eventCount: number;
+    creditMemoStubCount: number;
     hasCsv: boolean;
+    postedDisputeOpenedAt: string | null;
+    postedDisputeReasonCode: string | null;
+    postedDisputeNote: string | null;
+    creditMemoStubs: Array<{
+      id: string;
+      creditAmount: string;
+      currency: string;
+      reasonCode: string;
+      memoNote: string | null;
+      externalArDocumentRef: string | null;
+      createdAt: string;
+    }>;
   }>;
   error?: string;
 };
@@ -73,6 +88,14 @@ export function WmsBillingClient({ canEdit }: { canEdit: boolean }) {
   const [busy, setBusy] = useState(false);
   const [periodFrom, setPeriodFrom] = useState("");
   const [periodTo, setPeriodTo] = useState("");
+  const [disputeTargetRunId, setDisputeTargetRunId] = useState<string | null>(null);
+  const [disputeReasonCode, setDisputeReasonCode] = useState<string>("RATE_DISPUTE");
+  const [disputeNote, setDisputeNote] = useState("");
+  const [creditTargetRunId, setCreditTargetRunId] = useState<string | null>(null);
+  const [creditAmount, setCreditAmount] = useState("");
+  const [creditReasonCode, setCreditReasonCode] = useState<string>("RATE_DISPUTE");
+  const [creditNote, setCreditNote] = useState("");
+  const [creditArRef, setCreditArRef] = useState("");
 
   const load = useCallback(async () => {
     const [billingRes, accrualRes] = await Promise.all([
@@ -120,6 +143,8 @@ export function WmsBillingClient({ canEdit }: { canEdit: boolean }) {
       setBusy(false);
       return;
     }
+    setDisputeTargetRunId(null);
+    setCreditTargetRunId(null);
     await load();
     setBusy(false);
   }
@@ -193,6 +218,9 @@ export function WmsBillingClient({ canEdit }: { canEdit: boolean }) {
         <p className="mt-1 text-xs text-zinc-600">
           Eligible for invoicing (not disputed). Held disputes:{" "}
           <span className="font-semibold text-zinc-800">{data.disputedUnbilledEventCount ?? 0}</span>
+          {" · "}
+          Posted invoice runs flagged for finance / credit follow-up (BF-47):{" "}
+          <span className="font-semibold text-amber-900">{data.postedDisputedInvoiceRunCount ?? 0}</span>
         </p>
         <p className="mt-1 text-xs text-zinc-500">
           Sync from movements first, then create an invoice for a period. Disputed rows stay out of draft runs until cleared.
@@ -386,45 +414,271 @@ export function WmsBillingClient({ canEdit }: { canEdit: boolean }) {
                   </td>
                 </tr>
               ) : (
-                data.invoiceRuns.map((r) => (
-                  <tr key={r.id}>
-                    <td className="px-2 py-1 font-medium text-zinc-900">{r.runNo}</td>
-                    <td className="whitespace-nowrap px-2 py-1 text-xs text-zinc-600">
-                      {new Date(r.periodFrom).toLocaleString()} → {new Date(r.periodTo).toLocaleString()}
-                    </td>
-                    <td className="px-2 py-1">{r.status}</td>
-                    <td className="px-2 py-1">
-                      {r.totalAmount} {r.currency}
-                    </td>
-                    <td className="px-2 py-1 text-zinc-600">
-                      {r.lineCount} / {r.eventCount}
-                    </td>
-                    <td className="px-2 py-1">
-                      {r.hasCsv ? (
-                        <a
-                          href={`/api/wms/billing?csvRun=${encodeURIComponent(r.id)}`}
-                          className="text-[var(--arscmp-primary)] underline-offset-2 hover:underline"
-                        >
-                          Download
-                        </a>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                    <td className="px-2 py-1">
-                      {canEdit && r.status === "DRAFT" ? (
-                        <button
-                          type="button"
-                          disabled={busy}
-                          onClick={() => void postAction({ action: "post_invoice_run", invoiceRunId: r.id })}
-                          className="rounded border border-zinc-300 px-2 py-1 text-xs font-medium text-zinc-800 disabled:opacity-40"
-                        >
-                          Post
-                        </button>
-                      ) : null}
-                    </td>
-                  </tr>
-                ))
+                data.invoiceRuns.flatMap((r) => {
+                  const disputeOpen = disputeTargetRunId === r.id;
+                  const creditOpen = creditTargetRunId === r.id;
+                  const mainRow = (
+                    <tr key={r.id} className={r.status === "POST_DISPUTED" ? "bg-amber-50/60" : undefined}>
+                      <td className="px-2 py-1 font-medium text-zinc-900">{r.runNo}</td>
+                      <td className="whitespace-nowrap px-2 py-1 text-xs text-zinc-600">
+                        {new Date(r.periodFrom).toLocaleString()} → {new Date(r.periodTo).toLocaleString()}
+                      </td>
+                      <td className="px-2 py-1">
+                        <div className="flex flex-col gap-0.5">
+                          <span className={r.status === "POST_DISPUTED" ? "font-semibold text-amber-900" : undefined}>
+                            {r.status}
+                          </span>
+                          {r.postedDisputeReasonCode ? (
+                            <span className="text-[10px] text-amber-800" title={r.postedDisputeNote ?? undefined}>
+                              {r.postedDisputeReasonCode}
+                            </span>
+                          ) : null}
+                          {r.creditMemoStubCount > 0 ? (
+                            <span className="text-[10px] text-zinc-500">{r.creditMemoStubCount} credit memo stub(s)</span>
+                          ) : null}
+                        </div>
+                      </td>
+                      <td className="px-2 py-1">
+                        {r.totalAmount} {r.currency}
+                      </td>
+                      <td className="px-2 py-1 text-zinc-600">
+                        {r.lineCount} / {r.eventCount}
+                      </td>
+                      <td className="px-2 py-1">
+                        {r.hasCsv ? (
+                          <a
+                            href={`/api/wms/billing?csvRun=${encodeURIComponent(r.id)}`}
+                            className="text-[var(--arscmp-primary)] underline-offset-2 hover:underline"
+                          >
+                            Download
+                          </a>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td className="space-y-1 px-2 py-1 align-top">
+                        {canEdit && r.status === "DRAFT" ? (
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => void postAction({ action: "post_invoice_run", invoiceRunId: r.id })}
+                            className="rounded border border-zinc-300 px-2 py-1 text-xs font-medium text-zinc-800 disabled:opacity-40"
+                          >
+                            Post
+                          </button>
+                        ) : null}
+                        {canEdit && r.status === "POSTED" ? (
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => {
+                              setDisputeTargetRunId(r.id);
+                              setCreditTargetRunId(null);
+                              setDisputeReasonCode("RATE_DISPUTE");
+                              setDisputeNote("");
+                            }}
+                            className="block rounded border border-amber-300 bg-white px-2 py-1 text-xs font-medium text-amber-950 disabled:opacity-40"
+                          >
+                            Dispute posted run
+                          </button>
+                        ) : null}
+                        {canEdit && r.status === "POST_DISPUTED" ? (
+                          <div className="flex flex-col gap-1">
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => {
+                                setCreditTargetRunId(r.id);
+                                setDisputeTargetRunId(null);
+                                setCreditAmount("");
+                                setCreditReasonCode("RATE_DISPUTE");
+                                setCreditNote("");
+                                setCreditArRef("");
+                              }}
+                              className="rounded border border-zinc-300 px-2 py-1 text-left text-xs font-medium text-zinc-800 disabled:opacity-40"
+                            >
+                              Credit memo stub
+                            </button>
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() =>
+                                void postAction({
+                                  action: "set_invoice_run_posted_dispute",
+                                  invoiceRunId: r.id,
+                                  postedBillingDisputed: false,
+                                })
+                              }
+                              className="rounded border border-zinc-300 px-2 py-1 text-left text-xs font-medium text-zinc-800 disabled:opacity-40"
+                            >
+                              Clear posted dispute
+                            </button>
+                          </div>
+                        ) : null}
+                      </td>
+                    </tr>
+                  );
+                  const extra: ReactElement[] = [];
+                  if (disputeOpen) {
+                    extra.push(
+                      <tr key={`${r.id}-dispute-form`} className="bg-zinc-50">
+                        <td colSpan={7} className="px-3 py-3 text-xs text-zinc-700">
+                          <p className="font-semibold text-zinc-900">Mark posted run as disputed (BF-47)</p>
+                          <p className="mt-1 text-zinc-600">
+                            Finance / AR follow-up: transitions status to POST_DISPUTED and emits{" "}
+                            <span className="font-mono text-[11px]">BILLING_INVOICE_POST_DISPUTED</span> when webhooks subscribe.
+                          </p>
+                          <div className="mt-2 flex flex-wrap items-end gap-3">
+                            <label className="flex flex-col gap-0.5 text-[11px] text-zinc-600">
+                              Reason code
+                              <select
+                                value={disputeReasonCode}
+                                disabled={busy}
+                                onChange={(e) => setDisputeReasonCode(e.target.value)}
+                                className="rounded border border-zinc-300 px-2 py-1.5 text-sm text-zinc-900"
+                              >
+                                {POSTED_BILLING_DISPUTE_REASON_CODES.map((c) => (
+                                  <option key={c} value={c}>
+                                    {c}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                            <label className="flex min-w-[12rem] flex-1 flex-col gap-0.5 text-[11px] text-zinc-600">
+                              Note (optional)
+                              <textarea
+                                value={disputeNote}
+                                disabled={busy}
+                                onChange={(e) => setDisputeNote(e.target.value)}
+                                rows={2}
+                                className="rounded border border-zinc-300 px-2 py-1.5 text-sm text-zinc-900"
+                              />
+                            </label>
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() =>
+                                void postAction({
+                                  action: "set_invoice_run_posted_dispute",
+                                  invoiceRunId: r.id,
+                                  postedBillingDisputed: true,
+                                  postedBillingDisputeReasonCode: disputeReasonCode,
+                                  postedBillingDisputeNote: disputeNote.trim() ? disputeNote.trim() : null,
+                                })
+                              }
+                              className="rounded-xl bg-[var(--arscmp-primary)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+                            >
+                              Confirm posted dispute
+                            </button>
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => setDisputeTargetRunId(null)}
+                              className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-800 disabled:opacity-40"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </td>
+                      </tr>,
+                    );
+                  }
+                  if (creditOpen) {
+                    extra.push(
+                      <tr key={`${r.id}-credit-form`} className="bg-zinc-50">
+                        <td colSpan={7} className="px-3 py-3 text-xs text-zinc-700">
+                          <p className="font-semibold text-zinc-900">Credit memo stub</p>
+                          <p className="mt-1 text-zinc-600">
+                            Placeholder row for ERP / AR linkage (optional{" "}
+                            <span className="font-mono text-[11px]">externalArDocumentRef</span>). Leave amount blank to default to
+                            invoice total ({r.totalAmount} {r.currency}).
+                          </p>
+                          {r.creditMemoStubs.length > 0 ? (
+                            <ul className="mt-2 list-inside list-disc text-[11px] text-zinc-600">
+                              {r.creditMemoStubs.slice(0, 8).map((s) => (
+                                <li key={s.id}>
+                                  {s.creditAmount} {s.currency} — {s.reasonCode}
+                                  {s.externalArDocumentRef ? ` · AR ref ${s.externalArDocumentRef}` : ""}
+                                </li>
+                              ))}
+                            </ul>
+                          ) : null}
+                          <div className="mt-2 flex flex-wrap items-end gap-3">
+                            <label className="flex flex-col gap-0.5 text-[11px] text-zinc-600">
+                              Credit amount (optional)
+                              <input
+                                value={creditAmount}
+                                disabled={busy}
+                                onChange={(e) => setCreditAmount(e.target.value)}
+                                placeholder={r.totalAmount}
+                                className="rounded border border-zinc-300 px-2 py-1.5 font-mono text-sm text-zinc-900"
+                              />
+                            </label>
+                            <label className="flex flex-col gap-0.5 text-[11px] text-zinc-600">
+                              Reason code
+                              <select
+                                value={creditReasonCode}
+                                disabled={busy}
+                                onChange={(e) => setCreditReasonCode(e.target.value)}
+                                className="rounded border border-zinc-300 px-2 py-1.5 text-sm text-zinc-900"
+                              >
+                                {POSTED_BILLING_DISPUTE_REASON_CODES.map((c) => (
+                                  <option key={c} value={c}>
+                                    {c}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                            <label className="flex min-w-[10rem] flex-col gap-0.5 text-[11px] text-zinc-600">
+                              Memo (optional)
+                              <input
+                                value={creditNote}
+                                disabled={busy}
+                                onChange={(e) => setCreditNote(e.target.value)}
+                                className="rounded border border-zinc-300 px-2 py-1.5 text-sm text-zinc-900"
+                              />
+                            </label>
+                            <label className="flex min-w-[10rem] flex-col gap-0.5 text-[11px] text-zinc-600">
+                              External AR doc ref (optional)
+                              <input
+                                value={creditArRef}
+                                disabled={busy}
+                                onChange={(e) => setCreditArRef(e.target.value)}
+                                className="rounded border border-zinc-300 px-2 py-1.5 font-mono text-sm text-zinc-900"
+                              />
+                            </label>
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() =>
+                                void postAction({
+                                  action: "create_billing_credit_memo_stub",
+                                  invoiceRunId: r.id,
+                                  creditMemoCreditAmount: creditAmount.trim() ? creditAmount.trim() : undefined,
+                                  creditMemoReasonCode: creditReasonCode,
+                                  creditMemoNote: creditNote.trim() ? creditNote.trim() : null,
+                                  creditMemoExternalArDocumentRef: creditArRef.trim() ? creditArRef.trim() : null,
+                                })
+                              }
+                              className="rounded-xl bg-[var(--arscmp-primary)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+                            >
+                              Create stub
+                            </button>
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => setCreditTargetRunId(null)}
+                              className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-800 disabled:opacity-40"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </td>
+                      </tr>,
+                    );
+                  }
+                  return [mainRow, ...extra];
+                })
               )}
             </tbody>
           </table>

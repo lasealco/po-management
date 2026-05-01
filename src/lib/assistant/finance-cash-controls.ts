@@ -39,7 +39,11 @@ export function buildCashPosture(inputs: FinanceCashControlInputs) {
   const currency = currencyOf(inputs);
   const openSalesOrderValue = roundMoney(inputs.salesOrders.filter((order) => order.status !== "CLOSED").reduce((sum, order) => sum + order.totalValue, 0));
   const openQuoteValue = roundMoney(inputs.quotes.filter((quote) => quote.status !== "WON" && quote.status !== "LOST").reduce((sum, quote) => sum + quote.subtotal, 0));
-  const pendingBilling = roundMoney(inputs.wmsInvoiceRuns.filter((run) => run.status !== "POSTED" && run.status !== "VOID").reduce((sum, run) => sum + run.totalAmount, 0));
+  const pendingBilling = roundMoney(
+    inputs.wmsInvoiceRuns
+      .filter((run) => run.status !== "POSTED" && run.status !== "POST_DISPUTED" && run.status !== "VOID")
+      .reduce((sum, run) => sum + run.totalAmount, 0),
+  );
   const unapprovedAccrual = roundMoney(inputs.financePackets.reduce((sum, packet) => sum + packet.accrualAmount, 0));
   const cashExposureAmount = roundMoney(openSalesOrderValue + pendingBilling + unapprovedAccrual);
   const cashRisks = [
@@ -137,7 +141,8 @@ export function buildMarginLeakageControl(inputs: FinanceCashControlInputs) {
 
 export function buildWarehouseBillingControl(inputs: FinanceCashControlInputs) {
   const draftRuns = inputs.wmsInvoiceRuns.filter((run) => run.status === "DRAFT");
-  const reviewRuns = inputs.wmsInvoiceRuns.filter((run) => run.status !== "POSTED" && run.status !== "VOID");
+  const postedLike = (s: string) => s === "POSTED" || s === "POST_DISPUTED";
+  const reviewRuns = inputs.wmsInvoiceRuns.filter((run) => !postedLike(run.status) && run.status !== "VOID");
   const zeroLineRuns = inputs.wmsInvoiceRuns.filter((run) => run.lineCount === 0 || run.totalAmount <= 0);
   return {
     invoiceRunCount: inputs.wmsInvoiceRuns.length,

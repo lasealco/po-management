@@ -35,6 +35,19 @@ describe("buildFinanceCashControlPacket", () => {
     expect(packet.leadershipSummary).toContain("Sprint 12 Finance, Cash & Accounting Controls score");
   });
 
+  it("excludes POST_DISPUTED WMS runs from pending billing cash exposure", () => {
+    const withPostedDisputed: FinanceCashControlInputs = {
+      ...inputs,
+      wmsInvoiceRuns: [
+        { id: "wms-draft", runNo: "WMS-D", status: "DRAFT", totalAmount: 500, currency: "USD", periodFrom: "2026-04-01T00:00:00.000Z", periodTo: "2026-04-15T00:00:00.000Z", lineCount: 1 },
+        { id: "wms-disputed", runNo: "WMS-P", status: "POST_DISPUTED", totalAmount: 900, currency: "USD", periodFrom: "2026-04-01T00:00:00.000Z", periodTo: "2026-04-15T00:00:00.000Z", lineCount: 1 },
+      ],
+    };
+    const packet = buildFinanceCashControlPacket(withPostedDisputed);
+    expect(packet.cashPosture.pendingBilling).toBe(500);
+    expect(packet.warehouseBilling.pendingBillingAmount).toBe(500);
+  });
+
   it("keeps financial execution review-gated", () => {
     const packet = buildFinanceCashControlPacket(inputs);
 

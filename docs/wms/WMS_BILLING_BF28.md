@@ -22,8 +22,8 @@
 
 ## Backlog
 
-Accrual placeholders, posted-run reversal workflows, approval gates, accounting export beyond CSV, full AR subledger, tax engine.
+Accrual placeholders, posted-run reversal workflows beyond BF-47 stubs, approval gates, accounting export beyond CSV, full AR subledger, tax engine.
 
 ---
 
-_Last updated: 2026-04-29 — BF-28 minimal billing dispute hold._
+_Last updated: 2026-04-30 — BF-28 minimal billing dispute hold; posted-run disputes → **BF-47** ([`WMS_BILLING_BF47.md`](./WMS_BILLING_BF47.md))._

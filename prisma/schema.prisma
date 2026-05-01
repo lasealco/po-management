@@ -76,6 +76,7 @@ model Tenant {
   wmsBillingEvents                            WmsBillingEvent[]
   wmsReceivingAccrualStagings                 WmsReceivingAccrualStaging[]
   wmsBillingInvoiceRuns                       WmsBillingInvoiceRun[]
+  wmsBillingCreditMemoStubs                  WmsBillingCreditMemoStub[]
   wmsBillingInvoiceLines                      WmsBillingInvoiceLine[]
   wmsSavedLedgerViews                         WmsSavedLedgerView[]
   wmsDockAppointments                         WmsDockAppointment[]
@@ -2590,6 +2591,8 @@ model User {
   crmActivitiesOwned                                  CrmActivity[]                                @relation("CrmActivityOwner")
   crmQuotesOwned                                      CrmQuote[]                                   @relation("CrmQuoteOwner")
   wmsBillingInvoiceRunsCreated                        WmsBillingInvoiceRun[]                       @relation("WmsBillingInvoiceRunCreatedBy")
+  wmsBillingInvoiceRunsPostedDisputeOpenedBy          WmsBillingInvoiceRun[]                       @relation("WmsBillingInvoiceRunPostedDisputeOpenedBy")
+  wmsBillingCreditMemoStubsCreated                    WmsBillingCreditMemoStub[]                   @relation("WmsBillingCreditMemoStubCreatedBy")
   ctTrackingMilestonesUpdated                         CtTrackingMilestone[]
   ctShipmentDocumentsUploaded                         CtShipmentDocument[]
   ctShipmentNotesCreated                              CtShipmentNote[]
@@ -4806,6 +4809,8 @@ enum WmsBillingProfileSource {
 enum WmsBillingInvoiceStatus {
   DRAFT
   POSTED
+  /// BF-47 — posted run flagged for finance / AR follow-up (reversal linkage via credit memo stubs).
+  POST_DISPUTED
 }
 
 /// Tenant-defined unit price per inventory movement type (Phase B billing foundation).
@@ -4876,14 +4881,41 @@ model WmsBillingInvoiceRun {
   csvSnapshot   String?                 @db.Text
   createdById   String
   createdAt     DateTime                @default(now())
+  /// BF-47 — when status is POST_DISPUTED, audit trail for finance / AR sync hooks.
+  postedDisputeOpenedAt     DateTime?
+  postedDisputeReasonCode   String?                 @db.VarChar(64)
+  postedDisputeNote         String?                 @db.VarChar(800)
+  postedDisputeOpenedById   String?
 
-  tenant    Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  createdBy User                    @relation("WmsBillingInvoiceRunCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
-  lines     WmsBillingInvoiceLine[]
-  events    WmsBillingEvent[]
+  tenant                   Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy                User                     @relation("WmsBillingInvoiceRunCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  postedDisputeOpenedBy    User?                    @relation("WmsBillingInvoiceRunPostedDisputeOpenedBy", fields: [postedDisputeOpenedById], references: [id], onDelete: SetNull)
+  lines                    WmsBillingInvoiceLine[]
+  events                   WmsBillingEvent[]
+  billingCreditMemoStubs   WmsBillingCreditMemoStub[]
 
   @@unique([tenantId, runNo])
   @@index([tenantId, createdAt])
+}
+
+/// BF-47 — placeholder credit memo rows linked to a POST_DISPUTED invoice run (ERP / AR document ref stub).
+model WmsBillingCreditMemoStub {
+  id                     String   @id @default(cuid())
+  tenantId               String
+  sourceInvoiceRunId     String
+  creditAmount           Decimal  @db.Decimal(14, 2)
+  currency               String   @default("USD") @db.VarChar(3)
+  reasonCode             String   @db.VarChar(64)
+  memoNote               String?  @db.VarChar(800)
+  externalArDocumentRef  String?  @db.VarChar(128)
+  createdAt              DateTime @default(now())
+  createdById            String
+
+  tenant           Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sourceInvoiceRun WmsBillingInvoiceRun @relation(fields: [sourceInvoiceRunId], references: [id], onDelete: Restrict)
+  createdBy        User                 @relation("WmsBillingCreditMemoStubCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, sourceInvoiceRunId])
 }
 
 model WmsBillingInvoiceLine {
@@ -5303,6 +5335,8 @@ enum WmsOutboundWebhookEventType {
   RECEIPT_CLOSED
   OUTBOUND_SHIPPED
   BILLING_EVENT_DISPUTED
+  BILLING_INVOICE_POST_DISPUTED
+  BILLING_CREDIT_MEMO_STUB_CREATED
 }
 
 enum WmsOutboundWebhookDeliveryStatus {
