@@ -13,6 +13,11 @@ export type WmsBody = {
    * `create_outbound_order` and `set_outbound_order_asn_fields`.
    */
   asnReference?: string | null;
+  /**
+   * BF-31 — optional 0–100; permitted %-delta vs shipped qty per inbound line (`ShipmentItem`)
+   * when evaluating ASN tolerance (`evaluate_wms_receipt_asn_tolerance`, `close_wms_receipt` guards).
+   */
+  asnQtyTolerancePct?: number | string | null;
   /** ISO datetime string or null to clear. */
   expectedReceiveAt?: string | null;
   /** `ShipmentMilestoneCode` value for `record_shipment_milestone`. */
@@ -145,6 +150,14 @@ export type WmsBody = {
    * `RECEIPT_COMPLETE` if the state machine allows it (typically from `RECEIVING`).
    */
   receiptCompleteOnClose?: boolean;
+  /** BF-31 — optional GRN persisted on closing OPEN dock receipt (max 128). Ignored when generateGrn is true. */
+  grnReference?: string | null;
+  /** BF-31 — assign `GRN-YYYYMMDD-*` when closing OPEN dock receipt. */
+  generateGrn?: boolean;
+  /** BF-31 — only advance `receiptCompleteOnClose` receiving step when qty tolerance passes (if tolerance configured). */
+  requireWithinAsnToleranceForAdvance?: boolean;
+  /** BF-31 — refuse receipt close when tolerance configured but qty deltas violate band. */
+  blockCloseIfOutsideTolerance?: boolean;
 
   /** BF-13 — `WmsInventorySerial.id` (alternative to `productId` + `inventorySerialNo`). */
   inventorySerialId?: string;

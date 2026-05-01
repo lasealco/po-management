@@ -17,7 +17,7 @@
 
 ## Explicit backlog (not BF-21)
 
-- ASN **auto-close** rules tied to carrier ASN payloads (855/JSON), tolerance policies per SKU, **`GRN`** numbering service, accrual stubs, receipt **versioning** beyond audit logs.
+- ASN **auto-close** rules tied to carrier ASN payloads (855/JSON), tolerance policies per SKU beyond **BF-31** dock %-tol guardrails, centralized **`GRN`** numbering service, accrual stubs, receipt **versioning** beyond audit logs.
 
 ---
 

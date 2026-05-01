@@ -49,4 +49,8 @@ describe("wmsMutationTierForPostAction", () => {
     expect(wmsMutationTierForPostAction("link_work_order_crm_quote_line")).toBe("operations");
     expect(wmsMutationTierForPostAction("sync_work_order_bom_from_crm_quote_line")).toBe("operations");
   });
+
+  it("maps BF-31 ASN tolerance evaluate POST to operations tier", () => {
+    expect(wmsMutationTierForPostAction("evaluate_wms_receipt_asn_tolerance")).toBe("operations");
+  });
 });

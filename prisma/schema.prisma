@@ -3738,6 +3738,8 @@ model Shipment {
   cargoChargeableWeightKg Decimal?       @db.Decimal(12, 3)
   /// Freeform dimensions (e.g. 120×80×100 cm) until structured L/W/H exist.
   cargoDimensionsText     String?        @db.VarChar(512)
+  /// BF-31 — optional max allowed absolute %-delta per line vs `quantityShipped` when evaluating ASN tolerance (`receiveLines`).
+  asnQtyTolerancePct      Decimal?       @db.Decimal(5, 2)
   /// Main commodity description for customs / booking screens.
   cargoCommoditySummary   String?        @db.Text
   notes                   String?
@@ -3818,6 +3820,8 @@ model WmsReceipt {
   shipmentId       String
   status           WmsReceiptStatus @default(OPEN)
   dockNote         String?          @db.VarChar(2000)
+  /// BF-31 — finance/carrier GRN id assigned when the receipt is closed (optional).
+  grnReference     String?          @db.VarChar(128)
   dockReceivedAt   DateTime?
   closedAt         DateTime?
   closedByUserId   String?

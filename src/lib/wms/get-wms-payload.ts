@@ -232,6 +232,7 @@ export async function getWmsDashboardPayload(
         status: true,
         asnReference: true,
         expectedReceiveAt: true,
+        asnQtyTolerancePct: true,
         shippedAt: true,
         receivedAt: true,
         wmsReceiveStatus: true,
@@ -268,6 +269,7 @@ export async function getWmsDashboardPayload(
             id: true,
             status: true,
             dockNote: true,
+            grnReference: true,
             dockReceivedAt: true,
             createdAt: true,
             closedAt: true,
@@ -614,6 +616,7 @@ export async function getWmsDashboardPayload(
         status: s.status,
         asnReference: s.asnReference,
         expectedReceiveAt: s.expectedReceiveAt?.toISOString() ?? null,
+        asnQtyTolerancePct: s.asnQtyTolerancePct != null ? s.asnQtyTolerancePct.toString() : null,
         shippedAt: s.shippedAt.toISOString(),
         receivedAt: s.receivedAt?.toISOString() ?? null,
         orderNumber: s.order.orderNumber,
@@ -674,6 +677,7 @@ export async function getWmsDashboardPayload(
               createdAt: r.createdAt.toISOString(),
               dockReceivedAt: r.dockReceivedAt?.toISOString() ?? null,
               dockNote: r.dockNote,
+              grnReference: r.grnReference ?? null,
               lineCount: r.lines.length,
             }));
           return closed;

@@ -25,6 +25,10 @@ import {
   type WavePickSlot,
 } from "./allocation-strategy";
 import { writeShipmentItemReceiveLineInTx } from "./inbound-receive-line-write";
+import {
+  evaluateShipmentReceiveAgainstAsnTolerance,
+  generateDockGrnReference,
+} from "./asn-receipt-tolerance";
 import { canAdvanceReceiveStatusToReceiptComplete } from "./wms-receipt-close-policy";
 import { resolveVarianceDisposition } from "./receive-line-variance";
 import {
@@ -1586,6 +1590,18 @@ export async function handleWmsPost(
     if (input.asnReference !== undefined) {
       data.asnReference = input.asnReference?.trim() ? input.asnReference.trim() : null;
     }
+    if (input.asnQtyTolerancePct !== undefined) {
+      const rawTol = input.asnQtyTolerancePct;
+      if (rawTol === null || rawTol === "") {
+        data.asnQtyTolerancePct = null;
+      } else {
+        const n = typeof rawTol === "number" ? rawTol : Number(rawTol);
+        if (!Number.isFinite(n) || n < 0 || n > 100) {
+          return toApiErrorResponseFromStatus("asnQtyTolerancePct must be between 0 and 100.", 400);
+        }
+        data.asnQtyTolerancePct = n;
+      }
+    }
     if (input.expectedReceiveAt !== undefined) {
       const raw = input.expectedReceiveAt;
       if (raw === null || raw === "") {
@@ -1599,7 +1615,10 @@ export async function handleWmsPost(
       }
     }
     if (Object.keys(data).length === 0) {
-      return toApiErrorResponseFromStatus("Provide asnReference and/or expectedReceiveAt to update.", 400);
+      return toApiErrorResponseFromStatus(
+        "Provide asnReference, expectedReceiveAt, and/or asnQtyTolerancePct to update.",
+        400,
+      );
     }
     await prisma.$transaction(async (tx) => {
       const updated = await tx.shipment.update({
@@ -1831,12 +1850,65 @@ export async function handleWmsPost(
     return NextResponse.json({ ok: true, receiptId: created.id });
   }
 
+  if (action === "evaluate_wms_receipt_asn_tolerance") {
+    const shipmentId = input.shipmentId?.trim();
+    if (!shipmentId) {
+      return toApiErrorResponseFromStatus("shipmentId required.", 400);
+    }
+    const ship = await prisma.shipment.findFirst({
+      where: { id: shipmentId, order: { tenantId } },
+      select: {
+        id: true,
+        asnQtyTolerancePct: true,
+        items: { select: { id: true, quantityShipped: true, quantityReceived: true } },
+      },
+    });
+    if (!ship) {
+      return toApiErrorResponseFromStatus("Shipment not found.", 404);
+    }
+    const tol = ship.asnQtyTolerancePct != null ? Number(ship.asnQtyTolerancePct) : null;
+    const ev = evaluateShipmentReceiveAgainstAsnTolerance(
+      ship.items.map((it) => ({
+        shipmentItemId: it.id,
+        quantityShipped: Number(it.quantityShipped),
+        quantityReceived: Number(it.quantityReceived),
+      })),
+      tol,
+    );
+    return NextResponse.json({
+      ok: true,
+      shipmentId: ship.id,
+      tolerancePct: ev.tolerancePct,
+      policyApplied: ev.policyApplied,
+      withinTolerance: ev.withinTolerance,
+      lines: ev.lines.map((l) => ({
+        shipmentItemId: l.shipmentItemId,
+        quantityShipped: l.quantityShipped.toFixed(3),
+        quantityReceived: l.quantityReceived.toFixed(3),
+        deltaAbs: l.deltaAbs,
+        deltaPctOfShipped: l.deltaPctOfShipped != null ? Number(l.deltaPctOfShipped.toFixed(6)) : null,
+        ok: l.ok,
+      })),
+    });
+  }
+
   if (action === "close_wms_receipt") {
     const receiptId = input.receiptId?.trim();
     if (!receiptId) {
       return toApiErrorResponseFromStatus("receiptId required.", 400);
     }
     const receiptCompleteOnClose = Boolean(input.receiptCompleteOnClose);
+    const requireWithinAsnToleranceForAdvance = Boolean(input.requireWithinAsnToleranceForAdvance);
+    const blockCloseIfOutsideTolerance = Boolean(input.blockCloseIfOutsideTolerance);
+    const generateGrn = Boolean(input.generateGrn);
+
+    let explicitGrn: string | null | undefined;
+    if (input.grnReference !== undefined) {
+      explicitGrn =
+        input.grnReference === null || String(input.grnReference).trim() === ""
+          ? null
+          : String(input.grnReference).trim().slice(0, 128);
+    }
 
     const rec = await prisma.wmsReceipt.findFirst({
       where: { id: receiptId, tenantId },
@@ -1844,7 +1916,20 @@ export async function handleWmsPost(
         id: true,
         status: true,
         shipmentId: true,
-        shipment: { select: { id: true, wmsReceiveStatus: true } },
+        shipment: {
+          select: {
+            id: true,
+            wmsReceiveStatus: true,
+            asnQtyTolerancePct: true,
+            items: {
+              select: {
+                id: true,
+                quantityShipped: true,
+                quantityReceived: true,
+              },
+            },
+          },
+        },
       },
     });
     if (!rec) {
@@ -1854,11 +1939,53 @@ export async function handleWmsPost(
       return NextResponse.json({ ok: true, alreadyClosed: true });
     }
 
+    const tol =
+      rec.shipment.asnQtyTolerancePct != null ? Number(rec.shipment.asnQtyTolerancePct) : null;
+    const toleranceEval = evaluateShipmentReceiveAgainstAsnTolerance(
+      rec.shipment.items.map((it) => ({
+        shipmentItemId: it.id,
+        quantityShipped: Number(it.quantityShipped),
+        quantityReceived: Number(it.quantityReceived),
+      })),
+      tol,
+    );
+
+    if (blockCloseIfOutsideTolerance && toleranceEval.policyApplied && !toleranceEval.withinTolerance) {
+      return toApiErrorResponseFromStatus(
+        "Receipt close blocked: inbound lines are outside configured ASN qty tolerance (BF-31).",
+        400,
+      );
+    }
+
+    const closedAt = new Date();
+    const grnResolved = generateGrn
+      ? generateDockGrnReference(rec.id, closedAt)
+      : explicitGrn !== undefined
+        ? explicitGrn
+        : undefined;
+
+    const shouldAdvanceReceiveStatus =
+      receiptCompleteOnClose &&
+      (!requireWithinAsnToleranceForAdvance ||
+        !toleranceEval.policyApplied ||
+        toleranceEval.withinTolerance);
+
+    const receiveStatusSkippedDueToTolerance =
+      receiptCompleteOnClose &&
+      requireWithinAsnToleranceForAdvance &&
+      toleranceEval.policyApplied &&
+      !toleranceEval.withinTolerance;
+
     let receiveStatusAdvanced = false;
     await prisma.$transaction(async (tx) => {
       await tx.wmsReceipt.update({
         where: { id: rec.id },
-        data: { status: "CLOSED", closedAt: new Date(), closedByUserId: actorId },
+        data: {
+          status: "CLOSED",
+          closedAt,
+          closedByUserId: actorId,
+          ...(grnResolved !== undefined ? { grnReference: grnResolved } : {}),
+        },
       });
       await tx.ctAuditLog.create({
         data: {
@@ -1870,12 +1997,17 @@ export async function handleWmsPost(
           payload: {
             wmsReceiptId: rec.id,
             ...(receiptCompleteOnClose ? { receiptCompleteOnCloseRequested: true } : {}),
+            ...(grnResolved != null ? { grnReference: grnResolved } : {}),
+            asnTolerancePolicyApplied: toleranceEval.policyApplied,
+            asnToleranceWithin: toleranceEval.withinTolerance,
+            ...(tol != null ? { asnQtyTolerancePct: tol } : {}),
+            ...(receiveStatusSkippedDueToTolerance ? { receiveStatusSkippedDueToTolerance: true } : {}),
           },
           actorUserId: actorId,
         },
       });
 
-      if (receiptCompleteOnClose) {
+      if (shouldAdvanceReceiveStatus) {
         const fromStatus = rec.shipment.wmsReceiveStatus;
         if (canAdvanceReceiveStatusToReceiptComplete(fromStatus)) {
           await tx.shipment.update({
@@ -1907,7 +2039,13 @@ export async function handleWmsPost(
       }
     });
 
-    return NextResponse.json({ ok: true, receiveStatusAdvanced });
+    return NextResponse.json({
+      ok: true,
+      receiveStatusAdvanced,
+      grnReference: grnResolved ?? null,
+      withinAsnTolerance: toleranceEval.policyApplied ? toleranceEval.withinTolerance : null,
+      receiveStatusSkippedDueToTolerance,
+    });
   }
 
   if (action === "set_wms_receipt_line") {

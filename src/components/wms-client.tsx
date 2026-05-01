@@ -184,6 +184,7 @@ type WmsData = {
     status: string;
     asnReference: string | null;
     expectedReceiveAt: string | null;
+    asnQtyTolerancePct: string | null;
     shippedAt: string;
     receivedAt: string | null;
     orderNumber: string;
@@ -243,6 +244,7 @@ type WmsData = {
       createdAt: string;
       dockReceivedAt: string | null;
       dockNote: string | null;
+      grnReference: string | null;
       lineCount: number;
     }>;
   }>;
@@ -633,9 +635,14 @@ export function WmsClient({
       {
         asn: string;
         expectedReceiveAt: string;
+        asnTolerancePct: string;
         receiptDockNote: string;
         receiptDockAt: string;
         receiptCompleteOnClose: boolean;
+        receiptGrn: string;
+        generateGrnOnClose: boolean;
+        requireTolAdvanceClose: boolean;
+        blockTolOutsideClose: boolean;
       }
     >
   >({});
@@ -1008,9 +1015,14 @@ export function WmsClient({
         {
           asn: string;
           expectedReceiveAt: string;
+          asnTolerancePct: string;
           receiptDockNote: string;
           receiptDockAt: string;
           receiptCompleteOnClose: boolean;
+          receiptGrn: string;
+          generateGrnOnClose: boolean;
+          requireTolAdvanceClose: boolean;
+          blockTolOutsideClose: boolean;
         }
       > = {};
       for (const s of data.inboundShipments) {
@@ -1019,9 +1031,14 @@ export function WmsClient({
           expectedReceiveAt: s.expectedReceiveAt
             ? s.expectedReceiveAt.slice(0, 16)
             : "",
+          asnTolerancePct: s.asnQtyTolerancePct ?? "",
           receiptDockNote: "",
           receiptDockAt: "",
           receiptCompleteOnClose: false,
+          receiptGrn: "",
+          generateGrnOnClose: false,
+          requireTolAdvanceClose: false,
+          blockTolOutsideClose: false,
         };
       }
       setInboundEdits(next);
@@ -2474,6 +2491,7 @@ export function WmsClient({
                 <th className="px-2 py-1">Last milestone</th>
                 <th className="px-2 py-1">ASN ref</th>
                 <th className="px-2 py-1">Expected</th>
+                <th className="px-2 py-1">ASN tol %</th>
                 <th className="px-2 py-1">Lines</th>
                 {canEdit ? <th className="px-2 py-1">Dock</th> : null}
                 {canEdit ? <th className="px-2 py-1">Log</th> : null}
@@ -2483,7 +2501,7 @@ export function WmsClient({
             <tbody className="divide-y divide-zinc-200">
               {data.inboundShipments.length === 0 ? (
                 <tr>
-                  <td colSpan={canEdit ? 11 : 8} className="px-2 py-3 text-zinc-500">
+                  <td colSpan={canEdit ? 12 : 9} className="px-2 py-3 text-zinc-500">
                     No shipments for this tenant yet.
                   </td>
                 </tr>
@@ -2494,11 +2512,16 @@ export function WmsClient({
                     inboundEdits[s.id] ?? {
                       asn: "",
                       expectedReceiveAt: "",
+                      asnTolerancePct: "",
                       receiptDockNote: "",
                       receiptDockAt: "",
                       receiptCompleteOnClose: false,
+                      receiptGrn: "",
+                      generateGrnOnClose: false,
+                      requireTolAdvanceClose: false,
+                      blockTolOutsideClose: false,
                     };
-                  const lineColSpan = canEdit ? 11 : 8;
+                  const lineColSpan = canEdit ? 12 : 9;
                   return (
                     <Fragment key={s.id}>
                       <tr>
@@ -2592,6 +2615,24 @@ export function WmsClient({
                           </span>
                         )}
                       </td>
+                      <td className="px-2 py-1">
+                        {canEdit ? (
+                          <input
+                            value={draft.asnTolerancePct}
+                            onChange={(e) =>
+                              setInboundEdits((prev) => ({
+                                ...prev,
+                                [s.id]: { ...draft, asnTolerancePct: e.target.value },
+                              }))
+                            }
+                            className="w-16 rounded border border-zinc-300 px-1 py-1 text-xs"
+                            placeholder="—"
+                            title="BF-31 optional max %-delta vs shipped qty per line"
+                          />
+                        ) : (
+                          <span className="text-zinc-600">{s.asnQtyTolerancePct ?? "—"}</span>
+                        )}
+                      </td>
                       <td className="px-2 py-1 text-zinc-600">{s.itemCount}</td>
                       {canEdit ? (
                         <td className="px-2 py-1">
@@ -2653,6 +2694,10 @@ export function WmsClient({
                                 expectedReceiveAt: draft.expectedReceiveAt.trim()
                                   ? new Date(draft.expectedReceiveAt).toISOString()
                                   : null,
+                                asnQtyTolerancePct:
+                                  draft.asnTolerancePct.trim() === ""
+                                    ? null
+                                    : Number(draft.asnTolerancePct),
                               })
                             }
                             className="rounded border border-zinc-300 px-2 py-1 text-xs font-medium text-zinc-800 disabled:opacity-40"
@@ -2700,37 +2745,109 @@ export function WmsClient({
                                   </span>
                                 ) : null}
                                 {canEdit ? (
-                                  <>
-                                    <label className="flex max-w-md cursor-pointer items-center gap-2 text-[11px] text-zinc-600">
-                                      <input
-                                        type="checkbox"
-                                        className="rounded border-zinc-300"
-                                        checked={draft.receiptCompleteOnClose}
+                                  <div className="flex w-full flex-col gap-2">
+                                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                                      <label className="flex max-w-md cursor-pointer items-center gap-2 text-[11px] text-zinc-600">
+                                        <input
+                                          type="checkbox"
+                                          className="rounded border-zinc-300"
+                                          checked={draft.receiptCompleteOnClose}
+                                          disabled={busy}
+                                          onChange={(e) =>
+                                            setInboundEdits((prev) => ({
+                                              ...prev,
+                                              [s.id]: { ...draft, receiptCompleteOnClose: e.target.checked },
+                                            }))
+                                          }
+                                        />
+                                        On close, advance WMS receiving to Receipt complete when allowed (BF-21)
+                                      </label>
+                                      <label className="flex cursor-pointer items-center gap-2 text-[11px] text-zinc-600">
+                                        <input
+                                          type="checkbox"
+                                          className="rounded border-zinc-300"
+                                          checked={draft.requireTolAdvanceClose}
+                                          disabled={busy}
+                                          onChange={(e) =>
+                                            setInboundEdits((prev) => ({
+                                              ...prev,
+                                              [s.id]: { ...draft, requireTolAdvanceClose: e.target.checked },
+                                            }))
+                                          }
+                                        />
+                                        BF-31 — require ASN qty tolerance before that advance
+                                      </label>
+                                      <label className="flex cursor-pointer items-center gap-2 text-[11px] text-zinc-600">
+                                        <input
+                                          type="checkbox"
+                                          className="rounded border-zinc-300"
+                                          checked={draft.blockTolOutsideClose}
+                                          disabled={busy}
+                                          onChange={(e) =>
+                                            setInboundEdits((prev) => ({
+                                              ...prev,
+                                              [s.id]: { ...draft, blockTolOutsideClose: e.target.checked },
+                                            }))
+                                          }
+                                        />
+                                        BF-31 — block close if outside tolerance
+                                      </label>
+                                    </div>
+                                    <div className="flex flex-wrap items-end gap-2">
+                                      <label className="block min-w-[11rem] text-[11px] font-medium text-zinc-600">
+                                        GRN (optional)
+                                        <input
+                                          value={draft.receiptGrn}
+                                          disabled={busy || draft.generateGrnOnClose}
+                                          onChange={(e) =>
+                                            setInboundEdits((prev) => ({
+                                              ...prev,
+                                              [s.id]: { ...draft, receiptGrn: e.target.value },
+                                            }))
+                                          }
+                                          className="mt-0.5 w-full rounded-lg border border-zinc-300 px-2 py-1 text-[11px]"
+                                          placeholder="e.g. carrier GRN"
+                                        />
+                                      </label>
+                                      <label className="flex cursor-pointer items-center gap-2 pb-1 text-[11px] text-zinc-600">
+                                        <input
+                                          type="checkbox"
+                                          className="rounded border-zinc-300"
+                                          checked={draft.generateGrnOnClose}
+                                          disabled={busy}
+                                          onChange={(e) =>
+                                            setInboundEdits((prev) => ({
+                                              ...prev,
+                                              [s.id]: { ...draft, generateGrnOnClose: e.target.checked },
+                                            }))
+                                          }
+                                        />
+                                        Generate GRN
+                                      </label>
+                                      <button
+                                        type="button"
                                         disabled={busy}
-                                        onChange={(e) =>
-                                          setInboundEdits((prev) => ({
-                                            ...prev,
-                                            [s.id]: { ...draft, receiptCompleteOnClose: e.target.checked },
-                                          }))
+                                        onClick={() =>
+                                          void runAction({
+                                            action: "close_wms_receipt",
+                                            receiptId: openRec.id,
+                                            receiptCompleteOnClose: draft.receiptCompleteOnClose,
+                                            generateGrn: draft.generateGrnOnClose,
+                                            ...(draft.generateGrnOnClose
+                                              ? {}
+                                              : draft.receiptGrn.trim()
+                                                ? { grnReference: draft.receiptGrn.trim() }
+                                                : {}),
+                                            requireWithinAsnToleranceForAdvance: draft.requireTolAdvanceClose,
+                                            blockCloseIfOutsideTolerance: draft.blockTolOutsideClose,
+                                          })
                                         }
-                                      />
-                                      On close, advance WMS receiving to Receipt complete when allowed (BF-21)
-                                    </label>
-                                    <button
-                                      type="button"
-                                      disabled={busy}
-                                      onClick={() =>
-                                        void runAction({
-                                          action: "close_wms_receipt",
-                                          receiptId: openRec.id,
-                                          receiptCompleteOnClose: draft.receiptCompleteOnClose,
-                                        })
-                                      }
-                                      className="ml-auto rounded-lg border border-zinc-300 px-3 py-1.5 text-[11px] font-medium text-zinc-800 disabled:opacity-40"
-                                    >
-                                      Close dock receipt
-                                    </button>
-                                  </>
+                                        className="ml-auto rounded-lg border border-zinc-300 px-3 py-1.5 text-[11px] font-medium text-zinc-800 disabled:opacity-40"
+                                      >
+                                        Close dock receipt
+                                      </button>
+                                    </div>
+                                  </div>
                                 ) : null}
                               </div>
                             ) : canEdit ? (
@@ -2803,6 +2920,9 @@ export function WmsClient({
                                           : "—"}
                                         {h.closedBy ? ` · ${h.closedBy.name}` : ""}
                                       </span>
+                                      {h.grnReference ? (
+                                        <span className="font-medium text-emerald-900">GRN {h.grnReference}</span>
+                                      ) : null}
                                     </li>
                                   ))}
                                 </ul>
