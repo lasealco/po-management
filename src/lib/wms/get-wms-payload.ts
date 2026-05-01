@@ -61,6 +61,7 @@ export async function getWmsDashboardPayload(
   const [
     warehouses,
     zones,
+    aisles,
     bins,
     rules,
     outboundOrders,
@@ -88,12 +89,21 @@ export async function getWmsDashboardPayload(
         parentZone: { select: { id: true, code: true, name: true } },
       },
     }),
+    prisma.warehouseAisle.findMany({
+      where: { tenantId },
+      orderBy: [{ warehouse: { name: "asc" } }, { code: "asc" }],
+      include: {
+        warehouse: { select: { id: true, code: true, name: true } },
+        zone: { select: { id: true, code: true, name: true } },
+      },
+    }),
     prisma.warehouseBin.findMany({
       where: { tenantId, isActive: true },
       orderBy: [{ warehouse: { name: "asc" } }, { code: "asc" }],
       include: {
         warehouse: { select: { id: true, name: true, code: true } },
         zone: { select: { id: true, code: true, name: true, zoneType: true } },
+        warehouseAisle: { select: { id: true, code: true } },
       },
     }),
     prisma.replenishmentRule.findMany({
@@ -426,6 +436,20 @@ export async function getWmsDashboardPayload(
         : null,
       warehouse: z.warehouse,
     })),
+    aisles: aisles.map((a) => ({
+      id: a.id,
+      code: a.code,
+      name: a.name,
+      isActive: a.isActive,
+      zoneId: a.zoneId,
+      zone: a.zone ? { id: a.zone.id, code: a.zone.code, name: a.zone.name } : null,
+      lengthMm: a.lengthMm,
+      widthMm: a.widthMm,
+      originXMm: a.originXMm,
+      originYMm: a.originYMm,
+      originZMm: a.originZMm,
+      warehouse: a.warehouse,
+    })),
     bins: bins.map((b) => ({
       id: b.id,
       code: b.code,
@@ -435,6 +459,10 @@ export async function getWmsDashboardPayload(
       maxPallets: b.maxPallets,
       rackCode: b.rackCode,
       aisle: b.aisle,
+      warehouseAisleId: b.warehouseAisleId,
+      warehouseAisle: b.warehouseAisle
+        ? { id: b.warehouseAisle.id, code: b.warehouseAisle.code }
+        : null,
       bay: b.bay,
       level: b.level,
       positionIndex: b.positionIndex,

@@ -6,6 +6,8 @@ const WMS_POST_ACTION_TIER: Record<string, WmsMutationTier> = {
   set_warehouse_pick_wave_carton_units: "setup",
   create_zone: "setup",
   set_zone_parent: "setup",
+  create_warehouse_aisle: "setup",
+  update_warehouse_aisle: "setup",
   create_bin: "setup",
   update_bin_profile: "setup",
   set_replenishment_rule: "setup",

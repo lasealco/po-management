@@ -44,6 +44,20 @@ type WmsData = {
     parentZone: { id: string; code: string; name: string } | null;
     warehouse: { id: string; code: string | null; name: string };
   }>;
+  aisles: Array<{
+    id: string;
+    code: string;
+    name: string;
+    isActive: boolean;
+    zoneId: string | null;
+    zone: { id: string; code: string; name: string } | null;
+    lengthMm: number | null;
+    widthMm: number | null;
+    originXMm: number | null;
+    originYMm: number | null;
+    originZMm: number | null;
+    warehouse: { id: string; code: string | null; name: string };
+  }>;
   bins: Array<{
     id: string;
     code: string;
@@ -53,6 +67,8 @@ type WmsData = {
     maxPallets: number | null;
     rackCode: string | null;
     aisle: string | null;
+    warehouseAisleId: string | null;
+    warehouseAisle: { id: string; code: string } | null;
     bay: string | null;
     level: number | null;
     positionIndex: number | null;
@@ -566,7 +582,13 @@ export function WmsClient({
   const [newBinPickFace, setNewBinPickFace] = useState(false);
   const [newBinRackCode, setNewBinRackCode] = useState("");
   const [newBinAisle, setNewBinAisle] = useState("");
+  const [newBinWarehouseAisleId, setNewBinWarehouseAisleId] = useState("");
   const [newBinBay, setNewBinBay] = useState("");
+  const [newAisleCode, setNewAisleCode] = useState("");
+  const [newAisleName, setNewAisleName] = useState("");
+  const [newAisleZoneId, setNewAisleZoneId] = useState("");
+  const [newAisleLengthMm, setNewAisleLengthMm] = useState("");
+  const [newAisleWidthMm, setNewAisleWidthMm] = useState("");
   const [newBinLevel, setNewBinLevel] = useState("");
   const [newBinPosition, setNewBinPosition] = useState("");
   const [rackVizCode, setRackVizCode] = useState("");
@@ -990,6 +1012,14 @@ export function WmsClient({
   const zonesForWarehouse = useMemo(
     () => (data?.zones ?? []).filter((z) => z.warehouse.id === selectedWarehouseId),
     [data?.zones, selectedWarehouseId],
+  );
+  const aislesForWarehouse = useMemo(
+    () => (data?.aisles ?? []).filter((a) => a.warehouse.id === selectedWarehouseId),
+    [data?.aisles, selectedWarehouseId],
+  );
+  const activeAislesForBinLink = useMemo(
+    () => aislesForWarehouse.filter((a) => a.isActive),
+    [aislesForWarehouse],
   );
   const replenishmentRulesForWarehouse = useMemo(
     () =>
@@ -1646,7 +1676,7 @@ export function WmsClient({
       <section className="mb-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
         <h2 className="text-sm font-semibold text-zinc-900">Current layout</h2>
         <p className="mt-1 text-xs text-zinc-600">
-          Read-only view of zones, bins, and replenishment rules. Bins can carry optional{" "}
+          Read-only view of zones, aisle masters (BF-24), bins, and replenishment rules. Bins can carry optional{" "}
           <span className="font-medium text-zinc-700">rack / aisle / bay / level / position</span> for pallet
           racking and pick shelves; use the rack map below once those coordinates are set.
         </p>
@@ -1724,6 +1754,93 @@ export function WmsClient({
             </div>
             <div>
               <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                Aisles ({aislesForWarehouse.length})
+              </h3>
+              <p className="mt-1 text-xs text-zinc-600">
+                Corridor identifiers plus optional mm hints. Bins can reference a master so labels stay consistent.
+              </p>
+              <div className="mt-2 max-h-48 overflow-auto rounded border border-zinc-200">
+                <table className="min-w-full text-sm">
+                  <thead className="sticky top-0 bg-zinc-100 text-left text-xs uppercase text-zinc-700">
+                    <tr>
+                      <th className="px-2 py-1">Code</th>
+                      <th className="px-2 py-1">Name</th>
+                      <th className="px-2 py-1">Zone hint</th>
+                      <th className="px-2 py-1">Active</th>
+                      <th className="px-2 py-1">L×W mm</th>
+                      <th className="px-2 py-1"> </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-200">
+                    {aislesForWarehouse.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-2 py-2 text-zinc-500">
+                          No aisle masters for this warehouse yet.
+                        </td>
+                      </tr>
+                    ) : (
+                      [...aislesForWarehouse]
+                        .sort((a, b) => a.code.localeCompare(b.code))
+                        .map((a) => (
+                          <tr
+                            key={a.id}
+                            className={a.isActive ? undefined : "bg-zinc-50 text-zinc-500"}
+                          >
+                            <td className="whitespace-nowrap px-2 py-1 font-mono text-xs">{a.code}</td>
+                            <td className="px-2 py-1 text-zinc-800">{a.name}</td>
+                            <td className="px-2 py-1 text-zinc-600">
+                              {a.zone ? `${a.zone.code}` : "—"}
+                            </td>
+                            <td className="px-2 py-1 text-zinc-600">{a.isActive ? "Yes" : "No"}</td>
+                            <td className="whitespace-nowrap px-2 py-1 text-xs text-zinc-600">
+                              {a.lengthMm != null || a.widthMm != null
+                                ? `${a.lengthMm ?? "—"} × ${a.widthMm ?? "—"}`
+                                : "—"}
+                            </td>
+                            <td className="px-2 py-1">
+                              {canEdit ? (
+                                a.isActive ? (
+                                  <button
+                                    type="button"
+                                    disabled={busy}
+                                    onClick={() =>
+                                      void runAction({
+                                        action: "update_warehouse_aisle",
+                                        warehouseAisleId: a.id,
+                                        isActive: false,
+                                      })
+                                    }
+                                    className="rounded-lg border border-zinc-300 bg-white px-2 py-1 text-[11px] font-medium text-zinc-800 disabled:opacity-40"
+                                  >
+                                    Deactivate
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    disabled={busy}
+                                    onClick={() =>
+                                      void runAction({
+                                        action: "update_warehouse_aisle",
+                                        warehouseAisleId: a.id,
+                                        isActive: true,
+                                      })
+                                    }
+                                    className="rounded-lg bg-[var(--arscmp-primary)] px-2 py-1 text-[11px] font-semibold text-white disabled:opacity-40"
+                                  >
+                                    Reactivate
+                                  </button>
+                                )
+                              ) : null}
+                            </td>
+                          </tr>
+                        ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div>
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
                 Bins ({binsForWarehouse.length})
               </h3>
               <div className="mt-2 max-h-72 overflow-auto rounded border border-zinc-200">
@@ -1737,6 +1854,7 @@ export function WmsClient({
                       <th className="px-2 py-1">Pick face</th>
                       <th className="px-2 py-1">Max pal.</th>
                       <th className="px-2 py-1">Rack</th>
+                      <th className="px-2 py-1">Aisle master</th>
                       <th className="px-2 py-1">Aisle</th>
                       <th className="px-2 py-1">Bay</th>
                       <th className="px-2 py-1">Lvl</th>
@@ -1746,7 +1864,7 @@ export function WmsClient({
                   <tbody className="divide-y divide-zinc-200">
                     {binsForWarehouse.length === 0 ? (
                       <tr>
-                        <td colSpan={11} className="px-2 py-2 text-zinc-500">
+                        <td colSpan={12} className="px-2 py-2 text-zinc-500">
                           No bins for this warehouse.
                         </td>
                       </tr>
@@ -1767,6 +1885,9 @@ export function WmsClient({
                             </td>
                             <td className="whitespace-nowrap px-2 py-1 font-mono text-xs text-zinc-700">
                               {b.rackCode ?? "—"}
+                            </td>
+                            <td className="whitespace-nowrap px-2 py-1 font-mono text-xs text-zinc-700">
+                              {b.warehouseAisle?.code ?? "—"}
                             </td>
                             <td className="px-2 py-1 text-zinc-600">{b.aisle ?? "—"}</td>
                             <td className="px-2 py-1 text-zinc-600">{b.bay ?? "—"}</td>
@@ -1945,6 +2066,69 @@ export function WmsClient({
 
       <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
         <h2 className="text-sm font-semibold text-zinc-900">Warehouse setup</h2>
+        <p className="mt-1 text-xs text-zinc-600">
+          <span className="font-medium">BF-24:</span> optional aisle masters group corridor identity; bins can link so text{" "}
+          <span className="font-mono">aisle</span> stays aligned with the master code. Millimetre fields are layout hints only—AGV paths stay backlog.
+        </p>
+        <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-7">
+          <input
+            value={newAisleCode}
+            onChange={(e) => setNewAisleCode(e.target.value.toUpperCase())}
+            placeholder="Aisle code"
+            className="rounded border border-zinc-300 px-3 py-2 text-sm"
+          />
+          <input
+            value={newAisleName}
+            onChange={(e) => setNewAisleName(e.target.value)}
+            placeholder="Aisle display name"
+            className="rounded border border-zinc-300 px-3 py-2 text-sm"
+          />
+          <select
+            value={newAisleZoneId}
+            onChange={(e) => setNewAisleZoneId(e.target.value)}
+            disabled={!selectedWarehouseId}
+            className="rounded border border-zinc-300 px-3 py-2 text-sm"
+          >
+            <option value="">Zone hint (optional)</option>
+            {zonesForWarehouse.map((z) => (
+              <option key={z.id} value={z.id}>
+                {z.code} · {z.name}
+              </option>
+            ))}
+          </select>
+          <input
+            value={newAisleLengthMm}
+            onChange={(e) => setNewAisleLengthMm(e.target.value)}
+            placeholder="Length mm"
+            inputMode="numeric"
+            className="rounded border border-zinc-300 px-3 py-2 text-sm"
+          />
+          <input
+            value={newAisleWidthMm}
+            onChange={(e) => setNewAisleWidthMm(e.target.value)}
+            placeholder="Width mm"
+            inputMode="numeric"
+            className="rounded border border-zinc-300 px-3 py-2 text-sm"
+          />
+          <ActionButton
+            disabled={!canEdit || busy || !selectedWarehouseId}
+            onClick={() => {
+              const lm = newAisleLengthMm.trim();
+              const wm = newAisleWidthMm.trim();
+              void runAction({
+                action: "create_warehouse_aisle",
+                warehouseId: selectedWarehouseId,
+                code: newAisleCode,
+                name: newAisleName,
+                primaryZoneId: newAisleZoneId || null,
+                lengthMm: lm === "" ? undefined : Number(lm),
+                widthMm: wm === "" ? undefined : Number(wm),
+              });
+            }}
+          >
+            Create aisle
+          </ActionButton>
+        </div>
         <div className="mt-2 grid gap-2 sm:grid-cols-4">
           <input
             value={newZoneCode}
@@ -2059,6 +2243,7 @@ export function WmsClient({
                 name: newBinName,
                 storageType: newBinStorageType,
                 isPickFace: newBinPickFace,
+                warehouseAisleId: newBinWarehouseAisleId.trim() || undefined,
                 rackCode: newBinRackCode.trim() || undefined,
                 aisle: newBinAisle.trim() || undefined,
                 bay: newBinBay.trim() || undefined,
@@ -2071,11 +2256,29 @@ export function WmsClient({
           </ActionButton>
         </div>
         <p className="mt-2 text-xs text-zinc-500">
-          Optional rack addressing (same <span className="font-mono">rackCode</span> on many bins = one
-          physical rack). Use positive integers for <span className="font-medium">level</span> and{" "}
-          <span className="font-medium">position</span> so the map can place the bin.
+          Optional rack addressing (same <span className="font-mono">rackCode</span> on many bins = one physical rack).
+          Choose an <span className="font-medium">aisle master</span> so the bin&apos;s text aisle matches that code, or
+          leave unlinked and type a free-text aisle label.
         </p>
-        <div className="mt-2 grid gap-2 sm:grid-cols-5">
+        <div className="mt-2 grid gap-2 sm:grid-cols-6">
+          <select
+            value={newBinWarehouseAisleId}
+            onChange={(e) => {
+              const v = e.target.value;
+              setNewBinWarehouseAisleId(v);
+              const row = activeAislesForBinLink.find((x) => x.id === v);
+              setNewBinAisle(row ? row.code : "");
+            }}
+            disabled={!selectedWarehouseId}
+            className="rounded border border-zinc-300 px-3 py-2 text-sm sm:col-span-2"
+          >
+            <option value="">Aisle master (optional)</option>
+            {activeAislesForBinLink.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.code} · {a.name}
+              </option>
+            ))}
+          </select>
           <input
             value={newBinRackCode}
             onChange={(e) => setNewBinRackCode(e.target.value)}
@@ -2109,6 +2312,10 @@ export function WmsClient({
             className="rounded border border-zinc-300 px-3 py-2 text-sm"
           />
         </div>
+        <p className="mt-2 text-xs text-zinc-500">
+          Use positive integers for <span className="font-medium">level</span> and{" "}
+          <span className="font-medium">position</span> so the rack map can place each bin.
+        </p>
       </section>
 
       <section className="mb-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">

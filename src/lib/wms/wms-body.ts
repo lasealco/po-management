@@ -59,6 +59,18 @@ export type WmsBody = {
   zoneId?: string;
   /** `set_zone_parent` — parent zone id or `null` to clear (same warehouse). */
   parentZoneId?: string | null;
+  /** BF-24 — optional functional zone hint on aisle rows (`create_warehouse_aisle` / `update_warehouse_aisle`). */
+  primaryZoneId?: string | null;
+  /** BF-24 — link bin to `WarehouseAisle` (`create_bin` / `update_bin_profile`) or target aisle row (`update_warehouse_aisle`). */
+  warehouseAisleId?: string | null;
+  /** BF-24 — optional aisle geometry (millimetres). */
+  lengthMm?: number | null;
+  widthMm?: number | null;
+  originXMm?: number | null;
+  originYMm?: number | null;
+  originZMm?: number | null;
+  /** BF-24 — `update_warehouse_aisle` toggles `WarehouseAisle.isActive`. */
+  isActive?: boolean;
   /** Physical count when completing a cycle-count task. */
   countedQty?: number;
   /** `create_dock_appointment` / `cancel_dock_appointment`. */

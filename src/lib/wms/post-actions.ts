@@ -36,6 +36,7 @@ import { InventorySerialNoError, normalizeInventorySerialNo } from "./inventory-
 import { explodeCrmQuoteToOutbound } from "./explode-crm-quote-to-outbound";
 import { syncOutboundOrderStatusAfterPick } from "./outbound-workflow";
 import { warehouseZoneParentWouldCycle } from "./zone-hierarchy";
+import { parseMmForWrite, resolveBinAisleFieldsForWrite } from "./warehouse-aisle";
 import { nextWaveNo } from "./wave";
 import { parseConsumeWorkOrderBomQuantity, parseReplaceWorkOrderBomLinesPayload } from "./work-order-bom";
 import { nextWorkOrderNo } from "./work-order-no";
@@ -131,6 +132,156 @@ export async function handleWmsPost(
     return NextResponse.json({ ok: true });
   }
 
+  if (action === "create_warehouse_aisle") {
+    const warehouseId = input.warehouseId?.trim();
+    const code = input.code?.trim().toUpperCase();
+    const name = input.name?.trim();
+    if (!warehouseId || !code || !name) {
+      return toApiErrorResponseFromStatus("warehouseId, code, name required.", 400);
+    }
+    const warehouse = await prisma.warehouse.findFirst({
+      where: { id: warehouseId, tenantId },
+      select: { id: true },
+    });
+    if (!warehouse) {
+      return toApiErrorResponseFromStatus("Warehouse not found.", 404);
+    }
+
+    let zoneId: string | null =
+      input.primaryZoneId === undefined || input.primaryZoneId === null || String(input.primaryZoneId).trim() === ""
+        ? null
+        : String(input.primaryZoneId).trim();
+    if (zoneId) {
+      const zone = await prisma.warehouseZone.findFirst({
+        where: { id: zoneId, tenantId, warehouseId },
+        select: { id: true },
+      });
+      if (!zone) {
+        return toApiErrorResponseFromStatus("primaryZoneId not found for warehouse.", 404);
+      }
+    }
+
+    const lengthMm = parseMmForWrite(input.lengthMm);
+    const widthMm = parseMmForWrite(input.widthMm);
+    const originXMm = parseMmForWrite(input.originXMm);
+    const originYMm = parseMmForWrite(input.originYMm);
+    const originZMm = parseMmForWrite(input.originZMm);
+    if (!lengthMm.ok || !widthMm.ok || !originXMm.ok || !originYMm.ok || !originZMm.ok) {
+      return toApiErrorResponseFromStatus("Invalid millimetre geometry field.", 400);
+    }
+
+    await prisma.$transaction(async (tx) => {
+      const row = await tx.warehouseAisle.create({
+        data: {
+          tenantId,
+          warehouseId,
+          code,
+          name,
+          zoneId,
+          ...(lengthMm.value !== undefined ? { lengthMm: lengthMm.value } : {}),
+          ...(widthMm.value !== undefined ? { widthMm: widthMm.value } : {}),
+          ...(originXMm.value !== undefined ? { originXMm: originXMm.value } : {}),
+          ...(originYMm.value !== undefined ? { originYMm: originYMm.value } : {}),
+          ...(originZMm.value !== undefined ? { originZMm: originZMm.value } : {}),
+        },
+      });
+      await tx.ctAuditLog.create({
+        data: {
+          tenantId,
+          entityType: "WAREHOUSE_AISLE",
+          entityId: row.id,
+          action: "warehouse_aisle_created",
+          payload: { warehouseId, code },
+          actorUserId: actorId,
+        },
+      });
+    });
+
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "update_warehouse_aisle") {
+    const aisleRowId = input.warehouseAisleId?.trim();
+    if (!aisleRowId) {
+      return toApiErrorResponseFromStatus("warehouseAisleId required.", 400);
+    }
+
+    const row = await prisma.warehouseAisle.findFirst({
+      where: { id: aisleRowId, tenantId },
+      select: { id: true, warehouseId: true },
+    });
+    if (!row) {
+      return toApiErrorResponseFromStatus("Aisle not found.", 404);
+    }
+
+    const data: Prisma.WarehouseAisleUncheckedUpdateManyInput = {};
+
+    if (input.name !== undefined) {
+      const nextName = input.name?.trim();
+      if (!nextName) {
+        return toApiErrorResponseFromStatus("name cannot be empty.", 400);
+      }
+      data.name = nextName;
+    }
+
+    if (input.primaryZoneId !== undefined) {
+      const raw = input.primaryZoneId;
+      const zoneId =
+        raw === null || String(raw).trim() === "" ? null : String(raw).trim();
+      if (zoneId) {
+        const zone = await prisma.warehouseZone.findFirst({
+          where: { id: zoneId, tenantId, warehouseId: row.warehouseId },
+          select: { id: true },
+        });
+        if (!zone) {
+          return toApiErrorResponseFromStatus("primaryZoneId not found for warehouse.", 404);
+        }
+      }
+      data.zoneId = zoneId;
+    }
+
+    const lengthMm = parseMmForWrite(input.lengthMm);
+    const widthMm = parseMmForWrite(input.widthMm);
+    const originXMm = parseMmForWrite(input.originXMm);
+    const originYMm = parseMmForWrite(input.originYMm);
+    const originZMm = parseMmForWrite(input.originZMm);
+    if (!lengthMm.ok || !widthMm.ok || !originXMm.ok || !originYMm.ok || !originZMm.ok) {
+      return toApiErrorResponseFromStatus("Invalid millimetre geometry field.", 400);
+    }
+    if (lengthMm.value !== undefined) data.lengthMm = lengthMm.value;
+    if (widthMm.value !== undefined) data.widthMm = widthMm.value;
+    if (originXMm.value !== undefined) data.originXMm = originXMm.value;
+    if (originYMm.value !== undefined) data.originYMm = originYMm.value;
+    if (originZMm.value !== undefined) data.originZMm = originZMm.value;
+
+    if (typeof input.isActive === "boolean") {
+      data.isActive = input.isActive;
+    }
+
+    if (Object.keys(data).length === 0) {
+      return toApiErrorResponseFromStatus("No updates supplied.", 400);
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.warehouseAisle.updateMany({
+        where: { id: aisleRowId, tenantId },
+        data,
+      });
+      await tx.ctAuditLog.create({
+        data: {
+          tenantId,
+          entityType: "WAREHOUSE_AISLE",
+          entityId: aisleRowId,
+          action: "warehouse_aisle_updated",
+          payload: { warehouseId: row.warehouseId, patchKeys: Object.keys(data) },
+          actorUserId: actorId,
+        },
+      });
+    });
+
+    return NextResponse.json({ ok: true });
+  }
+
   if (action === "set_zone_parent") {
     const zoneId = input.zoneId?.trim();
     if (!zoneId) {
@@ -200,7 +351,6 @@ export async function handleWmsPost(
       return toApiErrorResponseFromStatus("warehouseId, code, name required.", 400);
     }
     const rackCode = input.rackCode?.trim() || null;
-    const aisle = input.aisle?.trim() || null;
     const bay = input.bay?.trim() || null;
     const level =
       typeof input.level === "number" && Number.isFinite(input.level)
@@ -210,6 +360,28 @@ export async function handleWmsPost(
       typeof input.positionIndex === "number" && Number.isFinite(input.positionIndex)
         ? Math.max(1, Math.trunc(input.positionIndex))
         : null;
+
+    const rawAisleFk = input.warehouseAisleId?.trim();
+    let aisleMaster: { id: string; warehouseId: string; code: string } | null = null;
+    if (rawAisleFk) {
+      aisleMaster = await prisma.warehouseAisle.findFirst({
+        where: { id: rawAisleFk, tenantId, warehouseId },
+        select: { id: true, warehouseId: true, code: true },
+      });
+      if (!aisleMaster) {
+        return toApiErrorResponseFromStatus("warehouseAisleId not found.", 404);
+      }
+    }
+
+    const resolvedAisle = resolveBinAisleFieldsForWrite({
+      warehouseId,
+      requestedWarehouseAisleId: rawAisleFk ?? null,
+      requestedAisleLabel: input.aisle,
+      aisleMaster,
+    });
+    if (!resolvedAisle.ok) {
+      return toApiErrorResponseFromStatus(resolvedAisle.error, 400);
+    }
 
     await prisma.warehouseBin.create({
       data: {
@@ -225,7 +397,8 @@ export async function handleWmsPost(
             ? Math.max(0, Math.trunc(input.maxPallets))
             : null,
         rackCode,
-        aisle,
+        aisle: resolvedAisle.aisle,
+        warehouseAisleId: resolvedAisle.warehouseAisleId,
         bay,
         level,
         positionIndex,
@@ -237,6 +410,20 @@ export async function handleWmsPost(
   if (action === "update_bin_profile") {
     const binId = input.binId?.trim();
     if (!binId) return toApiErrorResponseFromStatus("binId required.", 400);
+
+    const binRow = await prisma.warehouseBin.findFirst({
+      where: { id: binId, tenantId },
+      select: {
+        id: true,
+        warehouseId: true,
+        aisle: true,
+        warehouseAisleId: true,
+      },
+    });
+    if (!binRow) {
+      return toApiErrorResponseFromStatus("Bin not found.", 404);
+    }
+
     const data: Prisma.WarehouseBinUncheckedUpdateManyInput = {
       zoneId: input.targetZoneId?.trim() || null,
       storageType: input.storageType ?? undefined,
@@ -249,7 +436,6 @@ export async function handleWmsPost(
             : undefined,
     };
     if (input.rackCode !== undefined) data.rackCode = input.rackCode?.trim() || null;
-    if (input.aisle !== undefined) data.aisle = input.aisle?.trim() || null;
     if (input.bay !== undefined) data.bay = input.bay?.trim() || null;
     if (input.level !== undefined) {
       data.level =
@@ -263,6 +449,42 @@ export async function handleWmsPost(
           ? Math.max(1, Math.trunc(input.positionIndex))
           : null;
     }
+
+    const aisleFkTouched = input.warehouseAisleId !== undefined;
+    const aisleLabelTouched = input.aisle !== undefined;
+    if (aisleFkTouched || aisleLabelTouched) {
+      const nextFk = aisleFkTouched
+        ? input.warehouseAisleId === null || String(input.warehouseAisleId).trim() === ""
+          ? null
+          : String(input.warehouseAisleId).trim()
+        : binRow.warehouseAisleId;
+
+      const nextLabel = aisleLabelTouched ? input.aisle?.trim() || null : binRow.aisle;
+
+      let aisleMaster: { id: string; warehouseId: string; code: string } | null = null;
+      if (nextFk) {
+        aisleMaster = await prisma.warehouseAisle.findFirst({
+          where: { id: nextFk, tenantId, warehouseId: binRow.warehouseId },
+          select: { id: true, warehouseId: true, code: true },
+        });
+        if (!aisleMaster) {
+          return toApiErrorResponseFromStatus("warehouseAisleId not found.", 404);
+        }
+      }
+
+      const resolvedAisle = resolveBinAisleFieldsForWrite({
+        warehouseId: binRow.warehouseId,
+        requestedWarehouseAisleId: nextFk,
+        requestedAisleLabel: nextLabel,
+        aisleMaster,
+      });
+      if (!resolvedAisle.ok) {
+        return toApiErrorResponseFromStatus(resolvedAisle.error, 400);
+      }
+      data.aisle = resolvedAisle.aisle;
+      data.warehouseAisleId = resolvedAisle.warehouseAisleId;
+    }
+
     await prisma.warehouseBin.updateMany({
       where: { id: binId, tenantId },
       data,

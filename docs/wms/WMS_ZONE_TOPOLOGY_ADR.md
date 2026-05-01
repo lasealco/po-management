@@ -21,24 +21,26 @@ Product asked for **enterprise clarity** on what this codebase models vs what st
 | Storage addresses | `WarehouseBin` | Optional `zoneId`; **rack addressing** via `rackCode`, `aisle`, `bay`, `level`, `positionIndex`. |
 | Operational “edges” | Replenishment rules, dock links | Source/target zones for replenish; appointments tie dock windows to inbound shipments or outbound orders. |
 
-**Interpretation:** “Beyond flat zone+bin” for **this product line** is satisfied by **bin-granular rack coordinates + zone semantics**, surfaced in **Setup** (including rack front map where implemented). Optional **zone→zone parent links** (**BF-04**) provide hierarchy **without** a separate **`Aisle` master table** in this capsule.
+**Interpretation:** “Beyond flat zone+bin” for **this product line** is satisfied by **bin-granular rack coordinates + zone semantics**, surfaced in **Setup** (including rack front map where implemented). Optional **zone→zone parent links** (**BF-04**) provide hierarchy. Optional **`WarehouseAisle`** masters (**BF-24**) add a first-class corridor identity without forcing indoor CT tiles (**BF-27**).
 
 **Amendment (BF-04, 2026-04-29):** Optional **`WarehouseZone.parentZoneId`** + **`set_zone_parent`** enable a **DAG** functional hierarchy within a warehouse (cycle-checked). See [`WMS_ZONE_PARENT_BF04.md`](./WMS_ZONE_PARENT_BF04.md).
+
+**Amendment (BF-24, 2026-05-04):** **`WarehouseAisle`** master rows + optional **`WarehouseBin.warehouseAisleId`** link + mm geometry columns + **`create_warehouse_aisle`** / **`update_warehouse_aisle`** — see [`WMS_ZONE_TOPOLOGY_BF24.md`](./WMS_ZONE_TOPOLOGY_BF24.md).
 
 ## Deferred (explicit backlog)
 
 - ~~**Multi-level zone hierarchy**~~ **Partially addressed:** nullable **`parentZoneId`** + **`set_zone_parent`** (**BF-04**); deeper reporting layers remain optional.
-- **First-class aisle / tunnel entities** separate from bin text fields.
-- **MM-accurate geometry, 3D, or digital twin** meshes.
+- ~~**First-class aisle / tunnel entities** separate from bin text fields.~~ **Partially addressed:** **`WarehouseAisle`** (**BF-24**); aisle adjacency / tunnel graphs remain backlog.
+- **MM-accurate geometry beyond coarse aisle hints**, **3D**, or **digital twin** meshes (BF-24 stores optional ints only).
 - **Site-to-site network graphs** as first-class schema (beyond tenant + warehouse list).
 
 These require product prioritization, migration design, and UI ownership—out of WE-10 scope.
 
 ## Consequences
 
-- **GAP_MAP** R1 zone row moves toward **🟢** on hierarchy depth once BF-04 is acknowledged in backlog docs; **aisle geometry / twin** stays deferred.
-- **`GET /api/wms`** zones expose **`parentZoneId`** / **`parentZone`**; **`POST /api/wms`** **`set_zone_parent`** updates hierarchy.
-- Future capsules may add an **`Aisle`** table or geometry **if** directed workflows require it—amend this ADR then.
+- **GAP_MAP** R1 zone row documents **BF-04** hierarchy + **BF-24** aisle masters; **digital twin / AGV routing** stays deferred.
+- **`GET /api/wms`** exposes **`zones`** with **`parentZoneId`** / **`parentZone`**, **`aisles`**, and bin **`warehouseAisle`** snapshots; **`POST /api/wms`** includes **`set_zone_parent`**, **`create_warehouse_aisle`**, **`update_warehouse_aisle`**.
+- **BF-24** ships **`WarehouseAisle`** — [`WMS_ZONE_TOPOLOGY_BF24.md`](./WMS_ZONE_TOPOLOGY_BF24.md).
 
 ## References
 

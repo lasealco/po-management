@@ -19,7 +19,7 @@
 | **BF-21** | Receipt accounting & ASN policies | **Minimal landed** — closed receipt history + idempotent close + optional **`RECEIPT_COMPLETE`** ([`WMS_RECEIVING_BF21.md`](./WMS_RECEIVING_BF21.md)); carrier ASN auto-close / GRN backlog | BF-12 **`WmsReceipt`** session |
 | **BF-22** | CPQ contracted pricing on outbound | **Minimal landed** — **`listUnitPrice`** / **`priceTierLabel`** on **`CrmQuoteLine`**, **`resolveQuoteLineCommercialPricing`**, explosion preview deltas + **`OutboundOrderLine.commercial*`** snapshots — [`WMS_CPQ_CONTRACT_PRICING_BF22.md`](./WMS_CPQ_CONTRACT_PRICING_BF22.md) | BF-10 / BF-14 commercial path |
 | **BF-23** | Allocation MILP / cube / labor | **Minimal landed** — **`GREEDY_RESERVE_PICK_FACE`** (pick-face reserve tie-break on BF-15 greedy); optional **`WMS_DISABLE_BF23_STRATEGY`** — [`WMS_ALLOCATION_BF23.md`](./WMS_ALLOCATION_BF23.md) | BF-03 / BF-15 strategies stable |
-| **BF-24** | First-class **Aisle** / geometry hooks | mm/3D & aisle entities per [`WMS_ZONE_TOPOLOGY_ADR.md`](./WMS_ZONE_TOPOLOGY_ADR.md) | BF-04 **`parentZoneId`** stable |
+| **BF-24** | First-class **Aisle** / geometry hooks | **Minimal landed** — **`WarehouseAisle`** + **`WarehouseBin.warehouseAisleId`** + mm columns + `create_warehouse_aisle` / `update_warehouse_aisle` — [`WMS_ZONE_TOPOLOGY_BF24.md`](./WMS_ZONE_TOPOLOGY_BF24.md) | BF-04 **`parentZoneId`** stable |
 | **BF-25** | Production TMS / carrier EDI | Signed webhooks, certify, idempotent carrier IDs (**BF-17** stub → prod) | BF-05 / BF-17 dock transport |
 | **BF-26** | VAS MRP / engineering change | Automated BOM sync + variance vs **`estimatedMaterialsCents`** | BF-18 **`WmsWorkOrderBomLine`** |
 | **BF-27** | CT map indoor / rack pins | Rack-bin overlays on **`/control-tower/map`** vs WMS Setup only | BF-11 / BF-19 map stack |
@@ -71,7 +71,9 @@
 
 **Objective:** Introduce **`Aisle`** (or equivalent) and optional **metric geometry** fields per [`WMS_ZONE_TOPOLOGY_ADR.md`](./WMS_ZONE_TOPOLOGY_ADR.md), without forcing CT map indoor tiles (**BF-27**).
 
-**Exit sketch:** Migration + Setup UI; bin addressing validation vs aisle graph; ADR amendment.
+**Minimal slice shipped (repo):** Prisma **`WarehouseAisle`** (per-warehouse **`code` / `name`**, optional **`zoneId`** hint, optional **`lengthMm`–`originZMm`**, **`isActive`**); nullable **`WarehouseBin.warehouseAisleId`** with **`resolveBinAisleFieldsForWrite`** validation vs master **`code`**; **`create_warehouse_aisle`** / **`update_warehouse_aisle`** + audit stubs; **`create_bin`** / **`update_bin_profile`** accept **`warehouseAisleId`**; **`GET /api/wms`** returns **`aisles`** + bin aisle snapshots; WMS Setup UI — [`WMS_ZONE_TOPOLOGY_BF24.md`](./WMS_ZONE_TOPOLOGY_BF24.md); Vitest **`warehouse-aisle.test.ts`**.
+
+**Exit sketch (remaining):** Aisle adjacency graph; bin validator hooks beyond label parity; richer geometry editors.
 
 **Out of scope:** Digital twin simulation, AGV routing.
 
@@ -143,4 +145,4 @@
 
 ---
 
-_Last updated: 2026-05-03 — **BF-23** minimal reserve pick-face strategy ([`WMS_ALLOCATION_BF23.md`](./WMS_ALLOCATION_BF23.md)); program capsules **BF-21**–**BF-23** have minimal slices shipped in-repo; **`BF-02`–`BF-23`** Done table in [`BF_CAPSULE_ROADMAP.md`](./BF_CAPSULE_ROADMAP.md); **BF-24**–**BF-30** draft._
+_Last updated: 2026-05-04 — **BF-24** minimal **`WarehouseAisle`** slice ([`WMS_ZONE_TOPOLOGY_BF24.md`](./WMS_ZONE_TOPOLOGY_BF24.md)); program capsules **BF-21**–**BF-24** have minimal slices shipped in-repo; **`BF-02`–`BF-24`** Done table in [`BF_CAPSULE_ROADMAP.md`](./BF_CAPSULE_ROADMAP.md); **BF-25**–**BF-30** draft._

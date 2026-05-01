@@ -1,6 +1,6 @@
 # Blueprint finish (`BF-xx`) — roadmap after BF-01
 
-**Purpose:** Track **blueprint-finish capsules** after **`BF-01`**: **Done** table (**`BF-02` … `BF-23`** minimal slices where noted), **next program draft** (**`BF-24` … `BF-30`** — [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md)), capsule cards, and how to execute prompts — see [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md), [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md), and [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md).
+**Purpose:** Track **blueprint-finish capsules** after **`BF-01`**: **Done** table (**`BF-02` … `BF-24`** minimal slices where noted), **next program draft** (**`BF-25` … `BF-30`** — [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md)), capsule cards, and how to execute prompts — see [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md), [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md), and [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md).
 
 **Authority:** Capsule IDs and themes match [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md). **`GAP_MAP.md`** stays the repo ↔ blueprint truth.
 
@@ -15,7 +15,7 @@
 | **BF-01** | Receiving line variance | Thin **`ShipmentItem`** counts + disposition via `set_shipment_item_receive_line` — [`WMS_RECEIVING_LINE_VARIANCE_BF01.md`](./WMS_RECEIVING_LINE_VARIANCE_BF01.md); optional **`WmsReceipt`** dock session wrapper — **BF-12** |
 | **BF-02** | Lot / batch master (metadata) | **`WmsLotBatch`** + `set_wms_lot_batch`; unit-level serials → **BF-13** — [`WMS_LOT_BATCH_BF02.md`](./WMS_LOT_BATCH_BF02.md) |
 | **BF-03** | Allocation depth (FEFO) | **`FEFO_BY_LOT_EXPIRY`** on waves + tests — [`WMS_ALLOCATION_STRATEGIES.md`](./WMS_ALLOCATION_STRATEGIES.md); **BF-15** greedy + unit cap minimal; **BF-23** reserve pick-face tie-break — [`WMS_ALLOCATION_BF23.md`](./WMS_ALLOCATION_BF23.md); MILP/carton cube backlog |
-| **BF-04** | Zone parent hierarchy (DAG) | **`WarehouseZone.parentZoneId`** + `set_zone_parent` + Setup UI — [`WMS_ZONE_PARENT_BF04.md`](./WMS_ZONE_PARENT_BF04.md); **Aisles** / mm geometry still backlog — [`WMS_ZONE_TOPOLOGY_ADR.md`](./WMS_ZONE_TOPOLOGY_ADR.md) |
+| **BF-04** | Zone parent hierarchy (DAG) | **`WarehouseZone.parentZoneId`** + `set_zone_parent` + Setup UI — [`WMS_ZONE_PARENT_BF04.md`](./WMS_ZONE_PARENT_BF04.md); **BF-24** aisle masters — [`WMS_ZONE_TOPOLOGY_BF24.md`](./WMS_ZONE_TOPOLOGY_BF24.md); aisle adjacency / digital twin backlog — [`WMS_ZONE_TOPOLOGY_ADR.md`](./WMS_ZONE_TOPOLOGY_ADR.md) |
 | **BF-05** | Dock yard ops slice | **`WmsDockAppointment`** carrier/trailer + **`record_dock_appointment_yard_milestone`** — [`WMS_DOCK_YARD_BF05.md`](./WMS_DOCK_YARD_BF05.md); **BF-17** TMS webhook stub — [`WMS_DOCK_APPOINTMENTS.md`](./WMS_DOCK_APPOINTMENTS.md); production **TMS** backlog |
 | **BF-06** | WMS scoped RBAC tiers | **`org.wms.setup` / `operations` / `inventory`** + `gateWmsPostMutation` — [`WMS_RBAC_BF06.md`](./WMS_RBAC_BF06.md); **BF-16** adds **`org.wms.inventory.lot`** — [`WMS_RBAC_AND_AUDIT.md`](./WMS_RBAC_AND_AUDIT.md) |
 | **BF-07** | Executive / blueprint KPIs | WE-09 + proxies/narratives + optional **`wh`** scope — [`WMS_EXECUTIVE_KPIS.md`](./WMS_EXECUTIVE_KPIS.md), [`WMS_EXECUTIVE_KPIS_BF07.md`](./WMS_EXECUTIVE_KPIS_BF07.md); **BF-20** adds **`rates`** on **`fetchWmsHomeKpis`**; delivered OTIF % / engineered labor / ABC slotting backlog |
@@ -34,6 +34,7 @@
 | **BF-21** | Receipt accounting (minimal) | **`closedWmsReceiptHistory`**, idempotent **`close_wms_receipt`**, **`receiptCompleteOnClose`** — [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md), [`WMS_RECEIVING_BF21.md`](./WMS_RECEIVING_BF21.md); carrier ASN auto-close / GRN backlog |
 | **BF-22** | CPQ contracted pricing (minimal) | **`listUnitPrice`** / **`priceTierLabel`** on **`CrmQuoteLine`**, **`resolveQuoteLineCommercialPricing`**, explosion preview + **`OutboundOrderLine.commercial*`** — [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md), [`WMS_CPQ_CONTRACT_PRICING_BF22.md`](./WMS_CPQ_CONTRACT_PRICING_BF22.md); external price books / ladders backlog |
 | **BF-23** | Allocation reserve pick-face (minimal) | **`GREEDY_RESERVE_PICK_FACE`** + **`WarehouseBin.isPickFace`** tie-break on **`GREEDY_MIN_BIN_TOUCHES`** ordering — [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md), [`WMS_ALLOCATION_BF23.md`](./WMS_ALLOCATION_BF23.md); MILP / labor heatmaps / unified slotting backlog |
+| **BF-24** | Aisle / geometry hooks (minimal) | **`WarehouseAisle`** + **`WarehouseBin.warehouseAisleId`** + POST **`create_warehouse_aisle`** / **`update_warehouse_aisle`** + mm columns — [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md), [`WMS_ZONE_TOPOLOGY_BF24.md`](./WMS_ZONE_TOPOLOGY_BF24.md); AGV graph / twin meshes backlog |
 
 ---
 
@@ -41,7 +42,7 @@
 
 Order follows [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md) **Phase A → E**: inventory truth before execution engines; topology/yard before throwing integrations at cross-product epics.
 
-**Blueprint finish capsules `BF-02` … `BF-11` are complete in this roadmap snapshot.** **`BF-12`** … **`BF-23`** have **minimal slices shipped** in-repo ([`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md), [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md)). **`BF-24`** … **`BF-30`** are **defined as draft capsules** only ([`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md); catalog rows in [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md)). Further enterprise depth → [`CONTROL_TOWER_WMS_PHASED_ROADMAP.md`](../engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md).
+**Blueprint finish capsules `BF-02` … `BF-11` are complete in this roadmap snapshot.** **`BF-12`** … **`BF-24`** have **minimal slices shipped** in-repo ([`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md), [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md)). **`BF-25`** … **`BF-30`** are **defined as draft capsules** only ([`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md); catalog rows in [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md)). Further enterprise depth → [`CONTROL_TOWER_WMS_PHASED_ROADMAP.md`](../engineering/CONTROL_TOWER_WMS_PHASED_ROADMAP.md).
 
 | Order | ID | Phase | Notes |
 |-------|-----|-------|------|
@@ -57,12 +58,13 @@ Order follows [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md) **P
 | 10 | **BF-21** | A — Receiving depth | ✅ **Minimal landed** — receipt history payload + idempotent close + optional **`RECEIPT_COMPLETE`** ([`WMS_RECEIVING_BF21.md`](./WMS_RECEIVING_BF21.md)) |
 | 11 | **BF-22** | E — Commercial pricing | ✅ **Minimal landed** — quote line list/tier + resolver + explosion deltas + **`OutboundOrderLine.commercial*`** ([`WMS_CPQ_CONTRACT_PRICING_BF22.md`](./WMS_CPQ_CONTRACT_PRICING_BF22.md)) |
 | 12 | **BF-23** | B — Allocation depth | ✅ **Minimal landed** — **`GREEDY_RESERVE_PICK_FACE`** + **`WarehouseBin.isPickFace`** ([`WMS_ALLOCATION_BF23.md`](./WMS_ALLOCATION_BF23.md)) |
+| 13 | **BF-24** | B — Topology | ✅ **Minimal landed** — **`WarehouseAisle`** + bin **`warehouseAisleId`** ([`WMS_ZONE_TOPOLOGY_BF24.md`](./WMS_ZONE_TOPOLOGY_BF24.md)) |
 
 **Parallelization:** historical note — **BF-04** / **BF-05** / commercial (**BF-10**) often ran in parallel when teams differed.
 
 ---
 
-## Capsule cards (`BF-02` … `BF-23` + draft `BF-24` … `BF-30`)
+## Capsule cards (`BF-02` … `BF-24` + draft `BF-25` … `BF-30`)
 
 Use one row as the **scope box** before filing GitHub issues or agent prompts.
 
@@ -70,7 +72,7 @@ Use one row as the **scope box** before filing GitHub issues or agent prompts.
 |----|------------------|--------------|---------------------|--------|
 | **BF-02** | SKU / UOM / lot | [`WMS_LOT_SERIAL_DECISION.md`](./WMS_LOT_SERIAL_DECISION.md), [`WMS_LOT_BATCH_BF02.md`](./WMS_LOT_BATCH_BF02.md) | Catalog overlap (`Product`); else WMS | **Partial** — `WmsLotBatch` + UI + **BF-13** serial slice |
 | **BF-03** | Allocation | [`WMS_ALLOCATION_STRATEGIES.md`](./WMS_ALLOCATION_STRATEGIES.md), [`WMS_ALLOCATION_BF23.md`](./WMS_ALLOCATION_BF23.md) | WMS-only core | **Partial** — **`FEFO_BY_LOT_EXPIRY`** + fungible/FIFO/MAX + **BF-15** greedy/cap + **BF-23** reserve pick-face; MILP backlog |
-| **BF-04** | Zone / aisle | [`WMS_ZONE_TOPOLOGY_ADR.md`](./WMS_ZONE_TOPOLOGY_ADR.md), [`WMS_ZONE_PARENT_BF04.md`](./WMS_ZONE_PARENT_BF04.md) | WMS | **Partial** — **`parentZoneId`** + `set_zone_parent` + UI; **Aisles** / geometry backlog |
+| **BF-04** | Zone / aisle | [`WMS_ZONE_TOPOLOGY_ADR.md`](./WMS_ZONE_TOPOLOGY_ADR.md), [`WMS_ZONE_PARENT_BF04.md`](./WMS_ZONE_PARENT_BF04.md), [`WMS_ZONE_TOPOLOGY_BF24.md`](./WMS_ZONE_TOPOLOGY_BF24.md) | WMS | **Partial** — **`parentZoneId`** + `set_zone_parent` + UI + **BF-24** **`WarehouseAisle`** + bin links; adjacency / twin backlog |
 | **BF-05** | Appointments / TMS | [`WMS_DOCK_APPOINTMENTS.md`](./WMS_DOCK_APPOINTMENTS.md), [`WMS_DOCK_YARD_BF05.md`](./WMS_DOCK_YARD_BF05.md) | Integrations | **Partial** — WE-02 + BF-05 yard slice + **BF-17** TMS stub refs/webhook; **full TMS** backlog |
 | **BF-06** | Permissions | [`WMS_RBAC_AND_AUDIT.md`](./WMS_RBAC_AND_AUDIT.md), [`WMS_RBAC_BF06.md`](./WMS_RBAC_BF06.md) | **Platform + auth** | **Partial** — BF-06 tier grants + action map; **BF-16** `inventory.lot` slice for `set_wms_lot_batch`; full matrix backlog |
 | **BF-07** | Dashboards | [`WMS_EXECUTIVE_KPIS.md`](./WMS_EXECUTIVE_KPIS.md), [`WMS_EXECUTIVE_KPIS_BF07.md`](./WMS_EXECUTIVE_KPIS_BF07.md) | Product + WMS | **Partial** — WE-09 + BF-07 proxies/narratives + **BF-20** rate fields; delivered OTIF % / engineered labor / ABC backlog |
@@ -90,8 +92,9 @@ Use one row as the **scope box** before filing GitHub issues or agent prompts.
 | **BF-21** | Receipt accounting | [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md), [`WMS_RECEIVING_BF21.md`](./WMS_RECEIVING_BF21.md) | WMS | **Partial** — closed receipt history + idempotent close + optional status advance; GRN / carrier ASN backlog |
 | **BF-22** | CPQ contracted pricing | [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md), [`WMS_CPQ_CONTRACT_PRICING_BF22.md`](./WMS_CPQ_CONTRACT_PRICING_BF22.md) | **CRM + WMS** | **Partial** — list vs contract on quote lines + resolver + outbound snapshots; external price books backlog |
 | **BF-23** | Reserve pick-face allocation | [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md), [`WMS_ALLOCATION_BF23.md`](./WMS_ALLOCATION_BF23.md) | WMS | **Partial** — **`GREEDY_RESERVE_PICK_FACE`** + bin **`isPickFace`**; MILP / labor heatmaps backlog |
+| **BF-24** | Aisle masters | [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md), [`WMS_ZONE_TOPOLOGY_BF24.md`](./WMS_ZONE_TOPOLOGY_BF24.md) | WMS | **Partial** — **`WarehouseAisle`** + bin FK + mm ints + POST actions; AGV / adjacency backlog |
 
-### Draft — **`BF-24` … `BF-30`** (not shipped)
+### Draft — **`BF-25` … `BF-30`** (not shipped)
 
 Program objectives and prompt stub: [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md). Catalog rows: [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md).
 
@@ -109,4 +112,4 @@ We **did not** add duplicate per-capsule specs beside existing theme docs — av
 
 ---
 
-_Last updated: 2026-05-03 — **BF-23** reserve pick-face allocation minimal ([`WMS_ALLOCATION_BF23.md`](./WMS_ALLOCATION_BF23.md)); **BF-22** CPQ contracted pricing minimal ([`WMS_CPQ_CONTRACT_PRICING_BF22.md`](./WMS_CPQ_CONTRACT_PRICING_BF22.md)); **BF-21** receipt accounting minimal ([`WMS_RECEIVING_BF21.md`](./WMS_RECEIVING_BF21.md)); **`BF-24`–`BF-30`** draft program; **BF-20** KPI proxy rates; **`BF-02`–`BF-23`** Done table; **BF-11** + **BF-19** CT map pins._
+_Last updated: 2026-05-04 — **BF-24** aisle masters minimal ([`WMS_ZONE_TOPOLOGY_BF24.md`](./WMS_ZONE_TOPOLOGY_BF24.md)); **BF-23** reserve pick-face allocation minimal ([`WMS_ALLOCATION_BF23.md`](./WMS_ALLOCATION_BF23.md)); **BF-22** CPQ contracted pricing minimal ([`WMS_CPQ_CONTRACT_PRICING_BF22.md`](./WMS_CPQ_CONTRACT_PRICING_BF22.md)); **BF-21** receipt accounting minimal ([`WMS_RECEIVING_BF21.md`](./WMS_RECEIVING_BF21.md)); **`BF-25`–`BF-30`** draft program; **BF-20** KPI proxy rates; **`BF-02`–`BF-24`** Done table; **BF-11** + **BF-19** CT map pins._
