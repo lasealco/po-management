@@ -4,7 +4,7 @@ import { toApiErrorResponse } from "@/app/api/_lib/api-error-contract";
 
 import { getActorUserId, requireApiGrant, userHasGlobalGrant } from "@/lib/authz";
 import { crmAccountInScope, getCrmAccessScope } from "@/lib/crm-scope";
-import { buildCrmAccountMapPins, buildWarehouseMapPins } from "@/lib/control-tower/map-layers";
+import { buildCrmAccountMapPins, buildWarehouseBinMapPins, buildWarehouseMapPins } from "@/lib/control-tower/map-layers";
 import { buildControlTowerMapPins } from "@/lib/control-tower/map-pins";
 import { listControlTowerShipments } from "@/lib/control-tower/list-shipments";
 import { parseControlTowerShipmentsListQuery } from "@/lib/control-tower/shipments-list-query-from-search-params";
@@ -18,6 +18,7 @@ export const dynamic = "force-dynamic";
  * `searchParams` match `GET /api/control-tower/shipments` (workbench / map share semantics).
  * Shipment pins use booking + leg **origin/destination** codes against `product-trace-geo` (demo LOCODES).
  * **BF-11:** with **`org.wms` → view**, active **`Warehouse`** rows append **site** pins (city/country/name heuristic — not rack geometry).
+ * **BF-27:** same grant — optional **`WarehouseBin`** pins scattered near site coords when bins exist (cap 200; deterministic jitter — not CAD tiles).
  * **BF-19:** with **`org.crm` → view**, **`CrmAccount`** rows with **`mapLatitude`/`mapLongitude`** append **CRM HQ** pins (explicit coords only — privacy default is omit).
  */
 export async function GET(request: Request) {
@@ -65,6 +66,35 @@ export async function GET(request: Request) {
     });
     warehousePins = buildWarehouseMapPins(warehouses);
     warehouseSiteUnmapped = Math.max(0, warehouses.length - warehousePins.length);
+  }
+
+  let warehouseBinPins: ReturnType<typeof buildWarehouseBinMapPins> = [];
+  let warehouseBinPinsTruncated = false;
+  if (canMapWmsSites && warehousePins.length > 0) {
+    const BIN_CAP = 200;
+    const coordsByWh = new Map(warehousePins.map((p) => [p.id, { lat: p.lat, lng: p.lng }]));
+    const whIds = [...coordsByWh.keys()];
+    const binRows = await prisma.warehouseBin.findMany({
+      where: {
+        tenantId: tenant.id,
+        isActive: true,
+        warehouseId: { in: whIds },
+      },
+      select: {
+        id: true,
+        warehouseId: true,
+        code: true,
+        rackCode: true,
+        aisle: true,
+        bay: true,
+        level: true,
+        positionIndex: true,
+      },
+      orderBy: [{ warehouseId: "asc" }, { code: "asc" }],
+      take: BIN_CAP + 1,
+    });
+    warehouseBinPinsTruncated = binRows.length > BIN_CAP;
+    warehouseBinPins = buildWarehouseBinMapPins(binRows.slice(0, BIN_CAP), coordsByWh);
   }
 
   let crmAccountPins: ReturnType<typeof buildCrmAccountMapPins> = [];
@@ -121,6 +151,8 @@ export async function GET(request: Request) {
     unmappedCount,
     warehousePins,
     warehouseSiteUnmapped,
+    warehouseBinPins,
+    warehouseBinPinsTruncated,
     crmAccountPins,
     crmAccountsMissingGeo,
     listLimit: listResult.listLimit,

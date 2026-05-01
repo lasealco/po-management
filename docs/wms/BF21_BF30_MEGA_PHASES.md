@@ -22,12 +22,12 @@
 | **BF-24** | First-class **Aisle** / geometry hooks | **Minimal landed** — **`WarehouseAisle`** + **`WarehouseBin.warehouseAisleId`** + mm columns + `create_warehouse_aisle` / `update_warehouse_aisle` — [`WMS_ZONE_TOPOLOGY_BF24.md`](./WMS_ZONE_TOPOLOGY_BF24.md) | BF-04 **`parentZoneId`** stable |
 | **BF-25** | Production TMS / carrier EDI | **Minimal landed** — optional **`TMS_WEBHOOK_HMAC_SECRET`** + **`X-TMS-Signature`**, **`WmsTmsWebhookReceipt`** + **`externalEventId`** ([`WMS_TMS_WEBHOOK_BF25.md`](./WMS_TMS_WEBHOOK_BF25.md)); certify / JWT / DLQ backlog | BF-05 / BF-17 dock transport |
 | **BF-26** | VAS MRP / engineering change | **Minimal landed** — CRM **`engineeringBom*`** on **`CrmQuoteLine`**, **`link_work_order_crm_quote_line`**, **`sync_work_order_bom_from_crm_quote_line`**, variance on **`GET /api/wms`** — [`WMS_ENGINEERING_BOM_BF26.md`](./WMS_ENGINEERING_BOM_BF26.md) | BF-18 **`WmsWorkOrderBomLine`** |
-| **BF-27** | CT map indoor / rack pins | Rack-bin overlays on **`/control-tower/map`** vs WMS Setup only | BF-11 / BF-19 map stack |
+| **BF-27** | CT map indoor / rack pins | **Minimal landed** — **`warehouseBinPins`** scatter near BF-11 sites (`buildWarehouseBinMapPins`, cap 200, CT toggle) — [`WMS_CT_MAP_BF27.md`](./WMS_CT_MAP_BF27.md) | BF-11 / BF-19 map stack |
 | **BF-28** | Billing / invoice depth (Phase B+) | Accrual, disputes, run controls beyond event materialization | Phase B billing row |
 | **BF-29** | Packing scanner & carrier label APIs | Hardware confirm path + carrier APIs (**BF-08** depth) | BF-08 pack/ship + labels |
 | **BF-30** | Customer portal SSO & identity | AuthZ for **`/wms/vas-intake`** + quote/order visibility | BF-09 portal assumptions |
 
-**Suggested dependency-aware sequence (not mandatory):** BF-21 → BF-22 → BF-23 (receiving truth → commercial price truth → solver); BF-24 parallel when migrations owned separately; BF-25 after BF-17 patterns proven (**minimal landed**); BF-26 after BF-18 usage (**minimal landed**); BF-27 after map product decision; BF-28 when finance owns invoice UX; BF-29 with vendor picks; BF-30 when CRM/platform owns IdP.
+**Suggested dependency-aware sequence (not mandatory):** BF-21 → BF-22 → BF-23 (receiving truth → commercial price truth → solver); BF-24 parallel when migrations owned separately; BF-25 after BF-17 patterns proven (**minimal landed**); BF-26 after BF-18 usage (**minimal landed**); BF-27 after map product decision (**minimal landed**); BF-28 when finance owns invoice UX; BF-29 with vendor picks; BF-30 when CRM/platform owns IdP.
 
 ---
 
@@ -107,7 +107,9 @@
 
 **Objective:** Optional **rack/bin** or **approximate indoor** pins on **`/control-tower/map`** (path **(a)** deferred from **BF-19**), with performance and privacy limits documented.
 
-**Exit sketch:** Pin builder from **`WarehouseBin`** addressing + jitter; toggles; **`WMS_CT_MAP_PHASE34_WE11.md`** updated.
+**Minimal slice shipped (repo):** **`buildWarehouseBinMapPins`** + **`warehouseBinScatterCoordinate`** — active **`WarehouseBin`** rows with **`warehouseId`** matching a BF-11 site pin scatter near that jittered coordinate (scaled deterministic jitter from **`product-trace-geo`** helpers); **`GET /api/control-tower/map-pins`** adds **`warehouseBinPins`** + **`warehouseBinPinsTruncated`** (cap **200**); **`control-tower-map-client.tsx`** teal ▲ layer toggle + popups; Vitest **`map-layers.test.ts`** — [`WMS_CT_MAP_BF27.md`](./WMS_CT_MAP_BF27.md), [`WMS_CT_MAP_PHASE34_WE11.md`](./WMS_CT_MAP_PHASE34_WE11.md).
+
+**Exit sketch (remaining):** Surveyed CAD footprints; **`WarehouseAisle`** mm-backed indoor tiles; RTLS tracks.
 
 **Out of scope:** CAD tile server, RTLS forklift tracks.
 
@@ -149,4 +151,4 @@
 
 ---
 
-_Last updated: 2026-04-29 — **BF-26** CRM engineering BOM sync minimal ([`WMS_ENGINEERING_BOM_BF26.md`](./WMS_ENGINEERING_BOM_BF26.md)); **BF-25** TMS webhook HMAC + idempotency minimal ([`WMS_TMS_WEBHOOK_BF25.md`](./WMS_TMS_WEBHOOK_BF25.md)); **BF-24** minimal **`WarehouseAisle`** slice ([`WMS_ZONE_TOPOLOGY_BF24.md`](./WMS_ZONE_TOPOLOGY_BF24.md)); program capsules **BF-21**–**BF-26** have minimal slices shipped in-repo; **`BF-02`–`BF-26`** Done table in [`BF_CAPSULE_ROADMAP.md`](./BF_CAPSULE_ROADMAP.md); **BF-27**–**BF-30** draft._
+_Last updated: 2026-04-29 — **BF-27** CT map approximate bin scatter minimal ([`WMS_CT_MAP_BF27.md`](./WMS_CT_MAP_BF27.md)); **BF-26** CRM engineering BOM sync minimal ([`WMS_ENGINEERING_BOM_BF26.md`](./WMS_ENGINEERING_BOM_BF26.md)); **BF-25** TMS webhook HMAC + idempotency minimal ([`WMS_TMS_WEBHOOK_BF25.md`](./WMS_TMS_WEBHOOK_BF25.md)); **BF-24** minimal **`WarehouseAisle`** slice ([`WMS_ZONE_TOPOLOGY_BF24.md`](./WMS_ZONE_TOPOLOGY_BF24.md)); program capsules **BF-21**–**BF-27** have minimal slices shipped in-repo; **`BF-02`–`BF-27`** Done table in [`BF_CAPSULE_ROADMAP.md`](./BF_CAPSULE_ROADMAP.md); **BF-28**–**BF-30** draft._

@@ -12,7 +12,8 @@ For **WE-11**, product-aligned delivery is:
 
 1. **Shipped slice:** **Bidirectional navigation** between Control Tower **Shipment map** and **WMS workspace** when the actor holds **both** grants (`org.controltower` → **view** *and* `org.wms` → **view**). This satisfies **cross-surface deep-links without floor geometry** as described in the Phase 3 “Next (3.4)” note (2026-04-25 bullet).
 2. **BF-11 (blueprint capsule) shipped slice:** Optional **`Warehouse`** **site** markers on the same **`/control-tower/map`** Leaflet canvas when **`org.wms` → view**: **`GET /api/control-tower/map-pins`** appends **`warehousePins`** resolved via **`product-trace-geo`** city/country/name heuristics (`buildWarehouseMapPins`). Toggleable layer alongside shipment pins; **not** WMS rack/floor tiles.
-3. **Explicit won’t-do (this capsule family):** **No** Leaflet layers that embed **WMS rack/floor** tiles, **warehouse CAD footprints**, or **CRM sales-order pins** — those remain backlog until funded separately. **BF-19** scope is **account-level HQ coordinates** only (not SO geometry or automatic geocode).
+3. **BF-27 (blueprint capsule) shipped slice:** Optional **`warehouseBinPins`** — active **`WarehouseBin`** markers **scattered near** BF-11 site coordinates (**deterministic jitter**, capped list — [`WMS_CT_MAP_BF27.md`](./WMS_CT_MAP_BF27.md)); **not** surveyed CAD overlays.
+4. **Explicit won’t-do (this capsule family):** **No** Leaflet layers that embed **true WMS rack/floor** CAD tiles, **warehouse CAD footprints**, or **CRM sales-order pins** — those remain backlog until funded separately. **BF-19** scope is **account-level HQ coordinates** only (not SO geometry or automatic geocode).
 
 ## Implementation pointers (dual-grant users)
 
@@ -23,16 +24,21 @@ For **WE-11**, product-aligned delivery is:
 
 **BF-11 warehouse pins:** `src/lib/control-tower/map-layers.ts` (`buildWarehouseMapPins`) + `src/app/api/control-tower/map-pins/route.ts`; UI toggles in `control-tower-map-client.tsx`.
 
+**BF-27 bin scatter pins:** `buildWarehouseBinMapPins` / `warehouseBinScatterCoordinate` in `map-layers.ts`; **`warehouseBinPins`** on same route; teal ▲ toggle in `control-tower-map-client.tsx`.
+
 **BF-19 CRM HQ pins:** same module — `buildCrmAccountMapPins`, **`crmAccountPins`** / **`crmAccountsMissingGeo`** when **`org.crm` → view**; coords edited in CRM account workspace (`PATCH /api/crm/accounts/[id]`).
 
 Users without one of the grants see only the corresponding surface; no broken routes.
 
 ## Where WMS “floor” lives instead
 
-**Warehouse rack / bin addressing** remains **first-class in WMS** (**Setup** rack front map, bin **`rackCode`** / **`aisle`** / **`bay`** / **`level`** / **`positionIndex`** — see [`WMS_ZONE_TOPOLOGY_ADR.md`](./WMS_ZONE_TOPOLOGY_ADR.md)), **not** merged into the CT shipment map layer stack.
+**Warehouse rack / bin addressing** remains **first-class in WMS** (**Setup** rack front map, bin **`rackCode`** / **`aisle`** / **`bay`** / **`level`** / **`positionIndex`** — see [`WMS_ZONE_TOPOLOGY_ADR.md`](./WMS_ZONE_TOPOLOGY_ADR.md)). **BF-27** exposes **approximate bin scatter** on the CT map for awareness only — **not** merged into surveyed indoor tiles on that Leaflet stack.
 
 ## Follow-ups (not WE-11 / BF-11)
 
 - Globe adoption metrics / richer world tiles (**Phase 3** roadmap language).
 - **BF-19 follow-ons:** automatic geocode; CRM **contact** or **sales-order** geo pins; privacy review for coarse HQ pins in multi-tenant demos.
-- Any **single-map** UX combining OT lanes + **indoor** warehouse geometry — new capsule + design.
+- **BF-27 follow-ons:** surveyed footprints / **`WarehouseAisle`** mm-backed overlays when product funds true indoor tiles.
+- Any **single-map** UX combining OT lanes + **surveyed indoor** warehouse geometry — new capsule + design.
+
+_Last updated: 2026-04-29 — BF-27 approximate bin scatter pins on CT map._

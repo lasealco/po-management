@@ -101,3 +101,75 @@ export function buildCrmAccountMapPins(rows: CrmAccountForMapPin[]): CrmAccountM
   });
   return out;
 }
+
+/**
+ * BF-27 — warehouse-bin pins clustered near BF-11 site coords (deterministic jitter; not surveyed CAD).
+ * Exported for unit tests.
+ */
+export function warehouseBinScatterCoordinate(
+  siteLat: number,
+  siteLng: number,
+  warehouseId: string,
+  binId: string,
+): { lat: number; lng: number } {
+  let h = 0;
+  for (let i = 0; i < binId.length; i += 1) h = (h * 31 + binId.charCodeAt(i)) >>> 0;
+  const idx = 11_000 + (h % 6000);
+  const raw = jitterLatLng(siteLat, siteLng, idx, `${warehouseId}\t${binId}`);
+  const scale = 0.26;
+  return {
+    lat: siteLat + (raw.lat - siteLat) * scale,
+    lng: siteLng + (raw.lng - siteLng) * scale,
+  };
+}
+
+export type WarehouseBinMapPin = {
+  id: string;
+  warehouseId: string;
+  lat: number;
+  lng: number;
+  title: string;
+  subtitle: string;
+  href: string;
+};
+
+export type WarehouseBinForMapPin = {
+  id: string;
+  warehouseId: string;
+  code: string;
+  rackCode: string | null;
+  aisle: string | null;
+  bay: string | null;
+  level: number | null;
+  positionIndex: number | null;
+};
+
+export function buildWarehouseBinMapPins(
+  bins: WarehouseBinForMapPin[],
+  warehouseSiteCoordsByWarehouseId: Map<string, { lat: number; lng: number }>,
+): WarehouseBinMapPin[] {
+  const out: WarehouseBinMapPin[] = [];
+  for (const b of bins) {
+    const site = warehouseSiteCoordsByWarehouseId.get(b.warehouseId);
+    if (!site) continue;
+    const coord = warehouseBinScatterCoordinate(site.lat, site.lng, b.warehouseId, b.id);
+    const addrParts = [
+      b.rackCode ? `rack ${b.rackCode}` : null,
+      b.aisle ? `aisle ${b.aisle}` : null,
+      b.bay ? `bay ${b.bay}` : null,
+      b.level != null ? `lvl ${b.level}` : null,
+      b.positionIndex != null ? `#${b.positionIndex}` : null,
+    ].filter((x): x is string => Boolean(x));
+    const addressing = addrParts.length > 0 ? addrParts.join(" · ") : "address fields unset · scatter-only pin";
+    out.push({
+      id: b.id,
+      warehouseId: b.warehouseId,
+      lat: coord.lat,
+      lng: coord.lng,
+      title: `${b.code} · bin`,
+      subtitle: `${addressing} · approximate offset from WMS site (BF-27 — not surveyed geometry)`,
+      href: "/wms/setup",
+    });
+  }
+  return out;
+}

@@ -1,70 +1,58 @@
 import { describe, expect, it } from "vitest";
 
-import { buildCrmAccountMapPins, buildWarehouseMapPins } from "./map-layers";
+import { buildWarehouseBinMapPins, warehouseBinScatterCoordinate } from "./map-layers";
 
-describe("buildWarehouseMapPins", () => {
-  it("returns pins when city + country resolve", () => {
-    const pins = buildWarehouseMapPins([
-      {
-        id: "wh1",
-        code: "DC1",
-        name: "Chicago DC",
-        city: "Chicago",
-        region: "IL",
-        countryCode: "US",
-      },
-    ]);
-    expect(pins).toHaveLength(1);
-    expect(pins[0].title).toContain("Chicago DC");
-    expect(pins[0].href).toBe("/wms/setup");
-    expect(Number.isFinite(pins[0].lat)).toBe(true);
-    expect(Number.isFinite(pins[0].lng)).toBe(true);
+describe("warehouseBinScatterCoordinate", () => {
+  it("is deterministic for the same inputs", () => {
+    const a = warehouseBinScatterCoordinate(41.9, -87.7, "wh1", "binA");
+    const b = warehouseBinScatterCoordinate(41.9, -87.7, "wh1", "binA");
+    expect(a.lat).toBe(b.lat);
+    expect(a.lng).toBe(b.lng);
   });
 
-  it("skips rows with no mappable geography", () => {
-    const pins = buildWarehouseMapPins([
-      {
-        id: "wh-x",
-        code: null,
-        name: "Unknown Site XYZ123",
-        city: null,
-        region: null,
-        countryCode: null,
-      },
-    ]);
-    expect(pins).toHaveLength(0);
+  it("stays near the warehouse site coordinate", () => {
+    const baseLat = 41.8781;
+    const baseLng = -87.6298;
+    const p = warehouseBinScatterCoordinate(baseLat, baseLng, "wh1", "binZ");
+    expect(Math.abs(p.lat - baseLat)).toBeLessThan(0.05);
+    expect(Math.abs(p.lng - baseLng)).toBeLessThan(0.05);
   });
 
-  it("uses name hints when city missing", () => {
-    const pins = buildWarehouseMapPins([
-      {
-        id: "wh-sz",
-        code: null,
-        name: "Shenzhen fulfillment node",
-        city: null,
-        region: null,
-        countryCode: null,
-      },
-    ]);
-    expect(pins.length).toBeGreaterThanOrEqual(1);
+  it("separates different bins", () => {
+    const p1 = warehouseBinScatterCoordinate(41.9, -87.7, "wh1", "b1");
+    const p2 = warehouseBinScatterCoordinate(41.9, -87.7, "wh1", "b2");
+    expect(p1.lat !== p2.lat || p1.lng !== p2.lng).toBe(true);
   });
 });
 
-describe("buildCrmAccountMapPins", () => {
-  it("emits a pin for valid coordinates", () => {
-    const pins = buildCrmAccountMapPins([
-      { id: "crm1", name: "Acme", legalName: "Acme BV", mapLatitude: 51.9, mapLongitude: 4.47 },
-    ]);
-    expect(pins).toHaveLength(1);
-    expect(pins[0].title).toContain("Acme");
-    expect(pins[0].href).toBe("/crm/accounts/crm1");
+describe("buildWarehouseBinMapPins", () => {
+  it("skips bins whose warehouse has no site coord", () => {
+    const pins = buildWarehouseBinMapPins(
+      [{ id: "x", warehouseId: "missing", code: "A-1", rackCode: null, aisle: null, bay: null, level: null, positionIndex: null }],
+      new Map([["wh2", { lat: 40, lng: -74 }]]),
+    );
+    expect(pins).toHaveLength(0);
   });
 
-  it("drops rows outside lat/lng range", () => {
-    expect(
-      buildCrmAccountMapPins([
-        { id: "bad", name: "X", legalName: null, mapLatitude: 999, mapLongitude: 0 },
-      ]),
-    ).toHaveLength(0);
+  it("emits a pin when warehouse maps", () => {
+    const pins = buildWarehouseBinMapPins(
+      [
+        {
+          id: "bin1",
+          warehouseId: "wh2",
+          code: "Z-01",
+          rackCode: "R1",
+          aisle: "A",
+          bay: "3",
+          level: 2,
+          positionIndex: 4,
+        },
+      ],
+      new Map([["wh2", { lat: 40.7128, lng: -74.006 }]]),
+    );
+    expect(pins).toHaveLength(1);
+    expect(pins[0]?.title).toContain("Z-01");
+    expect(pins[0]?.subtitle).toContain("rack R1");
+    expect(pins[0]?.href).toBe("/wms/setup");
   });
 });

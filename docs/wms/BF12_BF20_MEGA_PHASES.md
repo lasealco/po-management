@@ -118,7 +118,7 @@
 
 **Minimal slice shipped (repo):** **(b)** — **`CrmAccount.mapLatitude` / `mapLongitude`** (nullable decimals; PATCH on **`/api/crm/accounts/[id]`** sets/clears pair with range checks); **`buildCrmAccountMapPins`** + **`crmAccountPins`** / **`crmAccountsMissingGeo`** on **`GET /api/control-tower/map-pins`** with CRM owner scope + portal **`customerCrmAccountId`** restriction; **`/control-tower/map`** toggle (**◆** layer); CRM account workspace overview saves coords + link to map; demo seed sets sample coords on Demo Logistics Customer.
 
-**Exit sketch (remaining):** Rack/bin overlays on CT map; automatic geocode; richer CRM entity geo (contacts, SO pins).
+**Exit sketch (remaining):** Rack/bin overlays on CT map (**BF-27** lands approximate **`warehouseBinPins`** — not surveyed CAD); automatic geocode; richer CRM entity geo (contacts, SO pins).
 
 **Out of scope:** Indoor positioning mm accuracy, live forklift telemetry.
 
@@ -148,4 +148,4 @@ _Last updated: 2026-04-29 — **BF-26** CRM engineering BOM sync extends BF-18 V
 
 ## Next program wave
 
-Definitions for **BF-21 … BF-30**: shipped capsules **BF-21 … BF-26** — [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md); remaining draft **BF-27 … BF-30** continues there.
+Definitions for **BF-21 … BF-30**: shipped capsules **BF-21 … BF-27** — [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md); remaining draft **BF-28 … BF-30** continues there.
