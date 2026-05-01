@@ -16,7 +16,7 @@
 
 | ID | Mega phase (short) | Primary deferred signal ([`GAP_MAP.md`](./GAP_MAP.md)) | Typical depends on |
 |----|-------------------|--------------------------------------------------------|---------------------|
-| **BF-21** | Receipt accounting & ASN policies | Multi-event receipt reconciliation; ASN auto-close; CLOSED receipt history | BF-12 **`WmsReceipt`** session |
+| **BF-21** | Receipt accounting & ASN policies | **Minimal landed** — closed receipt history + idempotent close + optional **`RECEIPT_COMPLETE`** ([`WMS_RECEIVING_BF21.md`](./WMS_RECEIVING_BF21.md)); carrier ASN auto-close / GRN backlog | BF-12 **`WmsReceipt`** session |
 | **BF-22** | CPQ contracted pricing on outbound | Tier/contract pricing beyond SKU map (**BF-14**) | BF-10 / BF-14 commercial path |
 | **BF-23** | Allocation MILP / cube / labor | Solver beyond greedy + carton unit cap (**BF-15**) | BF-03 / BF-15 strategies stable |
 | **BF-24** | First-class **Aisle** / geometry hooks | mm/3D & aisle entities per [`WMS_ZONE_TOPOLOGY_ADR.md`](./WMS_ZONE_TOPOLOGY_ADR.md) | BF-04 **`parentZoneId`** stable |
@@ -35,7 +35,9 @@
 
 **Objective:** Close the gap between **BF-12** dock receipts and finance-ready receiving: receipt history beyond **`CLOSED`** summary rows, ASN auto-close rules, and warehouse accounting hooks (accrual/grn stubs **optional** in v1).
 
-**Exit sketch:** ADR for policies; `POST /api/wms` actions or status transitions; **`GAP_MAP`** inbound row updated; tests for idempotent closes.
+**Minimal slice shipped (repo):** **`closedWmsReceiptHistory`** + refined **`openWmsReceipt`** selection on **`GET /api/wms`** inbound shipments; **`close_wms_receipt`** **idempotent** when already **`CLOSED`**; optional **`receiptCompleteOnClose`** advances **`wmsReceiveStatus` → `RECEIPT_COMPLETE`** when the state machine allows (`canAdvanceReceiveStatusToReceiptComplete`, audit **`source: close_wms_receipt`**); Operations inbound UI (history list + checkbox); [`WMS_RECEIVING_BF21.md`](./WMS_RECEIVING_BF21.md); Vitest **`wms-receipt-close-policy.test.ts`**.
+
+**Exit sketch (remaining):** ASN tolerance/auto-close from carrier feeds; **`GRN`** references; accrual hooks; multi-event receipt reconciliation UX beyond history list.
 
 **Out of scope:** Full ERP GL posting, mobile offline receiving.
 

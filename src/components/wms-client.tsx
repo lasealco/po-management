@@ -209,6 +209,16 @@ type WmsData = {
         wmsVarianceNote: string | null;
       }>;
     } | null;
+    /** BF-21 — recent CLOSED dock receipts for audit/history (newest first). */
+    closedWmsReceiptHistory: Array<{
+      id: string;
+      closedAt: string | null;
+      closedBy: { id: string; name: string } | null;
+      createdAt: string;
+      dockReceivedAt: string | null;
+      dockNote: string | null;
+      lineCount: number;
+    }>;
   }>;
   putawayCandidates: Array<{
     shipmentItemId: string;
@@ -574,7 +584,16 @@ export function WmsClient({
     Record<string, QuoteExplosionPreviewPayload | undefined>
   >({});
   const [inboundEdits, setInboundEdits] = useState<
-    Record<string, { asn: string; expectedReceiveAt: string; receiptDockNote: string; receiptDockAt: string }>
+    Record<
+      string,
+      {
+        asn: string;
+        expectedReceiveAt: string;
+        receiptDockNote: string;
+        receiptDockAt: string;
+        receiptCompleteOnClose: boolean;
+      }
+    >
   >({});
   const [outboundAsnEdits, setOutboundAsnEdits] = useState<
     Record<string, { asn: string; requestedShip: string }>
@@ -916,7 +935,13 @@ export function WmsClient({
     startTransition(() => {
       const next: Record<
         string,
-        { asn: string; expectedReceiveAt: string; receiptDockNote: string; receiptDockAt: string }
+        {
+          asn: string;
+          expectedReceiveAt: string;
+          receiptDockNote: string;
+          receiptDockAt: string;
+          receiptCompleteOnClose: boolean;
+        }
       > = {};
       for (const s of data.inboundShipments) {
         next[s.id] = {
@@ -926,6 +951,7 @@ export function WmsClient({
             : "",
           receiptDockNote: "",
           receiptDockAt: "",
+          receiptCompleteOnClose: false,
         };
       }
       setInboundEdits(next);
@@ -2167,7 +2193,10 @@ export function WmsClient({
           WMS receiving workflow states before putaway, and{" "}
           <span className="font-medium">line-level received qty vs shipped (variance disposition)</span> per ASN line.
           Optional <span className="font-medium">dock receipt sessions</span> (BF-12) wrap line posts with a tenant-scoped{" "}
-          <span className="font-medium">WmsReceipt</span> without replacing Option A/BF-01 fields. Putaway still runs per
+          <span className="font-medium">WmsReceipt</span> without replacing Option A/BF-01 fields. BF-21 adds{" "}
+          <span className="font-medium">closed receipt history</span>,{" "}
+          <span className="font-medium">idempotent close</span>, and an optional{" "}
+          <span className="font-medium">Receipt complete</span> advance when closing a session. Putaway still runs per
           shipment line below.
         </p>
         <div className="mt-3 overflow-x-auto">
@@ -2203,6 +2232,7 @@ export function WmsClient({
                       expectedReceiveAt: "",
                       receiptDockNote: "",
                       receiptDockAt: "",
+                      receiptCompleteOnClose: false,
                     };
                   const lineColSpan = canEdit ? 11 : 8;
                   return (
@@ -2389,7 +2419,7 @@ export function WmsClient({
                               <span className="font-medium">set_wms_receipt_line</span> (same BF-01 quantities on the
                               shipment line; audit carries <span className="font-medium">wmsReceiptId</span>). With no
                               session, <span className="font-medium">Save line</span> stays on direct Option A/BF-01
-                              posting.
+                              posting. Closing is <span className="font-medium">idempotent</span> (BF-21).
                             </p>
                             {openRec ? (
                               <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-zinc-700">
@@ -2406,19 +2436,37 @@ export function WmsClient({
                                   </span>
                                 ) : null}
                                 {canEdit ? (
-                                  <button
-                                    type="button"
-                                    disabled={busy}
-                                    onClick={() =>
-                                      void runAction({
-                                        action: "close_wms_receipt",
-                                        receiptId: openRec.id,
-                                      })
-                                    }
-                                    className="ml-auto rounded-lg border border-zinc-300 px-3 py-1.5 text-[11px] font-medium text-zinc-800 disabled:opacity-40"
-                                  >
-                                    Close dock receipt
-                                  </button>
+                                  <>
+                                    <label className="flex max-w-md cursor-pointer items-center gap-2 text-[11px] text-zinc-600">
+                                      <input
+                                        type="checkbox"
+                                        className="rounded border-zinc-300"
+                                        checked={draft.receiptCompleteOnClose}
+                                        disabled={busy}
+                                        onChange={(e) =>
+                                          setInboundEdits((prev) => ({
+                                            ...prev,
+                                            [s.id]: { ...draft, receiptCompleteOnClose: e.target.checked },
+                                          }))
+                                        }
+                                      />
+                                      On close, advance WMS receiving to Receipt complete when allowed (BF-21)
+                                    </label>
+                                    <button
+                                      type="button"
+                                      disabled={busy}
+                                      onClick={() =>
+                                        void runAction({
+                                          action: "close_wms_receipt",
+                                          receiptId: openRec.id,
+                                          receiptCompleteOnClose: draft.receiptCompleteOnClose,
+                                        })
+                                      }
+                                      className="ml-auto rounded-lg border border-zinc-300 px-3 py-1.5 text-[11px] font-medium text-zinc-800 disabled:opacity-40"
+                                    >
+                                      Close dock receipt
+                                    </button>
+                                  </>
                                 ) : null}
                               </div>
                             ) : canEdit ? (
@@ -2474,6 +2522,28 @@ export function WmsClient({
                             ) : (
                               <p className="mt-2 text-[11px] text-zinc-500">No open dock receipt session.</p>
                             )}
+                            {s.closedWmsReceiptHistory.length > 0 ? (
+                              <div className="mt-3 rounded-lg border border-zinc-100 bg-zinc-50/90 px-3 py-2">
+                                <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                                  Closed dock receipts (BF-21 history)
+                                </p>
+                                <ul className="mt-1 space-y-1 text-[11px] text-zinc-700">
+                                  {s.closedWmsReceiptHistory.map((h) => (
+                                    <li key={h.id} className="flex flex-wrap gap-x-2 gap-y-0.5 border-b border-zinc-100/80 py-1 last:border-0">
+                                      <span className="font-mono text-[10px] text-zinc-500">{h.id.slice(0, 10)}…</span>
+                                      <span>{h.lineCount} line{h.lineCount === 1 ? "" : "s"}</span>
+                                      <span className="text-zinc-500">
+                                        closed{" "}
+                                        {h.closedAt
+                                          ? new Date(h.closedAt).toLocaleString()
+                                          : "—"}
+                                        {h.closedBy ? ` · ${h.closedBy.name}` : ""}
+                                      </span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            ) : null}
                           </div>
                           <div className="mt-2 overflow-x-auto">
                             <table className="min-w-[720px] w-full border-collapse text-xs">

@@ -125,6 +125,11 @@ export type WmsBody = {
   receiptDockNote?: string | null;
   /** BF-12 — optional dock/unload timestamp on `create_wms_receipt` (ISO string). */
   receiptDockReceivedAt?: string | null;
+  /**
+   * BF-21 — when closing an OPEN dock receipt, optionally advance `Shipment.wmsReceiveStatus` to
+   * `RECEIPT_COMPLETE` if the state machine allows it (typically from `RECEIVING`).
+   */
+  receiptCompleteOnClose?: boolean;
 
   /** BF-13 — `WmsInventorySerial.id` (alternative to `productId` + `inventorySerialNo`). */
   inventorySerialId?: string;

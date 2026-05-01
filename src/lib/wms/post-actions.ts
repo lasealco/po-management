@@ -22,6 +22,7 @@ import {
   type WavePickSlot,
 } from "./allocation-strategy";
 import { writeShipmentItemReceiveLineInTx } from "./inbound-receive-line-write";
+import { canAdvanceReceiveStatusToReceiptComplete } from "./wms-receipt-close-policy";
 import { resolveVarianceDisposition } from "./receive-line-variance";
 import {
   parseLotBatchExpiryInput,
@@ -1453,17 +1454,25 @@ export async function handleWmsPost(
     if (!receiptId) {
       return toApiErrorResponseFromStatus("receiptId required.", 400);
     }
+    const receiptCompleteOnClose = Boolean(input.receiptCompleteOnClose);
+
     const rec = await prisma.wmsReceipt.findFirst({
       where: { id: receiptId, tenantId },
-      select: { id: true, status: true, shipmentId: true },
+      select: {
+        id: true,
+        status: true,
+        shipmentId: true,
+        shipment: { select: { id: true, wmsReceiveStatus: true } },
+      },
     });
     if (!rec) {
       return toApiErrorResponseFromStatus("Receipt not found.", 404);
     }
     if (rec.status !== "OPEN") {
-      return toApiErrorResponseFromStatus("Receipt already closed.", 400);
+      return NextResponse.json({ ok: true, alreadyClosed: true });
     }
 
+    let receiveStatusAdvanced = false;
     await prisma.$transaction(async (tx) => {
       await tx.wmsReceipt.update({
         where: { id: rec.id },
@@ -1476,13 +1485,47 @@ export async function handleWmsPost(
           entityType: "SHIPMENT",
           entityId: rec.id,
           action: "wms_receipt_closed",
-          payload: { wmsReceiptId: rec.id },
+          payload: {
+            wmsReceiptId: rec.id,
+            ...(receiptCompleteOnClose ? { receiptCompleteOnCloseRequested: true } : {}),
+          },
           actorUserId: actorId,
         },
       });
+
+      if (receiptCompleteOnClose) {
+        const fromStatus = rec.shipment.wmsReceiveStatus;
+        if (canAdvanceReceiveStatusToReceiptComplete(fromStatus)) {
+          await tx.shipment.update({
+            where: { id: rec.shipmentId },
+            data: {
+              wmsReceiveStatus: "RECEIPT_COMPLETE",
+              wmsReceiveUpdatedAt: new Date(),
+              wmsReceiveUpdatedById: actorId,
+            },
+          });
+          await tx.ctAuditLog.create({
+            data: {
+              tenantId,
+              shipmentId: rec.shipmentId,
+              entityType: "SHIPMENT",
+              entityId: rec.shipmentId,
+              action: "wms_receive_transition",
+              payload: {
+                from: fromStatus,
+                to: "RECEIPT_COMPLETE",
+                source: "close_wms_receipt",
+                wmsReceiptId: rec.id,
+              },
+              actorUserId: actorId,
+            },
+          });
+          receiveStatusAdvanced = true;
+        }
+      }
     });
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, receiveStatusAdvanced });
   }
 
   if (action === "set_wms_receipt_line") {

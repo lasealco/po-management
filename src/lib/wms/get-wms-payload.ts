@@ -241,15 +241,16 @@ export async function getWmsDashboardPayload(
           },
         },
         wmsReceipts: {
-          where: { status: "OPEN" },
-          take: 1,
           orderBy: { createdAt: "desc" },
+          take: 25,
           select: {
             id: true,
             status: true,
             dockNote: true,
             dockReceivedAt: true,
             createdAt: true,
+            closedAt: true,
+            closedBy: { select: { id: true, name: true } },
             lines: {
               select: {
                 shipmentItemId: true,
@@ -570,21 +571,37 @@ export async function getWmsDashboardPayload(
             wmsVarianceNote: li.wmsVarianceNote,
           })),
         openWmsReceipt: (() => {
-          const r = s.wmsReceipts[0];
-          if (!r) return null;
+          const open = s.wmsReceipts.find((r) => r.status === "OPEN");
+          if (!open) return null;
           return {
-            id: r.id,
-            status: r.status,
-            dockNote: r.dockNote,
-            dockReceivedAt: r.dockReceivedAt?.toISOString() ?? null,
-            createdAt: r.createdAt.toISOString(),
-            lines: r.lines.map((ln) => ({
+            id: open.id,
+            status: "OPEN" as const,
+            dockNote: open.dockNote,
+            dockReceivedAt: open.dockReceivedAt?.toISOString() ?? null,
+            createdAt: open.createdAt.toISOString(),
+            lines: open.lines.map((ln) => ({
               shipmentItemId: ln.shipmentItemId,
               quantityReceived: ln.quantityReceived.toString(),
               wmsVarianceDisposition: ln.wmsVarianceDisposition,
               wmsVarianceNote: ln.wmsVarianceNote,
             })),
           };
+        })(),
+        closedWmsReceiptHistory: (() => {
+          const closed = s.wmsReceipts
+            .filter((r) => r.status === "CLOSED")
+            .sort((a, b) => (b.closedAt?.getTime() ?? 0) - (a.closedAt?.getTime() ?? 0))
+            .slice(0, 12)
+            .map((r) => ({
+              id: r.id,
+              closedAt: r.closedAt?.toISOString() ?? null,
+              closedBy: r.closedBy ? { id: r.closedBy.id, name: r.closedBy.name } : null,
+              createdAt: r.createdAt.toISOString(),
+              dockReceivedAt: r.dockReceivedAt?.toISOString() ?? null,
+              dockNote: r.dockNote,
+              lineCount: r.lines.length,
+            }));
+          return closed;
         })(),
       };
     }),
