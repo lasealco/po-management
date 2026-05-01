@@ -106,9 +106,9 @@
 
 **Minimal slice shipped (repo):** **`WmsWorkOrderBomLine`** (`plannedQty` / `consumedQty`); **`replace_work_order_bom_lines`** (full replace while WO **`OPEN`/`IN_PROGRESS`** and **no** line has **`consumedQty` > 0**); **`consume_work_order_bom_line`** ( **`ADJUSTMENT`** movement, **`referenceType = WO_BOM_LINE`**, **`referenceId` = BOM line id); Operations UI BOM table + replace + consume; optional **`npm run db:seed:wms-vas-bom-demo`** after **`db:seed:wms-demo`**.
 
-**Exit sketch (remaining):** Automated BOM sync from CRM/engineering change; variance analytics vs **`estimatedMaterialsCents`**.
+**Exit sketch (remaining):** BF-26 lands CRM-authored SKU BOM push (**[`WMS_ENGINEERING_BOM_BF26.md`](./WMS_ENGINEERING_BOM_BF26.md)**); **partial supersede** when a retained BOM line already has **`consumedQty` > 0**; nightly regen backlog.
 
-**Out of scope:** MRP regeneration, engineering change workflow.
+**Out of scope:** Full MRP regeneration nightly, full PLM replacement (beyond BF-26 PATCH/sync stub).
 
 ---
 
@@ -142,10 +142,10 @@
 
 ---
 
-_Last updated: 2026-05-05 — **BF-17** webhook extended by **BF-25** (optional HMAC + **`externalEventId`** idempotency, [`WMS_TMS_WEBHOOK_BF25.md`](./WMS_TMS_WEBHOOK_BF25.md)); **2026-05-03** — **BF-23** reserve pick-face allocation minimal ([`WMS_ALLOCATION_BF23.md`](./WMS_ALLOCATION_BF23.md)); **BF-22** CPQ list/tier + outbound **`commercial*`** snapshots ([`WMS_CPQ_CONTRACT_PRICING_BF22.md`](./WMS_CPQ_CONTRACT_PRICING_BF22.md)); **2026-05-02** — **BF-20** minimal executive KPI proxy rates (`buildExecutiveRates`, `rates` + `rateMethodology` on **`fetchWmsHomeKpis`**, `/wms` copy); **`BF-21`–`BF-30`** program draft [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md); **BF-19** minimal CRM HQ pins on CT map (`CrmAccount` map coords, `crmAccountPins`, scoped API + UI); **BF-18** minimal VAS multi-line BOM (`WmsWorkOrderBomLine`, `replace_work_order_bom_lines`, `consume_work_order_bom_line`, WMS UI, seed **`db:seed:wms-vas-bom-demo`**); **BF-15** minimal wave allocation v2 (`GREEDY_MIN_BIN_TOUCHES`, `pickWaveCartonUnits`, Setup UI); **BF-14** minimal (`inventorySku`, `explode_crm_quote_to_outbound`, WMS preview UI); program draft for BF-12 … BF-20 mega phases._
+_Last updated: 2026-04-29 — **BF-26** CRM engineering BOM sync extends BF-18 VAS BOM (**[`WMS_ENGINEERING_BOM_BF26.md`](./WMS_ENGINEERING_BOM_BF26.md)**); **BF-17** webhook extended by **BF-25** (optional HMAC + **`externalEventId`** idempotency, [`WMS_TMS_WEBHOOK_BF25.md`](./WMS_TMS_WEBHOOK_BF25.md)); **2026-05-03** — **BF-23** reserve pick-face allocation minimal ([`WMS_ALLOCATION_BF23.md`](./WMS_ALLOCATION_BF23.md)); **BF-22** CPQ list/tier + outbound **`commercial*`** snapshots ([`WMS_CPQ_CONTRACT_PRICING_BF22.md`](./WMS_CPQ_CONTRACT_PRICING_BF22.md)); **2026-05-02** — **BF-20** minimal executive KPI proxy rates (`buildExecutiveRates`, `rates` + `rateMethodology` on **`fetchWmsHomeKpis`**, `/wms` copy); **`BF-21`–`BF-30`** program [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md); **BF-19** minimal CRM HQ pins on CT map (`CrmAccount` map coords, `crmAccountPins`, scoped API + UI); **BF-18** minimal VAS multi-line BOM (`WmsWorkOrderBomLine`, `replace_work_order_bom_lines`, `consume_work_order_bom_line`, WMS UI, seed **`db:seed:wms-vas-bom-demo`**); **BF-15** minimal wave allocation v2 (`GREEDY_MIN_BIN_TOUCHES`, `pickWaveCartonUnits`, Setup UI); **BF-14** minimal (`inventorySku`, `explode_crm_quote_to_outbound`, WMS preview UI); program draft for BF-12 … BF-20 mega phases._
 
 ---
 
 ## Next program wave
 
-Definitions for **BF-21 … BF-30** (draft, not shipped): [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md).
+Definitions for **BF-21 … BF-30**: shipped capsules **BF-21 … BF-26** — [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md); remaining draft **BF-27 … BF-30** continues there.

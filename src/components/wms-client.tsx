@@ -311,6 +311,12 @@ type WmsData = {
     intakeChannel: "OPS" | "CUSTOMER_PORTAL";
     estimatedMaterialsCents: number | null;
     estimatedLaborMinutes: number | null;
+    crmQuoteLineId: string | null;
+    engineeringBomSyncedRevision: string | null;
+    engineeringBomSyncedAt: string | null;
+    crmEngineeringBomRevision: string | null;
+    crmEngineeringBomMaterialsCents: number | null;
+    materialsEstimateVsEngineeringVarianceCents: number | null;
     completedAt: string | null;
     createdAt: string;
     warehouse: { id: string; code: string | null; name: string };
@@ -651,12 +657,15 @@ export function WmsClient({
   const [vasWoTitle, setVasWoTitle] = useState("");
   const [vasWoDesc, setVasWoDesc] = useState("");
   const [vasWoCrmAccountId, setVasWoCrmAccountId] = useState("");
+  const [vasWoCrmQuoteLineId, setVasWoCrmQuoteLineId] = useState("");
   const [vasTaskWoId, setVasTaskWoId] = useState("");
   const [vasBalanceLineId, setVasBalanceLineId] = useState("");
   const [vasTaskQty, setVasTaskQty] = useState("");
   const [cycleBalanceId, setCycleBalanceId] = useState("");
   const [cycleCountQtyByTask, setCycleCountQtyByTask] = useState<Record<string, string>>({});
   const [woEstDraft, setWoEstDraft] = useState<Record<string, { m: string; l: string }>>({});
+  /** BF-26 — draft CRM quote line id for link action (initialized from payload). */
+  const [woQuoteLineLinkDraft, setWoQuoteLineLinkDraft] = useState<Record<string, string>>({});
   const [woBomDraft, setWoBomDraft] = useState<Record<string, Array<{ productId: string; qty: string }>>>(
     {},
   );
@@ -674,6 +683,15 @@ export function WmsClient({
       };
     }
     setWoEstDraft(next);
+  }, [data]);
+
+  useEffect(() => {
+    if (!data) return;
+    const next: Record<string, string> = {};
+    for (const wo of data.workOrders) {
+      next[wo.id] = wo.crmQuoteLineId ?? "";
+    }
+    setWoQuoteLineLinkDraft(next);
   }, [data]);
 
   useEffect(() => {
@@ -3988,7 +4006,10 @@ export function WmsClient({
           optional multi-line <span className="font-medium text-zinc-800">BOM</span> snapshots (BF-18). Completing a
           task with material consumption posts an{" "}
           <span className="font-medium text-zinc-800">ADJUSTMENT</span> movement; BOM consumption uses{" "}
-          <span className="font-medium text-zinc-800">referenceType WO_BOM_LINE</span>. Billing notes:{" "}
+          <span className="font-medium text-zinc-800">referenceType WO_BOM_LINE</span>.{" "}
+          <span className="font-medium text-zinc-800">BF-26</span> adds CRM quote-line engineering BOM JSON (
+          <span className="font-medium text-zinc-800">PATCH …/crm/quotes/…/lines/…</span>) plus WMS sync and estimate
+          variance vs rolled-up CRM cents. Billing notes:{" "}
           <span className="font-medium text-zinc-800">docs/wms/WMS_VAS_WORK_ORDERS.md</span>, BF-09{" "}
           <span className="font-medium text-zinc-800">docs/wms/WMS_VAS_BF09.md</span>. Customer intake:{" "}
           <Link href="/wms/vas-intake" className="font-semibold text-[var(--arscmp-primary)] underline-offset-2 hover:underline">
@@ -4034,6 +4055,17 @@ export function WmsClient({
                 ))}
               </select>
             </label>
+            <label className="mt-2 block">
+              <span className="text-[10px] font-medium uppercase text-zinc-500">
+                CRM quote line id (optional, BF-26 sync)
+              </span>
+              <input
+                value={vasWoCrmQuoteLineId}
+                onChange={(e) => setVasWoCrmQuoteLineId(e.target.value)}
+                placeholder="Paste CrmQuoteLine id after CRM setup publishes BOM"
+                className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 font-mono text-xs"
+              />
+            </label>
             <button
               type="button"
               disabled={!canEdit || busy || !selectedWarehouseId || !vasWoTitle.trim()}
@@ -4044,6 +4076,7 @@ export function WmsClient({
                   workOrderTitle: vasWoTitle.trim(),
                   workOrderDescription: vasWoDesc.trim() ? vasWoDesc.trim() : null,
                   workOrderCrmAccountId: vasWoCrmAccountId.trim() ? vasWoCrmAccountId.trim() : null,
+                  crmQuoteLineId: vasWoCrmQuoteLineId.trim() ? vasWoCrmQuoteLineId.trim() : null,
                 })
               }
               className="mt-3 rounded-xl bg-[var(--arscmp-primary)] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
@@ -4165,6 +4198,77 @@ export function WmsClient({
                         <span className="text-zinc-600">CRM: {wo.crmAccount.name}</span>
                       ) : null}
                     </div>
+                    {canEdit && wo.status !== "DONE" && wo.status !== "CANCELLED" ? (
+                      <div className="mt-2 flex flex-wrap items-end gap-2 border-t border-zinc-50 pt-2">
+                        <label className="min-w-[10rem] flex-1 text-[10px] font-medium text-zinc-600">
+                          CRM quote line id (BF-26)
+                          <input
+                            value={woQuoteLineLinkDraft[wo.id] ?? ""}
+                            onChange={(e) =>
+                              setWoQuoteLineLinkDraft((prev) => ({
+                                ...prev,
+                                [wo.id]: e.target.value,
+                              }))
+                            }
+                            placeholder="Paste CrmQuoteLine id"
+                            className="mt-0.5 block w-full rounded border border-zinc-300 px-2 py-1 font-mono text-[11px]"
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          disabled={busy || !(woQuoteLineLinkDraft[wo.id] ?? "").trim()}
+                          onClick={() =>
+                            void runAction({
+                              action: "link_work_order_crm_quote_line",
+                              workOrderId: wo.id,
+                              crmQuoteLineId: (woQuoteLineLinkDraft[wo.id] ?? "").trim(),
+                            })
+                          }
+                          className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-[11px] font-semibold text-zinc-800 disabled:opacity-40"
+                        >
+                          Save link
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busy || !wo.crmQuoteLineId}
+                          onClick={() =>
+                            void runAction({
+                              action: "link_work_order_crm_quote_line",
+                              workOrderId: wo.id,
+                              crmQuoteLineId: null,
+                            })
+                          }
+                          className="rounded-lg border border-zinc-200 px-3 py-1.5 text-[11px] font-semibold text-zinc-600 disabled:opacity-40"
+                        >
+                          Unlink
+                        </button>
+                      </div>
+                    ) : null}
+                    {wo.crmQuoteLineId ? (
+                      <div className="mt-1 text-[10px] text-zinc-500">
+                        Linked CPQ line · CRM ECO{" "}
+                        <span className="font-medium text-zinc-700">
+                          {wo.crmEngineeringBomRevision ?? "—"}
+                        </span>
+                        {" · "}
+                        CRM materials rollup{" "}
+                        {wo.crmEngineeringBomMaterialsCents != null
+                          ? `$${(wo.crmEngineeringBomMaterialsCents / 100).toFixed(2)}`
+                          : "—"}
+                        {" · "}
+                        Last WMS sync{" "}
+                        {wo.engineeringBomSyncedAt
+                          ? new Date(wo.engineeringBomSyncedAt).toLocaleString()
+                          : "—"}{" "}
+                        ({wo.engineeringBomSyncedRevision ?? "—"})
+                      </div>
+                    ) : null}
+                    {wo.materialsEstimateVsEngineeringVarianceCents != null ? (
+                      <p className="mt-1 text-[10px] font-semibold text-zinc-800">
+                        Δ Estimate − CRM engineering materials: $
+                        {(wo.materialsEstimateVsEngineeringVarianceCents / 100).toFixed(2)}
+                      </p>
+                    ) : null}
                     {canEdit && wo.status !== "DONE" && wo.status !== "CANCELLED" ? (
                       <div className="mt-2 flex flex-wrap items-end gap-2 border-t border-zinc-50 pt-2">
                         <label className="text-[10px] font-medium text-zinc-600">
@@ -4443,6 +4547,19 @@ export function WmsClient({
                                   </div>
                                 ))}
                                 <div className="flex flex-wrap gap-2">
+                                  <button
+                                    type="button"
+                                    disabled={busy || !wo.crmQuoteLineId || !bomEditable}
+                                    onClick={() =>
+                                      void runAction({
+                                        action: "sync_work_order_bom_from_crm_quote_line",
+                                        workOrderId: wo.id,
+                                      })
+                                    }
+                                    className="rounded-xl border border-zinc-300 bg-white px-4 py-2 text-[11px] font-semibold text-zinc-800 disabled:opacity-40"
+                                  >
+                                    Sync BOM from CRM
+                                  </button>
                                   <button
                                     type="button"
                                     disabled={busy}

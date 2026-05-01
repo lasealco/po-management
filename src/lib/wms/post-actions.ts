@@ -38,6 +38,10 @@ import { syncOutboundOrderStatusAfterPick } from "./outbound-workflow";
 import { warehouseZoneParentWouldCycle } from "./zone-hierarchy";
 import { parseMmForWrite, resolveBinAisleFieldsForWrite } from "./warehouse-aisle";
 import { nextWaveNo } from "./wave";
+import {
+  engineeringBomLinesToParsedWorkOrderLines,
+  parseEngineeringBomLinesJson,
+} from "./engineering-bom-sync";
 import { parseConsumeWorkOrderBomQuantity, parseReplaceWorkOrderBomLinesPayload } from "./work-order-bom";
 import { nextWorkOrderNo } from "./work-order-no";
 
@@ -2765,6 +2769,24 @@ export async function handleWmsPost(
     } else {
       crmAccountId = null;
     }
+    let crmQuoteLineId: string | null = input.crmQuoteLineId?.trim() || null;
+    if (crmQuoteLineId) {
+      const qLine = await prisma.crmQuoteLine.findFirst({
+        where: { id: crmQuoteLineId, quote: { tenantId } },
+        select: { id: true, quote: { select: { accountId: true } } },
+      });
+      if (!qLine) {
+        return toApiErrorResponseFromStatus("CRM quote line not found.", 404);
+      }
+      if (crmAccountId && qLine.quote.accountId !== crmAccountId) {
+        return toApiErrorResponseFromStatus(
+          "CRM quote line must belong to the same account as workOrderCrmAccountId.",
+          400,
+        );
+      }
+    } else {
+      crmQuoteLineId = null;
+    }
     const workOrderNo = await nextWorkOrderNo(tenantId);
     const desc = input.workOrderDescription?.trim();
     const row = await prisma.wmsWorkOrder.create({
@@ -2776,6 +2798,7 @@ export async function handleWmsPost(
         description: desc ? desc.slice(0, 8000) : null,
         intakeChannel: "OPS",
         crmAccountId,
+        crmQuoteLineId,
         createdById: actorId,
       },
       select: { id: true, workOrderNo: true },
@@ -2791,6 +2814,7 @@ export async function handleWmsPost(
           warehouseId,
           intakeChannel: "OPS",
           crmAccountId,
+          crmQuoteLineId,
         },
         actorUserId: actorId,
       },
@@ -3111,6 +3135,175 @@ export async function handleWmsPost(
     });
 
     return NextResponse.json({ ok: true });
+  }
+
+  if (action === "link_work_order_crm_quote_line") {
+    const workOrderId = input.workOrderId?.trim();
+    if (!workOrderId) {
+      return toApiErrorResponseFromStatus("workOrderId required.", 400);
+    }
+
+    const wo = await prisma.wmsWorkOrder.findFirst({
+      where: { id: workOrderId, tenantId },
+      select: { id: true, crmAccountId: true },
+    });
+    if (!wo) {
+      return toApiErrorResponseFromStatus("Work order not found.", 404);
+    }
+
+    const rawLineId = input.crmQuoteLineId;
+    if (rawLineId === undefined) {
+      return toApiErrorResponseFromStatus("crmQuoteLineId required (string id or null to unlink).", 400);
+    }
+
+    if (rawLineId === null || String(rawLineId).trim() === "") {
+      await prisma.wmsWorkOrder.update({
+        where: { id: workOrderId },
+        data: {
+          crmQuoteLineId: null,
+          engineeringBomSyncedRevision: null,
+          engineeringBomSyncedAt: null,
+        },
+      });
+      return NextResponse.json({ ok: true });
+    }
+
+    const crmQuoteLineId = String(rawLineId).trim();
+    const line = await prisma.crmQuoteLine.findFirst({
+      where: { id: crmQuoteLineId, quote: { tenantId } },
+      select: { id: true, quote: { select: { accountId: true } } },
+    });
+    if (!line) {
+      return toApiErrorResponseFromStatus("CRM quote line not found.", 404);
+    }
+    if (wo.crmAccountId && line.quote.accountId !== wo.crmAccountId) {
+      return toApiErrorResponseFromStatus(
+        "Quote line must belong to the same CRM account as this work order.",
+        400,
+      );
+    }
+
+    await prisma.wmsWorkOrder.update({
+      where: { id: workOrderId },
+      data: { crmQuoteLineId: line.id },
+    });
+
+    await prisma.ctAuditLog.create({
+      data: {
+        tenantId,
+        entityType: "WMS_WORK_ORDER",
+        entityId: workOrderId,
+        action: "work_order_crm_quote_line_linked",
+        payload: { quoteLineId: line.id },
+        actorUserId: actorId,
+      },
+    });
+
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "sync_work_order_bom_from_crm_quote_line") {
+    const workOrderId = input.workOrderId?.trim();
+    if (!workOrderId) {
+      return toApiErrorResponseFromStatus("workOrderId required.", 400);
+    }
+
+    const wo = await prisma.wmsWorkOrder.findFirst({
+      where: {
+        id: workOrderId,
+        tenantId,
+        status: { in: ["OPEN", "IN_PROGRESS"] },
+      },
+      select: { id: true, crmQuoteLineId: true },
+    });
+    if (!wo) {
+      return toApiErrorResponseFromStatus("Work order not found or not open.", 404);
+    }
+    if (!wo.crmQuoteLineId) {
+      return toApiErrorResponseFromStatus(
+        "Link a CRM quote line before syncing engineering BOM.",
+        400,
+      );
+    }
+
+    const ql = await prisma.crmQuoteLine.findFirst({
+      where: { id: wo.crmQuoteLineId, quote: { tenantId } },
+      select: {
+        id: true,
+        engineeringBomLines: true,
+        engineeringBomRevision: true,
+      },
+    });
+    if (!ql) {
+      return toApiErrorResponseFromStatus("Linked CRM quote line not found.", 404);
+    }
+
+    const parsedRows = parseEngineeringBomLinesJson(ql.engineeringBomLines);
+    if (!parsedRows.ok) {
+      return toApiErrorResponseFromStatus(parsedRows.message, 400);
+    }
+
+    const built = await engineeringBomLinesToParsedWorkOrderLines(tenantId, parsedRows.lines);
+    if (!built.ok) {
+      return toApiErrorResponseFromStatus(built.message, 400);
+    }
+
+    const consumed = await prisma.wmsWorkOrderBomLine.findFirst({
+      where: {
+        workOrderId,
+        tenantId,
+        consumedQty: { gt: new Prisma.Decimal(0) },
+      },
+      select: { id: true },
+    });
+    if (consumed) {
+      return toApiErrorResponseFromStatus(
+        "Cannot sync BOM after a line has consumed quantity.",
+        400,
+      );
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.wmsWorkOrderBomLine.deleteMany({ where: { workOrderId, tenantId } });
+      if (built.lines.length > 0) {
+        await tx.wmsWorkOrderBomLine.createMany({
+          data: built.lines.map((l) => ({
+            tenantId,
+            workOrderId,
+            lineNo: l.lineNo,
+            componentProductId: l.componentProductId,
+            plannedQty: l.plannedQty,
+            lineNote: l.lineNote,
+          })),
+        });
+      }
+      const rev =
+        ql.engineeringBomRevision?.trim().slice(0, 128) || null;
+      await tx.wmsWorkOrder.update({
+        where: { id: workOrderId },
+        data: {
+          engineeringBomSyncedRevision: rev,
+          engineeringBomSyncedAt: new Date(),
+        },
+      });
+    });
+
+    await prisma.ctAuditLog.create({
+      data: {
+        tenantId,
+        entityType: "WMS_WORK_ORDER",
+        entityId: workOrderId,
+        action: "work_order_engineering_bom_synced",
+        payload: {
+          quoteLineId: ql.id,
+          revision: ql.engineeringBomRevision ?? null,
+          lineCount: built.lines.length,
+        },
+        actorUserId: actorId,
+      },
+    });
+
+    return NextResponse.json({ ok: true, lineCount: built.lines.length });
   }
 
   if (action === "replace_work_order_bom_lines") {

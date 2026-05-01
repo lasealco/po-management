@@ -364,11 +364,21 @@ export async function getWmsDashboardPayload(
       intakeChannel: true,
       estimatedMaterialsCents: true,
       estimatedLaborMinutes: true,
+      crmQuoteLineId: true,
+      engineeringBomSyncedRevision: true,
+      engineeringBomSyncedAt: true,
       completedAt: true,
       createdAt: true,
       warehouse: { select: { id: true, code: true, name: true } },
       createdBy: { select: { id: true, name: true } },
       crmAccount: { select: { id: true, name: true } },
+      crmQuoteLine: {
+        select: {
+          id: true,
+          engineeringBomRevision: true,
+          engineeringBomMaterialsCents: true,
+        },
+      },
       bomLines: {
         orderBy: { lineNo: "asc" },
         select: {
@@ -745,6 +755,16 @@ export async function getWmsDashboardPayload(
       intakeChannel: w.intakeChannel,
       estimatedMaterialsCents: w.estimatedMaterialsCents,
       estimatedLaborMinutes: w.estimatedLaborMinutes,
+      crmQuoteLineId: w.crmQuoteLineId,
+      engineeringBomSyncedRevision: w.engineeringBomSyncedRevision,
+      engineeringBomSyncedAt: w.engineeringBomSyncedAt?.toISOString() ?? null,
+      crmEngineeringBomRevision: w.crmQuoteLine?.engineeringBomRevision ?? null,
+      crmEngineeringBomMaterialsCents: w.crmQuoteLine?.engineeringBomMaterialsCents ?? null,
+      materialsEstimateVsEngineeringVarianceCents:
+        w.estimatedMaterialsCents != null &&
+        w.crmQuoteLine?.engineeringBomMaterialsCents != null
+          ? w.estimatedMaterialsCents - w.crmQuoteLine.engineeringBomMaterialsCents
+          : null,
       completedAt: w.completedAt?.toISOString() ?? null,
       createdAt: w.createdAt.toISOString(),
       warehouse: w.warehouse,

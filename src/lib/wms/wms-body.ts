@@ -122,6 +122,8 @@ export type WmsBody = {
   batchNotes?: string | null;
   /** BF-09 — optional CRM counterparty on ops-created work orders. */
   workOrderCrmAccountId?: string | null;
+  /** BF-26 — optional CPQ line for engineering BOM sync (`sync_work_order_bom_from_crm_quote_line`). */
+  crmQuoteLineId?: string | null;
   /** BF-09 — whole cents; send `null` to clear when patching estimates. */
   estimatedMaterialsCents?: number | null;
   /** BF-09 — planned minutes; send `null` to clear. */

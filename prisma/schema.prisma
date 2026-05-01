@@ -4862,6 +4862,12 @@ model WmsWorkOrder {
   intakeChannel WmsWorkOrderIntakeChannel @default(OPS)
   /** BF-09 — optional commercial counterparty (mirrors outbound CRM usage patterns). */
   crmAccountId String?
+  /** BF-26 — optional CPQ line whose engineering BOM syncs into `WmsWorkOrderBomLine`. */
+  crmQuoteLineId String?
+  /** BF-26 — last `CrmQuoteLine.engineeringBomRevision` applied by sync. */
+  engineeringBomSyncedRevision String? @db.VarChar(128)
+  /** BF-26 — timestamp of last successful BOM sync from CRM. */
+  engineeringBomSyncedAt DateTime?
   /** BF-09 — manual BOM / assembly snapshot for quoting (whole cents). */
   estimatedMaterialsCents Int?
   /** BF-09 — planning labor minutes before engineered standards exist. */
@@ -4874,12 +4880,14 @@ model WmsWorkOrder {
   tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   warehouse   Warehouse   @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
   createdBy   User        @relation(fields: [createdById], references: [id], onDelete: Restrict)
-  crmAccount  CrmAccount? @relation(fields: [crmAccountId], references: [id], onDelete: SetNull)
-  bomLines    WmsWorkOrderBomLine[]
+  crmAccount     CrmAccount?    @relation(fields: [crmAccountId], references: [id], onDelete: SetNull)
+  crmQuoteLine   CrmQuoteLine?  @relation(fields: [crmQuoteLineId], references: [id], onDelete: SetNull)
+  bomLines       WmsWorkOrderBomLine[]
 
   @@unique([tenantId, workOrderNo])
   @@index([tenantId, warehouseId, status])
   @@index([tenantId, crmAccountId])
+  @@index([tenantId, crmQuoteLineId])
 }
 
 /// BF-18 — exploded BOM snapshot per value-add work order (`plannedQty` vs ledger-backed `consumedQty`).
@@ -5483,11 +5491,18 @@ model CrmQuoteLine {
   /// BF-22 — optional tier or contract label (audit / UX).
   priceTierLabel String?  @db.VarChar(64)
   extendedAmount Decimal? @db.Decimal(14, 2)
+  /// BF-26 — engineering change / BOM revision label (CPQ or PLM stub).
+  engineeringBomRevision String? @db.VarChar(128)
+  /// BF-26 — JSON array of `{ sku, plannedQty, lineNo?, lineNote? }` for WMS BOM sync.
+  engineeringBomLines Json?
+  /// BF-26 — optional CRM rollup (whole cents) vs WO `estimatedMaterialsCents`.
+  engineeringBomMaterialsCents Int?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  quote CrmQuote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  quote         CrmQuote       @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  wmsWorkOrders WmsWorkOrder[]
 
   @@index([quoteId])
 }

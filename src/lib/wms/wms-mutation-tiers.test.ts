@@ -44,4 +44,9 @@ describe("wmsMutationTierForPostAction", () => {
     expect(wmsMutationTierForPostAction("replace_work_order_bom_lines")).toBe("operations");
     expect(wmsMutationTierForPostAction("consume_work_order_bom_line")).toBe("operations");
   });
+
+  it("maps BF-26 CRM engineering BOM sync to operations tier", () => {
+    expect(wmsMutationTierForPostAction("link_work_order_crm_quote_line")).toBe("operations");
+    expect(wmsMutationTierForPostAction("sync_work_order_bom_from_crm_quote_line")).toBe("operations");
+  });
 });

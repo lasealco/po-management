@@ -8,6 +8,7 @@ import { recalcQuoteSubtotal } from "@/lib/crm-quote-recalc";
 import { crmOwnerRelationClause, getCrmAccessScope } from "@/lib/crm-scope";
 import { getDemoTenant } from "@/lib/demo-tenant";
 import { prisma } from "@/lib/prisma";
+import { parseEngineeringBomLinesJson } from "@/lib/wms/engineering-bom-sync";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +43,12 @@ type PatchBody = {
   listUnitPrice?: string | number | null;
   /** BF-22 — tier label; null clears. */
   priceTierLabel?: string | null;
+  /** BF-26 — engineering revision label; null clears. */
+  engineeringBomRevision?: string | null;
+  /** BF-26 — BOM rows `{ sku, plannedQty, lineNo?, lineNote? }`; null clears JSON. */
+  engineeringBomLines?: unknown[] | null;
+  /** BF-26 — rolled-up materials cents from CRM; null clears. */
+  engineeringBomMaterialsCents?: number | null;
 };
 
 export async function PATCH(
@@ -109,6 +116,42 @@ export async function PATCH(
   if (body.priceTierLabel !== undefined) {
     const t = body.priceTierLabel === null ? "" : String(body.priceTierLabel).trim();
     data.priceTierLabel = t ? t.slice(0, 64) : null;
+  }
+  if (body.engineeringBomRevision !== undefined) {
+    if (body.engineeringBomRevision === null || String(body.engineeringBomRevision).trim() === "") {
+      data.engineeringBomRevision = null;
+    } else {
+      data.engineeringBomRevision = String(body.engineeringBomRevision).trim().slice(0, 128);
+    }
+  }
+  if (body.engineeringBomLines !== undefined) {
+    if (body.engineeringBomLines === null) {
+      data.engineeringBomLines = Prisma.JsonNull;
+    } else {
+      const parsed = parseEngineeringBomLinesJson(body.engineeringBomLines);
+      if (!parsed.ok) {
+        return toApiErrorResponse({ error: parsed.message, code: "BAD_INPUT", status: 400 });
+      }
+      data.engineeringBomLines = parsed.lines as unknown as Prisma.InputJsonValue;
+    }
+  }
+  if (body.engineeringBomMaterialsCents !== undefined) {
+    if (body.engineeringBomMaterialsCents === null) {
+      data.engineeringBomMaterialsCents = null;
+    } else {
+      const n =
+        typeof body.engineeringBomMaterialsCents === "number"
+          ? body.engineeringBomMaterialsCents
+          : Number(body.engineeringBomMaterialsCents);
+      if (!Number.isFinite(n) || n < 0 || !Number.isInteger(n)) {
+        return toApiErrorResponse({
+          error: "engineeringBomMaterialsCents must be a non-negative integer (cents) or null.",
+          code: "BAD_INPUT",
+          status: 400,
+        });
+      }
+      data.engineeringBomMaterialsCents = n;
+    }
   }
   if (body.sortOrder !== undefined) data.sortOrder = Math.round(body.sortOrder);
 
