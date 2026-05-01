@@ -1,6 +1,6 @@
 # Blueprint finish (`BF-xx`) — roadmap after BF-01
 
-**Purpose:** Track **blueprint-finish capsules** after **`BF-01`**: **Done** table (**`BF-02` … `BF-32`** minimal slices where noted), mega-phase definitions ([`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md), [`BF31_BF50_MEGA_PHASES.md`](./BF31_BF50_MEGA_PHASES.md)), capsule cards, and how to execute prompts — see [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md), [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md), [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md), and [`BF31_BF50_MEGA_PHASES.md`](./BF31_BF50_MEGA_PHASES.md).
+**Purpose:** Track **blueprint-finish capsules** after **`BF-01`**: **Done** table (**`BF-02` … `BF-48`** minimal slices where noted), mega-phase definitions ([`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md), [`BF31_BF50_MEGA_PHASES.md`](./BF31_BF50_MEGA_PHASES.md)), capsule cards, and how to execute prompts — see [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md), [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md), [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md), and [`BF31_BF50_MEGA_PHASES.md`](./BF31_BF50_MEGA_PHASES.md).
 
 **Authority:** Capsule IDs and themes match [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md). **`GAP_MAP.md`** stays the repo ↔ blueprint truth.
 
@@ -51,6 +51,7 @@
 | **BF-45** | Partner REST reads (minimal) | **`WmsPartnerApiKey`** + **`GET /api/wms/partner/v1/*`** + [`openapi-partner-v1.yaml`](./openapi-partner-v1.yaml) ([`WMS_PARTNER_API_BF45.md`](./WMS_PARTNER_API_BF45.md)); enforced rate limits backlog |
 | **BF-46** | Customer portal OIDC (minimal) | **`GET /api/auth/customer-portal/oidc/start`** / **`callback`**, PKCE + JWKS **`id_token`** verify, same **`po_auth_user`** session as BF-30 ([`WMS_CUSTOMER_PORTAL_OIDC_BF46.md`](./WMS_CUSTOMER_PORTAL_OIDC_BF46.md)); SAML backlog |
 | **BF-47** | Posted billing disputes & credit stubs (minimal) | **`POST_DISPUTED`** invoice runs, **`WmsBillingCreditMemoStub`**, **`set_invoice_run_posted_dispute`**, **`create_billing_credit_memo_stub`**, BF-44 webhooks ([`WMS_BILLING_BF47.md`](./WMS_BILLING_BF47.md)); tax reversal / AR subledger backlog |
+| **BF-48** | Inventory field ACL matrix / **`inventory.serial`** (minimal) | **`wms-field-acl-matrix.json`**, **`org.wms.inventory.serial`**, **`evaluateWmsInventoryPostMutationAccess`**, Stock **`inventorySerialEdit`** ([`WMS_RBAC_BF48.md`](./WMS_RBAC_BF48.md)); external PDP / SQL matrix backlog |
 
 ---
 
