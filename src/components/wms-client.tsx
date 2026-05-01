@@ -574,6 +574,15 @@ function downloadMovementLedgerCsv(
   URL.revokeObjectURL(url);
 }
 
+function downloadUtf8Blob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function dockCarrierDisplayLine(a: {
   carrierName: string | null;
   carrierReference: string | null;
@@ -4457,6 +4466,8 @@ export function WmsClient({
               o.lines.length > 0 &&
               o.status !== "DRAFT" &&
               o.status !== "CANCELLED";
+            const canExportDesadvAsn =
+              o.lines.length > 0 && (o.status === "PACKED" || o.status === "SHIPPED");
             return (
             <div key={o.id} className="rounded border border-zinc-200 p-2 text-sm">
               <div className="flex flex-wrap items-center gap-2">
@@ -4607,6 +4618,46 @@ export function WmsClient({
                       Demo label (no save)
                     </button>
                   </>
+                ) : null}
+                {canExportDesadvAsn ? (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    title="BF-40 DESADV-inspired ASN JSON (not certified EDI)."
+                    onClick={async () => {
+                      setBusy(true);
+                      setError(null);
+                      try {
+                        const res = await fetch(
+                          `/api/wms/outbound-asn-export?${new URLSearchParams({
+                            outboundOrderId: o.id,
+                            pretty: "1",
+                          })}`,
+                        );
+                        const text = await res.text();
+                        if (!res.ok) {
+                          let parsed: unknown;
+                          try {
+                            parsed = JSON.parse(text);
+                          } catch {
+                            parsed = null;
+                          }
+                          setError(apiClientErrorMessage(parsed, "ASN export failed."));
+                          return;
+                        }
+                        const safeName = o.outboundNo.replace(/[^\w.-]+/g, "_") || "outbound";
+                        downloadUtf8Blob(
+                          new Blob([text], { type: "application/json;charset=utf-8" }),
+                          `${safeName}-desadv-asn.json`,
+                        );
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                    className="rounded border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-800 disabled:opacity-40"
+                  >
+                    Export ASN JSON
+                  </button>
                 ) : null}
                 {canEdit && o.status !== "SHIPPED" && o.status !== "CANCELLED" ? (
                   <button

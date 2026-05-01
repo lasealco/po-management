@@ -4,7 +4,7 @@
 
 **Authority:** Parent catalog rows live in [`BLUEPRINT_FINISH_BACKLOG.md`](./BLUEPRINT_FINISH_BACKLOG.md). Prior shipped waves: [`BF12_BF20_MEGA_PHASES.md`](./BF12_BF20_MEGA_PHASES.md), [`BF21_BF30_MEGA_PHASES.md`](./BF21_BF30_MEGA_PHASES.md).
 
-**Status:** **BF-31** minimal slice shipped ([`WMS_RECEIVING_BF31.md`](./WMS_RECEIVING_BF31.md)); **BF-32** minimal slice shipped ([`WMS_RECEIVING_BF32.md`](./WMS_RECEIVING_BF32.md)); **BF-33** minimal slice shipped ([`WMS_ALLOCATION_BF33.md`](./WMS_ALLOCATION_BF33.md)); **BF-34** minimal slice shipped ([`WMS_ALLOCATION_BF34.md`](./WMS_ALLOCATION_BF34.md)); **BF-35** minimal slice shipped ([`WMS_REPLENISHMENT_BF35.md`](./WMS_REPLENISHMENT_BF35.md)); **BF-36** minimal slice shipped ([`WMS_ATP_BF36.md`](./WMS_ATP_BF36.md)); **BF-37** minimal slice shipped ([`WMS_CROSS_DOCK_BF37.md`](./WMS_CROSS_DOCK_BF37.md)); **BF-38** minimal slice shipped ([`WMS_DOCK_BF38.md`](./WMS_DOCK_BF38.md)); **BF-39** minimal slice shipped ([`WMS_CARRIER_LABEL_BF39.md`](./WMS_CARRIER_LABEL_BF39.md)). Capsules **BF-40** … **BF-50** remain **draft** until executed.
+**Status:** **BF-31** minimal slice shipped ([`WMS_RECEIVING_BF31.md`](./WMS_RECEIVING_BF31.md)); **BF-32** minimal slice shipped ([`WMS_RECEIVING_BF32.md`](./WMS_RECEIVING_BF32.md)); **BF-33** minimal slice shipped ([`WMS_ALLOCATION_BF33.md`](./WMS_ALLOCATION_BF33.md)); **BF-34** minimal slice shipped ([`WMS_ALLOCATION_BF34.md`](./WMS_ALLOCATION_BF34.md)); **BF-35** minimal slice shipped ([`WMS_REPLENISHMENT_BF35.md`](./WMS_REPLENISHMENT_BF35.md)); **BF-36** minimal slice shipped ([`WMS_ATP_BF36.md`](./WMS_ATP_BF36.md)); **BF-37** minimal slice shipped ([`WMS_CROSS_DOCK_BF37.md`](./WMS_CROSS_DOCK_BF37.md)); **BF-38** minimal slice shipped ([`WMS_DOCK_BF38.md`](./WMS_DOCK_BF38.md)); **BF-39** minimal slice shipped ([`WMS_CARRIER_LABEL_BF39.md`](./WMS_CARRIER_LABEL_BF39.md)); **BF-40** minimal slice shipped ([`WMS_OUTBOUND_ASN_BF40.md`](./WMS_OUTBOUND_ASN_BF40.md)). Capsules **BF-41** … **BF-50** remain **draft** until executed.
 
 **Rules:**
 
@@ -27,7 +27,7 @@
 | **BF-37** | Cross-dock / flow-through shipment tagging | **`Shipment`** or dock flags → skip putaway path | Inbound + outbound linkage |
 | **BF-38** | Dock door optimization & trailer checks | Door-window solver / trailer checklist on **`WmsDockAppointment`** | BF-05 / BF-17 dock depth |
 | **BF-39** | Production carrier label purchase | **Minimal landed** — **`purchase_carrier_label`**, HTTP JSON bridge (`WMS_CARRIER_LABEL_HTTP_URL`), persisted **`OutboundOrder.carrierTrackingNo`** / **`carrierLabelAdapterId`** ([`WMS_CARRIER_LABEL_BF39.md`](./WMS_CARRIER_LABEL_BF39.md)); carrier certify backlog | BF-29 scan + label hooks |
-| **BF-40** | Outbound ASN / DESADV export | Customer ship notices + carrier milestone payloads | Outbound ship confirmation |
+| **BF-40** | Outbound ASN / DESADV export | **Minimal landed** — **`GET /api/wms/outbound-asn-export`**, DESADV-inspired JSON + Vitest builder ([`WMS_OUTBOUND_ASN_BF40.md`](./WMS_OUTBOUND_ASN_BF40.md)); EDI certify backlog | Outbound ship confirmation |
 | **BF-41** | Returns & RMA receiving workflow | Disposition + QA path for **`CUSTOMER_RETURN`**-style inbound | BF-01 variance / holds |
 | **BF-42** | QA sampling & receiving disposition templates | AQL / sampling plans on **`Shipment`** or receipt lines | QC row / holds |
 | **BF-43** | GS1 license plate & nested logistics units | Nested SSCC / LPN hierarchy beyond demo SSCC | BF-08 / BF-29 labeling |
@@ -141,7 +141,7 @@
 
 **Objective:** Generate **ship-notice** payloads (**DESADV**/ASN JSON or EDI stub) when outbound ships — customer-visible milestones.
 
-**Exit sketch (minimal slice):** **`GET`** export or **`POST`** webhook companion (**BF-44**) for **`mark_outbound_shipped`** events; template doc.
+**Shipped (minimal slice):** See [`WMS_OUTBOUND_ASN_BF40.md`](./WMS_OUTBOUND_ASN_BF40.md) — **`GET /api/wms/outbound-asn-export`** (`outboundOrderId`, optional `pretty=1`), **`buildOutboundDesadvSnapshotV1`** + Vitest, CRM/outbound read-scope parity, Operations **Export ASN JSON** on **PACKED** / **SHIPPED**.
 
 **Out of scope:** Full EDIFACT/X12 certification library.
 
@@ -253,4 +253,4 @@
 
 ---
 
-_Last updated: 2026-04-29 — **BF-39** carrier label router + HTTP JSON bridge + persisted tracking ([`WMS_CARRIER_LABEL_BF39.md`](./WMS_CARRIER_LABEL_BF39.md)); **BF-38** dock door + trailer checklist + milestone guards ([`WMS_DOCK_BF38.md`](./WMS_DOCK_BF38.md)); **BF-37** cross-dock / flow-through tags + staging preference ([`WMS_CROSS_DOCK_BF37.md`](./WMS_CROSS_DOCK_BF37.md)); **BF-36** ATP / soft reservations minimal landed ([`WMS_ATP_BF36.md`](./WMS_ATP_BF36.md)); **BF-35** replenishment priority / exception tier ([`WMS_REPLENISHMENT_BF35.md`](./WMS_REPLENISHMENT_BF35.md)); **BF-34** solver prototype ([`WMS_ALLOCATION_BF34.md`](./WMS_ALLOCATION_BF34.md)); **BF-33** cube-aware greedy ([`WMS_ALLOCATION_BF33.md`](./WMS_ALLOCATION_BF33.md)); **BF-32** receiving accrual staging ([`WMS_RECEIVING_BF32.md`](./WMS_RECEIVING_BF32.md)); **BF-31** GRN + ASN qty tolerance ([`WMS_RECEIVING_BF31.md`](./WMS_RECEIVING_BF31.md)); **BF-40**–**BF-50** draft objectives._
+_Last updated: 2026-04-29 — **BF-40** outbound ASN / DESADV JSON export ([`WMS_OUTBOUND_ASN_BF40.md`](./WMS_OUTBOUND_ASN_BF40.md)); **BF-39** carrier label router + HTTP JSON bridge + persisted tracking ([`WMS_CARRIER_LABEL_BF39.md`](./WMS_CARRIER_LABEL_BF39.md)); **BF-38** dock door + trailer checklist + milestone guards ([`WMS_DOCK_BF38.md`](./WMS_DOCK_BF38.md)); **BF-37** cross-dock / flow-through tags + staging preference ([`WMS_CROSS_DOCK_BF37.md`](./WMS_CROSS_DOCK_BF37.md)); **BF-36** ATP / soft reservations minimal landed ([`WMS_ATP_BF36.md`](./WMS_ATP_BF36.md)); **BF-35** replenishment priority / exception tier ([`WMS_REPLENISHMENT_BF35.md`](./WMS_REPLENISHMENT_BF35.md)); **BF-34** solver prototype ([`WMS_ALLOCATION_BF34.md`](./WMS_ALLOCATION_BF34.md)); **BF-33** cube-aware greedy ([`WMS_ALLOCATION_BF33.md`](./WMS_ALLOCATION_BF33.md)); **BF-32** receiving accrual staging ([`WMS_RECEIVING_BF32.md`](./WMS_RECEIVING_BF32.md)); **BF-31** GRN + ASN qty tolerance ([`WMS_RECEIVING_BF31.md`](./WMS_RECEIVING_BF31.md)); **BF-41**–**BF-50** draft objectives._
