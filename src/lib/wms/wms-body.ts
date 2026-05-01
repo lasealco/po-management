@@ -166,4 +166,8 @@ export type WmsBody = {
     plannedQty: number;
     lineNote?: string | null;
   }>;
+
+  /** BF-29 — scan tokens (SKU / product code / product id per unit) for pack or ship verification. */
+  packScanTokens?: string[];
+  shipScanTokens?: string[];
 };

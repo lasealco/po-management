@@ -31,6 +31,8 @@ const WMS_POST_ACTION_TIER: Record<string, WmsMutationTier> = {
 
   mark_outbound_packed: "operations",
   mark_outbound_shipped: "operations",
+  validate_outbound_pack_scan: "operations",
+  request_demo_carrier_label: "operations",
 
   set_shipment_inbound_fields: "operations",
   set_wms_receiving_status: "operations",

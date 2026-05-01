@@ -34,6 +34,14 @@ import {
 import { FUNGIBLE_LOT_CODE, normalizeLotCode } from "./lot-code";
 import { InventorySerialNoError, normalizeInventorySerialNo } from "./inventory-serial-no";
 import { explodeCrmQuoteToOutbound } from "./explode-crm-quote-to-outbound";
+import { buildSscc18DemoFromOutbound } from "./gs1-sscc";
+import { requestDemoCarrierLabel } from "./carrier-label-demo-adapter";
+import {
+  buildOutboundPackScanPlan,
+  flattenPackScanExpectations,
+  parsePackScanTokenArray,
+  verifyOutboundPackScan,
+} from "./pack-scan-verify";
 import { syncOutboundOrderStatusAfterPick } from "./outbound-workflow";
 import { warehouseZoneParentWouldCycle } from "./zone-hierarchy";
 import { parseMmForWrite, resolveBinAisleFieldsForWrite } from "./warehouse-aisle";
@@ -1326,6 +1334,82 @@ export async function handleWmsPost(
     return NextResponse.json({ ok: true });
   }
 
+  if (action === "validate_outbound_pack_scan") {
+    const outboundOrderId = input.outboundOrderId?.trim();
+    if (!outboundOrderId) {
+      return toApiErrorResponseFromStatus("outboundOrderId required.", 400);
+    }
+    const order = await prisma.outboundOrder.findFirst({
+      where: { id: outboundOrderId, tenantId },
+      include: { lines: { include: { product: true } } },
+    });
+    if (!order) {
+      return toApiErrorResponseFromStatus("Outbound order not found.", 404);
+    }
+    if (
+      order.status !== "RELEASED" &&
+      order.status !== "PICKING" &&
+      order.status !== "PACKED"
+    ) {
+      return toApiErrorResponseFromStatus(
+        "Pack scan validation applies when the order is RELEASED, PICKING, or PACKED.",
+        400,
+      );
+    }
+    const tokens = parsePackScanTokenArray(input.packScanTokens);
+    const plan =
+      order.status === "PACKED"
+        ? buildOutboundPackScanPlan(
+            order.lines.map((l) => ({ pickedQty: Number(l.packedQty), product: l.product })),
+          )
+        : buildOutboundPackScanPlan(
+            order.lines.map((l) => ({ pickedQty: Number(l.pickedQty), product: l.product })),
+          );
+    const flat = flattenPackScanExpectations(plan);
+    const result = verifyOutboundPackScan(flat, tokens);
+    return NextResponse.json({
+      ok: result.ok,
+      missing: result.missing,
+      unexpected: result.unexpected,
+      plan,
+      expectedTotal: flat.length,
+      scannedTotal: tokens.length,
+    });
+  }
+
+  if (action === "request_demo_carrier_label") {
+    const outboundOrderId = input.outboundOrderId?.trim();
+    if (!outboundOrderId) {
+      return toApiErrorResponseFromStatus("outboundOrderId required.", 400);
+    }
+    const order = await prisma.outboundOrder.findFirst({
+      where: { id: outboundOrderId, tenantId },
+      include: { warehouse: { select: { id: true, code: true, name: true } } },
+    });
+    if (!order) {
+      return toApiErrorResponseFromStatus("Outbound order not found.", 404);
+    }
+    if (order.status === "CANCELLED") {
+      return toApiErrorResponseFromStatus("Cancelled outbound cannot request labels.", 400);
+    }
+    const prefixRaw = process.env.NEXT_PUBLIC_WMS_SSCC_COMPANY_PREFIX?.trim() ?? "";
+    const sscc =
+      prefixRaw && /^[0-9]{7,10}$/.test(prefixRaw)
+        ? buildSscc18DemoFromOutbound(order.id, prefixRaw)
+        : null;
+    const shipBits = [order.shipToName, order.shipToCity, order.shipToCountryCode].filter(Boolean);
+    const demo = requestDemoCarrierLabel({
+      outboundId: order.id,
+      outboundNo: order.outboundNo,
+      warehouseLabel: order.warehouse.code || order.warehouse.name,
+      barcodePayload: order.outboundNo,
+      shipToSummary: shipBits.length ? shipBits.join(" · ") : "—",
+      asnReference: order.asnReference,
+      sscc18: sscc,
+    });
+    return NextResponse.json({ ok: true, ...demo });
+  }
+
   if (action === "mark_outbound_packed") {
     const outboundOrderId = input.outboundOrderId?.trim();
     if (!outboundOrderId) {
@@ -1333,7 +1417,7 @@ export async function handleWmsPost(
     }
     const order = await prisma.outboundOrder.findFirst({
       where: { id: outboundOrderId, tenantId },
-      include: { lines: true },
+      include: { lines: { include: { product: true } } },
     });
     if (!order) {
       return toApiErrorResponseFromStatus("Outbound order not found.", 404);
@@ -1345,6 +1429,29 @@ export async function handleWmsPost(
     if (!allPicked) {
       return toApiErrorResponseFromStatus("All lines must be fully picked before packing.", 400);
     }
+
+    const requirePackScan = process.env.WMS_REQUIRE_PACK_SCAN === "1";
+    const tokens = parsePackScanTokenArray(input.packScanTokens);
+    if (requirePackScan && tokens.length === 0) {
+      return toApiErrorResponseFromStatus(
+        "packScanTokens required when WMS_REQUIRE_PACK_SCAN=1 (scanner wedge or manual list).",
+        400,
+      );
+    }
+    const plan = buildOutboundPackScanPlan(
+      order.lines.map((l) => ({ pickedQty: Number(l.pickedQty), product: l.product })),
+    );
+    const flat = flattenPackScanExpectations(plan);
+    if (tokens.length > 0) {
+      const scanResult = verifyOutboundPackScan(flat, tokens);
+      if (!scanResult.ok) {
+        return toApiErrorResponseFromStatus(
+          `Pack scan mismatch. Missing: ${scanResult.missing.slice(0, 12).join(", ") || "—"}; unexpected: ${scanResult.unexpected.slice(0, 12).join(", ") || "—"}`,
+          400,
+        );
+      }
+    }
+
     await prisma.$transaction(async (tx) => {
       for (const line of order.lines) {
         await tx.outboundOrderLine.update({
@@ -1365,6 +1472,7 @@ export async function handleWmsPost(
           payload: {
             outboundNo: order.outboundNo,
             warehouseId: order.warehouseId,
+            packScanVerified: tokens.length > 0 || requirePackScan,
           },
           actorUserId: actorId,
         },
@@ -1380,7 +1488,7 @@ export async function handleWmsPost(
     }
     const order = await prisma.outboundOrder.findFirst({
       where: { id: outboundOrderId, tenantId },
-      include: { lines: true },
+      include: { lines: { include: { product: true } } },
     });
     if (!order) {
       return toApiErrorResponseFromStatus("Outbound order not found.", 404);
@@ -1392,6 +1500,29 @@ export async function handleWmsPost(
     if (!allPacked) {
       return toApiErrorResponseFromStatus("All lines must be fully packed.", 400);
     }
+
+    const requireShipScan = process.env.WMS_REQUIRE_SHIP_SCAN === "1";
+    const shipTokens = parsePackScanTokenArray(input.shipScanTokens);
+    if (requireShipScan && shipTokens.length === 0) {
+      return toApiErrorResponseFromStatus(
+        "shipScanTokens required when WMS_REQUIRE_SHIP_SCAN=1 (scanner wedge or manual list).",
+        400,
+      );
+    }
+    const shipPlan = buildOutboundPackScanPlan(
+      order.lines.map((l) => ({ pickedQty: Number(l.packedQty), product: l.product })),
+    );
+    const shipFlat = flattenPackScanExpectations(shipPlan);
+    if (shipTokens.length > 0) {
+      const shipScanResult = verifyOutboundPackScan(shipFlat, shipTokens);
+      if (!shipScanResult.ok) {
+        return toApiErrorResponseFromStatus(
+          `Ship scan mismatch. Missing: ${shipScanResult.missing.slice(0, 12).join(", ") || "—"}; unexpected: ${shipScanResult.unexpected.slice(0, 12).join(", ") || "—"}`,
+          400,
+        );
+      }
+    }
+
     await prisma.$transaction(async (tx) => {
       for (const line of order.lines) {
         const shipDelta = new Prisma.Decimal(line.packedQty).minus(line.shippedQty);
@@ -1428,6 +1559,7 @@ export async function handleWmsPost(
           payload: {
             outboundNo: order.outboundNo,
             warehouseId: order.warehouseId,
+            shipScanVerified: shipTokens.length > 0 || requireShipScan,
           },
           actorUserId: actorId,
         },

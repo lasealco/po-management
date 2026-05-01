@@ -7,6 +7,7 @@ import { FUNGIBLE_LOT_CODE, normalizeLotCode } from "@/lib/wms/lot-code";
 import { loadWmsViewReadScope } from "@/lib/wms/wms-read-scope";
 import { allowedNextWmsReceiveStatuses } from "@/lib/wms/wms-receive-status";
 import { loadInventorySerialTrace, type SerialTraceQueryInput } from "@/lib/wms/inventory-serial-trace";
+import { buildOutboundPackScanPlan } from "@/lib/wms/pack-scan-verify";
 import { prisma } from "@/lib/prisma";
 
 function andWhereClauses<T>(base: T, extra: object): T {
@@ -426,7 +427,13 @@ export async function getWmsDashboardPayload(
     }
   }
 
+  const packShipScanPolicy = {
+    packScanRequired: process.env.WMS_REQUIRE_PACK_SCAN === "1",
+    shipScanRequired: process.env.WMS_REQUIRE_SHIP_SCAN === "1",
+  };
+
   return {
+    packShipScanPolicy,
     warehouses: warehouses.map((w) => ({
       id: w.id,
       code: w.code,
@@ -525,6 +532,22 @@ export async function getWmsDashboardPayload(
         commercialPriceTierLabel: l.commercialPriceTierLabel ?? null,
         commercialExtendedAmount: l.commercialExtendedAmount?.toString() ?? null,
       })),
+      packScanPlan:
+        o.status === "RELEASED" || o.status === "PICKING"
+          ? buildOutboundPackScanPlan(
+              o.lines.map((l) => ({
+                pickedQty: Number(l.pickedQty),
+                product: l.product,
+              })),
+            )
+          : o.status === "PACKED"
+            ? buildOutboundPackScanPlan(
+                o.lines.map((l) => ({
+                  pickedQty: Number(l.packedQty),
+                  product: l.product,
+                })),
+              )
+            : [],
     })),
     balances: balances.map((b) => {
       const lc = normalizeLotCode(b.lotCode);

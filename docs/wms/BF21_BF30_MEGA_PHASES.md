@@ -24,7 +24,7 @@
 | **BF-26** | VAS MRP / engineering change | **Minimal landed** — CRM **`engineeringBom*`** on **`CrmQuoteLine`**, **`link_work_order_crm_quote_line`**, **`sync_work_order_bom_from_crm_quote_line`**, variance on **`GET /api/wms`** — [`WMS_ENGINEERING_BOM_BF26.md`](./WMS_ENGINEERING_BOM_BF26.md) | BF-18 **`WmsWorkOrderBomLine`** |
 | **BF-27** | CT map indoor / rack pins | **Minimal landed** — **`warehouseBinPins`** scatter near BF-11 sites (`buildWarehouseBinMapPins`, cap 200, CT toggle) — [`WMS_CT_MAP_BF27.md`](./WMS_CT_MAP_BF27.md) | BF-11 / BF-19 map stack |
 | **BF-28** | Billing / invoice depth (Phase B+) | **Minimal landed** — disputed billing events held out of draft runs ([`WMS_BILLING_BF28.md`](./WMS_BILLING_BF28.md)); accrual / approval gates / accounting export backlog | Phase B billing row |
-| **BF-29** | Packing scanner & carrier label APIs | Hardware confirm path + carrier APIs (**BF-08** depth) | BF-08 pack/ship + labels |
+| **BF-29** | Packing scanner & carrier label APIs | **Minimal landed** — pack/ship scan multiset + env gates + **`DEMO_PARCEL`** ZPL adapter ([`WMS_PACKING_BF29.md`](./WMS_PACKING_BF29.md)); production carrier purchases backlog | BF-08 pack/ship + labels |
 | **BF-30** | Customer portal SSO & identity | AuthZ for **`/wms/vas-intake`** + quote/order visibility | BF-09 portal assumptions |
 
 **Suggested dependency-aware sequence (not mandatory):** BF-21 → BF-22 → BF-23 (receiving truth → commercial price truth → solver); BF-24 parallel when migrations owned separately; BF-25 after BF-17 patterns proven (**minimal landed**); BF-26 after BF-18 usage (**minimal landed**); BF-27 after map product decision (**minimal landed**); BF-28 when finance owns invoice UX; BF-29 with vendor picks; BF-30 when CRM/platform owns IdP.
@@ -131,7 +131,9 @@
 
 **Objective:** **BF-08** depth: device-assisted **scan confirm** on pack/ship and/or **carrier label purchase** APIs (vendor-specific adapters).
 
-**Exit sketch:** Adapter interface + one demo carrier or scanner mock; Operations UX guardrails.
+**Minimal slice shipped (repo):** Multiset **pack scan** verification (`pack-scan-verify.ts`); optional **`WMS_REQUIRE_PACK_SCAN`** / **`WMS_REQUIRE_SHIP_SCAN`**; **`validate_outbound_pack_scan`**; **`packScanTokens`** / **`shipScanTokens`** on **`mark_outbound_packed`** / **`mark_outbound_shipped`**; **`GET /api/wms`** `packShipScanPolicy` + **`packScanPlan`**; **`request_demo_carrier_label`** (**`DEMO_PARCEL`**) + **`carrier-label-demo-adapter`**; Operations UI queues + demo carrier ZPL — [`WMS_PACKING_BF29.md`](./WMS_PACKING_BF29.md); Vitest **`pack-scan-verify.test.ts`**, **`carrier-label-demo-adapter.test.ts`**.
+
+**Exit sketch (remaining):** Real carrier purchases; PDF 4×6; scanner device integrations.
 
 **Out of scope:** Full WMS hardware certification lab.
 
@@ -153,4 +155,4 @@
 
 ---
 
-_Last updated: 2026-04-29 — **BF-28** billing dispute hold minimal ([`WMS_BILLING_BF28.md`](./WMS_BILLING_BF28.md)); **BF-27** CT map approximate bin scatter minimal ([`WMS_CT_MAP_BF27.md`](./WMS_CT_MAP_BF27.md)); **BF-26** CRM engineering BOM sync minimal ([`WMS_ENGINEERING_BOM_BF26.md`](./WMS_ENGINEERING_BOM_BF26.md)); **BF-25** TMS webhook HMAC + idempotency minimal ([`WMS_TMS_WEBHOOK_BF25.md`](./WMS_TMS_WEBHOOK_BF25.md)); **BF-24** minimal **`WarehouseAisle`** slice ([`WMS_ZONE_TOPOLOGY_BF24.md`](./WMS_ZONE_TOPOLOGY_BF24.md)); program capsules **BF-21**–**BF-28** have minimal slices shipped in-repo; **`BF-02`–`BF-28`** Done table in [`BF_CAPSULE_ROADMAP.md`](./BF_CAPSULE_ROADMAP.md); **BF-29**–**BF-30** draft._
+_Last updated: 2026-05-01 — **BF-29** packing scan verify + demo carrier label minimal ([`WMS_PACKING_BF29.md`](./WMS_PACKING_BF29.md)); **BF-28** billing dispute hold minimal ([`WMS_BILLING_BF28.md`](./WMS_BILLING_BF28.md)); **BF-27** CT map approximate bin scatter minimal ([`WMS_CT_MAP_BF27.md`](./WMS_CT_MAP_BF27.md)); **BF-26** CRM engineering BOM sync minimal ([`WMS_ENGINEERING_BOM_BF26.md`](./WMS_ENGINEERING_BOM_BF26.md)); **BF-25** TMS webhook HMAC + idempotency minimal ([`WMS_TMS_WEBHOOK_BF25.md`](./WMS_TMS_WEBHOOK_BF25.md)); **BF-24** minimal **`WarehouseAisle`** slice ([`WMS_ZONE_TOPOLOGY_BF24.md`](./WMS_ZONE_TOPOLOGY_BF24.md)); program capsules **BF-21**–**BF-29** have minimal slices shipped in-repo; **`BF-02`–`BF-29`** Done table in [`BF_CAPSULE_ROADMAP.md`](./BF_CAPSULE_ROADMAP.md); **BF-30** draft._

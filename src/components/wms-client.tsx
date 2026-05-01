@@ -94,6 +94,10 @@ type WmsData = {
     status: string;
     accountId: string;
   }>;
+  packShipScanPolicy?: {
+    packScanRequired: boolean;
+    shipScanRequired: boolean;
+  };
   outboundOrders: Array<{
     id: string;
     outboundNo: string;
@@ -125,6 +129,7 @@ type WmsData = {
       commercialPriceTierLabel: string | null;
       commercialExtendedAmount: string | null;
     }>;
+    packScanPlan: Array<{ code: string; qty: number }>;
   }>;
   balances: Array<{
     id: string;
@@ -636,6 +641,20 @@ export function WmsClient({
   >({});
   const [outboundAsnEdits, setOutboundAsnEdits] = useState<
     Record<string, { asn: string; requestedShip: string }>
+  >({});
+  const [packScanDraftByOutboundId, setPackScanDraftByOutboundId] = useState<Record<string, string>>({});
+  const [packScanTokensByOutboundId, setPackScanTokensByOutboundId] = useState<Record<string, string[]>>(
+    {},
+  );
+  const [packScanFeedbackByOutboundId, setPackScanFeedbackByOutboundId] = useState<
+    Record<string, string | null>
+  >({});
+  const [shipScanDraftByOutboundId, setShipScanDraftByOutboundId] = useState<Record<string, string>>({});
+  const [shipScanTokensByOutboundId, setShipScanTokensByOutboundId] = useState<Record<string, string[]>>(
+    {},
+  );
+  const [shipScanFeedbackByOutboundId, setShipScanFeedbackByOutboundId] = useState<
+    Record<string, string | null>
   >({});
   const [outboundCreateAsn, setOutboundCreateAsn] = useState("");
   const [outboundCreateRequestedShip, setOutboundCreateRequestedShip] = useState("");
@@ -1342,6 +1361,11 @@ export function WmsClient({
       <main className="mx-auto w-full max-w-7xl px-6 py-8 text-sm text-zinc-600">Loading WMS…</main>
     );
   }
+
+  const packShipScanPolicy = data.packShipScanPolicy ?? {
+    packScanRequired: false,
+    shipScanRequired: false,
+  };
 
   const wmsDemoDatasetMissing = !data.warehouses.some((w) => w.code === WMS_DEMO_WAREHOUSE_CODE);
 
@@ -3744,6 +3768,26 @@ export function WmsClient({
                     >
                       Download ZPL stub
                     </button>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={async () => {
+                        const r = await runAction(
+                          { action: "request_demo_carrier_label", outboundOrderId: o.id },
+                          { reload: false },
+                        );
+                        if (!r) return;
+                        const zpl = typeof r.zpl === "string" ? r.zpl : null;
+                        const tn = typeof r.trackingNo === "string" ? r.trackingNo : "demo";
+                        if (zpl) {
+                          const safeName = o.outboundNo.replace(/[^\w.-]+/g, "_") || "outbound";
+                          downloadZplTextFile(zpl, `${safeName}-demo-carrier-${tn}.zpl`);
+                        }
+                      }}
+                      className="rounded border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-800 disabled:opacity-40"
+                    >
+                      Demo carrier ZPL
+                    </button>
                   </>
                 ) : null}
                 {canEdit && o.status !== "SHIPPED" && o.status !== "CANCELLED" ? (
@@ -3776,7 +3820,11 @@ export function WmsClient({
                     type="button"
                     disabled={busy}
                     onClick={() =>
-                      void runAction({ action: "mark_outbound_packed", outboundOrderId: o.id })
+                      void runAction({
+                        action: "mark_outbound_packed",
+                        outboundOrderId: o.id,
+                        packScanTokens: packScanTokensByOutboundId[o.id] ?? [],
+                      })
                     }
                     className="rounded border border-amber-600 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-900 disabled:opacity-40"
                   >
@@ -3788,7 +3836,11 @@ export function WmsClient({
                     type="button"
                     disabled={busy}
                     onClick={() =>
-                      void runAction({ action: "mark_outbound_shipped", outboundOrderId: o.id })
+                      void runAction({
+                        action: "mark_outbound_shipped",
+                        outboundOrderId: o.id,
+                        shipScanTokens: shipScanTokensByOutboundId[o.id] ?? [],
+                      })
                     }
                     className="rounded-xl bg-[var(--arscmp-primary)] px-3 py-2 text-xs font-semibold text-white disabled:opacity-40"
                   >
@@ -3796,6 +3848,220 @@ export function WmsClient({
                   </button>
                 ) : null}
               </div>
+              {canEdit && (o.status === "RELEASED" || o.status === "PICKING") && allPicked ? (
+                <div className="mt-2 rounded-lg border border-indigo-100 bg-indigo-50/50 p-2 text-xs text-indigo-950">
+                  <p className="font-semibold text-indigo-950">BF-29 · Pack scan check</p>
+                  <p className="mt-0.5 text-indigo-900/85">
+                    Expected identifiers (one scan per picked unit, SKU → product code → product id):{" "}
+                    {(o.packScanPlan ?? [])
+                      .map((p) => `${p.code}×${p.qty}`)
+                      .join(", ") || "—"}
+                  </p>
+                  {packShipScanPolicy.packScanRequired ? (
+                    <p className="mt-1 font-medium text-amber-900">
+                      Server policy: scans are required before pack (`WMS_REQUIRE_PACK_SCAN=1`).
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-indigo-900/75">
+                      Optional: submit scans to validate against picks; server enforces only when the env flag is set.
+                    </p>
+                  )}
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <input
+                      value={packScanDraftByOutboundId[o.id] ?? ""}
+                      onChange={(e) =>
+                        setPackScanDraftByOutboundId((prev) => ({ ...prev, [o.id]: e.target.value }))
+                      }
+                      onKeyDown={(e) => {
+                        if (e.key !== "Enter") return;
+                        e.preventDefault();
+                        const raw = (packScanDraftByOutboundId[o.id] ?? "").trim();
+                        if (!raw) return;
+                        setPackScanTokensByOutboundId((prev) => ({
+                          ...prev,
+                          [o.id]: [...(prev[o.id] ?? []), raw],
+                        }));
+                        setPackScanDraftByOutboundId((prev) => ({ ...prev, [o.id]: "" }));
+                      }}
+                      placeholder="Scan or type SKU / code (Enter)"
+                      className="min-w-[12rem] flex-1 rounded border border-indigo-200 px-2 py-1 text-xs text-zinc-900"
+                    />
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => {
+                        const raw = (packScanDraftByOutboundId[o.id] ?? "").trim();
+                        if (!raw) return;
+                        setPackScanTokensByOutboundId((prev) => ({
+                          ...prev,
+                          [o.id]: [...(prev[o.id] ?? []), raw],
+                        }));
+                        setPackScanDraftByOutboundId((prev) => ({ ...prev, [o.id]: "" }));
+                      }}
+                      className="rounded border border-indigo-300 bg-white px-2 py-1 text-xs font-medium text-indigo-900 disabled:opacity-40"
+                    >
+                      Add
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={async () => {
+                        const r = await runAction(
+                          {
+                            action: "validate_outbound_pack_scan",
+                            outboundOrderId: o.id,
+                            packScanTokens: packScanTokensByOutboundId[o.id] ?? [],
+                          },
+                          { reload: false },
+                        );
+                        if (!r) return;
+                        const ok = r.ok === true;
+                        const missing = Array.isArray(r.missing) ? (r.missing as string[]).join(", ") : "";
+                        const unexpected = Array.isArray(r.unexpected)
+                          ? (r.unexpected as string[]).join(", ")
+                          : "";
+                        setPackScanFeedbackByOutboundId((prev) => ({
+                          ...prev,
+                          [o.id]: ok
+                            ? "Scan list matches expected picks."
+                            : `Mismatch. Missing: ${missing || "—"} · Unexpected: ${unexpected || "—"}`,
+                        }));
+                      }}
+                      className="rounded border border-indigo-300 bg-white px-2 py-1 text-xs font-medium text-indigo-900 disabled:opacity-40"
+                    >
+                      Verify
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => {
+                        setPackScanTokensByOutboundId((prev) => ({ ...prev, [o.id]: [] }));
+                        setPackScanFeedbackByOutboundId((prev) => ({ ...prev, [o.id]: null }));
+                      }}
+                      className="rounded border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-700 disabled:opacity-40"
+                    >
+                      Clear list
+                    </button>
+                  </div>
+                  {(packScanTokensByOutboundId[o.id] ?? []).length > 0 ? (
+                    <p className="mt-2 text-[11px] text-indigo-900/80">
+                      Queue: {(packScanTokensByOutboundId[o.id] ?? []).join(" · ")}
+                    </p>
+                  ) : null}
+                  {packScanFeedbackByOutboundId[o.id] ? (
+                    <p className="mt-1 text-[11px] font-medium text-indigo-950">
+                      {packScanFeedbackByOutboundId[o.id]}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+              {canEdit && o.status === "PACKED" && allPacked ? (
+                <div className="mt-2 rounded-lg border border-emerald-100 bg-emerald-50/50 p-2 text-xs text-emerald-950">
+                  <p className="font-semibold text-emerald-950">BF-29 · Ship scan check</p>
+                  <p className="mt-0.5 text-emerald-900/85">
+                    Expected (packed units):{" "}
+                    {(o.packScanPlan ?? [])
+                      .map((p) => `${p.code}×${p.qty}`)
+                      .join(", ") || "—"}
+                  </p>
+                  {packShipScanPolicy.shipScanRequired ? (
+                    <p className="mt-1 font-medium text-amber-900">
+                      Server policy: scans required before ship (`WMS_REQUIRE_SHIP_SCAN=1`).
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-emerald-900/75">
+                      Optional unless `WMS_REQUIRE_SHIP_SCAN` is enabled on the server.
+                    </p>
+                  )}
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <input
+                      value={shipScanDraftByOutboundId[o.id] ?? ""}
+                      onChange={(e) =>
+                        setShipScanDraftByOutboundId((prev) => ({ ...prev, [o.id]: e.target.value }))
+                      }
+                      onKeyDown={(e) => {
+                        if (e.key !== "Enter") return;
+                        e.preventDefault();
+                        const raw = (shipScanDraftByOutboundId[o.id] ?? "").trim();
+                        if (!raw) return;
+                        setShipScanTokensByOutboundId((prev) => ({
+                          ...prev,
+                          [o.id]: [...(prev[o.id] ?? []), raw],
+                        }));
+                        setShipScanDraftByOutboundId((prev) => ({ ...prev, [o.id]: "" }));
+                      }}
+                      placeholder="Scan before ship (Enter)"
+                      className="min-w-[12rem] flex-1 rounded border border-emerald-200 px-2 py-1 text-xs text-zinc-900"
+                    />
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => {
+                        const raw = (shipScanDraftByOutboundId[o.id] ?? "").trim();
+                        if (!raw) return;
+                        setShipScanTokensByOutboundId((prev) => ({
+                          ...prev,
+                          [o.id]: [...(prev[o.id] ?? []), raw],
+                        }));
+                        setShipScanDraftByOutboundId((prev) => ({ ...prev, [o.id]: "" }));
+                      }}
+                      className="rounded border border-emerald-300 bg-white px-2 py-1 text-xs font-medium text-emerald-900 disabled:opacity-40"
+                    >
+                      Add
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={async () => {
+                        const r = await runAction(
+                          {
+                            action: "validate_outbound_pack_scan",
+                            outboundOrderId: o.id,
+                            packScanTokens: shipScanTokensByOutboundId[o.id] ?? [],
+                          },
+                          { reload: false },
+                        );
+                        if (!r) return;
+                        const ok = r.ok === true;
+                        const missing = Array.isArray(r.missing) ? (r.missing as string[]).join(", ") : "";
+                        const unexpected = Array.isArray(r.unexpected)
+                          ? (r.unexpected as string[]).join(", ")
+                          : "";
+                        setShipScanFeedbackByOutboundId((prev) => ({
+                          ...prev,
+                          [o.id]: ok
+                            ? "Scan list matches expected packed units."
+                            : `Mismatch. Missing: ${missing || "—"} · Unexpected: ${unexpected || "—"}`,
+                        }));
+                      }}
+                      className="rounded border border-emerald-300 bg-white px-2 py-1 text-xs font-medium text-emerald-900 disabled:opacity-40"
+                    >
+                      Verify
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => {
+                        setShipScanTokensByOutboundId((prev) => ({ ...prev, [o.id]: [] }));
+                        setShipScanFeedbackByOutboundId((prev) => ({ ...prev, [o.id]: null }));
+                      }}
+                      className="rounded border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-700 disabled:opacity-40"
+                    >
+                      Clear list
+                    </button>
+                  </div>
+                  {(shipScanTokensByOutboundId[o.id] ?? []).length > 0 ? (
+                    <p className="mt-2 text-[11px] text-emerald-900/80">
+                      Queue: {(shipScanTokensByOutboundId[o.id] ?? []).join(" · ")}
+                    </p>
+                  ) : null}
+                  {shipScanFeedbackByOutboundId[o.id] ? (
+                    <p className="mt-1 text-[11px] font-medium text-emerald-950">
+                      {shipScanFeedbackByOutboundId[o.id]}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
               {showOutboundAsnEditor ? (
                 <div className="mt-2 flex flex-wrap items-end gap-2 border-t border-zinc-100 pt-2">
                   <div className="min-w-[8rem]">

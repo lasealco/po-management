@@ -28,7 +28,7 @@ NEXT_PUBLIC_WMS_SSCC_COMPANY_PREFIX=0614141
 ## Explicit backlog
 
 - USB / Bluetooth **scanner** keystroke wedge or serial integration.
-- Production **carrier label** formats (4×6 PDF, vendor APIs) beyond this **stub**.
+- Production **carrier label** formats (4×6 PDF, vendor APIs) beyond this **stub** — **BF-29** adds **`DEMO_PARCEL`** demo adapter ([`WMS_PACKING_BF29.md`](./WMS_PACKING_BF29.md)); live purchases still backlog.
 - **Partial carton** pack lines with distinct SSCC per carton.
 
 _Last updated: 2026-04-29 — BF-08 shipped._
